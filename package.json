@@ -1,0 +1,44 @@
+{
+  "private": true,
+  "scripts": {
+    "start": "webpack-dev-server",
+    "build": "webpack"
+  },
+  "dependencies": {
+    "@material-ui/icons": "^4.9.1",
+    "bulma": "^0.8.2",
+    "bulma-prefers-dark": "0.1.0-beta.0",
+    "react": "^16.13.1",
+    "react-dom": "^16.13.1"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.10.5",
+    "@babel/plugin-transform-runtime": "^7.10.5",
+    "@babel/polyfill": "^7.10.4",
+    "@babel/preset-env": "^7.10.4",
+    "@babel/runtime": "^7.10.5",
+    "@fortawesome/fontawesome-free": "^5.11.2",
+    "@material-ui/core": "^4.11.0",
+    "@material-ui/lab": "^4.0.0-alpha.53",
+    "babel-loader": "^8.1.0",
+    "copy-webpack-plugin": "^6.0.3",
+    "core-js": "^3.3.2",
+    "css-loader": "^2.0.1",
+    "fable-compiler": "^2.4.16",
+    "fable-loader": "^2.1.8",
+    "file-loader": "^4.2.0",
+    "html-webpack-plugin": "^4.3.0",
+    "mini-css-extract-plugin": "^0.9.0",
+    "open-sans-fonts": "^1.5.1",
+    "remotedev": "^0.2.9",
+    "resolve-url-loader": "^3.1.0",
+    "sass": "^1.26.10",
+    "sass-loader": "^9.0.2",
+    "style-loader": "^1.2.1",
+    "terser": "^4.8.0",
+    "webpack": "^4.38.0",
+    "webpack-cli": "^3.3.6",
+    "webpack-dev-server": "^3.7.2",
+    "whatwg-fetch": "^3.0.0"
+  }
+}
