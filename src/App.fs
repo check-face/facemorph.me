@@ -59,7 +59,7 @@ let update msg state : State * Cmd<Msg> =
     | UrlChanged segments ->
         parseUrl segments, Cmd.none
 
-let renderSetpoint value (onChange: string -> unit) =
+let renderSetpoint autoFocus value (onChange: string -> unit) =
     Column.column [ ] [
         Html.img [ prop.src (imgSrc 300 value) ]
         Mui.textField [
@@ -67,6 +67,7 @@ let renderSetpoint value (onChange: string -> unit) =
             textField.onChange onChange
             textField.fullWidth true
             textField.placeholder "Just type anything"
+            textField.autoFocus autoFocus
             textField.inputProps [
                 prop.style [ style.textAlign.center ]
             ]
@@ -79,8 +80,8 @@ let renderContent (state:State) (dispatch: Msg -> unit) =
         prop.children [
             Mui.container [
                 Columns.columns [ ] [
-                    renderSetpoint state.LeftValue (SetLeftValue >> dispatch)
-                    renderSetpoint state.RightValue (SetRightValue >> dispatch)
+                    renderSetpoint true state.LeftValue (SetLeftValue >> dispatch)
+                    renderSetpoint false state.RightValue (SetRightValue >> dispatch)
                 ]
                 
                 Column.column [ ] [
