@@ -13,7 +13,7 @@
     <PackageReference Include="Fable.MaterialUI.Icons" Version="1.3.0" />
     <PackageReference Include="Feliz" Version="1.6.0" />
     <PackageReference Include="Feliz.MaterialUI" Version="1.0.1" />
-    <PackageReference Include="Feliz.Router" Version="3.0.0" />
+    <PackageReference Include="Feliz.Router" Version="3.0.1" />
     <PackageReference Include="Fulma" Version="2.9.0" />
   </ItemGroup>
 </Project>

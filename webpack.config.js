@@ -130,6 +130,7 @@ module.exports = {
         disableHostCheck: true, //TO REMOVE
         port: CONFIG.devServerPort,
         hot: true,
+        historyApiFallback: true,
         inline: true
     },
     // - fable-loader: transforms F# into JS

@@ -8,6 +8,7 @@ open Fable.React
 open Feliz
 open Feliz.MaterialUI
 open Feliz.prop
+open Feliz.Router
 open Fulma
 open Utils
 
@@ -17,9 +18,24 @@ type State = {
     VidValues : (string * string) option
 }
 
+let parseUrl segments =
+    let fromValue, toValue =
+        match segments with
+        | [ Route.Query [ "from_value", fromValue; "to_value", toValue ] ] -> Some fromValue, Some toValue
+        | [ Route.Query [ "to_value", toValue ] ] -> None, Some toValue
+        | [ Route.Query [ "from_value", fromValue ] ] -> Some fromValue, None
+        | _ -> None, None
+
+    {
+        LeftValue = Option.defaultValue "hello" fromValue
+        RightValue = Option.defaultValue ("Face of the day: " + System.DateTime.Today.ToString("yyyy/MM/dd")) toValue
+        VidValues = Option.map2 (fun a b -> a,b) fromValue toValue
+    }
+
 type Msg =
     | SetLeftValue of string
     | SetRightValue of string
+    | UrlChanged of string list
     | MakeVid
 
 let imgSrc (dim:int) value =
@@ -30,21 +46,18 @@ let vidSrc (dim:int) (fromValue, toValue) =
     sprintf "https://api.checkface.ml/api/mp4/?dim=%i&from_value=%s&to_value=%s" dim (encodeUriComponent fromValue) (encodeUriComponent toValue)
 
 
-let init() = {
-    LeftValue = "hello"
-    RightValue = "Face of the day: " + System.DateTime.Today.ToString("yyyy/MM/dd")
-    VidValues = None
-}
+let init() = parseUrl (Router.currentPath()), Cmd.none
 
-
-let update (msg: Msg) (state: State): State =
+let update msg state : State * Cmd<Msg> =
     match msg with
     | SetLeftValue value ->
-        { state with LeftValue = value }
+        { state with LeftValue = value }, Cmd.none
     | SetRightValue value ->
-        { state with RightValue = value }
+        { state with RightValue = value }, Cmd.none
     | MakeVid ->
-        { state with VidValues = Some (state.LeftValue, state.RightValue) }
+        state, Cmd.navigatePath("/", ["from_value", state.LeftValue; "to_value", state.RightValue])
+    | UrlChanged segments ->
+        parseUrl segments, Cmd.none
 
 let renderSetpoint value (onChange: string -> unit) =
     Column.column [ ] [
@@ -101,24 +114,30 @@ let renderContent (state:State) (dispatch: Msg -> unit) =
     ]
 
 let render (state:State) (dispatch: Msg -> unit) =
-    Html.div [
-        Column.column [ ] [
-            Heading.h1 [ ] [ str "morphdev" ]
-            Mui.hidden [
-                hidden.smDown true
-                hidden.children [
-                    Heading.h3 [ Heading.IsSubtitle ] [
-                        str "morph with "
-                        Html.a [
-                           prop.children (str "checkface")
-                           prop.href "https://checkface.ml"
+    React.router [
+        router.pathMode
+        router.onUrlChanged (UrlChanged >> dispatch)
+        router.children [
+            Html.div [
+                Column.column [ ] [
+                    Heading.h1 [ ] [ str "morphdev" ]
+                    Mui.hidden [
+                        hidden.smDown true
+                        hidden.children [
+                            Heading.h3 [ Heading.IsSubtitle ] [
+                                str "morph with "
+                                Html.a [
+                                   prop.children (str "checkface")
+                                   prop.href "https://checkface.ml"
+                                ]
+                                str " values"
+                            ]
                         ]
-                        str " values"
                     ]
                 ]
             ]
+            renderContent state dispatch
         ]
-        renderContent state dispatch
     ]
 
 
@@ -128,6 +147,6 @@ printfn "Enabled HMR"
 open Elmish.HMR
 #endif
 
-Program.mkSimple init update render
+Program.mkProgram init update render
 |> Program.withReactSynchronous "elmish-app"
 |> Program.run
