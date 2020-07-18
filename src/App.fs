@@ -12,6 +12,9 @@ open Feliz.Router
 open Fulma
 open Utils
 
+let videoDim = 512
+let imgDim = 300
+
 type State = {
     LeftValue : string
     RightValue : string
@@ -61,7 +64,11 @@ let update msg state : State * Cmd<Msg> =
 
 let renderSetpoint autoFocus value (onChange: string -> unit) =
     Column.column [ ] [
-        Html.img [ prop.src (imgSrc 300 value) ]
+        Html.img [
+            prop.src (imgSrc imgDim value)
+            prop.width imgDim
+            prop.height imgDim
+        ]
         Mui.textField [
             textField.value value
             textField.onChange onChange
@@ -99,8 +106,7 @@ let renderContent (state:State) (dispatch: Msg -> unit) =
                 | None -> ()
                 | Some values ->
                     Feliz.Html.video [
-                        let dim = 512
-                        prop.src (vidSrc dim values)
+                        prop.src (vidSrc videoDim values)
                         prop.controls true
                         prop.autoPlay true
                         prop.loop true
@@ -109,6 +115,9 @@ let renderContent (state:State) (dispatch: Msg -> unit) =
                             style.display.block
                             style.margin.auto
                         ]
+                        prop.poster (imgSrc imgDim (fst values)) //imgDim is already in cache
+                        prop.width videoDim
+                        prop.height videoDim
                     ]
             ]
         ]
