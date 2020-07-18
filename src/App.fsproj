@@ -4,7 +4,6 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Utils.fs" />
-    <!-- <Compile Include="KeyLatent.fs" /> -->
     <Compile Include="App.fs" />
   </ItemGroup>
   <ItemGroup>
