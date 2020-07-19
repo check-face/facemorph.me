@@ -98,7 +98,7 @@ let renderContent (state:State) (dispatch: Msg -> unit) =
                 
                 Column.column [ ] [
                     Mui.button [
-                        button.children "Make vid"
+                        button.children "Morph"
                         button.type'.submit
                         button.color.primary
                         button.variant.contained
@@ -136,18 +136,14 @@ let render (state:State) (dispatch: Msg -> unit) =
             Html.div [
                 Column.column [ ] [
                     Heading.h1 [ ] [ str "morphdev" ]
-                    Mui.hidden [
-                        hidden.smDown true
-                        hidden.children [
-                            Heading.h3 [ Heading.IsSubtitle ] [
-                                str "morph with "
-                                Html.a [
-                                   prop.children (str "checkface")
-                                   prop.href "https://checkface.ml"
-                                ]
-                                str " values"
-                            ]
+
+                    Heading.h3 [ Heading.IsSubtitle ] [
+                        str "morph with "
+                        Html.a [
+                           prop.children (str "checkface")
+                           prop.href "https://checkface.ml"
                         ]
+                        str " values"
                     ]
                 ]
             ]
