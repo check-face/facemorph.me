@@ -34,7 +34,7 @@ let parseUrl (path, query) =
 type Msg =
     | SetLeftValue of string
     | SetRightValue of string
-    | UrlChanged of string list
+    | UrlChanged of (string list * Map<string, string>)
     | MakeVid
 
 let imgSrc (dim:int) value =
@@ -56,6 +56,7 @@ let getCurrentPath _ =
     urlSegments, urlParams
 
 let init() = parseUrl (getCurrentPath()), Cmd.none
+
 let update msg state : State * Cmd<Msg> =
     match msg with
     | SetLeftValue value ->
