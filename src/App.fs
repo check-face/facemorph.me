@@ -21,13 +21,9 @@ type State = {
     VidValues : (string * string) option
 }
 
-let parseUrl segments =
-    let fromValue, toValue =
-        match segments with
-        | [ Route.Query [ "from_value", fromValue; "to_value", toValue ] ] -> Some fromValue, Some toValue
-        | [ Route.Query [ "to_value", toValue ] ] -> None, Some toValue
-        | [ Route.Query [ "from_value", fromValue ] ] -> Some fromValue, None
-        | _ -> None, None
+let parseUrl (path, query) =
+    let fromValue = Map.tryFind "from_value" query
+    let toValue = Map.tryFind "to_value" query
 
     {
         LeftValue = Option.defaultValue "hello" fromValue
@@ -48,9 +44,18 @@ let imgSrc (dim:int) value =
 let vidSrc (dim:int) (fromValue, toValue) =
     sprintf "https://api.checkface.ml/api/mp4/?dim=%i&from_value=%s&to_value=%s" dim (encodeUriComponent fromValue) (encodeUriComponent toValue)
 
+let getCurrentPath _ =
+    let pathName = Browser.Dom.window.location.pathname
+    let queryString = Browser.Dom.window.location.search
 
-let init() = parseUrl (Router.currentPath()), Cmd.none
+    let urlSegments = Router.urlSegments pathName RouteMode.Path
+    let urlParams =
+        (Router.createUrlSearchParams queryString).entries()
+        |> Seq.map (fun arr -> (arr.[0], arr.[1]))
+        |> Map.ofSeq
+    urlSegments, urlParams
 
+let init() = parseUrl (getCurrentPath()), Cmd.none
 let update msg state : State * Cmd<Msg> =
     match msg with
     | SetLeftValue value ->
@@ -59,8 +64,8 @@ let update msg state : State * Cmd<Msg> =
         { state with RightValue = value }, Cmd.none
     | MakeVid ->
         state, Cmd.navigatePath("/", ["from_value", state.LeftValue; "to_value", state.RightValue])
-    | UrlChanged segments ->
-        parseUrl segments, Cmd.none
+    | UrlChanged (path, query) ->
+        parseUrl (path, query), Cmd.none
 
 let renderSetpoint autoFocus value (onChange: string -> unit) =
     Column.column [ ] [
@@ -126,7 +131,7 @@ let renderContent (state:State) (dispatch: Msg -> unit) =
 let render (state:State) (dispatch: Msg -> unit) =
     React.router [
         router.pathMode
-        router.onUrlChanged (UrlChanged >> dispatch)
+        router.onUrlChanged (getCurrentPath >> UrlChanged >> dispatch)
         router.children [
             Html.div [
                 Column.column [ ] [
