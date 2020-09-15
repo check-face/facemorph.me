@@ -1,6 +1,60 @@
 @import "~bulma/bulma";
 @import "~bulma-prefers-dark/bulma-prefers-dark";
 
+html {
+    overflow-x: auto;
+}
+
 .column {
     text-align: center;
+}
+
+.morph-content > :nth-child(1) {
+    grid-area: from;
+}
+
+
+.morph-content > :nth-child(2) {
+    grid-area: to;
+}
+
+.morph-content > :nth-child(3) {
+    grid-area: morph;
+    align-self: end;
+    margin-bottom: 1em;
+}
+
+
+.morph-content > :nth-child(4) {
+    grid-area: vid;
+}
+
+
+@media (min-width: 750px) {
+    .morph-content {
+        display: grid;
+        gap: 1em;
+        grid-template-areas: 
+            "from to"
+            "morph morph"
+            "vid vid";
+    }
+}
+
+@media (min-width: 900px) {
+    .morph-content {
+        grid-template-areas: 
+            "from morph to"
+            "vid vid vid";
+        grid-template-columns: auto min-content auto;
+    }
+}
+
+@media (min-width: 1000px) {
+    .morph-content {
+        grid-template-areas:
+            "from vid to"
+            "from morph to";
+        grid-template-columns: auto auto auto;
+    }
 }

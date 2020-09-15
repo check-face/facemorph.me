@@ -88,13 +88,45 @@ let renderSetpoint autoFocus value (label:string) (onChange: string -> unit) =
             textField.inputProps [
                 prop.style [ style.textAlign.center ]
             ]
-            textField.InputLabelProps [
-                // prop.style [ style.fontSize (length.em 1.5) ]
+            prop.style [
+                style.width (length.percent 100)
+                style.maxWidth (length.px imgDim)
             ]
-            prop.style [ style.width imgDim ]
             textField.variant.outlined
             textField.label label
             textField.margin.normal
+        ]
+    ]
+
+let renderVideo =
+    function
+    | None -> Html.none
+    | Some (fromValue, toValue) ->
+        Html.div [
+            Feliz.Html.video [
+                prop.src (vidSrc videoDim (fromValue, toValue))
+                prop.controls true
+                prop.autoPlay true
+                prop.loop true
+                prop.muted true
+                prop.style [
+                    style.display.block
+                    style.margin.auto
+                ]
+                prop.poster (imgSrc imgDim (fromValue)) //imgDim is already in cache because fromValue is displayed at imgDim
+                prop.width videoDim
+                prop.height videoDim
+            ]
+        ]
+
+let morphButton =
+    Column.column [ ] [
+        Mui.button [
+            button.children "Morph"
+            button.type'.submit
+            button.color.primary
+            button.variant.contained
+            button.size.large
         ]
     ]
 
@@ -103,53 +135,26 @@ let renderContent (state:State) (dispatch: Msg -> unit) =
         prop.onSubmit (fun e -> e.preventDefault(); dispatch MakeVid)
         prop.children [
             Mui.container [
-                Columns.columns [ ] [
-                    renderSetpoint true state.LeftValue "Morph from" (SetLeftValue >> dispatch)
-                    renderSetpoint false state.RightValue "Morph to" (SetRightValue >> dispatch)
-                ]
-                
-                Column.column [ ] [
-                    
-                    Mui.button [
-                        button.children "Morph"
-                        button.type'.submit
-                        button.color.primary
-                        button.variant.contained
-                        button.size.large
+                Html.div [
+                    prop.className "morph-content"
+                    prop.children [
+                        renderSetpoint true state.LeftValue "Morph from" (SetLeftValue >> dispatch)
+                        renderSetpoint false state.RightValue "Morph to" (SetRightValue >> dispatch)
+                        morphButton
+                        renderVideo state.VidValues
                     ]
                 ]
-            ]
-
-            Html.div [
-                match state.VidValues with
-                | None -> ()
-                | Some values ->
-                    Feliz.Html.video [
-                        prop.src (vidSrc videoDim values)
-                        prop.controls true
-                        prop.autoPlay true
-                        prop.loop true
-                        prop.muted true
-                        prop.style [
-                            style.display.block
-                            style.margin.auto
-                            style.marginTop (length.em 2)
-                        ]
-                        prop.poster (imgSrc imgDim (fst values)) //imgDim is already in cache
-                        prop.width videoDim
-                        prop.height videoDim
-                    ]
             ]
         ]
     ]
 
 
 let explainContent : string = Fable.Core.JsInterop.importDefault "./explain.md"
-let explaination state =
+let explaination largeMargin =
         Mui.container [
             container.maxWidth.md
             prop.style [
-                style.marginTop (if state.VidValues.IsSome then 200 else 300)
+                style.marginTop (if largeMargin then 300 else 100)
                 style.marginBottom 200
             ]
             container.children [
@@ -191,7 +196,7 @@ let render (state:State) (dispatch: Msg -> unit) =
                     ]
                 ]
                 renderContent state dispatch
-                explaination state
+                explaination state.VidValues.IsNone
             ]
         ]
     ]
