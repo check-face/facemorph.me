@@ -14,6 +14,7 @@ open Utils
 
 let videoDim = 512
 let imgDim = 300
+let siteName = "facemorph.me"
 
 type State = {
     LeftValue : string
@@ -27,7 +28,7 @@ let parseUrl (path, query) =
 
     {
         LeftValue = Option.defaultValue "hello" fromValue
-        RightValue = Option.defaultValue ("Face of the day: " + System.DateTime.Today.ToString("yyyy/MM/dd")) toValue
+        RightValue = Option.defaultValue (System.DateTime.Today.ToString("yyyy-MM-dd")) toValue
         VidValues = Option.map2 (fun a b -> a,b) fromValue toValue
     }
 
@@ -68,22 +69,32 @@ let update msg state : State * Cmd<Msg> =
     | UrlChanged (path, query) ->
         parseUrl (path, query), Cmd.none
 
-let renderSetpoint autoFocus value (onChange: string -> unit) =
+let renderSetpoint autoFocus value (label:string) (onChange: string -> unit) =
     Column.column [ ] [
-        Html.img [
-            prop.src (imgSrc imgDim value)
-            prop.width imgDim
-            prop.height imgDim
+        Html.div [
+            prop.children [
+                Html.img [
+                    prop.src (imgSrc imgDim value)
+                    prop.width imgDim
+                    prop.height imgDim
+                ]
+            ]
         ]
         Mui.textField [
             textField.value value
             textField.onChange onChange
-            textField.fullWidth true
             textField.placeholder "Just type anything"
             textField.autoFocus autoFocus
             textField.inputProps [
                 prop.style [ style.textAlign.center ]
             ]
+            textField.InputLabelProps [
+                // prop.style [ style.fontSize (length.em 1.5) ]
+            ]
+            prop.style [ style.width imgDim ]
+            textField.variant.outlined
+            textField.label label
+            textField.margin.normal
         ]
     ]
 
@@ -93,16 +104,18 @@ let renderContent (state:State) (dispatch: Msg -> unit) =
         prop.children [
             Mui.container [
                 Columns.columns [ ] [
-                    renderSetpoint true state.LeftValue (SetLeftValue >> dispatch)
-                    renderSetpoint false state.RightValue (SetRightValue >> dispatch)
+                    renderSetpoint true state.LeftValue "Morph from" (SetLeftValue >> dispatch)
+                    renderSetpoint false state.RightValue "Morph to" (SetRightValue >> dispatch)
                 ]
                 
                 Column.column [ ] [
+                    
                     Mui.button [
                         button.children "Morph"
                         button.type'.submit
                         button.color.primary
                         button.variant.contained
+                        button.size.large
                     ]
                 ]
             ]
@@ -120,6 +133,7 @@ let renderContent (state:State) (dispatch: Msg -> unit) =
                         prop.style [
                             style.display.block
                             style.margin.auto
+                            style.marginTop (length.em 2)
                         ]
                         prop.poster (imgSrc imgDim (fst values)) //imgDim is already in cache
                         prop.width videoDim
@@ -129,26 +143,56 @@ let renderContent (state:State) (dispatch: Msg -> unit) =
         ]
     ]
 
+
+let explainContent : string = Fable.Core.JsInterop.importDefault "./explain.md"
+let explaination state =
+        Mui.container [
+            container.maxWidth.md
+            prop.style [
+                style.marginTop (if state.VidValues.IsSome then 200 else 300)
+                style.marginBottom 200
+            ]
+            container.children [
+                Content.content [ Content.Size IsLarge ] [
+                    Html.div [
+                        prop.dangerouslySetInnerHTML explainContent //rendered from markdown
+                    ]
+                ]
+            ]
+        ]
+
+let darkTheme = Styles.createMuiTheme [ theme.palette.type'.dark ]
+let lightTheme = Styles.createMuiTheme [ theme.palette.type'.light ]
+
+let themedApp' = React.functionComponent("themed-app", fun (props: {| children: ReactElement list |}) ->
+    let theme = if Hooks.useMediaQuery("@media (prefers-color-scheme: dark)") then darkTheme else lightTheme
+    Mui.themeProvider [
+        themeProvider.theme theme
+        themeProvider.children props.children
+    ])
+
+let themedApp children = themedApp' {| children = children |}
+
 let render (state:State) (dispatch: Msg -> unit) =
     React.router [
         router.pathMode
         router.onUrlChanged (getCurrentPath >> UrlChanged >> dispatch)
         router.children [
-            Html.div [
-                Column.column [ ] [
-                    Heading.h1 [ ] [ str "morphdev" ]
-
-                    Heading.h3 [ Heading.IsSubtitle ] [
-                        str "morph with "
-                        Html.a [
-                           prop.children (str "checkface")
-                           prop.href "https://checkface.ml"
+            themedApp [
+                Html.div [
+                    prop.style [ style.marginBottom (length.em 2) ]
+                    prop.children [
+                        Column.column [ ] [
+                            Html.a [
+                                prop.href "/"
+                                prop.children [ Heading.h1 [ ] [ str siteName ] ]
+                            ]
                         ]
-                        str " values"
                     ]
                 ]
+                renderContent state dispatch
+                explaination state
             ]
-            renderContent state dispatch
         ]
     ]
 
