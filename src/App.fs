@@ -77,6 +77,7 @@ let renderSetpoint autoFocus value (label:string) (onChange: string -> unit) =
                     prop.src (imgSrc imgDim value)
                     prop.width imgDim
                     prop.height imgDim
+                    prop.alt (sprintf "Generated face for value %s" value)
                 ]
             ]
         ]
@@ -116,6 +117,7 @@ let renderVideo =
                 prop.poster (imgSrc imgDim (fromValue)) //imgDim is already in cache because fromValue is displayed at imgDim
                 prop.width videoDim
                 prop.height videoDim
+                prop.alt (sprintf "Morph from %s to %s" fromValue toValue)
             ]
         ]
 
