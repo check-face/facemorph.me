@@ -21,3 +21,11 @@ After the first compilation is finished, navigate to http://localhost:8080 in yo
 ### VS Code
 
 If you happen to use Visual Studio Code, simply hitting F5 will start the development watch mode for you and opens your default browser navigating to http://localhost:8080.
+
+
+## Vercel and SSR
+
+After building, the `deploy` output dir is deployed to vercel.
+
+The server generates a serverless function in api folder of the output dir.
+It currently just renders the meta tags in order to make social link preview work.
