@@ -7,15 +7,9 @@ open Fable.Core
 open Fable.Core.JsInterop
 
 printfn "Importing createEndpoint"
-let createEndpoint : ReactElement -> unit = import "createEndpoint" "./server.js"
-
-printfn "Getting initState"
-let initState, _ = initByUrl ("/", Map.empty)
-
-printfn "generating headComponents"
-let headComponents = viewHead initState
+let createEndpoint : (string * string -> ReactElement) -> unit = import "createEndpoint" "./server.js"
 
 printfn "Creating endpoint"
-let endpoint = createEndpoint headComponents
+let endpoint = createEndpoint (initByUrl >> viewHead)
 
 
