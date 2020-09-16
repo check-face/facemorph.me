@@ -17,6 +17,19 @@ jobs:
       - run: npm install
       - run: npm run build
 
+      # https://github.com/amondnet/vercel-action/blob/f79b066724a2ac14b8944244a625146e5d6006c3/.github/workflows/example-static.yml
+      - name: production or not
+        id: prod_or_not
+        run: |
+          if [$REF == 'refs/heads/master']
+          then
+              echo "::set-output name=vercel-args::--prod"
+          else
+              echo "::set-output name=vercel-args::"
+          fi
+        env:
+          REF: ${{ github.ref }}
+
       - uses: amondnet/vercel-action@v19
         with:
           # github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -27,4 +40,4 @@ jobs:
           scope: ${{ secrets.VERCEL_SCOPE }}
           alias-domains: |
             {{BRANCH}}.vercel.facemorph.me
-            pr-{{PR_NUMBER}}.vercel.facemorph.me
+          vercel-args: ${{ steps.prod_or_not.outputs.vercel-args }}
