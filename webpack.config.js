@@ -120,7 +120,9 @@ let client =
                 { from: resolve(CONFIG.assetsDir) },
                 { from: resolve("vercel.json") },
             ]}),
-            new CleanWebpackPlugin(),
+            new CleanWebpackPlugin({
+                cleanOnceBeforeBuildPatterns: ['**/*', '!api'],
+            }),
         ])
         : commonPlugins.concat([
             new webpack.HotModuleReplacementPlugin(),
@@ -225,6 +227,7 @@ let server =
         new CopyWebpackPlugin({ patterns: [
             { from: resolve("./Server/render-serverless-function.js") },
         ]}),
+        new CleanWebpackPlugin(),
     ],
     module: {
         rules: [
