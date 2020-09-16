@@ -121,7 +121,7 @@ let client =
                 { from: resolve("vercel.json") },
             ]}),
             new CleanWebpackPlugin({
-                cleanOnceBeforeBuildPatterns: ['**/*', '!api'],
+                cleanOnceBeforeBuildPatterns: ['**/*', '!api/**'],
             }),
         ])
         : commonPlugins.concat([
@@ -221,6 +221,7 @@ let server =
         libraryTarget: "commonjs"
     },
     mode: isProduction ? 'production' : 'development',
+    devtool: isProduction ? 'source-map' : 'eval-source-map',
     // See https://github.com/fable-compiler/Fable/issues/1490
     resolve: {symlinks: false},
     plugins: [
@@ -285,8 +286,8 @@ let server =
         ]
     },
     optimization: {
-        minimize: true
-        // minimize: false
+        // minimize: true
+        minimize: false
     },
     node: {
         __dirname: false,

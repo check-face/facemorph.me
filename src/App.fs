@@ -50,9 +50,9 @@ let vidSrc (dim:int) (fromValue, toValue) =
     sprintf "https://api.checkface.ml/api/mp4/?dim=%i&from_value=%s&to_value=%s" dim (encodeUriComponent fromValue) (encodeUriComponent toValue)
 
 let getCurrentPath _ =
-    let pathName = Browser.Dom.window.location.pathname
-    let queryString = Browser.Dom.window.location.search
+    Browser.Dom.window.location.pathname, Browser.Dom.window.location.search
 
+let parseSegments (pathName, queryString) =
     let urlSegments = Router.urlSegments pathName RouteMode.Path
     let urlParams =
         (Router.createUrlSearchParams queryString).entries()
@@ -60,8 +60,8 @@ let getCurrentPath _ =
         |> Map.ofSeq
     urlSegments, urlParams
 
-let initByUrl (path, query) = parseUrl (path, query), Cmd.none 
-let init() = getCurrentPath() |> initByUrl
+let initByUrl = parseSegments >> parseUrl
+let init() = getCurrentPath() |> initByUrl, Cmd.none
 
 let update msg state : State * Cmd<Msg> =
     match msg with
@@ -270,7 +270,7 @@ let viewHead state =
 let view state dispatch =
     React.router [
         router.pathMode
-        router.onUrlChanged (getCurrentPath >> UrlChanged >> dispatch)
+        router.onUrlChanged (getCurrentPath >> parseSegments >> UrlChanged >> dispatch)
         router.children [
             viewHead state
             render state dispatch

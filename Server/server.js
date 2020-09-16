@@ -3,13 +3,18 @@ import fs from 'fs';
 
 import ReactDOMServer from 'react-dom/server';
 import Helmet from 'react-helmet'
+import URL from 'url';
 
-function createEndpoint(headComponent) {  
+function createEndpoint(headComponentFun) {  
   const indexFile = path.resolve(__dirname, '../index.html');
   let indexContents = null;
   let didRead = false;
   return (req, res) => {
     console.log("Got a request!")
+    let reqUrl = URL.parse(req.url);
+    let pathName = reqUrl.pathname;
+    let queryString = reqUrl.search;
+    const headComponent = headComponentFun([pathName, queryString])
     ReactDOMServer.renderToString(headComponent);
     var helmet = Helmet.renderStatic();
     var headParts = `
