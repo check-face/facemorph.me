@@ -39,6 +39,7 @@ var webpack = require('webpack');
 var HtmlWebpackPlugin = require('html-webpack-plugin');
 var CopyWebpackPlugin = require('copy-webpack-plugin');
 var MiniCssExtractPlugin = require('mini-css-extract-plugin');
+const { CleanWebpackPlugin } = require('clean-webpack-plugin');
 
 var CONFIG = {
     // The tags to include the generated JS and CSS will be automatically injected in the HTML template
@@ -119,6 +120,7 @@ let client =
                 { from: resolve(CONFIG.assetsDir) },
                 { from: resolve("vercel.json") },
             ]}),
+            new CleanWebpackPlugin(),
         ])
         : commonPlugins.concat([
             new webpack.HotModuleReplacementPlugin(),
