@@ -121,7 +121,7 @@ let client =
                 { from: resolve("vercel.json") },
             ]}),
             new CleanWebpackPlugin({
-                cleanOnceBeforeBuildPatterns: ['**/*', '!api'],
+                cleanOnceBeforeBuildPatterns: ['**/*', '!api/**'],
             }),
         ])
         : commonPlugins.concat([
