@@ -1,0 +1,7 @@
+image: gitpod/workspace-dotnet
+tasks:
+  - init: npm install
+    command: npm start
+ports:
+  - port: 8100
+    onOpen: open-preview
