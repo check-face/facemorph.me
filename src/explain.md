@@ -48,7 +48,7 @@ For an example, try "a".
 The model was trained on the [Flickr-Faces-HQ dataset](https://github.com/NVlabs/ffhq-dataset).
 "The images were crawled from [Flickr](https://www.flickr.com/), thus inheriting all the biases of that website"
 
-#### Wow, this is really fast!
+#### Wow, this is really fast! What's the setup?
 Everything is served from cache with Cloudflare or generated on the fly with an RTX 2080 Ti.
 
 #### Why is this so slow?
