@@ -1,5 +1,8 @@
 {
   "version": 2,
+  "github": {
+    "enabled": false
+  },
   "routes": [
     { "src": "/.*", "continue": true, "headers": { "cache-control": "max-age=3600, s-maxage=86400" } },
     { "src": "/index.html", "dest": "/api/render-serverless-function" },
