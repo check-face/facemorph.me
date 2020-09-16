@@ -5,6 +5,7 @@
   <ItemGroup>
     <Compile Include="Utils.fs" />
     <Compile Include="App.fs" />
+    <Compile Include="Index.fs" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Fable.Elmish.HMR" Version="4.0.1" />

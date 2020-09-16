@@ -79,7 +79,9 @@ var commonPlugins = [
     })
 ];
 
-module.exports = {
+let client = 
+
+{
     // In development, split the JavaScript and CSS files in order to
     // have a faster HMR support. In production bundle styles together
     // with the code because the MiniCssExtractPlugin will extract the
@@ -115,7 +117,7 @@ module.exports = {
             new MiniCssExtractPlugin({ filename: 'style.[hash].css' }),
             new CopyWebpackPlugin({ patterns: [
                 { from: resolve(CONFIG.assetsDir) },
-                { from: resolve("vercel.json")},
+                { from: resolve("vercel.json") },
             ]}),
         ])
         : commonPlugins.concat([
@@ -196,9 +198,104 @@ module.exports = {
                 use: ['file-loader']
             }
         ]
+    },
+    optimization: {
+        minimize: true
+        // minimize: false
     }
 };
 
+let server =
+{
+    entry: {server: ['./Server/Server.fsproj']},
+    target: 'node',
+    output: {
+        path: resolve("./deploy/api"),
+        // filename: isProduction ? '[name].[hash].js' : '[name].js'
+        filename: '[name].js',
+        library: "ServerLib",
+        libraryTarget: "commonjs"
+    },
+    mode: isProduction ? 'production' : 'development',
+    // See https://github.com/fable-compiler/Fable/issues/1490
+    resolve: {symlinks: false},
+    plugins: [
+        new CopyWebpackPlugin({ patterns: [
+            { from: resolve("./Server/render-serverless-function.js") },
+        ]}),
+    ],
+    module: {
+        rules: [
+            {
+                test: /\.fs(x|proj)?$/,
+                use: {
+                    loader: 'fable-loader',
+                    options: {
+                        babel: CONFIG.babel
+                    }
+                }
+            },
+            {
+                test: /\.js$/,
+                exclude: /node_modules/,
+                use: {
+                    loader: 'babel-loader',
+                    options: CONFIG.babel
+                },
+            },
+            {
+                test: /\.(sass|scss|css)$/,
+                use: [
+                    isProduction
+                        ? MiniCssExtractPlugin.loader
+                        : 'style-loader',
+                    'css-loader',
+                    {
+                        loader: 'resolve-url-loader',
+                    },
+                    {
+                      loader: 'sass-loader',
+                      options: { implementation: require('sass') }
+                    }
+                ],
+            },
+            {
+                test: /\.md$/,
+                use: [
+                    {
+                        loader: 'html-loader'
+                    },
+                    {
+                        loader: 'markdown-loader',
+                        options: {
+                            
+                        }
+                    }
+                ]
+            },
+            {
+                test: /\.(png|jpg|jpeg|gif|svg|woff|woff2|ttf|eot)(\?.*)?$/,
+                use: ['file-loader']
+            }
+        ]
+    },
+    optimization: {
+        minimize: true
+        // minimize: false
+    },
+    node: {
+        __dirname: false,
+        __filename: false,
+    }
+}
+
 function resolve(filePath) {
     return path.isAbsolute(filePath) ? filePath : path.join(__dirname, filePath);
+}
+
+if(isProduction) {
+    module.exports = [ client, server ]
+}
+else {
+    module.exports = [ client ]
 }

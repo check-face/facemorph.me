@@ -9,7 +9,8 @@
     "bulma": "^0.8.2",
     "bulma-prefers-dark": "0.1.0-beta.0",
     "react": "^16.13.1",
-    "react-dom": "^16.13.1"
+    "react-dom": "^16.13.1",
+    "react-helmet": "^6.1.0"
   },
   "devDependencies": {
     "@babel/core": "^7.10.5",

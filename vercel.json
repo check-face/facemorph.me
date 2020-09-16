@@ -1,7 +1,15 @@
 {
-    "version": 2,
-    "routes": [
-      { "handle": "filesystem" },
-      { "src": "/.*", "dest": "/index.html" }
-    ]
+  "version": 2,
+  "routes": [
+    { "src": "/.*", "continue": true, "headers": { "cache-control": "max-age=3600, s-maxage=86400" } },
+    { "src": "/index.html", "dest": "/api/render-serverless-function" },
+    { "src": "/", "dest": "/api/render-serverless-function" },
+    { "handle": "filesystem" },
+    { "src": "/.*", "dest": "/api/render-serverless-function" }
+  ],
+  "functions": {
+    "api/render-serverless-function.js": {
+      "includeFiles": "index.html"
+    }
   }
+}

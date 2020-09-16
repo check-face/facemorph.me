@@ -14,7 +14,10 @@ open Utils
 
 let videoDim = 512
 let imgDim = 300
+let ogImgDim = 1024
+let ogVideoDim = 512
 let siteName = "facemorph.me"
+let canonicalBaseUrl = "https://facemorph.me"
 
 type State = {
     LeftValue : string
@@ -41,6 +44,7 @@ type Msg =
 let imgSrc (dim:int) value =
     sprintf "https://api.checkface.ml/api/face/?dim=%i&value=%s" dim (encodeUriComponent value)
 
+let imgAlt value = sprintf "Generated face for value %s" value
 
 let vidSrc (dim:int) (fromValue, toValue) =
     sprintf "https://api.checkface.ml/api/mp4/?dim=%i&from_value=%s&to_value=%s" dim (encodeUriComponent fromValue) (encodeUriComponent toValue)
@@ -56,7 +60,8 @@ let getCurrentPath _ =
         |> Map.ofSeq
     urlSegments, urlParams
 
-let init() = parseUrl (getCurrentPath()), Cmd.none
+let initByUrl (path, query) = parseUrl (path, query), Cmd.none 
+let init() = getCurrentPath() |> initByUrl
 
 let update msg state : State * Cmd<Msg> =
     match msg with
@@ -77,7 +82,7 @@ let renderSetpoint autoFocus value (label:string) (onChange: string -> unit) =
                     prop.src (imgSrc imgDim value)
                     prop.width imgDim
                     prop.height imgDim
-                    prop.alt (sprintf "Generated face for value %s" value)
+                    prop.alt (imgAlt value)
                 ]
             ]
         ]
@@ -181,35 +186,93 @@ let themedApp' = React.functionComponent("themed-app", fun (props: {| children: 
 let themedApp children = themedApp' {| children = children |}
 
 let render (state:State) (dispatch: Msg -> unit) =
-    React.router [
-        router.pathMode
-        router.onUrlChanged (getCurrentPath >> UrlChanged >> dispatch)
-        router.children [
-            themedApp [
-                Html.div [
-                    prop.style [ style.marginBottom (length.em 2) ]
-                    prop.children [
-                        Column.column [ ] [
-                            Html.a [
-                                prop.href "/"
-                                prop.children [ Heading.h1 [ ] [ str siteName ] ]
-                            ]
-                        ]
+    themedApp [
+        Html.div [
+            prop.style [ style.marginBottom (length.em 2) ]
+            prop.children [
+                Column.column [ ] [
+                    Html.a [
+                        prop.href "/"
+                        prop.children [ Heading.h1 [ ] [ str siteName ] ]
                     ]
                 ]
-                renderContent state dispatch
-                explaination state.VidValues.IsNone
             ]
+        ]
+        renderContent state dispatch
+        explaination state.VidValues.IsNone
+    ]
+
+let inline helmet props = createElement (Fable.Core.JsInterop.import "Helmet" "react-helmet") props
+
+let meta property content =
+    Html.meta [
+        prop.custom ("property", property)
+        prop.custom ("content", content)
+    ]
+
+let viewHead state =
+    let title, description =
+        match state.VidValues with
+        | Some (fromValue, toValue) ->
+            sprintf "%s to %s" fromValue toValue,
+            sprintf "Morph generated faces from %s to %s" fromValue toValue
+        | None ->
+            siteName,
+            "Generate faces on the fly and morph between them"
+
+
+
+    let canonicalUrl =
+        canonicalBaseUrl + Feliz.Router.Router.formatPath("/",
+            [ 
+                match state.VidValues with
+                | Some (fromValue, toValue) ->
+                    "from_value", fromValue
+                    "to_value", toValue
+                | None ->
+                    ()
+            ])
+
+    let videoSrc = Option.map (vidSrc ogVideoDim) state.VidValues
+    helmet [ 
+        prop.children [
+            Html.title title
+            meta "og:title" title
+            meta "og:description" description
+            meta "og:site_name" siteName
+            meta "og:image" (imgSrc ogImgDim state.LeftValue)
+            meta "og:image:alt" (imgAlt state.LeftValue)
+            meta "og:image:width" ogImgDim
+            meta "og:image:height" ogImgDim
+            meta "og:image:type" "image/jpeg"
+
+            Html.link [ prop.custom ("rel", "canonical"); prop.href canonicalUrl ]
+            meta "og:url" canonicalUrl
+
+            match videoSrc with
+            | None ->
+                meta "og:type" "website"
+            | Some videoSrc ->
+                meta "og:type" "video.other"
+                meta "og:video" videoSrc
+                meta "og:video:secure_url" videoSrc
+                meta "og:video:type" "video/mp4"
+                meta "og:video:width" ogVideoDim
+                meta "og:video:height" ogVideoDim
+                meta "twitter:card" "player"
+                meta "twitter:player" (videoSrc + "&embed_html=true")
+                meta "twitter:player:width" ogVideoDim
+                meta "twitter:player:height" ogVideoDim
         ]
     ]
 
 
-
-#if DEBUG
-printfn "Enabled HMR"
-open Elmish.HMR
-#endif
-
-Program.mkProgram init update render
-|> Program.withReactSynchronous "elmish-app"
-|> Program.run
+let view state dispatch =
+    React.router [
+        router.pathMode
+        router.onUrlChanged (getCurrentPath >> UrlChanged >> dispatch)
+        router.children [
+            viewHead state
+            render state dispatch
+        ]
+    ]
