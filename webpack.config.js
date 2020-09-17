@@ -204,8 +204,7 @@ let client =
         ]
     },
     optimization: {
-        minimize: true
-        // minimize: false
+        minimize: isProduction
     }
 };
 
@@ -286,8 +285,7 @@ let server =
         ]
     },
     optimization: {
-        // minimize: true
-        minimize: false
+        minimize: isProduction
     },
     node: {
         __dirname: false,
