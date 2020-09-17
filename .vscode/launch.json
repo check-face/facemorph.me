@@ -6,7 +6,7 @@
             "type": "chrome",
             "request": "launch",
             "preLaunchTask": "Watch Client",
-            "url": "http://localhost:8080",
+            "url": "http://localhost:8100",
             "webRoot": "${workspaceFolder}/src",
             "sourceMaps": true,
             "sourceMapPathOverrides": {
@@ -18,7 +18,7 @@
             "type": "browser-preview",
             "request": "launch",
             "preLaunchTask": "Watch Client",
-            "url": "http://localhost:8080",
+            "url": "http://localhost:8100",
             "webRoot": "${workspaceFolder}/src",
             "sourceMapPathOverrides": {
                 "webpack:///*": "${workspaceFolder}/*",
