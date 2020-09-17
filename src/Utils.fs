@@ -2,6 +2,7 @@ module Utils
 open Fable.Core
 open Fable.Core.JS
 open Fable.Core.JsInterop
+open Browser
 
 let rec insert value index list =
     match index, list with
@@ -23,5 +24,7 @@ type Clipboard =
     abstract writeText: string -> Promise<obj>
     abstract readText: unit -> Promise<string>
 
+[<Emit("typeof $0 === 'undefined'")>]
+let  isUndefined (x: 'a) : bool = jsNative
 
-let clipboard : Clipboard option = Browser.Navigator.navigator?clipboard
+let clipboard : Clipboard option = if isUndefined navigator then None else navigator?clipboard
