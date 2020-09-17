@@ -59,4 +59,21 @@ If you have a bunch of GPUs and would like to help, please get in touch.
 
 #### It's not working at all...
 Again, this is just an experiment and we make no commitment to keeping the servers up. We might be developing new features
-or training new models. 
+or training new models.
+
+#### Can I morph with a picture of a real face?
+
+No, but it's a possibility.
+
+If you've worked with StyleGAN2 before and think you can help,
+there is a [branch for latent recovery](https://github.com/check-face/checkface/pull/52)
+
+#### I've thought of an interesting feature you could add
+
+or
+
+#### I've found a bug
+
+Feel free to open an issue on GitHub.
+
+https://github.com/check-face/facemorph.me
