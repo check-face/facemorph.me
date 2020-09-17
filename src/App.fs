@@ -4,7 +4,6 @@ open Elmish
 open Elmish.React
 open Fable.MaterialUI.Icons
 open Fable.React
-// open Fable.React.Props
 open Feliz
 open Feliz.MaterialUI
 open Feliz.prop
@@ -23,6 +22,8 @@ type State = {
     LeftValue : string
     RightValue : string
     VidValues : (string * string) option
+    ShareOpen : bool
+    ShareLinkCopied : string option
 }
 
 let parseUrl (path, query) =
@@ -33,13 +34,34 @@ let parseUrl (path, query) =
         LeftValue = Option.defaultValue "hello" fromValue
         RightValue = Option.defaultValue (System.DateTime.Today.ToString("yyyy-MM-dd")) toValue
         VidValues = Option.map2 (fun a b -> a,b) fromValue toValue
+        ShareOpen = false
+        ShareLinkCopied = None
     }
+
+let canonicalUrl state =
+    canonicalBaseUrl + Feliz.Router.Router.formatPath("/",
+        [ 
+            match state.VidValues with
+            | Some (fromValue, toValue) ->
+                "from_value", fromValue
+                "to_value", toValue
+            | None ->
+                ()
+        ])
+
+type ShareMsg =
+    | OpenShare
+    | CloseShare
+    | CopyLink
+    | OpenCopiedTooltip of bool
+    | CloseCopiedTooltip
 
 type Msg =
     | SetLeftValue of string
     | SetRightValue of string
     | UrlChanged of (string list * Map<string, string>)
     | MakeVid
+    | ShareMsg of ShareMsg
 
 let imgSrc (dim:int) value =
     sprintf "https://api.checkface.ml/api/face/?dim=%i&value=%s" dim (encodeUriComponent value)
@@ -63,6 +85,34 @@ let parseSegments (pathName, queryString) =
 let initByUrl = parseSegments >> parseUrl
 let init() = getCurrentPath() |> initByUrl, Cmd.none
 
+let updateShare msg state =
+    match msg with
+    | OpenShare ->
+        { state with ShareOpen = true }, Cmd.none
+    | CloseShare ->
+        { state with ShareOpen = false }, Cmd.none
+    | CopyLink ->
+        state,
+        match clipboard with
+        | Some clipboard ->
+            Cmd.OfPromise.either
+                <| clipboard.writeText
+                <| canonicalUrl state
+                <| fun _ -> ShareMsg (OpenCopiedTooltip false)
+                <| fun _ -> ShareMsg (OpenCopiedTooltip true)
+        | None -> Cmd.ofMsg (ShareMsg (OpenCopiedTooltip true))
+
+    | OpenCopiedTooltip didFail ->
+        let msg = if didFail then "Failed to copy to clipboard 😢" else "Copied link to clipboard!"
+        { state with ShareLinkCopied = Some msg },
+        Cmd.OfPromise.result (promise {
+            do! Promise.sleep 1000
+            return ShareMsg CloseCopiedTooltip
+        })
+       
+    | CloseCopiedTooltip ->
+        { state with ShareLinkCopied = None }, Cmd.none
+
 let update msg state : State * Cmd<Msg> =
     match msg with
     | SetLeftValue value ->
@@ -73,6 +123,8 @@ let update msg state : State * Cmd<Msg> =
         state, Cmd.navigatePath("/", ["from_value", state.LeftValue; "to_value", state.RightValue])
     | UrlChanged (path, query) ->
         parseUrl (path, query), Cmd.none
+    | ShareMsg msg ->
+        updateShare msg state
 
 let renderSetpoint autoFocus value (label:string) (onChange: string -> unit) =
     Column.column [ ] [
@@ -173,6 +225,74 @@ let explaination largeMargin =
             ]
         ]
 
+let shareContent state dispatch =
+        let encodedUrl = encodeUriComponent (canonicalUrl state)
+        let shareButtons = [
+            "Facebook", facebookIcon [ ], sprintf "https://www.facebook.com/sharer.php?display=page&u=%s&hashtag=%%23facemorph" encodedUrl
+            "WhatsApp", whatsAppIcon [ ], sprintf "https://api.whatsapp.com/send?text=%s" encodedUrl
+            "Twitter", twitterIcon [ ], sprintf "https://twitter.com/share?url=%s&hashtags=facemorph" encodedUrl
+            "Reddit", redditIcon [ ], sprintf "https://reddit.com/submit?url=%s" encodedUrl
+        ]
+        let isShown = state.VidValues.IsSome
+        Html.div [
+            prop.style [
+                style.textAlign.right
+                style.padding (length.em 2)
+                style.overflow.hidden // slides in from off screen
+            ]
+            prop.children [
+                Mui.slide [
+                    slide.in' isShown
+                    slide.direction.left
+                    prop.custom ("exit", false) //disable slide on exit
+                    slide.children (
+                        Html.div [
+                            Html.p [
+                                prop.style [ style.marginBottom (length.px 10) ]
+                                prop.text (state.ShareLinkCopied |> Option.defaultValue "Share this morph")
+                            ]
+                            Mui.tooltip [
+                                tooltip.title "Copy link"
+                                tooltip.placement.bottomEnd
+                                tooltip.children (
+                                    Mui.speedDial [
+                                        speedDial.icon (
+                                            Mui.speedDialIcon [
+                                                speedDialIcon.icon (shareIcon [ ])
+                                                speedDialIcon.openIcon (fileCopyIcon [ ])
+                                            ]
+                                        )
+                                        speedDial.ariaLabel "Share this morph"
+                                        speedDial.children [
+                                            for name, icon, href in shareButtons do
+                                                Mui.speedDialAction [
+                                                    speedDialAction.icon icon
+                                                    prop.key name
+                                                    speedDialAction.tooltipTitle name
+                                                    speedDialAction.tooltipPlacement.bottom
+                                                    speedDialAction.FabProps [
+                                                        fab.href href
+                                                        prop.target "_blank"
+                                                    ]
+                                                ]
+                                        ]
+                                        speedDial.open' state.ShareOpen
+                                        speedDial.onOpen (fun _ _ -> dispatch OpenShare)
+                                        speedDial.onClose (fun _ _ -> dispatch CloseShare)
+                                        speedDial.direction.left
+                                        speedDial.FabProps [
+                                            prop.onClick (fun e -> e.preventDefault(); if state.ShareOpen then dispatch CopyLink)
+                                        ]
+                                    ]
+                                )
+                            ]
+                        ]
+                    )
+                ]
+            ]
+        ]
+
+
 let darkTheme = Styles.createMuiTheme [ theme.palette.type'.dark ]
 let lightTheme = Styles.createMuiTheme [ theme.palette.type'.light ]
 
@@ -199,12 +319,13 @@ let render (state:State) (dispatch: Msg -> unit) =
             ]
         ]
         renderContent state dispatch
+        shareContent state (ShareMsg >> dispatch)
         explaination state.VidValues.IsNone
     ]
 
 let inline helmet props = createElement (Fable.Core.JsInterop.import "Helmet" "react-helmet") props
 
-let meta property content =
+let meta (property:string) content =
     Html.meta [
         prop.custom ("property", property)
         prop.custom ("content", content)
@@ -220,18 +341,7 @@ let viewHead state =
             siteName,
             "Generate faces on the fly and morph between them"
 
-
-
-    let canonicalUrl =
-        canonicalBaseUrl + Feliz.Router.Router.formatPath("/",
-            [ 
-                match state.VidValues with
-                | Some (fromValue, toValue) ->
-                    "from_value", fromValue
-                    "to_value", toValue
-                | None ->
-                    ()
-            ])
+    let canonicalUrl = canonicalUrl state
 
     let videoSrc = Option.map (vidSrc ogVideoDim) state.VidValues
     helmet [ 

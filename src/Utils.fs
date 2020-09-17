@@ -1,5 +1,7 @@
 module Utils
 open Fable.Core
+open Fable.Core.JS
+open Fable.Core.JsInterop
 
 let rec insert value index list =
     match index, list with
@@ -16,3 +18,10 @@ let rec remove i l =
 
 [<Emit("encodeURIComponent($0)")>]
 let encodeUriComponent (str:string) : string = jsNative
+
+type Clipboard =
+    abstract writeText: string -> Promise<obj>
+    abstract readText: unit -> Promise<string>
+
+
+let clipboard : Clipboard option = Browser.Navigator.navigator?clipboard
