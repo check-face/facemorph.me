@@ -23,7 +23,7 @@ type State = {
     RightValue : string
     VidValues : (string * string) option
     ShareOpen : bool
-    ShareLinkCopied : string option
+    ShareLinkMsg : string option
 }
 
 let parseUrl (path, query) =
@@ -35,7 +35,7 @@ let parseUrl (path, query) =
         RightValue = Option.defaultValue (System.DateTime.Today.ToString("yyyy-MM-dd")) toValue
         VidValues = Option.map2 (fun a b -> a,b) fromValue toValue
         ShareOpen = false
-        ShareLinkCopied = None
+        ShareLinkMsg = None
     }
 
 let canonicalUrl state =
@@ -49,12 +49,25 @@ let canonicalUrl state =
                 ()
         ])
 
+let pageTitle = function
+    | Some (fromValue, toValue) ->
+        sprintf "%s to %s" fromValue toValue
+    | None ->
+        siteName
+
+let pageDescription = function
+    | Some (fromValue, toValue) ->
+            sprintf "Morph generated faces from %s to %s" fromValue toValue
+    | None ->
+            "Generate faces on the fly and morph between them"
+
 type ShareMsg =
     | OpenShare
     | CloseShare
     | CopyLink
-    | OpenCopiedTooltip of bool
-    | CloseCopiedTooltip
+    | SetShareMsg of string
+    | ResetShareMsg
+    | NavigatorShare
 
 type Msg =
     | SetLeftValue of string
@@ -98,20 +111,27 @@ let updateShare msg state =
             Cmd.OfPromise.either
                 <| clipboard.writeText
                 <| canonicalUrl state
-                <| fun _ -> ShareMsg (OpenCopiedTooltip false)
-                <| fun _ -> ShareMsg (OpenCopiedTooltip true)
-        | None -> Cmd.ofMsg (ShareMsg (OpenCopiedTooltip true))
+                <| fun _ -> ShareMsg (SetShareMsg "Copied link to clipboard!")
+                <| fun _ -> ShareMsg (SetShareMsg "Failed to copy to clipboard 😢")
+        | None -> Cmd.ofMsg (ShareMsg (SetShareMsg "Failed to copy to clipboard 😢"))
 
-    | OpenCopiedTooltip didFail ->
-        let msg = if didFail then "Failed to copy to clipboard 😢" else "Copied link to clipboard!"
-        { state with ShareLinkCopied = Some msg },
+    | NavigatorShare ->
+        state,
+        if navigatorCanShare then
+            ignore <| navigatorShare (canonicalUrl state) (pageTitle state.VidValues) (pageDescription state.VidValues)
+            Cmd.none
+        else
+            Cmd.ofMsg(ShareMsg (SetShareMsg "No native share"))
+
+    | SetShareMsg msg ->
+        { state with ShareLinkMsg = Some msg },
         Cmd.OfPromise.result (promise {
             do! Promise.sleep 1000
-            return ShareMsg CloseCopiedTooltip
+            return ShareMsg ResetShareMsg
         })
        
-    | CloseCopiedTooltip ->
-        { state with ShareLinkCopied = None }, Cmd.none
+    | ResetShareMsg ->
+        { state with ShareLinkMsg = None }, Cmd.none
 
 let update msg state : State * Cmd<Msg> =
     match msg with
@@ -231,17 +251,23 @@ let shareContent state dispatch =
                         Html.div [
                             Html.p [
                                 prop.style [ style.marginBottom (length.px 10) ]
-                                prop.text (state.ShareLinkCopied |> Option.defaultValue "Share this morph")
+                                prop.text (state.ShareLinkMsg |> Option.defaultValue "Share this morph")
                             ]
                             Mui.tooltip [
-                                tooltip.title "Copy link"
+                                tooltip.title (if navigatorCanShare then "Native" else "Copy link")
                                 tooltip.placement.bottomEnd
                                 tooltip.children (
+                                    let mainActionIcon, mainActionMsg =
+                                        if navigatorCanShare then
+                                            mobileFriendlyIcon, NavigatorShare
+                                        else
+                                            fileCopyIcon, CopyLink
+
                                     Mui.speedDial [
                                         speedDial.icon (
                                             Mui.speedDialIcon [
                                                 speedDialIcon.icon (shareIcon [ ])
-                                                speedDialIcon.openIcon (fileCopyIcon [ ])
+                                                speedDialIcon.openIcon (mainActionIcon [ ])
                                             ]
                                         )
                                         speedDial.ariaLabel "Share this morph"
@@ -263,7 +289,7 @@ let shareContent state dispatch =
                                         speedDial.onClose (fun _ _ -> dispatch CloseShare)
                                         speedDial.direction.left
                                         speedDial.FabProps [
-                                            prop.onClick (fun e -> e.preventDefault(); if state.ShareOpen then dispatch CopyLink)
+                                            prop.onClick (fun e -> e.preventDefault(); if state.ShareOpen then dispatch mainActionMsg)
                                         ]
                                     ]
                                 )
@@ -315,23 +341,14 @@ let meta (property:string) content =
     ]
 
 let viewHead state =
-    let title, description =
-        match state.VidValues with
-        | Some (fromValue, toValue) ->
-            sprintf "%s to %s" fromValue toValue,
-            sprintf "Morph generated faces from %s to %s" fromValue toValue
-        | None ->
-            siteName,
-            "Generate faces on the fly and morph between them"
-
     let canonicalUrl = canonicalUrl state
 
     let videoSrc = Option.map (vidSrc ogVideoDim) state.VidValues
     helmet [ 
         prop.children [
-            Html.title title
-            meta "og:title" title
-            meta "og:description" description
+            Html.title (pageTitle state.VidValues)
+            meta "og:title" (pageTitle state.VidValues)
+            meta "og:description" (pageDescription state.VidValues)
             meta "og:site_name" siteName
             meta "og:image" (imgSrc ogImgDim state.LeftValue)
             meta "og:image:alt" (imgAlt state.LeftValue)

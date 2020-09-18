@@ -28,3 +28,9 @@ type Clipboard =
 let  isUndefined (x: 'a) : bool = jsNative
 
 let clipboard : Clipboard option = if isUndefined navigator then None else navigator?clipboard
+
+[<Emit("""typeof navigator !== 'undefined' && navigator.canShare && navigator.canShare($0)""")>]
+let navigatorCanShareThing (data:Types.ShareData) : bool = jsNative
+let navigatorCanShare = navigatorCanShareThing !!{| url = "https://example.com"; text = "examplewwe text"; title = "nonononono" |}
+printfn "Can share? %A" navigatorCanShare
+let navigatorShare url title text = navigator.share !!{| url = url; title = title; text = text |}
