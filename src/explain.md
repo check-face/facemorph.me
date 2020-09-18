@@ -21,11 +21,17 @@ The more jargon and buzz words the better (not) -->
 
 ## FAQ
 
+---
+
 #### Are these real people?
 No.
 
+---
+
 #### How does what I type affect the face?
 There is no correllation between what you type and the generated faces, other than that the same text will always generate the same face.
+
+---
 
 #### Why does the intermediate face have glasses (or any other feature) even though neither endpoints have glasses?
 Generally the intermediate faces are a pretty good mix between the endpoints, but sometimes you'll notice it adds
@@ -38,18 +44,26 @@ also coincides with having gradients for many of the features we would expect.
 
 TL;DR: nobody really knows.
 
+---
+
 #### Why is there a creepy second face?
 The dataset that the model was trained on has a small number of images that have a second face in the photo.
 Enough images for it to learn to sometimes generate a second face, but not enough to learn how to make it realistic.
 
 For an example, try "a".
 
+---
+
 #### Why are there more women than men?
 The model was trained on the [Flickr-Faces-HQ dataset](https://github.com/NVlabs/ffhq-dataset).
-"The images were crawled from [Flickr](https://www.flickr.com/), thus inheriting all the biases of that website"
+> The images were crawled from [Flickr](https://www.flickr.com/), thus inheriting all the biases of that website
+
+---
 
 #### Wow, this is really fast! What's the setup?
 Everything is served from cache with Cloudflare or generated on the fly with an RTX 2080 Ti.
+
+---
 
 #### Why is this so slow?
 We're students doing an experiment. We don't have the means to spin up extra infrastructure if this gets popular.
@@ -57,9 +71,13 @@ GPUs are expensive!
 
 If you have a bunch of GPUs and would like to help, please get in touch.
 
+---
+
 #### It's not working at all...
 Again, this is just an experiment and we make no commitment to keeping the servers up. We might be developing new features
 or training new models.
+
+---
 
 #### Can I morph with a picture of a real face?
 
@@ -67,6 +85,8 @@ No, but it's a possibility.
 
 If you've worked with StyleGAN2 before and think you can help,
 there is a [branch for latent recovery](https://github.com/check-face/checkface/pull/52)
+
+---
 
 #### I've thought of an interesting feature you could add
 

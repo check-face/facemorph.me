@@ -207,24 +207,6 @@ let renderContent (state:State) (dispatch: Msg -> unit) =
         ]
     ]
 
-
-let explainContent : string = Fable.Core.JsInterop.importDefault "./explain.md"
-let explaination largeMargin =
-        Mui.container [
-            container.maxWidth.md
-            prop.style [
-                style.marginTop (if largeMargin then 300 else 100)
-                style.marginBottom 200
-            ]
-            container.children [
-                Content.content [ Content.Size IsLarge ] [
-                    Html.div [
-                        prop.dangerouslySetInnerHTML explainContent //rendered from markdown
-                    ]
-                ]
-            ]
-        ]
-
 let shareContent state dispatch =
         let encodedUrl = encodeUriComponent (canonicalUrl state)
         let shareButtons = [
@@ -320,7 +302,8 @@ let render (state:State) (dispatch: Msg -> unit) =
         ]
         renderContent state dispatch
         shareContent state (ShareMsg >> dispatch)
-        explaination state.VidValues.IsNone
+        Explain.view {| topMargin = if state.VidValues.IsNone then 300 else 100 |}
+
     ]
 
 let inline helmet props = createElement (Fable.Core.JsInterop.import "Helmet" "react-helmet") props
