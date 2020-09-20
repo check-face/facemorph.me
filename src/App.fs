@@ -30,14 +30,14 @@ type State = {
 let parseUrl (path, query) =
     let fromValue = Map.tryFind "from_value" query
     let toValue = Map.tryFind "to_value" query
-
+    let vidValues = Option.map2 (fun a b -> a,b) fromValue toValue
     {
         LeftValue = Option.defaultValue "hello" fromValue
         RightValue = Option.defaultValue (System.DateTime.Today.ToString("yyyy-MM-dd")) toValue
-        VidValues = Option.map2 (fun a b -> a,b) fromValue toValue
+        VidValues = vidValues
         ShareOpen = false
         ShareLinkMsg = None
-        IsVideoLoading = true
+        IsVideoLoading = vidValues.IsSome
     }
 
 let canonicalUrl state =
@@ -77,6 +77,7 @@ type Msg =
     | UrlChanged of (string list * Map<string, string>)
     | MakeVid
     | ShareMsg of ShareMsg
+    | VideoLoaded
 
 let imgSrc (dim:int) value =
     sprintf "https://api.checkface.ml/api/face/?dim=%i&value=%s" dim (encodeUriComponent value)
@@ -147,6 +148,8 @@ let update msg state : State * Cmd<Msg> =
         parseUrl (path, query), Cmd.none
     | ShareMsg msg ->
         updateShare msg state
+    | VideoLoaded ->
+        { state with IsVideoLoading = false }, Cmd.none
 
 let renderSetpoint autoFocus value (label:string) (onChange: string -> unit) =
     Column.column [ ] [
@@ -178,7 +181,7 @@ let renderSetpoint autoFocus value (label:string) (onChange: string -> unit) =
         ]
     ]
 
-let renderVideo =
+let renderVideo dispatch =
     function
     | None -> Html.none
     | Some (fromValue, toValue) ->
@@ -197,6 +200,7 @@ let renderVideo =
                 prop.width videoDim
                 prop.height videoDim
                 prop.alt (sprintf "Morph from %s to %s" fromValue toValue)
+                prop.onLoadedData (fun _ -> dispatch VideoLoaded)
             ]
         ]
 
@@ -228,7 +232,7 @@ let renderContent (state:State) (dispatch: Msg -> unit) =
                         renderSetpoint true state.LeftValue "Morph from" (SetLeftValue >> dispatch)
                         renderSetpoint false state.RightValue "Morph to" (SetRightValue >> dispatch)
                         morphButton state.IsVideoLoading
-                        renderVideo state.VidValues
+                        renderVideo dispatch state.VidValues
                     ]
                 ]
             ]
