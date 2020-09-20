@@ -24,6 +24,7 @@ type State = {
     VidValues : (string * string) option
     ShareOpen : bool
     ShareLinkMsg : string option
+    IsVideoLoading : bool
 }
 
 let parseUrl (path, query) =
@@ -36,6 +37,7 @@ let parseUrl (path, query) =
         VidValues = Option.map2 (fun a b -> a,b) fromValue toValue
         ShareOpen = false
         ShareLinkMsg = None
+        IsVideoLoading = true
     }
 
 let canonicalUrl state =
@@ -198,14 +200,20 @@ let renderVideo =
             ]
         ]
 
-let morphButton =
+let morphButton isLoading =
     Column.column [ ] [
         Mui.button [
-            button.children "Morph"
             button.type'.submit
             button.color.primary
             button.variant.contained
             button.size.large
+            button.disabled isLoading
+            button.children [
+                if isLoading then Mui.circularProgress [ 
+                    circularProgress.size 20 
+                    circularProgress.color.inherit' 
+                    ] else str "Morph"
+            ]
         ]
     ]
 
@@ -219,7 +227,7 @@ let renderContent (state:State) (dispatch: Msg -> unit) =
                     prop.children [
                         renderSetpoint true state.LeftValue "Morph from" (SetLeftValue >> dispatch)
                         renderSetpoint false state.RightValue "Morph to" (SetRightValue >> dispatch)
-                        morphButton
+                        morphButton state.IsVideoLoading
                         renderVideo state.VidValues
                     ]
                 ]
