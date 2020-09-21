@@ -54,39 +54,35 @@ let view = React.functionComponent (fun (props : {| topMargin : int |}) ->
                 ]
             ]
 
-            for question, answer in faq do
-                Mui.expansionPanel [
-                    expansionPanel.square true
-                    expansionPanel.children [
-                        Mui.expansionPanelSummary [
-                            expansionPanelSummary.expandIcon (expandMoreIcon [ ])
-                            // let theme = Styles.useTheme ()
-                            // prop.style [ style.backgroundColor theme.palette.background?level2 ]
-                            // prop.classes [
-                            expansionPanelSummary.classes.root c.expansionPanelSummary
-                            // ]
-                            // prop.className 
-                            // expansionPanelSummary.
-                            prop.children [
-                                Mui.typography [
-                                    typography.component' "h3"
-                                    typography.variant.h6
-                                    prop.dangerouslySetInnerHTML question
-                                ]
-                            ]
-                        ]
-                        match answer with
-                        | None -> ()
-                        | Some answer ->
-                            Mui.expansionPanelDetails [
-                                Content.content [ ] [
-                                    Html.div [
-                                        prop.dangerouslySetInnerHTML answer
+            Html.div [
+                for question, answer in faq do
+                    Mui.expansionPanel [
+                        expansionPanel.square true
+                        expansionPanel.children [
+                            Mui.expansionPanelSummary [
+                                expansionPanelSummary.expandIcon (expandMoreIcon [ ])
+                                expansionPanelSummary.classes.root c.expansionPanelSummary
+                                prop.children [
+                                    Mui.typography [
+                                        typography.component' "h3"
+                                        typography.variant.h6
+                                        prop.dangerouslySetInnerHTML question
                                     ]
                                 ]
                             ]
+                            match answer with
+                            | None -> ()
+                            | Some answer ->
+                                Mui.expansionPanelDetails [
+                                    Content.content [ ] [
+                                        Html.div [
+                                            prop.dangerouslySetInnerHTML answer
+                                        ]
+                                    ]
+                                ]
+                        ]
                     ]
-                ]
+            ]
         ]
     ])
 
