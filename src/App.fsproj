@@ -4,6 +4,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Utils.fs" />
+    <Compile Include="FancyButton.fs" />
     <Compile Include="Explain.fs" />
     <Compile Include="App.fs" />
     <Compile Include="Index.fs" />
