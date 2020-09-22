@@ -144,6 +144,8 @@ let update msg state : State * Cmd<Msg> =
         { state with LeftValue = value }, Cmd.none
     | SetRightValue value ->
         { state with RightValue = value }, Cmd.none
+    | MakeVid when state.VidValues = Some (state.LeftValue, state.RightValue) ->
+        state, Cmd.none
     | MakeVid ->
         state, Cmd.navigatePath("/", ["from_value", state.LeftValue; "to_value", state.RightValue])
     | UrlChanged (path, query) ->
