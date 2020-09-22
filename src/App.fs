@@ -11,6 +11,8 @@ open Feliz.Router
 open Fulma
 open Utils
 
+open FancyButton
+
 let videoDim = 512
 let imgDim = 300
 let ogImgDim = 1024
@@ -206,19 +208,23 @@ let renderVideo dispatch =
 
 let morphButton isLoading =
     Column.column [ ] [
-        Mui.button [
-            button.type'.submit
-            button.color.primary
-            button.variant.contained
-            button.size.large
-            button.disabled isLoading
-            button.children [
-                if isLoading then Mui.circularProgress [ 
-                    circularProgress.size 20 
-                    circularProgress.color.inherit' 
-                    ] else str "Morph"
-            ]
-        ]
+        fancyButton
+            {|
+                buttonProps = 
+                [
+                    button.type'.submit
+                    button.color.primary
+                    button.variant.contained
+                    button.size.large
+                    button.disabled isLoading
+                    button.children [
+                        if isLoading then Mui.circularProgress [
+                            circularProgress.size 20
+                            circularProgress.color.inherit'
+                            ] else str "Morph"
+                    ]
+                ]
+            |}
     ]
 
 let renderContent (state:State) (dispatch: Msg -> unit) =
