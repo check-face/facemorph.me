@@ -15,7 +15,7 @@ let private useStyles = Styles.makeStyles (fun styles theme ->
         ]
     |})
 
-let view = React.functionComponent (fun (props : {| topMargin : int |}) ->
+let view = React.functionComponent (fun () ->
 
 
     let c = useStyles ()
@@ -43,7 +43,6 @@ let view = React.functionComponent (fun (props : {| topMargin : int |}) ->
     Mui.container [
         container.maxWidth.md
         prop.style [
-            style.marginTop props.topMargin
             style.marginBottom 200
         ]
         container.children [

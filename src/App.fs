@@ -348,7 +348,7 @@ let render (state:State) (dispatch: Msg -> unit) =
         ]
         renderContent state dispatch
         shareContent state (ShareMsg >> dispatch)
-        Explain.view {| topMargin = if state.VidValues.IsNone then 300 else 100 |}
+        Explain.view ()
 
     ]
 
