@@ -34,3 +34,14 @@ let navigatorCanShareThing (data:Types.ShareData) : bool = jsNative
 let navigatorCanShare = navigatorCanShareThing !!{| url = "https://example.com"; text = "examplewwe text"; title = "nonononono" |}
 printfn "Can share? %A" navigatorCanShare
 let navigatorShare url title text = navigator.share !!{| url = url; title = title; text = text |}
+
+type FileShare = {
+    FileUrl : string
+    ContentType : string
+    FileName : string
+    Title : string
+    Url : string
+    Text : string
+}
+
+let shareFileFromUrl : FileShare -> Promise<bool> = import "shareFile" "./shareFile.js"

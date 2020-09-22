@@ -122,11 +122,30 @@ let updateShare msg state =
 
     | NavigatorShare ->
         state,
-        if navigatorCanShare then
-            ignore <| navigatorShare (canonicalUrl state) (pageTitle state.VidValues) (pageDescription state.VidValues)
-            Cmd.none
-        else
-            Cmd.ofMsg(ShareMsg (SetShareMsg "No native share"))
+        match navigatorCanShare, state.VidValues with
+        | true, None -> 
+            Cmd.OfPromise.result (promise {
+                ignore <| navigatorShare (canonicalUrl state) (pageTitle state.VidValues) (pageDescription state.VidValues)
+                return ShareMsg (SetShareMsg "Sharing page!")
+            })
+        | true, Some (leftValue, rightValue) ->
+            Cmd.OfPromise.result (promise {
+                let fileShare = {
+                    FileName = pageTitle state.VidValues + ".mp4"
+                    Title = pageTitle state.VidValues
+                    FileUrl = vidSrc videoDim (leftValue, rightValue)
+                    Text = (pageDescription state.VidValues)
+                    Url = (canonicalUrl state)
+                    ContentType = "video/mp4"
+                }
+                let! couldShareFile = shareFileFromUrl fileShare
+                if couldShareFile then
+                    return ShareMsg (SetShareMsg "Sharing morph!")
+                else
+                    return ShareMsg CopyLink
+            })
+        | false, _ ->
+            Cmd.ofMsg (ShareMsg CopyLink)
 
     | SetShareMsg msg ->
         { state with ShareLinkMsg = Some msg },
@@ -271,23 +290,20 @@ let shareContent state dispatch =
                         Html.div [
                             Html.p [
                                 prop.style [ style.marginBottom (length.px 10) ]
-                                prop.text (state.ShareLinkMsg |> Option.defaultValue "Share this morph")
+                                let message =
+                                    state.ShareLinkMsg
+                                    |> Option.defaultValue "Share this morph"
+                                prop.text message
                             ]
                             Mui.tooltip [
-                                tooltip.title (if navigatorCanShare then "Native" else "Copy link")
+                                tooltip.title ("Copy link")
                                 tooltip.placement.bottomEnd
                                 tooltip.children (
-                                    let mainActionIcon, mainActionMsg =
-                                        if navigatorCanShare then
-                                            mobileFriendlyIcon, NavigatorShare
-                                        else
-                                            fileCopyIcon, CopyLink
-
                                     Mui.speedDial [
                                         speedDial.icon (
                                             Mui.speedDialIcon [
                                                 speedDialIcon.icon (shareIcon [ ])
-                                                speedDialIcon.openIcon (mainActionIcon [ ])
+                                                speedDialIcon.openIcon (fileCopyIcon [ ])
                                             ]
                                         )
                                         speedDial.ariaLabel "Share this morph"
@@ -309,7 +325,14 @@ let shareContent state dispatch =
                                         speedDial.onClose (fun _ _ -> dispatch CloseShare)
                                         speedDial.direction.left
                                         speedDial.FabProps [
-                                            prop.onClick (fun e -> e.preventDefault(); if state.ShareOpen then dispatch mainActionMsg)
+                                            prop.onClick (fun e ->
+                                                e.preventDefault()
+                                                if state.ShareOpen
+                                                then dispatch CopyLink
+                                                elif navigatorCanShare
+                                                then dispatch NavigatorShare
+                                                else ()
+                                            )
                                         ]
                                     ]
                                 )
