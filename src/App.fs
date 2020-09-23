@@ -15,7 +15,9 @@ open FancyButton
 
 let videoDim = 512
 let imgDim = 300
-let ogImgDim = 1024
+let linkpreviewWidth = 1200
+let linkpreviewHeight = 628
+let ogImgDim = 512
 let ogVideoDim = 512
 let siteName = "facemorph.me"
 let canonicalBaseUrl = "https://facemorph.me"
@@ -85,9 +87,13 @@ let imgSrc (dim:int) value =
     sprintf "https://api.checkface.ml/api/face/?dim=%i&value=%s" dim (encodeUriComponent value)
 
 let imgAlt value = sprintf "Generated face for value %s" value
+let linkpreviewAlt (fromValue, toValue) = sprintf "%s + %s" fromValue toValue
 
 let vidSrc (dim:int) (fromValue, toValue) =
     sprintf "https://api.checkface.ml/api/mp4/?dim=%i&from_value=%s&to_value=%s" dim (encodeUriComponent fromValue) (encodeUriComponent toValue)
+
+let linkpreviewSrc (width:int) (fromValue, toValue) =
+    sprintf "https://api.checkface.ml/api/linkpreview/?width=%i&from_value=%s&to_value=%s" width (encodeUriComponent fromValue) (encodeUriComponent toValue)
 
 let getCurrentPath _ =
     Browser.Dom.window.location.pathname, Browser.Dom.window.location.search
@@ -386,26 +392,36 @@ let meta (property:string) content =
 let viewHead state =
     let canonicalUrl = canonicalUrl state
 
-    let videoSrc = Option.map (vidSrc ogVideoDim) state.VidValues
     helmet [ 
         prop.children [
             Html.title (pageTitle state.VidValues)
             meta "og:title" (pageTitle state.VidValues)
             meta "og:description" (pageDescription state.VidValues)
             meta "og:site_name" siteName
-            meta "og:image" (imgSrc ogImgDim state.LeftValue)
-            meta "og:image:alt" (imgAlt state.LeftValue)
-            meta "og:image:width" ogImgDim
-            meta "og:image:height" ogImgDim
-            meta "og:image:type" "image/jpeg"
 
             Html.link [ prop.custom ("rel", "canonical"); prop.href canonicalUrl ]
             meta "og:url" canonicalUrl
 
-            match videoSrc with
+            match state.VidValues with
             | None ->
+                meta "og:image" (imgSrc ogImgDim state.LeftValue)
+                meta "og:image:alt" (imgAlt state.LeftValue)
+                meta "og:image:width" ogImgDim
+                meta "og:image:height" ogImgDim
+                meta "og:image:type" "image/jpeg"
                 meta "og:type" "website"
-            | Some videoSrc ->
+
+            | Some vidValues ->
+                let videoSrc = vidSrc ogVideoDim vidValues
+                let linkprevSrc = linkpreviewSrc linkpreviewWidth vidValues
+                let linkprevAlt = linkpreviewSrc linkpreviewWidth vidValues
+                
+                meta "og:image" linkprevSrc
+                meta "og:image:alt" linkprevAlt
+                meta "og:image:width" linkpreviewWidth
+                meta "og:image:height" linkpreviewHeight
+                meta "og:image:type" "image/jpeg"
+
                 meta "og:type" "video.other"
                 meta "og:video" videoSrc
                 meta "og:video:secure_url" videoSrc
