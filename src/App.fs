@@ -110,6 +110,8 @@ let updateShare msg state =
     | CloseShare ->
         { state with ShareOpen = false }, Cmd.none
     | CopyLink ->
+        gtagEvent "CopyLink" "Share"
+
         state,
         match clipboard with
         | Some clipboard ->
@@ -121,6 +123,8 @@ let updateShare msg state =
         | None -> Cmd.ofMsg (ShareMsg (SetShareMsg "Failed to copy to clipboard 😢"))
 
     | NavigatorShare ->
+        gtagEvent "NavigatorShareOpen" "Share"
+
         state,
         match navigatorCanShare, state.VidValues with
         | true, None -> 
@@ -166,6 +170,7 @@ let update msg state : State * Cmd<Msg> =
     | MakeVid when state.VidValues = Some (state.LeftValue, state.RightValue) ->
         state, Cmd.none
     | MakeVid ->
+        gtagEvent "MakeVid" "Video"
         state, Cmd.navigatePath("/", ["from_value", state.LeftValue; "to_value", state.RightValue])
     | UrlChanged (path, query) ->
         parseUrl (path, query), Cmd.none

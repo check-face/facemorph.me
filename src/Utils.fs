@@ -16,6 +16,8 @@ let rec remove i l =
     | i, x::xs -> x::remove (i - 1) xs
     | i, [] -> failwith "index out of range"
 
+[<Emit("gtag('event', $0, { 'event_category': $1 })")>]
+let gtagEvent action catagory : unit = jsNative
 
 [<Emit("encodeURIComponent($0)")>]
 let encodeUriComponent (str:string) : string = jsNative
