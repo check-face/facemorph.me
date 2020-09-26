@@ -12,6 +12,7 @@ open Fulma
 open Utils
 
 open FancyButton
+open SliderMorph
 
 let videoDim = 512
 let imgDim = 300
@@ -27,6 +28,7 @@ type State = {
     ShareOpen : bool
     ShareLinkMsg : string option
     IsVideoLoading : bool
+    UseSlider : bool
 }
 
 let parseUrl (path, query) =
@@ -40,6 +42,7 @@ let parseUrl (path, query) =
         ShareOpen = false
         ShareLinkMsg = None
         IsVideoLoading = vidValues.IsSome
+        UseSlider = false
     }
 
 let canonicalUrl state =
@@ -80,6 +83,7 @@ type Msg =
     | MakeVid
     | ShareMsg of ShareMsg
     | VideoLoaded
+    | SetUseSlider of bool
 
 let imgSrc (dim:int) value =
     sprintf "https://api.checkface.ml/api/face/?dim=%i&value=%s" dim (encodeUriComponent value)
@@ -88,6 +92,9 @@ let imgAlt value = sprintf "Generated face for value %s" value
 
 let vidSrc (dim:int) (fromValue, toValue) =
     sprintf "https://api.checkface.ml/api/mp4/?dim=%i&from_value=%s&to_value=%s" dim (encodeUriComponent fromValue) (encodeUriComponent toValue)
+
+let morphframeSrc (fromValue, toValue) dim numFrames frameNum =
+    sprintf "https://api.checkface.ml/api/morphframe/?dim=%i&linear=true&from_value=%s&to_value=%s&num_frames=%i&frame_num=%i" dim (encodeUriComponent fromValue) (encodeUriComponent toValue) numFrames frameNum
 
 let getCurrentPath _ =
     Browser.Dom.window.location.pathname, Browser.Dom.window.location.search
@@ -178,6 +185,8 @@ let update msg state : State * Cmd<Msg> =
         updateShare msg state
     | VideoLoaded ->
         { state with IsVideoLoading = false }, Cmd.none
+    | SetUseSlider v ->
+        { state with UseSlider = v }, Cmd.none
 
 let renderSetpoint autoFocus value (label:string) (onChange: string -> unit) =
     Column.column [ ] [
@@ -209,26 +218,49 @@ let renderSetpoint autoFocus value (label:string) (onChange: string -> unit) =
         ]
     ]
 
-let renderVideo dispatch =
-    function
+let renderMorph values useSlider dispatch =
+    match values with
     | None -> Html.none
     | Some (fromValue, toValue) ->
         Html.div [
-            Feliz.Html.video [
-                prop.src (vidSrc videoDim (fromValue, toValue))
-                prop.controls true
-                prop.autoPlay true
-                prop.loop true
-                prop.muted true
+            if useSlider then
+                sliderMorph {
+                    Values = (fromValue, toValue)
+                    OnLoaded = (fun _ -> dispatch VideoLoaded)
+                    FrameSrc = morphframeSrc
+                    Dim = videoDim
+                    NumFrames = 25
+                }
+            else
+                Feliz.Html.video [
+                    prop.src (vidSrc videoDim (fromValue, toValue))
+                    prop.controls true
+                    prop.autoPlay true
+                    prop.loop true
+                    prop.muted true
+                    prop.style [
+                        style.display.block
+                        style.margin.auto
+                    ]
+                    prop.poster (imgSrc imgDim (fromValue)) //imgDim is already in cache because fromValue is displayed at imgDim
+                    prop.width videoDim
+                    prop.height videoDim
+                    prop.alt (sprintf "Morph from %s to %s" fromValue toValue)
+                    prop.onLoadedData (fun _ -> dispatch VideoLoaded)
+                ]
+            Mui.formControlLabel [
                 prop.style [
                     style.display.block
                     style.margin.auto
+                    style.maxWidth (length.px videoDim)
                 ]
-                prop.poster (imgSrc imgDim (fromValue)) //imgDim is already in cache because fromValue is displayed at imgDim
-                prop.width videoDim
-                prop.height videoDim
-                prop.alt (sprintf "Morph from %s to %s" fromValue toValue)
-                prop.onLoadedData (fun _ -> dispatch VideoLoaded)
+                formControlLabel.control (
+                    Mui.checkbox [
+                        checkbox.checked' useSlider
+                        checkbox.onChange (SetUseSlider >> dispatch)
+                    ]
+                )
+                formControlLabel.label "Use Slider"
             ]
         ]
 
@@ -264,7 +296,7 @@ let renderContent (state:State) (dispatch: Msg -> unit) =
                         renderSetpoint true state.LeftValue "Morph from" (SetLeftValue >> dispatch)
                         renderSetpoint false state.RightValue "Morph to" (SetRightValue >> dispatch)
                         morphButton state.IsVideoLoading
-                        renderVideo dispatch state.VidValues
+                        renderMorph state.VidValues state.UseSlider dispatch
                     ]
                 ]
             ]
