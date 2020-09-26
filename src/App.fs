@@ -348,6 +348,9 @@ let shareContent state dispatch =
                 style.textAlign.right
                 style.padding (length.em 2)
                 style.overflow.hidden // slides in from off screen
+
+                //use clamp as alternative to media query to remove whitespace except on small witdh
+                style.custom ("marginBottom", "clamp(-2em - 45px, 5 * (700px - 100%), 0px)")
             ]
             prop.children [
                 Mui.slide [
