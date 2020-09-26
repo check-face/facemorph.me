@@ -8,6 +8,7 @@ open Browser
 open Browser.Types
 open Fable.React.Helpers
 
+// workaround till proper fix for https://github.com/fable-compiler/fable-browser/issues/25
 type [<AllowNullLiteral>] ImageType =
     [<Emit("new Image($1...)")>] abstract Create: ?width: float * ?height: float -> HTMLImageElement
 
@@ -24,8 +25,8 @@ type Props = {
 let sliderMorph = React.functionComponent ("canvas-face", fun (props : Props) ->
         let canvasRef = React.useRef(None)
         let frames = React.useRef(None)
-        let frameNum, setFrameNum = React.useState(props.NumFrames / 2) // using local state for frameNum for performance
-        printfn "Doing canvasface"
+        let frameNum, setFrameNum = React.useState((* center *) 1 + props.NumFrames / 2) // using local state for frameNum for performance
+
         match frames.current with
         | Some (frames:HTMLImageElement list,lastProps) when equalsButFunctions lastProps props ->
             match canvasRef.current with
@@ -55,8 +56,6 @@ let sliderMorph = React.functionComponent ("canvas-face", fun (props : Props) ->
                     |> List.map createImg
                 Some (frames, props)
                 
-
-
         Html.div [
             prop.style [
                 // style.width dim
