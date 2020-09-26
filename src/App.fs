@@ -12,6 +12,7 @@ open Fulma
 open Utils
 
 open FancyButton
+open SliderMorph
 
 let videoDim = 512
 let imgDim = 300
@@ -23,26 +24,26 @@ let siteName = "facemorph.me"
 let canonicalBaseUrl = "https://facemorph.me"
 
 type State = {
+    VidValues : (string * string) option
     LeftValue : string
     RightValue : string
-    VidValues : (string * string) option
     ShareOpen : bool
     ShareLinkMsg : string option
-    IsVideoLoading : bool
+    IsMorphLoading : bool
+    UseSlider : bool
+}
+
+type UrlState = {
+    FromValue : string option
+    ToValue : string option
 }
 
 let parseUrl (path, query) =
-    let fromValue = Map.tryFind "from_value" query
-    let toValue = Map.tryFind "to_value" query
-    let vidValues = Option.map2 (fun a b -> a,b) fromValue toValue
     {
-        LeftValue = Option.defaultValue "hello" fromValue
-        RightValue = Option.defaultValue (System.DateTime.Today.ToString("yyyy-MM-dd")) toValue
-        VidValues = vidValues
-        ShareOpen = false
-        ShareLinkMsg = None
-        IsVideoLoading = vidValues.IsSome
+        FromValue = Map.tryFind "from_value" query
+        ToValue = Map.tryFind "to_value" query    
     }
+
 
 let canonicalUrl state =
     canonicalBaseUrl + Feliz.Router.Router.formatPath("/",
@@ -81,7 +82,8 @@ type Msg =
     | UrlChanged of (string list * Map<string, string>)
     | MakeVid
     | ShareMsg of ShareMsg
-    | VideoLoaded
+    | MorphLoaded
+    | SetUseSlider of bool
 
 let imgSrc (dim:int) value =
     sprintf "https://api.checkface.ml/api/face/?dim=%i&value=%s" dim (encodeUriComponent value)
@@ -91,6 +93,9 @@ let linkpreviewAlt (fromValue, toValue) = sprintf "%s + %s" fromValue toValue
 
 let vidSrc (dim:int) (fromValue, toValue) =
     sprintf "https://api.checkface.ml/api/mp4/?dim=%i&from_value=%s&to_value=%s" dim (encodeUriComponent fromValue) (encodeUriComponent toValue)
+
+let morphframeSrc (fromValue, toValue) dim numFrames frameNum =
+    sprintf "https://api.checkface.ml/api/morphframe/?dim=%i&linear=true&from_value=%s&to_value=%s&num_frames=%i&frame_num=%i" dim (encodeUriComponent fromValue) (encodeUriComponent toValue) numFrames frameNum
 
 let linkpreviewSrc (width:int) (fromValue, toValue) =
     sprintf "https://api.checkface.ml/api/linkpreview/?width=%i&from_value=%s&to_value=%s" width (encodeUriComponent fromValue) (encodeUriComponent toValue)
@@ -106,7 +111,21 @@ let parseSegments (pathName, queryString) =
         |> Map.ofSeq
     urlSegments, urlParams
 
-let initByUrl = parseSegments >> parseUrl
+let defaultFromValue = Option.defaultValue "hello"
+let defaultToValue = Option.defaultWith (fun () -> System.DateTime.Today.ToString("yyyy-MM-dd"))
+
+let initByUrlstate urlState =
+    let vidValues = Option.map2 (fun a b -> a,b) urlState.FromValue urlState.ToValue
+    {
+        LeftValue = defaultFromValue urlState.FromValue
+        RightValue = defaultToValue urlState.ToValue
+        VidValues = vidValues
+        ShareOpen = false
+        ShareLinkMsg = None
+        IsMorphLoading = false
+        UseSlider = false
+    }
+let initByUrl = parseSegments >> parseUrl >> initByUrlstate
 let init() = getCurrentPath() |> initByUrl, Cmd.none
 
 let updateShare msg state =
@@ -179,11 +198,25 @@ let update msg state : State * Cmd<Msg> =
         gtagEvent "MakeVid" "Video"
         state, Cmd.navigatePath("/", ["from_value", state.LeftValue; "to_value", state.RightValue])
     | UrlChanged (path, query) ->
-        parseUrl (path, query), Cmd.none
+        let urlState = parseUrl (path, query)
+        let vidValues = Option.map2 (fun a b -> a,b) urlState.FromValue urlState.ToValue
+        //changed and has something to be loading
+        let isLoading = vidValues <> state.VidValues && vidValues.IsSome
+        {
+            state with
+                LeftValue = defaultFromValue urlState.FromValue
+                RightValue = defaultToValue urlState.ToValue
+                VidValues = vidValues
+                ShareOpen = false //always reset share state
+                ShareLinkMsg = None
+                IsMorphLoading = isLoading //set loading when has something to load
+        }, Cmd.none
     | ShareMsg msg ->
         updateShare msg state
-    | VideoLoaded ->
-        { state with IsVideoLoading = false }, Cmd.none
+    | MorphLoaded ->
+        { state with IsMorphLoading = false }, Cmd.none
+    | SetUseSlider v ->
+        { state with UseSlider = v }, Cmd.none
 
 let renderSetpoint autoFocus value (label:string) (onChange: string -> unit) =
     Column.column [ ] [
@@ -215,26 +248,50 @@ let renderSetpoint autoFocus value (label:string) (onChange: string -> unit) =
         ]
     ]
 
-let renderVideo dispatch =
-    function
+let renderMorph values useSlider dispatch =
+    match values with
     | None -> Html.none
     | Some (fromValue, toValue) ->
         Html.div [
-            Feliz.Html.video [
-                prop.src (vidSrc videoDim (fromValue, toValue))
-                prop.controls true
-                prop.autoPlay true
-                prop.loop true
-                prop.muted true
+            if useSlider then
+                sliderMorph {
+                    Values = (fromValue, toValue)
+                    OnLoaded = (fun _ -> dispatch MorphLoaded)
+                    FrameSrc = morphframeSrc
+                    Dim = videoDim
+                    NumFrames = 25
+                }
+            else
+                Feliz.Html.video [
+                    prop.src (vidSrc videoDim (fromValue, toValue))
+                    prop.controls true
+                    prop.autoPlay true
+                    prop.loop true
+                    prop.muted true
+                    prop.style [
+                        style.display.block
+                        style.margin.auto
+                    ]
+                    prop.poster (imgSrc imgDim (fromValue)) //imgDim is already in cache because fromValue is displayed at imgDim
+                    prop.width videoDim
+                    prop.height videoDim
+                    prop.alt (sprintf "Morph from %s to %s" fromValue toValue)
+                    prop.onLoadedData (fun _ -> dispatch MorphLoaded)
+                ]
+            Mui.formControlLabel [
                 prop.style [
                     style.display.block
                     style.margin.auto
+                    style.maxWidth (length.px videoDim)
+                    style.height (length.px 0) //don't make morph button any lower
                 ]
-                prop.poster (imgSrc imgDim (fromValue)) //imgDim is already in cache because fromValue is displayed at imgDim
-                prop.width videoDim
-                prop.height videoDim
-                prop.alt (sprintf "Morph from %s to %s" fromValue toValue)
-                prop.onLoadedData (fun _ -> dispatch VideoLoaded)
+                formControlLabel.control (
+                    Mui.checkbox [
+                        checkbox.checked' useSlider
+                        checkbox.onChange (SetUseSlider >> dispatch)
+                    ]
+                )
+                formControlLabel.label "Use Slider"
             ]
         ]
 
@@ -269,8 +326,8 @@ let renderContent (state:State) (dispatch: Msg -> unit) =
                     prop.children [
                         renderSetpoint true state.LeftValue "Morph from" (SetLeftValue >> dispatch)
                         renderSetpoint false state.RightValue "Morph to" (SetRightValue >> dispatch)
-                        morphButton state.IsVideoLoading
-                        renderVideo dispatch state.VidValues
+                        morphButton state.IsMorphLoading
+                        renderMorph state.VidValues state.UseSlider dispatch
                     ]
                 ]
             ]
