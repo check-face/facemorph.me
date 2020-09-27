@@ -27,6 +27,24 @@ html {
 
 .morph-content > :nth-child(4) {
     grid-area: vid;
+
+    .morph-dummyImg {
+        display: none;
+    }
+    
+    @supports (display: grid) {
+        display: grid; //use grid to place dummyImg behind video
+        .morph-dummyImg {
+            display: block;
+            opacity: 0;
+            z-index: -1;
+            margin: auto;
+        }
+        .morph-dummyImg, .morph-vid {
+            grid-row: 1;
+            grid-column: 1;
+        }
+    }
 }
 
 

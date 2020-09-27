@@ -262,6 +262,16 @@ let renderMorph values useSlider dispatch =
                     NumFrames = 25
                 }
             else
+                let posterImgSrc = imgSrc imgDim (fromValue) //imgDim is already in cache because fromValue is displayed at imgDim
+                Html.img [
+                    // A layout hack because video doesn't respect height attribute for auto sizing while loading,
+                    // but img does. dummyImg is used to prevent vertical flickr while vid is loading (or if vid fails to load entirely).
+                    // Do not place a src on this image because if it loads a broken image then it stops respecting
+                    // auto sizing based on height prop. Once aspect-rasio css or intrinsicsize video attr are available this may not be necessary.
+                    prop.width videoDim
+                    prop.height videoDim
+                    prop.className "morph-dummyImg"
+                ]
                 Feliz.Html.video [
                     prop.src (vidSrc videoDim (fromValue, toValue))
                     prop.controls true
@@ -272,7 +282,8 @@ let renderMorph values useSlider dispatch =
                         style.display.block
                         style.margin.auto
                     ]
-                    prop.poster (imgSrc imgDim (fromValue)) //imgDim is already in cache because fromValue is displayed at imgDim
+                    prop.className "morph-vid"
+                    prop.poster posterImgSrc 
                     prop.width videoDim
                     prop.height videoDim
                     prop.alt (sprintf "Morph from %s to %s" fromValue toValue)
@@ -281,7 +292,7 @@ let renderMorph values useSlider dispatch =
             Mui.formControlLabel [
                 prop.style [
                     style.display.block
-                    style.margin.auto
+                    style.marginLeft (length.px 5)
                     style.maxWidth (length.px videoDim)
                     style.height (length.px 0) //don't make morph button any lower
                 ]
