@@ -11,6 +11,7 @@
     <Compile Include="Index.fs" />
   </ItemGroup>
   <ItemGroup>
+    <PackageReference Include="Fable.Browser.Dom" Version="2.1.1" />
     <PackageReference Include="Fable.Browser.Navigator" Version="1.0.1" />
     <PackageReference Include="Fable.Elmish.Debugger" Version="3.2.0" />
     <PackageReference Include="Fable.Elmish.HMR" Version="4.0.1" />

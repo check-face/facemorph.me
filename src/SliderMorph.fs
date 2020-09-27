@@ -8,12 +8,6 @@ open Browser
 open Browser.Types
 open Fable.React.Helpers
 
-// workaround till proper fix for https://github.com/fable-compiler/fable-browser/issues/25
-type [<AllowNullLiteral>] ImageType =
-    [<Emit("new Image($1...)")>] abstract Create: ?width: float * ?height: float -> HTMLImageElement
-
-let [<Global>] HTMLImageElement : ImageType = jsNative
-
 type Props = {
     Values : string * string
     OnLoaded : unit -> unit
