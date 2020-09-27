@@ -29,7 +29,7 @@ No.
 ---
 
 #### How does what I type affect the face?
-There is no correllation between what you type and the generated faces, other than that the same text will always generate the same face.
+There is no correlation between what you type and the generated faces, other than that the same text will always generate the same face.
 
 ---
 
@@ -60,6 +60,29 @@ The model was trained on the [Flickr-Faces-HQ dataset](https://github.com/NVlabs
 
 ---
 
+#### How many faces are possible?
+100,000,000.
+
+Well, it depends how you count. When you take two distinct faces and morph between them,
+there is usually no distinct point where you can say "now it's a different face".
+Do you count each frame as a different face?
+To be clear, there is nothing about the endpoints that make them more special that the
+in-between points.
+
+It's much easier to answer how many possible endpoints you can get based on user input.
+The text input is hashed using SHA-256, and the seed is the hash modulo 10^8.
+This was just an arbitrary choice; the numpy random number generator accepts a 32-bit integer
+as the seed so technically we could use 2^32 instead.
+
+```python
+# `value` comes from text box
+seed = int(hashlib.sha256(value.encode('utf-8')).hexdigest(), 16) % 10**8
+latent = np.random.RandomState(seed).randn(1, Gs.input_shape[1])[0] # Gs.input_shape[1] is 512
+# `latent`, a 512 dimensional vector, is the input to the StyleGAN2 generator network
+```
+
+---
+
 #### Wow, this is really fast! What's the setup?
 Everything is served from cache with Cloudflare or generated on the fly with an RTX 2080 Ti.
 
@@ -85,6 +108,7 @@ No, but it's a possibility.
 
 If you've worked with StyleGAN2 before and think you can help,
 there is a [branch for latent recovery](https://github.com/check-face/checkface/pull/52)
+based on [Puzer/stylegan-encoder](https://github.com/Puzer/stylegan-encoder) and [rolux/stylegan2encoder](https://github.com/rolux/stylegan2encoder)
 
 ---
 
