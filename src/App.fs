@@ -293,6 +293,8 @@ let renderMorph values useSlider dispatch =
                 prop.style [
                     style.display.block
                     style.marginLeft (length.px 5)
+                    style.custom ("justifySelf", "center")
+                    style.width (length.percent 100)
                     style.maxWidth (length.px videoDim)
                     style.height (length.px 0) //don't make morph button any lower
                 ]
