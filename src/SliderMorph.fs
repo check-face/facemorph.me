@@ -20,6 +20,7 @@ let sliderMorph = React.functionComponent ("canvas-face", fun (props : Props) ->
         let canvasRef = React.useRef(None)
         let frames = React.useRef(None)
         let frameNum, setFrameNum = React.useState((* center *) 1 + props.NumFrames / 2) // using local state for frameNum for performance
+        let _, reRender = React.useState(0) //state not used, just a way of getting react to force update when images load
 
         match frames.current with
         | Some (frames:HTMLImageElement list,lastProps) when equalsButFunctions lastProps props ->
@@ -43,6 +44,8 @@ let sliderMorph = React.functionComponent ("canvas-face", fun (props : Props) ->
                     let img = HTMLImageElement.Create (float props.Dim, float props.Dim)
                     if n = frameNum then
                         img.onload <- (ignore >> props.OnLoaded)
+                    else
+                        img.onload <- (fun _ -> reRender(n))
                     img.src <- props.FrameSrc props.Values props.Dim props.NumFrames (n-1)
                     img
                 let frames =
