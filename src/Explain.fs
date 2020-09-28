@@ -11,7 +11,7 @@ let explainContent : string = Fable.Core.JsInterop.importDefault "./explain.md"
 let private useStyles = Styles.makeStyles (fun styles theme ->
     {|
         expansionPanelSummary = styles.create [
-            style.backgroundColor theme.palette.background.``default``
+            style.backgroundColor theme.palette.background?level2
         ]
     |})
 

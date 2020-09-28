@@ -427,9 +427,15 @@ let shareContent state dispatch =
             ]
         ]
 
+let createTheme isDark = [
+    if isDark then theme.palette.type'.dark else theme.palette.type'.light
+    theme.palette.background.default' <| if isDark then "#17181c" else "white"
+    theme.palette.background.paper <| if isDark then "#353535" else "#fff"
+    unbox<IThemeProp> ("palette.background.level2", if isDark then "#2a2a2a" else "#f5f5f5")
+]
 
-let darkTheme = Styles.createMuiTheme [ theme.palette.type'.dark ]
-let lightTheme = Styles.createMuiTheme [ theme.palette.type'.light ]
+let darkTheme = Styles.createMuiTheme (createTheme true)
+let lightTheme = Styles.createMuiTheme (createTheme false)
 
 let themedApp' = React.functionComponent("themed-app", fun (props: {| children: ReactElement list |}) ->
     let theme = if Hooks.useMediaQuery("@media (prefers-color-scheme: dark)") then darkTheme else lightTheme
@@ -442,6 +448,7 @@ let themedApp children = themedApp' {| children = children |}
 
 let render (state:State) (dispatch: Msg -> unit) =
     themedApp [
+        Mui.cssBaseline [ ]
         Html.div [
             prop.style [ style.marginBottom (length.em 2) ]
             prop.children [
