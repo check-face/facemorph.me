@@ -445,6 +445,8 @@ let createTheme isDark = [
 
     //everything else
     theme.typography.fontFamily "'Roboto', 'Segoe UI', sans-serif"
+
+    theme.typography.body2.fontSize (length.rem 1)
 ]
 
 let darkTheme = Styles.createMuiTheme (createTheme true)
