@@ -218,6 +218,9 @@ let update msg state : State * Cmd<Msg> =
     | SetUseSlider v ->
         { state with UseSlider = v }, Cmd.none
 
+let logo : ReactElementType = Fable.Core.JsInterop.importDefault "./public/logo.svg"
+let animatedLogo : ReactElementType = Fable.Core.JsInterop.importDefault "./public/logo-animated.svg"
+
 let renderSetpoint autoFocus value (label:string) (onChange: string -> unit) =
     Column.column [ ] [
         Html.div [
@@ -455,7 +458,28 @@ let render (state:State) (dispatch: Msg -> unit) =
                 Column.column [ ] [
                     Html.a [
                         prop.href "/"
-                        prop.children [ Heading.h1 [ ] [ str siteName ] ]
+                        prop.children [
+                            Html.h1 [
+                                prop.className "title "
+                                prop.style [
+                                    style.custom ("fontSize", "clamp(2.5rem, 12vw, 4rem)")
+                                    style.display.flex
+                                    style.flexWrap.wrap
+                                    style.justifyContent.center
+                                    style.custom ("gap", length.em 0.5)
+                                ]
+                                prop.children [
+                                    Mui.svgIcon [
+                                        prop.className "vivus-start"
+                                        svgIcon.component' animatedLogo
+                                        prop.style [
+                                            style.fontSize (length.em 1)
+                                        ]
+                                    ]
+                                    Html.span siteName
+                                ]
+                            ]
+                        ]
                     ]
                 ]
             ]
