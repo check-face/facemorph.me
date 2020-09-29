@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" style="" class="">
+  <g fill="none" stroke="currentColor" stroke-width="1.37" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="10">
+    <path d="M7.08 12.64V4.97L11.97.84s8.17 8.82 8.17 10.59c0 .92-3.13 1.5-3.13 1.82 0 .36-.08 1.06-.25 1.86l-1.26.7.76 1.16c-.34.96-.79 1.75-1.32 1.9l-4.1 1.1c0 1.6 1.9 3.14 2.7 3.14" class="BMjocfwn_0"></path>
+    <path d="M14.25 6.9a3.81 3.81 0 01-4.56 0" class="BMjocfwn_1"></path>
+    <path d="M9.36 15.17a3.8 3.8 0 01-4.56 0" class="BMjocfwn_2"></path>
+  </g>
+<style data-made-with="vivus-instant">.BMjocfwn_0{stroke-dasharray:48 50;stroke-dashoffset:49;}.vivus-start .BMjocfwn_0{animation:BMjocfwn_draw 800ms ease 0ms forwards;}.BMjocfwn_1{stroke-dasharray:5 7;stroke-dashoffset:6;}.vivus-start .BMjocfwn_1{animation:BMjocfwn_draw 800ms ease 600ms forwards;}.BMjocfwn_2{stroke-dasharray:5 7;stroke-dashoffset:6;}.vivus-start .BMjocfwn_2{animation:BMjocfwn_draw 800ms ease 1200ms forwards;}@keyframes BMjocfwn_draw{100%{stroke-dashoffset:0;}}@keyframes BMjocfwn_fade{0%{stroke-opacity:1;}93.54838709677419%{stroke-opacity:1;}100%{stroke-opacity:0;}}</style></svg>
