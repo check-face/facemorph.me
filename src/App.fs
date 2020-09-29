@@ -435,6 +435,16 @@ let createTheme isDark = [
     theme.palette.background.default' <| if isDark then "#17181c" else "white"
     theme.palette.background.paper <| if isDark then "#353535" else "#fff"
     unbox<IThemeProp> ("palette.background.level2", if isDark then "#2a2a2a" else "#f5f5f5")
+
+    let headingFamily = "'Nunito', 'Segoe UI', sans-serif"
+    theme.typography.h1.fontFamily headingFamily
+    theme.typography.h2.fontFamily headingFamily
+    theme.typography.h3.fontFamily headingFamily
+    theme.typography.h4.fontFamily headingFamily
+    theme.typography.subtitle1.fontFamily headingFamily
+
+    //everything else
+    theme.typography.fontFamily "'Roboto', 'Segoe UI', sans-serif"
 ]
 
 let darkTheme = Styles.createMuiTheme (createTheme true)
