@@ -11,7 +11,11 @@ let explainContent : string = Fable.Core.JsInterop.importDefault "./explain.md"
 let private useStyles = Styles.makeStyles (fun styles theme ->
     {|
         expansionPanelSummary = styles.create [
-            style.backgroundColor theme.palette.background.``default``
+            style.backgroundColor theme.palette.background?level2
+        ]
+
+        content = styles.create [
+            style.maxWidth (length.percent 100)
         ]
     |})
 
@@ -73,7 +77,9 @@ let view = React.functionComponent (fun () ->
                             | None -> ()
                             | Some answer ->
                                 Mui.expansionPanelDetails [
-                                    Content.content [ ] [
+                                    Content.content [
+                                        Content.CustomClass c.content
+                                    ] [
                                         Html.div [
                                             prop.dangerouslySetInnerHTML answer
                                         ]

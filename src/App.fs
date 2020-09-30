@@ -218,6 +218,9 @@ let update msg state : State * Cmd<Msg> =
     | SetUseSlider v ->
         { state with UseSlider = v }, Cmd.none
 
+let logo : ReactElementType = Fable.Core.JsInterop.importDefault "./public/logo.svg"
+let animatedLogo : ReactElementType = Fable.Core.JsInterop.importDefault "./public/logo-animated.svg"
+
 let renderSetpoint autoFocus value (label:string) (onChange: string -> unit) =
     Column.column [ ] [
         Html.div [
@@ -427,9 +430,27 @@ let shareContent state dispatch =
             ]
         ]
 
+let createTheme isDark = [
+    if isDark then theme.palette.type'.dark else theme.palette.type'.light
+    theme.palette.background.default' <| if isDark then "#17181c" else "white"
+    theme.palette.background.paper <| if isDark then "#353535" else "#fff"
+    unbox<IThemeProp> ("palette.background.level2", if isDark then "#2a2a2a" else "#f5f5f5")
 
-let darkTheme = Styles.createMuiTheme [ theme.palette.type'.dark ]
-let lightTheme = Styles.createMuiTheme [ theme.palette.type'.light ]
+    let headingFamily = "'Nunito', 'Segoe UI', sans-serif"
+    theme.typography.h1.fontFamily headingFamily
+    theme.typography.h2.fontFamily headingFamily
+    theme.typography.h3.fontFamily headingFamily
+    theme.typography.h4.fontFamily headingFamily
+    theme.typography.subtitle1.fontFamily headingFamily
+
+    //everything else
+    theme.typography.fontFamily "'Roboto', 'Segoe UI', sans-serif"
+
+    theme.typography.body2.fontSize (length.rem 1)
+]
+
+let darkTheme = Styles.createMuiTheme (createTheme true)
+let lightTheme = Styles.createMuiTheme (createTheme false)
 
 let themedApp' = React.functionComponent("themed-app", fun (props: {| children: ReactElement list |}) ->
     let theme = if Hooks.useMediaQuery("@media (prefers-color-scheme: dark)") then darkTheme else lightTheme
@@ -442,13 +463,35 @@ let themedApp children = themedApp' {| children = children |}
 
 let render (state:State) (dispatch: Msg -> unit) =
     themedApp [
+        Mui.cssBaseline [ ]
         Html.div [
             prop.style [ style.marginBottom (length.em 2) ]
             prop.children [
                 Column.column [ ] [
                     Html.a [
                         prop.href "/"
-                        prop.children [ Heading.h1 [ ] [ str siteName ] ]
+                        prop.children [
+                            Html.h1 [
+                                prop.className "title "
+                                prop.style [
+                                    style.custom ("fontSize", "clamp(2.5rem, 12vw, 4rem)")
+                                    style.display.flex
+                                    style.flexWrap.wrap
+                                    style.justifyContent.center
+                                    style.custom ("gap", length.em 0.5)
+                                ]
+                                prop.children [
+                                    Mui.svgIcon [
+                                        prop.className "vivus-start"
+                                        svgIcon.component' animatedLogo
+                                        prop.style [
+                                            style.fontSize (length.em 1)
+                                        ]
+                                    ]
+                                    Html.span siteName
+                                ]
+                            ]
+                        ]
                     ]
                 ]
             ]

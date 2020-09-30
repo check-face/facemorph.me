@@ -198,7 +198,18 @@ let client =
                 ]
             },
             {
-                test: /\.(png|jpg|jpeg|gif|svg|woff|woff2|ttf|eot)(\?.*)?$/,
+                test: /\.svg$/,
+                use: [
+                    {
+                        loader: '@svgr/webpack',
+                        options: {
+                            svgo: false
+                        }
+                    }
+                ]
+            },
+            {
+                test: /\.(png|jpg|jpeg|gif|woff|woff2|ttf|eot)(\?.*)?$/,
                 use: ['file-loader']
             }
         ]
@@ -229,61 +240,7 @@ let server =
         ]}),
         new CleanWebpackPlugin(),
     ],
-    module: {
-        rules: [
-            {
-                test: /\.fs(x|proj)?$/,
-                use: {
-                    loader: 'fable-loader',
-                    options: {
-                        babel: CONFIG.babel
-                    }
-                }
-            },
-            {
-                test: /\.js$/,
-                exclude: /node_modules/,
-                use: {
-                    loader: 'babel-loader',
-                    options: CONFIG.babel
-                },
-            },
-            {
-                test: /\.(sass|scss|css)$/,
-                use: [
-                    isProduction
-                        ? MiniCssExtractPlugin.loader
-                        : 'style-loader',
-                    'css-loader',
-                    {
-                        loader: 'resolve-url-loader',
-                    },
-                    {
-                      loader: 'sass-loader',
-                      options: { implementation: require('sass') }
-                    }
-                ],
-            },
-            {
-                test: /\.md$/,
-                use: [
-                    {
-                        loader: 'html-loader'
-                    },
-                    {
-                        loader: 'markdown-loader',
-                        options: {
-                            
-                        }
-                    }
-                ]
-            },
-            {
-                test: /\.(png|jpg|jpeg|gif|svg|woff|woff2|ttf|eot)(\?.*)?$/,
-                use: ['file-loader']
-            }
-        ]
-    },
+    module: client.module,
     optimization: {
         minimize: isProduction
     },

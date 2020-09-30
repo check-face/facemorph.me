@@ -1,4 +1,14 @@
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap');
+
+// set fonts for bulma
+$family-sans-serif: 'Roboto', 'Segoe UI', sans-serif;
+$family-secondary: 'Nunito', 'Segoe UI', sans-serif;
+$title-family: $family-secondary;
+
 @import "~bulma/bulma";
+$blue-light: hsl(209, 71%, 63%); // https://github.com/jloh/bulma-prefers-dark/issues/31
+$link-dark: $blue-light;
 @import "~bulma-prefers-dark/bulma-prefers-dark";
 
 html {
@@ -7,6 +17,13 @@ html {
 
 .column {
     text-align: center;
+}
+
+.content {
+    //bulma Content
+    h1, h2, h3, h4 {
+        font-family: $family-secondary;
+    }
 }
 
 .morph-content > :nth-child(1) {
