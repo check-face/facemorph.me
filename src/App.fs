@@ -516,6 +516,7 @@ let viewHead state =
     helmet [ 
         prop.children [
             Html.title (pageTitle state.VidValues)
+            meta "description" (pageDescription None)
             meta "og:title" (pageTitle state.VidValues)
             meta "og:description" (pageDescription state.VidValues)
             meta "og:site_name" siteName
