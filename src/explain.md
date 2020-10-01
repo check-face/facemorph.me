@@ -61,25 +61,15 @@ The model was trained on the [Flickr-Faces-HQ dataset](https://github.com/NVlabs
 ---
 
 #### How many faces are possible?
-100,000,000.
 
-Well, it depends how you count. When you take two distinct faces and morph between them,
+Practically limitless.
+
+Well, it depends how you count. For example, when you take two distinct faces and morph between them,
 there is usually no distinct point where you can say "now it's a different face".
 Do you count each frame as a different face?
-To be clear, there is nothing about the endpoints that make them more special that the
-in-between points.
 
-It's much easier to answer how many possible endpoints you can get based on user input.
-The text input is hashed using SHA-256, and the seed is the hash modulo 10^8.
-This was just an arbitrary choice; the numpy random number generator accepts a 32-bit integer
-as the seed so technically we could use 2^32 instead.
-
-```python
-# `value` comes from text box
-seed = int(hashlib.sha256(value.encode('utf-8')).hexdigest(), 16) % 10**8
-latent = np.random.RandomState(seed).randn(1, Gs.input_shape[1])[0] # Gs.input_shape[1] is 512
-# `latent`, a 512 dimensional vector, is the input to the StyleGAN2 generator network
-```
+Technically, as SHA-256 is used on the input, that puts an upper limit of 2^256 on the number of
+**endpoints** based on text values. 
 
 ---
 
