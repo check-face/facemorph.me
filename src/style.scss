@@ -93,3 +93,23 @@ html {
         grid-template-columns: auto auto auto;
     }
 }
+
+.app-footer > div > div {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 3em;
+
+    & a {
+        white-space: nowrap;
+    }
+
+    div {
+        flex-grow: 100
+    }
+
+    div:last-child {
+        flex-grow: 1;
+        text-align: center;
+    }
+}

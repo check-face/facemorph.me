@@ -99,15 +99,3 @@ No, but it's a possibility.
 If you've worked with StyleGAN2 before and think you can help,
 there is a [branch for latent recovery](https://github.com/check-face/checkface/pull/52)
 based on [Puzer/stylegan-encoder](https://github.com/Puzer/stylegan-encoder) and [rolux/stylegan2encoder](https://github.com/rolux/stylegan2encoder)
-
----
-
-#### I've thought of an interesting feature you could add
-
-or
-
-#### I've found a bug
-
-Feel free to open an issue on GitHub.
-
-https://github.com/check-face/facemorph.me

@@ -22,6 +22,9 @@ let ogImgDim = 512
 let ogVideoDim = 512
 let siteName = "facemorph.me"
 let canonicalBaseUrl = "https://facemorph.me"
+let contactEmail = "checkfaceml@gmail.com"
+let githubRepo = "check-face/facemorph.me"
+let apiAddr = "https://api.checkface.ml"
 
 type State = {
     VidValues : (string * string) option
@@ -86,19 +89,19 @@ type Msg =
     | SetUseSlider of bool
 
 let imgSrc (dim:int) value =
-    sprintf "https://api.checkface.ml/api/face/?dim=%i&value=%s" dim (encodeUriComponent value)
+    sprintf "%s/api/face/?dim=%i&value=%s" apiAddr dim (encodeUriComponent value)
 
 let imgAlt value = sprintf "Generated face for value %s" value
 let linkpreviewAlt (fromValue, toValue) = sprintf "%s + %s" fromValue toValue
 
 let vidSrc (dim:int) (fromValue, toValue) =
-    sprintf "https://api.checkface.ml/api/mp4/?dim=%i&from_value=%s&to_value=%s" dim (encodeUriComponent fromValue) (encodeUriComponent toValue)
+    sprintf "%s/api/mp4/?dim=%i&from_value=%s&to_value=%s" apiAddr dim (encodeUriComponent fromValue) (encodeUriComponent toValue)
 
 let morphframeSrc (fromValue, toValue) dim numFrames frameNum =
-    sprintf "https://api.checkface.ml/api/morphframe/?dim=%i&linear=true&from_value=%s&to_value=%s&num_frames=%i&frame_num=%i" dim (encodeUriComponent fromValue) (encodeUriComponent toValue) numFrames frameNum
+    sprintf "%s/api/morphframe/?dim=%i&linear=true&from_value=%s&to_value=%s&num_frames=%i&frame_num=%i" apiAddr dim (encodeUriComponent fromValue) (encodeUriComponent toValue) numFrames frameNum
 
 let linkpreviewSrc (width:int) (fromValue, toValue) =
-    sprintf "https://api.checkface.ml/api/linkpreview/?width=%i&from_value=%s&to_value=%s" width (encodeUriComponent fromValue) (encodeUriComponent toValue)
+    sprintf "%s/api/linkpreview/?width=%i&from_value=%s&to_value=%s" apiAddr width (encodeUriComponent fromValue) (encodeUriComponent toValue)
 
 let getCurrentPath _ =
     Browser.Dom.window.location.pathname, Browser.Dom.window.location.search
@@ -430,6 +433,81 @@ let shareContent state dispatch =
             ]
         ]
 
+let header =
+    Html.header [
+        prop.style [ style.marginBottom (length.em 2) ]
+        prop.children [
+            Column.column [ ] [
+                Html.a [
+                    prop.href "/"
+                    prop.children [
+                        Html.h1 [
+                            prop.className "title "
+                            prop.style [
+                                style.custom ("fontSize", "clamp(2.5rem, 12vw, 4rem)")
+                                style.display.flex
+                                style.flexWrap.wrap
+                                style.justifyContent.center
+                                style.custom ("gap", length.em 0.5)
+                            ]
+                            prop.children [
+                                Mui.svgIcon [
+                                    prop.className "vivus-start"
+                                    svgIcon.component' animatedLogo
+                                    prop.style [
+                                        style.fontSize (length.em 1)
+                                    ]
+                                ]
+                                Html.span siteName
+                            ]
+                        ]
+                    ]
+                ]
+            ]
+        ]
+    ]
+
+let footer =
+    Footer.footer [ CustomClass "app-footer" ] [
+        Mui.container [
+            container.maxWidth.md
+            container.children [
+                Html.div [
+                    Html.div [
+                        Html.p [
+                            str "Contact: "
+                            Mui.link [
+                                link.color.initial
+                                prop.href (sprintf "mailto:%s" contactEmail)
+                                prop.text contactEmail
+                            ]
+                        ]
+                        Html.p [
+                            str "Source code: "
+                            Mui.link [
+                                link.color.initial
+                                prop.href (sprintf "https://github.com/%s" githubRepo)
+                                prop.children [
+                                    gitHubIcon [ prop.style [ style.fontSize (length.em 1) ] ]
+                                    str (" " + githubRepo)
+                                ]
+                            ]
+                        ]
+                        Html.p "If you find any bugs, please open an issue on GitHub"
+                    ]
+                    Html.div [
+                        Mui.svgIcon [
+                            svgIcon.component' logo
+                            prop.style [
+                                style.fontSize (length.rem 5)
+                            ]
+                        ]
+                    ]
+                ]
+            ]
+        ]
+    ]
+
 let createTheme isDark = [
     if isDark then theme.palette.type'.dark else theme.palette.type'.light
     theme.palette.background.default' <| if isDark then "#17181c" else "white"
@@ -464,42 +542,11 @@ let themedApp children = themedApp' {| children = children |}
 let render (state:State) (dispatch: Msg -> unit) =
     themedApp [
         Mui.cssBaseline [ ]
-        Html.div [
-            prop.style [ style.marginBottom (length.em 2) ]
-            prop.children [
-                Column.column [ ] [
-                    Html.a [
-                        prop.href "/"
-                        prop.children [
-                            Html.h1 [
-                                prop.className "title "
-                                prop.style [
-                                    style.custom ("fontSize", "clamp(2.5rem, 12vw, 4rem)")
-                                    style.display.flex
-                                    style.flexWrap.wrap
-                                    style.justifyContent.center
-                                    style.custom ("gap", length.em 0.5)
-                                ]
-                                prop.children [
-                                    Mui.svgIcon [
-                                        prop.className "vivus-start"
-                                        svgIcon.component' animatedLogo
-                                        prop.style [
-                                            style.fontSize (length.em 1)
-                                        ]
-                                    ]
-                                    Html.span siteName
-                                ]
-                            ]
-                        ]
-                    ]
-                ]
-            ]
-        ]
+        header
         renderContent state dispatch
         shareContent state (ShareMsg >> dispatch)
         Explain.view ()
-
+        footer
     ]
 
 let inline helmet props = createElement (Fable.Core.JsInterop.import "Helmet" "react-helmet") props

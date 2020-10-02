@@ -47,7 +47,7 @@ let view = React.functionComponent (fun () ->
     Mui.container [
         container.maxWidth.md
         prop.style [
-            style.marginBottom 200
+            style.marginBottom (length.em 2)
         ]
         container.children [
 
