@@ -408,6 +408,7 @@ let shareContent state dispatch =
                                                     speedDialAction.FabProps [
                                                         fab.href href
                                                         prop.target "_blank"
+                                                        prop.rel "noopener"
                                                     ]
                                                 ]
                                         ]
