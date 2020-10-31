@@ -224,7 +224,7 @@ let update msg state : State * Cmd<Msg> =
 let logo : ReactElementType = Fable.Core.JsInterop.importDefault "./public/logo.svg"
 let animatedLogo : ReactElementType = Fable.Core.JsInterop.importDefault "./public/logo-animated.svg"
 
-let renderSetpoint autoFocus value (label:string) (onChange: string -> unit) =
+let renderSetpoint autoFocus value id (label:string) (onChange: string -> unit) =
     Column.column [ ] [
         Html.div [
             prop.children [
@@ -251,6 +251,7 @@ let renderSetpoint autoFocus value (label:string) (onChange: string -> unit) =
             textField.variant.outlined
             textField.label label
             textField.margin.normal
+            textField.id id
         ]
     ]
 
@@ -343,8 +344,8 @@ let renderContent (state:State) (dispatch: Msg -> unit) =
                 Html.div [
                     prop.className "morph-content"
                     prop.children [
-                        renderSetpoint true state.LeftValue "Morph from" (SetLeftValue >> dispatch)
-                        renderSetpoint false state.RightValue "Morph to" (SetRightValue >> dispatch)
+                        renderSetpoint true state.LeftValue "leftval-input" "Morph from" (SetLeftValue >> dispatch)
+                        renderSetpoint false state.RightValue "rightval-input" "Morph to" (SetRightValue >> dispatch)
                         morphButton state.IsMorphLoading
                         renderMorph state.VidValues state.UseSlider dispatch
                     ]
@@ -563,7 +564,11 @@ let viewHead state =
     helmet [ 
         prop.children [
             Html.title (pageTitle state.VidValues)
-            meta "description" (pageDescription None)
+            Html.meta [
+                prop.custom ("property", "description")
+                prop.custom ("name", "description")
+                prop.custom ("content", pageDescription None)
+            ]
             meta "og:title" (pageTitle state.VidValues)
             meta "og:description" (pageDescription None)
             meta "og:site_name" siteName
