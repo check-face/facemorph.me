@@ -408,7 +408,7 @@ let shareContent state dispatch =
                                                     speedDialAction.FabProps [
                                                         fab.href href
                                                         prop.target "_blank"
-                                                        prop.rel "noopener"
+                                                        prop.rel.noopener
                                                     ]
                                                 ]
                                         ]
@@ -574,7 +574,7 @@ let viewHead state =
             meta "og:description" (pageDescription None)
             meta "og:site_name" siteName
 
-            Html.link [ prop.custom ("rel", "canonical"); prop.href canonicalUrl ]
+            Html.link [ prop.rel.canonical; prop.href canonicalUrl ]
             meta "og:url" canonicalUrl
 
             match state.VidValues with
