@@ -6,6 +6,9 @@ $family-sans-serif: 'Roboto', 'Segoe UI', sans-serif;
 $family-secondary: 'Nunito', 'Segoe UI', sans-serif;
 $title-family: $family-secondary;
 
+$footer-background-color: #f5f5f5;
+$link: #2d6dd4; //improve contrast over footer
+
 @import "~bulma/bulma";
 $blue-light: hsl(209, 71%, 63%); // https://github.com/jloh/bulma-prefers-dark/issues/31
 $link-dark: $blue-light;
