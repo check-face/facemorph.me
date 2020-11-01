@@ -16,6 +16,7 @@ open SliderMorph
 
 let videoDim = 512
 let imgDim = 300
+let imgSizesSet = [ 300; 512; 1024 ]
 let linkpreviewWidth = 1200
 let linkpreviewHeight = 628
 let ogImgDim = 512
@@ -88,8 +89,8 @@ type Msg =
     | MorphLoaded
     | SetUseSlider of bool
 
-let imgSrc (dim:int) value =
-    sprintf "%s/api/face/?dim=%i&value=%s" apiAddr dim (encodeUriComponent value)
+let imgSrc (dim:int) isWebp value =
+    sprintf "%s/api/face/?dim=%i&value=%s&format=%s" apiAddr dim (encodeUriComponent value) (if isWebp then "webp" else "jpg")
 
 let imgAlt value = sprintf "Generated face for value %s" value
 let linkpreviewAlt (fromValue, toValue) = sprintf "%s + %s" fromValue toValue
@@ -224,16 +225,40 @@ let update msg state : State * Cmd<Msg> =
 let logo : ReactElementType = Fable.Core.JsInterop.importDefault "./public/logo.svg"
 let animatedLogo : ReactElementType = Fable.Core.JsInterop.importDefault "./public/logo-animated.svg"
 
+let renderImageByValue value =
+    //use source and srcset to allow picking webp if supported and to pick best size based on pixel scaling
+    let src = imgSrc imgDim false value
+    let srcSet isWebp =
+        imgSizesSet
+        |> List.map (fun dim -> sprintf "%s %iw" (imgSrc dim isWebp value) dim)
+        |> String.concat ","
+    let sizes = (sprintf "%ipx" imgDim) //displayed size is around imgDim in css px regardless of device scaling
+    Html.picture [
+        Html.source [
+            prop.type' "image/webp"
+            prop.srcset <| srcSet true
+            prop.sizes sizes
+        ]
+        Html.source [
+            prop.type' "image/jpeg"
+            prop.srcset <| srcSet false
+            prop.sizes sizes
+        ]
+        Html.img [
+            prop.src src
+            prop.sizes sizes
+
+            prop.width imgDim
+            prop.height imgDim
+            prop.alt (imgAlt value)
+        ]
+    ]
+
 let renderSetpoint autoFocus value id (label:string) (onChange: string -> unit) =
     Column.column [ ] [
         Html.div [
             prop.children [
-                Html.img [
-                    prop.src (imgSrc imgDim value)
-                    prop.width imgDim
-                    prop.height imgDim
-                    prop.alt (imgAlt value)
-                ]
+                renderImageByValue value
             ]
         ]
         Mui.textField [
@@ -269,7 +294,7 @@ let renderMorph values useSlider dispatch =
                     NumFrames = 25
                 }
             else
-                let posterImgSrc = imgSrc imgDim (fromValue) //imgDim is already in cache because fromValue is displayed at imgDim
+                let posterImgSrc = imgSrc imgDim false (fromValue) //imgDim is already in cache because fromValue is displayed at imgDim
                 Html.img [
                     // A layout hack because video doesn't respect height attribute for auto sizing while loading,
                     // but img does. dummyImg is used to prevent vertical flickr while vid is loading (or if vid fails to load entirely).
@@ -579,7 +604,7 @@ let viewHead state =
 
             match state.VidValues with
             | None ->
-                meta "og:image" (imgSrc ogImgDim state.LeftValue)
+                meta "og:image" (imgSrc ogImgDim false state.LeftValue)
                 meta "og:image:alt" (imgAlt state.LeftValue)
                 meta "og:image:width" ogImgDim
                 meta "og:image:height" ogImgDim
