@@ -2,6 +2,9 @@
 This is a fun experiment to generate and morph faces.
 Type something in both text boxes and click morph to generate a video morphing between them.
 
+Not sure what to type?  
+Pick from a list of popular baby names with [names.facemorph.me](https://names.facemorph.me/)
+
 ## How does it work?
 None of the faces you see are real
 
