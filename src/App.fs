@@ -268,6 +268,7 @@ let renderSetpoint autoFocus value id (label:string) (onChange: string -> unit) 
             textField.autoFocus autoFocus
             textField.inputProps [
                 prop.style [ style.textAlign.center ]
+                prop.autoCapitalize.off
             ]
             prop.style [
                 style.width (length.percent 100)
