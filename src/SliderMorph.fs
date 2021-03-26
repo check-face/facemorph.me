@@ -8,10 +8,12 @@ open Browser
 open Browser.Types
 open Fable.React.Helpers
 
+open Checkface
+
 type Props = {
-    Values : string * string
+    Values : CheckfaceSrc * CheckfaceSrc
     OnLoaded : unit -> unit
-    FrameSrc : string * string -> int -> int -> int -> string
+    FrameSrc : CheckfaceSrc * CheckfaceSrc -> int -> int -> int -> string
     Dim : int
     NumFrames : int
 }

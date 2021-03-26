@@ -11,6 +11,7 @@ open Feliz.Router
 open Fulma
 open Utils
 
+open Checkface
 open FancyButton
 open SliderMorph
 open EncodeImageDialog
@@ -28,8 +29,12 @@ let canonicalBaseUrl = "https://facemorph.me"
 let contactEmail = "checkfaceml@gmail.com"
 let githubRepo = "check-face/facemorph.me"
 let apiAddr = "https://api.checkface.ml"
+let encodeApiAddr = apiAddr + "/api/encodeimage/"
 
 type Side = | Left | Right
+
+
+
 
 type State = {
     VidValues : (string * string) option
@@ -88,20 +93,37 @@ type Msg =
     | MorphLoaded
     | SetUseSlider of bool
 
-let imgSrc (dim:int) isWebp value =
-    sprintf "%s/api/face/?dim=%i&value=%s&format=%s" apiAddr dim (encodeUriComponent value) (if isWebp then "webp" else "jpg")
+let valueParam value =
+    match value with
+    | Guid guid -> sprintf "guid=%s" (guid.ToString())
+    | CheckfaceValue value -> sprintf "value=%s" (encodeUriComponent value)
+    | Seed seed -> sprintf "seed=%i" seed
 
-let imgAlt value = sprintf "Generated face for value %s" value
+let imgSrc (dim:int) isWebp value =
+    sprintf "%s/api/face/?dim=%i&%s&format=%s" apiAddr dim (valueParam value) (if isWebp then "webp" else "jpg")
+
+let describeCheckfaceSrc =
+    function
+    | CheckfaceValue value -> sprintf "value %s" value
+    | Seed seed -> sprintf "seed %i" seed
+    | Guid guid -> sprintf "custom latent (%s)" (guid.ToString().Substring(0, 6))
+
+let imgAlt value =
+    "Generated face for " + describeCheckfaceSrc value
+
+let vidMorphAlt (fromValue, toValue) =
+    sprintf "Morph from %s to %s" (describeCheckfaceSrc fromValue) (describeCheckfaceSrc toValue)
+
 let linkpreviewAlt (fromValue, toValue) = sprintf "%s + %s" fromValue toValue
 
 let vidSrc (dim:int) (fromValue, toValue) =
-    sprintf "%s/api/mp4/?dim=%i&from_value=%s&to_value=%s" apiAddr dim (encodeUriComponent fromValue) (encodeUriComponent toValue)
+    sprintf "%s/api/mp4/?dim=%i&from_%s&to_%s" apiAddr dim (valueParam fromValue) (valueParam toValue)
 
 let morphframeSrc (fromValue, toValue) dim numFrames frameNum =
-    sprintf "%s/api/morphframe/?dim=%i&linear=true&from_value=%s&to_value=%s&num_frames=%i&frame_num=%i" apiAddr dim (encodeUriComponent fromValue) (encodeUriComponent toValue) numFrames frameNum
+    sprintf "%s/api/morphframe/?dim=%i&linear=true&from_%s&to_%s&num_frames=%i&frame_num=%i" apiAddr dim (valueParam fromValue) (valueParam toValue) numFrames frameNum
 
 let linkpreviewSrc (width:int) (fromValue, toValue) =
-    sprintf "%s/api/linkpreview/?width=%i&from_value=%s&to_value=%s" apiAddr width (encodeUriComponent fromValue) (encodeUriComponent toValue)
+    sprintf "%s/api/linkpreview/?width=%i&from_%s&to_%s" apiAddr width (valueParam fromValue) (valueParam toValue)
 
 let getCurrentPath _ =
     Browser.Dom.window.location.pathname, Browser.Dom.window.location.search
@@ -166,7 +188,7 @@ let updateShare msg state =
                 let fileShare = {
                     FileName = pageTitle state.VidValues + ".mp4"
                     Title = pageTitle state.VidValues
-                    FileUrl = vidSrc videoDim (leftValue, rightValue)
+                    FileUrl = vidSrc videoDim (CheckfaceValue leftValue, CheckfaceValue rightValue)
                     Text = (pageDescription state.VidValues)
                     Url = (canonicalUrl state)
                     ContentType = "video/mp4"
@@ -331,7 +353,7 @@ let renderMorph values useSlider dispatch =
                     prop.poster posterImgSrc 
                     prop.width videoDim
                     prop.height videoDim
-                    prop.alt (sprintf "Morph from %s to %s" fromValue toValue)
+                    prop.alt (vidMorphAlt (fromValue, toValue))
                     prop.onLoadedData (fun _ -> dispatch MorphLoaded)
                 ]
             Mui.formControlLabel [
@@ -382,10 +404,11 @@ let renderContent (state:State) (dispatch: Msg -> unit) =
                 Html.div [
                     prop.className "morph-content"
                     prop.children [
-                        renderSetpoint true state.LeftValue "leftval-input" "Morph from" (SetLeftValue >> dispatch) (fun () -> ClickUpload Left |> dispatch)
-                        renderSetpoint false state.RightValue "rightval-input" "Morph to" (SetRightValue >> dispatch) (fun () -> ClickUpload Right |> dispatch)
+                        renderSetpoint true (CheckfaceValue state.LeftValue) "leftval-input" "Morph from" (SetLeftValue >> dispatch) (fun () -> ClickUpload Left |> dispatch)
+                        renderSetpoint false (CheckfaceValue state.RightValue) "rightval-input" "Morph to" (SetRightValue >> dispatch) (fun () -> ClickUpload Right |> dispatch)
                         morphButton state.IsMorphLoading
-                        renderMorph state.VidValues state.UseSlider dispatch
+                        let cfVidValues = Option.map (fun (f, t) -> CheckfaceValue f, CheckfaceValue t) state.VidValues
+                        renderMorph (cfVidValues) state.UseSlider dispatch
                     ]
                 ]
             ]
@@ -396,6 +419,8 @@ let renderEncodeImageDialog  state dispatch =
     let props = { 
         OnClose = fun () -> dispatch CloseUploadDialog
         IsOpen = state.UploadDialogSide.IsSome
+        RenderImgValue = renderImageByValue
+        EncodeImageApiLocation = encodeApiAddr
     }
     encodeImageDialog props
 
@@ -552,15 +577,18 @@ let viewHead state =
             meta "og:url" canonicalUrl
 
             match state.VidValues with
-            | None ->
-                meta "og:image" (imgSrc ogImgDim false state.LeftValue)
-                meta "og:image:alt" (imgAlt state.LeftValue)
+            | None -> // just use left value if no video
+                meta "og:image" (imgSrc ogImgDim false (CheckfaceValue state.LeftValue))
+                meta "og:image:alt" (imgAlt (CheckfaceValue state.LeftValue))
                 meta "og:image:width" ogImgDim
                 meta "og:image:height" ogImgDim
                 meta "og:image:type" "image/jpeg"
                 meta "og:type" "website"
 
             | Some vidValues ->
+                let vidValues =
+                    let (fromValue, toValue) = vidValues
+                    (CheckfaceValue fromValue, CheckfaceValue toValue)
                 let videoSrc = vidSrc ogVideoDim vidValues
                 let linkprevSrc = linkpreviewSrc linkpreviewWidth vidValues
                 let linkprevAlt = linkpreviewSrc linkpreviewWidth vidValues
