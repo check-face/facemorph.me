@@ -12,8 +12,9 @@ open Checkface
 type Props = {
     OnClose : unit -> unit
     IsOpen : bool
-    RenderImgValue : CheckfaceSrc -> ReactElement
+    RenderImgGuid : System.Guid -> ReactElement
     EncodeImageApiLocation : string
+    OnImageEncoded : System.Guid -> unit
 }
 
 type Loadable<'a> =
@@ -46,7 +47,6 @@ let encodeImageDialog = React.functionComponent ("encode-image-dialog", fun (pro
 
         let fileInput = React.useRef None
         let chosenFileDataUrl, setChosenFileDataUrl = React.useState (NotLoading)
-        // let chosenFileDataUrl, setChosenFileDataUrl = React.useState (Loaded "https://api.checkface.ml/api/ema")
         let encodedImageGuid, setEncodedImageGuid = React.useState (NotLoading)
 
         let getDataUrl (input:Types.HTMLInputElement) =
@@ -61,7 +61,7 @@ let encodeImageDialog = React.functionComponent ("encode-image-dialog", fun (pro
 
         let onFileInputChange (e: Event) =
             setChosenFileDataUrl Loading
-            // setEncodedImageGuid NotLoading
+            setEncodedImageGuid NotLoading
             match fileInput.current with
             | Some input -> getDataUrl (unbox<Types.HTMLInputElement>(input))
             | None -> ()
@@ -71,9 +71,9 @@ let encodeImageDialog = React.functionComponent ("encode-image-dialog", fun (pro
             match fileInput.current with
             | None -> ()
             | Some input ->
-                setEncodedImageGuid Loading
                 promise {
                     try
+                        setEncodedImageGuid Loading
                         let input = unbox<Types.HTMLInputElement>(input)
                         let usrimg = input.files.[0]
                         let formData = FormData.Create ()
@@ -94,8 +94,7 @@ let encodeImageDialog = React.functionComponent ("encode-image-dialog", fun (pro
             ()
 
         Mui.dialog [
-            // dialog.open' props.IsOpen
-            dialog.open' (props.IsOpen || true)
+            dialog.open' props.IsOpen
             dialog.onClose (fun _ _ -> props.OnClose ())
             dialog.children [
                 Mui.dialogTitle [
@@ -170,7 +169,7 @@ let encodeImageDialog = React.functionComponent ("encode-image-dialog", fun (pro
                                             ]
                                         ]
                                     | Loaded guid ->
-                                        props.RenderImgValue (Guid guid)
+                                        props.RenderImgGuid guid
 
                                 ]
                             ]
@@ -179,10 +178,17 @@ let encodeImageDialog = React.functionComponent ("encode-image-dialog", fun (pro
                             Column.column [ Column.Modifiers [ Modifier.TextAlignment (Screen.All, TextAlignment.Right) ] ] [
                                 Mui.button [
                                     button.children "Use"
-                                    button.disabled true
-                                    // button.disabled false
                                     button.color.primary
                                     button.variant.contained
+
+                                    match encodedImageGuid with
+                                    | NotLoading
+                                    | LoadingError
+                                    | Loading ->
+                                        button.disabled true
+                                    | Loaded guid ->
+                                        button.disabled false
+                                        prop.onClick (fun _ -> props.OnImageEncoded guid)
                                 ]
                             ]
                         ]

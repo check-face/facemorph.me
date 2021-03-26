@@ -85,8 +85,9 @@ let pageDescription = function
 type Msg =
     | SetLeftValue of string
     | SetRightValue of string
-    | ClickUpload of Side
+    | ClickUploadRealImage of Side
     | CloseUploadDialog
+    | ImageEncoded of System.Guid
     | UrlChanged of (string list * Map<string, string>)
     | MakeVid
     | ShareMsg of ShareMsg
@@ -218,10 +219,17 @@ let update msg state : State * Cmd<Msg> =
         { state with LeftValue = value }, Cmd.none
     | SetRightValue value ->
         { state with RightValue = value }, Cmd.none
-    | ClickUpload side ->
+    | ClickUploadRealImage side ->
         { state with UploadDialogSide = Some side }, Cmd.none
     | CloseUploadDialog ->
         { state with UploadDialogSide = None }, Cmd.none
+    | ImageEncoded guid ->
+        let leftValue, rightValue =
+            match state with
+            | { UploadDialogSide = Some Left; RightValue = rightValue } -> "left", rightValue
+            | { UploadDialogSide = Some Right; LeftValue = leftValue } -> leftValue, "right"
+            | { UploadDialogSide = None; LeftValue = leftValue; RightValue = rightValue } -> leftValue, rightValue 
+        { state with UploadDialogSide = None; LeftValue = leftValue; RightValue = rightValue }, Cmd.none
     | MakeVid when state.VidValues = Some (state.LeftValue, state.RightValue) ->
         state, Cmd.none
     | MakeVid ->
@@ -284,7 +292,7 @@ let renderSetpoint autoFocus value id (label:string) (onChange: string -> unit) 
     Column.column [ ] [
         Html.div [
             prop.children [
-                renderImageByValue value
+                renderImageByValue (CheckfaceValue value)
             ]
         ]
         Mui.textField [
@@ -404,8 +412,8 @@ let renderContent (state:State) (dispatch: Msg -> unit) =
                 Html.div [
                     prop.className "morph-content"
                     prop.children [
-                        renderSetpoint true (CheckfaceValue state.LeftValue) "leftval-input" "Morph from" (SetLeftValue >> dispatch) (fun () -> ClickUpload Left |> dispatch)
-                        renderSetpoint false (CheckfaceValue state.RightValue) "rightval-input" "Morph to" (SetRightValue >> dispatch) (fun () -> ClickUpload Right |> dispatch)
+                        renderSetpoint true state.LeftValue "leftval-input" "Morph from" (SetLeftValue >> dispatch) (fun () -> ClickUploadRealImage Left |> dispatch)
+                        renderSetpoint false state.RightValue "rightval-input" "Morph to" (SetRightValue >> dispatch) (fun () -> ClickUploadRealImage Right |> dispatch)
                         morphButton state.IsMorphLoading
                         let cfVidValues = Option.map (fun (f, t) -> CheckfaceValue f, CheckfaceValue t) state.VidValues
                         renderMorph (cfVidValues) state.UseSlider dispatch
@@ -419,8 +427,9 @@ let renderEncodeImageDialog  state dispatch =
     let props = { 
         OnClose = fun () -> dispatch CloseUploadDialog
         IsOpen = state.UploadDialogSide.IsSome
-        RenderImgValue = renderImageByValue
+        RenderImgGuid = Guid >> renderImageByValue
         EncodeImageApiLocation = encodeApiAddr
+        OnImageEncoded = ImageEncoded >> dispatch
     }
     encodeImageDialog props
 
