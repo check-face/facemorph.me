@@ -13,6 +13,7 @@ open Utils
 
 open FancyButton
 open SliderMorph
+open EncodeImageDialog
 open Share
 
 let videoDim = 512
@@ -28,10 +29,13 @@ let contactEmail = "checkfaceml@gmail.com"
 let githubRepo = "check-face/facemorph.me"
 let apiAddr = "https://api.checkface.ml"
 
+type Side = | Left | Right
+
 type State = {
     VidValues : (string * string) option
     LeftValue : string
     RightValue : string
+    UploadDialogSide : Side option
     ShareOpen : bool
     ShareLinkMsg : string option
     IsMorphLoading : bool
@@ -72,9 +76,12 @@ let pageDescription = function
             sprintf "Morph generated faces from %s to %s" fromValue toValue
     | None ->
             "Generate faces on the fly and morph between them"
+
 type Msg =
     | SetLeftValue of string
     | SetRightValue of string
+    | ClickUpload of Side
+    | CloseUploadDialog
     | UrlChanged of (string list * Map<string, string>)
     | MakeVid
     | ShareMsg of ShareMsg
@@ -115,6 +122,7 @@ let initByUrlstate urlState =
     {
         LeftValue = defaultFromValue urlState.FromValue
         RightValue = defaultToValue urlState.ToValue
+        UploadDialogSide = None
         VidValues = vidValues
         ShareOpen = false
         ShareLinkMsg = None
@@ -188,6 +196,10 @@ let update msg state : State * Cmd<Msg> =
         { state with LeftValue = value }, Cmd.none
     | SetRightValue value ->
         { state with RightValue = value }, Cmd.none
+    | ClickUpload side ->
+        { state with UploadDialogSide = Some side }, Cmd.none
+    | CloseUploadDialog ->
+        { state with UploadDialogSide = None }, Cmd.none
     | MakeVid when state.VidValues = Some (state.LeftValue, state.RightValue) ->
         state, Cmd.none
     | MakeVid ->
@@ -246,7 +258,7 @@ let renderImageByValue value =
         ]
     ]
 
-let renderSetpoint autoFocus value id (label:string) (onChange: string -> unit) =
+let renderSetpoint autoFocus value id (label:string) (onChange: string -> unit) (onUploadRealImage: unit -> unit) =
     Column.column [ ] [
         Html.div [
             prop.children [
@@ -260,7 +272,7 @@ let renderSetpoint autoFocus value id (label:string) (onChange: string -> unit) 
             textField.autoFocus autoFocus
             textField.inputProps [
                 prop.style [ style.textAlign.center ]
-                prop.autoCapitalize.off
+                autoCapitalize.off
             ]
             prop.style [
                 style.width (length.percent 100)
@@ -270,6 +282,14 @@ let renderSetpoint autoFocus value id (label:string) (onChange: string -> unit) 
             textField.label label
             textField.margin.normal
             textField.id id
+        ]
+        Html.div [
+            Mui.button [
+                button.children "Upload real image"
+                button.variant.contained
+                button.color.primary
+                prop.onClick (ignore >> onUploadRealImage)
+            ]
         ]
     ]
 
@@ -362,8 +382,8 @@ let renderContent (state:State) (dispatch: Msg -> unit) =
                 Html.div [
                     prop.className "morph-content"
                     prop.children [
-                        renderSetpoint true state.LeftValue "leftval-input" "Morph from" (SetLeftValue >> dispatch)
-                        renderSetpoint false state.RightValue "rightval-input" "Morph to" (SetRightValue >> dispatch)
+                        renderSetpoint true state.LeftValue "leftval-input" "Morph from" (SetLeftValue >> dispatch) (fun () -> ClickUpload Left |> dispatch)
+                        renderSetpoint false state.RightValue "rightval-input" "Morph to" (SetRightValue >> dispatch) (fun () -> ClickUpload Right |> dispatch)
                         morphButton state.IsMorphLoading
                         renderMorph state.VidValues state.UseSlider dispatch
                     ]
@@ -371,6 +391,14 @@ let renderContent (state:State) (dispatch: Msg -> unit) =
             ]
         ]
     ]
+
+let renderEncodeImageDialog  state dispatch =
+    let props = { 
+        OnClose = fun () -> dispatch CloseUploadDialog
+        IsOpen = state.UploadDialogSide.IsSome
+    }
+    encodeImageDialog props
+
 
 let getShareState state =
     { 
@@ -491,6 +519,7 @@ let render (state:State) (dispatch: Msg -> unit) =
         Mui.cssBaseline [ ]
         header
         renderContent state dispatch
+        renderEncodeImageDialog state dispatch
         viewShareContent (getShareState state) (ShareMsg >> dispatch)
         Explain.view ()
         footer
