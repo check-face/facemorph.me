@@ -596,6 +596,7 @@ let themedApp children = themedApp' {| children = children |}
 
 let isNormalCheckfaceValues state =
     match (state.VidValues) with
+    | None
     | Some (CheckfaceValue _, CheckfaceValue _) -> true
     | _ -> false
 
