@@ -37,9 +37,9 @@ type Side = | Left | Right
 
 
 type State = {
-    VidValues : (string * string) option
-    LeftValue : string
-    RightValue : string
+    VidValues : (CheckfaceSrc * CheckfaceSrc) option
+    LeftValue : CheckfaceSrc
+    RightValue : CheckfaceSrc
     UploadDialogSide : Side option
     ShareOpen : bool
     ShareLinkMsg : string option
@@ -50,41 +50,65 @@ type State = {
 type UrlState = {
     FromValue : string option
     ToValue : string option
+    FromGuid : System.Guid Option
+    ToGuid : System.Guid Option
+    FromSeed : int option
+    ToSeed : int option
 }
 
 let parseUrl (path, query) =
     {
         FromValue = Map.tryFind "from_value" query
-        ToValue = Map.tryFind "to_value" query    
+        ToValue = Map.tryFind "to_value" query
+        FromGuid = Map.tryFind "from_guid" query |> Option.bind (System.Guid.TryParse >> tryToOption)
+        ToGuid = Map.tryFind "to_guid" query |> Option.bind (System.Guid.TryParse >> tryToOption)
+        FromSeed = Map.tryFind "from_seed" query |> Option.bind (System.Int32.TryParse >> tryToOption)
+        ToSeed = Map.tryFind "to_seed" query |> Option.bind (System.Int32.TryParse >> tryToOption)
     }
 
-
-let canonicalUrl state =
-    canonicalBaseUrl + Feliz.Router.Router.formatPath("/",
+let formatPathForVidValues vidValues =
+    Feliz.Router.Router.formatPath("/",
         [ 
-            match state.VidValues with
+            match vidValues with
             | Some (fromValue, toValue) ->
-                "from_value", fromValue
-                "to_value", toValue
+                match fromValue with
+                | CheckfaceValue value ->
+                    "from_value", value
+                | Guid guid ->
+                    "from_guid", guid.ToString()
+                | Seed seed ->
+                    "from_seed", seed.ToString()
+
+                match toValue with
+                | CheckfaceValue value ->
+                    "to_value", value
+                | Guid guid ->
+                    "to_guid", guid.ToString()
+                | Seed seed ->
+                    "to_seed", seed.ToString()
             | None ->
                 ()
         ])
 
-let pageTitle = function
+let canonicalUrl state =
+    canonicalBaseUrl + formatPathForVidValues state.VidValues
+
+let pageTitle vidValues =
+    match vidValues with
     | Some (fromValue, toValue) ->
-        sprintf "%s to %s" fromValue toValue
+        $"%s{shortCheckfaceSrcDesc fromValue} to %s{shortCheckfaceSrcDesc toValue}"
     | None ->
         siteName
 
 let pageDescription = function
     | Some (fromValue, toValue) ->
-            sprintf "Morph generated faces from %s to %s" fromValue toValue
+            $"Morph generated faces from %s{shortCheckfaceSrcDesc fromValue} to %s{shortCheckfaceSrcDesc toValue}"
     | None ->
             "Generate faces on the fly and morph between them"
 
 type Msg =
-    | SetLeftValue of string
-    | SetRightValue of string
+    | SetLeftValue of CheckfaceSrc
+    | SetRightValue of CheckfaceSrc
     | ClickUploadRealImage of Side
     | CloseUploadDialog
     | ImageEncoded of System.Guid
@@ -137,14 +161,30 @@ let parseSegments (pathName, queryString) =
         |> Map.ofSeq
     urlSegments, urlParams
 
-let defaultFromValue = Option.defaultValue "hello"
-let defaultToValue = Option.defaultWith (fun () -> System.DateTime.Today.ToString("yyyy-MM-dd"))
+let urlFromCheckfaceSrc urlState =
+    match urlState.FromValue, urlState.FromGuid, urlState.FromSeed with
+    | Some value, _, _ -> Some (CheckfaceValue value)
+    | None, Some guid, _ -> Some (Guid guid)
+    | None, None, Some seed -> Some (Seed seed)
+    | None, None, None -> None
+
+let urlToCheckfaceSrc urlState =
+    match urlState.FromValue, urlState.FromGuid, urlState.FromSeed with
+    | Some value, _, _ -> Some (CheckfaceValue value)
+    | None, Some guid, _ -> Some (Guid guid)
+    | None, None, Some seed -> Some (Seed seed)
+    | None, None, None -> None
+
+let defaultFromValue = Option.defaultValue (CheckfaceValue "hello")
+let defaultToValue = Option.defaultWith (fun () -> CheckfaceValue (System.DateTime.Today.ToString("yyyy-MM-dd")))
 
 let initByUrlstate urlState =
-    let vidValues = Option.map2 (fun a b -> a,b) urlState.FromValue urlState.ToValue
+    let fromValue = urlFromCheckfaceSrc urlState
+    let toValue = urlToCheckfaceSrc urlState
+    let vidValues = Option.map2 (fun a b -> a,b) fromValue toValue
     {
-        LeftValue = defaultFromValue urlState.FromValue
-        RightValue = defaultToValue urlState.ToValue
+        LeftValue = defaultFromValue fromValue
+        RightValue = defaultToValue toValue
         UploadDialogSide = None
         VidValues = vidValues
         ShareOpen = false
@@ -184,12 +224,12 @@ let updateShare msg state =
                 ignore <| navigatorShare (canonicalUrl state) (pageTitle state.VidValues) (pageDescription state.VidValues)
                 return ShareMsg (SetShareMsg "Sharing page!")
             })
-        | true, Some (leftValue, rightValue) ->
+        | true, Some vidValues ->
             Cmd.OfPromise.result (promise {
                 let fileShare = {
                     FileName = pageTitle state.VidValues + ".mp4"
                     Title = pageTitle state.VidValues
-                    FileUrl = vidSrc videoDim (CheckfaceValue leftValue, CheckfaceValue rightValue)
+                    FileUrl = vidSrc videoDim vidValues
                     Text = (pageDescription state.VidValues)
                     Url = (canonicalUrl state)
                     ContentType = "video/mp4"
@@ -226,24 +266,25 @@ let update msg state : State * Cmd<Msg> =
     | ImageEncoded guid ->
         let leftValue, rightValue =
             match state with
-            | { UploadDialogSide = Some Left; RightValue = rightValue } -> "left", rightValue
-            | { UploadDialogSide = Some Right; LeftValue = leftValue } -> leftValue, "right"
-            | { UploadDialogSide = None; LeftValue = leftValue; RightValue = rightValue } -> leftValue, rightValue 
+            | { UploadDialogSide = Some Right; LeftValue = lVal } -> lVal, Guid guid
+            | { RightValue = rVal } -> Guid guid, rVal //default to setting left side is side is not set
         { state with UploadDialogSide = None; LeftValue = leftValue; RightValue = rightValue }, Cmd.none
     | MakeVid when state.VidValues = Some (state.LeftValue, state.RightValue) ->
         state, Cmd.none
     | MakeVid ->
         gtagEvent "MakeVid" "Video"
-        state, Cmd.navigatePath("/", ["from_value", state.LeftValue; "to_value", state.RightValue])
+        state, Some (state.LeftValue, state.RightValue) |> formatPathForVidValues |> Cmd.navigate
     | UrlChanged (path, query) ->
         let urlState = parseUrl (path, query)
-        let vidValues = Option.map2 (fun a b -> a,b) urlState.FromValue urlState.ToValue
+        let urlFromSrc = urlFromCheckfaceSrc urlState
+        let urlToSrc = urlToCheckfaceSrc urlState
+        let vidValues = Option.map2 (fun a b -> a,b) urlFromSrc urlToSrc
         //changed and has something to be loading
         let isLoading = vidValues <> state.VidValues && vidValues.IsSome
         {
             state with
-                LeftValue = defaultFromValue urlState.FromValue
-                RightValue = defaultToValue urlState.ToValue
+                LeftValue = defaultFromValue urlFromSrc
+                RightValue = defaultToValue urlToSrc
                 VidValues = vidValues
                 ShareOpen = false //always reset share state
                 ShareLinkMsg = None
@@ -288,16 +329,16 @@ let renderImageByValue value =
         ]
     ]
 
-let renderSetpoint autoFocus value id (label:string) (onChange: string -> unit) (onUploadRealImage: unit -> unit) =
+let renderSetpoint autoFocus value id (label:string) (onChange: CheckfaceSrc -> unit) (onUploadRealImage: unit -> unit) =
     Column.column [ ] [
         Html.div [
             prop.children [
-                renderImageByValue (CheckfaceValue value)
+                renderImageByValue value
             ]
         ]
         Mui.textField [
-            textField.value value
-            textField.onChange onChange
+            textField.value (shortCheckfaceSrcDesc value)
+            textField.onChange (CheckfaceValue >> onChange)
             textField.placeholder "Just type anything"
             textField.autoFocus autoFocus
             textField.inputProps [
@@ -415,8 +456,7 @@ let renderContent (state:State) (dispatch: Msg -> unit) =
                         renderSetpoint true state.LeftValue "leftval-input" "Morph from" (SetLeftValue >> dispatch) (fun () -> ClickUploadRealImage Left |> dispatch)
                         renderSetpoint false state.RightValue "rightval-input" "Morph to" (SetRightValue >> dispatch) (fun () -> ClickUploadRealImage Right |> dispatch)
                         morphButton state.IsMorphLoading
-                        let cfVidValues = Option.map (fun (f, t) -> CheckfaceValue f, CheckfaceValue t) state.VidValues
-                        renderMorph (cfVidValues) state.UseSlider dispatch
+                        renderMorph state.VidValues state.UseSlider dispatch
                     ]
                 ]
             ]
@@ -587,17 +627,14 @@ let viewHead state =
 
             match state.VidValues with
             | None -> // just use left value if no video
-                meta "og:image" (imgSrc ogImgDim false (CheckfaceValue state.LeftValue))
-                meta "og:image:alt" (imgAlt (CheckfaceValue state.LeftValue))
+                meta "og:image" (imgSrc ogImgDim false state.LeftValue)
+                meta "og:image:alt" (imgAlt state.LeftValue)
                 meta "og:image:width" ogImgDim
                 meta "og:image:height" ogImgDim
                 meta "og:image:type" "image/jpeg"
                 meta "og:type" "website"
 
             | Some vidValues ->
-                let vidValues =
-                    let (fromValue, toValue) = vidValues
-                    (CheckfaceValue fromValue, CheckfaceValue toValue)
                 let videoSrc = vidSrc ogVideoDim vidValues
                 let linkprevSrc = linkpreviewSrc linkpreviewWidth vidValues
                 let linkprevAlt = linkpreviewSrc linkpreviewWidth vidValues

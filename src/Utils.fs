@@ -16,6 +16,9 @@ let rec remove i l =
     | i, x::xs -> x::remove (i - 1) xs
     | i, [] -> failwith "index out of range"
 
+let tryToOption (didSucceed, value) =
+    if didSucceed then Some value else None
+
 [<Emit("gtag('event', $0, { 'event_category': $1 })")>]
 let gtagEvent action catagory : unit = jsNative
 
