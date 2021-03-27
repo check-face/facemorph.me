@@ -169,7 +169,7 @@ let urlFromCheckfaceSrc urlState =
     | None, None, None -> None
 
 let urlToCheckfaceSrc urlState =
-    match urlState.FromValue, urlState.FromGuid, urlState.FromSeed with
+    match urlState.ToValue, urlState.ToGuid, urlState.ToSeed with
     | Some value, _, _ -> Some (CheckfaceValue value)
     | None, Some guid, _ -> Some (Guid guid)
     | None, None, Some seed -> Some (Seed seed)
@@ -273,7 +273,7 @@ let update msg state : State * Cmd<Msg> =
         state, Cmd.none
     | MakeVid ->
         gtagEvent "MakeVid" "Video"
-        state, Some (state.LeftValue, state.RightValue) |> formatPathForVidValues |> Cmd.navigate
+        state, Some (state.LeftValue, state.RightValue) |> formatPathForVidValues |> Cmd.navigatePath
     | UrlChanged (path, query) ->
         let urlState = parseUrl (path, query)
         let urlFromSrc = urlFromCheckfaceSrc urlState
