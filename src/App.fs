@@ -337,7 +337,13 @@ let renderSetpoint autoFocus value id (label:string) (onChange: CheckfaceSrc -> 
             ]
         ]
         Mui.textField [
-            textField.value (shortCheckfaceSrcDesc value)
+            match value with
+            | CheckfaceValue value ->
+                textField.value value
+            | Guid _
+            | Seed _ ->
+                textField.value (shortCheckfaceSrcDesc value)
+                textField.disabled true //disable text field when not normal value
             textField.onChange (CheckfaceValue >> onChange)
             textField.placeholder "Just type anything"
             textField.autoFocus autoFocus
