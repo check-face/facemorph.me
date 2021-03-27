@@ -96,13 +96,13 @@ let canonicalUrl state =
 let pageTitle vidValues =
     match vidValues with
     | Some (fromValue, toValue) ->
-        $"%s{shortCheckfaceSrcDesc fromValue} to %s{shortCheckfaceSrcDesc toValue}"
+        sprintf "%s to %s" (shortCheckfaceSrcDesc fromValue) (shortCheckfaceSrcDesc toValue)
     | None ->
         siteName
 
 let pageDescription = function
     | Some (fromValue, toValue) ->
-            $"Morph generated faces from %s{shortCheckfaceSrcDesc fromValue} to %s{shortCheckfaceSrcDesc toValue}"
+            sprintf "Morph generated faces from %s to %s" (shortCheckfaceSrcDesc fromValue) (shortCheckfaceSrcDesc toValue)
     | None ->
             "Generate faces on the fly and morph between them"
 
