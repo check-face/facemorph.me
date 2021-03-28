@@ -93,6 +93,13 @@ let encodeImageDialog = React.functionComponent ("encode-image-dialog", fun (pro
                 } |> ignore
             ()
 
+        let onClickOk guid =
+            // reset state when submitting value
+            setEncodedImageGuid NotLoading
+            setChosenFileDataUrl NotLoading
+            props.OnImageEncoded guid
+
+
         Mui.dialog [
             dialog.open' props.IsOpen
             dialog.onClose (fun _ _ -> props.OnClose ())
@@ -177,7 +184,7 @@ let encodeImageDialog = React.functionComponent ("encode-image-dialog", fun (pro
                         Columns.columns [ ] [
                             Column.column [ Column.Modifiers [ Modifier.TextAlignment (Screen.All, TextAlignment.Right) ] ] [
                                 Mui.button [
-                                    button.children "Use"
+                                    button.children "OK"
                                     button.color.primary
                                     button.variant.contained
 
@@ -188,7 +195,7 @@ let encodeImageDialog = React.functionComponent ("encode-image-dialog", fun (pro
                                         button.disabled true
                                     | Loaded guid ->
                                         button.disabled false
-                                        prop.onClick (fun _ -> props.OnImageEncoded guid)
+                                        prop.onClick (fun _ -> onClickOk guid)
                                 ]
                             ]
                         ]
