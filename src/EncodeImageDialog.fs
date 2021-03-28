@@ -8,7 +8,7 @@ open Browser
 open Fable.Core.JsInterop
 open Fetch
 open Checkface
-
+open Feliz.MaterialUI.themeStatic.theme
 type Props = {
     OnClose : unit -> unit
     IsOpen : bool
@@ -47,7 +47,7 @@ let encodeImageDialog = React.functionComponent ("encode-image-dialog", fun (pro
 
         let fileInput = React.useRef None
         let chosenFileDataUrl, setChosenFileDataUrl = React.useState (NotLoading)
-        let encodedImageGuid, setEncodedImageGuid = React.useState (NotLoading)
+        let encodedImageResult, setEncodeResult = React.useState (NotLoading)
 
         let getDataUrl (input:Types.HTMLInputElement) =
             if input.files.length = 1
@@ -61,7 +61,7 @@ let encodeImageDialog = React.functionComponent ("encode-image-dialog", fun (pro
 
         let onFileInputChange (e: Event) =
             setChosenFileDataUrl Loading
-            setEncodedImageGuid NotLoading
+            setEncodeResult NotLoading
             match fileInput.current with
             | Some input -> getDataUrl (unbox<Types.HTMLInputElement>(input))
             | None -> ()
@@ -73,7 +73,7 @@ let encodeImageDialog = React.functionComponent ("encode-image-dialog", fun (pro
             | Some input ->
                 promise {
                     try
-                        setEncodedImageGuid Loading
+                        setEncodeResult Loading
                         let input = unbox<Types.HTMLInputElement>(input)
                         let usrimg = input.files.[0]
                         let formData = FormData.Create ()
@@ -85,24 +85,30 @@ let encodeImageDialog = React.functionComponent ("encode-image-dialog", fun (pro
                         let! json = res.json()
                         let encodeResult : EncodeImageResponse = !!json
                         let guid = System.Guid.Parse encodeResult.guid
-                        setEncodedImageGuid (Loaded guid)
+                        setEncodeResult (Loaded (guid, encodeResult.did_align))
 
                     with e ->
                         console.log("Error in promise!", e)
-                        setEncodedImageGuid LoadingError
+                        setEncodeResult LoadingError
                 } |> ignore
             ()
 
-        let onClickOk guid =
-            // reset state when submitting value
-            setEncodedImageGuid NotLoading
+        let resetState () =
+            setEncodeResult NotLoading
             setChosenFileDataUrl NotLoading
+
+        let onClickOk guid =
+            resetState ()
             props.OnImageEncoded guid
+
+        let close _ =
+            resetState ()
+            props.OnClose ()
 
 
         Mui.dialog [
             dialog.open' props.IsOpen
-            dialog.onClose (fun _ _ -> props.OnClose ())
+            dialog.onClose (fun _ _ -> close ())
             dialog.children [
                 Mui.dialogTitle [
                     dialogTitle.children "Upload an image"
@@ -156,11 +162,11 @@ let encodeImageDialog = React.functionComponent ("encode-image-dialog", fun (pro
                                     ]
                                 ]
                                 Column.column [ ] [
-                                    match encodedImageGuid with
+                                    match encodedImageResult with
                                     | LoadingError
                                     | NotLoading ->
                                         centerInGrid [
-                                            if encodedImageGuid = LoadingError then
+                                            if encodedImageResult = LoadingError then
                                                 errorIcon ()
                                                 Html.p "Something went wrong. Service may be down."
 
@@ -175,25 +181,51 @@ let encodeImageDialog = React.functionComponent ("encode-image-dialog", fun (pro
                                             Mui.circularProgress [
                                             ]
                                         ]
-                                    | Loaded guid ->
+                                    | Loaded (guid, _) ->
                                         props.RenderImgGuid guid
 
                                 ]
                             ]
 
-                        Columns.columns [ ] [
+                        match encodedImageResult with
+                        | Loaded (_, did_align) when did_align = false->
+                            Columns.columns [ ] [
+                                Column.column [ Column.Modifiers [ Modifier.TextAlignment (Screen.All, TextAlignment.Left) ] ] [
+                                    Mui.typography [
+                                        typography.color.error
+                                        typography.children "Unable to align face."
+                                    ]
+                                    Mui.typography [
+                                        typography.color.textPrimary
+                                        typography.children ("When the face isn't aligned you may get strange results. " +
+                                            "Try a different image or manually crop it to a square before uploading.")
+                                    ]
+                                ]
+                            ]
+                        | _ ->
+                            ()
+
+                        Columns.columns [ Columns.IsMobile ] [
+                            Column.column [ Column.Modifiers [ Modifier.TextAlignment (Screen.All, TextAlignment.Left) ] ] [
+                                Mui.button [
+                                    button.children "Cancel"
+                                    button.color.default'
+                                    button.variant.contained
+                                    prop.onClick close
+                                ]
+                            ]
                             Column.column [ Column.Modifiers [ Modifier.TextAlignment (Screen.All, TextAlignment.Right) ] ] [
                                 Mui.button [
                                     button.children "OK"
                                     button.color.primary
                                     button.variant.contained
 
-                                    match encodedImageGuid with
+                                    match encodedImageResult with
                                     | NotLoading
                                     | LoadingError
                                     | Loading ->
                                         button.disabled true
-                                    | Loaded guid ->
+                                    | Loaded (guid, _) ->
                                         button.disabled false
                                         prop.onClick (fun _ -> onClickOk guid)
                                 ]
