@@ -5,29 +5,27 @@ Type something in both text boxes and click morph to generate a video morphing b
 Not sure what to type?  
 Pick from a list of popular baby names with [names.facemorph.me](https://names.facemorph.me/)
 
+You can even morph using your own images by clicking "Change Mode" in the textbox.
+
 ## How does it work?
-None of the faces you see are real
 
 The text in each text box is used to [seed](https://en.wikipedia.org/wiki/Random_seed) a random number generator
 for each endpoint. [StyleGan2](https://github.com/NVlabs/stylegan2) is used to generate every frame while interpolating
 between the endpoints.
 
-<!-- To make the start face, the text in the first text box is [hashed](https://en.wikipedia.org/wiki/Hash_function)
-to essentially turn it into a large number. The hash value is then
-used as the [seed](https://en.wikipedia.org/wiki/Random_seed) for a random number generator,
-and a list of 512 pseudo-random numbers are generated.
-
-[StyleGan2](https://github.com/NVlabs/stylegan2)
-is used to generate all images.
-Something about stylegan, checkface, interpolation, and a link to more detailed explaination
-The more jargon and buzz words the better (not) -->
+When you upload your own images, [encoder4editing](https://github.com/omertov/encoder4editing) is used to encode it as a latent.
+It attempts to find a balance between accuracy and editability.  
+This tradeoff means it won't look quite the same as the input
+image but should work well for morphing.
 
 ## FAQ
 
 ---
 
 #### Are these real people?
-No.
+Images based on text input or numeric seeds are not really people. They are randomly generated.
+
+Custom images may be encodings of real people.
 
 ---
 
@@ -76,11 +74,6 @@ Technically, as SHA-256 is used on the input, that puts an upper limit of 2^256 
 
 ---
 
-#### Wow, this is really fast! What's the setup?
-Everything is served from cache with Cloudflare or generated on the fly with an RTX 2080 Ti.
-
----
-
 #### Why is this so slow?
 We're students doing an experiment. We don't have the means to spin up extra infrastructure if this gets popular.
 GPUs are expensive!
@@ -89,16 +82,22 @@ If you have a bunch of GPUs and would like to help, please get in touch.
 
 ---
 
-#### It's not working at all...
-Again, this is just an experiment and we make no commitment to keeping the servers up. We might be developing new features
-or training new models.
+#### It's not working
+This is just an experiment and we make no commitment to keeping the server up. We might be developing new features
+or training new models, so try again later.
 
 ---
 
 #### Can I morph with a picture of a real face?
+Yes!
 
-No, but it's a possibility.
+In the input textbox there is a button to change mode and upload an image.
 
-If you've worked with StyleGAN2 before and think you can help,
-there is a [branch for latent recovery](https://github.com/check-face/checkface/pull/52)
-based on [Puzer/stylegan-encoder](https://github.com/Puzer/stylegan-encoder) and [rolux/stylegan2encoder](https://github.com/rolux/stylegan2encoder)
+---
+
+#### Is there a StyleGAN2 API?
+The source code for our server is at [github.com/check-face/checkface](https://github.com/check-face/checkface)  
+It is documented at [checkface.ml/api](https://checkface.ml/api)
+
+We recommented hosting the server yourself as we do not plan on running it reliably or indefinitely.
+Feel free to contact us using the email address in the footer.
