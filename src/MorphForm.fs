@@ -14,9 +14,6 @@ open SliderMorph
 open EncodeImageDialog
 open Config
 
-open System.Linq
-
-
 let renderImageByValue value =
     //use source and srcset to allow picking webp if supported and to pick best size based on pixel scaling
     let src = imgSrc imgDim false value
@@ -55,25 +52,35 @@ type private InputConfig = {
     ExtraTextfieldProps : IReactProperty list
 }
 
+let tooltippedIconbutton (title: string) props =
+    Mui.tooltip [
+        tooltip.title title
+        tooltip.children <|
+            Mui.iconButton props
+    ]
+
 let private getInputConfig value onChange onUploadRealImage onBrowseCheckfaceValues onClickMenu =
+    let startAdornment hasFocusWithinClass =
+        tooltippedIconbutton "Change Mode" [
+            if hasFocusWithinClass then prop.className "focuswithin-child"
+            iconButton.edge.start
+            iconButton.children (menuIcon [])
+            prop.onClick (ignore >> onClickMenu)
+            prop.ariaLabel "change mode"
+        ]
     match value with
     | CheckfaceValue value ->
         {
             Value = value
             Placeholder = "Just type anything"
+            StartAdornment = startAdornment true
             EndAdornment =
-                Mui.iconButton [
+                tooltippedIconbutton "Browse Names" [
                     prop.className "focuswithin-child"
                     iconButton.edge.end'
                     iconButton.children (imageSearchIcon [])
                     prop.onClick (fun _ -> onBrowseCheckfaceValues ())
-                ]
-            StartAdornment =
-                Mui.iconButton [
-                    prop.className "focuswithin-child"
-                    iconButton.edge.start
-                    iconButton.children (menuIcon [])
-                    prop.onClick (ignore >> onClickMenu)
+                    prop.ariaLabel "browse names"
                 ]
             OnChange = CheckfaceValue >> onChange
             ExtraTextfieldProps = [
@@ -87,13 +94,7 @@ let private getInputConfig value onChange onUploadRealImage onBrowseCheckfaceVal
         {
             Value = if seed = 0u then "" else string seed
             Placeholder = "Input an integer seed"
-            StartAdornment =
-                Mui.iconButton [
-                    prop.className "focuswithin-child"
-                    iconButton.edge.start
-                    iconButton.children (menuIcon [])
-                    prop.onClick (ignore >> onClickMenu)
-                ]
+            StartAdornment = startAdornment true
             EndAdornment =
                 React.fragment [ ] // don't need end adornment for numbers
             ExtraTextfieldProps = [
@@ -124,19 +125,14 @@ let private getInputConfig value onChange onUploadRealImage onBrowseCheckfaceVal
         {
             Value = shortCheckfaceSrcDesc (Guid guid)
             Placeholder = "Upload an image"
-            StartAdornment =
-                Mui.iconButton [
-                    // don't use "focuswithin-child" with textField disabled
-                    iconButton.edge.start
-                    iconButton.children (menuIcon [])
-                    prop.onClick (ignore >> onClickMenu)
-                ]
+            StartAdornment = startAdornment false
             EndAdornment =
-                Mui.iconButton [
+                tooltippedIconbutton "Upload Image" [
                     // don't use "focuswithin-child" with textField disabled
                     iconButton.edge.end'
                     iconButton.children (cameraIcon [])
                     prop.onClick (fun _ -> onUploadRealImage ())
+                    prop.ariaLabel "upload image"
                 ]
             OnChange = CheckfaceValue >> onChange //shouldn't happen because textField is disabled
             ExtraTextfieldProps = [
