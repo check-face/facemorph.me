@@ -173,7 +173,7 @@ let encodeImageDialog = React.functionComponent ("encode-image-dialog", fun (pro
                                                 button.type'.submit
                                                 button.children "Upload"
                                                 prop.onClick uploadImage
-                                                button.variant.outlined
+                                                button.variant.contained
                                                 button.color.primary
                                             ]
                                         ]
