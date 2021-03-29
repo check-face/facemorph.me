@@ -104,12 +104,9 @@ let private getInputConfig value onChange onUploadRealImage onBrowseCheckfaceVal
                 ]
             ]
             OnChange = fun value ->
-                printfn "value: %s" value
                 let onlyDigits =
                     value
                     |> String.filter System.Char.IsDigit
-
-                printfn "onlyDigits: %s" onlyDigits
 
                 match System.UInt32.TryParse onlyDigits with
                 | _ when value <> onlyDigits -> ()
