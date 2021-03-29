@@ -186,6 +186,21 @@ type private SetpointProps = {
     OnBrowseCheckfaceValues: unit -> unit
 }
 
+let (|AsNumericSeed|) =
+    function
+    | Seed seed -> seed
+    | Guid _ -> defaultNumericSeed
+    | CheckfaceValue value ->
+        match System.UInt32.TryParse value with
+        | true, num -> num
+        | false, _ -> defaultNumericSeed
+
+let (|AsTextValue|) =
+    function
+    | Seed seed -> seed.ToString()
+    | CheckfaceValue value -> value
+    | Guid _ -> defaultTextValue
+
 [<ReactComponent>]
 let private SetpointInput props =
     let anchorEl = React.useRef None
@@ -202,10 +217,10 @@ let private SetpointInput props =
 
     let changeSetpointKind kind =
         setMenuOpen false //close the menu
-        match kind with
-        | TextValue -> props.OnChange (CheckfaceValue defaultTextValue)
-        | NumericSeed -> props.OnChange (Seed 389u) // 389 is one of the seeds featured in the stylegan2 paper
-        | SomeGuid -> props.OnUploadRealImage ()
+        match kind, props.Value with // to the most-reasonable new value
+        | NumericSeed, AsNumericSeed seed -> props.OnChange (Seed seed)
+        | TextValue, AsTextValue value -> props.OnChange (CheckfaceValue value)
+        | SomeGuid, _ -> props.OnUploadRealImage ()
 
     Column.column [ ] [
         Html.div [
