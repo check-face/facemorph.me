@@ -3,13 +3,16 @@
     <TargetFramework>netstandard2.0</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="Checkface.fs" />
+    <Compile Include="Config.fs" />
     <Compile Include="Utils.fs" />
+    <Compile Include="Checkface.fs" />
     <Compile Include="FancyButton.fs" />
     <Compile Include="SliderMorph.fs" />
     <Compile Include="Explain.fs" />
     <Compile Include="EncodeImageDialog.fs" />
     <Compile Include="Share.fs" />
+    <Compile Include="AppState.fs" />
+    <Compile Include="MorphForm.fs" />
     <Compile Include="App.fs" />
     <Compile Include="Index.fs" />
   </ItemGroup>

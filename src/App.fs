@@ -11,50 +11,11 @@ open Feliz.Router
 open Fulma
 open Utils
 
+open AppState
 open Checkface
-open FancyButton
-open SliderMorph
-open EncodeImageDialog
 open Share
+open Config
 
-let videoDim = 512
-let imgDim = 300
-let imgSizesSet = [ 300; 512; 1024 ]
-let linkpreviewWidth = 1200
-let linkpreviewHeight = 628
-let ogImgDim = 512
-let ogVideoDim = 512
-let siteName = "facemorph.me"
-let canonicalBaseUrl = "https://facemorph.me"
-let contactEmail = "checkfaceml@gmail.com"
-let githubRepo = "check-face/facemorph.me"
-let apiAddr = "https://api.checkface.ml"
-let encodeApiAddr = apiAddr + "/api/encodeimage/"
-
-type Side = | Left | Right
-
-
-
-
-type State = {
-    VidValues : (CheckfaceSrc * CheckfaceSrc) option
-    LeftValue : CheckfaceSrc
-    RightValue : CheckfaceSrc
-    UploadDialogSide : Side option
-    ShareOpen : bool
-    ShareLinkMsg : string option
-    IsMorphLoading : bool
-    UseSlider : bool
-}
-
-type UrlState = {
-    FromValue : string option
-    ToValue : string option
-    FromGuid : System.Guid Option
-    ToGuid : System.Guid Option
-    FromSeed : int option
-    ToSeed : int option
-}
 
 let parseUrl (path, query) =
     {
@@ -62,8 +23,8 @@ let parseUrl (path, query) =
         ToValue = Map.tryFind "to_value" query
         FromGuid = Map.tryFind "from_guid" query |> Option.bind (System.Guid.TryParse >> tryToOption)
         ToGuid = Map.tryFind "to_guid" query |> Option.bind (System.Guid.TryParse >> tryToOption)
-        FromSeed = Map.tryFind "from_seed" query |> Option.bind (System.Int32.TryParse >> tryToOption)
-        ToSeed = Map.tryFind "to_seed" query |> Option.bind (System.Int32.TryParse >> tryToOption)
+        FromSeed = Map.tryFind "from_seed" query |> Option.bind (System.UInt32.TryParse >> tryToOption)
+        ToSeed = Map.tryFind "to_seed" query |> Option.bind (System.UInt32.TryParse >> tryToOption)
     }
 
 let formatPathForVidValues vidValues =
@@ -106,50 +67,6 @@ let pageDescription = function
     | None ->
             "Generate faces on the fly and morph between them"
 
-type Msg =
-    | SetLeftValue of CheckfaceSrc
-    | SetRightValue of CheckfaceSrc
-    | ClickUploadRealImage of Side
-    | CloseUploadDialog
-    | ImageEncoded of System.Guid
-    | UrlChanged of (string list * Map<string, string>)
-    | MakeVid
-    | ShareMsg of ShareMsg
-    | MorphLoaded
-    | SetUseSlider of bool
-
-let valueParam value =
-    match value with
-    | Guid guid -> sprintf "guid=%s" (guid.ToString())
-    | CheckfaceValue value -> sprintf "value=%s" (encodeUriComponent value)
-    | Seed seed -> sprintf "seed=%i" seed
-
-let imgSrc (dim:int) isWebp value =
-    sprintf "%s/api/face/?dim=%i&%s&format=%s" apiAddr dim (valueParam value) (if isWebp then "webp" else "jpg")
-
-let describeCheckfaceSrc =
-    function
-    | CheckfaceValue value -> sprintf "value %s" value
-    | Seed seed -> sprintf "seed %i" seed
-    | Guid guid -> sprintf "custom latent (%s)" (guid.ToString().Substring(0, 6))
-
-let imgAlt value =
-    "Generated face for " + describeCheckfaceSrc value
-
-let vidMorphAlt (fromValue, toValue) =
-    sprintf "Morph from %s to %s" (describeCheckfaceSrc fromValue) (describeCheckfaceSrc toValue)
-
-let linkpreviewAlt (fromValue, toValue) = sprintf "%s + %s" fromValue toValue
-
-let vidSrc (dim:int) (fromValue, toValue) =
-    sprintf "%s/api/mp4/?dim=%i&from_%s&to_%s" apiAddr dim (valueParam fromValue) (valueParam toValue)
-
-let morphframeSrc (fromValue, toValue) dim numFrames frameNum =
-    sprintf "%s/api/morphframe/?dim=%i&linear=true&from_%s&to_%s&num_frames=%i&frame_num=%i" apiAddr dim (valueParam fromValue) (valueParam toValue) numFrames frameNum
-
-let linkpreviewSrc (width:int) (fromValue, toValue) =
-    sprintf "%s/api/linkpreview/?width=%i&from_%s&to_%s" apiAddr width (valueParam fromValue) (valueParam toValue)
-
 let getCurrentPath _ =
     Browser.Dom.window.location.pathname, Browser.Dom.window.location.search
 
@@ -161,21 +78,20 @@ let parseSegments (pathName, queryString) =
         |> Map.ofSeq
     urlSegments, urlParams
 
-let urlFromCheckfaceSrc urlState =
-    match urlState.FromValue, urlState.FromGuid, urlState.FromSeed with
+let chooseCheckfaceSrc value guid seed =
+    match value, guid, seed with
     | Some value, _, _ -> Some (CheckfaceValue value)
     | None, Some guid, _ -> Some (Guid guid)
     | None, None, Some seed -> Some (Seed seed)
     | None, None, None -> None
+
+let urlFromCheckfaceSrc urlState =
+    chooseCheckfaceSrc urlState.FromValue urlState.FromGuid urlState.FromSeed
 
 let urlToCheckfaceSrc urlState =
-    match urlState.ToValue, urlState.ToGuid, urlState.ToSeed with
-    | Some value, _, _ -> Some (CheckfaceValue value)
-    | None, Some guid, _ -> Some (Guid guid)
-    | None, None, Some seed -> Some (Seed seed)
-    | None, None, None -> None
+    chooseCheckfaceSrc urlState.ToValue urlState.ToGuid urlState.ToSeed
 
-let defaultFromValue = Option.defaultValue (CheckfaceValue "hello")
+let defaultFromValue = Option.defaultValue (CheckfaceValue defaultTextValue)
 let defaultToValue = Option.defaultWith (fun () -> CheckfaceValue (System.DateTime.Today.ToString("yyyy-MM-dd")))
 
 let initByUrlstate urlState =
@@ -269,6 +185,9 @@ let update msg state : State * Cmd<Msg> =
             | { UploadDialogSide = Some Right; LeftValue = lVal } -> lVal, Guid guid
             | { RightValue = rVal } -> Guid guid, rVal //default to setting left side is side is not set
         { state with UploadDialogSide = None; LeftValue = leftValue; RightValue = rightValue }, Cmd.none
+    | BrowseCheckfaceValues side ->
+        Browser.Dom.window.location.href <- "https://names.facemorph.me"
+        state, Cmd.none
     | MakeVid when state.VidValues = Some (state.LeftValue, state.RightValue) ->
         state, Cmd.none
     | MakeVid ->
@@ -299,186 +218,6 @@ let update msg state : State * Cmd<Msg> =
 
 let logo : ReactElementType = Fable.Core.JsInterop.importDefault "./public/logo.svg"
 let animatedLogo : ReactElementType = Fable.Core.JsInterop.importDefault "./public/logo-animated.svg"
-
-let renderImageByValue value =
-    //use source and srcset to allow picking webp if supported and to pick best size based on pixel scaling
-    let src = imgSrc imgDim false value
-    let srcSet isWebp =
-        imgSizesSet
-        |> List.map (fun dim -> sprintf "%s %iw" (imgSrc dim isWebp value) dim)
-        |> String.concat ","
-    let sizes = (sprintf "%ipx" imgDim) //displayed size is around imgDim in css px regardless of device scaling
-    Html.picture [
-        Html.source [
-            prop.type' "image/webp"
-            prop.srcset <| srcSet true
-            prop.sizes sizes
-        ]
-        Html.source [
-            prop.type' "image/jpeg"
-            prop.srcset <| srcSet false
-            prop.sizes sizes
-        ]
-        Html.img [
-            prop.src src
-            prop.sizes sizes
-
-            prop.width imgDim
-            prop.height imgDim
-            prop.alt (imgAlt value)
-        ]
-    ]
-
-let renderSetpoint autoFocus value id (label:string) (onChange: CheckfaceSrc -> unit) (onUploadRealImage: unit -> unit) =
-    Column.column [ ] [
-        Html.div [
-            prop.children [
-                renderImageByValue value
-            ]
-        ]
-        Mui.textField [
-            match value with
-            | CheckfaceValue value ->
-                textField.value value
-            | Guid _
-            | Seed _ ->
-                textField.value (shortCheckfaceSrcDesc value)
-                textField.disabled true //disable text field when not normal value
-            textField.onChange (CheckfaceValue >> onChange)
-            textField.placeholder "Just type anything"
-            textField.autoFocus autoFocus
-            textField.inputProps [
-                prop.style [ style.textAlign.center ]
-                autoCapitalize.off
-            ]
-            prop.style [
-                style.width (length.percent 100)
-                style.maxWidth (length.px imgDim)
-            ]
-            textField.variant.outlined
-            textField.label label
-            textField.margin.normal
-            textField.id id
-        ]
-        Html.div [
-            Mui.button [
-                button.children "Upload real image"
-                button.variant.contained
-                button.color.primary
-                prop.onClick (ignore >> onUploadRealImage)
-            ]
-        ]
-    ]
-
-let renderMorph values useSlider dispatch =
-    match values with
-    | None -> Html.none
-    | Some (fromValue, toValue) ->
-        Html.div [
-            if useSlider then
-                sliderMorph {
-                    Values = (fromValue, toValue)
-                    OnLoaded = (fun _ -> dispatch MorphLoaded)
-                    FrameSrc = morphframeSrc
-                    Dim = videoDim
-                    NumFrames = 25
-                }
-            else
-                let posterImgSrc = imgSrc imgDim false (fromValue) //imgDim is already in cache because fromValue is displayed at imgDim
-                Html.img [
-                    // A layout hack because video doesn't respect height attribute for auto sizing while loading,
-                    // but img does. dummyImg is used to prevent vertical flickr while vid is loading (or if vid fails to load entirely).
-                    // Do not place a src on this image because if it loads a broken image then it stops respecting
-                    // auto sizing based on height prop. Once aspect-rasio css or intrinsicsize video attr are available this may not be necessary.
-                    prop.width videoDim
-                    prop.height videoDim
-                    prop.className "morph-dummyImg"
-                ]
-                Feliz.Html.video [
-                    prop.src (vidSrc videoDim (fromValue, toValue))
-                    prop.controls true
-                    prop.autoPlay true
-                    prop.loop true
-                    prop.muted true
-                    prop.style [
-                        style.display.block
-                        style.margin.auto
-                    ]
-                    prop.className "morph-vid"
-                    prop.poster posterImgSrc 
-                    prop.width videoDim
-                    prop.height videoDim
-                    prop.alt (vidMorphAlt (fromValue, toValue))
-                    prop.onLoadedData (fun _ -> dispatch MorphLoaded)
-                ]
-            Mui.formControlLabel [
-                prop.style [
-                    style.display.block
-                    style.marginLeft (length.px 5)
-                    style.custom ("justifySelf", "center")
-                    style.width (length.percent 100)
-                    style.maxWidth (length.px videoDim)
-                    style.height (length.px 0) //don't make morph button any lower
-                ]
-                formControlLabel.control (
-                    Mui.checkbox [
-                        checkbox.checked' useSlider
-                        checkbox.onChange (SetUseSlider >> dispatch)
-                    ]
-                )
-                formControlLabel.label "Use Slider"
-            ]
-        ]
-
-let morphButton isLoading =
-    Column.column [ ] [
-        fancyButton
-            {|
-                buttonProps = 
-                [
-                    button.type'.submit
-                    button.color.primary
-                    button.variant.contained
-                    button.size.large
-                    button.disabled isLoading
-                    button.children [
-                        if isLoading then Mui.circularProgress [
-                            circularProgress.size 20
-                            circularProgress.color.inherit'
-                            ] else str "Morph"
-                    ]
-                ]
-            |}
-    ]
-
-let renderContent (state:State) (dispatch: Msg -> unit) =
-    Html.form [
-        prop.onSubmit (fun e -> e.preventDefault(); dispatch MakeVid)
-        prop.children [
-            Mui.container [
-                Html.div [
-                    prop.className "morph-content"
-                    prop.children [
-                        renderSetpoint true state.LeftValue "leftval-input" "Morph from" (SetLeftValue >> dispatch) (fun () -> ClickUploadRealImage Left |> dispatch)
-                        renderSetpoint false state.RightValue "rightval-input" "Morph to" (SetRightValue >> dispatch) (fun () -> ClickUploadRealImage Right |> dispatch)
-                        morphButton state.IsMorphLoading
-                        renderMorph state.VidValues state.UseSlider dispatch
-                    ]
-                ]
-            ]
-        ]
-    ]
-
-let renderEncodeImageDialog  state dispatch =
-    let props = { 
-        OnClose = fun () -> dispatch CloseUploadDialog
-        IsOpen = state.UploadDialogSide.IsSome
-        RenderImgGuid = Guid >> renderImageByValue
-        EncodeImageApiLocation = encodeApiAddr
-        OnImageEncoded = ImageEncoded >> dispatch
-    }
-    encodeImageDialog props
-
 
 let getShareState state =
     { 
@@ -605,8 +344,8 @@ let render (state:State) (dispatch: Msg -> unit) =
     themedApp [
         Mui.cssBaseline [ ]
         header
-        renderContent state dispatch
-        renderEncodeImageDialog state dispatch
+        MorphForm.renderContent state dispatch
+        MorphForm.renderEncodeImageDialog state dispatch
         if isNormalCheckfaceValues state then
             viewShareContent (getShareState state) (ShareMsg >> dispatch)
             Explain.view ()

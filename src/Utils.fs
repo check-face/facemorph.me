@@ -40,6 +40,8 @@ let navigatorCanShare = navigatorCanShareThing !!{| url = "https://example.com";
 printfn "Can share? %A" navigatorCanShare
 let navigatorShare url title text = navigator.share !!{| url = url; title = title; text = text |}
 
+let eventTargetElementValue (eventTarget:Types.EventTarget) : Types.Element = eventTarget?value
+
 type FileShare = {
     FileUrl : string
     ContentType : string
