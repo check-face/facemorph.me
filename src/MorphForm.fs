@@ -307,22 +307,26 @@ let renderMorph values useSlider dispatch =
             ]
         ]
 
-let morphButton isLoading =
+let morphButton isLoading hideButton =
     Column.column [ ] [
-        FancyButton
-                [
-                    prop.type'.submit
-                    button.color.primary
-                    button.variant.contained
-                    button.size.large
-                    button.disabled isLoading
-                    button.children [
-                        if isLoading then Mui.circularProgress [
-                            circularProgress.size 20
-                            circularProgress.color.inherit'
-                            ] else str "Morph"
-                    ]
-                ]
+        FancyButton [
+            if hideButton && isLoading then
+                prop.style [ style.opacity 0.7 ]
+            elif hideButton then
+                prop.style [ style.opacity 0. ]
+
+            prop.type'.submit
+            button.color.primary
+            button.variant.contained
+            button.size.large
+            button.disabled (isLoading || hideButton)
+            button.children [
+                if isLoading then Mui.circularProgress [
+                    circularProgress.size 20
+                    circularProgress.color.inherit'
+                    ] else str "Morph"
+            ]
+        ]
     ]
 
 let renderContent (state:State) (dispatch: Msg -> unit) =
@@ -351,7 +355,8 @@ let renderContent (state:State) (dispatch: Msg -> unit) =
                             OnUploadRealImage = (fun () -> ClickUploadRealImage Right |> dispatch)
                             OnBrowseCheckfaceValues = (fun () -> BrowseCheckfaceValues Left |> dispatch)
                         }
-                        morphButton state.IsMorphLoading
+                        let hideButton = state.VidValues = Some (state.LeftValue, state.RightValue)
+                        morphButton state.IsMorphLoading hideButton
                         renderMorph state.VidValues state.UseSlider dispatch
                     ]
                 ]

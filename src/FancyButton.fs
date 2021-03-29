@@ -12,9 +12,9 @@ let private theStyles = createObj [
             "backgroundSize" ==> "800%"
             "animation" ==> "$anim 10s linear infinite"
             "backgroundPosition" ==> "50% 100%" //nice position if animation is not supported
-
+            "transition" ==> "opacity 0.4s ease-out"
         ]
-        
+
         "@keyframes anim" ==> createObj [
             "0%" ==> createObj [ "backgroundPosition" ==> "0% 50%" ]
             "50%" ==> createObj [ "backgroundPosition" ==> "100% 50%" ]
