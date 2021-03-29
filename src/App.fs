@@ -333,22 +333,14 @@ let themedApp' = React.functionComponent("themed-app", fun (props: {| children: 
 
 let themedApp children = themedApp' {| children = children |}
 
-let isNormalCheckfaceValues state =
-    match (state.VidValues) with
-    | None
-    | Some (CheckfaceValue _, CheckfaceValue _) -> true
-    | _ -> false
-
-
 let render (state:State) (dispatch: Msg -> unit) =
     themedApp [
         Mui.cssBaseline [ ]
         header
         MorphForm.renderContent state dispatch
         MorphForm.renderEncodeImageDialog state dispatch
-        if isNormalCheckfaceValues state then
-            viewShareContent (getShareState state) (ShareMsg >> dispatch)
-            Explain.view ()
+        viewShareContent (getShareState state) (ShareMsg >> dispatch)
+        Explain.view ()
         footer
     ]
 
