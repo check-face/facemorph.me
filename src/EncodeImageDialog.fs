@@ -9,7 +9,7 @@ open Fable.Core.JsInterop
 open Fetch
 open Checkface
 open Feliz.MaterialUI.themeStatic.theme
-type Props = {
+type EncodeImageDialogProps = {
     OnClose : unit -> unit
     IsOpen : bool
     RenderImgGuid : System.Guid -> ReactElement
@@ -43,8 +43,8 @@ let centerInGrid (elements : ReactElement list) =
         ]
     ]
 
-let encodeImageDialog = React.functionComponent ("encode-image-dialog", fun (props: Props) ->
-
+[<ReactComponent>]
+let EncodeImageDialog props =
         let fileInput = React.useRef None
         let chosenFileDataUrl, setChosenFileDataUrl = React.useState (NotLoading)
         let encodedImageResult, setEncodeResult = React.useState (NotLoading)
@@ -170,7 +170,7 @@ let encodeImageDialog = React.functionComponent ("encode-image-dialog", fun (pro
                                                 Html.p "Something went wrong. Service may be down."
 
                                             Mui.button [
-                                                button.type'.submit
+                                                prop.type'.submit
                                                 button.children "Upload"
                                                 prop.onClick uploadImage
                                                 button.variant.contained
@@ -236,4 +236,3 @@ let encodeImageDialog = React.functionComponent ("encode-image-dialog", fun (pro
                 ]
             ]
         ]
-    )

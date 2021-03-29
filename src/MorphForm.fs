@@ -4,7 +4,6 @@ open Fable.MaterialUI.Icons
 open Fable.React
 open Feliz
 open Feliz.MaterialUI
-open Feliz.prop
 open Fulma
 
 open AppState
@@ -86,7 +85,7 @@ let private getInputConfig value onChange onUploadRealImage onBrowseCheckfaceVal
             ExtraTextfieldProps = [
                 textField.inputProps [
                     prop.style [ style.textAlign.center ]
-                    autoCapitalize.off
+                    prop.autoCapitalize.off
                 ]
             ]
         }
@@ -190,7 +189,8 @@ type private SetpointProps = {
     OnBrowseCheckfaceValues: unit -> unit
 }
 
-let private renderSetpoint = React.functionComponent("setpoint-input", fun (props:SetpointProps) -> 
+[<ReactComponent>]
+let private SetpointInput props =
     let anchorEl = React.useRef None
     let isMenuOpen, setMenuOpen = React.useState false
 
@@ -248,7 +248,7 @@ let private renderSetpoint = React.functionComponent("setpoint-input", fun (prop
             textField.margin.normal
             textField.id props.Id
         ]
-    ])
+    ]
 
 let renderMorph values useSlider dispatch =
     match values with
@@ -256,7 +256,7 @@ let renderMorph values useSlider dispatch =
     | Some (fromValue, toValue) ->
         Html.div [
             if useSlider then
-                sliderMorph {
+                ViewSliderMorph {
                     Values = (fromValue, toValue)
                     OnLoaded = (fun _ -> dispatch MorphLoaded)
                     FrameSrc = morphframeSrc
@@ -312,11 +312,9 @@ let renderMorph values useSlider dispatch =
 
 let morphButton isLoading =
     Column.column [ ] [
-        fancyButton
-            {|
-                buttonProps = 
+        FancyButton
                 [
-                    button.type'.submit
+                    prop.type'.submit
                     button.color.primary
                     button.variant.contained
                     button.size.large
@@ -328,7 +326,6 @@ let morphButton isLoading =
                             ] else str "Morph"
                     ]
                 ]
-            |}
     ]
 
 let renderContent (state:State) (dispatch: Msg -> unit) =
@@ -339,7 +336,7 @@ let renderContent (state:State) (dispatch: Msg -> unit) =
                 Html.div [
                     prop.className "morph-content"
                     prop.children [
-                        renderSetpoint {
+                        SetpointInput {
                             AutoFocus = true
                             Value = state.LeftValue
                             Id = "leftval-input"
@@ -348,7 +345,7 @@ let renderContent (state:State) (dispatch: Msg -> unit) =
                             OnUploadRealImage = (fun () -> ClickUploadRealImage Left |> dispatch)
                             OnBrowseCheckfaceValues = (fun () -> BrowseCheckfaceValues Left |> dispatch)
                         }
-                        renderSetpoint {
+                        SetpointInput {
                             AutoFocus = false
                             Value = state.RightValue
                             Id = "rightval-input"
@@ -373,4 +370,4 @@ let renderEncodeImageDialog  state dispatch =
         EncodeImageApiLocation = encodeApiAddr
         OnImageEncoded = ImageEncoded >> dispatch
     }
-    encodeImageDialog props
+    EncodeImageDialog props

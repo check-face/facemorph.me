@@ -200,3 +200,6 @@ main.js
 .vercel
 
 /deploy
+
+*.fs.js
+*.fs.js.map

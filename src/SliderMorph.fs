@@ -18,7 +18,8 @@ type Props = {
     NumFrames : int
 }
 
-let sliderMorph = React.functionComponent ("canvas-face", fun (props : Props) ->
+[<ReactComponent>]
+let ViewSliderMorph (props : Props) =
         let canvasRef = React.useRef(None)
         let frames = React.useRef(None)
         let frameNum, setFrameNum = React.useState((* center *) 1 + props.NumFrames / 2) // using local state for frameNum for performance
@@ -86,4 +87,3 @@ let sliderMorph = React.functionComponent ("canvas-face", fun (props : Props) ->
                 ]
             ]
         ]
-    )

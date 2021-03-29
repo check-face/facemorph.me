@@ -1,51 +1,25 @@
-// const path = require("path")
-
-// module.exports = {
-//     mode: "none",
-//     entry: "./src/App.fsproj",
-//     devServer: {
-//         contentBase: path.join(__dirname, "./dist")
-//     },
-//     module: {
-//         rules: [{
-//             test: /\.fs(x|proj)?$/,
-//             use: "fable-loader"
-//         }]
-//     }
-// }
+const realFs = require('fs')
+const gracefulFs = require('graceful-fs')
+gracefulFs.gracefulify(realFs) //patch graceful filesystem
 
 
-
-
-
-
-
-
-
-
-
-
-
-// Template for webpack.config.js in Fable projects
-// Find latest version in https://github.com/fable-compiler/webpack-config-template
-
-// In most cases, you'll only need to edit the CONFIG object (after dependencies)
-// See below if you need better fine-tuning of Webpack options
-
-// Dependencies. Also required: core-js, fable-loader, fable-compiler, @babel/core,
-// @babel/preset-env, babel-loader, sass, sass-loader, css-loader, style-loader, file-loader, resolve-url-loader
 var path = require('path');
-var webpack = require('webpack');
 var HtmlWebpackPlugin = require('html-webpack-plugin');
 var CopyWebpackPlugin = require('copy-webpack-plugin');
 var MiniCssExtractPlugin = require('mini-css-extract-plugin');
-const { CleanWebpackPlugin } = require('clean-webpack-plugin');
+const { CleanWebpackPlugin } = require('clean-webpack-plugin')
+const ReactRefreshWebpackPlugin = require('@pmmmwh/react-refresh-webpack-plugin');;
+
+
+// If we're running the webpack-dev-server, assume we're in development mode
+var isProduction = !process.argv.find(v => v.indexOf('webpack-dev-server') !== -1);
+console.log('Bundling for ' + (isProduction ? 'production' : 'development') + '...');
 
 var CONFIG = {
     // The tags to include the generated JS and CSS will be automatically injected in the HTML template
     // See https://github.com/jantimon/html-webpack-plugin
     indexHtmlTemplate: './src/index.html',
-    fsharpEntry: './src/App.fsproj',
+    fsharpEntry: './src/Index.fs.js',
     cssEntry: './src/style.scss',
     outputDir: './deploy',
     assetsDir: './src/public',
@@ -54,22 +28,11 @@ var CONFIG = {
     // Use babel-preset-env to generate JS compatible with most-used browsers.
     // More info at https://babeljs.io/docs/en/next/babel-preset-env.html
     babel: {
-        presets: [
-            ['@babel/preset-env', {
-                modules: false,
-                // This adds polyfills when needed. Requires core-js dependency.
-                // See https://babeljs.io/docs/en/babel-preset-env#usebuiltins
-                // Note that you still need to add custom polyfills if necessary (e.g. whatwg-fetch)
-                useBuiltIns: 'usage',
-                corejs: 3
-            }]
-        ],
+        plugins: [(!isProduction) && require.resolve('react-refresh/babel')].filter(Boolean),
+        presets: [ "@babel/preset-env", "@babel/preset-react" ]
     }
 }
 
-// If we're running the webpack-dev-server, assume we're in development mode
-var isProduction = !process.argv.find(v => v.indexOf('webpack-dev-server') !== -1);
-console.log('Bundling for ' + (isProduction ? 'production' : 'development') + '...');
 
 // The HtmlWebpackPlugin allows us to use a template for the index.html page
 // and automatically injects <script> or <link> tags for generated bundles.
@@ -102,9 +65,18 @@ let client =
     mode: isProduction ? 'production' : 'development',
     devtool: isProduction ? 'source-map' : 'eval-source-map',
     optimization: {
+        // Split the code coming from npm packages into a different file.
+        // 3rd party dependencies change less often, let the browser cache them.
         splitChunks: {
-            chunks: 'all'
+            cacheGroups: {
+                commons: {
+                    test: /node_modules/,
+                    name: "vendors",
+                    chunks: "all"
+                }
+            }
         },
+        minimize: isProduction
     },
     // Besides the HtmlPlugin, we use the following plugins:
     // PRODUCTION
@@ -125,11 +97,17 @@ let client =
             }),
         ])
         : commonPlugins.concat([
-            new webpack.HotModuleReplacementPlugin(),
+            new ReactRefreshWebpackPlugin(),
         ]),
     resolve: {
         // See https://github.com/fable-compiler/Fable/issues/1490
-        symlinks: false
+        symlinks: false,
+        modules: [resolve("./node_modules")],
+        alias: {
+            // Some old libraries still use an old specific version of core-js
+            // Redirect the imports of these libraries to the newer core-js
+            'core-js/es6': 'core-js/es'
+        }
     },
     // Configuration for webpack-dev-server
     devServer: {
@@ -144,23 +122,13 @@ let client =
         },
         inline: true
     },
-    // - fable-loader: transforms F# into JS
     // - babel-loader: transforms JS to old syntax (compatible with old browsers)
     // - sass-loaders: transforms SASS/SCSS into JS
     // - file-loader: Moves files referenced in the code (fonts, images) into output folder
     module: {
         rules: [
             {
-                test: /\.fs(x|proj)?$/,
-                use: {
-                    loader: 'fable-loader',
-                    options: {
-                        babel: CONFIG.babel
-                    }
-                }
-            },
-            {
-                test: /\.js$/,
+                test: /\.(js|jsx)$/,
                 exclude: /node_modules/,
                 use: {
                     loader: 'babel-loader',
@@ -214,18 +182,14 @@ let client =
             }
         ]
     },
-    optimization: {
-        minimize: isProduction
-    }
 };
 
 let server =
 {
-    entry: {server: ['./Server/Server.fsproj']},
+    entry: {server: ['./Server/Index.fs.js']},
     target: 'node',
     output: {
         path: resolve("./deploy/api"),
-        // filename: isProduction ? '[name].[hash].js' : '[name].js'
         filename: '[name].js',
         library: "ServerLib",
         libraryTarget: "commonjs"
@@ -233,7 +197,7 @@ let server =
     mode: isProduction ? 'production' : 'development',
     devtool: isProduction ? 'source-map' : 'eval-source-map',
     // See https://github.com/fable-compiler/Fable/issues/1490
-    resolve: {symlinks: false},
+    resolve: client.resolve,
     plugins: [
         new CopyWebpackPlugin({ patterns: [
             { from: resolve("./Server/render-serverless-function.js") },

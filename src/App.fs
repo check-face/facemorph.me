@@ -324,17 +324,16 @@ let createTheme isDark = [
 let darkTheme = Styles.createMuiTheme (createTheme true)
 let lightTheme = Styles.createMuiTheme (createTheme false)
 
-let themedApp' = React.functionComponent("themed-app", fun (props: {| children: ReactElement list |}) ->
+[<ReactComponent>]
+let ThemedApp children =
     let theme = if Hooks.useMediaQuery("@media (prefers-color-scheme: dark)") then darkTheme else lightTheme
     Mui.themeProvider [
         themeProvider.theme theme
-        themeProvider.children props.children
-    ])
-
-let themedApp children = themedApp' {| children = children |}
+        themeProvider.children children
+    ]
 
 let render (state:State) (dispatch: Msg -> unit) =
-    themedApp [
+    ThemedApp [
         Mui.cssBaseline [ ]
         header
         MorphForm.renderContent state dispatch
@@ -357,7 +356,7 @@ let viewHead state =
 
     helmet [ 
         prop.children [
-            Html.title (pageTitle state.VidValues)
+            Html.title (str (pageTitle state.VidValues))
             Html.meta [
                 prop.custom ("property", "description")
                 prop.custom ("name", "description")
