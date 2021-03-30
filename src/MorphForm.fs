@@ -10,7 +10,6 @@ open AppState
 open Checkface
 open FancyButton
 open SliderMorph
-open EncodeImageDialog
 open Config
 
 let renderImageByValue value =
@@ -175,7 +174,6 @@ let setpointKindMenu (anchorEl:IRefValue<Option<Browser.Types.Element>>) isOpen 
         ]
     ]
 
-
 type private SetpointProps = {
     AutoFocus: bool
     Label: string
@@ -185,21 +183,6 @@ type private SetpointProps = {
     OnUploadRealImage: unit -> unit
     OnBrowseCheckfaceValues: unit -> unit
 }
-
-let (|AsNumericSeed|) =
-    function
-    | Seed seed -> seed
-    | Guid _ -> defaultNumericSeed
-    | CheckfaceValue value ->
-        match System.UInt32.TryParse value with
-        | true, num -> num
-        | false, _ -> defaultNumericSeed
-
-let (|AsTextValue|) =
-    function
-    | Seed seed -> seed.ToString()
-    | CheckfaceValue value -> value
-    | Guid _ -> defaultTextValue
 
 [<ReactComponent>]
 let private SetpointInput props =
@@ -368,7 +351,7 @@ let renderContent (state:State) (dispatch: Msg -> unit) =
                             Label = "Morph to"
                             OnChange = (SetRightValue >> dispatch)
                             OnUploadRealImage = (fun () -> ClickUploadRealImage Right |> dispatch)
-                            OnBrowseCheckfaceValues = (fun () -> BrowseCheckfaceValues Left |> dispatch)
+                            OnBrowseCheckfaceValues = (fun () -> BrowseCheckfaceValues Right |> dispatch)
                         }
                         let hideButton = state.VidValues = Some (state.LeftValue, state.RightValue)
                         morphButton state.IsMorphLoading hideButton
@@ -380,11 +363,29 @@ let renderContent (state:State) (dispatch: Msg -> unit) =
     ]
 
 let renderEncodeImageDialog  state dispatch =
-    let props = { 
+    EncodeImageDialog.EncodeImageDialog { 
         OnClose = fun () -> dispatch CloseUploadDialog
         IsOpen = state.UploadDialogSide.IsSome
         RenderImgGuid = Guid >> renderImageByValue
         EncodeImageApiLocation = encodeApiAddr
-        OnImageEncoded = ImageEncoded >> dispatch
+        OnImageEncoded = fun guid ->
+            dispatch CloseUploadDialog
+            match state.UploadDialogSide with
+            | Some Left -> SetLeftValue (Guid guid) |> dispatch
+            | Some Right -> SetRightValue (Guid guid) |> dispatch
+            | None -> ()
     }
-    EncodeImageDialog props
+
+let renderBrowseFacesDialog state dispatch =
+    BrowseFacesDialog.BrowseFacesDialog {
+        OnClose = fun () -> dispatch CloseBrowseFacesDialog
+        IsOpen = state.BrowseFacesDialogSide.IsSome
+        RenderValue = renderImageByValue
+        OnValueSelected = fun value ->
+            dispatch CloseBrowseFacesDialog
+            match state.BrowseFacesDialogSide with
+            | Some Left -> SetLeftValue value |> dispatch
+            | Some Right -> SetRightValue value |> dispatch
+            | None -> ()
+        Values = Some [ for i in 1u..100u do Seed i ]
+    }

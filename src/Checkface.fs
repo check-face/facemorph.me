@@ -13,8 +13,20 @@ type EncodeImageResponse =
     abstract did_align : bool
     abstract guid : string
 
+let (|AsNumericSeed|) =
+    function
+    | Seed seed -> seed
+    | Guid _ -> defaultNumericSeed
+    | CheckfaceValue value ->
+        match System.UInt32.TryParse value with
+        | true, num -> num
+        | false, _ -> defaultNumericSeed
 
-
+let (|AsTextValue|) =
+    function
+    | Seed seed -> seed.ToString()
+    | CheckfaceValue value -> value
+    | Guid _ -> defaultTextValue
 
 let shortCheckfaceSrcDesc = function
     | CheckfaceValue value -> value

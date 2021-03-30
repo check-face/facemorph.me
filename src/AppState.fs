@@ -9,6 +9,7 @@ type State = {
     LeftValue : CheckfaceSrc
     RightValue : CheckfaceSrc
     UploadDialogSide : Side option
+    BrowseFacesDialogSide : Side option
     ShareOpen : bool
     ShareLinkMsg : string option
     IsMorphLoading : bool
@@ -30,7 +31,7 @@ type Msg =
     | ClickUploadRealImage of Side
     | BrowseCheckfaceValues of Side
     | CloseUploadDialog
-    | ImageEncoded of System.Guid
+    | CloseBrowseFacesDialog
     | UrlChanged of (string list * Map<string, string>)
     | MakeVid
     | ShareMsg of ShareMsg

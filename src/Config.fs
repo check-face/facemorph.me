@@ -18,3 +18,5 @@ let defaultNumericSeed = 389u // 389 is one of the seeds featured in the stylega
 
 let apiAddr = "https://api.checkface.ml"
 let encodeApiAddr = apiAddr + "/api/encodeimage/"
+
+let browseFacesEmbedSrc = "https://names.facemorph.me"

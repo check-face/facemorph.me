@@ -102,6 +102,7 @@ let initByUrlstate urlState =
         LeftValue = defaultFromValue fromValue
         RightValue = defaultToValue toValue
         UploadDialogSide = None
+        BrowseFacesDialogSide = None
         VidValues = vidValues
         ShareOpen = false
         ShareLinkMsg = None
@@ -179,15 +180,10 @@ let update msg state : State * Cmd<Msg> =
         { state with UploadDialogSide = Some side }, Cmd.none
     | CloseUploadDialog ->
         { state with UploadDialogSide = None }, Cmd.none
-    | ImageEncoded guid ->
-        let leftValue, rightValue =
-            match state with
-            | { UploadDialogSide = Some Right; LeftValue = lVal } -> lVal, Guid guid
-            | { RightValue = rVal } -> Guid guid, rVal //default to setting left side is side is not set
-        { state with UploadDialogSide = None; LeftValue = leftValue; RightValue = rightValue }, Cmd.none
+    | CloseBrowseFacesDialog ->
+        { state with BrowseFacesDialogSide = None }, Cmd.none
     | BrowseCheckfaceValues side ->
-        Browser.Dom.window.location.href <- "https://names.facemorph.me"
-        state, Cmd.none
+        { state with BrowseFacesDialogSide = Some side }, Cmd.none
     | MakeVid when state.VidValues = Some (state.LeftValue, state.RightValue) ->
         state, Cmd.none
     | MakeVid ->
@@ -338,6 +334,7 @@ let render (state:State) (dispatch: Msg -> unit) =
         header
         MorphForm.renderContent state dispatch
         MorphForm.renderEncodeImageDialog state dispatch
+        MorphForm.renderBrowseFacesDialog state dispatch
         viewShareContent (getShareState state) (ShareMsg >> dispatch)
         Explain.view ()
         footer
