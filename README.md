@@ -7,7 +7,7 @@ It uses the [CheckFace API](https://checkface.ml/api) for generating images and 
 
 ## Building and running the app
 
-> Install pre-requisites: [.NET Core SDK 3.1](https://dotnet.microsoft.com/download/dotnet-core/), [node.js](https://nodejs.org/en/), [npm](https://www.npmjs.com/)
+> Install pre-requisites: [.NET 5 SDK](https://dotnet.microsoft.com/download/dotnet/5.0), [node.js](https://nodejs.org/en/), [npm](https://www.npmjs.com/)
 
 First of all, start with installing the project's npm dependencies
 ```bash
