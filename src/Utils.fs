@@ -16,6 +16,9 @@ let rec remove i l =
     | i, x::xs -> x::remove (i - 1) xs
     | i, [] -> failwith "index out of range"
 
+let tryToOption (didSucceed, value) =
+    if didSucceed then Some value else None
+
 [<Emit("gtag('event', $0, { 'event_category': $1 })")>]
 let gtagEvent action catagory : unit = jsNative
 
@@ -36,6 +39,8 @@ let navigatorCanShareThing (data:Types.ShareData) : bool = jsNative
 let navigatorCanShare = navigatorCanShareThing !!{| url = "https://example.com"; text = "examplewwe text"; title = "nonononono" |}
 printfn "Can share? %A" navigatorCanShare
 let navigatorShare url title text = navigator.share !!{| url = url; title = title; text = text |}
+
+let eventTargetElementValue (eventTarget:Types.EventTarget) : Types.Element = eventTarget?value
 
 type FileShare = {
     FileUrl : string

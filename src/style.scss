@@ -116,3 +116,25 @@ html {
         text-align: center;
     }
 }
+
+
+// Hide the focuswithin-child until focus or hover is within focuswithin-parent
+.focuswithin-parent .focuswithin-child {
+    transform-origin: top;
+    transform: rotateX(0);
+    opacity: 1;
+
+    transition: 0.3s;
+    transition-property: opacity, transform;
+}
+
+.focuswithin-parent:not(:focus-within):not(:hover) .focuswithin-child {
+    opacity: 0;
+    transform: rotateX(25deg);
+
+    @media (prefers-reduced-motion) {
+        // disable rotation transition when prefers reduced motion
+        transform: rotateX(0);
+    }
+}
+

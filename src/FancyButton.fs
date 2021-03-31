@@ -12,9 +12,9 @@ let private theStyles = createObj [
             "backgroundSize" ==> "800%"
             "animation" ==> "$anim 10s linear infinite"
             "backgroundPosition" ==> "50% 100%" //nice position if animation is not supported
-
+            "transition" ==> "opacity 0.4s ease-out"
         ]
-        
+
         "@keyframes anim" ==> createObj [
             "0%" ==> createObj [ "backgroundPosition" ==> "0% 50%" ]
             "50%" ==> createObj [ "backgroundPosition" ==> "100% 50%" ]
@@ -24,10 +24,10 @@ let private theStyles = createObj [
 
 let private useStyles = Styles.makeStyles (fun styles theme -> theStyles)
 
-let fancyButton = React.functionComponent ("fancy-button", fun (props:{| buttonProps: IReactProperty list |}) ->
-        let classes = useStyles()
-        Mui.button [
-            button.classes.root classes?root
-            yield! props.buttonProps
-        ]
-    )
+[<ReactComponent>]
+let FancyButton buttonProps =
+    let classes = useStyles()
+    Mui.button [
+        button.classes.root classes?root
+        yield! buttonProps
+    ]

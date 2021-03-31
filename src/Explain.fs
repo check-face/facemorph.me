@@ -10,7 +10,7 @@ let explainContent : string = Fable.Core.JsInterop.importDefault "./explain.md"
 
 let private useStyles = Styles.makeStyles (fun styles theme ->
     {|
-        expansionPanelSummary = styles.create [
+        accordionSummary = styles.create [
             style.backgroundColor theme.palette.background?level2
         ]
 
@@ -19,9 +19,9 @@ let private useStyles = Styles.makeStyles (fun styles theme ->
         ]
     |})
 
-let view = React.functionComponent (fun () ->
 
-
+[<ReactComponent>]
+let Explain () =
     let c = useStyles ()
 
     let parts =
@@ -59,12 +59,12 @@ let view = React.functionComponent (fun () ->
 
             Html.div [
                 for question, answer in faq do
-                    Mui.expansionPanel [
-                        expansionPanel.square true
-                        expansionPanel.children [
-                            Mui.expansionPanelSummary [
-                                expansionPanelSummary.expandIcon (expandMoreIcon [ ])
-                                expansionPanelSummary.classes.root c.expansionPanelSummary
+                    Mui.accordion [
+                        accordion.square true
+                        accordion.children [
+                            Mui.accordionSummary [
+                                accordionSummary.expandIcon (expandMoreIcon [ ])
+                                accordionSummary.classes.root c.accordionSummary
                                 prop.children [
                                     Mui.typography [
                                         typography.component' "h3"
@@ -76,7 +76,7 @@ let view = React.functionComponent (fun () ->
                             match answer with
                             | None -> ()
                             | Some answer ->
-                                Mui.expansionPanelDetails [
+                                Mui.accordionDetails [
                                     Content.content [
                                         Content.CustomClass c.content
                                     ] [
@@ -84,10 +84,12 @@ let view = React.functionComponent (fun () ->
                                             prop.dangerouslySetInnerHTML answer
                                         ]
                                     ]
-                                ]
+                            ]
                         ]
                     ]
             ]
         ]
-    ])
+    ]
+
+let view () = Explain ()
 
