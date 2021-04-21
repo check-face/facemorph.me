@@ -43,6 +43,10 @@ let centerInGrid (elements : ReactElement list) =
         ]
     ]
 
+let isInvalidImageDataUrl (dataUrl:string) =
+    // must be image mime type but not svg
+    (not (dataUrl.StartsWith "data:image")) || dataUrl.StartsWith("data:image/svg")
+
 [<ReactComponent>]
 let EncodeImageDialog props =
         let fileInput = React.useRef None
@@ -50,21 +54,34 @@ let EncodeImageDialog props =
         let encodedImageResult, setEncodeResult = React.useState (NotLoading)
 
         let getDataUrl (input:Types.HTMLInputElement) =
-            if input.files.length = 1
-            then
+            setEncodeResult NotLoading
+            if input.files.length < 1 then
+                setChosenFileDataUrl NotLoading
+            else
+                setChosenFileDataUrl Loading
                 let file = input.files.[0]
                 let reader = FileReader.Create ()
                 reader.onload <- fun e -> setChosenFileDataUrl (Loaded e.target?result)
-                reader.onerror <- fun e -> setChosenFileDataUrl NotLoading
+                reader.onerror <- fun e -> setChosenFileDataUrl LoadingError
                 printfn "readAsDataUrl"
                 reader.readAsDataURL(file)
 
         let onFileInputChange (e: Event) =
-            setChosenFileDataUrl Loading
-            setEncodeResult NotLoading
             match fileInput.current with
-            | Some input -> getDataUrl (unbox<Types.HTMLInputElement>(input))
+            | Some input ->
+                getDataUrl (unbox<Types.HTMLInputElement>(input))
             | None -> ()
+
+        let onPasteEvent (e: ClipboardEvent) =
+            e.preventDefault()
+            match fileInput.current with
+            | Some input ->
+                // only works for pasting image data, not files unfortunately
+                let input = unbox<Types.HTMLInputElement>(input)
+                input.files <- e.clipboardData.files
+                onFileInputChange null
+            | None ->
+                ()
 
         let uploadImage (_: Event) =
 
@@ -109,6 +126,7 @@ let EncodeImageDialog props =
         Mui.dialog [
             dialog.open' props.IsOpen
             dialog.onClose (fun _ _ -> close ())
+            prop.onPaste onPasteEvent
             dialog.children [
                 Mui.dialogTitle [
                     dialogTitle.children "Upload an image"
@@ -144,6 +162,13 @@ let EncodeImageDialog props =
                                 Column.column [ ] [
                                     errorIcon ()
                                     Html.p "Something went wrong loading file. Try picking another image"
+                                ]
+                            ]
+                        | Loaded dataUrl when isInvalidImageDataUrl dataUrl ->
+                            Columns.columns [ ] [
+                                Column.column [ ] [
+                                    errorIcon ()
+                                    Html.p "Not a valid image"
                                 ]
                             ]
                         | Loaded dataUrl ->
