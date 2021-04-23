@@ -191,17 +191,13 @@ let server =
     output: {
         path: resolve("./deploy/api"),
         filename: '[name].js',
-        library: "ServerLib",
-        libraryTarget: "commonjs"
+        libraryTarget: "commonjs2"
     },
     mode: isProduction ? 'production' : 'development',
     devtool: isProduction ? 'source-map' : 'eval-source-map',
     // See https://github.com/fable-compiler/Fable/issues/1490
     resolve: client.resolve,
     plugins: [
-        new CopyWebpackPlugin({ patterns: [
-            { from: resolve("./Server/render-serverless-function.js") },
-        ]}),
         new CleanWebpackPlugin(),
     ],
     module: client.module,

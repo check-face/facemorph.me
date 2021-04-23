@@ -32,6 +32,9 @@ type Clipboard =
 [<Emit("typeof $0 === 'undefined'")>]
 let  isUndefined (x: 'a) : bool = jsNative
 
+[<Emit("(!!$0)")>]
+let isTruthy (x: 'a) : bool = jsNative
+
 let clipboard : Clipboard option = if isUndefined navigator then None else navigator?clipboard
 
 [<Emit("""typeof navigator !== 'undefined' && navigator.canShare && navigator.canShare($0)""")>]

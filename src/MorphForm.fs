@@ -211,7 +211,12 @@ let private SetpointInput props =
                 renderImageByValue props.Value
             ]
         ]
-        setpointKindMenu (anchorEl :?> IRefValue<Option<Browser.Types.Element>>) isMenuOpen setMenuOpen setpointKind changeSetpointKind
+
+        Mui.noSsr [
+            // the menu seems to throw "document undefined" in ssr
+            setpointKindMenu (anchorEl :?> IRefValue<Option<Browser.Types.Element>>) isMenuOpen setMenuOpen setpointKind changeSetpointKind
+        ]
+
         Mui.textField [
             textField.value inputConfig.Value
 

@@ -4,6 +4,8 @@
     <TargetFramework>netstandard2.0</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="Node.fs" />
+    <Compile Include="Bindings.fs" />
     <Compile Include="Index.fs" />
   </ItemGroup>
   <ItemGroup>
