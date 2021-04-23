@@ -13,6 +13,7 @@ open Utils
 
 open AppState
 open Checkface
+open Logos
 open Share
 open Config
 
@@ -211,9 +212,6 @@ let update msg state : State * Cmd<Msg> =
         { state with IsMorphLoading = false }, Cmd.none
     | SetUseSlider v ->
         { state with UseSlider = v }, Cmd.none
-
-let logo : ReactElementType = Fable.Core.JsInterop.importDefault "./public/logo.svg"
-let animatedLogo : ReactElementType = Fable.Core.JsInterop.importDefault "./public/logo-animated.svg"
 
 let getShareState state =
     { 

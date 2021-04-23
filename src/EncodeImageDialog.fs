@@ -7,7 +7,9 @@ open Browser.Types
 open Browser
 open Fable.Core.JsInterop
 open Fetch
+open Logos
 open Checkface
+open Config
 open Feliz.MaterialUI.themeStatic.theme
 type EncodeImageDialogProps = {
     OnClose : unit -> unit
@@ -129,10 +131,29 @@ let EncodeImageDialog props =
             prop.onPaste onPasteEvent
             dialog.children [
                 Mui.dialogTitle [
-                    dialogTitle.children "Upload an image"
+                    Html.div [
+                        prop.style [
+                            style.display.flex
+                            style.justifyContent.spaceBetween
+                        ]
+                        prop.children [
+                            Html.span "Upload an image"
+                            Mui.svgIcon [
+                                prop.className "vivus-start"
+                                svgIcon.component' logo
+                                prop.style [
+                                    style.fontSize (length.em 1.5)
+                                ]
+                            ]
+                        ]
+                    ]
                 ]
                 Mui.dialogContent [
-                    Mui.dialogContentText "You can upload an image of a real face. We will attempt to find a value which approximates that face."
+                    Mui.dialogContentText [
+                        Html.span "You can upload an image of a real face to "
+                        Html.b siteName
+                        Html.span ". We will attempt to find a value which approximates that face."
+                    ]
                     Column.column [ ] [
                         Columns.columns [ ] [
                             Mui.input [

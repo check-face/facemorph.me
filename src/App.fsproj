@@ -6,6 +6,7 @@
     <Compile Include="Config.fs" />
     <Compile Include="Utils.fs" />
     <Compile Include="Checkface.fs" />
+    <Compile Include="Logos.fs" />
     <Compile Include="FancyButton.fs" />
     <Compile Include="SliderMorph.fs" />
     <Compile Include="Explain.fs" />
