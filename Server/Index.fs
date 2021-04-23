@@ -42,7 +42,7 @@ let titleRegex : obj = jsNative
 [<Emit("/<div id=\\\"elmish-app\\\"><\\/div>/")>]
 let elmishAppRegex : obj = jsNative
 
-let handleRequest (req: IncomingMessage, res: VercelResponse) =
+let handleRequest (req: IncomingMessage) (res: VercelResponse) =
     console.log ("Got a request!")
     let reqUrl = URL.Create (req.url, $"http://%s{req.headers?host}")
     let pathName = reqUrl.pathname
@@ -77,3 +77,5 @@ let handleRequest (req: IncomingMessage, res: VercelResponse) =
             console.log("Oops, no contents :(");
             return res.status(500).send("Oops, better luck next time!");
     }
+
+exportDefault handleRequest

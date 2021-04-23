@@ -5,13 +5,13 @@
   },
   "routes": [
     { "src": "/.*", "continue": true, "headers": { "cache-control": "max-age=3600, s-maxage=86400" } },
-    { "src": "/index.html", "dest": "/api/render-serverless-function" },
-    { "src": "/", "dest": "/api/render-serverless-function" },
+    { "src": "/index.html", "dest": "/api/server" },
+    { "src": "/", "dest": "/api/server" },
     { "handle": "filesystem" },
-    { "src": "/.*", "dest": "/api/render-serverless-function" }
+    { "src": "/.*", "dest": "/api/server" }
   ],
   "functions": {
-    "api/render-serverless-function.js": {
+    "api/server.js": {
       "includeFiles": "index.html"
     }
   }
