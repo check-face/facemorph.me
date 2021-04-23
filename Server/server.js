@@ -4,8 +4,9 @@ import fs from 'fs';
 import ReactDOMServer from 'react-dom/server';
 import Helmet from 'react-helmet'
 import URL from 'url';
+import { ServerStyleSheets } from '@material-ui/core/styles';
 
-function createEndpoint(headComponentFun) {  
+function createEndpoint(appComponentFun) {  
   const indexFile = path.resolve(__dirname, '../index.html');
   let indexContents = null;
   let didRead = false;
@@ -14,18 +15,25 @@ function createEndpoint(headComponentFun) {
     let reqUrl = URL.parse(req.url);
     let pathName = reqUrl.pathname;
     let queryString = reqUrl.search;
-    const headComponent = headComponentFun([pathName, queryString])
-    ReactDOMServer.renderToString(headComponent);
+    const sheets = new ServerStyleSheets();
+    const appComponent = appComponentFun([pathName, queryString])
+    const renderedApp = ReactDOMServer.renderToString(sheets.collect(appComponent));
     var helmet = Helmet.renderStatic();
     var headParts = `
       ${helmet.title.toString()}
       ${helmet.meta.toString()}
       ${helmet.link.toString()}
+      <style id="jss-server-side">${sheets.toString()}</style>
     `;
+    const appPart = `<div id="elmish-app">${renderedApp}</div>`
 
     let respond = contents => {
       if (contents) {
-        return res.status(200).send(indexContents.replace(/<title>.*<\/title>/, headParts));
+        return res.status(200).send(
+          contents
+            .replace(/<title>.*<\/title>/, headParts)
+            .replace(/<div id=\"elmish-app\"><\/div>/, appPart)
+          );
       } else {
         console.log("Oops, no contents :(");
         return res.status(500).send("Oops, better luck next time!");

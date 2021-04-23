@@ -397,13 +397,26 @@ let viewHead state =
         ]
     ]
 
+[<ReactComponent>]
+let RemoveServerSideJss () =
+    // https://material-ui.com/guides/server-rendering/
+    React.useEffectOnce <| fun () ->
+        let jssStyles = Browser.Dom.document.getElementById "jss-server-side"
+        if isTruthy jssStyles then
+            jssStyles.parentElement.removeChild jssStyles |> ignore
+    React.fragment [ ]
+
+let viewWithoutRouter state dispatch =
+    React.fragment [
+        viewHead state
+        RemoveServerSideJss ()
+        render state dispatch
+    ]
+
 
 let view state dispatch =
     React.router [
         router.pathMode
         router.onUrlChanged (getCurrentPath >> parseSegments >> UrlChanged >> dispatch)
-        router.children [
-            viewHead state
-            render state dispatch
-        ]
+        router.children (viewWithoutRouter state dispatch)
     ]

@@ -10,6 +10,6 @@ printfn "Importing createEndpoint"
 let createEndpoint : (string * string -> ReactElement) -> unit = import "createEndpoint" "./server.js"
 
 printfn "Creating endpoint"
-let endpoint = createEndpoint (initByUrl >> viewHead)
+let endpoint = createEndpoint (fun urlState -> viewWithoutRouter (initByUrl urlState) ignore)
 
 
