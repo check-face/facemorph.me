@@ -52,8 +52,6 @@ let linkpreviewSrc (width:int) (fromValue, toValue) =
     sprintf "%s/api/linkpreview/?width=%i&from_%s&to_%s" apiAddr width (valueParam fromValue) (valueParam toValue)
 
 
-
-
 let describeCheckfaceSrc =
     function
     | CheckfaceValue value -> sprintf "value %s" value
@@ -66,4 +64,5 @@ let imgAlt value =
 let vidMorphAlt (fromValue, toValue) =
     sprintf "Morph from %s to %s" (describeCheckfaceSrc fromValue) (describeCheckfaceSrc toValue)
 
-let linkpreviewAlt (fromValue, toValue) = sprintf "%s + %s" fromValue toValue
+let linkpreviewAlt (fromValue, toValue) =
+    sprintf "Preview of %s + %s" (describeCheckfaceSrc fromValue) (describeCheckfaceSrc toValue)

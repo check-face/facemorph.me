@@ -376,7 +376,7 @@ let viewHead state =
             | Some vidValues ->
                 let videoSrc = vidSrc ogVideoDim vidValues
                 let linkprevSrc = linkpreviewSrc linkpreviewWidth vidValues
-                let linkprevAlt = linkpreviewSrc linkpreviewWidth vidValues
+                let linkprevAlt = linkpreviewAlt vidValues
                 
                 meta "og:image" linkprevSrc
                 meta "og:image:alt" linkprevAlt
