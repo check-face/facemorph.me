@@ -45,6 +45,9 @@ let imgSrc (dim:int) isWebp value =
 let vidSrc (dim:int) (fromValue, toValue) =
     sprintf "%s/api/mp4/?dim=%i&from_%s&to_%s" apiAddr dim (valueParam fromValue) (valueParam toValue)
 
+let animatedWebpSrc (dim:int) (fromValue, toValue) =
+    sprintf "%s/api/webp/?dim=%i&from_%s&to_%s" apiAddr dim (valueParam fromValue) (valueParam toValue)
+
 let morphframeSrc (fromValue, toValue) dim numFrames frameNum =
     sprintf "%s/api/morphframe/?dim=%i&linear=true&from_%s&to_%s&num_frames=%i&frame_num=%i" apiAddr dim (valueParam fromValue) (valueParam toValue) numFrames frameNum
 

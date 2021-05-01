@@ -51,6 +51,8 @@ type VercelResponse =
     abstract send : body: string -> VercelResponse
     abstract send : body: Buffer -> VercelResponse
     // abstract send : body: obj -> VercelResponse
+    abstract json : body: obj -> VercelResponse
+    abstract setHeader : name : string * value : string -> VercelResponse
 
 
 [<Global>]
