@@ -55,6 +55,9 @@ let formatPathForVidValues vidValues =
 let canonicalUrl state =
     canonicalBaseUrl + formatPathForVidValues state.VidValues
 
+let oEmbedUrl (url:string) =
+    oEmbedApiEndpoint + (Feliz.Router.Router.formatPath("", [ "url", url ]))
+
 let pageTitle vidValues =
     match vidValues with
     | Some (fromValue, toValue) ->
@@ -348,21 +351,29 @@ let meta (property:string) content =
 
 let viewHead state =
     let canonicalUrl = canonicalUrl state
+    let title = pageTitle state.VidValues
 
     helmet [ 
         prop.children [
-            Html.title (str (pageTitle state.VidValues))
+            Html.title (str title)
             Html.meta [
                 prop.custom ("property", "description")
                 prop.custom ("name", "description")
                 prop.custom ("content", pageDescription None)
             ]
-            meta "og:title" (pageTitle state.VidValues)
+            meta "og:title" (title)
             meta "og:description" (pageDescription None)
             meta "og:site_name" siteName
 
             Html.link [ prop.rel.canonical; prop.href canonicalUrl ]
             meta "og:url" canonicalUrl
+
+            Html.link [
+                rel.alternate
+                prop.custom ("type", "application/json+oembed")
+                prop.href (oEmbedUrl canonicalUrl)
+                prop.title $"oEmbed for %s{title}"
+            ]
 
             match state.VidValues with
             | None -> // just use left value if no video

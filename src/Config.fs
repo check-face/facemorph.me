@@ -7,9 +7,13 @@ let linkpreviewWidth = 1200
 let linkpreviewHeight = 628
 let ogImgDim = 512
 let ogVideoDim = 512
+let maxSupportedImgDim = 1024
+let thumbnailDim = 128
 
 let siteName = "facemorph.me"
 let canonicalBaseUrl = "https://facemorph.me"
+// let oEmbedApiEndpoint = canonicalBaseUrl + "/oembed.json"
+let oEmbedApiEndpoint = "https://oembed.vercel.facemorph.me/"  + "/oembed.json"
 let contactEmail = "checkfaceml@gmail.com"
 let githubRepo = "check-face/facemorph.me"
 
