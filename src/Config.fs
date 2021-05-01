@@ -12,8 +12,7 @@ let thumbnailDim = 128
 
 let siteName = "facemorph.me"
 let canonicalBaseUrl = "https://facemorph.me"
-// let oEmbedApiEndpoint = canonicalBaseUrl + "/oembed.json"
-let oEmbedApiEndpoint = "https://oembed.vercel.facemorph.me/"  + "/oembed.json"
+let oEmbedApiEndpoint = canonicalBaseUrl + "/oembed.json"
 let contactEmail = "checkfaceml@gmail.com"
 let githubRepo = "check-face/facemorph.me"
 
