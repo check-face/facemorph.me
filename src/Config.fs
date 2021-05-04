@@ -19,7 +19,7 @@ let githubRepo = "check-face/facemorph.me"
 let defaultTextValue = "hello"
 let defaultNumericSeed = 389u // 389 is one of the seeds featured in the stylegan2 paper
 
-let apiAddr = "https://api.checkface.ml"
+let apiAddr = "https://api.facemorph.me"
 let encodeApiAddr = apiAddr + "/api/encodeimage/"
 
 let browseFacesEmbedSrc = "https://names.facemorph.me"
