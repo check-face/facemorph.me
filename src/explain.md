@@ -97,7 +97,8 @@ In the input textbox there is a button to change mode and upload an image.
 
 #### Is there a StyleGAN2 API?
 The source code for our server is at [github.com/check-face/checkface](https://github.com/check-face/checkface)  
-It is documented at [checkface.ml/api](https://checkface.ml/api)
+It is documented at [checkface.facemorph.me/api](https://checkface.facemorph.me/api)
+<!-- or at https://github.com/check-face/checkface/blob/master/docs/api.md -->
 
 We recommented hosting the server yourself as we do not plan on running it reliably or indefinitely.
 Feel free to contact us using the email address in the footer.
