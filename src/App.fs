@@ -63,7 +63,7 @@ let pageTitle vidValues =
     | Some (fromValue, toValue) ->
         sprintf "%s to %s" (shortCheckfaceSrcDesc fromValue) (shortCheckfaceSrcDesc toValue)
     | None ->
-        siteName
+        siteName + " face morpher"
 
 let pageDescription = function
     | Some (fromValue, toValue) ->
