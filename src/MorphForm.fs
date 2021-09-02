@@ -57,7 +57,7 @@ let tooltippedIconbutton (title: string) props =
             Mui.iconButton props
     ]
 
-let private getInputConfig value onChange onUploadRealImage onBrowseCheckfaceValues onClickMenu =
+let private getInputConfig btnId value onChange onUploadRealImage onBrowseCheckfaceValues onClickMenu =
     let startAdornment hasFocusWithinClass =
         tooltippedIconbutton "Change Mode" [
             if hasFocusWithinClass then prop.className "focuswithin-child"
@@ -65,6 +65,7 @@ let private getInputConfig value onChange onUploadRealImage onBrowseCheckfaceVal
             iconButton.children (menuIcon [])
             prop.onClick (ignore >> onClickMenu)
             prop.ariaLabel "change mode"
+            prop.id (btnId:string)
         ]
     match value with
     | CheckfaceValue value ->
@@ -191,7 +192,10 @@ let private SetpointInput props =
 
     let onClickMenu () = setMenuOpen true
 
-    let inputConfig = getInputConfig props.Value props.OnChange props.OnUploadRealImage props.OnBrowseCheckfaceValues onClickMenu
+    let changeModeBtnId = $"{props.Id}-changemodebtn"
+    let inputId = $"{props.Id}-input"
+
+    let inputConfig = getInputConfig changeModeBtnId props.Value props.OnChange props.OnUploadRealImage props.OnBrowseCheckfaceValues onClickMenu
     let setpointKind =
         match props.Value with
         | CheckfaceValue _ -> TextValue
@@ -246,7 +250,7 @@ let private SetpointInput props =
             textField.variant.outlined
             textField.label props.Label
             textField.margin.normal
-            textField.id props.Id
+            textField.id inputId
         ]
     ]
 
@@ -343,7 +347,7 @@ let renderContent (state:State) (dispatch: Msg -> unit) =
                         SetpointInput {
                             AutoFocus = true
                             Value = state.LeftValue
-                            Id = "leftval-input"
+                            Id = "leftval"
                             Label = "Morph from"
                             OnChange = (SetLeftValue >> dispatch)
                             OnUploadRealImage = (fun () -> ClickUploadRealImage Left |> dispatch)
@@ -352,7 +356,7 @@ let renderContent (state:State) (dispatch: Msg -> unit) =
                         SetpointInput {
                             AutoFocus = false
                             Value = state.RightValue
-                            Id = "rightval-input"
+                            Id = "rightval"
                             Label = "Morph to"
                             OnChange = (SetRightValue >> dispatch)
                             OnUploadRealImage = (fun () -> ClickUploadRealImage Right |> dispatch)

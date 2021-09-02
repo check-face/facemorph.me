@@ -5,7 +5,10 @@ Type something in both text boxes and click morph to generate a video morphing b
 Not sure what to type?  
 Pick from a list of popular baby names with [names.facemorph.me](https://names.facemorph.me/)
 
-You can even morph using your own images by clicking "Change Mode" in the textbox.
+<!-- openChangeMode function is in index.html -->
+You can even upload your own images by clicking
+<a href="#" role="button" onclick="return openChangeMode();">"Change Mode"</a>
+in the textbox.
 
 ## How does it work?
 

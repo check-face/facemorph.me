@@ -13,6 +13,17 @@
 
       gtag('config', 'UA-140064290-2');
     </script>
+    <script>
+      // when you click "Change Mode" in the explain.md
+      function openChangeMode() {
+        let btn = document.getElementById("leftval-changemodebtn");
+        if(btn) {
+          btn.scrollIntoView(false);
+          btn.click();
+        }
+        return false;
+      }
+    </script>
 
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
