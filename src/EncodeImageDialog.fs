@@ -54,6 +54,7 @@ let EncodeImageDialog props =
         let fileInput = React.useRef None
         let chosenFileDataUrl, setChosenFileDataUrl = React.useState (NotLoading)
         let encodedImageResult, setEncodeResult = React.useState (NotLoading)
+        let pasteHereValue, setPasteHereValue = React.useState ("")
 
         let getDataUrl (input:Types.HTMLInputElement) =
             setEncodeResult NotLoading
@@ -80,8 +81,14 @@ let EncodeImageDialog props =
             | Some input ->
                 // only works for pasting image data, not files unfortunately
                 let input = unbox<Types.HTMLInputElement>(input)
-                input.files <- e.clipboardData.files
-                onFileInputChange null
+                e.preventDefault()
+                if e.clipboardData.files.length > 0 then
+                    input.files <- e.clipboardData.files
+                    onFileInputChange null
+                else
+                    let asText = e.clipboardData.getData("text/plain")
+                    if not (System.String.IsNullOrEmpty asText) then
+                        setPasteHereValue asText
             | None ->
                 ()
 
@@ -153,6 +160,7 @@ let EncodeImageDialog props =
                         Html.span "You can upload an image of a real face to "
                         Html.b siteName
                         Html.span ". We will attempt to find a value which approximates that face."
+                        Html.p "Either choose an image file or paste an image from the clipboard."
                     ]
                     Column.column [ ] [
                         Columns.columns [ ] [
@@ -165,6 +173,20 @@ let EncodeImageDialog props =
                                 input.required true
                                 input.inputRef fileInput
                                 input.onChange onFileInputChange
+                            ]
+                        ]
+                        Columns.columns [ ] [
+                            Mui.textField [
+                                textField.margin.normal
+                                textField.autoFocus true
+                                textField.value pasteHereValue
+                                textField.placeholder "Or paste image here"
+                                textField.fullWidth true
+                                prop.onPaste onPasteEvent
+                                textField.onChange setPasteHereValue
+                                if not (System.String.IsNullOrEmpty pasteHereValue) then
+                                    textField.error true
+                                    textField.helperText "Paste an actual image, not text."
                             ]
                         ]
 
@@ -235,7 +257,7 @@ let EncodeImageDialog props =
                             ]
 
                         match encodedImageResult with
-                        | Loaded (_, did_align) when did_align = false->
+                        | Loaded (_, did_align) when not did_align ->
                             Columns.columns [ ] [
                                 Column.column [ Column.Modifiers [ Modifier.TextAlignment (Screen.All, TextAlignment.Left) ] ] [
                                     Mui.typography [
