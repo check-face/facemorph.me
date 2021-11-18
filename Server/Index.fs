@@ -71,11 +71,6 @@ let serverSideRender (pathName, queryString) (res:VercelResponse) =
         match! indexContents.Value with
         | Some contents ->
             let body : string = contents?replace(titleRegex, headParts)?replace(elmishAppRegex, elmishApp)
-            let canonicalUrl = canonicalUrl initState
-            let oEmbedUrl = oEmbedUrl canonicalUrl
-            let title = pageTitle initState.VidValues
-            let oEmbedHeader = $"<%s{oEmbedUrl}>; rel=\"alternate\"; type=\"application/json+oembed\"; title=\"%s{title}\""
-            res.setHeader("Link", oEmbedHeader) |> ignore
             return res.status(200).send(body)
         | None ->
             console.log("Oops, no contents :(");
