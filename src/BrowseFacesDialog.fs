@@ -112,7 +112,7 @@ let BrowseFacesDialog props =
                 ]
             ]
             Mui.dialogContent [
-                prop.style [ style.padding 0; style.overflowY.visible ]
+                prop.style [ style.padding 0; style.overflowY.visible; style.display.flex ]
                 dialogContent.children [
                     if props.IsOpen then
                         Html.iframe [
