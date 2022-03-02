@@ -54,7 +54,7 @@ TL;DR: nobody really knows.
 The dataset that the model was trained on has a small number of images that have a second face in the photo.
 Enough images for it to learn to sometimes generate a second face, but not enough to learn how to make it realistic.
 
-For an example, try "a".
+For an example, try <code>alice</code>
 
 ---
 
