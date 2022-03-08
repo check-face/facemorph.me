@@ -1,5 +1,5 @@
 ## What is this?
-This is a fun experiment to generate and morph faces.
+This is a fun experiment to generate and morph faces online.
 Type something in both text boxes and click morph to generate a video morphing between them.
 
 Not sure what to type?  
@@ -8,7 +8,9 @@ Pick from a list of popular baby names with [names.facemorph.me](https://names.f
 <!-- openChangeMode function is in index.html -->
 You can even upload your own images by clicking
 <a href="#" role="button" onclick="return openChangeMode();">"Change Mode"</a>
-in the textbox.
+in the textbox. Mix photos online for free.
+
+Merging faces is also easy. After uploading photos of the faces to merge, click "Morph" and then tick "Use Slider" to pick how much of the two faces contribute to the combined face.
 
 ## How does it work?
 
