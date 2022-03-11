@@ -227,6 +227,7 @@ let private SetpointInput props =
             textField.InputProps [
                 prop.custom ("startAdornment",
                     Mui.inputAdornment [
+                        inputAdornment.position.start
                         prop.ref anchorEl
                         prop.children [
                             inputConfig.StartAdornment
@@ -234,7 +235,10 @@ let private SetpointInput props =
                     ])
                 prop.custom ("endAdornment",
                     Mui.inputAdornment [
-                        inputConfig.EndAdornment
+                        inputAdornment.position.end'
+                        prop.children [
+                            inputConfig.EndAdornment
+                        ]
                     ])
             ]
             yield! inputConfig.ExtraTextfieldProps
@@ -289,7 +293,7 @@ let renderMorph values useSlider dispatch =
                         style.margin.auto
                     ]
                     prop.className "morph-vid"
-                    prop.poster posterImgSrc 
+                    prop.poster posterImgSrc
                     prop.width videoDim
                     prop.height videoDim
                     prop.alt (vidMorphAlt (fromValue, toValue))
@@ -372,7 +376,7 @@ let renderContent (state:State) (dispatch: Msg -> unit) =
     ]
 
 let renderEncodeImageDialog  state dispatch =
-    EncodeImageDialog.EncodeImageDialog { 
+    EncodeImageDialog.EncodeImageDialog {
         OnClose = fun () -> dispatch CloseUploadDialog
         IsOpen = state.UploadDialogSide.IsSome
         RenderImgGuid = Guid >> renderImageByValue

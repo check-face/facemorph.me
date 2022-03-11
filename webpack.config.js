@@ -43,7 +43,7 @@ var commonPlugins = [
     })
 ];
 
-let client = 
+let client =
 
 {
     // In development, split the JavaScript and CSS files in order to
@@ -65,6 +65,8 @@ let client =
     mode: isProduction ? 'production' : 'development',
     devtool: isProduction ? 'source-map' : 'eval-source-map',
     optimization: {
+        runtimeChunk: "single",
+        moduleIds: 'deterministic',
         // Split the code coming from npm packages into a different file.
         // 3rd party dependencies change less often, let the browser cache them.
         splitChunks: {
@@ -81,7 +83,7 @@ let client =
     // Besides the HtmlPlugin, we use the following plugins:
     // PRODUCTION
     //      - MiniCssExtractPlugin: Extracts CSS from bundle to a different file
-    //          To minify CSS, see https://github.com/webpack-contrib/mini-css-extract-plugin#minimizing-for-production    
+    //          To minify CSS, see https://github.com/webpack-contrib/mini-css-extract-plugin#minimizing-for-production
     //      - CopyWebpackPlugin: Copies static assets to output directory
     // DEVELOPMENT
     //      - HotModuleReplacementPlugin: Enables hot reloading when code changes without refreshing
@@ -111,16 +113,14 @@ let client =
     },
     // Configuration for webpack-dev-server
     devServer: {
-        publicPath: '/',
-        contentBase: resolve(CONFIG.assetsDir),
+        static: {
+            directory: resolve(CONFIG.assetsDir),
+            publicPath: '/',
+        },
         host: '0.0.0.0',
-        disableHostCheck: true, //TO REMOVE
         port: CONFIG.devServerPort,
         hot: true,
-        historyApiFallback: {
-            index: "/"
-        },
-        inline: true
+        historyApiFallback: true
     },
     // - babel-loader: transforms JS to old syntax (compatible with old browsers)
     // - sass-loaders: transforms SASS/SCSS into JS
@@ -160,7 +160,7 @@ let client =
                     {
                         loader: 'markdown-loader',
                         options: {
-                            
+
                         }
                     }
                 ]
