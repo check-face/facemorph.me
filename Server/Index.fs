@@ -71,7 +71,7 @@ let serverSideRender (pathName, queryString) (res:VercelResponse) =
         match! indexContents.Value with
         | Some contents ->
             let body : string = contents?replace(titleRegex, headParts)?replace(elmishAppRegex, elmishApp)
-            let cacheControlHeader = "public, max-age=3600, s-max-age=3600, stale-while-revalidate=172800, immutable"
+            let cacheControlHeader = "public, max-age=3600, s-max-age=3600, stale-while-revalidate=172800"
             return res.status(200).setHeader("Cache-Control", cacheControlHeader).send(body)
         | None ->
             console.log("Oops, no contents :(");
