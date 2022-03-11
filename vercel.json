@@ -4,7 +4,7 @@
     "enabled": false
   },
   "routes": [
-    { "src": "/.*", "continue": true, "headers": { "cache-control": "max-age=3600, s-maxage=86400" } },
+    { "src": "/.*", "continue": true, "headers": { "Cache-Control": "max-age=3600, s-maxage=86400" } },
     { "src": "/index.html", "dest": "/api/server" },
     { "src": "/", "dest": "/api/server" },
     { "handle": "filesystem" },
