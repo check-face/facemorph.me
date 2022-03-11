@@ -71,8 +71,7 @@ let serverSideRender (pathName, queryString) (res:VercelResponse) =
         match! indexContents.Value with
         | Some contents ->
             let body : string = contents?replace(titleRegex, headParts)?replace(elmishAppRegex, elmishApp)
-            let cacheControlHeader = "max-age=3600, s-max-age=3600, stale-while-revalidate=172800"
-            return res.status(200).setHeader("Cache-Control", cacheControlHeader).send(body)
+            return res.status(200).send(body)
         | None ->
             console.log("Oops, no contents :(");
             return res.status(500).send("Oops, better luck next time!");
@@ -97,17 +96,17 @@ let oembed (pathName, queryString) (baseUrl:URL) (res:VercelResponse)=
 
     let response = result {
         do! Result.requireEqual format "json" (NotImplemented, "format not implemented")
-
+        
         let! maxwidth = urlParams.TryFind "maxwidth" |> Option.defaultValue (Config.ogImgDim.ToString()) |> parseDimension
         let! maxheight = urlParams.TryFind "maxheight" |> Option.defaultValue (Config.ogImgDim.ToString()) |> parseDimension
         let! embedUrl = urlParams.TryFind "url" |> Result.requireSome (BadRequest, "oembed url not specified")
         let embedUrlParsed = URL.Create (embedUrl, baseUrl)
-
+        
         // let isSameHost = embedUrlParsed.host = baseUrl.host
         // if not isSameHost then
         //     console.log("baseUrl", baseUrl)
         //     return! Error (BadRequest, "oembed url requested is not serviced by this API endpoint. Check your oembed configuration")
-
+        
 
         let initState = initByUrl (embedUrlParsed.pathname, embedUrlParsed.search)
         let dim = Math.Min(maxwidth, maxheight)
@@ -118,7 +117,7 @@ let oembed (pathName, queryString) (baseUrl:URL) (res:VercelResponse)=
                 animatedWebpSrc dim (fromValue, toValue),
                 imgSrc dim false fromValue,
                 sprintf "%s to %s" (shortCheckfaceSrcDesc fromValue) (shortCheckfaceSrcDesc toValue)
-
+                
             | None ->
                 imgSrc dim true initState.LeftValue,
                 imgSrc thumbDim false initState.LeftValue,
