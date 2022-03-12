@@ -30,7 +30,7 @@ let parseUrl (path, query) =
 
 let formatPathForVidValues vidValues =
     Feliz.Router.Router.formatPath("/",
-        [ 
+        [
             match vidValues with
             | Some (fromValue, toValue) ->
                 match fromValue with
@@ -140,7 +140,7 @@ let updateShare msg state =
 
         state,
         match navigatorCanShare, state.VidValues with
-        | true, None -> 
+        | true, None ->
             Cmd.OfPromise.result (promise {
                 ignore <| navigatorShare (canonicalUrl state) (pageTitle state.VidValues) (pageDescription state.VidValues)
                 return ShareMsg (SetShareMsg "Sharing page!")
@@ -170,7 +170,7 @@ let updateShare msg state =
             do! Promise.sleep 1000
             return ShareMsg ResetShareMsg
         })
-       
+
     | ResetShareMsg ->
         { state with ShareLinkMsg = None }, Cmd.none
 
@@ -181,6 +181,7 @@ let update msg state : State * Cmd<Msg> =
     | SetRightValue value ->
         { state with RightValue = value }, Cmd.none
     | ClickUploadRealImage side ->
+        gtagEvent "OpenDialog" "EncodeImageDialog"
         { state with UploadDialogSide = Some side }, Cmd.none
     | CloseUploadDialog ->
         { state with UploadDialogSide = None }, Cmd.none
@@ -214,10 +215,12 @@ let update msg state : State * Cmd<Msg> =
     | MorphLoaded ->
         { state with IsMorphLoading = false }, Cmd.none
     | SetUseSlider v ->
+        let eventName = if v then "ToggleSliderOn" else "ToggleSliderOff"
+        gtagEvent eventName "MorphSlider"
         { state with UseSlider = v }, Cmd.none
 
 let getShareState state =
-    { 
+    {
         IsOpen = state.ShareOpen
         LinkMsg = state.ShareLinkMsg
         CanonicalUrl = canonicalUrl state
@@ -353,7 +356,7 @@ let viewHead state =
     let canonicalUrl = canonicalUrl state
     let title = pageTitle state.VidValues
 
-    helmet [ 
+    helmet [
         prop.children [
             Html.title (str title)
             Html.meta [
@@ -388,7 +391,7 @@ let viewHead state =
                 let videoSrc = vidSrc ogVideoDim vidValues
                 let linkprevSrc = linkpreviewSrc linkpreviewWidth vidValues
                 let linkprevAlt = linkpreviewAlt vidValues
-                
+
                 meta "og:image" linkprevSrc
                 meta "og:image:alt" linkprevAlt
                 meta "og:image:width" linkpreviewWidth

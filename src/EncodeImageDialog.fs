@@ -99,6 +99,7 @@ let EncodeImageDialog props =
             | Some input ->
                 promise {
                     try
+                        Utils.gtagEvent "UploadImage" "EncodeImageDialog"
                         setEncodeResult Loading
                         let input = unbox<Types.HTMLInputElement>(input)
                         let usrimg = input.files.[0]
