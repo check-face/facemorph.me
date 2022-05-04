@@ -240,7 +240,178 @@ let EncodeImageDialog props =
                     ]
                 ]
                 Mui.dialogContent [
-                    if isCropping then
+                    Html.div [
+                        prop.style [
+                            // regular form should not be destroyed and recreated when cropping,
+                            // otherwise the file input is gone after cropping
+                            if isCropping then style.display.none
+                        ]
+                        prop.children [
+                            Mui.dialogContentText [
+                                dialogContentText.component' "div"
+                                dialogContentText.children [
+                                    Html.span "You can upload an image of a real face to "
+                                    Html.b siteName
+                                    Html.span ". We will attempt to find a value which approximates that face."
+                                    Html.p "For best results, look straight forward at the camera."
+                                    Html.p "Either choose an image file or paste an image from the clipboard."
+                                ]
+                            ]
+                            Column.column [ ] [
+                                Columns.columns [ ] [
+                                    Mui.input [
+                                        input.type' "file"
+                                        input.inputProps [
+                                            prop.accept "image/jpeg, image/png, image/webp"
+                                        ]
+                                        input.fullWidth true
+                                        input.required true
+                                        input.inputRef fileInput
+                                        input.onChange onFileInputChange
+                                    ]
+                                ]
+                                Columns.columns [ ] [
+                                    Mui.textField [
+                                        textField.margin.normal
+                                        textField.autoFocus true
+                                        textField.value pasteHereValue
+                                        textField.placeholder "Or paste image here"
+                                        textField.fullWidth true
+                                        prop.onPaste onPasteEvent
+                                        textField.onChange setPasteHereValue
+                                        if not (System.String.IsNullOrEmpty pasteHereValue) then
+                                            textField.error true
+                                            textField.helperText "Paste an actual image, not text."
+                                    ]
+                                ]
+
+                                match chosenFileDataUrl with
+                                | NotLoading ->
+                                    ()
+                                | Loading ->
+                                    Columns.columns [ ] [
+                                        Column.column [ ] [
+                                            Mui.circularProgress [
+                                            ]
+                                        ]
+                                    ]
+                                | LoadingError ->
+                                    Columns.columns [ ] [
+                                        Column.column [ ] [
+                                            errorIcon ()
+                                            Html.p "Something went wrong loading file. Try picking another image"
+                                        ]
+                                    ]
+                                | Loaded dataUrl when isInvalidImageDataUrl dataUrl ->
+                                    Columns.columns [ ] [
+                                        Column.column [ ] [
+                                            errorIcon ()
+                                            Html.p "Not a valid image"
+                                        ]
+                                    ]
+                                | Loaded dataUrl ->
+                                    Columns.columns [ ] [
+                                        Column.column [ ] [
+                                            Html.div [
+                                                Html.img [
+                                                    prop.style [
+                                                        style.maxWidth (length.percent 100)
+                                                        style.maxHeight (length.percent 100)
+                                                        style.maxHeight (length.calc "max(100%, 400px)")
+                                                    ]
+                                                    prop.src dataUrl
+                                                ]
+                                            ]
+                                            Html.div [
+                                                Mui.button [
+                                                    match encodedImageResult with
+                                                    | Loaded (_, did_align) when not did_align ->
+                                                        button.variant.contained
+                                                        button.color.secondary
+                                                    | _ ->
+                                                        button.variant.text
+                                                    button.children "Crop"
+                                                    prop.onClick (fun _ -> setIsCropping true)
+                                                ]
+                                            ]
+                                        ]
+                                        Column.column [ ] [
+                                            match encodedImageResult with
+                                            | LoadingError
+                                            | NotLoading ->
+                                                centerInGrid [
+                                                    if encodedImageResult = LoadingError then
+                                                        errorIcon ()
+                                                        Html.p "Something went wrong. Service may be down."
+
+                                                    Mui.button [
+                                                        prop.type'.submit
+                                                        button.children "Upload"
+                                                        prop.onClick uploadImage
+                                                        button.variant.contained
+                                                        button.color.primary
+                                                    ]
+                                                ]
+                                            | Loading ->
+                                                centerInGrid [
+                                                    Mui.circularProgress [
+                                                    ]
+                                                ]
+                                            | Loaded (guid, _) ->
+                                                props.RenderImgGuid guid
+
+                                        ]
+                                    ]
+
+                                match encodedImageResult with
+                                | Loaded (_, did_align) when not did_align ->
+                                    Columns.columns [ ] [
+                                        Column.column [ Column.Modifiers [ Modifier.TextAlignment (Screen.All, TextAlignment.Left) ] ] [
+                                            Mui.typography [
+                                                typography.color.error
+                                                typography.children "Unable to auto align face."
+                                            ]
+                                            Mui.typography """
+                                                When the face isn't aligned you may get strange results.
+                                                Try a different image or manually crop it.
+                                                Make sure the entire face is in frame and looking towards to camera.
+                                            """
+
+                                        ]
+                                    ]
+                                | _ ->
+                                    ()
+
+                                Columns.columns [ Columns.IsMobile ] [
+                                    Column.column [ Column.Modifiers [ Modifier.TextAlignment (Screen.All, TextAlignment.Left) ] ] [
+                                        Mui.button [
+                                            button.children "Cancel"
+                                            button.color.default'
+                                            button.variant.contained
+                                            prop.onClick close
+                                        ]
+                                    ]
+                                    Column.column [ Column.Modifiers [ Modifier.TextAlignment (Screen.All, TextAlignment.Right) ] ] [
+                                        Mui.button [
+                                            button.children "OK"
+                                            button.color.primary
+                                            button.variant.contained
+
+                                            match encodedImageResult with
+                                            | NotLoading
+                                            | LoadingError
+                                            | Loading ->
+                                                button.disabled true
+                                            | Loaded (guid, _) ->
+                                                button.disabled false
+                                                prop.onClick (fun _ -> onClickOk guid)
+                                        ]
+                                    ]
+                                ]
+                            ]
+                        ]
+                    ]
+                    if isCropping then // only show cropper dom when cropping
                         Column.column [ ] [
                             match chosenFileDataUrl with
                             | Loaded dataUrl ->
@@ -289,9 +460,9 @@ let EncodeImageDialog props =
                                 slider.value cropperRotSlider
                                 slider.onChange rotateCropFine
                             ]
-                            Column.column [ ] [
+                            Column.column [ Column.Modifiers [ Modifier.TextAlignment (Screen.All, TextAlignment.Left) ] ] [
                                 Mui.typography [ Html.b "Cropping is generally not necessary, as faces are usually auto detected." ]
-                                Mui.typography "Try to crop to leave a bit above the top of the head and below the chin."
+                                Mui.typography "Try to leave a bit above the top of the head and below the chin."
                                 Mui.typography "Lining up the eyes is most important."
                             ]
                             Columns.columns [ Columns.IsMobile ] [
@@ -309,163 +480,6 @@ let EncodeImageDialog props =
                                         button.color.primary
                                         button.variant.contained
                                         prop.onClick (fun _ -> useThisCrop ())
-                                    ]
-                                ]
-                            ]
-                        ]
-                    else
-                        Mui.dialogContentText [
-                            dialogContentText.component' "div"
-                            dialogContentText.children [
-                                Html.span "You can upload an image of a real face to "
-                                Html.b siteName
-                                Html.span ". We will attempt to find a value which approximates that face."
-                                Html.p "For best results, look straight forward at the camera."
-                                Html.p "Either choose an image file or paste an image from the clipboard."
-                            ]
-                        ]
-                        Column.column [ ] [
-                            Columns.columns [ ] [
-                                Mui.input [
-                                    input.type' "file"
-                                    input.inputProps [
-                                        prop.accept "image/jpeg, image/png, image/webp"
-                                    ]
-                                    input.fullWidth true
-                                    input.required true
-                                    input.inputRef fileInput
-                                    input.onChange onFileInputChange
-                                ]
-                            ]
-                            Columns.columns [ ] [
-                                Mui.textField [
-                                    textField.margin.normal
-                                    textField.autoFocus true
-                                    textField.value pasteHereValue
-                                    textField.placeholder "Or paste image here"
-                                    textField.fullWidth true
-                                    prop.onPaste onPasteEvent
-                                    textField.onChange setPasteHereValue
-                                    if not (System.String.IsNullOrEmpty pasteHereValue) then
-                                        textField.error true
-                                        textField.helperText "Paste an actual image, not text."
-                                ]
-                            ]
-
-                            match chosenFileDataUrl with
-                            | NotLoading ->
-                                ()
-                            | Loading ->
-                                Columns.columns [ ] [
-                                    Column.column [ ] [
-                                        Mui.circularProgress [
-                                        ]
-                                    ]
-                                ]
-                            | LoadingError ->
-                                Columns.columns [ ] [
-                                    Column.column [ ] [
-                                        errorIcon ()
-                                        Html.p "Something went wrong loading file. Try picking another image"
-                                    ]
-                                ]
-                            | Loaded dataUrl when isInvalidImageDataUrl dataUrl ->
-                                Columns.columns [ ] [
-                                    Column.column [ ] [
-                                        errorIcon ()
-                                        Html.p "Not a valid image"
-                                    ]
-                                ]
-                            | Loaded dataUrl ->
-                                Columns.columns [ ] [
-                                    Column.column [ ] [
-                                        Html.div [
-                                            Html.img [
-                                                prop.style [
-                                                    style.maxWidth (length.percent 100)
-                                                    style.maxHeight (length.percent 100)
-                                                    style.maxHeight (length.calc "max(100%, 400px)")
-                                                ]
-                                                prop.src dataUrl
-                                            ]
-                                        ]
-                                        Html.div [
-                                            Mui.button [
-                                                button.variant.text
-                                                button.children "Crop"
-                                                prop.onClick (fun _ -> setIsCropping true)
-                                            ]
-                                        ]
-                                    ]
-                                    Column.column [ ] [
-                                        match encodedImageResult with
-                                        | LoadingError
-                                        | NotLoading ->
-                                            centerInGrid [
-                                                if encodedImageResult = LoadingError then
-                                                    errorIcon ()
-                                                    Html.p "Something went wrong. Service may be down."
-
-                                                Mui.button [
-                                                    prop.type'.submit
-                                                    button.children "Upload"
-                                                    prop.onClick uploadImage
-                                                    button.variant.contained
-                                                    button.color.primary
-                                                ]
-                                            ]
-                                        | Loading ->
-                                            centerInGrid [
-                                                Mui.circularProgress [
-                                                ]
-                                            ]
-                                        | Loaded (guid, _) ->
-                                            props.RenderImgGuid guid
-
-                                    ]
-                                ]
-
-                            match encodedImageResult with
-                            | Loaded (_, did_align) when not did_align ->
-                                Columns.columns [ ] [
-                                    Column.column [ Column.Modifiers [ Modifier.TextAlignment (Screen.All, TextAlignment.Left) ] ] [
-                                        Mui.typography [
-                                            typography.color.error
-                                            typography.children "Unable to align face."
-                                        ]
-                                        Mui.typography [
-                                            typography.color.textPrimary
-                                            typography.children ("When the face isn't aligned you may get strange results. " +
-                                                "Try a different image or manually crop it to a square before uploading.")
-                                        ]
-                                    ]
-                                ]
-                            | _ ->
-                                ()
-
-                            Columns.columns [ Columns.IsMobile ] [
-                                Column.column [ Column.Modifiers [ Modifier.TextAlignment (Screen.All, TextAlignment.Left) ] ] [
-                                    Mui.button [
-                                        button.children "Cancel"
-                                        button.color.default'
-                                        button.variant.contained
-                                        prop.onClick close
-                                    ]
-                                ]
-                                Column.column [ Column.Modifiers [ Modifier.TextAlignment (Screen.All, TextAlignment.Right) ] ] [
-                                    Mui.button [
-                                        button.children "OK"
-                                        button.color.primary
-                                        button.variant.contained
-
-                                        match encodedImageResult with
-                                        | NotLoading
-                                        | LoadingError
-                                        | Loading ->
-                                            button.disabled true
-                                        | Loaded (guid, _) ->
-                                            button.disabled false
-                                            prop.onClick (fun _ -> onClickOk guid)
                                     ]
                                 ]
                             ]
