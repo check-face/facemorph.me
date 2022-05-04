@@ -199,8 +199,7 @@ let server =
     // See https://github.com/fable-compiler/Fable/issues/1490
     resolve: client.resolve,
     plugins: [
-        new CleanWebpackPlugin(),
-        new MiniCssExtractPlugin() // not actually necessary but they added a bogus error when it's not included
+        new CleanWebpackPlugin()
     ],
     module: client.module,
     optimization: {

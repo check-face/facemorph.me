@@ -69,7 +69,6 @@ module Cropper =
         overlayClassName: string
     }
 
-    importSideEffects "react-advanced-cropper/dist/style.css"
     let inline cropper props = createElement (import "Cropper" "react-advanced-cropper") props
 
 open Cropper
