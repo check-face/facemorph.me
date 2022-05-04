@@ -161,6 +161,10 @@ let EncodeImageDialog props =
         let resetState () =
             setEncodeResult NotLoading
             setChosenFileDataUrl NotLoading
+            setCroppedImageBlob None
+            setCropperRotSlider 0
+            setIsCropping false
+            setPasteHereValue ""
 
         let onClickOk guid =
             resetState ()
