@@ -2,7 +2,7 @@
 This is a fun experiment to generate and morph faces online.
 Type something in both text boxes and click morph to generate a video morphing between them.
 
-Not sure what to type?  
+Not sure what to type?
 Pick from a list of popular baby names with [names.facemorph.me](https://names.facemorph.me/)
 
 <!-- openChangeMode function is in index.html -->
@@ -19,7 +19,7 @@ for each endpoint. [StyleGan2](https://github.com/NVlabs/stylegan2) is used to g
 between the endpoints.
 
 When you upload your own images, [encoder4editing](https://github.com/omertov/encoder4editing) is used to encode it as a latent.
-It attempts to find a balance between accuracy and editability.  
+It attempts to find a balance between accuracy and editability.
 This tradeoff means it won't look quite the same as the input
 image but should work well for morphing.
 
@@ -75,33 +75,22 @@ there is usually no distinct point where you can say "now it's a different face"
 Do you count each frame as a different face?
 
 Technically, as SHA-256 is used on the input, that puts an upper limit of 2^256 on the number of
-**endpoints** based on text values. 
-
----
-
-#### Why is this so slow?
-We're students doing an experiment. We don't have the means to spin up extra infrastructure if this gets popular.
-GPUs are expensive!
-
-If you have a bunch of GPUs and would like to help, please get in touch.
-
----
-
-#### It's not working
-This is just an experiment and we make no commitment to keeping the server up. We might be developing new features
-or training new models, so try again later.
+**endpoints** based on text values.
 
 ---
 
 #### Can I morph with a picture of a real face?
 Yes!
 
-In the input textbox there is a button to change mode and upload an image.
+In the input textbox there is a button to
+<a href="#" role="button" onclick="return openChangeMode();">change mode</a>
+and upload an image.
+
 
 ---
 
 #### Is there a StyleGAN2 API?
-The source code for our server is at [github.com/check-face/checkface](https://github.com/check-face/checkface)  
+The source code for our server is at [github.com/check-face/checkface](https://github.com/check-face/checkface)
 It is documented at [checkface.facemorph.me/api](https://checkface.facemorph.me/api)
 <!-- or at https://github.com/check-face/checkface/blob/master/docs/api.md -->
 
