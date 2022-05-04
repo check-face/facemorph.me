@@ -51,7 +51,7 @@ html {
     .morph-dummyImg {
         display: none;
     }
-    
+
     @supports (display: grid) {
         display: grid; //use grid to place dummyImg behind video
         .morph-dummyImg {
@@ -72,7 +72,7 @@ html {
     .morph-content {
         display: grid;
         gap: 1em;
-        grid-template-areas: 
+        grid-template-areas:
             "from to"
             "morph morph"
             "vid vid";
@@ -81,7 +81,7 @@ html {
 
 @media (min-width: 900px) {
     .morph-content {
-        grid-template-areas: 
+        grid-template-areas:
             "from morph to"
             "vid vid vid";
         grid-template-columns: auto min-content auto;
@@ -138,3 +138,8 @@ html {
     }
 }
 
+.face-cropper-stencil-overlay {
+    // background-color: orange;
+    background: url('public/cropper-stencil.svg') no-repeat center center fixed;
+    background-size: cover;
+}

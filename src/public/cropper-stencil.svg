@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500">
+    <mask id="headmask">
+        <rect width="100%" height="100%" fill="white"/>
+        <ellipse cx="250" cy="250" rx="175" ry="240" fill="black" />
+    </mask>
+    <rect width="100%" height="100%" fill="rgba(0,0,0,0.5)" mask="url(#headmask)" />
+    <ellipse style="fill: rgba(0, 0, 0, 0.5)" cx="188" cy="232" rx="11" />
+    <ellipse style="fill: rgba(0, 0, 0, 0.5)" cx="312" cy="232" rx="11" />
+</svg>

@@ -167,6 +167,7 @@ let client =
             },
             {
                 test: /\.svg$/,
+                issuer: /\.[jt]sx?$/,
                 use: [
                     {
                         loader: '@svgr/webpack',
@@ -199,6 +200,7 @@ let server =
     resolve: client.resolve,
     plugins: [
         new CleanWebpackPlugin(),
+        new MiniCssExtractPlugin() // not actually necessary but they added a bogus error when it's not included
     ],
     module: client.module,
     optimization: {
