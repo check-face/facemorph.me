@@ -23,6 +23,20 @@ It attempts to find a balance between accuracy and editability.
 This tradeoff means it won't look quite the same as the input
 image but should work well for morphing.
 
+<div id="learn-more-transition"></div>
+
+## Retirement and transition
+
+facemorph.me is now in transition mode and the current goal is to retire the existing service by **June 20, 2026 (AEST)**.
+
+The present deployment depends on an aging GPU and container stack that is getting harder and more expensive to keep online.
+Our priority is to preserve historic checkfaces and move the service toward a lower-cost setup, likely with more of the live generation path shifted onto Hugging Face.
+
+That means the post-transition service may not look exactly like today's stack.
+Some workflows may move to slower on-demand generation, authenticated Hugging Face usage, archived outputs, or self-hosted/local options.
+
+If there is a workflow you need us to preserve, please contact us using the email address in the footer.
+
 ## FAQ
 
 ---

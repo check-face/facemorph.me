@@ -329,13 +329,13 @@ let retirementNotice =
                                 prop.children [
                                     Mui.link [
                                         link.color.initial
-                                        prop.href (sprintf "mailto:%s" contactEmail)
-                                        prop.text "Send feedback"
+                                        prop.href "#learn-more-transition"
+                                        prop.text "Learn More"
                                     ]
                                     Mui.link [
                                         link.color.initial
-                                        prop.href (sprintf "https://github.com/%s/issues" githubRepo)
-                                        prop.text "Request a workflow"
+                                        prop.href (sprintf "mailto:%s" contactEmail)
+                                        prop.text "Contact us"
                                     ]
                                 ]
                             ]
