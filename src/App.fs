@@ -316,11 +316,11 @@ let retirementNotice =
                                 prop.className "retirement-notice__copy"
                                 prop.children [
                                     Html.p [
-                                        Html.strong "Transition notice."
+                                        Html.strong "Planning notice."
                                         str $" We expect facemorph.me to retire by %s{retirementDeadlineLabel}."
                                     ]
                                     Html.p [
-                                        str "We are working on a lower-cost preservation path so historic checkfaces can keep working in some form after the current server is retired."
+                                        str "We are documenting the preservation path first so historic checkfaces can keep working in some form after the current Triton-backed service is retired."
                                     ]
                                 ]
                             ]
@@ -331,11 +331,6 @@ let retirementNotice =
                                         link.color.initial
                                         prop.href "#learn-more-transition"
                                         prop.text "Learn More"
-                                    ]
-                                    Mui.link [
-                                        link.color.initial
-                                        prop.href (sprintf "mailto:%s" contactEmail)
-                                        prop.text "Contact us"
                                     ]
                                 ]
                             ]
