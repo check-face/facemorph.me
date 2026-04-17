@@ -27,6 +27,16 @@ image but should work well for morphing.
 
 ---
 
+#### Is facemorph.me being retired?
+Yes. The current target is to retire the existing service by **June 20, 2026 (AEST)**.
+
+The current stack depends on older GPU/container build assumptions that are getting harder and more expensive to keep alive.
+We are investigating a lower-cost preservation path focused on keeping historic checkfaces available in some form, likely with more of the load shifted onto Hugging Face.
+
+If you have a workflow you want preserved, please email the address in the footer so we can factor it into the transition.
+
+---
+
 #### Are these real people?
 Images based on text input or numeric seeds are not really people. They are randomly generated.
 
