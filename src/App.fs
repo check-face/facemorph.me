@@ -302,6 +302,45 @@ let footer =
         ]
     ]
 
+let retirementNotice =
+    Html.aside [
+        prop.className "retirement-notice"
+        prop.children [
+            Mui.container [
+                container.maxWidth.md
+                container.children [
+                    Html.div [
+                        prop.className "retirement-notice__content"
+                        prop.children [
+                            Html.div [
+                                prop.className "retirement-notice__copy"
+                                prop.children [
+                                    Html.p [
+                                        Html.strong "Planning notice."
+                                        str $" We expect facemorph.me to retire by %s{retirementDeadlineLabel}."
+                                    ]
+                                    Html.p [
+                                        str "We are documenting the preservation path first so historic checkfaces can keep working in some form after the current Triton-backed service is retired."
+                                    ]
+                                ]
+                            ]
+                            Html.div [
+                                prop.className "retirement-notice__actions"
+                                prop.children [
+                                    Mui.link [
+                                        link.color.initial
+                                        prop.href "#learn-more-transition"
+                                        prop.text "Learn More"
+                                    ]
+                                ]
+                            ]
+                        ]
+                    ]
+                ]
+            ]
+        ]
+    ]
+
 let createTheme isDark = [
     if isDark then theme.palette.type'.dark else theme.palette.type'.light
     theme.palette.background.default' <| if isDark then "#17181c" else "white"
@@ -342,6 +381,7 @@ let render (state:State) (dispatch: Msg -> unit) =
         viewShareContent (getShareState state) (ShareMsg >> dispatch)
         Explain.view ()
         footer
+        retirementNotice
     ]
 
 let inline helmet props = createElement (Fable.Core.JsInterop.import "Helmet" "react-helmet") props

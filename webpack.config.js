@@ -93,6 +93,7 @@ let client =
             new CopyWebpackPlugin({ patterns: [
                 { from: resolve(CONFIG.assetsDir) },
                 { from: resolve("vercel.json") },
+                { from: resolve("vercel.package.json"), to: "package.json" },
             ]}),
             new CleanWebpackPlugin({
                 cleanOnceBeforeBuildPatterns: ['**/*', '!api/**'],
