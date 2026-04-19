@@ -94,5 +94,6 @@ The source code for our server is at [github.com/check-face/checkface](https://g
 It is documented at [checkface.facemorph.me/api](https://checkface.facemorph.me/api)
 <!-- or at https://github.com/check-face/checkface/blob/master/docs/api.md -->
 
-We recommented hosting the server yourself as we do not plan on running it reliably or indefinitely.
-Feel free to contact us using the email address in the footer.
+If you need a setup you can keep under your own control, self-hosting `checkface` is still the safest option for now.
+
+If you hit a bug in `checkface`, please open a GitHub issue. If you have questions about the API transition, or a workflow you want us to keep in mind, email us at [checkfaceml@gmail.com](mailto:checkfaceml@gmail.com) and we will do our best to help.
