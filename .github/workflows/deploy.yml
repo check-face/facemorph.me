@@ -45,11 +45,11 @@ jobs:
         run: npm install
       - name: Build site
         run: npm run build
-      - name: Link deploy output to the Vercel project
+      - name: Link the repository to the Vercel project
         run: |
           set -euo pipefail
-          mkdir -p deploy/.vercel
-          cat > deploy/.vercel/project.json <<EOF
+          mkdir -p .vercel
+          cat > .vercel/project.json <<EOF
           {
             "orgId": "${VERCEL_ORG_ID}",
             "projectId": "${VERCEL_PROJECT_ID}"
@@ -62,14 +62,14 @@ jobs:
         id: deploy_preview
         run: |
           set -euo pipefail
-          url="$(vercel --cwd deploy --token="${{ secrets.VERCEL_TOKEN }}" --archive=tgz --yes)"
+          url="$(vercel --token="${{ secrets.VERCEL_TOKEN }}" --archive=tgz --yes)"
           echo "url=$url" >> "$GITHUB_OUTPUT"
       - name: Deploy production
         if: github.event_name == 'push' && github.ref == 'refs/heads/master'
         id: deploy_production
         run: |
           set -euo pipefail
-          url="$(vercel --cwd deploy --prod --token="${{ secrets.VERCEL_TOKEN }}" --archive=tgz --yes)"
+          url="$(vercel --prod --token="${{ secrets.VERCEL_TOKEN }}" --archive=tgz --yes)"
           echo "url=$url" >> "$GITHUB_OUTPUT"
       - name: Summarize preview deployment
         if: steps.deploy_preview.outputs.url != ''
