@@ -36,6 +36,7 @@ jobs:
           curl -fsSL "https://nodejs.org/dist/v20.19.5/node-v20.19.5-linux-${node_arch}.tar.xz" -o /tmp/node.tar.xz
           mkdir -p /opt/node20
           tar -xJf /tmp/node.tar.xz --strip-components=1 -C /opt/node20
+          export PATH="/opt/node20/bin:$PATH"
           echo "/opt/node20/bin" >> "$GITHUB_PATH"
           node -v
           npm -v
