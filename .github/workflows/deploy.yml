@@ -17,6 +17,7 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '5.0.x'
+          global-json-file: global.json
       - run: npm install
       - run: npm run build
 
