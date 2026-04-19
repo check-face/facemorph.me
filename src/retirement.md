@@ -1,62 +1,68 @@
-## A note about facemorph.me
+## A note about the facemorph.me API
 
-We do plan to retire facemorph.me. The current target is **June 20, 2026 (AEST)**.
+The current facemorph.me API is scheduled to retire on **June 20, 2026 (AEST)**.
 
-The main reason is simple: the site still runs on our local server in the garage. That has been fun, but it is getting harder and more expensive to keep a public service running that way.
+facemorph.me itself is not going away. What is changing is the current Triton-hosted API and the checkface backend we currently run ourselves.
 
-The replacement plan is not just "maybe something cheaper later." We want to keep the Facemorph UI public, move the hosted compute onto Hugging Face, and have users sign in with Hugging Face when they want the hosted service to do work for them.
+The goal is to move the site onto a provider that is easier for us to keep online over time, while keeping the main experience available. We are still exploring the exact path. Right now, **Hugging Face is the leading candidate**, but we are still testing options and we are not calling the details final yet.
 
-We also want to document the offline path properly. If you want to produce your own hashes, upload photos locally, or run the workflow on your own machine, there should be clear instructions for that too.
+This is the direction we are working toward:
 
-Nothing big is changing today. The site is still online while we work through the boring but important parts: old hashes, cached results, and the workflows people actually use.
+- keep facemorph.me online
+- retire the current API in its current form
+- move the backend off our own compute
+- preserve the workflows people actually use where we can
+- document what changes, what stays, and what local options still make sense
 
-We are not planning to chase every new technique just because it is newer. The goal is to keep the existing workflow available in a cleaner and cheaper way.
+Nothing changes overnight. We are in the transition period now, so if you think this plan is going to make something harder for you, we would like to hear about it.
 
-ComfyUI is still worth mentioning. It is active, flexible, and it can cover a lot of the same ground with newer models. It also comes with caveats, and it is not the main hosted migration plan for facemorph.me.
+If you think this could break something you rely on, or if there is a workflow that needs special care, email **checkfaceml@gmail.com**. We cannot promise support for every case, but we will read the feedback and try to help where we can.
+
+For some local checkface or facemorph workflows, **ComfyUI** may also be useful. It is not the hosted migration plan, but it may be a practical local option for image modification on your own machine.
 
 ## FAQ
 
 ---
 
-#### Is facemorph.me being retired?
-Yes. That is the plan, and the current target is **June 20, 2026 (AEST)**.
+#### Is facemorph.me shutting down?
+No. facemorph.me is expected to stay up. The part scheduled to retire on **June 20, 2026 (AEST)** is the current API and backend we run on our own compute.
 
 ---
 
-#### What is the hosted plan?
-Keep the Facemorph UI public, but move the hosted compute onto Hugging Face. If you want the hosted service to generate or process something for you, the plan is that you would sign in with Hugging Face first.
+#### What is changing on June 20, 2026?
+That is the current target date for retiring the API in its current form. It is not a promise that the whole site disappears on that day.
+
+---
+
+#### What is the leading replacement plan?
+Hugging Face is the leading candidate right now. It looks like the most practical place to move the hosted compute, but we are still testing options before we make stronger promises about the final setup.
+
+---
+
+#### Are you still exploring other options?
+Yes. We have a direction, not a finished answer. We want to test replacement paths before we claim that one approach is final.
 
 ---
 
 #### Will there still be a local or offline path?
-That is the plan too. We want to publish clearer instructions for people who want to generate their own hashes, upload photos locally, or run the workflow on their own machine without relying on the hosted service.
+We intend to document one. For some local image modification workflows, ComfyUI may be a useful fit, and we also want clearer notes for people who want to run parts of the workflow themselves.
 
 ---
 
-#### Are you planning to rebuild everything around newer models?
-No. We are not planning a big rewrite just for the sake of using newer techniques. The main goal is to preserve the existing workflow in a form that is easier to keep online.
+#### Will the API stay exactly the same?
+We are not promising that yet. Some parts may stay compatible, some may need a thinner replacement layer, and some may end up as a smaller surface. We would rather say that plainly now than surprise people later.
 
 ---
 
-#### Where does ComfyUI fit in?
-ComfyUI is an actively maintained tool and it can support a lot of workflows that overlap with facemorph.me, sometimes with better models. It is still a separate tool with tradeoffs, so we see it as something worth documenting, not as a drop-in replacement for the current hosted service.
-
----
-
-#### Is anything changing today?
-Not in a big way. The site is still up while we sort through what can be kept, what may get slower, and what needs a different home.
-
----
-
-#### I depend on a specific workflow. What should I do?
-Email us and describe the exact workflow you need. "I use the API" is harder to act on than "I call this endpoint with these inputs and need this output."
+#### I think this may break something I use. What should I do?
+Email us at **checkfaceml@gmail.com** and tell us what you are trying to do. If you can already see a problem with the plan, that is exactly the kind of feedback we want during the transition period. We cannot promise support for every workflow, but we will do our best to help.
 
 ---
 
 #### Why not just keep the current server online?
-Because the site still depends on our local server in the garage. That machine will not be the forever home for a public service, and we would rather say that clearly now than pretend otherwise.
+The current setup has served us well, but it was never meant to be the forever home for a public service. We would rather move it carefully, with warning, than keep stretching the current setup until it becomes a problem.
 
 ---
 
-#### Should I use GitHub issues for retirement questions?
-Please use email instead. GitHub issues are still useful for bugs in the current site. Transition questions and workflow requests are easier for us to handle over email.
+#### Where should I send transition questions or feedback?
+Email **checkfaceml@gmail.com**. GitHub issues are still useful for bugs in the **checkface** project that powers facemorph.me, but transition questions and workflow concerns are easier for us to handle over email.

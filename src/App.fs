@@ -81,12 +81,12 @@ let canonicalUrl (state:State) =
 let pageTitle (state:State) =
     match state.Page with
     | Home -> homePageTitle state.VidValues
-    | Retirement -> $"Retirement notice | %s{siteName}"
+    | Retirement -> $"API transition | %s{siteName}"
 
 let pageDescription (state:State) =
     match state.Page with
     | Home -> homePageDescription state.VidValues
-    | Retirement -> "The facemorph.me retirement plan, including Hugging Face-backed hosting and the offline path."
+    | Retirement -> "Plans for retiring the current facemorph.me API and moving the site off the current Triton-hosted backend."
 
 let getCurrentPath _ =
     Browser.Dom.window.location.pathname, Browser.Dom.window.location.search
@@ -335,11 +335,16 @@ let retirementNotice =
                                 prop.className "retirement-notice__copy"
                                 prop.children [
                                     Html.p [
-                                        Html.strong "Planning notice."
-                                        str $" We expect facemorph.me to retire by %s{retirementDeadlineLabel}."
+                                        Html.strong "Notice."
+                                        str " The current facemorph.me API is scheduled to retire on "
+                                        Html.span [
+                                            prop.className "retirement-notice__date"
+                                            prop.text apiTransitionDateLabel
+                                        ]
+                                        str "."
                                     ]
                                     Html.p [
-                                        str "We moved the detailed transition plan to its own page, but the homepage should still make the retirement status obvious."
+                                        str "facemorph.me is staying up. We are planning a backend move, and Hugging Face is the leading candidate while we keep testing options."
                                     ]
                                 ]
                             ]
@@ -349,7 +354,12 @@ let retirementNotice =
                                     Mui.link [
                                         link.color.initial
                                         prop.href "/retirement"
-                                        prop.text "Read retirement notice"
+                                        prop.text "Learn more"
+                                    ]
+                                    Mui.link [
+                                        link.color.initial
+                                        prop.href (sprintf "mailto:%s" contactEmail)
+                                        prop.text "Email us"
                                     ]
                                 ]
                             ]
