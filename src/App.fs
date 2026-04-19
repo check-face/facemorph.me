@@ -321,6 +321,45 @@ let footer =
         ]
     ]
 
+let retirementNotice =
+    Html.aside [
+        prop.className "retirement-notice"
+        prop.children [
+            Mui.container [
+                container.maxWidth.md
+                container.children [
+                    Html.div [
+                        prop.className "retirement-notice__content"
+                        prop.children [
+                            Html.div [
+                                prop.className "retirement-notice__copy"
+                                prop.children [
+                                    Html.p [
+                                        Html.strong "Planning notice."
+                                        str $" We expect facemorph.me to retire by %s{retirementDeadlineLabel}."
+                                    ]
+                                    Html.p [
+                                        str "We moved the detailed transition plan to its own page, but the homepage should still make the retirement status obvious."
+                                    ]
+                                ]
+                            ]
+                            Html.div [
+                                prop.className "retirement-notice__actions"
+                                prop.children [
+                                    Mui.link [
+                                        link.color.initial
+                                        prop.href "/retirement"
+                                        prop.text "Read retirement notice"
+                                    ]
+                                ]
+                            ]
+                        ]
+                    ]
+                ]
+            ]
+        ]
+    ]
+
 let createTheme isDark = [
     if isDark then theme.palette.type'.dark else theme.palette.type'.light
     theme.palette.background.default' <| if isDark then "#17181c" else "white"
@@ -354,13 +393,19 @@ let ThemedApp children =
 let renderHome (state:State) (dispatch: Msg -> unit) =
     ThemedApp [
         Mui.cssBaseline [ ]
-        header
-        MorphForm.renderContent state dispatch
-        MorphForm.renderEncodeImageDialog state dispatch
-        MorphForm.renderBrowseFacesDialog state dispatch
-        viewShareContent (getShareState state) (ShareMsg >> dispatch)
-        Explain.view ()
-        footer
+        Html.div [
+            prop.className "page-with-retirement-notice"
+            prop.children [
+                header
+                MorphForm.renderContent state dispatch
+                MorphForm.renderEncodeImageDialog state dispatch
+                MorphForm.renderBrowseFacesDialog state dispatch
+                viewShareContent (getShareState state) (ShareMsg >> dispatch)
+                Explain.view ()
+                footer
+            ]
+        ]
+        retirementNotice
     ]
 
 let renderRetirement () =

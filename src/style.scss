@@ -19,6 +19,10 @@ html {
     overflow-x: auto;
 }
 
+.page-with-retirement-notice {
+    padding-bottom: 9rem;
+}
+
 .column {
     text-align: center;
 }
@@ -115,6 +119,73 @@ html {
     div:last-child {
         flex-grow: 1;
         text-align: center;
+    }
+}
+
+.retirement-notice {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1200;
+    padding: 0 1rem 1rem;
+    pointer-events: none;
+}
+
+.retirement-notice__content {
+    pointer-events: auto;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 1rem 1.5rem;
+    align-items: center;
+    background: rgba(22, 25, 31, 0.94);
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.28);
+    border-radius: 1rem;
+    padding: 1rem 1.25rem;
+
+    a {
+        color: #fff;
+        text-decoration: underline;
+        text-underline-offset: 0.18em;
+    }
+}
+
+.retirement-notice__copy {
+    flex: 1 1 28rem;
+    text-align: left;
+
+    p {
+        margin: 0;
+    }
+
+    p + p {
+        margin-top: 0.4rem;
+        color: rgba(255, 255, 255, 0.88);
+    }
+}
+
+.retirement-notice__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem 1rem;
+    align-items: center;
+}
+
+@media (max-width: 700px) {
+    .page-with-retirement-notice {
+        padding-bottom: 12rem;
+    }
+
+    .retirement-notice__content {
+        padding: 0.9rem 1rem;
+    }
+
+    .retirement-notice__actions {
+        width: 100%;
+        justify-content: flex-start;
     }
 }
 
