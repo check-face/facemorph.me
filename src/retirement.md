@@ -14,7 +14,7 @@ This is the direction we are working toward:
 - preserve the workflows people actually use where we can
 - document what changes, what stays, and what local options still make sense
 
-Nothing changes overnight. We are in the transition period now, so if you think this plan is going to make something harder for you, we would like to hear about it.
+Nothing changes overnight. We are in the transition period now, and we expect to test the next setup at **testing.facemorph.me** before any broader migration. If you think this plan is going to make something harder for you, we would like to hear about it.
 
 If you think this could break something you rely on, or if there is a workflow that needs special care, email **checkfaceml@gmail.com**. We cannot promise support for every case, but we will read the feedback and try to help where we can.
 

@@ -356,11 +356,6 @@ let retirementNotice =
                                         prop.href "/retirement"
                                         prop.text "Learn more"
                                     ]
-                                    Mui.link [
-                                        link.color.initial
-                                        prop.href (sprintf "mailto:%s" contactEmail)
-                                        prop.text "Email us"
-                                    ]
                                 ]
                             ]
                         ]
