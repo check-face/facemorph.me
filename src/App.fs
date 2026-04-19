@@ -86,7 +86,7 @@ let pageTitle (state:State) =
 let pageDescription (state:State) =
     match state.Page with
     | Home -> homePageDescription state.VidValues
-    | Retirement -> "Plans for retiring the current facemorph.me API and moving the site off the current Triton-hosted backend."
+    | Retirement -> "Plans for retiring the current facemorph.me API and moving it to a new backend provider."
 
 let getCurrentPath _ =
     Browser.Dom.window.location.pathname, Browser.Dom.window.location.search
