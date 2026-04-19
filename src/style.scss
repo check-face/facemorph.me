@@ -19,8 +19,8 @@ html {
     overflow-x: auto;
 }
 
-body {
-    padding-bottom: 9rem;
+.page-with-retirement-notice {
+    padding-bottom: 10rem;
 }
 
 .column {
@@ -138,7 +138,7 @@ body {
     flex-wrap: wrap;
     justify-content: space-between;
     gap: 1rem 1.5rem;
-    align-items: center;
+    align-items: flex-start;
     background: rgba(22, 25, 31, 0.94);
     color: #fff;
     border: 1px solid rgba(255, 255, 255, 0.14);
@@ -159,6 +159,8 @@ body {
 
     p {
         margin: 0;
+        font-size: 1rem;
+        line-height: 1.5;
     }
 
     p + p {
@@ -167,16 +169,27 @@ body {
     }
 }
 
+.retirement-notice__date {
+    font-size: 1.05rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
 .retirement-notice__actions {
     display: flex;
     flex-wrap: wrap;
     gap: 0.75rem 1rem;
     align-items: center;
+
+    a {
+        font-size: 1rem;
+        line-height: 1.5;
+    }
 }
 
 @media (max-width: 700px) {
-    body {
-        padding-bottom: 12rem;
+    .page-with-retirement-notice {
+        padding-bottom: 14.5rem;
     }
 
     .retirement-notice__content {

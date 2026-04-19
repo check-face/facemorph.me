@@ -18,8 +18,13 @@ open Share
 open Config
 
 
+let parsePage = function
+    | "retirement"::_ -> Retirement
+    | _ -> Home
+
 let parseUrl (path, query) =
     {
+        Page = parsePage path
         FromValue = Map.tryFind "from_value" query
         ToValue = Map.tryFind "to_value" query
         FromGuid = Map.tryFind "from_guid" query |> Option.bind (System.Guid.TryParse >> tryToOption)
@@ -52,24 +57,36 @@ let formatPathForVidValues vidValues =
                 ()
         ])
 
-let canonicalUrl state =
-    canonicalBaseUrl + formatPathForVidValues state.VidValues
-
 let oEmbedUrl (url:string) =
     oEmbedApiEndpoint + (Feliz.Router.Router.formatPath("", [ "url", url ]))
 
-let pageTitle vidValues =
+let homePageTitle vidValues =
     match vidValues with
     | Some (fromValue, toValue) ->
         sprintf "%s to %s" (shortCheckfaceSrcDesc fromValue) (shortCheckfaceSrcDesc toValue)
     | None ->
         siteName + " face morpher"
 
-let pageDescription = function
+let homePageDescription = function
     | Some (fromValue, toValue) ->
             sprintf "Morph generated faces from %s to %s" (shortCheckfaceSrcDesc fromValue) (shortCheckfaceSrcDesc toValue)
     | None ->
             "Generate faces on the fly and morph between them"
+
+let canonicalUrl (state:State) =
+    match state.Page with
+    | Home -> canonicalBaseUrl + formatPathForVidValues state.VidValues
+    | Retirement -> canonicalBaseUrl + "/retirement"
+
+let pageTitle (state:State) =
+    match state.Page with
+    | Home -> homePageTitle state.VidValues
+    | Retirement -> $"API transition | %s{siteName}"
+
+let pageDescription (state:State) =
+    match state.Page with
+    | Home -> homePageDescription state.VidValues
+    | Retirement -> "Plans for retiring the current facemorph.me API and moving the site off the current Triton-hosted backend."
 
 let getCurrentPath _ =
     Browser.Dom.window.location.pathname, Browser.Dom.window.location.search
@@ -103,6 +120,7 @@ let initByUrlstate urlState =
     let toValue = urlToCheckfaceSrc urlState
     let vidValues = Option.map2 (fun a b -> a,b) fromValue toValue
     {
+        Page = urlState.Page
         LeftValue = defaultFromValue fromValue
         RightValue = defaultToValue toValue
         UploadDialogSide = None
@@ -142,16 +160,16 @@ let updateShare msg state =
         match navigatorCanShare, state.VidValues with
         | true, None ->
             Cmd.OfPromise.result (promise {
-                ignore <| navigatorShare (canonicalUrl state) (pageTitle state.VidValues) (pageDescription state.VidValues)
+                ignore <| navigatorShare (canonicalUrl state) (pageTitle state) (pageDescription state)
                 return ShareMsg (SetShareMsg "Sharing page!")
             })
         | true, Some vidValues ->
             Cmd.OfPromise.result (promise {
                 let fileShare = {
-                    FileName = pageTitle state.VidValues + ".mp4"
-                    Title = pageTitle state.VidValues
+                    FileName = homePageTitle state.VidValues + ".mp4"
+                    Title = homePageTitle state.VidValues
                     FileUrl = vidSrc videoDim vidValues
-                    Text = (pageDescription state.VidValues)
+                    Text = (homePageDescription state.VidValues)
                     Url = (canonicalUrl state)
                     ContentType = "video/mp4"
                 }
@@ -203,6 +221,7 @@ let update msg state : State * Cmd<Msg> =
         let isLoading = vidValues <> state.VidValues && vidValues.IsSome
         {
             state with
+                Page = urlState.Page
                 LeftValue = defaultFromValue urlFromSrc
                 RightValue = defaultToValue urlToSrc
                 VidValues = vidValues
@@ -219,7 +238,7 @@ let update msg state : State * Cmd<Msg> =
         gtagEvent eventName "MorphSlider"
         { state with UseSlider = v }, Cmd.none
 
-let getShareState state =
+let getShareState (state:State) =
     {
         IsOpen = state.ShareOpen
         LinkMsg = state.ShareLinkMsg
@@ -316,11 +335,16 @@ let retirementNotice =
                                 prop.className "retirement-notice__copy"
                                 prop.children [
                                     Html.p [
-                                        Html.strong "Planning notice."
-                                        str $" We expect facemorph.me to retire by %s{retirementDeadlineLabel}."
+                                        Html.strong "Notice."
+                                        str " The current facemorph.me API is scheduled to retire on "
+                                        Html.span [
+                                            prop.className "retirement-notice__date"
+                                            prop.text apiTransitionDateLabel
+                                        ]
+                                        str "."
                                     ]
                                     Html.p [
-                                        str "We are documenting the preservation path first so historic checkfaces can keep working in some form after the current Triton-backed service is retired."
+                                        str "facemorph.me is staying up. We are planning a backend move, and Hugging Face is the leading candidate while we keep testing options."
                                     ]
                                 ]
                             ]
@@ -329,8 +353,8 @@ let retirementNotice =
                                 prop.children [
                                     Mui.link [
                                         link.color.initial
-                                        prop.href "#learn-more-transition"
-                                        prop.text "Learn More"
+                                        prop.href "/retirement"
+                                        prop.text "Learn more"
                                     ]
                                 ]
                             ]
@@ -371,18 +395,36 @@ let ThemedApp children =
         themeProvider.children children
     ]
 
-let render (state:State) (dispatch: Msg -> unit) =
+let renderHome (state:State) (dispatch: Msg -> unit) =
+    ThemedApp [
+        Mui.cssBaseline [ ]
+        Html.div [
+            prop.className "page-with-retirement-notice"
+            prop.children [
+                header
+                MorphForm.renderContent state dispatch
+                MorphForm.renderEncodeImageDialog state dispatch
+                MorphForm.renderBrowseFacesDialog state dispatch
+                viewShareContent (getShareState state) (ShareMsg >> dispatch)
+                Explain.view ()
+                footer
+            ]
+        ]
+        retirementNotice
+    ]
+
+let renderRetirement () =
     ThemedApp [
         Mui.cssBaseline [ ]
         header
-        MorphForm.renderContent state dispatch
-        MorphForm.renderEncodeImageDialog state dispatch
-        MorphForm.renderBrowseFacesDialog state dispatch
-        viewShareContent (getShareState state) (ShareMsg >> dispatch)
-        Explain.view ()
+        Retirement.view ()
         footer
-        retirementNotice
     ]
+
+let render (state:State) (dispatch: Msg -> unit) =
+    match state.Page with
+    | Home -> renderHome state dispatch
+    | Retirement -> renderRetirement ()
 
 let inline helmet props = createElement (Fable.Core.JsInterop.import "Helmet" "react-helmet") props
 
@@ -392,9 +434,10 @@ let meta (property:string) content =
         prop.custom ("content", content)
     ]
 
-let viewHead state =
+let viewHead (state:State) =
     let canonicalUrl = canonicalUrl state
-    let title = pageTitle state.VidValues
+    let title = pageTitle state
+    let description = pageDescription state
 
     helmet [
         prop.children [
@@ -402,52 +445,62 @@ let viewHead state =
             Html.meta [
                 prop.custom ("property", "description")
                 prop.custom ("name", "description")
-                prop.custom ("content", pageDescription None)
+                prop.custom ("content", description)
             ]
-            meta "og:title" (title)
-            meta "og:description" (pageDescription None)
+            meta "og:title" title
+            meta "og:description" description
             meta "og:site_name" siteName
 
             Html.link [ prop.rel.canonical; prop.href canonicalUrl ]
             meta "og:url" canonicalUrl
 
-            Html.link [
-                rel.alternate
-                prop.custom ("type", "application/json+oembed")
-                prop.href (oEmbedUrl canonicalUrl)
-                prop.title $"oEmbed for %s{title}"
-            ]
+            match state.Page with
+            | Home ->
+                Html.link [
+                    rel.alternate
+                    prop.custom ("type", "application/json+oembed")
+                    prop.href (oEmbedUrl canonicalUrl)
+                    prop.title $"oEmbed for %s{title}"
+                ]
 
-            match state.VidValues with
-            | None -> // just use left value if no video
+                match state.VidValues with
+                | None -> // just use left value if no video
+                    meta "og:image" (imgSrc ogImgDim false state.LeftValue)
+                    meta "og:image:alt" (imgAlt state.LeftValue)
+                    meta "og:image:width" ogImgDim
+                    meta "og:image:height" ogImgDim
+                    meta "og:image:type" "image/jpeg"
+                    meta "og:type" "website"
+
+                | Some vidValues ->
+                    let videoSrc = vidSrc ogVideoDim vidValues
+                    let linkprevSrc = linkpreviewSrc linkpreviewWidth vidValues
+                    let linkprevAlt = linkpreviewAlt vidValues
+
+                    meta "og:image" linkprevSrc
+                    meta "og:image:alt" linkprevAlt
+                    meta "og:image:width" linkpreviewWidth
+                    meta "og:image:height" linkpreviewHeight
+                    meta "og:image:type" "image/jpeg"
+
+                    meta "og:type" "video.other"
+                    meta "og:video" videoSrc
+                    meta "og:video:secure_url" videoSrc
+                    meta "og:video:type" "video/mp4"
+                    meta "og:video:width" ogVideoDim
+                    meta "og:video:height" ogVideoDim
+                    meta "twitter:card" "player"
+                    meta "twitter:player" (videoSrc + "&embed_html=true")
+                    meta "twitter:player:width" ogVideoDim
+                    meta "twitter:player:height" ogVideoDim
+
+            | Retirement ->
                 meta "og:image" (imgSrc ogImgDim false state.LeftValue)
                 meta "og:image:alt" (imgAlt state.LeftValue)
                 meta "og:image:width" ogImgDim
                 meta "og:image:height" ogImgDim
                 meta "og:image:type" "image/jpeg"
                 meta "og:type" "website"
-
-            | Some vidValues ->
-                let videoSrc = vidSrc ogVideoDim vidValues
-                let linkprevSrc = linkpreviewSrc linkpreviewWidth vidValues
-                let linkprevAlt = linkpreviewAlt vidValues
-
-                meta "og:image" linkprevSrc
-                meta "og:image:alt" linkprevAlt
-                meta "og:image:width" linkpreviewWidth
-                meta "og:image:height" linkpreviewHeight
-                meta "og:image:type" "image/jpeg"
-
-                meta "og:type" "video.other"
-                meta "og:video" videoSrc
-                meta "og:video:secure_url" videoSrc
-                meta "og:video:type" "video/mp4"
-                meta "og:video:width" ogVideoDim
-                meta "og:video:height" ogVideoDim
-                meta "twitter:card" "player"
-                meta "twitter:player" (videoSrc + "&embed_html=true")
-                meta "twitter:player:width" ogVideoDim
-                meta "twitter:player:height" ogVideoDim
         ]
     ]
 
