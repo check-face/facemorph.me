@@ -1,6 +1,10 @@
 
 name: CI
 
+env:
+  VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+  VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
 on:
   push:
     branches: [ master ]
@@ -8,39 +12,64 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
+    container: mcr.microsoft.com/dotnet/sdk:5.0-focal
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '12'
-      - uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '5.0.x'
-          global-json-file: global.json
-      - run: npm install
-      - run: npm run build
-
-      # https://github.com/amondnet/vercel-action/blob/f79b066724a2ac14b8944244a625146e5d6006c3/.github/workflows/example-static.yml
-      - name: production or not
-        id: prod_or_not
+      - name: Install Node 20
         run: |
-          if [ "$REF" == 'refs/heads/master' ]
-          then
-              echo "vercel-args=--prod" >> "$GITHUB_OUTPUT"
-          else
-              echo "vercel-args=" >> "$GITHUB_OUTPUT"
-          fi
-        env:
-          REF: ${{ github.ref }}
-
-      - uses: amondnet/vercel-action@v19
-        with:
-          # github-token: ${{ secrets.GITHUB_TOKEN }}
-          vercel-token: ${{ secrets.VERCEL_TOKEN }}
-          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          alias-domains: |
-            {{BRANCH}}.vercel.facemorph.me
-          vercel-args: ${{ steps.prod_or_not.outputs.vercel-args }}
+          set -euo pipefail
+          apt-get update
+          apt-get install -y curl ca-certificates xz-utils
+          arch="$(uname -m)"
+          case "$arch" in
+            x86_64|amd64) node_arch=x64 ;;
+            aarch64|arm64) node_arch=arm64 ;;
+            *)
+              echo "Unsupported architecture: $arch" >&2
+              exit 1
+              ;;
+          esac
+          curl -fsSL "https://nodejs.org/dist/v20.19.5/node-v20.19.5-linux-${node_arch}.tar.xz" -o /tmp/node.tar.xz
+          mkdir -p /opt/node20
+          tar -xJf /tmp/node.tar.xz --strip-components=1 -C /opt/node20
+          echo "/opt/node20/bin" >> "$GITHUB_PATH"
+          node -v
+          npm -v
+          dotnet --version
+      - name: Install dependencies
+        run: npm install
+      - name: Build site
+        run: npm run build
+      - name: Link deploy output to the Vercel project
+        run: |
+          set -euo pipefail
+          mkdir -p deploy/.vercel
+          cat > deploy/.vercel/project.json <<EOF
+          {
+            "orgId": "${VERCEL_ORG_ID}",
+            "projectId": "${VERCEL_PROJECT_ID}"
+          }
+          EOF
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+      - name: Deploy preview
+        if: github.event_name == 'pull_request'
+        id: deploy_preview
+        run: |
+          set -euo pipefail
+          url="$(vercel --cwd deploy --token="${{ secrets.VERCEL_TOKEN }}" --archive=tgz --yes)"
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+      - name: Deploy production
+        if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+        id: deploy_production
+        run: |
+          set -euo pipefail
+          url="$(vercel --cwd deploy --prod --token="${{ secrets.VERCEL_TOKEN }}" --archive=tgz --yes)"
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+      - name: Summarize preview deployment
+        if: steps.deploy_preview.outputs.url != ''
+        run: echo "Preview deployment: ${{ steps.deploy_preview.outputs.url }}" >> "$GITHUB_STEP_SUMMARY"
+      - name: Summarize production deployment
+        if: steps.deploy_production.outputs.url != ''
+        run: echo "Production deployment: ${{ steps.deploy_production.outputs.url }}" >> "$GITHUB_STEP_SUMMARY"
