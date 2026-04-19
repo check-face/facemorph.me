@@ -69,7 +69,9 @@ jobs:
           echo "url=$url" >> "$GITHUB_OUTPUT"
       - name: Summarize preview deployment
         if: steps.deploy_preview.outputs.url != ''
-        run: echo "Preview deployment: ${{ steps.deploy_preview.outputs.url }}" >> "$GITHUB_STEP_SUMMARY"
+        run: |
+          echo "Preview deployment: ${{ steps.deploy_preview.outputs.url }}" >> "$GITHUB_STEP_SUMMARY"
       - name: Summarize production deployment
         if: steps.deploy_production.outputs.url != ''
-        run: echo "Production deployment: ${{ steps.deploy_production.outputs.url }}" >> "$GITHUB_STEP_SUMMARY"
+        run: |
+          echo "Production deployment: ${{ steps.deploy_production.outputs.url }}" >> "$GITHUB_STEP_SUMMARY"
