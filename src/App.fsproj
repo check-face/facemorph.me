@@ -10,6 +10,7 @@
     <Compile Include="FancyButton.fs" />
     <Compile Include="SliderMorph.fs" />
     <Compile Include="Explain.fs" />
+    <Compile Include="Retirement.fs" />
     <Compile Include="BrowseFacesDialog.fs" />
     <Compile Include="EncodeImageDialog.fs" />
     <Compile Include="Share.fs" />

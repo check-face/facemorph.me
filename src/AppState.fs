@@ -4,7 +4,12 @@ open Checkface
 open Share
 
 type Side = | Left | Right
+type Page =
+    | Home
+    | Retirement
+
 type State = {
+    Page : Page
     VidValues : (CheckfaceSrc * CheckfaceSrc) option
     LeftValue : CheckfaceSrc
     RightValue : CheckfaceSrc
@@ -17,6 +22,7 @@ type State = {
 }
 
 type UrlState = {
+    Page : Page
     FromValue : string option
     ToValue : string option
     FromGuid : System.Guid Option
