@@ -335,8 +335,8 @@ let retirementNotice =
                                 prop.className "retirement-notice__copy"
                                 prop.children [
                                     Html.p [
-                                        Html.strong "Notice."
-                                        str " The current facemorph.me API is scheduled to retire on "
+                                        Html.strong "Update."
+                                        str " We have pushed the facemorph.me API retirement back to "
                                         Html.span [
                                             prop.className "retirement-notice__date"
                                             prop.text apiTransitionDateLabel
@@ -344,7 +344,7 @@ let retirementNotice =
                                         str "."
                                     ]
                                     Html.p [
-                                        str "facemorph.me is staying up. We are planning a backend move, and Hugging Face is the leading candidate while we keep testing options."
+                                        str "facemorph.me is staying up. We moved the date after a lot of you asked us to, so we can give the feedback the consideration it deserves. Hugging Face is still the leading candidate while we keep testing options."
                                     ]
                                 ]
                             ]

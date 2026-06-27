@@ -1,6 +1,8 @@
 ## A note about the facemorph.me API
 
-The current facemorph.me API is scheduled to retire on **June 20, 2026 (AEST)**.
+The current facemorph.me API is now scheduled to retire on **October 25, 2026 (AEST)**.
+
+We have pushed this back from the original June date. Part of that is popular demand — a lot of people asked us for more time — and part of it is that we want to properly sit with the feedback we have had rather than rush the change. We would rather move slowly and get it right.
 
 facemorph.me itself is not going away. What is changing is the current API and the way the checkface backend is hosted today.
 
@@ -25,12 +27,21 @@ For some local checkface or facemorph workflows, **ComfyUI** may also be useful.
 ---
 
 #### Is facemorph.me shutting down?
-No. facemorph.me is expected to stay up. The part scheduled to retire on **June 20, 2026 (AEST)** is the current API and backend in their current form.
+No. facemorph.me is expected to stay up. The part scheduled to retire on **October 25, 2026 (AEST)** is the current API and backend in their current form.
 
 ---
 
-#### What is changing on June 20, 2026?
-That is the current target date for retiring the API in its current form. It is not a promise that the whole site disappears on that day.
+#### What is changing on October 25, 2026?
+That is the current target date for retiring the API in its current form. We moved it back from June to give the feedback we received proper consideration. It is not a promise that the whole site disappears on that day.
+
+---
+
+#### "I'm not happy about features being removed from a service." How do you respond?
+That is completely fair, and we would feel the same way. Nobody likes losing something they have come to rely on, and we do not want to wave that away. It is a real part of why we pushed the date back.
+
+The honest context is that facemorph.me has always been free — no ads, no accounts, no charges — and the servers come out of our own pockets. We mention that not to dismiss the concern but to explain the constraint we are working within: the current setup is getting harder for us to keep running, and the choice in front of us was to move it or eventually lose it. We would much rather move it.
+
+So the goal is not to take things away. The whole reason we are moving to a new backend rather than switching it off is to keep as much of what people use working as we can. If there is a feature that matters to you, please tell us at **checkfaceml@gmail.com** — knowing what people rely on is exactly what helps us protect it.
 
 ---
 
