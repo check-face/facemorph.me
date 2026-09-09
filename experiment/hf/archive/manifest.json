@@ -1,0 +1,58 @@
+[
+  {
+    "seed": 0,
+    "file": "seed-0-classic.jpg",
+    "sha256": "2653d04789cc18fba032d71c79e81cf406bfe80f9b438dec97bb99613eb3bf45",
+    "source_path": "/mnt/unit/checkfacedata/outputImages/s0/0/s0_512.jpg",
+    "classification": "deterministic numeric seed, not uploaded photo",
+    "copied_at": "2026-09-08"
+  },
+  {
+    "seed": 1,
+    "file": "seed-1-classic.jpg",
+    "sha256": "daa5af9f14801df83a0f779953615875a8c07818e568f1080042741ca8bc381d",
+    "source_path": "/mnt/unit/checkfacedata/outputImages/s1/1/s1_512.jpg",
+    "classification": "deterministic numeric seed, not uploaded photo",
+    "copied_at": "2026-09-08"
+  },
+  {
+    "seed": 2,
+    "file": "seed-2-classic.jpg",
+    "sha256": "bec5414c27c0c87fa647d28015cd22d9cecd0c42a52714f05c5534d6b2c6b150",
+    "source_path": "/mnt/unit/checkfacedata/outputImages/s2/2/s2_512.jpg",
+    "classification": "deterministic numeric seed, not uploaded photo",
+    "copied_at": "2026-09-08"
+  },
+  {
+    "seed": 3,
+    "file": "seed-3-classic.jpg",
+    "sha256": "4cc41a22d3af141fe04fe0e75f34135fc2988b8dc8474ccc14ba8c6fffef4332",
+    "source_path": "/mnt/unit/checkfacedata/outputImages/s3/3/s3_512.jpg",
+    "classification": "deterministic numeric seed, not uploaded photo",
+    "copied_at": "2026-09-08"
+  },
+  {
+    "seed": 5,
+    "file": "seed-5-classic.jpg",
+    "sha256": "d9a2d22ca6a362e8c04f2bcd6e508db6efe47da5ae6ac7a215c62406b7fb062d",
+    "source_path": "/mnt/unit/checkfacedata/outputImages/s5/5/s5_512.jpg",
+    "classification": "deterministic numeric seed, not uploaded photo",
+    "copied_at": "2026-09-08"
+  },
+  {
+    "seed": 42,
+    "file": "seed-42-classic.jpg",
+    "sha256": "81da5ea88bbb671a571658a84ef01c4b492c83370187ef3bfc9ecc27843e38b3",
+    "source_path": "/mnt/unit/checkfacedata/outputImages/s42/42/s42_512.jpg",
+    "classification": "deterministic numeric seed, not uploaded photo",
+    "copied_at": "2026-09-08"
+  },
+  {
+    "seed": 100,
+    "file": "seed-100-classic.jpg",
+    "sha256": "e3accfaf130a2b89c72e3f3d6fae71373330e21a01b5569ab8e2af98ee95fcd4",
+    "source_path": "/mnt/unit/checkfacedata/outputImages/s0/100/s100_300.jpg",
+    "classification": "deterministic numeric seed, not uploaded photo",
+    "copied_at": "2026-09-08"
+  }
+]

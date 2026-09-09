@@ -1,0 +1,10 @@
+.venv/
+__pycache__/
+.pytest_cache/
+models/*.pkl
+generated/
+*.log
+.env
+.env.*
+vendor/**/.git/
+frontend/

@@ -203,3 +203,5 @@ main.js
 
 *.fs.js
 *.fs.js.map
+__pycache__/
+*.pyc

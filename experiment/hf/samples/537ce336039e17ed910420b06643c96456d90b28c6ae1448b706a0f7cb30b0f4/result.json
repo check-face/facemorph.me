@@ -1,0 +1,29 @@
+{
+  "files": {
+    "first.png": "e20d72e5c935b6460fd5d34b9175629e45c9623f7919f25bc02f68b1dc61c30b",
+    "morph.gif": "f871ab6dacdcce3f6a389e44c362e9989fa514dca9a5b77d19a8f70ec5404efb",
+    "second.png": "ffec1e9a93deb34e4b6facc7c0cac288a07acf99c1620de324b742ecbdfbbb5e"
+  },
+  "key": "537ce336039e17ed910420b06643c96456d90b28c6ae1448b706a0f7cb30b0f4",
+  "preserved_legacy": false,
+  "spec": {
+    "dimension": 512,
+    "format": "png+gif",
+    "frames": 12,
+    "inputs": [
+      {
+        "seed": 42
+      },
+      {
+        "seed": 5
+      }
+    ],
+    "interpolation": "sinusoidal-z",
+    "kind": "morph",
+    "model_source_sha256": "adf127ea7bb8a7788c8bdeda3c9937f7310b669b09ecf799ca53a631ff46948d",
+    "noise": "constant",
+    "renderer": "checkface-sg2f-pytorch-trial-v1",
+    "truncation_cutoff": 8,
+    "truncation_psi": 0.7
+  }
+}

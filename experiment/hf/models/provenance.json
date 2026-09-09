@@ -1,0 +1,9 @@
+{
+  "source_sha256": "adf127ea7bb8a7788c8bdeda3c9937f7310b669b09ecf799ca53a631ff46948d",
+  "generator_sha256": "dc315131a0d8466167f69962dd75567db8815261a5c5cab545fe9b48fe815994",
+  "upstream": "https://github.com/NVlabs/stylegan2-ada-pytorch",
+  "revision": "d72cc7d041b42ec8e806021a205ed9349f87c6a4",
+  "source": "Read-only copy of deployed Triton server-api-1 config-F checkpoint",
+  "conversion": "NVIDIA legacy.py; G_ema only; no retraining",
+  "generator_bytes": 132777362
+}

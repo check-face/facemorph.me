@@ -69,3 +69,18 @@ let vidMorphAlt (fromValue, toValue) =
 
 let linkpreviewAlt (fromValue, toValue) =
     sprintf "Preview of %s + %s" (describeCheckfaceSrc fromValue) (describeCheckfaceSrc toValue)
+// The existing input modes and URLs remain the contract with the trial adapter.
+let generateTrial (fromValue, toValue) : Fable.Core.JS.Promise<unit> =
+    let submit : string * string -> Fable.Core.JS.Promise<unit> =
+        Fable.Core.JsInterop.import "generate" "./hfTrial.js"
+    submit (valueParam fromValue, valueParam toValue)
+
+let restoreTrial (fromValue, toValue) : Fable.Core.JS.Promise<bool> =
+    let restore : string * string -> Fable.Core.JS.Promise<bool> =
+        Fable.Core.JsInterop.import "restore" "./hfTrial.js"
+    restore (valueParam fromValue, valueParam toValue)
+
+let setDemoMode (mode: string) : Fable.Core.JS.Promise<string> =
+    let change : string -> Fable.Core.JS.Promise<string> =
+        Fable.Core.JsInterop.import "demoMode" "./hfTrial.js"
+    change mode

@@ -15,6 +15,7 @@
     <Compile Include="EncodeImageDialog.fs" />
     <Compile Include="Share.fs" />
     <Compile Include="AppState.fs" />
+    <Compile Include="Review.fs" />
     <Compile Include="MorphForm.fs" />
     <Compile Include="App.fs" />
     <Compile Include="Index.fs" />

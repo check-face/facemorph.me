@@ -269,8 +269,18 @@ let renderMorph values useSlider dispatch =
                     OnLoaded = (fun _ -> dispatch MorphLoaded)
                     FrameSrc = morphframeSrc
                     Dim = videoDim
-                    NumFrames = 25
+                    NumFrames = if isTrial then 7 else 25
                 }
+            elif isTrial then
+                Html.img [
+                    prop.src (vidSrc videoDim (fromValue, toValue))
+                    prop.width videoDim
+                    prop.height videoDim
+                    prop.alt (vidMorphAlt (fromValue, toValue))
+                    prop.style [ style.maxWidth (length.percent 100); style.height length.auto ]
+                    prop.onLoad (fun _ -> dispatch MorphLoaded)
+                ]
+                Html.a [ prop.href (vidSrc videoDim (fromValue, toValue)); prop.custom ("download", "facemorph.gif"); prop.text "Download GIF" ]
             else
                 let posterImgSrc = imgSrc imgDim false (fromValue) //imgDim is already in cache because fromValue is displayed at imgDim
                 Html.img [
@@ -342,6 +352,7 @@ let morphButton isLoading hideButton =
 
 let renderContent (state:State) (dispatch: Msg -> unit) =
     Html.form [
+        prop.key (string state.TrialRevision)
         prop.onSubmit (fun e -> e.preventDefault(); dispatch MakeVid)
         prop.children [
             Mui.container [
@@ -349,7 +360,7 @@ let renderContent (state:State) (dispatch: Msg -> unit) =
                     prop.className "morph-content"
                     prop.children [
                         SetpointInput {
-                            AutoFocus = true
+                            AutoFocus = not isTrial
                             Value = state.LeftValue
                             Id = "leftval"
                             Label = "Morph from"
@@ -366,7 +377,7 @@ let renderContent (state:State) (dispatch: Msg -> unit) =
                             OnUploadRealImage = (fun () -> ClickUploadRealImage Right |> dispatch)
                             OnBrowseCheckfaceValues = (fun () -> BrowseCheckfaceValues Right |> dispatch)
                         }
-                        let hideButton = state.VidValues = Some (state.LeftValue, state.RightValue)
+                        let hideButton = not isTrial && state.VidValues = Some (state.LeftValue, state.RightValue)
                         morphButton state.IsMorphLoading hideButton
                         renderMorph state.VidValues state.UseSlider dispatch
                     ]
@@ -400,5 +411,5 @@ let renderBrowseFacesDialog state dispatch =
             | Some Left -> SetLeftValue value |> dispatch
             | Some Right -> SetRightValue value |> dispatch
             | None -> ()
-        Values = Some [ for i in 1u..100u do Seed i ]
+        Values = Some (if isTrial then [0u;1u;2u;3u;5u;42u;100u] |> List.map Seed else [ for i in 1u..100u do Seed i ])
     }

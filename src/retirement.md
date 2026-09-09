@@ -1,79 +1,63 @@
-## A note about the facemorph.me API
+## Facemorph’s next chapter
 
-The current facemorph.me API is now scheduled to retire on **October 25, 2026 (AEST)**.
+Facemorph is a small community project. We want its next phase to focus on preserving what people have made, with a limited way to keep exploring without a permanently running home GPU.
 
-We have pushed this back from the original June date. Part of that is popular demand — a lot of people asked us for more time — and part of it is that we want to properly sit with the feedback we have had rather than rush the change. We would rather move slowly and get it right.
+The proposal keeps the familiar Facemorph interface. Saved faces and morphs should be accessible without signing in. For something new, you would sign in with your own Hugging Face account and use **your own free allowance or paid resources**. Any purchase would happen with HF; Facemorph would not automatically charge you or use the project's account to cover your generation.
 
-facemorph.me itself is not going away. What is changing is the current API and the way the checkface backend is hosted today.
+We are building and reviewing this locally first. **The public trial has not started.** The local preview simulates account and allowance states and uses the Mac CPU. HF sign-in, caller quota attribution and persistent hosting still need a live test before we invite the community.
 
-The goal is to move the site onto a provider that is easier for us to keep online over time, while keeping the main experience available. We are still exploring the exact path. Right now, **Hugging Face is the leading candidate**, but we are still testing options and we are not calling the details final yet.
+## A side-by-side trial
 
-This is the direction we are working toward:
+Once the new experience is ready, a banner on classic Facemorph will explicitly invite people to try it. The new experience will link back to classic, so you can compare both and tell us what matters.
 
-- keep facemorph.me online
-- retire the current API in its current form
-- move the backend to a setup that is easier to support long-term
-- preserve the workflows people actually use where we can
-- document what changes, what stays, and which alternatives still make sense
+Both will run for **at least four weeks after that public invitation goes live**. A local demo or an isolated deployment does not start the clock. We will review feedback during the trial, explain the remaining differences and publish the outcome before making the final transition.
 
-Nothing changes overnight. We are in the transition period now, and we expect to test the next setup at **[testing.facemorph.me](https://testing.facemorph.me)** before any broader migration. We know some workflows will get harder. If you think this breaks a use case people care about, we would like to hear about it.
+The current API retirement target is **October 25, 2026 (AEST)**. It is subject to preservation and trial readiness. If the work needs more time, we will revise the target rather than shorten the comparison period or switch the service off automatically.
 
-If you think this could break something you rely on, or if there is a workflow that needs special care, email **checkfaceml@gmail.com**. We cannot promise support for every case, but we will read the feedback and try to help where we can.
+## What this preview covers
 
-For some local checkface or facemorph workflows, **ComfyUI** may also be useful. It is not the hosted migration plan, but it may be a practical local option for image modification on your own machine.
+The local experiment includes a small sample of preserved synthetic faces, word/seed generation, short GIFs, a slider, downloads and saved links. It does not yet include the full archive, photo uploads, historic photo links or compatibility with the old public API. New renderings may differ from the originals.
+
+Those missing workflows need explicit preservation decisions. A mostly archival future should keep historic work accessible; it is not a claim that everything has already been copied or migrated.
 
 ## FAQ
 
 ---
 
 #### Is facemorph.me shutting down?
-No. facemorph.me is expected to stay up. The part scheduled to retire on **October 25, 2026 (AEST)** is the current API and backend in their current form.
+The intention is to keep Facemorph accessible in a more sustainable form. The proposed change concerns the current GPU-backed API and hosting. We will preserve existing work and review the trial before deciding what can retire.
 
 ---
 
-#### What is changing on October 25, 2026?
-That is the current target date for retiring the API in its current form. We moved it back from June to give the feedback we received proper consideration. It is not a promise that the whole site disappears on that day.
+#### Who pays for new generation?
+Each user would supply their own HF compute entitlement. Saved results need no new compute. A new request would use the user's available free allowance or paid resources they choose through HF. There is no shared owner token paying for everyone's generation, and no automatic fallback to our home GPU.
 
 ---
 
-#### "I'm not happy about features being removed from a service." How do you respond?
-That is completely fair, and we would feel the same way. Nobody likes losing something they have come to rely on, and we do not want to wave that away. It is a real part of why we pushed the date back.
-
-The honest context is that facemorph.me has always been free — no ads, no accounts, no charges — and the servers come out of our own pockets. We mention that not to dismiss the concern but to explain the constraint we are working within: the current setup is getting harder for us to keep running, and the choice in front of us was to move it or eventually lose it. We would much rather move it.
-
-So the goal is not to take things away. The whole reason we are moving to a new backend rather than switching it off is to keep as much of what people use working as we can. If there is a feature that matters to you, please tell us at **checkfaceml@gmail.com** — knowing what people rely on is exactly what helps us protect it.
+#### What happens when my allowance runs out?
+You can still browse saved results. To generate something new, you would wait for your allowance to reset or choose paid resources through HF. The trial must verify that this works for a separate user account before we treat the design as proven.
 
 ---
 
-#### What is the leading replacement plan?
-Hugging Face is the leading candidate right now, but we are still testing options before we make stronger promises about the final setup.
+#### What stays available during the comparison period?
+Classic remains available alongside the new experience for at least four weeks after the public invitation. Photo uploads and old API workflows still belong to classic during that period. We will state which workflows have a successor and which require an archival or local alternative.
 
 ---
 
-#### Are you still exploring other options?
-Yes. We have a direction, not a finished answer. We want to test replacement paths before we claim that one approach is final.
+#### Will the API and old links work exactly as before?
+That is not established. Preserving old artifacts and links is a separate requirement from generating similar faces with a converted model. We need archive and restore evidence, plus a decision about every retained workflow, before removing the current backend.
 
 ---
 
-#### Will there still be a local or offline path?
-We intend to document one. For some local image modification workflows, ComfyUI may be a useful fit, and we also want clearer notes for people who want to run parts of the workflow themselves.
+#### Why not keep the current server forever?
+Facemorph has been a free experiment maintained out of our own pockets. A permanent GPU service adds ongoing hardware and software maintenance. We want to keep the work accessible while making the project's next phase manageable for its maintainers.
 
 ---
 
-#### Will the API stay exactly the same?
-We are exploring options that would let people sign in to a Hugging Face account and still use a familiar interface.
+#### Where can I try it?
+The co-maintainer review is local for now. Once the HF-backed trial passes its checks, we will add a working “Try the new experience” link to classic. A separate trial address is still to be decided; no new domain is being announced yet.
 
 ---
 
-#### I think this may break something I use. What should I do?
-Email us at **checkfaceml@gmail.com** and tell us what you are trying to do. If you can already see a problem with the plan, that is exactly the kind of feedback we want during the transition period. We cannot promise support for every workflow, but we will do our best to help.
-
----
-
-#### Why not just keep the current server online?
-The current setup has served us well, but it was never meant to be the forever home for a public service. We would rather move it carefully, with warning, than keep stretching the current setup until it becomes a problem.
-
----
-
-#### Where should I send transition questions or feedback?
-Email **checkfaceml@gmail.com**. GitHub issues are still useful for bugs in the **checkface** project that powers facemorph.me, but transition questions and workflow concerns are easier for us to handle over email.
+#### What feedback helps?
+Tell us which workflows you use, which familiar synthetic inputs differ, and what you want preserved. Email **checkfaceml@gmail.com**. Please do not send private photos or access tokens. We cannot promise every feature, but your feedback will inform the transition.

@@ -6,7 +6,9 @@ open Fulma
 open Fable.MaterialUI.Icons
 open Fable.Core.JsInterop
 
-let explainContent : string = Fable.Core.JsInterop.importDefault "./explain.md"
+let classicContent : string = Fable.Core.JsInterop.importDefault "./explain.md"
+let trialContent : string = Fable.Core.JsInterop.importDefault "./trial-explain.md"
+let explainContent = if Config.isTrial && not Config.isClassicReview then trialContent else classicContent
 
 let private useStyles = Styles.makeStyles (fun styles theme ->
     {|

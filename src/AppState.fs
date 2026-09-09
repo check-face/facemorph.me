@@ -18,6 +18,9 @@ type State = {
     ShareOpen : bool
     ShareLinkMsg : string option
     IsMorphLoading : bool
+    DemoMode : string
+    TrialRevision : int
+    TrialStatus : string option
     UseSlider : bool
 }
 
@@ -39,6 +42,10 @@ type Msg =
     | CloseUploadDialog
     | CloseBrowseFacesDialog
     | UrlChanged of (string list * Map<string, string>)
+    | SetDemoMode of string
+    | DemoChanged of string
+    | TrialFinished of (CheckfaceSrc * CheckfaceSrc)
+    | TrialFailed of string
     | MakeVid
     | ShareMsg of ShareMsg
     | MorphLoaded

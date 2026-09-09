@@ -228,3 +228,23 @@ html {
     background: url('public/cropper-stencil.svg') no-repeat center center fixed;
     background-size: cover;
 }
+
+// Community trial: additions to the existing interface.
+.review-nav { display:flex; flex-wrap:wrap; gap:12px 20px; padding:14px 18px; margin:0 auto 24px; max-width:1120px; border:1px dashed #777; border-radius:8px; font-size:14px; }
+.review-nav a, .chapter-intro a, .chapter-banner a { color:inherit; text-decoration:underline; }
+.chapter-banner, .compute-card { padding:20px 24px; margin:16px auto 24px; border:1px solid #8886; border-radius:10px; max-width:1000px; }
+.chapter-banner { border-left:5px solid #ec792b; }
+.chapter-banner h2, .chapter-intro h2 { font-family:Nunito, sans-serif; font-size:26px; margin:0 0 12px; }
+.chapter-banner p, .chapter-intro p, .compute-card p { line-height:1.6; margin:10px 0; }
+.chapter-action { display:inline-block; padding:10px 16px; margin:4px 20px 4px 0; border:1px solid currentColor; border-radius:6px; font-weight:600; }
+.chapter-intro { max-width:950px; margin:0 auto 20px; }
+.review-note { font-size:14px; line-height:1.6; opacity:.85; }
+.compute-card h3 { margin:0 0 8px; font-size:20px; }
+.compute-card label { display:block; margin:14px 0 6px; }
+.compute-card select { font:inherit; padding:10px; max-width:100%; background:transparent; color:inherit; border:1px solid #888; border-radius:4px; }
+.compute-card option { color:#222; background:white; }
+.compute-status { min-height:48px; padding:12px 16px; border-left:3px solid #ec792b; line-height:1.5; }
+@media(max-width:600px) { .chapter-banner, .compute-card { padding:16px; } .review-nav { margin:0 12px 20px; } }
+
+.demo-states { display:flex; flex-wrap:wrap; gap:8px; margin:16px 0; }
+.demo-states [aria-pressed="true"] { border-width:2px; background:#8882; font-weight:bold; }

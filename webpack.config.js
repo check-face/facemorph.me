@@ -37,6 +37,11 @@ var CONFIG = {
 // The HtmlWebpackPlugin allows us to use a template for the index.html page
 // and automatically injects <script> or <link> tags for generated bundles.
 var commonPlugins = [
+    new (require('webpack').DefinePlugin)({
+        'process.env.FACEMORPH_TRIAL': JSON.stringify(process.env.FACEMORPH_TRIAL || '0'),
+        'process.env.FACEMORPH_REVIEW': JSON.stringify(process.env.FACEMORPH_REVIEW || '0'),
+        'process.env.FACEMORPH_TRIAL_URL': JSON.stringify(process.env.FACEMORPH_TRIAL_URL || '')
+    }),
     new HtmlWebpackPlugin({
         filename: 'index.html',
         template: resolve(CONFIG.indexHtmlTemplate)
@@ -200,6 +205,7 @@ let server =
     // See https://github.com/fable-compiler/Fable/issues/1490
     resolve: client.resolve,
     plugins: [
+        new (require("webpack").DefinePlugin)({"process.env.FACEMORPH_TRIAL": JSON.stringify(process.env.FACEMORPH_TRIAL || "0"), "process.env.FACEMORPH_REVIEW": JSON.stringify(process.env.FACEMORPH_REVIEW || "0"), "process.env.FACEMORPH_TRIAL_URL": JSON.stringify(process.env.FACEMORPH_TRIAL_URL || "")}),
         new CleanWebpackPlugin()
     ],
     module: client.module,

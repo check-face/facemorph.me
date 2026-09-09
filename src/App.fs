@@ -34,7 +34,7 @@ let parseUrl (path, query) =
     }
 
 let formatPathForVidValues vidValues =
-    Feliz.Router.Router.formatPath("/",
+    Feliz.Router.Router.formatPath((if isClassicReview then "/classic" else "/"),
         [
             match vidValues with
             | Some (fromValue, toValue) ->
@@ -129,10 +129,23 @@ let initByUrlstate urlState =
         ShareOpen = false
         ShareLinkMsg = None
         IsMorphLoading = false
+        DemoMode = "signed-out"
+        TrialRevision = 0
+        TrialStatus = None
         UseSlider = false
     }
 let initByUrl = parseSegments >> parseUrl >> initByUrlstate
-let init() = getCurrentPath() |> initByUrl, Cmd.none
+let init() =
+    let state = getCurrentPath() |> initByUrl
+    let reviewCmd =
+        if isReview then Cmd.OfPromise.either setDemoMode null DemoChanged (fun e -> TrialFailed e.Message)
+        else Cmd.none
+    match isTrial, state.VidValues with
+    | true, Some values ->
+        state, Cmd.batch [reviewCmd; Cmd.OfPromise.either restoreTrial values
+            (fun found -> if found then TrialFinished values else TrialFailed "This pair is not saved yet. Press Morph to generate it.")
+            (fun error -> TrialFailed error.Message)]
+    | _ -> state, reviewCmd
 
 let updateShare msg state =
     match msg with
@@ -166,12 +179,12 @@ let updateShare msg state =
         | true, Some vidValues ->
             Cmd.OfPromise.result (promise {
                 let fileShare = {
-                    FileName = homePageTitle state.VidValues + ".mp4"
+                    FileName = homePageTitle state.VidValues + (if isTrial then ".gif" else ".mp4")
                     Title = homePageTitle state.VidValues
                     FileUrl = vidSrc videoDim vidValues
                     Text = (homePageDescription state.VidValues)
                     Url = (canonicalUrl state)
-                    ContentType = "video/mp4"
+                    ContentType = if isTrial then "image/gif" else "video/mp4"
                 }
                 let! couldShareFile = shareFileFromUrl fileShare
                 if couldShareFile then
@@ -194,10 +207,16 @@ let updateShare msg state =
 
 let update msg state : State * Cmd<Msg> =
     match msg with
+    | SetDemoMode mode ->
+        state, Cmd.OfPromise.either setDemoMode mode DemoChanged (fun e -> TrialFailed e.Message)
+    | DemoChanged mode ->
+        { state with DemoMode = mode; TrialStatus = None }, Cmd.none
     | SetLeftValue value ->
         { state with LeftValue = value }, Cmd.none
     | SetRightValue value ->
         { state with RightValue = value }, Cmd.none
+    | ClickUploadRealImage _ when isTrial ->
+        { state with TrialStatus = Some "Photo uploads and historic photo links are still available on classic Facemorph. This trial supports words and seeds." }, Cmd.none
     | ClickUploadRealImage side ->
         gtagEvent "OpenDialog" "EncodeImageDialog"
         { state with UploadDialogSide = Some side }, Cmd.none
@@ -207,6 +226,15 @@ let update msg state : State * Cmd<Msg> =
         { state with BrowseFacesDialogSide = None }, Cmd.none
     | BrowseCheckfaceValues side ->
         { state with BrowseFacesDialogSide = Some side }, Cmd.none
+    | TrialFinished values ->
+        { state with TrialRevision = state.TrialRevision + 1; VidValues = Some values; IsMorphLoading = false; TrialStatus = Some "Saved trial rendering. Downloads and this link use no further compute." },
+        values |> Some |> formatPathForVidValues |> Cmd.navigatePath
+    | TrialFailed message ->
+        { state with IsMorphLoading = false; TrialStatus = Some message }, Cmd.none
+    | MakeVid when isTrial ->
+        let values = state.LeftValue, state.RightValue
+        { state with IsMorphLoading = true; TrialStatus = Some "Checking saved results, then waiting for compute if needed…" },
+        Cmd.OfPromise.either generateTrial values (fun _ -> TrialFinished values) (fun error -> TrialFailed error.Message)
     | MakeVid when state.VidValues = Some (state.LeftValue, state.RightValue) ->
         state, Cmd.none
     | MakeVid ->
@@ -321,50 +349,6 @@ let footer =
         ]
     ]
 
-let retirementNotice =
-    Html.aside [
-        prop.className "retirement-notice"
-        prop.children [
-            Mui.container [
-                container.maxWidth.md
-                container.children [
-                    Html.div [
-                        prop.className "retirement-notice__content"
-                        prop.children [
-                            Html.div [
-                                prop.className "retirement-notice__copy"
-                                prop.children [
-                                    Html.p [
-                                        Html.strong "Update."
-                                        str " We have pushed the facemorph.me API retirement back to "
-                                        Html.span [
-                                            prop.className "retirement-notice__date"
-                                            prop.text apiTransitionDateLabel
-                                        ]
-                                        str "."
-                                    ]
-                                    Html.p [
-                                        str "facemorph.me is staying up. We moved the date after a lot of you asked us to, so we can give the feedback the consideration it deserves. Hugging Face is still the leading candidate while we keep testing options."
-                                    ]
-                                ]
-                            ]
-                            Html.div [
-                                prop.className "retirement-notice__actions"
-                                prop.children [
-                                    Mui.link [
-                                        link.color.initial
-                                        prop.href "/retirement"
-                                        prop.text "Learn more"
-                                    ]
-                                ]
-                            ]
-                        ]
-                    ]
-                ]
-            ]
-        ]
-    ]
-
 let createTheme isDark = [
     if isDark then theme.palette.type'.dark else theme.palette.type'.light
     theme.palette.background.default' <| if isDark then "#17181c" else "white"
@@ -399,9 +383,11 @@ let renderHome (state:State) (dispatch: Msg -> unit) =
     ThemedApp [
         Mui.cssBaseline [ ]
         Html.div [
-            prop.className "page-with-retirement-notice"
+            prop.className "facemorph-page"
             prop.children [
                 header
+                if isTrial then Review.view state dispatch
+                else Review.invitation
                 MorphForm.renderContent state dispatch
                 MorphForm.renderEncodeImageDialog state dispatch
                 MorphForm.renderBrowseFacesDialog state dispatch
@@ -410,13 +396,13 @@ let renderHome (state:State) (dispatch: Msg -> unit) =
                 footer
             ]
         ]
-        retirementNotice
     ]
 
 let renderRetirement () =
     ThemedApp [
         Mui.cssBaseline [ ]
         header
+        if isReview then Review.reviewNavigation
         Retirement.view ()
         footer
     ]
