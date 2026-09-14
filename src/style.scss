@@ -228,3 +228,43 @@ html {
     background: url('public/cropper-stencil.svg') no-repeat center center fixed;
     background-size: cover;
 }
+
+
+// Keep the close control reachable on narrow touch screens and at high zoom.
+.retirement-notice__content {
+    position: relative;
+    padding-right: 4.5rem;
+    max-height: calc(100vh - 2rem);
+    max-height: calc(100dvh - 2rem);
+    overflow-y: auto;
+}
+
+.retirement-notice__dismiss {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    border-radius: 0.5rem;
+    background: transparent;
+    color: #fff;
+    font: inherit;
+    font-size: 2rem;
+    line-height: 1;
+    cursor: pointer;
+    touch-action: manipulation;
+
+    &:hover {
+        background: rgba(255, 255, 255, 0.18);
+    }
+
+    &:focus {
+        outline: 3px solid #fff;
+        outline-offset: 3px;
+    }
+}

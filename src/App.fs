@@ -321,7 +321,7 @@ let footer =
         ]
     ]
 
-let retirementNotice =
+let retirementNotice dismiss =
     Html.aside [
         prop.className "retirement-notice"
         prop.children [
@@ -331,6 +331,19 @@ let retirementNotice =
                     Html.div [
                         prop.className "retirement-notice__content"
                         prop.children [
+                            Html.button [
+                                prop.type'.button
+                                prop.className "retirement-notice__dismiss"
+                                prop.custom ("aria-label", "Dismiss retirement notice")
+                                prop.title "Dismiss retirement notice"
+                                prop.onClick (fun _ -> dismiss ())
+                                prop.children [
+                                    Html.span [
+                                        prop.custom ("aria-hidden", "true")
+                                        prop.text "×"
+                                    ]
+                                ]
+                            ]
                             Html.div [
                                 prop.className "retirement-notice__copy"
                                 prop.children [
@@ -395,11 +408,27 @@ let ThemedApp children =
         themeProvider.children children
     ]
 
-let renderHome (state:State) (dispatch: Msg -> unit) =
+// Version the key when the notice changes so a new announcement is shown again.
+let retirementDismissalKey = "facemorph-retirement-dismissed-2026-10-25-v1"
+
+[<ReactComponent>]
+let RenderHome (state:State) (dispatch: Msg -> unit) =
+    let dismissed, setDismissed = React.useState false
+    // Read browser storage after hydration: server rendering has no window.
+    React.useEffectOnce (fun () ->
+        try
+            setDismissed (Browser.Dom.window.localStorage.getItem retirementDismissalKey = "true")
+        with _ -> ())
+    let dismiss () =
+        setDismissed true
+        // Private browsing or disabled storage must not prevent dismissal.
+        try
+            Browser.Dom.window.localStorage.setItem(retirementDismissalKey, "true")
+        with _ -> ()
     ThemedApp [
         Mui.cssBaseline [ ]
         Html.div [
-            prop.className "page-with-retirement-notice"
+            prop.className (if dismissed then "" else "page-with-retirement-notice")
             prop.children [
                 header
                 MorphForm.renderContent state dispatch
@@ -410,7 +439,7 @@ let renderHome (state:State) (dispatch: Msg -> unit) =
                 footer
             ]
         ]
-        retirementNotice
+        if not dismissed then retirementNotice dismiss
     ]
 
 let renderRetirement () =
@@ -423,7 +452,7 @@ let renderRetirement () =
 
 let render (state:State) (dispatch: Msg -> unit) =
     match state.Page with
-    | Home -> renderHome state dispatch
+    | Home -> RenderHome state dispatch
     | Retirement -> renderRetirement ()
 
 let inline helmet props = createElement (Fable.Core.JsInterop.import "Helmet" "react-helmet") props
