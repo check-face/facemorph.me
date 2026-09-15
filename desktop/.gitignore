@@ -5,3 +5,7 @@
 /local-native/
 !/src-tauri/src/bin/
 !/src-tauri/src/bin/native-probe.rs
+
+/ci-tools/
+/candidate-artifacts/
+/inference-evidence/

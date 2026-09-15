@@ -24,6 +24,7 @@ jobs:
       - run: npm run build:self-host
       - run: node desktop/scripts/stage-frontend.mjs --source deploy-self-host
       - run: node --test desktop/tests/packaging.test.mjs
+      - run: node --test src/Next/Assets/model-cache.test.mjs
       - uses: actions/upload-artifact@v4
         with:
           name: desktop-shared-frontend
@@ -46,7 +47,7 @@ jobs:
             platform: macos
             bundles: app
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 45
+    timeout-minutes: 60
     defaults:
       run:
         shell: bash
@@ -69,15 +70,50 @@ jobs:
         run: |
           rustup toolchain install 1.94.0 --profile minimal
           rustup default 1.94.0
-          cargo install tauri-cli --version 2.10.1 --locked
+          npm install --prefix desktop/ci-tools --no-save @tauri-apps/cli@2.10.1
+      - name: Generate platform icons from committed source
+        working-directory: desktop
+        run: node ci-tools/node_modules/@tauri-apps/cli/tauri.js icon src-tauri/icons/icon.png --output src-tauri/icons
       - name: Verify protocol, recovery and updater signature primitive
         run: |
           export CHECKFACE_TEST_PYTHON="$(python -c 'import sys; print(sys.executable)')"
           cargo test --locked --manifest-path desktop/src-tauri/Cargo.toml
           python -m unittest discover -s desktop/tests -p 'test_*.py' -v
+      - name: Checkout pinned independent Torch reference implementation
+        if: matrix.platform != 'macos'
+        uses: actions/checkout@v4
+        with:
+          repository: NVlabs/stylegan2-ada-pytorch
+          ref: d72cc7d041b42ec8e806021a205ed9349f87c6a4
+          path: .ci-stylegan
+          persist-credentials: false
+      - name: Install pinned full-model CPU dependencies
+        if: matrix.platform != 'macos'
+        run: |
+          python -m pip install torch==2.9.1 --index-url https://download.pytorch.org/whl/cpu
+          python -m pip install -r desktop/native/requirements-ci-export.txt
+      - name: Prepare portable full-model CPU integration bundle
+        if: matrix.platform != 'macos'
+        run: python desktop/scripts/prepare-ci-bundle.py --output desktop/local-native --cache-directory "$RUNNER_TEMP/checkface-model-source" --stylegan-directory .ci-stylegan --accept-research-license --threads 2
+      - name: Execute real CPU synthesis against independent Torch references
+        if: matrix.platform != 'macos'
+        env:
+          CHECKFACE_PROBE_TIMEOUT_SECONDS: '900'
+          CHECKFACE_NATIVE_DIAGNOSTICS: '1'
+        run: |
+          cargo build --locked --manifest-path desktop/src-tauri/Cargo.toml --bin native-probe
+          python desktop/tests/native_integration.py --bundle desktop/local-native/bundle.json --report desktop/inference-evidence/verification.json
+      - name: Preserve CPU diagnostic evidence without weights
+        if: always() && matrix.platform != 'macos'
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-cpu-integration-${{ matrix.platform }}
+          path: desktop/inference-evidence
+          if-no-files-found: warn
+          retention-days: 14
       - name: Build unsigned candidate package
         working-directory: desktop
-        run: cargo tauri build --config candidate-config.json --bundles ${{ matrix.bundles }}
+        run: node ci-tools/node_modules/@tauri-apps/cli/tauri.js build --config candidate-config.json --bundles ${{ matrix.bundles }}
       - name: Collect and verify downloadable bytes
         run: python desktop/scripts/candidate-artifacts.py --bundle desktop/src-tauri/target/release/bundle --output desktop/candidate-artifacts --platform ${{ matrix.platform }} --revision "$GITHUB_SHA"
       - name: Install and launch Linux package

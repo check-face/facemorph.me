@@ -7,10 +7,12 @@ import argparse
 import hashlib
 import json
 import math
+import os
 from pathlib import Path
 import re
 import sys
 import uuid
+from bundle_paths import resolve_assets
 
 MAX_REQUEST = 2 * 1024 * 1024
 def sha(data): return hashlib.sha256(data).hexdigest()
@@ -26,15 +28,15 @@ def run(request, bundle_path, output):
         controls = request['project']['morph']['controls']
         if not controls or any(c['latent'].get('space') != 'w-plus' for c in controls):
             raise ValueError('Native synthesis requires explicit W+ controls')
-    import numpy as np
-    import onnxruntime as ort
-    from PIL import Image
     job = request['jobId']
     data = bundle_path.read_bytes()
     digest = sha(data)
     if digest != bundle_path.with_suffix('.sha256').read_text().strip(): raise ValueError('Bundle integrity check failed')
-    bundle = json.loads(data)
+    bundle = resolve_assets(json.loads(data), bundle_path.parent)
     if bundle['schemaVersion'] != 1 or bundle['developmentOnly'] is not True: raise ValueError('Unsupported bundle')
+    import numpy as np
+    import onnxruntime as ort
+    from PIL import Image
     if ort.__version__ != bundle['runtime']['onnxruntime']: raise ValueError('Pinned runtime version mismatch')
     route = request['route']
     expected_bundle = {'version': bundle['version'], 'manifestSha256': digest}
@@ -136,6 +138,10 @@ def main():
         if request['type']=='qualify' and (not isinstance(request.get('attemptId'),str) or not request['attemptId']): raise ValueError('Missing qualification attempt')
         run(request,args.bundle,args.output)
     except Exception:
+        if os.environ.get('CHECKFACE_NATIVE_DIAGNOSTICS') == '1':
+            # Host-only opt-in for synthetic CI; never sent through renderer events.
+            import traceback
+            traceback.print_exc(file=sys.stderr)
         # Do not emit user inputs, local paths or library diagnostics to renderer.
         emit(job,'failed',reason='Native request failed validation or execution')
         return 1

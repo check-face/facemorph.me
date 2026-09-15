@@ -125,7 +125,13 @@ fn run(
         .args(config.args)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
-        .stderr(Stdio::null())
+        .stderr(
+            if std::env::var("CHECKFACE_NATIVE_DIAGNOSTICS").as_deref() == Ok("1") {
+                Stdio::inherit()
+            } else {
+                Stdio::null()
+            },
+        )
         .spawn()
         .map_err(|_| "Could not start native worker")?;
     let mut input = child.stdin.take().ok_or("Missing worker input")?;
@@ -333,6 +339,17 @@ mod tests {
         let event = rx.recv_timeout(Duration::from_secs(3)).unwrap();
         assert_eq!(event["type"], "failed");
         assert_eq!(event["reason"], "Native worker timed out");
+    }
+    #[test]
+    fn rejects_stale_qualification_attempt() {
+        let bridge = Bridge::default();
+        let (tx, rx) = std::sync::mpsc::channel();
+        let request =
+            json!({"schemaVersion":1,"jobId":"job-1","type":"qualify","attemptId":"current"});
+        bridge.start(config("import json; print(json.dumps({'schemaVersion':1,'jobId':'job-1','type':'qualified','attemptId':'stale'}))"), request, Arc::new(move |event| { let _ = tx.send(event); })).unwrap();
+        let event = rx.recv_timeout(Duration::from_secs(5)).unwrap();
+        assert_eq!(event["type"], "failed");
+        assert_eq!(event["reason"], "Stale qualification attempt");
     }
     #[test]
     fn bounds_request_and_handles_missing_worker() {

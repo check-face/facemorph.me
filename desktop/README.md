@@ -101,3 +101,84 @@ Primary references checked 14 September 2026:
 [Tauri updater](https://v2.tauri.app/plugin/updater/),
 [GitHub builds](https://v2.tauri.app/distribute/pipelines/github/),
 [native sidecars](https://v2.tauri.app/develop/sidecar/).
+
+## Cross-platform candidate CI (15 September 2026)
+
+`desktop-candidates.yml` builds the **actual shared Elmish frontend** once, then
+runs Windows x64 (`windows-2022`), Linux x64 (`ubuntu-22.04`) and Mac ARM64
+(`macos-14`) jobs. Candidate branch pushes, relevant pull requests and manual
+runs are supported. All jobs have read-only repository permissions; no release,
+updater feed, signing secret, live host or deployment is involved.
+
+Each OS runs Rust supervisor/recovery tests and signature primitive tests. Windows
+and Linux additionally build the real full-resolution model from the checksum-pinned
+original checkpoint and compare native ORT CPU output with independent Torch
+references before packaging. Every platform then builds an unsigned NSIS installer, Debian package or zipped macOS app. The job
+installs the Windows/Linux package or extracts the Mac app into a path containing
+spaces, launches the resulting executable from an unrelated working directory,
+and requires actual rendered Elmish DOM plus IPC rejection of a missing native
+runtime. Linux uses Xvfb and the runner's software graphics path. Every package
+gets a byte-size/SHA-256 inventory and source revision. CI artifacts expire after
+14 days; **these are packaging previews, not usable generation releases**.
+
+The candidate deliberately contains no Python runtime or model weights. Missing
+model/runtime failure is tested, not hidden. Signed installation, native runtime
+bundling, model acquisition/cache integration, updater installation/recovery,
+complete workflows, other architectures and real GPU qualification remain open.
+An unsigned app launched by CI does not prove Gatekeeper/SmartScreen acceptance.
+Ubuntu packaging success does not prove Manjaro install compatibility.
+
+### Required Windows/Linux full-model CPU integration
+
+The default workflow checks out the pinned upstream NVlabs reference implementation,
+acquires the official checkpoint with explicit research-license acknowledgement,
+exports a portable ONNX graph and creates **31 deterministic CI integration cases**.
+These are distinct from the preserved historical research fixture31; passing them
+proves real full-model CPU execution on that runner, not historical artifact parity
+or research winner admission. The normal Rust supervisor invokes the normal worker
+for all31 and a three-frame sequence, checks every PNG hash/dimension, retains exact
+project metadata and rejects corrupt bundles and wrong latent space.
+
+Model bytes and checkpoint files are not uploaded as CI artifacts. Only numerical
+evidence and package artifacts are uploaded. Windows/Linux CPU checks are required,
+not an optional manually supplied bundle. Mac shell packaging remains in the matrix;
+its independently recorded local CPU evidence does not stand in for another OS.
+
+### Optional prebuilt-bundle CPU evidence
+
+`desktop-native-inference.yml` takes an operator-approved HTTPS portable ZIP URL
+and its independently recorded SHA-256. The ZIP contains `bundle.json`,
+`bundle.sha256` and all assets referenced by the existing development schema,
+using **relative paths inside the bundle**. Download/extraction and every asset
+are bounded and checked; paths outside the bundle and symlinks are rejected.
+Check model distribution permission before making a bundle available to CI.
+The workflow does not fetch a developer's local paths or silently replace a model.
+
+It compiles the real supervisor, installs pinned CPU requirements and runs all31
+full-resolution reference cases plus a three-frame morph and corrupt-bundle /
+wrong-space rejection on each runner. Example for an already verified local bundle:
+
+```sh
+python desktop/tests/native_integration.py --bundle /path/to/bundle.json --report /path/to/evidence.json
+```
+
+This is **development CPU diagnostic evidence**, distinct from simulated protocol
+tests and from release admission. No GPU, app UI inference, sustained memory,
+photo/video, install-time model download or final bundle qualification is implied.
+The optional workflow has not run without an approved portable asset bundle.
+
+### Required physical-device handoff
+
+Oliver's **Manjaro install + actual native GPU generation** remains a mandatory
+independent gate. Record exact GPU, driver, desktop/display session, package,
+model/runtime versions and checksums, and backend execution evidence. A GPU listed
+by `nvidia-smi` or a successfully opened app is not proof of GPU inference. Test
+with browser GPU generation unavailable, CPU fallback independently, all31,
+retained workflows, project reopening and install/update recovery. A VM with
+software rendering can test packaging; it cannot satisfy this GPU gate.
+
+Local checks completed while introducing this CI: three lightweight Python tests
+cover package tampering/missing/extra files, portable-path escape rejection and
+missing-bundle failure without model dependencies; both Node packaging tests pass.
+Remote matrix results are the authority for platform build/install status; do not
+infer a pass from the existence of these workflows.

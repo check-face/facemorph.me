@@ -23,7 +23,13 @@ fn main() {
             "--output".into(),
             args[3].clone(),
         ],
-        timeout: Duration::from_secs(180),
+        timeout: Duration::from_secs(
+            std::env::var("CHECKFACE_PROBE_TIMEOUT_SECONDS")
+                .ok()
+                .and_then(|value| value.parse::<u64>().ok())
+                .filter(|value| (1..=1800).contains(value))
+                .unwrap_or(180),
+        ),
     };
     let (tx, rx) = std::sync::mpsc::channel();
     let supervisor = bridge::Bridge::default();
