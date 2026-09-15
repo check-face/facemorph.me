@@ -9,8 +9,8 @@ Research files, model downloads, app wiring and service-worker behavior are unch
 
 Use the existing Elmish effects to call `ModelAssets.createBrowserCache` once per
 generation context, then acquire only the selected workflow's manifest assets.
-`ModelAssets.fs` is the typed Fable boundary; add it to `App.fsproj` before the
-consumer when integrating. It has not yet been compiled with the app. The `.mjs`
+`ModelAssets.fs` is the typed Fable boundary, included in `App.fsproj` for CI
+compilation. The product consumer remains to be integrated. The `.mjs`
 modules have no runtime package dependencies or Node imports.
 
 ```javascript

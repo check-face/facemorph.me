@@ -4,19 +4,19 @@ open Fable.Core
 open Fable.Core.JsInterop
 
 /// Infrastructure boundary for Elmish effects. No runtime admission or UI policy here.
-/// Add to App.fsproj before its first consumer when wiring the candidate app.
+/// Compiled with the app; its first product consumer remains to be integrated.
 module ModelAssets =
     [<CLIMutable>]
     type Asset = { sha256: string; size: float; url: string }
 
     type AcquisitionOptions =
-        abstract signal: Browser.Types.AbortSignal
+        abstract signal: Fetch.Types.AbortSignal
 
     type AssetHandle =
         abstract sha256: string
         abstract size: float
         /// Consume the body fully to complete integrity validation; cancel when abandoning it.
-        abstract ``open``: unit -> JS.Promise<Browser.Types.Response>
+        abstract ``open``: unit -> JS.Promise<Fetch.Types.Response>
 
     type Cache =
         abstract acquire: asset: Asset * ?options: AcquisitionOptions -> JS.Promise<AssetHandle>

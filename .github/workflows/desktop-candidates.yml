@@ -77,7 +77,7 @@ jobs:
       - name: Verify protocol, recovery and updater signature primitive
         run: |
           export CHECKFACE_TEST_PYTHON="$(python -c 'import sys; print(sys.executable)')"
-          cargo test --locked --manifest-path desktop/src-tauri/Cargo.toml
+          cargo test --release --locked --manifest-path desktop/src-tauri/Cargo.toml
           python -m unittest discover -s desktop/tests -p 'test_*.py' -v
       - name: Checkout pinned independent Torch reference implementation
         if: matrix.platform != 'macos'
@@ -101,8 +101,10 @@ jobs:
           CHECKFACE_PROBE_TIMEOUT_SECONDS: '900'
           CHECKFACE_NATIVE_DIAGNOSTICS: '1'
         run: |
-          cargo build --locked --manifest-path desktop/src-tauri/Cargo.toml --bin native-probe
-          python desktop/tests/native_integration.py --bundle desktop/local-native/bundle.json --report desktop/inference-evidence/verification.json
+          cargo build --release --locked --manifest-path desktop/src-tauri/Cargo.toml --bin native-probe
+          probe=desktop/src-tauri/target/release/native-probe
+          if [ "${{ matrix.platform }}" = "windows" ]; then probe="$probe.exe"; fi
+          python desktop/tests/native_integration.py --probe "$probe" --bundle desktop/local-native/bundle.json --report desktop/inference-evidence/verification.json
       - name: Preserve CPU diagnostic evidence without weights
         if: always() && matrix.platform != 'macos'
         uses: actions/upload-artifact@v4
