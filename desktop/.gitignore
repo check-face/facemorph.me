@@ -1,0 +1,7 @@
+/frontend/
+/src-tauri/target/
+/src-tauri/gen/
+/release-config.json
+/local-native/
+!/src-tauri/src/bin/
+!/src-tauri/src/bin/native-probe.rs

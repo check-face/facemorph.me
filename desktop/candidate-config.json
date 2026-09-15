@@ -1,0 +1,8 @@
+{
+  "bundle": {
+    "active": true,
+    "createUpdaterArtifacts": false,
+    "icon": ["icons/icon.png"],
+    "windows": {"nsis": {"installMode": "currentUser"}}
+  }
+}

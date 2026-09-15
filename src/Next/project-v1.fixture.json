@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 1,
+  "bundle": {
+    "version": "fixture-v1",
+    "manifestSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  "modelSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "noiseSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "truncationPsi": 1,
+  "truncationCutoff": 0,
+  "morph": {
+    "algorithmVersion": "geometry-fixture-v1",
+    "kind": "full-smooth-figure8",
+    "controls": [
+      {
+        "visitId": "A",
+        "latent": {
+          "space": "w-plus",
+          "shape": [
+            2
+          ],
+          "values": [
+            0,
+            0
+          ]
+        }
+      },
+      {
+        "visitId": "B",
+        "latent": {
+          "space": "w-plus",
+          "shape": [
+            2
+          ],
+          "values": [
+            1,
+            0
+          ]
+        }
+      },
+      {
+        "visitId": "C",
+        "latent": {
+          "space": "w-plus",
+          "shape": [
+            2
+          ],
+          "values": [
+            2,
+            0
+          ]
+        }
+      }
+    ],
+    "closed": true,
+    "width": 0.2,
+    "pinchCenter": true,
+    "framesPerSegment": 4,
+    "framesPerSecond": 24
+  }
+}

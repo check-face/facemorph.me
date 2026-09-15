@@ -1,0 +1,52 @@
+# Next runtime integration contract
+
+Model acquisition must follow the workspace's [persistent asset-cache contract](../../checkface/docs/model-asset-cache.md): content-addressed persistent blobs survive app updates and admission invalidation, across all model versions and CPU/GPU routes. Integrate through adapters without treating a retained model as a still-qualified runtime. This is required integration work, not an implemented capability of these types.
+
+The additive F# modules in `src/Next` preserve the existing Fable / Elmish / React architecture. They provide a domain, project-file codec and state-machine boundary compiled with the application; UI inference wiring remains a separate deliverable. No new framework, hosted inference or authentication dependency is introduced.
+
+## Integration boundary
+
+`App.fsproj` includes `Next/Contracts.fs`, `Next/ProjectJson.fs` and `Next/Runtime.fs` before `AppState.fs`. Embed `Runtime.Model` in the existing model and map its messages/effects through Elmish commands. Browser workers and the desktop native sidecar implement `Runtime.Adapter.Execute`; views remain independent of provider details. The desktop shell must render the same compiled UI.
+
+`Route` distinguishes browser CPU, WebGPU, WebGL and native CPU/GPU. A bundle version plus SHA-256 of its manifest pins immutable research output. `AdmissionKey` must identify model/runtime/kernel/precision/latent-space/shape, device/provider/driver/browser build and admission-policy version. Masked identities require session-scoped revalidation. Every admission binds exact model/noise hashes, latent space and shape, algorithm kind/version and tested video export capability.
+
+`Qualify(attemptId, route)` emits `RunCanaries`; only a matching attempt and route can become ready. Adapters must first verify the release qualification manifest (all 31 cases and recovery/workflow tests), validate asset hashes and memory/operator requirements, then run full-resolution synthetic endpoint/stress canaries on this device. No feature-detection-only or model-load-only success. `Qualified` is a trusted adapter event, never imported project data. Enforce per-job memory/parameter/shape limits before allocating or generating.
+
+One job may run at once. Use globally unique attempt and job IDs for the session; never reuse IDs after invalidation. Progress is monotonic; late results and results arriving after cancellation are ignored. Cancellation must acknowledge only after work stops and resources are released. `ReleaseRuntime` must stop pending work, terminate workers/sidecars and release buffers. Add bounded adapter timeouts that dispatch failure if cancellation or progress stalls; this pure reducer has no clock.
+
+GPU loss, failure and invalidation clear eligibility. A CPU retry must explicitly qualify its own route; there is no unbounded automatic retry. `OfferDesktopTransfer` renders a download/transfer action, never launches or installs software automatically. Preserve the local project when switching routes or devices. Desktop generation must pass native preflight; a WebView's WebGPU availability is insufficient. Completed artifact IDs are local adapter-owned handles, not hosted URLs. Revoke obsolete handles during integration and never log photos or latents.
+
+## Project v1 and morph semantics
+
+`Project` stores schema version, pinned runtime bundle, exact model and noise asset hashes, truncation settings and a versioned morph. Noise hashes refer to immutable content-addressed assets; reproducible transfers must include or lawfully acquire the exact assets. Unknown schema/algorithm versions must be rejected, not guessed. `ProjectJson.encode` and `decode` implement explicit stable JSON fields/discriminants with bounded parsing; they do not serialize F# union internals or trust imported runtime events. Unknown/missing/duplicate fields, malformed JSON, nonfinite values and unsupported schema/kind values are rejected. Limits are 16 Mi UTF-16 input characters, nesting depth 16, 1 million JSON values, 4,096-character strings, 64 controls, 8 shape dimensions, 65,536 values per latent, 900,000 total latent values and 100,000 frames per segment. The aggregate limit ensures exported files also fit the decoder value budget. Adapters must impose tighter device/workload limits before allocation. Geometry versions and inference bundles evolve independently.
+
+
+The JSON shape is illustrated by [`project-v1.fixture.json`](../src/Next/project-v1.fixture.json). Its root fields are `schemaVersion`, `bundle`, `modelSha256`, `noiseSha256`, `truncationPsi`, `truncationCutoff` and `morph`. Morph kinds are exactly `linear`, `pairwise-ellipse`, `pairwise-figure8`, `full-smooth-ellipse` and `full-smooth-figure8`. A geometry version is a data identifier, not proof that its implementation is installed or admitted. The desktop bridge transports this project object without reshaping its latents or interpreting unknown modes.
+
+Each morph includes all ordered control latents and unique visit IDs. Every latent has an explicit `space` discriminator: `z` (generator input before mapping), `w` (mapped latent vector), or `w-plus` (per-layer mapped latent vectors). Shape alone never identifies the space: Z and W can both be 512-dimensional. The typed admission includes `LatentSpace` and `LatentShape`, and its admission key must include both; changing either invalidates eligibility. Mixed-space controls and generation on an admission for a different space are rejected. A conversion must be an explicit, qualified operation producing a newly labelled project, never an import heuristic. Legacy `q`/`d` names have no inferred mapping in this contract; preserve the original project separately until that mapping is established from its implementation. This unpublished schema v1 requires `space`; earlier drafts without it are rejected. Equal nonadjacent latents with distinct IDs are valid (A → B → A → D). Adjacent equal faces, including the closing edge, are rejected because the pair direction degenerates. Shape/value consistency and finiteness are checked. Adapter qualification supplies actual supported latent dimensions and practical parameter limits; structural validation alone does not qualify a project.
+
+Path kinds are linear/longmorph, pairwise ellipse/figure-eight, and full-smooth ellipse/figure-eight. An ordered list supplies longmorph segments without an extra transverse latent. Pairwise figure-eight becomes the default only after qualification; there is deliberately no enabled/default candidate in this scaffold. Width, pinch and frame timing are explicit. Full-smooth open paths are rejected pending endpoint design. Equal, even frames per segment provide exact face and midpoint parameter samples. Closed exports omit duplicate terminal A; open linear/pairwise exports retain the final endpoint.
+
+`Contracts.samples` is lazy and schedules parameters; it does not implement geometry. A path adapter must return the exact stored latent at `ControlVisit` samples, preserve full-smooth face/seam derivatives, alternate figure-eight orientation, and enforce the pinched midpoint's positive forward chord velocity. Port the reviewed study's distinct two-face and multi-face branches without replacing them with a generic spline. Prove these properties in actual latent space and inspect generated exports before admitting an algorithm version. The 3D study is evidence for integration, not a production qualification certificate.
+
+Store a companion project file alongside image/MP4 exports because media metadata may be stripped. Local-first file sharing and historic archive-link preservation remain separate workflows.
+
+## Checks and remaining work
+
+`src/Next/verify.fsx` exercises structural edge cases, ordered/repeated visits, exact frame scheduling, preflight gates, stale callbacks, cancellation, GPU failure and strict JSON roundtrips/rejections. `project-v1.fixture.json` is a shared synthetic wire example (two-dimensional toy latents, not a qualified model input). `verify-fable.mjs` checks the actual compiled JavaScript codec against standard JSON parsing and invalid inputs. Run from the workspace root through the shared device lease:
+
+```sh
+python3 autoresearch/run.py --lane build --device local-mac --timeout 90 -- dotnet fsi facemorph.me/src/Next/verify.fsx
+```
+
+Validation on 14 September 2026: `dotnet fsi` compiled all three modules and passed 58 contract/state/JSON checks under the shared device lease (run `20260914T055846Z-12dbb6fc`). The full existing `App.fsproj` compiled successfully with Fable 3.1.12 (run `20260914T055846Z-12dbb6fc`); `verify-fable.mjs` then passed 44 checks against that emitted JavaScript, including Unicode escaping, all three explicit latent spaces, mixed/missing/unknown-space rejection and roundtrips through standard `JSON.parse`. No warnings originate in the Next modules. Existing Feliz/FSharp.Core dependency and React refresh warnings remain outside this lane. A real JS regression caught Fable's incompatible integer-format overload; explicit hexadecimal encoding now passes on both runtimes. Real workers/native bridge, per-job resource admission, geometry port, product views, file exporters and end-to-end release qualification remain integration deliverables. No deployment or Triton change is part of this scaffold.
+
+
+To reproduce the cross-runtime check from `facemorph.me`, compile the complete existing app to a separate output directory, then run the small Node check:
+
+```sh
+python3 ../autoresearch/run.py --lane build --device local-mac --timeout 180 -- dotnet fable src/App.fsproj --outDir /private/tmp/checkface-next-fable-final
+node src/Next/verify-fable.mjs /private/tmp/checkface-next-fable-final/Next/ProjectJson.js
+```
+
+For the desktop bridge, transport the project as this JSON object inside its versioned request envelope. Job progress/completion/cancel/failure messages correlate by `jobId`; qualification results correlate by `attemptId` and the exact requested route/admission key. The host owns admission events and runtime selection. Imported projects cannot set admission, select an executable, or nominate a filesystem output path. The native W+ worker must require `space: "w-plus"` and its admitted per-layer shape. It must not reinterpret a Z/W vector with matching element count as W+. A still-only native worker must not advertise video/custom-morph admission until it implements and qualifies those operations.

@@ -1,0 +1,114 @@
+name: Desktop candidate validation
+on:
+  push:
+    branches: ['candidate/desktop-ci*']
+  pull_request:
+    paths: ['desktop/**', 'src/**', 'webpack.config.js', 'package*.json', '.github/workflows/desktop*.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: desktop-candidate-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  frontend:
+    runs-on: ubuntu-22.04
+    container: mcr.microsoft.com/dotnet/sdk:5.0-focal
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - run: npm ci
+      - run: npm run build:self-host
+      - run: node desktop/scripts/stage-frontend.mjs --source deploy-self-host
+      - run: node --test desktop/tests/packaging.test.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: desktop-shared-frontend
+          path: desktop/frontend
+          if-no-files-found: error
+          retention-days: 14
+  package:
+    needs: frontend
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-22.04
+            platform: linux
+            bundles: deb
+          - runner: windows-2022
+            platform: windows
+            bundles: nsis
+          - runner: macos-14
+            platform: macos
+            bundles: app
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: desktop-shared-frontend
+          path: desktop/frontend
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Linux WebKit and packaging prerequisites
+        if: matrix.platform == 'linux'
+        run: sudo apt-get update && sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf xvfb
+      - name: Install pinned shell toolchain
+        run: |
+          rustup toolchain install 1.94.0 --profile minimal
+          rustup default 1.94.0
+          cargo install tauri-cli --version 2.10.1 --locked
+      - name: Verify protocol, recovery and updater signature primitive
+        run: |
+          export CHECKFACE_TEST_PYTHON="$(python -c 'import sys; print(sys.executable)')"
+          cargo test --locked --manifest-path desktop/src-tauri/Cargo.toml
+          python -m unittest discover -s desktop/tests -p 'test_*.py' -v
+      - name: Build unsigned candidate package
+        working-directory: desktop
+        run: cargo tauri build --config candidate-config.json --bundles ${{ matrix.bundles }}
+      - name: Collect and verify downloadable bytes
+        run: python desktop/scripts/candidate-artifacts.py --bundle desktop/src-tauri/target/release/bundle --output desktop/candidate-artifacts --platform ${{ matrix.platform }} --revision "$GITHUB_SHA"
+      - name: Install and launch Linux package
+        if: matrix.platform == 'linux'
+        run: |
+          sudo dpkg -i desktop/candidate-artifacts/*.deb
+          xvfb-run -a python desktop/tests/startup_smoke.py --binary /usr/bin/checkface-desktop --report desktop/candidate-artifacts/startup.json
+      - name: Install and launch Windows package
+        if: matrix.platform == 'windows'
+        shell: pwsh
+        run: |
+          $installer = (Get-ChildItem desktop/candidate-artifacts/*.exe | Select-Object -First 1).FullName
+          $destination = Join-Path $env:RUNNER_TEMP 'CheckFace installed space'
+          $process = Start-Process -FilePath $installer -ArgumentList @('/S', "/D=$destination") -Wait -PassThru
+          if ($process.ExitCode -ne 0) { throw "Installer failed: $($process.ExitCode)" }
+          $binary = Join-Path $destination 'checkface-desktop.exe'
+          if (-not (Test-Path $binary)) { throw 'Installed executable missing' }
+          python desktop/tests/startup_smoke.py --binary $binary --report desktop/candidate-artifacts/startup.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Extract and launch macOS app
+        if: matrix.platform == 'macos'
+        run: |
+          mkdir -p "$RUNNER_TEMP/CheckFace installed space"
+          ditto -x -k desktop/candidate-artifacts/*.zip "$RUNNER_TEMP/CheckFace installed space"
+          python desktop/tests/startup_smoke.py --binary "$RUNNER_TEMP/CheckFace installed space/CheckFace Preview.app/Contents/MacOS/checkface-desktop" --report desktop/candidate-artifacts/startup.json
+      - name: Recheck distributable inventory
+        run: python desktop/scripts/candidate-artifacts.py --output desktop/candidate-artifacts --verify
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: desktop-candidate-${{ matrix.platform }}
+          path: desktop/candidate-artifacts
+          if-no-files-found: warn
+          retention-days: 14

@@ -114,7 +114,15 @@ let BrowseFacesDialog props =
             Mui.dialogContent [
                 prop.style [ style.padding 0; style.overflowY.visible; style.display.flex ]
                 dialogContent.children [
-                    if props.IsOpen then
+                    if props.IsOpen && isSelfHost then
+                        Html.div [
+                            prop.style [ style.display.flex; style.flexWrap.wrap ]
+                            prop.children [
+                                for value in props.Values |> Option.defaultValue [] do
+                                    item props.RenderValue props.OnValueSelected value
+                            ]
+                        ]
+                    elif props.IsOpen then
                         Html.iframe [
                             prop.src browseFacesEmbedSrc
                             prop.style [ style.width (length.percent 100); style.height (length.percent 100) ]

@@ -14,6 +14,9 @@
     <Compile Include="BrowseFacesDialog.fs" />
     <Compile Include="EncodeImageDialog.fs" />
     <Compile Include="Share.fs" />
+    <Compile Include="Next/Contracts.fs" />
+    <Compile Include="Next/ProjectJson.fs" />
+    <Compile Include="Next/Runtime.fs" />
     <Compile Include="AppState.fs" />
     <Compile Include="Review.fs" />
     <Compile Include="MorphForm.fs" />
