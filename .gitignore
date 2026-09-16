@@ -219,3 +219,7 @@ desktop/product-packages/
 # Generated candidate output
 /deploy-next/
 /deploy-self-host/
+
+# Shipping API templates are not temporary build folders.
+!self-host/templates/
+!self-host/templates/**
