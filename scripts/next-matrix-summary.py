@@ -34,7 +34,10 @@ def main(root):
             complete = False
             continue
         cells = [cell(report.get('stages', {}).get(name)) for name in STAGES]
-        required_ok = all(report.get('stages', {}).get(name, {}).get('passed') for name in REQUIRED)
+        # A build-limited stage is not a pass here either; the row stays incomplete.
+        required_ok = all(report.get('stages', {}).get(name, {}).get('passed')
+                          and not report.get('stages', {}).get(name, {}).get('buildLimitation')
+                          for name in REQUIRED)
         if not required_ok:
             complete = False
         rows.append((path.stem.replace('next-matrix-', ''), report.get('agent', '')[:80],

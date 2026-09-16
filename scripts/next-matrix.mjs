@@ -41,7 +41,15 @@ const sha=buffer=>createHash('sha256').update(buffer).digest('hex');
  */
 async function stage(name,run,{optional=false}={}){
  const startedAt=Date.now();
- try{const data=await run();record(name,{passed:true,seconds:(Date.now()-startedAt)/1000,...data});await save();return data;}
+ try{
+  const data=await run();
+  // A stage the build could not exercise is not a pass. It is recorded, it counts against the
+  // row, and it is never allowed to stand in for evidence that was never collected.
+  const verified=!(data&&data.buildLimitation);
+  record(name,{passed:verified,seconds:(Date.now()-startedAt)/1000,...data});
+  await save();
+  return data;
+ }
  catch(error){
   const unsupported=optional&&/not supported|unsupported|no decoder|NotSupportedError|is not a function|undefined is not an object/i.test(String(error?.message));
   record(name,{passed:false,unsupported,seconds:(Date.now()-startedAt)/1000,reason:String(error?.message||error).slice(0,400)});
@@ -187,14 +195,17 @@ try{
  });
 
  const required=['nameSeed','repeatOriginal','photoE4e','localCrop','projectSaveReopen','morphExport','morphPlayback'];
- report.passed=required.every(name=>report.stages[name]?.passed);
  report.buildLimited=Object.entries(report.stages).filter(([,v])=>v.buildLimitation).map(([k])=>k);
+ report.failed=required.filter(name=>!report.stages[name]?.passed&&!report.stages[name]?.buildLimitation);
+ // Complete means every required stage was actually verified here. A row that could not check a
+ // stage is incomplete, not passed, however good the stages around it look.
+ report.passed=required.every(name=>report.stages[name]?.passed);
 }catch(error){
  report.error=String(error?.message||error).slice(0,600);
 }finally{
  report.finishedAt=new Date().toISOString();
  await save();
  await context.close();
- console.log(JSON.stringify({engine:engineName,passed:report.passed,buildLimited:report.buildLimited||[],mp4Playback:report.mp4Playback,error:report.error||''}));
+ console.log(JSON.stringify({engine:engineName,passed:report.passed,failed:report.failed||[],buildLimited:report.buildLimited||[],mp4Playback:report.mp4Playback,error:report.error||''}));
  process.exit(report.passed?0:1);
 }
