@@ -1,0 +1,79 @@
+name: Manual exact new-site qualification
+on:
+  workflow_dispatch:
+    inputs:
+      artifact_run:
+        description: Successful New site artifact workflow run ID
+        required: true
+      artifact_name:
+        description: Exact next-site-<source SHA> artifact name from that run
+        required: true
+      runtime_sha:
+        description: Public runtime manifest SHA256 (fails closed if changed)
+        required: true
+        default: 982f73bc24a4437385e34ef8ed52190b578024673d694f6b10ac09ae6b71624c
+permissions:
+  contents: read
+  actions: read
+jobs:
+  real-ui-cpu:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate artifact run provenance
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ inputs.artifact_run }}
+          ARTIFACT: ${{ inputs.artifact_name }}
+        run: |
+          [[ "$RUN_ID" =~ ^[0-9]+$ ]]
+          [[ "$ARTIFACT" =~ ^next-site-[a-f0-9]{40}$ ]]
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$RUN_ID" > source-run.json
+          python - <<'PY'
+          import json,os
+          r=json.load(open('source-run.json'))
+          assert r['conclusion']=='success' and r['path']=='.github/workflows/next-site.yml'
+          assert r['event'] in ('push','workflow_dispatch'), 'Use a branch build; PR merge artifact provenance needs a separate merge-SHA receipt'
+          assert os.environ['ARTIFACT']=='next-site-'+r['head_sha']
+          PY
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.artifact_name }}
+          run-id: ${{ inputs.artifact_run }}
+          github-token: ${{ github.token }}
+      - name: Verify exact artifact
+        run: |
+          python - <<'PY'
+          import json,pathlib
+          assert pathlib.Path('next-site-source.txt').read_text().strip()==json.load(open('source-run.json'))['head_sha']
+          PY
+          sha256sum --check next-site-SHA256SUMS
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install browser-harness==0.1.8
+      - name: Run real production UI CPU workflow
+        env:
+          RUNTIME_SHA: ${{ inputs.runtime_sha }}
+          BU_CDP_URL: http://127.0.0.1:9222
+        run: |
+          [[ "$RUNTIME_SHA" =~ ^[a-f0-9]{64}$ ]]
+          mkdir -p next-e2e-evidence/downloads
+          cp next-site-source.txt next-site-SHA256SUMS source-run.json next-e2e-evidence/
+          openssl req -x509 -newkey rsa:2048 -nodes -keyout "$RUNNER_TEMP/next.key" -out "$RUNNER_TEMP/next.crt" -days 1 -subj '/CN=next.facemorph.me' >/dev/null 2>&1
+          python scripts/next-e2e-server.py --manifest-sha "$RUNTIME_SHA" --cert "$RUNNER_TEMP/next.crt" --key "$RUNNER_TEMP/next.key" > next-e2e-evidence/server.log 2>&1 &
+          server_pid=$!
+          google-chrome --headless=new --no-sandbox --ignore-certificate-errors --no-proxy-server --host-resolver-rules='MAP next.facemorph.me:443 127.0.0.1:8443' --remote-debugging-port=9222 --user-data-dir="$RUNNER_TEMP/next-e2e-chrome" about:blank > next-e2e-evidence/chrome.log 2>&1 &
+          chrome_pid=$!
+          trap 'kill "$server_pid" "$chrome_pid" 2>/dev/null || true' EXIT
+          for i in $(seq 1 90); do curl -kfsS https://127.0.0.1:8443/runtime/manifest.json >/dev/null && curl -fsS http://127.0.0.1:9222/json/version >/dev/null && break; sleep 1; done
+          curl -kfsS https://127.0.0.1:8443/runtime/manifest.json >/dev/null
+          browser-harness < scripts/next-e2e-browser.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: next-e2e-${{ github.run_id }}
+          path: next-e2e-evidence/
+          retention-days: 14
+          if-no-files-found: error

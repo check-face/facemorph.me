@@ -1,0 +1,11 @@
+# Manual exact-artifact CPU qualification
+
+Dispatch `.github/workflows/next-e2e.yml` with a **successful branch push or manual** `next-site.yml` run ID, its exact `next-site-<source SHA>` artifact name and the public runtime manifest SHA256. It performs no build and changes no public assets. Artifact source, file checksums and the top-level runtime pin are checked before generation; production runtime loaders verify nested descriptors/assets normally.
+
+Chrome alone maps `next.facemorph.me:443` to the local TLS server on8443. Python still resolves the real public host when acquiring immutable `/runtime/` assets. No manifest or application bytes are rewritten. The self-signed certificate exception is isolated to this temporary CI browser; COOP/COEP remain enabled. Uploads/diagnostics are refused. The public manifest must still equal the requested pin; an older pin requires a separately preserved manifest acquisition URL before it can be replayed.
+
+The job checks two1024 CPU name/seed outputs, repeat original bytes with **zero new worker messages or workers**, a generated synthetic face passed back through the real photo picker/e4e path, downloaded project reopening, and a real default16-frame/segment morph decoded to a presented512 video frame and saved as MP4. The generated photo must satisfy production strict single-face admission; a detection failure is a failed case, never bypassed. Worker wrapping only counts construction/messages and forwards originals unchanged. Inputs and downloaded evidence are synthetic, with diagnostics off.
+
+This is Linux headless Chromium CPU workflow evidence. It does not qualify GPU execution, a physical phone, desktop packaging, cross-browser parity, clean offline installation, or all imported-project/interaction/recovery scenarios. Runtime/device canaries remain separate numerical evidence enforced by the production code. Performance on shared GitHub runners is diagnostic only.
+
+Partial checkpoints and errors are saved under `next-e2e-evidence/report.json`; synthetic downloads, source/hash receipts and browser/server logs are retained14 days. A180-minute job budget bounds the CPU qualification/model acquisition cost; internal UI stages have90-minute deadlines. No workflow has been dispatched as part of implementing these scripts.

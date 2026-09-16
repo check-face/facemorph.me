@@ -1,0 +1,26 @@
+{
+  "source": "af4513d3d91d3c950515a6aea3d891e173dee035",
+  "workflowRun": 35066191334,
+  "deploymentId": "f4cbe64c-b3b2-4b37-9613-6b23eb09e553",
+  "manifestSha256": "982f73bc24a4437385e34ef8ed52190b578024673d694f6b10ac09ae6b71624c",
+  "checks": [
+    {
+      "path": "index.html",
+      "sha256": "fb8c4f5c847f593db245a0681eaab71c1982579839ef18b48f1888f0efa30649"
+    },
+    {
+      "path": "app.790c9fd40c07490bd784.js",
+      "sha256": "b1cdd103b2451281f8403cb146bf7190fea376e6d4f4766a16e12e7f983ec83c"
+    },
+    {
+      "path": "933.790c9fd40c07490bd784.js",
+      "sha256": "69815de22b526c7f250af23d2a35ae74ad41b0c70352a86a8cd336d707473763"
+    },
+    {
+      "path": "543.790c9fd40c07490bd784.js",
+      "sha256": "9ddbe950225911eb927aca3712f8f7c1cf1ac60cb5a7dc2c1c1a1950fc6ed681"
+    }
+  ],
+  "namesRoute": "same tested index",
+  "scope": "Exact CI bytes; end-to-end checks recorded separately"
+}
