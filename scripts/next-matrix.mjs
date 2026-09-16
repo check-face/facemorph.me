@@ -1,0 +1,165 @@
+// Drives the same product workflow as the exact-artifact Chromium qualification, but through
+// Playwright so Chromium, Firefox and WebKit can each be reported on their own row.
+//
+// An engine's row is evidence for that engine only. WebKit on Linux is the WebKit engine, not
+// Safari on macOS or iOS; Chromium here is not Chrome on Android. Rows say which is which, and a
+// stage that cannot run on an engine is recorded as unsupported with its reason, never skipped
+// quietly and never counted as a pass.
+import {createHash} from 'node:crypto';
+import {createRequire} from 'node:module';
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import process from 'node:process';
+
+const engineName=process.argv[2];
+const origin=process.env.NEXT_MATRIX_ORIGIN||'https://next.facemorph.me';
+const out=process.env.NEXT_MATRIX_OUT||`next-matrix-${engineName}.json`;
+const stageTimeout=Number(process.env.NEXT_MATRIX_STAGE_MS||900000);
+if(!['chromium','firefox','webkit'].includes(engineName))throw Error('Usage: next-matrix.mjs <chromium|firefox|webkit>');
+
+// Playwright lives in its own tree so the site's dependency resolution never changes for a
+// test tool; resolve it from there rather than from the repository's node_modules.
+const {chromium,firefox,webkit}=createRequire(new URL('./matrix-tools/package.json',import.meta.url))('playwright');
+const engines={chromium,firefox,webkit};
+const report={engine:engineName,origin,startedAt:new Date().toISOString(),passed:false,stages:{}};
+
+function record(name,data){report.stages[name]=data;console.log(JSON.stringify({stage:name,...data}));}
+async function save(){await fs.writeFile(out,JSON.stringify(report,null,2));}
+const sha=buffer=>createHash('sha256').update(buffer).digest('hex');
+
+/** Runs a stage, recording an unsupported result rather than failing the whole row. */
+async function stage(name,run,{optional=false}={}){
+ try{const data=await run();record(name,{passed:true,...data});return data;}
+ catch(error){
+  const unsupported=optional&&/not supported|unsupported|no decoder|NotSupportedError|is not a function|undefined is not an object/i.test(String(error?.message));
+  record(name,{passed:false,unsupported,reason:String(error?.message||error).slice(0,400)});
+  if(!unsupported)throw error;
+  return null;
+ }
+}
+
+const browser=await engines[engineName].launch();
+const context=await browser.newContext({acceptDownloads:true});
+const page=await context.newPage();
+const downloads=await fs.mkdtemp(path.join(process.env.RUNNER_TEMP||'/tmp','next-matrix-'));
+page.on('console',message=>{if(message.type()==='error')report.consoleErrors=[...(report.consoleErrors||[]),message.text().slice(0,300)].slice(-20);});
+
+async function download(name){
+ const [file]=await Promise.all([page.waitForEvent('download',{timeout:120000}),page.getByRole('button',{name,exact:true}).click()]);
+ const target=path.join(downloads,`${Date.now()}-${file.suggestedFilename()}`);
+ await file.saveAs(target);
+ return target;
+}
+async function idle(){
+ await page.waitForFunction(()=>!document.querySelector('.next-status progress')&&[...document.querySelectorAll('button')].some(b=>b.textContent==='Generate faces'&&!b.disabled),null,{timeout:stageTimeout});
+}
+async function generate(name='Generate faces'){
+ await page.getByRole('button',{name,exact:true}).click();
+ await page.waitForTimeout(250);
+ await idle();
+ const error=await page.evaluate(()=>document.querySelector('.next-error')?.innerText||'');
+ if(error)throw Error(error);
+}
+const faces=()=>page.evaluate(()=>[...document.querySelectorAll('.next-face-image img')].map(i=>({width:i.naturalWidth,height:i.naturalHeight})));
+
+try{
+ await page.goto(origin,{waitUntil:'load',timeout:120000});
+ await idle();
+ report.agent=await page.evaluate(()=>navigator.userAgent);
+ report.crossOriginIsolated=await page.evaluate(()=>crossOriginIsolated);
+ if(!report.crossOriginIsolated)throw Error('Production isolation headers missing');
+
+ // Force CPU: an engine without a qualified GPU route must still complete the workflow.
+ await page.evaluate(()=>{document.querySelector('.next-advanced').open=true;});
+ await page.selectOption('select[aria-label="Processing mode"]','cpu');
+ if(await page.inputValue('select[aria-label="Processing mode"]')!=='cpu')throw Error('Could not select CPU processing');
+
+ await stage('nameSeed',async()=>{
+  await generate();
+  const images=await faces();
+  if(images.length!==2||!images.every(i=>i.width===1024&&i.height===1024))throw Error(`Expected two 1024 faces, saw ${JSON.stringify(images)}`);
+  return {dimensions:images.map(i=>[i.width,i.height])};
+ });
+
+ const first=await download('Save image');
+ const firstHash=sha(await fs.readFile(first));
+ await stage('repeatOriginal',async()=>{
+  await generate();
+  const again=sha(await fs.readFile(await download('Save image')));
+  if(again!==firstHash)throw Error('A repeat of the same face produced different bytes');
+  return {sha256:firstHash};
+ });
+
+ await stage('photoE4e',async()=>{
+  await page.setInputFiles('input[aria-label="Choose photo"]',first);
+  await page.waitForFunction(()=>document.querySelector('select[aria-label="Face source"]').value==='photo',null,{timeout:120000});
+  await generate();
+  const images=await faces();
+  if(images.length!==2||!images.every(i=>i.width===1024))throw Error('Photo reconstruction did not produce two 1024 faces');
+  return {inputSha256:firstHash};
+ });
+
+ await stage('localCrop',async()=>{
+  await page.getByRole('button',{name:'Crop photo',exact:true}).click();
+  await page.waitForSelector('.next-crop-view img',{timeout:60000});
+  // The whole square is kept: alignment rightly refuses a crop that cuts the face in half or
+  // turns it on its side. Four right angles exercise the control and end upright.
+  await page.locator('.next-crop-zoom input').fill('1');
+  for(let turn=0;turn<4;turn++)await page.getByRole('button',{name:'Rotate',exact:true}).click();
+  await page.getByRole('button',{name:'Use this crop',exact:true}).click();
+  await page.waitForSelector('.next-crop-view',{state:'detached',timeout:60000});
+  await idle();
+  const chosen=await page.evaluate(()=>document.querySelector('.next-file span')?.textContent||'');
+  if(chosen!=='cropped.png')throw Error(`Crop did not replace the photo, saw ${chosen}`);
+  await generate();
+  const images=await faces();
+  if(!images.every(i=>i.width===1024))throw Error('Generation from the crop did not produce 1024 faces');
+  return {file:chosen};
+ });
+
+ await stage('projectSaveReopen',async()=>{
+  const file=await download('Export project');
+  const parsed=JSON.parse(await fs.readFile(file,'utf8'));
+  if(parsed.morph.controls.length!==2||!parsed.morph.controls.every(c=>c.latent.values.length===9216))throw Error('Exported project does not carry two W+ latents');
+  await page.setInputFiles('input[aria-label="Open project"]',file);
+  await idle();
+  const sources=await page.evaluate(()=>[...document.querySelectorAll('select[aria-label="Face source"]')].map(s=>s.value));
+  if(!sources.every(v=>v==='project'))throw Error(`Reopened project left face sources as ${JSON.stringify(sources)}`);
+  return {sha256:sha(await fs.readFile(file))};
+ });
+
+ // WebCodecs is not everywhere yet. An engine that cannot encode is recorded as unsupported,
+ // which is a real limitation of that row rather than a pass.
+ await stage('morphPlayableMp4',async()=>{
+  await generate('Create morph');
+  await page.waitForSelector('.next-result video',{timeout:stageTimeout});
+  const playback=await page.evaluate(async()=>{
+   const video=document.querySelector('.next-result video');
+   video.muted=true;
+   await video.play();
+   await new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(Error('No decoded video frame')),30000);
+    if(video.requestVideoFrameCallback)video.requestVideoFrameCallback(()=>{clearTimeout(timer);resolve();});
+    else video.addEventListener('timeupdate',function once(){if(video.currentTime>0){clearTimeout(timer);video.removeEventListener('timeupdate',once);resolve();}});});
+   const result={width:video.videoWidth,height:video.videoHeight,duration:video.duration,time:video.currentTime};
+   video.pause();
+   return result;
+  });
+  if(playback.width!==512||!(playback.duration>0))throw Error(`Unexpected playback ${JSON.stringify(playback)}`);
+  const file=await download('Save video');
+  const bytes=await fs.readFile(file);
+  if(bytes.length<1000||!bytes.subarray(0,32).includes(Buffer.from('ftyp')))throw Error('Saved video is not an MP4');
+  return {...playback,bytes:bytes.length,sha256:sha(bytes)};
+ },{optional:true});
+
+ const required=['nameSeed','repeatOriginal','photoE4e','localCrop','projectSaveReopen'];
+ report.passed=required.every(name=>report.stages[name]?.passed);
+ report.unsupported=Object.entries(report.stages).filter(([,v])=>v.unsupported).map(([k])=>k);
+}catch(error){
+ report.error=String(error?.message||error).slice(0,600);
+}finally{
+ report.finishedAt=new Date().toISOString();
+ await save();
+ await context.close();await browser.close();
+ console.log(JSON.stringify({engine:engineName,passed:report.passed,unsupported:report.unsupported||[],error:report.error||''}));
+ process.exit(report.passed?0:1);
+}

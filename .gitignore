@@ -223,3 +223,6 @@ desktop/product-packages/
 # Shipping API templates are not temporary build folders.
 !self-host/templates/
 !self-host/templates/**
+
+# Cross-engine matrix runner dependencies
+scripts/matrix-tools/node_modules/

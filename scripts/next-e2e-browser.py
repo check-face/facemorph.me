@@ -77,8 +77,11 @@ try:
  # Crop the chosen photo locally and generate from the crop, so an arbitrary original never
  # has to be aligned whole. The crop is what reaches alignment.
  click('Crop photo');wait(lambda:js("!!document.querySelector('.next-crop-view img')"),60)
- js("(()=>{const s=document.querySelector('.next-crop-zoom input');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(s,'2');s.dispatchEvent(new Event('change',{bubbles:true}));})()")
- click('Rotate');click('Use this crop')
+ # The whole square is kept: alignment rightly refuses a crop that cuts the face in half or
+ # turns it on its side, so this proves the crop pipeline feeds alignment, not the detector.
+ js("(()=>{const s=document.querySelector('.next-crop-zoom input');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(s,'1');s.dispatchEvent(new Event('change',{bubbles:true}));})()")
+ for _ in range(4):click('Rotate')  # Four right angles exercise the control and end upright.
+ click('Use this crop')
  wait(lambda:js("!document.querySelector('.next-crop-view')"),60);wait(idle)
  cropped=js("document.querySelector('.next-file span')?.textContent||''")
  assert cropped=='cropped.png',cropped
