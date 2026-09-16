@@ -1,0 +1,61 @@
+name: Mobile browser components
+on:
+  workflow_dispatch:
+  push:
+    branches: ['master', 'candidate/mobile-ci-*']
+    paths: ['tests/mobile/**', 'src/Next/Assets/**', '.github/workflows/mobile-browser.yml']
+  pull_request:
+    paths: ['tests/mobile/**', 'src/Next/Assets/**', '.github/workflows/mobile-browser.yml']
+permissions:
+  contents: read
+concurrency:
+  group: mobile-components-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  android:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python3 -m unittest discover -s tests/mobile -p 'test_*.py'
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Chrome in Android Emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back none
+          disable-animations: true
+          script: python3 tests/mobile/run.py --platform android
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mobile-android-components
+          path: mobile-evidence
+          if-no-files-found: warn
+  ios:
+    runs-on: macos-15
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python3 -m unittest discover -s tests/mobile -p 'test_*.py'
+      - name: Safari in iOS Simulator
+        run: python3 tests/mobile/run.py --platform ios
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mobile-ios-components
+          path: mobile-evidence
+          if-no-files-found: warn

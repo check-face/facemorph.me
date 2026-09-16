@@ -13,7 +13,7 @@ json.loads(manifest)
 class Handler(SimpleHTTPRequestHandler):
  def __init__(self,*args,**kw):super().__init__(*args,directory='deploy-next',**kw)
  def end_headers(self):
-  for k,v in [('Cross-Origin-Opener-Policy','same-origin'),('Cross-Origin-Embedder-Policy','require-corp'),('Cross-Origin-Resource-Policy','same-origin'),('Cache-Control','no-store'),('X-Next-Artifact-Source',SOURCE)]:self.send_header(k,v)
+  for k,v in [('Cross-Origin-Opener-Policy','same-origin'),('Cross-Origin-Embedder-Policy','require-corp'),('Cross-Origin-Resource-Policy','same-origin'),('Cache-Control','no-store'),('Content-Security-Policy',"script-src 'self' blob: https://cdn.jsdelivr.net 'unsafe-inline' 'unsafe-eval'"),('X-Next-Artifact-Source',SOURCE)]:self.send_header(k,v)
   super().end_headers()
  def do_POST(self):self.send_error(403,'Diagnostics and uploads disabled in qualification')
  def do_GET(self):

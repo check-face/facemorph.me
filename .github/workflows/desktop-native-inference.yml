@@ -1,0 +1,81 @@
+name: Desktop pinned native CPU diagnostic
+on:
+  workflow_dispatch:
+    inputs:
+      bundle_url:
+        description: 'Approved portable ZIP HTTPS URL (distribution permission checked separately)'
+        required: true
+        type: string
+      bundle_sha256:
+        description: 'Immutable ZIP SHA-256; bundle.json and bundle.sha256 at root'
+        required: true
+        type: string
+permissions:
+  contents: read
+jobs:
+  frontend:
+    runs-on: ubuntu-22.04
+    container: mcr.microsoft.com/dotnet/sdk:5.0-focal
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - run: npm ci
+      - run: npm run build:self-host
+      - run: node desktop/scripts/stage-frontend.mjs --source deploy-self-host
+      - run: node --test desktop/tests/packaging.test.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: desktop-shared-frontend
+          path: desktop/frontend
+          if-no-files-found: error
+          retention-days: 14
+  native-cpu:
+    needs: frontend
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-22.04, windows-2022, macos-14]
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: desktop-shared-frontend
+          path: desktop/frontend
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Linux native build dependencies
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev
+      - name: Pin toolchain and inference runtime
+        run: |
+          rustup toolchain install 1.94.0 --profile minimal
+          rustup default 1.94.0
+          python -m pip install -r desktop/native/requirements.txt
+      - name: Generate Windows build icon
+        if: runner.os == 'Windows'
+        run: python -c "from PIL import Image; Image.open('desktop/src-tauri/icons/icon.png').save('desktop/src-tauri/icons/icon.ico')"
+      - name: Retrieve and verify approved portable assets
+        env:
+          BUNDLE_URL: ${{ inputs.bundle_url }}
+          BUNDLE_SHA256: ${{ inputs.bundle_sha256 }}
+        run: python desktop/scripts/fetch-native-bundle.py --url "$BUNDLE_URL" --sha256 "$BUNDLE_SHA256" --output "$RUNNER_TEMP/native bundle"
+      - name: Compile actual Rust supervisor diagnostic
+        run: cargo build --locked --manifest-path desktop/src-tauri/Cargo.toml --bin native-probe
+      - name: Execute all31 and three-frame CPU diagnostic
+        run: python desktop/tests/native_integration.py --bundle "$RUNNER_TEMP/native bundle/bundle.json" --report desktop/inference-evidence/verification.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: native-cpu-evidence-${{ runner.os }}
+          path: desktop/inference-evidence
+          if-no-files-found: warn
+          retention-days: 14
