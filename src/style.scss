@@ -288,6 +288,10 @@ html {
 @media(max-width:550px){.next-product{padding:.75rem}.next-faces{grid-template-columns:1fr 1fr;gap:.65rem}.next-face{padding:.65rem}.next-face .next-actions{gap:.35rem}.next-face .button{padding:.4rem}.next-face .select{font-size:.8rem}}
 @media(max-width:360px){.next-faces{grid-template-columns:1fr}}
 @media(prefers-reduced-motion:reduce){.next-product *{animation:none!important;transition:none!important}}
+.next-invite { max-width:700px; margin:1rem auto; border-left:4px solid #2f7dd1; line-height:1.55; }
+.next-invite h2 { font-size:1.15rem; margin:0 0 .5rem; }
+.next-invite p { margin:.5rem 0; }
+.next-invite-note { opacity:.8; font-size:.92rem; }
 .next-estimate { max-width:650px; margin:.5rem auto; text-align:center; opacity:.85; }
 .next-slow-route { max-width:650px; margin:1rem auto; border-left:4px solid #d08a1e; line-height:1.55; }
 .next-slow-route p { margin:.5rem 0; }

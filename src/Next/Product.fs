@@ -96,6 +96,7 @@ type State = {
     Browse: string option; Names: NameFace array; NameQuery: string; NameLimit: int; Error: string option; DebugStatus: string; Help: bool; Debug: bool; NextId: int
     Crop: CropChoice option
     Route: string
+    Invite: bool
 }
 and [<CLIMutable>] CropChoice = { faceId: string; url: string; file: obj; scale: float; view: obj }
 type Msg =
@@ -105,18 +106,23 @@ type Msg =
     | Frames of int | Provider of string | Run of string | Cancel
     | Progressed of Progress | Completed of int * Output | Failed of int * string
     | Save of string | Share of string | Export | Import of obj | Notice of string
-    | Help | Debug of bool | DismissError
+    | Help | Debug of bool | DismissError | DismissInvite
     | BrowseNames of string | NamesLoaded of NameFace array | SearchNames of string | ChooseName of string | CloseNames | MoreNames
     | CropPan of float * float | CropZoom of float | CropRotate | CropAccept | CropCancel | RequestCrop of string | Cropped of string * obj
 
 [<Emit("window.location.pathname === '/names' || window.location.pathname === '/names/' || new URLSearchParams(window.location.search).has('names')")>]
 let namesRequested (): bool = jsNative
 
+// A link handed to testers. It invites reporting prominently instead of waiting for something to
+// break, but it still only ever invites: nothing is enabled or sent until the tester says yes.
+[<Emit("new URLSearchParams(window.location.search).has('testing')")>]
+let testingInvited (): bool = jsNative
+
 let emptyFile: obj = null
 let init () =
     { Inputs = [{id="face-1";mode="text";value="hello";file=emptyFile}; {id="face-2";mode="seed";value="389";file=emptyFile}]
       Faces=[||];VideoUrl="";Kind="pairwise-figure8";Width=0.2;Pinch=false;Frames=16;Fps=16;Provider="auto"
-      Busy=false;JobId=0;Stage="idle";Status="";Fraction=0.;Browse=None;Names=[||];NameQuery="";NameLimit=48;Error=None;DebugStatus="";Help=false;Debug=false;NextId=3;Crop=None;Route="" },
+      Busy=false;JobId=0;Stage="idle";Status="";Fraction=0.;Browse=None;Names=[||];NameQuery="";NameLimit=48;Error=None;DebugStatus="";Help=false;Debug=false;NextId=3;Crop=None;Route="";Invite=testingInvited() },
     Cmd.batch [Cmd.ofSub(fun dispatch -> subscribe (Progressed >> dispatch)); if namesRequested() then Cmd.ofMsg(BrowseNames "face-1")]
 
 let update msg state =
@@ -211,7 +217,8 @@ let update msg state =
         Cmd.OfPromise.either importProject (createObj ["file" ==> file; "jobId" ==> id; "provider" ==> state.Provider]) (fun result -> Completed(id,result)) (fun e -> Failed(id,e.Message))
     | Notice text -> {state with Status=text},Cmd.none
     | Help -> {state with Help=not state.Help},Cmd.none
-    | Debug enabled -> setDebug enabled;{state with Debug=enabled},Cmd.none
+    | Debug enabled -> setDebug enabled;{state with Debug=enabled;Invite=false},Cmd.none
+    | DismissInvite -> {state with Invite=false},Cmd.none
     | BrowseNames id when not state.Busy -> openNamesFocus(); {state with Browse=Some id;NameQuery="";NameLimit=48},(if state.Names.Length=0 then Cmd.OfPromise.either loadNames () NamesLoaded (fun e -> Notice e.Message) else Cmd.none)
     | NamesLoaded names -> {state with Names=names},Cmd.none
     | SearchNames text -> {state with NameQuery=text;NameLimit=48},Cmd.none
@@ -280,6 +287,17 @@ let view state dispatch = App.ThemedApp [
     Html.main [prop.className "facemorph-page next-product";prop.children [
         App.header
         Html.div [prop.className "next-topline";prop.children [Html.span "FaceMorph Preview";button "Help ⓘ" false (fun () -> dispatch Help)]]
+        // Shown only to someone who opened the testing link, and only until they answer.
+        if state.Invite && not state.Debug then
+            Html.section [prop.className "next-invite box";prop.custom("role","region");prop.ariaLabel "Help us with this test";prop.children [
+                Html.h2 "Thanks for testing FaceMorph"
+                Html.p "If anything is slow, wrong or broken, a debug report tells us what happened without you having to describe it."
+                Html.p "Reports contain a random device ID, app and browser versions, processing stages, timings and safe error codes. They never contain your photos, the words you type, the faces you make, or anything identifying you. They go to our private diagnostics service and are deleted after 30 days."
+                Html.div [prop.className "next-actions";prop.children [
+                    button "Turn on debug reporting" false (fun () -> dispatch(Debug true))
+                    button "Not now" false (fun () -> dispatch DismissInvite)
+                    button "What gets sent" false (fun () -> dispatch Help)]]
+                Html.p [prop.className "next-invite-note";prop.text "You can turn it off at any time in Help. Generating works exactly the same either way."]]]
         Html.div [prop.className "next-faces";prop.children(state.Inputs |> List.map(viewFace state dispatch))]
         Html.div [prop.className "next-actions next-controls";prop.children [
             button "Add face" (state.Busy || state.Inputs.Length>=64) (fun () -> dispatch Add)
@@ -289,9 +307,15 @@ let view state dispatch = App.ThemedApp [
             Html.label [prop.children [Html.input [prop.type'.checkbox;prop.isChecked state.Pinch;prop.disabled state.Busy;prop.onChange(fun (v:bool) -> dispatch(Pinch v))];Html.span " Pinch centre"]]
             select (string state.Frames) "Frames per segment" state.Busy ["16","16 frames / segment";"32","32 frames / segment";"64","64 frames / segment"] (fun v -> dispatch(Frames(int v)))
             select state.Provider "Processing mode" state.Busy ["auto","Automatic processing";"cpu","CPU";"webgpu","WebGPU";"webgl","WebGL GPU"] (Provider >> dispatch)]]]]
-        if state.Route="cpu" then
+        // Guidance follows evidence, not the route's name: a qualified GPU route can still be slow
+        // on a given machine, and this device has already shown what a face costs it.
+        let slowHere =
+            match measuredFaceMs() with
+            | null -> state.Route="cpu"
+            | value -> unbox<float> value > 20000. || state.Route="cpu"
+        if slowHere then
             Html.div [prop.className "next-slow-route box";prop.custom("role","note");prop.children [
-                Html.p [Html.strong "This device is generating on its processor.";Html.text " No graphics acceleration qualified here, so a face takes minutes rather than seconds and a morph takes considerably longer."]
+                Html.p [Html.strong "Generating is slow on this device.";Html.text (if state.Route="cpu" then " No graphics acceleration qualified here, so it is running on the processor." else sprintf " It qualified the %s route, but this machine is still taking a long time per face." state.Route)]
                 Html.p "It will still finish, and everything is saved as it goes. A laptop or desktop with a graphics card — or the desktop app — is dramatically quicker for morphs."
                 Html.p [Html.a [prop.href "https://github.com/check-face/facemorph.me/releases";prop.text "Desktop builds"]]]]
         match estimate state with
