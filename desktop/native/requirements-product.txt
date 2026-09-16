@@ -1,0 +1,6 @@
+# Build separately on each target architecture; never execute downloaded code from UI.
+-r requirements.txt
+scipy==1.18.1
+dlib==20.0.1
+pyinstaller==6.16.0
+certifi==2026.7.22

@@ -205,3 +205,17 @@ main.js
 *.fs.js.map
 __pycache__/
 *.pyc
+
+# Generated target-native runtime staging (never commit binary dependencies/weights)
+desktop/packaged-native/
+desktop/native-build/
+desktop/native-resources-config.json
+desktop/ci-tools/
+desktop/src-tauri/target/
+desktop/product-manifest.json
+desktop/product-evidence/
+desktop/product-packages/
+
+# Generated candidate output
+/deploy-next/
+/deploy-self-host/

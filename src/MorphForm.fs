@@ -32,6 +32,7 @@ let renderImageByValue value =
             prop.sizes sizes
         ]
         Html.img [
+            if isSelfHost then prop.custom ("loading", "lazy")
             prop.src src
             prop.sizes sizes
 

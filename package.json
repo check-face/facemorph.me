@@ -4,7 +4,9 @@
     "prestart": "dotnet tool restore",
     "start": "dotnet fable watch ./src -s --run webpack-dev-server",
     "prebuild": "dotnet tool restore",
-    "build": "dotnet fable ./Server && webpack"
+    "build": "dotnet fable ./Server && webpack",
+    "build:self-host": "node scripts/build-self-host.cjs",
+    "build:next": "node scripts/build-next.cjs"
   },
   "dependencies": {
     "@material-ui/core": "^4.12.3",

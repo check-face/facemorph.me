@@ -1,0 +1,20 @@
+{
+  "scope": "ActualMacChrome152 WebGPUv9 productadapter, complete31numericalchecks plus freshseed2 mapping/full1024PNG and persistentcache reopen withoutmodel",
+  "lease": "20260916T052512Z-e2e3c1fa",
+  "launch": "Own runtime harness invoked with JS after CDP clicks ignored on hidden page; runtime proof, not productUI click proof",
+  "focus": "Initially hidden; CDP focus emulation enabled midrun. Timinginconclusive, no performancepromotion",
+  "maxRgb": 1,
+  "maxFloat": 6.0558319091796875e-05,
+  "releaseQualified": false,
+  "sourceSha256": {
+    "png.mjs": "1821a8d2f1fa29320d63f40813804295f0c60be1ff50f1ed8951aa7285bacb6f",
+    "webgpu-engine.mjs": "a5ac397332e460d36533663d4fb1d5274532e7f42eea758aa7b60cb9665eeeee",
+    "identity.mjs": "51937d963fc665dac4b2c13168e96233970d895424dd76692e6a4fa4c8d14460",
+    "runtime.test.mjs": "fcc64ea08747abf557bb82f1229fc385b5a58c0e882915ce200dcb480b3b51cc",
+    "originals.mjs": "716e702bad7782486590fc860f3d21e3899822e2b16c95777dea20ee2ecf3134",
+    "fused-resample-v1.mjs": "1a22ae6c56ae961e246f83bef37e93d279d150b3a1daa89b7fbbb9050e166b52",
+    "ort-worker.mjs": "d6467344f042fd45f483c2ea1fda80fb1ea883ec941db59f92d61d0839d7c7b5",
+    "runtime.mjs": "de1ddccea88f48a75baa67e9caef691f2d278bfcf5495fa1f37d9bf93052175e",
+    "webgl-vector-v1.mjs": "905abe6c2f39051083379c9648efbde2908175391c364b8c29ebab564431df12"
+  }
+}

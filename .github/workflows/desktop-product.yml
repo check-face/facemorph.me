@@ -1,0 +1,203 @@
+name: Desktop product artifact qualification
+on:
+  push:
+    branches: ['candidate/next-delivery-20260916']
+    paths:
+      - 'desktop/**'
+      - '!desktop/**/*.md'
+      - 'src/Next/**'
+      - 'src/App.fs'
+      - 'scripts/build-next.cjs'
+      - 'webpack.config.js'
+      - 'package*.json'
+      - '.github/workflows/desktop-product.yml'
+  workflow_dispatch:
+    inputs:
+      manifest_url:
+        description: 'Trusted HTTPS product manifest including encoder and landmarks'
+        type: string
+        required: true
+      manifest_sha256:
+        description: 'Reviewed SHA-256 of exact manifest bytes'
+        type: string
+        required: true
+permissions:
+  contents: read
+concurrency:
+  group: desktop-product-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  frontend:
+    runs-on: ubuntu-22.04
+    container: mcr.microsoft.com/dotnet/sdk:5.0-focal
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm ci
+      - run: npm run build:next
+      - run: node desktop/scripts/stage-frontend.mjs --source deploy-next
+      - uses: actions/upload-artifact@v4
+        with:
+          name: desktop-product-frontend
+          path: desktop/frontend
+          retention-days: 14
+  native-artifact:
+    needs: frontend
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            target: linux-x64
+            rust_target: x86_64-unknown-linux-gnu
+            platform: linux
+            bundles: deb,appimage
+          - runner: ubuntu-24.04-arm
+            target: linux-arm64
+            rust_target: aarch64-unknown-linux-gnu
+            platform: linux
+            bundles: deb,appimage
+          - runner: windows-2022
+            target: windows-x64
+            rust_target: x86_64-pc-windows-msvc
+            platform: windows
+            bundles: nsis
+          - runner: windows-11-arm
+            target: windows-arm64
+            rust_target: aarch64-pc-windows-msvc
+            platform: windows
+            bundles: nsis
+          - runner: macos-15-intel
+            target: macos-x64
+            rust_target: x86_64-apple-darwin
+            platform: macos
+            bundles: app
+          - runner: macos-14
+            target: macos-arm64
+            rust_target: aarch64-apple-darwin
+            platform: macos
+            bundles: app
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 120
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Acquire reviewed manifest only
+        env:
+          MANIFEST_URL: ${{ inputs.manifest_url || 'https://next.facemorph.me/runtime/manifests/6010981883c8f102f9da27e27a7e21a2303240baefff1e758c42c11fa8e1354d.json' }}
+          MANIFEST_SHA256: ${{ inputs.manifest_sha256 || '6010981883c8f102f9da27e27a7e21a2303240baefff1e758c42c11fa8e1354d' }}
+        run: python desktop/scripts/acquire-product-manifest.py --output desktop/product-manifest.json
+      - name: Pinned ONNX Runtime source for Intel macOS (no upstream wheel)
+        if: matrix.target == 'macos-x64'
+        uses: actions/checkout@v4
+        with:
+          repository: microsoft/onnxruntime
+          ref: 3a728b75062256951b6e19ce718907cf1a1d4cf0
+          submodules: recursive
+          path: .ci-ort-intel
+          persist-credentials: false
+      - name: Build the matching Intel macOS ORT wheel
+        if: matrix.target == 'macos-x64'
+        run: |
+          python -m pip install numpy==2.5.3 packaging flatbuffers setuptools wheel cmake ninja
+          cd .ci-ort-intel
+          ./build.sh --config Release --build_wheel --skip_tests --parallel 3 --compile_no_warning_as_error --cmake_extra_defines CMAKE_OSX_ARCHITECTURES=x86_64 onnxruntime_BUILD_UNIT_TESTS=OFF
+          python -m pip install build/MacOS/Release/dist/*.whl
+      - name: Build dlib with the correct Windows ARM64 target
+        if: matrix.target == 'windows-arm64'
+        run: |
+          python -m pip install setuptools wheel cmake
+          python desktop/scripts/build-dlib-arm64.py
+      - name: Install target-native runtime and build dependencies
+        run: python -m pip install -r desktop/native/requirements-product.txt
+      - name: Freeze standalone runtime for this architecture
+        run: python desktop/scripts/build-native-runtime.py --manifest desktop/product-manifest.json --expected-target ${{ matrix.target }}
+      - name: Exercise the actual frozen artifact
+        env:
+          CHECKFACE_NATIVE_DIAGNOSTICS: '1'
+        run: |
+          worker=desktop/packaged-native/checkface-worker
+          if [[ "$RUNNER_OS" == "Windows" ]]; then worker="$worker.exe"; fi
+          python desktop/tests/product_integration.py --worker "$worker" --manifest desktop/packaged-native/manifest.json --cache "$RUNNER_TEMP/checkface-native-cache" --output "$RUNNER_TEMP/checkface-native-output" --report desktop/product-evidence/workflows.json
+      - uses: actions/download-artifact@v4
+        with:
+          name: desktop-product-frontend
+          path: desktop/frontend
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Linux package prerequisites
+        if: matrix.platform == 'linux'
+        run: sudo apt-get update && sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf xvfb
+      - name: Pinned shell toolchain
+        run: |
+          rustup toolchain install 1.94.0 --profile minimal
+          rustup default 1.94.0
+          rustup target add ${{ matrix.rust_target }}
+          npm install --prefix desktop/ci-tools --no-save @tauri-apps/cli@2.10.1
+      - name: Assemble the tested runtime into the actual desktop package
+        working-directory: desktop
+        run: |
+          node ci-tools/node_modules/@tauri-apps/cli/tauri.js icon src-tauri/icons/icon.png --output src-tauri/icons
+          node ci-tools/node_modules/@tauri-apps/cli/tauri.js build --config candidate-config.json --config native-resources-config.json --bundles ${{ matrix.bundles }} --target ${{ matrix.rust_target }}
+      - name: Record final downloadable artifact hashes
+        run: python desktop/scripts/candidate-artifacts.py --bundle desktop/src-tauri/target/${{ matrix.rust_target }}/release/bundle --output desktop/product-packages --platform ${{ matrix.platform }} --revision "$GITHUB_SHA" --native-runtime-inventory desktop/packaged-native/runtime-inventory.json
+      - name: Installed Linux package startup
+        if: matrix.platform == 'linux'
+        run: |
+          sudo dpkg -i desktop/product-packages/*.deb
+          xvfb-run -a python desktop/tests/startup_smoke.py --binary /usr/bin/checkface-desktop --require-runtime --report desktop/product-evidence/installed-startup.json
+          xvfb-run -a python desktop/tests/installed_product.py --binary /usr/bin/checkface-desktop --manifest desktop/packaged-native/manifest.json --cache "$RUNNER_TEMP/checkface-native-cache" --report desktop/product-evidence/installed-workflows.json
+      - name: Portable Linux AppImage startup (including non-DEB distributions)
+        if: matrix.platform == 'linux'
+        env:
+          APPIMAGE_EXTRACT_AND_RUN: '1'
+        run: |
+          chmod +x desktop/product-packages/*.AppImage
+          image=$(python -c "from pathlib import Path; print(next(Path('desktop/product-packages').glob('*.AppImage')))")
+          xvfb-run -a python desktop/tests/startup_smoke.py --binary "$image" --require-runtime --report desktop/product-evidence/appimage-startup.json
+      - name: Installed Windows package startup
+        if: matrix.platform == 'windows'
+        shell: pwsh
+        run: |
+          $installer = (Get-ChildItem desktop/product-packages/*.exe | Select-Object -First 1).FullName
+          $destination = Join-Path $env:RUNNER_TEMP 'FaceMorph installed'
+          $process = Start-Process -FilePath $installer -ArgumentList @('/S', "/D=$destination") -Wait -PassThru
+          if ($process.ExitCode -ne 0) { throw "Installer failed" }
+          python desktop/tests/startup_smoke.py --binary (Join-Path $destination 'checkface-desktop.exe') --require-runtime --report desktop/product-evidence/installed-startup.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python desktop/tests/installed_product.py --binary (Join-Path $destination 'checkface-desktop.exe') --manifest desktop/packaged-native/manifest.json --cache (Join-Path $env:RUNNER_TEMP 'checkface-native-cache') --report desktop/product-evidence/installed-workflows.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Extracted macOS app startup
+        if: matrix.platform == 'macos'
+        run: |
+          mkdir -p "$RUNNER_TEMP/FaceMorph installed"
+          ditto -x -k desktop/product-packages/*.zip "$RUNNER_TEMP/FaceMorph installed"
+          python desktop/tests/startup_smoke.py --binary "$RUNNER_TEMP/FaceMorph installed/FaceMorph Preview.app/Contents/MacOS/checkface-desktop" --require-runtime --report desktop/product-evidence/installed-startup.json
+          python desktop/tests/installed_product.py --binary "$RUNNER_TEMP/FaceMorph installed/FaceMorph Preview.app/Contents/MacOS/checkface-desktop" --manifest desktop/packaged-native/manifest.json --cache "$RUNNER_TEMP/checkface-native-cache" --report desktop/product-evidence/installed-workflows.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: desktop-product-package-${{ matrix.target }}
+          path: desktop/product-packages
+          retention-days: 14
+      - name: Preserve tested runtime for package assembly
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-native-runtime-${{ matrix.target }}
+          path: desktop/packaged-native
+          retention-days: 14
+          if-no-files-found: error
+      - name: Preserve artifact-bound workflow evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-native-evidence-${{ matrix.target }}
+          path: desktop/product-evidence
+          retention-days: 14

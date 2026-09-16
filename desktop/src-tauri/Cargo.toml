@@ -1,0 +1,19 @@
+[package]
+name = "checkface-desktop"
+version = "0.1.0"
+edition = "2021"
+publish = false
+default-run = "checkface-desktop"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-updater = "2"
+serde_json = { version = "1", features = ["float_roundtrip"] }
+tauri-plugin-dialog = "2"
+tempfile = "3"
+
+[dev-dependencies]
+minisign-verify = "=0.2.5"

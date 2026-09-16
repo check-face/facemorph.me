@@ -14,11 +14,11 @@ open Elmish.HMR
 // open Elmish.Debug
 #endif
 
-Program.mkProgram init update view
-|> Program.withReactSynchronous "elmish-app"
-// debugger throws socket exceptions when redux extension is not installed.
-// this makes it unusable due to https://github.com/pmmmwh/react-refresh-webpack-plugin/issues/28
-// #if DEBUG
-// |> Program.withDebugger
-// #endif
-|> Program.run
+if Config.isNext then
+    Program.mkProgram NextProduct.init NextProduct.update NextProduct.view
+    |> Program.withReactSynchronous "elmish-app"
+    |> Program.run
+else
+    Program.mkProgram App.init App.update App.view
+    |> Program.withReactSynchronous "elmish-app"
+    |> Program.run

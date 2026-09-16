@@ -12,6 +12,8 @@ const ReactRefreshWebpackPlugin = require('@pmmmwh/react-refresh-webpack-plugin'
 
 
 // If we're running the webpack-dev-server, assume we're in development mode
+var isNext = process.env.FACEMORPH_NEXT === '1';
+var isSelfHost = process.env.FACEMORPH_SELF_HOST === '1';
 var isProduction = !process.argv.find(v => v.indexOf('webpack-dev-server') !== -1);
 console.log('Bundling for ' + (isProduction ? 'production' : 'development') + '...');
 
@@ -21,7 +23,7 @@ var CONFIG = {
     indexHtmlTemplate: './src/index.html',
     fsharpEntry: './src/Index.fs.js',
     cssEntry: './src/style.scss',
-    outputDir: './deploy',
+    outputDir: isNext ? './deploy-next' : isSelfHost ? './deploy-self-host' : './deploy',
     assetsDir: './src/public',
     devServerPort: 8100,
 
@@ -38,12 +40,16 @@ var CONFIG = {
 // and automatically injects <script> or <link> tags for generated bundles.
 var commonPlugins = [
     new (require('webpack').DefinePlugin)({
-        'process.env.FACEMORPH_TRIAL': JSON.stringify(process.env.FACEMORPH_TRIAL || '0'),
-        'process.env.FACEMORPH_REVIEW': JSON.stringify(process.env.FACEMORPH_REVIEW || '0'),
+        'process.env.FACEMORPH_BUILD_ID': JSON.stringify(process.env.FACEMORPH_BUILD_ID || 'development'),
+        'process.env.FACEMORPH_NEXT': JSON.stringify(isNext ? '1' : '0'),
+        'process.env.FACEMORPH_SELF_HOST': JSON.stringify(isSelfHost ? '1' : '0'),
+        'process.env.FACEMORPH_TRIAL': JSON.stringify(isSelfHost ? '0' : (process.env.FACEMORPH_TRIAL || '0')),
+        'process.env.FACEMORPH_REVIEW': JSON.stringify(isSelfHost ? '0' : (process.env.FACEMORPH_REVIEW || '0')),
         'process.env.FACEMORPH_TRIAL_URL': JSON.stringify(process.env.FACEMORPH_TRIAL_URL || '')
     }),
     new HtmlWebpackPlugin({
         filename: 'index.html',
+        selfHost: isSelfHost || isNext,
         template: resolve(CONFIG.indexHtmlTemplate)
     })
 ];
@@ -97,8 +103,10 @@ let client =
             new MiniCssExtractPlugin({ filename: 'style.[hash].css' }),
             new CopyWebpackPlugin({ patterns: [
                 { from: resolve(CONFIG.assetsDir) },
-                { from: resolve("vercel.json") },
-                { from: resolve("vercel.package.json"), to: "package.json" },
+                ...((isSelfHost || isNext) ? [] : [
+                    { from: resolve("vercel.json") },
+                    { from: resolve("vercel.package.json"), to: "package.json" },
+                ]),
             ]}),
             new CleanWebpackPlugin({
                 cleanOnceBeforeBuildPatterns: ['**/*', '!api/**'],
@@ -205,7 +213,7 @@ let server =
     // See https://github.com/fable-compiler/Fable/issues/1490
     resolve: client.resolve,
     plugins: [
-        new (require("webpack").DefinePlugin)({"process.env.FACEMORPH_TRIAL": JSON.stringify(process.env.FACEMORPH_TRIAL || "0"), "process.env.FACEMORPH_REVIEW": JSON.stringify(process.env.FACEMORPH_REVIEW || "0"), "process.env.FACEMORPH_TRIAL_URL": JSON.stringify(process.env.FACEMORPH_TRIAL_URL || "")}),
+        new (require("webpack").DefinePlugin)({"process.env.FACEMORPH_SELF_HOST": JSON.stringify("0"), "process.env.FACEMORPH_TRIAL": JSON.stringify(process.env.FACEMORPH_TRIAL || "0"), "process.env.FACEMORPH_REVIEW": JSON.stringify(process.env.FACEMORPH_REVIEW || "0"), "process.env.FACEMORPH_TRIAL_URL": JSON.stringify(process.env.FACEMORPH_TRIAL_URL || "")}),
         new CleanWebpackPlugin()
     ],
     module: client.module,
@@ -222,7 +230,7 @@ function resolve(filePath) {
     return path.isAbsolute(filePath) ? filePath : path.join(__dirname, filePath);
 }
 
-if(isProduction) {
+if(isProduction && !isSelfHost && !isNext) {
     module.exports = [ client, server ]
 }
 else {

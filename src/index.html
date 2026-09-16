@@ -4,6 +4,7 @@
     <base href="/">
     <meta http-equiv='Content-Type' content='text/html; charset=utf-8'>
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <% if (!htmlWebpackPlugin.options.selfHost) { %>
     <!-- Global site tag (gtag.js) - Google Analytics -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=UA-140064290-2"></script>
     <script>
@@ -13,6 +14,7 @@
 
       gtag('config', 'UA-140064290-2');
     </script>
+    <% } %>
     <script>
       // when you click "Change Mode" in the explain.md
       function openChangeMode() {
