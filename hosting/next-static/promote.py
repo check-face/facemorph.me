@@ -10,7 +10,7 @@ def passed_run(run,path):
     if data['conclusion']!='success' or data['path']!=path or data['head_repository']['full_name']!=REMOTE:
         raise ValueError('Required successful workflow/source is missing')
     return data
-p=argparse.ArgumentParser();p.add_argument('--build-run',type=int,required=True);p.add_argument('--qualification-run',type=int,required=True);p.add_argument('--runtime',type=Path,required=True);p.add_argument('--catalogue',type=Path,required=True);p.add_argument('--work',type=Path,required=True);p.add_argument('--publish',action='store_true');a=p.parse_args()
+p=argparse.ArgumentParser();p.add_argument('--build-run',type=int,required=True);p.add_argument('--qualification-run',type=int,required=True);p.add_argument('--runtime',type=Path,required=True);p.add_argument('--catalogue',type=Path,required=True);p.add_argument('--work',type=Path,required=True);p.add_argument('--publish',action='store_true');p.add_argument('--discard-after',action='store_true',help='Remove this run\'s work directory once the receipt is written.');a=p.parse_args()
 build=passed_run(a.build_run,'.github/workflows/next-site.yml')
 # The artifact build calls the qualification as a reusable workflow, so the usual case is one
 # run that both built and qualified these bytes. A separate run is still accepted when the
@@ -35,4 +35,10 @@ if a.publish:
     subprocess.run(['npx','wrangler','deploy','--config','hosting/next-static/wrangler.jsonc','--assets',str(work/'public')],cwd=REPO,check=True)
     receipt['published']=True
     (work/'promotion.json').write_text(json.dumps(receipt,indent=2)+'\n')
+# Staging hard-links the runtime, so a work directory costs little, but they still accumulate one
+# per promotion. Removing this run's own directory is opt-in and never touches anything else.
+if a.discard_after:
+    import shutil as _shutil
+    _shutil.rmtree(work,ignore_errors=True)
+    receipt['workDiscarded']=True
 print(json.dumps(receipt))

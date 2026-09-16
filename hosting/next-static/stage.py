@@ -18,7 +18,14 @@ def copy_tree(src,dst):
         if item.stat().st_size>25*1024*1024:
             raise ValueError('Static asset exceeds25MiB')
         dest=dst/relative;dest.parent.mkdir(parents=True,exist_ok=True)
-        shutil.copyfile(item,dest)
+        # The runtime is immutable and content-addressed, and staging only ever reads it, so a
+        # hard link publishes the identical bytes without a second copy. A full copy of the
+        # runtime is several gigabytes and staging used to spend that on every promotion. Falls
+        # back to copying across filesystems, where linking is not possible.
+        try:
+            os.link(item,dest)
+        except OSError:
+            shutil.copyfile(item,dest)
 copy_tree(a.runtime,a.output/'runtime');copy_tree(a.frontend,a.output)
 shutil.copyfile(a.catalogue,a.output/'catalogue.json')
 (a.output/'names').mkdir(exist_ok=True)
