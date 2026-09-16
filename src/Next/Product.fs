@@ -43,6 +43,29 @@ let firstFile (event: obj): obj = jsNative
 [<Emit("$0 ? $0.name : ''")>]
 let fileName (file: obj): string = jsNative
 
+[<Import("previewPhoto", "./photo/crop.mjs")>]
+let previewPhoto (file: obj) (options: obj): JS.Promise<obj> = jsNative
+[<Emit("Object.assign({crop:true,file:$1},$0)")>]
+let cropOffer (preview: obj) (file: obj): obj = jsNative
+[<Import("cropPhoto", "./photo/crop.mjs")>]
+let cropPhoto (file: obj) (area: obj) (options: obj): JS.Promise<obj> = jsNative
+[<Import("createCrop", "./photo/crop-view.mjs")>]
+let createCrop (options: obj): obj = jsNative
+[<Import("pan", "./photo/crop-view.mjs")>]
+let panCrop (state: obj) (dx: float) (dy: float): obj = jsNative
+[<Import("zoomTo", "./photo/crop-view.mjs")>]
+let zoomCrop (state: obj) (zoom: float): obj = jsNative
+[<Import("rotate", "./photo/crop-view.mjs")>]
+let rotateCrop (state: obj): obj = jsNative
+[<Import("rect", "./photo/crop-view.mjs")>]
+let cropRect (state: obj): obj = jsNative
+[<Import("frame", "./photo/crop-view.mjs")>]
+let cropFrame (state: obj) (viewport: float): obj = jsNative
+[<Emit("$0 && $0.crop === true")>]
+let isCropOffer (value: obj): bool = jsNative
+[<Emit("URL.revokeObjectURL($0)")>]
+let revokeUrl (url: string): unit = jsNative
+
 [<Import("photoFiles", "./photo-selection.mjs")>]
 let photoFiles (event: obj): obj = jsNative
 [<Import("selectPhoto", "./photo-selection.mjs")>]
@@ -65,7 +88,9 @@ type State = {
     Kind: string; Width: float; Pinch: bool; Frames: int; Fps: int; Provider: string
     Busy: bool; JobId: int; Stage: string; Status: string; Fraction: float
     Browse: string option; Names: NameFace array; NameQuery: string; NameLimit: int; Error: string option; DebugStatus: string; Help: bool; Debug: bool; NextId: int
+    Crop: CropChoice option
 }
+and [<CLIMutable>] CropChoice = { faceId: string; url: string; file: obj; scale: float; view: obj }
 type Msg =
     | Edit of string * string | Mode of string * string | Photo of string * obj
     | PickPhoto of string * obj | PhotoError of string
@@ -75,6 +100,7 @@ type Msg =
     | Save of string | Share of string | Export | Import of obj | Notice of string
     | Help | Debug of bool | DismissError
     | BrowseNames of string | NamesLoaded of NameFace array | SearchNames of string | ChooseName of string | CloseNames | MoreNames
+    | CropPan of float * float | CropZoom of float | CropRotate | CropAccept | CropCancel | RequestCrop of string
 
 [<Emit("window.location.pathname === '/names' || window.location.pathname === '/names/' || new URLSearchParams(window.location.search).has('names')")>]
 let namesRequested (): bool = jsNative
@@ -83,7 +109,7 @@ let emptyFile: obj = null
 let init () =
     { Inputs = [{id="face-1";mode="text";value="hello";file=emptyFile}; {id="face-2";mode="seed";value="389";file=emptyFile}]
       Faces=[||];VideoUrl="";Kind="pairwise-figure8";Width=0.2;Pinch=false;Frames=16;Fps=16;Provider="auto"
-      Busy=false;JobId=0;Stage="idle";Status="";Fraction=0.;Browse=None;Names=[||];NameQuery="";NameLimit=48;Error=None;DebugStatus="";Help=false;Debug=false;NextId=3 },
+      Busy=false;JobId=0;Stage="idle";Status="";Fraction=0.;Browse=None;Names=[||];NameQuery="";NameLimit=48;Error=None;DebugStatus="";Help=false;Debug=false;NextId=3;Crop=None },
     Cmd.batch [Cmd.ofSub(fun dispatch -> subscribe (Progressed >> dispatch)); if namesRequested() then Cmd.ofMsg(BrowseNames "face-1")]
 
 let update msg state =
@@ -94,7 +120,42 @@ let update msg state =
     | Mode(id,mode) when not state.Busy -> invalidatePhotoSelections(); change id (fun item -> {item with mode=mode;file=emptyFile}), Cmd.none
     | PickPhoto(id,files) when not state.Busy -> state,Cmd.OfPromise.either selectPhoto (createObj ["id" ==> id;"files" ==> files]) (fun file -> Photo(id,file)) (fun e -> PhotoError e.Message)
     | PhotoError message when not state.Busy -> {state with Error=Some message},Cmd.none
-    | Photo(id,file) when not state.Busy && not (isNull file) -> {change id (fun item -> {item with mode="photo";file=file;value=fileName file}) with Error=None}, Cmd.none
+    // A photo the alignment route cannot take whole opens the crop step first; only the crop
+    // is ever aligned. Cancelling leaves the existing face and its inputs alone.
+    | Photo(id,offer) when not state.Busy && not (isNull offer) && isCropOffer offer ->
+        state.Crop |> Option.iter (fun previous -> revokeUrl previous.url)
+        {state with Error=None;Crop=Some {faceId=id;url=offer?url;file=offer?file;scale=offer?scale
+                                          view=createCrop(createObj ["previewWidth" ==> offer?previewWidth;"previewHeight" ==> offer?previewHeight;"scale" ==> offer?scale])}},Cmd.none
+    | RequestCrop id when not state.Busy ->
+        match state.Inputs |> List.tryFind(fun item -> item.id=id) with
+        | Some item when not (isNull item.file) ->
+            state,Cmd.OfPromise.either (fun () -> previewPhoto item.file null) () (fun preview -> Photo(id,cropOffer preview item.file)) (fun e -> PhotoError e.Message)
+        | _ -> state,Cmd.none
+    | CropPan(dx,dy) ->
+        match state.Crop with
+        | Some crop -> {state with Crop=Some {crop with view=panCrop crop.view dx dy}},Cmd.none
+        | None -> state,Cmd.none
+    | CropZoom zoom ->
+        match state.Crop with
+        | Some crop -> {state with Crop=Some {crop with view=zoomCrop crop.view zoom}},Cmd.none
+        | None -> state,Cmd.none
+    | CropRotate ->
+        match state.Crop with
+        | Some crop -> {state with Crop=Some {crop with view=rotateCrop crop.view}},Cmd.none
+        | None -> state,Cmd.none
+    | CropCancel ->
+        state.Crop |> Option.iter (fun crop -> revokeUrl crop.url)
+        {state with Crop=None},Cmd.none
+    | CropAccept ->
+        match state.Crop with
+        | Some crop ->
+            let options=createObj ["previewScale" ==> crop.scale;"rotation" ==> crop.view?rotation]
+            let target=crop.faceId
+            revokeUrl crop.url
+            {state with Crop=None;Status="Preparing your crop…"},
+            Cmd.OfPromise.either (fun () -> cropPhoto crop.file (cropRect crop.view) options) () (fun file -> Photo(target,file)) (fun e -> PhotoError e.Message)
+        | None -> state,Cmd.none
+    | Photo(id,file) when not state.Busy && not (isNull file) -> {change id (fun item -> {item with mode="photo";file=file;value=fileName file}) with Error=None;Status=""}, Cmd.none
     | Add when not state.Busy && state.Inputs.Length<64 ->
         {state with Inputs=state.Inputs @ [{id="face-"+System.Guid.NewGuid().ToString("N");mode="text";value="";file=emptyFile}];NextId=state.NextId+1;VideoUrl=""},Cmd.none
     | Remove id when not state.Busy && state.Inputs.Length>2 -> invalidatePhotoSelections(); {state with Inputs=state.Inputs |> List.filter(fun x -> x.id<>id);VideoUrl=""},Cmd.none
@@ -150,6 +211,8 @@ let update msg state =
     | DismissError -> {state with Error=None},Cmd.none
     | _ -> state,Cmd.none
 
+// Pointer drag needs the previous position between events; the view itself stays declarative.
+let mutable dragStart : (float * float) option = None
 let faq (question:string) (answer:ReactElement list) =
     Html.details [prop.className "next-faq";prop.children (Html.summary question :: answer)]
 let button (label:string) (disabled:bool) (action:unit -> unit) = Html.button [prop.className "button";prop.disabled disabled;prop.type'.button;prop.onClick(fun _ -> action());prop.text label]
@@ -163,14 +226,17 @@ let viewFace (state:State) dispatch (item:Input) =
         prop.onDragLeave(fun e -> dragPhoto e state.Busy true);
         prop.onDrop(fun e -> dragPhoto e state.Busy true; if not state.Busy then dispatch(PickPhoto(item.id,photoFiles e)));
         prop.children [
-            Html.input [prop.id ("photo-"+item.id);prop.type'.file;prop.hidden true;prop.accept "image/png,image/jpeg";prop.disabled state.Busy;prop.ariaLabel "Choose photo";prop.onChange(fun (e:Browser.Types.Event) -> dispatch(PickPhoto(item.id,photoFiles e))) ]
+            Html.input [prop.id ("photo-"+item.id);prop.type'.file;prop.hidden true;prop.accept "image/*";prop.disabled state.Busy;prop.ariaLabel "Choose photo";prop.onChange(fun (e:Browser.Types.Event) -> dispatch(PickPhoto(item.id,photoFiles e))) ]
             Html.div [prop.className "next-face-image";prop.children [
                 match face with
                 | Some f -> Html.img [prop.src f.url;prop.alt "Generated face";prop.width 1024;prop.height 1024]
                 | None -> Html.button [prop.type'.button;prop.className "next-face-placeholder";prop.disabled state.Busy;prop.ariaLabel "Choose photo";prop.onClick(fun _ -> openPhotoPicker item.id);prop.text "+"]]]
             select item.mode "Face source" state.Busy ((if item.mode="project" then ["project","Saved project face"] else []) @ ["text","Name or words";"seed","Seed";"photo","Photo"]) (fun mode -> dispatch(Mode(item.id,mode)))
             if item.mode="photo" then
-                Html.div [prop.className "next-file";prop.children [Html.span item.value;button "Choose a photo" state.Busy (fun () -> openPhotoPicker item.id)]]
+                Html.div [prop.className "next-file";prop.children [
+                    Html.span item.value
+                    button "Choose a photo" state.Busy (fun () -> openPhotoPicker item.id)
+                    if not (isNull item.file) then button "Crop photo" state.Busy (fun () -> dispatch(RequestCrop item.id))]]
             elif item.mode="project" then Html.p "Restored from your saved project. Choose another source to replace this face."
             else Html.input [prop.className "input";prop.ariaLabel(if item.mode="seed" then "Numeric seed" else "Name or words");prop.value item.value;prop.disabled state.Busy;prop.onChange(fun (v:string) -> dispatch(Edit(item.id,v)))]
             Html.div [prop.className "next-actions";prop.children [
@@ -250,6 +316,31 @@ let view state dispatch = App.ThemedApp [
             Html.p [Html.a [prop.href "mailto:checkfaceml@gmail.com";prop.text "Email us"]]
             Html.p [Html.a [prop.href "https://facemorph.me";prop.text "Classic FaceMorph"]]
         ]]
+        match state.Crop with
+        | Some crop ->
+            let placed=cropFrame crop.view 320.
+            Html.div [prop.className "next-crop-dialog";prop.custom("role","dialog");prop.custom("aria-modal",true);prop.ariaLabel "Crop photo";prop.children [
+                Html.div [prop.className "next-crop-panel box";prop.children [
+                    Html.div [prop.className "next-topline";prop.children [Html.h2 "Crop your photo";button "Cancel crop" false (fun () -> dispatch CropCancel)]]
+                    Html.p "Drag to move, zoom to fill the square. Only this square is processed."
+                    Html.div [prop.className "next-crop-view";prop.ariaLabel "Crop area";prop.custom("role","application")
+                              prop.onPointerDown(fun (e:Browser.Types.PointerEvent) -> dragStart <- Some(e.clientX,e.clientY); e.currentTarget?setPointerCapture(e.pointerId))
+                              prop.onPointerMove(fun (e:Browser.Types.PointerEvent) ->
+                                match dragStart with
+                                | Some(x,y) -> dragStart <- Some(e.clientX,e.clientY); dispatch(CropPan(e.clientX-x,e.clientY-y))
+                                | None -> ())
+                              prop.onPointerUp(fun _ -> dragStart <- None)
+                              prop.onPointerCancel(fun _ -> dragStart <- None)
+                              prop.children [
+                                Html.img [prop.src crop.url;prop.alt "Photo being cropped";prop.className "next-crop-image"
+                                          prop.style [style.width (length.px (placed?width: float));style.height (length.px (placed?height: float));style.left (length.px (placed?x: float));style.top (length.px (placed?y: float));style.custom("transform", sprintf "rotate(%gdeg)" (placed?rotation: float))]]]]
+                    Html.label [prop.className "next-crop-zoom";prop.children [
+                        Html.span "Zoom"
+                        Html.input [prop.type'.range;prop.min 1;prop.max 8;prop.step 0.1;prop.ariaLabel "Zoom";prop.value (crop.view?zoom: float);prop.onChange(fun (v:float) -> dispatch(CropZoom v))]]]
+                    Html.div [prop.className "next-actions";prop.children [
+                        button "Rotate" false (fun () -> dispatch CropRotate)
+                        button "Use this crop" false (fun () -> dispatch CropAccept)]]]]]]
+        | None -> Html.none
         if state.Browse.IsSome then Html.div [prop.className "next-name-dialog";prop.custom("role","dialog");prop.custom("aria-modal",true);prop.onKeyDown(fun e -> namesKey e (fun () -> dispatch CloseNames));prop.ariaLabel "Browse names";prop.children [
             Html.div [prop.className "next-name-panel box";prop.children [
                 Html.div [prop.className "next-topline";prop.children [Html.h2 "Browse names";button "Close" false (fun () -> dispatch CloseNames)]]

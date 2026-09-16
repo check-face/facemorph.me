@@ -288,6 +288,13 @@ html {
 @media(max-width:550px){.next-product{padding:.75rem}.next-faces{grid-template-columns:1fr 1fr;gap:.65rem}.next-face{padding:.65rem}.next-face .next-actions{gap:.35rem}.next-face .button{padding:.4rem}.next-face .select{font-size:.8rem}}
 @media(max-width:360px){.next-faces{grid-template-columns:1fr}}
 @media(prefers-reduced-motion:reduce){.next-product *{animation:none!important;transition:none!important}}
+.next-crop-dialog { position:fixed; inset:0; z-index:1300; background:#0009; display:grid; place-items:center; padding:1rem; }
+.next-crop-panel { max-width:420px; width:100%; max-height:90vh; overflow:auto; }
+.next-crop-view { position:relative; width:320px; height:320px; max-width:100%; margin:0 auto; overflow:hidden; border-radius:6px; background:#222; touch-action:none; cursor:grab; }
+.next-crop-view:active { cursor:grabbing; }
+.next-crop-image { position:absolute; max-width:none; user-select:none; -webkit-user-drag:none; }
+.next-crop-zoom { display:flex; align-items:center; gap:.75rem; margin:1rem 0; }
+.next-crop-zoom input { flex:1; }
 .next-name-dialog { position:fixed; inset:0; z-index:1300; background:#0009; display:grid; place-items:center; padding:1rem; }
 .next-name-panel { max-width:900px; width:100%; max-height:90vh; overflow:auto; }
 .next-name-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(100px,1fr)); gap:.75rem; margin:1rem 0; }

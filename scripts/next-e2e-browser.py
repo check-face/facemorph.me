@@ -74,6 +74,16 @@ try:
  wait(lambda:js("document.querySelector('select[aria-label=\"Face source\"]').value==='photo'"),60)
  run('Generate faces');assert len(faces())==2 and all(i['width']==1024 for i in faces());assert js('window.__ciWorkers')>workers
  save_check('syntheticPhotoE4e',{'passed':True,'inputSha256':first_hash,'note':'Real photo UI uses generated synthetic face; runtime must pass strict alignment and encoder canaries'})
+ # Crop the chosen photo locally and generate from the crop, so an arbitrary original never
+ # has to be aligned whole. The crop is what reaches alignment.
+ click('Crop photo');wait(lambda:js("!!document.querySelector('.next-crop-view img')"),60)
+ js("(()=>{const s=document.querySelector('.next-crop-zoom input');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(s,'2');s.dispatchEvent(new Event('change',{bubbles:true}));})()")
+ click('Rotate');click('Use this crop')
+ wait(lambda:js("!document.querySelector('.next-crop-view')"),60);wait(idle)
+ cropped=js("document.querySelector('.next-file span')?.textContent||''")
+ assert cropped=='cropped.png',cropped
+ run('Generate faces');assert len(faces())==2 and all(i['width']==1024 for i in faces())
+ save_check('localCrop',{'passed':True,'file':cropped})
  project=download('Export project');parsed=json.loads(project.read_text());assert len(parsed['morph']['controls'])==2 and all(len(c['latent']['values'])==9216 for c in parsed['morph']['controls'])
  upload('input[aria-label="Open project"]',project);time.sleep(.5);wait(idle)
  assert js("[...document.querySelectorAll('select[aria-label=\"Face source\"]')].every(s=>s.value==='project')")

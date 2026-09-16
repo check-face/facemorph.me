@@ -23,7 +23,7 @@ jobs:
           node-version: '22'
       - run: npm ci
       - name: Shipping runtime, media, privacy and input regressions
-        run: node --test src/Next/Assets/model-cache.test.mjs src/Next/browser/runtime.test.mjs src/Next/fresh-review.test.mjs src/Next/photo-selection.test.mjs hosting/next-cloudflare/worker.test.mjs
+        run: node --test src/Next/Assets/model-cache.test.mjs src/Next/browser/runtime.test.mjs src/Next/fresh-review.test.mjs src/Next/photo-selection.test.mjs src/Next/photo/crop-view.test.mjs hosting/next-cloudflare/worker.test.mjs
       - name: Independent reviewed morph geometry
         run: node src/Next/geometry/verify.mjs
       - name: Build the actual new-site artifact
