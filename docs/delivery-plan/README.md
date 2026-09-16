@@ -6,7 +6,7 @@ Start with [the governing delivery plan](web_checkface_delivery_plan.md), then [
 
 Latest operator requirements in the governing plan take precedence over earlier conflicting notes:
 
-- First-class native Tauri GPU inference independent of browser/WebView GPU, with actual hardware qualification, CPU fallback and Oliver's Manjaro gate. CPU-only desktop packages do not complete the phase.
+- Get the live browser site working first; desktop GPU may remain a labelled skeleton for that milestone. Then implement and qualify native GPU backends across the agreed hardware matrix, independent of browser/WebView GPU, with CPU fallback and Oliver's Manjaro gate. This remains mandatory to complete the overall task; CPU-only packages are insufficient.
 - Next and the eventual production site have no local TrueNAS/home-network dependency. Labs should also be independent, with only a minimal documented temporary exception if necessary.
 - Click/tap/keyboard photo selection from empty face tiles and image drag-and-drop, using the shared photo/e4e workflow.
 
