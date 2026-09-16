@@ -226,3 +226,8 @@ desktop/product-packages/
 
 # Cross-engine matrix runner dependencies
 scripts/matrix-tools/node_modules/
+
+# Local output of the qualification harness; CI produces its own evidence artifact
+next-e2e-evidence/
+next-site-source.txt
+next-matrix-*.json
