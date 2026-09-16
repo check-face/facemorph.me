@@ -85,6 +85,10 @@ try{
  await idle();
  report.agent=await page.evaluate(()=>navigator.userAgent);
  report.storageQuota=await page.evaluate(()=>navigator.storage&&navigator.storage.estimate?navigator.storage.estimate().then(e=>e.quota).catch(()=>null):null);
+ // Playwright's Chromium and WebKit builds ship without proprietary codecs, so they cannot play
+ // an H.264 MP4 that the shipping browser plays perfectly well. That is a property of the test
+ // build, not of the engine or the product, and the two must not be reported as the same thing.
+ report.mp4Playback=await page.evaluate(()=>document.createElement('video').canPlayType('video/mp4; codecs="avc1.42E01E"')||'');
  // Record the bundle this row actually exercised, so a row cannot be read against another build.
  report.runtimeSha256=await page.evaluate(async()=>{
   const response=await fetch('/runtime/manifest.json',{cache:'no-cache'});
@@ -154,11 +158,19 @@ try{
   return {sha256:sha(await fs.readFile(file))};
  });
 
- // WebCodecs is not everywhere yet. An engine that cannot encode is recorded as unsupported,
- // which is a real limitation of that row rather than a pass.
- await stage('morphPlayableMp4',async()=>{
+ // Exporting is checked on every engine. Playback is only checked where the build can decode
+ // H.264 at all; where it cannot, the export is still verified and the skip is recorded with its
+ // reason rather than being called a pass or blamed on the engine.
+ await stage('morphExport',async()=>{
   await generate('Create morph');
   await page.waitForSelector('.next-result video',{timeout:stageTimeout});
+  const file=await download('Save video');
+  const bytes=await fs.readFile(file);
+  if(bytes.length<1000||!bytes.subarray(0,32).includes(Buffer.from('ftyp')))throw Error('Saved video is not an MP4');
+  return {bytes:bytes.length,sha256:sha(bytes)};
+ });
+ await stage('morphPlayback',async()=>{
+  if(!report.mp4Playback)return {skipped:'This browser build ships without H.264, so playback cannot be checked here',buildLimitation:true};
   const playback=await page.evaluate(async()=>{
    const video=document.querySelector('.next-result video');
    video.muted=true;
@@ -171,21 +183,18 @@ try{
    return result;
   });
   if(playback.width!==512||!(playback.duration>0))throw Error(`Unexpected playback ${JSON.stringify(playback)}`);
-  const file=await download('Save video');
-  const bytes=await fs.readFile(file);
-  if(bytes.length<1000||!bytes.subarray(0,32).includes(Buffer.from('ftyp')))throw Error('Saved video is not an MP4');
-  return {...playback,bytes:bytes.length,sha256:sha(bytes)};
- },{optional:true});
+  return playback;
+ });
 
- const required=['nameSeed','repeatOriginal','photoE4e','localCrop','projectSaveReopen'];
+ const required=['nameSeed','repeatOriginal','photoE4e','localCrop','projectSaveReopen','morphExport','morphPlayback'];
  report.passed=required.every(name=>report.stages[name]?.passed);
- report.unsupported=Object.entries(report.stages).filter(([,v])=>v.unsupported).map(([k])=>k);
+ report.buildLimited=Object.entries(report.stages).filter(([,v])=>v.buildLimitation).map(([k])=>k);
 }catch(error){
  report.error=String(error?.message||error).slice(0,600);
 }finally{
  report.finishedAt=new Date().toISOString();
  await save();
  await context.close();
- console.log(JSON.stringify({engine:engineName,passed:report.passed,unsupported:report.unsupported||[],error:report.error||''}));
+ console.log(JSON.stringify({engine:engineName,passed:report.passed,buildLimited:report.buildLimited||[],mp4Playback:report.mp4Playback,error:report.error||''}));
  process.exit(report.passed?0:1);
 }

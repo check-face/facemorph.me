@@ -8,16 +8,19 @@ import json
 import sys
 from pathlib import Path
 
-STAGES = ['nameSeed', 'repeatOriginal', 'photoE4e', 'localCrop', 'projectSaveReopen', 'morphPlayableMp4']
-REQUIRED = STAGES[:-1]
+STAGES = ['nameSeed', 'repeatOriginal', 'photoE4e', 'localCrop', 'projectSaveReopen', 'morphExport', 'morphPlayback']
+REQUIRED = STAGES
 
 
 def cell(stage):
     if stage is None:
         return 'not run'
+    if stage.get('buildLimitation'):
+        # The test browser build could not check this; the shipping browser is not described.
+        return 'not checkable here'
     if stage.get('passed'):
         return 'pass'
-    return 'unsupported' if stage.get('unsupported') else 'FAIL'
+    return 'FAIL'
 
 
 def main(root):
@@ -50,6 +53,11 @@ def main(root):
               'A row is evidence for that engine and operating system only. WebKit on Linux is the '
               'WebKit engine, not Safari on macOS or iOS. Physical-device rows are attached '
               'separately; a missing row stays missing.',
+              '',
+              '"not checkable here" means the automation browser build could not exercise that '
+              'stage — Playwright ships Chromium and WebKit without proprietary codecs, so H.264 '
+              'playback cannot be tested in them. It says nothing about the shipping browser, and '
+              'it is not a pass: the row is incomplete until real-browser evidence covers it.',
               '',
               f'**Required stages across every row: {"pass" if complete else "INCOMPLETE"}**']
     output = '\n'.join(lines) + '\n'
