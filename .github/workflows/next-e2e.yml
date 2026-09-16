@@ -51,7 +51,7 @@ jobs:
           import json,pathlib
           assert pathlib.Path('next-site-source.txt').read_text().strip()==json.load(open('source-run.json'))['head_sha']
           PY
-          sha256sum --check next-site-SHA256SUMS
+          python desktop/scripts/verify-web-artifact.py --artifact . --revision "$(cat next-site-source.txt)" --receipt next-web-verification.json
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -63,7 +63,7 @@ jobs:
         run: |
           [[ "$RUNTIME_SHA" =~ ^[a-f0-9]{64}$ ]]
           mkdir -p next-e2e-evidence/downloads
-          cp next-site-source.txt next-site-SHA256SUMS source-run.json next-e2e-evidence/
+          cp next-site-source.txt next-site-SHA256SUMS source-run.json next-web-verification.json next-e2e-evidence/
           openssl req -x509 -newkey rsa:2048 -nodes -keyout "$RUNNER_TEMP/next.key" -out "$RUNNER_TEMP/next.crt" -days 1 -subj '/CN=next.facemorph.me' >/dev/null 2>&1
           python scripts/next-e2e-server.py --manifest-sha "$RUNTIME_SHA" --cert "$RUNNER_TEMP/next.crt" --key "$RUNNER_TEMP/next.key" > next-e2e-evidence/server.log 2>&1 &
           server_pid=$!

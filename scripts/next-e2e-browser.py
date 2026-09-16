@@ -18,15 +18,15 @@ def click(name):
  ident=n['backendDOMNodeId'];cdp('DOM.scrollIntoViewIfNeeded',backendNodeId=ident);q=cdp('DOM.getBoxModel',backendNodeId=ident)['model']['content'];click_at_xy(sum(q[0::2])/4,sum(q[1::2])/4)
 def idle():return js("!document.querySelector('.next-status progress') && [...document.querySelectorAll('button')].some(b=>b.textContent==='Generate faces'&&!b.disabled)")
 def run(name):
- before=js('window.__ciBusyChanges');click(name);wait(lambda:js('window.__ciBusyChanges')>before and idle())
+ before=js('window.__ciBusyChanges');click(name);wait(lambda:js('window.__ciBusyChanges')>before,30);wait(idle)
 def faces():
  return inspect("[...document.querySelectorAll('.next-face-image img')].map(i=>({width:i.naturalWidth,height:i.naturalHeight,url:i.src}))")
 def download(name):
- before=set(downloads.iterdir());click(name)
- return wait(lambda:next((p for p in downloads.iterdir() if p not in before and p.suffix!='.crdownload' and p.stat().st_size>0),None),60)
+ folder=downloads/str(time.time_ns());folder.mkdir();cdp('Browser.setDownloadBehavior',behavior='allow',downloadPath=str(folder));click(name)
+ return wait(lambda:next((p for p in folder.iterdir() if p.suffix!='.crdownload' and p.stat().st_size>0),None),60)
 def upload(selector,path):
  root=cdp('DOM.getDocument')['root']['nodeId'];node=cdp('DOM.querySelector',nodeId=root,selector=selector)['nodeId'];assert node,'File input missing';cdp('DOM.setFileInputFiles',nodeId=node,files=[str(path.resolve())])
-def save_check(name,data):result['checks'][name]=data;(out/'report.json').write_text(json.dumps(result,indent=2))
+def save_check(name,data):result['checks'][name]=data;(out/'report.json').write_text(json.dumps(result,indent=2));print(json.dumps({'check':name,**data}),flush=True)
 try:
  cdp('Page.enable')
  cdp('Page.addScriptToEvaluateOnNewDocument',source="window.__ciWorkers=0;window.__ciWorkerRequests=0;const OriginalWorker=window.Worker;window.Worker=class extends OriginalWorker{constructor(...args){super(...args);window.__ciWorkers++;}postMessage(...args){window.__ciWorkerRequests++;return super.postMessage(...args);}};")
@@ -42,7 +42,7 @@ try:
  root=cdp('DOM.getDocument')['root']['nodeId']
  # Native select keyboard interaction chooses explicit CPU, independent of GPU availability.
  node=cdp('DOM.querySelector',nodeId=root,selector='select[aria-label="Processing mode"]')['nodeId'];cdp('DOM.focus',nodeId=node)
- for key,code in [('Home',36),('ArrowDown',40),('Enter',13)]:
+ for key,code in [('Home',36),('ArrowDown',40),('Enter',13),('Escape',27)]:
   cdp('Input.dispatchKeyEvent',type='keyDown',key=key,windowsVirtualKeyCode=code);cdp('Input.dispatchKeyEvent',type='keyUp',key=key,windowsVirtualKeyCode=code)
  assert js("document.querySelector('select[aria-label=\"Processing mode\"]').value")=='cpu'
  run('Generate faces');images=wait(lambda:faces() if len(faces())==2 and all(i['width']==1024 and i['height']==1024 for i in faces()) else None,60)
