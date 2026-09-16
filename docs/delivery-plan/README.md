@@ -1,3 +1,5 @@
+> **Latest operator direction:** Stop this round and report READY FOR TESTING once the live site and installed desktop skeleton work. Remaining native GPU backends are required later, but must await the operator resuming work after testing. See the stop gate at the top of the governing plan.
+
 # FaceMorph delivery plan for review
 
 Snapshot: 16 September 2026. These documents capture the workspace plan for Oliver and other reviewers; requirements are not claims of completed implementation.
