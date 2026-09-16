@@ -1,6 +1,6 @@
 """Build pinned dlib on native Windows ARM64; upstream setup hardcodes x64.
 
-Only changes CMake target architecture, with an exact patch guard. No model bytes.
+Selects ARM64 and disables upstream MSVC's x86-only SIMD defaults. No model bytes.
 """
 import hashlib
 import io
@@ -24,5 +24,5 @@ with tempfile.TemporaryDirectory(prefix='checkface-dlib-') as temporary:
     source=root/'dlib-20.0.1';setup=source/'setup.py';code=setup.read_text()
     old="cmake_args += ['-A', 'x64']"
     if code.count(old)!=1:raise ValueError('dlib architecture patch does not match pinned source')
-    setup.write_text(code.replace(old,"cmake_args += ['-A', 'ARM64']"))
+    setup.write_text(code.replace(old,"cmake_args += ['-A', 'ARM64', '-DUSE_SSE2_INSTRUCTIONS=OFF', '-DUSE_SSE4_INSTRUCTIONS=OFF', '-DUSE_AVX_INSTRUCTIONS=OFF']"))
     subprocess.run([sys.executable,'-m','pip','install','--no-build-isolation',str(source)],check=True)

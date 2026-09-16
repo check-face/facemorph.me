@@ -20,6 +20,9 @@ from asset_store import acquire, checksum
 
 MAX_REQUEST = 36 * 1024 * 1024
 
+class PhotoAlignmentError(ValueError):
+    pass
+
 def execute(request, manifest, cache, output, emit):
     import numpy as np
     import onnxruntime as ort
@@ -35,6 +38,7 @@ def execute(request, manifest, cache, output, emit):
     def floats(item): return np.fromfile(asset(item), dtype='<f4')
     options = ort.SessionOptions()
     options.intra_op_num_threads = min(4, os.cpu_count() or 1)
+    emit('native-environment',architecture=platform.machine(),os=platform.system(),osRelease=platform.release(),runtime=ort.__version__,threads=options.intra_op_num_threads)
     def session(item):
         path = asset(item)
         started = time.monotonic(); emit('model-loading',modelSha256=item['sha256'])
@@ -78,7 +82,7 @@ def execute(request, manifest, cache, output, emit):
         image_data = base64.b64decode(request['photoBase64'],validate=True)
         if not 0 < len(image_data) <= 25*1024*1024: raise ValueError('Invalid photo size')
         identity['photoSha256'] = hashlib.sha256(image_data).hexdigest()
-        identity.update(encoderSha256=manifest.get('encoder',{}).get('sha256'),landmarksSha256=manifest.get('landmarks',{}).get('sha256'),preprocessing='dlib-ffhq-pillow-exif-bilinear-v1')
+        identity.update(encoderSha256=manifest.get('encoder',{}).get('sha256'),landmarksSha256=manifest.get('landmarks',{}).get('sha256'),preprocessing='dlib-one-face-ffhq-pillow-exif-bilinear-v2')
     elif operation != 'qualify': raise ValueError('Unknown operation')
     key = hashlib.sha256(json.dumps(identity,sort_keys=True).encode()).hexdigest()
     originals = cache / 'originals' / key
@@ -95,6 +99,7 @@ def execute(request, manifest, cache, output, emit):
             record=json.loads((originals/'result.json').read_text())
             checked(record['values'])
             if record['shape']!=[1,18,512] or record['space']!='w-plus':raise ValueError('Cached latent metadata invalid')
+            if operation=='encodePhoto' and record.get('aligned') is not True:raise ValueError('Unaligned cached photo')
             if checksum(originals/'image.png') == record['imageSha256']:
                 emit('original-cache-hit'); return publish(originals,True)
         except (OSError,ValueError,TypeError,KeyError):
@@ -118,7 +123,8 @@ def execute(request, manifest, cache, output, emit):
                 image = ImageOps.exif_transpose(source).convert('RGB')
         predictor=dlib.shape_predictor(str(asset(manifest['landmarks']))); emit('alignment'); started=time.monotonic()
         try: image=align_face(None,predictor,img=image); photo_aligned=True
-        except NumberOfFacesError: photo_aligned=False
+        except NumberOfFacesError as error:
+            raise PhotoAlignmentError('Choose a photo with one clear face, or crop it closer.') from error
         del predictor
         emit('alignment-complete',elapsedMs=(time.monotonic()-started)*1000,aligned=photo_aligned)
         image=image.resize((256,256),Image.Resampling.BILINEAR)
@@ -140,7 +146,10 @@ def execute(request, manifest, cache, output, emit):
             if max_rgb>1 or max_float>.002: raise ValueError('Native reference check failed')
             checks.append(dict(name=case['name'],maxRgb=max_rgb,maxFloat=max_float,passed=True))
         return dict(deviceValidated=True,provider='native-cpu',checks=checks,releaseQualified=manifest.get('releaseQualified') is True)
-    raw=synthesis(values,model,noise); originals.mkdir(parents=True,exist_ok=True)
+    raw=synthesis(values,model,noise)
+    transient=operation=='synthesize' and request.get('persist') is False
+    if transient:originals=output/('.transient-'+str(uuid.uuid4()))
+    originals.mkdir(parents=True,exist_ok=True)
     temporary=originals/'image.partial'; Image.fromarray(pixels(raw)).save(temporary,format='PNG'); temporary.replace(originals/'image.png')
     result={'space':'w-plus','shape':[1,18,512],'values':values.reshape(-1).tolist(),'width':1024,'height':1024,
             'imageSha256':checksum(originals/'image.png'),'provenance':{**identity,
@@ -150,7 +159,12 @@ def execute(request, manifest, cache, output, emit):
                 'truncationPsi':None if operation=='encodePhoto' else .7 if operation=='generate' else 1,
                 'truncationCutoff':None if operation=='encodePhoto' else 8 if operation=='generate' else 0},'aligned':photo_aligned,'encoderProvider':'native-cpu' if operation=='encodePhoto' else None}
     (originals/'result.json').write_text(json.dumps(result,allow_nan=False)); (originals/'COMPLETE').write_text('1')
-    emit('original-cached'); return publish(originals,False)
+    emit('transient-frame' if transient else 'original-cached')
+    try:return publish(originals,False)
+    finally:
+        if transient:
+            for name in ('image.png','result.json','COMPLETE'):(originals/name).unlink(missing_ok=True)
+            originals.rmdir()
 
 def main():
     if sys.argv[1:]==['--self-check']:
@@ -176,9 +190,9 @@ def main():
         result=execute(request,manifest,a.cache,a.output,lambda stage,**details:send('progress',fraction=0,stage=stage,**details))
         if request['type']=='qualify':send('qualified',attemptId=request['attemptId'],**result)
         else:send('completed',**result)
-    except Exception:
+    except Exception as error:
         if os.environ.get('CHECKFACE_NATIVE_DIAGNOSTICS')=='1':
             import traceback;traceback.print_exc(file=sys.stderr)
-        send('failed',reason='Native processing failed. Retry or enable optional diagnostics.');return 1
+        send('failed',reason=str(error) if isinstance(error,PhotoAlignmentError) else 'Native processing failed. Retry or enable optional diagnostics.');return 1
     return 0
 if __name__=='__main__':sys.exit(main())

@@ -1,11 +1,60 @@
-# FaceMorph desktop product candidate
+# FaceMorph desktop skeleton
 
-Current delivery uses the integrated Next UI and a bundled native CPU runtime for
-seed/text synthesis, photo alignment/e4e, full-1024 local originals, editable
-projects, morph video and native file export. Six OS/architecture CI jobs test the
-actual packaged worker and installed controls. Builds are unsigned research and
-evaluation previews; native GPU and complete cross-platform qualification are
-still required. See the 16 September product section below for current commands.
+**Scope changed by the operator on 16 September 2026:** this phase delivers the
+web product and a desktop skeleton only. Native backends and their six-target
+qualification are deferred. No desktop package is advertised as a qualified
+generation app. Existing native implementation and evidence remain below as
+research history; they are not release claims.
+
+## Current handoff gate
+
+Follow the [candidate plan](../docs/current-delivery-scope.md). The scaffold below is a development starting point, not by itself the completed handoff: the installed skeleton must launch the shared UI and exercise the existing available path with honest provider status. Further native GPU implementation and full native qualification are deferred.
+
+## Build the actual development skeleton
+
+The handoff skeleton reuses the **tested compiled Next UI** and the existing
+native CPU worker. It demonstrates seed/text, photo/e4e, retained originals,
+project reopening and MP4 export on the tested Mac ARM64 build. Native GPU and
+other desktop OS/architecture qualification remain deferred; no universal native
+support or signed-release status is implied. The optional static page in
+`desktop/skeleton/` is a shell-only developer stub, **not** the handoff artifact.
+
+Use the manual `desktop-candidates.yml` workflow with a successful `next-site.yml`
+run ID, its full source revision, and an independently hosted runtime manifest
+URL/SHA-256. It verifies the run and every compiled frontend byte, packages the
+existing CPU worker, and tests the installed shared UI before exposing an unsigned
+Mac ARM64 development ZIP. It does not rebuild the web frontend or start new GPU
+research. `desktop-product.yml` retains the broader native matrix as manual-only,
+deferred work.
+
+For the equivalent local build, from the `facemorph.me` repository, after downloading
+the accepted web artifact into `desktop/web-artifact`:
+
+```sh
+python desktop/scripts/verify-web-artifact.py --artifact desktop/web-artifact --revision FULL_WEB_COMMIT_SHA --receipt desktop/skeleton-evidence/web-artifact.json
+node desktop/scripts/stage-frontend.mjs --source desktop/web-artifact/deploy-next
+python -m pip install -r desktop/native/requirements-product.txt
+python desktop/scripts/acquire-product-manifest.py --output desktop/product-manifest.json
+python desktop/scripts/build-native-runtime.py --manifest desktop/product-manifest.json --expected-target macos-arm64
+npm install --prefix desktop/ci-tools --no-save @tauri-apps/cli@2.10.1
+cd desktop
+node ci-tools/node_modules/@tauri-apps/cli/tauri.js icon src-tauri/icons/icon.png --output src-tauri/icons
+node ci-tools/node_modules/@tauri-apps/cli/tauri.js build --config candidate-config.json --config native-resources-config.json --bundles app
+open "src-tauri/target/release/bundle/macos/FaceMorph Preview.app"
+```
+
+Set `MANIFEST_URL` and `MANIFEST_SHA256` to the reviewed independent static
+manifest before acquisition. Python/Rust/Node are developer build tools; the
+resulting app carries its runtime and does not require users to install Python,
+ORT or a source checkout. Model files download directly from the pinned static
+asset descriptors on first use; originals stay on-device. A runtime status of
+`native-cpu` is not a GPU qualification claim. Build/test jobs on the shared Mac
+use the workspace's cooperative `autoresearch/run.py --device local-mac` lease.
+
+Completed evidence before the final artifact refresh: installed Mac shared UI
+startup and real seed/text/photo/project workflows passed. The MP4 rehearsal
+found a CacheStorage custom-scheme issue which was fixed in the shared web code;
+the exact final installed artifact must pass that rehearsal before distribution.
 
 ## Historical shell milestone (14–15 September)
 
@@ -239,7 +288,7 @@ and resumed after interrupted downloads. The resource build needs a manifest wit
 and `landmarks`. No source checkout, system Python or Triton is needed by the
 frozen worker. This does not grant model distribution/use rights.
 
-The candidate-branch/manual `desktop-product.yml` workflow builds six actual target
+The retained, manual-only `desktop-product.yml` workflow builds six actual target
 architectures, executes seed/text/photo/cache/project-latent workflows against
 the frozen native worker, includes those bytes in the desktop package and checks
 installed controls. Model-heavy qualification is not added to copy-only deployment

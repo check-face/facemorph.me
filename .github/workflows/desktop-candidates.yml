@@ -1,0 +1,98 @@
+name: Installed Mac CPU development skeleton
+on:
+  workflow_dispatch:
+    inputs:
+      web_run_id:
+        description: 'Successful next-site workflow run containing the tested frontend'
+        required: true
+        type: string
+      web_revision:
+        description: 'Full40-character source revision of that web artifact'
+        required: true
+        type: string
+      manifest_url:
+        description: 'Independent HTTPS runtime manifest; no home-hosted product assets'
+        required: true
+        type: string
+      manifest_sha256:
+        description: 'Reviewed manifest SHA-256'
+        required: true
+        type: string
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: desktop-skeleton-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  installed-mac:
+    runs-on: macos-14
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Require the web candidate's successful acceptance run
+        uses: actions/github-script@v7
+        env:
+          WEB_RUN_ID: ${{ inputs.web_run_id }}
+          WEB_REVISION: ${{ inputs.web_revision }}
+        with:
+          script: |
+            if (!/^\d+$/.test(process.env.WEB_RUN_ID)) throw new Error('Invalid web run ID');
+            const {data: run} = await github.rest.actions.getWorkflowRun({...context.repo, run_id: Number(process.env.WEB_RUN_ID)});
+            if (run.status !== 'completed' || run.conclusion !== 'success' || run.head_sha !== process.env.WEB_REVISION || run.path !== '.github/workflows/next-site.yml') throw new Error('The requested web candidate has not passed its acceptance workflow');
+      - name: Reuse the tested web artifact without rebuilding
+        uses: actions/download-artifact@v4
+        with:
+          name: next-site-${{ inputs.web_revision }}
+          run-id: ${{ inputs.web_run_id }}
+          github-token: ${{ github.token }}
+          path: desktop/web-artifact
+      - name: Verify every compiled frontend byte
+        env:
+          WEB_REVISION: ${{ inputs.web_revision }}
+        run: python desktop/scripts/verify-web-artifact.py --artifact desktop/web-artifact --revision "$WEB_REVISION" --receipt desktop/skeleton-evidence/web-artifact.json
+      - run: node desktop/scripts/stage-frontend.mjs --source desktop/web-artifact/deploy-next
+      - name: Acquire pinned independent model catalogue
+        env:
+          MANIFEST_URL: ${{ inputs.manifest_url }}
+          MANIFEST_SHA256: ${{ inputs.manifest_sha256 }}
+        run: python desktop/scripts/acquire-product-manifest.py --output desktop/product-manifest.json
+      - name: Package the existing CPU implementation
+        run: |
+          python -m pip install -r desktop/native/requirements-product.txt
+          python desktop/scripts/build-native-runtime.py --manifest desktop/product-manifest.json --expected-target macos-arm64
+          rustup toolchain install 1.94.0 --profile minimal
+          rustup default 1.94.0
+          npm install --prefix desktop/ci-tools --no-save @tauri-apps/cli@2.10.1
+      - name: Build the shared UI development app
+        working-directory: desktop
+        run: |
+          node ci-tools/node_modules/@tauri-apps/cli/tauri.js icon src-tauri/icons/icon.png --output src-tauri/icons
+          node ci-tools/node_modules/@tauri-apps/cli/tauri.js build --config candidate-config.json --config native-resources-config.json --bundles app
+      - name: Inventory the actual app bytes
+        run: python desktop/scripts/candidate-artifacts.py --bundle desktop/src-tauri/target/release/bundle --output desktop/skeleton-packages --platform macos --revision "$GITHUB_SHA" --native-runtime-inventory desktop/packaged-native/runtime-inventory.json
+      - name: Demonstrate the available installed CPU path
+        run: |
+          mkdir -p "$RUNNER_TEMP/FaceMorph installed"
+          ditto -x -k desktop/skeleton-packages/*.zip "$RUNNER_TEMP/FaceMorph installed"
+          python desktop/tests/startup_smoke.py --binary "$RUNNER_TEMP/FaceMorph installed/FaceMorph Preview.app/Contents/MacOS/checkface-desktop" --require-runtime --report desktop/skeleton-evidence/startup.json
+          python desktop/tests/installed_product.py --binary "$RUNNER_TEMP/FaceMorph installed/FaceMorph Preview.app/Contents/MacOS/checkface-desktop" --manifest desktop/packaged-native/manifest.json --cache "$RUNNER_TEMP/skeleton-cache" --report desktop/skeleton-evidence/installed-cpu.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: desktop-development-macos-arm64
+          path: desktop/skeleton-packages
+          if-no-files-found: error
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: desktop-skeleton-evidence
+          path: desktop/skeleton-evidence
+          if-no-files-found: warn
+          retention-days: 14

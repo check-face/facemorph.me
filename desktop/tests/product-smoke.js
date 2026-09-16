@@ -14,6 +14,7 @@
   unlisten=await window.__TAURI__.event.listen('native-event',({payload:e})=>{if(e.type==='qualified'||e.type==='completed'||e.type==='failed')native.push(e);});
   HTMLAnchorElement.prototype.click=function(){if(this.download&&this.href.startsWith('blob:'))downloads.push(fetch(this.href).then(x=>x.blob()));else originalClick.call(this);};
   set(document.querySelectorAll('select[aria-label="Face source"]')[0],'seed');await pause(100);
+  set(document.querySelectorAll('select[aria-label="Face source"]')[1],'text');await pause(100);
   set(document.querySelector('input[aria-label="Numeric seed"]'),'0');set(document.querySelector('input[aria-label="Name or words"]'),'oliver');
   button('Generate faces');await ready(()=>document.querySelectorAll('.next-face-image img').length===2);await images();steps.push('seed-text-full1024');
   button('Generate faces');await ready(()=>document.querySelectorAll('.next-face-image img').length===2);await images();steps.push('repeat-cache');

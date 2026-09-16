@@ -43,4 +43,37 @@ class AssetTests(unittest.TestCase):
         response=Response(self.body);response.url='http://bad/model'
         with patch.object(module.urllib.request,'urlopen',return_value=response):
             with self.assertRaisesRegex(ValueError,'redirect'):module.acquire(self.asset,self.root)
+    def test_chunks_resume_after_interruption_and_verify_whole_model(self):
+        parts=[self.body[:5],self.body[5:]]
+        chunks=[{'url':Response.url+str(i),'size':len(body),'sha256':hashlib.sha256(body).hexdigest()} for i,body in enumerate(parts)]
+        asset={**self.asset,'chunks':chunks}
+        with patch.object(module.urllib.request,'urlopen',side_effect=[Response(parts[0]),OSError('Interrupted')]):
+            with self.assertRaises(OSError):module.acquire(asset,self.root)
+        self.assertFalse((self.root/asset['sha256']).exists())
+        with patch.object(module.urllib.request,'urlopen',return_value=Response(parts[1])) as fetch:
+            self.assertEqual(module.acquire(asset,self.root).read_bytes(),self.body)
+            self.assertEqual(fetch.call_count,1)
+            self.assertEqual(fetch.call_args.args[0].full_url,chunks[1]['url'])
+        with patch.object(module.urllib.request,'urlopen',side_effect=AssertionError('Must reuse verified chunks')):
+            with self.assertRaisesRegex(ValueError,'Reassembled asset integrity'):
+                module.acquire({**asset,'sha256':'0'*64},self.root)
+        self.assertFalse((self.root/('0'*64)).exists())
+    def test_invalid_chunk_manifest_rejected_before_network(self):
+        chunk={**self.asset,'size':len(self.body)-1}
+        with patch.object(module.urllib.request,'urlopen',side_effect=AssertionError('Invalid manifest must not fetch')):
+            with self.assertRaisesRegex(ValueError,'sizes'):module.acquire({**self.asset,'chunks':[chunk]},self.root)
+            with self.assertRaisesRegex(ValueError,'chunk'):module.acquire({**self.asset,'chunks':[{**self.asset,'url':'http://bad'}]},self.root)
+    def test_transient_tls_reset_retries_but_certificate_failures_do_not(self):
+        with patch.object(module.time,'sleep') as pause, patch.object(module.urllib.request,'urlopen',side_effect=[module.urllib.error.URLError(ConnectionResetError('reset')),Response(self.body)]) as fetch:
+            self.assertEqual(module.acquire(self.asset,self.root).read_bytes(),self.body)
+            self.assertEqual(fetch.call_count,2);pause.assert_called_once_with(1)
+        other={**self.asset,'sha256':'0'*64}
+        with patch.object(module.time,'sleep') as pause, patch.object(module.urllib.request,'urlopen',side_effect=module.urllib.error.URLError(module.ssl.SSLCertVerificationError('bad certificate'))) as fetch:
+            with self.assertRaises(module.urllib.error.URLError):module.acquire(other,self.root)
+            self.assertEqual(fetch.call_count,1);pause.assert_not_called()
+    def test_short_response_retries_with_verified_range(self):
+        response=Response(self.body[5:]);response.status=206;response.headers={'Content-Range':f'bytes 5-{len(self.body)-1}/{len(self.body)}'}
+        with patch.object(module.time,'sleep'),patch.object(module.urllib.request,'urlopen',side_effect=[Response(self.body[:5]),response]) as fetch:
+            self.assertEqual(module.acquire(self.asset,self.root).read_bytes(),self.body)
+            self.assertEqual(fetch.call_args.args[0].headers['Range'],'bytes=5-')
 if __name__=='__main__':unittest.main()

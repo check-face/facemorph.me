@@ -10,7 +10,7 @@
     "withGlobalTauri": true,
     "windows": [{"label": "main", "title": "FaceMorph Preview", "width": 1100, "height": 800}],
     "security": {
-      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src ipc: http://ipc.localhost; object-src 'none'; frame-src 'none'"
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src ipc: http://ipc.localhost https://next.facemorph.me; object-src 'none'; frame-src 'none'"
     }
   },
   "bundle": {"active": false, "createUpdaterArtifacts": false},

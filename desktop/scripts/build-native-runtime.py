@@ -56,7 +56,7 @@ def main():
     catalogue=json.loads((DESKTOP/'catalogue-source.json').read_text())
     catalogue_path=acquire(catalogue,work/'public-assets')
     shutil.copyfile(catalogue_path,DESKTOP/'frontend/catalogue.json')
-    origins=set()
+    origins={'https://next.facemorph.me'} # Optional product diagnostics endpoint.
     def visit(value):
         if isinstance(value,dict):
             for key,item in value.items():
@@ -67,7 +67,7 @@ def main():
             for item in value:visit(item)
     visit(manifest);allowed=' '.join(sorted(origins))
     images=' '.join(catalogue['imageOrigins'])
-    csp=f"default-src 'self'; script-src 'self' blob: 'wasm-unsafe-eval' {allowed}; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: {images}; font-src 'self'; connect-src ipc: http://ipc.localhost 'self' {allowed}; object-src 'none'; frame-src 'none'"
+    csp=f"default-src 'self'; script-src 'self' blob: 'wasm-unsafe-eval' {allowed}; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: {images}; media-src 'self' blob:; font-src 'self'; connect-src ipc: http://ipc.localhost 'self' blob: {allowed}; object-src 'none'; frame-src 'none'"
     config={'bundle':{'resources':{str(a.output.resolve()):'native/'}},'app':{'security':{'csp':csp}}}
     (DESKTOP/'native-resources-config.json').write_text(json.dumps(config,indent=2)+'\n')
     subprocess.run([sys.executable,str(DESKTOP/'scripts/stage-native-notices.py'),'--output',str(a.output)],check=True)

@@ -1,8 +1,8 @@
-> Deployment update16 September2026: the operator confirmed Workers Free. Private namespace `3a71e4ec58354345be24a1e02a3edb82` was created. The standalone Worker upload succeeded but its zone route was rejected by the token permissions. The delivery configuration now imports this handler into `../next-static/worker.mjs` and invokes it only for `/diagnostics/*`; standalone route deployment is not required. Public endpoint and private-write verification remain required before claiming completion.
+> Deployment update16 September2026: the operator confirmed Workers Free. Private namespace `3a71e4ec58354345be24a1e02a3edb82` was created. The standalone Worker upload succeeded but its zone route was rejected by the token permissions. The delivery configuration now imports this handler into `../next-static/worker.mjs` and invokes it only for `/diagnostics/*`; standalone route deployment is not required. The public endpoint, private saved record and30-day expiry passed verification; see [deployment evidence](../../docs/review/next-delivery/diagnostics-public-proof.json).
 
 # Managed private Next diagnostics
 
-Implementation only; this folder does not imply a deployed endpoint. No TrueNAS,
+Deployed at `https://next.facemorph.me/diagnostics/events` through the combined static-site Worker. No TrueNAS,
 local computer, model asset bucket or public report reader is involved.
 
 `worker.mjs` serves only `POST /diagnostics/events` and its CORS preflight. Bind it

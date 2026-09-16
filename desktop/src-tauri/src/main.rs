@@ -132,6 +132,31 @@ fn native_read_artifact(
         .map_err(|_| "Cannot read artifact".into())
 }
 #[tauri::command]
+fn native_release_artifact(app: tauri::AppHandle, artifact_id: String) -> Result<(), String> {
+    if artifact_id.len() != 36
+        || !artifact_id
+            .bytes()
+            .all(|c| c.is_ascii_hexdigit() || c == b'-')
+    {
+        return Err("Invalid artifact reference".into());
+    }
+    let root = data_directory(&app)?
+        .join("outputs")
+        .canonicalize()
+        .map_err(|_| "Artifact unavailable")?;
+    let folder = root
+        .join(artifact_id)
+        .canonicalize()
+        .map_err(|_| "Artifact unavailable")?;
+    if folder.parent() != Some(root.as_path()) || !folder.join("COMPLETE").is_file() {
+        return Err("Invalid artifact path".into());
+    }
+    for name in ["image.png", "result.json", "COMPLETE"] {
+        std::fs::remove_file(folder.join(name)).map_err(|_| "Cannot release transfer artifact")?;
+    }
+    std::fs::remove_dir(folder).map_err(|_| "Cannot release transfer artifact".into())
+}
+#[tauri::command]
 fn native_status(app: tauri::AppHandle) -> Result<Value, String> {
     let root = app
         .path()
@@ -268,6 +293,7 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             native_start,
             native_read_artifact,
+            native_release_artifact,
             native_status,
             native_save_media,
             native_cancel,
