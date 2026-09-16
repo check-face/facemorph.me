@@ -21,7 +21,15 @@ export function createBrowserRuntime({manifest: suppliedManifest, manifestSha256
  async function cache(){try{originals ||= await openOriginals();return originals;}catch{return null;}}
  // Tells the product which route was actually admitted, so the interface can say when this
  // device is on the slow path instead of leaving a visitor watching an unexplained wait.
- function announce(progress){emit({stage:'route-admitted',provider:route},progress);}
+ /** What this browser offers, so a report says whether WebGPU was even on the table. */
+ function gpuOffer(){
+  if(globalThis.navigator?.gpu&&manifest.webgpu)return 'webgpu';
+  if(manifest.webgl&&typeof OffscreenCanvas!=='undefined')return 'webgl-only';
+  return 'none';
+ }
+ function announce(progress,outcome='admitted'){emit({stage:'route-admitted',provider:route,gpu:gpuOffer(),routeOutcome:outcome},progress);}
+ /** A route that was tried and refused is reported, so a silent fallback stops being silent. */
+ function refused(progress,attempted,outcome){emit({stage:'route-admitted',provider:attempted,gpu:gpuOffer(),routeOutcome:outcome},progress);}
  // What each route actually cost on this device, remembered per model bundle. Real reports show a
  // phone where WebGL runs at twice the cost of the CPU path, so "a GPU route exists" is not
  // evidence that it is the faster one. Nothing here changes what is admitted: a route still has
@@ -39,7 +47,9 @@ export function createBrowserRuntime({manifest: suppliedManifest, manifestSha256
   const measured=speeds();
   const usable=Object.entries(measured).filter(([name,ms])=>Number.isFinite(ms)&&!failedRoutes.has(name));
   if(usable.length>1)return usable.sort((a,b)=>a[1]-b[1])[0][0];
-  const candidates=['cpu',...(manifest.webgl&&typeof OffscreenCanvas!=='undefined'?['webgl']:[]),...(globalThis.navigator?.gpu&&manifest.webgpu?['webgpu']:[])];
+  // Most promising first. An untried WebGPU is the one route measured at sub-second on a phone,
+  // so it is never passed over in favour of something already known to be slower.
+  const candidates=[...(globalThis.navigator?.gpu&&manifest.webgpu?['webgpu']:[]),...(manifest.webgl&&typeof OffscreenCanvas!=='undefined'?['webgl']:[]),'cpu'];
   const untried=candidates.filter(name=>!(name in measured)&&!failedRoutes.has(name));
   if(usable.length===1&&usable[0][1]>SLOW_ADMISSION_MS&&untried.length)return untried[0];
   return usable.length===1?usable[0][0]:available;
@@ -53,7 +63,7 @@ export function createBrowserRuntime({manifest: suppliedManifest, manifestSha256
   else route='cpu';
   if(failedRoutes.has(route)&&interruptedRoute===route)throw Error('The previous local run was interrupted. Try an explicitly selected route before continuing.');
   try{const began=Date.now();await start(progress);const result=await send('qualify',{},progress);validated=result.deviceValidated;remember(route,Date.now()-began);announce(progress);}
-  catch(error){if(signal.aborted)throw signal.reason;if(route==='cpu'||preferredRoute!=='auto')throw error;const unsupportedWebgpu=route==='webgpu'&&error.name==='NotSupportedError';failedRoutes.add(route);stop();if(unsupportedWebgpu&&manifest.webgl&&!failedRoutes.has('webgl')){route='webgl';try{await start(progress);const result=await send('qualify',{},progress);validated=result.deviceValidated;announce(progress);return;}catch(glError){if(signal.aborted)throw signal.reason;failedRoutes.add('webgl');stop();}}emit({stage:'fallback-cpu'},progress);route='cpu';await start(progress);const result=await send('qualify',{},progress);validated=result.deviceValidated;announce(progress);}
+  catch(error){if(signal.aborted)throw signal.reason;if(route==='cpu'||preferredRoute!=='auto')throw error;const unsupportedWebgpu=route==='webgpu'&&error.name==='NotSupportedError';refused(progress,route,unsupportedWebgpu?'unsupported':'canary-failed');failedRoutes.add(route);stop();if(unsupportedWebgpu&&manifest.webgl&&!failedRoutes.has('webgl')){route='webgl';try{await start(progress);const result=await send('qualify',{},progress);validated=result.deviceValidated;announce(progress);return;}catch(glError){if(signal.aborted)throw signal.reason;failedRoutes.add('webgl');stop();}}emit({stage:'fallback-cpu'},progress);route='cpu';await start(progress);const result=await send('qualify',{},progress);validated=result.deviceValidated;announce(progress);}
  }
  async function cachedGenerate(keyData,produce,progress,signal,persist=true,beforeAdmission=()=>{}){await config();const generationSha256=await digest(JSON.stringify(generationIdentity(manifest,keyData.kind))),key=await digest(JSON.stringify({generationSha256,...keyData})),store=await cache();let saved;try{saved=await store?.get(key);}catch{emit({stage:'cache-unavailable'},progress);}if(signal.aborted)throw signal.reason;if(saved?.blob instanceof Blob&&saved.blob.type==='image/png'&&saved.space==='w-plus'&&saved.generationSha256===generationSha256&&(keyData.kind!=='latent'||saved.latentSha256===keyData.sha256)){try{requireLatent(saved.values);if(saved.imageSha256===await digest(await saved.blob.arrayBuffer())&&saved.latentSha256===await digest(saved.values)){if(signal.aborted)throw signal.reason;emit({stage:'original-cache-hit'},progress);return {...saved,cached:true};}}catch(error){if(signal.aborted)throw error;emit({stage:'original-cache-invalid'},progress);}}beforeAdmission();if(!validated)await admit(progress,signal);if(signal.aborted)throw signal.reason;let result;try{result=await produce();}catch(error){if(signal.aborted)throw signal.reason;if(route==='cpu'||preferredRoute!=='auto'||!['generate','synthesize'].includes(error.failedOperation))throw error;failedRoutes.add(route);stop();emit({stage:'fallback-cpu'},progress);await admit(progress,signal,true);result=await produce();}if(signal.aborted)throw signal.reason;const value={...result,generationSha256,imageSha256:await digest(await result.blob.arrayBuffer()),latentSha256:await digest(result.values),latent:{space:result.space,shape:[18,512],values:result.values},width:1024,height:1024,cached:false,provenance:{bundleVersion:manifest.bundleVersion,manifestSha256:manifestHash,modelSha256:manifest.modelSourceSha256,noiseSha256:manifest.noiseSha256,provider:route==='webgl'?'webgl2':route==='webgpu'?'webgpu':'wasm',mappingProvider:keyData.kind==='seed'?'wasm':null,route,truncationPsi:keyData.kind==='seed'?.7:null,truncationCutoff:keyData.kind==='seed'?8:null,createdAt:new Date().toISOString()}};try{if(persist){const aliases=[];if(keyData.kind==='seed'||keyData.kind==='photo'){const latentGenerationSha256=await digest(JSON.stringify(generationIdentity(manifest,'latent')));aliases.push({generationSha256:latentGenerationSha256,key:await digest(JSON.stringify({generationSha256:latentGenerationSha256,kind:'latent',sha256:value.latentSha256}))});}await store?.put(key,value,aliases);}emit({stage:!persist?'transient-frame':store?'original-cached':'cache-unavailable'},progress);}catch{emit({stage:'cache-unavailable'},progress);}return value;}
  const api={

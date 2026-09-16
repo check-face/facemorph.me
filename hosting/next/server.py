@@ -13,7 +13,7 @@ from urllib.parse import unquote, urlsplit
 ROOT = Path(os.environ.get('ASSET_ROOT', '/assets')).resolve()
 REPORTS = Path(os.environ.get('REPORT_ROOT', '/reports')).resolve()
 ORIGINS = set(os.environ.get('PUBLIC_ORIGINS', 'https://next.facemorph.me').split(','))
-STAGES = set('asset-acquisition runtime-loading model-loading model-loaded mapping-loading mapping canary synthesis synthesis-complete alignment alignment-complete encoder-loading encoder-loaded encoding encoding-complete mapping-complete original-cache-hit original-cached cache-unavailable codec-loading face morph export'.split())
+STAGES = set('asset-acquisition runtime-loading model-loading model-loaded mapping-loading mapping canary synthesis synthesis-complete alignment alignment-complete encoder-loading encoder-loaded encoding encoding-complete mapping-complete original-cache-hit original-cached cache-unavailable codec-loading face morph export route-admitted'.split())
 UUID = re.compile(r'^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$')
 LOCK = threading.Lock()
 LIMIT = 20 * 1024 * 1024  # Daily bound, no paid storage growth.
@@ -21,7 +21,9 @@ LIMIT = 20 * 1024 * 1024  # Daily bound, no paid storage growth.
 def checked_event(value):
     if not isinstance(value, dict) or value.get('schemaVersion') != 1:
         raise ValueError('schema')
-    allowed = {'schemaVersion','session','run','event','action','platform','language','build','stage','elapsedMs','stageMs','errorCode','browser','provider','device','browserMajor'}
+    # gpu and routeOutcome say why a device ended up on the path it did: whether the browser
+    # offered WebGPU at all, and whether a route was admitted, refused or never attempted.
+    allowed = {'schemaVersion','session','run','event','action','platform','language','build','stage','elapsedMs','stageMs','errorCode','browser','provider','device','browserMajor','bundle','gpu','routeOutcome'}
     if value.keys() - allowed:
         raise ValueError('fields')
     for field in ('session','run') + (('device',) if 'device' in value else ()):
@@ -31,6 +33,10 @@ def checked_event(value):
         raise ValueError('event')
     if 'stage' in value and value['stage'] not in STAGES:
         raise ValueError('stage')
+    if 'gpu' in value and value['gpu'] not in ('webgpu','webgl-only','none'):
+        raise ValueError('gpu')
+    if 'routeOutcome' in value and value['routeOutcome'] not in ('admitted','canary-failed','unsupported','start-failed','superseded'):
+        raise ValueError('routeOutcome')
     for field in ('elapsedMs','stageMs'):
         if field in value and (type(value[field]) is not int or not 0 <= value[field] <= 86400000):
             raise ValueError('timing')

@@ -1,5 +1,5 @@
 // An allowlist, not arbitrary error/string serialization. No pre-consent backlog.
-const allowedStages=new Set(['asset-acquisition','runtime-loading','model-loading','model-loaded','mapping-loading','mapping','canary','synthesis','synthesis-complete','alignment','alignment-complete','encoder-loading','encoder-loaded','encoder-correctness-check','encoder-correctness-complete','encoding','encoding-complete','mapping-complete','original-cache-hit','original-cached','cache-unavailable','codec-loading','face','morph','export']);
+const allowedStages=new Set(['asset-acquisition','runtime-loading','model-loading','model-loaded','mapping-loading','mapping','canary','synthesis','synthesis-complete','alignment','alignment-complete','encoder-loading','encoder-loaded','encoder-correctness-check','encoder-correctness-complete','encoding','encoding-complete','mapping-complete','original-cache-hit','original-cached','cache-unavailable','codec-loading','face','morph','export','route-admitted']);
 let bundle,provider,device=null,consented=false,session=null,run=null,started=0,last=0,aborters=new Set();
 const CONSENT='facemorph-debug-consent-v1';
 function remember(value){try{if(value)localStorage.setItem(CONSENT,'on');else localStorage.removeItem(CONSENT);}catch{}}
@@ -22,7 +22,9 @@ export const diagnostics={
  restore(){let saved=null;try{saved=localStorage.getItem(CONSENT);}catch{}if(saved!=='on'||consented)return false;on();notice('enabled');return true;},
  bundle(value){bundle=/^[a-f0-9]{64}$/.test(value||'')?value:undefined;},
  start(action,requestedProvider='auto'){if(!enabled())return;provider=['auto','cpu','webgl','webgpu'].includes(requestedProvider)?requestedProvider:'auto';run=crypto.randomUUID();started=performance.now();last=0;void send({event:'start',action:action==='morph'?'morph':'faces',...environment(),language:navigator.language.replace(/[^A-Za-z-]/g,'').slice(0,20),build:buildId()});},
- stage(stage,event={}){if(['cpu','webgl','webgpu','native-cpu','native-gpu'].includes(event.provider))provider=event.provider;if(!enabled()||!run||!allowedStages.has(stage))return;const timing=Number.isFinite(event.elapsedMs)?Math.round(event.elapsedMs):undefined;if(timing===undefined&&performance.now()-last<1000)return;last=performance.now();void send({event:'stage',stage,elapsedMs:Math.round(performance.now()-started),stageMs:timing});},
+ stage(stage,event={}){
+  // Route facts travel with the route-admitted stage; they are closed vocabularies, not free text.
+  if(stage==='route-admitted'&&enabled()&&run){void send({event:'stage',stage,gpu:event.gpu,routeOutcome:event.routeOutcome,provider:['cpu','webgl','webgpu'].includes(event.provider)?event.provider:undefined,elapsedMs:Math.round(performance.now()-started)});return;}if(['cpu','webgl','webgpu','native-cpu','native-gpu'].includes(event.provider))provider=event.provider;if(!enabled()||!run||!allowedStages.has(stage))return;const timing=Number.isFinite(event.elapsedMs)?Math.round(event.elapsedMs):undefined;if(timing===undefined&&performance.now()-last<1000)return;last=performance.now();void send({event:'stage',stage,elapsedMs:Math.round(performance.now()-started),stageMs:timing});},
  finish(status,error){if(!enabled()||!run)return;void send({event:status,elapsedMs:Math.round(performance.now()-started),errorCode:error?(error.name==='AbortError'?'cancelled':'operation_failed'):undefined});},
  status(){return {enabled:enabled(),reference:run};}
 };
