@@ -113,10 +113,9 @@ let update msg state =
         let status = match progress.stage with
                      | "diagnostics-sent" -> "Report saved. Reference: " + progress.text
                      | "diagnostics-failed" -> "Report could not be saved. You can still email us."
-                     | "diagnostics-enabled" -> "Reporting is on for one hour or until this page closes."
-                     | "diagnostics-expired" -> "Reporting has expired."
+                     | "diagnostics-enabled" -> "Reporting is on. It stays on until you turn it off."
                      | _ -> "Reporting is off."
-        {state with DebugStatus=status;Debug=(state.Debug && progress.stage<>"diagnostics-expired")},Cmd.none
+        {state with DebugStatus=status;Debug=(match progress.stage with | "diagnostics-enabled" -> true | "diagnostics-disabled" -> false | _ -> state.Debug)},Cmd.none
     | Progressed progress when state.Busy && progress.jobId=state.JobId ->
         {state with Stage=progress.stage;Status=progress.text;Fraction=progress.fraction},Cmd.none
     | Completed(id,result) when id=state.JobId ->
@@ -151,6 +150,8 @@ let update msg state =
     | DismissError -> {state with Error=None},Cmd.none
     | _ -> state,Cmd.none
 
+let faq (question:string) (answer:ReactElement list) =
+    Html.details [prop.className "next-faq";prop.children (Html.summary question :: answer)]
 let button (label:string) (disabled:bool) (action:unit -> unit) = Html.button [prop.className "button";prop.disabled disabled;prop.type'.button;prop.onClick(fun _ -> action());prop.text label]
 let select (value:string) (label:string) (disabled:bool) (options:(string*string) list) (action:string -> unit) = Html.div [
     prop.className "select";prop.children [Html.select [prop.value value;prop.disabled disabled;prop.ariaLabel label;prop.onChange action;
@@ -167,10 +168,10 @@ let viewFace (state:State) dispatch (item:Input) =
                 match face with
                 | Some f -> Html.img [prop.src f.url;prop.alt "Generated face";prop.width 1024;prop.height 1024]
                 | None -> Html.button [prop.type'.button;prop.className "next-face-placeholder";prop.disabled state.Busy;prop.ariaLabel "Choose photo";prop.onClick(fun _ -> openPhotoPicker item.id);prop.text "+"]]]
-            select item.mode "Face source" state.Busy ["text","Name or words";"seed","Seed";"photo","Photo"] (fun mode -> dispatch(Mode(item.id,mode)))
+            select item.mode "Face source" state.Busy ((if item.mode="project" then ["project","Saved project face"] else []) @ ["text","Name or words";"seed","Seed";"photo","Photo"]) (fun mode -> dispatch(Mode(item.id,mode)))
             if item.mode="photo" then
                 Html.div [prop.className "next-file";prop.children [Html.span item.value;button "Choose a photo" state.Busy (fun () -> openPhotoPicker item.id)]]
-            elif item.mode="project" then Html.p "Saved project face"
+            elif item.mode="project" then Html.p "Restored from your saved project. Choose another source to replace this face."
             else Html.input [prop.className "input";prop.ariaLabel(if item.mode="seed" then "Numeric seed" else "Name or words");prop.value item.value;prop.disabled state.Busy;prop.onChange(fun (v:string) -> dispatch(Edit(item.id,v)))]
             Html.div [prop.className "next-actions";prop.children [
                 button "Browse names" state.Busy (fun () -> dispatch(BrowseNames item.id))
@@ -215,9 +216,36 @@ let view state dispatch = App.ThemedApp [
             Html.h2 "Your faces, on your device"
             Html.p "Generate faces from words, seeds or photos. Add faces to build a longer loop. Share the image or video directly; export a project to keep editing."
             Html.p "Model files and full-size originals are saved on this device where storage is available. Your first generation takes longer while the models download."
+            Html.h3 "How does it work?"
+            Html.p [Html.text "Whatever you type is hashed and used to ";Html.a [prop.href "https://en.wikipedia.org/wiki/Random_seed";prop.text "seed"];Html.text " a random number generator, which picks a point in the latent space of ";Html.a [prop.href "https://github.com/NVlabs/stylegan2";prop.text "StyleGAN2"];Html.text ". The same text always gives the same face. A morph walks between those points and generates every frame along the way."]
+            Html.p [Html.text "When you use a photo, ";Html.a [prop.href "https://github.com/omertov/encoder4editing";prop.text "encoder4editing"];Html.text " encodes it as a latent. It balances accuracy against editability, so the result will not look quite like the photo, but it morphs well."]
+            Html.p "All of it runs here, on your device. Your photos and words are never uploaded."
+            Html.h3 "Questions"
+            faq "Are these real people?" [
+                Html.p "Faces made from words or seeds are not real people. They are randomly generated."
+                Html.p "A face you make from a photo is an encoding of whoever is in that photo."]
+            faq "How does what I type affect the face?" [
+                Html.p "It does not, beyond this: the same text always generates the same face. There is no other correlation."]
+            faq "Why does a face have glasses when neither endpoint does?" [
+                Html.p "Intermediate faces are usually a good mix of the endpoints, but sometimes one picks up glasses, or a frown, or goes old-young-old."
+                Html.p "The model has no concept of human features. It learned to produce images that look like faces from a set of numbers, and it happens that doing so well coincides with having gradients for the features we would expect."
+                Html.p "Short version: nobody really knows."]
+            faq "Why is there a creepy second face?" [
+                Html.p [Html.text "The training set has a small number of photos with a second face in them. Enough for the model to learn to generate one occasionally, not enough to learn to make it convincing. For an example, try ";Html.code "alice";Html.text "."]]
+            faq "Why are there more women than men?" [
+                Html.p [Html.text "The model was trained on the ";Html.a [prop.href "https://github.com/NVlabs/ffhq-dataset";prop.text "Flickr-Faces-HQ dataset"];Html.text ", crawled from Flickr, and it inherits that site's biases."]]
+            faq "How many faces are possible?" [
+                Html.p "Practically limitless."
+                Html.p "Though it depends how you count. Morph between two faces and there is usually no single frame where you can say it has become a different face. Does every frame count?"
+                Html.p "Technically the text is hashed with SHA-256, which puts an upper limit of 2^256 on the number of endpoints you can reach by typing."]
+            faq "Can I morph a photo of a real face?" [
+                Html.p "Yes. Set Face source to Photo, or drop a photo onto a face. Photos are processed on your device."]
+            faq "Is there an API I can self-host?" [
+                Html.p [Html.text "Yes. The server source is at ";Html.a [prop.href "https://github.com/check-face/checkface";prop.text "github.com/check-face/checkface"];Html.text " and is documented at ";Html.a [prop.href "https://checkface.facemorph.me/api";prop.text "checkface.facemorph.me/api"];Html.text "."]
+                Html.p [Html.text "If you need a setup under your own control, self-hosting is the safest option. Bugs belong in a GitHub issue; for questions about the transition, email ";Html.a [prop.href "mailto:checkfaceml@gmail.com";prop.text "checkfaceml@gmail.com"];Html.text "."]]
             Html.h3 "Debug reporting"
             Html.p "Optional reports help us investigate. They contain a random device ID, app/browser versions, processing stages, timings and safe error codes—not your photos, words, images or latents. Reports go to our private diagnostics service and expire after 30 days."
-            Html.label [prop.children [Html.input [prop.type'.checkbox;prop.isChecked state.Debug;prop.onChange(fun (v:bool) -> dispatch(Debug v))];Html.span " Enable debug reporting for this session"]]
+            Html.label [prop.children [Html.input [prop.type'.checkbox;prop.isChecked state.Debug;prop.onChange(fun (v:bool) -> dispatch(Debug v))];Html.span " Send debug reports until I turn this off"]]
             Html.p [prop.custom("role","status");prop.text state.DebugStatus]
             Html.p [Html.a [prop.href "mailto:checkfaceml@gmail.com";prop.text "Email us"]]
             Html.p [Html.a [prop.href "https://facemorph.me";prop.text "Classic FaceMorph"]]

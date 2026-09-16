@@ -53,7 +53,7 @@ async function admission(provider){
  // Native adapter checks its persistent original cache before qualification.
 
 }
-export function subscribe(callback){listener=callback;window.addEventListener('facemorph-report-status',({detail})=>callback({jobId:currentJob,stage:'diagnostics-'+detail.status,text:detail.reference||'',fraction:0}));}
+export function subscribe(callback){listener=callback;window.addEventListener('facemorph-report-status',({detail})=>callback({jobId:currentJob,stage:'diagnostics-'+detail.status,text:detail.reference||'',fraction:0}));diagnostics.restore();}
 export async function execute(request){
  if(active)throw Error('Another job is still stopping.');active=new AbortController();currentJob=request.jobId;diagnostics.start(request.action,request.provider);
  try{
