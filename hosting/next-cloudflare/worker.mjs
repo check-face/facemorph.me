@@ -16,8 +16,12 @@ async function readEvent(request){
 export default {
  async fetch(request,env){
   const url=new URL(request.url),origin=request.headers.get('origin');
+  // A browser omits Origin on a same-origin request but always sends it cross-origin, so an
+  // absent Origin on our own path means the page itself. Requiring the header refused every
+  // report the deployed site sent. A foreign page still carries its Origin and is still refused.
+  const sender=origin??(ORIGINS.has(url.origin)?url.origin:null);
   if(url.pathname!=='/diagnostics/events'||url.search)return reply(404,origin);
-  if(!ORIGINS.has(origin))return reply(403,null);
+  if(!ORIGINS.has(sender))return reply(403,null);
   if(request.method==='OPTIONS'){
    const requested=(request.headers.get('access-control-request-headers')||'').toLowerCase().split(',').map(x=>x.trim()).filter(Boolean);
    return reply(request.headers.get('access-control-request-method')==='POST'&&requested.every(x=>['content-type','x-facemorph-diagnostics-consent'].includes(x))?204:403,origin);

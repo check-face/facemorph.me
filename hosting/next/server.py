@@ -131,7 +131,14 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         if self.path != '/diagnostics/events':
             self.send_error(404)
             return
-        if self.headers.get('Origin') not in ORIGINS or self.headers.get('Content-Type','').split(';')[0] != 'application/json':
+        # A browser omits Origin on a same-origin request and always sends it cross-origin, so an
+        # absent header means this page, resolved through Host. Requiring it refused every report
+        # the site itself produced; a foreign page still carries its Origin and is still refused.
+        origin = self.headers.get('Origin')
+        if origin is None:
+            host = self.headers.get('Host', '')
+            origin = next((o for o in ORIGINS if o.split('://', 1)[-1] == host), None)
+        if origin not in ORIGINS or self.headers.get('Content-Type','').split(';')[0] != 'application/json':
             self.send_error(403)
             return
         try:

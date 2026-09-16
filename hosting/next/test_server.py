@@ -38,6 +38,21 @@ class PreviewBoundary(unittest.TestCase):
         for event in [{**self.event(),'photo':'secret'},{**self.event(),'elapsedMs':-1},{**self.event(),'platform':'my private input'}]:
             self.assertEqual(self.request('/diagnostics/events',event)[0],400)
         self.assertEqual(self.request('/diagnostics/events',self.event(),origin='https://evil.example')[0],403)
+
+    def test_same_origin_report_without_an_origin_header_is_accepted(self):
+        # A browser omits Origin on the page's own POST, so requiring it refused every report the
+        # site produced. Absence resolves through Host; an unknown Host is still refused.
+        before=len(list(server.REPORTS.glob('*.jsonl')))
+        c=http.client.HTTPConnection('127.0.0.1',self.http.server_port)
+        c.request('POST','/diagnostics/events',body=json.dumps(self.event()),
+                  headers={'Content-Type':'application/json','Host':'next.facemorph.me'})
+        self.assertEqual(c.getresponse().status,204);c.close()
+        self.assertEqual(len(list(server.REPORTS.glob('*.jsonl'))),before+1)
+        c=http.client.HTTPConnection('127.0.0.1',self.http.server_port)
+        c.request('POST','/diagnostics/events',body=json.dumps(self.event()),
+                  headers={'Content-Type':'application/json','Host':'elsewhere.example'})
+        self.assertEqual(c.getresponse().status,403);c.close()
+        self.assertEqual(len(list(server.REPORTS.glob('*.jsonl'))),before+1)
     def test_range_and_cors_for_installed_apps(self):
         folder=server.ROOT/'runtime';folder.mkdir();(folder/'model.bin').write_bytes(b'0123456789')
         c=http.client.HTTPConnection('127.0.0.1',self.http.server_port)
