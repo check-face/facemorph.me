@@ -79,6 +79,15 @@ Promotion refused to publish until every gate passed: a successful `next-site.ym
 
 **Storage requirement — known limitation.** The model bundle needs more than about 1 GB of origin storage. Measured on one machine: a private/ephemeral browser context offered a 1.06 GB quota against 296 GB for a normal profile. When the model cache cannot be written the product treats it as fatal rather than degrading, so a browser with roughly a gigabyte available cannot process photos at all. Private-browsing and low-disk devices are expected to fail this way.
 
+## Open gaps at handoff
+
+- **Branch protection.** `master` is unprotected. The permission to change that exists, so this is a decision for the operator, not a limit. The promotion path is gated regardless.
+- **The matrix cannot run in CI from this branch.** `workflow_dispatch` only resolves workflows present on the default branch, the same constraint that ruled out `workflow_run`. Until `next-matrix.yml` reaches the default branch the engine rows run serially on one developer machine instead of in parallel on clean runners, so they carry that machine's characteristics.
+- **H.264 playback is not checkable in the automation browsers.** Playwright ships Chromium and WebKit without proprietary codecs. Playback evidence therefore comes only from the byte-exact qualification, which drives the real Chrome install and verifies a decoded frame. A matrix row that could not check playback is reported as such and does not count as a pass.
+- **No physical phone has been exercised.** Simulators and desktop engines describe behaviour, not phone memory, thermal behaviour or real GPU speed. Those rows stay missing rather than inferred, and real-device feedback is part of this testing round.
+- **A consented diagnostic report has not been round-tripped from the deployed site.** The collector is confirmed to reject anything without consent, which proves it fails closed, not that an opted-in report is stored and expires as intended.
+- **The model cache treats exhausted storage as fatal.** See the storage limitation above.
+
 **CI policy:** run meaningful checks for changed shipping components. Repeat expensive model/provider qualification when relevant; reuse unchanged, checksummed evidence explicitly. Do not rerun abandoned research on every deploy. Missing/skipped required evidence is not a pass. Retain artifact IDs, outputs and failure reports.
 
 **Device evidence:** cover Chromium, Safari/WebKit and Firefox, with mobile and desktop rows. Simulators/emulators test behavior, not physical GPU speed, thermal behavior or iPhone memory limits. Mark each row passed, failed or untested. Real-device feedback is part of this testing round; universal compatibility is not promised.
