@@ -1,0 +1,80 @@
+{
+  "schemaVersion": 1,
+  "preprocessingSha256": "3cc958b232e8616db831b8429eea4446c990a845738320270b47121a2d2dbdfe",
+  "orientationPolicy": "legacy-ignore-exif",
+  "landmarks": {
+    "url": "https://localhost:8443/runtime/assets/fbdc2cb80eb9aa7a758672cbfdda32ba6300efe9b6e6c7a299ff7e736b11b92f/shape_predictor_68_face_landmarks.dat",
+    "sha256": "fbdc2cb80eb9aa7a758672cbfdda32ba6300efe9b6e6c7a299ff7e736b11b92f",
+    "size": 99693937,
+    "chunks": [
+      {
+        "url": "https://localhost:8443/runtime/photo/landmarks-00-dcbee28af5d869348fdfe6ddd4d3e9bafb55d618946d6259c3a58f384a36856d.part",
+        "size": 16777216,
+        "sha256": "dcbee28af5d869348fdfe6ddd4d3e9bafb55d618946d6259c3a58f384a36856d"
+      },
+      {
+        "url": "https://localhost:8443/runtime/photo/landmarks-01-21e71f7d4abb1b1c08011d336ed122da37b96a4a83637120a14705bf6966176b.part",
+        "size": 16777216,
+        "sha256": "21e71f7d4abb1b1c08011d336ed122da37b96a4a83637120a14705bf6966176b"
+      },
+      {
+        "url": "https://localhost:8443/runtime/photo/landmarks-02-9543987d73889d83e95d540a6c4f37dbf2e076f9a8c83df4a6584bd560d6f21a.part",
+        "size": 16777216,
+        "sha256": "9543987d73889d83e95d540a6c4f37dbf2e076f9a8c83df4a6584bd560d6f21a"
+      },
+      {
+        "url": "https://localhost:8443/runtime/photo/landmarks-03-9e27d8cabc27d9bb9711e9d0ab5bfe447bf1cf668c690f6a84acfb3e32e1727d.part",
+        "size": 16777216,
+        "sha256": "9e27d8cabc27d9bb9711e9d0ab5bfe447bf1cf668c690f6a84acfb3e32e1727d"
+      },
+      {
+        "url": "https://localhost:8443/runtime/photo/landmarks-04-ac55e2e588543530155334d4c3600105ba1b93072b934ddd175e2368311f207b.part",
+        "size": 16777216,
+        "sha256": "ac55e2e588543530155334d4c3600105ba1b93072b934ddd175e2368311f207b"
+      },
+      {
+        "url": "https://localhost:8443/runtime/photo/landmarks-05-a142555eaca831370b8f44a50b2577578e9e890039836dcaf3e1775c7276f37c.part",
+        "size": 15807857,
+        "sha256": "a142555eaca831370b8f44a50b2577578e9e890039836dcaf3e1775c7276f37c"
+      }
+    ]
+  },
+  "module": {
+    "url": "photo-native.mjs",
+    "sha256": "8d46abf8065d3d3d74574c12ae70301e79cc910c6c963c5afcfeeb93c1d7c5e7",
+    "size": 24062
+  },
+  "wasm": {
+    "url": "photo-native.wasm",
+    "sha256": "6cb217924cd7b0f0e4941d6c989cad6b9e46556d567ef82144232a97c8a5accc",
+    "size": 1210778
+  },
+  "inputPolicy": {
+    "maxBytes": 26214400,
+    "maxPixels": 4194304,
+    "formats": [
+      "PNG8",
+      "JPEG8 grayscale/RGB"
+    ]
+  },
+  "sources": {
+    "align-photo.mjs": "ae3f39ded78594ec4d231af6a923e284af377f234842e800b6132c0cdf60fa13",
+    "photo-worker.mjs": "f095e8d80babcfe8662773f85b748b66f71bb32f4eb3e0ad763114d181798760",
+    "image-header.mjs": "86ff9a1795d765ed5cb22300e07dff5586435e62994e252ca80d8a9b5f3f023d",
+    "sha256.mjs": "91b5831f39b0c22bf911c233f15b78a4f168272f026337a3ca62af6cfd8fc2c4",
+    "dist/photo-native.mjs": "8d46abf8065d3d3d74574c12ae70301e79cc910c6c963c5afcfeeb93c1d7c5e7",
+    "dist/photo-native.wasm": "6cb217924cd7b0f0e4941d6c989cad6b9e46556d567ef82144232a97c8a5accc",
+    "THIRD_PARTY_NOTICES.txt": "ec4e3ad5d057d4a167f7ae6b9dc6971957f71f755a2944d98bd223250a96b773",
+    "native/photo.cpp": "cb09aef53fc30f229a9522c75f75de783f96ffa60bc135d7e58acc7f70f7dd41",
+    "native/pillow_support.c": "fec752cb485bd484af181272fcf8c28a4a1ed0f12240d5306f6bca8d957f36f6",
+    "native/Python.h": "c5e61ace89641769730a4c83460d5676e89d26ccaaaf30187e73d9132fd0d089",
+    "build.py": "908ed04521ea3ff0344ae8fd79845fc02c20d2f406a41cf67037bb5be1363e53",
+    "vendor/dlib-source.json": "de10e7b2fe43536c08f19070d920e9fc0f337e93b1e9b4854d8ec94142050d07",
+    "vendor/pillow-source.json": "0228c87b1fdf6eec6d6155c8de134c0ca5abf2018f98c84e9f8894ea12a5ff31",
+    "vendor/jpeg-source.json": "c3d0697e1e023b5bdd0c082bb67d991af8ca1da59c90b62039c156dceb53988a",
+    "landmarks": "fbdc2cb80eb9aa7a758672cbfdda32ba6300efe9b6e6c7a299ff7e736b11b92f",
+    "orientationPolicy": "legacy-ignore-exif"
+  },
+  "qualification": "Consult candidate verification and actual-browser report; staging is not qualification",
+  "facePolicy": "exactly-one-face-v1"
+}

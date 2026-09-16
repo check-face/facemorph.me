@@ -1,0 +1,26 @@
+[
+  {
+    "name": "iPhone 11",
+    "udid": "7F3E0299-7877-407D-BCD6-99FDB0EEFFD0",
+    "runtime": "iOS 26.5",
+    "runtimeId": "com.apple.CoreSimulator.SimRuntime.iOS-26-5",
+    "type": "com.apple.CoreSimulator.SimDeviceType.iPhone-11",
+    "physicalPerformanceEvidence": false
+  },
+  {
+    "name": "iPhone 18 Pro Max",
+    "udid": "BE4CDC7B-09E3-4FED-8391-2ED9C903255B",
+    "runtime": "iOS 27.0",
+    "runtimeId": "com.apple.CoreSimulator.SimRuntime.iOS-27-0",
+    "type": "com.apple.CoreSimulator.SimDeviceType.iPhone-18-Pro-Max",
+    "physicalPerformanceEvidence": false
+  },
+  {
+    "name": "iPhone 11 clean",
+    "udid": "32283FA5-C38C-453F-8A89-AE233BD6BE91",
+    "runtime": "iOS 26.5",
+    "runtimeId": "com.apple.CoreSimulator.SimRuntime.iOS-26-5",
+    "type": "com.apple.CoreSimulator.SimDeviceType.iPhone-11",
+    "physicalPerformanceEvidence": false
+  }
+]

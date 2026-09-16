@@ -1,0 +1,4847 @@
+{
+  "schemaVersion": 1,
+  "kind": "e4e-onnx-sequential-shards-v1",
+  "sourceSha256": "d525a985a43e4d49ef4590a8b8cc6f487992065bee00014fe8c6f8ab4ac291b1",
+  "sourceEncoderSha256": "d525a985a43e4d49ef4590a8b8cc6f487992065bee00014fe8c6f8ab4ac291b1",
+  "preprocessingSha256": "3cc958b232e8616db831b8429eea4446c990a845738320270b47121a2d2dbdfe",
+  "qualifiedReferenceEvidence": {
+    "url": "https://localhost:8443/runtime/encoder-stream/native-qualification.json",
+    "size": 14667,
+    "sha256": "e963d204be4bfdb55c3c7934309515a8cbf66874fdbc1ce37e7588ca1ba1d0e6"
+  },
+  "phoneAdmitted": false,
+  "sourceBytes": 1068862265,
+  "input": [
+    {
+      "name": "image",
+      "dtype": "FLOAT",
+      "shape": [
+        1,
+        3,
+        256,
+        256
+      ]
+    }
+  ],
+  "output": [
+    {
+      "name": "w",
+      "dtype": "FLOAT",
+      "shape": [
+        1,
+        18,
+        512
+      ]
+    }
+  ],
+  "steps": [
+    {
+      "id": 0,
+      "file": "part-000.onnx",
+      "sha256": "7e99c57bd457c8d9311b7947f596b5f39fd3f44891375a8e266ed4279ca28689",
+      "size": 16265255,
+      "sourceNodeFirst": 0,
+      "sourceNodeLast": 114,
+      "sourceNodeCount": 115,
+      "initializerBytes": 16237717,
+      "inputs": [
+        {
+          "name": "image",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            3,
+            256,
+            256
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/body.6/Add_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            128,
+            64,
+            64
+          ]
+        },
+        {
+          "name": "/net/body.9/res_layer/res_layer.2/PRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            256,
+            32,
+            32
+          ]
+        },
+        {
+          "name": "/net/body.9/shortcut_layer/MaxPool_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            256,
+            32,
+            32
+          ]
+        },
+        {
+          "name": "/net/input_layer/input_layer.0/Constant_output_0",
+          "dtype": "INT64",
+          "shape": []
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 4980744,
+      "releaseAfter": [
+        "image"
+      ],
+      "liveBoundaryBytesAfterRelease": 4194312,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-000.onnx"
+    },
+    {
+      "id": 1,
+      "file": "part-001.onnx",
+      "sha256": "d7117cbb5686d26113ee90fa0c878332b6f4034a156336ca3a9506934b66ac9a",
+      "size": 16682611,
+      "sourceNodeFirst": 115,
+      "sourceNodeLast": 160,
+      "sourceNodeCount": 46,
+      "initializerBytes": 16671251,
+      "inputs": [
+        {
+          "name": "/net/body.9/res_layer/res_layer.2/PRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            256,
+            32,
+            32
+          ]
+        },
+        {
+          "name": "/net/body.9/shortcut_layer/MaxPool_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            256,
+            32,
+            32
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/body.13/res_layer/res_layer.0/BatchNormalization_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            256,
+            32,
+            32
+          ]
+        },
+        {
+          "name": "/net/body.13/shortcut_layer/MaxPool_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            256,
+            32,
+            32
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 6291464,
+      "releaseAfter": [
+        "/net/body.9/res_layer/res_layer.2/PRelu_output_0",
+        "/net/body.9/shortcut_layer/MaxPool_output_0"
+      ],
+      "liveBoundaryBytesAfterRelease": 4194312,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-001.onnx"
+    },
+    {
+      "id": 2,
+      "file": "part-002.onnx",
+      "sha256": "8d3c5afef9e894318b7d724dd6e3b8502ebb686e4c5c4697252948f19f1f5c2c",
+      "size": 16643596,
+      "sourceNodeFirst": 161,
+      "sourceNodeLast": 198,
+      "sourceNodeCount": 38,
+      "initializerBytes": 16634138,
+      "inputs": [
+        {
+          "name": "/net/body.13/res_layer/res_layer.0/BatchNormalization_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            256,
+            32,
+            32
+          ]
+        },
+        {
+          "name": "/net/body.13/shortcut_layer/MaxPool_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            256,
+            32,
+            32
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/body.16/res_layer/res_layer.2/PRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            256,
+            32,
+            32
+          ]
+        },
+        {
+          "name": "/net/body.16/shortcut_layer/MaxPool_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            256,
+            32,
+            32
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 6291464,
+      "releaseAfter": [
+        "/net/body.13/res_layer/res_layer.0/BatchNormalization_output_0",
+        "/net/body.13/shortcut_layer/MaxPool_output_0"
+      ],
+      "liveBoundaryBytesAfterRelease": 4194312,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-002.onnx"
+    },
+    {
+      "id": 3,
+      "file": "part-003.onnx",
+      "sha256": "8c20eecac82f4dfc489cea5872846085bca6f74784c9f4edf2d077d6662a4fcc",
+      "size": 16682645,
+      "sourceNodeFirst": 199,
+      "sourceNodeLast": 244,
+      "sourceNodeCount": 46,
+      "initializerBytes": 16671253,
+      "inputs": [
+        {
+          "name": "/net/body.16/res_layer/res_layer.2/PRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            256,
+            32,
+            32
+          ]
+        },
+        {
+          "name": "/net/body.16/shortcut_layer/MaxPool_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            256,
+            32,
+            32
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/body.20/res_layer/res_layer.0/BatchNormalization_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            256,
+            32,
+            32
+          ]
+        },
+        {
+          "name": "/net/body.20/shortcut_layer/MaxPool_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            256,
+            32,
+            32
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 6291464,
+      "releaseAfter": [
+        "/net/body.16/res_layer/res_layer.2/PRelu_output_0",
+        "/net/body.16/shortcut_layer/MaxPool_output_0"
+      ],
+      "liveBoundaryBytesAfterRelease": 4194312,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-003.onnx"
+    },
+    {
+      "id": 4,
+      "file": "part-004.onnx",
+      "sha256": "7d7c954575dde9b21c956dc24421c17fc24f3a9e0d42c8975269578807290503",
+      "size": 10008870,
+      "sourceNodeFirst": 245,
+      "sourceNodeLast": 258,
+      "sourceNodeCount": 14,
+      "initializerBytes": 10005026,
+      "inputs": [
+        {
+          "name": "/net/body.20/res_layer/res_layer.0/BatchNormalization_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            256,
+            32,
+            32
+          ]
+        },
+        {
+          "name": "/net/body.20/shortcut_layer/MaxPool_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            256,
+            32,
+            32
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/body.20/Add_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            256,
+            32,
+            32
+          ]
+        },
+        {
+          "name": "/net/body.21/res_layer/res_layer.2/PRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            32,
+            32
+          ]
+        },
+        {
+          "name": "/net/body.21/shortcut_layer/shortcut_layer.0/Conv_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            16,
+            16
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 7864328,
+      "releaseAfter": [
+        "/net/body.20/res_layer/res_layer.0/BatchNormalization_output_0",
+        "/net/body.20/shortcut_layer/MaxPool_output_0"
+      ],
+      "liveBoundaryBytesAfterRelease": 5767176,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-004.onnx"
+    },
+    {
+      "id": 5,
+      "file": "part-005.onnx",
+      "sha256": "bbcc5ba15e692a92b9f6bf2b20f1d02a9697a27a677f365d7648745b6ec738af",
+      "size": 9581630,
+      "sourceNodeFirst": 259,
+      "sourceNodeLast": 268,
+      "sourceNodeCount": 10,
+      "initializerBytes": 9578826,
+      "inputs": [
+        {
+          "name": "/net/body.21/res_layer/res_layer.2/PRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            32,
+            32
+          ]
+        },
+        {
+          "name": "/net/body.21/shortcut_layer/shortcut_layer.0/Conv_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            16,
+            16
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/body.22/res_layer/res_layer.0/BatchNormalization_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            16,
+            16
+          ]
+        },
+        {
+          "name": "/net/body.22/shortcut_layer/MaxPool_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            16,
+            16
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 6815752,
+      "releaseAfter": [
+        "/net/body.21/res_layer/res_layer.2/PRelu_output_0",
+        "/net/body.21/shortcut_layer/shortcut_layer.0/Conv_output_0"
+      ],
+      "liveBoundaryBytesAfterRelease": 4194312,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-005.onnx"
+    },
+    {
+      "id": 6,
+      "file": "part-006.onnx",
+      "sha256": "b8ef9d4654c4126b17fd5c12059dd669e9834773434a13ef75ed2648a9f265fd",
+      "size": 9440007,
+      "sourceNodeFirst": 269,
+      "sourceNodeLast": 270,
+      "sourceNodeCount": 2,
+      "initializerBytes": 9439311,
+      "inputs": [
+        {
+          "name": "/net/body.22/res_layer/res_layer.0/BatchNormalization_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            16,
+            16
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/body.22/res_layer/res_layer.2/PRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            16,
+            16
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 4718600,
+      "releaseAfter": [
+        "/net/body.22/res_layer/res_layer.0/BatchNormalization_output_0"
+      ],
+      "liveBoundaryBytesAfterRelease": 4194312,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-006.onnx"
+    },
+    {
+      "id": 7,
+      "file": "part-007.onnx",
+      "sha256": "9dfabea8f775b467362443b0c61ba57320e9c822f50e08116868f46aa0a236e9",
+      "size": 9581602,
+      "sourceNodeFirst": 271,
+      "sourceNodeLast": 280,
+      "sourceNodeCount": 10,
+      "initializerBytes": 9578826,
+      "inputs": [
+        {
+          "name": "/net/body.22/res_layer/res_layer.2/PRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            16,
+            16
+          ]
+        },
+        {
+          "name": "/net/body.22/shortcut_layer/MaxPool_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            16,
+            16
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/body.23/res_layer/res_layer.0/BatchNormalization_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            16,
+            16
+          ]
+        },
+        {
+          "name": "/net/body.23/shortcut_layer/MaxPool_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            16,
+            16
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 5242888,
+      "releaseAfter": [
+        "/net/body.22/shortcut_layer/MaxPool_output_0",
+        "/net/body.22/res_layer/res_layer.2/PRelu_output_0"
+      ],
+      "liveBoundaryBytesAfterRelease": 4194312,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-007.onnx"
+    },
+    {
+      "id": 8,
+      "file": "part-008.onnx",
+      "sha256": "b808a78e70e0e65db0d8f0644ddc45a692d46e5ae950eb728d2d4d29c3c59b49",
+      "size": 9440007,
+      "sourceNodeFirst": 281,
+      "sourceNodeLast": 282,
+      "sourceNodeCount": 2,
+      "initializerBytes": 9439311,
+      "inputs": [
+        {
+          "name": "/net/body.23/res_layer/res_layer.0/BatchNormalization_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            16,
+            16
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/body.23/res_layer/res_layer.2/PRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            16,
+            16
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 4718600,
+      "releaseAfter": [
+        "/net/body.23/res_layer/res_layer.0/BatchNormalization_output_0"
+      ],
+      "liveBoundaryBytesAfterRelease": 4194312,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-008.onnx"
+    },
+    {
+      "id": 9,
+      "file": "part-009.onnx",
+      "sha256": "8cd7faf2e1746ce84d3713af33b5d9fbcd25f5d66aca1040146f5c8ad2d6131e",
+      "size": 9572532,
+      "sourceNodeFirst": 283,
+      "sourceNodeLast": 290,
+      "sourceNodeCount": 8,
+      "initializerBytes": 9570465,
+      "inputs": [
+        {
+          "name": "/net/body.23/res_layer/res_layer.2/PRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            16,
+            16
+          ]
+        },
+        {
+          "name": "/net/body.23/shortcut_layer/MaxPool_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            16,
+            16
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/body.23/Add_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            16,
+            16
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 4718600,
+      "releaseAfter": [
+        "/net/body.23/shortcut_layer/MaxPool_output_0",
+        "/net/body.23/res_layer/res_layer.2/PRelu_output_0"
+      ],
+      "liveBoundaryBytesAfterRelease": 3670024,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-009.onnx"
+    },
+    {
+      "id": 10,
+      "file": "part-010.onnx",
+      "sha256": "67309efb23dc0582aea44e2de0d821ece1d8472046a956f98e96bf3183db3556",
+      "size": 9439932,
+      "sourceNodeFirst": 291,
+      "sourceNodeLast": 292,
+      "sourceNodeCount": 2,
+      "initializerBytes": 9439313,
+      "inputs": [
+        {
+          "name": "/net/body.23/Add_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            16,
+            16
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/styles.0/convs/convs.1/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            8,
+            8
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 3801096,
+      "releaseAfter": [],
+      "liveBoundaryBytesAfterRelease": 3801096,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-010.onnx"
+    },
+    {
+      "id": 11,
+      "file": "part-011.onnx",
+      "sha256": "186d864ba3aeaa41b457410f01cefa3afc2d08cbbf34bf15412530bc7f1e6547",
+      "size": 9439974,
+      "sourceNodeFirst": 293,
+      "sourceNodeLast": 294,
+      "sourceNodeCount": 2,
+      "initializerBytes": 9439313,
+      "inputs": [
+        {
+          "name": "/net/styles.0/convs/convs.1/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            8,
+            8
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/styles.0/convs/convs.3/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            4,
+            4
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 3833864,
+      "releaseAfter": [
+        "/net/styles.0/convs/convs.1/LeakyRelu_output_0"
+      ],
+      "liveBoundaryBytesAfterRelease": 3702792,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-011.onnx"
+    },
+    {
+      "id": 12,
+      "file": "part-012.onnx",
+      "sha256": "ff1b6326eb9e7cd2473138349d3aef7057b669b93e30873fe44671d047130a89",
+      "size": 9439974,
+      "sourceNodeFirst": 295,
+      "sourceNodeLast": 296,
+      "sourceNodeCount": 2,
+      "initializerBytes": 9439313,
+      "inputs": [
+        {
+          "name": "/net/styles.0/convs/convs.3/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            4,
+            4
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/styles.0/convs/convs.5/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            2,
+            2
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 3710984,
+      "releaseAfter": [
+        "/net/styles.0/convs/convs.3/LeakyRelu_output_0"
+      ],
+      "liveBoundaryBytesAfterRelease": 3678216,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-012.onnx"
+    },
+    {
+      "id": 13,
+      "file": "part-013.onnx",
+      "sha256": "efc98aa20e34f3dce853a76341cac7dee6888ffae27c5edca33998fbf66a2a05",
+      "size": 10491678,
+      "sourceNodeFirst": 297,
+      "sourceNodeLast": 307,
+      "sourceNodeCount": 11,
+      "initializerBytes": 10490000,
+      "inputs": [
+        {
+          "name": "/net/styles.0/convs/convs.5/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            2,
+            2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/Transpose_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            18,
+            512
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 3715080,
+      "releaseAfter": [
+        "/net/styles.0/convs/convs.5/LeakyRelu_output_0"
+      ],
+      "liveBoundaryBytesAfterRelease": 3706888,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-013.onnx"
+    },
+    {
+      "id": 14,
+      "file": "part-014.onnx",
+      "sha256": "6d3db9cec9cdcf70efdbb6b9216b45a3b4ad02d7a8ba6760c588f96c54cbe0c4",
+      "size": 9439932,
+      "sourceNodeFirst": 308,
+      "sourceNodeLast": 309,
+      "sourceNodeCount": 2,
+      "initializerBytes": 9439313,
+      "inputs": [
+        {
+          "name": "/net/body.23/Add_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            16,
+            16
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/styles.1/convs/convs.1/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            8,
+            8
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 3837960,
+      "releaseAfter": [],
+      "liveBoundaryBytesAfterRelease": 3837960,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-014.onnx"
+    },
+    {
+      "id": 15,
+      "file": "part-015.onnx",
+      "sha256": "10dcfc62e226ef4c0410964724769edbabc68fe2ee3a11360632c535b72ae608",
+      "size": 9439974,
+      "sourceNodeFirst": 310,
+      "sourceNodeLast": 311,
+      "sourceNodeCount": 2,
+      "initializerBytes": 9439313,
+      "inputs": [
+        {
+          "name": "/net/styles.1/convs/convs.1/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            8,
+            8
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/styles.1/convs/convs.3/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            4,
+            4
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 3870728,
+      "releaseAfter": [
+        "/net/styles.1/convs/convs.1/LeakyRelu_output_0"
+      ],
+      "liveBoundaryBytesAfterRelease": 3739656,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-015.onnx"
+    },
+    {
+      "id": 16,
+      "file": "part-016.onnx",
+      "sha256": "129a1992d7abf61bde4fa9feac3076d7f6530ba8c714455250f7e526f405a2b7",
+      "size": 9439974,
+      "sourceNodeFirst": 312,
+      "sourceNodeLast": 313,
+      "sourceNodeCount": 2,
+      "initializerBytes": 9439313,
+      "inputs": [
+        {
+          "name": "/net/styles.1/convs/convs.3/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            4,
+            4
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/styles.1/convs/convs.5/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            2,
+            2
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 3747848,
+      "releaseAfter": [
+        "/net/styles.1/convs/convs.3/LeakyRelu_output_0"
+      ],
+      "liveBoundaryBytesAfterRelease": 3715080,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-016.onnx"
+    },
+    {
+      "id": 17,
+      "file": "part-017.onnx",
+      "sha256": "2a6da1b65d258be2fd3d77ff4916a944e946ed43c99419d403446af64352d088",
+      "size": 10497863,
+      "sourceNodeFirst": 314,
+      "sourceNodeLast": 385,
+      "sourceNodeCount": 72,
+      "initializerBytes": 10490000,
+      "inputs": [
+        {
+          "name": "/net/Transpose_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            18,
+            512
+          ]
+        },
+        {
+          "name": "/net/input_layer/input_layer.0/Constant_output_0",
+          "dtype": "INT64",
+          "shape": []
+        },
+        {
+          "name": "/net/styles.1/convs/convs.5/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            2,
+            2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/ScatterND_1_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            18,
+            512
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 3751944,
+      "releaseAfter": [
+        "/net/input_layer/input_layer.0/Constant_output_0",
+        "/net/Transpose_output_0",
+        "/net/styles.1/convs/convs.5/LeakyRelu_output_0"
+      ],
+      "liveBoundaryBytesAfterRelease": 3706880,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-017.onnx"
+    },
+    {
+      "id": 18,
+      "file": "part-018.onnx",
+      "sha256": "43206429ba4e74c05a0cd7746817b289a3460414a11251493cf31e9ef7a78f73",
+      "size": 9439932,
+      "sourceNodeFirst": 386,
+      "sourceNodeLast": 387,
+      "sourceNodeCount": 2,
+      "initializerBytes": 9439313,
+      "inputs": [
+        {
+          "name": "/net/body.23/Add_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            16,
+            16
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/styles.2/convs/convs.1/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            8,
+            8
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 3837952,
+      "releaseAfter": [],
+      "liveBoundaryBytesAfterRelease": 3837952,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-018.onnx"
+    },
+    {
+      "id": 19,
+      "file": "part-019.onnx",
+      "sha256": "4307be257f8518333f59849fb0ea5a66071bcd32f76e15fdefee0ee770c5a66e",
+      "size": 9439974,
+      "sourceNodeFirst": 388,
+      "sourceNodeLast": 389,
+      "sourceNodeCount": 2,
+      "initializerBytes": 9439313,
+      "inputs": [
+        {
+          "name": "/net/styles.2/convs/convs.1/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            8,
+            8
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/styles.2/convs/convs.3/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            4,
+            4
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 3870720,
+      "releaseAfter": [
+        "/net/styles.2/convs/convs.1/LeakyRelu_output_0"
+      ],
+      "liveBoundaryBytesAfterRelease": 3739648,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-019.onnx"
+    },
+    {
+      "id": 20,
+      "file": "part-020.onnx",
+      "sha256": "ca2bf3fcb44ca474eeaf7e0e65a485b2d130dd3bf2c272c1a13355c5924c35d8",
+      "size": 9439974,
+      "sourceNodeFirst": 390,
+      "sourceNodeLast": 391,
+      "sourceNodeCount": 2,
+      "initializerBytes": 9439313,
+      "inputs": [
+        {
+          "name": "/net/styles.2/convs/convs.3/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            4,
+            4
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/styles.2/convs/convs.5/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            2,
+            2
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 3747840,
+      "releaseAfter": [
+        "/net/styles.2/convs/convs.3/LeakyRelu_output_0"
+      ],
+      "liveBoundaryBytesAfterRelease": 3715072,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-020.onnx"
+    },
+    {
+      "id": 21,
+      "file": "part-021.onnx",
+      "sha256": "bf02db5ace9e1b7caadd279927e12fba535eafca2143d01a2d08dc2300944c7f",
+      "size": 11025850,
+      "sourceNodeFirst": 392,
+      "sourceNodeLast": 475,
+      "sourceNodeCount": 84,
+      "initializerBytes": 11016393,
+      "inputs": [
+        {
+          "name": "/net/ScatterND_1_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            18,
+            512
+          ]
+        },
+        {
+          "name": "/net/body.20/Add_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            256,
+            32,
+            32
+          ]
+        },
+        {
+          "name": "/net/body.23/Add_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            16,
+            16
+          ]
+        },
+        {
+          "name": "/net/styles.2/convs/convs.5/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            2,
+            2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/Add_2_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            32,
+            32
+          ]
+        },
+        {
+          "name": "/net/Constant_42_output_0",
+          "dtype": "INT64",
+          "shape": []
+        },
+        {
+          "name": "/net/ScatterND_3_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            18,
+            512
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 5849096,
+      "releaseAfter": [
+        "/net/body.20/Add_output_0",
+        "/net/body.23/Add_output_0",
+        "/net/ScatterND_1_output_0",
+        "/net/styles.2/convs/convs.5/LeakyRelu_output_0"
+      ],
+      "liveBoundaryBytesAfterRelease": 4231176,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-021.onnx"
+    },
+    {
+      "id": 22,
+      "file": "part-022.onnx",
+      "sha256": "1fcc3f6bc342b11dfa5809a33bb1dd0da4e92a70948ce16b3c2f84ad99a4b93a",
+      "size": 9439920,
+      "sourceNodeFirst": 476,
+      "sourceNodeLast": 477,
+      "sourceNodeCount": 2,
+      "initializerBytes": 9439313,
+      "inputs": [
+        {
+          "name": "/net/Add_2_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            32,
+            32
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/styles.3/convs/convs.1/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            16,
+            16
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 4755464,
+      "releaseAfter": [],
+      "liveBoundaryBytesAfterRelease": 4755464,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-022.onnx"
+    },
+    {
+      "id": 23,
+      "file": "part-023.onnx",
+      "sha256": "6b0bff2c404cf68dc845deae8643c8f9067c11543c35a2e727e496ec171f6d6c",
+      "size": 9439974,
+      "sourceNodeFirst": 478,
+      "sourceNodeLast": 479,
+      "sourceNodeCount": 2,
+      "initializerBytes": 9439313,
+      "inputs": [
+        {
+          "name": "/net/styles.3/convs/convs.1/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            16,
+            16
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/styles.3/convs/convs.3/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            8,
+            8
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 4886536,
+      "releaseAfter": [
+        "/net/styles.3/convs/convs.1/LeakyRelu_output_0"
+      ],
+      "liveBoundaryBytesAfterRelease": 4362248,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-023.onnx"
+    },
+    {
+      "id": 24,
+      "file": "part-024.onnx",
+      "sha256": "5596a11d5d8efb5568838daf5b4cab52a1f0a628b6f6ce5e05372cbbaf9634d1",
+      "size": 9439974,
+      "sourceNodeFirst": 480,
+      "sourceNodeLast": 481,
+      "sourceNodeCount": 2,
+      "initializerBytes": 9439313,
+      "inputs": [
+        {
+          "name": "/net/styles.3/convs/convs.3/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            8,
+            8
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/styles.3/convs/convs.5/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            4,
+            4
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 4395016,
+      "releaseAfter": [
+        "/net/styles.3/convs/convs.3/LeakyRelu_output_0"
+      ],
+      "liveBoundaryBytesAfterRelease": 4263944,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-024.onnx"
+    },
+    {
+      "id": 25,
+      "file": "part-025.onnx",
+      "sha256": "1e405ec6f0f6c59df762fd860bdd159784dc23867b44dda6d8bb42fd8285b4dc",
+      "size": 9439974,
+      "sourceNodeFirst": 482,
+      "sourceNodeLast": 483,
+      "sourceNodeCount": 2,
+      "initializerBytes": 9439313,
+      "inputs": [
+        {
+          "name": "/net/styles.3/convs/convs.5/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            4,
+            4
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/styles.3/convs/convs.7/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            2,
+            2
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 4272136,
+      "releaseAfter": [
+        "/net/styles.3/convs/convs.5/LeakyRelu_output_0"
+      ],
+      "liveBoundaryBytesAfterRelease": 4239368,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-025.onnx"
+    },
+    {
+      "id": 26,
+      "file": "part-026.onnx",
+      "sha256": "c78148b4aafbba961c661532bdff7c18b93ba5d705249228ddcbe7058dea0833",
+      "size": 10497963,
+      "sourceNodeFirst": 484,
+      "sourceNodeLast": 555,
+      "sourceNodeCount": 72,
+      "initializerBytes": 10489991,
+      "inputs": [
+        {
+          "name": "/net/Constant_42_output_0",
+          "dtype": "INT64",
+          "shape": []
+        },
+        {
+          "name": "/net/ScatterND_3_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            18,
+            512
+          ]
+        },
+        {
+          "name": "/net/styles.3/convs/convs.7/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            2,
+            2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/ScatterND_5_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            18,
+            512
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 4276232,
+      "releaseAfter": [
+        "/net/Constant_42_output_0",
+        "/net/ScatterND_3_output_0",
+        "/net/styles.3/convs/convs.7/LeakyRelu_output_0"
+      ],
+      "liveBoundaryBytesAfterRelease": 4231168,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-026.onnx"
+    },
+    {
+      "id": 27,
+      "file": "part-027.onnx",
+      "sha256": "696c4a332b65928e4882ab20e5eca2255bc9c08ad99e134f6f7a24059497fc77",
+      "size": 9439920,
+      "sourceNodeFirst": 556,
+      "sourceNodeLast": 557,
+      "sourceNodeCount": 2,
+      "initializerBytes": 9439313,
+      "inputs": [
+        {
+          "name": "/net/Add_2_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            32,
+            32
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/styles.4/convs/convs.1/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            16,
+            16
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 4755456,
+      "releaseAfter": [],
+      "liveBoundaryBytesAfterRelease": 4755456,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-027.onnx"
+    },
+    {
+      "id": 28,
+      "file": "part-028.onnx",
+      "sha256": "0e52d86ec2dd580aeca71b16e347021766feb7dd23873149961aa29996f306af",
+      "size": 9439974,
+      "sourceNodeFirst": 558,
+      "sourceNodeLast": 559,
+      "sourceNodeCount": 2,
+      "initializerBytes": 9439313,
+      "inputs": [
+        {
+          "name": "/net/styles.4/convs/convs.1/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            16,
+            16
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/styles.4/convs/convs.3/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            8,
+            8
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 4886528,
+      "releaseAfter": [
+        "/net/styles.4/convs/convs.1/LeakyRelu_output_0"
+      ],
+      "liveBoundaryBytesAfterRelease": 4362240,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-028.onnx"
+    },
+    {
+      "id": 29,
+      "file": "part-029.onnx",
+      "sha256": "fa7b33da25b12b75d02e1e1d73b721587a5853b44228bc128a2660228b75626e",
+      "size": 9439974,
+      "sourceNodeFirst": 560,
+      "sourceNodeLast": 561,
+      "sourceNodeCount": 2,
+      "initializerBytes": 9439313,
+      "inputs": [
+        {
+          "name": "/net/styles.4/convs/convs.3/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            8,
+            8
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/styles.4/convs/convs.5/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            4,
+            4
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 4395008,
+      "releaseAfter": [
+        "/net/styles.4/convs/convs.3/LeakyRelu_output_0"
+      ],
+      "liveBoundaryBytesAfterRelease": 4263936,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-029.onnx"
+    },
+    {
+      "id": 30,
+      "file": "part-030.onnx",
+      "sha256": "3d7e3340aacf6f0273fa6b1160cddd24f4bab5e42af4c14da6925be5055c733a",
+      "size": 9439974,
+      "sourceNodeFirst": 562,
+      "sourceNodeLast": 563,
+      "sourceNodeCount": 2,
+      "initializerBytes": 9439313,
+      "inputs": [
+        {
+          "name": "/net/styles.4/convs/convs.5/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            4,
+            4
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/styles.4/convs/convs.7/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            2,
+            2
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 4272128,
+      "releaseAfter": [
+        "/net/styles.4/convs/convs.5/LeakyRelu_output_0"
+      ],
+      "liveBoundaryBytesAfterRelease": 4239360,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-030.onnx"
+    },
+    {
+      "id": 31,
+      "file": "part-031.onnx",
+      "sha256": "bcb0980f781355a35e725e9d75375bd5886842bf56e401f4d24684edc6744ab5",
+      "size": 10498048,
+      "sourceNodeFirst": 564,
+      "sourceNodeLast": 636,
+      "sourceNodeCount": 73,
+      "initializerBytes": 10489991,
+      "inputs": [
+        {
+          "name": "/net/ScatterND_5_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            18,
+            512
+          ]
+        },
+        {
+          "name": "/net/styles.4/convs/convs.7/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            2,
+            2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/ScatterND_7_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            18,
+            512
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 4276224,
+      "releaseAfter": [
+        "/net/ScatterND_5_output_0",
+        "/net/styles.4/convs/convs.7/LeakyRelu_output_0"
+      ],
+      "liveBoundaryBytesAfterRelease": 4231168,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-031.onnx"
+    },
+    {
+      "id": 32,
+      "file": "part-032.onnx",
+      "sha256": "ab680809c29536df625297104400e90bfd8743829a0a9f06dd0ce6ba0cb32474",
+      "size": 9439920,
+      "sourceNodeFirst": 637,
+      "sourceNodeLast": 638,
+      "sourceNodeCount": 2,
+      "initializerBytes": 9439313,
+      "inputs": [
+        {
+          "name": "/net/Add_2_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            32,
+            32
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/styles.5/convs/convs.1/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            16,
+            16
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 4755456,
+      "releaseAfter": [],
+      "liveBoundaryBytesAfterRelease": 4755456,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-032.onnx"
+    },
+    {
+      "id": 33,
+      "file": "part-033.onnx",
+      "sha256": "a3ce62b65a37ff4ccc662d6e79ad592420440acd35a41d4b0a69bf3b2d1a462d",
+      "size": 9439974,
+      "sourceNodeFirst": 639,
+      "sourceNodeLast": 640,
+      "sourceNodeCount": 2,
+      "initializerBytes": 9439313,
+      "inputs": [
+        {
+          "name": "/net/styles.5/convs/convs.1/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            16,
+            16
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/styles.5/convs/convs.3/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            8,
+            8
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 4886528,
+      "releaseAfter": [
+        "/net/styles.5/convs/convs.1/LeakyRelu_output_0"
+      ],
+      "liveBoundaryBytesAfterRelease": 4362240,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-033.onnx"
+    },
+    {
+      "id": 34,
+      "file": "part-034.onnx",
+      "sha256": "70cf72861939caff535ec491b6cb3f39d1eb8e6d730a504a427945b310bf0560",
+      "size": 9439974,
+      "sourceNodeFirst": 641,
+      "sourceNodeLast": 642,
+      "sourceNodeCount": 2,
+      "initializerBytes": 9439313,
+      "inputs": [
+        {
+          "name": "/net/styles.5/convs/convs.3/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            8,
+            8
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/styles.5/convs/convs.5/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            4,
+            4
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 4395008,
+      "releaseAfter": [
+        "/net/styles.5/convs/convs.3/LeakyRelu_output_0"
+      ],
+      "liveBoundaryBytesAfterRelease": 4263936,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-034.onnx"
+    },
+    {
+      "id": 35,
+      "file": "part-035.onnx",
+      "sha256": "2997dd45e211fff0c0e8c8c6c819c80f4948aaa586ddde3415c3808435c69501",
+      "size": 9439974,
+      "sourceNodeFirst": 643,
+      "sourceNodeLast": 644,
+      "sourceNodeCount": 2,
+      "initializerBytes": 9439313,
+      "inputs": [
+        {
+          "name": "/net/styles.5/convs/convs.5/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            4,
+            4
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/styles.5/convs/convs.7/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            2,
+            2
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 4272128,
+      "releaseAfter": [
+        "/net/styles.5/convs/convs.5/LeakyRelu_output_0"
+      ],
+      "liveBoundaryBytesAfterRelease": 4239360,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-035.onnx"
+    },
+    {
+      "id": 36,
+      "file": "part-036.onnx",
+      "sha256": "65104a1ceb47ad61479ad438e90f29f3b410c7194d2354db6d56b1bd129a3a5f",
+      "size": 10498078,
+      "sourceNodeFirst": 645,
+      "sourceNodeLast": 717,
+      "sourceNodeCount": 73,
+      "initializerBytes": 10489991,
+      "inputs": [
+        {
+          "name": "/net/ScatterND_7_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            18,
+            512
+          ]
+        },
+        {
+          "name": "/net/styles.5/convs/convs.7/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            2,
+            2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/ScatterND_9_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            18,
+            512
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 4276224,
+      "releaseAfter": [
+        "/net/ScatterND_7_output_0",
+        "/net/styles.5/convs/convs.7/LeakyRelu_output_0"
+      ],
+      "liveBoundaryBytesAfterRelease": 4231168,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-036.onnx"
+    },
+    {
+      "id": 37,
+      "file": "part-037.onnx",
+      "sha256": "9a0f73a3c0027541ae3353c3b973a29e5f986a4438c313cdb6e9f5191984f5ac",
+      "size": 9439920,
+      "sourceNodeFirst": 718,
+      "sourceNodeLast": 719,
+      "sourceNodeCount": 2,
+      "initializerBytes": 9439313,
+      "inputs": [
+        {
+          "name": "/net/Add_2_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            32,
+            32
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/styles.6/convs/convs.1/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            16,
+            16
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 4755456,
+      "releaseAfter": [],
+      "liveBoundaryBytesAfterRelease": 4755456,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-037.onnx"
+    },
+    {
+      "id": 38,
+      "file": "part-038.onnx",
+      "sha256": "6d9ec1026227c453ec62941405298ce0de5461fdf655c049d72b28380188d815",
+      "size": 9439974,
+      "sourceNodeFirst": 720,
+      "sourceNodeLast": 721,
+      "sourceNodeCount": 2,
+      "initializerBytes": 9439313,
+      "inputs": [
+        {
+          "name": "/net/styles.6/convs/convs.1/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            16,
+            16
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/styles.6/convs/convs.3/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            8,
+            8
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 4886528,
+      "releaseAfter": [
+        "/net/styles.6/convs/convs.1/LeakyRelu_output_0"
+      ],
+      "liveBoundaryBytesAfterRelease": 4362240,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-038.onnx"
+    },
+    {
+      "id": 39,
+      "file": "part-039.onnx",
+      "sha256": "c2df105a37d9e4c081bd2ef56ecd82fada96455b5d1e5e4b57e0cb70d3575e31",
+      "size": 9439974,
+      "sourceNodeFirst": 722,
+      "sourceNodeLast": 723,
+      "sourceNodeCount": 2,
+      "initializerBytes": 9439313,
+      "inputs": [
+        {
+          "name": "/net/styles.6/convs/convs.3/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            8,
+            8
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/styles.6/convs/convs.5/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            4,
+            4
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 4395008,
+      "releaseAfter": [
+        "/net/styles.6/convs/convs.3/LeakyRelu_output_0"
+      ],
+      "liveBoundaryBytesAfterRelease": 4263936,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-039.onnx"
+    },
+    {
+      "id": 40,
+      "file": "part-040.onnx",
+      "sha256": "bd5182e1314e6274ba756da371fe671d2977cbac4e1f5286a2b3e67a879c1baf",
+      "size": 9439974,
+      "sourceNodeFirst": 724,
+      "sourceNodeLast": 725,
+      "sourceNodeCount": 2,
+      "initializerBytes": 9439313,
+      "inputs": [
+        {
+          "name": "/net/styles.6/convs/convs.5/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            4,
+            4
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/styles.6/convs/convs.7/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            2,
+            2
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 4272128,
+      "releaseAfter": [
+        "/net/styles.6/convs/convs.5/LeakyRelu_output_0"
+      ],
+      "liveBoundaryBytesAfterRelease": 4239360,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-040.onnx"
+    },
+    {
+      "id": 41,
+      "file": "part-041.onnx",
+      "sha256": "b9854c61dbcb01b7b2528dd2bcca26bd13e32d086005e8c0dc97ef73ee66654a",
+      "size": 10763797,
+      "sourceNodeFirst": 726,
+      "sourceNodeLast": 808,
+      "sourceNodeCount": 83,
+      "initializerBytes": 10754249,
+      "inputs": [
+        {
+          "name": "/net/Add_2_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            32,
+            32
+          ]
+        },
+        {
+          "name": "/net/ScatterND_9_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            18,
+            512
+          ]
+        },
+        {
+          "name": "/net/body.6/Add_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            128,
+            64,
+            64
+          ]
+        },
+        {
+          "name": "/net/styles.6/convs/convs.7/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            2,
+            2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/Add_7_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            64,
+            64
+          ]
+        },
+        {
+          "name": "/net/ScatterND_11_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            18,
+            512
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 12664832,
+      "releaseAfter": [
+        "/net/body.6/Add_output_0",
+        "/net/Add_2_output_0",
+        "/net/ScatterND_9_output_0",
+        "/net/styles.6/convs/convs.7/LeakyRelu_output_0"
+      ],
+      "liveBoundaryBytesAfterRelease": 8425472,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-041.onnx"
+    },
+    {
+      "id": 42,
+      "file": "part-042.onnx",
+      "sha256": "97033f765efa7a64d2fa8f2681f868e2f72ccbdf8da3fe7f848b267dec388015",
+      "size": 9439920,
+      "sourceNodeFirst": 809,
+      "sourceNodeLast": 810,
+      "sourceNodeCount": 2,
+      "initializerBytes": 9439313,
+      "inputs": [
+        {
+          "name": "/net/Add_7_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            64,
+            64
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/styles.7/convs/convs.1/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            32,
+            32
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 10522624,
+      "releaseAfter": [],
+      "liveBoundaryBytesAfterRelease": 10522624,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-042.onnx"
+    },
+    {
+      "id": 43,
+      "file": "part-043.onnx",
+      "sha256": "6153f391c22bf99a5a9350ae2ec38a172876bc2384eda49d44aec4cea11153d0",
+      "size": 9439974,
+      "sourceNodeFirst": 811,
+      "sourceNodeLast": 812,
+      "sourceNodeCount": 2,
+      "initializerBytes": 9439313,
+      "inputs": [
+        {
+          "name": "/net/styles.7/convs/convs.1/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            32,
+            32
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/styles.7/convs/convs.3/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            16,
+            16
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 11046912,
+      "releaseAfter": [
+        "/net/styles.7/convs/convs.1/LeakyRelu_output_0"
+      ],
+      "liveBoundaryBytesAfterRelease": 8949760,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-043.onnx"
+    },
+    {
+      "id": 44,
+      "file": "part-044.onnx",
+      "sha256": "ce3cc64a1a9c8a58f24dff6996b5f38028821c6bec1b620737a2f7a11865a75e",
+      "size": 9439974,
+      "sourceNodeFirst": 813,
+      "sourceNodeLast": 814,
+      "sourceNodeCount": 2,
+      "initializerBytes": 9439313,
+      "inputs": [
+        {
+          "name": "/net/styles.7/convs/convs.3/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            16,
+            16
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/styles.7/convs/convs.5/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            8,
+            8
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 9080832,
+      "releaseAfter": [
+        "/net/styles.7/convs/convs.3/LeakyRelu_output_0"
+      ],
+      "liveBoundaryBytesAfterRelease": 8556544,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-044.onnx"
+    },
+    {
+      "id": 45,
+      "file": "part-045.onnx",
+      "sha256": "6ae1da8ced268ee45a51c5a1bc2c20f1c16df7c611147fa8f7ec945f2c587e67",
+      "size": 9439974,
+      "sourceNodeFirst": 815,
+      "sourceNodeLast": 816,
+      "sourceNodeCount": 2,
+      "initializerBytes": 9439313,
+      "inputs": [
+        {
+          "name": "/net/styles.7/convs/convs.5/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            8,
+            8
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/styles.7/convs/convs.7/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            4,
+            4
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 8589312,
+      "releaseAfter": [
+        "/net/styles.7/convs/convs.5/LeakyRelu_output_0"
+      ],
+      "liveBoundaryBytesAfterRelease": 8458240,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-045.onnx"
+    },
+    {
+      "id": 46,
+      "file": "part-046.onnx",
+      "sha256": "6d05466b5177378908317be01f66a2b5215b31431a36685bcdf09a22b786b464",
+      "size": 9439974,
+      "sourceNodeFirst": 817,
+      "sourceNodeLast": 818,
+      "sourceNodeCount": 2,
+      "initializerBytes": 9439313,
+      "inputs": [
+        {
+          "name": "/net/styles.7/convs/convs.7/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            4,
+            4
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/styles.7/convs/convs.9/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            2,
+            2
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 8466432,
+      "releaseAfter": [
+        "/net/styles.7/convs/convs.7/LeakyRelu_output_0"
+      ],
+      "liveBoundaryBytesAfterRelease": 8433664,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-046.onnx"
+    },
+    {
+      "id": 47,
+      "file": "part-047.onnx",
+      "sha256": "4f3199a6b4fa3fedf946a91400565181a1b13250da1f3e58f20501aefc6dac52",
+      "size": 10498161,
+      "sourceNodeFirst": 819,
+      "sourceNodeLast": 891,
+      "sourceNodeCount": 73,
+      "initializerBytes": 10489993,
+      "inputs": [
+        {
+          "name": "/net/ScatterND_11_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            18,
+            512
+          ]
+        },
+        {
+          "name": "/net/styles.7/convs/convs.9/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            2,
+            2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/ScatterND_13_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            18,
+            512
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 8470528,
+      "releaseAfter": [
+        "/net/ScatterND_11_output_0",
+        "/net/styles.7/convs/convs.9/LeakyRelu_output_0"
+      ],
+      "liveBoundaryBytesAfterRelease": 8425472,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-047.onnx"
+    },
+    {
+      "id": 48,
+      "file": "part-048.onnx",
+      "sha256": "70a250fbdbc8a3c4d7cd5099ceb07a1a752f39bdcd8f63266dd0687bb42999ff",
+      "size": 9439920,
+      "sourceNodeFirst": 892,
+      "sourceNodeLast": 893,
+      "sourceNodeCount": 2,
+      "initializerBytes": 9439313,
+      "inputs": [
+        {
+          "name": "/net/Add_7_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            64,
+            64
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/styles.8/convs/convs.1/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            32,
+            32
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 10522624,
+      "releaseAfter": [],
+      "liveBoundaryBytesAfterRelease": 10522624,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-048.onnx"
+    },
+    {
+      "id": 49,
+      "file": "part-049.onnx",
+      "sha256": "4497f4ccab4eca99480542fece238e1f86e1f6678408a397a1cf3d43479dc0db",
+      "size": 9439974,
+      "sourceNodeFirst": 894,
+      "sourceNodeLast": 895,
+      "sourceNodeCount": 2,
+      "initializerBytes": 9439313,
+      "inputs": [
+        {
+          "name": "/net/styles.8/convs/convs.1/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            32,
+            32
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/styles.8/convs/convs.3/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            16,
+            16
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 11046912,
+      "releaseAfter": [
+        "/net/styles.8/convs/convs.1/LeakyRelu_output_0"
+      ],
+      "liveBoundaryBytesAfterRelease": 8949760,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-049.onnx"
+    },
+    {
+      "id": 50,
+      "file": "part-050.onnx",
+      "sha256": "eae24f82233f2000081fd85e7ce725f518c9e99a26f9f8aebc1c18fb232b457b",
+      "size": 9439974,
+      "sourceNodeFirst": 896,
+      "sourceNodeLast": 897,
+      "sourceNodeCount": 2,
+      "initializerBytes": 9439313,
+      "inputs": [
+        {
+          "name": "/net/styles.8/convs/convs.3/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            16,
+            16
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/styles.8/convs/convs.5/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            8,
+            8
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 9080832,
+      "releaseAfter": [
+        "/net/styles.8/convs/convs.3/LeakyRelu_output_0"
+      ],
+      "liveBoundaryBytesAfterRelease": 8556544,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-050.onnx"
+    },
+    {
+      "id": 51,
+      "file": "part-051.onnx",
+      "sha256": "88793335ca68197ed896273ce3b27ee94bd5512490efef9dcdbf25a420fbf91e",
+      "size": 9439974,
+      "sourceNodeFirst": 898,
+      "sourceNodeLast": 899,
+      "sourceNodeCount": 2,
+      "initializerBytes": 9439313,
+      "inputs": [
+        {
+          "name": "/net/styles.8/convs/convs.5/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            8,
+            8
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/styles.8/convs/convs.7/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            4,
+            4
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 8589312,
+      "releaseAfter": [
+        "/net/styles.8/convs/convs.5/LeakyRelu_output_0"
+      ],
+      "liveBoundaryBytesAfterRelease": 8458240,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-051.onnx"
+    },
+    {
+      "id": 52,
+      "file": "part-052.onnx",
+      "sha256": "28991ae03edfb18987237e05115af02fc80648856a11e308fba83d137ebccf1a",
+      "size": 9439974,
+      "sourceNodeFirst": 900,
+      "sourceNodeLast": 901,
+      "sourceNodeCount": 2,
+      "initializerBytes": 9439313,
+      "inputs": [
+        {
+          "name": "/net/styles.8/convs/convs.7/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            4,
+            4
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/styles.8/convs/convs.9/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            2,
+            2
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 8466432,
+      "releaseAfter": [
+        "/net/styles.8/convs/convs.7/LeakyRelu_output_0"
+      ],
+      "liveBoundaryBytesAfterRelease": 8433664,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-052.onnx"
+    },
+    {
+      "id": 53,
+      "file": "part-053.onnx",
+      "sha256": "87c406a5a304e6a96ee812f019cad7f43f59083bc2bb38f522e77e34a4e32634",
+      "size": 10498161,
+      "sourceNodeFirst": 902,
+      "sourceNodeLast": 974,
+      "sourceNodeCount": 73,
+      "initializerBytes": 10489993,
+      "inputs": [
+        {
+          "name": "/net/ScatterND_13_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            18,
+            512
+          ]
+        },
+        {
+          "name": "/net/styles.8/convs/convs.9/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            2,
+            2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/ScatterND_15_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            18,
+            512
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 8470528,
+      "releaseAfter": [
+        "/net/ScatterND_13_output_0",
+        "/net/styles.8/convs/convs.9/LeakyRelu_output_0"
+      ],
+      "liveBoundaryBytesAfterRelease": 8425472,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-053.onnx"
+    },
+    {
+      "id": 54,
+      "file": "part-054.onnx",
+      "sha256": "c3b0ff0309e187af74a124f7b5d031bbaad120196c2dbe0e5866dd6876685a8d",
+      "size": 9439920,
+      "sourceNodeFirst": 975,
+      "sourceNodeLast": 976,
+      "sourceNodeCount": 2,
+      "initializerBytes": 9439313,
+      "inputs": [
+        {
+          "name": "/net/Add_7_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            64,
+            64
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/styles.9/convs/convs.1/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            32,
+            32
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 10522624,
+      "releaseAfter": [],
+      "liveBoundaryBytesAfterRelease": 10522624,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-054.onnx"
+    },
+    {
+      "id": 55,
+      "file": "part-055.onnx",
+      "sha256": "0a8869f05b11fa858e301c7bffdf9d0eb6db7121ba06822006e050417ac2d8cf",
+      "size": 9439974,
+      "sourceNodeFirst": 977,
+      "sourceNodeLast": 978,
+      "sourceNodeCount": 2,
+      "initializerBytes": 9439313,
+      "inputs": [
+        {
+          "name": "/net/styles.9/convs/convs.1/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            32,
+            32
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/styles.9/convs/convs.3/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            16,
+            16
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 11046912,
+      "releaseAfter": [
+        "/net/styles.9/convs/convs.1/LeakyRelu_output_0"
+      ],
+      "liveBoundaryBytesAfterRelease": 8949760,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-055.onnx"
+    },
+    {
+      "id": 56,
+      "file": "part-056.onnx",
+      "sha256": "3df81c45b19971ea90c9d1cf82dc0c96dd076ad3bc8b92ba914aa2fe90d58944",
+      "size": 9439974,
+      "sourceNodeFirst": 979,
+      "sourceNodeLast": 980,
+      "sourceNodeCount": 2,
+      "initializerBytes": 9439313,
+      "inputs": [
+        {
+          "name": "/net/styles.9/convs/convs.3/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            16,
+            16
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/styles.9/convs/convs.5/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            8,
+            8
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 9080832,
+      "releaseAfter": [
+        "/net/styles.9/convs/convs.3/LeakyRelu_output_0"
+      ],
+      "liveBoundaryBytesAfterRelease": 8556544,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-056.onnx"
+    },
+    {
+      "id": 57,
+      "file": "part-057.onnx",
+      "sha256": "cd70098f89d1ddb7a839e29f4d17c9a4767b7ae2f16c7ca327b0d16359896816",
+      "size": 9439974,
+      "sourceNodeFirst": 981,
+      "sourceNodeLast": 982,
+      "sourceNodeCount": 2,
+      "initializerBytes": 9439313,
+      "inputs": [
+        {
+          "name": "/net/styles.9/convs/convs.5/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            8,
+            8
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/styles.9/convs/convs.7/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            4,
+            4
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 8589312,
+      "releaseAfter": [
+        "/net/styles.9/convs/convs.5/LeakyRelu_output_0"
+      ],
+      "liveBoundaryBytesAfterRelease": 8458240,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-057.onnx"
+    },
+    {
+      "id": 58,
+      "file": "part-058.onnx",
+      "sha256": "ab388d0f6cf08f54ea14a12a2d3290855dc9cb5582cb4a8c43331095a3372c75",
+      "size": 9439974,
+      "sourceNodeFirst": 983,
+      "sourceNodeLast": 984,
+      "sourceNodeCount": 2,
+      "initializerBytes": 9439313,
+      "inputs": [
+        {
+          "name": "/net/styles.9/convs/convs.7/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            4,
+            4
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/styles.9/convs/convs.9/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            2,
+            2
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 8466432,
+      "releaseAfter": [
+        "/net/styles.9/convs/convs.7/LeakyRelu_output_0"
+      ],
+      "liveBoundaryBytesAfterRelease": 8433664,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-058.onnx"
+    },
+    {
+      "id": 59,
+      "file": "part-059.onnx",
+      "sha256": "d3423bb3cde4d724960bbd01f3e53bae8bfd0df7f0c0cff4a6fa0e5fa8f7c9bf",
+      "size": 10498165,
+      "sourceNodeFirst": 985,
+      "sourceNodeLast": 1057,
+      "sourceNodeCount": 73,
+      "initializerBytes": 10489993,
+      "inputs": [
+        {
+          "name": "/net/ScatterND_15_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            18,
+            512
+          ]
+        },
+        {
+          "name": "/net/styles.9/convs/convs.9/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            2,
+            2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/ScatterND_17_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            18,
+            512
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 8470528,
+      "releaseAfter": [
+        "/net/ScatterND_15_output_0",
+        "/net/styles.9/convs/convs.9/LeakyRelu_output_0"
+      ],
+      "liveBoundaryBytesAfterRelease": 8425472,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-059.onnx"
+    },
+    {
+      "id": 60,
+      "file": "part-060.onnx",
+      "sha256": "0272ba405530c7c65d08fb3136c40f238258ee707964e77d4cb330a646d695c9",
+      "size": 9439930,
+      "sourceNodeFirst": 1058,
+      "sourceNodeLast": 1059,
+      "sourceNodeCount": 2,
+      "initializerBytes": 9439315,
+      "inputs": [
+        {
+          "name": "/net/Add_7_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            64,
+            64
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/styles.10/convs/convs.1/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            32,
+            32
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 10522624,
+      "releaseAfter": [],
+      "liveBoundaryBytesAfterRelease": 10522624,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-060.onnx"
+    },
+    {
+      "id": 61,
+      "file": "part-061.onnx",
+      "sha256": "0c441e933d4ef5cead5eb9b08bae857aff8f3db9497a14bcaf622e21dc90a51e",
+      "size": 9439986,
+      "sourceNodeFirst": 1060,
+      "sourceNodeLast": 1061,
+      "sourceNodeCount": 2,
+      "initializerBytes": 9439315,
+      "inputs": [
+        {
+          "name": "/net/styles.10/convs/convs.1/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            32,
+            32
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/styles.10/convs/convs.3/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            16,
+            16
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 11046912,
+      "releaseAfter": [
+        "/net/styles.10/convs/convs.1/LeakyRelu_output_0"
+      ],
+      "liveBoundaryBytesAfterRelease": 8949760,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-061.onnx"
+    },
+    {
+      "id": 62,
+      "file": "part-062.onnx",
+      "sha256": "5d803a936a538185614f763faf6a187717f08463d128fd329b55bdb7eb0183c3",
+      "size": 9439986,
+      "sourceNodeFirst": 1062,
+      "sourceNodeLast": 1063,
+      "sourceNodeCount": 2,
+      "initializerBytes": 9439315,
+      "inputs": [
+        {
+          "name": "/net/styles.10/convs/convs.3/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            16,
+            16
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/styles.10/convs/convs.5/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            8,
+            8
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 9080832,
+      "releaseAfter": [
+        "/net/styles.10/convs/convs.3/LeakyRelu_output_0"
+      ],
+      "liveBoundaryBytesAfterRelease": 8556544,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-062.onnx"
+    },
+    {
+      "id": 63,
+      "file": "part-063.onnx",
+      "sha256": "c30259351dc33e318c0614489801aa64d94b49cb73abfeb93c10e9ade73734b7",
+      "size": 9439986,
+      "sourceNodeFirst": 1064,
+      "sourceNodeLast": 1065,
+      "sourceNodeCount": 2,
+      "initializerBytes": 9439315,
+      "inputs": [
+        {
+          "name": "/net/styles.10/convs/convs.5/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            8,
+            8
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/styles.10/convs/convs.7/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            4,
+            4
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 8589312,
+      "releaseAfter": [
+        "/net/styles.10/convs/convs.5/LeakyRelu_output_0"
+      ],
+      "liveBoundaryBytesAfterRelease": 8458240,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-063.onnx"
+    },
+    {
+      "id": 64,
+      "file": "part-064.onnx",
+      "sha256": "7498296e3ec28abda220aab20c516070c3bb03acc0219ad898553f82a4095812",
+      "size": 9439986,
+      "sourceNodeFirst": 1066,
+      "sourceNodeLast": 1067,
+      "sourceNodeCount": 2,
+      "initializerBytes": 9439315,
+      "inputs": [
+        {
+          "name": "/net/styles.10/convs/convs.7/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            4,
+            4
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/styles.10/convs/convs.9/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            2,
+            2
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 8466432,
+      "releaseAfter": [
+        "/net/styles.10/convs/convs.7/LeakyRelu_output_0"
+      ],
+      "liveBoundaryBytesAfterRelease": 8433664,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-064.onnx"
+    },
+    {
+      "id": 65,
+      "file": "part-065.onnx",
+      "sha256": "d95b6f0b6331b79a8614692050a995fb20df14c1cf7b4b5f66e379bbb49515d3",
+      "size": 10498186,
+      "sourceNodeFirst": 1068,
+      "sourceNodeLast": 1140,
+      "sourceNodeCount": 73,
+      "initializerBytes": 10489995,
+      "inputs": [
+        {
+          "name": "/net/ScatterND_17_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            18,
+            512
+          ]
+        },
+        {
+          "name": "/net/styles.10/convs/convs.9/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            2,
+            2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/ScatterND_19_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            18,
+            512
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 8470528,
+      "releaseAfter": [
+        "/net/ScatterND_17_output_0",
+        "/net/styles.10/convs/convs.9/LeakyRelu_output_0"
+      ],
+      "liveBoundaryBytesAfterRelease": 8425472,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-065.onnx"
+    },
+    {
+      "id": 66,
+      "file": "part-066.onnx",
+      "sha256": "8496bf2fce60299074fa45cc1fac9cd128fc1c731fc124067f3e9bf39f0acbda",
+      "size": 9439930,
+      "sourceNodeFirst": 1141,
+      "sourceNodeLast": 1142,
+      "sourceNodeCount": 2,
+      "initializerBytes": 9439315,
+      "inputs": [
+        {
+          "name": "/net/Add_7_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            64,
+            64
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/styles.11/convs/convs.1/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            32,
+            32
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 10522624,
+      "releaseAfter": [],
+      "liveBoundaryBytesAfterRelease": 10522624,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-066.onnx"
+    },
+    {
+      "id": 67,
+      "file": "part-067.onnx",
+      "sha256": "afb87c9354be1303eda26f6d0507b52c9e541509d018c079248aedd2942ac216",
+      "size": 9439986,
+      "sourceNodeFirst": 1143,
+      "sourceNodeLast": 1144,
+      "sourceNodeCount": 2,
+      "initializerBytes": 9439315,
+      "inputs": [
+        {
+          "name": "/net/styles.11/convs/convs.1/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            32,
+            32
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/styles.11/convs/convs.3/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            16,
+            16
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 11046912,
+      "releaseAfter": [
+        "/net/styles.11/convs/convs.1/LeakyRelu_output_0"
+      ],
+      "liveBoundaryBytesAfterRelease": 8949760,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-067.onnx"
+    },
+    {
+      "id": 68,
+      "file": "part-068.onnx",
+      "sha256": "15ccd232bca2766fb68a42fd0a7accc00c0a01164f5c85d6c81282b4e260994a",
+      "size": 9439986,
+      "sourceNodeFirst": 1145,
+      "sourceNodeLast": 1146,
+      "sourceNodeCount": 2,
+      "initializerBytes": 9439315,
+      "inputs": [
+        {
+          "name": "/net/styles.11/convs/convs.3/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            16,
+            16
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/styles.11/convs/convs.5/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            8,
+            8
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 9080832,
+      "releaseAfter": [
+        "/net/styles.11/convs/convs.3/LeakyRelu_output_0"
+      ],
+      "liveBoundaryBytesAfterRelease": 8556544,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-068.onnx"
+    },
+    {
+      "id": 69,
+      "file": "part-069.onnx",
+      "sha256": "0d40776d5592542221d03221442381085b6d7e946d3596680810120e52121b6b",
+      "size": 9439986,
+      "sourceNodeFirst": 1147,
+      "sourceNodeLast": 1148,
+      "sourceNodeCount": 2,
+      "initializerBytes": 9439315,
+      "inputs": [
+        {
+          "name": "/net/styles.11/convs/convs.5/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            8,
+            8
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/styles.11/convs/convs.7/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            4,
+            4
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 8589312,
+      "releaseAfter": [
+        "/net/styles.11/convs/convs.5/LeakyRelu_output_0"
+      ],
+      "liveBoundaryBytesAfterRelease": 8458240,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-069.onnx"
+    },
+    {
+      "id": 70,
+      "file": "part-070.onnx",
+      "sha256": "584a31b5e1f35a9bf677eb7b93bd1622e27235b5d72f932a95b4aa53a1bc2382",
+      "size": 9439986,
+      "sourceNodeFirst": 1149,
+      "sourceNodeLast": 1150,
+      "sourceNodeCount": 2,
+      "initializerBytes": 9439315,
+      "inputs": [
+        {
+          "name": "/net/styles.11/convs/convs.7/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            4,
+            4
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/styles.11/convs/convs.9/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            2,
+            2
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 8466432,
+      "releaseAfter": [
+        "/net/styles.11/convs/convs.7/LeakyRelu_output_0"
+      ],
+      "liveBoundaryBytesAfterRelease": 8433664,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-070.onnx"
+    },
+    {
+      "id": 71,
+      "file": "part-071.onnx",
+      "sha256": "4b3fd383bd26e50e58214be2840d0eebefa2ef3738061252d24021c5f8e984ea",
+      "size": 10498186,
+      "sourceNodeFirst": 1151,
+      "sourceNodeLast": 1223,
+      "sourceNodeCount": 73,
+      "initializerBytes": 10489995,
+      "inputs": [
+        {
+          "name": "/net/ScatterND_19_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            18,
+            512
+          ]
+        },
+        {
+          "name": "/net/styles.11/convs/convs.9/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            2,
+            2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/ScatterND_21_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            18,
+            512
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 8470528,
+      "releaseAfter": [
+        "/net/ScatterND_19_output_0",
+        "/net/styles.11/convs/convs.9/LeakyRelu_output_0"
+      ],
+      "liveBoundaryBytesAfterRelease": 8425472,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-071.onnx"
+    },
+    {
+      "id": 72,
+      "file": "part-072.onnx",
+      "sha256": "7d69fe8b48feda4b252b7d99ef99f55a763e8897e986064bc1a1415640fd0a04",
+      "size": 9439930,
+      "sourceNodeFirst": 1224,
+      "sourceNodeLast": 1225,
+      "sourceNodeCount": 2,
+      "initializerBytes": 9439315,
+      "inputs": [
+        {
+          "name": "/net/Add_7_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            64,
+            64
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/styles.12/convs/convs.1/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            32,
+            32
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 10522624,
+      "releaseAfter": [],
+      "liveBoundaryBytesAfterRelease": 10522624,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-072.onnx"
+    },
+    {
+      "id": 73,
+      "file": "part-073.onnx",
+      "sha256": "48a56e1d6860f0aee692b535e3b82bd07710e3fadf008fa7f558e53fdc4322b5",
+      "size": 9439986,
+      "sourceNodeFirst": 1226,
+      "sourceNodeLast": 1227,
+      "sourceNodeCount": 2,
+      "initializerBytes": 9439315,
+      "inputs": [
+        {
+          "name": "/net/styles.12/convs/convs.1/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            32,
+            32
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/styles.12/convs/convs.3/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            16,
+            16
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 11046912,
+      "releaseAfter": [
+        "/net/styles.12/convs/convs.1/LeakyRelu_output_0"
+      ],
+      "liveBoundaryBytesAfterRelease": 8949760,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-073.onnx"
+    },
+    {
+      "id": 74,
+      "file": "part-074.onnx",
+      "sha256": "a40f0cf75760d8852dd7b69b5994a89007a828f4add8b51667ca8ddd41e5dcc9",
+      "size": 9439986,
+      "sourceNodeFirst": 1228,
+      "sourceNodeLast": 1229,
+      "sourceNodeCount": 2,
+      "initializerBytes": 9439315,
+      "inputs": [
+        {
+          "name": "/net/styles.12/convs/convs.3/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            16,
+            16
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/styles.12/convs/convs.5/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            8,
+            8
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 9080832,
+      "releaseAfter": [
+        "/net/styles.12/convs/convs.3/LeakyRelu_output_0"
+      ],
+      "liveBoundaryBytesAfterRelease": 8556544,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-074.onnx"
+    },
+    {
+      "id": 75,
+      "file": "part-075.onnx",
+      "sha256": "f9d02fde7d5f37c88afcaf9e73ddc2e4b4adfc0f3803cc5c24f8e6fdce8eae67",
+      "size": 9439986,
+      "sourceNodeFirst": 1230,
+      "sourceNodeLast": 1231,
+      "sourceNodeCount": 2,
+      "initializerBytes": 9439315,
+      "inputs": [
+        {
+          "name": "/net/styles.12/convs/convs.5/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            8,
+            8
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/styles.12/convs/convs.7/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            4,
+            4
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 8589312,
+      "releaseAfter": [
+        "/net/styles.12/convs/convs.5/LeakyRelu_output_0"
+      ],
+      "liveBoundaryBytesAfterRelease": 8458240,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-075.onnx"
+    },
+    {
+      "id": 76,
+      "file": "part-076.onnx",
+      "sha256": "9d4676eb426b921c9d6775d2c704be6ab608d81134f3b6feaffec12098efa677",
+      "size": 9439986,
+      "sourceNodeFirst": 1232,
+      "sourceNodeLast": 1233,
+      "sourceNodeCount": 2,
+      "initializerBytes": 9439315,
+      "inputs": [
+        {
+          "name": "/net/styles.12/convs/convs.7/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            4,
+            4
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/styles.12/convs/convs.9/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            2,
+            2
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 8466432,
+      "releaseAfter": [
+        "/net/styles.12/convs/convs.7/LeakyRelu_output_0"
+      ],
+      "liveBoundaryBytesAfterRelease": 8433664,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-076.onnx"
+    },
+    {
+      "id": 77,
+      "file": "part-077.onnx",
+      "sha256": "2867e49ada4abac8c09bbacd04201461957b40c36c57e1f120fea23c0d1727b9",
+      "size": 10498186,
+      "sourceNodeFirst": 1234,
+      "sourceNodeLast": 1306,
+      "sourceNodeCount": 73,
+      "initializerBytes": 10489995,
+      "inputs": [
+        {
+          "name": "/net/ScatterND_21_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            18,
+            512
+          ]
+        },
+        {
+          "name": "/net/styles.12/convs/convs.9/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            2,
+            2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/ScatterND_23_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            18,
+            512
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 8470528,
+      "releaseAfter": [
+        "/net/ScatterND_21_output_0",
+        "/net/styles.12/convs/convs.9/LeakyRelu_output_0"
+      ],
+      "liveBoundaryBytesAfterRelease": 8425472,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-077.onnx"
+    },
+    {
+      "id": 78,
+      "file": "part-078.onnx",
+      "sha256": "fce1fb49eb3bc5073602811147d63f71fb2866be109c151901912d588860c83f",
+      "size": 9439930,
+      "sourceNodeFirst": 1307,
+      "sourceNodeLast": 1308,
+      "sourceNodeCount": 2,
+      "initializerBytes": 9439315,
+      "inputs": [
+        {
+          "name": "/net/Add_7_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            64,
+            64
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/styles.13/convs/convs.1/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            32,
+            32
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 10522624,
+      "releaseAfter": [],
+      "liveBoundaryBytesAfterRelease": 10522624,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-078.onnx"
+    },
+    {
+      "id": 79,
+      "file": "part-079.onnx",
+      "sha256": "fa316d3afdc6742d1c7d3318d8cb924a6d519c077604e5d4ff2d84302b62f0ce",
+      "size": 9439986,
+      "sourceNodeFirst": 1309,
+      "sourceNodeLast": 1310,
+      "sourceNodeCount": 2,
+      "initializerBytes": 9439315,
+      "inputs": [
+        {
+          "name": "/net/styles.13/convs/convs.1/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            32,
+            32
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/styles.13/convs/convs.3/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            16,
+            16
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 11046912,
+      "releaseAfter": [
+        "/net/styles.13/convs/convs.1/LeakyRelu_output_0"
+      ],
+      "liveBoundaryBytesAfterRelease": 8949760,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-079.onnx"
+    },
+    {
+      "id": 80,
+      "file": "part-080.onnx",
+      "sha256": "17e97bc7d185aba84d3a39369a0b21de33017c9e35575b680a7748ebf06eb7c4",
+      "size": 9439986,
+      "sourceNodeFirst": 1311,
+      "sourceNodeLast": 1312,
+      "sourceNodeCount": 2,
+      "initializerBytes": 9439315,
+      "inputs": [
+        {
+          "name": "/net/styles.13/convs/convs.3/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            16,
+            16
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/styles.13/convs/convs.5/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            8,
+            8
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 9080832,
+      "releaseAfter": [
+        "/net/styles.13/convs/convs.3/LeakyRelu_output_0"
+      ],
+      "liveBoundaryBytesAfterRelease": 8556544,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-080.onnx"
+    },
+    {
+      "id": 81,
+      "file": "part-081.onnx",
+      "sha256": "770a5782f2b2febb62741dd8d79c594631a847da06d198e0a7e913f053d0e607",
+      "size": 9439986,
+      "sourceNodeFirst": 1313,
+      "sourceNodeLast": 1314,
+      "sourceNodeCount": 2,
+      "initializerBytes": 9439315,
+      "inputs": [
+        {
+          "name": "/net/styles.13/convs/convs.5/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            8,
+            8
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/styles.13/convs/convs.7/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            4,
+            4
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 8589312,
+      "releaseAfter": [
+        "/net/styles.13/convs/convs.5/LeakyRelu_output_0"
+      ],
+      "liveBoundaryBytesAfterRelease": 8458240,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-081.onnx"
+    },
+    {
+      "id": 82,
+      "file": "part-082.onnx",
+      "sha256": "5674415919e2b33322b291e28376c4cc8db16c38ac9d0888dc83f0866b60aa73",
+      "size": 9439986,
+      "sourceNodeFirst": 1315,
+      "sourceNodeLast": 1316,
+      "sourceNodeCount": 2,
+      "initializerBytes": 9439315,
+      "inputs": [
+        {
+          "name": "/net/styles.13/convs/convs.7/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            4,
+            4
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/styles.13/convs/convs.9/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            2,
+            2
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 8466432,
+      "releaseAfter": [
+        "/net/styles.13/convs/convs.7/LeakyRelu_output_0"
+      ],
+      "liveBoundaryBytesAfterRelease": 8433664,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-082.onnx"
+    },
+    {
+      "id": 83,
+      "file": "part-083.onnx",
+      "sha256": "af851f7c407123f9a89efd77d4b6c56a6f3cbbfde7b879764d32095453629d7e",
+      "size": 10498186,
+      "sourceNodeFirst": 1317,
+      "sourceNodeLast": 1389,
+      "sourceNodeCount": 73,
+      "initializerBytes": 10489995,
+      "inputs": [
+        {
+          "name": "/net/ScatterND_23_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            18,
+            512
+          ]
+        },
+        {
+          "name": "/net/styles.13/convs/convs.9/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            2,
+            2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/ScatterND_25_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            18,
+            512
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 8470528,
+      "releaseAfter": [
+        "/net/ScatterND_23_output_0",
+        "/net/styles.13/convs/convs.9/LeakyRelu_output_0"
+      ],
+      "liveBoundaryBytesAfterRelease": 8425472,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-083.onnx"
+    },
+    {
+      "id": 84,
+      "file": "part-084.onnx",
+      "sha256": "82f575e5a785f830cb2107fca95867be3c894738bd2adf38e2d5d3b3704b7fb4",
+      "size": 9439930,
+      "sourceNodeFirst": 1390,
+      "sourceNodeLast": 1391,
+      "sourceNodeCount": 2,
+      "initializerBytes": 9439315,
+      "inputs": [
+        {
+          "name": "/net/Add_7_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            64,
+            64
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/styles.14/convs/convs.1/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            32,
+            32
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 10522624,
+      "releaseAfter": [],
+      "liveBoundaryBytesAfterRelease": 10522624,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-084.onnx"
+    },
+    {
+      "id": 85,
+      "file": "part-085.onnx",
+      "sha256": "735953d985bdaa3760576f1ab5cdcd8dbd443844ec7f185eebbd2ac37c8bb1dc",
+      "size": 9439986,
+      "sourceNodeFirst": 1392,
+      "sourceNodeLast": 1393,
+      "sourceNodeCount": 2,
+      "initializerBytes": 9439315,
+      "inputs": [
+        {
+          "name": "/net/styles.14/convs/convs.1/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            32,
+            32
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/styles.14/convs/convs.3/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            16,
+            16
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 11046912,
+      "releaseAfter": [
+        "/net/styles.14/convs/convs.1/LeakyRelu_output_0"
+      ],
+      "liveBoundaryBytesAfterRelease": 8949760,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-085.onnx"
+    },
+    {
+      "id": 86,
+      "file": "part-086.onnx",
+      "sha256": "86adeae31a2d62f9c1968462d64924b0da6dc1ea60a0da20a7e17229eda0c035",
+      "size": 9439986,
+      "sourceNodeFirst": 1394,
+      "sourceNodeLast": 1395,
+      "sourceNodeCount": 2,
+      "initializerBytes": 9439315,
+      "inputs": [
+        {
+          "name": "/net/styles.14/convs/convs.3/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            16,
+            16
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/styles.14/convs/convs.5/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            8,
+            8
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 9080832,
+      "releaseAfter": [
+        "/net/styles.14/convs/convs.3/LeakyRelu_output_0"
+      ],
+      "liveBoundaryBytesAfterRelease": 8556544,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-086.onnx"
+    },
+    {
+      "id": 87,
+      "file": "part-087.onnx",
+      "sha256": "55dad4a9b308d6e96d9ef7ba33691e0076595659397a849d5d2289015706dce6",
+      "size": 9439986,
+      "sourceNodeFirst": 1396,
+      "sourceNodeLast": 1397,
+      "sourceNodeCount": 2,
+      "initializerBytes": 9439315,
+      "inputs": [
+        {
+          "name": "/net/styles.14/convs/convs.5/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            8,
+            8
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/styles.14/convs/convs.7/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            4,
+            4
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 8589312,
+      "releaseAfter": [
+        "/net/styles.14/convs/convs.5/LeakyRelu_output_0"
+      ],
+      "liveBoundaryBytesAfterRelease": 8458240,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-087.onnx"
+    },
+    {
+      "id": 88,
+      "file": "part-088.onnx",
+      "sha256": "77e90f7cbc03b3682f3c04023e486c70fa9c01d42e9d5e57d5ebbbd9a9a1b260",
+      "size": 9439986,
+      "sourceNodeFirst": 1398,
+      "sourceNodeLast": 1399,
+      "sourceNodeCount": 2,
+      "initializerBytes": 9439315,
+      "inputs": [
+        {
+          "name": "/net/styles.14/convs/convs.7/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            4,
+            4
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/styles.14/convs/convs.9/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            2,
+            2
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 8466432,
+      "releaseAfter": [
+        "/net/styles.14/convs/convs.7/LeakyRelu_output_0"
+      ],
+      "liveBoundaryBytesAfterRelease": 8433664,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-088.onnx"
+    },
+    {
+      "id": 89,
+      "file": "part-089.onnx",
+      "sha256": "adbdaf21317641a1874cd40bde9b7a5637af86203f0399ebc3d18603354837b9",
+      "size": 10498186,
+      "sourceNodeFirst": 1400,
+      "sourceNodeLast": 1472,
+      "sourceNodeCount": 73,
+      "initializerBytes": 10489995,
+      "inputs": [
+        {
+          "name": "/net/ScatterND_25_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            18,
+            512
+          ]
+        },
+        {
+          "name": "/net/styles.14/convs/convs.9/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            2,
+            2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/ScatterND_27_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            18,
+            512
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 8470528,
+      "releaseAfter": [
+        "/net/ScatterND_25_output_0",
+        "/net/styles.14/convs/convs.9/LeakyRelu_output_0"
+      ],
+      "liveBoundaryBytesAfterRelease": 8425472,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-089.onnx"
+    },
+    {
+      "id": 90,
+      "file": "part-090.onnx",
+      "sha256": "ced971ccde0f98f52a5e908310117e0b9067548b2ff358a3f0759f4d2f2ed5a0",
+      "size": 9439930,
+      "sourceNodeFirst": 1473,
+      "sourceNodeLast": 1474,
+      "sourceNodeCount": 2,
+      "initializerBytes": 9439315,
+      "inputs": [
+        {
+          "name": "/net/Add_7_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            64,
+            64
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/styles.15/convs/convs.1/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            32,
+            32
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 10522624,
+      "releaseAfter": [],
+      "liveBoundaryBytesAfterRelease": 10522624,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-090.onnx"
+    },
+    {
+      "id": 91,
+      "file": "part-091.onnx",
+      "sha256": "0d7a4873ae39b229f1b066444fd1f4551b4c05d7fe9a2ac48763f2bc0cbd377c",
+      "size": 9439986,
+      "sourceNodeFirst": 1475,
+      "sourceNodeLast": 1476,
+      "sourceNodeCount": 2,
+      "initializerBytes": 9439315,
+      "inputs": [
+        {
+          "name": "/net/styles.15/convs/convs.1/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            32,
+            32
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/styles.15/convs/convs.3/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            16,
+            16
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 11046912,
+      "releaseAfter": [
+        "/net/styles.15/convs/convs.1/LeakyRelu_output_0"
+      ],
+      "liveBoundaryBytesAfterRelease": 8949760,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-091.onnx"
+    },
+    {
+      "id": 92,
+      "file": "part-092.onnx",
+      "sha256": "1246f8338b7c911f89e6254ad2b05496764783501b45989fd1ce8a035f194003",
+      "size": 9439986,
+      "sourceNodeFirst": 1477,
+      "sourceNodeLast": 1478,
+      "sourceNodeCount": 2,
+      "initializerBytes": 9439315,
+      "inputs": [
+        {
+          "name": "/net/styles.15/convs/convs.3/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            16,
+            16
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/styles.15/convs/convs.5/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            8,
+            8
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 9080832,
+      "releaseAfter": [
+        "/net/styles.15/convs/convs.3/LeakyRelu_output_0"
+      ],
+      "liveBoundaryBytesAfterRelease": 8556544,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-092.onnx"
+    },
+    {
+      "id": 93,
+      "file": "part-093.onnx",
+      "sha256": "1c9e97215bd72eb060fac2e3323b77567cf579e703ca5f2c6bbe49fd74e9eedf",
+      "size": 9439986,
+      "sourceNodeFirst": 1479,
+      "sourceNodeLast": 1480,
+      "sourceNodeCount": 2,
+      "initializerBytes": 9439315,
+      "inputs": [
+        {
+          "name": "/net/styles.15/convs/convs.5/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            8,
+            8
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/styles.15/convs/convs.7/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            4,
+            4
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 8589312,
+      "releaseAfter": [
+        "/net/styles.15/convs/convs.5/LeakyRelu_output_0"
+      ],
+      "liveBoundaryBytesAfterRelease": 8458240,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-093.onnx"
+    },
+    {
+      "id": 94,
+      "file": "part-094.onnx",
+      "sha256": "859164af4a94c71156f9248e43028fe6e6372bc61ee7c712384383689846c697",
+      "size": 9439986,
+      "sourceNodeFirst": 1481,
+      "sourceNodeLast": 1482,
+      "sourceNodeCount": 2,
+      "initializerBytes": 9439315,
+      "inputs": [
+        {
+          "name": "/net/styles.15/convs/convs.7/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            4,
+            4
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/styles.15/convs/convs.9/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            2,
+            2
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 8466432,
+      "releaseAfter": [
+        "/net/styles.15/convs/convs.7/LeakyRelu_output_0"
+      ],
+      "liveBoundaryBytesAfterRelease": 8433664,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-094.onnx"
+    },
+    {
+      "id": 95,
+      "file": "part-095.onnx",
+      "sha256": "57c337de7c341512bbfc97bc00a3bc2d6a16741c3f7186f803839ee9bb814fc6",
+      "size": 10498186,
+      "sourceNodeFirst": 1483,
+      "sourceNodeLast": 1555,
+      "sourceNodeCount": 73,
+      "initializerBytes": 10489995,
+      "inputs": [
+        {
+          "name": "/net/ScatterND_27_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            18,
+            512
+          ]
+        },
+        {
+          "name": "/net/styles.15/convs/convs.9/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            2,
+            2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/ScatterND_29_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            18,
+            512
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 8470528,
+      "releaseAfter": [
+        "/net/ScatterND_27_output_0",
+        "/net/styles.15/convs/convs.9/LeakyRelu_output_0"
+      ],
+      "liveBoundaryBytesAfterRelease": 8425472,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-095.onnx"
+    },
+    {
+      "id": 96,
+      "file": "part-096.onnx",
+      "sha256": "a5e80f7cb79aa14c5ca680e3b08d56f473c6d0507874da24a1172fa52e157fb4",
+      "size": 9439930,
+      "sourceNodeFirst": 1556,
+      "sourceNodeLast": 1557,
+      "sourceNodeCount": 2,
+      "initializerBytes": 9439315,
+      "inputs": [
+        {
+          "name": "/net/Add_7_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            64,
+            64
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/styles.16/convs/convs.1/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            32,
+            32
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 10522624,
+      "releaseAfter": [],
+      "liveBoundaryBytesAfterRelease": 10522624,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-096.onnx"
+    },
+    {
+      "id": 97,
+      "file": "part-097.onnx",
+      "sha256": "a57c2fede54a6bd1e46cee851ff83006bff41a6d74e1338ef81b5e72f02d0001",
+      "size": 9439986,
+      "sourceNodeFirst": 1558,
+      "sourceNodeLast": 1559,
+      "sourceNodeCount": 2,
+      "initializerBytes": 9439315,
+      "inputs": [
+        {
+          "name": "/net/styles.16/convs/convs.1/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            32,
+            32
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/styles.16/convs/convs.3/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            16,
+            16
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 11046912,
+      "releaseAfter": [
+        "/net/styles.16/convs/convs.1/LeakyRelu_output_0"
+      ],
+      "liveBoundaryBytesAfterRelease": 8949760,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-097.onnx"
+    },
+    {
+      "id": 98,
+      "file": "part-098.onnx",
+      "sha256": "85bc0503e4fa9a7066536578d1fda0b2cd5e1bfd0d0bc52f1372e26714a02107",
+      "size": 9439986,
+      "sourceNodeFirst": 1560,
+      "sourceNodeLast": 1561,
+      "sourceNodeCount": 2,
+      "initializerBytes": 9439315,
+      "inputs": [
+        {
+          "name": "/net/styles.16/convs/convs.3/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            16,
+            16
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/styles.16/convs/convs.5/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            8,
+            8
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 9080832,
+      "releaseAfter": [
+        "/net/styles.16/convs/convs.3/LeakyRelu_output_0"
+      ],
+      "liveBoundaryBytesAfterRelease": 8556544,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-098.onnx"
+    },
+    {
+      "id": 99,
+      "file": "part-099.onnx",
+      "sha256": "9ffe23198d390e3362a083b78fa00358a94bd9f37ca9c33a33e11554d10ec2eb",
+      "size": 9439986,
+      "sourceNodeFirst": 1562,
+      "sourceNodeLast": 1563,
+      "sourceNodeCount": 2,
+      "initializerBytes": 9439315,
+      "inputs": [
+        {
+          "name": "/net/styles.16/convs/convs.5/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            8,
+            8
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/styles.16/convs/convs.7/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            4,
+            4
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 8589312,
+      "releaseAfter": [
+        "/net/styles.16/convs/convs.5/LeakyRelu_output_0"
+      ],
+      "liveBoundaryBytesAfterRelease": 8458240,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-099.onnx"
+    },
+    {
+      "id": 100,
+      "file": "part-100.onnx",
+      "sha256": "cc9d59128c06c8be0b3662e324777854527d0dd2f2b970c2c3200cdacb11637d",
+      "size": 9439986,
+      "sourceNodeFirst": 1564,
+      "sourceNodeLast": 1565,
+      "sourceNodeCount": 2,
+      "initializerBytes": 9439315,
+      "inputs": [
+        {
+          "name": "/net/styles.16/convs/convs.7/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            4,
+            4
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/styles.16/convs/convs.9/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            2,
+            2
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 8466432,
+      "releaseAfter": [
+        "/net/styles.16/convs/convs.7/LeakyRelu_output_0"
+      ],
+      "liveBoundaryBytesAfterRelease": 8433664,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-100.onnx"
+    },
+    {
+      "id": 101,
+      "file": "part-101.onnx",
+      "sha256": "ab28fbaf39b2feada7ab387e17f4e96f799f3db1c5b0fe76dff2058e35aa5bd8",
+      "size": 10498186,
+      "sourceNodeFirst": 1566,
+      "sourceNodeLast": 1638,
+      "sourceNodeCount": 73,
+      "initializerBytes": 10489995,
+      "inputs": [
+        {
+          "name": "/net/ScatterND_29_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            18,
+            512
+          ]
+        },
+        {
+          "name": "/net/styles.16/convs/convs.9/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            2,
+            2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/ScatterND_31_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            18,
+            512
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 8470528,
+      "releaseAfter": [
+        "/net/ScatterND_29_output_0",
+        "/net/styles.16/convs/convs.9/LeakyRelu_output_0"
+      ],
+      "liveBoundaryBytesAfterRelease": 8425472,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-101.onnx"
+    },
+    {
+      "id": 102,
+      "file": "part-102.onnx",
+      "sha256": "9bafc3df1aa81a8071bbcce027f457c0bf319a64e4052d2d08b4fee860ed666e",
+      "size": 9439930,
+      "sourceNodeFirst": 1639,
+      "sourceNodeLast": 1640,
+      "sourceNodeCount": 2,
+      "initializerBytes": 9439315,
+      "inputs": [
+        {
+          "name": "/net/Add_7_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            64,
+            64
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/styles.17/convs/convs.1/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            32,
+            32
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 10522624,
+      "releaseAfter": [
+        "/net/Add_7_output_0"
+      ],
+      "liveBoundaryBytesAfterRelease": 2134016,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-102.onnx"
+    },
+    {
+      "id": 103,
+      "file": "part-103.onnx",
+      "sha256": "c62357af947dea5975cd4b36ad08a663b742c80e919e4588407b3b07527988df",
+      "size": 9439986,
+      "sourceNodeFirst": 1641,
+      "sourceNodeLast": 1642,
+      "sourceNodeCount": 2,
+      "initializerBytes": 9439315,
+      "inputs": [
+        {
+          "name": "/net/styles.17/convs/convs.1/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            32,
+            32
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/styles.17/convs/convs.3/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            16,
+            16
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 2658304,
+      "releaseAfter": [
+        "/net/styles.17/convs/convs.1/LeakyRelu_output_0"
+      ],
+      "liveBoundaryBytesAfterRelease": 561152,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-103.onnx"
+    },
+    {
+      "id": 104,
+      "file": "part-104.onnx",
+      "sha256": "5c0856030ab6f11c12c200a1354bea81a40f5a7bb7276107bfac7dd77a113dff",
+      "size": 9439986,
+      "sourceNodeFirst": 1643,
+      "sourceNodeLast": 1644,
+      "sourceNodeCount": 2,
+      "initializerBytes": 9439315,
+      "inputs": [
+        {
+          "name": "/net/styles.17/convs/convs.3/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            16,
+            16
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/styles.17/convs/convs.5/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            8,
+            8
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 692224,
+      "releaseAfter": [
+        "/net/styles.17/convs/convs.3/LeakyRelu_output_0"
+      ],
+      "liveBoundaryBytesAfterRelease": 167936,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-104.onnx"
+    },
+    {
+      "id": 105,
+      "file": "part-105.onnx",
+      "sha256": "b8aa1d6a23c21ae500b175b422210fee05a3e37e5e28fdb8ee67e66dea832daa",
+      "size": 9439986,
+      "sourceNodeFirst": 1645,
+      "sourceNodeLast": 1646,
+      "sourceNodeCount": 2,
+      "initializerBytes": 9439315,
+      "inputs": [
+        {
+          "name": "/net/styles.17/convs/convs.5/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            8,
+            8
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/styles.17/convs/convs.7/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            4,
+            4
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 200704,
+      "releaseAfter": [
+        "/net/styles.17/convs/convs.5/LeakyRelu_output_0"
+      ],
+      "liveBoundaryBytesAfterRelease": 69632,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-105.onnx"
+    },
+    {
+      "id": 106,
+      "file": "part-106.onnx",
+      "sha256": "f0e0a115217cbaaea93883b16923a4b461982eb29b82d88e0395fc30102e6e57",
+      "size": 9439986,
+      "sourceNodeFirst": 1647,
+      "sourceNodeLast": 1648,
+      "sourceNodeCount": 2,
+      "initializerBytes": 9439315,
+      "inputs": [
+        {
+          "name": "/net/styles.17/convs/convs.7/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            4,
+            4
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "/net/styles.17/convs/convs.9/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            2,
+            2
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 77824,
+      "releaseAfter": [
+        "/net/styles.17/convs/convs.7/LeakyRelu_output_0"
+      ],
+      "liveBoundaryBytesAfterRelease": 45056,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-106.onnx"
+    },
+    {
+      "id": 107,
+      "file": "part-107.onnx",
+      "sha256": "95d8082130d59ab0087167277ca7a20e33afc963af56ee7ffc015bc00b184084",
+      "size": 10535113,
+      "sourceNodeFirst": 1649,
+      "sourceNodeLast": 1722,
+      "sourceNodeCount": 74,
+      "initializerBytes": 10526881,
+      "inputs": [
+        {
+          "name": "/net/ScatterND_31_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            18,
+            512
+          ]
+        },
+        {
+          "name": "/net/styles.17/convs/convs.9/LeakyRelu_output_0",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            512,
+            2,
+            2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "w",
+          "dtype": "FLOAT",
+          "shape": [
+            1,
+            18,
+            512
+          ]
+        }
+      ],
+      "liveBoundaryBytesBeforeRelease": 81920,
+      "releaseAfter": [
+        "/net/ScatterND_31_output_0",
+        "/net/styles.17/convs/convs.9/LeakyRelu_output_0"
+      ],
+      "liveBoundaryBytesAfterRelease": 36864,
+      "url": "https://localhost:8443/runtime/encoder-stream/part-107.onnx"
+    }
+  ],
+  "maxShardBytes": 16682645,
+  "totalShardBytes": 1068886382,
+  "maxLiveBoundaryBytes": 12664832,
+  "sourceNodeCount": 1723,
+  "exportedNodeCount": 1723,
+  "precision": "unchanged FP32 ONNX",
+  "latentAverage": "Preserved in original final graph nodes; do not add again",
+  "wasmMemoryStatus": "Unmeasured; one live session required, release does not shrink heap capacity",
+  "qualification": "Not qualified; requires independent W+ <=0.0001 and actual browser/device memory/workflow checks",
+  "boundaryShapeEvidence": "Native ORT execution with fixed [1,3,256,256] zero input; independent real photo controls required",
+  "runtime": {
+    "version": "1.24.3",
+    "unshared": true,
+    "maxWasmBytes": 268435456,
+    "module": {
+      "url": "https://localhost:8443/runtime/encoder-stream/ort.wasm.min.mjs",
+      "size": 49997,
+      "sha256": "d5a6d7bc8ee587648fb3742dde8c0094d17cbd3822a68bbec8ddfcd4f2adb88e"
+    },
+    "factory": {
+      "url": "https://localhost:8443/runtime/encoder-stream/ort-wasm-simd.mjs",
+      "size": 36034,
+      "sha256": "dece074752438f467ad6d98a3381d8c81dd2299b76144ab41d8acd21051273ae"
+    },
+    "wasm": {
+      "url": "https://localhost:8443/runtime/encoder-stream/ort-wasm-simd-256m.wasm",
+      "size": 17135452,
+      "sha256": "4381425086ac894dd9b24f35250af233db73eaf49fa17218e0ce3ad93fac80cc"
+    },
+    "memoryReceipt": {
+      "sourceSha256": "4b2d44a42ffe2470e447d1bd0fe1bc65fec682a6a5329c25247b41ceed93d8d0",
+      "sourceMaximumPages": 65536,
+      "initialPages": 256,
+      "newMaximumPages": 4096,
+      "changed": "Only internal memory section maximum, from4GiB to256MiB; no operators/code/data changed",
+      "unshared": true,
+      "patchedSha256": "4381425086ac894dd9b24f35250af233db73eaf49fa17218e0ce3ad93fac80cc"
+    }
+  },
+  "browserQualified": false,
+  "executor": {
+    "url": "https://localhost:8443/runtime/encoder-stream/execute.mjs",
+    "size": 5714,
+    "sha256": "6e7fcc0b259c91d0e64fa8369279d981c50abe0e78efb6dd85227fc33314e4a0"
+  },
+  "canaries": [
+    {
+      "id": "seed-0-aligned",
+      "input": {
+        "url": "https://localhost:8443/runtime/encoder-stream/seed-0-aligned.input.f32",
+        "size": 786432,
+        "sha256": "06b9830ac039949d8a43c26b11a8e4b9d133a2d33e727c75451854d90092aaa8"
+      },
+      "reference": {
+        "url": "https://localhost:8443/runtime/encoder-stream/seed-0-aligned.w.f32",
+        "size": 36864,
+        "sha256": "0756827f0e94d9de27bf276c34e27c650da15e923efbaebbaebee4c0dd951ee7"
+      },
+      "threshold": 0.0001
+    },
+    {
+      "id": "seed-0-unaligned",
+      "input": {
+        "url": "https://localhost:8443/runtime/encoder-stream/seed-0-unaligned.input.f32",
+        "size": 786432,
+        "sha256": "51529b7a56d218a191b308a889db37fbff311a0bd4c2096e46b2334f7d835726"
+      },
+      "reference": {
+        "url": "https://localhost:8443/runtime/encoder-stream/seed-0-unaligned.w.f32",
+        "size": 36864,
+        "sha256": "ac37d0021725943919755d826b6c041b462add0496d5785d38d4610d079a5301"
+      },
+      "threshold": 0.0001
+    },
+    {
+      "id": "seed-1-aligned",
+      "input": {
+        "url": "https://localhost:8443/runtime/encoder-stream/seed-1-aligned.input.f32",
+        "size": 786432,
+        "sha256": "8c9a28b5520a3d9a34d32367e87a278ec5dd3f140cfa84101e1ee9fa1e0b7cae"
+      },
+      "reference": {
+        "url": "https://localhost:8443/runtime/encoder-stream/seed-1-aligned.w.f32",
+        "size": 36864,
+        "sha256": "bf4fd36a75235a1d5bc55e54dedb0862d1dd78883be4db95fb627a23ba3d336b"
+      },
+      "threshold": 0.0001
+    },
+    {
+      "id": "seed-1-unaligned",
+      "input": {
+        "url": "https://localhost:8443/runtime/encoder-stream/seed-1-unaligned.input.f32",
+        "size": 786432,
+        "sha256": "db49d70e029fc0d80c3cd0004bac579c4dd208a200606cf116f464259d8c2ee9"
+      },
+      "reference": {
+        "url": "https://localhost:8443/runtime/encoder-stream/seed-1-unaligned.w.f32",
+        "size": 36864,
+        "sha256": "77fb5310b7a7ccc83414ca22372d0ed8ec7afd05f11edfda7c37877c0c404741"
+      },
+      "threshold": 0.0001
+    },
+    {
+      "id": "no-face-aligned",
+      "input": {
+        "url": "https://localhost:8443/runtime/encoder-stream/no-face-aligned.input.f32",
+        "size": 786432,
+        "sha256": "2a0db9dafd24471a6b874e8810aae5e75508ad019ba3a24c2e957aa766d2f218"
+      },
+      "reference": {
+        "url": "https://localhost:8443/runtime/encoder-stream/no-face-aligned.w.f32",
+        "size": 36864,
+        "sha256": "5f59b2060c0075c8800dc96b0c75e5696fbb576d4dd36cdeb1e04a4d980bf910"
+      },
+      "threshold": 0.0001
+    }
+  ]
+}

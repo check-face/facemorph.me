@@ -33,7 +33,7 @@ let saveMedia (id: string): JS.Promise<string> = jsNative
 [<Import("shareMedia", "./product-bridge.mjs")>]
 let shareMedia (id: string): JS.Promise<string> = jsNative
 [<Import("exportProject", "./product-bridge.mjs")>]
-let exportProject (): JS.Promise<string> = jsNative
+let exportProject (request: obj): JS.Promise<string> = jsNative
 [<Import("importProject", "./product-bridge.mjs")>]
 let importProject (request: obj): JS.Promise<Output> = jsNative
 [<Import("setDebug", "./product-bridge.mjs")>]
@@ -43,6 +43,23 @@ let firstFile (event: obj): obj = jsNative
 [<Emit("$0 ? $0.name : ''")>]
 let fileName (file: obj): string = jsNative
 
+[<Import("photoFiles", "./photo-selection.mjs")>]
+let photoFiles (event: obj): obj = jsNative
+[<Import("selectPhoto", "./photo-selection.mjs")>]
+let selectPhoto (request: obj): JS.Promise<obj> = jsNative
+[<Import("openPhotoPicker", "./photo-selection.mjs")>]
+let openPhotoPicker (id: string): unit = jsNative
+[<Import("dragPhoto", "./photo-selection.mjs")>]
+let dragPhoto (event: obj) (busy: bool) (leaving: bool): unit = jsNative
+[<Import("invalidatePhotoSelections", "./photo-selection.mjs")>]
+let invalidatePhotoSelections (): unit = jsNative
+[<Import("openNamesFocus", "./photo-selection.mjs")>]
+let openNamesFocus (): unit = jsNative
+[<Import("closeNamesFocus", "./photo-selection.mjs")>]
+let closeNamesFocus (): unit = jsNative
+[<Import("namesKey", "./photo-selection.mjs")>]
+let namesKey (event: obj) (close: unit -> unit): unit = jsNative
+
 type State = {
     Inputs: Input list; Faces: Face array; VideoUrl: string
     Kind: string; Width: float; Pinch: bool; Frames: int; Fps: int; Provider: string
@@ -51,6 +68,7 @@ type State = {
 }
 type Msg =
     | Edit of string * string | Mode of string * string | Photo of string * obj
+    | PickPhoto of string * obj | PhotoError of string
     | Add | Remove of string | Kind of string | Width of float | Pinch of bool
     | Frames of int | Provider of string | Run of string | Cancel
     | Progressed of Progress | Completed of int * Output | Failed of int * string
@@ -58,29 +76,35 @@ type Msg =
     | Help | Debug of bool | DismissError
     | BrowseNames of string | NamesLoaded of NameFace array | SearchNames of string | ChooseName of string | CloseNames | MoreNames
 
+[<Emit("window.location.pathname === '/names' || window.location.pathname === '/names/' || new URLSearchParams(window.location.search).has('names')")>]
+let namesRequested (): bool = jsNative
+
 let emptyFile: obj = null
 let init () =
     { Inputs = [{id="face-1";mode="text";value="hello";file=emptyFile}; {id="face-2";mode="seed";value="389";file=emptyFile}]
       Faces=[||];VideoUrl="";Kind="pairwise-figure8";Width=0.2;Pinch=false;Frames=16;Fps=16;Provider="auto"
       Busy=false;JobId=0;Stage="idle";Status="";Fraction=0.;Browse=None;Names=[||];NameQuery="";NameLimit=48;Error=None;DebugStatus="";Help=false;Debug=false;NextId=3 },
-    Cmd.ofSub(fun dispatch -> subscribe (Progressed >> dispatch))
+    Cmd.batch [Cmd.ofSub(fun dispatch -> subscribe (Progressed >> dispatch)); if namesRequested() then Cmd.ofMsg(BrowseNames "face-1")]
 
 let update msg state =
     let change id f = {state with Inputs=state.Inputs |> List.map(fun item -> if item.id=id then f item else item); VideoUrl="";Status=""}
     let noticeTask fn arg = Cmd.OfPromise.either fn arg Notice (fun _ -> Notice "Couldn't save or share this file. Try Save instead.")
     match msg with
-    | Edit(id,value) when not state.Busy -> change id (fun item -> {item with value=value}), Cmd.none
-    | Mode(id,mode) when not state.Busy -> change id (fun item -> {item with mode=mode;file=emptyFile}), Cmd.none
-    | Photo(id,file) when not state.Busy -> change id (fun item -> {item with file=file;value=fileName file}), Cmd.none
+    | Edit(id,value) when not state.Busy -> invalidatePhotoSelections(); change id (fun item -> {item with value=value}), Cmd.none
+    | Mode(id,mode) when not state.Busy -> invalidatePhotoSelections(); change id (fun item -> {item with mode=mode;file=emptyFile}), Cmd.none
+    | PickPhoto(id,files) when not state.Busy -> state,Cmd.OfPromise.either selectPhoto (createObj ["id" ==> id;"files" ==> files]) (fun file -> Photo(id,file)) (fun e -> PhotoError e.Message)
+    | PhotoError message when not state.Busy -> {state with Error=Some message},Cmd.none
+    | Photo(id,file) when not state.Busy && not (isNull file) -> {change id (fun item -> {item with mode="photo";file=file;value=fileName file}) with Error=None}, Cmd.none
     | Add when not state.Busy && state.Inputs.Length<64 ->
         {state with Inputs=state.Inputs @ [{id="face-"+System.Guid.NewGuid().ToString("N");mode="text";value="";file=emptyFile}];NextId=state.NextId+1;VideoUrl=""},Cmd.none
-    | Remove id when not state.Busy && state.Inputs.Length>2 -> {state with Inputs=state.Inputs |> List.filter(fun x -> x.id<>id);VideoUrl=""},Cmd.none
+    | Remove id when not state.Busy && state.Inputs.Length>2 -> invalidatePhotoSelections(); {state with Inputs=state.Inputs |> List.filter(fun x -> x.id<>id);VideoUrl=""},Cmd.none
     | Kind value when not state.Busy -> {state with Kind=value;VideoUrl=""},Cmd.none
     | Width value when not state.Busy -> {state with Width=value;VideoUrl=""},Cmd.none
     | Pinch value when not state.Busy -> {state with Pinch=value;VideoUrl=""},Cmd.none
     | Frames value when not state.Busy -> {state with Frames=value;VideoUrl=""},Cmd.none
     | Provider value when not state.Busy -> {state with Provider=value},Cmd.none
     | Run action when not state.Busy ->
+        invalidatePhotoSelections()
         let id=state.JobId+1
         let request={jobId=id;action=action;inputs=Array.ofList state.Inputs;kind=state.Kind;width=state.Width;pinch=state.Pinch;frames=state.Frames;fps=state.Fps;provider=state.Provider}
         {state with Busy=true;JobId=id;Error=None;Stage="preparing";Status="Preparing…";Fraction=0.},
@@ -102,22 +126,27 @@ let update msg state =
     | Cancel when state.Busy -> cancelWork(); {state with Stage="cancelling";Status="Cancelling…"},Cmd.none
     | Save id -> state,noticeTask saveMedia id
     | Share id -> state,noticeTask shareMedia id
-    | Export -> state,noticeTask exportProject ()
+    | Export when not state.Busy ->
+        let options=createObj ["inputs" ==> Array.ofList state.Inputs;"kind" ==> state.Kind;"width" ==> state.Width;"pinch" ==> state.Pinch;"frames" ==> state.Frames;"fps" ==> state.Fps]
+        state,Cmd.OfPromise.either exportProject options Notice (fun e -> Notice e.Message)
     | Import file when not state.Busy && not (isNull file) ->
+        invalidatePhotoSelections()
         let id=state.JobId+1
         {state with Busy=true;JobId=id;Stage="importing";Status="Opening project…"},
-        Cmd.OfPromise.either importProject (createObj ["file" ==> file; "jobId" ==> id]) (fun result -> Completed(id,result)) (fun e -> Failed(id,e.Message))
+        Cmd.OfPromise.either importProject (createObj ["file" ==> file; "jobId" ==> id; "provider" ==> state.Provider]) (fun result -> Completed(id,result)) (fun e -> Failed(id,e.Message))
     | Notice text -> {state with Status=text},Cmd.none
     | Help -> {state with Help=not state.Help},Cmd.none
     | Debug enabled -> setDebug enabled;{state with Debug=enabled},Cmd.none
-    | BrowseNames id when not state.Busy -> {state with Browse=Some id;NameQuery="";NameLimit=48},(if state.Names.Length=0 then Cmd.OfPromise.either loadNames () NamesLoaded (fun e -> Notice e.Message) else Cmd.none)
+    | BrowseNames id when not state.Busy -> openNamesFocus(); {state with Browse=Some id;NameQuery="";NameLimit=48},(if state.Names.Length=0 then Cmd.OfPromise.either loadNames () NamesLoaded (fun e -> Notice e.Message) else Cmd.none)
     | NamesLoaded names -> {state with Names=names},Cmd.none
     | SearchNames text -> {state with NameQuery=text;NameLimit=48},Cmd.none
-    | ChooseName value ->
+    | ChooseName value when not state.Busy ->
+        invalidatePhotoSelections()
+        closeNamesFocus()
         match state.Browse with
         | Some id -> {change id (fun item -> {item with mode="text";value=value;file=emptyFile}) with Browse=None},Cmd.none
         | None -> state,Cmd.none
-    | CloseNames -> {state with Browse=None},Cmd.none
+    | CloseNames -> closeNamesFocus(); {state with Browse=None},Cmd.none
     | MoreNames -> {state with NameLimit=state.NameLimit+48},Cmd.none
     | DismissError -> {state with Error=None},Cmd.none
     | _ -> state,Cmd.none
@@ -128,23 +157,27 @@ let select (value:string) (label:string) (disabled:bool) (options:(string*string
         prop.children(options |> List.map(fun (key,text) -> Html.option [prop.value key;prop.text text]))]]]
 let viewFace (state:State) dispatch (item:Input) =
     let face = state.Faces |> Array.tryFind(fun f -> f.id=item.id)
-    Html.section [prop.key item.id;prop.className "next-face box";prop.children [
-        Html.div [prop.className "next-face-image";prop.children [
-            match face with
-            | Some f -> Html.img [prop.src f.url;prop.alt "Generated face";prop.width 1024;prop.height 1024]
-            | None -> Html.div [prop.className "next-face-placeholder";prop.ariaHidden true;prop.text "+"]]]
-        select item.mode "Face source" state.Busy ["text","Name or words";"seed","Seed";"photo","Photo"] (fun mode -> dispatch(Mode(item.id,mode)))
-        if item.mode="photo" then
-            Html.label [prop.className "next-file";prop.children [Html.span(if item.value="" then "Choose a photo" else item.value);
-                Html.input [prop.type'.file;prop.accept "image/*";prop.disabled state.Busy;prop.ariaLabel "Choose photo";prop.onChange(fun (e:Browser.Types.Event) -> dispatch(Photo(item.id,firstFile e)))]]]
-        elif item.mode="project" then Html.p "Saved project face"
-        else Html.input [prop.className "input";prop.ariaLabel(if item.mode="seed" then "Numeric seed" else "Name or words");prop.value item.value;prop.disabled state.Busy;prop.onChange(fun (v:string) -> dispatch(Edit(item.id,v)))]
-        Html.div [prop.className "next-actions";prop.children [
-            button "Browse names" state.Busy (fun () -> dispatch(BrowseNames item.id))
-            if face.IsSome then
-                button "Share image" state.Busy (fun () -> dispatch(Share item.id))
-                button "Save image" state.Busy (fun () -> dispatch(Save item.id))
-            if state.Inputs.Length>2 then button "Remove" state.Busy (fun () -> dispatch(Remove item.id))]]]]
+    Html.section [prop.key item.id;prop.className "next-face box";
+        prop.onDragOver(fun e -> dragPhoto e state.Busy false);
+        prop.onDragLeave(fun e -> dragPhoto e state.Busy true);
+        prop.onDrop(fun e -> dragPhoto e state.Busy true; if not state.Busy then dispatch(PickPhoto(item.id,photoFiles e)));
+        prop.children [
+            Html.input [prop.id ("photo-"+item.id);prop.type'.file;prop.hidden true;prop.accept "image/png,image/jpeg";prop.disabled state.Busy;prop.ariaLabel "Choose photo";prop.onChange(fun (e:Browser.Types.Event) -> dispatch(PickPhoto(item.id,photoFiles e))) ]
+            Html.div [prop.className "next-face-image";prop.children [
+                match face with
+                | Some f -> Html.img [prop.src f.url;prop.alt "Generated face";prop.width 1024;prop.height 1024]
+                | None -> Html.button [prop.type'.button;prop.className "next-face-placeholder";prop.disabled state.Busy;prop.ariaLabel "Choose photo";prop.onClick(fun _ -> openPhotoPicker item.id);prop.text "+"]]]
+            select item.mode "Face source" state.Busy ["text","Name or words";"seed","Seed";"photo","Photo"] (fun mode -> dispatch(Mode(item.id,mode)))
+            if item.mode="photo" then
+                Html.div [prop.className "next-file";prop.children [Html.span item.value;button "Choose a photo" state.Busy (fun () -> openPhotoPicker item.id)]]
+            elif item.mode="project" then Html.p "Saved project face"
+            else Html.input [prop.className "input";prop.ariaLabel(if item.mode="seed" then "Numeric seed" else "Name or words");prop.value item.value;prop.disabled state.Busy;prop.onChange(fun (v:string) -> dispatch(Edit(item.id,v)))]
+            Html.div [prop.className "next-actions";prop.children [
+                button "Browse names" state.Busy (fun () -> dispatch(BrowseNames item.id))
+                if face.IsSome then
+                    button "Share image" state.Busy (fun () -> dispatch(Share item.id))
+                    button "Save image" state.Busy (fun () -> dispatch(Save item.id))
+                if state.Inputs.Length>2 then button "Remove" state.Busy (fun () -> dispatch(Remove item.id))]]]]
 
 let view state dispatch = App.ThemedApp [
     Mui.cssBaseline []
@@ -187,10 +220,9 @@ let view state dispatch = App.ThemedApp [
             Html.label [prop.children [Html.input [prop.type'.checkbox;prop.isChecked state.Debug;prop.onChange(fun (v:bool) -> dispatch(Debug v))];Html.span " Enable debug reporting for this session"]]
             Html.p [prop.custom("role","status");prop.text state.DebugStatus]
             Html.p [Html.a [prop.href "mailto:checkfaceml@gmail.com";prop.text "Email us"]]
-            Html.p [Html.a [prop.href "/downloads/";prop.text "Desktop downloads"]]
             Html.p [Html.a [prop.href "https://facemorph.me";prop.text "Classic FaceMorph"]]
         ]]
-        if state.Browse.IsSome then Html.div [prop.className "next-name-dialog";prop.custom("role","dialog");prop.ariaLabel "Browse names";prop.children [
+        if state.Browse.IsSome then Html.div [prop.className "next-name-dialog";prop.custom("role","dialog");prop.custom("aria-modal",true);prop.onKeyDown(fun e -> namesKey e (fun () -> dispatch CloseNames));prop.ariaLabel "Browse names";prop.children [
             Html.div [prop.className "next-name-panel box";prop.children [
                 Html.div [prop.className "next-topline";prop.children [Html.h2 "Browse names";button "Close" false (fun () -> dispatch CloseNames)]]
                 Html.input [prop.className "input";prop.ariaLabel "Search names";prop.placeholder "Search names";prop.value state.NameQuery;prop.onChange(fun (v:string) -> dispatch(SearchNames v))]

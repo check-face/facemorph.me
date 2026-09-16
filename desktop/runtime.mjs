@@ -35,7 +35,8 @@ export function createDesktopRuntime({onProgress=()=>{},tauri=globalThis.__TAURI
       const bytes=value=>value instanceof ArrayBuffer?new Uint8Array(value):Uint8Array.from(value);
       const data=JSON.parse(new TextDecoder().decode(bytes(json)));
       const values=Float32Array.from(data.values);
-      return {...data,values,latent:{space:'w-plus',shape:[1,18,512],values},blob:new Blob([bytes(image)],{type:'image/png'}),cached:result.cached};
+      await tauri.core.invoke('native_release_artifact',{artifactId:result.localArtifactId}).catch(()=>onProgress({stage:'transfer-cleanup-pending'}));
+      return {...data,values,latent:{space:'w-plus',shape:[18,512],values},blob:new Blob([bytes(image)],{type:'image/png'}),cached:result.cached};
     }finally{unlisten?.();options.signal?.removeEventListener('abort',abort);if(active===state)active=null;}
   }
   async function generateWithAdmission(payload,options={}) {
@@ -45,7 +46,7 @@ export function createDesktopRuntime({onProgress=()=>{},tauri=globalThis.__TAURI
   return {
     qualify:(route='cpu',options={})=>{if(route!=='cpu')return Promise.reject(Error('Native GPU qualification is not in this artifact.'));return operation('qualify',{},options);},
     generate:(request,options={})=>generateWithAdmission({operation:'generate',mode:request.mode,value:request.value},{...request,...options}),
-    synthesize:(latent,options={})=>{if(latent.space!=='w-plus'||JSON.stringify(latent.shape)!=='[1,18,512]'||latent.values.length!==9216||!Array.from(latent.values).every(Number.isFinite))throw Error('Invalid W+ latent');return generateWithAdmission({operation:'synthesize',values:Array.from(latent.values)},options);},
+    synthesize:(latent,options={})=>{if(latent.space!=='w-plus'||JSON.stringify(latent.shape)!=='[1,18,512]'||latent.values.length!==9216||!Array.from(latent.values).every(Number.isFinite))throw Error('Invalid W+ latent');return generateWithAdmission({operation:'synthesize',values:Array.from(latent.values),persist:options.persist!==false},options);},
     encodePhoto:async(blob,options={})=>{if(!(blob instanceof Blob)||!blob.size||blob.size>25*1024*1024)throw Error('Choose an image smaller than 25 MB.');const bytes=new Uint8Array(await blob.arrayBuffer());let binary='';for(let i=0;i<bytes.length;i+=8192)binary+=String.fromCharCode(...bytes.subarray(i,i+8192));return generateWithAdmission({operation:'encodePhoto',photoBase64:btoa(binary)},options);},
     cancel:()=>{if(active){active.cancelled=true;validated=false;tauri.core.invoke('native_cancel',{jobId:active.jobId}).catch(()=>{});active.reject?.(abortError());}},
     dispose:()=>{disposed=true;validated=false;tauri.core.invoke('native_release').catch(()=>{});active?.reject?.(abortError());},

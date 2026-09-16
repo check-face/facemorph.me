@@ -1,0 +1,9 @@
+{
+  "url": "https://localhost:8443/runtime/encoder-stream/manifest.json",
+  "size": 124028,
+  "sha256": "417811d879ac9ef5a8714f38a453571d86e7168047e3d22b7d809b74905bf468",
+  "sourceEncoderSha256": "d525a985a43e4d49ef4590a8b8cc6f487992065bee00014fe8c6f8ab4ac291b1",
+  "preprocessingSha256": "3cc958b232e8616db831b8429eea4446c990a845738320270b47121a2d2dbdfe",
+  "phoneAdmitted": false,
+  "maxWasmBytes": 268435456
+}

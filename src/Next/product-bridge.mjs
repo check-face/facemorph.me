@@ -7,12 +7,13 @@ import {saveFile,shareFile,videoWriter} from './media.mjs';
 import {diagnostics} from './reporting.mjs';
 let listener=()=>{},runtime,manifest,active,writer,currentJob=0,project=null,video=null;
 const faces=new Map(),urls=new Map();
-const labels={'asset-acquisition':'Downloading model files…','runtime-loading':'Starting the local engine…','model-loading':'Loading the model…','mapping-loading':'Loading face mapping…','canary':'Checking this device…','mapping':'Preparing your face…','synthesis':'Generating…','alignment':'Finding and aligning the face…','encoder-loading':'Loading the photo encoder…','encoding':'Encoding your photo…','original-cache-hit':'Loaded saved original','original-cached':'Original saved on this device','codec-loading':'Preparing video export…','cache-unavailable':'Generated successfully; device storage is unavailable.'};
+const labels={'asset-acquisition':'Downloading model files…','runtime-loading':'Starting the local engine…','model-loading':'Loading the model…','mapping-loading':'Loading face mapping…','canary':'Checking this device…','mapping':'Preparing your face…','synthesis':'Generating…','alignment':'Finding and aligning the face…','encoder-correctness-check':'Checking photo processing on this device…','encoder-correctness-complete':'Photo processing checked.','encoder-loading':'Loading the photo encoder…','encoding':'Encoding your photo…','original-cache-hit':'Loaded saved original','original-cached':'Original saved on this device','codec-loading':'Preparing video export…','cache-unavailable':'Generated successfully; device storage is unavailable.'};
 function progress(event){const stage=event.stage||'working',fraction=event.total?event.loaded/event.total:0;listener({jobId:currentJob,stage,text:event.text||labels[stage]||'Working…',fraction:Number.isFinite(fraction)?fraction:0});diagnostics.stage(stage,event);}
 function canonicalProject(value){const decoded=decode(typeof value==='string'?value:JSON.stringify(value));if(decoded.tag!==0)throw Error('This project is invalid or uses an unsupported format.');const encoded=encode(decoded.fields[0]);if(encoded.tag!==0)throw Error('This project cannot be opened.');return JSON.parse(encoded.fields[0]);}
 async function engine(){
  if(runtime)return runtime;
  const response=await fetch('/runtime/manifest.json',{cache:'no-cache',signal:active?.signal});if(!response.ok)throw Error('Model setup is unavailable. Please try again shortly.');const raw=await response.arrayBuffer();if(raw.byteLength>4*1024*1024)throw Error('Model manifest is too large.');manifest=JSON.parse(new TextDecoder().decode(raw));const manifestSha256=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',raw)),x=>x.toString(16).padStart(2,'0')).join('');
+ diagnostics.bundle(manifestSha256);
  // The browser adapter rejects missing photo support rather than silently using a server.
  const photoAligner=manifest.photo?createPhotoAligner({manifestUrl:manifest.photo.manifestUrl,workerUrl:manifest.photo.workerUrl}):null;
  const alignPhoto=photoAligner?async(blob,options)=>{const prepared=await photoAligner(blob,options);if(prepared.provenance?.preprocessingSha256!==manifest.alignmentSha256)throw Error('Photo processing files changed. Reload before trying again.');return prepared;}:undefined;
@@ -32,7 +33,7 @@ async function inputs(request){
   if(item.mode==='project'){result=faces.get(item.id);if(!result)throw Error('Open the saved project again to restore this face.');}
   else if(item.mode==='photo'){if(!(item.file instanceof Blob))throw Error('Choose a photo for each photo input.');result=await service.encodePhoto(item.file,{signal:active.signal});}
   else result=await service.generate({mode:item.mode,value:item.value,signal:active.signal});
-  next.set(item.id,{...result,label:item.mode==='photo'?'Photo':item.value});
+  next.set(item.id,{...result,label:item.mode==='photo'?'Photo':item.value,source:{mode:item.mode,value:item.value,file:item.file}});
  }
  const provenance=next.get(request.inputs[0].id).provenance;
  const nextProject=canonicalProject({schemaVersion:1,bundle:{version:provenance.bundleVersion,manifestSha256:provenance.manifestSha256},modelSha256:provenance.modelSha256,noiseSha256:provenance.noiseSha256,truncationPsi:1,truncationCutoff:0,morph:{algorithmVersion:GEOMETRY_VERSION,kind:request.kind,closed:true,width:request.width,pinchCenter:request.pinch,framesPerSegment:request.frames,framesPerSecond:request.fps,controls:request.inputs.map(item=>({visitId:item.id,latent:{...next.get(item.id).latent,values:Array.from(next.get(item.id).latent.values)}}))}});
@@ -54,7 +55,7 @@ async function admission(provider){
 }
 export function subscribe(callback){listener=callback;window.addEventListener('facemorph-report-status',({detail})=>callback({jobId:currentJob,stage:'diagnostics-'+detail.status,text:detail.reference||'',fraction:0}));}
 export async function execute(request){
- if(active)throw Error('Another job is still stopping.');active=new AbortController();currentJob=request.jobId;diagnostics.start(request.action);
+ if(active)throw Error('Another job is still stopping.');active=new AbortController();currentJob=request.jobId;diagnostics.start(request.action,request.provider);
  try{
   await admission(request.provider);
   await inputs(request);checked();
@@ -76,7 +77,16 @@ export async function execute(request){
 export function cancel(){active?.abort();writer?.dispose();runtime?.cancel();}
 export async function saveMedia(id){const blob=id==='video'?video:faces.get(id)?.blob;return saveFile(blob,id==='video'?'facemorph.mp4':'facemorph.png');}
 export async function shareMedia(id){const blob=id==='video'?video:faces.get(id)?.blob;if(!blob)throw Error('Generate a result first.');return shareFile(blob,id==='video'?'facemorph.mp4':'facemorph.png');}
-export async function exportProject(){if(!project)throw Error('Generate or open a project first.');return saveFile(new Blob([JSON.stringify(canonicalProject(project))],{type:'application/json'}),'facemorph-project.json');}
+export async function exportProject(options){
+ if(!project)throw Error('Generate or open a project first.');
+ let selected=project;
+ if(options){
+  if(!Array.isArray(options.inputs)||options.inputs.some(input=>{const face=faces.get(input.id);return !face||(input.mode!=='project'&&(!face.source||face.source.mode!==input.mode||face.source.value!==input.value||face.source.file!==input.file));}))throw Error('Generate the changed faces before saving this project.');
+  selected={...project,morph:{...project.morph,kind:options.kind,width:options.width,pinchCenter:options.pinch,framesPerSegment:options.frames,framesPerSecond:options.fps,controls:options.inputs.map(input=>({visitId:input.id,latent:{...faces.get(input.id).latent,values:Array.from(faces.get(input.id).latent.values)}}))}};
+ }
+ const checked=canonicalProject(selected);createLatentPath(checked.morph);
+ return saveFile(new Blob([JSON.stringify(checked)],{type:'application/json'}),'facemorph-project.json');
+}
 export async function importProject(request){
  const {file,jobId}=request;
  if(active)throw Error('Wait for the current job to finish.');if(!(file instanceof Blob)||file.size>16*1024*1024)throw Error('Choose a FaceMorph project smaller than 16 MB.');
@@ -85,7 +95,7 @@ export async function importProject(request){
   const imported=canonicalProject(await file.text());createLatentPath(imported.morph);const service=await engine();
   if(imported.modelSha256!==manifest.modelSourceSha256||imported.noiseSha256!==manifest.noiseSha256)throw Error('This project needs a different model bundle. Its saved file has not been changed.');
   if(imported.morph.controls.some(x=>x.latent.space!=='w-plus'))throw Error('This generation bundle requires a W+ project.');
-  await admission('cpu');const next=new Map();
+  await admission(request.provider||'auto');const next=new Map();
   for(const control of imported.morph.controls){checked();const result=await service.synthesize({...control.latent,shape:[1,18,512],values:Float32Array.from(control.latent.values)},{signal:active.signal});next.set(control.visitId,{...result,label:'Project face'});}
   checked();await commit(next,imported);return snapshot('Project opened.',true);
  }finally{active=null;}

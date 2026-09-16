@@ -32,6 +32,14 @@ def main():
         manifest['encoder']=asset(a.encoder)
         photo=a.encoder.parent
         if (photo/'input.png').exists() and (photo/'torch-w.f32').exists():manifest['photoCanary']={'image':asset(photo/'input.png'),'w':asset(photo/'torch-w.f32'),'tensor':asset(photo/'input.f32'),'maxAbs':0.0001,'aligned':True,'preprocessing':'dlib-ffhq-pillow-bilinear-v1'}
+    # Independent synthetic photo controls travel with the product repository.
+    fixtures=ROOT/'photo-runtime/fixtures'
+    if 'photoCanary' in manifest and (fixtures/'seed-1-aligned.w.f32').exists():
+        reference=fixtures/'seed-1-aligned.w.f32'
+        if sha(reference)!='bf4fd36a75235a1d5bc55e54dedb0862d1dd78883be4db95fb627a23ba3d336b':raise ValueError('Independent seed1 W+ reference changed')
+        first=dict(manifest['photoCanary'])
+        if (fixtures/'seed-0-torch-reconstructed.png').exists():first['reconstruction']=asset(fixtures/'seed-0-torch-reconstructed.png')
+        manifest['photoCanaries']=[first,{'image':asset(ROOT/'self-host/fixtures/seed-1.png'),'w':asset(reference),'maxAbs':0.0001,'aligned':True,'preprocessing':'dlib-ffhq-pillow-bilinear-v1'}]
     codec=ROOT/'experiment/device-lab/node_modules/@ffmpeg/core/dist/esm'
     if (codec/'ffmpeg-core.js').exists():manifest['codec']={'version':'0.12.10','module':asset(codec/'ffmpeg-core.js'),'wasm':asset(codec/'ffmpeg-core.wasm')}
     if a.landmarks:manifest['landmarks']=asset(ROOT/'experiment/hf/models/e4e/shape_predictor_68_face_landmarks.dat')

@@ -2,6 +2,7 @@ import {createWebGpuSession} from './webgpu-engine.mjs';
 import {decodeReferencePng,encodeRgbaPng} from './png.mjs';
 import {createBrowserModelCache} from '../Assets/model-cache.mjs';
 import {inputLatent,truncate,requireLatent,rgba1024} from './identity.mjs';
+import {qualifyEncoderReference} from './encoder-preflight.mjs';
 let manifest,ort,cache,mapping,synthesis,noise,average,provider,webgl,webgpu,currentId;
 const report=(id,stage,extra={})=>postMessage({id,type:'progress',stage,...extra});
 async function bytes(asset,id){cache ||= await createBrowserModelCache();report(id,'asset-acquisition',{loaded:0,total:asset.size});const handle=await cache.acquire(asset);const data=await(await handle.open()).arrayBuffer();report(id,'asset-acquisition',{loaded:data.byteLength,total:asset.size});return new Uint8Array(data);}
@@ -11,16 +12,18 @@ async function ensureOrt(id){if(ort)return;report(id,'runtime-loading');const as
  const moduleUrl=URL.createObjectURL(new Blob([await bytes(module,id)],{type:'text/javascript'})),factoryUrl=URL.createObjectURL(new Blob([await bytes(factory,id)],{type:'text/javascript'})),wasmUrl=URL.createObjectURL(new Blob([await bytes(wasm,id)],{type:'application/wasm'}));
  ort=await import(/* webpackIgnore: true */ moduleUrl);ort.env.wasm.numThreads=1;ort.env.wasm.wasmPaths={mjs:factoryUrl,wasm:wasmUrl};}
 
-async function encodeStream(tensor,id){
- const descriptor=manifest.encoderStream,config=JSON.parse(new TextDecoder().decode(await bytes(descriptor,id)));
+async function encodeStream(tensor,id,qualifiedEncoderSha256){
+ const started=performance.now();const descriptor=manifest.encoderStream,config=JSON.parse(new TextDecoder().decode(await bytes(descriptor,id)));
  if(config.sourceEncoderSha256!==descriptor.sourceEncoderSha256||config.sourceEncoderSha256!==manifest.encoder?.sha256||config.preprocessingSha256!==manifest.alignmentSha256||config.preprocessingSha256!==descriptor.preprocessingSha256||config.runtime?.unshared!==true||config.runtime.maxWasmBytes!==268435456)throw Error('Streamed encoder identity mismatch.');
  const urls=[];const verifiedModule=async asset=>{const url=URL.createObjectURL(new Blob([await bytes(asset,id)],{type:'text/javascript'}));urls.push(url);return url;};
  try{
   const apiUrl=await verifiedModule(config.runtime.module),factoryUrl=await verifiedModule(config.runtime.factory),wasmUrl=URL.createObjectURL(new Blob([await bytes(config.runtime.wasm,id)],{type:'application/wasm'}));urls.push(wasmUrl);
   const observerUrl=URL.createObjectURL(new Blob([`import factory from ${JSON.stringify(factoryUrl)};let ref;export default async function(config){const m=await factory(config);ref=new WeakRef(m);return m;}export function snapshot(){const buffer=ref?.deref()?.HEAPU8?.buffer;return {available:Boolean(buffer),shared:Object.prototype.toString.call(buffer)==='[object SharedArrayBuffer]',currentBytes:buffer?.byteLength};}`],{type:'text/javascript'}));urls.push(observerUrl);
   const observer=await import(/* webpackIgnore: true */ observerUrl),encoderOrt=await import(/* webpackIgnore: true */ apiUrl),executor=await import(/* webpackIgnore: true */ await verifiedModule(config.executor));encoderOrt.env.wasm.numThreads=1;encoderOrt.env.wasm.wasmPaths={mjs:observerUrl,wasm:wasmUrl};
-  const result=await executor.executeEncoderStream({ort:encoderOrt,manifest:config,tensor,acquireBytes:asset=>bytes(asset,id),snapshotMemory:observer.snapshot,onProgress:event=>report(id,event.stage,event)});
-  requireLatent(result.values);return result;
+  const execute=input=>executor.executeEncoderStream({ort:encoderOrt,manifest:config,tensor:input,acquireBytes:asset=>bytes(asset,id),snapshotMemory:observer.snapshot,onProgress:event=>report(id,event.stage,event)});
+  const encoderQualification=qualifiedEncoderSha256===descriptor.sha256?{passed:true,manifestSha256:descriptor.sha256,reusedRuntimeAdmission:true}:await qualifyEncoderReference({config,manifestSha256:descriptor.sha256,execute,acquireBytes:asset=>bytes(asset,id),onProgress:event=>report(id,event.stage,event)});
+  const result=await execute(tensor);result.encoderQualification=encoderQualification;
+  requireLatent(result.values);const totals=result.encoderStats.steps.reduce((a,s)=>({acquireMs:a.acquireMs+s.acquireMs,createMs:a.createMs+s.createMs,runMs:a.runMs+s.runMs}),{acquireMs:0,createMs:0,runMs:0});report(id,'encoder-loaded',{elapsedMs:totals.createMs,scope:'Sum of108 sequential ORT session creations',acquisitionMs:totals.acquireMs});report(id,'encoding-complete',{elapsedMs:totals.runMs,scope:'Sum of108 session inference calls',totalWallMs:performance.now()-started});return result;
  }finally{for(const url of urls)URL.revokeObjectURL(url);}
 }
 
@@ -48,5 +51,5 @@ self.onmessage=async({data:{id,type,...request}})=>{currentId=id;try{let result;
  await synthesis?.release();synthesis=null;await webgl?.dispose();webgl=null;await webgpu?.dispose();webgpu=null;await mapping?.release();mapping=null;noise=null;
  cache ||= await createBrowserModelCache();
  if(!(request.tensor instanceof Float32Array)||request.tensor.length!==196608||!request.tensor.every(Number.isFinite))throw Error('Invalid aligned photo tensor');
- if(manifest.encoderStream){result=await encodeStream(request.tensor,id);}else{await ensureOrt(id);report(id,'encoder-loading');let encoder,input,out,values;try{encoder=await ort.InferenceSession.create(await bytes(manifest.encoder,id),{executionProviders:['wasm']});input=new ort.Tensor('float32',request.tensor,[1,3,256,256]);report(id,'encoding');out=(await encoder.run({image:input})).w;values=requireLatent(new Float32Array(await out.getData()));}finally{out?.dispose();input?.dispose();await encoder?.release();}result={values,shape:[1,18,512],space:'w-plus',encoderProvider:'wasm'};}
+ if(manifest.encoderStream){result=await encodeStream(request.tensor,id,request.qualifiedEncoderSha256);}else{await ensureOrt(id);report(id,'encoder-loading');let encoder,input,out,values;try{encoder=await ort.InferenceSession.create(await bytes(manifest.encoder,id),{executionProviders:['wasm']});input=new ort.Tensor('float32',request.tensor,[1,3,256,256]);report(id,'encoding');out=(await encoder.run({image:input})).w;values=requireLatent(new Float32Array(await out.getData()));}finally{out?.dispose();input?.dispose();await encoder?.release();}result={values,shape:[1,18,512],space:'w-plus',encoderProvider:'wasm'};}
  }else throw Error('Unknown runtime operation');postMessage({id,type:'complete',result});}catch(error){postMessage({id,type:'error',error:{name:error.name,message:error.message}});}};

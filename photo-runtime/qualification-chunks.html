@@ -1,0 +1,14 @@
+<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Landmark chunk transport qualification</title>
+<h1>Landmark chunk transport qualification</h1><p>One synthetic photo on an isolated test origin. No encoder or synthesis runs.</p><button id="start">Run explicit transport check</button><pre id="status">Ready</pre>
+<script type="module">
+import {createPhotoAligner} from '/photo/align-photo.mjs';
+const params=new URLSearchParams(location.search),campaign=params.get('campaign'),status=document.querySelector('#status');
+let started=false;
+const save=async report=>{status.textContent=JSON.stringify(report,null,2);localStorage.setItem('last-chunk-report',JSON.stringify(report));const r=await fetch('/report',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(report)});if(!r.ok)throw Error('Result save failed');};
+const sha=async bytes=>[...new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))].map(x=>x.toString(16).padStart(2,'0')).join('');
+document.querySelector('#start').onclick=async()=>{if(started)return;started=true;const report={campaign,startedAt:new Date().toISOString(),platform:navigator.platform,userAgent:navigator.userAgent,physicalPerformanceEvidence:false,completed:false,passed:false};
+try{await save(report);const align=createPhotoAligner({manifestUrl:'/photo/manifest.json'}),blob=await(await fetch('/photo-fixtures/seed-0.png')).blob(),t=performance.now();const output=await align(blob,{onProgress:e=>{status.textContent=e.stage;}});
+report.elapsedMs=performance.now()-t;report.stats=output.stats;report.faceCount=output.faceCount;report.didAlign=output.didAlign;report.workerTerminated=output.alignmentWorkerTerminated;report.tensorSha256=await sha(output.tensor);report.passed=report.platform==='iPhone'&&output.stats.chunkedModelTransport===true&&output.stats.modelChunkCount===6&&output.stats.modelBytesRead===99693937&&output.stats.downloadAttempted===true&&output.faceCount===1&&output.didAlign===true&&output.alignmentWorkerTerminated===true&&report.tensorSha256==='06b9830ac039949d8a43c26b11a8e4b9d133a2d33e727c75451854d90092aaa8';if(!report.passed)throw Error('Fresh chunk transport or exact alignment gate failed');
+}catch(e){report.error={name:e.name,message:e.message,alignmentStats:e.alignmentStats};report.passed=false;}finally{report.completed=true;report.finishedAt=new Date().toISOString();await save(report);}};
+if(/^sim-chunks-[a-f0-9-]{36}$/.test(campaign||'')&&!localStorage.getItem(campaign)){localStorage.setItem(campaign,'started');document.querySelector('#start').click();}
+</script>

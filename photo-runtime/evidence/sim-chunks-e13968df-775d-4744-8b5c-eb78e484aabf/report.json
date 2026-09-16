@@ -1,0 +1,76 @@
+{
+  "campaign": "sim-chunks-e13968df-775d-4744-8b5c-eb78e484aabf",
+  "startedAt": "2026-09-16T06:44:04.525Z",
+  "platform": "iPhone",
+  "userAgent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/27.0 Mobile/15E148 Safari/604.1",
+  "physicalPerformanceEvidence": false,
+  "completed": true,
+  "passed": true,
+  "elapsedMs": 7432,
+  "stats": {
+    "provider": "dlib20.0.1-pillow12.3.0-wasm-unshared",
+    "stages": [
+      {
+        "name": "alignment-manifest",
+        "ms": 46
+      },
+      {
+        "name": "alignment-runtime",
+        "ms": 179
+      },
+      {
+        "name": "alignment-model",
+        "ms": 2732
+      },
+      {
+        "name": "alignment-model-deserialize",
+        "ms": 3617
+      },
+      {
+        "name": "photo-decode",
+        "ms": 14
+      },
+      {
+        "name": "face-landmarks",
+        "ms": 272
+      },
+      {
+        "name": "photo-warp-resize",
+        "ms": 409
+      }
+    ],
+    "maxWasmBytes": 268435456,
+    "wasmCapacityBytes": 176488448,
+    "ortImported": false,
+    "privateDataUploaded": false,
+    "orientationPolicy": "legacy-ignore-exif",
+    "preprocessingSha256": "3cc958b232e8616db831b8429eea4446c990a845738320270b47121a2d2dbdfe",
+    "landmarksSha256": "fbdc2cb80eb9aa7a758672cbfdda32ba6300efe9b6e6c7a299ff7e736b11b92f",
+    "wasmSha256": "6cb217924cd7b0f0e4941d6c989cad6b9e46556d567ef82144232a97c8a5accc",
+    "input": {
+      "width": 512,
+      "height": 512,
+      "format": "png",
+      "encodedBytes": 378313,
+      "exifOrientation": 1,
+      "orientationPolicy": "legacy-ignore-exif"
+    },
+    "sharedMemory": false,
+    "modelCache": "opfs-write",
+    "chunkedModelTransport": true,
+    "modelChunkCount": 6,
+    "modelReader": "byob-1MiB",
+    "maxModelChunkBytes": 1048576,
+    "modelBytesRead": 99693937,
+    "downloadAttempted": true,
+    "faceCount": 1,
+    "preparedSha256": "13d56b1f9e21b1a180ffe07c8802133d8a2969cc74dd349b43eb91f3568dde8c",
+    "tensorSha256": "06b9830ac039949d8a43c26b11a8e4b9d133a2d33e727c75451854d90092aaa8",
+    "didAlign": true
+  },
+  "faceCount": 1,
+  "didAlign": true,
+  "workerTerminated": true,
+  "tensorSha256": "06b9830ac039949d8a43c26b11a8e4b9d133a2d33e727c75451854d90092aaa8",
+  "finishedAt": "2026-09-16T06:44:12.163Z"
+}

@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash, randomBytes } from 'node:crypto';
 import { Sha256 } from './sha256.mjs';
-import { createModelCache, storageStatus } from './model-cache.mjs';
+import { createModelCache, createBrowserModelCache, storageStatus } from './model-cache.mjs';
 
 const bytes = new TextEncoder().encode('synthetic model fixture');
 const digest = value => createHash('sha256').update(value).digest('hex');
@@ -158,4 +158,35 @@ test('conflicting sizes cannot join pending work for the same hash', async () =>
   const f = fixture(); const first = f.cache.acquire(asset());
   await assert.rejects(f.cache.acquire({ ...asset(), size: bytes.length + 1 }), /Conflicting size/);
   await first; assert.equal(f.calls.length, 1);
+});
+
+test('static-host chunks reconstruct exact model and retain URL-independent cache identity', async () => {
+  const parts = [bytes.slice(0, 7), bytes.slice(7)];
+  const chunks = parts.map((part, i) => asset(part, `https://models.example/chunk-${i}`));
+  const f = fixture(async url => new Response(parts[Number(url.slice(-1))]));
+  const handle = await f.cache.acquire({...asset(), chunks});
+  assert.deepEqual(new Uint8Array(await (await handle.open()).arrayBuffer()), bytes);
+  await f.cache.acquire(asset());
+  assert.deepEqual(f.calls, chunks.map(part => part.url));
+});
+test('corrupt chunk cannot commit a partial model', async () => {
+  const parts = [bytes.slice(0, 7), bytes.slice(7)];
+  const chunks = parts.map((part, i) => asset(part, `https://models.example/chunk-${i}`));
+  const f = fixture(async url => new Response(url.endsWith('0') ? parts[0] : new Uint8Array(parts[1].length)));
+  await assert.rejects(f.cache.acquire({...asset(), chunks}), /integrity/);
+  assert.equal(f.entries.size, 0);
+  await assert.rejects(f.cache.acquire({...asset(), chunks: chunks.slice(0, 1)}), /sizes/);
+});
+
+
+test('native WebView uses HTTPS cache keys without fetching the logical key origin', async () => {
+  const oldLocation=globalThis.location, oldCaches=globalThis.caches, entries=new Map(), requested=[];
+  globalThis.location={origin:'tauri://localhost'};
+  globalThis.caches={open:async()=>({match:async key=>entries.get(key)?.clone(),put:async(key,response)=>{assert.match(key,/^https:\/\//);entries.set(key,new Response(await response.arrayBuffer()));},delete:async key=>entries.delete(key)})};
+  try {
+    const cache=await createBrowserModelCache({fetcher:async url=>{requested.push(url);return new Response(bytes);}});
+    const handle=await cache.acquire(asset());
+    assert.deepEqual(new Uint8Array(await (await handle.open()).arrayBuffer()),bytes);
+    assert.deepEqual(requested,[asset().url]);
+  } finally {if(oldLocation===undefined)delete globalThis.location;else globalThis.location=oldLocation;if(oldCaches===undefined)delete globalThis.caches;else globalThis.caches=oldCaches;}
 });

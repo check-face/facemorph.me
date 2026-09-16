@@ -9,7 +9,20 @@ export function validateAsset(asset) {
   const url = new URL(asset.url);
   if (url.protocol !== 'https:' || url.username || url.password)
     throw new TypeError('Asset acquisition requires an HTTPS URL without embedded credentials');
-  return Object.freeze({ sha256: asset.sha256, size: asset.size, url: url.href });
+  let chunks;
+  if (asset.chunks !== undefined) {
+    if (!Array.isArray(asset.chunks) || !asset.chunks.length || asset.chunks.length > 256)
+      throw new TypeError('Invalid asset chunks');
+    chunks = asset.chunks.map(part => {
+      if (part.chunks !== undefined || part.size <= 0 || part.size > 16 * 1024 * 1024)
+        throw new TypeError('Invalid asset chunk');
+      return validateAsset(part);
+    });
+    if (chunks.reduce((sum, part) => sum + part.size, 0) !== asset.size)
+      throw new TypeError('Asset chunk sizes do not match');
+    Object.freeze(chunks);
+  }
+  return Object.freeze({ sha256: asset.sha256, size: asset.size, url: url.href, ...(chunks ? { chunks } : {}) });
 }
 
 // Runs with backpressure; errors before EOF prevent Cache.put from committing.
@@ -97,13 +110,40 @@ export function createModelCache({ store, fetcher = globalThis.fetch, locks,
     } else emit({ status: 'missing', sha256: asset.sha256 }); // Missing alone does not prove eviction.
     check(signal);
     emit({ status: 'downloading', sha256: asset.sha256 });
-    const response = await fetcher(asset.url, { signal, credentials: 'omit', cache: 'default', mode: 'cors' });
-    check(signal);
-    if (!response.ok || response.status !== 200 || response.type === 'opaque') {
-      void response.body?.cancel().catch(() => {});
-      throw new Error('Asset download requires a readable complete HTTP 200 response');
+    async function download(part) {
+      const response = await fetcher(part.url, { signal, credentials: 'omit', cache: 'default', mode: 'cors' });
+      check(signal);
+      if (!response.ok || response.status !== 200 || response.type === 'opaque') {
+        void response.body?.cancel().catch(() => {});
+        throw new Error('Asset download requires a readable complete HTTP 200 response');
+      }
+      return response.body;
     }
-    const verified = new Response(verifiedStream(response.body, asset, signal), {
+    let body;
+    if (asset.chunks) {
+      // Pull one verified chunk at a time. Neither a whole model nor all chunks
+      // accumulate in JS memory; the existing atomic store commits only at EOF.
+      let index = 0, reader;
+      body = new ReadableStream({
+        async pull(controller) {
+          try {
+            check(signal);
+            while (true) {
+              if (!reader) {
+                if (index === asset.chunks.length) { controller.close(); return; }
+                const part = asset.chunks[index++];
+                reader = verifiedStream(await download(part), part, signal).getReader();
+              }
+              const result = await reader.read();
+              if (result.done) { reader.releaseLock(); reader = undefined; continue; }
+              controller.enqueue(result.value); return;
+            }
+          } catch (error) { controller.error(error); await reader?.cancel(error).catch(() => {}); }
+        },
+        cancel(reason) { return reader?.cancel(reason); }
+      });
+    } else body = await download(asset);
+    const verified = new Response(verifiedStream(body, asset, signal), {
       headers: { 'Content-Type': 'application/octet-stream', 'Content-Length': String(asset.size), 'X-CheckFace-SHA256': asset.sha256 }
     });
     try { await store.put(asset.sha256, verified); }
@@ -164,7 +204,10 @@ export function createModelCache({ store, fetcher = globalThis.fetch, locks,
 export async function createBrowserModelCache(options = {}) {
   if (!globalThis.caches || !globalThis.location?.origin) throw new Error('Persistent Cache Storage unavailable');
   const cache = await caches.open(MODEL_CACHE_NAME);
-  const key = hash => new URL(`/__checkface_model_blobs__/sha256/${hash}`, location.origin).href;
+  // Native WebViews use tauri:// origins, which Cache Storage rejects as keys.
+  // This HTTPS namespace is a local storage key only; no request is sent here.
+  const origin = /^https?:\/\//.test(location.origin) ? location.origin : 'https://next.facemorph.me';
+  const key = hash => new URL(`/__checkface_model_blobs__/sha256/${hash}`, origin).href;
   return createModelCache({ ...options, locks: globalThis.navigator?.locks,
     store: {
       get: hash => cache.match(key(hash)),

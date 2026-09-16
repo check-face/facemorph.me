@@ -1,0 +1,90 @@
+name: New site artifact
+on:
+  push:
+    branches: ['candidate/next-delivery-20260916']
+    paths: ['src/**', 'desktop/runtime.mjs', 'scripts/build-next.cjs', 'scripts/check-next-artifact.sh', 'webpack.config.js', 'package*.json', '.config/**', 'hosting/next*/**', '.github/workflows/next-site.yml']
+  pull_request:
+    paths: ['src/**', 'desktop/runtime.mjs', 'scripts/build-next.cjs', 'scripts/check-next-artifact.sh', 'webpack.config.js', 'package*.json', '.config/**', 'hosting/next*/**', '.github/workflows/next-site.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: next-site-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  artifact:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    container: mcr.microsoft.com/dotnet/sdk:5.0-focal
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci
+      - name: Shipping runtime, media, privacy and input regressions
+        run: node --test src/Next/Assets/model-cache.test.mjs src/Next/browser/runtime.test.mjs src/Next/fresh-review.test.mjs src/Next/photo-selection.test.mjs hosting/next-cloudflare/worker.test.mjs
+      - name: Independent reviewed morph geometry
+        run: node src/Next/geometry/verify.mjs
+      - name: Build the actual new-site artifact
+        run: npm run build:next
+      - name: Exercise compiled project import and export
+        run: node src/Next/verify-fable.mjs src/Next/ProjectJson.fs.js
+      - name: Record exact bytes for promotion
+        run: |
+          find deploy-next -type f -print0 | sort -z | xargs -0 sha256sum > next-site-SHA256SUMS
+          printf '%s\n' '${{ github.sha }}' > next-site-source.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: next-site-${{ github.sha }}
+          path: |
+            deploy-next/
+            next-site-SHA256SUMS
+            next-site-source.txt
+          if-no-files-found: error
+          retention-days: 14
+  compiled-ui:
+    needs: artifact
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: next-site-${{ github.sha }}
+      - name: Verify exact built bytes
+        env:
+          EXPECTED_SOURCE: ${{ github.sha }}
+        run: |
+          test "$(cat next-site-source.txt)" = "$EXPECTED_SOURCE"
+          test -s deploy-next/index.html
+          sha256sum --check next-site-SHA256SUMS
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install browser controller
+        run: python -m pip install browser-harness==0.1.8
+      - name: Run actual artifact in Chromium
+        env:
+          BU_CDP_URL: http://127.0.0.1:9222
+        run: |
+          python -m http.server 8080 --directory deploy-next > "$RUNNER_TEMP/next-http.log" 2>&1 &
+          server_pid=$!
+          google-chrome --headless=new --no-sandbox --disable-gpu --remote-debugging-port=9222 --user-data-dir="$RUNNER_TEMP/next-chrome" about:blank > "$RUNNER_TEMP/next-chrome.log" 2>&1 &
+          chrome_pid=$!
+          trap 'kill "$server_pid" "$chrome_pid" 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 30); do curl --fail --silent http://127.0.0.1:9222/json/version >/dev/null && break; sleep 1; done
+          curl --fail --silent http://127.0.0.1:9222/json/version >/dev/null
+          for attempt in $(seq 1 30); do curl --fail --silent http://127.0.0.1:8080/ >/dev/null && break; sleep 1; done
+          curl --fail --silent http://127.0.0.1:8080/ >/dev/null
+          bash scripts/check-next-artifact.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: next-artifact-ui-evidence
+          path: |
+            next-artifact-ui.json
+            ${{ runner.temp }}/next-http.log
+            ${{ runner.temp }}/next-chrome.log
+          if-no-files-found: warn
+          retention-days: 14

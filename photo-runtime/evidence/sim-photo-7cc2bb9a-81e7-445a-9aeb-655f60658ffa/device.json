@@ -1,0 +1,8 @@
+{
+  "name": "iPhone 18 Pro Max",
+  "udid": "BE4CDC7B-09E3-4FED-8391-2ED9C903255B",
+  "runtime": "iOS 27.0",
+  "runtimeId": "com.apple.CoreSimulator.SimRuntime.iOS-27-0",
+  "type": "com.apple.CoreSimulator.SimDeviceType.iPhone-18-Pro-Max",
+  "physicalPerformanceEvidence": false
+}

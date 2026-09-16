@@ -1,0 +1,621 @@
+{
+  "schemaVersion": 1,
+  "environment": "Native CPU ONNX Runtime; not browser/device qualification",
+  "sourceEncoderSha256": "d525a985a43e4d49ef4590a8b8cc6f487992065bee00014fe8c6f8ab4ac291b1",
+  "manifestSha256": "579dab2390fcc0f1874c5c962775f0da4b10d2db2c1687670412f4770d0764a0",
+  "ort": "1.24.3",
+  "torch": "2.14.0",
+  "threshold": 0.0001,
+  "cases": [
+    {
+      "id": "seed-0-aligned",
+      "didAlign": true,
+      "inputFile": "seed-0-aligned.input.f32",
+      "referenceFile": "seed-0-aligned.w.f32",
+      "inputSha256": "06b9830ac039949d8a43c26b11a8e4b9d133a2d33e727c75451854d90092aaa8",
+      "referenceSha256": "0756827f0e94d9de27bf276c34e27c650da15e923efbaebbaebee4c0dd951ee7",
+      "fixedHistoricWMaxError": 0.0,
+      "originalTorchMs": 1388.8381659635343,
+      "maxWError": 2.6226043701171875e-06,
+      "meanWError": 4.1019848140422255e-07,
+      "passed": true
+    },
+    {
+      "id": "seed-0-unaligned",
+      "didAlign": false,
+      "inputFile": "seed-0-unaligned.input.f32",
+      "referenceFile": "seed-0-unaligned.w.f32",
+      "inputSha256": "51529b7a56d218a191b308a889db37fbff311a0bd4c2096e46b2334f7d835726",
+      "referenceSha256": "ac37d0021725943919755d826b6c041b462add0496d5785d38d4610d079a5301",
+      "fixedHistoricWMaxError": null,
+      "originalTorchMs": 365.09991699131206,
+      "maxWError": 3.337860107421875e-06,
+      "meanWError": 4.183524140444206e-07,
+      "passed": true
+    },
+    {
+      "id": "seed-1-aligned",
+      "didAlign": true,
+      "inputFile": "seed-1-aligned.input.f32",
+      "referenceFile": "seed-1-aligned.w.f32",
+      "inputSha256": "8c9a28b5520a3d9a34d32367e87a278ec5dd3f140cfa84101e1ee9fa1e0b7cae",
+      "referenceSha256": "bf4fd36a75235a1d5bc55e54dedb0862d1dd78883be4db95fb627a23ba3d336b",
+      "fixedHistoricWMaxError": 0.0,
+      "originalTorchMs": 711.4489590167068,
+      "maxWError": 2.6226043701171875e-06,
+      "meanWError": 3.7910922401351854e-07,
+      "passed": true
+    },
+    {
+      "id": "seed-1-unaligned",
+      "didAlign": false,
+      "inputFile": "seed-1-unaligned.input.f32",
+      "referenceFile": "seed-1-unaligned.w.f32",
+      "inputSha256": "db49d70e029fc0d80c3cd0004bac579c4dd208a200606cf116f464259d8c2ee9",
+      "referenceSha256": "77fb5310b7a7ccc83414ca22372d0ed8ec7afd05f11edfda7c37877c0c404741",
+      "fixedHistoricWMaxError": null,
+      "originalTorchMs": 370.4642920056358,
+      "maxWError": 3.3676624298095703e-06,
+      "meanWError": 3.7289132137630077e-07,
+      "passed": true
+    },
+    {
+      "id": "no-face-aligned",
+      "didAlign": false,
+      "inputFile": "no-face-aligned.input.f32",
+      "referenceFile": "no-face-aligned.w.f32",
+      "inputSha256": "2a0db9dafd24471a6b874e8810aae5e75508ad019ba3a24c2e957aa766d2f218",
+      "referenceSha256": "5f59b2060c0075c8800dc96b0c75e5696fbb576d4dd36cdeb1e04a4d980bf910",
+      "fixedHistoricWMaxError": null,
+      "originalTorchMs": 615.487250033766,
+      "maxWError": 2.8133392333984375e-05,
+      "meanWError": 4.972929673385806e-06,
+      "passed": true
+    }
+  ],
+  "shards": [
+    {
+      "id": 0,
+      "loadMs": 37.430499971378595,
+      "fiveCasesRunMs": 1736.9495420134626
+    },
+    {
+      "id": 1,
+      "loadMs": 3.9071249775588512,
+      "fiveCasesRunMs": 455.34354203846306
+    },
+    {
+      "id": 2,
+      "loadMs": 3.5553749767132103,
+      "fiveCasesRunMs": 459.02629202464595
+    },
+    {
+      "id": 3,
+      "loadMs": 4.291207995265722,
+      "fiveCasesRunMs": 462.86829200107604
+    },
+    {
+      "id": 4,
+      "loadMs": 2.681832993403077,
+      "fiveCasesRunMs": 293.9534170436673
+    },
+    {
+      "id": 5,
+      "loadMs": 8.746500010602176,
+      "fiveCasesRunMs": 137.95791700249538
+    },
+    {
+      "id": 6,
+      "loadMs": 2.7752500027418137,
+      "fiveCasesRunMs": 181.44279101397842
+    },
+    {
+      "id": 7,
+      "loadMs": 6.1272080056369305,
+      "fiveCasesRunMs": 603.0456249718554
+    },
+    {
+      "id": 8,
+      "loadMs": 4.383124993182719,
+      "fiveCasesRunMs": 216.35170798981562
+    },
+    {
+      "id": 9,
+      "loadMs": 5.115834006574005,
+      "fiveCasesRunMs": 120.29620795510709
+    },
+    {
+      "id": 10,
+      "loadMs": 2.3162500001490116,
+      "fiveCasesRunMs": 22.048792045097798
+    },
+    {
+      "id": 11,
+      "loadMs": 3.085291013121605,
+      "fiveCasesRunMs": 5.98774995887652
+    },
+    {
+      "id": 12,
+      "loadMs": 1.925709017086774,
+      "fiveCasesRunMs": 6.1460830038413405
+    },
+    {
+      "id": 13,
+      "loadMs": 9.363084041979164,
+      "fiveCasesRunMs": 10.394874960184097
+    },
+    {
+      "id": 14,
+      "loadMs": 4.636416968423873,
+      "fiveCasesRunMs": 48.88300003949553
+    },
+    {
+      "id": 15,
+      "loadMs": 2.3498330265283585,
+      "fiveCasesRunMs": 8.177958021406084
+    },
+    {
+      "id": 16,
+      "loadMs": 1.8439170089550316,
+      "fiveCasesRunMs": 7.922999968286604
+    },
+    {
+      "id": 17,
+      "loadMs": 7.5450410367920995,
+      "fiveCasesRunMs": 6.155500013846904
+    },
+    {
+      "id": 18,
+      "loadMs": 1.880790980067104,
+      "fiveCasesRunMs": 21.300500025972724
+    },
+    {
+      "id": 19,
+      "loadMs": 1.991458993870765,
+      "fiveCasesRunMs": 7.1218329831026495
+    },
+    {
+      "id": 20,
+      "loadMs": 1.919874979648739,
+      "fiveCasesRunMs": 5.451750010251999
+    },
+    {
+      "id": 21,
+      "loadMs": 6.378542049787939,
+      "fiveCasesRunMs": 35.06754100089893
+    },
+    {
+      "id": 22,
+      "loadMs": 3.369416983332485,
+      "fiveCasesRunMs": 83.481791021768
+    },
+    {
+      "id": 23,
+      "loadMs": 2.5458339951001108,
+      "fiveCasesRunMs": 25.03266598796472
+    },
+    {
+      "id": 24,
+      "loadMs": 2.0231250091455877,
+      "fiveCasesRunMs": 6.227458012290299
+    },
+    {
+      "id": 25,
+      "loadMs": 2.0927079604007304,
+      "fiveCasesRunMs": 4.856624989770353
+    },
+    {
+      "id": 26,
+      "loadMs": 3.905833000317216,
+      "fiveCasesRunMs": 4.539416986517608
+    },
+    {
+      "id": 27,
+      "loadMs": 2.357291989028454,
+      "fiveCasesRunMs": 98.18391699809581
+    },
+    {
+      "id": 28,
+      "loadMs": 2.253541024401784,
+      "fiveCasesRunMs": 25.786041980609298
+    },
+    {
+      "id": 29,
+      "loadMs": 3.8673750241287053,
+      "fiveCasesRunMs": 12.452540977392346
+    },
+    {
+      "id": 30,
+      "loadMs": 2.354666998144239,
+      "fiveCasesRunMs": 11.345583014190197
+    },
+    {
+      "id": 31,
+      "loadMs": 4.579332948196679,
+      "fiveCasesRunMs": 9.551334020216018
+    },
+    {
+      "id": 32,
+      "loadMs": 1.858333998825401,
+      "fiveCasesRunMs": 148.41041603358462
+    },
+    {
+      "id": 33,
+      "loadMs": 3.9434170466847718,
+      "fiveCasesRunMs": 28.891999972984195
+    },
+    {
+      "id": 34,
+      "loadMs": 4.692999995313585,
+      "fiveCasesRunMs": 11.245708970818669
+    },
+    {
+      "id": 35,
+      "loadMs": 2.2671660408377647,
+      "fiveCasesRunMs": 9.208292001858354
+    },
+    {
+      "id": 36,
+      "loadMs": 4.940958984661847,
+      "fiveCasesRunMs": 6.951791001483798
+    },
+    {
+      "id": 37,
+      "loadMs": 2.187417005188763,
+      "fiveCasesRunMs": 87.55933301290497
+    },
+    {
+      "id": 38,
+      "loadMs": 2.2720840061083436,
+      "fiveCasesRunMs": 21.821665985044092
+    },
+    {
+      "id": 39,
+      "loadMs": 2.500416012480855,
+      "fiveCasesRunMs": 5.71995903737843
+    },
+    {
+      "id": 40,
+      "loadMs": 2.22025002585724,
+      "fiveCasesRunMs": 7.094583997968584
+    },
+    {
+      "id": 41,
+      "loadMs": 7.337749993894249,
+      "fiveCasesRunMs": 91.94824995938689
+    },
+    {
+      "id": 42,
+      "loadMs": 12.918457970954478,
+      "fiveCasesRunMs": 359.27762498613447
+    },
+    {
+      "id": 43,
+      "loadMs": 2.974167000502348,
+      "fiveCasesRunMs": 95.30387504491955
+    },
+    {
+      "id": 44,
+      "loadMs": 3.4964169608429074,
+      "fiveCasesRunMs": 27.89554203627631
+    },
+    {
+      "id": 45,
+      "loadMs": 1.9641660037450492,
+      "fiveCasesRunMs": 6.111959053669125
+    },
+    {
+      "id": 46,
+      "loadMs": 2.1088329958729446,
+      "fiveCasesRunMs": 5.772958043962717
+    },
+    {
+      "id": 47,
+      "loadMs": 4.677374963648617,
+      "fiveCasesRunMs": 9.213291050400585
+    },
+    {
+      "id": 48,
+      "loadMs": 2.2907500388100743,
+      "fiveCasesRunMs": 345.78499995404854
+    },
+    {
+      "id": 49,
+      "loadMs": 1.8840000266209245,
+      "fiveCasesRunMs": 77.37791701219976
+    },
+    {
+      "id": 50,
+      "loadMs": 2.1722919773310423,
+      "fiveCasesRunMs": 21.928250032942742
+    },
+    {
+      "id": 51,
+      "loadMs": 2.110790985170752,
+      "fiveCasesRunMs": 5.639249982777983
+    },
+    {
+      "id": 52,
+      "loadMs": 1.9504170049913228,
+      "fiveCasesRunMs": 4.76570799946785
+    },
+    {
+      "id": 53,
+      "loadMs": 3.2505409908480942,
+      "fiveCasesRunMs": 4.946041968651116
+    },
+    {
+      "id": 54,
+      "loadMs": 3.877166018355638,
+      "fiveCasesRunMs": 388.54125002399087
+    },
+    {
+      "id": 55,
+      "loadMs": 2.54100002348423,
+      "fiveCasesRunMs": 88.86987500591204
+    },
+    {
+      "id": 56,
+      "loadMs": 2.336000034119934,
+      "fiveCasesRunMs": 20.606958016287535
+    },
+    {
+      "id": 57,
+      "loadMs": 1.8467909540049732,
+      "fiveCasesRunMs": 6.936334015335888
+    },
+    {
+      "id": 58,
+      "loadMs": 1.9391250098124146,
+      "fiveCasesRunMs": 5.830208014231175
+    },
+    {
+      "id": 59,
+      "loadMs": 3.5237090196460485,
+      "fiveCasesRunMs": 5.149291013367474
+    },
+    {
+      "id": 60,
+      "loadMs": 2.0736249862238765,
+      "fiveCasesRunMs": 298.1687919818796
+    },
+    {
+      "id": 61,
+      "loadMs": 1.8866669852286577,
+      "fiveCasesRunMs": 82.20629103016108
+    },
+    {
+      "id": 62,
+      "loadMs": 2.028582966886461,
+      "fiveCasesRunMs": 24.349957995582372
+    },
+    {
+      "id": 63,
+      "loadMs": 1.9604170229285955,
+      "fiveCasesRunMs": 5.740583001170307
+    },
+    {
+      "id": 64,
+      "loadMs": 1.7741249757818878,
+      "fiveCasesRunMs": 5.699958011973649
+    },
+    {
+      "id": 65,
+      "loadMs": 3.584041027352214,
+      "fiveCasesRunMs": 5.573124974034727
+    },
+    {
+      "id": 66,
+      "loadMs": 1.8428749754093587,
+      "fiveCasesRunMs": 328.1169580295682
+    },
+    {
+      "id": 67,
+      "loadMs": 2.9121669940650463,
+      "fiveCasesRunMs": 119.83291700016707
+    },
+    {
+      "id": 68,
+      "loadMs": 1.8863749573938549,
+      "fiveCasesRunMs": 21.494584041647613
+    },
+    {
+      "id": 69,
+      "loadMs": 1.9393329857848585,
+      "fiveCasesRunMs": 5.860458011738956
+    },
+    {
+      "id": 70,
+      "loadMs": 3.220584010705352,
+      "fiveCasesRunMs": 5.385915981605649
+    },
+    {
+      "id": 71,
+      "loadMs": 3.080708032939583,
+      "fiveCasesRunMs": 4.843332979362458
+    },
+    {
+      "id": 72,
+      "loadMs": 1.907832978758961,
+      "fiveCasesRunMs": 336.5760830347426
+    },
+    {
+      "id": 73,
+      "loadMs": 2.0704169874079525,
+      "fiveCasesRunMs": 81.74304198473692
+    },
+    {
+      "id": 74,
+      "loadMs": 2.13350000558421,
+      "fiveCasesRunMs": 21.7424999573268
+    },
+    {
+      "id": 75,
+      "loadMs": 2.299249987117946,
+      "fiveCasesRunMs": 4.938540980219841
+    },
+    {
+      "id": 76,
+      "loadMs": 2.7390840114094317,
+      "fiveCasesRunMs": 4.434000002220273
+    },
+    {
+      "id": 77,
+      "loadMs": 4.041666979901493,
+      "fiveCasesRunMs": 6.1532920226454735
+    },
+    {
+      "id": 78,
+      "loadMs": 2.1293750032782555,
+      "fiveCasesRunMs": 367.6659160410054
+    },
+    {
+      "id": 79,
+      "loadMs": 3.7732499768026173,
+      "fiveCasesRunMs": 111.601333017461
+    },
+    {
+      "id": 80,
+      "loadMs": 1.9414160051383078,
+      "fiveCasesRunMs": 22.44683401659131
+    },
+    {
+      "id": 81,
+      "loadMs": 1.9742500153370202,
+      "fiveCasesRunMs": 5.5470410152338445
+    },
+    {
+      "id": 82,
+      "loadMs": 1.8943750183098018,
+      "fiveCasesRunMs": 4.929374961648136
+    },
+    {
+      "id": 83,
+      "loadMs": 4.162416968028992,
+      "fiveCasesRunMs": 4.764708050061017
+    },
+    {
+      "id": 84,
+      "loadMs": 2.647208981215954,
+      "fiveCasesRunMs": 318.6187079991214
+    },
+    {
+      "id": 85,
+      "loadMs": 2.0172499935142696,
+      "fiveCasesRunMs": 82.00029202271253
+    },
+    {
+      "id": 86,
+      "loadMs": 1.944500021636486,
+      "fiveCasesRunMs": 19.95429099770263
+    },
+    {
+      "id": 87,
+      "loadMs": 1.913999964017421,
+      "fiveCasesRunMs": 5.064375000074506
+    },
+    {
+      "id": 88,
+      "loadMs": 3.623875032644719,
+      "fiveCasesRunMs": 5.691124999430031
+    },
+    {
+      "id": 89,
+      "loadMs": 4.0235420456156135,
+      "fiveCasesRunMs": 4.893874982371926
+    },
+    {
+      "id": 90,
+      "loadMs": 2.3123330320231616,
+      "fiveCasesRunMs": 299.57429197384045
+    },
+    {
+      "id": 91,
+      "loadMs": 1.7934589996002614,
+      "fiveCasesRunMs": 76.48666598834097
+    },
+    {
+      "id": 92,
+      "loadMs": 2.229625009931624,
+      "fiveCasesRunMs": 18.873625027481467
+    },
+    {
+      "id": 93,
+      "loadMs": 1.932125014718622,
+      "fiveCasesRunMs": 5.337374983355403
+    },
+    {
+      "id": 94,
+      "loadMs": 2.451250038575381,
+      "fiveCasesRunMs": 4.750333959236741
+    },
+    {
+      "id": 95,
+      "loadMs": 3.402667003683746,
+      "fiveCasesRunMs": 4.526583012193441
+    },
+    {
+      "id": 96,
+      "loadMs": 1.9004999776370823,
+      "fiveCasesRunMs": 301.13074998371303
+    },
+    {
+      "id": 97,
+      "loadMs": 1.9304580055177212,
+      "fiveCasesRunMs": 75.29591699130833
+    },
+    {
+      "id": 98,
+      "loadMs": 1.9824999617412686,
+      "fiveCasesRunMs": 19.36604204820469
+    },
+    {
+      "id": 99,
+      "loadMs": 2.749833045527339,
+      "fiveCasesRunMs": 6.158792006317526
+    },
+    {
+      "id": 100,
+      "loadMs": 2.188249956816435,
+      "fiveCasesRunMs": 4.615459009073675
+    },
+    {
+      "id": 101,
+      "loadMs": 3.4474169951863587,
+      "fiveCasesRunMs": 5.110541009344161
+    },
+    {
+      "id": 102,
+      "loadMs": 1.7965830047614872,
+      "fiveCasesRunMs": 309.9002499948256
+    },
+    {
+      "id": 103,
+      "loadMs": 2.0300839678384364,
+      "fiveCasesRunMs": 82.87945803022012
+    },
+    {
+      "id": 104,
+      "loadMs": 1.95741601055488,
+      "fiveCasesRunMs": 20.749500021338463
+    },
+    {
+      "id": 105,
+      "loadMs": 1.9008750095963478,
+      "fiveCasesRunMs": 5.160958971828222
+    },
+    {
+      "id": 106,
+      "loadMs": 2.1827910095453262,
+      "fiveCasesRunMs": 4.613250028342009
+    },
+    {
+      "id": 107,
+      "loadMs": 3.373833023943007,
+      "fiveCasesRunMs": 6.206874968484044
+    }
+  ],
+  "passed": true,
+  "browserQualified": false,
+  "physicalPhoneQualified": false
+}

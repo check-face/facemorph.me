@@ -1,0 +1,27 @@
+{
+  "name": "facemorph-next",
+  "account_id": "8f550a622a484c03d9267efd45573583",
+  "compatibility_date": "2026-09-16",
+  "workers_dev": true,
+  "assets": {
+    "directory": "./public",
+    "not_found_handling": "none",
+    "binding": "ASSETS",
+    "run_worker_first": [
+      "/diagnostics/*"
+    ]
+  },
+  "main": "worker.mjs",
+  "kv_namespaces": [
+    {
+      "binding": "DIAGNOSTICS",
+      "id": "3a71e4ec58354345be24a1e02a3edb82"
+    }
+  ],
+  "vars": {
+    "FREE_PLAN_CONFIRMED": "true"
+  },
+  "observability": {
+    "enabled": false
+  }
+}

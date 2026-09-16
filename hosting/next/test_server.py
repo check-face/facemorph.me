@@ -44,6 +44,15 @@ class PreviewBoundary(unittest.TestCase):
         c.request('GET','/runtime/model.bin',headers={'Range':'bytes=3-6'})
         r=c.getresponse();self.assertEqual(r.status,206);self.assertEqual(r.read(),b'3456');self.assertEqual(r.headers['Content-Range'],'bytes 3-6/10');self.assertEqual(r.headers['Access-Control-Allow-Origin'],'*');c.close()
 
+    def test_measured_stage_and_opt_in_device_contract(self):
+        event={**self.event(),'event':'stage','stage':'model-loaded','device':str(uuid.uuid4()),'browserMajor':26,'stageMs':123,'elapsedMs':250,'build':'next-reviewed-build'}
+        self.assertEqual(self.request('/diagnostics/events',event)[0],204)
+        for patch in [{'device':'-'*36},{'browserMajor':True},{'stageMs':1.5},{'stageMs':-1},{'privatePhoto':'bytes'}]:
+            self.assertEqual(self.request('/diagnostics/events',{**event,**patch})[0],400)
+        saved=json.loads(next(server.REPORTS.glob('*.jsonl')).read_text())
+        self.assertEqual(saved['stageMs'],123)
+        self.assertEqual(saved['device'],event['device'])
+
     def test_retention_and_capacity(self):
         server.purge();old=server.REPORTS/'old.jsonl';old.write_text('{}')
         import os

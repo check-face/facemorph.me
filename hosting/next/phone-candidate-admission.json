@@ -1,0 +1,10 @@
+{
+  "scope": "friends-and-family-candidate",
+  "releaseQualified": false,
+  "report": "../../photo-runtime/evidence/sim-photo-7cc2bb9a-81e7-445a-9aeb-655f60658ffa/report.json",
+  "reportSha256": "b375fe42ffe1b3fbc48094de96a7ab5d7ecd51b2ff7375c85fa551f307af59cc",
+  "limitations": [
+    "Simulator functional evidence only; physical-device speed and memory remain unqualified.",
+    "Per-device encoder and synthesis correctness checks remain mandatory."
+  ]
+}

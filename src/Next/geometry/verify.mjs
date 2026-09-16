@@ -12,7 +12,7 @@ function project(points, kind = 'full-smooth-figure8', options = {}) {
 }
 const ring = n => Array.from({ length: n }, (_, i) => [Math.cos(i * 2 * Math.PI / n) * (1 + i / 10), Math.sin(i * 2 * Math.PI / n)]);
 const shared = [[0, 0], [2, 0], [0, 0], [0, 2]];
-const html = fs.readFileSync(new URL('../../../../custom-morphs-feature/shape-explorer.html', import.meta.url), 'utf8');
+const html = fs.readFileSync(new URL('./reference/shape-explorer.html', import.meta.url), 'utf8');
 const context = vm.createContext({ document: {} });
 vm.runInContext(html.split('<script>')[1].split('const canvas=')[0], context);
 let referenceCases = 0;

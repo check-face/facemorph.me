@@ -291,3 +291,8 @@ html {
 .next-name-choice { font:inherit; color:inherit; border:1px solid #8884; background:transparent; border-radius:6px; padding:0; overflow:hidden; cursor:pointer; }
 .next-name-choice img { width:100%; height:auto; display:block; }
 .next-name-choice span { display:block; padding:.35rem; }
+
+.next-face-placeholder { width:100%; border:0; background:transparent; color:inherit; cursor:pointer; }
+.next-face-placeholder:focus-visible { outline:3px solid #ce621d; outline-offset:-4px; opacity:.8; }
+.next-face-placeholder:disabled { cursor:default; }
+.next-face.next-photo-over { outline:3px solid #ce621d; outline-offset:3px; }

@@ -1,0 +1,12 @@
+{
+  "scope": "Shipping source used by the final actual iOS Simulator preflight and canonical cache regression. Compiled frontend build is independently recorded by the parent delivery harness.",
+  "report": "sim-photo-7cc2bb9a-81e7-445a-9aeb-655f60658ffa/report.json",
+  "sourceSha256": {
+    "src/Next/browser/ort-worker.mjs": "630242888c1d671195d96ac5d271f38c2706d0a455c9271c5d86929f3f80ca4d",
+    "src/Next/browser/runtime.mjs": "e0feeb0879c7e5715dae0a059c9ca845491c35fa0947cf42e0d49c1f1cf0c402",
+    "src/Next/browser/originals.mjs": "34215f129191a23d5461615d087e502c8930beb29bff4127884b5c9b6ee551ef",
+    "src/Next/browser/encoder-preflight.mjs": "6e529664435307fa366ea8b58f20e7a89b70f2f7f2e8e088f2be46848eb4f339",
+    "src/Next/browser/identity.mjs": "a74e217e91f660b554b3ed9c477881023bb4e90af93752e6c98b668cd9fe8b67",
+    "src/Next/photo/align-photo.mjs": "8d2c42c9419639158e4b1b80bfbcbf17b43b8fa9b8d27abe478a8085c5ae8f2a"
+  }
+}

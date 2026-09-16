@@ -1,0 +1,9 @@
+{
+  "publicPostStatus": 204,
+  "privateRecordVerified": true,
+  "expirationVerified": true,
+  "run": "5a074249-3e87-4e80-a101-9e360f9f077d",
+  "namespace": "3a71e4ec58354345be24a1e02a3edb82",
+  "expiresAt": "2026-10-16T06:39:10.000Z",
+  "hosting": "Cloudflare Worker + private KV; no operator origin"
+}

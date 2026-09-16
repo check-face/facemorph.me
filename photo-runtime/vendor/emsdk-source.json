@@ -1,0 +1,5 @@
+{
+  "repository": "https://github.com/emscripten-core/emsdk.git",
+  "commit": "33aee63cfc6362558d3adcc68a333035e75a391f",
+  "toolchain": "4.0.23"
+}

@@ -1,0 +1,9 @@
+work/
+__pycache__/
+vendor/dlib-*/
+vendor/pillow-*/
+vendor/libjpeg-turbo-*/
+vendor/*.tar.gz
+encoder-stream/assets/*.onnx
+encoder-stream/external/
+encoder-stream/*.work.mjs

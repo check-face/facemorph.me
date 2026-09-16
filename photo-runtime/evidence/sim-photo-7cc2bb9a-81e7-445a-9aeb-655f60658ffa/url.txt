@@ -1,0 +1,1 @@
+https://localhost:8443/runtime/photo/qualification.html?campaign=sim-photo-7cc2bb9a-81e7-445a-9aeb-655f60658ffa&device=iPhone+18+Pro+Max&runtime=iOS+27.0&udid=BE4CDC7B-09E3-4FED-8391-2ED9C903255B&mode=product

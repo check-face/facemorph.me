@@ -1,0 +1,5027 @@
+{
+  "id": "f44c1007-203f-4059-8c92-a734a45fb1da",
+  "campaignId": "sim-photo-927e4446-d5db-49aa-9d6e-b9dcc6d20204",
+  "platform": "iPhone",
+  "executionEnvironment": {
+    "kind": "ios-simulator",
+    "declaredBy": "operator-harness",
+    "deviceProfile": "iPhone 18 Pro Max",
+    "runtime": "iOS 27.0",
+    "simulatorDeviceId": "BE4CDC7B-09E3-4FED-8391-2ED9C903255B",
+    "physicalPerformanceEvidence": false
+  },
+  "startedAt": "2026-09-16T06:34:19.028Z",
+  "userAgent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/27.0 Mobile/15E148 Safari/604.1",
+  "url": "https://localhost:8443/runtime/photo/qualification.html?campaign=sim-photo-927e4446-d5db-49aa-9d6e-b9dcc6d20204&device=iPhone+18+Pro+Max&runtime=iOS+27.0&udid=BE4CDC7B-09E3-4FED-8391-2ED9C903255B",
+  "completed": true,
+  "passed": true,
+  "cases": [
+    {
+      "id": "seed-0-aligned",
+      "alignmentMs": 5944.299999999999,
+      "tensorSha256": "06b9830ac039949d8a43c26b11a8e4b9d133a2d33e727c75451854d90092aaa8",
+      "tensorExact": true,
+      "landmarkWorkerTerminated": true,
+      "alignmentStats": {
+        "provider": "dlib20.0.1-pillow12.3.0-wasm-unshared",
+        "stages": [
+          {
+            "name": "alignment-manifest",
+            "ms": 19.320000000000007
+          },
+          {
+            "name": "alignment-runtime",
+            "ms": 258.98
+          },
+          {
+            "name": "alignment-model",
+            "ms": 1092.52
+          },
+          {
+            "name": "alignment-model-deserialize",
+            "ms": 3664.0600000000004
+          },
+          {
+            "name": "photo-decode",
+            "ms": 14.920000000000073
+          },
+          {
+            "name": "face-landmarks",
+            "ms": 273.4200000000001
+          },
+          {
+            "name": "photo-warp-resize",
+            "ms": 467.5
+          }
+        ],
+        "maxWasmBytes": 268435456,
+        "wasmCapacityBytes": 176488448,
+        "ortImported": false,
+        "privateDataUploaded": false,
+        "orientationPolicy": "legacy-ignore-exif",
+        "preprocessingSha256": "3cc958b232e8616db831b8429eea4446c990a845738320270b47121a2d2dbdfe",
+        "landmarksSha256": "fbdc2cb80eb9aa7a758672cbfdda32ba6300efe9b6e6c7a299ff7e736b11b92f",
+        "wasmSha256": "6cb217924cd7b0f0e4941d6c989cad6b9e46556d567ef82144232a97c8a5accc",
+        "input": {
+          "width": 512,
+          "height": 512,
+          "format": "png",
+          "encodedBytes": 378313,
+          "exifOrientation": 1,
+          "orientationPolicy": "legacy-ignore-exif"
+        },
+        "sharedMemory": false,
+        "modelCache": "opfs-hit",
+        "chunkedModelTransport": false,
+        "modelChunkCount": 1,
+        "modelReader": "byob-1MiB",
+        "maxModelChunkBytes": 524288,
+        "modelBytesRead": 99693937,
+        "downloadAttempted": false,
+        "faceCount": 1,
+        "preparedSha256": "13d56b1f9e21b1a180ffe07c8802133d8a2969cc74dd349b43eb91f3568dde8c",
+        "tensorSha256": "06b9830ac039949d8a43c26b11a8e4b9d133a2d33e727c75451854d90092aaa8",
+        "didAlign": true
+      },
+      "didAlign": true,
+      "encoderWorkerTerminated": true,
+      "encoderMs": 41826.600000000006,
+      "maxWError": 2.562999725341797e-06,
+      "encoderStats": {
+        "provider": "wasm-unshared-streamed",
+        "sourceEncoderSha256": "d525a985a43e4d49ef4590a8b8cc6f487992065bee00014fe8c6f8ab4ac291b1",
+        "steps": [
+          {
+            "id": 0,
+            "acquireMs": 393.31999999999994,
+            "createMs": 228.57999999999993,
+            "runMs": 1178.7000000000003,
+            "totalMs": 1851.9199999999998
+          },
+          {
+            "id": 1,
+            "acquireMs": 559.48,
+            "createMs": 20.360000000000127,
+            "runMs": 256.8399999999997,
+            "totalMs": 848.1799999999998
+          },
+          {
+            "id": 2,
+            "acquireMs": 706.3999999999996,
+            "createMs": 18.980000000000473,
+            "runMs": 228.57999999999993,
+            "totalMs": 963.7200000000003
+          },
+          {
+            "id": 3,
+            "acquireMs": 493.8200000000006,
+            "createMs": 10.800000000000182,
+            "runMs": 232.84000000000015,
+            "totalMs": 747.3400000000001
+          },
+          {
+            "id": 4,
+            "acquireMs": 264.5,
+            "createMs": 6.599999999999454,
+            "runMs": 159.1800000000003,
+            "totalMs": 448.53999999999996
+          },
+          {
+            "id": 5,
+            "acquireMs": 249.5,
+            "createMs": 4,
+            "runMs": 38.24000000000069,
+            "totalMs": 297.03999999999996
+          },
+          {
+            "id": 6,
+            "acquireMs": 239.34000000000015,
+            "createMs": 2.0399999999999636,
+            "runMs": 32.05999999999949,
+            "totalMs": 275.8200000000006
+          },
+          {
+            "id": 7,
+            "acquireMs": 224.30000000000018,
+            "createMs": 3.6599999999998545,
+            "runMs": 31.659999999999854,
+            "totalMs": 264.5799999999999
+          },
+          {
+            "id": 8,
+            "acquireMs": 220.29999999999927,
+            "createMs": 2.6599999999998545,
+            "runMs": 32.75999999999931,
+            "totalMs": 258.1999999999998
+          },
+          {
+            "id": 9,
+            "acquireMs": 244.32000000000062,
+            "createMs": 8.319999999999709,
+            "runMs": 39.960000000000036,
+            "totalMs": 296.02000000000044
+          },
+          {
+            "id": 10,
+            "acquireMs": 240.52000000000044,
+            "createMs": 3.1599999999998545,
+            "runMs": 8.5,
+            "totalMs": 253.73999999999978
+          },
+          {
+            "id": 11,
+            "acquireMs": 252.5,
+            "createMs": 2.0599999999994907,
+            "runMs": 2.4000000000005457,
+            "totalMs": 257.2600000000002
+          },
+          {
+            "id": 12,
+            "acquireMs": 243.89999999999964,
+            "createMs": 2.2799999999997453,
+            "runMs": 2.4399999999996,
+            "totalMs": 249.0599999999995
+          },
+          {
+            "id": 13,
+            "acquireMs": 256.96000000000004,
+            "createMs": 7.859999999999673,
+            "runMs": 3.139999999999418,
+            "totalMs": 268.3000000000002
+          },
+          {
+            "id": 14,
+            "acquireMs": 263.079999999999,
+            "createMs": 6.900000000001455,
+            "runMs": 10,
+            "totalMs": 280.7599999999993
+          },
+          {
+            "id": 15,
+            "acquireMs": 357.02000000000044,
+            "createMs": 4.299999999999272,
+            "runMs": 4.6600000000016735,
+            "totalMs": 367.2000000000007
+          },
+          {
+            "id": 16,
+            "acquireMs": 285.0799999999999,
+            "createMs": 2.899999999999636,
+            "runMs": 2.5799999999999272,
+            "totalMs": 290.8600000000006
+          },
+          {
+            "id": 17,
+            "acquireMs": 306.1399999999994,
+            "createMs": 13.260000000000218,
+            "runMs": 2.8800000000010186,
+            "totalMs": 322.7399999999998
+          },
+          {
+            "id": 18,
+            "acquireMs": 246.6200000000008,
+            "createMs": 2.139999999999418,
+            "runMs": 10.539999999999054,
+            "totalMs": 260.0799999999999
+          },
+          {
+            "id": 19,
+            "acquireMs": 279.9800000000014,
+            "createMs": 2.6199999999989814,
+            "runMs": 2.5599999999994907,
+            "totalMs": 285.4400000000005
+          },
+          {
+            "id": 20,
+            "acquireMs": 239.29999999999927,
+            "createMs": 2.2999999999992724,
+            "runMs": 2.319999999999709,
+            "totalMs": 244.15999999999985
+          },
+          {
+            "id": 21,
+            "acquireMs": 284.9400000000005,
+            "createMs": 14.339999999998327,
+            "runMs": 29.520000000000437,
+            "totalMs": 339.0799999999999
+          },
+          {
+            "id": 22,
+            "acquireMs": 237.23999999999978,
+            "createMs": 2.319999999999709,
+            "runMs": 33.340000000000146,
+            "totalMs": 275.47999999999956
+          },
+          {
+            "id": 23,
+            "acquireMs": 260.10000000000036,
+            "createMs": 2.7399999999997817,
+            "runMs": 11.039999999999054,
+            "totalMs": 274.60000000000036
+          },
+          {
+            "id": 24,
+            "acquireMs": 280.8600000000006,
+            "createMs": 2.599999999998545,
+            "runMs": 2.860000000000582,
+            "totalMs": 286.65999999999985
+          },
+          {
+            "id": 25,
+            "acquireMs": 243.8199999999997,
+            "createMs": 2.719999999999345,
+            "runMs": 2.3400000000001455,
+            "totalMs": 249.23999999999978
+          },
+          {
+            "id": 26,
+            "acquireMs": 284.0599999999995,
+            "createMs": 10.899999999999636,
+            "runMs": 2.899999999999636,
+            "totalMs": 298.2999999999993
+          },
+          {
+            "id": 27,
+            "acquireMs": 280.8600000000006,
+            "createMs": 6.020000000000437,
+            "runMs": 44.92000000000007,
+            "totalMs": 334.34000000000015
+          },
+          {
+            "id": 28,
+            "acquireMs": 248.13999999999942,
+            "createMs": 2.360000000000582,
+            "runMs": 9.020000000000437,
+            "totalMs": 260.28000000000065
+          },
+          {
+            "id": 29,
+            "acquireMs": 234.63999999999942,
+            "createMs": 2.4400000000005093,
+            "runMs": 2.640000000001237,
+            "totalMs": 240.03999999999905
+          },
+          {
+            "id": 30,
+            "acquireMs": 263.52000000000044,
+            "createMs": 2.600000000000364,
+            "runMs": 2.5,
+            "totalMs": 268.8000000000011
+          },
+          {
+            "id": 31,
+            "acquireMs": 271.02000000000044,
+            "createMs": 10.600000000000364,
+            "runMs": 3.0200000000004366,
+            "totalMs": 285.0400000000009
+          },
+          {
+            "id": 32,
+            "acquireMs": 262.4599999999991,
+            "createMs": 3.3000000000010914,
+            "runMs": 38.11999999999898,
+            "totalMs": 306.4200000000001
+          },
+          {
+            "id": 33,
+            "acquireMs": 253.8000000000011,
+            "createMs": 2.3799999999991996,
+            "runMs": 11.899999999999636,
+            "totalMs": 268.880000000001
+          },
+          {
+            "id": 34,
+            "acquireMs": 280.6800000000003,
+            "createMs": 5.079999999999927,
+            "runMs": 2.5199999999986176,
+            "totalMs": 288.6200000000008
+          },
+          {
+            "id": 35,
+            "acquireMs": 227.10000000000036,
+            "createMs": 2.1599999999998545,
+            "runMs": 2.3000000000010914,
+            "totalMs": 231.76000000000022
+          },
+          {
+            "id": 36,
+            "acquireMs": 282.3199999999997,
+            "createMs": 12.040000000000873,
+            "runMs": 3.3800000000010186,
+            "totalMs": 298.39999999999964
+          },
+          {
+            "id": 37,
+            "acquireMs": 248.04000000000087,
+            "createMs": 4.140000000001237,
+            "runMs": 36.080000000001746,
+            "totalMs": 290.6200000000008
+          },
+          {
+            "id": 38,
+            "acquireMs": 243.23999999999978,
+            "createMs": 2.460000000000946,
+            "runMs": 9.860000000000582,
+            "totalMs": 256.4400000000005
+          },
+          {
+            "id": 39,
+            "acquireMs": 247.26000000000022,
+            "createMs": 3.179999999998472,
+            "runMs": 2.5799999999999272,
+            "totalMs": 253.3199999999997
+          },
+          {
+            "id": 40,
+            "acquireMs": 245.4400000000005,
+            "createMs": 2,
+            "runMs": 3.280000000000655,
+            "totalMs": 251.03999999999905
+          },
+          {
+            "id": 41,
+            "acquireMs": 297.0199999999986,
+            "createMs": 15.980000000001382,
+            "runMs": 31.340000000000146,
+            "totalMs": 398.34000000000015
+          },
+          {
+            "id": 42,
+            "acquireMs": 277.0600000000013,
+            "createMs": 2.640000000001237,
+            "runMs": 150.65999999999985,
+            "totalMs": 440.4599999999991
+          },
+          {
+            "id": 43,
+            "acquireMs": 380.52000000000044,
+            "createMs": 10.719999999997526,
+            "runMs": 96.11999999999898,
+            "totalMs": 490.7999999999993
+          },
+          {
+            "id": 44,
+            "acquireMs": 518.4599999999991,
+            "createMs": 4.080000000001746,
+            "runMs": 10.479999999999563,
+            "totalMs": 533.8199999999997
+          },
+          {
+            "id": 45,
+            "acquireMs": 348.0400000000009,
+            "createMs": 3.0800000000017462,
+            "runMs": 2.5800000000017462,
+            "totalMs": 354.02000000000044
+          },
+          {
+            "id": 46,
+            "acquireMs": 274.4399999999987,
+            "createMs": 9.5,
+            "runMs": 2.7000000000007276,
+            "totalMs": 286.8199999999997
+          },
+          {
+            "id": 47,
+            "acquireMs": 358.7400000000016,
+            "createMs": 13.319999999999709,
+            "runMs": 4.299999999999272,
+            "totalMs": 376.8000000000029
+          },
+          {
+            "id": 48,
+            "acquireMs": 270.7400000000016,
+            "createMs": 2.0599999999976717,
+            "runMs": 163.84000000000015,
+            "totalMs": 445.72000000000116
+          },
+          {
+            "id": 49,
+            "acquireMs": 267.8199999999997,
+            "createMs": 3.1200000000026193,
+            "runMs": 37.30000000000291,
+            "totalMs": 311.9599999999991
+          },
+          {
+            "id": 50,
+            "acquireMs": 286.41999999999825,
+            "createMs": 1.8800000000010186,
+            "runMs": 8.599999999998545,
+            "totalMs": 299.2199999999975
+          },
+          {
+            "id": 51,
+            "acquireMs": 249.29999999999927,
+            "createMs": 2.0200000000004366,
+            "runMs": 2.6599999999998545,
+            "totalMs": 254.27999999999884
+          },
+          {
+            "id": 52,
+            "acquireMs": 280.2400000000016,
+            "createMs": 2.5599999999976717,
+            "runMs": 2.8400000000001455,
+            "totalMs": 285.9399999999987
+          },
+          {
+            "id": 53,
+            "acquireMs": 297.47999999999956,
+            "createMs": 12.200000000000728,
+            "runMs": 2.8400000000001455,
+            "totalMs": 313
+          },
+          {
+            "id": 54,
+            "acquireMs": 333.119999999999,
+            "createMs": 1.8800000000010186,
+            "runMs": 142.59999999999854,
+            "totalMs": 489.7400000000016
+          },
+          {
+            "id": 55,
+            "acquireMs": 375.0799999999981,
+            "createMs": 2.8400000000001455,
+            "runMs": 49.36000000000058,
+            "totalMs": 431.4399999999987
+          },
+          {
+            "id": 56,
+            "acquireMs": 360.65999999999985,
+            "createMs": 4.540000000000873,
+            "runMs": 14.020000000000437,
+            "totalMs": 380.0600000000013
+          },
+          {
+            "id": 57,
+            "acquireMs": 257.90000000000146,
+            "createMs": 4.419999999998254,
+            "runMs": 2.720000000001164,
+            "totalMs": 265.3000000000029
+          },
+          {
+            "id": 58,
+            "acquireMs": 268.6399999999994,
+            "createMs": 7.620000000002619,
+            "runMs": 3.180000000000291,
+            "totalMs": 279.6399999999994
+          },
+          {
+            "id": 59,
+            "acquireMs": 293.8199999999997,
+            "createMs": 9.2599999999984,
+            "runMs": 3.360000000000582,
+            "totalMs": 306.84000000000015
+          },
+          {
+            "id": 60,
+            "acquireMs": 274.5799999999981,
+            "createMs": 3.4200000000018917,
+            "runMs": 145.41999999999825,
+            "totalMs": 432.6800000000003
+          },
+          {
+            "id": 61,
+            "acquireMs": 230.9200000000019,
+            "createMs": 2.2600000000020373,
+            "runMs": 42.70000000000073,
+            "totalMs": 278.47999999999956
+          },
+          {
+            "id": 62,
+            "acquireMs": 232.09999999999854,
+            "createMs": 2.680000000000291,
+            "runMs": 9.040000000000873,
+            "totalMs": 244.53999999999724
+          },
+          {
+            "id": 63,
+            "acquireMs": 260.3199999999997,
+            "createMs": 2.5799999999981083,
+            "runMs": 2.779999999998836,
+            "totalMs": 266.0400000000009
+          },
+          {
+            "id": 64,
+            "acquireMs": 244.90000000000146,
+            "createMs": 2.219999999997526,
+            "runMs": 2.5,
+            "totalMs": 249.9399999999987
+          },
+          {
+            "id": 65,
+            "acquireMs": 283.1399999999994,
+            "createMs": 9.299999999999272,
+            "runMs": 2.9799999999995634,
+            "totalMs": 295.77999999999884
+          },
+          {
+            "id": 66,
+            "acquireMs": 265.1000000000022,
+            "createMs": 2.8799999999973807,
+            "runMs": 140.95999999999913,
+            "totalMs": 418.5400000000009
+          },
+          {
+            "id": 67,
+            "acquireMs": 255.20000000000073,
+            "createMs": 2.6199999999989814,
+            "runMs": 49.60000000000218,
+            "totalMs": 311.2800000000025
+          },
+          {
+            "id": 68,
+            "acquireMs": 262.7599999999984,
+            "createMs": 3.600000000002183,
+            "runMs": 9.020000000000437,
+            "totalMs": 276.08000000000175
+          },
+          {
+            "id": 69,
+            "acquireMs": 261.52000000000044,
+            "createMs": 2.9399999999986903,
+            "runMs": 2.720000000001164,
+            "totalMs": 267.52000000000044
+          },
+          {
+            "id": 70,
+            "acquireMs": 252.59999999999854,
+            "createMs": 3.180000000000291,
+            "runMs": 2.459999999999127,
+            "totalMs": 258.47999999999956
+          },
+          {
+            "id": 71,
+            "acquireMs": 307.09999999999854,
+            "createMs": 10.159999999999854,
+            "runMs": 3.219999999997526,
+            "totalMs": 320.8399999999965
+          },
+          {
+            "id": 72,
+            "acquireMs": 261.3799999999974,
+            "createMs": 2.7000000000007276,
+            "runMs": 160.29999999999927,
+            "totalMs": 435
+          },
+          {
+            "id": 73,
+            "acquireMs": 246.40000000000146,
+            "createMs": 2.4799999999995634,
+            "runMs": 40.07999999999811,
+            "totalMs": 291.5600000000013
+          },
+          {
+            "id": 74,
+            "acquireMs": 277.9200000000019,
+            "createMs": 5.599999999998545,
+            "runMs": 11.680000000000291,
+            "totalMs": 295.97999999999956
+          },
+          {
+            "id": 75,
+            "acquireMs": 304.84000000000015,
+            "createMs": 2.2999999999992724,
+            "runMs": 2.6199999999989814,
+            "totalMs": 310.1800000000003
+          },
+          {
+            "id": 76,
+            "acquireMs": 277.52000000000044,
+            "createMs": 3.4799999999995634,
+            "runMs": 2.679999999996653,
+            "totalMs": 283.91999999999825
+          },
+          {
+            "id": 77,
+            "acquireMs": 343.97999999999956,
+            "createMs": 20.56000000000131,
+            "runMs": 5.480000000003201,
+            "totalMs": 370.6399999999994
+          },
+          {
+            "id": 78,
+            "acquireMs": 397.65999999999985,
+            "createMs": 5.240000000001601,
+            "runMs": 202.5199999999968,
+            "totalMs": 616.619999999999
+          },
+          {
+            "id": 79,
+            "acquireMs": 341,
+            "createMs": 14.2599999999984,
+            "runMs": 67.9800000000032,
+            "totalMs": 427.5799999999981
+          },
+          {
+            "id": 80,
+            "acquireMs": 600.2599999999984,
+            "createMs": 19.7599999999984,
+            "runMs": 9.279999999998836,
+            "totalMs": 631.5
+          },
+          {
+            "id": 81,
+            "acquireMs": 411.8199999999997,
+            "createMs": 22.520000000000437,
+            "runMs": 9.139999999999418,
+            "totalMs": 446.97999999999956
+          },
+          {
+            "id": 82,
+            "acquireMs": 532.6800000000003,
+            "createMs": 3.4399999999986903,
+            "runMs": 4.3400000000001455,
+            "totalMs": 540.760000000002
+          },
+          {
+            "id": 83,
+            "acquireMs": 539.4200000000019,
+            "createMs": 42.400000000001455,
+            "runMs": 17.159999999999854,
+            "totalMs": 600.8199999999997
+          },
+          {
+            "id": 84,
+            "acquireMs": 468.65999999999985,
+            "createMs": 7,
+            "runMs": 239.61999999999898,
+            "totalMs": 724.9599999999991
+          },
+          {
+            "id": 85,
+            "acquireMs": 450.27999999999884,
+            "createMs": 10.860000000000582,
+            "runMs": 82.72000000000116,
+            "totalMs": 547.6599999999999
+          },
+          {
+            "id": 86,
+            "acquireMs": 541.7599999999984,
+            "createMs": 8.059999999997672,
+            "runMs": 13.200000000004366,
+            "totalMs": 563.7999999999993
+          },
+          {
+            "id": 87,
+            "acquireMs": 332.27999999999884,
+            "createMs": 7.139999999999418,
+            "runMs": 3.2399999999979627,
+            "totalMs": 343.6800000000003
+          },
+          {
+            "id": 88,
+            "acquireMs": 611.0200000000041,
+            "createMs": 63.26000000000204,
+            "runMs": 20.81999999999971,
+            "totalMs": 697.3600000000006
+          },
+          {
+            "id": 89,
+            "acquireMs": 724.8000000000029,
+            "createMs": 57.84000000000378,
+            "runMs": 5.599999999998545,
+            "totalMs": 789.8800000000047
+          },
+          {
+            "id": 90,
+            "acquireMs": 384.26000000000204,
+            "createMs": 6.30000000000291,
+            "runMs": 175.54000000000087,
+            "totalMs": 575.6000000000058
+          },
+          {
+            "id": 91,
+            "acquireMs": 283.4599999999991,
+            "createMs": 2.8400000000037835,
+            "runMs": 35.599999999998545,
+            "totalMs": 324.5400000000009
+          },
+          {
+            "id": 92,
+            "acquireMs": 332.77999999999884,
+            "createMs": 29.919999999998254,
+            "runMs": 12.180000000000291,
+            "totalMs": 378.1200000000026
+          },
+          {
+            "id": 93,
+            "acquireMs": 575.5400000000009,
+            "createMs": 2.6599999999962165,
+            "runMs": 2.8799999999973807,
+            "totalMs": 581.439999999995
+          },
+          {
+            "id": 94,
+            "acquireMs": 401.93999999999505,
+            "createMs": 6.360000000000582,
+            "runMs": 2.680000000000291,
+            "totalMs": 411.3199999999997
+          },
+          {
+            "id": 95,
+            "acquireMs": 372.61999999999534,
+            "createMs": 11,
+            "runMs": 3.1600000000034925,
+            "totalMs": 387.1599999999962
+          },
+          {
+            "id": 96,
+            "acquireMs": 573.260000000002,
+            "createMs": 10.979999999995925,
+            "runMs": 156.12000000000262,
+            "totalMs": 751.8799999999974
+          },
+          {
+            "id": 97,
+            "acquireMs": 374.3400000000038,
+            "createMs": 13.680000000000291,
+            "runMs": 39.54000000000087,
+            "totalMs": 432.6000000000058
+          },
+          {
+            "id": 98,
+            "acquireMs": 273.0599999999977,
+            "createMs": 3.220000000001164,
+            "runMs": 11.180000000000291,
+            "totalMs": 288.43999999999505
+          },
+          {
+            "id": 99,
+            "acquireMs": 261.61999999999534,
+            "createMs": 2.220000000001164,
+            "runMs": 2.219999999993888,
+            "totalMs": 266.3399999999965
+          },
+          {
+            "id": 100,
+            "acquireMs": 237.86000000000058,
+            "createMs": 2.4400000000023283,
+            "runMs": 12.020000000004075,
+            "totalMs": 252.60000000000582
+          },
+          {
+            "id": 101,
+            "acquireMs": 287.5199999999968,
+            "createMs": 8.720000000001164,
+            "runMs": 2.720000000001164,
+            "totalMs": 299.43999999999505
+          },
+          {
+            "id": 102,
+            "acquireMs": 228.42000000000553,
+            "createMs": 2.1599999999962165,
+            "runMs": 133.45999999999913,
+            "totalMs": 376.90000000000146
+          },
+          {
+            "id": 103,
+            "acquireMs": 242.6800000000003,
+            "createMs": 2.720000000001164,
+            "runMs": 39.12000000000262,
+            "totalMs": 286.9800000000032
+          },
+          {
+            "id": 104,
+            "acquireMs": 237.0199999999968,
+            "createMs": 5.140000000006694,
+            "runMs": 9.220000000001164,
+            "totalMs": 252.09999999999854
+          },
+          {
+            "id": 105,
+            "acquireMs": 230.70000000000437,
+            "createMs": 3.360000000000582,
+            "runMs": 3.0599999999976717,
+            "totalMs": 237.42000000000553
+          },
+          {
+            "id": 106,
+            "acquireMs": 238.09999999999854,
+            "createMs": 3.5200000000040745,
+            "runMs": 2.2399999999979627,
+            "totalMs": 244.0199999999968
+          },
+          {
+            "id": 107,
+            "acquireMs": 283.3799999999974,
+            "createMs": 12.60000000000582,
+            "runMs": 4.419999999998254,
+            "totalMs": 300.76000000000204
+          }
+        ],
+        "maxLiveSessions": 1,
+        "liveSessions": 0,
+        "wasmPeakBytes": 98435072,
+        "jsBoundaryPeakBytes": 12664832,
+        "receivedShardBytes": 1068886382,
+        "receivedBytesScope": "Bytes materialized from verified persistent cache or HTTP; not network traffic",
+        "maxShardBytes": 16682645,
+        "heapScope": "Actual ORT linear-memory capacity; not process RSS",
+        "hardWasmMaximumBytes": 268435456,
+        "completed": true,
+        "managedPeakEstimateBytes": 220057237,
+        "estimateScope": "WASM capacity plus maximum JS boundaries, one shard,24MiB runtime assets and64MiB overhead reserve; not physical RSS or an OS guarantee"
+      },
+      "passed": true
+    },
+    {
+      "id": "seed-0-unaligned",
+      "alignmentMs": 339.27999999999884,
+      "tensorSha256": "51529b7a56d218a191b308a889db37fbff311a0bd4c2096e46b2334f7d835726",
+      "tensorExact": true,
+      "landmarkWorkerTerminated": true,
+      "alignmentStats": {
+        "provider": "dlib20.0.1-pillow12.3.0-wasm-unshared",
+        "stages": [
+          {
+            "name": "alignment-manifest",
+            "ms": 19.620000000000005
+          },
+          {
+            "name": "alignment-runtime",
+            "ms": 100.52000000000001
+          },
+          {
+            "name": "photo-decode",
+            "ms": 14.28000000000003
+          },
+          {
+            "name": "photo-warp-resize",
+            "ms": 7.220000000000027
+          }
+        ],
+        "maxWasmBytes": 268435456,
+        "wasmCapacityBytes": 33554432,
+        "ortImported": false,
+        "privateDataUploaded": false,
+        "orientationPolicy": "legacy-ignore-exif",
+        "preprocessingSha256": "3cc958b232e8616db831b8429eea4446c990a845738320270b47121a2d2dbdfe",
+        "landmarksSha256": "fbdc2cb80eb9aa7a758672cbfdda32ba6300efe9b6e6c7a299ff7e736b11b92f",
+        "wasmSha256": "6cb217924cd7b0f0e4941d6c989cad6b9e46556d567ef82144232a97c8a5accc",
+        "input": {
+          "width": 512,
+          "height": 512,
+          "format": "png",
+          "encodedBytes": 378313,
+          "exifOrientation": 1,
+          "orientationPolicy": "legacy-ignore-exif"
+        },
+        "sharedMemory": false,
+        "faceCount": 0,
+        "preparedSha256": "9695510d7040adb2ed48ff45734662a09d535c83a2154a24b7d6624c165d8f24",
+        "tensorSha256": "51529b7a56d218a191b308a889db37fbff311a0bd4c2096e46b2334f7d835726",
+        "didAlign": false
+      },
+      "didAlign": false,
+      "encoderWorkerTerminated": true,
+      "encoderMs": 39373.34,
+      "maxWError": 3.2186508178710938e-06,
+      "encoderStats": {
+        "provider": "wasm-unshared-streamed",
+        "sourceEncoderSha256": "d525a985a43e4d49ef4590a8b8cc6f487992065bee00014fe8c6f8ab4ac291b1",
+        "steps": [
+          {
+            "id": 0,
+            "acquireMs": 636.16,
+            "createMs": 203.96000000000004,
+            "runMs": 968.4999999999998,
+            "totalMs": 1873.5800000000004
+          },
+          {
+            "id": 1,
+            "acquireMs": 829.6199999999999,
+            "createMs": 21.420000000000073,
+            "runMs": 240.34000000000015,
+            "totalMs": 1100.7399999999998
+          },
+          {
+            "id": 2,
+            "acquireMs": 644.1000000000004,
+            "createMs": 14.720000000000255,
+            "runMs": 220.8199999999997,
+            "totalMs": 889.1199999999999
+          },
+          {
+            "id": 3,
+            "acquireMs": 853.54,
+            "createMs": 27.05999999999949,
+            "runMs": 268.9200000000001,
+            "totalMs": 1164.1599999999999
+          },
+          {
+            "id": 4,
+            "acquireMs": 434.8600000000006,
+            "createMs": 11.079999999999927,
+            "runMs": 148.6800000000003,
+            "totalMs": 611.2399999999998
+          },
+          {
+            "id": 5,
+            "acquireMs": 357.46000000000004,
+            "createMs": 11.259999999999309,
+            "runMs": 36.720000000000255,
+            "totalMs": 410.4399999999996
+          },
+          {
+            "id": 6,
+            "acquireMs": 425.0600000000004,
+            "createMs": 3,
+            "runMs": 33.98000000000047,
+            "totalMs": 464.72000000000025
+          },
+          {
+            "id": 7,
+            "acquireMs": 542.4200000000001,
+            "createMs": 8.079999999999927,
+            "runMs": 39.64000000000033,
+            "totalMs": 595.6999999999998
+          },
+          {
+            "id": 8,
+            "acquireMs": 543.4199999999992,
+            "createMs": 12.340000000000146,
+            "runMs": 58.3799999999992,
+            "totalMs": 617.1400000000003
+          },
+          {
+            "id": 9,
+            "acquireMs": 293.7999999999993,
+            "createMs": 17.280000000000655,
+            "runMs": 36.81999999999971,
+            "totalMs": 350.84000000000015
+          },
+          {
+            "id": 10,
+            "acquireMs": 222.15999999999985,
+            "createMs": 2.4800000000013824,
+            "runMs": 9.200000000000728,
+            "totalMs": 234.6200000000008
+          },
+          {
+            "id": 11,
+            "acquireMs": 239.57999999999993,
+            "createMs": 2.4200000000000728,
+            "runMs": 2.639999999999418,
+            "totalMs": 245.07999999999993
+          },
+          {
+            "id": 12,
+            "acquireMs": 227.21999999999935,
+            "createMs": 2.2000000000007276,
+            "runMs": 2.3400000000001455,
+            "totalMs": 231.97999999999956
+          },
+          {
+            "id": 13,
+            "acquireMs": 256.97999999999956,
+            "createMs": 6.319999999999709,
+            "runMs": 3.0599999999994907,
+            "totalMs": 266.65999999999985
+          },
+          {
+            "id": 14,
+            "acquireMs": 330.3799999999992,
+            "createMs": 5.480000000001382,
+            "runMs": 33.88000000000102,
+            "totalMs": 373.5599999999995
+          },
+          {
+            "id": 15,
+            "acquireMs": 491.6800000000003,
+            "createMs": 16.460000000000946,
+            "runMs": 5.440000000000509,
+            "totalMs": 514.0200000000004
+          },
+          {
+            "id": 16,
+            "acquireMs": 260.89999999999964,
+            "createMs": 5.600000000000364,
+            "runMs": 2.4400000000005093,
+            "totalMs": 269.1200000000008
+          },
+          {
+            "id": 17,
+            "acquireMs": 742.3400000000001,
+            "createMs": 64.76000000000022,
+            "runMs": 3.7999999999992724,
+            "totalMs": 811.4799999999996
+          },
+          {
+            "id": 18,
+            "acquireMs": 314.15999999999985,
+            "createMs": 2.2399999999997817,
+            "runMs": 9.44000000000051,
+            "totalMs": 326.65999999999985
+          },
+          {
+            "id": 19,
+            "acquireMs": 215.61999999999898,
+            "createMs": 3.4400000000005093,
+            "runMs": 2.7000000000007276,
+            "totalMs": 222.10000000000036
+          },
+          {
+            "id": 20,
+            "acquireMs": 221.34000000000015,
+            "createMs": 1.860000000000582,
+            "runMs": 2.280000000000655,
+            "totalMs": 225.65999999999985
+          },
+          {
+            "id": 21,
+            "acquireMs": 263.72000000000116,
+            "createMs": 11.459999999999127,
+            "runMs": 24.26000000000022,
+            "totalMs": 310.6200000000008
+          },
+          {
+            "id": 22,
+            "acquireMs": 208.95999999999913,
+            "createMs": 1.8400000000001455,
+            "runMs": 35.05999999999949,
+            "totalMs": 248.1800000000003
+          },
+          {
+            "id": 23,
+            "acquireMs": 241.8000000000011,
+            "createMs": 2.0799999999999272,
+            "runMs": 8.260000000000218,
+            "totalMs": 252.82000000000153
+          },
+          {
+            "id": 24,
+            "acquireMs": 210.85999999999876,
+            "createMs": 2.9200000000000728,
+            "runMs": 2.719999999999345,
+            "totalMs": 216.95999999999913
+          },
+          {
+            "id": 25,
+            "acquireMs": 225.90000000000146,
+            "createMs": 2.539999999999054,
+            "runMs": 2.0799999999999272,
+            "totalMs": 230.70000000000073
+          },
+          {
+            "id": 26,
+            "acquireMs": 279.2600000000002,
+            "createMs": 13.840000000000146,
+            "runMs": 3.6599999999998545,
+            "totalMs": 297.380000000001
+          },
+          {
+            "id": 27,
+            "acquireMs": 307.2999999999993,
+            "createMs": 3.4400000000005093,
+            "runMs": 53.44000000000051,
+            "totalMs": 369.2999999999993
+          },
+          {
+            "id": 28,
+            "acquireMs": 353.0799999999999,
+            "createMs": 6.899999999999636,
+            "runMs": 16.420000000000073,
+            "totalMs": 377.4400000000005
+          },
+          {
+            "id": 29,
+            "acquireMs": 287.5799999999999,
+            "createMs": 5.559999999999491,
+            "runMs": 6.059999999999491,
+            "totalMs": 299.5
+          },
+          {
+            "id": 30,
+            "acquireMs": 246.11999999999898,
+            "createMs": 2.1599999999998545,
+            "runMs": 2.280000000000655,
+            "totalMs": 250.73999999999978
+          },
+          {
+            "id": 31,
+            "acquireMs": 244,
+            "createMs": 10.100000000000364,
+            "runMs": 2.539999999999054,
+            "totalMs": 257
+          },
+          {
+            "id": 32,
+            "acquireMs": 218.36000000000058,
+            "createMs": 3.680000000000291,
+            "runMs": 38.279999999998836,
+            "totalMs": 262.8600000000006
+          },
+          {
+            "id": 33,
+            "acquireMs": 239.10000000000036,
+            "createMs": 2.4200000000000728,
+            "runMs": 9.05999999999949,
+            "totalMs": 251.3000000000011
+          },
+          {
+            "id": 34,
+            "acquireMs": 231.42000000000007,
+            "createMs": 4.779999999998836,
+            "runMs": 2.680000000000291,
+            "totalMs": 239.21999999999935
+          },
+          {
+            "id": 35,
+            "acquireMs": 222.98000000000138,
+            "createMs": 2.779999999998836,
+            "runMs": 2.139999999999418,
+            "totalMs": 228.0599999999995
+          },
+          {
+            "id": 36,
+            "acquireMs": 250.87999999999738,
+            "createMs": 28.659999999999854,
+            "runMs": 4.139999999999418,
+            "totalMs": 284.3199999999997
+          },
+          {
+            "id": 37,
+            "acquireMs": 267.3600000000006,
+            "createMs": 6.860000000000582,
+            "runMs": 39.63999999999942,
+            "totalMs": 316.84000000000015
+          },
+          {
+            "id": 38,
+            "acquireMs": 269.8600000000006,
+            "createMs": 2.0199999999967986,
+            "runMs": 8.580000000001746,
+            "totalMs": 281.2199999999975
+          },
+          {
+            "id": 39,
+            "acquireMs": 256.8999999999978,
+            "createMs": 2.4200000000018917,
+            "runMs": 5.239999999997963,
+            "totalMs": 264.8600000000006
+          },
+          {
+            "id": 40,
+            "acquireMs": 287.5400000000009,
+            "createMs": 4.639999999999418,
+            "runMs": 3.2599999999983993,
+            "totalMs": 295.64000000000306
+          },
+          {
+            "id": 41,
+            "acquireMs": 289.0400000000009,
+            "createMs": 13.020000000000437,
+            "runMs": 30.2599999999984,
+            "totalMs": 371.8199999999997
+          },
+          {
+            "id": 42,
+            "acquireMs": 228.9399999999987,
+            "createMs": 6.580000000001746,
+            "runMs": 163.5600000000013,
+            "totalMs": 407.880000000001
+          },
+          {
+            "id": 43,
+            "acquireMs": 213.02000000000044,
+            "createMs": 2.9399999999986903,
+            "runMs": 38.52000000000044,
+            "totalMs": 256.77999999999884
+          },
+          {
+            "id": 44,
+            "acquireMs": 235.9399999999987,
+            "createMs": 6.920000000001892,
+            "runMs": 10.700000000000728,
+            "totalMs": 254.3199999999997
+          },
+          {
+            "id": 45,
+            "acquireMs": 229.94000000000233,
+            "createMs": 3.9199999999982538,
+            "runMs": 2.6199999999989814,
+            "totalMs": 236.7400000000016
+          },
+          {
+            "id": 46,
+            "acquireMs": 275.97999999999956,
+            "createMs": 2.7600000000020373,
+            "runMs": 2.4399999999986903,
+            "totalMs": 281.3600000000006
+          },
+          {
+            "id": 47,
+            "acquireMs": 308.9399999999987,
+            "createMs": 18.2599999999984,
+            "runMs": 2.720000000001164,
+            "totalMs": 330.2599999999984
+          },
+          {
+            "id": 48,
+            "acquireMs": 218.09999999999854,
+            "createMs": 2.180000000000291,
+            "runMs": 140.02000000000044,
+            "totalMs": 369.7599999999984
+          },
+          {
+            "id": 49,
+            "acquireMs": 221.5600000000013,
+            "createMs": 2.7599999999983993,
+            "runMs": 31.520000000000437,
+            "totalMs": 258.2400000000016
+          },
+          {
+            "id": 50,
+            "acquireMs": 195.14000000000306,
+            "createMs": 1.819999999999709,
+            "runMs": 8.159999999999854,
+            "totalMs": 207.9200000000019
+          },
+          {
+            "id": 51,
+            "acquireMs": 211.45999999999913,
+            "createMs": 3.180000000000291,
+            "runMs": 2.2999999999992724,
+            "totalMs": 217.29999999999927
+          },
+          {
+            "id": 52,
+            "acquireMs": 232.26000000000204,
+            "createMs": 2.360000000000582,
+            "runMs": 4.119999999998981,
+            "totalMs": 239
+          },
+          {
+            "id": 53,
+            "acquireMs": 283.47999999999956,
+            "createMs": 8.919999999998254,
+            "runMs": 2.539999999997235,
+            "totalMs": 296.73999999999796
+          },
+          {
+            "id": 54,
+            "acquireMs": 229.08000000000175,
+            "createMs": 5.43999999999869,
+            "runMs": 163.8199999999997,
+            "totalMs": 410
+          },
+          {
+            "id": 55,
+            "acquireMs": 285.2999999999993,
+            "createMs": 4.080000000001746,
+            "runMs": 42.06000000000131,
+            "totalMs": 338.2199999999975
+          },
+          {
+            "id": 56,
+            "acquireMs": 221.77999999999884,
+            "createMs": 2.2400000000016007,
+            "runMs": 11.360000000000582,
+            "totalMs": 236.15999999999985
+          },
+          {
+            "id": 57,
+            "acquireMs": 197.88000000000102,
+            "createMs": 2.0200000000004366,
+            "runMs": 2.4399999999986903,
+            "totalMs": 202.63999999999942
+          },
+          {
+            "id": 58,
+            "acquireMs": 213.88000000000102,
+            "createMs": 2.1199999999989814,
+            "runMs": 2.2000000000007276,
+            "totalMs": 218.36000000000058
+          },
+          {
+            "id": 59,
+            "acquireMs": 227.22000000000116,
+            "createMs": 17.340000000000146,
+            "runMs": 5.279999999998836,
+            "totalMs": 250.26000000000204
+          },
+          {
+            "id": 60,
+            "acquireMs": 267.08000000000175,
+            "createMs": 8.099999999998545,
+            "runMs": 137.02000000000044,
+            "totalMs": 421.40000000000146
+          },
+          {
+            "id": 61,
+            "acquireMs": 204.76000000000204,
+            "createMs": 2.040000000000873,
+            "runMs": 39.779999999998836,
+            "totalMs": 249.12000000000262
+          },
+          {
+            "id": 62,
+            "acquireMs": 222.10000000000218,
+            "createMs": 2.7999999999992724,
+            "runMs": 13.37999999999738,
+            "totalMs": 239.04000000000087
+          },
+          {
+            "id": 63,
+            "acquireMs": 212.54000000000087,
+            "createMs": 3.5200000000004366,
+            "runMs": 2.5799999999981083,
+            "totalMs": 218.9200000000019
+          },
+          {
+            "id": 64,
+            "acquireMs": 220.09999999999854,
+            "createMs": 2.3000000000029104,
+            "runMs": 2.3799999999973807,
+            "totalMs": 224.9399999999987
+          },
+          {
+            "id": 65,
+            "acquireMs": 226.1800000000003,
+            "createMs": 7.819999999999709,
+            "runMs": 2.639999999999418,
+            "totalMs": 236.95999999999913
+          },
+          {
+            "id": 66,
+            "acquireMs": 197.34000000000015,
+            "createMs": 2.139999999999418,
+            "runMs": 129.36000000000058,
+            "totalMs": 337.6399999999994
+          },
+          {
+            "id": 67,
+            "acquireMs": 209.84000000000015,
+            "createMs": 2,
+            "runMs": 32.29999999999927,
+            "totalMs": 246.4399999999987
+          },
+          {
+            "id": 68,
+            "acquireMs": 195.04000000000087,
+            "createMs": 2.1599999999998545,
+            "runMs": 8,
+            "totalMs": 205.90000000000146
+          },
+          {
+            "id": 69,
+            "acquireMs": 198.2400000000016,
+            "createMs": 1.8799999999973807,
+            "runMs": 2.400000000001455,
+            "totalMs": 202.7400000000016
+          },
+          {
+            "id": 70,
+            "acquireMs": 198.90000000000146,
+            "createMs": 1.9399999999986903,
+            "runMs": 2.279999999998836,
+            "totalMs": 203.40000000000146
+          },
+          {
+            "id": 71,
+            "acquireMs": 224.28000000000247,
+            "createMs": 6.6599999999998545,
+            "runMs": 2.5200000000004366,
+            "totalMs": 233.78000000000247
+          },
+          {
+            "id": 72,
+            "acquireMs": 213.78000000000247,
+            "createMs": 3.1599999999998545,
+            "runMs": 129.15999999999985,
+            "totalMs": 354.6200000000026
+          },
+          {
+            "id": 73,
+            "acquireMs": 193.54000000000087,
+            "createMs": 2.1199999999989814,
+            "runMs": 31.200000000000728,
+            "totalMs": 229.27999999999884
+          },
+          {
+            "id": 74,
+            "acquireMs": 202.5799999999981,
+            "createMs": 1.8400000000001455,
+            "runMs": 7.799999999999272,
+            "totalMs": 212.89999999999782
+          },
+          {
+            "id": 75,
+            "acquireMs": 211.54000000000087,
+            "createMs": 1.8400000000001455,
+            "runMs": 2.2999999999992724,
+            "totalMs": 215.89999999999782
+          },
+          {
+            "id": 76,
+            "acquireMs": 207.61999999999898,
+            "createMs": 3.6599999999998545,
+            "runMs": 2.220000000001164,
+            "totalMs": 213.86000000000058
+          },
+          {
+            "id": 77,
+            "acquireMs": 232.88000000000102,
+            "createMs": 8.2599999999984,
+            "runMs": 2.639999999999418,
+            "totalMs": 244.20000000000073
+          },
+          {
+            "id": 78,
+            "acquireMs": 225.84000000000015,
+            "createMs": 1.9799999999995634,
+            "runMs": 127.84000000000015,
+            "totalMs": 364.65999999999985
+          },
+          {
+            "id": 79,
+            "acquireMs": 196.0600000000013,
+            "createMs": 1.860000000000582,
+            "runMs": 30.959999999999127,
+            "totalMs": 231.22000000000116
+          },
+          {
+            "id": 80,
+            "acquireMs": 193.95999999999913,
+            "createMs": 2.040000000000873,
+            "runMs": 8.119999999998981,
+            "totalMs": 204.7599999999984
+          },
+          {
+            "id": 81,
+            "acquireMs": 370.5199999999968,
+            "createMs": 19.400000000001455,
+            "runMs": 5.1599999999998545,
+            "totalMs": 395.34000000000015
+          },
+          {
+            "id": 82,
+            "acquireMs": 319.40000000000146,
+            "createMs": 2.279999999998836,
+            "runMs": 2.4399999999986903,
+            "totalMs": 324.27999999999884
+          },
+          {
+            "id": 83,
+            "acquireMs": 371.380000000001,
+            "createMs": 7.719999999997526,
+            "runMs": 2.4400000000023283,
+            "totalMs": 381.9599999999991
+          },
+          {
+            "id": 84,
+            "acquireMs": 367.2999999999993,
+            "createMs": 2.319999999999709,
+            "runMs": 129.47999999999956,
+            "totalMs": 508.47999999999956
+          },
+          {
+            "id": 85,
+            "acquireMs": 368.84000000000015,
+            "createMs": 2.040000000000873,
+            "runMs": 32.61999999999898,
+            "totalMs": 405.90000000000146
+          },
+          {
+            "id": 86,
+            "acquireMs": 354.52000000000044,
+            "createMs": 2.280000000002474,
+            "runMs": 9.459999999999127,
+            "totalMs": 366.90000000000146
+          },
+          {
+            "id": 87,
+            "acquireMs": 362.3000000000029,
+            "createMs": 2.4199999999982538,
+            "runMs": 4.56000000000131,
+            "totalMs": 369.6000000000022
+          },
+          {
+            "id": 88,
+            "acquireMs": 452.52000000000044,
+            "createMs": 1.9000000000014552,
+            "runMs": 2.2000000000007276,
+            "totalMs": 456.76000000000204
+          },
+          {
+            "id": 89,
+            "acquireMs": 342.880000000001,
+            "createMs": 8.139999999999418,
+            "runMs": 2.459999999999127,
+            "totalMs": 353.7999999999993
+          },
+          {
+            "id": 90,
+            "acquireMs": 438.27999999999884,
+            "createMs": 2.2000000000007276,
+            "runMs": 133.6800000000003,
+            "totalMs": 583.6399999999994
+          },
+          {
+            "id": 91,
+            "acquireMs": 440.8799999999974,
+            "createMs": 2.4400000000023283,
+            "runMs": 33.9800000000032,
+            "totalMs": 479.70000000000437
+          },
+          {
+            "id": 92,
+            "acquireMs": 469.0199999999968,
+            "createMs": 3.720000000001164,
+            "runMs": 8.140000000006694,
+            "totalMs": 481.6800000000003
+          },
+          {
+            "id": 93,
+            "acquireMs": 386.41999999999825,
+            "createMs": 2,
+            "runMs": 2.6999999999970896,
+            "totalMs": 391.5200000000041
+          },
+          {
+            "id": 94,
+            "acquireMs": 337,
+            "createMs": 2.2599999999947613,
+            "runMs": 2.5800000000017462,
+            "totalMs": 342.0399999999936
+          },
+          {
+            "id": 95,
+            "acquireMs": 377.1800000000003,
+            "createMs": 8.42000000000553,
+            "runMs": 2.5,
+            "totalMs": 388.4400000000023
+          },
+          {
+            "id": 96,
+            "acquireMs": 377.6599999999962,
+            "createMs": 5.139999999999418,
+            "runMs": 154.5,
+            "totalMs": 547.5
+          },
+          {
+            "id": 97,
+            "acquireMs": 389,
+            "createMs": 1.7799999999988358,
+            "runMs": 31.919999999998254,
+            "totalMs": 425.0400000000009
+          },
+          {
+            "id": 98,
+            "acquireMs": 405.41999999999825,
+            "createMs": 3.1600000000034925,
+            "runMs": 10.360000000000582,
+            "totalMs": 419.6399999999994
+          },
+          {
+            "id": 99,
+            "acquireMs": 378.74000000000524,
+            "createMs": 3.1999999999970896,
+            "runMs": 2.4200000000055297,
+            "totalMs": 384.6399999999994
+          },
+          {
+            "id": 100,
+            "acquireMs": 398.3799999999974,
+            "createMs": 2.180000000000291,
+            "runMs": 2.0800000000017462,
+            "totalMs": 402.76000000000204
+          },
+          {
+            "id": 101,
+            "acquireMs": 556.3600000000006,
+            "createMs": 10.580000000001746,
+            "runMs": 3.6000000000058208,
+            "totalMs": 570.9400000000023
+          },
+          {
+            "id": 102,
+            "acquireMs": 220.8199999999997,
+            "createMs": 2.0800000000017462,
+            "runMs": 161.8399999999965,
+            "totalMs": 400.72000000000116
+          },
+          {
+            "id": 103,
+            "acquireMs": 374.72000000000116,
+            "createMs": 12.860000000000582,
+            "runMs": 42.80000000000291,
+            "totalMs": 433.27999999999884
+          },
+          {
+            "id": 104,
+            "acquireMs": 243.0199999999968,
+            "createMs": 4.060000000004948,
+            "runMs": 16.119999999995343,
+            "totalMs": 265.5199999999968
+          },
+          {
+            "id": 105,
+            "acquireMs": 228.36000000000058,
+            "createMs": 4.419999999998254,
+            "runMs": 2.639999999999418,
+            "totalMs": 235.6999999999971
+          },
+          {
+            "id": 106,
+            "acquireMs": 237.40000000000146,
+            "createMs": 2.360000000000582,
+            "runMs": 2.1999999999970896,
+            "totalMs": 242.20000000000437
+          },
+          {
+            "id": 107,
+            "acquireMs": 239.13999999999942,
+            "createMs": 11.10000000000582,
+            "runMs": 2.7399999999979627,
+            "totalMs": 253.34000000000378
+          }
+        ],
+        "maxLiveSessions": 1,
+        "liveSessions": 0,
+        "wasmPeakBytes": 98435072,
+        "jsBoundaryPeakBytes": 12664832,
+        "receivedShardBytes": 1068886382,
+        "receivedBytesScope": "Bytes materialized from verified persistent cache or HTTP; not network traffic",
+        "maxShardBytes": 16682645,
+        "heapScope": "Actual ORT linear-memory capacity; not process RSS",
+        "hardWasmMaximumBytes": 268435456,
+        "completed": true,
+        "managedPeakEstimateBytes": 220057237,
+        "estimateScope": "WASM capacity plus maximum JS boundaries, one shard,24MiB runtime assets and64MiB overhead reserve; not physical RSS or an OS guarantee"
+      },
+      "passed": true
+    },
+    {
+      "id": "seed-1-aligned",
+      "alignmentMs": 5422.300000000003,
+      "tensorSha256": "8c9a28b5520a3d9a34d32367e87a278ec5dd3f140cfa84101e1ee9fa1e0b7cae",
+      "tensorExact": true,
+      "landmarkWorkerTerminated": true,
+      "alignmentStats": {
+        "provider": "dlib20.0.1-pillow12.3.0-wasm-unshared",
+        "stages": [
+          {
+            "name": "alignment-manifest",
+            "ms": 17.060000000000002
+          },
+          {
+            "name": "alignment-runtime",
+            "ms": 97.04000000000002
+          },
+          {
+            "name": "alignment-model",
+            "ms": 1064.84
+          },
+          {
+            "name": "alignment-model-deserialize",
+            "ms": 3417.84
+          },
+          {
+            "name": "photo-decode",
+            "ms": 12.720000000000255
+          },
+          {
+            "name": "face-landmarks",
+            "ms": 246.6199999999999
+          },
+          {
+            "name": "photo-warp-resize",
+            "ms": 395.84000000000015
+          }
+        ],
+        "maxWasmBytes": 268435456,
+        "wasmCapacityBytes": 176488448,
+        "ortImported": false,
+        "privateDataUploaded": false,
+        "orientationPolicy": "legacy-ignore-exif",
+        "preprocessingSha256": "3cc958b232e8616db831b8429eea4446c990a845738320270b47121a2d2dbdfe",
+        "landmarksSha256": "fbdc2cb80eb9aa7a758672cbfdda32ba6300efe9b6e6c7a299ff7e736b11b92f",
+        "wasmSha256": "6cb217924cd7b0f0e4941d6c989cad6b9e46556d567ef82144232a97c8a5accc",
+        "input": {
+          "width": 512,
+          "height": 512,
+          "format": "png",
+          "encodedBytes": 394623,
+          "exifOrientation": 1,
+          "orientationPolicy": "legacy-ignore-exif"
+        },
+        "sharedMemory": false,
+        "modelCache": "opfs-hit",
+        "chunkedModelTransport": false,
+        "modelChunkCount": 1,
+        "modelReader": "byob-1MiB",
+        "maxModelChunkBytes": 524288,
+        "modelBytesRead": 99693937,
+        "downloadAttempted": false,
+        "faceCount": 1,
+        "preparedSha256": "c7e4a29b346336ec6b974d44028d5aa81c01344a88b123f76af8bc92c01e9ec2",
+        "tensorSha256": "8c9a28b5520a3d9a34d32367e87a278ec5dd3f140cfa84101e1ee9fa1e0b7cae",
+        "didAlign": true
+      },
+      "didAlign": true,
+      "encoderWorkerTerminated": true,
+      "encoderMs": 35258.84,
+      "maxWError": 2.8014183044433594e-06,
+      "encoderStats": {
+        "provider": "wasm-unshared-streamed",
+        "sourceEncoderSha256": "d525a985a43e4d49ef4590a8b8cc6f487992065bee00014fe8c6f8ab4ac291b1",
+        "steps": [
+          {
+            "id": 0,
+            "acquireMs": 359.65999999999997,
+            "createMs": 211.84000000000003,
+            "runMs": 825.8400000000001,
+            "totalMs": 1419.54
+          },
+          {
+            "id": 1,
+            "acquireMs": 428.26,
+            "createMs": 31.860000000000127,
+            "runMs": 246.84000000000015,
+            "totalMs": 720.9199999999998
+          },
+          {
+            "id": 2,
+            "acquireMs": 712.48,
+            "createMs": 46.88000000000011,
+            "runMs": 233.48000000000002,
+            "totalMs": 1002.3200000000002
+          },
+          {
+            "id": 3,
+            "acquireMs": 521.0799999999999,
+            "createMs": 14.260000000000218,
+            "runMs": 232.97999999999956,
+            "totalMs": 777.6999999999998
+          },
+          {
+            "id": 4,
+            "acquireMs": 225,
+            "createMs": 9.780000000000655,
+            "runMs": 133,
+            "totalMs": 383.9400000000005
+          },
+          {
+            "id": 5,
+            "acquireMs": 211.5600000000004,
+            "createMs": 8,
+            "runMs": 38.02000000000044,
+            "totalMs": 262.28000000000065
+          },
+          {
+            "id": 6,
+            "acquireMs": 206.03999999999996,
+            "createMs": 2.0799999999999272,
+            "runMs": 36.48000000000047,
+            "totalMs": 247.1199999999999
+          },
+          {
+            "id": 7,
+            "acquireMs": 214.27999999999975,
+            "createMs": 3.980000000000473,
+            "runMs": 32.159999999999854,
+            "totalMs": 255.1800000000003
+          },
+          {
+            "id": 8,
+            "acquireMs": 254.26000000000022,
+            "createMs": 2.5399999999999636,
+            "runMs": 32.76000000000022,
+            "totalMs": 291.9400000000005
+          },
+          {
+            "id": 9,
+            "acquireMs": 210.9400000000005,
+            "createMs": 5.759999999999309,
+            "runMs": 32.61999999999989,
+            "totalMs": 252.1199999999999
+          },
+          {
+            "id": 10,
+            "acquireMs": 209.42000000000007,
+            "createMs": 3.880000000000109,
+            "runMs": 8.159999999999854,
+            "totalMs": 222.15999999999985
+          },
+          {
+            "id": 11,
+            "acquireMs": 199.98000000000047,
+            "createMs": 2.319999999999709,
+            "runMs": 2.180000000000291,
+            "totalMs": 204.73999999999978
+          },
+          {
+            "id": 12,
+            "acquireMs": 209.14000000000033,
+            "createMs": 2.6799999999993815,
+            "runMs": 2.9399999999996,
+            "totalMs": 214.9399999999996
+          },
+          {
+            "id": 13,
+            "acquireMs": 233.60000000000036,
+            "createMs": 7.279999999999745,
+            "runMs": 3.0599999999994907,
+            "totalMs": 244.22000000000025
+          },
+          {
+            "id": 14,
+            "acquireMs": 202.67999999999938,
+            "createMs": 2.0600000000004,
+            "runMs": 8.0600000000004,
+            "totalMs": 213.47999999999956
+          },
+          {
+            "id": 15,
+            "acquireMs": 202.19999999999982,
+            "createMs": 2.0799999999999272,
+            "runMs": 2.4199999999991633,
+            "totalMs": 206.97999999999956
+          },
+          {
+            "id": 16,
+            "acquireMs": 204.0599999999995,
+            "createMs": 2.2000000000007276,
+            "runMs": 2.2200000000002547,
+            "totalMs": 208.69999999999982
+          },
+          {
+            "id": 17,
+            "acquireMs": 242.8799999999992,
+            "createMs": 12.539999999999964,
+            "runMs": 3.7799999999997453,
+            "totalMs": 259.59999999999945
+          },
+          {
+            "id": 18,
+            "acquireMs": 213.6999999999989,
+            "createMs": 2.100000000000364,
+            "runMs": 8.44000000000051,
+            "totalMs": 224.92000000000007
+          },
+          {
+            "id": 19,
+            "acquireMs": 202.89999999999964,
+            "createMs": 2.2600000000002183,
+            "runMs": 2.399999999999636,
+            "totalMs": 207.8199999999997
+          },
+          {
+            "id": 20,
+            "acquireMs": 213.63999999999942,
+            "createMs": 1.8400000000001455,
+            "runMs": 2.1599999999998545,
+            "totalMs": 217.79999999999927
+          },
+          {
+            "id": 21,
+            "acquireMs": 245.64000000000124,
+            "createMs": 17.26000000000022,
+            "runMs": 15.1200000000008,
+            "totalMs": 289.8000000000011
+          },
+          {
+            "id": 22,
+            "acquireMs": 215.07999999999993,
+            "createMs": 1.9599999999991269,
+            "runMs": 32.04000000000087,
+            "totalMs": 251.53999999999905
+          },
+          {
+            "id": 23,
+            "acquireMs": 213.15999999999985,
+            "createMs": 1.9400000000005093,
+            "runMs": 8.239999999999782,
+            "totalMs": 224.0599999999995
+          },
+          {
+            "id": 24,
+            "acquireMs": 207.5599999999995,
+            "createMs": 2,
+            "runMs": 2.359999999998763,
+            "totalMs": 212.1800000000003
+          },
+          {
+            "id": 25,
+            "acquireMs": 238.52000000000044,
+            "createMs": 2.1999999999989086,
+            "runMs": 5.440000000000509,
+            "totalMs": 246.36000000000058
+          },
+          {
+            "id": 26,
+            "acquireMs": 682.8799999999992,
+            "createMs": 44.600000000000364,
+            "runMs": 4.239999999999782,
+            "totalMs": 732.1599999999999
+          },
+          {
+            "id": 27,
+            "acquireMs": 478.0799999999999,
+            "createMs": 7.299999999999272,
+            "runMs": 48.45999999999913,
+            "totalMs": 538.4200000000001
+          },
+          {
+            "id": 28,
+            "acquireMs": 279.60000000000036,
+            "createMs": 2.5799999999999272,
+            "runMs": 8.039999999999054,
+            "totalMs": 290.9200000000001
+          },
+          {
+            "id": 29,
+            "acquireMs": 252.51999999999862,
+            "createMs": 6.300000000001091,
+            "runMs": 2.5599999999994907,
+            "totalMs": 261.6799999999985
+          },
+          {
+            "id": 30,
+            "acquireMs": 229.76000000000022,
+            "createMs": 3.8400000000001455,
+            "runMs": 2.280000000000655,
+            "totalMs": 236.07999999999993
+          },
+          {
+            "id": 31,
+            "acquireMs": 232.26000000000022,
+            "createMs": 9.399999999999636,
+            "runMs": 3.0200000000004366,
+            "totalMs": 245.0600000000013
+          },
+          {
+            "id": 32,
+            "acquireMs": 220.01999999999862,
+            "createMs": 2.4800000000013824,
+            "runMs": 31,
+            "totalMs": 255.89999999999964
+          },
+          {
+            "id": 33,
+            "acquireMs": 197.88000000000102,
+            "createMs": 2.359999999998763,
+            "runMs": 8.55999999999949,
+            "totalMs": 209.52000000000044
+          },
+          {
+            "id": 34,
+            "acquireMs": 208.97999999999956,
+            "createMs": 4.760000000000218,
+            "runMs": 2.399999999999636,
+            "totalMs": 216.38000000000102
+          },
+          {
+            "id": 35,
+            "acquireMs": 223.3199999999997,
+            "createMs": 2.040000000000873,
+            "runMs": 2.4200000000000728,
+            "totalMs": 228.02000000000044
+          },
+          {
+            "id": 36,
+            "acquireMs": 247.27999999999884,
+            "createMs": 11.300000000001091,
+            "runMs": 3.0600000000013097,
+            "totalMs": 262.0799999999999
+          },
+          {
+            "id": 37,
+            "acquireMs": 229.76000000000022,
+            "createMs": 2.9799999999995634,
+            "runMs": 43.93999999999869,
+            "totalMs": 281.84000000000015
+          },
+          {
+            "id": 38,
+            "acquireMs": 275.0799999999999,
+            "createMs": 3.540000000000873,
+            "runMs": 11.140000000001237,
+            "totalMs": 290.6800000000003
+          },
+          {
+            "id": 39,
+            "acquireMs": 234.21999999999935,
+            "createMs": 2.2400000000016007,
+            "runMs": 2.2399999999997817,
+            "totalMs": 238.97999999999956
+          },
+          {
+            "id": 40,
+            "acquireMs": 207.21999999999935,
+            "createMs": 1.9799999999995634,
+            "runMs": 2.2999999999992724,
+            "totalMs": 211.67999999999847
+          },
+          {
+            "id": 41,
+            "acquireMs": 238.71999999999935,
+            "createMs": 15.55999999999949,
+            "runMs": 29.460000000000946,
+            "totalMs": 321.3799999999992
+          },
+          {
+            "id": 42,
+            "acquireMs": 223,
+            "createMs": 1.9799999999995634,
+            "runMs": 138.96000000000095,
+            "totalMs": 372.8199999999997
+          },
+          {
+            "id": 43,
+            "acquireMs": 235.52000000000044,
+            "createMs": 4.220000000001164,
+            "runMs": 33.64000000000124,
+            "totalMs": 275.64000000000124
+          },
+          {
+            "id": 44,
+            "acquireMs": 208.86000000000058,
+            "createMs": 2.3799999999991996,
+            "runMs": 9.399999999999636,
+            "totalMs": 221.36000000000058
+          },
+          {
+            "id": 45,
+            "acquireMs": 235.4400000000005,
+            "createMs": 4.739999999999782,
+            "runMs": 3.639999999999418,
+            "totalMs": 244.21999999999935
+          },
+          {
+            "id": 46,
+            "acquireMs": 252.34000000000015,
+            "createMs": 2.5200000000004366,
+            "runMs": 4.319999999999709,
+            "totalMs": 259.40000000000146
+          },
+          {
+            "id": 47,
+            "acquireMs": 237.21999999999935,
+            "createMs": 12.579999999999927,
+            "runMs": 5.219999999999345,
+            "totalMs": 255.65999999999985
+          },
+          {
+            "id": 48,
+            "acquireMs": 242.0599999999995,
+            "createMs": 2.2600000000020373,
+            "runMs": 131.96000000000276,
+            "totalMs": 385.4999999999982
+          },
+          {
+            "id": 49,
+            "acquireMs": 236.95999999999913,
+            "createMs": 4.380000000001019,
+            "runMs": 38.31999999999971,
+            "totalMs": 281.9599999999991
+          },
+          {
+            "id": 50,
+            "acquireMs": 209.39999999999782,
+            "createMs": 4.120000000002619,
+            "runMs": 8.580000000001746,
+            "totalMs": 222.95999999999913
+          },
+          {
+            "id": 51,
+            "acquireMs": 222.47999999999956,
+            "createMs": 2.139999999999418,
+            "runMs": 2.819999999999709,
+            "totalMs": 227.73999999999796
+          },
+          {
+            "id": 52,
+            "acquireMs": 207.5,
+            "createMs": 2.1199999999989814,
+            "runMs": 2.399999999997817,
+            "totalMs": 212.1999999999971
+          },
+          {
+            "id": 53,
+            "acquireMs": 259.5600000000013,
+            "createMs": 7.319999999999709,
+            "runMs": 2.6599999999998545,
+            "totalMs": 269.9200000000019
+          },
+          {
+            "id": 54,
+            "acquireMs": 230.0799999999981,
+            "createMs": 4.940000000002328,
+            "runMs": 137.53999999999724,
+            "totalMs": 381.5600000000013
+          },
+          {
+            "id": 55,
+            "acquireMs": 203.8199999999997,
+            "createMs": 1.9399999999986903,
+            "runMs": 31.099999999998545,
+            "totalMs": 239.11999999999898
+          },
+          {
+            "id": 56,
+            "acquireMs": 214.13999999999942,
+            "createMs": 2.7399999999979627,
+            "runMs": 8.700000000000728,
+            "totalMs": 226.29999999999927
+          },
+          {
+            "id": 57,
+            "acquireMs": 217.5,
+            "createMs": 8.880000000001019,
+            "runMs": 3.819999999999709,
+            "totalMs": 230.54000000000087
+          },
+          {
+            "id": 58,
+            "acquireMs": 229.9399999999987,
+            "createMs": 2.360000000000582,
+            "runMs": 2.2599999999983993,
+            "totalMs": 234.71999999999753
+          },
+          {
+            "id": 59,
+            "acquireMs": 272.23999999999796,
+            "createMs": 10.760000000002037,
+            "runMs": 2.7399999999979627,
+            "totalMs": 286.15999999999985
+          },
+          {
+            "id": 60,
+            "acquireMs": 213.94000000000233,
+            "createMs": 1.9199999999982538,
+            "runMs": 136.77999999999884,
+            "totalMs": 361.4400000000023
+          },
+          {
+            "id": 61,
+            "acquireMs": 228.41999999999825,
+            "createMs": 2.819999999999709,
+            "runMs": 33.5,
+            "totalMs": 267.02000000000044
+          },
+          {
+            "id": 62,
+            "acquireMs": 242.27999999999884,
+            "createMs": 2.1599999999998545,
+            "runMs": 8.819999999999709,
+            "totalMs": 254
+          },
+          {
+            "id": 63,
+            "acquireMs": 211.9800000000032,
+            "createMs": 2.039999999997235,
+            "runMs": 2.900000000001455,
+            "totalMs": 217.1800000000003
+          },
+          {
+            "id": 64,
+            "acquireMs": 211.95999999999913,
+            "createMs": 1.9799999999995634,
+            "runMs": 2.1199999999989814,
+            "totalMs": 216.22000000000116
+          },
+          {
+            "id": 65,
+            "acquireMs": 233.04000000000087,
+            "createMs": 10.840000000000146,
+            "runMs": 2.9199999999982538,
+            "totalMs": 247.13999999999942
+          },
+          {
+            "id": 66,
+            "acquireMs": 225.1999999999971,
+            "createMs": 1.819999999999709,
+            "runMs": 129.60000000000218,
+            "totalMs": 365.65999999999985
+          },
+          {
+            "id": 67,
+            "acquireMs": 256.7599999999984,
+            "createMs": 2.3400000000001455,
+            "runMs": 36.31999999999971,
+            "totalMs": 297.9599999999991
+          },
+          {
+            "id": 68,
+            "acquireMs": 231.47999999999956,
+            "createMs": 1.8799999999973807,
+            "runMs": 7.819999999999709,
+            "totalMs": 241.85999999999694
+          },
+          {
+            "id": 69,
+            "acquireMs": 217.54000000000087,
+            "createMs": 2.5599999999976717,
+            "runMs": 2.2400000000016007,
+            "totalMs": 222.59999999999854
+          },
+          {
+            "id": 70,
+            "acquireMs": 234.47999999999956,
+            "createMs": 2.5,
+            "runMs": 2.4799999999995634,
+            "totalMs": 239.61999999999898
+          },
+          {
+            "id": 71,
+            "acquireMs": 250.23999999999796,
+            "createMs": 7.900000000001455,
+            "runMs": 2.680000000000291,
+            "totalMs": 261.15999999999985
+          },
+          {
+            "id": 72,
+            "acquireMs": 224.47999999999956,
+            "createMs": 1.7999999999992724,
+            "runMs": 126.31999999999971,
+            "totalMs": 361.90000000000146
+          },
+          {
+            "id": 73,
+            "acquireMs": 215.6999999999971,
+            "createMs": 1.9400000000023283,
+            "runMs": 31.659999999999854,
+            "totalMs": 252.05999999999767
+          },
+          {
+            "id": 74,
+            "acquireMs": 257.2800000000025,
+            "createMs": 4.799999999999272,
+            "runMs": 8.7599999999984,
+            "totalMs": 271.5600000000013
+          },
+          {
+            "id": 75,
+            "acquireMs": 240.59999999999854,
+            "createMs": 4.06000000000131,
+            "runMs": 3.460000000002765,
+            "totalMs": 248.47999999999956
+          },
+          {
+            "id": 76,
+            "acquireMs": 243.8199999999997,
+            "createMs": 18.419999999998254,
+            "runMs": 5.56000000000131,
+            "totalMs": 271.15999999999985
+          },
+          {
+            "id": 77,
+            "acquireMs": 237.62000000000262,
+            "createMs": 14.579999999998108,
+            "runMs": 2.599999999998545,
+            "totalMs": 255.15999999999985
+          },
+          {
+            "id": 78,
+            "acquireMs": 252.39999999999782,
+            "createMs": 2.319999999999709,
+            "runMs": 140.5600000000013,
+            "totalMs": 404.3999999999978
+          },
+          {
+            "id": 79,
+            "acquireMs": 229.09999999999854,
+            "createMs": 5.880000000001019,
+            "runMs": 33.159999999999854,
+            "totalMs": 270.5799999999981
+          },
+          {
+            "id": 80,
+            "acquireMs": 221.5600000000013,
+            "createMs": 4.5,
+            "runMs": 8.5,
+            "totalMs": 240.72000000000116
+          },
+          {
+            "id": 81,
+            "acquireMs": 216.91999999999825,
+            "createMs": 3.5800000000017462,
+            "runMs": 3.5599999999976717,
+            "totalMs": 224.59999999999854
+          },
+          {
+            "id": 82,
+            "acquireMs": 226.97999999999956,
+            "createMs": 1.7600000000020373,
+            "runMs": 2.139999999999418,
+            "totalMs": 231.04000000000087
+          },
+          {
+            "id": 83,
+            "acquireMs": 228.53999999999724,
+            "createMs": 10.180000000000291,
+            "runMs": 4.099999999998545,
+            "totalMs": 243.1999999999971
+          },
+          {
+            "id": 84,
+            "acquireMs": 220.21999999999753,
+            "createMs": 4.979999999999563,
+            "runMs": 144.7400000000016,
+            "totalMs": 378.9399999999987
+          },
+          {
+            "id": 85,
+            "acquireMs": 233.20000000000073,
+            "createMs": 7.120000000002619,
+            "runMs": 41.47999999999956,
+            "totalMs": 284.5
+          },
+          {
+            "id": 86,
+            "acquireMs": 301.72000000000116,
+            "createMs": 5.520000000000437,
+            "runMs": 11.459999999999127,
+            "totalMs": 320.1800000000003
+          },
+          {
+            "id": 87,
+            "acquireMs": 261.1999999999971,
+            "createMs": 5.6599999999998545,
+            "runMs": 3.2599999999983993,
+            "totalMs": 270.5199999999968
+          },
+          {
+            "id": 88,
+            "acquireMs": 263.59999999999854,
+            "createMs": 4.260000000002037,
+            "runMs": 2.8400000000001455,
+            "totalMs": 270.8600000000006
+          },
+          {
+            "id": 89,
+            "acquireMs": 766.3600000000006,
+            "createMs": 33.7400000000016,
+            "runMs": 6.6599999999998545,
+            "totalMs": 811.1800000000003
+          },
+          {
+            "id": 90,
+            "acquireMs": 333.3600000000006,
+            "createMs": 4.139999999999418,
+            "runMs": 168.72000000000116,
+            "totalMs": 516.5
+          },
+          {
+            "id": 91,
+            "acquireMs": 309.7800000000025,
+            "createMs": 2.819999999999709,
+            "runMs": 41.04000000000087,
+            "totalMs": 358.26000000000204
+          },
+          {
+            "id": 92,
+            "acquireMs": 311.22000000000116,
+            "createMs": 7.819999999999709,
+            "runMs": 12.340000000000146,
+            "totalMs": 332.5
+          },
+          {
+            "id": 93,
+            "acquireMs": 411.7599999999984,
+            "createMs": 5.740000000001601,
+            "runMs": 2.4400000000023283,
+            "totalMs": 420.2599999999984
+          },
+          {
+            "id": 94,
+            "acquireMs": 356.1200000000026,
+            "createMs": 12.559999999997672,
+            "runMs": 3.2600000000020373,
+            "totalMs": 372.40000000000146
+          },
+          {
+            "id": 95,
+            "acquireMs": 462.72000000000116,
+            "createMs": 19.37999999999738,
+            "runMs": 4.799999999999272,
+            "totalMs": 487.5
+          },
+          {
+            "id": 96,
+            "acquireMs": 474.2999999999993,
+            "createMs": 6.600000000002183,
+            "runMs": 321.1800000000003,
+            "totalMs": 816.380000000001
+          },
+          {
+            "id": 97,
+            "acquireMs": 263.1800000000003,
+            "createMs": 3.900000000001455,
+            "runMs": 54.13999999999942,
+            "totalMs": 323.8199999999997
+          },
+          {
+            "id": 98,
+            "acquireMs": 346.880000000001,
+            "createMs": 15.079999999998108,
+            "runMs": 50,
+            "totalMs": 414.97999999999956
+          },
+          {
+            "id": 99,
+            "acquireMs": 238.5799999999981,
+            "createMs": 4.799999999999272,
+            "runMs": 2.780000000002474,
+            "totalMs": 246.52000000000044
+          },
+          {
+            "id": 100,
+            "acquireMs": 238.0199999999968,
+            "createMs": 5.180000000000291,
+            "runMs": 2.1999999999970896,
+            "totalMs": 245.54000000000087
+          },
+          {
+            "id": 101,
+            "acquireMs": 363.4800000000032,
+            "createMs": 75.94000000000233,
+            "runMs": 8.479999999995925,
+            "totalMs": 456.4800000000032
+          },
+          {
+            "id": 102,
+            "acquireMs": 296.4800000000032,
+            "createMs": 3.4800000000032014,
+            "runMs": 152.10000000000582,
+            "totalMs": 461.73999999999796
+          },
+          {
+            "id": 103,
+            "acquireMs": 237.07999999999447,
+            "createMs": 1.8400000000037835,
+            "runMs": 36.94000000000233,
+            "totalMs": 281.29999999999563
+          },
+          {
+            "id": 104,
+            "acquireMs": 418.09999999999854,
+            "createMs": 5.860000000000582,
+            "runMs": 8.400000000001455,
+            "totalMs": 433.0599999999977
+          },
+          {
+            "id": 105,
+            "acquireMs": 223.8399999999965,
+            "createMs": 1.9599999999991269,
+            "runMs": 2.3800000000046566,
+            "totalMs": 228.41999999999825
+          },
+          {
+            "id": 106,
+            "acquireMs": 254.54000000000087,
+            "createMs": 4.939999999995052,
+            "runMs": 2.8399999999965075,
+            "totalMs": 262.5599999999977
+          },
+          {
+            "id": 107,
+            "acquireMs": 243,
+            "createMs": 14.69999999999709,
+            "runMs": 2.6999999999970896,
+            "totalMs": 260.73999999999796
+          }
+        ],
+        "maxLiveSessions": 1,
+        "liveSessions": 0,
+        "wasmPeakBytes": 98435072,
+        "jsBoundaryPeakBytes": 12664832,
+        "receivedShardBytes": 1068886382,
+        "receivedBytesScope": "Bytes materialized from verified persistent cache or HTTP; not network traffic",
+        "maxShardBytes": 16682645,
+        "heapScope": "Actual ORT linear-memory capacity; not process RSS",
+        "hardWasmMaximumBytes": 268435456,
+        "completed": true,
+        "managedPeakEstimateBytes": 220057237,
+        "estimateScope": "WASM capacity plus maximum JS boundaries, one shard,24MiB runtime assets and64MiB overhead reserve; not physical RSS or an OS guarantee"
+      },
+      "passed": true
+    },
+    {
+      "id": "seed-1-unaligned",
+      "alignmentMs": 316.96000000002095,
+      "tensorSha256": "db49d70e029fc0d80c3cd0004bac579c4dd208a200606cf116f464259d8c2ee9",
+      "tensorExact": true,
+      "landmarkWorkerTerminated": true,
+      "alignmentStats": {
+        "provider": "dlib20.0.1-pillow12.3.0-wasm-unshared",
+        "stages": [
+          {
+            "name": "alignment-manifest",
+            "ms": 20.12000000000002
+          },
+          {
+            "name": "alignment-runtime",
+            "ms": 89.17999999999998
+          },
+          {
+            "name": "photo-decode",
+            "ms": 15.820000000000022
+          },
+          {
+            "name": "photo-warp-resize",
+            "ms": 6.699999999999989
+          }
+        ],
+        "maxWasmBytes": 268435456,
+        "wasmCapacityBytes": 33554432,
+        "ortImported": false,
+        "privateDataUploaded": false,
+        "orientationPolicy": "legacy-ignore-exif",
+        "preprocessingSha256": "3cc958b232e8616db831b8429eea4446c990a845738320270b47121a2d2dbdfe",
+        "landmarksSha256": "fbdc2cb80eb9aa7a758672cbfdda32ba6300efe9b6e6c7a299ff7e736b11b92f",
+        "wasmSha256": "6cb217924cd7b0f0e4941d6c989cad6b9e46556d567ef82144232a97c8a5accc",
+        "input": {
+          "width": 512,
+          "height": 512,
+          "format": "png",
+          "encodedBytes": 394623,
+          "exifOrientation": 1,
+          "orientationPolicy": "legacy-ignore-exif"
+        },
+        "sharedMemory": false,
+        "faceCount": 0,
+        "preparedSha256": "79b280d6b8779e7d223292f3e63aa0e64f9b22a5a1b47a2c3d5b2de8d0d12658",
+        "tensorSha256": "db49d70e029fc0d80c3cd0004bac579c4dd208a200606cf116f464259d8c2ee9",
+        "didAlign": false
+      },
+      "didAlign": false,
+      "encoderWorkerTerminated": true,
+      "encoderMs": 33627.380000000005,
+      "maxWError": 2.682209014892578e-06,
+      "encoderStats": {
+        "provider": "wasm-unshared-streamed",
+        "sourceEncoderSha256": "d525a985a43e4d49ef4590a8b8cc6f487992065bee00014fe8c6f8ab4ac291b1",
+        "steps": [
+          {
+            "id": 0,
+            "acquireMs": 393.17999999999995,
+            "createMs": 293.12,
+            "runMs": 876.46,
+            "totalMs": 1584.54
+          },
+          {
+            "id": 1,
+            "acquireMs": 425.17999999999984,
+            "createMs": 22.700000000000273,
+            "runMs": 213.65999999999985,
+            "totalMs": 670.7600000000002
+          },
+          {
+            "id": 2,
+            "acquireMs": 382,
+            "createMs": 13.2199999999998,
+            "runMs": 219.05999999999995,
+            "totalMs": 623.44
+          },
+          {
+            "id": 3,
+            "acquireMs": 409.2999999999997,
+            "createMs": 14.680000000000291,
+            "runMs": 218.69999999999982,
+            "totalMs": 651.7800000000002
+          },
+          {
+            "id": 4,
+            "acquireMs": 274.0799999999999,
+            "createMs": 6.460000000000036,
+            "runMs": 127.30000000000018,
+            "totalMs": 423.46000000000004
+          },
+          {
+            "id": 5,
+            "acquireMs": 630,
+            "createMs": 26,
+            "runMs": 67.65999999999985,
+            "totalMs": 729.4000000000005
+          },
+          {
+            "id": 6,
+            "acquireMs": 374.96000000000004,
+            "createMs": 2.1799999999993815,
+            "runMs": 31.6200000000008,
+            "totalMs": 411.5799999999999
+          },
+          {
+            "id": 7,
+            "acquireMs": 413.96000000000004,
+            "createMs": 5.880000000000109,
+            "runMs": 33.80000000000018,
+            "totalMs": 458.46000000000004
+          },
+          {
+            "id": 8,
+            "acquireMs": 468.3599999999997,
+            "createMs": 3.100000000000364,
+            "runMs": 31.720000000000255,
+            "totalMs": 505.6800000000003
+          },
+          {
+            "id": 9,
+            "acquireMs": 470.3600000000006,
+            "createMs": 8.759999999999309,
+            "runMs": 30.980000000000473,
+            "totalMs": 513.46
+          },
+          {
+            "id": 10,
+            "acquireMs": 313.4400000000005,
+            "createMs": 2.180000000000291,
+            "runMs": 8.359999999999673,
+            "totalMs": 324.7600000000002
+          },
+          {
+            "id": 11,
+            "acquireMs": 344.0199999999995,
+            "createMs": 3.780000000000655,
+            "runMs": 2.2999999999992724,
+            "totalMs": 350.39999999999964
+          },
+          {
+            "id": 12,
+            "acquireMs": 313.7399999999998,
+            "createMs": 3.660000000000764,
+            "runMs": 2.0600000000004,
+            "totalMs": 319.60000000000036
+          },
+          {
+            "id": 13,
+            "acquireMs": 361.91999999999916,
+            "createMs": 5.480000000001382,
+            "runMs": 2.9400000000005093,
+            "totalMs": 370.6999999999998
+          },
+          {
+            "id": 14,
+            "acquireMs": 294.6799999999985,
+            "createMs": 2.2399999999997817,
+            "runMs": 8.239999999999782,
+            "totalMs": 305.8199999999997
+          },
+          {
+            "id": 15,
+            "acquireMs": 336.34000000000015,
+            "createMs": 1.9599999999991269,
+            "runMs": 2.2600000000002183,
+            "totalMs": 340.84000000000015
+          },
+          {
+            "id": 16,
+            "acquireMs": 349.5,
+            "createMs": 11.819999999999709,
+            "runMs": 3.0599999999994907,
+            "totalMs": 364.5799999999999
+          },
+          {
+            "id": 17,
+            "acquireMs": 343.27999999999884,
+            "createMs": 13.920000000000073,
+            "runMs": 4.200000000000728,
+            "totalMs": 363.2599999999984
+          },
+          {
+            "id": 18,
+            "acquireMs": 225.79999999999927,
+            "createMs": 1.9600000000009459,
+            "runMs": 7.780000000000655,
+            "totalMs": 236.23999999999978
+          },
+          {
+            "id": 19,
+            "acquireMs": 199.89999999999964,
+            "createMs": 2.100000000000364,
+            "runMs": 2.219999999999345,
+            "totalMs": 204.47999999999956
+          },
+          {
+            "id": 20,
+            "acquireMs": 203.02000000000044,
+            "createMs": 2.459999999999127,
+            "runMs": 2.139999999999418,
+            "totalMs": 207.78000000000065
+          },
+          {
+            "id": 21,
+            "acquireMs": 242.0599999999995,
+            "createMs": 12.139999999999418,
+            "runMs": 18.68000000000029,
+            "totalMs": 282.71999999999935
+          },
+          {
+            "id": 22,
+            "acquireMs": 243.8000000000011,
+            "createMs": 10.659999999999854,
+            "runMs": 34.98000000000138,
+            "totalMs": 291.72000000000116
+          },
+          {
+            "id": 23,
+            "acquireMs": 203.71999999999935,
+            "createMs": 1.9000000000014552,
+            "runMs": 7.859999999998763,
+            "totalMs": 214.15999999999985
+          },
+          {
+            "id": 24,
+            "acquireMs": 203.42000000000007,
+            "createMs": 2.180000000000291,
+            "runMs": 2.180000000000291,
+            "totalMs": 208.04000000000087
+          },
+          {
+            "id": 25,
+            "acquireMs": 227.46000000000095,
+            "createMs": 3.3799999999991996,
+            "runMs": 2.7999999999992724,
+            "totalMs": 233.9400000000005
+          },
+          {
+            "id": 26,
+            "acquireMs": 229.8799999999992,
+            "createMs": 7.800000000001091,
+            "runMs": 2.5799999999999272,
+            "totalMs": 240.60000000000036
+          },
+          {
+            "id": 27,
+            "acquireMs": 220.8199999999997,
+            "createMs": 3.5,
+            "runMs": 30.280000000000655,
+            "totalMs": 256.880000000001
+          },
+          {
+            "id": 28,
+            "acquireMs": 208.09999999999854,
+            "createMs": 3.6200000000008004,
+            "runMs": 7.739999999999782,
+            "totalMs": 220.13999999999942
+          },
+          {
+            "id": 29,
+            "acquireMs": 224.72000000000116,
+            "createMs": 3.679999999998472,
+            "runMs": 2.639999999999418,
+            "totalMs": 231.34000000000015
+          },
+          {
+            "id": 30,
+            "acquireMs": 260.96000000000095,
+            "createMs": 2.099999999998545,
+            "runMs": 2.399999999999636,
+            "totalMs": 265.6399999999994
+          },
+          {
+            "id": 31,
+            "acquireMs": 322,
+            "createMs": 9.659999999999854,
+            "runMs": 2.719999999999345,
+            "totalMs": 334.77999999999884
+          },
+          {
+            "id": 32,
+            "acquireMs": 205.1999999999989,
+            "createMs": 1.8999999999996362,
+            "runMs": 35.399999999999636,
+            "totalMs": 246.26000000000022
+          },
+          {
+            "id": 33,
+            "acquireMs": 242.84000000000015,
+            "createMs": 2.9400000000005093,
+            "runMs": 8.960000000000946,
+            "totalMs": 255.60000000000036
+          },
+          {
+            "id": 34,
+            "acquireMs": 219.20000000000073,
+            "createMs": 4.219999999999345,
+            "runMs": 2.4799999999995634,
+            "totalMs": 226.1800000000003
+          },
+          {
+            "id": 35,
+            "acquireMs": 219.11999999999898,
+            "createMs": 2.780000000000655,
+            "runMs": 2.539999999999054,
+            "totalMs": 224.60000000000036
+          },
+          {
+            "id": 36,
+            "acquireMs": 231.26000000000022,
+            "createMs": 8.539999999999054,
+            "runMs": 2.8000000000010914,
+            "totalMs": 243.02000000000044
+          },
+          {
+            "id": 37,
+            "acquireMs": 208.84000000000015,
+            "createMs": 2.399999999999636,
+            "runMs": 30.159999999999854,
+            "totalMs": 243.6800000000003
+          },
+          {
+            "id": 38,
+            "acquireMs": 213.84000000000015,
+            "createMs": 1.9799999999995634,
+            "runMs": 7.699999999998909,
+            "totalMs": 224.15999999999985
+          },
+          {
+            "id": 39,
+            "acquireMs": 220.5,
+            "createMs": 2.039999999999054,
+            "runMs": 2.2999999999992724,
+            "totalMs": 225.10000000000036
+          },
+          {
+            "id": 40,
+            "acquireMs": 213.8799999999992,
+            "createMs": 1.9600000000009459,
+            "runMs": 2.220000000001164,
+            "totalMs": 218.21999999999935
+          },
+          {
+            "id": 41,
+            "acquireMs": 253.2400000000016,
+            "createMs": 10.239999999999782,
+            "runMs": 33.76000000000022,
+            "totalMs": 334.5400000000009
+          },
+          {
+            "id": 42,
+            "acquireMs": 216.5599999999995,
+            "createMs": 2.9200000000000728,
+            "runMs": 133.45999999999913,
+            "totalMs": 363.5400000000009
+          },
+          {
+            "id": 43,
+            "acquireMs": 270.40000000000146,
+            "createMs": 2.1199999999989814,
+            "runMs": 30.81999999999971,
+            "totalMs": 305.7400000000016
+          },
+          {
+            "id": 44,
+            "acquireMs": 204.47999999999956,
+            "createMs": 2.3400000000001455,
+            "runMs": 8.319999999999709,
+            "totalMs": 215.8199999999997
+          },
+          {
+            "id": 45,
+            "acquireMs": 205.8199999999997,
+            "createMs": 1.9799999999995634,
+            "runMs": 2.2399999999979627,
+            "totalMs": 210.27999999999884
+          },
+          {
+            "id": 46,
+            "acquireMs": 197.6999999999971,
+            "createMs": 2.2000000000007276,
+            "runMs": 2.2599999999983993,
+            "totalMs": 202.3199999999997
+          },
+          {
+            "id": 47,
+            "acquireMs": 227.10000000000218,
+            "createMs": 6.860000000000582,
+            "runMs": 2.319999999999709,
+            "totalMs": 236.70000000000073
+          },
+          {
+            "id": 48,
+            "acquireMs": 204.87999999999738,
+            "createMs": 1.9600000000027649,
+            "runMs": 146.88000000000102,
+            "totalMs": 363.619999999999
+          },
+          {
+            "id": 49,
+            "acquireMs": 225.90000000000146,
+            "createMs": 1.7999999999992724,
+            "runMs": 32,
+            "totalMs": 261.97999999999956
+          },
+          {
+            "id": 50,
+            "acquireMs": 215.09999999999854,
+            "createMs": 1.8400000000001455,
+            "runMs": 7.580000000001746,
+            "totalMs": 225.20000000000073
+          },
+          {
+            "id": 51,
+            "acquireMs": 251.96000000000276,
+            "createMs": 2.1599999999998545,
+            "runMs": 2.179999999996653,
+            "totalMs": 256.5600000000013
+          },
+          {
+            "id": 52,
+            "acquireMs": 207.27999999999884,
+            "createMs": 2.099999999998545,
+            "runMs": 2.5800000000017462,
+            "totalMs": 212.15999999999985
+          },
+          {
+            "id": 53,
+            "acquireMs": 244.47999999999956,
+            "createMs": 7.259999999998399,
+            "runMs": 2.2999999999992724,
+            "totalMs": 254.36000000000058
+          },
+          {
+            "id": 54,
+            "acquireMs": 196.60000000000218,
+            "createMs": 1.819999999999709,
+            "runMs": 119.79999999999927,
+            "totalMs": 326.7999999999993
+          },
+          {
+            "id": 55,
+            "acquireMs": 202.34000000000015,
+            "createMs": 1.7599999999983993,
+            "runMs": 29.580000000001746,
+            "totalMs": 235.95999999999913
+          },
+          {
+            "id": 56,
+            "acquireMs": 203.63999999999942,
+            "createMs": 1.9599999999991269,
+            "runMs": 7.599999999998545,
+            "totalMs": 213.84000000000015
+          },
+          {
+            "id": 57,
+            "acquireMs": 200.65999999999985,
+            "createMs": 2.0200000000004366,
+            "runMs": 2.139999999999418,
+            "totalMs": 205.08000000000175
+          },
+          {
+            "id": 58,
+            "acquireMs": 196.32000000000335,
+            "createMs": 2.1999999999970896,
+            "runMs": 2.3400000000001455,
+            "totalMs": 201.0600000000013
+          },
+          {
+            "id": 59,
+            "acquireMs": 227.59999999999854,
+            "createMs": 8.600000000002183,
+            "runMs": 2.900000000001455,
+            "totalMs": 239.5
+          },
+          {
+            "id": 60,
+            "acquireMs": 199.6800000000003,
+            "createMs": 2.7400000000016007,
+            "runMs": 132.41999999999825,
+            "totalMs": 343.52000000000044
+          },
+          {
+            "id": 61,
+            "acquireMs": 204.55999999999767,
+            "createMs": 2.220000000001164,
+            "runMs": 29.5,
+            "totalMs": 238.53999999999724
+          },
+          {
+            "id": 62,
+            "acquireMs": 206.20000000000073,
+            "createMs": 2.0599999999976717,
+            "runMs": 9.979999999999563,
+            "totalMs": 220.1800000000003
+          },
+          {
+            "id": 63,
+            "acquireMs": 208.5,
+            "createMs": 2.180000000000291,
+            "runMs": 2.900000000001455,
+            "totalMs": 213.88000000000102
+          },
+          {
+            "id": 64,
+            "acquireMs": 228.1800000000003,
+            "createMs": 2.319999999999709,
+            "runMs": 2.1599999999998545,
+            "totalMs": 232.8000000000029
+          },
+          {
+            "id": 65,
+            "acquireMs": 229.40000000000146,
+            "createMs": 7.680000000000291,
+            "runMs": 2.680000000000291,
+            "totalMs": 240.09999999999854
+          },
+          {
+            "id": 66,
+            "acquireMs": 206.2400000000016,
+            "createMs": 1.7999999999992724,
+            "runMs": 125.37999999999738,
+            "totalMs": 342.2000000000007
+          },
+          {
+            "id": 67,
+            "acquireMs": 202.38000000000102,
+            "createMs": 1.9000000000014552,
+            "runMs": 31.659999999999854,
+            "totalMs": 238.28000000000247
+          },
+          {
+            "id": 68,
+            "acquireMs": 198.61999999999898,
+            "createMs": 2.0200000000004366,
+            "runMs": 8.080000000001746,
+            "totalMs": 209.38000000000102
+          },
+          {
+            "id": 69,
+            "acquireMs": 206.90000000000146,
+            "createMs": 1.9399999999986903,
+            "runMs": 2.319999999999709,
+            "totalMs": 211.38000000000102
+          },
+          {
+            "id": 70,
+            "acquireMs": 200.65999999999985,
+            "createMs": 1.9199999999982538,
+            "runMs": 2.099999999998545,
+            "totalMs": 204.8199999999997
+          },
+          {
+            "id": 71,
+            "acquireMs": 228.65999999999985,
+            "createMs": 7.080000000001746,
+            "runMs": 2.4799999999995634,
+            "totalMs": 238.54000000000087
+          },
+          {
+            "id": 72,
+            "acquireMs": 193.13999999999942,
+            "createMs": 1.9400000000023283,
+            "runMs": 122.07999999999811,
+            "totalMs": 326
+          },
+          {
+            "id": 73,
+            "acquireMs": 210.29999999999927,
+            "createMs": 1.9799999999995634,
+            "runMs": 32.56000000000131,
+            "totalMs": 247.13999999999942
+          },
+          {
+            "id": 74,
+            "acquireMs": 208.64000000000306,
+            "createMs": 2.1999999999970896,
+            "runMs": 7.680000000000291,
+            "totalMs": 219.1600000000035
+          },
+          {
+            "id": 75,
+            "acquireMs": 204.70000000000073,
+            "createMs": 2.0200000000004366,
+            "runMs": 2.139999999999418,
+            "totalMs": 209.08000000000175
+          },
+          {
+            "id": 76,
+            "acquireMs": 216.72000000000116,
+            "createMs": 1.9799999999995634,
+            "runMs": 2.0599999999976717,
+            "totalMs": 220.90000000000146
+          },
+          {
+            "id": 77,
+            "acquireMs": 225.04000000000087,
+            "createMs": 8.020000000000437,
+            "runMs": 2.459999999999127,
+            "totalMs": 235.84000000000015
+          },
+          {
+            "id": 78,
+            "acquireMs": 198.37999999999738,
+            "createMs": 1.9200000000018917,
+            "runMs": 116.61999999999898,
+            "totalMs": 325.7599999999984
+          },
+          {
+            "id": 79,
+            "acquireMs": 197.91999999999825,
+            "createMs": 2.319999999999709,
+            "runMs": 35.20000000000073,
+            "totalMs": 237.7599999999984
+          },
+          {
+            "id": 80,
+            "acquireMs": 209.5600000000013,
+            "createMs": 1.8800000000010186,
+            "runMs": 8.040000000000873,
+            "totalMs": 220.1600000000035
+          },
+          {
+            "id": 81,
+            "acquireMs": 221.4200000000019,
+            "createMs": 2.539999999997235,
+            "runMs": 2.100000000002183,
+            "totalMs": 226.29999999999927
+          },
+          {
+            "id": 82,
+            "acquireMs": 207.70000000000073,
+            "createMs": 2.4399999999986903,
+            "runMs": 2.0200000000004366,
+            "totalMs": 212.27999999999884
+          },
+          {
+            "id": 83,
+            "acquireMs": 221.89999999999782,
+            "createMs": 6.959999999999127,
+            "runMs": 2.3400000000001455,
+            "totalMs": 231.5
+          },
+          {
+            "id": 84,
+            "acquireMs": 196.40000000000146,
+            "createMs": 2.8799999999973807,
+            "runMs": 136.08000000000175,
+            "totalMs": 347.40000000000146
+          },
+          {
+            "id": 85,
+            "acquireMs": 317.119999999999,
+            "createMs": 2.0799999999981083,
+            "runMs": 29.700000000000728,
+            "totalMs": 351.1999999999971
+          },
+          {
+            "id": 86,
+            "acquireMs": 453.59999999999854,
+            "createMs": 5.040000000000873,
+            "runMs": 13.139999999999418,
+            "totalMs": 473
+          },
+          {
+            "id": 87,
+            "acquireMs": 390.6399999999994,
+            "createMs": 13.380000000001019,
+            "runMs": 4.759999999998399,
+            "totalMs": 410.73999999999796
+          },
+          {
+            "id": 88,
+            "acquireMs": 650.4600000000028,
+            "createMs": 17.07999999999811,
+            "runMs": 3.5,
+            "totalMs": 671.3199999999997
+          },
+          {
+            "id": 89,
+            "acquireMs": 320.5400000000009,
+            "createMs": 61.159999999999854,
+            "runMs": 9.299999999999272,
+            "totalMs": 391.59999999999854
+          },
+          {
+            "id": 90,
+            "acquireMs": 266.5,
+            "createMs": 2.360000000000582,
+            "runMs": 132.14000000000306,
+            "totalMs": 416
+          },
+          {
+            "id": 91,
+            "acquireMs": 235.79999999999927,
+            "createMs": 2.140000000003056,
+            "runMs": 33.44000000000233,
+            "totalMs": 273.7400000000016
+          },
+          {
+            "id": 92,
+            "acquireMs": 218.94000000000233,
+            "createMs": 2.860000000000582,
+            "runMs": 12.960000000002765,
+            "totalMs": 235.96000000000276
+          },
+          {
+            "id": 93,
+            "acquireMs": 238.79999999999927,
+            "createMs": 1.8800000000010186,
+            "runMs": 2.4199999999982538,
+            "totalMs": 243.5
+          },
+          {
+            "id": 94,
+            "acquireMs": 199.32000000000335,
+            "createMs": 1.8799999999973807,
+            "runMs": 2.4200000000018917,
+            "totalMs": 203.82000000000335
+          },
+          {
+            "id": 95,
+            "acquireMs": 222.34000000000015,
+            "createMs": 6.700000000000728,
+            "runMs": 2.400000000001455,
+            "totalMs": 231.8199999999997
+          },
+          {
+            "id": 96,
+            "acquireMs": 272.6800000000003,
+            "createMs": 11.139999999999418,
+            "runMs": 139.20000000000073,
+            "totalMs": 431.90000000000146
+          },
+          {
+            "id": 97,
+            "acquireMs": 219.44000000000233,
+            "createMs": 2.4399999999986903,
+            "runMs": 33.20000000000073,
+            "totalMs": 257.6200000000026
+          },
+          {
+            "id": 98,
+            "acquireMs": 221.2599999999984,
+            "createMs": 1.9000000000014552,
+            "runMs": 8.159999999999854,
+            "totalMs": 231.97999999999956
+          },
+          {
+            "id": 99,
+            "acquireMs": 202.11999999999898,
+            "createMs": 1.7799999999988358,
+            "runMs": 2.360000000000582,
+            "totalMs": 206.61999999999898
+          },
+          {
+            "id": 100,
+            "acquireMs": 358.1200000000026,
+            "createMs": 2.7599999999983993,
+            "runMs": 2.7000000000007276,
+            "totalMs": 363.8000000000029
+          },
+          {
+            "id": 101,
+            "acquireMs": 235.65999999999985,
+            "createMs": 16.31999999999971,
+            "runMs": 2.7999999999992724,
+            "totalMs": 255.11999999999898
+          },
+          {
+            "id": 102,
+            "acquireMs": 220.10000000000218,
+            "createMs": 2.180000000000291,
+            "runMs": 131.52000000000044,
+            "totalMs": 363.40000000000146
+          },
+          {
+            "id": 103,
+            "acquireMs": 206.95999999999913,
+            "createMs": 1.860000000000582,
+            "runMs": 34.60000000000218,
+            "totalMs": 245.6800000000003
+          },
+          {
+            "id": 104,
+            "acquireMs": 200.84000000000015,
+            "createMs": 1.8399999999965075,
+            "runMs": 8.340000000003783,
+            "totalMs": 211.70000000000073
+          },
+          {
+            "id": 105,
+            "acquireMs": 199.77999999999884,
+            "createMs": 2.0599999999976717,
+            "runMs": 2.319999999999709,
+            "totalMs": 204.45999999999913
+          },
+          {
+            "id": 106,
+            "acquireMs": 206.70000000000437,
+            "createMs": 2.0799999999944703,
+            "runMs": 2.1199999999953434,
+            "totalMs": 211.04000000000087
+          },
+          {
+            "id": 107,
+            "acquireMs": 238.94000000000233,
+            "createMs": 8.339999999996508,
+            "runMs": 2.3399999999965075,
+            "totalMs": 249.94000000000233
+          }
+        ],
+        "maxLiveSessions": 1,
+        "liveSessions": 0,
+        "wasmPeakBytes": 98435072,
+        "jsBoundaryPeakBytes": 12664832,
+        "receivedShardBytes": 1068886382,
+        "receivedBytesScope": "Bytes materialized from verified persistent cache or HTTP; not network traffic",
+        "maxShardBytes": 16682645,
+        "heapScope": "Actual ORT linear-memory capacity; not process RSS",
+        "hardWasmMaximumBytes": 268435456,
+        "completed": true,
+        "managedPeakEstimateBytes": 220057237,
+        "estimateScope": "WASM capacity plus maximum JS boundaries, one shard,24MiB runtime assets and64MiB overhead reserve; not physical RSS or an OS guarantee"
+      },
+      "passed": true
+    },
+    {
+      "id": "no-face-aligned",
+      "alignmentMs": 5507.3399999999965,
+      "tensorSha256": "2a0db9dafd24471a6b874e8810aae5e75508ad019ba3a24c2e957aa766d2f218",
+      "tensorExact": true,
+      "landmarkWorkerTerminated": true,
+      "alignmentStats": {
+        "provider": "dlib20.0.1-pillow12.3.0-wasm-unshared",
+        "stages": [
+          {
+            "name": "alignment-manifest",
+            "ms": 17.260000000000005
+          },
+          {
+            "name": "alignment-runtime",
+            "ms": 87.11999999999998
+          },
+          {
+            "name": "alignment-model",
+            "ms": 1699.72
+          },
+          {
+            "name": "alignment-model-deserialize",
+            "ms": 3422.52
+          },
+          {
+            "name": "photo-decode",
+            "ms": 3.199999999999818
+          },
+          {
+            "name": "face-landmarks",
+            "ms": 65.47999999999956
+          },
+          {
+            "name": "photo-warp-resize",
+            "ms": 1.7400000000006912
+          }
+        ],
+        "maxWasmBytes": 268435456,
+        "wasmCapacityBytes": 176488448,
+        "ortImported": false,
+        "privateDataUploaded": false,
+        "orientationPolicy": "legacy-ignore-exif",
+        "preprocessingSha256": "3cc958b232e8616db831b8429eea4446c990a845738320270b47121a2d2dbdfe",
+        "landmarksSha256": "fbdc2cb80eb9aa7a758672cbfdda32ba6300efe9b6e6c7a299ff7e736b11b92f",
+        "wasmSha256": "6cb217924cd7b0f0e4941d6c989cad6b9e46556d567ef82144232a97c8a5accc",
+        "input": {
+          "width": 256,
+          "height": 256,
+          "format": "png",
+          "encodedBytes": 758,
+          "exifOrientation": 1,
+          "orientationPolicy": "legacy-ignore-exif"
+        },
+        "sharedMemory": false,
+        "modelCache": "opfs-hit",
+        "chunkedModelTransport": false,
+        "modelChunkCount": 1,
+        "modelReader": "byob-1MiB",
+        "maxModelChunkBytes": 524288,
+        "modelBytesRead": 99693937,
+        "downloadAttempted": false,
+        "faceCount": 0,
+        "preparedSha256": "83ab53863cf746efe2611c6b521cfbdefba4f5325cf123ab451c385035b394ef",
+        "tensorSha256": "2a0db9dafd24471a6b874e8810aae5e75508ad019ba3a24c2e957aa766d2f218",
+        "didAlign": false
+      },
+      "didAlign": false,
+      "encoderWorkerTerminated": true,
+      "encoderMs": 32537.540000000008,
+      "maxWError": 2.8371810913085938e-05,
+      "encoderStats": {
+        "provider": "wasm-unshared-streamed",
+        "sourceEncoderSha256": "d525a985a43e4d49ef4590a8b8cc6f487992065bee00014fe8c6f8ab4ac291b1",
+        "steps": [
+          {
+            "id": 0,
+            "acquireMs": 731.02,
+            "createMs": 255.4000000000001,
+            "runMs": 848.9599999999998,
+            "totalMs": 1860.58
+          },
+          {
+            "id": 1,
+            "acquireMs": 681,
+            "createMs": 24.860000000000127,
+            "runMs": 224.74000000000024,
+            "totalMs": 940.2800000000002
+          },
+          {
+            "id": 2,
+            "acquireMs": 738.3999999999996,
+            "createMs": 20.920000000000073,
+            "runMs": 226.14000000000033,
+            "totalMs": 995.2399999999998
+          },
+          {
+            "id": 3,
+            "acquireMs": 611.5600000000004,
+            "createMs": 10.239999999999782,
+            "runMs": 229.52000000000044,
+            "totalMs": 861.3000000000002
+          },
+          {
+            "id": 4,
+            "acquireMs": 376.0599999999995,
+            "createMs": 13.460000000000036,
+            "runMs": 139.03999999999996,
+            "totalMs": 552.9399999999996
+          },
+          {
+            "id": 5,
+            "acquireMs": 390.4400000000005,
+            "createMs": 7.059999999999491,
+            "runMs": 34.75999999999931,
+            "totalMs": 437.15999999999985
+          },
+          {
+            "id": 6,
+            "acquireMs": 383.5799999999999,
+            "createMs": 2.180000000000291,
+            "runMs": 32.19999999999982,
+            "totalMs": 420.3599999999997
+          },
+          {
+            "id": 7,
+            "acquireMs": 422.4399999999996,
+            "createMs": 4.920000000000073,
+            "runMs": 33.55999999999949,
+            "totalMs": 465.96000000000004
+          },
+          {
+            "id": 8,
+            "acquireMs": 209.3800000000001,
+            "createMs": 2.4399999999996,
+            "runMs": 32.159999999999854,
+            "totalMs": 246.46000000000004
+          },
+          {
+            "id": 9,
+            "acquireMs": 222.1800000000003,
+            "createMs": 6.480000000000473,
+            "runMs": 33.52000000000044,
+            "totalMs": 265
+          },
+          {
+            "id": 10,
+            "acquireMs": 209.57999999999993,
+            "createMs": 2.1599999999998545,
+            "runMs": 8.399999999999636,
+            "totalMs": 221
+          },
+          {
+            "id": 11,
+            "acquireMs": 229.35999999999967,
+            "createMs": 2.7000000000007276,
+            "runMs": 2.9200000000000728,
+            "totalMs": 235.32000000000062
+          },
+          {
+            "id": 12,
+            "acquireMs": 211.13999999999942,
+            "createMs": 2.5799999999999272,
+            "runMs": 2.2999999999992724,
+            "totalMs": 216.1800000000003
+          },
+          {
+            "id": 13,
+            "acquireMs": 233.96000000000095,
+            "createMs": 4.920000000000073,
+            "runMs": 5.600000000000364,
+            "totalMs": 244.8199999999997
+          },
+          {
+            "id": 14,
+            "acquireMs": 230,
+            "createMs": 2.819999999999709,
+            "runMs": 14.239999999999782,
+            "totalMs": 247.84000000000015
+          },
+          {
+            "id": 15,
+            "acquireMs": 222.89999999999964,
+            "createMs": 2.139999999999418,
+            "runMs": 2.319999999999709,
+            "totalMs": 227.60000000000036
+          },
+          {
+            "id": 16,
+            "acquireMs": 202.26000000000022,
+            "createMs": 2.100000000000364,
+            "runMs": 2.319999999999709,
+            "totalMs": 206.84000000000015
+          },
+          {
+            "id": 17,
+            "acquireMs": 231.23999999999978,
+            "createMs": 13.840000000000146,
+            "runMs": 2.7400000000016007,
+            "totalMs": 248.1800000000003
+          },
+          {
+            "id": 18,
+            "acquireMs": 217.5,
+            "createMs": 3.0200000000004366,
+            "runMs": 9.360000000000582,
+            "totalMs": 230.60000000000036
+          },
+          {
+            "id": 19,
+            "acquireMs": 210.79999999999927,
+            "createMs": 2.320000000001528,
+            "runMs": 2.3800000000010186,
+            "totalMs": 215.78000000000065
+          },
+          {
+            "id": 20,
+            "acquireMs": 212.78000000000065,
+            "createMs": 2.0799999999999272,
+            "runMs": 2.9200000000000728,
+            "totalMs": 217.97999999999956
+          },
+          {
+            "id": 21,
+            "acquireMs": 255.29999999999927,
+            "createMs": 12.400000000001455,
+            "runMs": 14.44000000000051,
+            "totalMs": 291.9400000000005
+          },
+          {
+            "id": 22,
+            "acquireMs": 229.9399999999987,
+            "createMs": 2,
+            "runMs": 34.38000000000102,
+            "totalMs": 268.89999999999964
+          },
+          {
+            "id": 23,
+            "acquireMs": 205.3199999999997,
+            "createMs": 2.1199999999989814,
+            "runMs": 8.139999999999418,
+            "totalMs": 216.27999999999884
+          },
+          {
+            "id": 24,
+            "acquireMs": 201.77999999999884,
+            "createMs": 2.0200000000004366,
+            "runMs": 2.8400000000001455,
+            "totalMs": 207.09999999999854
+          },
+          {
+            "id": 25,
+            "acquireMs": 211.73999999999978,
+            "createMs": 3.180000000000291,
+            "runMs": 2.2000000000007276,
+            "totalMs": 217.3000000000011
+          },
+          {
+            "id": 26,
+            "acquireMs": 232.07999999999993,
+            "createMs": 8.739999999999782,
+            "runMs": 2.6199999999989814,
+            "totalMs": 244
+          },
+          {
+            "id": 27,
+            "acquireMs": 205.38000000000102,
+            "createMs": 1.819999999999709,
+            "runMs": 31.55999999999949,
+            "totalMs": 241.0600000000013
+          },
+          {
+            "id": 28,
+            "acquireMs": 274.10000000000036,
+            "createMs": 3.2599999999983993,
+            "runMs": 14.780000000000655,
+            "totalMs": 293.03999999999905
+          },
+          {
+            "id": 29,
+            "acquireMs": 227.23999999999978,
+            "createMs": 2.360000000000582,
+            "runMs": 2.7000000000007276,
+            "totalMs": 232.57999999999993
+          },
+          {
+            "id": 30,
+            "acquireMs": 213.89999999999964,
+            "createMs": 2.100000000000364,
+            "runMs": 2.320000000001528,
+            "totalMs": 218.51999999999862
+          },
+          {
+            "id": 31,
+            "acquireMs": 235.84000000000015,
+            "createMs": 8.199999999998909,
+            "runMs": 2.639999999999418,
+            "totalMs": 247.01999999999862
+          },
+          {
+            "id": 32,
+            "acquireMs": 200.33999999999833,
+            "createMs": 1.8400000000001455,
+            "runMs": 30.079999999999927,
+            "totalMs": 234.57999999999993
+          },
+          {
+            "id": 33,
+            "acquireMs": 202.86000000000058,
+            "createMs": 1.859999999998763,
+            "runMs": 7.920000000000073,
+            "totalMs": 213.34000000000015
+          },
+          {
+            "id": 34,
+            "acquireMs": 240.02000000000044,
+            "createMs": 5.219999999999345,
+            "runMs": 2.5599999999994907,
+            "totalMs": 248.10000000000036
+          },
+          {
+            "id": 35,
+            "acquireMs": 207.6800000000003,
+            "createMs": 1.8999999999996362,
+            "runMs": 2.1999999999989086,
+            "totalMs": 211.95999999999913
+          },
+          {
+            "id": 36,
+            "acquireMs": 236.65999999999985,
+            "createMs": 8.239999999999782,
+            "runMs": 2.6599999999998545,
+            "totalMs": 247.97999999999956
+          },
+          {
+            "id": 37,
+            "acquireMs": 221.0599999999995,
+            "createMs": 2.0799999999999272,
+            "runMs": 35.220000000001164,
+            "totalMs": 261.0400000000009
+          },
+          {
+            "id": 38,
+            "acquireMs": 200.27999999999884,
+            "createMs": 2.0600000000013097,
+            "runMs": 8.380000000001019,
+            "totalMs": 211.4399999999987
+          },
+          {
+            "id": 39,
+            "acquireMs": 201.6800000000003,
+            "createMs": 1.819999999999709,
+            "runMs": 2.2400000000016007,
+            "totalMs": 206
+          },
+          {
+            "id": 40,
+            "acquireMs": 212.36000000000058,
+            "createMs": 1.7799999999988358,
+            "runMs": 2.139999999999418,
+            "totalMs": 216.4400000000005
+          },
+          {
+            "id": 41,
+            "acquireMs": 242.0599999999995,
+            "createMs": 8.960000000000946,
+            "runMs": 24.279999999998836,
+            "totalMs": 316.89999999999964
+          },
+          {
+            "id": 42,
+            "acquireMs": 229.04000000000087,
+            "createMs": 5.899999999999636,
+            "runMs": 149.84000000000015,
+            "totalMs": 394.0799999999999
+          },
+          {
+            "id": 43,
+            "acquireMs": 264.59999999999854,
+            "createMs": 2.1200000000008004,
+            "runMs": 33.039999999999054,
+            "totalMs": 302.0199999999986
+          },
+          {
+            "id": 44,
+            "acquireMs": 215.26000000000022,
+            "createMs": 2.1200000000008004,
+            "runMs": 8.55999999999949,
+            "totalMs": 226.64000000000124
+          },
+          {
+            "id": 45,
+            "acquireMs": 215.8199999999997,
+            "createMs": 1.7999999999992724,
+            "runMs": 2.1599999999998545,
+            "totalMs": 220.04000000000087
+          },
+          {
+            "id": 46,
+            "acquireMs": 218.95999999999913,
+            "createMs": 1.9200000000018917,
+            "runMs": 2.3400000000001455,
+            "totalMs": 223.4399999999987
+          },
+          {
+            "id": 47,
+            "acquireMs": 236.15999999999985,
+            "createMs": 14.680000000000291,
+            "runMs": 2.4199999999982538,
+            "totalMs": 253.58000000000175
+          },
+          {
+            "id": 48,
+            "acquireMs": 211.60000000000218,
+            "createMs": 2.3400000000001455,
+            "runMs": 128.02000000000044,
+            "totalMs": 351.5600000000013
+          },
+          {
+            "id": 49,
+            "acquireMs": 207.10000000000218,
+            "createMs": 2.0599999999976717,
+            "runMs": 32.47999999999956,
+            "totalMs": 243.95999999999913
+          },
+          {
+            "id": 50,
+            "acquireMs": 211.3199999999997,
+            "createMs": 2.360000000000582,
+            "runMs": 9.819999999999709,
+            "totalMs": 224.3199999999997
+          },
+          {
+            "id": 51,
+            "acquireMs": 209.79999999999927,
+            "createMs": 1.7600000000020373,
+            "runMs": 2.1999999999970896,
+            "totalMs": 214.0600000000013
+          },
+          {
+            "id": 52,
+            "acquireMs": 200.22000000000116,
+            "createMs": 2.0200000000004366,
+            "runMs": 2.2600000000020373,
+            "totalMs": 204.7400000000016
+          },
+          {
+            "id": 53,
+            "acquireMs": 234.84000000000015,
+            "createMs": 8.600000000002183,
+            "runMs": 2.720000000001164,
+            "totalMs": 246.62000000000262
+          },
+          {
+            "id": 54,
+            "acquireMs": 250.20000000000073,
+            "createMs": 1.9200000000018917,
+            "runMs": 142.21999999999753,
+            "totalMs": 404.5600000000013
+          },
+          {
+            "id": 55,
+            "acquireMs": 231.77999999999884,
+            "createMs": 3.780000000002474,
+            "runMs": 39.140000000003056,
+            "totalMs": 277.65999999999985
+          },
+          {
+            "id": 56,
+            "acquireMs": 241.41999999999825,
+            "createMs": 3.7999999999992724,
+            "runMs": 10.06000000000131,
+            "totalMs": 256.0400000000009
+          },
+          {
+            "id": 57,
+            "acquireMs": 224.1800000000003,
+            "createMs": 4.020000000000437,
+            "runMs": 2.220000000001164,
+            "totalMs": 230.6800000000003
+          },
+          {
+            "id": 58,
+            "acquireMs": 217.2599999999984,
+            "createMs": 4.119999999998981,
+            "runMs": 2.5200000000004366,
+            "totalMs": 224.0799999999981
+          },
+          {
+            "id": 59,
+            "acquireMs": 257.880000000001,
+            "createMs": 13.93999999999869,
+            "runMs": 2.8400000000001455,
+            "totalMs": 275
+          },
+          {
+            "id": 60,
+            "acquireMs": 231.8199999999997,
+            "createMs": 2.4800000000032014,
+            "runMs": 141.54000000000087,
+            "totalMs": 385.2400000000016
+          },
+          {
+            "id": 61,
+            "acquireMs": 243.96000000000276,
+            "createMs": 2.6599999999998545,
+            "runMs": 57.2599999999984,
+            "totalMs": 306.3600000000006
+          },
+          {
+            "id": 62,
+            "acquireMs": 244.86000000000058,
+            "createMs": 2.040000000000873,
+            "runMs": 8.040000000000873,
+            "totalMs": 255.62000000000262
+          },
+          {
+            "id": 63,
+            "acquireMs": 206.72000000000116,
+            "createMs": 1.9199999999982538,
+            "runMs": 3,
+            "totalMs": 211.90000000000146
+          },
+          {
+            "id": 64,
+            "acquireMs": 208.08000000000175,
+            "createMs": 2.2599999999983993,
+            "runMs": 2.2400000000016007,
+            "totalMs": 212.78000000000247
+          },
+          {
+            "id": 65,
+            "acquireMs": 235.20000000000073,
+            "createMs": 8.239999999997963,
+            "runMs": 2.9200000000018917,
+            "totalMs": 246.79999999999927
+          },
+          {
+            "id": 66,
+            "acquireMs": 219.32000000000335,
+            "createMs": 2.1999999999970896,
+            "runMs": 133.44000000000233,
+            "totalMs": 366.880000000001
+          },
+          {
+            "id": 67,
+            "acquireMs": 211.13999999999942,
+            "createMs": 2.6599999999998545,
+            "runMs": 33.840000000000146,
+            "totalMs": 249.91999999999825
+          },
+          {
+            "id": 68,
+            "acquireMs": 208.7599999999984,
+            "createMs": 2.220000000001164,
+            "runMs": 10.93999999999869,
+            "totalMs": 222.61999999999898
+          },
+          {
+            "id": 69,
+            "acquireMs": 221.15999999999985,
+            "createMs": 2.0599999999976717,
+            "runMs": 2.3400000000001455,
+            "totalMs": 225.84000000000015
+          },
+          {
+            "id": 70,
+            "acquireMs": 211.0600000000013,
+            "createMs": 2.139999999999418,
+            "runMs": 2.4199999999982538,
+            "totalMs": 215.84000000000015
+          },
+          {
+            "id": 71,
+            "acquireMs": 242.77999999999884,
+            "createMs": 9.340000000000146,
+            "runMs": 3.0599999999976717,
+            "totalMs": 255.5
+          },
+          {
+            "id": 72,
+            "acquireMs": 216.97999999999956,
+            "createMs": 3.2400000000016007,
+            "runMs": 130.53999999999724,
+            "totalMs": 359.4599999999991
+          },
+          {
+            "id": 73,
+            "acquireMs": 199.97999999999956,
+            "createMs": 1.9399999999986903,
+            "runMs": 37.38000000000102,
+            "totalMs": 242.15999999999985
+          },
+          {
+            "id": 74,
+            "acquireMs": 225.40000000000146,
+            "createMs": 1.8800000000010186,
+            "runMs": 9.220000000001164,
+            "totalMs": 237.29999999999927
+          },
+          {
+            "id": 75,
+            "acquireMs": 214.7599999999984,
+            "createMs": 2.0200000000004366,
+            "runMs": 3.0200000000004366,
+            "totalMs": 220.36000000000058
+          },
+          {
+            "id": 76,
+            "acquireMs": 221.61999999999898,
+            "createMs": 2.040000000000873,
+            "runMs": 2.459999999999127,
+            "totalMs": 226.3199999999997
+          },
+          {
+            "id": 77,
+            "acquireMs": 240.58000000000175,
+            "createMs": 7.719999999997526,
+            "runMs": 2.5800000000017462,
+            "totalMs": 251.20000000000073
+          },
+          {
+            "id": 78,
+            "acquireMs": 228.5799999999981,
+            "createMs": 1.7999999999992724,
+            "runMs": 132.1800000000003,
+            "totalMs": 372.0599999999977
+          },
+          {
+            "id": 79,
+            "acquireMs": 217.65999999999985,
+            "createMs": 1.819999999999709,
+            "runMs": 32.63999999999942,
+            "totalMs": 254.5
+          },
+          {
+            "id": 80,
+            "acquireMs": 211.5799999999981,
+            "createMs": 2.5600000000013097,
+            "runMs": 10.139999999999418,
+            "totalMs": 224.97999999999956
+          },
+          {
+            "id": 81,
+            "acquireMs": 208.15999999999985,
+            "createMs": 1.9399999999986903,
+            "runMs": 2.319999999999709,
+            "totalMs": 212.71999999999753
+          },
+          {
+            "id": 82,
+            "acquireMs": 201.91999999999825,
+            "createMs": 2.2999999999992724,
+            "runMs": 2.3400000000001455,
+            "totalMs": 206.73999999999796
+          },
+          {
+            "id": 83,
+            "acquireMs": 280.1999999999971,
+            "createMs": 10.700000000000728,
+            "runMs": 4.380000000001019,
+            "totalMs": 295.7999999999993
+          },
+          {
+            "id": 84,
+            "acquireMs": 207.02000000000044,
+            "createMs": 3.540000000000873,
+            "runMs": 141.10000000000218,
+            "totalMs": 361.5
+          },
+          {
+            "id": 85,
+            "acquireMs": 231.78000000000247,
+            "createMs": 2.360000000000582,
+            "runMs": 36.080000000001746,
+            "totalMs": 272.65999999999985
+          },
+          {
+            "id": 86,
+            "acquireMs": 212.52000000000044,
+            "createMs": 1.859999999996944,
+            "runMs": 7.920000000001892,
+            "totalMs": 222.97999999999956
+          },
+          {
+            "id": 87,
+            "acquireMs": 221.28000000000247,
+            "createMs": 2.1999999999970896,
+            "runMs": 3.0200000000004366,
+            "totalMs": 226.8199999999997
+          },
+          {
+            "id": 88,
+            "acquireMs": 227.65999999999985,
+            "createMs": 2.2399999999979627,
+            "runMs": 2.2999999999992724,
+            "totalMs": 232.34000000000015
+          },
+          {
+            "id": 89,
+            "acquireMs": 238.22000000000116,
+            "createMs": 9.639999999999418,
+            "runMs": 2.5600000000013097,
+            "totalMs": 250.7400000000016
+          },
+          {
+            "id": 90,
+            "acquireMs": 218.78000000000247,
+            "createMs": 2.320000000003347,
+            "runMs": 130.8199999999997,
+            "totalMs": 360.72000000000116
+          },
+          {
+            "id": 91,
+            "acquireMs": 202.08000000000175,
+            "createMs": 2.0200000000004366,
+            "runMs": 32.0199999999968,
+            "totalMs": 238.54000000000087
+          },
+          {
+            "id": 92,
+            "acquireMs": 204.44000000000233,
+            "createMs": 1.8999999999978172,
+            "runMs": 8.080000000001746,
+            "totalMs": 215.10000000000218
+          },
+          {
+            "id": 93,
+            "acquireMs": 202.10000000000218,
+            "createMs": 3,
+            "runMs": 2.599999999998545,
+            "totalMs": 207.9800000000032
+          },
+          {
+            "id": 94,
+            "acquireMs": 210.20000000000073,
+            "createMs": 1.819999999999709,
+            "runMs": 2.2999999999992724,
+            "totalMs": 214.52000000000044
+          },
+          {
+            "id": 95,
+            "acquireMs": 218.3000000000029,
+            "createMs": 6.959999999999127,
+            "runMs": 3.1999999999970896,
+            "totalMs": 228.8000000000029
+          },
+          {
+            "id": 96,
+            "acquireMs": 204.05999999999767,
+            "createMs": 1.7400000000016007,
+            "runMs": 132.36000000000058,
+            "totalMs": 347.7000000000007
+          },
+          {
+            "id": 97,
+            "acquireMs": 206.70000000000073,
+            "createMs": 2.139999999999418,
+            "runMs": 36.89999999999782,
+            "totalMs": 248.0799999999981
+          },
+          {
+            "id": 98,
+            "acquireMs": 206.9399999999987,
+            "createMs": 2.4200000000018917,
+            "runMs": 9.640000000003056,
+            "totalMs": 219.71999999999753
+          },
+          {
+            "id": 99,
+            "acquireMs": 226.8199999999997,
+            "createMs": 2.0600000000013097,
+            "runMs": 2.280000000002474,
+            "totalMs": 231.41999999999825
+          },
+          {
+            "id": 100,
+            "acquireMs": 214.41999999999825,
+            "createMs": 1.8800000000010186,
+            "runMs": 2.279999999998836,
+            "totalMs": 218.73999999999796
+          },
+          {
+            "id": 101,
+            "acquireMs": 235.73999999999796,
+            "createMs": 7.120000000002619,
+            "runMs": 2.5,
+            "totalMs": 245.73999999999796
+          },
+          {
+            "id": 102,
+            "acquireMs": 247.34000000000015,
+            "createMs": 1.7999999999992724,
+            "runMs": 141.41999999999825,
+            "totalMs": 399.7999999999993
+          },
+          {
+            "id": 103,
+            "acquireMs": 212.46000000000276,
+            "createMs": 2.1199999999989814,
+            "runMs": 31.299999999999272,
+            "totalMs": 248.84000000000015
+          },
+          {
+            "id": 104,
+            "acquireMs": 222.15999999999985,
+            "createMs": 1.8400000000001455,
+            "runMs": 8.860000000000582,
+            "totalMs": 233.55999999999767
+          },
+          {
+            "id": 105,
+            "acquireMs": 253.6800000000003,
+            "createMs": 4.619999999998981,
+            "runMs": 2.4199999999982538,
+            "totalMs": 260.97999999999956
+          },
+          {
+            "id": 106,
+            "acquireMs": 203.3199999999997,
+            "createMs": 2.3000000000029104,
+            "runMs": 2.320000000003347,
+            "totalMs": 208.12000000000262
+          },
+          {
+            "id": 107,
+            "acquireMs": 228.59999999999854,
+            "createMs": 7.6599999999998545,
+            "runMs": 2.5600000000013097,
+            "totalMs": 239.22000000000116
+          }
+        ],
+        "maxLiveSessions": 1,
+        "liveSessions": 0,
+        "wasmPeakBytes": 98435072,
+        "jsBoundaryPeakBytes": 12664832,
+        "receivedShardBytes": 1068886382,
+        "receivedBytesScope": "Bytes materialized from verified persistent cache or HTTP; not network traffic",
+        "maxShardBytes": 16682645,
+        "heapScope": "Actual ORT linear-memory capacity; not process RSS",
+        "hardWasmMaximumBytes": 268435456,
+        "completed": true,
+        "managedPeakEstimateBytes": 220057237,
+        "estimateScope": "WASM capacity plus maximum JS boundaries, one shard,24MiB runtime assets and64MiB overhead reserve; not physical RSS or an OS guarantee"
+      },
+      "passed": true
+    }
+  ],
+  "stage": "All photo, bounded encoder,1024 WebGL reconstruction and cache controls passed",
+  "privatePhotosUsed": false,
+  "synthesisExecuted": true,
+  "preprocessingSha256": "3cc958b232e8616db831b8429eea4446c990a845738320270b47121a2d2dbdfe",
+  "encoderManifestSha256": "417811d879ac9ef5a8714f38a453571d86e7168047e3d22b7d809b74905bf468",
+  "strictRejections": [
+    {
+      "input": "no-face.png",
+      "rejected": true,
+      "faceCount": 0,
+      "message": "No face was found. Choose a clear photo containing one face."
+    },
+    {
+      "input": "multiple-faces.png",
+      "rejected": true,
+      "faceCount": 2,
+      "message": "More than one face was found. Choose a photo containing only one face."
+    }
+  ],
+  "product": {
+    "width": 1024,
+    "height": 1024,
+    "maxRgb": 1,
+    "faceCount": 1,
+    "didAlign": true,
+    "provider": "webgl2",
+    "encoderStats": {
+      "provider": "wasm-unshared-streamed",
+      "sourceEncoderSha256": "d525a985a43e4d49ef4590a8b8cc6f487992065bee00014fe8c6f8ab4ac291b1",
+      "steps": [
+        {
+          "id": 0,
+          "acquireMs": 346.6200000000001,
+          "createMs": 209.93999999999983,
+          "runMs": 842.8600000000001,
+          "totalMs": 1422.4399999999998
+        },
+        {
+          "id": 1,
+          "acquireMs": 393.77999999999975,
+          "createMs": 17.26000000000022,
+          "runMs": 215.77999999999975,
+          "totalMs": 636.8799999999997
+        },
+        {
+          "id": 2,
+          "acquireMs": 374.1400000000003,
+          "createMs": 11.059999999999945,
+          "runMs": 210.0999999999999,
+          "totalMs": 604.5400000000004
+        },
+        {
+          "id": 3,
+          "acquireMs": 368.46000000000004,
+          "createMs": 13.059999999999945,
+          "runMs": 212.03999999999996,
+          "totalMs": 603.1799999999998
+        },
+        {
+          "id": 4,
+          "acquireMs": 222.9400000000005,
+          "createMs": 5.599999999999454,
+          "runMs": 127.55999999999949,
+          "totalMs": 372.2399999999998
+        },
+        {
+          "id": 5,
+          "acquireMs": 203.22000000000025,
+          "createMs": 4.380000000000109,
+          "runMs": 35.31999999999971,
+          "totalMs": 247.78000000000065
+        },
+        {
+          "id": 6,
+          "acquireMs": 229.6199999999999,
+          "createMs": 2.8400000000001455,
+          "runMs": 34.19999999999982,
+          "totalMs": 270.1999999999998
+        },
+        {
+          "id": 7,
+          "acquireMs": 213.19999999999982,
+          "createMs": 3.9400000000005093,
+          "runMs": 31.900000000000546,
+          "totalMs": 254.07999999999993
+        },
+        {
+          "id": 8,
+          "acquireMs": 233.19999999999982,
+          "createMs": 5.399999999999636,
+          "runMs": 33.98000000000047,
+          "totalMs": 275.9399999999996
+        },
+        {
+          "id": 9,
+          "acquireMs": 232.8199999999997,
+          "createMs": 5.920000000000073,
+          "runMs": 32.48000000000047,
+          "totalMs": 274.27999999999975
+        },
+        {
+          "id": 10,
+          "acquireMs": 208.83999999999924,
+          "createMs": 2.480000000000473,
+          "runMs": 12.300000000000182,
+          "totalMs": 224.33999999999924
+        },
+        {
+          "id": 11,
+          "acquireMs": 230.53999999999996,
+          "createMs": 2.5799999999999272,
+          "runMs": 2.7600000000002183,
+          "totalMs": 236.22000000000025
+        },
+        {
+          "id": 12,
+          "acquireMs": 205.46000000000004,
+          "createMs": 2.0200000000004366,
+          "runMs": 2.2000000000007276,
+          "totalMs": 209.82000000000062
+        },
+        {
+          "id": 13,
+          "acquireMs": 255.6800000000003,
+          "createMs": 5.479999999999563,
+          "runMs": 3.0399999999999636,
+          "totalMs": 264.5
+        },
+        {
+          "id": 14,
+          "acquireMs": 205.35999999999967,
+          "createMs": 2.199999999999818,
+          "runMs": 8.359999999999673,
+          "totalMs": 216.59999999999945
+        },
+        {
+          "id": 15,
+          "acquireMs": 202.51999999999953,
+          "createMs": 2.4400000000005093,
+          "runMs": 2.680000000000291,
+          "totalMs": 207.9399999999996
+        },
+        {
+          "id": 16,
+          "acquireMs": 218.26000000000022,
+          "createMs": 2.199999999999818,
+          "runMs": 2.4400000000005093,
+          "totalMs": 223.14000000000033
+        },
+        {
+          "id": 17,
+          "acquireMs": 238.02000000000044,
+          "createMs": 12,
+          "runMs": 2.860000000000582,
+          "totalMs": 253.30000000000018
+        },
+        {
+          "id": 18,
+          "acquireMs": 209.69999999999982,
+          "createMs": 2.199999999999818,
+          "runMs": 8.100000000000364,
+          "totalMs": 220.72000000000025
+        },
+        {
+          "id": 19,
+          "acquireMs": 224.97999999999956,
+          "createMs": 2.9200000000000728,
+          "runMs": 2.5999999999994543,
+          "totalMs": 230.80000000000018
+        },
+        {
+          "id": 20,
+          "acquireMs": 215.10000000000036,
+          "createMs": 2.5,
+          "runMs": 2.6400000000003274,
+          "totalMs": 220.42000000000007
+        },
+        {
+          "id": 21,
+          "acquireMs": 235.85999999999876,
+          "createMs": 11.280000000000655,
+          "runMs": 12.8799999999992,
+          "totalMs": 269.4599999999991
+        },
+        {
+          "id": 22,
+          "acquireMs": 212.02000000000044,
+          "createMs": 3.2600000000002183,
+          "runMs": 33.43999999999869,
+          "totalMs": 251.10000000000036
+        },
+        {
+          "id": 23,
+          "acquireMs": 202.86000000000058,
+          "createMs": 2.1999999999989086,
+          "runMs": 8.380000000001019,
+          "totalMs": 214.1200000000008
+        },
+        {
+          "id": 24,
+          "acquireMs": 206.28000000000065,
+          "createMs": 2.280000000000655,
+          "runMs": 2.3400000000001455,
+          "totalMs": 211.1800000000003
+        },
+        {
+          "id": 25,
+          "acquireMs": 212.90000000000146,
+          "createMs": 1.7799999999988358,
+          "runMs": 2.1200000000008004,
+          "totalMs": 216.98000000000138
+        },
+        {
+          "id": 26,
+          "acquireMs": 254.86000000000058,
+          "createMs": 9.8799999999992,
+          "runMs": 2.819999999999709,
+          "totalMs": 267.9400000000005
+        },
+        {
+          "id": 27,
+          "acquireMs": 212.07999999999993,
+          "createMs": 1.9200000000000728,
+          "runMs": 31.720000000001164,
+          "totalMs": 248.10000000000036
+        },
+        {
+          "id": 28,
+          "acquireMs": 210.8799999999992,
+          "createMs": 1.8800000000010186,
+          "runMs": 7.800000000001091,
+          "totalMs": 221.26000000000022
+        },
+        {
+          "id": 29,
+          "acquireMs": 209.13999999999942,
+          "createMs": 1.860000000000582,
+          "runMs": 2.3799999999991996,
+          "totalMs": 213.63999999999942
+        },
+        {
+          "id": 30,
+          "acquireMs": 204.16000000000167,
+          "createMs": 1.7999999999992724,
+          "runMs": 2.2399999999997817,
+          "totalMs": 208.36000000000058
+        },
+        {
+          "id": 31,
+          "acquireMs": 235.2400000000016,
+          "createMs": 8.319999999999709,
+          "runMs": 2.5,
+          "totalMs": 246.38000000000102
+        },
+        {
+          "id": 32,
+          "acquireMs": 203.47999999999956,
+          "createMs": 1.9200000000000728,
+          "runMs": 30.94000000000051,
+          "totalMs": 238.65999999999985
+        },
+        {
+          "id": 33,
+          "acquireMs": 197.47999999999956,
+          "createMs": 2.5200000000004366,
+          "runMs": 8.340000000000146,
+          "totalMs": 209.0599999999995
+        },
+        {
+          "id": 34,
+          "acquireMs": 210.28000000000065,
+          "createMs": 5.459999999999127,
+          "runMs": 2.360000000000582,
+          "totalMs": 218.38000000000102
+        },
+        {
+          "id": 35,
+          "acquireMs": 209.4400000000005,
+          "createMs": 2.1199999999989814,
+          "runMs": 2.3800000000010186,
+          "totalMs": 214.1200000000008
+        },
+        {
+          "id": 36,
+          "acquireMs": 224.45999999999913,
+          "createMs": 8.579999999999927,
+          "runMs": 3.0199999999986176,
+          "totalMs": 236.5
+        },
+        {
+          "id": 37,
+          "acquireMs": 210.39999999999964,
+          "createMs": 3.639999999999418,
+          "runMs": 36.42000000000007,
+          "totalMs": 252.97999999999956
+        },
+        {
+          "id": 38,
+          "acquireMs": 233.1800000000003,
+          "createMs": 2.0200000000004366,
+          "runMs": 8.459999999999127,
+          "totalMs": 244.39999999999964
+        },
+        {
+          "id": 39,
+          "acquireMs": 213.39999999999964,
+          "createMs": 2.4400000000005093,
+          "runMs": 3.899999999999636,
+          "totalMs": 220.0600000000013
+        },
+        {
+          "id": 40,
+          "acquireMs": 214.09999999999854,
+          "createMs": 2.1200000000008004,
+          "runMs": 2.399999999999636,
+          "totalMs": 218.8199999999997
+        },
+        {
+          "id": 41,
+          "acquireMs": 246.10000000000036,
+          "createMs": 11.3799999999992,
+          "runMs": 25.919999999998254,
+          "totalMs": 319.39999999999964
+        },
+        {
+          "id": 42,
+          "acquireMs": 224.26000000000022,
+          "createMs": 1.8999999999996362,
+          "runMs": 128.36000000000058,
+          "totalMs": 363.39999999999964
+        },
+        {
+          "id": 43,
+          "acquireMs": 220.23999999999978,
+          "createMs": 1.8799999999991996,
+          "runMs": 31.979999999999563,
+          "totalMs": 256.4200000000001
+        },
+        {
+          "id": 44,
+          "acquireMs": 202.29999999999927,
+          "createMs": 2.6199999999989814,
+          "runMs": 8.819999999999709,
+          "totalMs": 214.51999999999862
+        },
+        {
+          "id": 45,
+          "acquireMs": 225.2599999999984,
+          "createMs": 2.2400000000016007,
+          "runMs": 2.4200000000000728,
+          "totalMs": 230.1999999999989
+        },
+        {
+          "id": 46,
+          "acquireMs": 204.23999999999978,
+          "createMs": 2.0200000000004366,
+          "runMs": 2.360000000000582,
+          "totalMs": 208.78000000000065
+        },
+        {
+          "id": 47,
+          "acquireMs": 227.26000000000022,
+          "createMs": 7.360000000000582,
+          "runMs": 2.5799999999999272,
+          "totalMs": 237.54000000000087
+        },
+        {
+          "id": 48,
+          "acquireMs": 210.09999999999854,
+          "createMs": 3.040000000000873,
+          "runMs": 131.52000000000044,
+          "totalMs": 353.8799999999992
+        },
+        {
+          "id": 49,
+          "acquireMs": 214.11999999999898,
+          "createMs": 2.5,
+          "runMs": 31.579999999999927,
+          "totalMs": 250.45999999999913
+        },
+        {
+          "id": 50,
+          "acquireMs": 205.04000000000087,
+          "createMs": 2.0200000000004366,
+          "runMs": 8,
+          "totalMs": 215.7400000000016
+        },
+        {
+          "id": 51,
+          "acquireMs": 201.5599999999995,
+          "createMs": 1.9200000000000728,
+          "runMs": 5.180000000000291,
+          "totalMs": 208.97999999999956
+        },
+        {
+          "id": 52,
+          "acquireMs": 228.20000000000073,
+          "createMs": 2.639999999999418,
+          "runMs": 2.139999999999418,
+          "totalMs": 233.13999999999942
+        },
+        {
+          "id": 53,
+          "acquireMs": 223.01999999999862,
+          "createMs": 7.420000000000073,
+          "runMs": 2.4200000000000728,
+          "totalMs": 233.21999999999935
+        },
+        {
+          "id": 54,
+          "acquireMs": 209.76000000000022,
+          "createMs": 2.0599999999994907,
+          "runMs": 137.35999999999876,
+          "totalMs": 358.53999999999905
+        },
+        {
+          "id": 55,
+          "acquireMs": 216.10000000000218,
+          "createMs": 2.0200000000004366,
+          "runMs": 31.9800000000032,
+          "totalMs": 255.3000000000029
+        },
+        {
+          "id": 56,
+          "acquireMs": 241.34000000000015,
+          "createMs": 2.040000000000873,
+          "runMs": 10.37999999999738,
+          "totalMs": 254.65999999999985
+        },
+        {
+          "id": 57,
+          "acquireMs": 219.87999999999738,
+          "createMs": 2.5200000000004366,
+          "runMs": 2.279999999998836,
+          "totalMs": 224.95999999999913
+        },
+        {
+          "id": 58,
+          "acquireMs": 256,
+          "createMs": 2.1199999999989814,
+          "runMs": 2.599999999998545,
+          "totalMs": 262.47999999999956
+        },
+        {
+          "id": 59,
+          "acquireMs": 234.1800000000003,
+          "createMs": 7.959999999999127,
+          "runMs": 2.7999999999992724,
+          "totalMs": 245.29999999999927
+        },
+        {
+          "id": 60,
+          "acquireMs": 205.84000000000015,
+          "createMs": 1.9599999999991269,
+          "runMs": 140.65999999999985,
+          "totalMs": 361.65999999999985
+        },
+        {
+          "id": 61,
+          "acquireMs": 233.63999999999942,
+          "createMs": 1.9000000000014552,
+          "runMs": 31.959999999999127,
+          "totalMs": 269.9400000000023
+        },
+        {
+          "id": 62,
+          "acquireMs": 202.08000000000175,
+          "createMs": 1.9799999999995634,
+          "runMs": 8.680000000000291,
+          "totalMs": 213.38000000000102
+        },
+        {
+          "id": 63,
+          "acquireMs": 201.89999999999782,
+          "createMs": 2.360000000000582,
+          "runMs": 3.1199999999989814,
+          "totalMs": 207.65999999999985
+        },
+        {
+          "id": 64,
+          "acquireMs": 213.5,
+          "createMs": 2.6599999999998545,
+          "runMs": 2.100000000002183,
+          "totalMs": 218.38000000000102
+        },
+        {
+          "id": 65,
+          "acquireMs": 225.21999999999753,
+          "createMs": 7.360000000000582,
+          "runMs": 2.540000000000873,
+          "totalMs": 235.45999999999913
+        },
+        {
+          "id": 66,
+          "acquireMs": 206.3000000000029,
+          "createMs": 2.9799999999995634,
+          "runMs": 126.85999999999694,
+          "totalMs": 345.0400000000009
+        },
+        {
+          "id": 67,
+          "acquireMs": 206.86000000000058,
+          "createMs": 2.1199999999989814,
+          "runMs": 32.19999999999709,
+          "totalMs": 243.61999999999898
+        },
+        {
+          "id": 68,
+          "acquireMs": 212.54000000000087,
+          "createMs": 2.0800000000017462,
+          "runMs": 8.719999999997526,
+          "totalMs": 224.20000000000073
+        },
+        {
+          "id": 69,
+          "acquireMs": 215.34000000000015,
+          "createMs": 2.4399999999986903,
+          "runMs": 2.7599999999983993,
+          "totalMs": 220.87999999999738
+        },
+        {
+          "id": 70,
+          "acquireMs": 260.41999999999825,
+          "createMs": 2.0200000000004366,
+          "runMs": 2.2599999999983993,
+          "totalMs": 264.9399999999987
+        },
+        {
+          "id": 71,
+          "acquireMs": 232.79999999999927,
+          "createMs": 8.040000000000873,
+          "runMs": 2.7400000000016007,
+          "totalMs": 244.03999999999724
+        },
+        {
+          "id": 72,
+          "acquireMs": 235.3199999999997,
+          "createMs": 10.399999999997817,
+          "runMs": 134.52000000000044,
+          "totalMs": 389.3199999999997
+        },
+        {
+          "id": 73,
+          "acquireMs": 213.38000000000102,
+          "createMs": 2.0200000000004366,
+          "runMs": 30.05999999999767,
+          "totalMs": 247.79999999999927
+        },
+        {
+          "id": 74,
+          "acquireMs": 225.63999999999942,
+          "createMs": 1.9799999999995634,
+          "runMs": 7.919999999998254,
+          "totalMs": 236.21999999999753
+        },
+        {
+          "id": 75,
+          "acquireMs": 220.47999999999956,
+          "createMs": 2.319999999999709,
+          "runMs": 2.6599999999998545,
+          "totalMs": 225.72000000000116
+        },
+        {
+          "id": 76,
+          "acquireMs": 210.2400000000016,
+          "createMs": 9.19999999999709,
+          "runMs": 3.2400000000016007,
+          "totalMs": 222.88000000000102
+        },
+        {
+          "id": 77,
+          "acquireMs": 244.38000000000102,
+          "createMs": 7.540000000000873,
+          "runMs": 2.6599999999998545,
+          "totalMs": 254.90000000000146
+        },
+        {
+          "id": 78,
+          "acquireMs": 213.63999999999942,
+          "createMs": 2.2400000000016007,
+          "runMs": 132.61999999999898,
+          "totalMs": 357.4200000000019
+        },
+        {
+          "id": 79,
+          "acquireMs": 220.29999999999927,
+          "createMs": 5.960000000002765,
+          "runMs": 32.640000000003056,
+          "totalMs": 261.26000000000204
+        },
+        {
+          "id": 80,
+          "acquireMs": 204.8199999999997,
+          "createMs": 2.319999999999709,
+          "runMs": 8.680000000000291,
+          "totalMs": 216.5799999999981
+        },
+        {
+          "id": 81,
+          "acquireMs": 207.40000000000146,
+          "createMs": 1.7799999999988358,
+          "runMs": 2.180000000000291,
+          "totalMs": 211.65999999999985
+        },
+        {
+          "id": 82,
+          "acquireMs": 207.45999999999913,
+          "createMs": 2.7999999999992724,
+          "runMs": 2.4199999999982538,
+          "totalMs": 212.85999999999694
+        },
+        {
+          "id": 83,
+          "acquireMs": 226.29999999999927,
+          "createMs": 8.400000000001455,
+          "runMs": 2.6599999999998545,
+          "totalMs": 237.6800000000003
+        },
+        {
+          "id": 84,
+          "acquireMs": 217.1800000000003,
+          "createMs": 1.7999999999992724,
+          "runMs": 125.09999999999854,
+          "totalMs": 352.8600000000006
+        },
+        {
+          "id": 85,
+          "acquireMs": 203.52000000000044,
+          "createMs": 1.9799999999995634,
+          "runMs": 30.540000000000873,
+          "totalMs": 238.32000000000335
+        },
+        {
+          "id": 86,
+          "acquireMs": 228.5,
+          "createMs": 2.6199999999989814,
+          "runMs": 8.5,
+          "totalMs": 240.36000000000058
+        },
+        {
+          "id": 87,
+          "acquireMs": 211.26000000000204,
+          "createMs": 2,
+          "runMs": 2.6999999999970896,
+          "totalMs": 216.2400000000016
+        },
+        {
+          "id": 88,
+          "acquireMs": 207.64000000000306,
+          "createMs": 1.8799999999973807,
+          "runMs": 2.3400000000001455,
+          "totalMs": 212
+        },
+        {
+          "id": 89,
+          "acquireMs": 224.59999999999854,
+          "createMs": 7.619999999998981,
+          "runMs": 2.9799999999995634,
+          "totalMs": 235.59999999999854
+        },
+        {
+          "id": 90,
+          "acquireMs": 204.62000000000262,
+          "createMs": 1.9399999999986903,
+          "runMs": 132.40000000000146,
+          "totalMs": 348.7000000000007
+        },
+        {
+          "id": 91,
+          "acquireMs": 209.90000000000146,
+          "createMs": 2.6599999999998545,
+          "runMs": 32.95999999999913,
+          "totalMs": 248.12000000000262
+        },
+        {
+          "id": 92,
+          "acquireMs": 214.34000000000015,
+          "createMs": 2.220000000001164,
+          "runMs": 9.919999999998254,
+          "totalMs": 227.2400000000016
+        },
+        {
+          "id": 93,
+          "acquireMs": 244.2599999999984,
+          "createMs": 2.100000000002183,
+          "runMs": 2.3400000000001455,
+          "totalMs": 248.95999999999913
+        },
+        {
+          "id": 94,
+          "acquireMs": 217.02000000000044,
+          "createMs": 2.219999999997526,
+          "runMs": 2.720000000001164,
+          "totalMs": 222.20000000000073
+        },
+        {
+          "id": 95,
+          "acquireMs": 253.35999999999694,
+          "createMs": 8.160000000003492,
+          "runMs": 2.6599999999998545,
+          "totalMs": 264.59999999999854
+        },
+        {
+          "id": 96,
+          "acquireMs": 251.46000000000276,
+          "createMs": 4.1599999999998545,
+          "runMs": 144.26000000000204,
+          "totalMs": 409.08000000000175
+        },
+        {
+          "id": 97,
+          "acquireMs": 207.11999999999898,
+          "createMs": 2.040000000000873,
+          "runMs": 31.799999999999272,
+          "totalMs": 243.40000000000146
+        },
+        {
+          "id": 98,
+          "acquireMs": 199.95999999999913,
+          "createMs": 2.100000000002183,
+          "runMs": 8.360000000000582,
+          "totalMs": 211.0600000000013
+        },
+        {
+          "id": 99,
+          "acquireMs": 201.86000000000058,
+          "createMs": 3.1199999999989814,
+          "runMs": 2.600000000002183,
+          "totalMs": 207.86000000000058
+        },
+        {
+          "id": 100,
+          "acquireMs": 201.79999999999927,
+          "createMs": 2.7000000000007276,
+          "runMs": 2.600000000002183,
+          "totalMs": 207.4399999999987
+        },
+        {
+          "id": 101,
+          "acquireMs": 231.9200000000019,
+          "createMs": 7.859999999996944,
+          "runMs": 2.720000000001164,
+          "totalMs": 242.95999999999913
+        },
+        {
+          "id": 102,
+          "acquireMs": 209.34000000000015,
+          "createMs": 1.8400000000001455,
+          "runMs": 123.58000000000175,
+          "totalMs": 343.46000000000276
+        },
+        {
+          "id": 103,
+          "acquireMs": 332.6399999999994,
+          "createMs": 2.7000000000007276,
+          "runMs": 34.73999999999796,
+          "totalMs": 372.4599999999991
+        },
+        {
+          "id": 104,
+          "acquireMs": 214.0199999999968,
+          "createMs": 2.3800000000010186,
+          "runMs": 9.080000000001746,
+          "totalMs": 226.2599999999984
+        },
+        {
+          "id": 105,
+          "acquireMs": 220.72000000000116,
+          "createMs": 2.2000000000007276,
+          "runMs": 2.279999999998836,
+          "totalMs": 225.5
+        },
+        {
+          "id": 106,
+          "acquireMs": 208.84000000000015,
+          "createMs": 1.9599999999991269,
+          "runMs": 2.360000000000582,
+          "totalMs": 213.3199999999997
+        },
+        {
+          "id": 107,
+          "acquireMs": 233.86000000000058,
+          "createMs": 7.959999999999127,
+          "runMs": 2.5200000000004366,
+          "totalMs": 244.65999999999985
+        }
+      ],
+      "maxLiveSessions": 1,
+      "liveSessions": 0,
+      "wasmPeakBytes": 98435072,
+      "jsBoundaryPeakBytes": 12664832,
+      "receivedShardBytes": 1068886382,
+      "receivedBytesScope": "Bytes materialized from verified persistent cache or HTTP; not network traffic",
+      "maxShardBytes": 16682645,
+      "heapScope": "Actual ORT linear-memory capacity; not process RSS",
+      "hardWasmMaximumBytes": 268435456,
+      "completed": true,
+      "managedPeakEstimateBytes": 220057237,
+      "estimateScope": "WASM capacity plus maximum JS boundaries, one shard,24MiB runtime assets and64MiB overhead reserve; not physical RSS or an OS guarantee"
+    },
+    "firstCached": false,
+    "repeatedCached": true,
+    "freshRuntimeCached": true,
+    "createdWorkers": 3,
+    "alignedCalls": 1,
+    "cacheOnlyNewWorkers": 0,
+    "ms": 71106.94000000003,
+    "passed": true
+  },
+  "finishedAt": "2026-09-16T06:39:07.049Z"
+}

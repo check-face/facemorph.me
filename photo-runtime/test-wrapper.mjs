@@ -1,0 +1,15 @@
+import assert from'node:assert/strict';
+import {readFile}from'node:fs/promises';
+import {inspectImage}from'./image-header.mjs';
+import {createPhotoAligner}from'./align-photo.mjs';
+const png=new Uint8Array(await readFile(new URL('./fixtures/seed-0.png',import.meta.url)));
+assert.deepEqual([inspectImage(png).width,inspectImage(png).height],[512,512]);
+for(const b of [new Uint8Array(),new Uint8Array([1,2,3,4,5,6,7,8])])assert.throws(()=>inspectImage(b));
+const bomb=png.slice();new DataView(bomb.buffer).setUint32(16,8192);new DataView(bomb.buffer).setUint32(20,8192);assert.throws(()=>inspectImage(bomb),/megapixels/);
+let killed=0,last;const factory=()=>last={terminate(){killed++;},postMessage(){queueMicrotask(()=>last.onmessage({data:{type:'complete',result:{tensor:new Float32Array(196608),faceCount:1,didAlign:true,provenance:{facePolicy:"exactly-one-face-v1"}}}}));}};
+const align=createPhotoAligner({workerFactory:factory});const result=await align(new Blob([png]));assert.equal(killed,1);assert.equal(result.alignmentWorkerTerminated,true);
+const cancel=createPhotoAligner({workerFactory:()=>({terminate(){killed++;},postMessage(){}})}),controller=new AbortController();const pending=cancel(new Blob([png]),{signal:controller.signal});controller.abort();await assert.rejects(pending,{name:'AbortError'});assert.equal(killed,2);
+const hung=createPhotoAligner({stallMs:5,workerFactory:()=>({terminate(){killed++;},postMessage(){}})});await assert.rejects(hung(new Blob([png])),/stopped responding/);assert.equal(killed,3);
+const bad=createPhotoAligner({workerFactory:()=>last={terminate(){killed++;},postMessage(){queueMicrotask(()=>last.onmessage({data:{type:'complete',result:{tensor:new Float32Array(3)}}}));}}});await assert.rejects(bad(new Blob([png])),/Invalid prepared tensor/);assert.equal(killed,4);
+const wrongFace=createPhotoAligner({workerFactory:()=>last={terminate(){killed++;},postMessage(){queueMicrotask(()=>last.onmessage({data:{type:'complete',result:{tensor:new Float32Array(196608),faceCount:2,didAlign:true,provenance:{facePolicy:'exactly-one-face-v1'}}}}));}}});await assert.rejects(wrongFace(new Blob([png])),/exactly one face/);assert.equal(killed,5);
+console.log('Header admission, malformed input, completion cleanup, abort, stall and invalid-output containment passed.');
