@@ -5,6 +5,13 @@
 // Safari on macOS or iOS; Chromium here is not Chrome on Android. Rows say which is which, and a
 // stage that cannot run on an engine is recorded as unsupported with its reason, never skipped
 // quietly and never counted as a pass.
+//
+// This runs against the deployed origin rather than a local copy of the bytes. The runtime's
+// worker URLs are absolute and same-origin, so serving the artifact from somewhere else breaks
+// worker construction on every engine; only Chrome can be told to resolve the real hostname
+// locally, which is what the byte-exact qualification does. Pairing the two keeps both honest:
+// that one proves the exact artifact, this one proves the deployed site across engines, and the
+// runtime manifest digest below records which bundle was actually live.
 import {createHash} from 'node:crypto';
 import {createRequire} from 'node:module';
 import fs from 'node:fs/promises';
@@ -74,6 +81,13 @@ try{
  await page.goto(origin,{waitUntil:'load',timeout:120000});
  await idle();
  report.agent=await page.evaluate(()=>navigator.userAgent);
+ // Record the bundle this row actually exercised, so a row cannot be read against another build.
+ report.runtimeSha256=await page.evaluate(async()=>{
+  const response=await fetch('/runtime/manifest.json',{cache:'no-cache'});
+  const raw=await response.arrayBuffer();
+  return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',raw)),x=>x.toString(16).padStart(2,'0')).join('');
+ });
+ if(process.env.NEXT_MATRIX_RUNTIME_SHA&&report.runtimeSha256!==process.env.NEXT_MATRIX_RUNTIME_SHA)throw Error(`Deployed runtime ${report.runtimeSha256} is not the expected bundle`);
  report.crossOriginIsolated=await page.evaluate(()=>crossOriginIsolated);
  if(!report.crossOriginIsolated)throw Error('Production isolation headers missing');
 
