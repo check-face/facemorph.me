@@ -18,7 +18,7 @@ def click(name):
  ident=n['backendDOMNodeId'];cdp('DOM.scrollIntoViewIfNeeded',backendNodeId=ident);q=cdp('DOM.getBoxModel',backendNodeId=ident)['model']['content'];click_at_xy(sum(q[0::2])/4,sum(q[1::2])/4)
 def idle():return js("!document.querySelector('.next-status progress') && [...document.querySelectorAll('button')].some(b=>b.textContent==='Generate faces'&&!b.disabled)")
 def run(name):
- click(name);time.sleep(.5);wait(idle)
+ before=js('window.__ciBusyChanges');click(name);wait(lambda:js('window.__ciBusyChanges')>before and idle())
 def faces():
  return inspect("[...document.querySelectorAll('.next-face-image img')].map(i=>({width:i.naturalWidth,height:i.naturalHeight,url:i.src}))")
 def download(name):
@@ -35,6 +35,9 @@ try:
  # Register on the actual tab too: the initial registration may belong to the prior tab.
  js("if(window.__ciWorkers===undefined){window.__ciWorkers=0;window.__ciWorkerRequests=0;const W=window.Worker;window.Worker=class extends W{constructor(...a){super(...a);window.__ciWorkers++;}postMessage(...args){window.__ciWorkerRequests++;return super.postMessage(...args);}};}")
  wait(idle,60);assert js('crossOriginIsolated'), 'Production isolation headers missing'
+ js("window.__ciOrigin=null;fetch('/').then(r=>window.__ciOrigin=r.headers.get('X-Next-Artifact-Source')).catch(e=>window.__ciOrigin='error')")
+ wait(lambda:js('window.__ciOrigin!==null'),60);assert js('window.__ciOrigin')==Path('next-site-source.txt').read_text().strip(), 'Chrome did not reach exact local artifact origin'
+ js("window.__ciBusyChanges=0;window.__ciBusyObserver=new MutationObserver(records=>{for(const r of records)if(r.attributeName==='disabled'&&r.target.textContent==='Generate faces')window.__ciBusyChanges++;});window.__ciBusyObserver.observe(document.querySelector('.next-product'),{subtree:true,attributes:true,attributeFilter:['disabled']});")
  js("document.querySelector('.next-advanced').open=true")
  root=cdp('DOM.getDocument')['root']['nodeId']
  # Native select keyboard interaction chooses explicit CPU, independent of GPU availability.
