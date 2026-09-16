@@ -43,6 +43,18 @@ jobs:
             next-site-source.txt
           if-no-files-found: error
           retention-days: 14
+  # Every new candidate artifact is qualified through the real product workflow automatically.
+  # workflow_run only fires for workflows on the default branch, so the build calls it directly.
+  qualify:
+    needs: artifact
+    uses: ./.github/workflows/next-e2e.yml
+    permissions:
+      contents: read
+      actions: read
+    with:
+      artifact_run: ${{ github.run_id }}
+      artifact_name: next-site-${{ github.sha }}
+      runtime_sha: 982f73bc24a4437385e34ef8ed52190b578024673d694f6b10ac09ae6b71624c
   compiled-ui:
     needs: artifact
     runs-on: ubuntu-24.04
