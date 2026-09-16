@@ -17,7 +17,7 @@ Implementation belongs in this repository. [Implementation branch](https://githu
 | Sharing | Share/save the image or MP4 itself. Editable project export/import is separate. No new hosted result-link service. |
 | Photo UX | Tile/+ click, touch and keyboard open the picker; dropping a photo targets that tile. Arbitrary and oversized images crop locally before alignment. Validate safely, preserve cancelled inputs and explain invalid/multiple-face selections. |
 | Names and public cache | Preserve names-site appearance/behavior and all 5,055 names. Publish only verified synthetic seed/name assets; never uploaded/recovered/e4e photos. Cache misses can use device generation. |
-| Diagnostics | Optional explicit opt-in that stays on until it is turned off, automatic sanitized saves, visible report reference/status and 30-day record expiry. No blanket banner; no private inputs; generation works with reporting off or unavailable. |
+| Diagnostics | Every run is captured and staged on the device from its first moment; an explicit yes sends what was staged and then streams. Opt-in persists until turned off; declining discards the buffer. 30-day record expiry. No blanket banner; no private inputs; nothing leaves the device without consent; generation works with reporting off or unavailable. |
 | Desktop skeleton | Launch the shared UI and demonstrate the existing available path with honest provider status. Clearly label development builds. Do not start further native GPU backend work for this handoff. |
 | Docker/API | Preserve the separate self-host compatibility distribution and its tested behavior. It is not the hosted site's inference server. |
 

@@ -40,6 +40,8 @@ let importProject (request: obj): JS.Promise<Output> = jsNative
 let measuredFaceMs (): obj = jsNative
 [<Import("plannedFrames", "./product-bridge.mjs")>]
 let plannedFrames (options: obj): obj = jsNative
+[<Import("stagedReportCount", "./product-bridge.mjs")>]
+let stagedReportCount (): int = jsNative
 [<Import("setDebug", "./product-bridge.mjs")>]
 let setDebug (enabled: bool): unit = jsNative
 [<Emit("$0.target.files && $0.target.files[0]")>]
@@ -333,7 +335,13 @@ let view state dispatch = App.ThemedApp [
         match state.Error with
         | Some message -> Html.div [prop.className "notification is-warning next-error";prop.custom("role","alert");prop.children [
             Html.p message
-            Html.div [prop.className "next-actions";prop.children [button "Debug options" false (fun () -> dispatch Help);button "Dismiss" false (fun () -> dispatch DismissError)]]]]
+            Html.div [prop.className "next-actions";prop.children [
+                // What led up to this failure is already on the device. Offer to send it now,
+                // even from someone who had not opted in before it happened.
+                if not state.Debug && stagedReportCount() > 0 then
+                    button "Send debug report" false (fun () -> dispatch(Debug true))
+                button "Debug options" false (fun () -> dispatch Help)
+                button "Dismiss" false (fun () -> dispatch DismissError)]]]]
         | None -> ()
         if state.VideoUrl<>"" then Html.section [prop.className "next-result";prop.children [
             Html.video [prop.src state.VideoUrl;prop.controls true;prop.loop true;prop.custom("playsInline",true);prop.ariaLabel "Your morph"]

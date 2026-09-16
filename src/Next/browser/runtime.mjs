@@ -1,4 +1,5 @@
 import {openOriginals,digest} from './originals.mjs';
+import {capabilities,priorOrder} from './route-priors.mjs';
 import {inputLatent,requireLatent,generationIdentity} from './identity.mjs';
 const abortError=()=>new DOMException('Generation cancelled','AbortError');
 /** One foreground operation, one worker, explicit route qualification. */
@@ -43,21 +44,22 @@ export function createBrowserRuntime({manifest: suppliedManifest, manifestSha256
  // threshold is deliberately generous: a route that qualifies this slowly is already a bad
  // experience, so the comparison is worth one admission.
  const SLOW_ADMISSION_MS=3000;
- function chooseRoute(available){
+ function capability(){const base=capabilities();return {...base,webgpu:base.webgpu&&Boolean(manifest.webgpu),webgl:base.webgl&&Boolean(manifest.webgl)};}
+ function supportedRoutes(){const caps=capability();return ['cpu',...(caps.webgl?['webgl']:[]),...(caps.webgpu?['webgpu']:[])];}
+ function chooseRoute(){
   const measured=speeds();
   const usable=Object.entries(measured).filter(([name,ms])=>Number.isFinite(ms)&&!failedRoutes.has(name));
   if(usable.length>1)return usable.sort((a,b)=>a[1]-b[1])[0][0];
-  // Most promising first. An untried WebGPU is the one route measured at sub-second on a phone,
-  // so it is never passed over in favour of something already known to be slower.
-  const candidates=[...(globalThis.navigator?.gpu&&manifest.webgpu?['webgpu']:[]),...(manifest.webgl&&typeof OffscreenCanvas!=='undefined'?['webgl']:[]),'cpu'];
+  // Order comes from measurements taken on real devices, not from an assumption about hardware.
+  const candidates=priorOrder(capability(),supportedRoutes());
   const untried=candidates.filter(name=>!(name in measured)&&!failedRoutes.has(name));
   if(usable.length===1&&usable[0][1]>SLOW_ADMISSION_MS&&untried.length)return untried[0];
-  return usable.length===1?usable[0][0]:available;
+  if(usable.length===1)return usable[0][0];
+  return priorOrder(capability(),supportedRoutes())[0];
  }
  async function admit(progress,signal,forceCpu=false){
   if(!forceCpu){
-   const available=globalThis.navigator?.gpu&&manifest.webgpu?'webgpu':manifest.webgl&&typeof OffscreenCanvas!=='undefined'?'webgl':'cpu';
-   route=preferredRoute==='auto'?chooseRoute(available):preferredRoute;
+   route=preferredRoute==='auto'?chooseRoute():preferredRoute;
    if(failedRoutes.has(route))route='cpu';
   }
   else route='cpu';

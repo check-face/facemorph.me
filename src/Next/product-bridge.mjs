@@ -8,7 +8,7 @@ import {diagnostics} from './reporting.mjs';
 let listener=()=>{},runtime,manifest,active,writer,currentJob=0,project=null,video=null;
 const faces=new Map(),urls=new Map();
 const labels={'asset-acquisition':'Downloading model files…','runtime-loading':'Starting the local engine…','model-loading':'Loading the model…','mapping-loading':'Loading face mapping…','canary':'Checking this device…','mapping':'Preparing your face…','synthesis':'Generating…','alignment':'Finding and aligning the face…','encoder-correctness-check':'Checking photo processing on this device…','encoder-correctness-complete':'Photo processing checked.','encoder-loading':'Loading the photo encoder…','encoding':'Encoding your photo…','original-cache-hit':'Loaded saved original','original-cached':'Original saved on this device','codec-loading':'Preparing video export…','cache-unavailable':'Generated successfully; device storage is unavailable.'};
-function progress(event){const stage=event.stage||'working',fraction=event.total?event.loaded/event.total:0;
+function progress(event){const stage=event.stage||'working',fraction=event.total?event.loaded/event.total:0;lastStage=stage;
  // The admitted route is carried as the text so the interface can say when this device is on the
  // slow path; it is a route name, not a status line.
  const text=stage==='route-admitted'?String(event.provider||''):(event.text||labels[stage]||'Working…');
@@ -30,6 +30,7 @@ function snapshot(message='Done — ready to save or share.',restore=false){
 function checked(){if(active?.signal.aborted)throw new DOMException('Cancelled','AbortError');}
 // What a face actually costs on this device, so the interface can estimate from measurement
 // rather than from a guess. A cached face is not a measurement of work.
+let lastStage;
 const faceTimings=[];
 const now=()=>globalThis.performance?.now?.()??Date.now();
 function recordFace(ms){if(Number.isFinite(ms)&&ms>0){faceTimings.push(ms);if(faceTimings.length>8)faceTimings.shift();}}
@@ -94,7 +95,7 @@ export async function execute(request){
    progress({stage:'export',text:'Finishing your video…'});video=await writer.finish();writer=null;replaceUrl('video',video);
   }
   diagnostics.finish('completed');return snapshot();
- }catch(error){diagnostics.finish(error?.name==='AbortError'?'cancelled':'failed',error);if(error?.name==='AbortError')return snapshot('Cancelled. Your completed faces are still available.');return {...snapshot(''),errorMessage:String(error?.message||'Generation failed. Your completed results are still available.')};}
+ }catch(error){diagnostics.finish(error?.name==='AbortError'?'cancelled':'failed',error,{stage:lastStage});if(error?.name==='AbortError')return snapshot('Cancelled. Your completed faces are still available.');return {...snapshot(''),errorMessage:String(error?.message||'Generation failed. Your completed results are still available.')};}
  finally{writer?.dispose();writer=null;active=null;}
 }
 export function cancel(){active?.abort();writer?.dispose();runtime?.cancel();}
@@ -124,6 +125,8 @@ export async function importProject(request){
  }finally{active=null;}
 }
 export function setDebug(enabled){diagnostics.enable(enabled);}
+/** How much of this session is staged on the device, ready to send if the tester agrees. */
+export function stagedReportCount(){return diagnostics.status().staged||0;}
 export async function loadNames(){
  const response=await fetch('/catalogue.json');if(!response.ok)throw Error('The name gallery is unavailable. You can still enter any name.');
  const data=await response.json();if(!Array.isArray(data.names)||data.names.length>10000)throw Error('Invalid name gallery.');

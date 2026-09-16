@@ -23,7 +23,7 @@ def checked_event(value):
         raise ValueError('schema')
     # gpu and routeOutcome say why a device ended up on the path it did: whether the browser
     # offered WebGPU at all, and whether a route was admitted, refused or never attempted.
-    allowed = {'schemaVersion','session','run','event','action','platform','language','build','stage','elapsedMs','stageMs','errorCode','browser','provider','device','browserMajor','bundle','gpu','routeOutcome'}
+    allowed = {'schemaVersion','session','run','event','action','platform','language','build','stage','elapsedMs','stageMs','errorCode','browser','provider','device','browserMajor','bundle','gpu','routeOutcome','cores','memoryGb','isolated','errorStage','errorKind'}
     if value.keys() - allowed:
         raise ValueError('fields')
     for field in ('session','run') + (('device',) if 'device' in value else ()):
@@ -37,6 +37,16 @@ def checked_event(value):
         raise ValueError('gpu')
     if 'routeOutcome' in value and value['routeOutcome'] not in ('admitted','canary-failed','unsupported','start-failed','superseded'):
         raise ValueError('routeOutcome')
+    if 'errorKind' in value and value['errorKind'] not in ('aborted','memory','integrity','network','unsupported','timeout','storage','decode','unknown'):
+        raise ValueError('errorKind')
+    if 'errorStage' in value and value['errorStage'] not in STAGES:
+        raise ValueError('errorStage')
+    if 'cores' in value and (not isinstance(value['cores'], int) or isinstance(value['cores'], bool) or not 1 <= value['cores'] <= 256):
+        raise ValueError('cores')
+    if 'memoryGb' in value and (not isinstance(value['memoryGb'], int) or isinstance(value['memoryGb'], bool) or not 1 <= value['memoryGb'] <= 1024):
+        raise ValueError('memoryGb')
+    if 'isolated' in value and not isinstance(value['isolated'], bool):
+        raise ValueError('isolated')
     for field in ('elapsedMs','stageMs'):
         if field in value and (type(value[field]) is not int or not 0 <= value[field] <= 86400000):
             raise ValueError('timing')
