@@ -51,11 +51,14 @@ async function stage(name,run,{optional=false}={}){
  }
 }
 
-const browser=await engines[engineName].launch();
-// The qualification server presents a self-signed certificate for the production hostname.
-const context=await browser.newContext({acceptDownloads:true,ignoreHTTPSErrors:true});
-const page=await context.newPage();
+// A persistent profile, not the default ephemeral context: an ephemeral one is capped near 1 GB
+// of storage, which the model bundle exceeds, so every row would fail on the harness rather than
+// on the engine. A real visitor's browser has orders of magnitude more, and the quota each row
+// actually had is recorded below. ignoreHTTPSErrors covers a locally served origin.
 const downloads=await fs.mkdtemp(path.join(process.env.RUNNER_TEMP||'/tmp','next-matrix-'));
+const profile=await fs.mkdtemp(path.join(process.env.RUNNER_TEMP||'/tmp','next-matrix-profile-'));
+const context=await engines[engineName].launchPersistentContext(profile,{acceptDownloads:true,ignoreHTTPSErrors:true});
+const page=context.pages()[0]||await context.newPage();
 page.on('console',message=>{if(message.type()==='error')report.consoleErrors=[...(report.consoleErrors||[]),message.text().slice(0,300)].slice(-20);});
 
 const control=name=>page.getByRole('button',{name,exact:true}).first();
@@ -81,6 +84,7 @@ try{
  await page.goto(origin,{waitUntil:'load',timeout:120000});
  await idle();
  report.agent=await page.evaluate(()=>navigator.userAgent);
+ report.storageQuota=await page.evaluate(()=>navigator.storage&&navigator.storage.estimate?navigator.storage.estimate().then(e=>e.quota).catch(()=>null):null);
  // Record the bundle this row actually exercised, so a row cannot be read against another build.
  report.runtimeSha256=await page.evaluate(async()=>{
   const response=await fetch('/runtime/manifest.json',{cache:'no-cache'});
@@ -181,7 +185,7 @@ try{
 }finally{
  report.finishedAt=new Date().toISOString();
  await save();
- await context.close();await browser.close();
+ await context.close();
  console.log(JSON.stringify({engine:engineName,passed:report.passed,unsupported:report.unsupported||[],error:report.error||''}));
  process.exit(report.passed?0:1);
 }
