@@ -45,6 +45,8 @@ export async function selectPhoto({id,files}){
   return pending.get(id)===token?{crop:true,file,...preview}:(URL.revokeObjectURL(preview.url),null);
  }catch(error){if(pending.get(id)!==token)return null;throw error;}finally{if(pending.get(id)===token)pending.delete(id);}
 }
+/** Moves focus into the crop square so its keyboard controls are usable on open. */
+export function focusCropArea(){requestAnimationFrame(()=>document.querySelector('.next-crop-view')?.focus());}
 let previousFocus;
 export function openNamesFocus(){previousFocus=document.activeElement;requestAnimationFrame(()=>document.querySelector('.next-name-dialog input')?.focus());}
 export function closeNamesFocus(){const target=previousFocus;previousFocus=null;requestAnimationFrame(()=>{if(target?.isConnected)target.focus();});}

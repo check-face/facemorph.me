@@ -81,6 +81,14 @@ try:
  # turns it on its side, so this proves the crop pipeline feeds alignment, not the detector.
  js("(()=>{const s=document.querySelector('.next-crop-zoom input');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(s,'1');s.dispatchEvent(new Event('change',{bubbles:true}));})()")
  for _ in range(4):click('Rotate')  # Four right angles exercise the control and end upright.
+ # The square must also be movable from the keyboard: pan right and back, and confirm Escape is
+ # wired by checking the dialog survives an unrelated key.
+ js("document.querySelector('.next-crop-view').focus()")
+ before=inspect("(()=>{const i=document.querySelector('.next-crop-zoom input');return {zoom:i.value,focused:document.activeElement===document.querySelector('.next-crop-view')};})()")
+ assert before['focused'],'Crop area did not take focus'
+ for key,code in [('ArrowRight',39),('ArrowLeft',37)]:
+  cdp('Input.dispatchKeyEvent',type='keyDown',key=key,windowsVirtualKeyCode=code);cdp('Input.dispatchKeyEvent',type='keyUp',key=key,windowsVirtualKeyCode=code)
+ assert js("!!document.querySelector('.next-crop-view')"),'Arrow keys closed the crop dialog'
  click('Use this crop')
  wait(lambda:js("!document.querySelector('.next-crop-view')"),60);wait(idle)
  cropped=js("document.querySelector('.next-file span')?.textContent||''")

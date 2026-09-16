@@ -39,7 +39,8 @@ async function stage(name,run,{optional=false}={}){
 }
 
 const browser=await engines[engineName].launch();
-const context=await browser.newContext({acceptDownloads:true});
+// The qualification server presents a self-signed certificate for the production hostname.
+const context=await browser.newContext({acceptDownloads:true,ignoreHTTPSErrors:true});
 const page=await context.newPage();
 const downloads=await fs.mkdtemp(path.join(process.env.RUNNER_TEMP||'/tmp','next-matrix-'));
 page.on('console',message=>{if(message.type()==='error')report.consoleErrors=[...(report.consoleErrors||[]),message.text().slice(0,300)].slice(-20);});

@@ -76,6 +76,8 @@ let openPhotoPicker (id: string): unit = jsNative
 let dragPhoto (event: obj) (busy: bool) (leaving: bool): unit = jsNative
 [<Import("invalidatePhotoSelections", "./photo-selection.mjs")>]
 let invalidatePhotoSelections (): unit = jsNative
+[<Import("focusCropArea", "./photo-selection.mjs")>]
+let focusCropArea (): unit = jsNative
 [<Import("openNamesFocus", "./photo-selection.mjs")>]
 let openNamesFocus (): unit = jsNative
 [<Import("closeNamesFocus", "./photo-selection.mjs")>]
@@ -127,6 +129,7 @@ let update msg state =
     // is ever aligned. Cancelling leaves the existing face and its inputs alone.
     | Photo(id,offer) when not state.Busy && not (isNull offer) && isCropOffer offer ->
         state.Crop |> Option.iter (fun previous -> revokeUrl previous.url)
+        focusCropArea()
         {state with Error=None;Crop=Some {faceId=id;url=offer?url;file=offer?file;scale=offer?scale
                                           view=createCrop(createObj ["previewWidth" ==> offer?previewWidth;"previewHeight" ==> offer?previewHeight;"scale" ==> offer?scale])}},Cmd.none
     | RequestCrop id when not state.Busy ->
@@ -324,11 +327,25 @@ let view state dispatch = App.ThemedApp [
         match state.Crop with
         | Some crop ->
             let placed=cropFrame crop.view 320.
-            Html.div [prop.className "next-crop-dialog";prop.custom("role","dialog");prop.custom("aria-modal",true);prop.ariaLabel "Crop photo";prop.children [
+            Html.div [prop.className "next-crop-dialog";prop.custom("role","dialog");prop.custom("aria-modal",true);prop.ariaLabel "Crop photo"
+                      prop.onKeyDown(fun (e:Browser.Types.KeyboardEvent) -> if e.key="Escape" then (e.preventDefault(); dispatch CropCancel))
+                      prop.children [
                 Html.div [prop.className "next-crop-panel box";prop.children [
                     Html.div [prop.className "next-topline";prop.children [Html.h2 "Crop your photo";button "Cancel crop" false (fun () -> dispatch CropCancel)]]
-                    Html.p "Drag to move, zoom to fill the square. Only this square is processed."
-                    Html.div [prop.className "next-crop-view";prop.ariaLabel "Crop area";prop.custom("role","application")
+                    Html.p "Drag to move, or use the arrow keys. Zoom to fill the square. Only this square is processed."
+                    Html.div [prop.className "next-crop-view";prop.ariaLabel "Crop area";prop.custom("role","application");prop.tabIndex 0
+                              // The square can be moved and sized without a pointer.
+                              prop.onKeyDown(fun (e:Browser.Types.KeyboardEvent) ->
+                                let step=if e.shiftKey then 40. else 10.
+                                match e.key with
+                                | "ArrowLeft" -> e.preventDefault(); dispatch(CropPan(step,0.))
+                                | "ArrowRight" -> e.preventDefault(); dispatch(CropPan(-step,0.))
+                                | "ArrowUp" -> e.preventDefault(); dispatch(CropPan(0.,step))
+                                | "ArrowDown" -> e.preventDefault(); dispatch(CropPan(0.,-step))
+                                | "+" | "=" -> e.preventDefault(); dispatch(CropZoom((crop.view?zoom: float)+0.25))
+                                | "-" | "_" -> e.preventDefault(); dispatch(CropZoom((crop.view?zoom: float)-0.25))
+                                | "Escape" -> e.preventDefault(); dispatch CropCancel
+                                | _ -> ())
                               prop.onPointerDown(fun (e:Browser.Types.PointerEvent) -> dragStart <- Some(e.clientX,e.clientY); e.currentTarget?setPointerCapture(e.pointerId))
                               prop.onPointerMove(fun (e:Browser.Types.PointerEvent) ->
                                 match dragStart with
