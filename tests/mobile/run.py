@@ -5,6 +5,7 @@ import hashlib
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 import json
 import os
+import re
 from pathlib import Path
 import subprocess
 import threading
@@ -44,6 +45,21 @@ def open_safari(udid, url):
         return {'returncode': result.returncode, 'stdout': result.stdout, 'stderr': result.stderr}
     except subprocess.TimeoutExpired:
         return {'timedOut': True}
+
+
+def simulator_options(devices, sdk_version):
+    # Runner images can contain newer runtimes than the selected Xcode supports.
+    sdk_major = int(sdk_version.split('.')[0])
+    options = []
+    for runtime, group in devices.items():
+        match = re.search(r'\.iOS-(\d+)-(\d+)', runtime)
+        if not match or int(match[1]) != sdk_major:
+            continue
+        version = tuple(map(int, match.groups()))
+        for device in group:
+            if device['name'].startswith('iPhone') and device.get('isAvailable'):
+                options.append((version, runtime, device))
+    return sorted(options, key=lambda item: (item[0], 'SE' not in item[2]['name'], item[2]['name']))
 
 
 def main():
@@ -113,12 +129,12 @@ def main():
             command('adb', 'shell', 'am', 'start', '-W', '-a', 'android.intent.action.VIEW', '-d', url, 'com.android.chrome')
         else:
             evidence['xcode'] = command('xcodebuild', '-version')
+            evidence['simulatorSdk'] = command('xcrun', '--sdk', 'iphonesimulator', '--show-sdk-version')
             devices = json.loads(command('xcrun', 'simctl', 'list', 'devices', 'available', '--json'))['devices']
-            options = [(runtime, device) for runtime, group in devices.items() for device in group
-                       if '.iOS-' in runtime and device['name'].startswith('iPhone') and device.get('isAvailable')]
+            options = simulator_options(devices, evidence['simulatorSdk'])
             if not options:
-                raise RuntimeError('No installed iPhone Simulator; no silent skip')
-            runtime, device = sorted(options, key=lambda item: (item[0], 'SE' not in item[1]['name'], item[1]['name']))[-1]
+                raise RuntimeError('No installed iPhone Simulator matching selected Xcode SDK; no silent skip')
+            _, runtime, device = options[-1]
             # Use a newly created simulator; leave any existing user/CI device alone.
             udid = command('xcrun', 'simctl', 'create', 'FaceMorph-CI-'+run_id,
                            device['deviceTypeIdentifier'], runtime)

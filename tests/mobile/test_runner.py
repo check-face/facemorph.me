@@ -1,6 +1,6 @@
 import copy
 import unittest
-from run import assess, EXPECTED
+from run import assess, EXPECTED, simulator_options
 
 
 class EvidenceTests(unittest.TestCase):
@@ -27,6 +27,15 @@ class EvidenceTests(unittest.TestCase):
     def test_no_handshake_not_success(self):
         for report in [None, {}, {'completed': True}]:
             self.assertFalse(assess(report, 'test'))
+
+    def test_runtime_matches_selected_xcode_sdk(self):
+        device = dict(name='iPhone 16', isAvailable=True)
+        devices = {'com.apple.CoreSimulator.SimRuntime.iOS-18-5': [device],
+                   'com.apple.CoreSimulator.SimRuntime.iOS-26-2': [device]}
+        options = simulator_options(devices, '18.5')
+        self.assertEqual(len(options), 1)
+        self.assertEqual(options[0][0], (18, 5))
+        self.assertEqual(simulator_options(devices, '17.0'), [])
 
 
 if __name__ == '__main__': unittest.main()
