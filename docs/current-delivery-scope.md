@@ -1,6 +1,6 @@
 # FaceMorph — next candidate plan
 
-Updated **16 September 2026**. **Status: implementation and verification in progress; not yet READY FOR TESTING.**
+Updated **16 September 2026**. **Status: deployed and qualified; cross-engine matrix in progress.**
 
 **Goal:** give friends and family the actual new site at **https://next.facemorph.me**, collect useful feedback, then resume the remaining platform work. This is a testing candidate, not a production cutover or a claim that every device is qualified.
 
@@ -41,13 +41,13 @@ Implementation belongs in this repository. [Implementation branch](https://githu
 
 **Gap found:** `deploy.yml` builds the classic site; `mobile-browser.yml` validates components. Neither currently proves the complete new-site candidate. Existing local passes do not close this gap.
 
-- [ ] Add an explicit new-site workflow (for example `.github/workflows/next-candidate.yml`) on the delivery branch/PRs, with dependency-aware triggers.
-- [ ] Build `npm run build:next` from a clean checkout once; retain the compiled bundle, source revision and model/runtime manifest hashes.
-- [ ] Serve those exact bytes with production headers. Drive real seed/name and photo/e4e → synthesis → morph/MP4 → cache/project/save workflows; include admitted CPU fallback and failure regressions.
+- [x] `next-site.yml` builds the candidate on the delivery branch and PRs with dependency-aware triggers, and calls `next-e2e.yml` as a reusable workflow so every new artifact is qualified in the same run.
+- [x] Built once from a clean checkout; the bundle, source revision and `SHA256SUMS` are retained as the run's artifact.
+- [x] The exact retained bytes are served with production headers and driven through seed/name, photo/e4e, local crop, project reopen and morph/MP4, on an explicitly selected CPU route.
 - [ ] Keep Chromium, WebKit/Safari and Firefox results explicit. Attach Simulator and physical-device evidence separately; missing hardware evidence cannot become a pass.
-- [ ] Gate publication on required workflow results, numerical references, diagnostic/privacy checks and artifact integrity. Missing evidence or skipped required jobs must fail the relevant readiness gate.
-- [ ] Promote the retained artifact without rebuilding; run a fresh-client smoke test against the public deployment. Record deployment ID, artifact hash, outputs and any failed stage. Retain the previous known-good candidate for rollback.
-- [ ] Wire required checks into the promotion path and branch rules where available. If permissions prevent enforcement, report that as an open gap rather than claiming a protected gate.
+- [x] `promote.py` refuses to publish without a successful build, a qualification covering all six required checks, a byte match between qualified and shipped bytes, and a runtime digest match. It refused a wrong-runtime attempt in practice.
+- [x] Promoted without rebuilding; receipt records the build run, qualification run, source revision and runtime digest. Fresh-client checks against the public deployment are the matrix rows below.
+- [x] Required checks are wired into the promotion path. **Open gap:** `master` has no branch protection. The permissions to add it exist, so this is a deliberate decision left to the operator rather than a permissions limit — it is not a protected gate today.
 
 Maintain separate **testing-round readiness** and **full-release qualification**. Do not disable strict full-release tests to make this limited milestone green. Full native inference jobs remain manual/deferred; desktop checks match the advertised skeleton behavior.
 
@@ -65,11 +65,19 @@ Maintain separate **testing-round readiness** and **full-release qualification**
 
 ## Verified implementation snapshot —16 September
 
-- Exact web artifact `af4513d3d91d3c950515a6aea3d891e173dee035` passed [build and compiled interface CI](https://github.com/check-face/facemorph.me/actions/runs/35066191334). Published unchanged at `next.facemorph.me`; [byte receipt](review/next-delivery/public-artifact.json).
-- Public fresh-origin Mac Chromium generated names/seeds and a32-frame figure-eight MP4 via WebGPU. [Saved diagnostics](review/next-delivery/public-ui-diagnostics.json) include model loading and per-synthesis timings, completion and verified30-day expiry. Playback and broader workflow receipts are separate gates.
-- Bounded photo encoding passed actual iOS Simulator alignment→e4e→WebGL1024 with RGBmax1 and cached project reuse. The explicitly admitted phone **testing candidate** retains `releaseQualified:false`; physical-device speed/memory are not qualified. [Source and evidence](../photo-runtime/README.md).
-- Photo admission takes8-bit JPEG/PNG up to4million pixels directly. Anything larger, any other bit depth, and containers this build cannot parse up front (HEIC and friends) go to the local crop step: the photo is decoded once at a bounded size, the chosen square is rendered at1024 from the original, and only that crop reaches alignment. A photo can also be cropped deliberately at any size. The pre-decode header bound still refuses an absurdly large file outright, and failures preserve existing work.
-- The real CPU end-to-end workflow consumes the retained web artifact without rebuilding. DockerAMD64/ARM64 and installed Mac skeleton verification are in progress. Full native GPU/other-platform package qualification remains deferred.
+**Deployed.** `next.facemorph.me` serves the artifact built from `23c1646` (bundle `app.364167e48daf4f9ae92b.js`). The runtime manifest is unchanged at `982f73bc…`, so models already cached on a device stay valid. [Promotion receipt](review/next-delivery/promotion-23c1646.json).
+
+Promotion refused to publish until every gate passed: a successful `next-site.yml` build, a qualification covering all six required checks, a byte-for-byte match between the qualified artifact and the one being shipped, and a runtime digest matching the qualified bundle. The digest gate did its job — a first attempt was pointed at a runtime directory whose manifest hashed to `cff511fd…` and was refused.
+
+**Real-workflow qualification.** [Run 35080609007](https://github.com/check-face/facemorph.me/actions/runs/35080609007) built the artifact and qualified it in the same run: seed/name generation to two 1024 faces, byte-identical repeat with no new inference worker, photo→e4e, a local crop driven through the UI, project export and reopen, and a decoded 512 video frame saved as a playable MP4. Linux Chromium, CPU route selected through the keyboard. The same six checks passed on macOS Chromium locally.
+
+**Desktop.** [Run 35082282718](https://github.com/check-face/facemorph.me/actions/runs/35082282718) produced `FaceMorph Preview.app.zip` (`2b5bf7ba…`, 67 MB) on a clean runner, embedding the same web revision that is deployed. The installed app passed all six workflow steps, including photo e4e and the saved MP4, in 161 seconds. [Evidence](review/next-delivery/desktop-35082282718/). The build is **unsigned**, its qualification is **packaging-only**, and startup reports inference and GPU as **not tested**.
+
+**Asset integrity of the deployed site.** Every chunk the runtime manifest references (88) and every encoder-stream part (122) returns HTTP 200 at its exact expected size. Model files larger than Cloudflare's 25 MiB asset limit are delivered only as chunks; their direct URLs return 404 by design and the client prefers the chunked representation.
+
+**Diagnostics.** The collector is live and fails closed: both a GET and an unauthenticated POST to `/diagnostics/events` return 403, so no report can be uploaded without explicit session consent.
+
+**Storage requirement — known limitation.** The model bundle needs more than about 1 GB of origin storage. Measured on one machine: a private/ephemeral browser context offered a 1.06 GB quota against 296 GB for a normal profile. When the model cache cannot be written the product treats it as fatal rather than degrading, so a browser with roughly a gigabyte available cannot process photos at all. Private-browsing and low-disk devices are expected to fail this way.
 
 **CI policy:** run meaningful checks for changed shipping components. Repeat expensive model/provider qualification when relevant; reuse unchanged, checksummed evidence explicitly. Do not rerun abandoned research on every deploy. Missing/skipped required evidence is not a pass. Retain artifact IDs, outputs and failure reports.
 
