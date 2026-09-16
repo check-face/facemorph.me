@@ -288,6 +288,7 @@ html {
 @media(max-width:550px){.next-product{padding:.75rem}.next-faces{grid-template-columns:1fr 1fr;gap:.65rem}.next-face{padding:.65rem}.next-face .next-actions{gap:.35rem}.next-face .button{padding:.4rem}.next-face .select{font-size:.8rem}}
 @media(max-width:360px){.next-faces{grid-template-columns:1fr}}
 @media(prefers-reduced-motion:reduce){.next-product *{animation:none!important;transition:none!important}}
+.next-estimate { max-width:650px; margin:.5rem auto; text-align:center; opacity:.85; }
 .next-slow-route { max-width:650px; margin:1rem auto; border-left:4px solid #d08a1e; line-height:1.55; }
 .next-slow-route p { margin:.5rem 0; }
 .next-crop-dialog { position:fixed; inset:0; z-index:1300; background:#0009; display:grid; place-items:center; padding:1rem; }

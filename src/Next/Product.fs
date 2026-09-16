@@ -36,6 +36,10 @@ let shareMedia (id: string): JS.Promise<string> = jsNative
 let exportProject (request: obj): JS.Promise<string> = jsNative
 [<Import("importProject", "./product-bridge.mjs")>]
 let importProject (request: obj): JS.Promise<Output> = jsNative
+[<Import("measuredFaceMs", "./product-bridge.mjs")>]
+let measuredFaceMs (): obj = jsNative
+[<Import("plannedFrames", "./product-bridge.mjs")>]
+let plannedFrames (options: obj): obj = jsNative
 [<Import("setDebug", "./product-bridge.mjs")>]
 let setDebug (enabled: bool): unit = jsNative
 [<Emit("$0.target.files && $0.target.files[0]")>]
@@ -224,6 +228,20 @@ let update msg state =
 
 // Pointer drag needs the previous position between events; the view itself stays declarative.
 let mutable dragStart : (float * float) option = None
+let spoken (ms:float) =
+    let seconds=ms/1000.
+    if seconds<90. then sprintf "about %.0f seconds" (max 1. (round seconds))
+    elif seconds<5400. then sprintf "about %.0f minutes" (max 1. (round (seconds/60.)))
+    else sprintf "about %.1f hours" (seconds/3600.)
+/// Estimates only from what this device has already done; no measurement, no estimate.
+let estimate (state:State) =
+    match measuredFaceMs() with
+    | null -> None
+    | value ->
+        let perFace: float = unbox value
+        match plannedFrames(createObj ["inputs" ==> Array.ofList state.Inputs;"kind" ==> state.Kind;"width" ==> state.Width;"pinch" ==> state.Pinch;"frames" ==> state.Frames;"fps" ==> state.Fps]) with
+        | null -> None
+        | frames -> Some(perFace, unbox<float> frames)
 let faq (question:string) (answer:ReactElement list) =
     Html.details [prop.className "next-faq";prop.children (Html.summary question :: answer)]
 let button (label:string) (disabled:bool) (action:unit -> unit) = Html.button [prop.className "button";prop.disabled disabled;prop.type'.button;prop.onClick(fun _ -> action());prop.text label]
@@ -276,6 +294,11 @@ let view state dispatch = App.ThemedApp [
                 Html.p [Html.strong "This device is generating on its processor.";Html.text " No graphics acceleration qualified here, so a face takes minutes rather than seconds and a morph takes considerably longer."]
                 Html.p "It will still finish, and everything is saved as it goes. A laptop or desktop with a graphics card — or the desktop app — is dramatically quicker for morphs."
                 Html.p [Html.a [prop.href "https://github.com/check-face/facemorph.me/releases";prop.text "Desktop builds"]]]]
+        match estimate state with
+        | Some(perFace,frames) when not state.Busy ->
+            Html.p [prop.className "next-estimate";prop.custom("role","note")
+                    prop.text (sprintf "On this device a face took %s, so a %g-frame morph should take %s." (spoken perFace) frames (spoken (perFace*frames)))]
+        | _ -> Html.none
         Html.div [prop.className "next-actions next-generate";prop.children [
             Html.button [prop.className "button is-primary";prop.disabled state.Busy;prop.onClick(fun _ -> dispatch(Run "faces"));prop.text "Generate faces"]
             Html.button [prop.className "button is-primary";prop.disabled state.Busy;prop.onClick(fun _ -> dispatch(Run "morph"));prop.text "Create morph"]

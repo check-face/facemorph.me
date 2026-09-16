@@ -28,6 +28,25 @@ function snapshot(message='Done — ready to save or share.',restore=false){
  return {errorMessage:'',faces:[...faces].map(([id,f])=>({id,url:urls.get(id),label:f.label||'Face'})),videoUrl:video?urls.get('video'):'',projectJson:project?JSON.stringify(project):'',message,restored:restore,inputs:restore?[...faces].map(([id])=>({id,mode:'project',value:'Project face',file:null})):[],kind:project?.morph.kind||'',width:project?.morph.width||0,pinch:!!project?.morph.pinchCenter,frames:project?.morph.framesPerSegment||16,fps:project?.morph.framesPerSecond||16};
 }
 function checked(){if(active?.signal.aborted)throw new DOMException('Cancelled','AbortError');}
+// What a face actually costs on this device, so the interface can estimate from measurement
+// rather than from a guess. A cached face is not a measurement of work.
+const faceTimings=[];
+const now=()=>globalThis.performance?.now?.()??Date.now();
+function recordFace(ms){if(Number.isFinite(ms)&&ms>0){faceTimings.push(ms);if(faceTimings.length>8)faceTimings.shift();}}
+/** Median measured face time in milliseconds, or null until this device has produced one. */
+export function measuredFaceMs(){
+ if(!faceTimings.length)return null;
+ const sorted=[...faceTimings].sort((a,b)=>a-b);
+ return sorted[Math.floor(sorted.length/2)];
+}
+/** Frames the current settings would render, from the same geometry the morph uses. */
+export function plannedFrames(options){
+ try{
+  const controls=options.inputs.map(input=>{const face=faces.get(input.id);return face&&{visitId:input.id,latent:{...face.latent,values:face.latent.values}};});
+  if(controls.some(control=>!control)||controls.length<2)return null;
+  return createLatentPath({kind:options.kind,width:options.width,pinchCenter:options.pinch,framesPerSegment:options.frames,framesPerSecond:options.fps,controls}).totalFrames;
+ }catch{return null;}
+}
 async function register(id,result,label){if(!(result.blob instanceof Blob)||result.blob.type!=='image/png'||!result.latent)throw Error('The generation engine returned an incomplete face.');faces.set(id,{...result,label});replaceUrl(id,result.blob);}
 async function inputs(request){
  const service=await engine(),next=new Map();
@@ -36,7 +55,7 @@ async function inputs(request){
   let result;
   if(item.mode==='project'){result=faces.get(item.id);if(!result)throw Error('Open the saved project again to restore this face.');}
   else if(item.mode==='photo'){if(!(item.file instanceof Blob))throw Error('Choose a photo for each photo input.');result=await service.encodePhoto(item.file,{signal:active.signal});}
-  else result=await service.generate({mode:item.mode,value:item.value,signal:active.signal});
+  else {const began=now();result=await service.generate({mode:item.mode,value:item.value,signal:active.signal});if(!result.cached)recordFace(now()-began);}
   next.set(item.id,{...result,label:item.mode==='photo'?'Photo':item.value,source:{mode:item.mode,value:item.value,file:item.file}});
  }
  const provenance=next.get(request.inputs[0].id).provenance;
