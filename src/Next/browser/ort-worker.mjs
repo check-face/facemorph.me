@@ -18,12 +18,10 @@ async function ensureOrt(id){if(ort)return;report(id,'runtime-loading');const as
  * for, and the gain flattens quickly. Correctness is not taken on trust — the route is admitted
  * only after the existing canaries match the fixed references, whatever the thread count.
  */
-/**
- * The encoder holds far more resident memory than synthesis does, and this path exists for the
- * devices least able to spare it, so it takes fewer threads than synthesis rather than the same
- * number. The bounded-memory refusal ahead of it is unchanged.
- */
-function encoderThreads(){return Math.min(2,cpuThreads());}
+// The encoder stays single-threaded on purpose. Giving it two threads was measured on this
+// machine and moved photo timing from 87.6 to 87.1 seconds, which is noise: the cost there is
+// not ORT inference. Threads would add memory pressure on the devices this path serves for no
+// gain anyone can observe.
 function cpuThreads(){
  if(typeof SharedArrayBuffer!=='function'||!globalThis.crossOriginIsolated)return 1;
  const cores=Number(globalThis.navigator?.hardwareConcurrency);
@@ -38,7 +36,7 @@ async function encodeStream(tensor,id,qualifiedEncoderSha256){
  try{
   const apiUrl=await verifiedModule(config.runtime.module),factoryUrl=await verifiedModule(config.runtime.factory),wasmUrl=URL.createObjectURL(new Blob([await bytes(config.runtime.wasm,id)],{type:'application/wasm'}));urls.push(wasmUrl);
   const observerUrl=URL.createObjectURL(new Blob([`import factory from ${JSON.stringify(factoryUrl)};let ref;export default async function(config){const m=await factory(config);ref=new WeakRef(m);return m;}export function snapshot(){const buffer=ref?.deref()?.HEAPU8?.buffer;return {available:Boolean(buffer),shared:Object.prototype.toString.call(buffer)==='[object SharedArrayBuffer]',currentBytes:buffer?.byteLength};}`],{type:'text/javascript'}));urls.push(observerUrl);
-  const observer=await import(/* webpackIgnore: true */ observerUrl),encoderOrt=await import(/* webpackIgnore: true */ apiUrl),executor=await import(/* webpackIgnore: true */ await verifiedModule(config.executor));encoderOrt.env.wasm.numThreads=encoderThreads();encoderOrt.env.wasm.wasmPaths={mjs:observerUrl,wasm:wasmUrl};
+  const observer=await import(/* webpackIgnore: true */ observerUrl),encoderOrt=await import(/* webpackIgnore: true */ apiUrl),executor=await import(/* webpackIgnore: true */ await verifiedModule(config.executor));encoderOrt.env.wasm.numThreads=1;encoderOrt.env.wasm.wasmPaths={mjs:observerUrl,wasm:wasmUrl};
   const execute=input=>executor.executeEncoderStream({ort:encoderOrt,manifest:config,tensor:input,acquireBytes:asset=>bytes(asset,id),snapshotMemory:observer.snapshot,onProgress:event=>report(id,event.stage,event)});
   const encoderQualification=qualifiedEncoderSha256===descriptor.sha256?{passed:true,manifestSha256:descriptor.sha256,reusedRuntimeAdmission:true}:await qualifyEncoderReference({config,manifestSha256:descriptor.sha256,execute,acquireBytes:asset=>bytes(asset,id),onProgress:event=>report(id,event.stage,event)});
   const result=await execute(tensor);result.encoderQualification=encoderQualification;
