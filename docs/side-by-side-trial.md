@@ -1,3 +1,5 @@
+> **Historical proposal — not an execution plan.** The HF hosting, dates, URLs and simulated account directions below are superseded. Use the [current candidate plan](current-delivery-scope.md): independent `next.facemorph.me`, web plus desktop skeleton, explicit testing handoff. Preserve this file as proposal history only.
+
 > Local review update — 9 September 2026: review the working prototype and copy before considering deployment. See `HF_TRIAL.md` at the repository root. All experiment source is now in `experiment/hf/`. Account states are simulated locally; actual generation uses the Mac CPU. HF authentication is not a blocker for this review. The hosted resource names below remain proposals, not deployed services.
 
 # Facemorph's next chapter: side-by-side community trial

@@ -1,11 +1,46 @@
-# FaceMorph desktop product candidate
+# FaceMorph desktop skeleton
 
-Current delivery uses the integrated Next UI and a bundled native CPU runtime for
-seed/text synthesis, photo alignment/e4e, full-1024 local originals, editable
-projects, morph video and native file export. Six OS/architecture CI jobs test the
-actual packaged worker and installed controls. Builds are unsigned research and
-evaluation previews; native GPU and complete cross-platform qualification are
-still required. See the 16 September product section below for current commands.
+**Scope changed by the operator on 16 September 2026:** this phase delivers the
+web product and a desktop skeleton only. Native backends and their six-target
+qualification are deferred. No desktop package is advertised as a qualified
+generation app. Existing native implementation and evidence remain below as
+research history; they are not release claims.
+
+## Current handoff gate
+
+Follow the [candidate plan](../docs/current-delivery-scope.md). The scaffold below is a development starting point, not by itself the completed handoff: the installed skeleton must launch the shared UI and exercise the existing available path with honest provider status. Further native GPU implementation and full native qualification are deferred.
+
+## Start the skeleton
+
+From the `facemorph.me` repository, with Node and Rust installed:
+
+```sh
+node desktop/scripts/stage-frontend.mjs --source desktop/skeleton
+cargo run --manifest-path desktop/src-tauri/Cargo.toml
+```
+
+This path requires no Python, ONNX Runtime, model download, Fable build or native
+resource overlay. It displays an explicit development scaffold. Linux needs the
+usual Tauri WebKit/GTK development packages; Windows needs its WebView2 runtime.
+
+To package the scaffold using the pinned Tauri CLI:
+
+```sh
+npm install --prefix desktop/ci-tools --no-save @tauri-apps/cli@2.10.1
+cd desktop
+node ci-tools/node_modules/@tauri-apps/cli/tauri.js icon src-tauri/icons/icon.png --output src-tauri/icons
+node ci-tools/node_modules/@tauri-apps/cli/tauri.js build --config candidate-config.json
+```
+
+Do **not** pass `native-resources-config.json` for this skeleton. The separate
+`desktop-candidates.yml` checks shell packaging/startup without model inference.
+`desktop-product.yml` is manual-only and requires an explicitly pinned manifest
+when native research resumes. It has no automatic deployment trigger.
+
+The shared Next frontend has already rendered successfully inside the installed
+Mac ARM64 shell with working IPC. The newly reduced static scaffold has been staged
+and its asset inventory checked; no additional native backend certification is
+claimed for this scope change.
 
 ## Historical shell milestone (14–15 September)
 
@@ -239,7 +274,7 @@ and resumed after interrupted downloads. The resource build needs a manifest wit
 and `landmarks`. No source checkout, system Python or Triton is needed by the
 frozen worker. This does not grant model distribution/use rights.
 
-The candidate-branch/manual `desktop-product.yml` workflow builds six actual target
+The retained, manual-only `desktop-product.yml` workflow builds six actual target
 architectures, executes seed/text/photo/cache/project-latent workflows against
 the frozen native worker, includes those bytes in the desktop package and checks
 installed controls. Model-heavy qualification is not added to copy-only deployment

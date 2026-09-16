@@ -1,5 +1,8 @@
 # facemorph.me
 
+**New candidate:** [Current delivery plan, remaining work and testing gates](docs/current-delivery-scope.md).
+The instructions below describe the existing site; the preview is a separate delivery.
+
 [![Gitpod ready-to-code](https://img.shields.io/badge/Gitpod-ready--to--code-blue?logo=gitpod)](https://gitpod.io/#https://github.com/check-face/facemorph.me)
 
 The site is written in F# using [Fable](https://fable.io/).

@@ -1,3 +1,5 @@
+> **Historical local prototype instructions.** Use the [current candidate plan](docs/current-delivery-scope.md) for active delivery, hosting, CI and handoff decisions. The old branch/deployment/account statements below describe that prototype, not current candidate status.
+
 # Local co-maintainer review
 
 Everything for this experiment now lives in this repository on
