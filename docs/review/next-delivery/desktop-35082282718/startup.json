@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "binary": "/Users/runner/work/_temp/FaceMorph installed/FaceMorph Preview.app/Contents/MacOS/checkface-desktop",
+  "missingRuntimeRejected": false,
+  "rendered": true,
+  "runtimeAvailable": true,
+  "inference": "not tested",
+  "gpu": "not tested"
+}

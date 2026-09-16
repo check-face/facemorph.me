@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "platform": "macos",
+  "sourceRevision": "5479fb3ee49ea46694ed540cd2b447d11afde1ad",
+  "signed": false,
+  "qualification": "packaging-only",
+  "nativeRuntimeBundled": true,
+  "nativeRuntimeInventorySha256": "507148e37ef5f4edc8fb6e9fa65076a27f50e6ad6411570a206fe4b86e570be3",
+  "modelsBundled": false,
+  "files": [
+    {
+      "path": "FaceMorph Preview.app.zip",
+      "bytes": 67273428,
+      "sha256": "2b5bf7bab19f5a670e93c036cfe52a85f13d678ade0c730d5eb9ccb625314e1d"
+    }
+  ]
+}

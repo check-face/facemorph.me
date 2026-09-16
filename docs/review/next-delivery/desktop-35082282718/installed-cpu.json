@@ -1,0 +1,391 @@
+{
+  "native": [
+    {
+      "cacheMiss": true,
+      "jobId": "89e5d5ed-b6a9-4897-b4b5-34124dcd6eda",
+      "provider": "native-cpu",
+      "schemaVersion": 1,
+      "type": "completed"
+    },
+    {
+      "attemptId": "361a12ce-8cb0-40b3-8d6d-e7361afbe055",
+      "checks": [
+        {
+          "maxFloat": 2.682209014892578e-06,
+          "maxRgb": 1,
+          "name": "frame-00",
+          "passed": true
+        },
+        {
+          "maxFloat": 3.0547380447387695e-06,
+          "maxRgb": 1,
+          "name": "frame-25",
+          "passed": true
+        },
+        {
+          "maxFloat": 5.453824996948242e-06,
+          "maxRgb": 1,
+          "name": "encoded-synthetic-photo",
+          "passed": true
+        },
+        {
+          "maxFloat": 3.337860107421875e-06,
+          "maxRgb": 1,
+          "name": "zero-noise",
+          "passed": true
+        },
+        {
+          "maxFloat": 2.384185791015625e-06,
+          "maxRgb": 1,
+          "name": "alternate-noise",
+          "passed": true
+        },
+        {
+          "maxFloat": 2.2649765014648438e-06,
+          "maxRgb": 1,
+          "name": "trunc-psi-0",
+          "passed": true
+        },
+        {
+          "maxFloat": 3.7550926208496094e-06,
+          "maxRgb": 1,
+          "name": "trunc-psi-1",
+          "passed": true
+        }
+      ],
+      "deviceValidated": true,
+      "jobId": "d703af73-ea69-435b-8673-835ca84dbf06",
+      "provider": "native-cpu",
+      "releaseQualified": false,
+      "schemaVersion": 1,
+      "type": "qualified"
+    },
+    {
+      "cached": false,
+      "jobId": "e0be0c7f-91d5-4deb-9ca0-7a9c8de5a2bc",
+      "localArtifactId": "d2bb83b1-f033-4dbf-834e-7c67f39a0c0c",
+      "provider": "native-cpu",
+      "schemaVersion": 1,
+      "type": "completed"
+    },
+    {
+      "cached": false,
+      "jobId": "ebbaf41d-5034-4cab-840d-cfba6f36dac8",
+      "localArtifactId": "79e61614-4e3b-4a77-bda8-6d6725ae5560",
+      "provider": "native-cpu",
+      "schemaVersion": 1,
+      "type": "completed"
+    },
+    {
+      "cached": true,
+      "jobId": "5717b398-9ed9-432d-9caa-a1a56575401e",
+      "localArtifactId": "4c0e1330-7cd6-42c3-ab3d-47ddce932631",
+      "provider": "native-cpu",
+      "schemaVersion": 1,
+      "type": "completed"
+    },
+    {
+      "cached": true,
+      "jobId": "85c7ed4c-b8d1-4c2c-9ee7-38126167c3fb",
+      "localArtifactId": "4791f5de-8d71-4e28-adc2-bb1379b963aa",
+      "provider": "native-cpu",
+      "schemaVersion": 1,
+      "type": "completed"
+    },
+    {
+      "cached": false,
+      "jobId": "e4557062-921f-4dca-a452-6ee1f341cbae",
+      "localArtifactId": "368f662c-b6e2-422c-acb7-f93d263432d5",
+      "provider": "native-cpu",
+      "schemaVersion": 1,
+      "type": "completed"
+    },
+    {
+      "cached": true,
+      "jobId": "4b928927-e8d2-4fab-ba2f-c880631f1612",
+      "localArtifactId": "14664729-dff5-4efe-b79a-f0085912c87c",
+      "provider": "native-cpu",
+      "schemaVersion": 1,
+      "type": "completed"
+    },
+    {
+      "cached": false,
+      "jobId": "e03d7f45-e758-432e-a66d-62d878ad3b80",
+      "localArtifactId": "78ea63a0-ae41-4462-8ca3-37988756e049",
+      "provider": "native-cpu",
+      "schemaVersion": 1,
+      "type": "completed"
+    },
+    {
+      "cached": false,
+      "jobId": "ee9b26b8-b3fe-4a9e-9599-f08af17ca96a",
+      "localArtifactId": "57df4e60-f93d-45db-b094-d7670f83210f",
+      "provider": "native-cpu",
+      "schemaVersion": 1,
+      "type": "completed"
+    },
+    {
+      "cached": false,
+      "jobId": "db1c2af1-ec68-4213-a39d-ce7e645b31a3",
+      "localArtifactId": "55cfa779-dc78-47f5-b12f-046811dc41d9",
+      "provider": "native-cpu",
+      "schemaVersion": 1,
+      "type": "completed"
+    },
+    {
+      "cached": false,
+      "jobId": "fdcf2341-884b-408f-88c8-5cf998585b8c",
+      "localArtifactId": "e0003a45-884f-40f7-8c8f-434aedb8c9d4",
+      "provider": "native-cpu",
+      "schemaVersion": 1,
+      "type": "completed"
+    },
+    {
+      "cached": false,
+      "jobId": "ee7b3e82-77d1-4dd6-8967-7f1979c08551",
+      "localArtifactId": "524fbc58-d82b-432e-96eb-13a1180f10e2",
+      "provider": "native-cpu",
+      "schemaVersion": 1,
+      "type": "completed"
+    },
+    {
+      "cached": false,
+      "jobId": "2399b360-058e-4eac-8e22-d6c689000f59",
+      "localArtifactId": "4872fcc7-1102-495c-b5d5-3380cbac1ec9",
+      "provider": "native-cpu",
+      "schemaVersion": 1,
+      "type": "completed"
+    },
+    {
+      "cached": false,
+      "jobId": "80e9f9ef-a691-4007-8f80-2265da399a82",
+      "localArtifactId": "8cd0c486-feb3-4230-bed5-977b7b813990",
+      "provider": "native-cpu",
+      "schemaVersion": 1,
+      "type": "completed"
+    },
+    {
+      "cached": false,
+      "jobId": "c9ddfee5-fe60-49e6-9ca2-938f7d000139",
+      "localArtifactId": "36a4cb4f-9b9e-4a6f-9471-8194ff03eb3b",
+      "provider": "native-cpu",
+      "schemaVersion": 1,
+      "type": "completed"
+    },
+    {
+      "cached": false,
+      "jobId": "ed25bbd9-5b68-46ee-8b16-b6cf7257afc1",
+      "localArtifactId": "5a3d07ce-3092-4f8c-91ac-5100202ce141",
+      "provider": "native-cpu",
+      "schemaVersion": 1,
+      "type": "completed"
+    },
+    {
+      "cached": false,
+      "jobId": "4c99e95f-46cd-4e2e-9edd-673d35852038",
+      "localArtifactId": "66a7f4d4-53d0-46a5-a827-d6edce95347a",
+      "provider": "native-cpu",
+      "schemaVersion": 1,
+      "type": "completed"
+    },
+    {
+      "cached": false,
+      "jobId": "88e4db87-7d91-48a7-a8fb-7cf2acee065f",
+      "localArtifactId": "cf8fbbd6-3ea3-43dd-bec3-615dc1c492ea",
+      "provider": "native-cpu",
+      "schemaVersion": 1,
+      "type": "completed"
+    },
+    {
+      "cached": false,
+      "jobId": "1cf7cbeb-f782-4e6a-9a62-f44429b9cf75",
+      "localArtifactId": "6812e4fc-7486-422d-bd69-2b73b3f95030",
+      "provider": "native-cpu",
+      "schemaVersion": 1,
+      "type": "completed"
+    },
+    {
+      "cached": false,
+      "jobId": "a5e71675-5de9-45d1-a819-a9849aa48e7b",
+      "localArtifactId": "bb4b2916-5bdf-4b87-86cf-f44841e8ab39",
+      "provider": "native-cpu",
+      "schemaVersion": 1,
+      "type": "completed"
+    },
+    {
+      "cached": false,
+      "jobId": "10c1c793-ccdc-4c0e-a0e1-d53185c333fd",
+      "localArtifactId": "4e255d90-2434-42a6-b2f0-3700d8bd6602",
+      "provider": "native-cpu",
+      "schemaVersion": 1,
+      "type": "completed"
+    },
+    {
+      "cached": false,
+      "jobId": "6eedaadf-bf47-4ed2-9b3b-1b3a09b3518e",
+      "localArtifactId": "8acef99a-0428-4f4b-8e7f-42ea6b091bde",
+      "provider": "native-cpu",
+      "schemaVersion": 1,
+      "type": "completed"
+    },
+    {
+      "cached": false,
+      "jobId": "53af1bc7-1df9-40a1-b92e-c8d9cab4f946",
+      "localArtifactId": "6a867172-d548-4234-8813-acea0b9811cd",
+      "provider": "native-cpu",
+      "schemaVersion": 1,
+      "type": "completed"
+    },
+    {
+      "cached": false,
+      "jobId": "bdfc1d71-284f-4057-9761-ce6c68c7624d",
+      "localArtifactId": "bb99eec5-b195-4237-82f8-fb1753b89578",
+      "provider": "native-cpu",
+      "schemaVersion": 1,
+      "type": "completed"
+    },
+    {
+      "cached": false,
+      "jobId": "a51d19dd-8bcb-4c43-9f49-a865fd2d0eeb",
+      "localArtifactId": "3627514a-2a58-4de5-8d86-c86339482987",
+      "provider": "native-cpu",
+      "schemaVersion": 1,
+      "type": "completed"
+    },
+    {
+      "cached": false,
+      "jobId": "27af74b0-194e-4d1b-a151-69d59314672a",
+      "localArtifactId": "cd5da7b3-d068-4d62-ba99-00c748d25ec6",
+      "provider": "native-cpu",
+      "schemaVersion": 1,
+      "type": "completed"
+    },
+    {
+      "cached": false,
+      "jobId": "4c791bb8-390a-4a11-8b46-d84ce9f06156",
+      "localArtifactId": "a5029640-a30f-4964-8730-f7960d76ec3e",
+      "provider": "native-cpu",
+      "schemaVersion": 1,
+      "type": "completed"
+    },
+    {
+      "cached": false,
+      "jobId": "7a568bd9-4f85-4c92-a40a-9ba527393728",
+      "localArtifactId": "1bdca893-80e2-4e61-9a44-a24f0ccd5752",
+      "provider": "native-cpu",
+      "schemaVersion": 1,
+      "type": "completed"
+    },
+    {
+      "cached": false,
+      "jobId": "36075878-9c0c-45ca-bbfb-93069d3dcc2a",
+      "localArtifactId": "e107930d-b61d-4913-8603-9b2310e9b08d",
+      "provider": "native-cpu",
+      "schemaVersion": 1,
+      "type": "completed"
+    },
+    {
+      "cached": false,
+      "jobId": "3b69e816-f40f-4ba1-8cf7-5127699ccf38",
+      "localArtifactId": "39da2b31-1f15-407f-b1f1-99f803e01ae8",
+      "provider": "native-cpu",
+      "schemaVersion": 1,
+      "type": "completed"
+    },
+    {
+      "cached": false,
+      "jobId": "10c0f403-a34c-4eaf-94dc-bb80b8cbac4c",
+      "localArtifactId": "6d3737c1-71e4-469b-a43d-58c9e77ce7e1",
+      "provider": "native-cpu",
+      "schemaVersion": 1,
+      "type": "completed"
+    },
+    {
+      "cached": false,
+      "jobId": "b2177945-ec14-4cd9-a1cf-875ec41072bf",
+      "localArtifactId": "96f295db-7162-4ec2-983b-af1d70d04248",
+      "provider": "native-cpu",
+      "schemaVersion": 1,
+      "type": "completed"
+    },
+    {
+      "cached": false,
+      "jobId": "246c61bf-a6d1-4886-bda8-f92e05d148a7",
+      "localArtifactId": "6f1d25cf-e537-42ec-be06-e57419403491",
+      "provider": "native-cpu",
+      "schemaVersion": 1,
+      "type": "completed"
+    },
+    {
+      "cached": false,
+      "jobId": "c2549159-a259-46ae-98a0-5dcd7c3dd38b",
+      "localArtifactId": "dcdc9719-15fe-4da6-836d-39f6efce2406",
+      "provider": "native-cpu",
+      "schemaVersion": 1,
+      "type": "completed"
+    },
+    {
+      "cached": false,
+      "jobId": "9557c958-40fa-41d0-bff9-f86d3a8ca22b",
+      "localArtifactId": "490fb45e-4aa3-4e0c-9112-0f1c3c6cf3b5",
+      "provider": "native-cpu",
+      "schemaVersion": 1,
+      "type": "completed"
+    },
+    {
+      "cached": false,
+      "jobId": "018206ea-8d9a-4050-841d-1b0d82161997",
+      "localArtifactId": "8ddaa014-8683-4346-8b2f-1f74a7c46a72",
+      "provider": "native-cpu",
+      "schemaVersion": 1,
+      "type": "completed"
+    },
+    {
+      "cached": false,
+      "jobId": "c850abb2-39f7-453e-a2c3-4e13f032f2f3",
+      "localArtifactId": "1219a46e-59ce-45f9-9a69-70810238ddfa",
+      "provider": "native-cpu",
+      "schemaVersion": 1,
+      "type": "completed"
+    },
+    {
+      "cached": false,
+      "jobId": "aab18025-307e-4c76-aefc-21844b37c786",
+      "localArtifactId": "c17423d7-edb1-495a-a720-31cb4d99db92",
+      "provider": "native-cpu",
+      "schemaVersion": 1,
+      "type": "completed"
+    },
+    {
+      "cached": false,
+      "jobId": "37b69c28-394e-4d8a-8eaa-6dabfc7d2774",
+      "localArtifactId": "56f8e30c-35eb-4d92-ab07-5d151f7300ec",
+      "provider": "native-cpu",
+      "schemaVersion": 1,
+      "type": "completed"
+    }
+  ],
+  "passed": true,
+  "projectSha256": "a38dd192fd54e55bba8c621b13cb66e14c366f7159b3b1f27a2c08afb5e1cbe5",
+  "seconds": 160.914,
+  "steps": [
+    "seed-text-full1024",
+    "repeat-cache",
+    "actual-photo-e4e",
+    "project-export-reopen",
+    "figure-eight-video-playback",
+    "actual-video-save"
+  ],
+  "video": {
+    "bytes": 882112,
+    "duration": 2,
+    "height": 512,
+    "sha256": "ecd805dc922f001f8f8dca80379a310c8eceda9165481938187665b4895daf97",
+    "width": 512
+  },
+  "schemaVersion": 1,
+  "binarySha256": "771107aa2b958cc08206abdf851b0f2d0cdf887ab552ec4d185d01a7acbcaa67",
+  "manifestSha256": "982f73bc24a4437385e34ef8ed52190b578024673d694f6b10ac09ae6b71624c",
+  "testMode": "real-installed-controls-native-inference-isolated-file-destination",
+  "interactiveSaveDialogTested": false
+}
