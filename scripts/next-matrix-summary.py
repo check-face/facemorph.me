@@ -44,7 +44,7 @@ def main(root):
         note = error or agent
         lines.append(f'| `{name}` | ' + ' | '.join(cells) + f' | {note} |')
     if not rows:
-        lines.append('| _no reports were produced_ | ' + ' | '.join(['not run'] * len(STAGES)) + ' |  |')
+        lines.append('| _no reports were produced_ | ' + ' | '.join(['not run'] * len(STAGES)) + ' | nothing ran |')
         complete = False
     lines += ['',
               'A row is evidence for that engine and operating system only. WebKit on Linux is the '

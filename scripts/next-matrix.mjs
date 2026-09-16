@@ -27,12 +27,18 @@ function record(name,data){report.stages[name]=data;console.log(JSON.stringify({
 async function save(){await fs.writeFile(out,JSON.stringify(report,null,2));}
 const sha=buffer=>createHash('sha256').update(buffer).digest('hex');
 
-/** Runs a stage, recording an unsupported result rather than failing the whole row. */
+/**
+ * Runs a stage, recording an unsupported result rather than failing the whole row. The report is
+ * written after every stage: a slow engine can outlast its budget, and the stages that did pass
+ * are evidence worth keeping rather than losing to the kill.
+ */
 async function stage(name,run,{optional=false}={}){
- try{const data=await run();record(name,{passed:true,...data});return data;}
+ const startedAt=Date.now();
+ try{const data=await run();record(name,{passed:true,seconds:(Date.now()-startedAt)/1000,...data});await save();return data;}
  catch(error){
   const unsupported=optional&&/not supported|unsupported|no decoder|NotSupportedError|is not a function|undefined is not an object/i.test(String(error?.message));
-  record(name,{passed:false,unsupported,reason:String(error?.message||error).slice(0,400)});
+  record(name,{passed:false,unsupported,seconds:(Date.now()-startedAt)/1000,reason:String(error?.message||error).slice(0,400)});
+  await save();
   if(!unsupported)throw error;
   return null;
  }
@@ -45,8 +51,9 @@ const page=await context.newPage();
 const downloads=await fs.mkdtemp(path.join(process.env.RUNNER_TEMP||'/tmp','next-matrix-'));
 page.on('console',message=>{if(message.type()==='error')report.consoleErrors=[...(report.consoleErrors||[]),message.text().slice(0,300)].slice(-20);});
 
+const control=name=>page.getByRole('button',{name,exact:true}).first();
 async function download(name){
- const [file]=await Promise.all([page.waitForEvent('download',{timeout:120000}),page.getByRole('button',{name,exact:true}).click()]);
+ const [file]=await Promise.all([page.waitForEvent('download',{timeout:120000}),control(name).click()]);
  const target=path.join(downloads,`${Date.now()}-${file.suggestedFilename()}`);
  await file.saveAs(target);
  return target;
@@ -55,7 +62,7 @@ async function idle(){
  await page.waitForFunction(()=>!document.querySelector('.next-status progress')&&[...document.querySelectorAll('button')].some(b=>b.textContent==='Generate faces'&&!b.disabled),null,{timeout:stageTimeout});
 }
 async function generate(name='Generate faces'){
- await page.getByRole('button',{name,exact:true}).click();
+ await control(name).click();
  await page.waitForTimeout(250);
  await idle();
  const error=await page.evaluate(()=>document.querySelector('.next-error')?.innerText||'');
@@ -101,13 +108,13 @@ try{
  });
 
  await stage('localCrop',async()=>{
-  await page.getByRole('button',{name:'Crop photo',exact:true}).click();
+  await control('Crop photo').click();
   await page.waitForSelector('.next-crop-view img',{timeout:60000});
   // The whole square is kept: alignment rightly refuses a crop that cuts the face in half or
   // turns it on its side. Four right angles exercise the control and end upright.
   await page.locator('.next-crop-zoom input').fill('1');
-  for(let turn=0;turn<4;turn++)await page.getByRole('button',{name:'Rotate',exact:true}).click();
-  await page.getByRole('button',{name:'Use this crop',exact:true}).click();
+  for(let turn=0;turn<4;turn++)await control('Rotate').click();
+  await control('Use this crop').click();
   await page.waitForSelector('.next-crop-view',{state:'detached',timeout:60000});
   await idle();
   const chosen=await page.evaluate(()=>document.querySelector('.next-file span')?.textContent||'');
