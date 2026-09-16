@@ -288,6 +288,8 @@ html {
 @media(max-width:550px){.next-product{padding:.75rem}.next-faces{grid-template-columns:1fr 1fr;gap:.65rem}.next-face{padding:.65rem}.next-face .next-actions{gap:.35rem}.next-face .button{padding:.4rem}.next-face .select{font-size:.8rem}}
 @media(max-width:360px){.next-faces{grid-template-columns:1fr}}
 @media(prefers-reduced-motion:reduce){.next-product *{animation:none!important;transition:none!important}}
+.next-slow-route { max-width:650px; margin:1rem auto; border-left:4px solid #d08a1e; line-height:1.55; }
+.next-slow-route p { margin:.5rem 0; }
 .next-crop-dialog { position:fixed; inset:0; z-index:1300; background:#0009; display:grid; place-items:center; padding:1rem; }
 .next-crop-panel { max-width:420px; width:100%; max-height:90vh; overflow:auto; }
 .next-crop-view { position:relative; width:320px; height:320px; max-width:100%; margin:0 auto; overflow:hidden; border-radius:6px; background:#222; touch-action:none; cursor:grab; }

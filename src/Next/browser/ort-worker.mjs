@@ -10,7 +10,20 @@ async function floats(asset,id){const b=await bytes(asset,id);return new Float32
 async function ensureOrt(id){if(ort)return;report(id,'runtime-loading');const assets=manifest.runtime.assets,module=assets.find(a=>a.url===manifest.runtime.moduleUrl),factory=assets.find(a=>a.url.endsWith('/ort-wasm-simd-threaded.mjs')),wasm=assets.find(a=>a.url.endsWith('/ort-wasm-simd-threaded.wasm'));if(!module||!factory||!wasm)throw Error('Incomplete pinned runtime bundle');
  // Import exactly the verified bytes, avoiding a second unchecked network request.
  const moduleUrl=URL.createObjectURL(new Blob([await bytes(module,id)],{type:'text/javascript'})),factoryUrl=URL.createObjectURL(new Blob([await bytes(factory,id)],{type:'text/javascript'})),wasmUrl=URL.createObjectURL(new Blob([await bytes(wasm,id)],{type:'application/wasm'}));
- ort=await import(/* webpackIgnore: true */ moduleUrl);ort.env.wasm.numThreads=1;ort.env.wasm.wasmPaths={mjs:factoryUrl,wasm:wasmUrl};}
+ ort=await import(/* webpackIgnore: true */ moduleUrl);ort.env.wasm.numThreads=cpuThreads();ort.env.wasm.wasmPaths={mjs:factoryUrl,wasm:wasmUrl};}
+/**
+ * The runtime bundle is the threaded build and the site is cross-origin isolated, so the CPU
+ * route was running a multi-threaded binary pinned to one thread. Threads are bounded rather
+ * than greedy: they add stacks and scheduling pressure on the small devices this path exists
+ * for, and the gain flattens quickly. Correctness is not taken on trust — the route is admitted
+ * only after the existing canaries match the fixed references, whatever the thread count.
+ */
+function cpuThreads(){
+ if(typeof SharedArrayBuffer!=='function'||!globalThis.crossOriginIsolated)return 1;
+ const cores=Number(globalThis.navigator?.hardwareConcurrency);
+ if(!Number.isFinite(cores)||cores<2)return 1;
+ return Math.max(1,Math.min(4,Math.floor(cores)-1));
+}
 
 async function encodeStream(tensor,id,qualifiedEncoderSha256){
  const started=performance.now();const descriptor=manifest.encoderStream,config=JSON.parse(new TextDecoder().decode(await bytes(descriptor,id)));

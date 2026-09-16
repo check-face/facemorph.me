@@ -91,6 +91,7 @@ type State = {
     Busy: bool; JobId: int; Stage: string; Status: string; Fraction: float
     Browse: string option; Names: NameFace array; NameQuery: string; NameLimit: int; Error: string option; DebugStatus: string; Help: bool; Debug: bool; NextId: int
     Crop: CropChoice option
+    Route: string
 }
 and [<CLIMutable>] CropChoice = { faceId: string; url: string; file: obj; scale: float; view: obj }
 type Msg =
@@ -111,7 +112,7 @@ let emptyFile: obj = null
 let init () =
     { Inputs = [{id="face-1";mode="text";value="hello";file=emptyFile}; {id="face-2";mode="seed";value="389";file=emptyFile}]
       Faces=[||];VideoUrl="";Kind="pairwise-figure8";Width=0.2;Pinch=false;Frames=16;Fps=16;Provider="auto"
-      Busy=false;JobId=0;Stage="idle";Status="";Fraction=0.;Browse=None;Names=[||];NameQuery="";NameLimit=48;Error=None;DebugStatus="";Help=false;Debug=false;NextId=3;Crop=None },
+      Busy=false;JobId=0;Stage="idle";Status="";Fraction=0.;Browse=None;Names=[||];NameQuery="";NameLimit=48;Error=None;DebugStatus="";Help=false;Debug=false;NextId=3;Crop=None;Route="" },
     Cmd.batch [Cmd.ofSub(fun dispatch -> subscribe (Progressed >> dispatch)); if namesRequested() then Cmd.ofMsg(BrowseNames "face-1")]
 
 let update msg state =
@@ -185,6 +186,8 @@ let update msg state =
                      | "diagnostics-enabled" -> "Reporting is on. It stays on until you turn it off."
                      | _ -> "Reporting is off."
         {state with DebugStatus=status;Debug=(match progress.stage with | "diagnostics-enabled" -> true | "diagnostics-disabled" -> false | _ -> state.Debug)},Cmd.none
+    | Progressed progress when progress.stage="route-admitted" ->
+        {state with Route=progress.text},Cmd.none
     | Progressed progress when state.Busy && progress.jobId=state.JobId ->
         {state with Stage=progress.stage;Status=progress.text;Fraction=progress.fraction},Cmd.none
     | Completed(id,result) when id=state.JobId ->
@@ -268,6 +271,11 @@ let view state dispatch = App.ThemedApp [
             Html.label [prop.children [Html.input [prop.type'.checkbox;prop.isChecked state.Pinch;prop.disabled state.Busy;prop.onChange(fun (v:bool) -> dispatch(Pinch v))];Html.span " Pinch centre"]]
             select (string state.Frames) "Frames per segment" state.Busy ["16","16 frames / segment";"32","32 frames / segment";"64","64 frames / segment"] (fun v -> dispatch(Frames(int v)))
             select state.Provider "Processing mode" state.Busy ["auto","Automatic processing";"cpu","CPU";"webgpu","WebGPU";"webgl","WebGL GPU"] (Provider >> dispatch)]]]]
+        if state.Route="cpu" then
+            Html.div [prop.className "next-slow-route box";prop.custom("role","note");prop.children [
+                Html.p [Html.strong "This device is generating on its processor.";Html.text " No graphics acceleration qualified here, so a face takes minutes rather than seconds and a morph takes considerably longer."]
+                Html.p "It will still finish, and everything is saved as it goes. A laptop or desktop with a graphics card — or the desktop app — is dramatically quicker for morphs."
+                Html.p [Html.a [prop.href "https://github.com/check-face/facemorph.me/releases";prop.text "Desktop builds"]]]]
         Html.div [prop.className "next-actions next-generate";prop.children [
             Html.button [prop.className "button is-primary";prop.disabled state.Busy;prop.onClick(fun _ -> dispatch(Run "faces"));prop.text "Generate faces"]
             Html.button [prop.className "button is-primary";prop.disabled state.Busy;prop.onClick(fun _ -> dispatch(Run "morph"));prop.text "Create morph"]

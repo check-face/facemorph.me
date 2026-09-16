@@ -8,7 +8,11 @@ import {diagnostics} from './reporting.mjs';
 let listener=()=>{},runtime,manifest,active,writer,currentJob=0,project=null,video=null;
 const faces=new Map(),urls=new Map();
 const labels={'asset-acquisition':'Downloading model files…','runtime-loading':'Starting the local engine…','model-loading':'Loading the model…','mapping-loading':'Loading face mapping…','canary':'Checking this device…','mapping':'Preparing your face…','synthesis':'Generating…','alignment':'Finding and aligning the face…','encoder-correctness-check':'Checking photo processing on this device…','encoder-correctness-complete':'Photo processing checked.','encoder-loading':'Loading the photo encoder…','encoding':'Encoding your photo…','original-cache-hit':'Loaded saved original','original-cached':'Original saved on this device','codec-loading':'Preparing video export…','cache-unavailable':'Generated successfully; device storage is unavailable.'};
-function progress(event){const stage=event.stage||'working',fraction=event.total?event.loaded/event.total:0;listener({jobId:currentJob,stage,text:event.text||labels[stage]||'Working…',fraction:Number.isFinite(fraction)?fraction:0});diagnostics.stage(stage,event);}
+function progress(event){const stage=event.stage||'working',fraction=event.total?event.loaded/event.total:0;
+ // The admitted route is carried as the text so the interface can say when this device is on the
+ // slow path; it is a route name, not a status line.
+ const text=stage==='route-admitted'?String(event.provider||''):(event.text||labels[stage]||'Working…');
+ listener({jobId:currentJob,stage,text,fraction:Number.isFinite(fraction)?fraction:0});diagnostics.stage(stage,event);}
 function canonicalProject(value){const decoded=decode(typeof value==='string'?value:JSON.stringify(value));if(decoded.tag!==0)throw Error('This project is invalid or uses an unsupported format.');const encoded=encode(decoded.fields[0]);if(encoded.tag!==0)throw Error('This project cannot be opened.');return JSON.parse(encoded.fields[0]);}
 async function engine(){
  if(runtime)return runtime;
