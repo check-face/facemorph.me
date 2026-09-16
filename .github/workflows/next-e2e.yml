@@ -1,5 +1,8 @@
 name: Manual exact new-site qualification
 on:
+  push:
+    branches: ['candidate/next-delivery-20260916']
+    paths: ['.github/workflows/next-e2e.yml', 'scripts/next-e2e-*.py']
   workflow_dispatch:
     inputs:
       artifact_run:
@@ -24,8 +27,8 @@ jobs:
       - name: Validate artifact run provenance
         env:
           GH_TOKEN: ${{ github.token }}
-          RUN_ID: ${{ inputs.artifact_run }}
-          ARTIFACT: ${{ inputs.artifact_name }}
+          RUN_ID: ${{ inputs.artifact_run || '35066191334' }}
+          ARTIFACT: ${{ inputs.artifact_name || 'next-site-af4513d3d91d3c950515a6aea3d891e173dee035' }}
         run: |
           [[ "$RUN_ID" =~ ^[0-9]+$ ]]
           [[ "$ARTIFACT" =~ ^next-site-[a-f0-9]{40}$ ]]
@@ -39,8 +42,8 @@ jobs:
           PY
       - uses: actions/download-artifact@v4
         with:
-          name: ${{ inputs.artifact_name }}
-          run-id: ${{ inputs.artifact_run }}
+          name: ${{ inputs.artifact_name || 'next-site-af4513d3d91d3c950515a6aea3d891e173dee035' }}
+          run-id: ${{ inputs.artifact_run || '35066191334' }}
           github-token: ${{ github.token }}
       - name: Verify exact artifact
         run: |
@@ -55,7 +58,7 @@ jobs:
       - run: python -m pip install browser-harness==0.1.8
       - name: Run real production UI CPU workflow
         env:
-          RUNTIME_SHA: ${{ inputs.runtime_sha }}
+          RUNTIME_SHA: ${{ inputs.runtime_sha || '982f73bc24a4437385e34ef8ed52190b578024673d694f6b10ac09ae6b71624c' }}
           BU_CDP_URL: http://127.0.0.1:9222
         run: |
           [[ "$RUNTIME_SHA" =~ ^[a-f0-9]{64}$ ]]
