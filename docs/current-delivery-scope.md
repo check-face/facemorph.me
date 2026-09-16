@@ -75,7 +75,9 @@ Promotion refused to publish until every gate passed: a successful `next-site.ym
 
 **Asset integrity of the deployed site.** Every chunk the runtime manifest references (88) and every encoder-stream part (122) returns HTTP 200 at its exact expected size. Model files larger than Cloudflare's 25 MiB asset limit are delivered only as chunks; their direct URLs return 404 by design and the client prefers the chunked representation.
 
-**Diagnostics.** The collector is live and fails closed: both a GET and an unauthenticated POST to `/diagnostics/events` return 403, so no report can be uploaded without explicit session consent.
+**Diagnostics — verified end to end on the deployed site.** A browser with no local DNS override opted in through the real control, generated, and its reports were accepted by Cloudflare (HTTP 204). The namespace holds 200 records across 12 runs; every one carries an expiry and the window measures 29.52–30.00 days against the 30-day policy. A stored record contains only `schemaVersion, session, run, device, event, stage, provider, bundle, elapsedMs, stageMs` plus `receivedAt`/`expiresAt` — no photo, words, latent, IP or user agent. The gate also still closes: an unauthenticated POST and a foreign origin are both refused with 403.
+
+Reaching that took a correction worth recording. Earlier probes reused a Chrome started with `--host-resolver-rules` mapping `next.facemorph.me` to a local qualification server, so "the deployed site" was answering from `SimpleHTTP/0.6` and refusing every POST. That produced a convincing but false report of a production failure, and a collector change made against it was reverted. Any browser evidence about the deployed site must come from a client with no DNS override; check the `Server`/`cf-ray` headers to prove which origin answered.
 
 **Storage requirement — known limitation.** The model bundle needs more than about 1 GB of origin storage. Measured on one machine: a private/ephemeral browser context offered a 1.06 GB quota against 296 GB for a normal profile. When the model cache cannot be written the product treats it as fatal rather than degrading, so a browser with roughly a gigabyte available cannot process photos at all. Private-browsing and low-disk devices are expected to fail this way.
 
@@ -85,7 +87,6 @@ Promotion refused to publish until every gate passed: a successful `next-site.ym
 - **The matrix cannot run in CI from this branch.** `workflow_dispatch` only resolves workflows present on the default branch, the same constraint that ruled out `workflow_run`. Until `next-matrix.yml` reaches the default branch the engine rows run serially on one developer machine instead of in parallel on clean runners, so they carry that machine's characteristics.
 - **H.264 playback is not checkable in the automation browsers.** Playwright ships Chromium and WebKit without proprietary codecs. Playback evidence therefore comes only from the byte-exact qualification, which drives the real Chrome install and verifies a decoded frame. A matrix row that could not check playback is reported as such and does not count as a pass.
 - **No physical phone has been exercised.** Simulators and desktop engines describe behaviour, not phone memory, thermal behaviour or real GPU speed. Those rows stay missing rather than inferred, and real-device feedback is part of this testing round.
-- **A consented diagnostic report has not been round-tripped from the deployed site.** The collector is confirmed to reject anything without consent, which proves it fails closed, not that an opted-in report is stored and expires as intended.
 - **The model cache treats exhausted storage as fatal.** See the storage limitation above.
 
 **CI policy:** run meaningful checks for changed shipping components. Repeat expensive model/provider qualification when relevant; reuse unchanged, checksummed evidence explicitly. Do not rerun abandoned research on every deploy. Missing/skipped required evidence is not a pass. Retain artifact IDs, outputs and failure reports.
@@ -100,6 +101,24 @@ Promotion refused to publish until every gate passed: a successful `next-site.ym
 - Repeat a face and reopen an exported project; confirm the original is reused.
 - Try cancellation and retry. On failure, optionally enable debug reporting, retry and send the report reference or email `checkfaceml@gmail.com`—no JSON export required.
 - Oliver: include Manjaro browser results and the desktop skeleton if supplied. Native GPU qualification is a later round.
+
+## Testing-round feedback — received 16 September
+
+The operator has used the deployed candidate on a physical phone. The feedback, what the
+shipped code actually does, and the proposed work are in
+[testing round 1 feedback](testing-feedback-round-1.md).
+
+Its constraint is **bench parity**: the best case measured in `autoresearch` must be the
+case the product runs. It is not today. The verified cause at the top of that document is
+that the deployed WebGPU kernel is the *control*, not the `keep`-status
+`mobile-boundary-bounded` candidate that produced the 686 ms/face figure on the operator's
+S24 Ultra — so the product has never contained the benched winner. That is a
+promotion-discipline gap between research and product bundles.
+
+Also from this round: the operator's consented debug run did not produce a usable report.
+The collector is fine — the product's own reporting path has verified defects, including
+that enabling consent mid-run reports nothing for that run. That instrument has to be fixed
+before asking for another phone profile, so it is the first item, ahead of the kernel.
 
 ## Explicitly later / unchanged
 
