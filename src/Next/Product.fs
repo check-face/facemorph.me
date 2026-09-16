@@ -100,7 +100,7 @@ type Msg =
     | Save of string | Share of string | Export | Import of obj | Notice of string
     | Help | Debug of bool | DismissError
     | BrowseNames of string | NamesLoaded of NameFace array | SearchNames of string | ChooseName of string | CloseNames | MoreNames
-    | CropPan of float * float | CropZoom of float | CropRotate | CropAccept | CropCancel | RequestCrop of string
+    | CropPan of float * float | CropZoom of float | CropRotate | CropAccept | CropCancel | RequestCrop of string | Cropped of string * obj
 
 [<Emit("window.location.pathname === '/names' || window.location.pathname === '/names/' || new URLSearchParams(window.location.search).has('names')")>]
 let namesRequested (): bool = jsNative
@@ -119,7 +119,10 @@ let update msg state =
     | Edit(id,value) when not state.Busy -> invalidatePhotoSelections(); change id (fun item -> {item with value=value}), Cmd.none
     | Mode(id,mode) when not state.Busy -> invalidatePhotoSelections(); change id (fun item -> {item with mode=mode;file=emptyFile}), Cmd.none
     | PickPhoto(id,files) when not state.Busy -> state,Cmd.OfPromise.either selectPhoto (createObj ["id" ==> id;"files" ==> files]) (fun file -> Photo(id,file)) (fun e -> PhotoError e.Message)
-    | PhotoError message when not state.Busy -> {state with Error=Some message},Cmd.none
+    | Cropped(id,file) when not (isNull file) ->
+        {change id (fun item -> {item with mode="photo";file=file;value=fileName file}) with Busy=false;Stage="idle";Status="";Fraction=0.;Error=None},Cmd.none
+    | PhotoError message when not state.Busy || state.Stage="cropping" ->
+        {state with Error=Some message;Busy=false;Stage=(if state.Stage="cropping" then "idle" else state.Stage);Status=""},Cmd.none
     // A photo the alignment route cannot take whole opens the crop step first; only the crop
     // is ever aligned. Cancelling leaves the existing face and its inputs alone.
     | Photo(id,offer) when not state.Busy && not (isNull offer) && isCropOffer offer ->
@@ -152,8 +155,10 @@ let update msg state =
             let options=createObj ["previewScale" ==> crop.scale;"rotation" ==> crop.view?rotation]
             let target=crop.faceId
             revokeUrl crop.url
-            {state with Crop=None;Status="Preparing your crop…"},
-            Cmd.OfPromise.either (fun () -> cropPhoto crop.file (cropRect crop.view) options) () (fun file -> Photo(target,file)) (fun e -> PhotoError e.Message)
+            // Rendering the crop is real work: hold the controls until it lands, so nothing can
+            // be generated from the previous photo while the crop is still being prepared.
+            {state with Crop=None;Busy=true;Stage="cropping";Status="Preparing your crop…";Fraction=0.},
+            Cmd.OfPromise.either (fun () -> cropPhoto crop.file (cropRect crop.view) options) () (fun file -> Cropped(target,file)) (fun e -> PhotoError e.Message)
         | None -> state,Cmd.none
     | Photo(id,file) when not state.Busy && not (isNull file) -> {change id (fun item -> {item with mode="photo";file=file;value=fileName file}) with Error=None;Status=""}, Cmd.none
     | Add when not state.Busy && state.Inputs.Length<64 ->
