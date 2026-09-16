@@ -2,7 +2,8 @@ name: Mobile browser components
 on:
   workflow_dispatch:
   push:
-    branches: ['candidate/mobile-ci-*']
+    branches: ['master', 'candidate/mobile-ci-*']
+    paths: ['tests/mobile/**', 'src/Next/Assets/**', '.github/workflows/mobile-browser.yml']
   pull_request:
     paths: ['tests/mobile/**', 'src/Next/Assets/**', '.github/workflows/mobile-browser.yml']
 permissions:

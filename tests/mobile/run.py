@@ -35,6 +35,17 @@ def command(*args, check=True, timeout=90):
     return subprocess.run(args, check=check, capture_output=True, text=True, timeout=timeout).stdout.strip()
 
 
+def open_safari(udid, url):
+    # Fresh Simulator SpringBoard can report launch failure before Safari becomes
+    # usable. Record it; only the subsequent browser report may establish success.
+    try:
+        result = subprocess.run(['xcrun', 'simctl', 'openurl', udid, url],
+                                capture_output=True, text=True, timeout=90)
+        return {'returncode': result.returncode, 'stdout': result.stdout, 'stderr': result.stderr}
+    except subprocess.TimeoutExpired:
+        return {'timedOut': True}
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--platform', required=True, choices=['android', 'ios'])
@@ -107,19 +118,22 @@ def main():
                        if '.iOS-' in runtime and device['name'].startswith('iPhone') and device.get('isAvailable')]
             if not options:
                 raise RuntimeError('No installed iPhone Simulator; no silent skip')
-            runtime, device = sorted(options, key=lambda item: (item[0], item[1]['name']))[-1]
+            runtime, device = sorted(options, key=lambda item: (item[0], 'SE' not in item[1]['name'], item[1]['name']))[-1]
             # Use a newly created simulator; leave any existing user/CI device alone.
             udid = command('xcrun', 'simctl', 'create', 'FaceMorph-CI-'+run_id,
                            device['deviceTypeIdentifier'], runtime)
             evidence['device'] = {'udid': udid, 'runtime': runtime, 'profile': device['name']}
             command('xcrun', 'simctl', 'boot', udid)
             command('xcrun', 'simctl', 'bootstatus', udid, '-b', timeout=180)
-            command('xcrun', 'simctl', 'openurl', udid, url)
+            evidence['launchAttempts'] = [open_safari(udid, url)]
         deadline = time.monotonic()+args.timeout
+        retry_at = time.monotonic()+30
         while time.monotonic() < deadline:
             report = state['report']
             if report and (report.get('completed') is True or report.get('error')):
                 break
+            if udid and report is None and time.monotonic() >= retry_at and len(evidence['launchAttempts']) == 1:
+                evidence['launchAttempts'].append(open_safari(udid, url))
             time.sleep(0.5)
         evidence['passed'] = assess(state['report'], run_id)
         evidence['completed'] = bool(state['report'] and state['report'].get('completed'))
