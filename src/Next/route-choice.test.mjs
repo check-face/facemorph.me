@@ -40,3 +40,22 @@ test('A device that measures a slow route tries an untried one, then keeps the w
  const fastest=Object.entries(final).sort((a,b)=>a[1]-b[1])[0][0];
  assert.equal(fastest,'cpu','the cheaper measured route is the one that wins');
 });
+
+test('An Android measurement is not applied to iOS',async()=>{
+ const {capabilities,priorOrder}=await import('./browser/route-priors.mjs');
+ const supported=['cpu','webgl'];
+ const android=capabilities({navigator:{userAgent:'Mozilla/5.0 (Linux; Android 14; SM-S928B) Chrome/153'}});
+ const ios=capabilities({navigator:{userAgent:'Mozilla/5.0 (iPhone; CPU iPhone OS 26_0) Version/26.0 Safari'}});
+ // The S24 measured CPU at roughly half WebGL, so Android leads with CPU.
+ assert.deepEqual(priorOrder(android,supported),['cpu','webgl']);
+ // iOS adopted WebGL to avoid the large WASM heap and has no measurement favouring CPU, so the
+ // Android ordering must not be borrowed for it.
+ assert.deepEqual(priorOrder(ios,supported),['webgl','cpu']);
+ // Wherever WebGPU is offered it leads, on either platform.
+ const iosGpu=capabilities({navigator:{userAgent:'iPhone Version/26.0 Safari',gpu:{}}});
+ assert.equal(priorOrder(iosGpu,['cpu','webgl','webgpu'])[0],'webgpu');
+ const androidGpu=capabilities({navigator:{userAgent:'Android Chrome/153',gpu:{}}});
+ assert.equal(priorOrder(androidGpu,['cpu','webgl','webgpu'])[0],'webgpu');
+ // A supported route is never dropped, only reordered.
+ assert.equal(priorOrder(ios,supported).length,supported.length);
+});
