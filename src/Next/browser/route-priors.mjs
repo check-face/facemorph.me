@@ -29,7 +29,9 @@
 export const ROUTE_PRIORS = Object.freeze([
   {
     // WebGPU has been the fastest route on every device where it was actually measured, by a
-    // margin no other ordering question comes close to. It is tried first wherever it is offered.
+    // margin no other ordering question comes close to. It is tried first wherever it is offered,
+    // including on iOS: its larger working set is acceptable while the run stays stable, and an
+    // unstable one fails admission rather than being pre-emptively avoided.
     when: capabilities => capabilities.webgpu,
     order: ['webgpu', 'cpu', 'webgl'],
     because: 'WebGPU measured 618 ms on a phone and 294 ms on a Mac; nothing else is close'
@@ -47,6 +49,11 @@ export const ROUTE_PRIORS = Object.freeze([
     // remove the large ORT/WASM synthesis heap on a device that may not have room for it, and no
     // iPhone measurement shows CPU beating it. The Android ordering must not be borrowed here: it
     // would trade a memory-driven choice for another platform's timings.
+    //
+    // Operator direction, 17 September: a large working set is wanted when it buys speed, so long
+    // as the run stays stable and below the point where the tab is reclaimed. Memory is therefore
+    // not a reason to pass over a faster route — only an observed reset or failure is, and that
+    // arrives as a refused admission which already removes the route from contention.
     //
     // Every iPhone figure on record is from the Simulator, which returns no WebGPU adapter at
     // all, so those runs cannot speak to the fast path and must not be read as if they rank it.
