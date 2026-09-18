@@ -70,16 +70,45 @@ try:
  result['processingSelection']=selection
  run('Generate faces');images=wait(lambda:faces() if len(faces())==2 and all(i['width']==1024 and i['height']==1024 for i in faces()) else None,60)
  save_check('nameSeed',{'passed':True,'dimensions':[[i['width'],i['height']] for i in images],'processingSelection':selection})
- first=download('Save image');first_hash=hashlib.sha256(first.read_bytes()).hexdigest();workers=js('window.__ciWorkers');requests=js('window.__ciWorkerRequests')
+ first=download('Save image');first_hash=hashlib.sha256(first.read_bytes()).hexdigest()
  # C-02: force the canary comparison to fail on a second route and assert the interface names
  # both the route that was refused and the route now in use, instead of silently falling back.
- # The forcing hook lives in the canary comparison only; tolerances are untouched.
+ # The forcing hook lives in the canary comparison only; tolerances are untouched. An explicit
+ # route has no fallback, so the run fails - the assertion is that the caption NAMES the route
+ # that failed and the route still in use, next to the error that says why.
  js("window.__FACEMORPH_FORCE_CANARY_FAIL__=true")
  js("(()=>{const s=document.querySelector('select[aria-label=\"Processing mode\"]');Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype,'value').set.call(s,'webgpu');s.dispatchEvent(new Event('change',{bubbles:true}));})()")
- run('Generate faces')
- caption=wait(lambda:(lambda t:t if ('webgpu' in t and 'cpu' in t and 'failed' in t) else None)(js("document.querySelector('.next-route-caption')?.innerText||''")),120)
- save_check('routeRejectionNamed',{'passed':True,'caption':caption})
+ before=js('window.__ciBusyChanges');click('Generate faces');wait(lambda:js('window.__ciBusyChanges')>before,30)
+ # The run is expected to fail on the explicitly selected webgpu route; wait() cannot be used
+ # here because it treats any visible error as fatal. Poll for the failure to settle instead.
+ deadline=time.monotonic()+60
+ while time.monotonic()<deadline:
+  if not js("!!document.querySelector('.next-status progress')"):break
+  time.sleep(.5)
+ caption=''
+ deadline=time.monotonic()+120
+ while time.monotonic()<deadline:
+  caption=js("document.querySelector('.next-route-caption')?.innerText||''")
+  if 'webgpu' in caption and 'cpu' in caption and 'failed' in caption:break
+  time.sleep(.5)
+ else:raise AssertionError('route caption never named the refused and current routes: '+caption)
+ save_check('routeRejectionNamed',{'passed':True,'caption':caption,'error':js("document.querySelector('.next-error')?.innerText||''")})
+ # Back to CPU for the remaining checks; the cpu qualification is already cached (C-03). The
+ # expected error above stays on screen until the next run starts, so this polls the select
+ # directly instead of wait(), which treats any visible error as fatal.
+ js("(()=>{const s=document.querySelector('select[aria-label=\"Processing mode\"]');Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype,'value').set.call(s,'cpu');s.dispatchEvent(new Event('change',{bubbles:true}));})()")
+ deadline=time.monotonic()+10
+ while time.monotonic()<deadline:
+  if js("document.querySelector('select[aria-label=\"Processing mode\"]').value")=='cpu':break
+  time.sleep(.5)
+ else:raise AssertionError('Processing mode did not return to cpu')
  js("window.__FACEMORPH_FORCE_CANARY_FAIL__=false")
+ # Rebuild the cpu runtime once after the forced rejection (stop() disposed it), so the
+ # repeat-original zero-worker baselines are measured against a warm, healthy runtime.
+ run('Generate faces')
+ # Baselines for the repeat-original zero-worker assertions are taken AFTER the forced
+ # rejection, which legitimately allocated a worker for the failed webgpu attempt.
+ workers=js('window.__ciWorkers');requests=js('window.__ciWorkerRequests')
  run('Generate faces');second=download('Save image');assert hashlib.sha256(second.read_bytes()).hexdigest()==first_hash;assert js('window.__ciWorkers')==workers,'Repeat created an inference worker';assert js('window.__ciWorkerRequests')==requests,'Repeat invoked the inference worker'
  save_check('repeatOriginal',{'passed':True,'sha256':first_hash,'newWorkers':0,'newWorkerRequests':0})
  upload('input[aria-label="Choose photo"]',first)
