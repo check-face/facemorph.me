@@ -33,9 +33,15 @@ permissions:
 jobs:
   real-ui-cpu:
     runs-on: ubuntu-24.04
-    timeout-minutes: 60
+    timeout-minutes: 75
     steps:
       - uses: actions/checkout@v4
+      - name: Restore the pinned runtime mirror
+        uses: actions/cache@v4
+        with:
+          path: .runtime-mirror
+          key: runtime-mirror-${{ inputs.runtime_sha }}
+          restore-keys: runtime-mirror-
       - name: Validate artifact run provenance
         env:
           GH_TOKEN: ${{ github.token }}
