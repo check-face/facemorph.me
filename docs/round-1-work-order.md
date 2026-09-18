@@ -233,3 +233,26 @@ green CI build is not a device result. Missing evidence is not a pass.
 - **`next-e2e` selects the CPU route through the Processing mode control.** U-09 moves that
   control; keep it reachable and keyboard-operable or the qualification breaks.
 - **Do not start the native desktop GPU matrix.** It is explicitly later work.
+
+## Status update — 18 September
+
+- **C-08 descoped from the release gate** (operator decision after cost review): the
+  CI-blocking parity job is dropped from `next-e2e.yml`; `scripts/next-parity-browser.py`
+  stays for a non-blocking scheduled tripwire after release. Enforcement remains the unit
+  determinism suite, per-device canary correctness (31/31, RGB max 1, float 0.002), and the
+  e2e artifact checks.
+- **WebGPU route fixed in the bundle**: ORT's JSEP loader fell back to the relative
+  specifier `./ort-wasm-simd-threaded.jsep.mjs`, unresolvable against a blob: base, so the
+  route died ("no available backend found") the first time it ran from served bytes.
+  `webgpu-engine.mjs` now verifies the pinned module bytes and rewrites that one literal to
+  the verified factory blob URL. First WebGPU-capable qualification still pending (matrix work).
+- **Known issue for webgpu enablement**: a cold acquire's `Cache.put` commit phase emits no
+  progress events, so a large first-asset write can exceed the 300 s stall watchdog
+  ("Generation stopped responding"). Needs progress coverage or an acquire-scoped stall
+  window before the webgpu row is qualified in-product.
+- **Harness restructured** (`scripts/next-e2e-browser.py`): locator table, named stages with
+  stage-tagged failures, seconds-fast preflight, `E2E_UNTIL`/`E2E_SKIP` for bounded local
+  runs (skips never set `passed`). `scripts/next-e2e-server.py` mirrors pinned runtime
+  assets on disk (keyed by per-file manifest sha) with a 256 MiB bound and sha-verified
+  seeding, because the public origin now 404s the pinned landmarks `.dat` and caps nothing
+  near the webgpu segment sizes.
