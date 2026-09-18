@@ -10,7 +10,7 @@ The 256MiB bound fits the webgpu segments the previous 32MiB bound could never p
 import argparse,hashlib,json,re,ssl,traceback,urllib.error,urllib.request
 from pathlib import Path
 from http.server import ThreadingHTTPServer,SimpleHTTPRequestHandler
-p=argparse.ArgumentParser();p.add_argument('--manifest-sha',required=True);p.add_argument('--cert',required=True);p.add_argument('--key',required=True);a=p.parse_args()
+p=argparse.ArgumentParser();p.add_argument('--manifest-sha',required=True);p.add_argument('--cert',required=True);p.add_argument('--key',required=True);p.add_argument('--runtime-overlay',type=Path,default=None);a=p.parse_args()
 ORIGIN='https://next.facemorph.me'
 SOURCE=Path('next-site-source.txt').read_text().strip()
 MIRROR=Path('.runtime-mirror');MIRROR.mkdir(exist_ok=True)
@@ -19,6 +19,14 @@ def request(url):return urllib.request.Request(url,headers={'User-Agent':'curl/8
 with urllib.request.urlopen(request(ORIGIN+'/runtime/manifest.json'),timeout=60) as r: manifest=r.read(4*1024*1024+1)
 assert hashlib.sha256(manifest).hexdigest()==a.manifest_sha,'Public manifest differs from requested pin'
 parsed=json.loads(manifest)
+# A runtime overlay (e.g. hosting/next-static/runtime-overlay) carries a repinned manifest
+# and small replacement assets that production does not serve yet; qualification must run
+# against exactly these bytes so the pin and the deployment move together.
+OVERLAY=a.runtime_overlay.resolve() if a.runtime_overlay else None
+if OVERLAY is not None:
+ manifest=(OVERLAY/'manifest.json').read_bytes()
+ assert hashlib.sha256(manifest).hexdigest()==a.manifest_sha,'Overlay manifest differs from requested pin'
+ parsed=json.loads(manifest)
 PATHMAP={};CHUNKMAP={}
 def index(node):
  if isinstance(node,dict):
@@ -89,6 +97,8 @@ class Handler(SimpleHTTPRequestHandler):
     m=re.fullmatch(r'/runtime/chunks/([0-9a-f]{64})\.bin',self.path)
     sha=m.group(1) if m else None
    if sha is None:return self.respond(fetch(ORIGIN+self.path),self.mime_for(self.path))
+   overlay_asset=OVERLAY/'assets'/sha if OVERLAY is not None else None
+   if overlay_asset is not None and overlay_asset.exists():return self.respond(overlay_asset.read_bytes(),self.mime_for(self.path))
    cached=MIRROR/sha
    if cached.exists():return self.respond(cached.read_bytes(),self.mime_for(self.path))
    data=self.fetch_pinned(self.path,sha)

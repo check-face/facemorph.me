@@ -26,7 +26,7 @@ on:
       runtime_sha:
         description: Public runtime manifest SHA256 (fails closed if changed)
         required: true
-        default: 982f73bc24a4437385e34ef8ed52190b578024673d694f6b10ac09ae6b71624c
+        default: d63056826e39cb7a7fb39b4530f7701903b1e3f2abe463171b164bffcb452fb6
 permissions:
   contents: read
   actions: read
@@ -80,7 +80,7 @@ jobs:
           mkdir -p next-e2e-evidence/downloads
           cp next-site-source.txt next-site-SHA256SUMS source-run.json next-web-verification.json next-e2e-evidence/
           openssl req -x509 -newkey rsa:2048 -nodes -keyout "$RUNNER_TEMP/next.key" -out "$RUNNER_TEMP/next.crt" -days 1 -subj '/CN=next.facemorph.me' >/dev/null 2>&1
-          python scripts/next-e2e-server.py --manifest-sha "$RUNTIME_SHA" --cert "$RUNNER_TEMP/next.crt" --key "$RUNNER_TEMP/next.key" > next-e2e-evidence/server.log 2>&1 &
+          python scripts/next-e2e-server.py --manifest-sha "$RUNTIME_SHA" --runtime-overlay hosting/next-static/runtime-overlay --cert "$RUNNER_TEMP/next.crt" --key "$RUNNER_TEMP/next.key" > next-e2e-evidence/server.log 2>&1 &
           server_pid=$!
           google-chrome --headless=new --no-sandbox --ignore-certificate-errors --no-proxy-server --host-resolver-rules='MAP next.facemorph.me:443 127.0.0.1:8443' --remote-debugging-port=9222 --user-data-dir="$RUNNER_TEMP/next-e2e-chrome" about:blank > next-e2e-evidence/chrome.log 2>&1 &
           chrome_pid=$!

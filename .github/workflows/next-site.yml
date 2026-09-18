@@ -54,7 +54,7 @@ jobs:
     with:
       artifact_run: ${{ github.run_id }}
       artifact_name: next-site-${{ github.sha }}
-      runtime_sha: 982f73bc24a4437385e34ef8ed52190b578024673d694f6b10ac09ae6b71624c
+      runtime_sha: d63056826e39cb7a7fb39b4530f7701903b1e3f2abe463171b164bffcb452fb6
   compiled-ui:
     needs: artifact
     runs-on: ubuntu-24.04
