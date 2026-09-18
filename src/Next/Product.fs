@@ -163,7 +163,7 @@ let init () =
     { Inputs = [{id="face-1";mode="text";value="hello";file=emptyFile}; {id="face-2";mode="text";value=System.DateTime.Today.ToString("yyyy-MM-dd");file=emptyFile}]
       Faces=[||];VideoUrl="";Kind="pairwise-figure8";Width=0.2;Pinch=false;Frames=16;Fps=16;Provider="auto"
       Busy=false;JobId=0;Stage="idle";Status="";Fraction=0.;Browse=None;Names=[||];NameQuery="";NameLimit=48;Error=None;DebugStatus="";Debug=false;NextId=3;Crop=None;Route="";Rejected=None;Invite=testingInvited()
-      UseSlider=false;SliderFrames=None;Warn=None;Overflow=false;PhotoQueue=[];ActiveFace=None;Remaining="" },
+      UseSlider=false;SliderFrames=None;Warn=None;Overflow=false;PhotoQueue=[];PendingFaces=[];ActiveFace=None;Remaining="" },
     Cmd.batch [Cmd.ofSub(fun dispatch -> subscribe (Progressed >> dispatch)); if namesRequested() then Cmd.ofMsg(BrowseNames "face-1")]
 
 /// Time left in the job in flight, spoken. Empty without a measurement on this device.
@@ -202,23 +202,26 @@ let update msg state =
     | Mode(id,mode) when not state.Busy -> invalidatePhotoSelections(); change id (fun item -> {item with mode=mode;file=emptyFile}), Cmd.none
     | PickPhoto(id,files) when not state.Busy -> state,Cmd.OfPromise.either selectPhoto (createObj ["id" ==> id;"files" ==> files]) (fun file -> Photo(id,file)) (fun e -> PhotoError e.Message)
     | Cropped(id,file) when not (isNull file) ->
-        let next={change id (fun item -> {item with mode="photo";file=file;value=fileName file}) with Busy=false;Stage="idle";Status="";Fraction=0.;Error=None}
+        let next={change id (fun item -> {item with mode="photo";file=file;value=fileName file}) with Error=None}
         let (queued,queuedCmd)=dequeue next
-        // The crop IS the photo choice: with no other photo waiting in the queue, the e4e
+        // The crop IS the photo choice. With no run in flight and no queued photo, the e4e
         // encode for this face starts now instead of waiting for a second button press.
-        if queued.Busy || queued.PhotoQueue.Length>0 then queued,queuedCmd
+        // While another face IS still encoding, the accepted crop must not clobber that
+        // run's progress state: the face joins PendingFaces and starts on completion.
+        if queued.Busy then {queued with PendingFaces=queued.PendingFaces@[id]},queuedCmd
+        elif queued.PhotoQueue.Length>0 then queued,queuedCmd
         else queued,Cmd.batch [queuedCmd;Cmd.ofMsg (RunFace id)]
     | PhotoError message when not state.Busy || state.Stage="cropping" ->
         let next={state with Error=Some message;Busy=false;Stage=(if state.Stage="cropping" then "idle" else state.Stage);Status=""}
         dequeue next
     // A photo the alignment route cannot take whole opens the crop step first; only the crop
     // is ever aligned. Cancelling leaves the existing face and its inputs alone.
-    | Photo(id,offer) when not state.Busy && not (isNull offer) && isCropOffer offer ->
+    | Photo(id,offer) when state.ActiveFace<>Some id && not (isNull offer) && isCropOffer offer ->
         state.Crop |> Option.iter (fun previous -> revokeUrl previous.url)
         focusCropArea()
         {state with Error=None;Crop=Some {faceId=id;url=offer?url;file=offer?file;scale=offer?scale
                                           view=createCrop(createObj ["previewWidth" ==> offer?previewWidth;"previewHeight" ==> offer?previewHeight;"scale" ==> offer?scale])}},Cmd.none
-    | RequestCrop id when not state.Busy ->
+    | RequestCrop id when state.ActiveFace<>Some id ->
         match state.Inputs |> List.tryFind(fun item -> item.id=id) with
         | Some item when not (isNull item.file) ->
             state,Cmd.OfPromise.either (fun () -> previewPhoto item.file null) () (fun preview -> Photo(id,cropOffer preview item.file)) (fun e -> PhotoError e.Message)
@@ -325,10 +328,16 @@ let update msg state =
         {state with Stage=progress.stage;Status=progress.text;Fraction=progress.fraction;ActiveFace=activeFace;Remaining=remainingText()},Cmd.none
     | Completed(id,result) when id=state.JobId ->
         let next={state with Inputs=(if result.restored then List.ofArray result.inputs else state.Inputs);Kind=(if result.restored then result.kind else state.Kind);Width=(if result.restored then result.width else state.Width);Pinch=(if result.restored then result.pinch else state.Pinch);Frames=(if result.restored then result.frames else state.Frames);Fps=(if result.restored then result.fps else state.Fps);Busy=false;Faces=result.faces;VideoUrl=result.videoUrl;Status=result.message;Error=(if result.errorMessage="" then None else Some result.errorMessage);Stage=(if result.errorMessage="" then "done" else "error");Fraction=(if result.errorMessage="" then 1. else 0.);Warn=None;Remaining="";ActiveFace=None;PhotoQueue=[]}
-        if result.videoUrl<>"" && state.UseSlider then next,Cmd.OfPromise.either sliderFrames () SliderLoaded (fun _ -> SliderLoaded null)
-        else next,Cmd.none
+        let drained={next with PendingFaces=[]}
+        let pendingRun=match next.PendingFaces with | head::_ -> Cmd.ofMsg (RunFace head) | [] -> Cmd.none
+        let sliderCmd=if result.videoUrl<>"" && state.UseSlider then Cmd.OfPromise.either sliderFrames () SliderLoaded (fun _ -> SliderLoaded null) else Cmd.none
+        drained,Cmd.batch [sliderCmd;pendingRun]
     | Failed(id,message) when id=state.JobId ->
-        {state with Busy=false;Error=Some message;Status="";Stage="error";Fraction=0.;Warn=None;Remaining="";ActiveFace=None},Cmd.none
+        let next={state with Busy=false;Error=Some message;Status="";Stage="error";Fraction=0.;Warn=None;Remaining="";ActiveFace=None}
+        // A failed run still drains queued faces: the second face was cropped on purpose.
+        match next.PendingFaces with
+        | head::_ -> {next with PendingFaces=[]},Cmd.ofMsg (RunFace head)
+        | [] -> next,Cmd.none
     | Cancel when state.Busy -> cancelWork(); {state with Stage="cancelling";Status="Cancelling…"},Cmd.none
     | Save id -> state,noticeTask saveMedia id
     | Share id -> state,noticeTask shareMedia id
@@ -488,14 +497,14 @@ let viewFace (state:State) dispatch (index:int) (item:Input) (label:string) =
                         let files=photoFiles e
                         dispatch(if fileListLength files>1 then Photos(Some item.id,files) else PickPhoto(item.id,files)))
                   prop.children [
-        Html.input [prop.id ("photo-"+item.id);prop.type'.file;prop.hidden true;prop.accept "image/*";prop.disabled state.Busy;prop.ariaLabel "Choose photo";prop.onChange(fun (e:Browser.Types.Event) -> dispatch(PickPhoto(item.id,photoFiles e)))]
+        Html.input [prop.id ("photo-"+item.id);prop.type'.file;prop.hidden true;prop.accept "image/*";prop.ariaLabel "Choose photo";prop.onChange(fun (e:Browser.Types.Event) -> dispatch(PickPhoto(item.id,photoFiles e)))]
         Html.div [prop.className "next-face-image";prop.children [
             match face with
             | Some f -> Html.img [prop.src f.url;prop.alt (sprintf "Generated face from %s" label);prop.width 1024;prop.height 1024;prop.className "next-face-img"]
             | None ->
                 // The empty tile is a photo drop target, never a bare plus: the plus belongs to
                 // the insertion connector between faces, and the two must not be mistaken.
-                Html.button [prop.type'.button;prop.className "next-face-empty";prop.tabIndex -1;prop.disabled state.Busy
+                Html.button [prop.type'.button;prop.className "next-face-empty";prop.tabIndex -1
                              prop.ariaLabel "Choose photo";prop.onClick(fun _ -> openPhotoPicker item.id)
                              prop.children [photoIcon [];Html.span "Drop a photo, or tap to choose"]]
             if active then Html.div [prop.className "next-face-progress";prop.children [Html.div [prop.className "next-face-progress-fill"]]]]]
@@ -511,7 +520,7 @@ let viewFace (state:State) dispatch (index:int) (item:Input) (label:string) =
         if item.mode="photo" then
             Html.div [prop.className "next-file";prop.children [
                 Html.span item.value
-                Mui.button [button.variant.text;button.size.small;button.disabled (state.Busy || isNull item.file)
+                Mui.button [button.variant.text;button.size.small;button.disabled ((state.ActiveFace=Some item.id) || isNull item.file)
                             prop.onClick(fun _ -> dispatch(RequestCrop item.id));button.children "Crop photo"]]]
         let faceReady =
             match item.mode with

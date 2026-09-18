@@ -24,6 +24,12 @@
  *
  * A prior only decides what to try first. An admission timing measured on this device replaces it,
  * because the device in front of us outranks anything recorded on another one.
+ *
+ * FALLBACK INVARIANT (operator direction, 19 September): a fallback must never select a route
+ * whose recorded per-face cost is higher than another route still available on the device.
+ * Each entry's `measured` table is the evidence that fixes its `order`, and
+ * route-priors.test.mjs asserts every ordering is ascending by measured cost. When a new keep
+ * row lands in autoresearch/results.tsv, update `measured` and `order` together.
  */
 
 export const ROUTE_PRIORS = Object.freeze([
@@ -34,6 +40,7 @@ export const ROUTE_PRIORS = Object.freeze([
     // unstable one fails admission rather than being pre-emptively avoided.
     when: capabilities => capabilities.webgpu,
     order: ['webgpu', 'cpu', 'webgl'],
+    measured: {webgpu: 618, cpu: 2582, webgl: 13000},
     because: 'WebGPU measured 618 ms on a phone and 294 ms on a Mac; nothing else is close'
   },
   {
@@ -42,6 +49,7 @@ export const ROUTE_PRIORS = Object.freeze([
     // because it is an Android measurement.
     when: capabilities => capabilities.android,
     order: ['cpu', 'webgl'],
+    measured: {cpu: 5911, webgl: 13000},
     because: 'S24 Ultra: CPU 5,911 ms against WebGL about 13,000 ms per face'
   },
   {
