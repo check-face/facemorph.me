@@ -203,7 +203,11 @@ let update msg state =
     | PickPhoto(id,files) when not state.Busy -> state,Cmd.OfPromise.either selectPhoto (createObj ["id" ==> id;"files" ==> files]) (fun file -> Photo(id,file)) (fun e -> PhotoError e.Message)
     | Cropped(id,file) when not (isNull file) ->
         let next={change id (fun item -> {item with mode="photo";file=file;value=fileName file}) with Busy=false;Stage="idle";Status="";Fraction=0.;Error=None}
-        dequeue next
+        let (queued,queuedCmd)=dequeue next
+        // The crop IS the photo choice: with no other photo waiting in the queue, the e4e
+        // encode for this face starts now instead of waiting for a second button press.
+        if queued.Busy || queued.PhotoQueue.Length>0 then queued,queuedCmd
+        else queued,Cmd.batch [queuedCmd;Cmd.ofMsg (RunFace id)]
     | PhotoError message when not state.Busy || state.Stage="cropping" ->
         let next={state with Error=Some message;Busy=false;Stage=(if state.Stage="cropping" then "idle" else state.Stage);Status=""}
         dequeue next
@@ -495,7 +499,7 @@ let viewFace (state:State) dispatch (index:int) (item:Input) (label:string) =
                              prop.ariaLabel "Choose photo";prop.onClick(fun _ -> openPhotoPicker item.id)
                              prop.children [photoIcon [];Html.span "Drop a photo, or tap to choose"]]
             if active then Html.div [prop.className "next-face-progress";prop.children [Html.div [prop.className "next-face-progress-fill"]]]]]
-        setpointField {Item=item;Label=label;Disabled=state.Busy
+        setpointField {Item=item;Label=label;Disabled=false
                        OnEdit=(fun value -> dispatch(Edit(item.id,value)));OnMode=(fun mode -> dispatch(Mode(item.id,mode)))
                        OnBrowse=(fun () -> dispatch(BrowseNames item.id));OnPick=(fun () -> openPhotoPicker item.id)}
         // Compatibility and state mirror for tooling that reads the per-face source as a
@@ -509,8 +513,15 @@ let viewFace (state:State) dispatch (index:int) (item:Input) (label:string) =
                 Html.span item.value
                 Mui.button [button.variant.text;button.size.small;button.disabled (state.Busy || isNull item.file)
                             prop.onClick(fun _ -> dispatch(RequestCrop item.id));button.children "Crop photo"]]]
-        if face.IsSome || (item.mode="photo" && not (isNull item.file)) then
+        let faceReady =
+            match item.mode with
+            | "text" | "seed" -> not (System.String.IsNullOrWhiteSpace item.value)
+            | "photo" -> not (isNull item.file)
+            | _ -> false
+        if face.IsSome || faceReady then
             // Per-face generate (U-03): regenerating one face never synthesises any other.
+            // Text and seed faces get the button too: typing a name is the input, and the
+            // button is how that one face is generated without touching the others.
             FancyButton [button.variant.contained;button.size.small;prop.className "next-face-generate"
                          button.disabled state.Busy;prop.onClick(fun _ -> dispatch(RunFace item.id));button.children "Generate"]
         Html.div [prop.className "next-actions next-face-actions";prop.children [
