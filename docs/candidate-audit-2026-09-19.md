@@ -69,6 +69,10 @@ source. It is **not** satisfied in the world until the tree is promoted (A-8).
 
 ## 4. New findings — visual + UX pass (built app, both breakpoints)
 
+> **Operator approval, 19 September:** every A finding below is sanctioned for the next
+> build round and is scheduled in the [round-2 work order](round-2-work-order.md). The
+> "+ between each face AND after" placement is confirmed as the design to make true (A-1/A-2).
+
 **A-1 — On desktop with two faces (the most common layout) there is no + anywhere.**
 `.next-morph-content.n2 .next-connector-stack { display:none }` hides the only connector the
 n2 path renders, so at ≥1000 px the sole add-face affordance is the "Add face" text button
