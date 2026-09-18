@@ -1,4 +1,4 @@
-# Testing round 2 — twelve items, sense-checked against the working tree
+# Testing round 2 — thirteen items, sense-checked against the working tree
 
 Raised **18 September 2026**, after the round-1 work landed on
 `candidate/next-delivery-20260916` (`364c2d4`…`084d698`). Every "current behaviour" below was
@@ -294,6 +294,61 @@ zoom 1 and stays finger-locked (content under the finger stays under it) while z
 keys step a meaningful distance (one viewport-width per press is fine). Same check on a small
 photo (side ≈ viewport) where behaviour is already correct and must not regress.
 
+## R2-13 — "Use Slider" regenerates because frames are never saved; estimates read wrong · CONFLICT — two wiring defects, machinery already built
+
+**Operator report:** with Use Slider checked the frames were not saved and must be
+regenerated; and the time estimate should show per-image time and a total for the whole morph,
+with the bar showing that progress.
+
+**Defect 1 — the frame store is never fed.** The whole C-06/U-14 pipeline exists and is
+tested: `videoWriter` persists canonical + derivative frames when called with `framesKey`
+(`media.mjs:139`), `morphFramesKey()` computes the shared identity
+(`product-bridge.mjs`), the store refuses partial restores, and `sliderFrames()` reads it.
+But the morph job calls `videoWriter({codec,fps,signal,onProgress})` — **no `framesKey`, no
+`totalFrames`** (`product-bridge.mjs:155`). The persistence branch can never fire, the store
+stays empty, and toggling Use Slider shows "This morph's frames are not saved on this device
+yet… Generate the morph again" — the report, verbatim, from code that was supposed to make
+that sentence impossible.
+
+**Do:**
+- Pass `framesKey: await morphFramesKey()` and `totalFrames: path.totalFrames` at the writer
+  call site. Frames persist as generated; toggling Use Slider after a morph scrubs the stored
+  frames with zero regeneration.
+- On morph start, check the store first: a complete `frameStoreGet` means the job synthesises
+  **nothing** — feed the stored canonical PNGs straight to the writer (encode-only, seconds
+  not minutes) and treat a repeat morph as a cache hit, exactly like a repeated face.
+- R2-4's live slider then comes free: with the store actually being fed, frames land per key
+  as generated (infill order per R2-4), and the slider reads what exists so far — add a
+  partial read for scrubbing-in-progress (`frameStoreGet`'s totalFrames guard must keep
+  refusing *restore* of partial morphs; scrubbing-while-generating reads per-frame keys).
+
+**Defect 2 — the remaining-time readout is wired to the wrong fields.** `remainingText()`
+calls `estimator.remaining(jobProgress())` (`Product.fs:170`), but `jobProgress()` returns
+`{facesDone,facesTotal,framesDone,framesTotal}` while `remaining({facesLeft,framesLeft})`
+destructures *left* counts (`estimate.mjs`). Absent keys default to 0, so once this device
+has any measurement the readout computes 0 ms — and renders "about about 1 seconds
+remaining" (it also double-prefixes `describeMs`, which already says "about"). The number
+never reflects the job's position, and nothing tests the wiring, only the estimator.
+
+**Do (estimation, per the operator's spec):**
+- Fix the call: `remaining({facesLeft: facesTotal-facesDone, framesLeft: framesTotal-framesDone})`,
+  and pin it with a test through `jobProgress()`'s real shape so the field mismatch can't
+  recur.
+- Show **per-frame time and a total, both before and during**: the pre-run paragraph gains
+  "about X per frame" (from `frameMs()`, which already falls back to per-face) next to its
+  existing total; during the job the status line reads "Generating frame k of M — about X per
+  frame, about Y remaining". The bar already tracks `frame.index/totalFrames` and the encode
+  stage; keep it on frame units so it and the numbers can never disagree.
+- Cache hits are not measurements and show no estimate (unchanged U-12 rule) — a morph served
+  from the store per Defect 1 simply finishes, instantly.
+
+**Acceptance:** generate a morph, toggle Use Slider → scrubbing starts immediately, no
+synthesis, no "not saved" note; generate the same morph again → encode-only job (no inference
+stages in diagnostics), seconds not minutes; during a fresh morph the status names per-frame
+time and a remaining total that *decreases*, and the bar advances per frame. Estimates vanish
+on a device with no measurements, as today.
+
+
 ---
 
 ## Sense-check summary
@@ -312,6 +367,7 @@ photo (side ≈ viewport) where behaviour is already correct and must not regres
 | 10 | For-testing integration | Position right, restyle into FAQ language |
 | 11 | Toasts + honest guidance | Desktop nudge fires on desktops; status line overwriteable |
 | 12 | Crop pan 1:1 | Verified bug: pan divides by zoom but ignores preview/viewport scale — ~9× too slow on 12 MP photos |
+| 13 | Slider frames saved + estimates | Verified: writer never given `framesKey` (store empty → slider demands regeneration); `remaining()` fed done-counts — always "about 1 seconds" |
 
 **Operator decisions — all resolved 18–19 September:** names experience is a fullscreen
 `/names` route/component inside the candidate — no separate `next.names.facemorph.me`
