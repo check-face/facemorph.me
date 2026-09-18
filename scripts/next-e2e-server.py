@@ -100,8 +100,8 @@ class Handler(SimpleHTTPRequestHandler):
     m=re.fullmatch(r'/runtime/chunks/([0-9a-f]{64})\.bin',self.path)
     sha=m.group(1) if m else None
    if sha is None:return self.respond(fetch(ORIGIN+self.path),self.mime_for(self.path))
-   overlay_asset=OVERLAY/'assets'/sha if OVERLAY is not None else None
-   if overlay_asset is not None and overlay_asset.exists():return self.respond(overlay_asset.read_bytes(),self.mime_for(self.path))
+   overlay_file=(OVERLAY/self.path.lstrip('/')) if OVERLAY is not None else None
+   if overlay_file is not None and overlay_file.is_file():return self.respond(overlay_file.read_bytes(),self.mime_for(self.path))
    cached=MIRROR/sha
    if cached.exists():return self.respond(cached.read_bytes(),self.mime_for(self.path))
    data=self.fetch_pinned(self.path,sha)
