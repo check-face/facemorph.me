@@ -147,8 +147,12 @@ the end. With three faces — A, B, C — tapping the "+" between A and B insert
 the morph runs A → new → B → C. The question was only: now that the main Add-face button moves
 to the end of the row (mobile) or right of the last face (desktop) as you asked, should those
 small mid-sequence "+" insertion points **stay** (useful for long chains: slot a face into the
-middle without rebuilding) or **go** (cleaner; every addition happens at the end)? Default if
-you don't care: keep them small and quiet.
+middle without rebuilding) or **go** (cleaner; every addition happens at the end)?
+
+**Resolved 18 September: keep them, small and quiet.** The connectors remain the mid-sequence
+insertion affordance; the primary Add-face button still moves to the end (mobile) / right of
+the last face (desktop) per this item, and the button currently sitting in the desktop
+middle-column morph slot goes with it.
 
 ## R2-6 — Consistency of the new elements · PARTIAL
 
@@ -259,7 +263,7 @@ There are no pop-up toasts; guidance is inline status lines and boxes. Two real 
 | 2 | Names replacement | Target `next.names.facemorph.me`; keep 200px grid + historic lossy full-size (2,911); fill missing 2,144 via Triton API; latents as metadata — resolved 18 Sep |
 | 3 | Single-face generate + eager e4e | Per-face exists (gap: first-time text faces); eager e4e missing |
 | 4 | Slider-first, infill, video-last | Missing; writer/store already support out-of-order indexed frames; hidden encode approved |
-| 5 | Add-face placement + estimate | Button sits between faces today; estimate exists from measurement; connector question open (re-explained below) |
+| 5 | Add-face placement + estimate | Button moves to end (mobile) / right (desktop); mid-insert connectors stay small — resolved 18 Sep; estimate exists from measurement |
 | 6 | UI consistency | Restyles + feature flag + names opens as its own next surface (no modal) |
 | 7 | Latent metadata CI | New work alongside the v2 catalogue |
 | 8 | Two-radii accent ban | Currently in six places; ban + restyle |
@@ -267,9 +271,9 @@ There are no pop-up toasts; guidance is inline status lines and boxes. Two real 
 | 10 | For-testing integration | Position right, restyle into FAQ language |
 | 11 | Toasts + honest guidance | Desktop nudge fires on desktops; status line overwriteable |
 
-**Operator decisions — 18 September:** resolved: names target is `next.names.facemorph.me` (no
-`names.dilger.dev`); lossy full-size publishable as the same face, missing 2,144 fillable via
-the Triton public API (no full regeneration); video encode runs hidden while scrubbing (R2-4);
-candidate opens the names experience directly, no modal, reopening per additional name
-(R2-6). **Still open — re-explained as R2-5's connector question** (the operator asked what
-"keep or drop mid-sequence insertion" meant): see the question at the end of R2-5.
+**Operator decisions — all resolved 18 September:** names target is `next.names.facemorph.me`
+(no `names.dilger.dev`); lossy full-size publishable as the same face, missing 2,144 fillable
+via the Triton public API (no full regeneration); video encode runs hidden while scrubbing
+(R2-4); candidate opens the names experience directly, no modal, reopening per additional name
+(R2-6); mid-sequence insertion connectors stay, small and quiet (R2-5). No open questions
+remain — the runway is clear to build.
