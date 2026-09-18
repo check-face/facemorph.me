@@ -34,7 +34,7 @@ export function muxMp4(samples,avcC,trackWidth,trackHeight,trackFps){
  for(let i=1;i<times.length;i++)if(times[i]<=times[i-1])throw Error('The video encoder produced frames out of order.');
  const stts=[];for(let i=0;i<samples.length;i++){const delta=(i+1<samples.length?times[i+1]:times[samples.length-1]+nominal)-times[i];const last=stts.at(-1);if(last&&last.delta===delta)last.count++;else stts.push({count:1,delta});}
  const durationMs=Math.round((times.at(-1)+nominal)/timescale*1000),keyframes=samples.map((s,i)=>s.type==='key'?i+1:0).filter(Boolean);
- const avc1=box('avc1',new Uint8Array(6),u16(1),u16(0),u16(0),new Uint8Array(12),u16(trackWidth),u16(trackHeight),u32(0x480000),u32(0x480000),u32(0),u16(1),new Uint8Array(32),u16(0x18),u16(0xffff),new Uint8Array(avcC));
+ const avc1=box('avc1',new Uint8Array(6),u16(1),u16(0),u16(0),new Uint8Array(12),u16(trackWidth),u16(trackHeight),u32(0x480000),u32(0x480000),u32(0),u16(1),new Uint8Array(32),u16(0x18),u16(0xffff),box('avcC',new Uint8Array(avcC)));
  const stbl=box('stbl',fullBox('stsd',0,0,u32(1),avc1),
   fullBox('stts',0,0,u32(stts.length),...stts.map(e=>concat(u32(e.count),u32(e.delta)))),
   fullBox('stss',0,0,u32(keyframes.length),...keyframes.map(u32)),
