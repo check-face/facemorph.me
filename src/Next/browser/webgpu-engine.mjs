@@ -8,8 +8,15 @@ export async function createWebGpuSession({config,noiseManifest,bytes,progress=(
  const required=134742528;if(adapter.limits.maxStorageBufferBindingSize<required)throw new DOMException('This WebGPU route needs storage bindings larger than128 MiB.','NotSupportedError');
  const sessions=[],buffers=new Set();let device,closing=false,failure;
  const moduleUrl=async(asset,mime='text/javascript')=>URL.createObjectURL(new Blob([await bytes(asset)],{type:mime}));
- const runtimeUrl=await moduleUrl(config.runtime.module),factoryUrl=await moduleUrl(config.runtime.factory),wasmUrl=await moduleUrl(config.runtime.wasm,'application/wasm');
- const ort=await import(/* webpackIgnore: true */ runtimeUrl);ort.env.wasm.numThreads=1;// JSEP executes synthesis on the GPU; only the small CPU prefix stage runs here, so extra wasm threads buy nothing (C-04).ort.env.wasm.wasmPaths={mjs:factoryUrl,wasm:wasmUrl};
+ const factoryUrl=await moduleUrl(config.runtime.factory),wasmUrl=await moduleUrl(config.runtime.wasm,'application/wasm');
+ // ORT's JSEP loader falls back to the relative specifier 'ort-wasm-simd-threaded.jsep.mjs'
+ // when its wasmPaths lookup misses. Relative specifiers cannot resolve against a blob: base,
+ // which killed the whole webgpu route with "Failed to resolve module specifier" the first
+ // time it ran in the served bundle. `bytes(asset)` has already verified the pinned sha256;
+ // this rewrites exactly that one double-quoted literal to the verified factory blob URL so
+ // the fallback resolves to the same verified bytes by construction.
+ const patchedRuntime=await bytes(config.runtime.module).then(b=>new TextDecoder().decode(b).replace('"ort-wasm-simd-threaded.jsep.mjs"',JSON.stringify(factoryUrl)));
+ const ort=await import(/* webpackIgnore: true */ URL.createObjectURL(new Blob([patchedRuntime],{type:'text/javascript'})));ort.env.wasm.numThreads=1;// JSEP executes synthesis on the GPU; only the small CPU prefix stage runs here, so extra wasm threads buy nothing (C-04).ort.env.wasm.wasmPaths={mjs:factoryUrl,wasm:wasmUrl};
  const json=async asset=>JSON.parse(new TextDecoder().decode(await bytes(asset))),floats=async asset=>{const b=await bytes(asset);return new Float32Array(b.buffer,b.byteOffset,b.byteLength/4);};
  async function dispose(){closing=true;for(const session of sessions)try{await session.release();}catch{}for(const buffer of buffers)buffer.destroy();buffers.clear();device?.destroy();}
  try{
