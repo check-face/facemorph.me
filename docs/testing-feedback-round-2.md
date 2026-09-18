@@ -76,7 +76,12 @@ to the gallery host; wire the product's three-tier lookup (preview → full-size
 generation) with automatic materialisation on selection; capture the live names baseline and
 compare the rebuild against it.
 
-## R2-3 — Generate one face; eager e4e · PARTIAL
+## R2-3 — Generate one face; eager e4e · PARTIAL — per-face half fixed in tree 19 Sept
+
+**Update 19 September (audit):** the per-face gap is closed — `faceReady` shows the Generate
+button for text and seed faces too (`Product.fs:531`), and a `PendingFaces` queue runs picks
+made while a job is busy, in order. **Eager e4e remains missing** (verified: photo selection
+still only records the file). Original analysis below.
 
 **Able to generate just one face:** yes for photos and for regenerating anything already
 generated — `RunFace` (`Product.fs:283`) posts `action:'face'` and `product-bridge`
@@ -157,10 +162,12 @@ to the end of the row (mobile) or right of the last face (desktop) as you asked,
 small mid-sequence "+" insertion points **stay** (useful for long chains: slot a face into the
 middle without rebuilding) or **go** (cleaner; every addition happens at the end)?
 
-**Resolved 18 September: keep them, small and quiet.** The connectors remain the mid-sequence
-insertion affordance; the primary Add-face button still moves to the end (mobile) / right of
-the last face (desktop) per this item, and the button currently sitting in the desktop
-middle-column morph slot goes with it.
+**Resolved 18 September, reaffirmed 19 September: keep the + between each face AND after.**
+The connectors remain the mid-sequence insertion affordance; the primary Add-face button
+still moves to the end (mobile) / right of the last face (desktop) per this item, and the
+button currently sitting in the desktop middle-column morph slot goes with it. The audit
+found the two layouts where this decision is not yet true — see A-1 (n2 desktop hides every
++) and A-2 (n3 trailing + off-viewport) in candidate-audit-2026-09-19.md.
 
 ## R2-6 — Consistency of the new elements · PARTIAL
 
