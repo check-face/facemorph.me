@@ -16,17 +16,20 @@ SOURCE=Path('next-site-source.txt').read_text().strip()
 MIRROR=Path('.runtime-mirror');MIRROR.mkdir(exist_ok=True)
 ASSET_BOUND=256*1024*1024
 def request(url):return urllib.request.Request(url,headers={'User-Agent':'curl/8.7.1'})
-with urllib.request.urlopen(request(ORIGIN+'/runtime/manifest.json'),timeout=60) as r: manifest=r.read(4*1024*1024+1)
-assert hashlib.sha256(manifest).hexdigest()==a.manifest_sha,'Public manifest differs from requested pin'
+# With an overlay the pin applies to the overlay manifest: qualification runs against the
+# bytes production does not serve yet, so the origin copy is irrelevant at startup. Asset
+# bytes are sha-addressed and fetched on demand either way.
+if a.runtime_overlay:
+ manifest=(a.runtime_overlay.resolve()/'manifest.json').read_bytes()
+ assert hashlib.sha256(manifest).hexdigest()==a.manifest_sha,'Overlay manifest differs from requested pin'
+else:
+ with urllib.request.urlopen(request(ORIGIN+'/runtime/manifest.json'),timeout=60) as r: manifest=r.read(4*1024*1024+1)
+ assert hashlib.sha256(manifest).hexdigest()==a.manifest_sha,'Public manifest differs from requested pin'
 parsed=json.loads(manifest)
 # A runtime overlay (e.g. hosting/next-static/runtime-overlay) carries a repinned manifest
 # and small replacement assets that production does not serve yet; qualification must run
 # against exactly these bytes so the pin and the deployment move together.
 OVERLAY=a.runtime_overlay.resolve() if a.runtime_overlay else None
-if OVERLAY is not None:
- manifest=(OVERLAY/'manifest.json').read_bytes()
- assert hashlib.sha256(manifest).hexdigest()==a.manifest_sha,'Overlay manifest differs from requested pin'
- parsed=json.loads(manifest)
 PATHMAP={};CHUNKMAP={}
 def index(node):
  if isinstance(node,dict):
