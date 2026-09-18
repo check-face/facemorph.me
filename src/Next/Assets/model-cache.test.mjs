@@ -10,13 +10,16 @@ const asset = (value = bytes, url = 'https://models.example/immutable') => ({ sh
 const pause = () => new Promise(resolve => setTimeout(resolve, 0));
 function fixture(fetcher = async () => new Response(bytes)) {
   const entries = new Map(), events = [], calls = [];
+  // Derived records (verified markers, canary qualifications) share the store under non-hex
+  // keys; asset-byte assertions count only real asset identities.
+  const assetEntries = () => [...entries.keys()].filter(key => /^[0-9a-f]{64}$/.test(key));
   const store = {
     get: async hash => entries.has(hash) ? new Response(entries.get(hash)) : undefined,
     put: async (hash, response) => { const complete = new Uint8Array(await response.arrayBuffer()); entries.set(hash, complete); },
     remove: async hash => entries.delete(hash)
   };
   const options = { store, fetcher: async (...args) => { calls.push(args[0]); return fetcher(...args); }, report: event => events.push(event) };
-  return { entries, events, calls, store, options, cache: createModelCache(options) };
+  return { entries, events, calls, assetEntries, store, options, cache: createModelCache(options) };
 }
 
 test('incremental hash matches independent crypto for vectors and arbitrary chunk boundaries', () => {
@@ -37,7 +40,7 @@ test('release A/B and CPU/GPU manifests reuse shared hashes, retain old assets, 
   const restarted = createModelCache(f.options);
   const handle = await restarted.acquire(asset());
   assert.deepEqual(new Uint8Array(await (await handle.open()).arrayBuffer()), bytes);
-  assert.equal(f.calls.length, 2); assert.equal(f.entries.size, 2);
+  assert.equal(f.calls.length, 2); assert.equal(f.assetEntries().length, 2);
 });
 test('concurrent subscribers share download; cancelling one does not cancel another', async () => {
   let release;
@@ -47,7 +50,7 @@ test('concurrent subscribers share download; cancelling one does not cancel anot
   const failed = assert.rejects(first, { name: 'AbortError' });
   const second = f.cache.acquire(asset());
   await pause(); controller.abort(); release(); await failed; await second;
-  assert.equal(f.calls.length, 1); assert.equal(f.entries.size, 1);
+  assert.equal(f.calls.length, 1); assert.equal(f.assetEntries().length, 1);
 });
 test('all subscribers cancel; immediate fresh request succeeds without inheriting cancelled task', async () => {
   let attempt = 0;
@@ -61,10 +64,13 @@ test('all subscribers cancel; immediate fresh request succeeds without inheritin
   await pause(); controller.abort(); const next = f.cache.acquire(asset());
   await failed; await next; assert.equal(f.calls.length, 2);
 });
-test('corrupt retained bytes are removed and replaced; invalid network data never commits', async () => {
+test('corrupt retained bytes fail on first open, are removed, and the next acquire downloads fresh; invalid network data never commits', async () => {
   const f = fixture(); f.entries.set(asset().sha256, new Uint8Array(bytes.length));
-  await f.cache.acquire(asset()); assert.equal(f.calls.length, 1);
+  const handle = await f.cache.acquire(asset()); assert.equal(f.calls.length, 0, 'a retained hit does not re-download');
+  await assert.rejects((await handle.open()).arrayBuffer(), /integrity/);
+  assert.equal(f.assetEntries().length, 0, 'the corrupt identity is removed');
   assert.ok(f.events.some(e => e.status === 'corrupt-removed'));
+  await f.cache.acquire(asset()); assert.equal(f.calls.length, 1);
   for (const wrong of [new Uint8Array(bytes.length), bytes.slice(1), new Uint8Array(bytes.length+1)]) {
     const bad = fixture(async () => new Response(wrong));
     await assert.rejects(bad.cache.acquire(asset()), /integrity|declared size/);
@@ -106,14 +112,14 @@ test('bounded concurrency and cancellation while queued avoid excess transfers',
   await pause(); controller.abort(); await failed; release(); await first;
   assert.equal(f.calls.length, 1);
 });
-test('cancelled retained-file validation must not evict the stored asset', async () => {
+test('a retained hit is answered without reading bytes or the network; its first open verifies once', async () => {
   const f = fixture(); f.entries.set(asset().sha256, bytes);
   f.store.get = async () => new Response(new ReadableStream({ start() {} }));
   const controller = new AbortController();
-  const first = f.cache.acquire(asset(), { signal: controller.signal });
-  const failed = assert.rejects(first, { name: 'AbortError' });
-  await pause(); controller.abort(); await failed; await pause();
-  assert.equal(f.entries.size, 1); assert.equal(f.calls.length, 0);
+  const handle = await f.cache.acquire(asset(), { signal: controller.signal });
+  controller.abort(); await pause();
+  assert.equal(f.calls.length, 0);
+  assert.deepEqual(f.events.map(e => e.status), ['retained'], 'no verification happens at acquire time');
 });
 test('eviction after acquire is reported without pretending to know its cause', async () => {
   const f = fixture(); const handle = await f.cache.acquire(asset());
@@ -149,10 +155,37 @@ test('cooperating instances recheck shared storage inside the per-hash lock', as
   await Promise.all([a.acquire(asset()), b.acquire(asset())]);
   assert.equal(f.calls.length, 1);
 });
-test('handle read detects bytes changed by another context after acquisition', async () => {
-  const f = fixture(); const handle = await f.cache.acquire(asset());
+test('a handle read detects bytes changed by another context until the asset is verified', async () => {
+  const f = fixture(); f.entries.set(asset().sha256, bytes); // stored by an earlier version: no marker yet
+  const handle = await f.cache.acquire(asset());
   f.entries.set(asset().sha256, new Uint8Array(bytes.length));
   await assert.rejects((await handle.open()).arrayBuffer(), /integrity/);
+  assert.equal(f.assetEntries().length, 0);
+});
+
+test('two warm generations perform at most one full-asset digest (C-05)', async () => {
+  const f = fixture(); f.entries.set(asset().sha256, bytes); // present but never verified
+  const generate = async () => {
+    const handle = await f.cache.acquire(asset());
+    return new Uint8Array(await (await handle.open()).arrayBuffer());
+  };
+  assert.deepEqual(await generate(), bytes);
+  assert.deepEqual(await generate(), bytes);
+  const verified = f.events.filter(e => e.status === 'verified' && e.sha256 === asset().sha256);
+  assert.equal(verified.length, 1, `full digests across two warm generations: ${verified.length}`);
+  assert.equal(f.calls.length, 0, 'a warm generation never touches the network');
+});
+
+test('downloaded bytes are marked verified, so no later open re-hashes them', async () => {
+  const f = fixture();
+  await f.cache.acquire(asset());
+  f.events.length = 0; f.calls.length = 0;
+  const handle = await f.cache.acquire(asset());
+  assert.deepEqual(new Uint8Array(await (await handle.open()).arrayBuffer()), bytes);
+  assert.equal(f.events.filter(e => e.status === 'verified').length, 0, 'the download already verified these bytes');
+  assert.equal(f.calls.length, 0);
+  const record = await f.cache.records.get('verified:' + asset().sha256);
+  assert.equal(record?.sha256, asset().sha256, 'the durable verified-asset marker was recorded');
 });
 test('conflicting sizes cannot join pending work for the same hash', async () => {
   const f = fixture(); const first = f.cache.acquire(asset());
@@ -189,4 +222,38 @@ test('native WebView uses HTTPS cache keys without fetching the logical key orig
     assert.deepEqual(new Uint8Array(await (await handle.open()).arrayBuffer()),bytes);
     assert.deepEqual(requested,[asset().url]);
   } finally {if(oldLocation===undefined)delete globalThis.location;else globalThis.location=oldLocation;if(oldCaches===undefined)delete globalThis.caches;else globalThis.caches=oldCaches;}
+});
+
+test('a download reports bytes as they arrive, not just 0 and then the whole asset', async () => {
+  // C-10: the observable defect was a bar that sat at zero through a 158 MB download and then
+  // jumped. Stream a multi-megabyte asset in realistic chunks and require real intermediate
+  // readings that only ever increase and end at the exact declared size.
+  const big = randomBytes(5 * 1024 * 1024 + 7);
+  const chunk = 256 * 1024;
+  const f = fixture(async () => new Response(new ReadableStream({
+    start(controller) {
+      for (let at = 0; at < big.length; at += chunk) controller.enqueue(new Uint8Array(big.subarray(at, at + chunk)));
+      controller.close();
+    }
+  })));
+  const item = asset(big, 'https://models.example/large');
+  await f.cache.acquire(item);
+  const ticks = f.events.filter(e => e.status === 'progress');
+  assert.ok(ticks.length >= 4, `only ${ticks.length} intermediate readings`);
+  for (const tick of ticks) { assert.equal(tick.sha256, item.sha256); assert.equal(tick.bytes, item.size); }
+  const loaded = ticks.map(t => t.loaded);
+  assert.deepEqual(loaded, [...loaded].sort((a, b) => a - b));
+  assert.equal(new Set(loaded).size, loaded.length, 'a reading repeated instead of advancing');
+  assert.ok(loaded[0] > 0 && loaded.at(-1) <= item.size);
+  assert.equal(f.events.at(-1).status, 'saved');
+  // Counting never alters the bytes the store commits.
+  assert.deepEqual(new Uint8Array(f.entries.get(item.sha256)), new Uint8Array(big));
+});
+
+test('an asset already held reports no download ticks at all', async () => {
+  const f = fixture();
+  await f.cache.acquire(asset());
+  f.events.length = 0;
+  await f.cache.acquire(asset());
+  assert.deepEqual(f.events.map(e => e.status), ['retained']);
 });

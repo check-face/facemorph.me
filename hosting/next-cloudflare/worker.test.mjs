@@ -13,3 +13,19 @@ test('Origins and consent fail closed; native preflights have no credentials/wil
 test('Oversized/chunked and invalid UTF8 input cannot reach storage',async()=>{const {puts,env}=store();assert.equal((await worker.fetch(request({...event(),padding:'x'.repeat(3000)}),env)).status,400);const r=request();const body=new ReadableStream({start(c){c.enqueue(new Uint8Array([0xff]));c.close();}});assert.equal((await worker.fetch(new Request(r.url,{method:'POST',headers:r.headers,body,duplex:'half'}),env)).status,400);assert.equal(puts.length,0);});
 test('Missing free-plan confirmation/binding and quota failure do not claim a save',async()=>{assert.equal((await worker.fetch(request(),{})).status,503);assert.equal((await worker.fetch(request(),{FREE_PLAN_CONFIRMED:'true'})).status,503);assert.equal((await worker.fetch(request(),{FREE_PLAN_CONFIRMED:'true',DIAGNOSTICS:{put:async()=>{throw Error('quota');}}})).status,503);});
 test('Private deletion cannot cross run boundary and never fetches raw report values',async()=>{const calls=[],prefix='runs/'+id+'/',opts={run:id,account:'a'.repeat(32),namespace:'b'.repeat(32),token:'private-token'};const result=await deleteRun({...opts,fetchImpl:async(url,options)=>{calls.push({url:String(url),options});return Response.json(options.method==='DELETE'?{success:true}:{success:true,result:[{name:prefix+'event-1'}],result_info:{}});}});assert.equal(result.deleted,1);assert.equal(calls.length,2);assert.equal(new URL(calls[0].url).searchParams.get('prefix'),prefix);assert.deepEqual(JSON.parse(calls[1].options.body),[prefix+'event-1']);await assert.rejects(deleteRun({...opts,fetchImpl:async()=>Response.json({success:true,result:[{name:'runs/OTHER/private'}]})}),/outside/);});
+test('A run whose page went away mid-job is storable, and is not dressed up as a verdict',async()=>{
+ const {puts,env}=store();
+ // C-09: the terminal event a backgrounded phone sends. It has to be accepted, stored under the
+ // same run prefix, and remain distinguishable from a completion or a failure.
+ assert.equal((await worker.fetch(request({...event(),event:'interrupted',stage:undefined,stageMs:undefined,elapsedMs:4200}),env)).status,204);
+ assert.equal(puts.length,1);assert.equal(puts[0][0].startsWith('runs/'+id+'/'),true);
+ assert.equal(JSON.parse(puts[0][1]).event,'interrupted');
+ for(const bad of ['done','abandoned','hidden',''])assert.equal((await worker.fetch(request({...event(),event:bad}),env)).status,400);
+ assert.equal(puts.length,1);
+});
+test('The two stages a tester most needs to see are collectable',async()=>{
+ const {puts,env}=store();
+ for(const stage of ['fallback-cpu','original-cache-invalid'])assert.equal((await worker.fetch(request({...event(),stage}),env)).status,204);
+ assert.deepEqual(puts.map(p=>JSON.parse(p[1]).stage),['fallback-cpu','original-cache-invalid']);
+ assert.equal((await worker.fetch(request({...event(),stage:'gpu-stage'}),env)).status,400);
+});

@@ -263,7 +263,7 @@ managedBudgetBytes=384*1024*1024,browserHeadroomBytes=64*1024*1024}={}){
     stats.coefficientsSha256=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',aggregate)),v=>v.toString(16).padStart(2,'0')).join('');
     stats.firstGpuBlock=selected.firstGpuBlock;stats.gpuBlocks=selected.gpuBlocks;
     if(!pure){
-      ort=await stage('CPU runtime import',()=>import(runtimeUrl));stats.ortRuntimeImported=true;stats.runtimeUrl=runtimeUrl;ort.env.wasm.numThreads=1;if(wasmPaths)ort.env.wasm.wasmPaths=wasmPaths;
+      ort=await stage('CPU runtime import',()=>import(runtimeUrl));stats.ortRuntimeImported=true;stats.runtimeUrl=runtimeUrl;ort.env.wasm.numThreads=(typeof SharedArrayBuffer!=='undefined'&&typeof crossOriginIsolated!=='undefined'&&crossOriginIsolated)?Math.min(4,(typeof navigator!=='undefined'&&navigator.hardwareConcurrency||1)-1):1;if(wasmPaths)ort.env.wasm.wasmPaths=wasmPaths;
       await stage('CPU prefix session',async()=>{let bytes;try{bytes=await ownedFetch(assetBase+selected.prefix.file,selected.prefix.sha256,selected.prefix.bytes);
         cpu=await ort.InferenceSession.create(new Uint8Array(bytes),{executionProviders:['wasm'],graphOptimizationLevel:'disabled',enableCpuMemArena:false,enableMemPattern:false,extra:{session:{disable_prepacking:'1'}}});stats.ortSessionCount=1;return cpu;
       }finally{if(bytes)jsRelease(bytes.byteLength);}});

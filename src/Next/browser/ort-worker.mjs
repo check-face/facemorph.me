@@ -1,11 +1,42 @@
 import {createWebGpuSession} from './webgpu-engine.mjs';
-import {decodeReferencePng,encodeRgbaPng} from './png.mjs';
+import {encodeRgbaPng} from './png.mjs';
 import {createBrowserModelCache} from '../Assets/model-cache.mjs';
 import {inputLatent,truncate,requireLatent,rgba1024} from './identity.mjs';
 import {qualifyEncoderReference} from './encoder-preflight.mjs';
-let manifest,ort,cache,mapping,synthesis,noise,average,provider,webgl,webgpu,currentId;
+import {createAcquisitionBudget} from './acquisition-budget.mjs';
+import {createCanaryQualification} from './canary-qualification.mjs';
+let manifest,ort,cache,mapping,synthesis,noise,average,provider,webgl,webgpu,currentId,manifestSha256,qualification,resumeDrain=null;
 const report=(id,stage,extra={})=>postMessage({id,type:'progress',stage,...extra});
-async function bytes(asset,id){cache ||= await createBrowserModelCache();report(id,'asset-acquisition',{loaded:0,total:asset.size});const handle=await cache.acquire(asset);const data=await(await handle.open()).arrayBuffer();report(id,'asset-acquisition',{loaded:data.byteLength,total:asset.size});return new Uint8Array(data);}
+/**
+ * Acquisition accounting. The inference worker used to build its cache with no observer, so the
+ * only progress it could report was {loaded:0} and then {loaded:size} per asset: the bar sat at
+ * zero through a 118 MB download, jumped to full, and reset for the next file. The cache emits
+ * byte-level status; this wires it through and spends it against one budget for the whole set a
+ * route needs, so the bar crosses the download once instead of restarting at every asset.
+ */
+
+const budget=createAcquisitionBudget();
+budget.attach(({loaded,total},progressOnly)=>report(currentId,'asset-acquisition',{loaded,total,progressOnly}));
+const cacheReport=event=>budget.cacheEvent(event);
+const planAsset=budget.planAsset;
+/** Everything the chosen route will ask for before it can produce a face. */
+function planRoute(){
+ if(!manifest)return;
+ planAsset([manifest.runtime,manifest.mapping,manifest.average,manifest.noise]);
+ if(provider==='webgpu')planAsset(manifest.webgpu);
+ else if(provider==='webgl2')planAsset(manifest.webgl);
+ else planAsset(manifest.synthesis);
+ // Canary references are only fetched while this device still owes correctness checks; a bundle
+ // with a recorded qualification never downloads them (C-03).
+ if(!qualification||!qualification.complete())planAsset([manifest.sampleIndices,manifest.canaries]);
+}
+async function bytes(asset,id){
+ cache ||= await createBrowserModelCache({report:cacheReport});
+ planAsset(asset);budget.progress(false);
+ const handle=await cache.acquire(asset);const data=await(await handle.open()).arrayBuffer();
+ budget.cacheEvent({status:'saved',sha256:asset.sha256,bytes:asset.size});
+ budget.progress(false);return new Uint8Array(data);}
+
 async function floats(asset,id){const b=await bytes(asset,id);return new Float32Array(b.buffer,b.byteOffset,b.byteLength/4);}
 async function ensureOrt(id){if(ort)return;report(id,'runtime-loading');const assets=manifest.runtime.assets,module=assets.find(a=>a.url===manifest.runtime.moduleUrl),factory=assets.find(a=>a.url.endsWith('/ort-wasm-simd-threaded.mjs')),wasm=assets.find(a=>a.url.endsWith('/ort-wasm-simd-threaded.wasm'));if(!module||!factory||!wasm)throw Error('Incomplete pinned runtime bundle');
  // Import exactly the verified bytes, avoiding a second unchecked network request.
@@ -31,6 +62,7 @@ function cpuThreads(){
 
 async function encodeStream(tensor,id,qualifiedEncoderSha256){
  const started=performance.now();const descriptor=manifest.encoderStream,config=JSON.parse(new TextDecoder().decode(await bytes(descriptor,id)));
+ planAsset(config); // 108 shards, known the moment the descriptor is verified: budget for all of them.
  if(config.sourceEncoderSha256!==descriptor.sourceEncoderSha256||config.sourceEncoderSha256!==manifest.encoder?.sha256||config.preprocessingSha256!==manifest.alignmentSha256||config.preprocessingSha256!==descriptor.preprocessingSha256||config.runtime?.unshared!==true||config.runtime.maxWasmBytes!==268435456)throw Error('Streamed encoder identity mismatch.');
  const urls=[];const verifiedModule=async asset=>{const url=URL.createObjectURL(new Blob([await bytes(asset,id)],{type:'text/javascript'}));urls.push(url);return url;};
  try{
@@ -44,7 +76,7 @@ async function encodeStream(tensor,id,qualifiedEncoderSha256){
  }finally{for(const url of urls)URL.revokeObjectURL(url);}
 }
 
-async function load(id){if(synthesis||webgl||webgpu)return;cache ||= await createBrowserModelCache();noise={};for(const item of manifest.noise)noise[item.name]=await floats(item,id);
+async function load(id){if(synthesis||webgl||webgpu)return;cache ||= await createBrowserModelCache({report:cacheReport});planRoute();noise={};for(const item of manifest.noise)noise[item.name]=await floats(item,id);
  report(id,'model-loading');const started=performance.now();
  if(provider==='webgpu'){if(!manifest.webgpu)throw Error('WebGPU bundle unavailable');webgpu=await createWebGpuSession({config:manifest.webgpu,noiseManifest:manifest.noise,bytes:asset=>bytes(asset,currentId),progress:stage=>report(currentId,stage)});}
  else if(provider==='webgl2'){
@@ -61,12 +93,75 @@ async function run(values,id,noiseMode='original'){await load(id);requireLatent(
 
 async function png(raw){return encodeRgbaPng(rgba1024(raw));}
 async function mappingFor(z,id){await load(id);await ensureOrt(id);if(!mapping){report(id,'mapping-loading');mapping=await ort.InferenceSession.create(await bytes(manifest.mapping,id),{executionProviders:['wasm']});average=await floats(manifest.average,id);}report(id,'mapping');const input=new ort.Tensor('float32',z,[1,512]);let out;try{out=(await mapping.run({z:input})).w;return truncate(await out.getData(),average);}finally{input.dispose();out?.dispose();}}
-async function qualify(id){const checks=[];for(const c of manifest.canaries){report(id,'canary',{name:c.name,loaded:checks.length,total:manifest.canaries.length});const raw=await run(await floats(c.w,id),id,c.noise),indices=new Uint32Array((await bytes(manifest.sampleIndices,id)).buffer),samples=await floats(c.samples,id),decoded=await decodeReferencePng(await bytes(c.reference,id));const expected=decoded.rgba,actual=rgba1024(raw);let maxRgb=0,maxFloat=0;for(let i=0;i<actual.length;i++)if(i%4!==3)maxRgb=Math.max(maxRgb,Math.abs(actual[i]-expected[i]));for(let i=0;i<indices.length;i++)maxFloat=Math.max(maxFloat,Math.abs(raw[indices[i]]-samples[i]));const check={name:c.name,maxRgb,maxFloat,passed:Number.isFinite(maxFloat)&&maxRgb<=1&&maxFloat<=.002};checks.push(check);if(!check.passed)throw Error(`Device correctness check failed: ${c.name}`);}return {checks,provider,deviceValidated:true,releaseQualified:manifest.releaseQualified===true};}
-self.onmessage=async({data:{id,type,...request}})=>{currentId=id;try{let result;if(type==='initialize'){manifest=request.manifest;provider=request.provider;result={provider};}else if(type==='qualify')result=await qualify(id);else if(type==='generate'){const input=await inputLatent(request.mode,request.value),values=await mappingFor(input.values,id);result={blob:await png(await run(values,id)),values,shape:[1,18,512],space:'w-plus',identity:input.identity};}else if(type==='synthesize'){const values=requireLatent(request.values);result={blob:await png(await run(values,id)),values,shape:[1,18,512],space:'w-plus'};}else if(type==='encode-aligned'){
+
+// CI and release qualification must always see every canary: the e2e browser drives the product
+// under automation (navigator.webdriver is set), and a host can force either behaviour with the
+// __FACEMORPH_FULL_QUALIFY__ global. Every other device pays for canaries once per bundle (C-03).
+const fullQualify=globalThis.__FACEMORPH_FULL_QUALIFY__===true||(globalThis.__FACEMORPH_FULL_QUALIFY__!==false&&globalThis.navigator?.webdriver===true);
+async function ensureQualification(id){
+ if(qualification)return qualification;
+ cache ||= await createBrowserModelCache({report:cacheReport});
+ qualification=createCanaryQualification({manifest,manifestSha256,provider,bundle:provider==='webgpu'?manifest.webgpu:provider==='webgl2'?manifest.webgl:manifest.synthesis,records:cache.records,acquireBytes:asset=>bytes(asset,id),runSynthesis:(values,noiseMode)=>run(values,id,noiseMode),full:fullQualify});
+ await qualification.adopt();
+ return qualification;
+}
+const qualifyResult=(q,extra={})=>({checks:q.checks(),provider,deviceValidated:true,releaseQualified:manifest.releaseQualified===true,...extra});
+async function qualify(id){
+ const q=await ensureQualification(id);
+ if(fullQualify){while(!q.complete())await q.runNext(ev=>report(id,'canary',ev));return qualifyResult(q);}
+ if(q.complete())return qualifyResult(q,{cached:q.checks().length>0});
+ await q.runNext(ev=>report(id,'canary',ev)); // one canary gates admission; the first face comes before the rest
+ return q.complete()?qualifyResult(q):qualifyResult(q,{partial:true});
+}
+// One inference pipeline serves user operations and background qualification. User operations
+// always go first; a background canary runs only while nothing else is queued, so a user
+// operation waits out at most the single canary already in flight.
+const foreground=[];let backgroundTask=null,pumping=false;
+function pump(){
+ if(pumping)return;pumping=true;
+ (async()=>{
+  for(;;){
+   const unit=foreground.shift()??backgroundTask;
+   if(!unit)break;
+   if(unit===backgroundTask)backgroundTask=null;
+   try{await unit();}catch{/* handlers report their own failures */}
+  }
+ })().finally(()=>{pumping=false;});
+}
+// The runtime sends 'resume' once the first face is delivered. The remaining canaries then run
+// here one at a time, preempted by any user operation. A canary that fails now invalidates the
+// route loudly: the task reports the error and the runtime drops the route and says so (C-03).
+function startResumeDrain(id){
+ if(resumeDrain!=null){postMessage({id,type:'complete',result:{checks:[],provider,deviceValidated:false,resumed:true}});return;}
+ resumeDrain=id;
+ const step=()=>{backgroundTask=async()=>{
+  try{
+   const q=await ensureQualification(id);
+   if(!q.complete())await q.runNext(ev=>report(id,'canary',ev));
+   if(!q.complete()){step();return;}
+   resumeDrain=null;
+   postMessage({id,type:'complete',result:{checks:q.checks(),provider,deviceValidated:true,resumed:true}});
+  }catch(error){resumeDrain=null;postMessage({id,type:'error',error:{name:error.name,message:error.message,correctnessFailure:/Device correctness check failed|integrity/i.test(error.message||'')}});}
+ };pump();};
+ step();
+}
+self.onmessage=({data})=>{
+ const {id,type,...request}=data;currentId=id;
+ if(type==='qualify'&&request.resume){startResumeDrain(id);return;}
+ foreground.push(async()=>{
+  try{
+   let result;
+   if(type==='initialize'){manifest=request.manifest;provider=request.provider;manifestSha256=request.manifestSha256;result={provider};}
+   else if(type==='qualify')result=await qualify(id);else if(type==='generate'){const input=await inputLatent(request.mode,request.value),values=await mappingFor(input.values,id);result={blob:await png(await run(values,id)),values,shape:[1,18,512],space:'w-plus',identity:input.identity};}else if(type==='synthesize'){const values=requireLatent(request.values);result={blob:await png(await run(values,id)),values,shape:[1,18,512],space:'w-plus'};}else if(type==='encode-aligned'){
  // Sequential residency: e4e is released before loading synthesis.
  if(!manifest.encoder&&!manifest.encoderStream)throw Error('The browser encoder bundle is not available.');
  await synthesis?.release();synthesis=null;await webgl?.dispose();webgl=null;await webgpu?.dispose();webgpu=null;await mapping?.release();mapping=null;noise=null;
- cache ||= await createBrowserModelCache();
+ cache ||= await createBrowserModelCache({report:cacheReport});
+ // The encoder is the largest thing this device will fetch. Budget for it before the first
+ // byte arrives, so the bar measures the wait the user is actually in for.
+ planAsset(manifest.encoderStream||manifest.encoder);
  if(!(request.tensor instanceof Float32Array)||request.tensor.length!==196608||!request.tensor.every(Number.isFinite))throw Error('Invalid aligned photo tensor');
  if(manifest.encoderStream){result=await encodeStream(request.tensor,id,request.qualifiedEncoderSha256);}else{await ensureOrt(id);report(id,'encoder-loading');let encoder,input,out,values;try{encoder=await ort.InferenceSession.create(await bytes(manifest.encoder,id),{executionProviders:['wasm']});input=new ort.Tensor('float32',request.tensor,[1,3,256,256]);report(id,'encoding');out=(await encoder.run({image:input})).w;values=requireLatent(new Float32Array(await out.getData()));}finally{out?.dispose();input?.dispose();await encoder?.release();}result={values,shape:[1,18,512],space:'w-plus',encoderProvider:'wasm'};}
- }else throw Error('Unknown runtime operation');postMessage({id,type:'complete',result});}catch(error){postMessage({id,type:'error',error:{name:error.name,message:error.message}});}};
+ }else throw Error('Unknown runtime operation');postMessage({id,type:'complete',result});}catch(error){postMessage({id,type:'error',error:{name:error.name,message:error.message}});}});
+ pump();
+};

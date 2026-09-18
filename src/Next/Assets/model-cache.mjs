@@ -58,9 +58,48 @@ function verifiedStream(body, asset, signal) {
     cancel(reason) { cleanup(); return reader.cancel(reason); }
   });
 }
-async function drain(stream) {
-  const reader = stream.getReader();
-  while (!(await reader.read()).done) { /* validate without accumulating bytes */ }
+/**
+ * Counts bytes on their way past so an observer can drive a real progress bar. The 158 MB
+ * asset used to report {loaded:0} and then {loaded:size}: the bar sat at zero for minutes and
+ * then jumped. Ticks are coalesced so a large download costs a bounded number of events.
+ */
+export const PROGRESS_INTERVAL_BYTES = 1024 * 1024;
+function counted(body, asset, emit) {
+  const reader = body.getReader();
+  let seen = 0, announced = 0;
+  return new ReadableStream({
+    async pull(controller) {
+      const { value, done } = await reader.read();
+      if (done) { controller.close(); return; }
+      seen += value.byteLength;
+      if (seen - announced >= PROGRESS_INTERVAL_BYTES) {
+        announced = seen;
+        emit({ status: 'progress', sha256: asset.sha256, loaded: Math.min(seen, asset.size), bytes: asset.size });
+      }
+      controller.enqueue(value);
+    },
+    cancel(reason) { return reader.cancel(reason); }
+  });
+}
+
+/**
+ * Small JSON records sharing the asset store's namespace but keyed by their own identity rather
+ * than asset bytes: verified-asset markers (C-05) and canary qualification records (C-03). A
+ * record that fails to parse or read is dropped, never fatal — the caller re-proves instead.
+ */
+export function createRecordAccess(store) {
+  return {
+    async get(key) {
+      try {
+        const response = await store.get(key);
+        if (!response) return undefined;
+        const record = await response.json();
+        return record && typeof record === 'object' ? record : undefined;
+      } catch { return undefined; }
+    },
+    async put(key, record) { await store.put(key, new Response(JSON.stringify(record), { headers: { 'Content-Type': 'application/json' } })); },
+    async remove(key) { await store.remove(key); }
+  };
 }
 
 /** Store contract: get(hash) -> fresh Response|undefined; put(hash, Response)
@@ -75,6 +114,19 @@ export function createModelCache({ store, fetcher = globalThis.fetch, locks,
   const pending = new Map(), queue = [];
   let active = 0;
   const emit = event => { try { report(event); } catch { /* observers cannot break storage */ } };
+  const records = createRecordAccess(store);
+  // C-05: the digest of an asset is computed at most once per asset identity. Bytes verified on
+  // download (or on first consumption of bytes stored by an earlier version) are marked, and the
+  // marker — not a per-open re-hash — is what later sessions consume.
+  const VERIFIED_MARKER = 'verified:';
+  const verifiedAssets = new Set();
+  const markVerified = sha256 => {
+    verifiedAssets.add(sha256);
+    void records.put(VERIFIED_MARKER + sha256, { schema: 'checkface-verified-asset-v1', sha256, verifiedAt: new Date().toISOString() }).catch(() => {});
+  };
+  const hasVerifiedMarker = async sha256 => {
+    try { return (await records.get(VERIFIED_MARKER + sha256))?.sha256 === sha256; } catch { return false; }
+  };
   const pump = () => {
     while (active < maxConcurrent && queue.length) {
       const task = queue.shift();
@@ -99,14 +151,10 @@ export function createModelCache({ store, fetcher = globalThis.fetch, locks,
     catch (error) { emit({ status: 'storage-unavailable', sha256: asset.sha256 }); throw error; }
     check(signal);
     if (cached) {
-      try {
-        await drain(verifiedStream(cached.body, asset, signal));
-        emit({ status: 'retained', sha256: asset.sha256, bytes: asset.size }); return;
-      } catch (error) {
-        check(signal); // Cancellation must never evict a valid entry.
-        await store.remove(asset.sha256);
-        emit({ status: 'corrupt-removed', sha256: asset.sha256 });
-      }
+      // C-05: a retained asset is not re-hashed here — that streamed every byte through JS
+      // hashing on every session for files already verified when written. Integrity is
+      // enforced where it is consumed: open() verifies once per asset identity (see below).
+      emit({ status: 'retained', sha256: asset.sha256, bytes: asset.size }); return;
     } else emit({ status: 'missing', sha256: asset.sha256 }); // Missing alone does not prove eviction.
     check(signal);
     emit({ status: 'downloading', sha256: asset.sha256 });
@@ -143,7 +191,7 @@ export function createModelCache({ store, fetcher = globalThis.fetch, locks,
         cancel(reason) { return reader?.cancel(reason); }
       });
     } else body = await download(asset);
-    const verified = new Response(verifiedStream(body, asset, signal), {
+    const verified = new Response(verifiedStream(counted(body, asset, emit), asset, signal), {
       headers: { 'Content-Type': 'application/octet-stream', 'Content-Length': String(asset.size), 'X-CheckFace-SHA256': asset.sha256 }
     });
     try { await store.put(asset.sha256, verified); }
@@ -155,6 +203,8 @@ export function createModelCache({ store, fetcher = globalThis.fetch, locks,
     }
     // A cancellation at commit may leave a fully verified blob: retain it for a later request.
     emit({ status: 'saved', sha256: asset.sha256, bytes: asset.size }); check(signal);
+    // The bytes just committed were verified stream-incrementally; record that once (C-05).
+    markVerified(asset.sha256);
   }
   function acquire(input, { signal } = {}) {
     let asset;
@@ -182,8 +232,32 @@ export function createModelCache({ store, fetcher = globalThis.fetch, locks,
         else resolve(Object.freeze({ sha256: asset.sha256, size: asset.size, open: async () => {
           const response = await store.get(asset.sha256);
           if (!response) { emit({ status: 'missing-after-acquire', sha256: asset.sha256 }); throw new Error('Stored asset disappeared; acquire again'); }
-          // Verify on consumption as well, in case another context modified the store.
-          return new Response(verifiedStream(response.body, asset, new AbortController().signal), { headers: response.headers });
+          // C-05: verify the stored bytes once per asset identity, not on every open. Bytes
+          // this instance downloaded (or verified before) carry an in-memory mark; bytes stored
+          // by an earlier version verify on first consumption and record the durable marker.
+          if (verifiedAssets.has(asset.sha256) || await hasVerifiedMarker(asset.sha256))
+            return new Response(response.body, { headers: response.headers });
+          const inner = verifiedStream(response.body, asset, new AbortController().signal).getReader();
+          const body = new ReadableStream({
+            async pull(controller) {
+              let result;
+              try { result = await inner.read(); }
+              catch (error) {
+                verifiedAssets.delete(asset.sha256);
+                void store.remove(asset.sha256).catch(() => {});
+                emit({ status: 'corrupt-removed', sha256: asset.sha256 });
+                throw error;
+              }
+              if (result.done) {
+                markVerified(asset.sha256);
+                emit({ status: 'verified', sha256: asset.sha256, bytes: asset.size });
+                controller.close(); return;
+              }
+              controller.enqueue(result.value);
+            },
+            cancel(reason) { return inner.cancel(reason); }
+          });
+          return new Response(body, { headers: response.headers });
         } }));
       };
       const cancel = () => {
@@ -198,7 +272,7 @@ export function createModelCache({ store, fetcher = globalThis.fetch, locks,
       if (signal?.aborted) cancel();
     });
   }
-  return { acquire };
+  return { acquire, records };
 }
 
 export async function createBrowserModelCache(options = {}) {

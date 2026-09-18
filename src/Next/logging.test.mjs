@@ -17,7 +17,7 @@ function context(posts){
 test('A run records the machine it ran on',async()=>{
  const posts=[],ctx=context(posts);
  vm.runInContext(plain(await read('reporting.mjs'))+'\nglobalThis.d=diagnostics;',ctx);
- ctx.d.enable(true);ctx.d.start('faces','auto');
+ ctx.d.enable(true);ctx.d.start('faces','auto');ctx.d.bundle('a'.repeat(64));/* start is deferred until the bundle digest is known */
  const start=posts.find(p=>p.event==='start');
  assert.equal(start.cores,8);assert.equal(start.memoryGb,12);assert.equal(start.isolated,true);
  checkedEvent({session:'76d02e92-9e4f-4dd1-8a0d-8254a1568fbc',run:'76d02e92-9e4f-4dd1-8a0d-8254a1568fbc',...start});
@@ -75,7 +75,7 @@ test('Once consent is given, events stream immediately so an interruption still 
  vm.runInContext(plain(await read('reporting.mjs'))+'\nglobalThis.d=diagnostics;',ctx);
  const d=ctx.d;
  d.enable(true);
- d.start('faces','auto');
+ d.start('faces','auto');d.bundle('a'.repeat(64));/* start is deferred until the bundle digest is known */
  assert.equal(d.status().staged,0,'nothing is held back once the answer is yes');
  assert(posts.some(p=>p.event==='start'),'the start is already sent');
  const afterStart=posts.length;

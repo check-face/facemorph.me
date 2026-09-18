@@ -22,3 +22,56 @@ test('Phone monolithic encoder guard fires before worker or alignment allocation
 function indexedDbFixture(){const records=new Map();return {records,api:{open(){const request={};queueMicrotask(()=>{request.result={close(){},transaction(){const tx={};tx.objectStore=()=>({get(key){const r={};queueMicrotask(()=>{r.result=structuredClone(records.get(key));r.onsuccess?.();});return r;},put(value,key){records.set(key,structuredClone(value));setTimeout(()=>tx.oncomplete?.(),0);}});return tx;}};request.onsuccess?.();});return request;}}};}
 function controllerWorker(onRequest=()=>{}){return {postMessage(message){onRequest(message);let result={deviceValidated:true};if(['generate','synthesize'].includes(message.type))result={blob:new Blob(['mock-canonical-png'],{type:'image/png'}),values:message.values||new Float32Array(9216).fill(.25),space:'w-plus',shape:[1,18,512]};queueMicrotask(()=>this.onmessage({data:{id:message.id,type:'complete',result}}));},terminate(){}};}
 test('Reopened W+ project reuses the seeded original without workers or duplicate PNG storage',async()=>{const old=globalThis.indexedDB,fixture=indexedDbFixture();globalThis.indexedDB=fixture.api;const config={manifest:testManifest(),manifestSha256:'0'.repeat(64),preferredRoute:'cpu'};let workers=0;const first=createBrowserRuntime({...config,workerFactory:()=>{workers++;return controllerWorker();}});let generated;try{generated=await first.generate({mode:'seed',value:'42'});}finally{first.dispose();}const second=createBrowserRuntime({...config,workerFactory:()=>{workers++;throw Error('Cached latent must not create a worker');}});try{const saved=await second.synthesize({space:'w-plus',shape:[1,18,512],values:generated.values});assert.equal(saved.cached,true);assert.equal(saved.imageSha256,generated.imageSha256);assert.equal(workers,1);assert.equal(fixture.records.size,2);assert.equal([...fixture.records.values()].filter(x=>x.blob instanceof Blob).length,1);assert.equal([...fixture.records.values()].filter(x=>x.kind==='canonical-original-alias-v1').length,1);}finally{second.dispose();if(old===undefined)delete globalThis.indexedDB;else globalThis.indexedDB=old;}});
+
+// A partial (one-canary) qualification must finish only after the first face is delivered, on
+// the worker's background lane; a warm bundle must send no resume at all (C-03).
+function qualificationWorker(onMessage){
+ let state='cold';
+ return {postMessage(message){const respond=result=>queueMicrotask(()=>this.onmessage?.({data:{id:message.id,type:'complete',result}}));
+  onMessage(message);
+  if(message.type==='initialize')return respond({provider:message.provider});
+  if(message.type==='qualify'&&message.resume){state='warm';return respond({checks:[{name:'c0',passed:true}],provider:'wasm',deviceValidated:true,resumed:true});}
+  if(message.type==='qualify')return respond(state==='cold'?{checks:[{name:'c0',passed:true}],provider:'wasm',deviceValidated:true,partial:true}:{checks:[{name:'c0',passed:true}],provider:'wasm',deviceValidated:true,cached:true});
+  if(message.type==='generate')return respond({blob:new Blob(['mock-canonical-png'],{type:'image/png'}),values:new Float32Array(9216).fill(.25),space:'w-plus',shape:[1,18,512]});
+  throw Error('unexpected operation '+message.type);},terminate(){}};}
+test('C-03: remaining canaries are requested only after the first face, and a warm bundle sends no resume',async()=>{
+ globalThis.sessionStorage=fakeStorage();
+ const oldIDB=globalThis.indexedDB;globalThis.indexedDB=indexedDbFixture().api;
+ const messages=[];
+ const worker=qualificationWorker(message=>messages.push(message.type+(message.resume?':resume':'')));
+ const runtime=createBrowserRuntime({manifest:testManifest(),manifestSha256:'0'.repeat(64),preferredRoute:'cpu',workerFactory:()=>worker});
+ try{
+  await runtime.generate({mode:'seed',value:'42'});
+  assert.deepEqual(messages,['initialize','qualify','generate','qualify:resume'],'the resume rides after the delivered face');
+  messages.length=0;
+  await runtime.generate({mode:'seed',value:'43'});
+  assert.deepEqual(messages,['generate'],'a completed qualification runs no further canary checks and no resume');
+ }finally{runtime.dispose();globalThis.indexedDB=oldIDB;}
+});
+test('C-03: a background canary failure invalidates the route loudly',async()=>{
+ globalThis.sessionStorage=fakeStorage();
+ const oldIDB=globalThis.indexedDB;globalThis.indexedDB=indexedDbFixture().api;
+ // The worker fails the resume like a late canary failure does.
+ const failure=(kind,correctness)=>{const w=qualificationWorker(message=>{if(message.type==='qualify'&&message.resume)queueMicrotask(()=>w.onmessage({data:{id:message.id,type:'error',error:{name:'Error',message:kind,correctnessFailure:correctness}}}));});return w;};
+const failing=failure('Device correctness check failed: canary-5',true);
+ const events=[];
+ const runtime=createBrowserRuntime({manifest:testManifest(),manifestSha256:'0'.repeat(64),preferredRoute:'cpu',onProgress:event=>events.push(event),workerFactory:()=>failing});
+ try{
+  await runtime.generate({mode:'seed',value:'42'});
+  await new Promise(resolve=>setTimeout(resolve,5));
+  assert.ok(events.some(event=>event.stage==='canary-invalidated'),'the failure is named to the interface');
+  assert.equal(runtime.status().deviceValidated,false,'the route is no longer claimed as validated');
+ }finally{runtime.dispose();globalThis.indexedDB=oldIDB;}
+});
+test('C-03: a transient background failure stays quiet and retries on a later face',async()=>{
+ globalThis.sessionStorage=fakeStorage();
+ const oldIDB=globalThis.indexedDB;globalThis.indexedDB=indexedDbFixture().api;
+ const events=[];
+ const failure=(kind,correctness)=>{const w=qualificationWorker(message=>{if(message.type==='qualify'&&message.resume)queueMicrotask(()=>w.onmessage({data:{id:message.id,type:'error',error:{name:'TypeError',message:kind,correctnessFailure:correctness}}}));});return w;};
+ const runtime=createBrowserRuntime({manifest:testManifest(),manifestSha256:'0'.repeat(64),preferredRoute:'cpu',onProgress:event=>events.push(event),workerFactory:()=>failure('fetch failed',false)});
+ try{
+  await runtime.generate({mode:'seed',value:'42'});
+  await new Promise(resolve=>setTimeout(resolve,5));
+  assert.ok(!events.some(event=>event.stage==='canary-invalidated'),'a network hiccup is not a correctness verdict');
+ }finally{runtime.dispose();globalThis.indexedDB=oldIDB;}
+});

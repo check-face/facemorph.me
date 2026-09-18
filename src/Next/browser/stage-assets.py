@@ -26,8 +26,18 @@ def main():
         gl=ROOT/'experiment/device-lab/webgl-ladder-v1';gm=json.loads((gl/'manifest.json').read_text());folder=sha(gl/'manifest.json');glassets=[asset(gl/'manifest.json',folder),asset(gl/gm['learnedInput']['file'],folder)]+[asset(gl/b['coefficients']['file'],folder) for b in gm['blocks']]
         manifest['webgl']={'module':asset(pathlib.Path(__file__).parent/'webgl-vector-v1.mjs'),'assetBase':f'{base}/assets/{folder}/','assets':glassets,'manifestSha256':folder}
     if a.webgpu:
-        gpu_runtime=ROOT/'experiment/onnx/runtime-122/node_modules/onnxruntime-web/dist';fusion=RESEARCH/'browser-onnx-fusion';mod=RESEARCH/'browser-onnx-mod-fusion'
-        manifest['webgpu']={'runtime':{'version':'1.22.0','module':asset(gpu_runtime/'ort.webgpu.min.mjs'),'factory':asset(gpu_runtime/'ort-wasm-simd-threaded.jsep.mjs'),'wasm':asset(gpu_runtime/'ort-wasm-simd-threaded.jsep.wasm')},'prefix':asset(mod/'prefix-segment.onnx'),'suffix':asset(mod/'suffix-segment.onnx'),'split':asset(mod/'split-segment.json'),'metadata':asset(fusion/'manifest.json'),'filter':asset(fusion/'filter.f32'),'bias':asset(fusion/'bias.f32'),'kernel':asset(pathlib.Path(__file__).parent/'fused-resample-v1.mjs')}
+        gpu_runtime=ROOT/'experiment/onnx/runtime-122/node_modules/onnxruntime-web/dist';fusion=RESEARCH/'browser-onnx-fusion';mobile=RESEARCH/'browser-onnx-mobile-fusion'
+        # mobile-boundary-bounded candidate (results.tsv keep row mobile-boundary-bounded-phone):
+        # prefix outputs the phase tensor as two 64-channel tiles (tile0/tile1) that the bounded
+        # fused-resample kernel reads directly; this is the configuration measured at 686 ms/face
+        # on the operator's S24 Ultra. The suffix segment is byte-identical across both fusions.
+        kernel_file=pathlib.Path(__file__).parent/'fused-resample-v1.mjs';kernel_sha=sha(kernel_file)
+        lab_kernel=ROOT/'experiment/device-lab/fused-resample-boundary-v2.js'
+        if lab_kernel.exists() and sha(lab_kernel)!=kernel_sha:raise ValueError('Shipped fused-resample kernel is not byte-identical to experiment/device-lab/fused-resample-boundary-v2.js')
+        manifest['webgpu']={'runtime':{'version':'1.22.0','module':asset(gpu_runtime/'ort.webgpu.min.mjs'),'factory':asset(gpu_runtime/'ort-wasm-simd-threaded.jsep.mjs'),'wasm':asset(gpu_runtime/'ort-wasm-simd-threaded.jsep.wasm')},'prefix':asset(mobile/'prefix-segment.onnx'),'suffix':asset(mobile/'suffix-segment.onnx'),'split':asset(mobile/'split-segment.json'),'metadata':asset(fusion/'manifest.json'),'filter':asset(fusion/'filter.f32'),'bias':asset(fusion/'bias.f32'),'kernel':asset(kernel_file)}
+        # Structural gate consumed by hosting/next-static/promote.py: a bundle may not be built
+        # from a kernel with no keep row in autoresearch/results.tsv.
+        manifest['kernel']={'file':'fused-resample-v1.mjs','sha256':kernel_sha,'candidateId':'mobile-boundary-bounded-phone','sourceHash':'82bc9dd8a3128bd25c422eb36447787d4c041c4da79e7cad94aedeea1989dbd1'}
     if a.encoder:
         manifest['encoder']=asset(a.encoder)
         photo=a.encoder.parent

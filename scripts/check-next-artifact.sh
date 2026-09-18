@@ -5,7 +5,14 @@ import json,time
 from pathlib import Path
 def click(role,name):
     nodes=cdp('Accessibility.getFullAXTree')['nodes']
-    item=next(n for n in nodes if n.get('role',{}).get('value')==role and n.get('name',{}).get('value')==name)
+    # 'Remove' buttons carry the face name (Remove <face>) and FancyButton renders uppercase in
+    # the AX tree, so fall back to a case-insensitive/prefix match before giving up.
+    item=next((n for n in nodes if n.get('role',{}).get('value')==role and n.get('name',{}).get('value')==name),None)
+    if item is None and name=='Remove':
+        item=next(n for n in nodes if n.get('role',{}).get('value')==role and n.get('name',{}).get('value','').lower().startswith('remove'))
+    if item is None:
+        item=next((n for n in nodes if n.get('role',{}).get('value')==role and n.get('name',{}).get('value','').lower()==name.lower()),None)
+    if item is None:raise StopIteration(name)
     ident=item['backendDOMNodeId'];cdp('DOM.scrollIntoViewIfNeeded',backendNodeId=ident)
     q=cdp('DOM.getBoxModel',backendNodeId=ident)['model']['content'];click_at_xy(sum(q[0::2])/4,sum(q[1::2])/4)
 def state():
@@ -23,6 +30,11 @@ try:
     new_tab('http://127.0.0.1:8080/')
     wait_for_load()
     initial=until(lambda s:s['tiles']==2 and s['photoButtons']==2 and s['generate'])
+    # U-09 moved morph shape into the overflow; open it before asserting the default pattern.
+    js("document.querySelector('.next-overflow')||[...document.querySelectorAll('button')].find(b=>b.textContent==='More options').click()")
+    until(lambda s:js("!!document.querySelector('select[aria-label=\"Morph shape\"]')"))
+    js("document.querySelector('.next-overflow').open=true")
+    initial['pattern']=js("document.querySelector('select[aria-label=\"Morph shape\"]')?.value")
     assert initial['pattern']=='pairwise-figure8' and not initial['errors'], initial
     result['initial']=initial
     click('button','Add face')

@@ -250,66 +250,6 @@ html {
 .demo-states [aria-pressed="true"] { border-width:2px; background:#8882; font-weight:bold; }
 
 // Integrated next experience: existing fonts, palette and controls.
-.next-product { max-width: 1100px; margin: auto; padding: 1.25rem; }
-.next-topline,.next-actions { display:flex; align-items:center; flex-wrap:wrap; gap:.65rem; }
-.next-topline { justify-content:space-between; margin-bottom:1.5rem; }
-.next-topline>span { font-size:.9rem; opacity:.7; }
-.next-faces { display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,320px)); justify-content:center; gap:1.25rem; }
-.next-face { margin:0!important; display:flex; flex-direction:column; gap:.75rem; min-width:0; }
-.next-face-image { aspect-ratio:1; overflow:hidden; border-radius:6px; background:rgba(128,128,128,.08); }
-.next-face-image img { width:100%; height:100%; object-fit:contain; display:block; }
-.next-face-placeholder { height:100%; display:grid; place-items:center; font-size:6rem; opacity:.25; }
-.next-face .select,.next-face select { width:100%; }
-.next-face .next-actions .button { font-size:.8rem; }
-.next-controls,.next-generate { justify-content:center; margin:1.4rem 0; }
-.next-generate .is-primary { background:#ce621d; color:white; }
-.next-advanced { max-width:650px; margin:1rem auto; }
-.next-advanced summary { cursor:pointer; width:max-content; }
-.next-advanced-fields { display:flex; flex-wrap:wrap; gap:1rem; align-items:center; padding:1rem 0; }
-.next-advanced-fields label { display:flex; align-items:center; gap:.65rem; }
-.next-status { min-height:2rem; text-align:center; max-width:650px; margin:1rem auto; }
-.next-status progress { margin-bottom:.65rem; }
-.next-error { max-width:700px; margin:auto; }
-.next-error .next-actions { margin-top:.75rem; }
-.next-result { max-width:600px; margin:1.5rem auto; }
-.next-result video { display:block; width:100%; border-radius:8px; background:#111; }
-.next-result .next-actions,.next-project { justify-content:center; margin:1rem 0; }
-.next-file { display:flex; flex-direction:column; gap:.5rem; }
-.next-file-input { position:absolute; width:1px; height:1px; opacity:0; }
-.next-project label:focus-within { outline:2px solid #ce621d; outline-offset:3px; }
-.next-help { max-width:700px; margin:2rem auto; line-height:1.6; }
-.next-help h2 { font-size:1.4rem; font-family:'Nunito','Segoe UI',sans-serif; }
-.next-help h3 { margin-top:1rem; font-weight:600; }
-.next-help p { margin:.65rem 0; }
-.next-faq { border-top:1px solid rgba(128,128,128,.35); padding:.5rem 0; }
-.next-faq summary { cursor:pointer; font-weight:600; padding:.25rem 0; }
-.next-faq p { margin:.5rem 0 .5rem 1rem; }
-.next-footer { text-align:center; margin:2rem 0 1rem; font-size:.9rem; }
-@media(max-width:550px){.next-product{padding:.75rem}.next-faces{grid-template-columns:1fr 1fr;gap:.65rem}.next-face{padding:.65rem}.next-face .next-actions{gap:.35rem}.next-face .button{padding:.4rem}.next-face .select{font-size:.8rem}}
-@media(max-width:360px){.next-faces{grid-template-columns:1fr}}
-@media(prefers-reduced-motion:reduce){.next-product *{animation:none!important;transition:none!important}}
-.next-invite { max-width:700px; margin:1rem auto; border-left:4px solid #2f7dd1; line-height:1.55; }
-.next-invite h2 { font-size:1.15rem; margin:0 0 .5rem; }
-.next-invite p { margin:.5rem 0; }
-.next-invite-note { opacity:.8; font-size:.92rem; }
-.next-estimate { max-width:650px; margin:.5rem auto; text-align:center; opacity:.85; }
-.next-slow-route { max-width:650px; margin:1rem auto; border-left:4px solid #d08a1e; line-height:1.55; }
-.next-slow-route p { margin:.5rem 0; }
-.next-crop-dialog { position:fixed; inset:0; z-index:1300; background:#0009; display:grid; place-items:center; padding:1rem; }
-.next-crop-panel { max-width:420px; width:100%; max-height:90vh; overflow:auto; }
-.next-crop-view { position:relative; width:320px; height:320px; max-width:100%; margin:0 auto; overflow:hidden; border-radius:6px; background:#222; touch-action:none; cursor:grab; }
-.next-crop-view:active { cursor:grabbing; }
-.next-crop-image { position:absolute; max-width:none; user-select:none; -webkit-user-drag:none; }
-.next-crop-zoom { display:flex; align-items:center; gap:.75rem; margin:1rem 0; }
-.next-crop-zoom input { flex:1; }
-.next-name-dialog { position:fixed; inset:0; z-index:1300; background:#0009; display:grid; place-items:center; padding:1rem; }
-.next-name-panel { max-width:900px; width:100%; max-height:90vh; overflow:auto; }
-.next-name-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(100px,1fr)); gap:.75rem; margin:1rem 0; }
-.next-name-choice { font:inherit; color:inherit; border:1px solid #8884; background:transparent; border-radius:6px; padding:0; overflow:hidden; cursor:pointer; }
-.next-name-choice img { width:100%; height:auto; display:block; }
-.next-name-choice span { display:block; padding:.35rem; }
-
-.next-face-placeholder { width:100%; border:0; background:transparent; color:inherit; cursor:pointer; }
-.next-face-placeholder:focus-visible { outline:3px solid #ce621d; outline-offset:-4px; opacity:.8; }
-.next-face-placeholder:disabled { cursor:default; }
-.next-face.next-photo-over { outline:3px solid #ce621d; outline-offset:3px; }
+// Product-surface styles now live in src/Next/product-ux.scss (design + visual gates are
+// documented beside the rules there); Bulma stays scaffolding-only.
+@import "./Next/product-ux";

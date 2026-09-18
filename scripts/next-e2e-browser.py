@@ -18,7 +18,8 @@ def click(name):
  # box model and dispatching the click otherwise sends a real click at a stale point, which
  # silently does nothing. The click stays a genuine coordinate click on the accessible button.
  for attempt in range(5):
-  nodes=cdp('Accessibility.getFullAXTree')['nodes'];n=next(n for n in nodes if n.get('role',{}).get('value')=='button' and n.get('name',{}).get('value')==name)
+  nodes=cdp('Accessibility.getFullAXTree')['nodes'];name_lower=name.lower()
+  n=next((n for n in nodes if n.get('role',{}).get('value')=='button' and n.get('name',{}).get('value','').lower()==name_lower),None)
   ident=n['backendDOMNodeId'];cdp('DOM.scrollIntoViewIfNeeded',backendNodeId=ident)
   q=cdp('DOM.getBoxModel',backendNodeId=ident)['model']['content'];x,y=sum(q[0::2])/4,sum(q[1::2])/4
   if js("(()=>{const e=document.elementFromPoint(%f,%f),b=e&&e.closest('button');return !!(b&&(b.textContent===%s||b.getAttribute('aria-label')===%s));})()"%(x,y,json.dumps(name),json.dumps(name))):
@@ -49,7 +50,9 @@ try:
  js("window.__ciOrigin=null;fetch('/').then(r=>window.__ciOrigin=r.headers.get('X-Next-Artifact-Source')).catch(e=>window.__ciOrigin='error')")
  wait(lambda:js('window.__ciOrigin!==null'),60);assert js('window.__ciOrigin')==Path('next-site-source.txt').read_text().strip(), 'Chrome did not reach exact local artifact origin'
  js("window.__ciBusyChanges=0;window.__ciBusyObserver=new MutationObserver(records=>{for(const r of records)if(r.attributeName==='disabled'&&r.target.textContent==='Generate faces')window.__ciBusyChanges++;});window.__ciBusyObserver.observe(document.querySelector('.next-product'),{subtree:true,attributes:true,attributeFilter:['disabled']});")
- js("document.querySelector('.next-advanced').open=true")
+ # U-09 moved the processing-mode control into the always-rendered debug area; opening a
+ # collapsed advanced section is no longer part of reaching it.
+ js("document.querySelector('.next-advanced')&&(()=>{document.querySelector('.next-advanced').open=true})()")
  root=cdp('DOM.getDocument')['root']['nodeId']
  # Explicit CPU selection, independent of GPU availability. Keyboard interaction is the
  # preferred path and is what Linux Chromium exercises; macOS/WebKit/Gecko drive the native
@@ -68,6 +71,15 @@ try:
  run('Generate faces');images=wait(lambda:faces() if len(faces())==2 and all(i['width']==1024 and i['height']==1024 for i in faces()) else None,60)
  save_check('nameSeed',{'passed':True,'dimensions':[[i['width'],i['height']] for i in images],'processingSelection':selection})
  first=download('Save image');first_hash=hashlib.sha256(first.read_bytes()).hexdigest();workers=js('window.__ciWorkers');requests=js('window.__ciWorkerRequests')
+ # C-02: force the canary comparison to fail on a second route and assert the interface names
+ # both the route that was refused and the route now in use, instead of silently falling back.
+ # The forcing hook lives in the canary comparison only; tolerances are untouched.
+ js("window.__FACEMORPH_FORCE_CANARY_FAIL__=true")
+ js("(()=>{const s=document.querySelector('select[aria-label=\"Processing mode\"]');Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype,'value').set.call(s,'webgpu');s.dispatchEvent(new Event('change',{bubbles:true}));})()")
+ run('Generate faces')
+ caption=wait(lambda:(lambda t:t if ('webgpu' in t and 'cpu' in t and 'failed' in t) else None)(js("document.querySelector('.next-route-caption')?.innerText||''")),120)
+ save_check('routeRejectionNamed',{'passed':True,'caption':caption})
+ js("window.__FACEMORPH_FORCE_CANARY_FAIL__=false")
  run('Generate faces');second=download('Save image');assert hashlib.sha256(second.read_bytes()).hexdigest()==first_hash;assert js('window.__ciWorkers')==workers,'Repeat created an inference worker';assert js('window.__ciWorkerRequests')==requests,'Repeat invoked the inference worker'
  save_check('repeatOriginal',{'passed':True,'sha256':first_hash,'newWorkers':0,'newWorkerRequests':0})
  upload('input[aria-label="Choose photo"]',first)

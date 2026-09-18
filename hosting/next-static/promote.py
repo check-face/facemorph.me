@@ -22,13 +22,26 @@ command('gh','run','download',str(a.build_run),'-R',REMOTE,'-n','next-site-'+bui
 command('gh','run','download',str(a.qualification_run),'-R',REMOTE,'-n','next-e2e-'+str(a.qualification_run),'-D',str(proof))
 command(sys.executable,'desktop/scripts/verify-web-artifact.py','--artifact',str(web),'--revision',build['head_sha'],'--receipt',str(work/'web-receipt.json'))
 report=json.loads((proof/'report.json').read_text());source=json.loads((proof/'source-run.json').read_text())
-required={'nameSeed','repeatOriginal','syntheticPhotoE4e','localCrop','projectSaveReopen','morphPlayableMp4'}
+required={'nameSeed','repeatOriginal','syntheticPhotoE4e','localCrop','projectSaveReopen','morphPlayableMp4','routeRejectionNamed'}
 if report.get('passed') is not True or not all(report.get('checks',{}).get(k,{}).get('passed') is True for k in required):raise ValueError('Required real-workflow evidence is missing')
 if source['id']!=a.build_run or source['head_sha']!=build['head_sha'] or (proof/'next-site-SHA256SUMS').read_bytes()!=(web/'next-site-SHA256SUMS').read_bytes():raise ValueError('Qualification tested a different artifact')
 manifest_sha=hashlib.sha256((a.runtime/'manifest.json').read_bytes()).hexdigest()
 if manifest_sha!=report['runtimeSha256']:raise ValueError('Runtime differs from qualified bundle')
+# Structural gate: a bundle may not be built from a kernel with no keep row in
+# autoresearch/results.tsv. The build must embed kernel provenance; promotion names it.
+manifest=json.loads((a.runtime/'manifest.json').read_text())
+kernel=manifest.get('kernel') or {}
+for field in ('file','sha256','candidateId','sourceHash'):
+    if not kernel.get(field):raise ValueError(f'Runtime manifest lacks kernel provenance field {field!r} — rebuild with a research-backed kernel')
+ledger=REPO.parent/'autoresearch'/'results.tsv'
+if ledger.exists():
+    keep=[line.split('\t') for line in ledger.read_text().splitlines()[1:] if '\t' in line]
+    if not any(row and row[0]==kernel['candidateId'] and 'keep' in row for row in keep):
+        raise ValueError(f"Kernel candidate {kernel['candidateId']!r} has no keep row in autoresearch/results.tsv")
+    if not any(row and row[0]==kernel['candidateId'] and kernel['sourceHash'] in row for row in keep):
+        raise ValueError(f"Kernel source hash {kernel['sourceHash'][:12]}… not recorded for {kernel['candidateId']!r}")
+receipt={'buildRun':a.build_run,'qualificationRun':a.qualification_run,'source':build['head_sha'],'runtimeSha256':manifest_sha,'kernel':{k:kernel[k] for k in ('file','sha256','candidateId','sourceHash')},'published':False}
 command(sys.executable,'hosting/next-static/stage.py','--runtime',str(a.runtime.resolve()),'--frontend',str(web/'deploy-next'),'--catalogue',str(a.catalogue.resolve()),'--output',str(work/'public'))
-receipt={'buildRun':a.build_run,'qualificationRun':a.qualification_run,'source':build['head_sha'],'runtimeSha256':manifest_sha,'published':False}
 (work/'promotion.json').write_text(json.dumps(receipt,indent=2)+'\n')
 if a.publish:
     subprocess.run(['npx','wrangler','whoami'],cwd=REPO,check=True)
