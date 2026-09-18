@@ -31,10 +31,13 @@ promote the tree so testers actually see this row.
 ## R2-2 — Names replacement · PARTIAL — decisions resolved 18 September
 
 **Resolved by the operator:** the live site is `names.facemorph.me`; there is no
-`names.dilger.dev`. The transition target is **`next.names.facemorph.me`** — a lightly modified,
-near-identical port of the live site so *everything* can transition over. The candidate app
-drops the in-app browse modal: clicking "names" opens the names experience itself (the old
-behaviour, preserved), and for multi-face sequences it reopens for each additional name.
+`names.dilger.dev`. **Refined 19 September:** the names experience becomes a **fullscreen
+`/names` route/component inside the candidate** — same artifact, no separate
+`next.names.facemorph.me` deployment, no in-app browse modal. Classic's iframe embed
+(`BrowseFacesDialog.fs`) was only the Svelte workaround; a native route gets direct state
+(targets any nth face, reopens per additional name) and works unchanged in the Tauri desktop
+skeleton. `names.facemorph.me` stays live untouched and redirects to `/names` at cutover;
+parity is verified by the required baseline capture/compare, applied to the rebuild.
 
 **The rule change that unlocks this:** historic full-size lossy WebP/JPEG are now explicitly
 publishable and servable as **the same face** — compression variation is within tolerance, and
@@ -47,6 +50,10 @@ picks (all 5,055 exist, 36.5 MB); full-size versions (historic lossy where they 
 names) are stored beside them with per-name metadata: identity (SHA-256 of the lowercase
 name), SHA-256s, provenance (historic vs API-generated), and **latents** (derivable
 deterministically: hash → seed → z → mapping → W; no Triton Mongo archaeology needed).
+**Catalogue shape (19 September):** `catalogue.json` stays light — name, identity, 200px and
+full-size URLs only. Per-name W latents are served on demand from
+`catalogue/latent/<identity>` and fetched when a pick lands; inlining all 5,055 would add
+~47 MB of base64 to a file the grid loads up front.
 
 **Sizes the UX needs — figured out:** `200` (grid thumb) + best-available full size, target
 `1024` (tile display, morph endpoint frames, video endpoint point). Nothing else: slider and
@@ -62,11 +69,12 @@ verify dimensions), export from the cache, publish. **No regeneration of the exi
 the 200px gallery** — those bytes are kept as-is. Full-lot regeneration is explicitly not
 needed.
 
-**Do:** stand up `next.names.facemorph.me` (port + light modifications: see R2-6); build the
-v2 catalogue (200px URL + full-size URL + identity + latent + provenance per name); fill the
-2,144 via the API with verification; publish to the gallery host; wire the product's
-three-tier lookup (preview → full-size cache → device generation) with automatic
-materialisation on selection.
+**Do:** build the fullscreen `/names` route in the candidate (grid, click-select, nth-face
+targeting, reopen-per-additional-name); build the v2 catalogue (name + identity + 200px/full
+URLs) with per-name latent endpoints; fill the 2,144 via the API with verification; publish
+to the gallery host; wire the product's three-tier lookup (preview → full-size cache → device
+generation) with automatic materialisation on selection; capture the live names baseline and
+compare the rebuild against it.
 
 ## R2-3 — Generate one face; eager e4e · PARTIAL
 
@@ -172,14 +180,15 @@ middle-column morph slot goes with it.
   user-visible sentence once the names catalogue is served reliably (R2-2). Keep a *failure*
   path, but it should degrade to the typed-input flow with quieter copy; the catalogued
   experience is the default, not an error state.
-- **Names experience identical to the original — resolved 18 September:** the requirement
-  binds the real names surface: port `names.facemorph.me` to **`next.names.facemorph.me`**,
-  near-identical (grid of the 5,055 name faces on the same 200px images, click-to-select, same
-  CSS/labels/links), with the two necessary modifications: (a) "morph between them" targets
-  the candidate (`next.facemorph.me`) with the selected names pre-filled — including a
-  targeted nth face when the sequence already has faces, which is why the candidate reopens
-  names for each additional pick; (b) the catalogue/morph plumbing points at the new cache.
-  The in-app Browse-names modal goes: the candidate opens the names experience directly.
+- **Names experience identical to the original — resolved 18 September, refined 19 September:**
+  the requirement binds the names experience itself, rebuilt as a **fullscreen `/names` route
+  inside the candidate** (near-identical: grid of the 5,055 name faces on the same 200px
+  images, click-to-select, same CSS/labels/links), with the two necessary modifications:
+  (a) "morph between them" targets the candidate's own state — including a targeted nth face
+  when the sequence already has faces, which is why the route reopens for each additional
+  pick; (b) the catalogue/morph plumbing points at the new cache. The in-app Browse-names
+  modal goes; `names.facemorph.me` stays live until cutover, then redirects to `/names`.
+  Parity gate: baseline capture/compare of the live grid against the rebuild.
 
 ## R2-7 — Latent metadata retrieval + saving under CI/test · MISSING (new work with R2-2)
 
@@ -260,20 +269,21 @@ There are no pop-up toasts; guidance is inline status lines and boxes. Two real 
 | # | Item | Verdict |
 |---|---|---|
 | 1 | Delete button inline | Done in tree; add 320 px visual gate; deploy |
-| 2 | Names replacement | Target `next.names.facemorph.me`; keep 200px grid + historic lossy full-size (2,911); fill missing 2,144 via Triton API; latents as metadata — resolved 18 Sep |
+| 2 | Names replacement | Fullscreen `/names` route inside the candidate (no separate deployment); keep 200px grid + historic lossy full-size (2,911); fill missing 2,144 via Triton API; latents served per-name — resolved 18–19 Sep |
 | 3 | Single-face generate + eager e4e | Per-face exists (gap: first-time text faces); eager e4e missing |
 | 4 | Slider-first, infill, video-last | Missing; writer/store already support out-of-order indexed frames; hidden encode approved |
 | 5 | Add-face placement + estimate | Button moves to end (mobile) / right (desktop); mid-insert connectors stay small — resolved 18 Sep; estimate exists from measurement |
-| 6 | UI consistency | Restyles + feature flag + names opens as its own next surface (no modal) |
+| 6 | UI consistency | Restyles + feature flag + names as in-app fullscreen `/names` route (no modal, no separate site) |
 | 7 | Latent metadata CI | New work alongside the v2 catalogue |
 | 8 | Two-radii accent ban | Currently in six places; ban + restyle |
 | 9 | FAQ local-generation copy | Additive one-row change, tone preserved |
 | 10 | For-testing integration | Position right, restyle into FAQ language |
 | 11 | Toasts + honest guidance | Desktop nudge fires on desktops; status line overwriteable |
 
-**Operator decisions — all resolved 18 September:** names target is `next.names.facemorph.me`
-(no `names.dilger.dev`); lossy full-size publishable as the same face, missing 2,144 fillable
-via the Triton public API (no full regeneration); video encode runs hidden while scrubbing
-(R2-4); candidate opens the names experience directly, no modal, reopening per additional name
-(R2-6); mid-sequence insertion connectors stay, small and quiet (R2-5). No open questions
-remain — the runway is clear to build.
+**Operator decisions — all resolved 18–19 September:** names experience is a fullscreen
+`/names` route/component inside the candidate — no separate `next.names.facemorph.me`
+deployment, no modal, direct state for nth-face targeting; `names.facemorph.me` redirects to
+`/names` at cutover; lossy full-size publishable as the same face, missing 2,144 fillable via
+the Triton public API (no full regeneration); video encode runs hidden while scrubbing
+(R2-4); mid-sequence insertion connectors stay, small and quiet (R2-5); catalogue stays light
+with per-name latents on demand. No open questions remain — the runway is clear to build.
