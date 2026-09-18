@@ -1,4 +1,4 @@
-# Testing round 2 — eleven items, sense-checked against the working tree
+# Testing round 2 — twelve items, sense-checked against the working tree
 
 Raised **18 September 2026**, after the round-1 work landed on
 `candidate/next-delivery-20260916` (`364c2d4`…`084d698`). Every "current behaviour" below was
@@ -262,6 +262,38 @@ There are no pop-up toasts; guidance is inline status lines and boxes. Two real 
    confirmations, styled per R2-8, with persistent facts (report references) staying
    selectable in place. Nothing critical becomes toast-only.
 
+## R2-12 — Crop panning is ~10× slower than the finger on big photos · CONFLICT — verified arithmetic bug
+
+**Operator report (Samsung, ~12 MP photo):** panning the crop is not 1:1; it takes many swipes
+to move the crop window across the relevant region.
+
+**Cause, verified in `photo/crop-view.mjs`:** `pan()` treats pointer deltas as *preview*
+pixels — `offset -= dx/zoom`. But the pointer reports *screen* pixels over a 320 px viewport
+(`Product.fs` `CropPan`, `cropFrame crop.view 320.`), while the preview it moves is the
+bounded decode from `crop.mjs` — `PREVIEW_MAX_EDGE=4096`, so a 12 MP 4000×3000 photo is **not
+downscaled at all** and its min side (`side`) is 3000 preview px.
+
+The on-screen distance the image moves per finger pixel works out to `320/side`, independent
+of zoom (the `zoom` in `pan` cancels against the `zoom` inside `frame`'s factor). At
+side = 3000: **the image tracks the finger at ~0.107× — about 9.4× too slow.** Crossing the
+pannable range at zoom 1 (±500 preview px horizontally) costs ~9,300 px of finger travel —
+dozens of swipes — where 1:1 would cost ~1,000. Exactly the report. The keyboard arrows
+(`CropPan` steps of 10/40 px in `Product.fs`) suffer the same conversion error.
+
+**Fix:** convert screen → preview pixels at the display scale. `pan` needs the viewport it is
+rendered into: `offset -= dx × (side/state.zoom)/viewport` (equivalently multiply today's
+value by `side/viewport`). Carry `viewport` in the crop state from `createCrop` so the maths
+stays DOM-free, and apply the same conversion to the arrow-key steps. Existing `pan` tests
+feed huge deltas and assert only clamping, so they still pass; add one that pins the 1:1
+contract — render `frame(state,v)`, pan by one viewport-width, and assert the image translated
+by exactly one viewport-width on screen (before the fix it moves `320/side` of that, e.g.
+~0.11 viewport on a 12 MP photo).
+
+**Acceptance:** on a ≥12 MP photo, dragging the crop image moves it 1:1 with the finger at
+zoom 1 and stays finger-locked (content under the finger stays under it) while zoomed; arrow
+keys step a meaningful distance (one viewport-width per press is fine). Same check on a small
+photo (side ≈ viewport) where behaviour is already correct and must not regress.
+
 ---
 
 ## Sense-check summary
@@ -279,6 +311,7 @@ There are no pop-up toasts; guidance is inline status lines and boxes. Two real 
 | 9 | FAQ local-generation copy | Additive one-row change, tone preserved |
 | 10 | For-testing integration | Position right, restyle into FAQ language |
 | 11 | Toasts + honest guidance | Desktop nudge fires on desktops; status line overwriteable |
+| 12 | Crop pan 1:1 | Verified bug: pan divides by zoom but ignores preview/viewport scale — ~9× too slow on 12 MP photos |
 
 **Operator decisions — all resolved 18–19 September:** names experience is a fullscreen
 `/names` route/component inside the candidate — no separate `next.names.facemorph.me`
