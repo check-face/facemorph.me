@@ -1,0 +1,74 @@
+<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><title>GPU capability diagnostic</title><style>body{font:16px system-ui;background:#141c20;color:#eee9df;max-width:680px;margin:40px auto;padding:20px}button{font:inherit;padding:12px;background:#b5ed80;border:0;border-radius:8px}pre{white-space:pre-wrap}a{color:#b5ed80}</style><h1>GPU capability check</h1><p>No face model is loaded. A passing check does not establish face correctness.</p><button id="run" disabled>Check GPU</button> <button id="retry">Retry saving</button><p id="status">Loading previous result…</p><p id="saved"></p><a href="index.html">Main lab / try CPU</a><pre></pre><script type="module">
+import {ResultStore,uuid} from './save-client-v5.js';
+const q=new URLSearchParams(location.search),campaign=q.get('campaign'),$=s=>document.querySelector(s),lastKey='facemorph-gpu-capability-last-v1',ackKey='facemorph-gpu-capability-saved-v1';
+const operator=!!campaign&&/^[-a-zA-Z0-9]{8,80}$/.test(campaign)&&!!q.get('udid')&&!!q.get('device')&&!!q.get('runtime')&&/iPhone|iPad|iPod/.test(navigator.platform);
+let report,running=false,confirmed;
+function isSaved(){let ack=confirmed;try{ack=JSON.parse(localStorage.getItem(ackKey)||'null')||ack;}catch{}return !!report?.runId&&ack?.runId===report.runId&&ack?.revision===report.revision&&!store.entries.has(report.runId);}
+function persist(value=report){if(!value?.runId||value!==report)return;const text=JSON.stringify(value);localStorage.setItem(lastKey,text);if(localStorage.getItem(lastKey)!==text)throw Error('Could not retain probe recovery state');}
+function display(){if(report)$('pre').textContent=JSON.stringify(report,null,2);}
+function terminalStatus(){if(!report?.finished)return;const r=report.results[0],saved=isSaved();$('#status').textContent=(report.interrupted?'Previous probe interrupted; no automatic restart.':r.unsupported?'GPU unavailable: '+r.reason:r.completed?'Small GPU compute check passed. Face inference remains unqualified.':'GPU check failed: '+r.error)+(saved?' Results saved.':' Results queued; automatic retry is enabled.');}
+const store=new ResultStore({onStatus:(message,ok)=>{if(ok&&report?.runId&&!store.entries.has(report.runId)){confirmed={runId:report.runId,revision:report.revision};try{localStorage.setItem(ackKey,JSON.stringify(confirmed));}catch{}}$('#saved').textContent=message;$('#retry').disabled=ok&&!store.entries.size&&isSaved();if(!running)terminalStatus();},onRecovered:(old,r)=>{if(report?.runId===old){Object.assign(report,{runId:r.runId,revision:r.revision,recoveredFromRunId:r.recoveredFromRunId,recoveryReason:r.recoveryReason,conflictFromRunId:r.conflictFromRunId});try{persist();}catch(e){$('#saved').textContent=String(e);}display();}}});
+async function save(value=report){
+ if(!value?.runId)return false;
+ // Missing local credentials recover into a new server UUID through ResultStore.
+ if(store.credential(value.runId))store.enqueue(value);else{value.revision=Math.max(value.revision||0,store.entries.get(value.runId)?.report.revision||0)+1;store.put({report:structuredClone(value),token:null});}
+ let durableError;try{persist(value);}catch(e){durableError=e;}if(value===report)display();const saved=await store.flush();if(durableError)$('#saved').textContent=String(durableError)+(saved?'; server save succeeded.':'; keep this tab open.');return saved;
+}
+async function retry(){try{if(report?.runId&&!isSaved()&&!store.entries.has(report.runId))await save();else await store.flush();display();if(!running)terminalStatus();}catch(e){$('#saved').textContent='Save retry failed: '+String(e);}}
+const bounded=async(p,label,ms=15000)=>{let timer;try{return await Promise.race([p,new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error(label+' timed out')),ms);})]);}finally{clearTimeout(timer);}};
+async function run(){
+ if(running)return;running=true;$('#run').disabled=true;report=undefined;let attempt,device,cleaning=false;const buffers=[],cleanupErrors=[];
+ try{
+  let deviceId=localStorage.getItem('facemorph-device-id');if(!deviceId){deviceId=uuid();localStorage.setItem('facemorph-device-id',deviceId);}if(localStorage.getItem('facemorph-device-id')!==deviceId)throw Error('Site storage is required to retain diagnostic results');
+  attempt={schemaVersion:1,test:operator,operatorScope:operator?'simulator-capability-diagnostic':undefined,campaignId:campaign||undefined,deviceId,deviceIdScope:'Random ID for this browser profile; clearing site storage resets it',userAgent:navigator.userAgent,platform:navigator.platform,secureContext:isSecureContext,crossOriginIsolated,started:new Date().toISOString(),suiteVersion:'gpu-capability-v1',label:operator?'SIMULATOR '+q.get('device'):'GPU capability diagnostic',executionEnvironment:operator?{kind:'ios-simulator',declaredBy:'operator-harness',simulatorDeviceId:q.get('udid'),deviceProfile:q.get('device'),runtime:q.get('runtime'),physicalPerformanceEvidence:false}:{kind:'unclassified-browser'},selected:['gpu-capability'],results:[{id:'gpu-capability',status:'Running',scope:'API and small compute only; no face qualification'}]};report=attempt;
+  await store.start(attempt);persist(attempt);const r=attempt.results[0];
+  const checkpoint=async stage=>{r.stage=stage;r.lastProgressAt=new Date().toISOString();$('#status').textContent=stage+'…';await save(attempt);};
+  r.gpuApiAvailable=!!navigator.gpu;r.gpuType=typeof navigator.gpu;await checkpoint('Checking GPU API');
+  if(!navigator.gpu){r.unsupported=true;r.reason='navigator.gpu is unavailable';}
+  else{
+   r.wgslLanguageFeatures=[...(navigator.gpu.wgslLanguageFeatures||[])];await checkpoint('Requesting GPU adapter');
+   const adapter=await bounded(navigator.gpu.requestAdapter(),'Adapter request',10000);r.adapterAvailable=!!adapter;await save(attempt);
+   if(!adapter){r.unsupported=true;r.reason='requestAdapter returned null';}
+   else{
+    r.adapter=Object.fromEntries(['vendor','architecture','device','description','isFallbackAdapter'].map(k=>[k,adapter.info?.[k]??null]));r.features=[...adapter.features];r.maxStorageBufferBindingSize=adapter.limits.maxStorageBufferBindingSize;
+    await checkpoint('Creating GPU device');const pendingDevice=adapter.requestDevice();
+    pendingDevice.then(d=>{if(cleaning){try{d.destroy();}catch(e){r.cleanupErrors??=[];r.cleanupErrors.push(String(e));r.completed=false;r.status='Failed';r.error='Late GPU device cleanup failed: '+String(e);void save(attempt).catch(error=>{$('#saved').textContent=String(error);});}}},()=>{});
+    device=await bounded(pendingDevice,'GPU device creation');device.lost.then(v=>{if(!cleaning){r.deviceLost={reason:v.reason,message:v.message};}});
+    device.pushErrorScope('validation');await checkpoint('Creating GPU pipeline');
+    const shader=device.createShaderModule({code:'@group(0) @binding(0) var<storage,read_write> out:array<f32>; @compute @workgroup_size(4) fn main(@builtin(global_invocation_id) id:vec3<u32>){out[id.x]=f32((id.x+1u)*(id.x+1u));}'});
+    const pipeline=await bounded(device.createComputePipelineAsync({layout:'auto',compute:{module:shader,entryPoint:'main'}}),'GPU pipeline creation');
+    const output=device.createBuffer({size:16,usage:GPUBufferUsage.STORAGE|GPUBufferUsage.COPY_SRC});buffers.push(output);
+    const readback=device.createBuffer({size:16,usage:GPUBufferUsage.COPY_DST|GPUBufferUsage.MAP_READ});buffers.push(readback);
+    const encoder=device.createCommandEncoder(),pass=encoder.beginComputePass();pass.setPipeline(pipeline);pass.setBindGroup(0,device.createBindGroup({layout:pipeline.getBindGroupLayout(0),entries:[{binding:0,resource:{buffer:output}}]}));pass.dispatchWorkgroups(1);pass.end();encoder.copyBufferToBuffer(output,0,readback,0,16);device.queue.submit([encoder.finish()]);
+    await checkpoint('Reading GPU output');await bounded(readback.mapAsync(GPUMapMode.READ),'GPU readback');r.computeValues=[...new Float32Array(readback.getMappedRange())];readback.unmap();
+    await checkpoint('Checking GPU validation');const error=await bounded(device.popErrorScope(),'GPU validation');
+    if(error||r.deviceLost||r.computeValues.join(',')!=='1,4,9,16')throw Error(error?.message||'GPU compute validation failed');r.computePassed=true;
+   }
+  }
+  r.completed=!r.unsupported;r.status=r.unsupported?'Unsupported':'Completed';
+ }catch(e){if(attempt)Object.assign(attempt.results[0],{completed:false,status:'Failed',error:String(e)});$('#status').textContent=String(e);}
+ finally{
+  cleaning=true;
+  for(const cleanup of [...buffers.map(b=>()=>b.destroy()),()=>device?.destroy()])try{cleanup();}catch(e){cleanupErrors.push(String(e));}
+  try{
+   if(attempt?.runId){const r=attempt.results[0];if(r.deviceLost&&!r.unsupported){r.completed=false;r.status='Failed';r.error=r.error||'GPU device was lost';}if(cleanupErrors.length){r.cleanupErrors=cleanupErrors;r.completed=false;r.status='Failed';r.error=[r.error,'GPU cleanup failed: '+cleanupErrors.join('; ')].filter(Boolean).join(' · ');}r.finished=new Date().toISOString();attempt.finished=r.finished;await save(attempt);}
+  }catch(e){$('#saved').textContent='Results remain pending: '+String(e);}
+  finally{running=false;$('#run').disabled=false;display();terminalStatus();}
+ }
+}
+async function locked(action){if(!navigator.locks?.request){$('#status').textContent='This browser cannot safely coordinate tests. Try the main lab for compatibility details.';return false;}let acquired=false;await navigator.locks.request('facemorph-lab-inference',{ifAvailable:true},async lock=>{if(!lock){$('#status').textContent='Another lab test is running. Return to it, then reload here.';return;}acquired=true;await action();});return acquired;}
+$('#run').onclick=()=>locked(run).catch(e=>{$('#status').textContent=String(e);});$('#retry').onclick=retry;
+addEventListener('online',retry);setInterval(retry,30000);
+async function init(){
+ await locked(async()=>{
+  let recovered=false;const text=localStorage.getItem(lastKey);if(text){const prior=JSON.parse(text);if(prior?.suiteVersion==='gpu-capability-v1'&&prior.runId&&prior.results?.[0]?.id==='gpu-capability'){
+   report=prior;const queued=store.entries.get(prior.runId)?.report;if(queued?.revision>report.revision)report=structuredClone(queued);
+   if(!report.finished){const r=report.results[0];r.completed=false;r.status='Interrupted';r.error='Previous probe closed or reloaded before completion; cause unknown';r.finished=new Date().toISOString();report.finished=r.finished;report.interrupted=true;recovered=true;await save();}display();
+  }}
+  await retry();$('#run').disabled=false;if(!report)$('#status').textContent='Ready';
+  // Recovery never retries GPU automatically. A fresh operator campaign may run once.
+  if(operator){const key='facemorph-gpu-probe-'+campaign;if(!recovered&&!localStorage.getItem(key)){const value=new Date().toISOString();localStorage.setItem(key,value);if(localStorage.getItem(key)!==value)throw Error('Could not retain operator campaign marker');await run();}else if(!report)$('#status').textContent='Previous probe retained. No automatic restart.';}
+ });
+}
+init().catch(e=>{$('#status').textContent='Probe initialization failed: '+String(e);$('#run').disabled=true;});
+</script>

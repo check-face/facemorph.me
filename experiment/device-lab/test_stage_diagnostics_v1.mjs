@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import {pixelErrors} from './stage-diagnostics-v1.js';
+import {planSuite} from './suite-policy-v1.js';
+import fs from 'node:fs';
+const raw=new Float32Array(3*1048576),rgba=new Uint8Array(4*1048576).fill(128);
+let r=pixelErrors(raw,rgba);assert.equal(r.histogram[0],3*1048576);assert.equal(r.worst.length,0);
+raw[0]=1;raw[1048576+512*1024+512]=-.5;r=pixelErrors(raw,rgba);assert.equal(r.boundaryErrors,1);assert.equal(r.interiorErrors,1);assert.equal(r.worst[0].channel,'R');assert.equal(r.worst[0].delta,127);
+const c=JSON.parse(fs.readFileSync(new URL('./experiments-v15.json',import.meta.url)));const phone=planSuite(c,{gpu:{limits:{maxStorageBufferBindingSize:134217728}}},{crossOriginIsolated:true,hardwareConcurrency:5});
+for(const id of ['mobile-stage-256','mobile-stage-64','cpu-4','ffmpeg'])assert.equal(phone.decisions.find(d=>d.id===id).status,'selected');
+for(const id of ['best','mobile','mobile-124','mobile-video'])assert.equal(phone.decisions.find(d=>d.id===id).status,'skipped');
+const cpu=planSuite(c,{},{});assert.equal(cpu.decisions.find(d=>d.id==='mobile-stage-64').status,'skipped');console.log('Pixel diagnostics and capability policy checks passed');

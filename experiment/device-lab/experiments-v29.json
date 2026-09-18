@@ -1,0 +1,26 @@
+{
+  "version": "2026-09-15.29",
+  "experiments": [
+    {
+      "id": "iphone-no-prepack-gpu",
+      "name": "GPU \u00b7 prepacking-disabled control",
+      "worker": "gpu-worker-no-prepack-v1.js",
+      "failureLogging": true,
+      "mobileSplit": true,
+      "cut": "/review-artifacts/browser-onnx-mobile-fusion/",
+      "boundaryVariant": "bounded",
+      "lowMemoryRuntime": true,
+      "gpuBufferBudgetBytes": 805306368,
+      "fullQualification": true,
+      "timeoutMs": 600000,
+      "formatDiagnostic": true
+    }
+  ],
+  "assetManifest": "/asset-manifest-2026-09-15.29.json",
+  "policyVersion": "pre-generation-v1",
+  "automaticSuite": {
+    "id": "explicit-onnx-no-prepack-control-v1",
+    "fullQualification": true,
+    "rules": {}
+  }
+}

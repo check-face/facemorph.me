@@ -1,0 +1,2 @@
+import {runWebGLProbe} from './webgl2-probe-v1.js';
+let started=false,resolveAck;onmessage=async({data})=>{if(data.ack){resolveAck?.();resolveAck=null;return;}if(started)return;started=true;const row={execution:'module-worker-offscreen-canvas'};try{await runWebGLProbe(row,stage=>new Promise(resolve=>{resolveAck=resolve;postMessage({checkpoint:stage,row});}));postMessage({done:true,row});}catch(e){postMessage({done:true,error:String(e),row});}};

@@ -1,0 +1,324 @@
+{
+  "version": "2026-09-15.20",
+  "experiments": [
+    {
+      "id": "best",
+      "name": "Mac winner \u00b7 weight modulation + WGSL",
+      "worker": "gpu-worker-v9.js",
+      "failureLogging": true
+    },
+    {
+      "id": "colour",
+      "name": "Colour diagnostic \u00b7 exact GPU RGB output (no model)",
+      "worker": "colour-worker-v1.js"
+    },
+    {
+      "id": "mobile-boundary-bounded",
+      "name": "Phone GPU \u00b7 bounded padding, full 31-case check",
+      "worker": "gpu-worker-v8.js",
+      "mobileSplit": true,
+      "cut": "/review-artifacts/browser-onnx-mobile-fusion/",
+      "boundaryVariant": "bounded",
+      "timeoutMs": 300000,
+      "fullQualification": true
+    },
+    {
+      "id": "mobile-boundary-unrolled",
+      "name": "Phone GPU \u00b7 unrolled bounded padding",
+      "worker": "gpu-worker-v8.js",
+      "mobileSplit": true,
+      "cut": "/review-artifacts/browser-onnx-mobile-fusion/",
+      "boundaryVariant": "unrolled",
+      "timeoutMs": 240000
+    },
+    {
+      "id": "mobile-stage-256",
+      "name": "Mobile diagnostic \u00b7 stage checks, workgroup 256",
+      "worker": "gpu-worker-v7.js",
+      "mobileSplit": true,
+      "cut": "/review-artifacts/browser-onnx-mobile-fusion/",
+      "diagnosticOnly": true,
+      "workgroup": 256,
+      "timeoutMs": 90000
+    },
+    {
+      "id": "mobile-stage-64",
+      "name": "Mobile diagnostic \u00b7 stage checks, workgroup 64",
+      "worker": "gpu-worker-v7.js",
+      "mobileSplit": true,
+      "cut": "/review-artifacts/browser-onnx-mobile-fusion/",
+      "diagnosticOnly": true,
+      "workgroup": 64,
+      "timeoutMs": 90000
+    },
+    {
+      "id": "mobile",
+      "name": "Research \u00b7 bounded phase tiles (bounded buffers)",
+      "worker": "gpu-worker-v6.js",
+      "mobileSplit": true,
+      "cut": "/review-artifacts/browser-onnx-mobile-fusion/"
+    },
+    {
+      "id": "mobile-124",
+      "name": "GPU candidate \u00b7 tiled GPU, newer ORT 1.24",
+      "worker": "gpu-worker-v6.js",
+      "mobileSplit": true,
+      "runtime124": true,
+      "cut": "/review-artifacts/browser-onnx-mobile-fusion/"
+    },
+    {
+      "id": "ffmpeg",
+      "name": "FFmpeg compatibility \u00b7 H.264 MP4 encode + playback",
+      "worker": "ffmpeg-worker-v1.js"
+    },
+    {
+      "id": "video",
+      "name": "Mac winner \u00b7 H264 video pipeline",
+      "worker": "gpu-worker-v6.js",
+      "video": true
+    },
+    {
+      "id": "mobile-video",
+      "name": "Tiled GPU \u00b7 faces + H264 video candidate",
+      "worker": "gpu-worker-v6.js",
+      "mobileSplit": true,
+      "video": true,
+      "cut": "/review-artifacts/browser-onnx-mobile-fusion/"
+    },
+    {
+      "id": "cached",
+      "name": "Eligible style mix \u00b7 cached prefix + WGSL",
+      "worker": "gpu-worker-v6.js",
+      "cached": true
+    },
+    {
+      "id": "compat",
+      "name": "GPU compatibility \u00b7 spatial graph, ORT 1.24",
+      "worker": "compat-worker-v7.js",
+      "provider": "auto",
+      "graph": "spatial"
+    },
+    {
+      "id": "cpu-1",
+      "name": "CPU control \u00b7 spatial graph, 1 thread",
+      "worker": "compat-worker-v7.js",
+      "provider": "wasm",
+      "graph": "spatial",
+      "threads": 1
+    },
+    {
+      "id": "cpu-2",
+      "name": "CPU control \u00b7 spatial graph, 2 threads",
+      "worker": "compat-worker-v7.js",
+      "provider": "wasm",
+      "graph": "spatial",
+      "threads": 2
+    },
+    {
+      "id": "cpu-4",
+      "name": "CPU control \u00b7 spatial graph, 4 threads",
+      "worker": "compat-worker-v7.js",
+      "provider": "wasm",
+      "graph": "spatial",
+      "threads": 4
+    },
+    {
+      "id": "cpu-weight-1",
+      "name": "CPU candidate \u00b7 weight modulation, 1 thread",
+      "worker": "compat-worker-v7.js",
+      "provider": "wasm",
+      "graph": "spatial",
+      "threads": 1,
+      "model": "/review-artifacts/browser-onnx-weight-modulation/spatial-high.onnx"
+    },
+    {
+      "id": "cpu-weight-4",
+      "name": "CPU candidate \u00b7 weight modulation, 4 threads",
+      "worker": "compat-worker-v7.js",
+      "provider": "wasm",
+      "graph": "spatial",
+      "threads": 4,
+      "model": "/review-artifacts/browser-onnx-weight-modulation/spatial-high.onnx"
+    },
+    {
+      "id": "control",
+      "name": "Previous GPU winner \u00b7 paired control",
+      "worker": "gpu-worker-v6.js"
+    },
+    {
+      "id": "cpu",
+      "name": "CPU fallback \u00b7 WASM, 3 representative fixtures",
+      "worker": "compat-worker-v7.js",
+      "provider": "wasm",
+      "graph": "spatial"
+    },
+    {
+      "id": "queued",
+      "name": "Research \u00b7 defer sequence queue waits",
+      "worker": "gpu-worker-v6.js",
+      "deferQueue": true
+    },
+    {
+      "id": "mod64",
+      "name": "Research \u00b7 weight modulation from 64px",
+      "worker": "gpu-worker-v6.js",
+      "cut": "/review-artifacts/browser-onnx-lab-mod64-fusion/"
+    },
+    {
+      "id": "compat-polyphase",
+      "name": "Research \u00b7 plain polyphase GPU, ORT 1.24",
+      "worker": "compat-worker-v7.js",
+      "provider": "auto",
+      "graph": "polyphase"
+    },
+    {
+      "id": "mobile-cap",
+      "name": "Research \u00b7 tiled GPU with enforced 128 MiB limit",
+      "worker": "gpu-worker-v6.js",
+      "mobileSplit": true,
+      "limit128": true,
+      "cut": "/review-artifacts/browser-onnx-mobile-fusion/"
+    },
+    {
+      "id": "cpu-asyncify",
+      "name": "Research \u00b7 CPU through WebGPU/asyncify runtime",
+      "worker": "compat-worker-v7.js",
+      "provider": "wasm",
+      "graph": "spatial",
+      "asyncify": true
+    },
+    {
+      "id": "mobile-low-power",
+      "name": "GPU candidate \u00b7 tiled GPU, low-power adapter request",
+      "worker": "gpu-worker-v6.js",
+      "mobileSplit": true,
+      "powerPreference": "low-power",
+      "cut": "/review-artifacts/browser-onnx-mobile-fusion/"
+    }
+  ],
+  "assetManifest": "/asset-manifest-2026-09-15.20.json",
+  "policyVersion": "pre-generation-v1",
+  "automaticSuite": {
+    "id": "mobile-qualified-baseline-v1",
+    "selectionPolicy": "capabilities-and-reference-results",
+    "fullQualification": false,
+    "rules": {
+      "best": {
+        "when": "large",
+        "reason": "Measure the retained ordinary synthesis baseline on a GPU with sufficient binding capacity."
+      },
+      "colour": {
+        "when": "gpu",
+        "reason": "Separate GPU colour conversion defects from inference defects."
+      },
+      "mobile-video": {
+        "when": "off",
+        "reason": "Temporarily replaced by one-face stage diagnostics after repeatable phone correctness failures; retain historical candidate."
+      },
+      "ffmpeg": {
+        "when": "always",
+        "reason": "Verify real H264 MP4 encoding, decoding and browser playback independently of inference."
+      },
+      "control": {
+        "when": "off",
+        "reason": "Historical paired control; opt in through a versioned research policy for regression investigations."
+      },
+      "cached": {
+        "when": "large",
+        "reason": "Measure the distinct eligible style-mixing cache workload after ordinary synthesis passes.",
+        "after": {
+          "id": "best",
+          "outcome": "passed"
+        }
+      },
+      "video": {
+        "when": "large",
+        "reason": "Measure end-to-end GPU video pipeline only after ordinary synthesis passes.",
+        "after": {
+          "id": "best",
+          "outcome": "passed"
+        }
+      },
+      "compat": {
+        "when": "large",
+        "reason": "Try an independent ORT spatial route if the ordinary GPU baseline fails.",
+        "after": {
+          "id": "best",
+          "outcome": "failed"
+        }
+      },
+      "cpu": {
+        "when": "off",
+        "reason": "Duplicates the explicitly selected CPU thread baseline."
+      },
+      "queued": {
+        "when": "off",
+        "reason": "Queue scheduling follow-up; no established benefit justifying every-device measurement."
+      },
+      "mod64": {
+        "when": "off",
+        "reason": "Earlier graph rewrite without established benefit; reserved for targeted investigation."
+      },
+      "compat-polyphase": {
+        "when": "off",
+        "reason": "Additional graph diagnostic; reserved for unresolved compatibility investigations."
+      },
+      "mobile": {
+        "when": "off",
+        "reason": "Temporarily replaced by one-face stage diagnostics after repeatable phone correctness failures; retain historical candidate."
+      },
+      "mobile-cap": {
+        "when": "off",
+        "reason": "Simulates a binding cap; real reported limits already select the bounded route."
+      },
+      "cpu-asyncify": {
+        "when": "off",
+        "reason": "Legacy runtime diagnostic; dedicated WASM is the baseline."
+      },
+      "mobile-124": {
+        "when": "off",
+        "reason": "Temporarily replaced by one-face stage diagnostics after repeatable phone correctness failures; retain historical candidate."
+      },
+      "mobile-low-power": {
+        "when": "off",
+        "reason": "Adapter-preference investigation; the hint does not establish a different adapter."
+      },
+      "cpu-1": {
+        "when": "always",
+        "reason": "Common single-thread correctness and latency baseline; independent GPU fallback."
+      },
+      "cpu-2": {
+        "when": "threads2",
+        "reason": "Measure available CPU parallelism against the single-thread baseline."
+      },
+      "cpu-4": {
+        "when": "threads4",
+        "reason": "Measure up to four CPU threads against the single-thread baseline."
+      },
+      "cpu-weight-1": {
+        "when": "weight1",
+        "reason": "Compare weight-modulated and spatial graphs at one thread."
+      },
+      "cpu-weight-4": {
+        "when": "off",
+        "reason": "Latest phone repeats were slower; retain spatial CPU control while fixing GPU boundaries."
+      },
+      "mobile-stage-256": {
+        "when": "off",
+        "reason": "Both workgroups already isolated identical phone border errors; retained historical control."
+      },
+      "mobile-stage-64": {
+        "when": "off",
+        "reason": "Both workgroups already isolated identical phone border errors; retained historical control."
+      },
+      "mobile-boundary-bounded": {
+        "when": "bounded",
+        "reason": "Phone screen passes at max RGB1; run all31 then repeat sequence timing to qualify the retained baseline."
+      },
+      "mobile-boundary-unrolled": {
+        "when": "off",
+        "reason": "Same correctness and slower in the phone run; retain bounded baseline for full31 qualification before further tuning."
+      }
+    }
+  }
+}

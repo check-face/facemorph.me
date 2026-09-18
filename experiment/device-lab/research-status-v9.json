@@ -1,0 +1,47 @@
+{
+  "updated": "2026-09-14",
+  "policy": "Screening does not enable product generation. Release correctness/reliability and per-device canaries are mandatory.",
+  "native": [
+    {
+      "path": "ort / cpu / Mac ARM64",
+      "full31Passed": true,
+      "sequenceMsPerFace": [
+        744.52,
+        700.66,
+        709.37,
+        633.59
+      ],
+      "order": [
+        "control",
+        "candidate",
+        "candidate",
+        "control"
+      ],
+      "conclusion": "Correctness passed; timing inconclusive due to load/order drift. Packaging undecided."
+    },
+    {
+      "path": "torch / mps / Mac ARM64",
+      "full31Passed": true,
+      "sequenceMsPerFace": [
+        219.98,
+        210.55,
+        210.07,
+        258.83
+      ],
+      "order": [
+        "control",
+        "candidate",
+        "candidate",
+        "control"
+      ],
+      "conclusion": "Correctness passed; timing inconclusive due to load/order drift. Packaging undecided."
+    }
+  ],
+  "pendingTargets": [
+    "S21 tiled GPU and new CPU candidates",
+    "macOS x86-64",
+    "Windows x86-64 / ARM64",
+    "Linux x86-64 / ARM64",
+    "Other architectures: assess runtime and memory before claiming support"
+  ]
+}

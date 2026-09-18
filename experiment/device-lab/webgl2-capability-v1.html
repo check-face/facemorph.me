@@ -1,0 +1,54 @@
+<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><title>WebGL2 convolution diagnostic</title><style>body{font:16px system-ui;background:#141c20;color:#eee9df;max-width:680px;margin:40px auto;padding:20px}button{font:inherit;padding:12px;background:#b5ed80;border:0;border-radius:8px}pre{white-space:pre-wrap}a{color:#b5ed80}</style><h1>WebGL2 convolution check</h1><p>No face model is loaded. A passing check does not establish face correctness.</p><button id="run" disabled>Check WebGL2</button> <button id="retry">Retry saving</button><p id="status">Loading previous result…</p><p id="saved"></p><a href="index.html">Main lab / try CPU</a><details><summary>ⓘ Diagnostics</summary><pre></pre></details><script type="module">
+import {runWebGLProbe} from './webgl2-probe-in-worker-v1.js';
+import {ResultStore,uuid} from './save-client-v5.js';
+const q=new URLSearchParams(location.search),campaign=q.get('campaign'),$=s=>document.querySelector(s),lastKey='facemorph-webgl2-capability-last-v1',ackKey='facemorph-webgl2-capability-saved-v1';
+const operator=!!campaign&&/^[-a-zA-Z0-9]{8,80}$/.test(campaign)&&!!q.get('udid')&&!!q.get('device')&&!!q.get('runtime')&&/iPhone|iPad|iPod/.test(navigator.platform);
+let report,running=false,confirmed;
+function isSaved(){let ack=confirmed;try{ack=JSON.parse(localStorage.getItem(ackKey)||'null')||ack;}catch{}return !!report?.runId&&ack?.runId===report.runId&&ack?.revision===report.revision&&!store.entries.has(report.runId);}
+function persist(value=report){if(!value?.runId||value!==report)return;const text=JSON.stringify(value);localStorage.setItem(lastKey,text);if(localStorage.getItem(lastKey)!==text)throw Error('Could not retain probe recovery state');}
+function display(){if(report)$('pre').textContent=JSON.stringify(report,null,2);}
+function terminalStatus(){if(!report?.finished)return;const r=report.results[0],saved=isSaved();$('#status').textContent=(report.interrupted?'Previous probe interrupted; no automatic restart.':r.unsupported?'GPU unavailable: '+r.reason:r.completed?'WebGL2 convolution passed. Face inference remains unqualified.':'GPU check failed: '+r.error)+(saved?' Results saved.':' Results queued; automatic retry is enabled.');}
+const store=new ResultStore({onStatus:(message,ok)=>{if(ok&&report?.runId&&!store.entries.has(report.runId)){confirmed={runId:report.runId,revision:report.revision};try{localStorage.setItem(ackKey,JSON.stringify(confirmed));}catch{}}$('#saved').textContent=message;$('#retry').disabled=ok&&!store.entries.size&&isSaved();if(!running)terminalStatus();},onRecovered:(old,r)=>{if(report?.runId===old){Object.assign(report,{runId:r.runId,revision:r.revision,recoveredFromRunId:r.recoveredFromRunId,recoveryReason:r.recoveryReason,conflictFromRunId:r.conflictFromRunId});try{persist();}catch(e){$('#saved').textContent=String(e);}display();}}});
+async function save(value=report){
+ if(!value?.runId)return false;
+ // Missing local credentials recover into a new server UUID through ResultStore.
+ if(store.credential(value.runId))store.enqueue(value);else{value.revision=Math.max(value.revision||0,store.entries.get(value.runId)?.report.revision||0)+1;store.put({report:structuredClone(value),token:null});}
+ let durableError;try{persist(value);}catch(e){durableError=e;}if(value===report)display();const saved=await store.flush();if(durableError)$('#saved').textContent=String(durableError)+(saved?'; server save succeeded.':'; keep this tab open.');return saved;
+}
+async function retry(){try{if(report?.runId&&!isSaved()&&!store.entries.has(report.runId))await save();else await store.flush();display();if(!running)terminalStatus();}catch(e){$('#saved').textContent='Save retry failed: '+String(e);}}
+const bounded=async(p,label,ms=15000)=>{let timer;try{return await Promise.race([p,new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error(label+' timed out')),ms);})]);}finally{clearTimeout(timer);}};
+async function run(){
+ if(running)return;running=true;$('#run').disabled=true;report=undefined;let attempt,device,cleaning=false;const buffers=[],cleanupErrors=[];
+ try{
+  let deviceId=localStorage.getItem('facemorph-device-id');if(!deviceId){deviceId=uuid();localStorage.setItem('facemorph-device-id',deviceId);}if(localStorage.getItem('facemorph-device-id')!==deviceId)throw Error('Site storage is required to retain diagnostic results');
+  attempt={schemaVersion:1,test:operator,operatorScope:operator?'simulator-capability-diagnostic':undefined,campaignId:campaign||undefined,deviceId,deviceIdScope:'Random ID for this browser profile; clearing site storage resets it',userAgent:navigator.userAgent,platform:navigator.platform,secureContext:isSecureContext,crossOriginIsolated,started:new Date().toISOString(),suiteVersion:'webgl2-capability-v1',label:operator?'SIMULATOR '+q.get('device'):'WebGL2 convolution diagnostic',executionEnvironment:operator?{kind:'ios-simulator',declaredBy:'operator-harness',simulatorDeviceId:q.get('udid'),deviceProfile:q.get('device'),runtime:q.get('runtime'),physicalPerformanceEvidence:false}:{kind:'unclassified-browser'},selected:['webgl2-capability'],results:[{id:'webgl2-capability',status:'Running',scope:'API and small compute only; no face qualification'}]};report=attempt;
+  await store.start(attempt);persist(attempt);const r=attempt.results[0];
+  const checkpoint=async stage=>{r.stage=stage;r.lastProgressAt=new Date().toISOString();$('#status').textContent=stage+'…';await save(attempt);};
+  await runWebGLProbe(r,checkpoint);
+  r.completed=!r.unsupported;r.status=r.unsupported?'Unsupported':'Completed';
+ }catch(e){if(attempt)Object.assign(attempt.results[0],{completed:false,status:'Failed',error:String(e)});$('#status').textContent=String(e);}
+ finally{
+  cleaning=true;
+  for(const cleanup of [...buffers.map(b=>()=>b.destroy()),()=>device?.destroy()])try{cleanup();}catch(e){cleanupErrors.push(String(e));}
+  try{
+   if(attempt?.runId){const r=attempt.results[0];if(r.deviceLost&&!r.unsupported){r.completed=false;r.status='Failed';r.error=r.error||'GPU device was lost';}if(cleanupErrors.length){r.cleanupErrors=cleanupErrors;r.completed=false;r.status='Failed';r.error=[r.error,'GPU cleanup failed: '+cleanupErrors.join('; ')].filter(Boolean).join(' · ');}r.finished=new Date().toISOString();attempt.finished=r.finished;await save(attempt);}
+  }catch(e){$('#saved').textContent='Results remain pending: '+String(e);}
+  finally{running=false;$('#run').disabled=false;display();terminalStatus();}
+ }
+}
+async function locked(action){if(!navigator.locks?.request){$('#status').textContent='This browser cannot safely coordinate tests. Try the main lab for compatibility details.';return false;}let acquired=false;await navigator.locks.request('facemorph-lab-inference',{ifAvailable:true},async lock=>{if(!lock){$('#status').textContent='Another lab test is running. Return to it, then reload here.';return;}acquired=true;await action();});return acquired;}
+$('#run').onclick=()=>locked(run).catch(e=>{$('#status').textContent=String(e);});$('#retry').onclick=retry;
+addEventListener('online',retry);setInterval(retry,30000);
+async function init(){
+ await locked(async()=>{
+  let recovered=false;const text=localStorage.getItem(lastKey);if(text){const prior=JSON.parse(text);if(prior?.suiteVersion==='webgl2-capability-v1'&&prior.runId&&prior.results?.[0]?.id==='webgl2-capability'){
+   report=prior;const queued=store.entries.get(prior.runId)?.report;if(queued?.revision>report.revision)report=structuredClone(queued);
+   if(!report.finished){const r=report.results[0];r.completed=false;r.status='Interrupted';r.error='Previous probe closed or reloaded before completion; cause unknown';r.finished=new Date().toISOString();report.finished=r.finished;report.interrupted=true;recovered=true;await save();}display();
+  }}
+  await retry();$('#run').disabled=false;if(!report)$('#status').textContent='Ready';
+  // Recovery never retries GPU automatically. A fresh operator campaign may run once.
+  if(operator){const key='facemorph-webgl2-probe-'+campaign;if(!recovered&&!localStorage.getItem(key)){const value=new Date().toISOString();localStorage.setItem(key,value);if(localStorage.getItem(key)!==value)throw Error('Could not retain operator campaign marker');await run();}else if(!report)$('#status').textContent='Previous probe retained. No automatic restart.';}
+ });
+}
+init().catch(e=>{$('#status').textContent='Probe initialization failed: '+String(e);$('#run').disabled=true;});
+</script>

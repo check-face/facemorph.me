@@ -1,0 +1,20 @@
+services:
+  lab:
+    image: python:3.12-slim
+    restart: unless-stopped
+    command: [python, /app/server.py]
+    env_file: .env
+    volumes:
+      - ./server.py:/app/server.py:ro
+      - ./assets:/assets:ro
+      - ./results:/results
+    ports:
+      - 127.0.0.1:8147:8080
+    mem_limit: 512m
+    cpus: 2
+    security_opt: [no-new-privileges:true]
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    command: [tunnel, --no-autoupdate, --url, 'http://lab:8080']
+    depends_on: [lab]

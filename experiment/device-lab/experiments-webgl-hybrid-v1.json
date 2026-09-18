@@ -1,0 +1,32 @@
+{
+  "version": "2026-09-15.webgl-hybrid-v1",
+  "policyVersion": "pre-generation-v1",
+  "assetManifest": "/asset-manifest-webgl-hybrid-v1.json",
+  "automaticSuite": {
+    "id": "explicit-webgl-hybrid-v1",
+    "fullQualification": true,
+    "rules": {}
+  },
+  "experiments": [
+    {
+      "id": "iphone-webgl-hybrid",
+      "name": "CPU + WebGL2 \u00b7 full1024 face",
+      "worker": "hybrid-reference-worker-v1.js",
+      "fullQualification": true,
+      "timeoutMs": 1200000,
+      "kernelSha256": "dcfe4f47f93e1a57736822ab093628bb5dafb28a5705b684b80114a806e20670"
+    },
+    {
+      "id": "hybrid-cache",
+      "name": "Reuse full1024 originals \u00b7 no inference",
+      "worker": "cache-check-worker-v1.js",
+      "timeoutMs": 120000
+    },
+    {
+      "id": "hybrid-encode",
+      "name": "Generated faces \u00b7 MP4 encode and playback",
+      "worker": "generated-ffmpeg-worker-v1.js",
+      "timeoutMs": 240000
+    }
+  ]
+}

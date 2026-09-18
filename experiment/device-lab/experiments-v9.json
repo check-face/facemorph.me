@@ -1,0 +1,183 @@
+{
+  "version": "2026-09-14.9",
+  "experiments": [
+    {
+      "id": "best",
+      "name": "Mac winner \u00b7 weight modulation + WGSL",
+      "default": true,
+      "worker": "gpu-worker-v6.js"
+    },
+    {
+      "id": "colour",
+      "name": "Colour diagnostic \u00b7 exact GPU RGB output (no model)",
+      "default": true,
+      "worker": "colour-worker-v1.js"
+    },
+    {
+      "id": "mobile-video",
+      "name": "Tiled GPU \u00b7 faces + H264 video candidate",
+      "default": true,
+      "worker": "gpu-worker-v6.js",
+      "mobileSplit": true,
+      "video": true,
+      "cut": "/review-artifacts/browser-onnx-mobile-fusion/"
+    },
+    {
+      "id": "ffmpeg",
+      "name": "FFmpeg compatibility \u00b7 H.264 MP4 encode + playback",
+      "default": true,
+      "worker": "ffmpeg-worker-v1.js"
+    },
+    {
+      "id": "control",
+      "name": "Previous GPU winner \u00b7 paired control",
+      "default": false,
+      "worker": "gpu-worker-v6.js"
+    },
+    {
+      "id": "cached",
+      "name": "Eligible style mix \u00b7 cached prefix + WGSL",
+      "default": true,
+      "worker": "gpu-worker-v6.js",
+      "cached": true
+    },
+    {
+      "id": "video",
+      "name": "Mac winner \u00b7 H264 video pipeline",
+      "default": true,
+      "worker": "gpu-worker-v6.js",
+      "video": true
+    },
+    {
+      "id": "compat",
+      "name": "GPU compatibility \u00b7 spatial graph, ORT 1.24",
+      "default": true,
+      "worker": "compat-worker-v7.js",
+      "provider": "auto",
+      "graph": "spatial"
+    },
+    {
+      "id": "cpu",
+      "name": "CPU fallback \u00b7 WASM, 3 representative fixtures",
+      "default": true,
+      "worker": "compat-worker-v7.js",
+      "provider": "wasm",
+      "graph": "spatial"
+    },
+    {
+      "id": "queued",
+      "name": "Research \u00b7 defer sequence queue waits",
+      "default": false,
+      "worker": "gpu-worker-v6.js",
+      "deferQueue": true
+    },
+    {
+      "id": "mod64",
+      "name": "Research \u00b7 weight modulation from 64px",
+      "default": false,
+      "worker": "gpu-worker-v6.js",
+      "cut": "/review-artifacts/browser-onnx-lab-mod64-fusion/"
+    },
+    {
+      "id": "compat-polyphase",
+      "name": "Research \u00b7 plain polyphase GPU, ORT 1.24",
+      "default": false,
+      "worker": "compat-worker-v7.js",
+      "provider": "auto",
+      "graph": "polyphase"
+    },
+    {
+      "id": "mobile",
+      "name": "Research \u00b7 bounded phase tiles (mobile candidate)",
+      "default": false,
+      "worker": "gpu-worker-v6.js",
+      "mobileSplit": true,
+      "cut": "/review-artifacts/browser-onnx-mobile-fusion/"
+    },
+    {
+      "id": "mobile-cap",
+      "name": "Research \u00b7 tiled GPU with enforced 128 MiB limit",
+      "default": false,
+      "worker": "gpu-worker-v6.js",
+      "mobileSplit": true,
+      "limit128": true,
+      "cut": "/review-artifacts/browser-onnx-mobile-fusion/"
+    },
+    {
+      "id": "cpu-asyncify",
+      "name": "Research \u00b7 CPU through WebGPU/asyncify runtime",
+      "default": false,
+      "worker": "compat-worker-v7.js",
+      "provider": "wasm",
+      "graph": "spatial",
+      "asyncify": true
+    },
+    {
+      "id": "mobile-124",
+      "name": "S21 candidate \u00b7 tiled GPU, newer ORT 1.24",
+      "default": false,
+      "worker": "gpu-worker-v6.js",
+      "mobileSplit": true,
+      "runtime124": true,
+      "cut": "/review-artifacts/browser-onnx-mobile-fusion/"
+    },
+    {
+      "id": "mobile-low-power",
+      "name": "S21 candidate \u00b7 tiled GPU, low-power adapter request",
+      "default": false,
+      "worker": "gpu-worker-v6.js",
+      "mobileSplit": true,
+      "powerPreference": "low-power",
+      "cut": "/review-artifacts/browser-onnx-mobile-fusion/"
+    },
+    {
+      "id": "cpu-1",
+      "name": "CPU control \u00b7 spatial graph, 1 thread",
+      "default": false,
+      "worker": "compat-worker-v7.js",
+      "provider": "wasm",
+      "graph": "spatial",
+      "threads": 1
+    },
+    {
+      "id": "cpu-2",
+      "name": "CPU control \u00b7 spatial graph, 2 threads",
+      "default": false,
+      "worker": "compat-worker-v7.js",
+      "provider": "wasm",
+      "graph": "spatial",
+      "threads": 2
+    },
+    {
+      "id": "cpu-4",
+      "name": "CPU control \u00b7 spatial graph, 4 threads",
+      "default": false,
+      "worker": "compat-worker-v7.js",
+      "provider": "wasm",
+      "graph": "spatial",
+      "threads": 4
+    },
+    {
+      "id": "cpu-weight-1",
+      "name": "CPU candidate \u00b7 weight modulation, 1 thread",
+      "default": false,
+      "worker": "compat-worker-v7.js",
+      "provider": "wasm",
+      "graph": "spatial",
+      "threads": 1,
+      "model": "/review-artifacts/browser-onnx-weight-modulation/spatial-high.onnx"
+    },
+    {
+      "id": "cpu-weight-4",
+      "name": "CPU candidate \u00b7 weight modulation, 4 threads",
+      "default": false,
+      "worker": "compat-worker-v7.js",
+      "provider": "wasm",
+      "graph": "spatial",
+      "threads": 4,
+      "model": "/review-artifacts/browser-onnx-weight-modulation/spatial-high.onnx"
+    }
+  ],
+  "assetManifest": "/asset-manifest-2026-09-14.9.json",
+  "policyVersion": "pre-generation-v1"
+}

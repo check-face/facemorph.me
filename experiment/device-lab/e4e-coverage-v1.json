@@ -1,0 +1,958 @@
+{
+  "version": "e4e-coverage-v1",
+  "updated": "2026-09-15",
+  "policy": "Synthesis and MP4 passes never establish e4e or complete photo support. Pending/unsupported/failed are not passes. CPU encoder + GPU synthesis is a valid separately identified hybrid route.",
+  "stages": [
+    "decode_alignment",
+    "e4e",
+    "reconstruction1024",
+    "original_cache",
+    "repeat",
+    "failure_recovery"
+  ],
+  "routes": [
+    {
+      "routeId": "2026-09-15.31/best",
+      "lane": "browser",
+      "name": "Mac winner \u00b7 weight modulation + WGSL",
+      "configSha256": "e8b2a1dfa1c4df5c393fd806f35370f96477e4bd159635c91fedd6f11b3ec4ea",
+      "worker": "gpu-worker-v9.js",
+      "e4eStatus": "not-run-on-this-route",
+      "photoWorkflowQualified": false,
+      "requiredTests": [
+        "decode_alignment",
+        "e4e",
+        "reconstruction1024",
+        "original_cache",
+        "repeat",
+        "failure_recovery"
+      ],
+      "targetRule": "Record OS/architecture/browser and actual encoder/synthesis providers independently for every run; never inherit another device result."
+    },
+    {
+      "routeId": "2026-09-15.31/mobile-boundary-bounded",
+      "lane": "browser",
+      "name": "Phone GPU \u00b7 bounded padding, full 31-case check",
+      "configSha256": "e8b2a1dfa1c4df5c393fd806f35370f96477e4bd159635c91fedd6f11b3ec4ea",
+      "worker": "gpu-worker-v8.js",
+      "e4eStatus": "not-run-on-this-route",
+      "photoWorkflowQualified": false,
+      "requiredTests": [
+        "decode_alignment",
+        "e4e",
+        "reconstruction1024",
+        "original_cache",
+        "repeat",
+        "failure_recovery"
+      ],
+      "targetRule": "Record OS/architecture/browser and actual encoder/synthesis providers independently for every run; never inherit another device result."
+    },
+    {
+      "routeId": "2026-09-15.31/mobile-boundary-unrolled",
+      "lane": "browser",
+      "name": "Phone GPU \u00b7 unrolled bounded padding",
+      "configSha256": "e8b2a1dfa1c4df5c393fd806f35370f96477e4bd159635c91fedd6f11b3ec4ea",
+      "worker": "gpu-worker-v8.js",
+      "e4eStatus": "not-run-on-this-route",
+      "photoWorkflowQualified": false,
+      "requiredTests": [
+        "decode_alignment",
+        "e4e",
+        "reconstruction1024",
+        "original_cache",
+        "repeat",
+        "failure_recovery"
+      ],
+      "targetRule": "Record OS/architecture/browser and actual encoder/synthesis providers independently for every run; never inherit another device result."
+    },
+    {
+      "routeId": "2026-09-15.31/mobile-stage-256",
+      "lane": "browser",
+      "name": "Mobile diagnostic \u00b7 stage checks, workgroup 256",
+      "configSha256": "e8b2a1dfa1c4df5c393fd806f35370f96477e4bd159635c91fedd6f11b3ec4ea",
+      "worker": "gpu-worker-v7.js",
+      "e4eStatus": "not-run-on-this-route",
+      "photoWorkflowQualified": false,
+      "requiredTests": [
+        "decode_alignment",
+        "e4e",
+        "reconstruction1024",
+        "original_cache",
+        "repeat",
+        "failure_recovery"
+      ],
+      "targetRule": "Record OS/architecture/browser and actual encoder/synthesis providers independently for every run; never inherit another device result."
+    },
+    {
+      "routeId": "2026-09-15.31/mobile-stage-64",
+      "lane": "browser",
+      "name": "Mobile diagnostic \u00b7 stage checks, workgroup 64",
+      "configSha256": "e8b2a1dfa1c4df5c393fd806f35370f96477e4bd159635c91fedd6f11b3ec4ea",
+      "worker": "gpu-worker-v7.js",
+      "e4eStatus": "not-run-on-this-route",
+      "photoWorkflowQualified": false,
+      "requiredTests": [
+        "decode_alignment",
+        "e4e",
+        "reconstruction1024",
+        "original_cache",
+        "repeat",
+        "failure_recovery"
+      ],
+      "targetRule": "Record OS/architecture/browser and actual encoder/synthesis providers independently for every run; never inherit another device result."
+    },
+    {
+      "routeId": "2026-09-15.31/mobile",
+      "lane": "browser",
+      "name": "Research \u00b7 bounded phase tiles (bounded buffers)",
+      "configSha256": "e8b2a1dfa1c4df5c393fd806f35370f96477e4bd159635c91fedd6f11b3ec4ea",
+      "worker": "gpu-worker-v6.js",
+      "e4eStatus": "not-run-on-this-route",
+      "photoWorkflowQualified": false,
+      "requiredTests": [
+        "decode_alignment",
+        "e4e",
+        "reconstruction1024",
+        "original_cache",
+        "repeat",
+        "failure_recovery"
+      ],
+      "targetRule": "Record OS/architecture/browser and actual encoder/synthesis providers independently for every run; never inherit another device result."
+    },
+    {
+      "routeId": "2026-09-15.31/mobile-124",
+      "lane": "browser",
+      "name": "GPU candidate \u00b7 tiled GPU, newer ORT 1.24",
+      "configSha256": "e8b2a1dfa1c4df5c393fd806f35370f96477e4bd159635c91fedd6f11b3ec4ea",
+      "worker": "gpu-worker-v6.js",
+      "e4eStatus": "not-run-on-this-route",
+      "photoWorkflowQualified": false,
+      "requiredTests": [
+        "decode_alignment",
+        "e4e",
+        "reconstruction1024",
+        "original_cache",
+        "repeat",
+        "failure_recovery"
+      ],
+      "targetRule": "Record OS/architecture/browser and actual encoder/synthesis providers independently for every run; never inherit another device result."
+    },
+    {
+      "routeId": "2026-09-15.31/video",
+      "lane": "browser",
+      "name": "Mac winner \u00b7 H264 video pipeline",
+      "configSha256": "e8b2a1dfa1c4df5c393fd806f35370f96477e4bd159635c91fedd6f11b3ec4ea",
+      "worker": "gpu-worker-v6.js",
+      "e4eStatus": "not-run-on-this-route",
+      "photoWorkflowQualified": false,
+      "requiredTests": [
+        "decode_alignment",
+        "e4e",
+        "reconstruction1024",
+        "original_cache",
+        "repeat",
+        "failure_recovery"
+      ],
+      "targetRule": "Record OS/architecture/browser and actual encoder/synthesis providers independently for every run; never inherit another device result."
+    },
+    {
+      "routeId": "2026-09-15.31/mobile-video",
+      "lane": "browser",
+      "name": "Tiled GPU \u00b7 faces + H264 video candidate",
+      "configSha256": "e8b2a1dfa1c4df5c393fd806f35370f96477e4bd159635c91fedd6f11b3ec4ea",
+      "worker": "gpu-worker-v6.js",
+      "e4eStatus": "not-run-on-this-route",
+      "photoWorkflowQualified": false,
+      "requiredTests": [
+        "decode_alignment",
+        "e4e",
+        "reconstruction1024",
+        "original_cache",
+        "repeat",
+        "failure_recovery"
+      ],
+      "targetRule": "Record OS/architecture/browser and actual encoder/synthesis providers independently for every run; never inherit another device result."
+    },
+    {
+      "routeId": "2026-09-15.31/cached",
+      "lane": "browser",
+      "name": "Eligible style mix \u00b7 cached prefix + WGSL",
+      "configSha256": "e8b2a1dfa1c4df5c393fd806f35370f96477e4bd159635c91fedd6f11b3ec4ea",
+      "worker": "gpu-worker-v6.js",
+      "e4eStatus": "not-run-on-this-route",
+      "photoWorkflowQualified": false,
+      "requiredTests": [
+        "decode_alignment",
+        "e4e",
+        "reconstruction1024",
+        "original_cache",
+        "repeat",
+        "failure_recovery"
+      ],
+      "targetRule": "Record OS/architecture/browser and actual encoder/synthesis providers independently for every run; never inherit another device result."
+    },
+    {
+      "routeId": "2026-09-15.31/compat",
+      "lane": "browser",
+      "name": "GPU compatibility \u00b7 spatial graph, ORT 1.24",
+      "configSha256": "e8b2a1dfa1c4df5c393fd806f35370f96477e4bd159635c91fedd6f11b3ec4ea",
+      "worker": "compat-worker-memory-v1.js",
+      "e4eStatus": "not-run-on-this-route",
+      "photoWorkflowQualified": false,
+      "requiredTests": [
+        "decode_alignment",
+        "e4e",
+        "reconstruction1024",
+        "original_cache",
+        "repeat",
+        "failure_recovery"
+      ],
+      "targetRule": "Record OS/architecture/browser and actual encoder/synthesis providers independently for every run; never inherit another device result."
+    },
+    {
+      "routeId": "2026-09-15.31/cpu-1",
+      "lane": "browser",
+      "name": "CPU control \u00b7 spatial graph, 1 thread",
+      "configSha256": "e8b2a1dfa1c4df5c393fd806f35370f96477e4bd159635c91fedd6f11b3ec4ea",
+      "worker": "cpu-bootstrap-v2.js",
+      "e4eStatus": "not-run-on-this-route",
+      "photoWorkflowQualified": false,
+      "requiredTests": [
+        "decode_alignment",
+        "e4e",
+        "reconstruction1024",
+        "original_cache",
+        "repeat",
+        "failure_recovery"
+      ],
+      "targetRule": "Record OS/architecture/browser and actual encoder/synthesis providers independently for every run; never inherit another device result."
+    },
+    {
+      "routeId": "2026-09-15.31/cpu-2",
+      "lane": "browser",
+      "name": "CPU control \u00b7 spatial graph, 2 threads",
+      "configSha256": "e8b2a1dfa1c4df5c393fd806f35370f96477e4bd159635c91fedd6f11b3ec4ea",
+      "worker": "cpu-bootstrap-v2.js",
+      "e4eStatus": "not-run-on-this-route",
+      "photoWorkflowQualified": false,
+      "requiredTests": [
+        "decode_alignment",
+        "e4e",
+        "reconstruction1024",
+        "original_cache",
+        "repeat",
+        "failure_recovery"
+      ],
+      "targetRule": "Record OS/architecture/browser and actual encoder/synthesis providers independently for every run; never inherit another device result."
+    },
+    {
+      "routeId": "2026-09-15.31/cpu-4",
+      "lane": "browser",
+      "name": "CPU control \u00b7 spatial graph, 4 threads",
+      "configSha256": "e8b2a1dfa1c4df5c393fd806f35370f96477e4bd159635c91fedd6f11b3ec4ea",
+      "worker": "cpu-bootstrap-v2.js",
+      "e4eStatus": "not-run-on-this-route",
+      "photoWorkflowQualified": false,
+      "requiredTests": [
+        "decode_alignment",
+        "e4e",
+        "reconstruction1024",
+        "original_cache",
+        "repeat",
+        "failure_recovery"
+      ],
+      "targetRule": "Record OS/architecture/browser and actual encoder/synthesis providers independently for every run; never inherit another device result."
+    },
+    {
+      "routeId": "2026-09-15.31/cpu-weight-1",
+      "lane": "browser",
+      "name": "CPU candidate \u00b7 weight modulation, 1 thread",
+      "configSha256": "e8b2a1dfa1c4df5c393fd806f35370f96477e4bd159635c91fedd6f11b3ec4ea",
+      "worker": "cpu-bootstrap-v2.js",
+      "e4eStatus": "not-run-on-this-route",
+      "photoWorkflowQualified": false,
+      "requiredTests": [
+        "decode_alignment",
+        "e4e",
+        "reconstruction1024",
+        "original_cache",
+        "repeat",
+        "failure_recovery"
+      ],
+      "targetRule": "Record OS/architecture/browser and actual encoder/synthesis providers independently for every run; never inherit another device result."
+    },
+    {
+      "routeId": "2026-09-15.31/cpu-weight-4",
+      "lane": "browser",
+      "name": "CPU candidate \u00b7 weight modulation, 4 threads",
+      "configSha256": "e8b2a1dfa1c4df5c393fd806f35370f96477e4bd159635c91fedd6f11b3ec4ea",
+      "worker": "cpu-bootstrap-v2.js",
+      "e4eStatus": "not-run-on-this-route",
+      "photoWorkflowQualified": false,
+      "requiredTests": [
+        "decode_alignment",
+        "e4e",
+        "reconstruction1024",
+        "original_cache",
+        "repeat",
+        "failure_recovery"
+      ],
+      "targetRule": "Record OS/architecture/browser and actual encoder/synthesis providers independently for every run; never inherit another device result."
+    },
+    {
+      "routeId": "2026-09-15.31/control",
+      "lane": "browser",
+      "name": "Previous GPU winner \u00b7 paired control",
+      "configSha256": "e8b2a1dfa1c4df5c393fd806f35370f96477e4bd159635c91fedd6f11b3ec4ea",
+      "worker": "gpu-worker-v6.js",
+      "e4eStatus": "not-run-on-this-route",
+      "photoWorkflowQualified": false,
+      "requiredTests": [
+        "decode_alignment",
+        "e4e",
+        "reconstruction1024",
+        "original_cache",
+        "repeat",
+        "failure_recovery"
+      ],
+      "targetRule": "Record OS/architecture/browser and actual encoder/synthesis providers independently for every run; never inherit another device result."
+    },
+    {
+      "routeId": "2026-09-15.31/cpu",
+      "lane": "browser",
+      "name": "CPU fallback \u00b7 WASM, 3 representative fixtures",
+      "configSha256": "e8b2a1dfa1c4df5c393fd806f35370f96477e4bd159635c91fedd6f11b3ec4ea",
+      "worker": "cpu-bootstrap-v2.js",
+      "e4eStatus": "not-run-on-this-route",
+      "photoWorkflowQualified": false,
+      "requiredTests": [
+        "decode_alignment",
+        "e4e",
+        "reconstruction1024",
+        "original_cache",
+        "repeat",
+        "failure_recovery"
+      ],
+      "targetRule": "Record OS/architecture/browser and actual encoder/synthesis providers independently for every run; never inherit another device result."
+    },
+    {
+      "routeId": "2026-09-15.31/queued",
+      "lane": "browser",
+      "name": "Research \u00b7 defer sequence queue waits",
+      "configSha256": "e8b2a1dfa1c4df5c393fd806f35370f96477e4bd159635c91fedd6f11b3ec4ea",
+      "worker": "gpu-worker-v6.js",
+      "e4eStatus": "not-run-on-this-route",
+      "photoWorkflowQualified": false,
+      "requiredTests": [
+        "decode_alignment",
+        "e4e",
+        "reconstruction1024",
+        "original_cache",
+        "repeat",
+        "failure_recovery"
+      ],
+      "targetRule": "Record OS/architecture/browser and actual encoder/synthesis providers independently for every run; never inherit another device result."
+    },
+    {
+      "routeId": "2026-09-15.31/mod64",
+      "lane": "browser",
+      "name": "Research \u00b7 weight modulation from 64px",
+      "configSha256": "e8b2a1dfa1c4df5c393fd806f35370f96477e4bd159635c91fedd6f11b3ec4ea",
+      "worker": "gpu-worker-v6.js",
+      "e4eStatus": "not-run-on-this-route",
+      "photoWorkflowQualified": false,
+      "requiredTests": [
+        "decode_alignment",
+        "e4e",
+        "reconstruction1024",
+        "original_cache",
+        "repeat",
+        "failure_recovery"
+      ],
+      "targetRule": "Record OS/architecture/browser and actual encoder/synthesis providers independently for every run; never inherit another device result."
+    },
+    {
+      "routeId": "2026-09-15.31/compat-polyphase",
+      "lane": "browser",
+      "name": "Research \u00b7 plain polyphase GPU, ORT 1.24",
+      "configSha256": "e8b2a1dfa1c4df5c393fd806f35370f96477e4bd159635c91fedd6f11b3ec4ea",
+      "worker": "compat-worker-memory-v1.js",
+      "e4eStatus": "not-run-on-this-route",
+      "photoWorkflowQualified": false,
+      "requiredTests": [
+        "decode_alignment",
+        "e4e",
+        "reconstruction1024",
+        "original_cache",
+        "repeat",
+        "failure_recovery"
+      ],
+      "targetRule": "Record OS/architecture/browser and actual encoder/synthesis providers independently for every run; never inherit another device result."
+    },
+    {
+      "routeId": "2026-09-15.31/mobile-cap",
+      "lane": "browser",
+      "name": "Research \u00b7 tiled GPU with enforced 128 MiB limit",
+      "configSha256": "e8b2a1dfa1c4df5c393fd806f35370f96477e4bd159635c91fedd6f11b3ec4ea",
+      "worker": "gpu-worker-v6.js",
+      "e4eStatus": "not-run-on-this-route",
+      "photoWorkflowQualified": false,
+      "requiredTests": [
+        "decode_alignment",
+        "e4e",
+        "reconstruction1024",
+        "original_cache",
+        "repeat",
+        "failure_recovery"
+      ],
+      "targetRule": "Record OS/architecture/browser and actual encoder/synthesis providers independently for every run; never inherit another device result."
+    },
+    {
+      "routeId": "2026-09-15.31/cpu-asyncify",
+      "lane": "browser",
+      "name": "Research \u00b7 CPU through WebGPU/asyncify runtime",
+      "configSha256": "e8b2a1dfa1c4df5c393fd806f35370f96477e4bd159635c91fedd6f11b3ec4ea",
+      "worker": "cpu-bootstrap-v2.js",
+      "e4eStatus": "not-run-on-this-route",
+      "photoWorkflowQualified": false,
+      "requiredTests": [
+        "decode_alignment",
+        "e4e",
+        "reconstruction1024",
+        "original_cache",
+        "repeat",
+        "failure_recovery"
+      ],
+      "targetRule": "Record OS/architecture/browser and actual encoder/synthesis providers independently for every run; never inherit another device result."
+    },
+    {
+      "routeId": "2026-09-15.31/mobile-low-power",
+      "lane": "browser",
+      "name": "GPU candidate \u00b7 tiled GPU, low-power adapter request",
+      "configSha256": "e8b2a1dfa1c4df5c393fd806f35370f96477e4bd159635c91fedd6f11b3ec4ea",
+      "worker": "gpu-worker-v6.js",
+      "e4eStatus": "not-run-on-this-route",
+      "photoWorkflowQualified": false,
+      "requiredTests": [
+        "decode_alignment",
+        "e4e",
+        "reconstruction1024",
+        "original_cache",
+        "repeat",
+        "failure_recovery"
+      ],
+      "targetRule": "Record OS/architecture/browser and actual encoder/synthesis providers independently for every run; never inherit another device result."
+    },
+    {
+      "routeId": "2026-09-15.31/iphone-memory",
+      "lane": "browser",
+      "name": "iPhone GPU \u00b7 bounded memory + WASM heap diagnostics, 31 checks",
+      "configSha256": "e8b2a1dfa1c4df5c393fd806f35370f96477e4bd159635c91fedd6f11b3ec4ea",
+      "worker": "gpu-worker-reference-v1.js",
+      "e4eStatus": "not-run-on-this-route",
+      "photoWorkflowQualified": false,
+      "requiredTests": [
+        "decode_alignment",
+        "e4e",
+        "reconstruction1024",
+        "original_cache",
+        "repeat",
+        "failure_recovery"
+      ],
+      "targetRule": "Record OS/architecture/browser and actual encoder/synthesis providers independently for every run; never inherit another device result."
+    },
+    {
+      "routeId": "2026-09-15.31/cpu-unshared-1",
+      "lane": "browser",
+      "name": "CPU candidate \u00b7 unshared SIMD heap, full31",
+      "configSha256": "e8b2a1dfa1c4df5c393fd806f35370f96477e4bd159635c91fedd6f11b3ec4ea",
+      "worker": "serial-bootstrap-v2.js",
+      "e4eStatus": "not-run-on-this-route",
+      "photoWorkflowQualified": false,
+      "requiredTests": [
+        "decode_alignment",
+        "e4e",
+        "reconstruction1024",
+        "original_cache",
+        "repeat",
+        "failure_recovery"
+      ],
+      "targetRule": "Record OS/architecture/browser and actual encoder/synthesis providers independently for every run; never inherit another device result."
+    },
+    {
+      "routeId": "2026-09-15.31/cpu-unshared-reload",
+      "lane": "browser",
+      "name": "CPU unshared \u00b7 fresh worker reload, 3 checks",
+      "configSha256": "e8b2a1dfa1c4df5c393fd806f35370f96477e4bd159635c91fedd6f11b3ec4ea",
+      "worker": "serial-bootstrap-v2.js",
+      "e4eStatus": "not-run-on-this-route",
+      "photoWorkflowQualified": false,
+      "requiredTests": [
+        "decode_alignment",
+        "e4e",
+        "reconstruction1024",
+        "original_cache",
+        "repeat",
+        "failure_recovery"
+      ],
+      "targetRule": "Record OS/architecture/browser and actual encoder/synthesis providers independently for every run; never inherit another device result."
+    },
+    {
+      "routeId": "2026-09-15.31/mobile-memory",
+      "lane": "browser",
+      "name": "Phone GPU follow-up \u00b7 reduced memory policy, full31",
+      "configSha256": "e8b2a1dfa1c4df5c393fd806f35370f96477e4bd159635c91fedd6f11b3ec4ea",
+      "worker": "gpu-worker-reference-v1.js",
+      "e4eStatus": "not-run-on-this-route",
+      "photoWorkflowQualified": false,
+      "requiredTests": [
+        "decode_alignment",
+        "e4e",
+        "reconstruction1024",
+        "original_cache",
+        "repeat",
+        "failure_recovery"
+      ],
+      "targetRule": "Record OS/architecture/browser and actual encoder/synthesis providers independently for every run; never inherit another device result."
+    },
+    {
+      "routeId": "2026-09-15.31/cpu-recovery",
+      "lane": "browser",
+      "name": "Conservative CPU check \u00b7 3 references",
+      "configSha256": "e8b2a1dfa1c4df5c393fd806f35370f96477e4bd159635c91fedd6f11b3ec4ea",
+      "worker": "serial-bootstrap-v2.js",
+      "e4eStatus": "not-run-on-this-route",
+      "photoWorkflowQualified": false,
+      "requiredTests": [
+        "decode_alignment",
+        "e4e",
+        "reconstruction1024",
+        "original_cache",
+        "repeat",
+        "failure_recovery"
+      ],
+      "targetRule": "Record OS/architecture/browser and actual encoder/synthesis providers independently for every run; never inherit another device result."
+    },
+    {
+      "routeId": "2026-09-15.31/mobile-no-prepack",
+      "lane": "browser",
+      "name": "GPU \u00b7 reduced-memory FP32 candidate",
+      "configSha256": "e8b2a1dfa1c4df5c393fd806f35370f96477e4bd159635c91fedd6f11b3ec4ea",
+      "worker": "gpu-worker-no-prepack-v1.js",
+      "e4eStatus": "not-run-on-this-route",
+      "photoWorkflowQualified": false,
+      "requiredTests": [
+        "decode_alignment",
+        "e4e",
+        "reconstruction1024",
+        "original_cache",
+        "repeat",
+        "failure_recovery"
+      ],
+      "targetRule": "Record OS/architecture/browser and actual encoder/synthesis providers independently for every run; never inherit another device result."
+    },
+    {
+      "routeId": "2026-09-15.webgl-hybrid-v1/iphone-webgl-hybrid",
+      "lane": "browser",
+      "name": "CPU + WebGL2 \u00b7 full1024 face",
+      "configSha256": "d7ead206dd26f5992061283e5194ba160965d73523af7abd450568878f59f1e6",
+      "worker": "hybrid-reference-worker-v1.js",
+      "e4eStatus": "not-run-on-this-route",
+      "photoWorkflowQualified": false,
+      "requiredTests": [
+        "decode_alignment",
+        "e4e",
+        "reconstruction1024",
+        "original_cache",
+        "repeat",
+        "failure_recovery"
+      ],
+      "targetRule": "Record OS/architecture/browser and actual encoder/synthesis providers independently for every run; never inherit another device result."
+    },
+    {
+      "routeId": "2026-09-15.webgl-batch-v1-batch/pure-gl-16",
+      "lane": "browser",
+      "name": "Pure WebGL \u00b7 grouped draws",
+      "configSha256": "50a23a509de850f045e4215950f62ab226ee10924b6eac82069651a927c36c2c",
+      "worker": "hybrid-reference-worker-v2.js",
+      "e4eStatus": "not-run-on-this-route",
+      "photoWorkflowQualified": false,
+      "requiredTests": [
+        "decode_alignment",
+        "e4e",
+        "reconstruction1024",
+        "original_cache",
+        "repeat",
+        "failure_recovery"
+      ],
+      "targetRule": "Record OS/architecture/browser and actual encoder/synthesis providers independently for every run; never inherit another device result."
+    },
+    {
+      "routeId": "2026-09-15.webgl-batch-v1-batch/pure-vector-16",
+      "lane": "browser",
+      "name": "Vectorized WebGL \u00b7 draw batch 16",
+      "configSha256": "50a23a509de850f045e4215950f62ab226ee10924b6eac82069651a927c36c2c",
+      "worker": "hybrid-reference-worker-v2.js",
+      "e4eStatus": "not-run-on-this-route",
+      "photoWorkflowQualified": false,
+      "requiredTests": [
+        "decode_alignment",
+        "e4e",
+        "reconstruction1024",
+        "original_cache",
+        "repeat",
+        "failure_recovery"
+      ],
+      "targetRule": "Record OS/architecture/browser and actual encoder/synthesis providers independently for every run; never inherit another device result."
+    },
+    {
+      "routeId": "2026-09-15.webgl-batch-v1-batch/pure-vector-32",
+      "lane": "browser",
+      "name": "Vectorized WebGL \u00b7 draw batch 32",
+      "configSha256": "50a23a509de850f045e4215950f62ab226ee10924b6eac82069651a927c36c2c",
+      "worker": "hybrid-reference-worker-v2.js",
+      "e4eStatus": "not-run-on-this-route",
+      "photoWorkflowQualified": false,
+      "requiredTests": [
+        "decode_alignment",
+        "e4e",
+        "reconstruction1024",
+        "original_cache",
+        "repeat",
+        "failure_recovery"
+      ],
+      "targetRule": "Record OS/architecture/browser and actual encoder/synthesis providers independently for every run; never inherit another device result."
+    },
+    {
+      "routeId": "native/macOS/arm64/cpu",
+      "lane": "native",
+      "name": "macOS arm64 CPU",
+      "e4eStatus": "pending-exact-runtime-evidence",
+      "photoWorkflowQualified": false,
+      "requiredTests": [
+        "decode_alignment",
+        "e4e",
+        "reconstruction1024",
+        "original_cache",
+        "repeat",
+        "failure_recovery"
+      ],
+      "targetRule": "Other architecture is an unresolved coverage bucket, not an architecture qualification."
+    },
+    {
+      "routeId": "native/macOS/arm64/gpu",
+      "lane": "native",
+      "name": "macOS arm64 GPU",
+      "e4eStatus": "pending-exact-runtime-evidence",
+      "photoWorkflowQualified": false,
+      "requiredTests": [
+        "decode_alignment",
+        "e4e",
+        "reconstruction1024",
+        "original_cache",
+        "repeat",
+        "failure_recovery"
+      ],
+      "targetRule": "Other architecture is an unresolved coverage bucket, not an architecture qualification."
+    },
+    {
+      "routeId": "native/macOS/x86_64/cpu",
+      "lane": "native",
+      "name": "macOS x86_64 CPU",
+      "e4eStatus": "pending-exact-runtime-evidence",
+      "photoWorkflowQualified": false,
+      "requiredTests": [
+        "decode_alignment",
+        "e4e",
+        "reconstruction1024",
+        "original_cache",
+        "repeat",
+        "failure_recovery"
+      ],
+      "targetRule": "Other architecture is an unresolved coverage bucket, not an architecture qualification."
+    },
+    {
+      "routeId": "native/macOS/x86_64/gpu",
+      "lane": "native",
+      "name": "macOS x86_64 GPU",
+      "e4eStatus": "pending-exact-runtime-evidence",
+      "photoWorkflowQualified": false,
+      "requiredTests": [
+        "decode_alignment",
+        "e4e",
+        "reconstruction1024",
+        "original_cache",
+        "repeat",
+        "failure_recovery"
+      ],
+      "targetRule": "Other architecture is an unresolved coverage bucket, not an architecture qualification."
+    },
+    {
+      "routeId": "native/macOS/other/cpu",
+      "lane": "native",
+      "name": "macOS other CPU",
+      "e4eStatus": "pending-exact-runtime-evidence",
+      "photoWorkflowQualified": false,
+      "requiredTests": [
+        "decode_alignment",
+        "e4e",
+        "reconstruction1024",
+        "original_cache",
+        "repeat",
+        "failure_recovery"
+      ],
+      "targetRule": "Other architecture is an unresolved coverage bucket, not an architecture qualification."
+    },
+    {
+      "routeId": "native/macOS/other/gpu",
+      "lane": "native",
+      "name": "macOS other GPU",
+      "e4eStatus": "pending-exact-runtime-evidence",
+      "photoWorkflowQualified": false,
+      "requiredTests": [
+        "decode_alignment",
+        "e4e",
+        "reconstruction1024",
+        "original_cache",
+        "repeat",
+        "failure_recovery"
+      ],
+      "targetRule": "Other architecture is an unresolved coverage bucket, not an architecture qualification."
+    },
+    {
+      "routeId": "native/Windows/arm64/cpu",
+      "lane": "native",
+      "name": "Windows arm64 CPU",
+      "e4eStatus": "pending-exact-runtime-evidence",
+      "photoWorkflowQualified": false,
+      "requiredTests": [
+        "decode_alignment",
+        "e4e",
+        "reconstruction1024",
+        "original_cache",
+        "repeat",
+        "failure_recovery"
+      ],
+      "targetRule": "Other architecture is an unresolved coverage bucket, not an architecture qualification."
+    },
+    {
+      "routeId": "native/Windows/arm64/gpu",
+      "lane": "native",
+      "name": "Windows arm64 GPU",
+      "e4eStatus": "pending-exact-runtime-evidence",
+      "photoWorkflowQualified": false,
+      "requiredTests": [
+        "decode_alignment",
+        "e4e",
+        "reconstruction1024",
+        "original_cache",
+        "repeat",
+        "failure_recovery"
+      ],
+      "targetRule": "Other architecture is an unresolved coverage bucket, not an architecture qualification."
+    },
+    {
+      "routeId": "native/Windows/x86_64/cpu",
+      "lane": "native",
+      "name": "Windows x86_64 CPU",
+      "e4eStatus": "pending-exact-runtime-evidence",
+      "photoWorkflowQualified": false,
+      "requiredTests": [
+        "decode_alignment",
+        "e4e",
+        "reconstruction1024",
+        "original_cache",
+        "repeat",
+        "failure_recovery"
+      ],
+      "targetRule": "Other architecture is an unresolved coverage bucket, not an architecture qualification."
+    },
+    {
+      "routeId": "native/Windows/x86_64/gpu",
+      "lane": "native",
+      "name": "Windows x86_64 GPU",
+      "e4eStatus": "pending-exact-runtime-evidence",
+      "photoWorkflowQualified": false,
+      "requiredTests": [
+        "decode_alignment",
+        "e4e",
+        "reconstruction1024",
+        "original_cache",
+        "repeat",
+        "failure_recovery"
+      ],
+      "targetRule": "Other architecture is an unresolved coverage bucket, not an architecture qualification."
+    },
+    {
+      "routeId": "native/Windows/other/cpu",
+      "lane": "native",
+      "name": "Windows other CPU",
+      "e4eStatus": "pending-exact-runtime-evidence",
+      "photoWorkflowQualified": false,
+      "requiredTests": [
+        "decode_alignment",
+        "e4e",
+        "reconstruction1024",
+        "original_cache",
+        "repeat",
+        "failure_recovery"
+      ],
+      "targetRule": "Other architecture is an unresolved coverage bucket, not an architecture qualification."
+    },
+    {
+      "routeId": "native/Windows/other/gpu",
+      "lane": "native",
+      "name": "Windows other GPU",
+      "e4eStatus": "pending-exact-runtime-evidence",
+      "photoWorkflowQualified": false,
+      "requiredTests": [
+        "decode_alignment",
+        "e4e",
+        "reconstruction1024",
+        "original_cache",
+        "repeat",
+        "failure_recovery"
+      ],
+      "targetRule": "Other architecture is an unresolved coverage bucket, not an architecture qualification."
+    },
+    {
+      "routeId": "native/Linux/arm64/cpu",
+      "lane": "native",
+      "name": "Linux arm64 CPU",
+      "e4eStatus": "pending-exact-runtime-evidence",
+      "photoWorkflowQualified": false,
+      "requiredTests": [
+        "decode_alignment",
+        "e4e",
+        "reconstruction1024",
+        "original_cache",
+        "repeat",
+        "failure_recovery"
+      ],
+      "targetRule": "Other architecture is an unresolved coverage bucket, not an architecture qualification."
+    },
+    {
+      "routeId": "native/Linux/arm64/gpu",
+      "lane": "native",
+      "name": "Linux arm64 GPU",
+      "e4eStatus": "pending-exact-runtime-evidence",
+      "photoWorkflowQualified": false,
+      "requiredTests": [
+        "decode_alignment",
+        "e4e",
+        "reconstruction1024",
+        "original_cache",
+        "repeat",
+        "failure_recovery"
+      ],
+      "targetRule": "Other architecture is an unresolved coverage bucket, not an architecture qualification."
+    },
+    {
+      "routeId": "native/Linux/x86_64/cpu",
+      "lane": "native",
+      "name": "Linux x86_64 CPU",
+      "e4eStatus": "pending-exact-runtime-evidence",
+      "photoWorkflowQualified": false,
+      "requiredTests": [
+        "decode_alignment",
+        "e4e",
+        "reconstruction1024",
+        "original_cache",
+        "repeat",
+        "failure_recovery"
+      ],
+      "targetRule": "Other architecture is an unresolved coverage bucket, not an architecture qualification."
+    },
+    {
+      "routeId": "native/Linux/x86_64/gpu",
+      "lane": "native",
+      "name": "Linux x86_64 GPU",
+      "e4eStatus": "pending-exact-runtime-evidence",
+      "photoWorkflowQualified": false,
+      "requiredTests": [
+        "decode_alignment",
+        "e4e",
+        "reconstruction1024",
+        "original_cache",
+        "repeat",
+        "failure_recovery"
+      ],
+      "targetRule": "Other architecture is an unresolved coverage bucket, not an architecture qualification."
+    },
+    {
+      "routeId": "native/Linux/other/cpu",
+      "lane": "native",
+      "name": "Linux other CPU",
+      "e4eStatus": "pending-exact-runtime-evidence",
+      "photoWorkflowQualified": false,
+      "requiredTests": [
+        "decode_alignment",
+        "e4e",
+        "reconstruction1024",
+        "original_cache",
+        "repeat",
+        "failure_recovery"
+      ],
+      "targetRule": "Other architecture is an unresolved coverage bucket, not an architecture qualification."
+    },
+    {
+      "routeId": "native/Linux/other/gpu",
+      "lane": "native",
+      "name": "Linux other GPU",
+      "e4eStatus": "pending-exact-runtime-evidence",
+      "photoWorkflowQualified": false,
+      "requiredTests": [
+        "decode_alignment",
+        "e4e",
+        "reconstruction1024",
+        "original_cache",
+        "repeat",
+        "failure_recovery"
+      ],
+      "targetRule": "Other architecture is an unresolved coverage bucket, not an architecture qualification."
+    },
+    {
+      "routeId": "2026-09-17.32/e4e-coverage",
+      "lane": "browser",
+      "name": "Photo pipeline coverage \u00b7 one-click device-lab suite (e4e-coverage-worker-v1)",
+      "worker": "e4e-coverage-worker-v1.js",
+      "e4eStatus": "staged-in-device-lab-suite-v32",
+      "photoWorkflowQualified": false,
+      "requiredTests": [
+        "decode_alignment",
+        "e4e",
+        "reconstruction1024",
+        "original_cache",
+        "repeat",
+        "failure_recovery"
+      ],
+      "checkpointed": true,
+      "latentFirst": true,
+      "targetRule": "Record OS/architecture/browser and actual encoder/synthesis providers independently for every run; never inherit another device result. The encoder W+ latent is checkpointed and acknowledged before the 1024 reconstruction, so a tab kill loses at most the synthesis. Pending/unsupported/failed are not passes."
+    }
+  ],
+  "historicalEvidence": [
+    {
+      "path": "Mac browser WebGPU",
+      "e4e": "demonstrated",
+      "alignment": "local CPU server; browser-only not proven"
+    },
+    {
+      "path": "Linux arm64 and x86_64 self-host CPU",
+      "e4e": "real API encoder regression passed",
+      "scope": "Does not qualify desktop/browser runtimes"
+    }
+  ],
+  "browserTargets": [
+    "iPhone Safari",
+    "iPhone Chrome iOS",
+    "iOS Simulator (not physical performance)",
+    "Android Chrome",
+    "Samsung Internet",
+    "macOS Safari",
+    "macOS Chromium",
+    "Windows Chromium",
+    "Linux Chromium"
+  ],
+  "nativeRunner": "autoresearch/candidates/e4e-coverage-v1/native_check.py (real Torch CPU encoder checks; synthesis separately required)"
+}

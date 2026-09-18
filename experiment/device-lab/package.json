@@ -1,0 +1,1 @@
+{"name":"facemorph-device-lab","private":true,"type":"module","dependencies":{"@ffmpeg/core":"0.12.10"}}

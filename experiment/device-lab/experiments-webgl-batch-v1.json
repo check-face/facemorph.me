@@ -1,0 +1,91 @@
+{
+  "version": "2026-09-15.webgl-batch-v1-batch",
+  "policyVersion": "pre-generation-v1",
+  "assetManifest": "/asset-manifest-webgl-batch-v1.json",
+  "automaticSuite": {
+    "id": "explicit-webgl-ladder-v1",
+    "fullQualification": false,
+    "rules": {}
+  },
+  "mode": "batch",
+  "followups": [
+    {
+      "id": "ladder-cache",
+      "name": "Reuse full1024 originals \u00b7 no inference",
+      "role": "cache",
+      "worker": "cache-check-worker-v1.js",
+      "timeoutMs": 120000
+    },
+    {
+      "id": "ladder-encode",
+      "name": "Generated faces \u00b7 MP4 encode and playback",
+      "role": "encode",
+      "worker": "generated-ffmpeg-worker-v1.js",
+      "timeoutMs": 240000
+    }
+  ],
+  "experiments": [
+    {
+      "id": "pure-gl-16",
+      "name": "Pure WebGL \u00b7 grouped draws",
+      "role": "screen",
+      "worker": "hybrid-reference-worker-v2.js",
+      "fullQualification": false,
+      "caseIndices": [
+        0,
+        26,
+        28
+      ],
+      "moduleUrl": "./webgl-ladder-v1/ladder-v1.js",
+      "assetBase": "./webgl-ladder-v1/",
+      "variant": "pure",
+      "requiresWasm": false,
+      "drawBatchSize": 16,
+      "gpuBudgetBytes": 268435456,
+      "timeoutMs": 1200000,
+      "kernelSha256": "cc8df2764025782fd02622ef7fc67bb1178e5c733d16079edccc26cfdbca637f"
+    },
+    {
+      "id": "pure-vector-16",
+      "name": "Vectorized WebGL \u00b7 draw batch 16",
+      "role": "screen",
+      "worker": "hybrid-reference-worker-v2.js",
+      "fullQualification": false,
+      "caseIndices": [
+        0,
+        26,
+        28
+      ],
+      "moduleUrl": "./webgl-ladder-v1/ladder-vector-v1.js",
+      "assetBase": "./webgl-ladder-v1/",
+      "variant": "pure",
+      "requiresWasm": false,
+      "drawBatchSize": 16,
+      "gpuBudgetBytes": 268435456,
+      "timeoutMs": 1200000,
+      "kernelSha256": "905abe6c2f39051083379c9648efbde2908175391c364b8c29ebab564431df12",
+      "vectorizedInputs": true
+    },
+    {
+      "id": "pure-vector-32",
+      "name": "Vectorized WebGL \u00b7 draw batch 32",
+      "role": "screen",
+      "worker": "hybrid-reference-worker-v2.js",
+      "fullQualification": false,
+      "caseIndices": [
+        0,
+        26,
+        28
+      ],
+      "moduleUrl": "./webgl-ladder-v1/ladder-vector-v1.js",
+      "assetBase": "./webgl-ladder-v1/",
+      "variant": "pure",
+      "requiresWasm": false,
+      "drawBatchSize": 32,
+      "gpuBudgetBytes": 268435456,
+      "timeoutMs": 1200000,
+      "kernelSha256": "905abe6c2f39051083379c9648efbde2908175391c364b8c29ebab564431df12",
+      "vectorizedInputs": true
+    }
+  ]
+}
