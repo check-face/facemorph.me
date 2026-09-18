@@ -134,6 +134,7 @@ type State = {
     Invite: bool
     UseSlider: bool; SliderFrames: string array option
     Warn: string option; Overflow: bool; PhotoQueue: (string * obj) list
+    PendingFaces: string list
     ActiveFace: string option
     Remaining: string
 }
