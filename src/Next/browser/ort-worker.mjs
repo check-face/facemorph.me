@@ -94,14 +94,16 @@ async function run(values,id,noiseMode='original'){await load(id);requireLatent(
 async function png(raw){return encodeRgbaPng(rgba1024(raw));}
 async function mappingFor(z,id){await load(id);await ensureOrt(id);if(!mapping){report(id,'mapping-loading');mapping=await ort.InferenceSession.create(await bytes(manifest.mapping,id),{executionProviders:['wasm']});average=await floats(manifest.average,id);}report(id,'mapping');const input=new ort.Tensor('float32',z,[1,512]);let out;try{out=(await mapping.run({z:input})).w;return truncate(await out.getData(),average);}finally{input.dispose();out?.dispose();}}
 
-// CI and release qualification must always see every canary: the e2e browser drives the product
-// under automation (navigator.webdriver is set), and a host can force either behaviour with the
-// __FACEMORPH_FULL_QUALIFY__ global. Every other device pays for canaries once per bundle (C-03).
-const fullQualify=globalThis.__FACEMORPH_FULL_QUALIFY__===true||(globalThis.__FACEMORPH_FULL_QUALIFY__!==false&&globalThis.navigator?.webdriver===true);
+// CI and release qualification must always see every canary. The flags arrive on 'initialize'
+// from the main thread: a dedicated worker's globalThis is its own scope, so neither the page's
+// __FACEMORPH_FULL_QUALIFY__ nor navigator.webdriver is visible here. The host that owns the
+// page decides; the worker only honours what it was told. Every other device pays for canaries
+// once per bundle (C-03).
+let fullQualify=false,forceCanaryFail=false;
 async function ensureQualification(id){
  if(qualification)return qualification;
  cache ||= await createBrowserModelCache({report:cacheReport});
- qualification=createCanaryQualification({manifest,manifestSha256,provider,bundle:provider==='webgpu'?manifest.webgpu:provider==='webgl2'?manifest.webgl:manifest.synthesis,records:cache.records,acquireBytes:asset=>bytes(asset,id),runSynthesis:(values,noiseMode)=>run(values,id,noiseMode),full:fullQualify});
+ qualification=createCanaryQualification({manifest,manifestSha256,provider,bundle:provider==='webgpu'?manifest.webgpu:provider==='webgl2'?manifest.webgl:manifest.synthesis,records:cache.records,acquireBytes:asset=>bytes(asset,id),runSynthesis:(values,noiseMode)=>run(values,id,noiseMode),full:fullQualify,forceFail:forceCanaryFail});
  await qualification.adopt();
  return qualification;
 }
@@ -151,7 +153,7 @@ self.onmessage=({data})=>{
  foreground.push(async()=>{
   try{
    let result;
-   if(type==='initialize'){manifest=request.manifest;provider=request.provider;manifestSha256=request.manifestSha256;result={provider};}
+   if(type==='initialize'){manifest=request.manifest;provider=request.provider;manifestSha256=request.manifestSha256;fullQualify=request.fullQualify===true||(!request.hostForcedQualify&&request.webdriver===true);forceCanaryFail=request.forceCanaryFail===true;result={provider};}
    else if(type==='qualify')result=await qualify(id);else if(type==='generate'){const input=await inputLatent(request.mode,request.value),values=await mappingFor(input.values,id);result={blob:await png(await run(values,id)),values,shape:[1,18,512],space:'w-plus',identity:input.identity};}else if(type==='synthesize'){const values=requireLatent(request.values);result={blob:await png(await run(values,id)),values,shape:[1,18,512],space:'w-plus'};}else if(type==='encode-aligned'){
  // Sequential residency: e4e is released before loading synthesis.
  if(!manifest.encoder&&!manifest.encoderStream)throw Error('The browser encoder bundle is not available.');

@@ -77,6 +77,11 @@ try:
  # route has no fallback, so the run fails - the assertion is that the caption NAMES the route
  # that failed and the route still in use, next to the error that says why.
  js("window.__FACEMORPH_FORCE_CANARY_FAIL__=true")
+ # The face must actually synthesize or admission never runs (a repeated input is a cache
+ # hit with zero inference), so change the second face's text first. The second face's mode
+ # may sit on 'Numeric seed' (digits only), so target the LAST text input on the page and
+ # note that a 'Name or words' input accepts anything.
+ js("(()=>{const ins=[...document.querySelectorAll('.next-face input')].filter(x=>x.type==='text');const i=ins[ins.length-1];if(!i)return;const d=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value');d.set.call(i,'rejection-check '+Date.now());i.dispatchEvent(new Event('input',{bubbles:true}));})()")
  js("(()=>{const s=document.querySelector('select[aria-label=\"Processing mode\"]');Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype,'value').set.call(s,'webgpu');s.dispatchEvent(new Event('change',{bubbles:true}));})()")
  before=js('window.__ciBusyChanges');click('Generate faces');wait(lambda:js('window.__ciBusyChanges')>before,30)
  # The run is expected to fail on the explicitly selected webgpu route; wait() cannot be used

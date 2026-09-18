@@ -35,7 +35,7 @@ function validChecks(checks, canaries) {
  * comparison then fails the route. The gates themselves are fixed: RGB max <= 1, sampled float
  * <= 0.002.
  */
-export function createCanaryQualification({ manifest, manifestSha256, provider, bundle, records, acquireBytes, runSynthesis, decodeReference, full = false }) {
+export function createCanaryQualification({ manifest, manifestSha256, provider, bundle, records, acquireBytes, runSynthesis, decodeReference, full = false, forceFail = false }) {
   if (!manifest || !Array.isArray(manifest.canaries) || manifest.canaries.length < 1) throw Error('Canary qualification requires a manifest with canaries');
   if (!manifestSha256 || typeof manifestSha256 !== 'string') throw Error('Canary qualification requires the runtime manifest digest');
   if (!records || typeof acquireBytes !== 'function' || typeof runSynthesis !== 'function') throw Error('Canary qualification requires a record store, an asset reader and a synthesis step');
@@ -73,10 +73,9 @@ export function createCanaryQualification({ manifest, manifestSha256, provider, 
     for (let i = 0; i < actual.length; i++) if (i % 4 !== 3) maxRgb = Math.max(maxRgb, Math.abs(actual[i] - expected[i]));
     for (let i = 0; i < indices.length; i++) maxFloat = Math.max(maxFloat, Math.abs(raw[indices[i]] - samples[i]));
     const check = { name: c.name, maxRgb, maxFloat, passed: Number.isFinite(maxFloat) && maxRgb <= 1 && maxFloat <= .002 };
-    // Test-only forcing hook (next-e2e routeRejectionNamed): makes the comparison fail without
-    // touching the tolerances. Never set in production; the e2e sets it to prove the interface
-    // names the route that failed and the route now in use.
-    check.passed = globalThis.__FACEMORPH_FORCE_CANARY_FAIL__ === true ? false : check.passed;
+    // Test-only forcing (next-e2e routeRejectionNamed): the e2e host passes forceFail so the
+    // comparison fails without touching the tolerances. Never set in production.
+    check.passed = forceFail === true ? false : check.passed;
     if (!check.passed) throw Error(`Device correctness check failed: ${c.name}`);
     checks = [...checks, check];
     // Progress persists as it lands, so a session that ends mid-qualification resumes instead
