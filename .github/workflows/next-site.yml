@@ -2,9 +2,9 @@ name: New site artifact
 on:
   push:
     branches: ['candidate/next-delivery-20260916']
-    paths: ['src/**', 'desktop/runtime.mjs', 'scripts/build-next.cjs', 'scripts/check-next-artifact.sh', 'webpack.config.js', 'package*.json', '.config/**', 'hosting/next*/**', '.github/workflows/next-site.yml']
+    paths: ['src/**', 'desktop/runtime.mjs', 'scripts/build-next.cjs', 'scripts/check-next-artifact.sh', 'scripts/next-e2e-server.py', 'scripts/next-e2e-browser.py', 'webpack.config.js', 'package*.json', '.config/**', 'hosting/next*/**', '.github/workflows/next-site.yml']
   pull_request:
-    paths: ['src/**', 'desktop/runtime.mjs', 'scripts/build-next.cjs', 'scripts/check-next-artifact.sh', 'webpack.config.js', 'package*.json', '.config/**', 'hosting/next*/**', '.github/workflows/next-site.yml']
+    paths: ['src/**', 'desktop/runtime.mjs', 'scripts/build-next.cjs', 'scripts/check-next-artifact.sh', 'scripts/next-e2e-server.py', 'scripts/next-e2e-browser.py', 'webpack.config.js', 'package*.json', '.config/**', 'hosting/next*/**', '.github/workflows/next-site.yml']
   workflow_dispatch:
 permissions:
   contents: read
