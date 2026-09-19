@@ -7,9 +7,9 @@ recorded**, before assuming anything works. End-state matrix per operator direct
 
 | Lane | Engine | GPU path | Status |
 |---|---|---|---|
-| **iOS simulator** | Safari on the iOS 27.0 sim runtime (26.5 also installed; UA reports Version/27) | CPU expected; suite recorded `webgpuExposed` capability per run | **Suite ran 19 September**: 4/7 checks pass, then the **same `Repair failed`** in `corrupt-cache-repair` — divergence shared with Android Chrome 124 (below), not iOS-specific |
-| **Android emulator** | Chrome 124 on API 35 `google_apis;arm64-v8a` (SwiftShader GPU, matching CI's `-gpu swiftshader_indirect`) | **WebGPU exposed ✓** (`capabilities.webgpuExposed` true) | **Suite ran 19 September**: 4/7 checks pass, then the **same `Repair failed`** as iOS — the model-cache repair path fails on Android Chrome 124 too; not iOS-specific |
-| **Mac browsers** | Real Chrome 153 headless (Metal → M1 Pro GPU) via CDP; Playwright Chromium/WebKit/Firefox available | **WebGPU verified ✓**: adapter `vendor: apple, architecture: metal-3`, non-fallback (`scripts/gpu-probe.py`) | **Full `next-e2e-browser.py` ran 19 September: 5/6 stages pass** (seed+determinism, cache-hit repeat, **local crop**, photo e4e path, project reopen); `morphVideo` needs iteration (page context lost at the morph stage — likely headless renderer timing) |
+| **iOS simulator** | Safari on the iOS 27.0 sim runtime (26.5 also installed; UA reports Version/27) | CPU expected; suite recorded `webgpuExposed` capability per run | **7/7 after the R2-15 repair fix** (was 4/7 with `Repair failed`) |
+| **Android emulator** | Chrome 124 on API 35 `google_apis;arm64-v8a` (SwiftShader GPU, matching CI's `-gpu swiftshader_indirect`) | **WebGPU exposed ✓** (`capabilities.webgpuExposed` true) | **7/7 after the R2-15 repair fix** (was 4/7 with the identical `Repair failed` — the bug was never iOS-specific) |
+| **Mac browsers** | Real Chrome 153 headless (Metal → M1 Pro GPU) via CDP; Playwright Chromium/WebKit/Firefox available | **WebGPU verified ✓**: adapter `vendor: apple, architecture: metal-3`, non-fallback (`scripts/gpu-probe.py`) | **Full `next-e2e-browser.py`: 5/6 stages pass** (seed+determinism, cache-hit repeat, **local crop**, photo e4e path, project reopen); `morphVideo` needs iteration (page context lost at the morph stage — likely headless renderer timing) |
 | **TrueNAS GPU runner (GitHub self-hosted)** | Chrome-for-Testing on the TrueNAS host (x86_64, 24 cores, 125 GB RAM) with the **GTX 1050 (GP107)** via Vulkan/ANGLE | WebGPU on NVIDIA Pascal — verified by adapter info + admitted route | **LIVE 19 September**: runner `truenas` online on `check-face/facemorph.me` (labels `self-hosted,linux-x64,truenas,gpu-gtx1050`), installed as the systemd service `actions.runner.check-face-facemorph.me.truenas` (boot-durable), work dir `/mnt/tank/github-runner-work`. Lane jobs target `runs-on: [self-hosted, truenas]` |
 | **triton** | GTX 1080 (no Intel iGPU exists there — `lspci` shows only the NVIDIA VGA) | same verification | When needed, the right shape is **another self-hosted GitHub runner** on triton (user-level install), not an ad-hoc tunnel; operator direction 19 September |
 
@@ -59,6 +59,14 @@ python3 tests/mobile/run.py --platform android --port 8766 # needs booted emulat
 `am` service; CI keeps the default.
 
 ## First findings from the lab (19 September)
+
+**Fixed same-day:** the R2-15 repair fix (durable verified marker removed; digest once per
+session; corrupt/vanished entries repaired on open) took both failing engines from 4/7 to
+**7/7** — Android emulator Chrome 124 and iOS 27 sim Safari, verified by rerunning the suite.
+The product also now repairs instead of dying on the operator's exact fatal
+("Stored asset disappeared; acquire again" → honest `missing-after-acquire` event, visible
+"repairing" state, re-download). Unit tests pin the repair contract and the stale-marker
+regression (`model-cache.test.mjs`).
 
 1. **iOS 27 sim Safari fails `corrupt-cache-repair`** (4/7 checks pass, then `Repair
    failed` at `suite.mjs:76`). Chrome semantics: a retained entry whose bytes fail the
