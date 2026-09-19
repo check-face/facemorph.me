@@ -66,6 +66,8 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--platform', required=True, choices=['android', 'ios'])
     parser.add_argument('--timeout', type=int, default=240)
+    parser.add_argument('--port', type=int, default=8765,
+                        help='Loopback port for the test origin. CI keeps the default; local machines may need another port when a developer service already holds 8765.')
     parser.add_argument('--output', type=Path, default=ROOT/'mobile-evidence')
     args = parser.parse_args()
     args.output.mkdir(parents=True, exist_ok=True)
@@ -113,16 +115,16 @@ def main():
             except (ValueError, TypeError):
                 self.send_error(400)
 
-    server = ThreadingHTTPServer(('127.0.0.1', 8765), functools.partial(Handler, directory=str(ROOT)))
+    server = ThreadingHTTPServer(('127.0.0.1', args.port), functools.partial(Handler, directory=str(ROOT)))
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
     udid = None
-    url = f'http://127.0.0.1:8765/tests/mobile/index.html?run={run_id}'
+    url = f'http://127.0.0.1:{args.port}/tests/mobile/index.html?run={run_id}'
     try:
         if args.platform == 'android':
             evidence['device'] = command('adb', 'shell', 'getprop')
             evidence['browser'] = command('adb', 'shell', 'dumpsys', 'package', 'com.android.chrome')
-            command('adb', 'reverse', 'tcp:8765', 'tcp:8765')
+            command('adb', 'reverse', f'tcp:{args.port}', f'tcp:{args.port}')
             command('adb', 'shell', 'am', 'set-debug-app', '--persistent', 'com.android.chrome')
             command('adb', 'shell', "echo 'chrome --no-first-run --disable-fre --no-default-browser-check' > /data/local/tmp/chrome-command-line")
             command('adb', 'shell', 'am', 'force-stop', 'com.android.chrome')
@@ -164,7 +166,7 @@ def main():
                 with (args.output/'screen.png').open('wb') as f:
                     subprocess.run(['adb', 'exec-out', 'screencap', '-p'], stdout=f, timeout=20)
                 (args.output/'logcat.txt').write_text(command('adb', 'logcat', '-d', '-t', '1000', check=False))
-                command('adb', 'reverse', '--remove', 'tcp:8765', check=False)
+                command('adb', 'reverse', '--remove', f'tcp:{args.port}', check=False)
             elif udid:
                 command('xcrun', 'simctl', 'io', udid, 'screenshot', str(args.output/'screen.png'), check=False)
         except Exception as error:

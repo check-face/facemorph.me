@@ -1,4 +1,4 @@
-# Testing round 2 — fourteen items, sense-checked against the working tree
+# Testing round 2 — fifteen items, sense-checked against the working tree
 
 Raised **18 September 2026**, after the round-1 work landed on
 `candidate/next-delivery-20260916` (`364c2d4`…`084d698`). Every "current behaviour" below was
@@ -393,6 +393,53 @@ dashed photo stencil — the classic identity, with **minimal elevation and no b
 
 ---
 
+## R2-15 — iPhone cannot crop → encode blocked; verifiable device lanes · CONFLICT — operator-reported, lab replicated the cause class
+
+**Operator report:** on iPhone, cropping an image fails ("failed to crop .jpg") and the
+encode cannot run at all. Screenshot shows the fatal error box **"Stored asset disappeared;
+acquire again"** with the banned accent styling (R2-8) and the faint-dash remove control
+(A-3) — both already scheduled.
+
+**Verified:**
+1. `"failed to crop"` is **not a string in any shipped code** (tree, deployed bundle, git
+   history). The raw engine message reached the screen via the `PhotoError` path
+   (`Product.fs:215` shows `e.message` unadorned) or was paraphrased — either way, iOS photo
+   failures are currently **undiagnosable from what the user sees**. Instrument first:
+   capture stage + underlying engine message.
+2. The visible fatal error **is** ours: `model-cache.mjs:234`, thrown when a retained asset
+   vanishes between lookup and read. The product treats this as fatal for the whole photo
+   path (the model-cache "exhausted storage is fatal" limitation) — on iOS, where Cache
+   Storage eviction is aggressive, a *recoverable* state stops the workflow entirely.
+3. **The local lab reproduced the cause class on day one:** on the iOS 27 Simulator,
+   `corrupt-cache-repair` fails (`Repair failed`, 4/7 checks pass) — Safari's behaviour in
+   exactly this repair path diverges from Chrome's. See
+   [local-device-lab.md](local-device-lab.md) for the lane matrix, recipe and evidence
+   discipline (iOS sim · Android emulator + WebGPU/SwiftShader · Mac real Chrome with real
+   GPU · triton GTX 1080 via CDP tunnel; the Intel-iGPU-on-triton idea is moot — triton has
+   only the NVIDIA VGA).
+
+**Do:**
+- Instrument the photo path: errors carry stage + underlying cause (referenced in the error
+  box), never a bare engine string.
+- Make the cache states **recoverable for the photo workflow**: `missing-after-acquire` and
+  repair failures re-acquire with visible status ("Preparing your photo's models again…")
+  instead of a fatal box; only genuinely unrecoverable states stop the run.
+- Fix the Safari repair-path divergence; iOS sim suite must reach **7/7** on iOS 26.5 and
+  27.0 runtimes.
+- Run the full encode pipeline (upload → crop → align → e4e → face) per lane: Mac real
+  Chrome lane does this today via `next-e2e-browser.py`; Android emulator lane once
+  provisioned; iPhone-sim full-UI drive needs a `safaridriver` runner (component suite +
+  cache pipeline covered today) — or the physical iPhone, which remains the required gate.
+- Verify the GPU path, not assume it: every lane records `webgpuExposed`, adapter
+  vendor/architecture and the route the product admitted.
+
+**Acceptance:** on the iOS sim, the seven component checks pass and a seeded photo
+flow completes without a fatal cache box (forced corruption recovers); each lane's JSON
+evidence records its adapter and admitted route; the operator's iPhone case is reproduced
+or ruled out by the instrumented build on a physical device before claiming fixed.
+
+---
+
 ## Sense-check summary
 
 | # | Item | Verdict |
@@ -411,6 +458,7 @@ dashed photo stencil — the classic identity, with **minimal elevation and no b
 | 12 | Crop pan 1:1 | Verified bug: pan divides by zoom but ignores preview/viewport scale — ~9× too slow on 12 MP photos |
 | 13 | Slider frames saved + estimates | Verified: writer never given `framesKey` (store empty → slider demands regeneration); `remaining()` fed done-counts — always "about 1 seconds" |
 | 14 | Visual identity | Verified: product sections render as stock Bulma white cards (deployed) or hardcoded dark boxes on a white page (tree); pin classic palette, re-skin sections into the FAQ fabric |
+| 15 | iPhone crop/encode + device lanes | Verified: "failed to crop" not in shipped code (instrument!); "Stored asset disappeared" fatal path real; iOS 27 sim already fails cache repair (4/7) — local device lab standing, lanes per local-device-lab.md |
 
 **Operator decisions — all resolved 18–19 September:** names experience is a fullscreen
 `/names` route/component inside the candidate — no separate `next.names.facemorph.me`
@@ -418,4 +466,6 @@ deployment, no modal, direct state for nth-face targeting; `names.facemorph.me` 
 `/names` at cutover; lossy full-size publishable as the same face, missing 2,144 fillable via
 the Triton public API (no full regeneration); video encode runs hidden while scrubbing
 (R2-4); mid-sequence insertion connectors stay, small and quiet (R2-5); catalogue stays light
-with per-name latents on demand. No open questions remain — the runway is clear to build.
+with per-name latents on demand; 19 September added the sanctioned A-1…A-8 findings, R2-14's
+palette mandate and R2-15's device-lane verification (see the audit and
+[local-device-lab.md](local-device-lab.md)). The runway is clear to build.
