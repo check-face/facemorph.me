@@ -64,18 +64,35 @@ test('all subscribers cancel; immediate fresh request succeeds without inheritin
   await pause(); controller.abort(); const next = f.cache.acquire(asset());
   await failed; await next; assert.equal(f.calls.length, 2);
 });
-test('corrupt retained bytes fail on first open, are removed, and the next acquire downloads fresh; invalid network data never commits', async () => {
+test('corrupt retained bytes are repaired on open: removed, re-downloaded, good bytes returned; invalid network data never commits', async () => {
   const f = fixture(); f.entries.set(asset().sha256, new Uint8Array(bytes.length));
   const handle = await f.cache.acquire(asset()); assert.equal(f.calls.length, 0, 'a retained hit does not re-download');
-  await assert.rejects((await handle.open()).arrayBuffer(), /integrity/);
-  assert.equal(f.assetEntries().length, 0, 'the corrupt identity is removed');
+  const repaired = new Uint8Array(await (await handle.open()).arrayBuffer());
+  assert.deepEqual([...repaired], [...bytes], 'open() must hand back verified bytes, not the corrupt ones');
+  assert.equal(f.calls.length, 1, 'repair re-downloaded the identity');
+  assert.equal(f.assetEntries().length, 1, 'the repaired bytes are stored');
   assert.ok(f.events.some(e => e.status === 'corrupt-removed'));
-  await f.cache.acquire(asset()); assert.equal(f.calls.length, 1);
+  assert.ok(f.events.some(e => e.status === 'repairing'));
+  const again = new Uint8Array(await (await f.cache.acquire(asset()).then(h => h.open())).arrayBuffer());
+  assert.deepEqual([...again], [...bytes], 'the repaired identity stays a hit');
+  assert.equal(f.calls.length, 1);
   for (const wrong of [new Uint8Array(bytes.length), bytes.slice(1), new Uint8Array(bytes.length+1)]) {
     const bad = fixture(async () => new Response(wrong));
     await assert.rejects(bad.cache.acquire(asset()), /integrity|declared size/);
     assert.equal(bad.entries.size, 0);
   }
+});
+test('a stale durable marker from an older version never bypasses verification: corrupt bytes are repaired and the marker is cleaned', async () => {
+  // The 19 September regression: a durable marker vouched for bytes it could not see change
+  // underneath, so corrupt bytes were served unverified (iOS 27 Safari, Android Chrome 124).
+  const f = fixture();
+  f.entries.set(asset().sha256, new Uint8Array(bytes.length)); // corrupt bytes underneath
+  f.entries.set('verified:' + asset().sha256,
+    new TextEncoder().encode(JSON.stringify({ schema: 'checkface-verified-asset-v1', sha256: asset().sha256 })));
+  const served = new Uint8Array(await (await f.cache.acquire(asset()).then(h => h.open())).arrayBuffer());
+  assert.deepEqual([...served], [...bytes], 'the stale marker must not vouch for bytes it cannot see');
+  assert.equal(f.entries.has('verified:' + asset().sha256), false, 'the stale marker is cleaned on touch');
+  assert.ok(f.events.some(e => e.status === 'corrupt-removed'));
 });
 test('mid-stream cancellation prevents partial commits and completes promptly', async () => {
   let cancelled = false;
@@ -121,11 +138,14 @@ test('a retained hit is answered without reading bytes or the network; its first
   assert.equal(f.calls.length, 0);
   assert.deepEqual(f.events.map(e => e.status), ['retained'], 'no verification happens at acquire time');
 });
-test('eviction after acquire is reported without pretending to know its cause', async () => {
+test('eviction after acquire is reported honestly, then repaired by re-downloading', async () => {
   const f = fixture(); const handle = await f.cache.acquire(asset());
-  f.entries.clear(); await assert.rejects(handle.open(), /disappeared/);
-  assert.equal(f.events.at(-1).status, 'missing-after-acquire');
-  await f.cache.acquire(asset()); assert.equal(f.calls.length, 2);
+  f.entries.clear();
+  const served = new Uint8Array(await (await handle.open()).arrayBuffer());
+  assert.deepEqual([...served], [...bytes], 'a vanished entry is repaired, not fatal');
+  assert.ok(f.events.some(e => e.status === 'missing-after-acquire'), 'the missing state is reported as itself');
+  assert.ok(f.events.some(e => e.status === 'repairing'));
+  assert.equal(f.calls.length, 2, 'repair re-downloaded once');
 });
 test('persistence granted/denied/unsupported/failure is explicit', async () => {
   assert.equal((await storageStatus({ storage: {} })).persistence, 'unavailable');
@@ -155,12 +175,14 @@ test('cooperating instances recheck shared storage inside the per-hash lock', as
   await Promise.all([a.acquire(asset()), b.acquire(asset())]);
   assert.equal(f.calls.length, 1);
 });
-test('a handle read detects bytes changed by another context until the asset is verified', async () => {
-  const f = fixture(); f.entries.set(asset().sha256, bytes); // stored by an earlier version: no marker yet
+test('bytes changed by another context are detected on first open and repaired', async () => {
+  const f = fixture(); f.entries.set(asset().sha256, bytes); // stored by an earlier version: no mark yet
   const handle = await f.cache.acquire(asset());
-  f.entries.set(asset().sha256, new Uint8Array(bytes.length));
-  await assert.rejects((await handle.open()).arrayBuffer(), /integrity/);
-  assert.equal(f.assetEntries().length, 0);
+  f.entries.set(asset().sha256, new Uint8Array(bytes.length)); // another context corrupts them
+  const served = new Uint8Array(await (await handle.open()).arrayBuffer());
+  assert.deepEqual([...served], [...bytes], 'the mismatch is repaired from the network');
+  assert.ok(f.events.some(e => e.status === 'corrupt-removed'));
+  assert.equal(f.calls.length, 1);
 });
 
 test('two warm generations perform at most one full-asset digest (C-05)', async () => {
@@ -176,7 +198,7 @@ test('two warm generations perform at most one full-asset digest (C-05)', async 
   assert.equal(f.calls.length, 0, 'a warm generation never touches the network');
 });
 
-test('downloaded bytes are marked verified, so no later open re-hashes them', async () => {
+test('downloaded bytes are marked verified for the session, so no later open re-hashes them', async () => {
   const f = fixture();
   await f.cache.acquire(asset());
   f.events.length = 0; f.calls.length = 0;
@@ -184,8 +206,6 @@ test('downloaded bytes are marked verified, so no later open re-hashes them', as
   assert.deepEqual(new Uint8Array(await (await handle.open()).arrayBuffer()), bytes);
   assert.equal(f.events.filter(e => e.status === 'verified').length, 0, 'the download already verified these bytes');
   assert.equal(f.calls.length, 0);
-  const record = await f.cache.records.get('verified:' + asset().sha256);
-  assert.equal(record?.sha256, asset().sha256, 'the durable verified-asset marker was recorded');
 });
 test('conflicting sizes cannot join pending work for the same hash', async () => {
   const f = fixture(); const first = f.cache.acquire(asset());

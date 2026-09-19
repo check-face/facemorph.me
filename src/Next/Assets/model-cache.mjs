@@ -115,18 +115,16 @@ export function createModelCache({ store, fetcher = globalThis.fetch, locks,
   let active = 0;
   const emit = event => { try { report(event); } catch { /* observers cannot break storage */ } };
   const records = createRecordAccess(store);
-  // C-05: the digest of an asset is computed at most once per asset identity. Bytes verified on
-  // download (or on first consumption of bytes stored by an earlier version) are marked, and the
-  // marker — not a per-open re-hash — is what later sessions consume.
+  // C-05, amended 19 September: the digest of an asset is computed at most once per session.
+  // Bytes verified on download (or on first open of bytes stored earlier) carry the in-memory
+  // mark; the marker is deliberately NOT durable any more — a durable marker vouches for bytes
+  // it cannot see change underneath, and a stale marker served corrupt bytes on iOS 27 Safari
+  // and Android Chrome 124. Cost of the fix: one hash per asset per session instead of one per
+  // bundle version; correctness outranks the saving. Old durable markers are deleted whenever
+  // the identity is touched (openVerified cleanup).
   const VERIFIED_MARKER = 'verified:';
   const verifiedAssets = new Set();
-  const markVerified = sha256 => {
-    verifiedAssets.add(sha256);
-    void records.put(VERIFIED_MARKER + sha256, { schema: 'checkface-verified-asset-v1', sha256, verifiedAt: new Date().toISOString() }).catch(() => {});
-  };
-  const hasVerifiedMarker = async sha256 => {
-    try { return (await records.get(VERIFIED_MARKER + sha256))?.sha256 === sha256; } catch { return false; }
-  };
+  const markVerified = sha256 => { verifiedAssets.add(sha256); };
   const pump = () => {
     while (active < maxConcurrent && queue.length) {
       const task = queue.shift();
@@ -206,6 +204,52 @@ export function createModelCache({ store, fetcher = globalThis.fetch, locks,
     // The bytes just committed were verified stream-incrementally; record that once (C-05).
     markVerified(asset.sha256);
   }
+  // open(): bytes stored by THIS session were verified at write time and are returned as-is.
+  // Anything else is hashed on first open of the session — the durable verified marker was
+  // removed 19 September because it vouched for bytes it could not see change underneath
+  // (a stale marker served corrupt bytes on iOS 27 Safari and Android Chrome 124; see the
+  // mobile suite's corrupt-cache-repair check). A first-open mismatch, or a vanished entry,
+  // is repaired once: the bad identity is removed and re-acquired before bytes are handed
+  // back. Model bytes never buffer whole in JS: pass 1 hashes the stored stream, pass 2
+  // returns a fresh store read.
+  async function digestFailure(body, asset) {
+    if (!body) return new Error('Asset response has no readable body');
+    const reader = body.getReader(), hash = new Sha256();
+    let size = 0;
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      size += value.byteLength;
+      if (size > asset.size) { void reader.cancel(new Error('Asset exceeds declared size')).catch(() => {}); return new Error('Asset exceeds declared size'); }
+      hash.update(value);
+    }
+    if (size !== asset.size || hash.hex() !== asset.sha256) return new Error('Asset integrity mismatch');
+    return null;
+  }
+  async function openVerified(asset, { allowRepair }) {
+    let response;
+    try { response = await store.get(asset.sha256); }
+    catch (error) { emit({ status: 'storage-unavailable', sha256: asset.sha256 }); throw error; }
+    if (!response) {
+      emit({ status: 'missing-after-acquire', sha256: asset.sha256 });
+      if (!allowRepair) throw new Error('Stored asset disappeared; acquire again');
+      emit({ status: 'repairing', sha256: asset.sha256 });
+      await ensure(asset, new AbortController().signal);
+      return openVerified(asset, { allowRepair: false });
+    }
+    if (verifiedAssets.has(asset.sha256)) return response;
+    const failure = await digestFailure(response.body, asset);
+    if (!failure) { markVerified(asset.sha256); emit({ status: 'verified', sha256: asset.sha256, bytes: asset.size }); return await store.get(asset.sha256); }
+    // Corrupt: drop the identity and its record, then repair once.
+    verifiedAssets.delete(asset.sha256);
+    await store.remove(asset.sha256).catch(() => {});
+    await records.remove(VERIFIED_MARKER + asset.sha256).catch(() => {});
+    emit({ status: 'corrupt-removed', sha256: asset.sha256 });
+    if (!allowRepair) throw failure;
+    emit({ status: 'repairing', sha256: asset.sha256 });
+    await ensure(asset, new AbortController().signal);
+    return openVerified(asset, { allowRepair: false });
+  }
   function acquire(input, { signal } = {}) {
     let asset;
     try { asset = validateAsset(input); check(signal); } catch (error) { return Promise.reject(error); }
@@ -229,36 +273,8 @@ export function createModelCache({ store, fetcher = globalThis.fetch, locks,
       const finish = (error) => {
         if (settled) return; settled = true; signal?.removeEventListener('abort', cancel); task.waiters--;
         if (error) reject(error);
-        else resolve(Object.freeze({ sha256: asset.sha256, size: asset.size, open: async () => {
-          const response = await store.get(asset.sha256);
-          if (!response) { emit({ status: 'missing-after-acquire', sha256: asset.sha256 }); throw new Error('Stored asset disappeared; acquire again'); }
-          // C-05: verify the stored bytes once per asset identity, not on every open. Bytes
-          // this instance downloaded (or verified before) carry an in-memory mark; bytes stored
-          // by an earlier version verify on first consumption and record the durable marker.
-          if (verifiedAssets.has(asset.sha256) || await hasVerifiedMarker(asset.sha256))
-            return new Response(response.body, { headers: response.headers });
-          const inner = verifiedStream(response.body, asset, new AbortController().signal).getReader();
-          const body = new ReadableStream({
-            async pull(controller) {
-              let result;
-              try { result = await inner.read(); }
-              catch (error) {
-                verifiedAssets.delete(asset.sha256);
-                void store.remove(asset.sha256).catch(() => {});
-                emit({ status: 'corrupt-removed', sha256: asset.sha256 });
-                throw error;
-              }
-              if (result.done) {
-                markVerified(asset.sha256);
-                emit({ status: 'verified', sha256: asset.sha256, bytes: asset.size });
-                controller.close(); return;
-              }
-              controller.enqueue(result.value);
-            },
-            cancel(reason) { return inner.cancel(reason); }
-          });
-          return new Response(body, { headers: response.headers });
-        } }));
+        else resolve(Object.freeze({ sha256: asset.sha256, size: asset.size, open: async () =>
+          openVerified(asset, { allowRepair: true }) }));
       };
       const cancel = () => {
         finish(signal.reason || aborted());
