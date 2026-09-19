@@ -10,8 +10,11 @@ export function baseSquare(previewWidth,previewHeight){
  return {side,maxOffsetX:(previewWidth-side)/2,maxOffsetY:(previewHeight-side)/2};
 }
 
-export function createCrop({previewWidth,previewHeight,scale=1}){
- return {previewWidth,previewHeight,scale,zoom:MIN_ZOOM,offsetX:0,offsetY:0,rotation:0};
+export function createCrop({previewWidth,previewHeight,scale=1,viewport=Math.min(previewWidth,previewHeight)||1}){
+ // viewport: the on-screen square in CSS pixels the preview renders into (Product renders 320).
+ // Pan deltas arrive in screen pixels; the maths below converts them to preview pixels. Without
+ // the viewport the pan ran at viewport/minSide of finger speed — ~9x too slow on 12 MP photos.
+ return {previewWidth,previewHeight,scale,zoom:MIN_ZOOM,offsetX:0,offsetY:0,rotation:0,viewport};
 }
 
 /** Offsets are in preview pixels, measured from the centre, and always keep the square covered. */
@@ -22,7 +25,11 @@ export function limit(state){
  return {...state,offsetX:clamp(state.offsetX,-spareX,spareX),offsetY:clamp(state.offsetY,-spareY,spareY)};
 }
 
-export function pan(state,dx,dy){return limit({...state,offsetX:state.offsetX-dx/state.zoom,offsetY:state.offsetY-dy/state.zoom});}
+export function pan(state,dx,dy){
+ const {side}=baseSquare(state.previewWidth,state.previewHeight);
+ const previewPerScreen=(side/state.zoom)/(state.viewport||side);
+ return limit({...state,offsetX:state.offsetX-dx*previewPerScreen,offsetY:state.offsetY-dy*previewPerScreen});
+}
 export function zoomTo(state,zoom){return limit({...state,zoom:clamp(zoom,MIN_ZOOM,MAX_ZOOM)});}
 export function rotate(state){return {...state,rotation:(state.rotation+90)%360};}
 

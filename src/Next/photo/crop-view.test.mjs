@@ -67,3 +67,22 @@ test('The rendered frame places the chosen square under the viewport',()=>{
  assert.equal(placed.x,-area.left*(300/area.width));
  assert.equal(placed.y,-area.top*(300/area.width));
 });
+
+test('panning is 1:1 with the drag in screen pixels at any zoom (R2-12)', () => {
+  // A 12 MP-class preview rendered into a 320 px viewport: the old maths moved the image at
+  // viewport/minSide of finger speed (~9x too slow here).
+  let state = createCrop({ previewWidth: 4000, previewHeight: 3000, viewport: 320 });
+  state = zoomTo(state, 2);
+  state = pan(state, 100, 0); // enter pannable range
+  for (const [dx, dy] of [[-80, 0], [37, 0], [0, -60], [0, 24]]) {
+    const before = frame(state, 320);
+    state = pan(state, dx, dy);
+    const after = frame(state, 320);
+    assert(Math.abs((after.x - before.x) - dx) < 1e-6, `horizontal screen delta ${after.x - before.x} must equal drag ${dx}`);
+    assert(Math.abs((after.y - before.y) - dy) < 1e-6, `vertical screen delta ${after.y - before.y} must equal drag ${dy}`);
+  }
+});
+test('without a viewport the pan keeps its historical preview-pixel behaviour', () => {
+  const state = createCrop({ previewWidth: 4000, previewHeight: 3000 });
+  assert.equal(state.viewport, 3000, 'the default viewport is the min side, preserving pre-R2-12 callers');
+});

@@ -152,14 +152,20 @@ export async function execute(request){
   if(request.action==='morph'){
    const path=createLatentPath(project.morph);if(path.totalFrames>4096)throw Error('Choose fewer faces or frames for this export.');
    jobCounts.framesTotal=path.totalFrames;
-   writer=videoWriter({codec:manifest.codec,fps:project.morph.framesPerSecond,signal:active.signal,onProgress:progress});await writer.initialize();
-   for(const frame of path.frames()){
+   const framesKey=await morphFramesKey();
+   const stored=framesKey?await frameStoreGet(framesKey).catch(()=>null):null;
+   writer=videoWriter({codec:manifest.codec,fps:project.morph.framesPerSecond,signal:active.signal,onProgress:progress,framesKey,totalFrames:path.totalFrames});await writer.initialize();
+   if(stored&&stored.length===path.totalFrames){
+    // R2-13: the whole morph is already on this device — encode only, no synthesis at all.
+    progress({stage:'morph',text:`Frames already saved on this device — encoding your video…`,loaded:0,total:path.totalFrames});
+    for(const frame of path.frames()){checked();await writer.add(stored[frame.index],frame.index);jobCounts.framesDone=frame.index+1;}
+   }else for(const frame of path.frames()){
     checked();progress({stage:'morph',text:`Generating frame ${frame.index+1} of ${path.totalFrames}`,loaded:frame.index,total:path.totalFrames});
     const saved=frame.visitId?faces.get(frame.visitId):null;
     const began=now();
     const output=saved||await runtime.synthesize({space:'w-plus',shape:[1,18,512],values:Float32Array.from(frame.values)},{signal:active.signal,persist:false});
     if(!saved)recordFrame(now()-began);
-    await writer.add(output.blob);jobCounts.framesDone=frame.index+1;
+    await writer.add(output.blob,frame.index);jobCounts.framesDone=frame.index+1;
    }
    progress({stage:'export',text:'Finishing your video…'});video=await writer.finish();writer=null;replaceUrl('video',video);
   }

@@ -168,9 +168,20 @@ let init () =
     Cmd.batch [Cmd.ofSub(fun dispatch -> subscribe (Progressed >> dispatch)); if namesRequested() then Cmd.ofMsg(BrowseNames "face-1")]
 
 /// Time left in the job in flight, spoken. Empty without a measurement on this device.
+/// R2-13: remaining() takes LEFT counts; feeding it jobProgress' done counts made this read
+/// "about about 1 seconds remaining" forever. describeMs already speaks "about", no prefix here.
 let private remainingText () =
-    let ms = estimator?remaining(jobProgress())
-    if isJsNull ms then "" else "about " + describeMs(unbox<float> ms) + " remaining"
+    let jp = jobProgress()
+    let facesLeft = (jp?facesTotal: float) - (jp?facesDone: float)
+    let framesLeft = (jp?framesTotal: float) - (jp?framesDone: float)
+    let ms = estimator?remaining(createObj ["facesLeft" ==> facesLeft;"framesLeft" ==> framesLeft])
+    if isJsNull ms then "" else describeMs(unbox<float> ms) + " remaining"
+
+/// Per-frame cost this device has measured, spoken. Empty without a measurement.
+let private perFrameText () =
+    match measuredFrameMs() with
+    | null -> (match measuredFaceMs() with null -> "" | value -> sprintf "about %s per frame" (describeMs(unbox<float> value)))
+    | value -> sprintf "about %s per frame" (describeMs(unbox<float> value))
 
 /// Predicted total for the morph as currently configured, from measurement only.
 let private predictedMorphMs (state:State) =
@@ -227,7 +238,7 @@ let update msg state =
         state.Crop |> Option.iter (fun previous -> revokeUrl previous.url)
         focusCropArea()
         {state with Error=None;Crop=Some {faceId=id;url=offer?url;file=offer?file;scale=offer?scale
-                                          view=createCrop(createObj ["previewWidth" ==> offer?previewWidth;"previewHeight" ==> offer?previewHeight;"scale" ==> offer?scale])}},Cmd.none
+                                          view=createCrop(createObj ["previewWidth" ==> offer?previewWidth;"previewHeight" ==> offer?previewHeight;"scale" ==> offer?scale;"viewport" ==> 320.])}},Cmd.none
     | RequestCrop id when state.ActiveFace<>Some id ->
         match state.Inputs |> List.tryFind(fun item -> item.id=id) with
         | Some item when not (isNull item.file) ->
@@ -625,6 +636,7 @@ let private morphSlot (state:State) dispatch =
             if state.Busy then Html.progress [prop.className "next-sr";prop.max 1.;if state.Fraction>0. then prop.value state.Fraction]
             if state.Busy then progressBar (if state.Fraction>0. then state.Fraction else -1.)
             Html.span [prop.text state.Status]
+            if state.Busy && perFrameText()<>"" then Html.span [prop.className "next-remaining";prop.text (perFrameText())]
             if state.Busy && state.Remaining<>"" then Html.span [prop.className "next-remaining";prop.text state.Remaining]]]
         // Slow-video warning (U-12): names the measured estimate, never blocks, dismissible.
         match state.Warn with
@@ -779,8 +791,9 @@ let view state dispatch = App.ThemedApp [
                     videoSlot state dispatch]]]]
         match estimate state with
         | Some(perFace,frames) when not state.Busy ->
+            let perFrame = perFrameText()
             Html.p [prop.className "next-estimate";prop.custom("role","note")
-                    prop.text (if frames>0. then sprintf "On this device a face took %s, so a %g-frame morph should take %s." (describeMs perFace) frames (describeMs (perFace*frames))
+                    prop.text (if frames>0. then sprintf "On this device a face took %s%s, so a %g-frame morph should take %s." (describeMs perFace) (if perFrame="" then "" else " (" + perFrame + ")") frames (describeMs (perFace*frames))
                               else sprintf "On this device a face took %s." (describeMs perFace))]
         | _ -> Html.none
         // Guidance follows evidence, not the route's name: a qualified GPU route can still be slow
@@ -822,7 +835,7 @@ let view state dispatch = App.ThemedApp [
                     Html.div [prop.className "next-crop-view";prop.ariaLabel "Crop area";prop.custom("role","application");prop.tabIndex 0
                               // The square can be moved and sized without a pointer.
                               prop.onKeyDown(fun (e:Browser.Types.KeyboardEvent) ->
-                                let step=if e.shiftKey then 40. else 10.
+                                let step=if e.shiftKey then 320. else 40. // screen px: one viewport, or an eighth
                                 match e.key with
                                 | "ArrowLeft" -> e.preventDefault(); dispatch(CropPan(step,0.))
                                 | "ArrowRight" -> e.preventDefault(); dispatch(CropPan(-step,0.))
