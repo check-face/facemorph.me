@@ -14,6 +14,7 @@
  *                      WebGL                   ~13,000 ms   (operator reports, deployed build)
  *   Mac (Chromium)     WebGPU                     294-327 ms
  *                      CPU, four threads       ~11,000 ms   (22.9 s for two faces)
+ *   Windows (desktop GPU) WebGPU                   60-70 ms    (operator reports, earlier tests)
  *
  * The fast route is onnxruntime-web's WebGPU execution provider, not a bespoke WGSL runtime; the
  * direct-WGSL proposal remains unimplemented. iPhone Simulator figures exclude WebGPU entirely,
