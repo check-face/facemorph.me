@@ -237,6 +237,7 @@ def stage_syntheticPhotoE4e():
  wait(lambda:js("document.querySelector('%s').value==='photo'"%S['faceSource']),60)
  run(S['buttons']['generate'],predicate=lambda:len(faces())==2)
  wait(lambda:len(faces())==2 and all(i['width']==1024 and i['height']==1024 for i in faces()),60);assert js('window.__ciWorkers')>CTX['workerBaseline']
+ save_check('syntheticPhotoE4e',{'passed':True,'newWorkers':js('window.__ciWorkers')-CTX['workerBaseline'],'widths':[i['width'] for i in faces()]})
 def stage_localCrop():
  # Crop the chosen photo locally and generate from the crop, so an arbitrary original never
  # has to be aligned whole. The crop is what reaches alignment.
