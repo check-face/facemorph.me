@@ -282,6 +282,20 @@ There are no pop-up toasts; guidance is inline status lines and boxes. Two real 
    confirmations, styled per R2-8, with persistent facts (report references) staying
    selectable in place. Nothing critical becomes toast-only.
 
+**Refined 19 September (operator) — the guidance ladder, explicit:**
+
+1. **Qualified GPU route, any device:** no "get a better device" copy at all.
+2. **Phone/tablet without a qualified GPU route (or a face >20 s):** the first and only
+   suggestion is to concisely bump to a laptop/desktop with a graphics card for long morphs
+   (the job still finishes here). **A desktop-builds link is never the lead suggestion on
+   mobile** — it is the answer to a desktop problem, not a phone one.
+3. **Desktop whose GPU was not found or was rejected:** say which, in plain words —
+   `navigator.gpu` absent → "We didn't find a GPU this browser can use"; route rejected →
+   "Your GPU wasn't supported here" (the `route-rejected` reason is already in the product) —
+   and only then suggest the desktop builds, as the way to reach graphics the browser can't.
+4. **Desktop with a qualified GPU route:** never a desktop-app nudge, however slow; slow
+   there is a morph-size conversation, not a hardware one.
+
 ## R2-12 — Crop panning is ~10× slower than the finger on big photos · CONFLICT — verified arithmetic bug
 
 **Operator report (Samsung, ~12 MP photo):** panning the crop is not 1:1; it takes many swipes
@@ -367,6 +381,17 @@ synthesis, no "not saved" note; generate the same morph again → encode-only jo
 stages in diagnostics), seconds not minutes; during a fresh morph the status names per-frame
 time and a remaining total that *decreases*, and the bar advances per frame. Estimates vanish
 on a device with no measurements, as today.
+
+**Refined 19 September (operator):** measuring exists so that **after the single faces are
+generated, the morph estimate stops being a guess.** The device has then measured real
+per-face synthesis and the remaining work is known exactly — faces left, and the frame count
+the settings imply. So: as soon as any face has been generated on this device, the pre-morph
+paragraph states "about X per frame, about Y for this morph", where **Y = frames × measured
+per-frame + this device's measured encode time**. The encode stage belongs in the total and
+in the remaining readout once this device has measured it (i.e. from the first morph on);
+until then Y covers synthesis and says so rather than inventing an encode number (U-12,
+measured-not-guessed). During the job the countdown continues through the encode stage: when
+frames are done the status line switches to "Encoding — about Z remaining".
 
 ## R2-14 — Visual identity regression: generic cards instead of the facemorph look · CONFLICT — operator-flagged, verified
 
