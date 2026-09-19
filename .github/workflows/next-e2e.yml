@@ -98,7 +98,9 @@ jobs:
             sleep 1
           done
           curl -kfsS https://127.0.0.1:8443/runtime/manifest.json >/dev/null
-          browser-harness < scripts/next-e2e-browser.py
+          # Step-level watchdog: a wedged renderer must fail fast (and upload its evidence)
+          # instead of burning the whole job budget on one blocked CDP call.
+          timeout 1500 browser-harness < scripts/next-e2e-browser.py
       - uses: actions/upload-artifact@v4
         if: always()
         with:

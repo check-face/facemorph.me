@@ -45,7 +45,7 @@ S={
 }
 def q(expr):return json.loads(js('JSON.stringify('+expr+')'))
 def text(sel):return js("(document.querySelector('%s')?.innerText||'')"%sel)
-def wait(predicate,seconds=5400):
+def wait(predicate,seconds=600):
  deadline=time.monotonic()+seconds
  while time.monotonic()<deadline:
   error=text(S['error'])
