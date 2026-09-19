@@ -235,8 +235,12 @@ def stage_repeatOriginal():
 def stage_syntheticPhotoE4e():
  upload(S['choosePhoto'],CTX['seedPng'])
  wait(lambda:js("document.querySelector('%s').value==='photo'"%S['faceSource']),60)
+ # R2-3 eager e4e: choosing the photo IS the instruction to encode it — the face encodes
+ # with no Generate press at all. The photo face is the second tile; face one came from the
+ # seed stage. Wait for the eager result, then confirm a full pass still leaves both whole.
+ wait(lambda:len(faces())==2 and all(i['width']==1024 and i['height']==1024 for i in faces()) and idle(),240);assert js('window.__ciWorkers')>CTX['workerBaseline']
  run(S['buttons']['generate'],predicate=lambda:len(faces())==2)
- wait(lambda:len(faces())==2 and all(i['width']==1024 and i['height']==1024 for i in faces()),60);assert js('window.__ciWorkers')>CTX['workerBaseline']
+ wait(lambda:len(faces())==2 and all(i['width']==1024 and i['height']==1024 for i in faces()),60)
  save_check('syntheticPhotoE4e',{'passed':True,'newWorkers':js('window.__ciWorkers')-CTX['workerBaseline'],'widths':[i['width'] for i in faces()]})
 def stage_localCrop():
  # Crop the chosen photo locally and generate from the crop, so an arbitrary original never
