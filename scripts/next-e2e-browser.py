@@ -43,6 +43,20 @@ S={
             'createMorph':'Create morph','saveVideo':'Save video','crop':'Crop photo',
             'rotate':'Rotate','useCrop':'Use this crop'},
 }
+def logs_tail():
+ try:return ' | '.join(js('[...window.__ciLogs].slice(-8)') or [])
+ except Exception:return ''
+def alive():
+ # A dead renderer makes every js() read return null, which used to surface as bizarre stage
+ # failures minutes later. Probe the context directly so the failure names the real cause.
+ v=js('1+1')
+ if v!=2:raise RuntimeError('renderer unresponsive (eval returned %r)'%(v,))
+def ensure_instrumented():
+ # The Worker counters re-install on every document; the busy observer and the console tap do
+ # not. Re-arm them so a mid-suite reload degrades to zero-counted transitions instead of
+ # null comparisons, and late failures still carry the runtime's last words.
+ js("if(!window.__ciLogs){window.__ciLogs=[];['log','warn','error','info'].forEach(k=>{const o=console[k].bind(console);console[k]=(...a)=>{try{window.__ciLogs.push(k+': '+a.map(x=>typeof x==='string'?x:JSON.stringify(x)).join(' ').slice(0,300));if(window.__ciLogs.length>40)window.__ciLogs.shift();}catch(e){}};});}")
+ js("window.__ciBusyChanges=window.__ciBusyChanges||0;if(!window.__ciBusyObserver){window.__ciBusyObserver=new MutationObserver(()=>{window.__ciBusyChanges++;});window.__ciBusyObserver.observe(document.querySelector('.next-status'),{subtree:true,attributes:true,childList:true,characterData:true});window.__ciBusyChanges++;}")
 def q(expr):return json.loads(js('JSON.stringify('+expr+')'))
 def text(sel):return js("(document.querySelector('%s')?.innerText||'')"%sel)
 def wait(predicate,seconds=600):
@@ -90,7 +104,9 @@ def idle():return js("!document.querySelector('%s') && [...document.querySelecto
 def run(name,predicate=None):
  # A warm cache can complete a run synchronously - the button's disabled state never flips -
  # so a busy transition cannot be required. Accept either the transition or the stage's own
- # completion evidence, then wait for idle. Outcome assertions stay with the callers.
+ # completion evidence, then wait for idle. Outcome assertions stay with the callers. A stage
+ # may have reloaded the page since the driver last armed the observers, so re-arm here.
+ ensure_instrumented()
  before=js('window.__ciBusyChanges')
  click(name,expect=lambda: js('window.__ciBusyChanges')>before or (predicate() if predicate else False))
  wait(lambda: js('window.__ciBusyChanges')>before or (predicate() if predicate else False),30);wait(idle)
@@ -130,7 +146,8 @@ def stage_preflight():
  result['agent']=q('navigator.userAgent');result['engine']=q("(/Firefox|FxiOS/.test(navigator.userAgent)?'gecko':/Chrome|Chromium|CriOS|Edg/.test(navigator.userAgent)?'blink':/Safari/.test(navigator.userAgent)?'webkit':'other')")
  js("window.__ciOrigin=null;fetch('/').then(r=>window.__ciOrigin=r.headers.get('X-Next-Artifact-Source')).catch(e=>window.__ciOrigin='error')")
  wait(lambda:js('window.__ciOrigin!==null'),60);assert js('window.__ciOrigin')==Path('next-site-source.txt').read_text().strip(), 'Chrome did not reach exact local artifact origin'
- js("window.__ciBusyChanges=0;window.__ciBusyObserver=new MutationObserver(records=>{for(const r of records)if(r.attributeName==='disabled'&&r.target.textContent==='Generate faces')window.__ciBusyChanges++;});window.__ciBusyObserver.observe(document.querySelector('%s'),{subtree:true,attributes:true,attributeFilter:['disabled']});"%S['product'])
+ js("window.__ciLogs=[];['log','warn','error','info'].forEach(k=>{const o=console[k].bind(console);console[k]=(...a)=>{try{window.__ciLogs.push(k+': '+a.map(x=>typeof x==='string'?x:JSON.stringify(x)).join(' ').slice(0,300));if(window.__ciLogs.length>40)window.__ciLogs.shift();}catch(e){}};});")
+ js("window.__ciBusyChanges=0;window.__ciBusyObserver=new MutationObserver(()=>{window.__ciBusyChanges++;});window.__ciBusyObserver.observe(document.querySelector('.next-status'),{subtree:true,attributes:true,childList:true,characterData:true});window.__ciBusyChanges++;")
  state=q("({tiles:document.querySelectorAll('.next-face').length,photos:document.querySelectorAll('%s').length,words:!!document.querySelector('%s'),generate:[...document.querySelectorAll('button')].some(b=>b.textContent==='%s'),modeOptions:[...document.querySelectorAll('%s option')].map(o=>o.value),error:(document.querySelector('%s')?.innerText||'')})"%(S['choosePhoto'],S['faceTextInputs'],S['buttons']['generate'],S['processingMode'],S['error']))
  assert state['tiles']==2 and state['photos']==2 and state['words'] and state['generate'],state
  assert set(['auto','cpu','webgpu','webgl'])<=set(state['modeOptions']),state
@@ -238,7 +255,13 @@ def stage_localCrop():
   cdp('Input.dispatchKeyEvent',type='keyDown',key=key,windowsVirtualKeyCode=code);cdp('Input.dispatchKeyEvent',type='keyUp',key=key,windowsVirtualKeyCode=code)
  assert js("!!document.querySelector('%s')"%S['cropView']),'Arrow keys closed the crop dialog'
  click(S['buttons']['useCrop'],expect=lambda:js("!document.querySelector('%s')"%S['cropView']))
- wait(lambda:js("!document.querySelector('%s')"%S['cropView']),60);wait(idle)
+ wait(lambda:js("!document.querySelector('%s')"%S['cropView']),60)
+ deadline=time.monotonic()+300
+ while time.monotonic()<deadline:
+  if idle():break
+  time.sleep(1)
+ else:
+  raise RuntimeError('crop accept never settled: status=%r error=%r workers=%r logs=%s'%(text(S['status']),text(S['error']),js('window.__ciWorkers'),logs_tail()))
  cropped=text(S['fileName'])
  assert cropped=='cropped.png',cropped
  run(S['buttons']['generate'],predicate=lambda:len(faces())==2)
@@ -247,9 +270,18 @@ def stage_localCrop():
 def stage_projectSaveReopen():
  project=download(S['buttons']['exportProject']);parsed=json.loads(project.read_text());assert len(parsed['morph']['controls'])==2 and all(len(c['latent']['values'])==9216 for c in parsed['morph']['controls'])
  upload(S['openProject'],project);time.sleep(.5);wait(idle)
+ CTX['project']=project
  assert js("[...document.querySelectorAll('%s')].every(s=>s.value==='project')"%S['faceSource'])
  save_check('projectSaveReopen',{'passed':True,'sha256':hashlib.sha256(project.read_bytes()).hexdigest()})
 def stage_morphVideo():
+ js('location.reload()');wait_for_load();wait(idle,60)
+ upload(S['openProject'],CTX['project']);time.sleep(.5);wait(idle)
+ # The reopen is asynchronous: the morph button exists the moment the app renders (disabled
+ # until both faces return), so wait for the restored inputs themselves.
+ wait(lambda:js("[...document.querySelectorAll('%s')].length===2 && [...document.querySelectorAll('%s')].every(s=>s.value==='project')"%(S['faceSource'],S['faceSource'])),60)
+ # Reopening a photo-mode project kicks its own re-encode; the morph button is disabled until
+ # that settles. Click only when the button can actually receive it.
+ wait(lambda:js("(()=>{const b=[...document.querySelectorAll('button')].find(x=>x.textContent.trim()==='Create morph');return b&&!b.disabled;})()"),300)
  run(S['buttons']['createMorph'],predicate=lambda:js("!!document.querySelector('%s')"%S['video']))
  try:wait(lambda:js("!!document.querySelector('%s')"%S['video']),90)
  except TimeoutError:
@@ -271,9 +303,11 @@ try:
   if name in SKIP:result.setdefault('skipped',[]).append(name);continue
   result['stage']=name
   try:
+   if name!='preflight':
+    alive();ensure_instrumented()
    fn()
   except Exception as error:
-   result['stageError']=name+': '+str(error)
+   result['stageError']=name+': '+str(error)+' logs='+logs_tail()
    raise
   if UNTIL==name:
    result['partial']=True

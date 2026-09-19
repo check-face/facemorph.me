@@ -203,7 +203,13 @@ let update msg state =
     | Mode(id,mode) when not state.Busy -> invalidatePhotoSelections(); change id (fun item -> {item with mode=mode;file=emptyFile}), Cmd.none
     | PickPhoto(id,files) when not state.Busy -> state,Cmd.OfPromise.either selectPhoto (createObj ["id" ==> id;"files" ==> files]) (fun file -> Photo(id,file)) (fun e -> PhotoError e.Message)
     | Cropped(id,file) when not (isNull file) ->
-        let next={change id (fun item -> {item with mode="photo";file=file;value=fileName file}) with Error=None}
+        // CropAccept raised Busy itself ("Preparing your crop…"): by the time the rendered
+        // crop lands, that flag is the crop's own, not a run's. Leaving it set made the
+        // idle-accept path see Busy and queue the face into PendingFaces, where nothing
+        // would ever dispatch it - a stuck "busy" with no run. A crop accepted while a real
+        // run is in flight keeps Busy and queues, exactly as before.
+        let cropOwnsBusy=state.Stage="cropping"
+        let next={change id (fun item -> {item with mode="photo";file=file;value=fileName file}) with Error=None;Busy=(if cropOwnsBusy then false else state.Busy)}
         let (queued,queuedCmd)=dequeue next
         // The crop IS the photo choice. With no run in flight and no queued photo, the e4e
         // encode for this face starts now instead of waiting for a second button press.
