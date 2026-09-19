@@ -46,7 +46,9 @@ R2-13's gate is therefore phrased at the UI, not at the store.
    on `23c1646`.
 2. **R2-13 — frames persisted + estimates.** Unblocks R2-4's live slider and A-7's slider stage.
 3. **R2-4 (slider-first, infill, autoplay) and R2-12 (crop pan 1:1).** The two felt-experience bugs.
-4. **R2-3 eager e4e; R2-5/6/10 restyles folding in A-1…A-6; R2-8 accent purge; R2-9 FAQ row.**
+4. **R2-3 eager e4e; R2-5/6/10 restyles folding in A-1…A-6; R2-8 accent purge; R2-14 palette + fabric; R2-9 FAQ row.**
+   R2-14 goes first among the styling items — the accent ban, section restyles and visual
+   gates all assume the pinned classic palette is in place.
 5. **Names:** the fullscreen `/names` route (19 Sept decision), catalogue v2 + per-name
    latent endpoints, the Triton API fill for the missing 2,144, and R2-7's latent tests.
 6. **A-7 — e2e stages for each behaviour as it lands; R2-11 guidance copy last.**
@@ -70,6 +72,7 @@ R2-13's gate is therefore phrased at the UI, not at the store.
 | **R2-6 / R2-10** | For-testing is a styled peer of the FAQ immediately after it; More options uses classic-consistent labelled controls; "Generate faces" renders only under a feature flag, placed after/under both faces |
 | **R2-9** | One new FAQ row covers local on-device generation (models cached, offline-capable, nothing uploaded, slow-device honesty); no wholesale rewrite; server-era sentences corrected in place |
 | **R2-11** | Guidance is device-honest: a desktop-class device on CPU is never told to move to desktop; a phone without a qualified GPU route is told what would actually help. Transient notices use a Snackbar; report references stay selectable in place. Nothing critical is toast-only |
+| **R2-14** | The product surface holds one deliberate identity — the classic facemorph palette (`#17181c` canvas, Nunito headings, outlined controls, dashed stencils) — regardless of OS `prefers-color-scheme`. FAQ, For-testing, invite, warnings and More options share the FAQ's container treatment: zero Bulma `.box` white cards, zero stock MUI elevation, no ambient shadow beyond the classic subtle one. Visual check at 390 px and 1280 px against `review/next-delivery/style-delta/`, and in both OS schemes during development so the never-designed light rendering cannot ship by accident |
 | **Names (19 Sept)** | `/names` route in this app: near-identical grid (5,055 names, 200 px images), click-to-select targeting the nth face (or "morph to" flow), reopening per additional name; selecting materialises the face automatically — hosted cache first, device generation second, never a Generate click; morph endpoint frames may use the exact stored image. Catalogue v2: name + identity + 200 px/full-size URLs only; per-name latent at `catalogue/latent/<identity>` fetched on pick (never inlined — ~47 MB if it were). The 2,144 missing full-size images generated via `GET api.facemorph.me/api/face/?value=<lowercase>&dim=1024`, each verified against the lowercase-name SHA-256 identity before publication, historic bytes kept |
 | **R2-7** | Latent retrieval and saving are CI-tested: derive a name's latent offline and byte-match an independent reference; catalogue/project round-trip with latent metadata keeps canonical bytes unchanged; wired beside the project-reopen check in `next-e2e.yml` |
 | **A-7** | `next-e2e-browser.py` gains stages: morph driven for **all five kinds** (rotating), Use Slider end-to-end (zero synthesis), add-face → N≥3 morph through the real buttons, names browse → pick → face. Every new stage is added to `promote.py`'s `required` set **in the same change**; the existing six are never weakened |
@@ -107,3 +110,7 @@ buttons); and anything not measured is reported as not measured.
 - **Playwright browsers cannot check H.264 encode/playback** — WebCodecs evidence comes from
   the real-Chromium qualification step, as round 1 recorded.
 - **Do not start the native desktop GPU matrix.** Still explicitly later work.
+- **Check both OS colour schemes while styling.** `ThemedApp` follows `prefers-color-scheme`
+  (classic behaviour since 2020). R2-14 pins the product identity to the classic palette;
+  until a light variant is deliberately designed, every styling change must be reviewed with
+  the scheme forced both ways so an undesigned light rendering never ships again.

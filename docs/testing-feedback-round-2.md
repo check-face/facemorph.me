@@ -1,4 +1,4 @@
-# Testing round 2 — thirteen items, sense-checked against the working tree
+# Testing round 2 — fourteen items, sense-checked against the working tree
 
 Raised **18 September 2026**, after the round-1 work landed on
 `candidate/next-delivery-20260916` (`364c2d4`…`084d698`). Every "current behaviour" below was
@@ -355,6 +355,41 @@ stages in diagnostics), seconds not minutes; during a fresh morph the status nam
 time and a remaining total that *decreases*, and the bar advances per frame. Estimates vanish
 on a device with no measurements, as today.
 
+## R2-14 — Visual identity regression: generic cards instead of the facemorph look · CONFLICT — operator-flagged, verified
+
+**Operator report:** the For-testing box renders as a generic white card with an ambient
+shadow — "AI smell", inconsistent with the FAQ and photo outlines of the original facemorph.
+
+**Verified cause, two layers:**
+
+1. **Deployed:** `.box` in the shipped CSS is **Bulma's stock card** (`background-color:#fff;
+   border-radius:6px; color:#4a4a4a; box-shadow:0 .5em 1em -0.125em rgba(10,10,10,.1)…`),
+   and `ThemedApp` follows `prefers-color-scheme` (classic behaviour since 2020, `eee25d6`).
+   On a light-system device every product section — FAQ, For-testing, invite, warnings —
+   renders as stock white cards on a white page. Nothing about them says facemorph.
+2. **Working tree:** `style.scss` redefined `.box` as a **hardcoded dark** card
+   (`rgba(22,25,31,.94)`, white text, `box-shadow:0 12px 36px rgba(0,0,0,.28)`) — correct
+   palette for dark mode, but under a light OS scheme it puts dark boxes on a white page,
+   and the large ambient shadow is the same generic-card smell in dark clothing.
+
+The original elements the operator holds up as the standard: the FAQ/explain typography
+(Nunito headings, plain sections on the page canvas), the outlined setpoint fields, and the
+dashed photo stencil — the classic identity, with **minimal elevation and no bespoke cards**.
+
+**Do:**
+- Give the product surface **one deliberate identity: the classic facemorph palette** —
+  `#17181c` canvas, Nunito headings, outlined controls, dashed stencils — as the default
+  regardless of OS scheme. (Classic's auto-light dates to 2020, but the candidate's elements
+  were designed against the dark palette and the light rendering was never designed at all;
+  a light variant may return later as a designed mirror, not an accident.)
+- Re-skin every page section (FAQ, For-testing, invite, slow-route, error, More options) in
+  the **same fabric as the FAQ**: same container treatment, same heading scale, same
+  spacing — no Bulma `.box` white cards, no stock MUI elevation, no ambient shadow beyond
+  the subtle classic one. This subsumes the R2-6/R2-10 restyles and the R2-8 accent ban.
+- Gate it visually: at 390 px and 1280 px, in the shipped scheme, FAQ and For-testing are
+  indistinguishable in container treatment; zero Bulma box/card classes on the product
+  surface; shadows within the classic subtle budget. Review against
+  `review/next-delivery/style-delta/` screenshots, as round 1 did.
 
 ---
 
@@ -375,6 +410,7 @@ on a device with no measurements, as today.
 | 11 | Toasts + honest guidance | Desktop nudge fires on desktops; status line overwriteable |
 | 12 | Crop pan 1:1 | Verified bug: pan divides by zoom but ignores preview/viewport scale — ~9× too slow on 12 MP photos |
 | 13 | Slider frames saved + estimates | Verified: writer never given `framesKey` (store empty → slider demands regeneration); `remaining()` fed done-counts — always "about 1 seconds" |
+| 14 | Visual identity | Verified: product sections render as stock Bulma white cards (deployed) or hardcoded dark boxes on a white page (tree); pin classic palette, re-skin sections into the FAQ fabric |
 
 **Operator decisions — all resolved 18–19 September:** names experience is a fullscreen
 `/names` route/component inside the candidate — no separate `next.names.facemorph.me`
