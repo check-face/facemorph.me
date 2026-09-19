@@ -15,7 +15,7 @@ Verdicts: **DONE IN TREE** / **PARTIAL** / **MISSING** / **CONFLICT**.
 
 ---
 
-## R2-1 — Delete button flows inline · DONE IN TREE (verify visually after deploy)
+## R2-1 — Delete button flows inline · DONE IN TREE — placement superseded 19 September
 
 The remove control is an icon button (`Remove` → `Product.fs:278`, rendered at `:516-519`)
 inside `.next-face-actions`, the same flex row as "Share image" / "Save image"
@@ -27,6 +27,19 @@ At the 400px tile width the three controls measure comfortably inside one line; 
 is the fallback, not the norm. Nothing to build here. **Do:** add one visual gate at 320–390 px
 to the e2e (actions row height stays one row) so a future copy change cannot wrap it, and
 promote the tree so testers actually see this row.
+
+**Superseded 19 September (operator decision):** the above placement verdict no longer
+stands. The remove control is **relocated**: it becomes a close-style (×) icon button
+overlaid at the **top-right of the face tile's image element** (`.next-face-image`),
+reading as "close/remove this panel", and it **leaves the inline actions row**, which keeps
+Share/Save only. It is visible at rest on touch and desktop — no hover-reveal — which is
+what actually resolves A-3's discoverability complaint; A-3's restyle-in-place is dropped.
+Carried over unchanged: the tooltip, the `aria-label` "Remove {label}"
+(`check-next-artifact.sh` drives removal through that accessible name), `disabled` while
+busy, and the `Inputs.Length>1` gate — **the last panel is never removable**; removal must
+always leave at least one face. The 320–390 px gate still applies to the remaining actions
+row, plus one for the corner control: it stays inside the tile and must not collide with
+tile content at 320 px.
 
 ## R2-2 — Names replacement · PARTIAL — decisions resolved 18 September
 
@@ -444,7 +457,7 @@ or ruled out by the instrumented build on a physical device before claiming fixe
 
 | # | Item | Verdict |
 |---|---|---|
-| 1 | Delete button inline | Done in tree; add 320 px visual gate; deploy |
+| 1 | Delete button inline | Inline version done in tree, **superseded 19 Sept**: remove moves to the image's top-right corner as a close (×) control, resolving A-3 by relocation; `Length>1` gate (never remove the last panel) and the "Remove {label}" accessible name unchanged |
 | 2 | Names replacement | Fullscreen `/names` route inside the candidate (no separate deployment); keep 200px grid + historic lossy full-size (2,911); fill missing 2,144 via Triton API; latents served per-name — resolved 18–19 Sep |
 | 3 | Single-face generate + eager e4e | Per-face exists (gap: first-time text faces); eager e4e missing |
 | 4 | Slider-first, infill, video-last | Missing; writer/store already support out-of-order indexed frames; hidden encode approved |

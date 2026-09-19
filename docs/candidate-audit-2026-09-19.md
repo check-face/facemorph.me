@@ -57,7 +57,7 @@ source. It is **not** satisfied in the world until the tree is promoted (A-8).
 
 | Item | Delta since written |
 |---|---|
-| R2-1 delete button inline | Stands; note the remove control is a faint "—" (see A-3) |
+| R2-1 delete button inline | **Placement superseded 19 Sept** — remove relocates to the image's top-right corner as a close control (resolves A-3); gate/aria/busy rules unchanged |
 | R2-2 names | **Partially superseded by the 19 Sept decision** — fullscreen `/names` route in-app, no separate deployment; catalogue stays light, latents on demand |
 | R2-3 per-face generate | **First half fixed in-tree** — `faceReady` gives text/seed faces the button too (`Product.fs:531`), with a `PendingFaces` queue so picks during a job run after it. **Eager e4e still missing** (verified: no `encodePhoto` on selection) |
 | R2-4 slider-first | Stands; the writer's indexed `add()` makes infill order a small change |
@@ -92,6 +92,13 @@ auto-reveals; the between-face + are fine and confirmed wanted.
 layout noise; on touch there is no hover, so removal is near-invisible until tapped. Fix:
 outline `delete`-style icon, keep the tooltip/aria, consider `opacity:.55` resting state on
 coarse pointers.
+
+**Superseded 19 September (operator decision):** resolved by **relocation**, not restyle —
+the remove control becomes a close-style (×) icon overlaid at the **top-right of the face
+tile's image element**, visible at rest on all pointers (no hover-gating), and leaves the
+inline actions row (Share/Save remain). The delete-icon/resting-opacity work above is
+dropped. Tooltip, `aria-label` "Remove {label}", busy-disable, the `Inputs.Length>1` gate
+(last panel never removable) and the e2e's accessible-name selector carry over unchanged.
 
 **A-4 — Names dialog failure UX is broken three ways** (observed live by serving a fresh
 build without `catalogue.json`, which the deployment pipeline adds but `build:next` doesn't
