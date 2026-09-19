@@ -272,7 +272,12 @@ let update msg state =
             Cmd.OfPromise.either (fun () -> cropPhoto crop.file (cropRect crop.view) options) () (fun file -> Cropped(target,file)) (fun e -> PhotoError e.Message)
         | None -> state,Cmd.none
     | Photo(id,file) when not state.Busy && not (isNull file) ->
-        dequeue {change id (fun item -> {item with mode="photo";file=file;value=fileName file}) with Error=None;Status=""}
+        // Direct accept (no crop needed): same eager-e4e rule as Cropped — the choice of
+        // photo IS the instruction to encode it. Busy here is impossible (guard above), but
+        // a multi-photo drop queues more selections; those faces encode as each lands.
+        let (next,nextCmd)=dequeue {change id (fun item -> {item with mode="photo";file=file;value=fileName file}) with Error=None;Status=""}
+        if next.PhotoQueue.Length>0 then next,nextCmd
+        else next,Cmd.batch [nextCmd;Cmd.ofMsg (RunFace id)]
     // A drop of one or more photos: the named tile (or the first empty face) takes the first,
     // and every further file creates its own face, in drop order.
     | Photos(optId,files) when not state.Busy && not (isNull files) && fileListLength files>0 ->
