@@ -7,6 +7,8 @@ import {saveFile,shareFile,videoWriter} from './media.mjs';
 import {diagnostics} from './reporting.mjs';
 import {labelFor,loadedBytes} from './stage-labels.mjs';
 import {frameStoreKey,frameStoreGet} from './morph-frames.mjs';
+import {selectPhoto} from './photo-selection.mjs';
+import {previewPhoto,cropPhoto} from './photo/crop.mjs';
 // The U-14 slider consumes frames through window.__nextFrames.get(key); wire the real store
 // here so the UI has exactly one integration point. Guarded so stripped-import test harnesses
 // (which leave the identifier undefined) skip the install instead of crashing module load.
@@ -126,7 +128,7 @@ async function admission(provider){
 }
 export function subscribe(callback){listener=callback;window.addEventListener('facemorph-report-status',({detail})=>callback({jobId:currentJob,stage:'diagnostics-'+detail.status,text:detail.reference||'',fraction:0}));diagnostics.restore();}
 export async function execute(request){
- if(active)throw Error('Another job is still stopping.');active=new AbortController();currentJob=request.jobId;diagnostics.start(request.action,request.provider);
+ if(active)throw Error('Another job is still stopping.');active=new AbortController();currentJob=request.jobId;closePhotoRun('completed');diagnostics.start(request.action,request.provider);reportStorage();
  try{
   await admission(request.provider);
   // Per-face generate (U-03): work only the one face asked for, so no other face emits a
@@ -202,6 +204,53 @@ export async function importProject(request){
 export function setDebug(enabled){diagnostics.enable(enabled);}
 /** How much of this session is staged on the device, ready to send if the tester agrees. */
 export function stagedReportCount(){return diagnostics.status().staged||0;}
+/** The reference of the run a failure was filed under, for the error box (R2-15): a tester
+ * who can read the reference next to the failure can tie it to the staged report. Empty
+ * without consent. */
+export function reportReference(){const status=diagnostics.status();return status.enabled?status.reference||'':'';}
+
+// R2-15: photo preparation (select, preview, crop) used to run entirely outside the job
+// lifecycle — no run opened, so a consented session recorded NOTHING about the exact step
+// that failed on the operator's iPhone ("failed to crop"). Photo preparation is now its own
+// reported run with named stages; a real job closes it on start.
+let photoRun=false;
+function closePhotoRun(status){if(photoRun){diagnostics.finish(status);photoRun=false;}}
+export function photoStage(name,run){
+ if(!diagnostics.status().enabled)return run();
+ try{
+  if(!photoRun){diagnostics.start('photo');photoRun=true;}
+  diagnostics.stage(name,{});
+  const result=run();
+  return Promise.resolve(result).catch(error=>{
+   if(photoRun){diagnostics.finish(error?.name==='AbortError'?'cancelled':'failed',error,{stage:name});photoRun=false;}
+   throw error;
+  });
+ }catch(error){
+  if(photoRun){diagnostics.finish('failed',error,{stage:name});photoRun=false;}
+  throw error;
+ }
+}
+// R2-15, the eviction half: ask for persistent storage once per session at the first real
+// job — granted, and the browser stops treating ~1 GB of models as disposable. Whatever the
+// answer, the run records the truth (persisted flag, rounded megabytes) so a later
+// "Stored asset disappeared" report reads with its cause attached.
+let storageReported=false;
+function reportStorage(){
+ if(storageReported)return;storageReported=true;
+ void Promise.resolve().then(async()=>{
+  const {storageStatus}=await import('./Assets/model-cache.mjs');
+  const status=await storageStatus({requestPersistence:true});
+  diagnostics.stage('storage',{persisted:status.persistence==='granted',
+   usageMb:Math.round((status.usage||0)/1048576)||undefined,
+   quotaMb:Math.round((status.quota||0)/1048576)||undefined});
+ }).catch(()=>{});
+}
+// Reported wrappers: the UI calls these instead of the raw photo modules, so preparation
+// failures land in the record with their stage attached.
+export function selectPhotoReported(request){return photoStage('photo-select',()=>selectPhoto(request));}
+export function previewPhotoReported(file,options){return photoStage('photo-preview',()=>previewPhoto(file,options));}
+export function cropPhotoReported(file,area,options){return photoStage('photo-crop',()=>cropPhoto(file,area,options));}
+export function cancelPhotoRun(){closePhotoRun('cancelled');}
 // Published gallery assets are addressed by the same identity the product already computes:
 // a text face by the SHA-256 of its exact lowercase request, a numeric seed by the seed. The
 // catalogue carries identities rather than 8,966 URLs, so these rules derive the rest.

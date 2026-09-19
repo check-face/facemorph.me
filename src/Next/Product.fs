@@ -53,6 +53,10 @@ let sliderFrames (): JS.Promise<obj> = jsNative
 let plannedFrames (options: obj): obj = jsNative
 [<Import("stagedReportCount", "./product-bridge.mjs")>]
 let stagedReportCount (): int = jsNative
+[<Import("reportReference", "./product-bridge.mjs")>]
+let reportReference (): string = jsNative
+[<Import("cancelPhotoRun", "./product-bridge.mjs")>]
+let cancelPhotoRun (): unit = jsNative
 [<Import("setDebug", "./product-bridge.mjs")>]
 let setDebug (enabled: bool): unit = jsNative
 
@@ -81,11 +85,11 @@ let oneFile (file: obj): obj = jsNative
 [<Emit("window.requestAnimationFrame($0)")>]
 let requestAnimationFrame (callback: unit -> unit): int = jsNative
 
-[<Import("previewPhoto", "./photo/crop.mjs")>]
+[<Import("previewPhoto", "./product-bridge.mjs")>]
 let previewPhoto (file: obj) (options: obj): JS.Promise<obj> = jsNative
 [<Emit("Object.assign({crop:true,file:$1},$0)")>]
 let cropOffer (preview: obj) (file: obj): obj = jsNative
-[<Import("cropPhoto", "./photo/crop.mjs")>]
+[<Import("cropPhoto", "./product-bridge.mjs")>]
 let cropPhoto (file: obj) (area: obj) (options: obj): JS.Promise<obj> = jsNative
 [<Import("createCrop", "./photo/crop-view.mjs")>]
 let createCrop (options: obj): obj = jsNative
@@ -106,7 +110,7 @@ let revokeUrl (url: string): unit = jsNative
 
 [<Import("photoFiles", "./photo-selection.mjs")>]
 let photoFiles (event: obj): obj = jsNative
-[<Import("selectPhoto", "./photo-selection.mjs")>]
+[<Import("selectPhoto", "./product-bridge.mjs")>]
 let selectPhoto (request: obj): JS.Promise<obj> = jsNative
 [<Import("openPhotoPicker", "./photo-selection.mjs")>]
 let openPhotoPicker (id: string): unit = jsNative
@@ -257,6 +261,7 @@ let update msg state =
         | Some crop -> {state with Crop=Some {crop with view=rotateCrop crop.view}},Cmd.none
         | None -> state,Cmd.none
     | CropCancel ->
+        cancelPhotoRun()
         state.Crop |> Option.iter (fun crop -> revokeUrl crop.url)
         let next={state with Crop=None}
         dequeue next
@@ -811,6 +816,10 @@ let view state dispatch = App.ThemedApp [
         match state.Error with
         | Some message -> Html.div [prop.className "next-error box";prop.custom("role","alert");prop.children [
             Html.p message
+            // R2-15: the failure and the staged report must be tieable by a human. The
+            // reference is empty without consent, in which case the line simply doesn't show.
+            let reference=reportReference()
+            if reference<>"" then Html.p [prop.className "next-error-reference";prop.custom("role","note");prop.text (sprintf "Report reference: %s" reference)]
             Html.div [prop.className "next-actions";prop.children [
                 // What led up to this failure is already on the device. Offer to send it now,
                 // even from someone who had not opted in before it happened.

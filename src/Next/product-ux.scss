@@ -171,3 +171,6 @@
 }
 
 @media(prefers-reduced-motion:reduce){ .next-product *{animation:none!important;transition:none!important} }
+
+// R2-15: the failure-to-report tie. A quiet note line, never louder than the message above it.
+.next-error-reference { opacity:.8; font-size:.9rem; margin:.4rem 0 0; }

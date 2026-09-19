@@ -1,5 +1,5 @@
 // An allowlist, not arbitrary error/string serialization. No pre-consent backlog.
-const allowedStages=new Set(['asset-acquisition','runtime-loading','model-loading','model-loaded','mapping-loading','mapping','canary','synthesis','synthesis-complete','alignment','alignment-complete','encoder-loading','encoder-loaded','encoder-correctness-check','encoder-correctness-complete','encoding','encoding-complete','mapping-complete','original-cache-hit','original-cached','original-cache-invalid','cache-unavailable','fallback-cpu','codec-loading','face','morph','export','route-admitted']);
+const allowedStages=new Set(['asset-acquisition','runtime-loading','model-loading','model-loaded','mapping-loading','mapping','canary','synthesis','synthesis-complete','alignment','alignment-complete','encoder-loading','encoder-loaded','encoder-correctness-check','encoder-correctness-complete','encoding','encoding-complete','mapping-complete','original-cache-hit','original-cached','original-cache-invalid','cache-unavailable','fallback-cpu','codec-loading','face','morph','export','route-admitted','photo-select','photo-preview','photo-crop','photo-align','photo-encode','storage']);
 const TERMINAL=new Set(['completed','cancelled','failed','interrupted']);
 let bundle,provider,device=null,consented=false,session=null,run=null,started=0;
 let aborters=new Set(),pendingStart=null,finished=false,interrupted=false,tally=null,persisted=true;
@@ -35,13 +35,13 @@ const ERROR_KINDS=['aborted','memory','integrity','network','unsupported','timeo
 function classify(error){
  const name=String(error?.name||''),text=String(error?.message||'');
  if(name==='AbortError')return 'aborted';
- if(name==='QuotaExceededError'||/quota|storage/i.test(text))return 'storage';
+ if(name==='QuotaExceededError'||/quota|storage|disappeared|acquire again/i.test(text))return 'storage';
  if(name==='NotSupportedError'||/not supported|unsupported/i.test(text))return 'unsupported';
  if(name==='RangeError'||/out of memory|allocation|Array buffer allocation/i.test(text))return 'memory';
  if(/checksum|sha|integrity|verified|tamper/i.test(text))return 'integrity';
  if(name==='TimeoutError'||/timed out|timeout|deadline/i.test(text))return 'timeout';
  if(name==='TypeError'&&/fetch|network|load failed/i.test(text))return 'network';
- if(/decode|codec|image could not|could not be read/i.test(text))return 'decode';
+ if(/decode|codec|image could not|could not be read|could not prepare|cropp/i.test(text))return 'decode';
  return 'unknown';
 }
 const enabled=()=>consented;
@@ -137,7 +137,7 @@ export const diagnostics={
  start(action,requestedProvider='auto'){
   provider=['auto','cpu','webgl','webgpu'].includes(requestedProvider)?requestedProvider:'auto';
   run=crypto.randomUUID();started=performance.now();lastStageAt.clear();finished=false;interrupted=false;tally=null;
-  pendingStart={event:'start',action:action==='morph'?'morph':'faces',...environment(),language:navigator.language.replace(/[^A-Za-z-]/g,'').slice(0,20),build:buildId()};
+  pendingStart={event:'start',action:action==='morph'?'morph':action==='photo'?'photo':'faces',...environment(),language:navigator.language.replace(/[^A-Za-z-]/g,'').slice(0,20),build:buildId()};
   if(bundle)openRun();
   notice(consented?'enabled':'disabled');if(consented)reference('open');
  },
@@ -147,6 +147,9 @@ export const diagnostics={
   // C-02: a background canary failure names the route it dropped, so the record says why a
   // device left a route rather than only that it left one.
   if(stage==='canary-invalidated'&&run){openRun();send({event:'stage',stage,provider:['cpu','webgl','webgpu'].includes(event.provider)?event.provider:undefined,elapsedMs:Math.round(performance.now()-started)});return;}
+  // R2-15: storage facts ride their own stage so an eviction story is readable from the
+  // record alone — persisted flag and rounded megabytes, closed fields, nothing else.
+  if(stage==='storage'&&run){openRun();send({event:'stage',stage,persisted:event.persisted===true,usageMb:Number.isFinite(event.usageMb)?event.usageMb:undefined,quotaMb:Number.isFinite(event.quotaMb)?event.quotaMb:undefined,elapsedMs:Math.round(performance.now()-started)});return;}
   if(['cpu','webgl','webgpu','native-cpu','native-gpu'].includes(event.provider))provider=event.provider;
   if(!run||!allowedStages.has(stage))return;
   const timing=Number.isFinite(event.elapsedMs)?Math.round(event.elapsedMs):undefined,at=performance.now();

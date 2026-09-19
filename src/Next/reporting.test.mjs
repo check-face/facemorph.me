@@ -272,3 +272,38 @@ test('a stage outside the allowlist is never forwarded', async () => {
   const stages = posts.filter(p => p.body.event === 'stage').map(p => p.body.stage);
   assert.deepEqual(stages, ['fallback-cpu']);
 });
+
+test('the storage stage carries the persistence truth and rounded megabytes (R2-15)', async () => {
+  const { diagnostics, posts } = await fresh();
+  diagnostics.bundle('b'.repeat(64));
+  diagnostics.enable(true);
+  diagnostics.start('faces', 'cpu');
+  diagnostics.stage('storage', { persisted: true, usageMb: 812, quotaMb: 1024 });
+  await settle();
+  const row = posts.map(p => p.body).find(b => b.stage === 'storage');
+  assert.ok(row, 'the storage stage is reported');
+  assert.equal(row.persisted, true);
+  assert.equal(row.usageMb, 812);
+  assert.equal(row.quotaMb, 1024);
+  // Non-finite figures are dropped rather than invented: closed fields only.
+  diagnostics.stage('storage', { persisted: false, usageMb: Number.NaN });
+  await settle();
+  const second = posts.map(p => p.body).filter(b => b.stage === 'storage').at(-1);
+  assert.equal(second.persisted, false);
+  assert.equal(second.usageMb, undefined);
+  assert.equal(second.quotaMb, undefined);
+});
+test('a photo-preparation failure is reported with its stage and kind, not lost (R2-15)', async () => {
+  const { diagnostics, posts } = await fresh();
+  diagnostics.bundle('c'.repeat(64));
+  diagnostics.enable(true);
+  // The wrapper lives in product-bridge; its contract is driven here through the same
+  // diagnostics calls it makes: a photo run opens, the crop stage fails, the run closes.
+  diagnostics.start('photo', 'auto');
+  diagnostics.stage('photo-crop', {});
+  diagnostics.finish('failed', Error('This photo could not be read. Try a JPEG or PNG copy.'), { stage: 'photo-crop' });
+  await settle();
+  const terminal = posts.map(p => p.body).at(-1);
+  assert.equal(terminal.errorStage, 'photo-crop', 'the record names the exact step');
+  assert.equal(terminal.errorKind, 'decode', 'the failure is bucketed as a decode failure');
+});

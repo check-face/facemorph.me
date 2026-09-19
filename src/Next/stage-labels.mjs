@@ -22,7 +22,11 @@ export const SILENT_STAGES = new Set([
   'transient-frame',
   'alignment-manifest-complete', 'alignment-runtime-complete', 'alignment-model-complete',
   'alignment-model-deserialize-complete', 'alignment-model-download-complete',
-  'photo-decode-complete', 'face-landmarks-complete', 'photo-warp-resize-complete'
+  'photo-decode-complete', 'face-landmarks-complete', 'photo-warp-resize-complete',
+  // R2-15: photo-preparation and storage stages are diagnostics-only. The UI already speaks
+  // about these moments in its own words (preparing your crop, reading your photo); the
+  // records just need the stage named. 'storage' is a facts row, never a user message.
+  'photo-select', 'photo-preview', 'photo-crop', 'photo-align', 'photo-encode', 'storage'
 ]);
 
 /** Stages that carry bytes and deserve a byte count rather than an indeterminate bar. */
