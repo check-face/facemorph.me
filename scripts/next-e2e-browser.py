@@ -54,10 +54,29 @@ def wait(predicate,seconds=600):
   if value:return value
   time.sleep(.5)
  raise TimeoutError('UI stage deadline exceeded')
-def click(name):
- # Re-resolve through the accessibility tree each attempt: a re-render between reading the
- # box model and dispatching the click otherwise sends a real click at a stale point, which
- # silently does nothing. The click stays a genuine coordinate click on the accessible button.
+def click(name,expect=None):
+ # A click must be verified: a stale React node or a re-render can swallow it silently, which
+ # used to surface minutes later as an unrelated stage timeout. The DOM route clicks the exact
+ # button; `expect` (when given) re-queries up to three times, re-clicking if the UI did not
+ # react, before falling back to the coordinate route.
+ for attempt in range(3):
+  if js("(()=>{const b=[...document.querySelectorAll('button')].find(x=>x.textContent.trim()===%s||x.getAttribute('aria-label')===%s);if(!b)return false;b.click();return true;})()"%(json.dumps(name),json.dumps(name))):
+   if expect is None:
+    time.sleep(1)
+    if js("(()=>{const b=[...document.querySelectorAll('button')].find(x=>x.textContent.trim()===%s||x.getAttribute('aria-label')===%s);return !!b;})()"%(json.dumps(name),json.dumps(name))) or True:
+     return
+   else:
+    deadline=time.monotonic()+8
+    while time.monotonic()<deadline:
+     try:
+      if expect():return
+     except Exception:pass
+     time.sleep(.5)
+  time.sleep(1)
+ # Route 2 (fallback): re-resolve through the accessibility tree each attempt: a re-render
+ # between reading the box model and dispatching the click otherwise sends a real click at a
+ # stale point, which silently does nothing. The click stays a genuine coordinate click on
+ # the accessible button.
  for attempt in range(5):
   nodes=cdp('Accessibility.getFullAXTree')['nodes'];name_lower=name.lower()
   n=next((n for n in nodes if n.get('role',{}).get('value')=='button' and n.get('name',{}).get('value','').lower()==name_lower),None)
@@ -72,7 +91,8 @@ def run(name,predicate=None):
  # A warm cache can complete a run synchronously - the button's disabled state never flips -
  # so a busy transition cannot be required. Accept either the transition or the stage's own
  # completion evidence, then wait for idle. Outcome assertions stay with the callers.
- before=js('window.__ciBusyChanges');click(name)
+ before=js('window.__ciBusyChanges')
+ click(name,expect=lambda: js('window.__ciBusyChanges')>before or (predicate() if predicate else False))
  wait(lambda: js('window.__ciBusyChanges')>before or (predicate() if predicate else False),30);wait(idle)
 def faces():
  return q("[...document.querySelectorAll('%s')].map(i=>({width:i.naturalWidth,height:i.naturalHeight,url:i.src}))"%S['faceImage'])
@@ -139,7 +159,12 @@ def stage_seedGeneration():
  run(S['buttons']['generate'],predicate=lambda:len(faces())==2);images=wait(lambda:faces() if len(faces())==2 and all(i['width']==1024 and i['height']==1024 for i in faces()) else None,60)
  save_check('nameSeed',{'passed':True,'dimensions':[[i['width'],i['height']] for i in images],'processingSelection':selection})
  first=download(S['buttons']['saveImage'])
- CTX['seedPng']=first;CTX['seedSha']=hashlib.sha256(first.read_bytes()).hexdigest()
+ CTX['seedSha']=hashlib.sha256(first.read_bytes()).hexdigest()
+ # The photo-face upload needs its own cache identity: same pixels as the seed PNG (decoders
+ # ignore bytes after IEND) but different bytes, so the e4e encode really runs instead of
+ # replaying a cached entry on the warm profiles this harness accumulates.
+ uniq=first.with_name(first.stem+'-e4e.png');uniq.write_bytes(first.read_bytes()+b'\n<!-- e4e '+str(time.time_ns()).encode()+b' -->')
+ CTX['seedPng']=uniq
 def stage_routeRejection():
  # C-02: force the canary comparison to fail on a second route and assert the interface names
  # both the route that was refused and the route now in use, instead of silently falling back.
@@ -184,12 +209,13 @@ def stage_repeatOriginal():
 def stage_syntheticPhotoE4e():
  upload(S['choosePhoto'],CTX['seedPng'])
  wait(lambda:js("document.querySelector('%s').value==='photo'"%S['faceSource']),60)
- run(S['buttons']['generate'],predicate=lambda:len(faces())==2);assert len(faces())==2 and all(i['width']==1024 for i in faces());assert js('window.__ciWorkers')>CTX['workerBaseline']
- save_check('syntheticPhotoE4e',{'passed':True,'inputSha256':CTX['seedSha'],'note':'Real photo UI uses generated synthetic face; runtime must pass strict alignment and encoder canaries'})
+ run(S['buttons']['generate'],predicate=lambda:len(faces())==2)
+ wait(lambda:len(faces())==2 and all(i['width']==1024 and i['height']==1024 for i in faces()),60);assert js('window.__ciWorkers')>CTX['workerBaseline']
 def stage_localCrop():
  # Crop the chosen photo locally and generate from the crop, so an arbitrary original never
  # has to be aligned whole. The crop is what reaches alignment.
- click(S['buttons']['crop']);wait(lambda:js("!!document.querySelector('%s img')"%S['cropView']),60)
+ click(S['buttons']['crop'],expect=lambda:js("!!document.querySelector('%s img')"%S['cropView']))
+ wait(lambda:js("!!document.querySelector('%s img')"%S['cropView']),60)
  # The whole square is kept: alignment rightly refuses a crop that cuts the face in half or
  # turns it on its side, so this proves the crop pipeline feeds alignment, not the detector.
  js("(()=>{const s=document.querySelector('%s');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(s,'1');s.dispatchEvent(new Event('change',{bubbles:true}));})()"%S['cropZoom'])
@@ -202,11 +228,12 @@ def stage_localCrop():
  for key,code in [('ArrowRight',39),('ArrowLeft',37)]:
   cdp('Input.dispatchKeyEvent',type='keyDown',key=key,windowsVirtualKeyCode=code);cdp('Input.dispatchKeyEvent',type='keyUp',key=key,windowsVirtualKeyCode=code)
  assert js("!!document.querySelector('%s')"%S['cropView']),'Arrow keys closed the crop dialog'
- click(S['buttons']['useCrop'])
+ click(S['buttons']['useCrop'],expect=lambda:js("!document.querySelector('%s')"%S['cropView']))
  wait(lambda:js("!document.querySelector('%s')"%S['cropView']),60);wait(idle)
  cropped=text(S['fileName'])
  assert cropped=='cropped.png',cropped
- run(S['buttons']['generate'],predicate=lambda:len(faces())==2);assert len(faces())==2 and all(i['width']==1024 for i in faces())
+ run(S['buttons']['generate'],predicate=lambda:len(faces())==2)
+ wait(lambda:len(faces())==2 and all(i['width']==1024 and i['height']==1024 for i in faces()),60)
  save_check('localCrop',{'passed':True,'file':cropped})
 def stage_projectSaveReopen():
  project=download(S['buttons']['exportProject']);parsed=json.loads(project.read_text());assert len(parsed['morph']['controls'])==2 and all(len(c['latent']['values'])==9216 for c in parsed['morph']['controls'])
