@@ -176,7 +176,16 @@ def stage_routeRejection():
  # hit with zero inference), so change the second face's text first.
  set_last_text_input()
  select_mode('webgpu')
- before=js('window.__ciBusyChanges');click(S['buttons']['generate']);wait(lambda:js('window.__ciBusyChanges')>before,30)
+ before=js('window.__ciBusyChanges');click(S['buttons']['generate'])
+ # The refusal can land before the busy flag ever registers (a warm cache makes admission
+ # near-instant, so the session's device check fails inside the first poll window), so accept
+ # either the busy transition or the expected error itself; wait() would treat the error as
+ # fatal even though failing is exactly what this stage forces.
+ deadline=time.monotonic()+30
+ while time.monotonic()<deadline:
+  if js('window.__ciBusyChanges')>before or text(S['error']):break
+  time.sleep(.5)
+ else:raise TimeoutError('forced route neither started nor failed')
  # The run is expected to fail on the explicitly selected webgpu route; wait() cannot be used
  # here because it treats any visible error as fatal. Poll for the failure to settle instead.
  deadline=time.monotonic()+60
