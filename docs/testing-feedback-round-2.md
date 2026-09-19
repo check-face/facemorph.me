@@ -478,6 +478,37 @@ or ruled out by the instrumented build on a physical device before claiming fixe
 
 ---
 
+## R2-16 — Names grid gap-free and bigger; picking a name shows the image instantly · MISSING — raised 19 September
+
+**Operator report:** the name images in the grid are too small — the grid should be
+essentially gap-free. And selecting a name must immediately show that image on the face
+preview.
+
+**Verified current behaviour:**
+
+- **Grid:** `.next-name-grid` tiles at `minmax(100px,1fr)` with `gap:.75rem` inside a 900px
+  modal panel (`product-ux.scss:134`) — the 200px source images render at roughly half size
+  with visible gutters all round.
+- **Pick:** `ChooseName` (`Product.fs:387`) sets the input and waits for on-device synthesis
+  from the name hash; the tile stays empty until generation completes. The served 200px
+  image (`name.image`) — already downloaded and rendered in the very grid the user tapped —
+  is never used for the preview. This is the "hosted preview first" tier of R2-2's
+  three-tier lookup, still unimplemented.
+
+**Do:**
+
+- **Grid:** essentially gap-free tiling — edge-to-edge tiles at the container width, no
+  visible gutters, images at their natural 200px or larger at realistic widths. On the
+  fullscreen `/names` route (the 19 Sept decision) the grid is the page: a photo wall, not
+  a card list. A-4's rule applies (states live inside the surface).
+- **Pick:** the face tile shows `name.image` **immediately** on selection — the hosted
+  preview is the display bytes; full-size/latent materialisation continues in the
+  background per the Names row. Never a blank tile or spinner when the image bytes are
+  already on the device. Full-size replaces the preview when it arrives.
+
+**Gate:** picking a name paints the tile from the catalogue image with **zero** synthesis
+events; the grid shows no gutters at 390 px and 1280 px.
+
 ## Sense-check summary
 
 | # | Item | Verdict |
@@ -497,6 +528,7 @@ or ruled out by the instrumented build on a physical device before claiming fixe
 | 13 | Slider frames saved + estimates | Verified: writer never given `framesKey` (store empty → slider demands regeneration); `remaining()` fed done-counts — always "about 1 seconds" |
 | 14 | Visual identity | Verified: product sections render as stock Bulma white cards (deployed) or hardcoded dark boxes on a white page (tree); pin classic palette, re-skin sections into the FAQ fabric |
 | 15 | iPhone crop/encode + device lanes | Verified: "failed to crop" not in shipped code (instrument!); "Stored asset disappeared" fatal path real; iOS 27 sim already fails cache repair (4/7) — local device lab standing, lanes per local-device-lab.md |
+| 16 | Names grid + instant preview (19 Sept) | Verified: grid tiles ~100px with .75rem gutters (`product-ux.scss:134`); `ChooseName` waits for synthesis and never shows the served 200px image. Do: gap-free edge-to-edge grid; pick paints the tile from the catalogue image instantly (hosted-preview tier), materialisation in background |
 
 **Operator decisions — all resolved 18–19 September:** names experience is a fullscreen
 `/names` route/component inside the candidate — no separate `next.names.facemorph.me`
