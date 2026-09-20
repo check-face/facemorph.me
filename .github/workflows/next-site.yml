@@ -46,6 +46,9 @@ jobs:
   # Every new candidate artifact is qualified through the real product workflow automatically.
   # workflow_run only fires for workflows on the default branch, so the build calls it directly.
   qualify:
+    # next-e2e.yml accepts branch artifacts, not PR merge artifacts.
+    # PRs still run the artifact tests/build and compiled-ui checks.
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     needs: artifact
     uses: ./.github/workflows/next-e2e.yml
     permissions:
