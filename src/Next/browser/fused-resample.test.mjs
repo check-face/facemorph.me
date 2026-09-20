@@ -31,7 +31,8 @@ test('Exported API shape matches the webgpu-engine caller',async()=>{
   assert.equal(typeof boundaryCode,'function');
   assert.equal(typeof createBoundaryPipeline,'function');
   const engine=await readFile(new URL('./webgpu-engine.mjs',import.meta.url),'utf8');
-  const imported=engine.match(/const \{(\w+)\}=await import\(/);
+  // The verified kernel is loaded through the injectable importer.
+  const imported=engine.match(/const\s+\{\s*(\w+)\s*\}\s*=\s*await\s+importModule\s*\(\s*kernelUrl\s*\)/);
   assert.ok(imported,'webgpu-engine.mjs destructures one kernel export');
   assert.equal(imported[1],'createBoundaryPipeline');
   const bindKeys=['phase','phaseB','demod','noise','filter','bias','output'];

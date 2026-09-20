@@ -23,7 +23,7 @@ jobs:
           node-version: '22'
       - run: npm ci
       - name: Shipping runtime, media, privacy and input regressions
-        run: node --test src/Next/video-worker.test.mjs src/Next/browser/route-priors.test.mjs src/Next/Assets/model-cache.test.mjs src/Next/browser/runtime.test.mjs src/Next/browser/canary-qualification.test.mjs src/Next/browser/acquisition-budget.test.mjs src/Next/browser/fused-resample.test.mjs src/Next/media.test.mjs src/Next/morph-frames.test.mjs src/Next/fresh-review.test.mjs src/Next/photo-selection.test.mjs src/Next/photo/crop-view.test.mjs src/Next/estimate.test.mjs src/Next/testing-link.test.mjs src/Next/route-choice.test.mjs src/Next/route-report.test.mjs src/Next/reporting.test.mjs src/Next/stage-labels.test.mjs src/Next/logging.test.mjs hosting/next-cloudflare/worker.test.mjs
+        run: node --test src/Next/video-worker.test.mjs src/Next/browser/route-priors.test.mjs src/Next/Assets/model-cache.test.mjs src/Next/browser/runtime.test.mjs src/Next/browser/mobile-runtime.test.mjs src/Next/browser/webgpu-engine.test.mjs src/Next/browser/canary-qualification.test.mjs src/Next/browser/acquisition-budget.test.mjs src/Next/browser/fused-resample.test.mjs src/Next/media.test.mjs src/Next/morph-frames.test.mjs src/Next/fresh-review.test.mjs src/Next/photo-selection.test.mjs src/Next/photo/crop-view.test.mjs src/Next/estimate.test.mjs src/Next/testing-link.test.mjs src/Next/route-choice.test.mjs src/Next/route-report.test.mjs src/Next/reporting.test.mjs src/Next/stage-labels.test.mjs src/Next/logging.test.mjs hosting/next-cloudflare/worker.test.mjs
       - name: Independent reviewed morph geometry
         run: node src/Next/geometry/verify.mjs
       - name: Build the actual new-site artifact
@@ -46,6 +46,9 @@ jobs:
   # Every new candidate artifact is qualified through the real product workflow automatically.
   # workflow_run only fires for workflows on the default branch, so the build calls it directly.
   qualify:
+    # next-e2e.yml accepts branch artifacts, not PR merge artifacts.
+    # PRs still run the artifact tests/build and compiled-ui checks.
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     needs: artifact
     uses: ./.github/workflows/next-e2e.yml
     permissions:
