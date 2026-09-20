@@ -71,7 +71,9 @@ seed_from_local()
 class Handler(SimpleHTTPRequestHandler):
  def __init__(self,*args,**kw):super().__init__(*args,directory='deploy-next',**kw)
  def end_headers(self):
-  for k,v in [('Cross-Origin-Opener-Policy','same-origin'),('Cross-Origin-Embedder-Policy','require-corp'),('Cross-Origin-Resource-Policy','same-origin'),('Cache-Control','no-store'),('Content-Security-Policy',"script-src 'self' blob: 'unsafe-inline' 'unsafe-eval'"  # no third-party CDN (AGENTS.md): the ffmpeg codec is served from this origin),('X-Next-Artifact-Source',SOURCE),('Access-Control-Allow-Origin','*')]:self.send_header(k,v)
+  # No third-party CDN in the qualification CSP (AGENTS.md): the ffmpeg codec and the
+  # webfonts are served from the product's own origin, so jsdelivr is no longer allowlisted.
+  for k,v in [('Cross-Origin-Opener-Policy','same-origin'),('Cross-Origin-Embedder-Policy','require-corp'),('Cross-Origin-Resource-Policy','same-origin'),('Cache-Control','no-store'),('Content-Security-Policy',"script-src 'self' blob: 'unsafe-inline' 'unsafe-eval'"),('X-Next-Artifact-Source',SOURCE),('Access-Control-Allow-Origin','*')]:self.send_header(k,v)
   super().end_headers()
  def do_POST(self):self.send_error(403,'Diagnostics and uploads disabled in qualification')
  def mime_for(self,path):

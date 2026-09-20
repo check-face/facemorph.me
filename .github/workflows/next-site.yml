@@ -86,6 +86,11 @@ jobs:
       # The served WebGPU bundle and the shipped engine are staged from different inputs and
       # promoted separately; nothing stopped them drifting until they did, and every WebGPU
       # device fell back to CPU after a 183 MB download. This guards the gate that catches it.
+      # A qualification server that does not parse fails the e2e lane minutes later with a
+      # stack trace in an uploaded log, not at the commit that broke it. These scripts are
+      # never imported by a test, so nothing else reads them until CI runs them for real.
+      - name: Publication and qualification scripts parse
+        run: python3 -m compileall -q scripts hosting/next hosting/next-static src/Next/browser
       - name: WebGPU bundle contract gate
         run: python3 -m unittest discover -s hosting/next-static -p 'webgpu_contract_test.py' -t hosting/next-static
       - name: Install browser controller
