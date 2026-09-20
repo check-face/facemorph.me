@@ -8,6 +8,20 @@ name: GPU lane benchmark
 # that machine. It exists so a change that slows or breaks the GPU route shows up the same day,
 # and so the RC has a repeatable benchmark to point at.
 on:
+  # workflow_dispatch only resolves on the default branch, and this lane lives on the
+  # candidate branch until the RC lands. A path-scoped push keeps it honest meanwhile: it
+  # runs when the route, the engine or the lane itself changes, not on every commit — the
+  # benchmark takes tens of minutes on one shared machine.
+  push:
+    branches: ['candidate/next-delivery-20260916']
+    paths:
+      - 'src/Next/browser/webgpu-engine.mjs'
+      - 'src/Next/browser/fused-resample-v1.mjs'
+      - 'src/Next/browser/route-priors.mjs'
+      - 'src/Next/browser/route-selection.mjs'
+      - 'src/Next/browser/runtime.mjs'
+      - 'scripts/next-gpu-benchmark.py'
+      - '.github/workflows/next-gpu-lane.yml'
   workflow_dispatch:
     inputs:
       url:
