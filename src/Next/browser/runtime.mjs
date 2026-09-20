@@ -24,7 +24,26 @@ export function createBrowserRuntime({manifest: suppliedManifest, manifestSha256
  const ACQUIRE_STALL=stallMs*4;
  function send(type,payload={},progress,stall=stallMs){return new Promise((resolve,reject)=>{const id=++sequence;if(type!=='initialize'&&!payload.resume)mark(type,id);const task={resolve,reject,progress,operation:type};const timeout=()=>{stop(Error('Generation stopped responding. Your saved work is safe.'));};task.timer=setTimeout(timeout,stall);task.reset=()=>{clearTimeout(task.timer);task.timer=setTimeout(timeout,stall);};pending.set(id,task);try{worker.postMessage({id,type,...payload});}catch(error){clearTimeout(task.timer);pending.delete(id);reject(error);}});}
  async function start(progress){if(worker)return;await config();worker=workerFactory();worker.onmessage=({data})=>{const task=pending.get(data.id);if(!task)return;if(data.type==='progress'){task.reset();if(data.stage==='synthesis-complete'){synthesisRuns++;if(synthesisRuns>1&&['generate','synthesize'].includes(task.operation)&&Number.isFinite(data.elapsedMs)&&data.elapsedMs>0)task.synthesisMs=data.elapsedMs;}emit(data,task.progress);return;}clearTimeout(task.timer);pending.delete(data.id);unmark();if(data.type==='error'){if(task.operation==='encode-aligned')encoderValidatedSha256=undefined;validated=false;failedRoutes.add(route);const error=Object.assign(Error(data.error.message),{name:data.error.name,failedOperation:task.operation,correctnessFailure:data.error.correctnessFailure===true});stop(error);task.reject(error);}else{if(task.synthesisMs!==undefined)remember(route,task.synthesisMs);task.resolve(data.result);}};worker.onerror=()=>stop(Error('The local generation engine stopped.'));await send('initialize',{manifest,provider:route==='webgl'?'webgl2':route==='webgpu'?'webgpu':'wasm',manifestSha256:manifestHash,fullQualify:globalThis.__FACEMORPH_FULL_QUALIFY__===true,hostForcedQualify:globalThis.__FACEMORPH_FULL_QUALIFY__!==undefined,webdriver:globalThis.navigator?.webdriver===true,forceCanaryFail:globalThis.__FACEMORPH_FORCE_CANARY_FAIL__===true},progress);}
- async function operation(fn,{signal,onProgress:progress}={}){if(disposed)throw Error('Runtime disposed');if(active)throw Error('Another generation is still running.');if(signal?.aborted)throw signal.reason||abortError();const controller=new AbortController();active=controller;const abort=()=>{controller.abort(signal?.reason||abortError());stop(controller.signal.reason);};signal?.addEventListener('abort',abort,{once:true});try{return await fn(progress,controller.signal);}finally{signal?.removeEventListener('abort',abort);active=null;}}
+ // Acquisition warm-up. The first face on a cold device waits on roughly 200 MB, and none of
+ // those bytes depend on which face is asked for, so they are fetched while the visitor is still
+ // reading the page. It runs in a worker of its own: the inference worker's queue is strictly
+ // ordered, so warming through it would put a real Generate behind the whole download. Any real
+ // operation terminates this worker, and every asset it had already committed stays cached.
+ let prefetchWorker=null,prefetchCancel=null;
+ function stopPrefetch(){const own=prefetchWorker,cancel=prefetchCancel;prefetchWorker=null;prefetchCancel=null;own?.terminate();
+  // A terminated worker never answers, so the waiting promise is settled here rather than left
+  // pending for the lifetime of the page.
+  cancel?.();}
+ // A background download this size needs the visitor's data preference respected, so an explicit
+ // Save-Data opts out and the first Generate then downloads exactly as it does today.
+ //
+ // `effectiveType` is deliberately not consulted. It is a rolling throughput estimate, not a
+ // statement about the connection: Chrome on the operator's Mac reports '3g' on a fast wired
+ // link, so treating it as a signal disabled the warm-up for a large share of healthy devices.
+ // A genuinely slow link is also the case where starting early helps most, so it would be the
+ // wrong way round even if the reading were trustworthy.
+ function prefetchWelcome(){return globalThis.navigator?.connection?.saveData!==true;}
+ async function operation(fn,{signal,onProgress:progress}={}){if(disposed)throw Error('Runtime disposed');if(active)throw Error('Another generation is still running.');stopPrefetch();if(signal?.aborted)throw signal.reason||abortError();const controller=new AbortController();active=controller;const abort=()=>{controller.abort(signal?.reason||abortError());stop(controller.signal.reason);};signal?.addEventListener('abort',abort,{once:true});try{return await fn(progress,controller.signal);}finally{signal?.removeEventListener('abort',abort);active=null;}}
  async function cache(){try{originals ||= await openOriginals();return originals;}catch{return null;}}
  // Tells the product which route was actually admitted, so the interface can say when this
  // device is on the slow path instead of leaving a visitor watching an unexplained wait.
@@ -90,14 +109,42 @@ export function createBrowserRuntime({manifest: suppliedManifest, manifestSha256
   });
  }
  const afterDelivery=promise=>promise.then(value=>{startQualificationResume();return value;});
+ /** Start acquiring the route this device would choose. Resolves when warm, or quietly gives up. */
+ async function prefetch(){
+  if(disposed||active||worker||prefetchWorker||validated||!prefetchWelcome())return {started:false};
+  let own;
+  try{
+   await config();
+   const target=preferredRoute==='auto'?chooseRoute():preferredRoute;
+   if(failedRoutes.has(target))return {started:false};
+   own=workerFactory();prefetchWorker=own;
+   const result=await new Promise((resolve,reject)=>{
+    prefetchCancel=()=>reject(Error('Warm-up superseded.'));
+    own.onerror=()=>reject(Error('The warm-up engine stopped.'));
+    own.onmessage=({data})=>{
+     if(data.type==='progress')return; // the bar belongs to work the visitor asked for
+     if(data.type==='error')reject(Error(data.error.message));
+     else if(data.id===2)resolve(data.result);
+    };
+    own.postMessage({id:1,type:'initialize',manifest,provider:target==='webgl'?'webgl2':target==='webgpu'?'webgpu':'wasm',manifestSha256:manifestHash});
+    own.postMessage({id:2,type:'prefetch'});
+   });
+   // Recorded, never spoken: a warm cache changes nothing the visitor can act on, and the
+   // status line belongs to the operation they started. Reports still show what was warmed.
+   emit({stage:'models-prefetched',provider:target,...result});
+   return {started:true,...result};
+  }catch{return {started:false};}
+  finally{if(prefetchWorker===own)stopPrefetch();}
+ }
  const api={
+ prefetch,
  setPreferredRoute:(requested)=>{if(active)throw Error('Cannot change processing mode during generation.');if(!['auto','cpu','webgl','webgpu'].includes(requested))throw Error('Invalid preferred inference route');if(preferredRoute!==requested){stop();preferredRoute=requested;}},
  qualify:(requestedRoute='cpu',options={})=>afterDelivery(operation(async progress=>{if(!['cpu','webgl','webgpu'].includes(requestedRoute))throw Error('Choose CPU, WebGL or WebGPU.');if(route!==requestedRoute)stop();route=requestedRoute;await start(progress);const result=await send('qualify',{},progress);acceptQualification(result);return result;},options)),
  generate:(request,options={})=>afterDelivery(operation(async(progress,signal)=>{const {identity}=await inputLatent(request.mode,request.value);return cachedGenerate({kind:'seed',identity},async()=>{await start(progress);return send('generate',{mode:request.mode,value:request.value},progress,ACQUIRE_STALL);},progress,signal);},{...request,...options})),
  synthesize:(latent,options={})=>afterDelivery(operation(async(progress,signal)=>{if(latent.space!=='w-plus'||JSON.stringify(latent.shape)!=='[1,18,512]')throw Error('Only explicit W+ [1,18,512] is accepted.');const values=requireLatent(latent.values);return cachedGenerate({kind:'latent',sha256:await digest(values)},async()=>{await start(progress);return send('synthesize',{values},progress);},progress,signal,options.persist!==false);},options)),
  encodePhoto:(blob,options={})=>afterDelivery(operation(async(progress,signal)=>{if(!(blob instanceof Blob)||blob.size>25*1024*1024)throw Error('Choose an image smaller than 25 MB.');const tryAlign=options.tryAlign??true;if(typeof tryAlign!=='boolean')throw Error('Alignment selection must be a boolean.');return cachedGenerate({kind:'photo',sha256:await digest(await blob.arrayBuffer()),tryAlign,facePolicy:'exactly-one-face-v1'},async()=>{if(!alignPhoto)throw Error('Browser face alignment is not installed in this bundle.');const acquireStall=ACQUIRE_STALL;const admitted=validated;stop();validated=admitted;emit({stage:'alignment'},progress);const alignmentStarted=performance.now();const prepared=await alignPhoto(blob,{signal,onProgress:event=>emit(event,progress),tryAlign,requireSingleFace:true});emit({stage:'alignment-complete',elapsedMs:performance.now()-alignmentStarted,scope:'Photo preprocessing wall time including verified alignment assets'},progress);if(prepared.provenance?.preprocessingSha256!==manifest.alignmentSha256||prepared.alignmentWorkerTerminated!==true||prepared.faceCount!==1||prepared.provenance?.facePolicy!=='exactly-one-face-v1'||(tryAlign&&prepared.didAlign!==true))throw Error('Photo preprocessing identity or worker lifetime mismatch.');if(signal.aborted)throw signal.reason;await start(progress);const encoded=await send('encode-aligned',{tensor:prepared.tensor,qualifiedEncoderSha256:encoderValidatedSha256},progress);if(manifest.encoderStream){if(encoded.encoderQualification?.passed!==true||encoded.encoderQualification.manifestSha256!==manifest.encoderStream.sha256){stop();throw Error('The photo encoder did not pass its pinned device correctness check.');}encoderValidatedSha256=manifest.encoderStream.sha256;}const stillAdmitted=validated;stop();validated=stillAdmitted;if(signal.aborted)throw signal.reason;await start(progress);const face=await send('synthesize',{values:encoded.values},progress);return {...face,encoderProvider:encoded.encoderProvider,encoderStats:encoded.encoderStats,encoderQualification:encoded.encoderQualification,preprocessing:prepared.provenance,faceCount:prepared.faceCount,didAlign:prepared.didAlign};},progress,signal,true,()=>{if(!alignPhoto)throw Error('Browser face alignment is not installed in this bundle.');const acquireStall=ACQUIRE_STALL;if(!manifest.encoder&&!manifest.encoderStream)throw Error('The photo encoder bundle is unavailable.');const nav=globalThis.navigator,mobile=nav?.userAgentData?.mobile||/Android|iPhone|iPad|iPod/.test(nav?.userAgent||'')||(nav?.platform==='MacIntel'&&nav?.maxTouchPoints>1);if(mobile&&manifest.encoderStream&&manifest.encoderStream.phoneAdmitted!==true)throw Error('The bounded photo encoder is still being qualified for phones. Your photo stays on this device.');if(mobile&&!manifest.encoderStream&&manifest.encoder?.size>512*1024*1024)throw Error('This photo encoder is too large for the verified phone path. Your photo stays on this device; try a desktop or laptop while the bounded encoder is being qualified.');});},options)),
  cancel:()=>{active?.abort(abortError());stop();},
- dispose:()=>{disposed=true;encoderValidatedSha256=undefined;active?.abort(abortError());stop();originals?.close();},
+ dispose:()=>{disposed=true;encoderValidatedSha256=undefined;active?.abort(abortError());stopPrefetch();stop();originals?.close();},
  status:()=>({route,deviceValidated:validated,encoderDeviceValidated:Boolean(manifest?.encoderStream&&encoderValidatedSha256===manifest.encoderStream.sha256),busy:!!active,disposed,interruptedRoute})
  };return api;
 }

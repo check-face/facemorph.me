@@ -96,3 +96,85 @@ test('failed explicit WebGPU retries never masquerade as successful CPU results'
  await assert.rejects(generate(r),/inference failed/);
  assert.equal(r.status().route,'webgpu');
 });
+
+// Acquisition warm-up. The first face on a cold device waits on roughly 200 MB that is the same
+// whichever face is asked for, so it is fetched while the visitor is still reading the page.
+const link=(t,value)=>{const nav=globalThis.navigator;Object.defineProperty(globalThis,'navigator',{configurable:true,writable:true,value:{...nav,connection:value}});t.after(()=>{Object.defineProperty(globalThis,'navigator',{configurable:true,writable:true,value:nav});});};
+
+test('warm-up acquires the route this device would choose, before anything is asked of it',async t=>{
+ environment(t);
+ const seen=[];
+ const r=runtime(t,{workerFactory:workerFactory({onMessage:m=>seen.push(m)})});
+ const result=await r.prefetch();
+ assert.equal(result.started,true);
+ assert.deepEqual(seen.map(m=>m.type),['initialize','prefetch']);
+ assert.equal(seen[0].provider,'webgpu','the warm-up follows route selection, not a fixed guess');
+ // Warming is not qualification: nothing has proved this device can run the route yet.
+ assert.equal(r.status().deviceValidated,false);
+});
+
+test('warm-up runs in its own worker so a Generate never queues behind the download',async t=>{
+ environment(t);
+ let created=0;
+ const factory=workerFactory();
+ const r=runtime(t,{workerFactory:()=>{created++;return factory();}});
+ await r.prefetch();
+ assert.equal(created,1);
+ assert.equal((await generate(r)).provenance.route,'webgpu');
+ assert.equal(created,2,'the inference worker is a second, separate worker');
+});
+
+test('a real operation terminates the warm-up instead of waiting for it',async t=>{
+ environment(t);
+ let terminated=0,release;
+ const factory=workerFactory();
+ const r=runtime(t,{workerFactory:()=>{
+  const worker=factory(),post=worker.postMessage;
+  worker.terminate=()=>{terminated++;};
+  worker.postMessage=function(message){
+   // A warm-up that never answers, standing in for a download still in flight.
+   if(message.type==='prefetch'){release=()=>{};return;}
+   post.call(this,message);
+  };
+  return worker;}});
+ const warming=r.prefetch();
+ await Promise.resolve();
+ const face=await generate(r);
+ assert.equal(face.provenance.route,'webgpu');
+ assert.equal(terminated>0,true,'the stalled warm-up worker is terminated');
+ // The waiting promise settles rather than hanging for the lifetime of the page.
+ assert.equal((await warming).started,false);
+ assert.equal(typeof release,'function');
+});
+
+test('warm-up declines only on an explicit data saver, never on an effectiveType reading',async t=>{
+ environment(t);
+ link(t,{saveData:true,effectiveType:'4g'});
+ const seen=[];
+ const saver=createBrowserRuntime({manifest:manifest(),manifestSha256:hash,workerFactory:workerFactory({onMessage:m=>seen.push(m)})});
+ assert.deepEqual(await saver.prefetch(),{started:false});
+ assert.deepEqual(seen,[],'no worker is started and no bytes are requested');
+ saver.dispose();
+ // effectiveType is a rolling throughput estimate, not a statement about the connection: Chrome
+ // reports '3g' on a fast wired Mac. A slow link is also where warming early helps most.
+ for(const effectiveType of ['slow-2g','2g','3g','4g',undefined]){
+  link(t,{saveData:false,effectiveType});
+  const r=createBrowserRuntime({manifest:manifest(),manifestSha256:hash,workerFactory:workerFactory()});
+  assert.equal((await r.prefetch()).started,true,`effectiveType ${effectiveType} must not disable warm-up`);
+  r.dispose();
+ }
+ link(t,undefined);
+ const bare=runtime(t);
+ assert.equal((await bare.prefetch()).started,true,'a browser without connection hints still warms');
+});
+
+test('warm-up never runs twice, nor after the route is already admitted',async t=>{
+ environment(t);
+ let created=0;
+ const factory=workerFactory();
+ const r=runtime(t,{workerFactory:()=>{created++;return factory();}});
+ await generate(r);
+ const after=created;
+ assert.deepEqual(await r.prefetch(),{started:false},'an admitted route needs no warm-up');
+ assert.equal(created,after);
+});

@@ -13,7 +13,7 @@ on:
       runtime_sha:
         description: Expected runtime manifest SHA256 of the deployed bundle (fails closed if changed)
         required: true
-        default: d63056826e39cb7a7fb39b4530f7701903b1e3f2abe463171b164bffcb452fb6
+        default: e14f2ce838b07a9af7aa4a1f22a7b2299d48d85fcb7bea174187556eddcad31d
 permissions:
   contents: read
 jobs:

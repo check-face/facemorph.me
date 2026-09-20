@@ -126,7 +126,17 @@ async function admission(provider){
  // Native adapter checks its persistent original cache before qualification.
 
 }
-export function subscribe(callback){listener=callback;window.addEventListener('facemorph-report-status',({detail})=>callback({jobId:currentJob,stage:'diagnostics-'+detail.status,text:detail.reference||'',fraction:0}));diagnostics.restore();}
+// A cold device spends its first minutes downloading models that are the same whichever face is
+// asked for. Warming starts as the interface settles, on the route this device would choose, so
+// the wait overlaps the time the visitor spends reading and choosing rather than following their
+// first Generate. It is deferred to idle so it never competes with first paint, and any real job
+// terminates it; every asset already committed stays on the device.
+function warmUp(){
+ const begin=()=>{engine().then(local=>local.prefetch?.()).catch(()=>{});};
+ if(typeof requestIdleCallback==='function')requestIdleCallback(begin,{timeout:5000});
+ else setTimeout(begin,2000);
+}
+export function subscribe(callback){listener=callback;window.addEventListener('facemorph-report-status',({detail})=>callback({jobId:currentJob,stage:'diagnostics-'+detail.status,text:detail.reference||'',fraction:0}));diagnostics.restore();warmUp();}
 export async function execute(request){
  if(active)throw Error('Another job is still stopping.');active=new AbortController();currentJob=request.jobId;closePhotoRun('completed');diagnostics.start(request.action,request.provider);reportStorage();
  try{

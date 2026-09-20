@@ -26,7 +26,12 @@ export const SILENT_STAGES = new Set([
   // R2-15: photo-preparation and storage stages are diagnostics-only. The UI already speaks
   // about these moments in its own words (preparing your crop, reading your photo); the
   // records just need the stage named. 'storage' is a facts row, never a user message.
-  'photo-select', 'photo-preview', 'photo-crop', 'photo-align', 'photo-encode', 'storage'
+  'photo-select', 'photo-preview', 'photo-crop', 'photo-align', 'photo-encode', 'storage',
+  // The background warm-up finished acquiring the likely route's models. It is recorded so a
+  // report can show a first face was fast because the bytes were already here, but it is not
+  // spoken: nothing was asked for, so there is no status line it belongs in, and announcing a
+  // finished download the visitor never started only raises a question it cannot answer.
+  'models-prefetched'
 ]);
 
 /** Stages that carry bytes and deserve a byte count rather than an indeterminate bar. */

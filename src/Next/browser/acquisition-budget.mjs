@@ -8,14 +8,26 @@
  * concurrently (the cache allows bounded parallelism) each advance the bar instead of fighting
  * over one reading, so `loaded` only ever increases within an asset and across them.
  */
+/**
+ * Every asset descriptor inside a manifest fragment, in declaration order.
+ *
+ * The prefetch lane acquires exactly what the progress budget plans, so both read the manifest
+ * through this one walk. A second copy of these rules would drift, and the difference would show
+ * up as a bar that never reaches its total.
+ */
+export function collectAssets(value, depth = 0, found = []) {
+  if (!value || typeof value !== 'object') return found;
+  if (typeof value.sha256 === 'string' && Number.isSafeInteger(value.size) && typeof value.url === 'string') { found.push(value); return found; }
+  if (depth >= 3) return found;
+  for (const item of Array.isArray(value) ? value : Object.values(value)) collectAssets(item, depth + 1, found);
+  return found;
+}
+
 export function createAcquisitionBudget() {
   const planned = new Map(), completed = new Map(), inflight = new Map();
   let emitProgress = null;
-  function planAsset(value, depth = 0) {
-    if (!value || typeof value !== 'object') return;
-    if (typeof value.sha256 === 'string' && Number.isSafeInteger(value.size) && typeof value.url === 'string') { planned.set(value.sha256, value.size); return; }
-    if (depth >= 3) return;
-    for (const item of Array.isArray(value) ? value : Object.values(value)) planAsset(item, depth + 1);
+  function planAsset(value) {
+    for (const asset of collectAssets(value)) planned.set(asset.sha256, asset.size);
   }
   function totals() {
     let total = 0, loaded = 0;

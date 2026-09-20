@@ -21,14 +21,24 @@
   },
   "sourceSha256": {
     "png.mjs": "1821a8d2f1fa29320d63f40813804295f0c60be1ff50f1ed8951aa7285bacb6f",
-    "webgpu-engine.mjs": "192d56b917d39b61984f9aea69088ace41a24f4c6cfae73b5f1581120de1973c",
-    "identity.mjs": "51937d963fc665dac4b2c13168e96233970d895424dd76692e6a4fa4c8d14460",
-    "runtime.test.mjs": "fcc64ea08747abf557bb82f1229fc385b5a58c0e882915ce200dcb480b3b51cc",
-    "originals.mjs": "716e702bad7782486590fc860f3d21e3899822e2b16c95777dea20ee2ecf3134",
+    "webgpu-engine.mjs": "df667caa7758d125deb17bccbea90f3b31b75f1b30eec938723eb9d09227e780",
+    "identity.mjs": "a74e217e91f660b554b3ed9c477881023bb4e90af93752e6c98b668cd9fe8b67",
+    "runtime.test.mjs": "ac14679867fba8729fa499e6d393069524e9232cf147b706a0bac5e268e4d7b2",
+    "originals.mjs": "957ec81f83240d19cc23424f14e9fe145d549587c2ddf6c113d46b823f380c4c",
     "fused-resample-v1.mjs": "6ee1eb7a0a894488e450242d72cb27b10a22b0b82b9aee9b4127c58efffb52f2",
-    "ort-worker.mjs": "d6467344f042fd45f483c2ea1fda80fb1ea883ec941db59f92d61d0839d7c7b5",
-    "runtime.mjs": "de1ddccea88f48a75baa67e9caef691f2d278bfcf5495fa1f37d9bf93052175e",
+    "ort-worker.mjs": "6fe65200a15969dc3b95639fbe07447c7fa33b205bc82966609796ad6234c846",
+    "runtime.mjs": "03cad9d8eec237d2f9e09dee00db57e35d0e5cb9ea2a4cb65321d736f3b16ee5",
     "webgl-vector-v1.mjs": "6c680636e8559338164cbe9f9cdaf9d286b2c4ccff7aaa309949b6496b403609"
   },
-  "note": "sourceSha256 re-pinned 2026-09-18 for the C-01/C-04 wave: fused-resample-v1.mjs (bounded kernel promotion), webgpu-engine.mjs (tile-bind adaptation, numThreads comment) and webgl-vector-v1.mjs (threaded CPU-prefix policy). ort-worker.mjs and runtime.mjs are owned by the RuntimeGates agent this wave and must be re-pinned at integration before the next device run."
+  "note": "sourceSha256 re-pinned 2026-09-18 for the C-01/C-04 wave: fused-resample-v1.mjs (bounded kernel promotion), webgpu-engine.mjs (tile-bind adaptation, numThreads comment) and webgl-vector-v1.mjs (threaded CPU-prefix policy). ort-worker.mjs and runtime.mjs are owned by the RuntimeGates agent this wave and must be re-pinned at integration before the next device run. Re-pinned 2026-09-21 for the bundle-contract repair: the served webgpu section had never been re-staged after the 18 September mobile-fusion adaptation, so every WebGPU device downloaded ~183 MB, built both sessions and then failed on createBoundaryPipeline before falling back to CPU. hosting/next-static/restage-webgpu.py republished prefix 92c6ab0d, split 2d71c033 and kernel 6ee1eb7a; hosting/next-static/webgpu_contract.py now gates promotion on the assets the engine actually loads, not the provenance block it never reads. webgpu-engine.mjs announces each load stage after its bytes arrive.",
+  "deviceVerification2026_09_21": {
+    "scope": "Mac Chrome 141 WebGPU, next.facemorph.me version 01f038ae, runtime manifest e14f2ce838b0",
+    "routeAdmitted": "webgpu",
+    "warmSynthesisMsPerFace": 628.41,
+    "coldVisitorWarmAfterSeconds": 10,
+    "firstFaceSecondsFromClick": 2.9,
+    "cpuFallbackObserved": false,
+    "routeRejectionObserved": false,
+    "note": "Product UI run, not a harness run. The 31-case numerical qualification is still pending for this kernel; see pendingDeviceVerification."
+  }
 }

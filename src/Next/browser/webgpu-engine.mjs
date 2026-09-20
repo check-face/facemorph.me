@@ -31,11 +31,17 @@ export async function createWebGpuSession({config,noiseManifest,bytes,progress=(
   ort.env.wasm.wasmPaths={mjs:factoryUrl,wasm:wasmUrl};
   ort.env.webgpu.adapter=adapter;
   const meta=await json(config.metadata),split=await json(config.split),filter=await floats(config.filter),bias=await floats(config.bias);
-  progress('gpu-prefix-loading');const options={executionProviders:['webgpu'],preferredOutputLocation:'gpu-buffer',extra:{session:{disable_cpu_ep_fallback:'1'}}};
-  const prefix=await ort.InferenceSession.create(await bytes(config.prefix),options);sessions.push(prefix);device=ort.env.webgpu.device;
+  const options={executionProviders:['webgpu'],preferredOutputLocation:'gpu-buffer',extra:{session:{disable_cpu_ep_fallback:'1'}}};
+  // The stage is announced once the bytes are in hand, never before. `bytes()` emits acquisition
+  // progress, so announcing first meant the download immediately overwrote the line: the screen
+  // sat on "Downloading model files… 183 MB of 212 MB" through the whole silent minute ORT
+  // spends deserialising a 150 MB graph, and every report of a hang pointed at the wrong phase.
+  const prefixModel=await bytes(config.prefix);progress('gpu-prefix-loading');
+  const prefix=await ort.InferenceSession.create(prefixModel,options);sessions.push(prefix);device=ort.env.webgpu.device;
   checkLimits(device.limits);
   device.lost.then(info=>{if(!closing)failure=Error('GPU device lost: '+info.reason);});device.addEventListener('uncapturederror',event=>{failure=Error('GPU validation: '+event.error.message);});
-  progress('gpu-suffix-loading');const suffix=await ort.InferenceSession.create(await bytes(config.suffix),{...options,executionProviders:[{name:'webgpu',device}]});sessions.push(suffix);if(ort.env.webgpu.device!==device)throw Error('GPU sessions use different devices.');
+  const suffixModel=await bytes(config.suffix);progress('gpu-suffix-loading');
+  const suffix=await ort.InferenceSession.create(suffixModel,{...options,executionProviders:[{name:'webgpu',device}]});sessions.push(suffix);if(ort.env.webgpu.device!==device)throw Error('GPU sessions use different devices.');
   function tensor(dims,data){const size=dims.reduce((a,b)=>a*b,4),buffer=device.createBuffer({size,usage:GPUBufferUsage.STORAGE|GPUBufferUsage.COPY_DST|GPUBufferUsage.COPY_SRC});buffers.add(buffer);if(data)device.queue.writeBuffer(buffer,0,data);return {buffer,tensor:ort.Tensor.fromGpuBuffer(buffer,{dataType:'float32',dims})};}
   const all={w:tensor([1,18,512])};for(const n of noiseManifest)all[n.name]=tensor(n.shape);
   const outputs=Object.fromEntries(Object.entries(split.prefixOutputs).map(([name,dims])=>[name,tensor(dims)]));

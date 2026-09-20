@@ -1,0 +1,60 @@
+{
+  "prefixOutputs": {
+    "/synthesis/b1024/Conv_output_0": [
+      1,
+      3,
+      1024,
+      1024
+    ],
+    "/synthesis/b1024/conv0/Reshape_9_output_0": [
+      1,
+      32,
+      1,
+      1
+    ],
+    "/synthesis/b1024/conv1/Conv__styled_weights": [
+      32,
+      32,
+      3,
+      3
+    ],
+    "/synthesis/b1024/conv1/Mul_output_0": [
+      1024,
+      1024
+    ],
+    "/synthesis/b1024/conv1/Reshape_2_output_0": [
+      1,
+      32,
+      1,
+      1
+    ],
+    "/synthesis/b1024/torgb/Conv__styled_weights": [
+      3,
+      32,
+      1,
+      1
+    ],
+    "/synthesis/b1024/conv0/ConvTranspose__polyphase_conv__tile0": [
+      1,
+      64,
+      513,
+      513
+    ],
+    "/synthesis/b1024/conv0/ConvTranspose__polyphase_conv__tile1": [
+      1,
+      64,
+      513,
+      513
+    ]
+  },
+  "suffixInputs": [
+    "/synthesis/b1024/Conv_output_0",
+    "/synthesis/b1024/conv0/Mul_6_output_0",
+    "/synthesis/b1024/conv1/Conv__styled_weights",
+    "/synthesis/b1024/conv1/Mul_output_0",
+    "/synthesis/b1024/conv1/Reshape_2_output_0",
+    "/synthesis/b1024/torgb/Conv__styled_weights"
+  ],
+  "passthrough": [],
+  "external": "/synthesis/b1024/conv0/Mul_6_output_0"
+}

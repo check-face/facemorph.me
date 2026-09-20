@@ -3,7 +3,7 @@ import {encodeRgbaPng} from './png.mjs';
 import {createBrowserModelCache} from '../Assets/model-cache.mjs';
 import {inputLatent,truncate,requireLatent,rgba1024} from './identity.mjs';
 import {qualifyEncoderReference} from './encoder-preflight.mjs';
-import {createAcquisitionBudget} from './acquisition-budget.mjs';
+import {createAcquisitionBudget,collectAssets} from './acquisition-budget.mjs';
 import {createCanaryQualification} from './canary-qualification.mjs';
 let manifest,ort,cache,mapping,synthesis,noise,average,provider,webgl,webgpu,currentId,manifestSha256,qualification,resumeDrain=null;
 const report=(id,stage,extra={})=>postMessage({id,type:'progress',stage,...extra});
@@ -30,6 +30,23 @@ function planRoute(){
  // with a recorded qualification never downloads them (C-03).
  if(!qualification||!qualification.complete())planAsset([manifest.sampleIndices,manifest.canaries]);
 }
+/**
+ * The same set planRoute budgets for, as an ordered list, route models first.
+ *
+ * Nothing about a 150 MB model segment depends on which face is asked for, so the prefetch lane
+ * acquires this list before the first request rather than after it. The route bundle leads
+ * because it is the long pole and the only thing a face cannot begin without.
+ */
+function routeAssets(){
+ if(!manifest)return [];
+ const bundle=provider==='webgpu'?manifest.webgpu:provider==='webgl2'?manifest.webgl:manifest.synthesis;
+ const rest=[[manifest.runtime,manifest.mapping,manifest.average,manifest.noise]];
+ if(!qualification||!qualification.complete())rest.push([manifest.sampleIndices,manifest.canaries]);
+ const seen=new Set(),ordered=[];
+ for(const asset of [...collectAssets(bundle),...rest.flatMap(item=>collectAssets(item))])
+  if(!seen.has(asset.sha256)){seen.add(asset.sha256);ordered.push(asset);}
+ return ordered;
+}
 async function bytes(asset,id){
  cache ||= await createBrowserModelCache({report:cacheReport});
  planAsset(asset);budget.progress(false);
@@ -38,6 +55,27 @@ async function bytes(asset,id){
  budget.progress(false);return new Uint8Array(data);}
 
 async function floats(asset,id){const b=await bytes(asset,id);return new Float32Array(b.buffer,b.byteOffset,b.byteLength/4);}
+/**
+ * Warm the device's model cache for the route this device would choose, before anything is asked
+ * of it. Bytes are committed through `acquire` alone and never materialised as an ArrayBuffer —
+ * the point is a populated cache, not a loaded model, and a 150 MB segment must not sit in the
+ * heap of a worker that may be terminated a moment later.
+ *
+ * This is best effort by construction: it creates no session, runs no canary, and decides no
+ * route. A failure here is swallowed, because the real run must be the one that reports an
+ * acquisition problem in the user's words and drops the route on the evidence.
+ */
+async function prefetchRoute(id){
+ cache ||= await createBrowserModelCache({report:cacheReport});
+ planRoute();budget.progress(false);
+ let assets=0,acquired=0;
+ for(const asset of routeAssets()){
+  assets++;
+  try{await cache.acquire(asset);acquired++;budget.progress(false);}
+  catch{break;} // offline, evicted mid-run, or out of quota: the real run will say so properly
+ }
+ return {provider,assets,acquired,...budget.totals()};
+}
 async function ensureOrt(id){if(ort)return;report(id,'runtime-loading');const assets=manifest.runtime.assets,module=assets.find(a=>a.url===manifest.runtime.moduleUrl),factory=assets.find(a=>a.url.endsWith('/ort-wasm-simd-threaded.mjs')),wasm=assets.find(a=>a.url.endsWith('/ort-wasm-simd-threaded.wasm'));if(!module||!factory||!wasm)throw Error('Incomplete pinned runtime bundle');
  // Import exactly the verified bytes, avoiding a second unchecked network request.
  const moduleUrl=URL.createObjectURL(new Blob([await bytes(module,id)],{type:'text/javascript'})),factoryUrl=URL.createObjectURL(new Blob([await bytes(factory,id)],{type:'text/javascript'})),wasmUrl=URL.createObjectURL(new Blob([await bytes(wasm,id)],{type:'application/wasm'}));
@@ -154,7 +192,7 @@ self.onmessage=({data})=>{
   try{
    let result;
    if(type==='initialize'){manifest=request.manifest;provider=request.provider;manifestSha256=request.manifestSha256;fullQualify=request.fullQualify===true||(!request.hostForcedQualify&&request.webdriver===true);forceCanaryFail=request.forceCanaryFail===true;result={provider};}
-   else if(type==='qualify')result=await qualify(id);else if(type==='generate'){const input=await inputLatent(request.mode,request.value),values=await mappingFor(input.values,id);result={blob:await png(await run(values,id)),values,shape:[1,18,512],space:'w-plus',identity:input.identity};}else if(type==='synthesize'){const values=requireLatent(request.values);result={blob:await png(await run(values,id)),values,shape:[1,18,512],space:'w-plus'};}else if(type==='encode-aligned'){
+   else if(type==='qualify')result=await qualify(id);else if(type==='prefetch')result=await prefetchRoute(id);else if(type==='generate'){const input=await inputLatent(request.mode,request.value),values=await mappingFor(input.values,id);result={blob:await png(await run(values,id)),values,shape:[1,18,512],space:'w-plus',identity:input.identity};}else if(type==='synthesize'){const values=requireLatent(request.values);result={blob:await png(await run(values,id)),values,shape:[1,18,512],space:'w-plus'};}else if(type==='encode-aligned'){
  // Sequential residency: e4e is released before loading synthesis.
  if(!manifest.encoder&&!manifest.encoderStream)throw Error('The browser encoder bundle is not available.');
  await synthesis?.release();synthesis=null;await webgl?.dispose();webgl=null;await webgpu?.dispose();webgpu=null;await mapping?.release();mapping=null;noise=null;

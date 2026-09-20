@@ -2,6 +2,8 @@
 """Promote retained CI bytes only after matching real-workflow qualification."""
 import argparse, hashlib, json, subprocess, sys
 from pathlib import Path
+sys.path.insert(0,str(Path(__file__).resolve().parent))
+import webgpu_contract
 REPO=Path(__file__).resolve().parents[2]
 REMOTE='check-face/facemorph.me'
 def command(*args):return subprocess.check_output(list(args),cwd=REPO,text=True)
@@ -40,6 +42,10 @@ if ledger.exists():
         raise ValueError(f"Kernel candidate {kernel['candidateId']!r} has no keep row in autoresearch/results.tsv")
     if not any(row and row[0]==kernel['candidateId'] and kernel['sourceHash'] in row for row in keep):
         raise ValueError(f"Kernel source hash {kernel['sourceHash'][:12]}… not recorded for {kernel['candidateId']!r}")
+# The gate above reads provenance the runtime never loads, so it passed for days while the served
+# bundle carried the pre-promotion kernel and the retired unsplit graph, and every WebGPU device
+# fell back to CPU after a 183 MB download. This checks the assets the engine actually imports.
+webgpu_contract.require(a.runtime, manifest)
 receipt={'buildRun':a.build_run,'qualificationRun':a.qualification_run,'source':build['head_sha'],'runtimeSha256':manifest_sha,'kernel':{k:kernel[k] for k in ('file','sha256','candidateId','sourceHash')},'published':False}
 command(sys.executable,'hosting/next-static/stage.py','--runtime',str(a.runtime.resolve()),'--frontend',str(web/'deploy-next'),'--catalogue',str(a.catalogue.resolve()),'--output',str(work/'public'))
 (work/'promotion.json').write_text(json.dumps(receipt,indent=2)+'\n')

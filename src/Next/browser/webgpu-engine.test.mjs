@@ -38,12 +38,13 @@ function fixture(t,{adapterLimit=128*MiB,deviceLimit=128*MiB,bufferLimit=256*MiB
   if(failAt===name)throw Error(`fixture ${name} failure`);
   return {inputNames:['w','noise_15'],async run(){},async release(){releases.push(name);}};
  }}};
- const args={config,noiseManifest:[{name:'noise_15',shape:[1,1,1024,1024]}],bytes:async asset=>assets[asset.name],importModule:async url=>{
+ const order=[];
+ const args={config,noiseManifest:[{name:'noise_15',shape:[1,1,1024,1024]}],progress:stage=>order.push('stage:'+stage),bytes:async asset=>{order.push('bytes:'+asset.name);return assets[asset.name];},importModule:async url=>{
   const contents=await urls.get(url).text();imports.push(contents);
   if(contents.includes('pinned runtime')){if(failAt==='import')throw Error('fixture import failure');return ort;}
   return {async createBoundaryPipeline(d,meta,tiled,workgroup,variant){assert.equal(d,device);assert.equal(variant,'bounded');return {bind(){return {encode(){}};}};}};
  }};
- return {args,urls,revoked,allocations,releases,imports,assets,lose:()=>lose({reason:'unknown'}),validation:()=>validation({error:{message:'fixture validation'}}),destroyed:()=>destroyed};
+ return {args,urls,revoked,allocations,releases,imports,assets,order,lose:()=>lose({reason:'unknown'}),validation:()=>validation({error:{message:'fixture validation'}}),destroyed:()=>destroyed};
 }
 
 test('bounded mobile graph accepts exactly 128 MiB and uses verified JSEP paths',async t=>{
@@ -94,4 +95,21 @@ test('missing WebGPU returns an explicit capability refusal',async t=>{
  const f=fixture(t);globalThis.navigator={};
  await assert.rejects(createWebGpuSession(f.args),{name:'NotSupportedError'});
  assert.equal(f.urls.size,0);
+});
+
+// The status line is the only thing a waiting visitor has. `bytes()` emits acquisition progress,
+// so announcing a load stage before the bytes are in hand let the download overwrite the line:
+// the screen stayed on "Downloading model files… 183 MB of 212 MB" for the whole silent minute
+// ORT spends deserialising a 150 MB graph, and every report of a hang named the wrong phase.
+test('each model load stage is announced after its bytes arrive, not before',async t=>{
+ const f=fixture(t);await createWebGpuSession(f.args);
+ for(const name of ['prefix','suffix']){
+  const arrived=f.order.indexOf('bytes:'+name),announced=f.order.indexOf(`stage:gpu-${name}-loading`);
+  assert.notEqual(arrived,-1);assert.notEqual(announced,-1);
+  assert.ok(announced>arrived,`gpu-${name}-loading must follow the ${name} download, not precede it`);
+ }
+ // Once the last load stage is on screen, only the 2 KB kernel is still to fetch, so the line
+ // stays truthful for the rest of start-up instead of being replaced by a byte count.
+ const last=f.order.indexOf('stage:gpu-suffix-loading');
+ assert.deepEqual(f.order.slice(last).filter(entry=>entry.startsWith('bytes:')),['bytes:kernel']);
 });

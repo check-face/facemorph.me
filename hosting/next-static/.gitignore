@@ -1,2 +1,6 @@
+# Staged publication trees: several gigabytes of content-addressed runtime assets, reproduced by
+# stage.py from the research artifacts and never carried in git. stage.py refuses to reuse a
+# directory, so each staging run gets its own suffix.
 public/
+public.*/
 .wrangler/
