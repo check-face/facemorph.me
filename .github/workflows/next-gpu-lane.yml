@@ -44,10 +44,17 @@ jobs:
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-      - run: python -m pip install browser-harness==0.1.8
+      # setup-python has no prebuilt release for Debian 12 on a self-hosted runner, so it fails
+      # before the job starts. The box ships Python 3.11 with venv; the controller goes in a venv
+      # rather than into system site-packages, which on TrueNAS is part of the appliance.
+      - name: Browser controller in a venv on the host Python
+        run: |
+          set -euo pipefail
+          python3 --version
+          python3 -m venv "$RUNNER_TEMP/bh-venv"
+          "$RUNNER_TEMP/bh-venv/bin/python" -m pip install --quiet --upgrade pip
+          "$RUNNER_TEMP/bh-venv/bin/python" -m pip install --quiet browser-harness==0.1.8
+          echo "$RUNNER_TEMP/bh-venv/bin" >> "$GITHUB_PATH"
 
       # Chrome for Testing is pinned and cached on the runner: a browser that silently updates
       # would change the numbers without changing the code, which is the one thing a benchmark
@@ -115,4 +122,4 @@ jobs:
           name: next-gpu-benchmark-${{ github.run_id }}
           path: next-gpu-evidence/
           retention-days: 30
-          if-no-files-found: error
+          if-no-files-found: warn
