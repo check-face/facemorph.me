@@ -10,7 +10,7 @@ The 256MiB bound fits the webgpu segments the previous 32MiB bound could never p
 import argparse,hashlib,json,re,ssl,traceback,urllib.error,urllib.request
 from pathlib import Path
 from http.server import ThreadingHTTPServer,SimpleHTTPRequestHandler
-p=argparse.ArgumentParser();p.add_argument('--manifest-sha',required=True);p.add_argument('--cert',required=True);p.add_argument('--key',required=True);p.add_argument('--runtime-overlay',type=Path,default=None);a=p.parse_args()
+p=argparse.ArgumentParser();p.add_argument('--manifest-sha',required=True);p.add_argument('--cert',required=True);p.add_argument('--key',required=True);p.add_argument('--runtime-overlay',type=Path,default=None);p.add_argument('--port',type=int,default=8443);a=p.parse_args()
 ORIGIN='https://next.facemorph.me'
 SOURCE=Path('next-site-source.txt').read_text().strip()
 MIRROR=Path('.runtime-mirror');MIRROR.mkdir(exist_ok=True)
@@ -71,7 +71,7 @@ seed_from_local()
 class Handler(SimpleHTTPRequestHandler):
  def __init__(self,*args,**kw):super().__init__(*args,directory='deploy-next',**kw)
  def end_headers(self):
-  for k,v in [('Cross-Origin-Opener-Policy','same-origin'),('Cross-Origin-Embedder-Policy','require-corp'),('Cross-Origin-Resource-Policy','same-origin'),('Cache-Control','no-store'),('Content-Security-Policy',"script-src 'self' blob: 'unsafe-inline' 'unsafe-eval'"  # no third-party CDN (AGENTS.md): the ffmpeg codec is served from this origin),('X-Next-Artifact-Source',SOURCE)]:self.send_header(k,v)
+  for k,v in [('Cross-Origin-Opener-Policy','same-origin'),('Cross-Origin-Embedder-Policy','require-corp'),('Cross-Origin-Resource-Policy','same-origin'),('Cache-Control','no-store'),('Content-Security-Policy',"script-src 'self' blob: 'unsafe-inline' 'unsafe-eval'"  # no third-party CDN (AGENTS.md): the ffmpeg codec is served from this origin),('X-Next-Artifact-Source',SOURCE),('Access-Control-Allow-Origin','*')]:self.send_header(k,v)
   super().end_headers()
  def do_POST(self):self.send_error(403,'Diagnostics and uploads disabled in qualification')
  def mime_for(self,path):
@@ -94,7 +94,14 @@ class Handler(SimpleHTTPRequestHandler):
   if not self.path.startswith('/runtime/'):return super().do_GET()
   if '?' in self.path or '#' in self.path or '..' in self.path or '%' in self.path:return self.send_error(400)
   try:
-   if self.path=='/runtime/manifest.json':return self.respond(manifest,self.mime_for(self.path))
+   if self.path=='/runtime/manifest.json':
+    # The overlay manifest pins absolute production URLs, but production does not serve the
+    # overlay-swapped assets (that is why the overlay exists). Rewrite every runtime URL to
+    # this request's own https origin so the browser's fetches flow through the mirror/overlay
+    # logic below while staying absolute https, as model-cache acquisition requires.
+    host=re.sub(r'[^A-Za-z0-9.:\[\]-]','',self.headers.get('Host') or '')
+    if not host:return self.send_error(400,'Missing Host header')
+    return self.respond(manifest.replace(b'https://next.facemorph.me/runtime/',('https://'+host+'/runtime/').encode()),self.mime_for(self.path))
    sha=PATHMAP.get(self.path)
    if sha is None:
     m=re.fullmatch(r'/runtime/chunks/([0-9a-f]{64})\.bin',self.path)
@@ -109,4 +116,4 @@ class Handler(SimpleHTTPRequestHandler):
    self.respond(data,self.mime_for(self.path))
   except Exception:
    traceback.print_exc();self.send_error(502,'Pinned runtime acquisition failed')
-server=ThreadingHTTPServer(('127.0.0.1',8443),Handler);ctx=ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER);ctx.load_cert_chain(a.cert,a.key);server.socket=ctx.wrap_socket(server.socket,server_side=True);server.serve_forever()
+server=ThreadingHTTPServer(('127.0.0.1',a.port),Handler);ctx=ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER);ctx.load_cert_chain(a.cert,a.key);server.socket=ctx.wrap_socket(server.socket,server_side=True);print(f'https://127.0.0.1:{a.port}',flush=True);server.serve_forever()

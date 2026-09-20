@@ -27,6 +27,10 @@
       }
     </script>
 
+    <!-- Self-hosted webfonts (AGENTS.md: no third-party CDN at runtime). Served from this
+         origin so the first paint never waits on fonts.googleapis.com and the
+         offline-capable-after-first-load claim holds. Sources and hashes: /fonts/RECEIPT.json -->
+    <link rel="stylesheet" href="/fonts/fonts.css">
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">

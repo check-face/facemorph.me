@@ -29,6 +29,22 @@
 .next-face:focus-within .next-adornment, .next-face:hover .next-adornment { opacity:1; }
 .next-face-generate { align-self:center; }
 
+// A-3: the close control sits on the image it closes, visible at rest. It is deliberately not
+// an `.next-adornment` — that class fades to 25% until hover or focus, which on a touch device
+// means "invisible until you have already tapped something". Sized and inset so it clears the
+// tile edge at 320px and never overlaps the per-face progress bar along the bottom.
+.next-face-close {
+    position:absolute; top:.35rem; right:.35rem; z-index:2;
+    width:2rem; height:2rem; padding:0;
+    color:#f3f3f3; background:rgba(23,24,28,.62);
+    border:1px solid rgba(240,240,240,.35); border-radius:50%;
+    transition:background .15s ease-out, transform .15s ease-out;
+}
+.next-face-close:hover,.next-face-close:focus-visible { background:rgba(23,24,28,.88); transform:scale(1.08); }
+.next-face-close:focus-visible { outline:2px solid #ce621d; outline-offset:2px; }
+.next-face-close:disabled { opacity:.4; }
+.next-face-close .MuiSvgIcon-root { font-size:1.15rem; }
+
 // Per-face progress: a thin gradient bar across the bottom edge of the image, transform-only.
 .next-face-progress { position:absolute; left:0; right:0; bottom:0; height:4px; overflow:hidden; background:rgba(128,128,128,.18); }
 .next-face-image { position:relative; }
@@ -44,11 +60,13 @@
 // Gate hook: the video's horizontal centre lies between the two face tiles at N=2 >=1000px,
 // because the middle grid column sits strictly between the from/to columns.
 .next-morph-content.n2 { display:flex; flex-direction:column; gap:1rem; }
+.next-morph-content.n2 .next-connector-lead { order:0; }
 .next-morph-content.n2 .next-morph-from { order:1; }
 .next-morph-content.n2 .next-connector-stack { order:2; }
 .next-morph-content.n2 .next-morph-to { order:3; }
-.next-morph-content.n2 .next-morph-morph { order:4; }
-.next-morph-content.n2 .next-morph-vid { order:5; }
+.next-morph-content.n2 .next-connector-trail { order:4; }
+.next-morph-content.n2 .next-morph-morph { order:5; }
+.next-morph-content.n2 .next-morph-vid { order:6; }
 .next-morph-cell { min-width:0; }
 
 // Insertion connectors (D-08): the only plus on the surface. Appending, inserting between
@@ -147,15 +165,27 @@
         justify-content:center;
         align-items:start;
         grid-template-areas:
-            "from vid to"
-            "from morph to";
-        grid-template-columns: minmax(340px,400px) minmax(200px,260px) minmax(340px,400px);
+            "lead from vid   to trail"
+            "lead from morph to trail"
+            "lead from tween to trail";
+        grid-template-columns: auto minmax(340px,400px) minmax(200px,260px) minmax(340px,400px) auto;
     }
     .next-morph-content.n2 .next-morph-from { grid-area:from; }
     .next-morph-content.n2 .next-morph-to { grid-area:to; }
     .next-morph-content.n2 .next-morph-morph { grid-area:morph; align-self:end; margin-bottom:1em; }
     .next-morph-content.n2 .next-morph-vid { grid-area:vid; }
-    .next-morph-content.n2 .next-connector-stack { display:none; }
+    // A-1: all three insertion points exist at this width too. The stacked layout's single
+    // between-faces plus used to be the only one, and it was hidden above 1000px, so a desktop
+    // visitor had no plus on the surface at all.
+    .next-morph-content.n2 .next-connector-lead { grid-area:lead; }
+    .next-morph-content.n2 .next-connector-trail { grid-area:trail; }
+    .next-morph-content.n2 .next-connector-stack { grid-area:tween; align-self:start; }
+    .next-morph-content.n2 .next-connector-lead,
+    .next-morph-content.n2 .next-connector-trail {
+        width:auto; max-width:none; flex-direction:column; align-self:center; padding:0 .35rem;
+    }
+    .next-morph-content.n2 .next-connector-lead::before,.next-morph-content.n2 .next-connector-lead::after,
+    .next-morph-content.n2 .next-connector-trail::before,.next-morph-content.n2 .next-connector-trail::after { display:none; }
 
     // N>=3, wide: faces keep their size and the row scrolls (D-06).
     .next-morph-content.n3 .next-faces-row {

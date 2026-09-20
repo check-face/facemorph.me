@@ -58,10 +58,16 @@ test('explicit WebGPU selection retries an interrupted GPU instead of silently u
  assert.equal((await generate(r)).provenance.route,'webgpu');
  assert.equal(r.status().interruptedRoute,undefined);
 });
-test('automatic selection still avoids a route interrupted on reload',async t=>{
+// Superseded 21 September. This asserted that one interruption sent automatic selection to CPU.
+// It is the behaviour the operator hit: a phone that had been reclaimed once kept choosing CPU
+// while an explicitly forced WebGPU run was fast. An interruption is not a correctness verdict —
+// a reload, a backgrounded tab and a real crash are indistinguishable here, and the fast route
+// invites reclamation precisely because its working set is the largest. One interruption now
+// earns a retry; `two interruptions in a row drop the route` below pins the limit.
+test('automatic selection retries a route interrupted once, then drops it on a repeat',async t=>{
  environment(t);
  sessionStorage.setItem('checkface-runtime-active-v1',JSON.stringify({route:'webgpu'}));
- assert.equal((await generate(runtime(t))).provenance.route,'cpu');
+ assert.equal((await generate(runtime(t))).provenance.route,'webgpu');
 });
 test('speed records measure successful warmed synthesis, never admission wall time',async t=>{
  environment(t);
@@ -177,4 +183,42 @@ test('warm-up never runs twice, nor after the route is already admitted',async t
  const after=created;
  assert.deepEqual(await r.prefetch(),{started:false},'an admitted route needs no warm-up');
  assert.equal(created,after);
+});
+
+// An interruption is not a device-check failure. The operator's phone kept landing on CPU while
+// an explicitly forced WebGPU run was fast: one reclaimed tab — the fate the largest working set
+// invites — removed the fast route for the whole page load, silently.
+const interrupted=route=>sessionStorage.setItem('checkface-runtime-active-v1',JSON.stringify({owner:'other',route,stage:'generate',id:1,at:Date.now()}));
+
+test('one interruption costs the fast route a retry, not the whole session',async t=>{
+ environment(t);
+ interrupted('webgpu');
+ assert.equal((await generate(runtime(t))).provenance.route,'webgpu','WebGPU is tried again after a single interruption');
+});
+
+test('two interruptions in a row drop the route, and the drop is announced',async t=>{
+ environment(t);
+ interrupted('webgpu');
+ const first=runtime(t);await generate(first);first.dispose();
+ // The qualifying run clears the count, so a fresh pair of interruptions is needed to drop it.
+ interrupted('webgpu');
+ const seen=[];
+ const second=createBrowserRuntime({manifest:manifest(),manifestSha256:hash,workerFactory:workerFactory(),onProgress:e=>seen.push(e)});
+ t.after(()=>second.dispose());
+ interrupted('webgpu');
+ const third=createBrowserRuntime({manifest:manifest(),manifestSha256:hash,workerFactory:workerFactory(),onProgress:e=>seen.push(e)});
+ t.after(()=>third.dispose());
+ assert.equal((await third.generate({mode:'seed',value:'7'})).provenance.route,'cpu');
+ const dropped=seen.find(e=>e.stage==='route-admitted'&&e.routeOutcome==='interrupted');
+ assert.ok(dropped,'the set-aside route is announced, never silently skipped');
+ assert.equal(dropped.provider,'webgpu');
+});
+
+test('a route that qualifies forgets its interruption history',async t=>{
+ environment(t);
+ interrupted('webgpu');
+ const first=runtime(t);await generate(first);first.dispose();
+ assert.equal(JSON.parse(sessionStorage.getItem('checkface-runtime-interrupted-v1')||'{}').webgpu,undefined);
+ interrupted('webgpu');
+ assert.equal((await generate(runtime(t))).provenance.route,'webgpu','the count restarts from one');
 });

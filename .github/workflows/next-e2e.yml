@@ -26,7 +26,7 @@ on:
       runtime_sha:
         description: Public runtime manifest SHA256 (fails closed if changed)
         required: true
-        default: e14f2ce838b07a9af7aa4a1f22a7b2299d48d85fcb7bea174187556eddcad31d
+        default: d9e37e50a436e9fb7c0c7f973e70adee353c808f48c6a51fa5a9186f1c650a5c
 permissions:
   contents: read
   actions: read

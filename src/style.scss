@@ -1,5 +1,7 @@
-@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@600&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap');
+// Webfonts are self-hosted and loaded by a plain <link> in index.html (AGENTS.md: no
+// third-party CDN at runtime). They are deliberately not imported here: css-loader resolves
+// @import at build time, and the @font-face file is a published static asset, not a module.
+// See public/fonts/RECEIPT.json for source URLs and hashes.
 
 // set fonts for bulma
 $family-sans-serif: 'Roboto', 'Segoe UI', sans-serif;

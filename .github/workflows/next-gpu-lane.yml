@@ -1,0 +1,102 @@
+name: GPU lane benchmark
+# Every per-face GPU number in the ledger so far came from the device lab or from an operator's
+# screen, so nothing could catch a regression in the WebGPU path except someone noticing. This
+# lane runs the real product interface against a real GPU on the self-hosted TrueNAS runner
+# (GTX 1050, Pascal, Vulkan/ANGLE) and records a comparable row per run.
+#
+# It is deliberately not part of the promotion gate yet: one machine's timings are evidence about
+# that machine. It exists so a change that slows or breaks the GPU route shows up the same day,
+# and so the RC has a repeatable benchmark to point at.
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: Product URL to benchmark (defaults to the deployed candidate)
+        required: false
+        default: https://next.facemorph.me/
+      faces:
+        description: Faces to generate (the first is cold and reported separately)
+        required: false
+        default: '6'
+  schedule:
+    # Once a day, well outside Brisbane working hours, so a slow run never competes with a device
+    # session or a local benchmark holding the cooperative lease.
+    - cron: '0 16 * * *'
+permissions:
+  contents: read
+jobs:
+  webgpu-benchmark:
+    runs-on: [self-hosted, truenas, gpu-gtx1050]
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install browser-harness==0.1.8
+
+      # Chrome for Testing is pinned and cached on the runner: a browser that silently updates
+      # would change the numbers without changing the code, which is the one thing a benchmark
+      # lane must not do.
+      - name: Provision pinned Chrome for Testing
+        id: chrome
+        env:
+          CHROME_VERSION: '141.0.7390.54'
+        run: |
+          set -euo pipefail
+          root="$RUNNER_TOOL_CACHE/chrome-for-testing/$CHROME_VERSION"
+          binary="$root/chrome-linux64/chrome"
+          if [ ! -x "$binary" ]; then
+            mkdir -p "$root"
+            curl -fsSL -o "$root/chrome.zip" \
+              "https://storage.googleapis.com/chrome-for-testing-public/$CHROME_VERSION/linux64/chrome-linux64.zip"
+            unzip -q -o "$root/chrome.zip" -d "$root"
+            rm -f "$root/chrome.zip"
+          fi
+          "$binary" --version
+          echo "binary=$binary" >> "$GITHUB_OUTPUT"
+
+      # Fail before the benchmark if this runner has no usable adapter, with the GPU state in the
+      # log. A lane that quietly benchmarks the CPU path would be worse than no lane.
+      - name: Confirm a real WebGPU adapter is present
+        env:
+          CHROME: ${{ steps.chrome.outputs.binary }}
+        run: |
+          set -euo pipefail
+          nvidia-smi --query-gpu=name,driver_version,memory.total --format=csv || echo 'nvidia-smi unavailable'
+          "$CHROME" --headless=new --no-sandbox --enable-unsafe-webgpu \
+            --enable-features=Vulkan --use-angle=vulkan --use-vulkan \
+            --disable-dev-shm-usage --dump-dom about:blank >/dev/null
+          echo 'Chrome starts with Vulkan/ANGLE; the adapter itself is asserted in-page by the benchmark.'
+
+      - name: Benchmark the WebGPU route through the product UI
+        env:
+          BU_CDP_URL: http://127.0.0.1:9222
+          GPU_BENCH_URL: ${{ inputs.url || 'https://next.facemorph.me/' }}
+          GPU_BENCH_FACES: ${{ inputs.faces || '6' }}
+          GPU_BENCH_EVIDENCE: next-gpu-evidence
+          CHROME: ${{ steps.chrome.outputs.binary }}
+        run: |
+          set -euo pipefail
+          mkdir -p next-gpu-evidence
+          "$CHROME" --headless=new --no-sandbox --disable-dev-shm-usage \
+            --enable-unsafe-webgpu --enable-features=Vulkan --use-angle=vulkan --use-vulkan \
+            --remote-debugging-port=9222 --user-data-dir="$RUNNER_TEMP/gpu-bench-profile" \
+            about:blank > next-gpu-evidence/chrome.log 2>&1 &
+          chrome_pid=$!
+          trap 'kill "$chrome_pid" 2>/dev/null || true' EXIT
+          for i in $(seq 1 30); do
+            kill -0 "$chrome_pid" 2>/dev/null || { cat next-gpu-evidence/chrome.log; exit 1; }
+            curl -fsS --max-time 2 http://127.0.0.1:9222/json/version >/dev/null 2>&1 && break
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:9222/json/version > next-gpu-evidence/chrome-version.json
+          timeout 2100 browser-harness < scripts/next-gpu-benchmark.py | tee next-gpu-evidence/summary.json
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: next-gpu-benchmark-${{ github.run_id }}
+          path: next-gpu-evidence/
+          retention-days: 30
+          if-no-files-found: error

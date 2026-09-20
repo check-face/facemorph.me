@@ -93,9 +93,12 @@ def main():
         replacements[old + '/' + relative.as_posix()] = descriptor
         published.append(descriptor)
         return descriptor
+    # The codec is published like every other asset: verified, content-addressed and chunked when
+    # it exceeds the static-host file limit (ffmpeg-core.wasm is ~31 MiB, so it chunks). It used to
+    # be skipped here and rewritten to cdn.jsdelivr.net below, which broke the binding no-third-
+    # party-CDN rule and quietly contradicted the offline-capable-after-first-load claim: a device
+    # with the models cached still could not export a video without reaching a CDN.
     for item in inventory:
-        if Path(item['path']).name in ('ffmpeg-core.js', 'ffmpeg-core.wasm'):
-            continue
         publish(item['path'], item['sha256'], item['size'])
     def rewrite(value):
         if isinstance(value, dict):
@@ -166,16 +169,20 @@ def main():
     if a.phone_admission:
         admit_phone_candidate(manifest, descriptor, a.phone_admission)
     manifest['distribution'] = {'purpose': 'research-and-evaluation', 'notices': a.base + '/notices/index.html'}
-    if 'codec' in manifest:
-        for key, filename in [('module', 'ffmpeg-core.js'), ('wasm', 'ffmpeg-core.wasm')]:
-            manifest['codec'][key]['url'] = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/esm/' + filename
+    # Every URL the product will fetch at runtime must be this origin. A local leftover means the
+    # publication is incomplete; a third-party origin means the product depends on someone else's
+    # CDN, which ages out, yanks versions and silently serves stale majors (AGENTS.md, binding).
+    allowed_origin = a.base.rsplit('/', 1)[0] if a.base.endswith('/runtime') else a.base
     def reject_local(value):
         if isinstance(value, dict):
             for item in value.values(): reject_local(item)
         elif isinstance(value, list):
             for item in value: reject_local(item)
-        elif isinstance(value, str) and ('localhost' in value or '127.0.0.1' in value or value.startswith(old + '/')):
-            raise ValueError('Publication retains local dependency')
+        elif isinstance(value, str):
+            if 'localhost' in value or '127.0.0.1' in value or value.startswith(old + '/'):
+                raise ValueError(f'Publication retains local dependency: {value}')
+            if value.startswith('http') and not value.startswith(allowed_origin):
+                raise ValueError(f'Publication depends on a third-party origin: {value}')
     reject_local(manifest)
     if (stream_source / 'descriptor.json').exists(): reject_local(config)
     if (photo_source / 'manifest.json').exists(): reject_local(photo)

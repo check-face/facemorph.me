@@ -85,11 +85,15 @@ let oneFile (file: obj): obj = jsNative
 [<Emit("window.requestAnimationFrame($0)")>]
 let requestAnimationFrame (callback: unit -> unit): int = jsNative
 
-[<Import("previewPhoto", "./product-bridge.mjs")>]
+// R2-15 routes photo preparation through reported wrappers so a consented session records
+// which step failed. These bindings must name the *Reported exports: product-bridge.mjs does
+// not re-export the raw photo-selection functions, so importing `selectPhoto` here resolved to
+// undefined and every photo pick threw before reaching the encoder.
+[<Import("previewPhotoReported", "./product-bridge.mjs")>]
 let previewPhoto (file: obj) (options: obj): JS.Promise<obj> = jsNative
 [<Emit("Object.assign({crop:true,file:$1},$0)")>]
 let cropOffer (preview: obj) (file: obj): obj = jsNative
-[<Import("cropPhoto", "./product-bridge.mjs")>]
+[<Import("cropPhotoReported", "./product-bridge.mjs")>]
 let cropPhoto (file: obj) (area: obj) (options: obj): JS.Promise<obj> = jsNative
 [<Import("createCrop", "./photo/crop-view.mjs")>]
 let createCrop (options: obj): obj = jsNative
@@ -110,7 +114,7 @@ let revokeUrl (url: string): unit = jsNative
 
 [<Import("photoFiles", "./photo-selection.mjs")>]
 let photoFiles (event: obj): obj = jsNative
-[<Import("selectPhoto", "./product-bridge.mjs")>]
+[<Import("selectPhotoReported", "./product-bridge.mjs")>]
 let selectPhoto (request: obj): JS.Promise<obj> = jsNative
 [<Import("openPhotoPicker", "./photo-selection.mjs")>]
 let openPhotoPicker (id: string): unit = jsNative
@@ -535,7 +539,15 @@ let viewFace (state:State) dispatch (index:int) (item:Input) (label:string) =
                 Html.button [prop.type'.button;prop.className "next-face-empty";prop.tabIndex -1
                              prop.ariaLabel "Choose photo";prop.onClick(fun _ -> openPhotoPicker item.id)
                              prop.children [photoIcon [];Html.span "Drop a photo, or tap to choose"]]
-            if active then Html.div [prop.className "next-face-progress";prop.children [Html.div [prop.className "next-face-progress-fill"]]]]]
+            if active then Html.div [prop.className "next-face-progress";prop.children [Html.div [prop.className "next-face-progress-fill"]]]
+            // A-3: remove is a close control on the tile it closes, not a stray dash in the
+            // actions row where testers never found it. Visible at rest on touch and desktop —
+            // hover-gating hides it on exactly the devices that cannot hover. The last face is
+            // never removable, so a morph always has something to morph from.
+            if state.Inputs.Length>1 then
+                Mui.tooltip [tooltip.title (sprintf "Remove %s" label);tooltip.children (
+                    Mui.iconButton [prop.className "next-face-close";prop.ariaLabel (sprintf "Remove %s" label);prop.disabled state.Busy
+                                    iconButton.size.small;iconButton.children (closeIcon []);prop.onClick(fun _ -> dispatch(Remove item.id))])]]]
         setpointField {Item=item;Label=label;Disabled=false
                        OnEdit=(fun value -> dispatch(Edit(item.id,value)));OnMode=(fun mode -> dispatch(Mode(item.id,mode)))
                        OnBrowse=(fun () -> dispatch(BrowseNames item.id));OnPick=(fun () -> openPhotoPicker item.id)}
@@ -561,14 +573,12 @@ let viewFace (state:State) dispatch (index:int) (item:Input) (label:string) =
             // button is how that one face is generated without touching the others.
             FancyButton [button.variant.contained;button.size.small;prop.className "next-face-generate"
                          button.disabled state.Busy;prop.onClick(fun _ -> dispatch(RunFace item.id));button.children "Generate"]
+        // Remove has moved onto the image as a close control (A-3), so this row keeps only the
+        // things a finished face offers and stays on one line at 320 px.
         Html.div [prop.className "next-actions next-face-actions";prop.children [
             if face.IsSome then
                 Mui.button [button.variant.text;prop.onClick(fun _ -> dispatch(Share item.id));button.children "Share image"]
-                Mui.button [button.variant.text;prop.onClick(fun _ -> dispatch(Save item.id));button.children "Save image"]
-            if state.Inputs.Length>1 then
-                Mui.tooltip [tooltip.title (sprintf "Remove %s" label);tooltip.children (
-                    Mui.iconButton [prop.className "next-adornment";prop.tabIndex -1;prop.ariaLabel (sprintf "Remove %s" label);prop.disabled state.Busy
-                                    iconButton.children (removeIcon []);prop.onClick(fun _ -> dispatch(Remove item.id))])]]]]]
+                Mui.button [button.variant.text;prop.onClick(fun _ -> dispatch(Save item.id));button.children "Save image"]]]]]
 
 /// Insertion connectors: a morph is a path, so the meaningful action is "insert here", and the
 /// connector is the only thing on the surface that draws a plus.
@@ -791,9 +801,19 @@ let view state dispatch = App.ThemedApp [
                     Html.div [prop.className "next-morph-cell next-morph-morph";prop.children [morphSlot state dispatch]]
                     Html.div [prop.className "next-morph-cell next-morph-to";prop.children [viewFace state dispatch 1 second "Morph to"]]
                     Html.div [prop.className "next-morph-cell next-morph-vid";prop.children [videoSlot state dispatch]]
+                    // A-1: the same insertion affordance before, between and after the pair, on
+                    // every width. Previously N=2 offered one connector and only under 1000 px,
+                    // so on a phone there was no way to add a face at either end, and on a
+                    // desktop no plus at all — "Add face" in the morph slot was the whole story.
+                    Html.div [prop.className "next-connector next-connector-lead";prop.children [
+                        Mui.iconButton [prop.className "next-connector-add";prop.ariaLabel "Add a face before Morph from";prop.disabled state.Busy
+                                        prop.onClick(fun _ -> dispatch(AddAt 0));iconButton.children (addIcon [])]]]
                     Html.div [prop.className "next-connector next-connector-stack";prop.children [
                         Mui.iconButton [prop.className "next-connector-add";prop.ariaLabel "Add a face between these two";prop.disabled state.Busy
-                                        prop.onClick(fun _ -> dispatch(AddAt 1));iconButton.children (addIcon [])]]]]]
+                                        prop.onClick(fun _ -> dispatch(AddAt 1));iconButton.children (addIcon [])]]]
+                    Html.div [prop.className "next-connector next-connector-trail";prop.children [
+                        Mui.iconButton [prop.className "next-connector-add";prop.ariaLabel "Add a face after Morph to";prop.disabled state.Busy
+                                        prop.onClick(fun _ -> dispatch(AddAt 2));iconButton.children (addIcon [])]]]]]
             | inputs ->
                 Html.div [prop.className "next-morph-content n3";prop.children [
                     Html.div [prop.className "next-faces-row";prop.custom("data-next-face-count",inputs.Length);prop.children (tilesWithConnectors state dispatch)]

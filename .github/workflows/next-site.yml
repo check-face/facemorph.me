@@ -24,12 +24,18 @@ jobs:
       - run: npm ci
       - name: Shipping runtime, media, privacy and input regressions
         run: node --test src/Next/video-worker.test.mjs src/Next/browser/route-priors.test.mjs src/Next/Assets/model-cache.test.mjs src/Next/browser/runtime.test.mjs src/Next/browser/mobile-runtime.test.mjs src/Next/browser/originals.test.mjs src/Next/browser/webgpu-engine.test.mjs src/Next/browser/canary-qualification.test.mjs src/Next/browser/acquisition-budget.test.mjs src/Next/browser/fused-resample.test.mjs src/Next/media.test.mjs src/Next/morph-frames.test.mjs src/Next/fresh-review.test.mjs src/Next/photo-selection.test.mjs src/Next/photo/crop-view.test.mjs src/Next/estimate.test.mjs src/Next/testing-link.test.mjs src/Next/route-choice.test.mjs src/Next/route-report.test.mjs src/Next/reporting.test.mjs src/Next/stage-labels.test.mjs src/Next/logging.test.mjs hosting/next-cloudflare/worker.test.mjs
+      - name: Compiled UI imports resolve against the hand-written bridges
+        run: node scripts/check-bridge-imports.mjs
       - name: Independent reviewed morph geometry
         run: node src/Next/geometry/verify.mjs
       - name: Build the actual new-site artifact
         run: npm run build:next
       - name: Exercise compiled project import and export
         run: node src/Next/verify-fable.mjs src/Next/ProjectJson.fs.js
+      # AGENTS.md, binding: no third-party CDN at runtime. The ffmpeg codec and the webfonts
+      # were both violating it, and the fonts also broke the offline-after-first-load claim.
+      - name: No third-party runtime dependencies
+        run: node scripts/check-no-third-party.mjs deploy-next
       - name: Record exact bytes for promotion
         run: |
           find deploy-next -type f -print0 | sort -z | xargs -0 sha256sum > next-site-SHA256SUMS
@@ -57,7 +63,7 @@ jobs:
     with:
       artifact_run: ${{ github.run_id }}
       artifact_name: next-site-${{ github.sha }}
-      runtime_sha: e14f2ce838b07a9af7aa4a1f22a7b2299d48d85fcb7bea174187556eddcad31d
+      runtime_sha: d9e37e50a436e9fb7c0c7f973e70adee353c808f48c6a51fa5a9186f1c650a5c
   compiled-ui:
     needs: artifact
     runs-on: ubuntu-24.04

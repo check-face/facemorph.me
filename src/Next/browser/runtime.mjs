@@ -5,7 +5,24 @@ import {inputLatent,requireLatent,generationIdentity} from './identity.mjs';
 const abortError=()=>new DOMException('Generation cancelled','AbortError');
 /** One foreground operation, one worker, explicit route qualification. */
 export function createBrowserRuntime({manifest: suppliedManifest, manifestSha256:suppliedManifestSha256, manifestUrl='/runtime/manifest.json',onProgress=()=>{},alignPhoto,preferredRoute='auto',workerFactory=()=>new Worker(new URL('./ort-worker.mjs',import.meta.url),{type:'module'}),stallMs=300000}={}){
- const failedRoutes=new Set();let interruptedRoute;try{const previous=JSON.parse(sessionStorage.getItem('checkface-runtime-active-v1')||'null');if(previous?.route){interruptedRoute=previous.route;failedRoutes.add(previous.route);}sessionStorage.removeItem('checkface-runtime-active-v1');}catch{}
+ const failedRoutes=new Set();let interruptedRoute;
+ // An interruption is not a device-check failure. A reclaimed tab, a reload, a phone backgrounding
+ // the page and a real crash all leave the same marker, and the WebGPU route is the most likely to
+ // collect one: biggest working set, longest session creation. Treating a single interruption as a
+ // permanent refusal for the page load silently removed exactly the route worth having — the
+ // operator's phone kept landing on CPU while an explicitly forced WebGPU run was fast. So one
+ // interruption earns a retry; two in a row within the session drop the route, and the drop is
+ // announced rather than swallowed. A route that qualifies clears its own count.
+ const INTERRUPT_KEY='checkface-runtime-interrupted-v1',INTERRUPT_LIMIT=2;
+ let interruptions={};try{interruptions=JSON.parse(sessionStorage.getItem(INTERRUPT_KEY)||'{}')||{};}catch{}
+ const saveInterruptions=()=>{try{sessionStorage.setItem(INTERRUPT_KEY,JSON.stringify(interruptions));}catch{}};
+ try{const previous=JSON.parse(sessionStorage.getItem('checkface-runtime-active-v1')||'null');
+  if(previous?.route){
+   interruptedRoute=previous.route;
+   interruptions[previous.route]=(interruptions[previous.route]||0)+1;saveInterruptions();
+   if(interruptions[previous.route]>=INTERRUPT_LIMIT)failedRoutes.add(previous.route);
+  }
+  sessionStorage.removeItem('checkface-runtime-active-v1');}catch{}
  const markerOwner=crypto.randomUUID();const mark=(stage,id)=>{try{sessionStorage.setItem('checkface-runtime-active-v1',JSON.stringify({owner:markerOwner,route,stage,id,at:Date.now()}));}catch{}};const unmark=()=>{try{const item=JSON.parse(sessionStorage.getItem('checkface-runtime-active-v1')||'null');if(item?.owner===markerOwner)sessionStorage.removeItem('checkface-runtime-active-v1');}catch{}};
  if(!['auto','cpu','webgl','webgpu'].includes(preferredRoute))throw Error('Invalid preferred inference route');
  let manifest=suppliedManifest,manifestHash=suppliedManifestSha256,worker,active,disposed=false,validated=false,encoderValidatedSha256,originals,route='cpu',qualificationPending=false;const pending=new Map();let sequence=0,synthesisRuns=0;
@@ -71,9 +88,14 @@ export function createBrowserRuntime({manifest: suppliedManifest, manifestSha256
   if(result.deviceValidated!==true)throw Error('The selected route did not pass its device correctness check.');
   validated=true;qualificationPending=result.partial===true;
   failedRoutes.delete(route);if(interruptedRoute===route)interruptedRoute=undefined;
+  if(interruptions[route]){delete interruptions[route];saveInterruptions();}
  }
  async function admit(progress,signal){
   const candidates=preferredRoute==='auto'?orderedRoutes():[preferredRoute];
+  // A route dropped before it is tried never reached `refused`, so the fallback was invisible:
+  // the caption named the admitted route and nothing said the faster one had been set aside.
+  for(const name of supportedRoutes())
+   if(!candidates.includes(name)&&interruptions[name]>=INTERRUPT_LIMIT)refused(progress,name,'interrupted');
   let lastError;
   for(const next of candidates){
    if(route!==next)stop();
