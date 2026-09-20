@@ -77,7 +77,9 @@ jobs:
           CHROME: ${{ steps.chrome.outputs.binary }}
         run: |
           set -euo pipefail
-          nvidia-smi --query-gpu=name,driver_version,memory.total --format=csv || echo 'nvidia-smi unavailable'
+          gpu="$(nvidia-smi --query-gpu=name,driver_version,memory.total --format=csv,noheader 2>/dev/null || echo 'nvidia-smi unavailable')"
+          echo "$gpu"
+          echo "GPU_BENCH_HOST_GPU=$gpu" >> "$GITHUB_ENV"
           "$CHROME" --headless=new --no-sandbox --enable-unsafe-webgpu \
             --enable-features=Vulkan --use-angle=vulkan --use-vulkan \
             --disable-dev-shm-usage --dump-dom about:blank >/dev/null

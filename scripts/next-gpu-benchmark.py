@@ -100,6 +100,11 @@ report = {
     'routeCaption': caption,
     'manifestSha256': q("(window.__FACEMORPH_BUNDLE||'')") or os.environ.get('RUNTIME_SHA', ''),
     'stages': q('window.__bench'),
+    # The browser's adapter block is deliberately vague (Chrome redacts vendor and device on
+    # many platforms), so the host's own view of the GPU travels with the row. A ledger entry
+    # that cannot name the hardware is not comparable to anything.
+    'hostGpu': os.environ.get('GPU_BENCH_HOST_GPU', '').strip(),
+    'runner': os.environ.get('RUNNER_NAME', ''),
     'scope': 'Self-hosted runner, headless Chrome with a real GPU, through the product UI. '
              'Not a physical-phone measurement and not a 31-case correctness qualification.',
     'finishedAt': time.time(),
