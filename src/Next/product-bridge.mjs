@@ -40,6 +40,12 @@ function progress(event){
  // again — and let "Face generated." land in the middle of a thirty-face run as though the job
  // were done. While a multi-unit job is running the bar tracks completed units and the terminal
  // per-unit stages stay silent; the sub-stage still speaks through its own line.
+ // What a face costs on this device is the synthesis, not the job wrapped around it. Timing the
+ // whole call made "On this device a face took 38 seconds" out of a run whose synthesis was
+ // 1,597 ms: the other 36 seconds were a gigabyte of encoder acquisition, alignment and a
+ // correctness pass, none of which repeat per face. The runtime already reports the real figure.
+ if(stage==='synthesis-complete'&&Number.isFinite(event.elapsedMs)&&event.elapsedMs>0)
+  (jobCounts.framesTotal>1?recordFrame:recordFace)(event.elapsedMs);
  const units=jobCounts.framesTotal>1?{done:jobCounts.framesDone,total:jobCounts.framesTotal}
             :jobCounts.facesTotal>1?{done:jobCounts.facesDone,total:jobCounts.facesTotal}:null;
  if(units&&UNIT_TERMINAL_STAGES.has(stage))return;
@@ -117,8 +123,8 @@ async function inputs(request){
   checked();const item=request.inputs[i];progress({stage:'face',face:item.id,text:`Face ${i+1} of ${request.inputs.length}`,loaded:i,total:request.inputs.length});
   let result;
   if(item.mode==='project'){result=faces.get(item.id);if(!result)throw Error('Open the saved project again to restore this face.');}
-  else if(item.mode==='photo'){if(!(item.file instanceof Blob))throw Error('Choose a photo for each photo input.');const began=now();result=await service.encodePhoto(item.file,{signal:active.signal});recordFace(now()-began);}
-  else {const began=now();result=await service.generate({mode:item.mode,value:item.value,signal:active.signal});if(!result.cached)recordFace(now()-began);}
+  else if(item.mode==='photo'){if(!(item.file instanceof Blob))throw Error('Choose a photo for each photo input.');result=await service.encodePhoto(item.file,{signal:active.signal});}
+  else {result=await service.generate({mode:item.mode,value:item.value,signal:active.signal});}
   jobCounts.facesDone=i+1;
   next.set(item.id,{...result,label:item.mode==='photo'?'Photo':item.value,source:{mode:item.mode,value:item.value,file:item.file}});
  }
@@ -146,6 +152,9 @@ async function admission(provider){
 // first Generate. It is deferred to idle so it never competes with first paint, and any real job
 // terminates it; every asset already committed stays on the device.
 function warmUp(){
+ // Before the warm-up writes anything, not after: a browser deciding whether ~1.4 GB may persist
+ // should be asked before it arrives, and the answer must be on record either way.
+ askForPersistentStorage();
  const begin=()=>{engine().then(local=>local.prefetch?.()).catch(()=>{});};
  if(typeof requestIdleCallback==='function')requestIdleCallback(begin,{timeout:5000});
  else setTimeout(begin,2000);
@@ -165,8 +174,8 @@ export async function execute(request){
    const service=await engine();
    let result;
    if(item.mode==='project'){result=faces.get(item.id);if(!result)throw Error('Open the saved project again to restore this face.');}
-   else if(item.mode==='photo'){if(!(item.file instanceof Blob))throw Error('Choose a photo for this face.');const began=now();result=await service.encodePhoto(item.file,{signal:active.signal});recordFace(now()-began);}
-   else {if(!String(item.value??'').length)throw Error('Type a name or seed first.');const began=now();result=await service.generate({mode:item.mode,value:item.value,signal:active.signal});if(!result.cached)recordFace(now()-began);}
+   else if(item.mode==='photo'){if(!(item.file instanceof Blob))throw Error('Choose a photo for this face.');result=await service.encodePhoto(item.file,{signal:active.signal});}
+   else {if(!String(item.value??'').length)throw Error('Type a name or seed first.');result=await service.generate({mode:item.mode,value:item.value,signal:active.signal});}
    checked();await register(item.id,result,item.mode==='photo'?'Photo':item.value);
    const current=faces.get(item.id);current.source={mode:item.mode,value:item.value,file:item.file};
    // A changed face invalidates the saved morph and its video, never the other faces.
@@ -188,9 +197,9 @@ export async function execute(request){
    }else for(const frame of path.frames()){
     checked();progress({stage:'morph',text:`Generating frame ${frame.index+1} of ${path.totalFrames}`,loaded:frame.index,total:path.totalFrames});
     const saved=frame.visitId?faces.get(frame.visitId):null;
-    const began=now();
+    // The frame's own cost is reported by the runtime as synthesis-complete and recorded in
+    // progress(); timing the call here would fold acquisition and storage into a per-frame figure.
     const output=saved||await runtime.synthesize({space:'w-plus',shape:[1,18,512],values:Float32Array.from(frame.values)},{signal:active.signal,persist:false});
-    if(!saved)recordFrame(now()-began);
     await writer.add(output.blob,frame.index);jobCounts.framesDone=frame.index+1;
    }
    progress({stage:'export',text:'Finishing your video…'});video=await writer.finish();writer=null;replaceUrl('video',video);
@@ -258,17 +267,32 @@ export function photoStage(name,run){
 // job — granted, and the browser stops treating ~1 GB of models as disposable. Whatever the
 // answer, the run records the truth (persisted flag, rounded megabytes) so a later
 // "Stored asset disappeared" report reads with its cause attached.
-let storageReported=false;
-function reportStorage(){
- if(storageReported)return;storageReported=true;
+let storageAsked=false,storageFacts=null;
+/**
+ * Ask for persistent storage, once, as early as possible — and remember the answer.
+ *
+ * This used to run at the first job, which is after the warm-up has already written hundreds of
+ * megabytes, and it recorded through a stage that is dropped unless a diagnostics run happens to
+ * be open. On the operator's Samsung nothing survived between sessions and no storage record ever
+ * reached the reports, so there was no way to tell a denied request from an evicted cache.
+ *
+ * Now the request goes out before the first byte is cached, which is also when a browser's
+ * heuristics are most likely to say yes, and the facts are held so the next run that opens a
+ * record can report them even if this one could not.
+ */
+function askForPersistentStorage(){
+ if(storageAsked)return;storageAsked=true;
  void Promise.resolve().then(async()=>{
   const {storageStatus}=await import('./Assets/model-cache.mjs');
   const status=await storageStatus({requestPersistence:true});
-  diagnostics.stage('storage',{persisted:status.persistence==='granted',
+  storageFacts={persisted:status.persistence==='granted',
    usageMb:Math.round((status.usage||0)/1048576)||undefined,
-   quotaMb:Math.round((status.quota||0)/1048576)||undefined});
+   quotaMb:Math.round((status.quota||0)/1048576)||undefined};
+  reportStorage();
  }).catch(()=>{});
 }
+/** Put the storage facts into the record, whenever a run is open to receive them. */
+function reportStorage(){if(storageFacts)diagnostics.stage('storage',storageFacts);}
 // Reported wrappers: the UI calls these instead of the raw photo modules, so preparation
 // failures land in the record with their stage attached.
 /**

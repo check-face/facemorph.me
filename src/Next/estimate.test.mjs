@@ -7,20 +7,25 @@ test('Face time is measured from real work only, and frames come from the shared
  // product-bridge reads its stage labels from stage-labels.mjs and its morph key from
  // morph-frames.mjs; inline both so the stripped harness defines the real implementations.
  const source=plain(await read('stage-labels.mjs'))+'\n'+plain(await read('morph-frames.mjs'))+'\n'+plain(await read('product-bridge.mjs'));
- let counter=0,slow=false;
- const service={setPreferredRoute(){},generate:async()=>{const at=Date.now();while(slow&&Date.now()-at<25);return {blob:new Blob(['i'],{type:'image/png'}),cached:false,latent:{space:'w-plus',shape:[18,512],values:new Float32Array(9216)},provenance:{bundleVersion:'t',manifestSha256:'0'.repeat(64),modelSha256:'m',noiseSha256:'n'}};}};
+ let counter=0,synthesisMs=0;
+ // The runtime reports what a face actually cost as `synthesis-complete`; the bridge records that
+ // rather than timing its own call, because the call also contains acquisition and storage. On the
+ // operator's phone those extras turned a 1,597 ms synthesis into "a face took 38 seconds".
+ const service={setPreferredRoute(){},onProgress:()=>{},generate:async()=>{
+  service.onProgress({stage:'synthesis-complete',elapsedMs:synthesisMs});
+  return {blob:new Blob(['i'],{type:'image/png'}),cached:false,latent:{space:'w-plus',shape:[18,512],values:new Float32Array(9216)},provenance:{bundleVersion:'t',manifestSha256:'0'.repeat(64),modelSha256:'m',noiseSha256:'n'}};}};
  const ctx=vm.createContext({Blob,Float32Array,AbortController,DOMException,TextDecoder,crypto:webcrypto,JSON,Map,Date,performance:{now:()=>Date.now()},
   URL:{createObjectURL:()=>'blob:'+ ++counter,revokeObjectURL(){}},
   fetch:async()=>({ok:true,arrayBuffer:async()=>new TextEncoder().encode(JSON.stringify({codec:{}})).buffer}),
-  createBrowserRuntime:()=>service,createDesktopRuntime:()=>service,decode:s=>({tag:0,fields:[JSON.parse(s)]}),encode:x=>({tag:0,fields:[JSON.stringify(x)]}),
+  createBrowserRuntime:options=>{service.onProgress=options.onProgress;return service;},createDesktopRuntime:options=>{service.onProgress=options.onProgress;return service;},decode:s=>({tag:0,fields:[JSON.parse(s)]}),encode:x=>({tag:0,fields:[JSON.stringify(x)]}),
   saveFile:async()=>'Saved',GEOMETRY_VERSION:'t',createLatentPath:o=>({totalFrames:o.framesPerSegment*o.controls.length,frames:()=>[]}),
   videoWriter:()=>({initialize:async()=>{},dispose(){}}),diagnostics:{start(){},stage(){},finish(){},bundle(){}},window:{addEventListener(){}}});
  vm.runInContext(source+'\nglobalThis.run=execute;globalThis.faceMs=measuredFaceMs;globalThis.frames=plannedFrames;',ctx);
  assert.equal(ctx.faceMs(),null,'no estimate before this device has produced a face');
  const request={jobId:1,action:'faces',provider:'auto',inputs:[{id:'a',mode:'seed',value:'1'},{id:'b',mode:'seed',value:'2'}],kind:'linear',width:0,pinch:false,frames:16,fps:16};
- slow=true;await ctx.run(request);
+ synthesisMs=638;await ctx.run(request);
  const measured=ctx.faceMs();
- assert(measured>0,'a real face produces a measurement');
+ assert.equal(measured,638,'the measurement is the synthesis the runtime reported, not the job around it');
  assert.equal(ctx.frames({...request}),32,'frames come from the same geometry the morph renders');
 });
 test('The estimator predicts only from measurement and speaks the slow-run warning, never a block',()=>{
