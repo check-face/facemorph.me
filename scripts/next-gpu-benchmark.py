@@ -79,7 +79,10 @@ for index in range(FACES):
     js("""(()=>{const i=[...document.querySelectorAll('input[type=text]')].find(x=>x.placeholder==='Just type anything');
       Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(i,'gpu-bench-%d-%d');
       i.dispatchEvent(new Event('input',{bubbles:true}));
-      [...document.querySelectorAll('button')].find(b=>b.textContent.trim()==='%s').click();})()"""
+      // MUI uppercases button labels in CSS, so textContent reads 'Generate' while the rendered
+      // label reads 'GENERATE'. Match case-insensitively rather than on either spelling.
+      const want='%s'.toLowerCase();
+      [...document.querySelectorAll('button')].find(b=>b.textContent.trim().toLowerCase()===want).click();})()"""
        % (index, int(time.time()), S['generate']))
     wait(lambda: q("document.querySelectorAll('img[src^=\"blob:\"]').length") > 0
          and not q("document.body.innerText.includes('Generating')"), 900, 'face %d' % index)
