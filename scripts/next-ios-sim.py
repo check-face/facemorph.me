@@ -15,7 +15,7 @@ response, so the bytes under test are the bytes that shipped apart from one appe
 
     python3 scripts/next-ios-sim.py --device 'iPhone 17 Pro' --evidence next-ios-evidence
 """
-import argparse, http.server, json, mimetypes, socketserver, subprocess, sys, threading, urllib.request
+import argparse, http.server, json, mimetypes, socketserver, subprocess, sys, threading, time, urllib.request
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -24,6 +24,7 @@ ORIGIN = 'https://next.facemorph.me'
 CAMPAIGN = """
 <script>
 (async () => {
+  const COLD = __COLD__;
   const report = {stages: [], errors: [], startedAt: Date.now()};
   const say = (k, v) => { report[k] = v; };
   addEventListener('error', e => report.errors.push(String(e.message || e)));
@@ -35,6 +36,15 @@ CAMPAIGN = """
       body: JSON.stringify(report)}); } catch (e) {}
   };
   try {
+    // A cold run clears this origin's storage from inside the page. Erasing the Simulator device
+    // instead leaves it unusable for minutes and the campaign never loads.
+    if (COLD) {
+      try {
+        for (const k of await caches.keys()) await caches.delete(k);
+        localStorage.clear(); sessionStorage.clear();
+        report.startedCold = true;
+      } catch (e) { report.errors.push('cold reset: ' + e.message); }
+    }
     const adapter = await navigator.gpu?.requestAdapter?.().catch(() => null);
     say('webgpu', adapter ? {
       maxStorageBufferBindingSize: adapter.limits.maxStorageBufferBindingSize,
@@ -101,6 +111,7 @@ def main():
     p.add_argument('--evidence', type=Path, default=ROOT / 'next-ios-evidence')
     p.add_argument('--port', type=int, default=8543)
     p.add_argument('--timeout', type=int, default=1200)
+    p.add_argument('--cold', action='store_true', help="Clear this origin's storage before measuring")
     a = p.parse_args()
     artifact = a.artifact.resolve()
     assert (artifact / 'index.html').exists(), f'No built artifact at {artifact}'
@@ -159,7 +170,8 @@ def main():
                 return
             if path in ('/', '/index.html'):
                 html = (artifact / 'index.html').read_text()
-                body = html.replace('</body>', CAMPAIGN + '</body>').encode()
+                campaign = CAMPAIGN.replace('__COLD__', 'true' if a.cold else 'false')
+                body = html.replace('</body>', campaign + '</body>').encode()
                 self.send_response(200); self._headers('text/html; charset=utf-8', len(body))
                 self.wfile.write(body); return
             super().do_GET()
@@ -202,8 +214,18 @@ def main():
         if match['state'] != 'Booted':
             boot = sim('boot', udid); assert boot.returncode == 0, boot.stderr
             assert sim('bootstatus', udid, '-b').returncode == 0
-        launch = sim('openurl', udid, url)
-        assert launch.returncode == 0, launch.stderr
+        # A freshly booted or erased device accepts `openurl` only once Safari and its URL
+        # handlers are actually up; before that it times out with NSPOSIXErrorDomain 60. Launching
+        # Safari first and retrying is the difference between a flaky lane and a usable one.
+        sim('launch', udid, 'com.apple.mobilesafari')
+        launch = None
+        for attempt in range(6):
+            launch = sim('openurl', udid, url)
+            if launch.returncode == 0:
+                break
+            time.sleep(10)
+            sim('launch', udid, 'com.apple.mobilesafari')
+        assert launch is not None and launch.returncode == 0, launch.stderr if launch else 'no attempt'
         print(json.dumps({'device': a.device, 'udid': udid, 'url': url}), flush=True)
         ready.wait(timeout=a.timeout)
         sim('io', udid, 'screenshot', str(a.evidence / 'screen.png'))

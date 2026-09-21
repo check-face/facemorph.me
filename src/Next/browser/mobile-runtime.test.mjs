@@ -6,7 +6,7 @@ const hash='0'.repeat(64);
 const manifest=()=>({schemaVersion:1,bundleVersion:'controller-test',modelSourceSha256:'model',noiseSha256:'noise',canaries:[{},{}],synthesis:{sha256:'s'},mapping:{sha256:'m'},average:{sha256:'a'},noise:[],webgpu:{},webgl:{}});
 const storage=()=>{const values=new Map();return {getItem:key=>values.get(key)??null,setItem:(key,value)=>values.set(key,String(value)),removeItem:key=>values.delete(key)};};
 function environment(t,agent='Android',gpu=true){
- for(const [key,value] of Object.entries({navigator:{userAgent:agent,...(gpu?{gpu:{}}:{}),hardwareConcurrency:8},OffscreenCanvas:class {},localStorage:storage(),sessionStorage:storage()})){
+ for(const [key,value] of Object.entries({navigator:{userAgent:agent,...(gpu?{gpu:{requestAdapter:async()=>({limits:{}})}}:{}),hardwareConcurrency:8},OffscreenCanvas:class {},localStorage:storage(),sessionStorage:storage()})){
   const old=Object.getOwnPropertyDescriptor(globalThis,key);
   Object.defineProperty(globalThis,key,{configurable:true,writable:true,value});
   t.after(()=>{if(old)Object.defineProperty(globalThis,key,old);else delete globalThis[key];});
@@ -130,27 +130,42 @@ test('warm-up runs in its own worker so a Generate never queues behind the downl
  assert.equal(created,2,'the inference worker is a second, separate worker');
 });
 
-test('a real operation terminates the warm-up instead of waiting for it',async t=>{
+test('a warm-up already downloading is terminated, not waited for',async t=>{
  environment(t);
- let terminated=0,release;
+ let terminated=0,started;
+ const reached=new Promise(resolve=>{started=resolve;});
  const factory=workerFactory();
  const r=runtime(t,{workerFactory:()=>{
   const worker=factory(),post=worker.postMessage;
   worker.terminate=()=>{terminated++;};
   worker.postMessage=function(message){
    // A warm-up that never answers, standing in for a download still in flight.
-   if(message.type==='prefetch'){release=()=>{};return;}
+   if(message.type==='prefetch'){started();return;}
    post.call(this,message);
   };
   return worker;}});
  const warming=r.prefetch();
- await Promise.resolve();
+ await reached; // the warm-up owns a worker before the real operation begins
  const face=await generate(r);
  assert.equal(face.provenance.route,'webgpu');
  assert.equal(terminated>0,true,'the stalled warm-up worker is terminated');
  // The waiting promise settles rather than hanging for the lifetime of the page.
  assert.equal((await warming).started,false);
- assert.equal(typeof release,'function');
+});
+
+// The warm-up awaits a manifest and a GPU adapter probe before it creates anything. A real
+// operation starting during that preamble cannot be cancelled by terminating a worker that does
+// not exist yet, so the warm-up re-checks and declines instead of running unsupervised.
+test('a warm-up still in its preamble never starts a worker at all',async t=>{
+ environment(t);
+ let created=0;
+ const factory=workerFactory();
+ const r=runtime(t,{workerFactory:()=>{created++;return factory();}});
+ const warming=r.prefetch(); // deliberately not awaited past its first tick
+ const face=await generate(r);
+ assert.equal(face.provenance.route,'webgpu');
+ assert.equal((await warming).started,false,'the warm-up stood down');
+ assert.equal(created,1,'only the inference worker was ever created');
 });
 
 test('warm-up declines only on an explicit data saver, never on an effectiveType reading',async t=>{
@@ -221,4 +236,29 @@ test('a route that qualifies forgets its interruption history',async t=>{
  assert.equal(JSON.parse(sessionStorage.getItem('checkface-runtime-interrupted-v1')||'{}').webgpu,undefined);
  interrupted('webgpu');
  assert.equal((await generate(runtime(t))).provenance.route,'webgpu','the count restarts from one');
+});
+
+// The iOS lane's first run caught this: Safari 26.5 in the Simulator exposes navigator.gpu and
+// returns null from requestAdapter(). The warm-up chose webgpu on the strength of the object
+// alone, pulled the whole 212 MB GPU bundle, failed admission for want of an adapter, and then
+// pulled the 158 MB CPU bundle — 330 MiB cached on a device that could only ever use 158.
+test('a GPU object that yields no adapter is not a WebGPU device',async t=>{
+ environment(t);
+ const nav=globalThis.navigator;
+ Object.defineProperty(globalThis,'navigator',{configurable:true,writable:true,
+  value:{...nav,gpu:{requestAdapter:async()=>null}}});
+ t.after(()=>{Object.defineProperty(globalThis,'navigator',{configurable:true,writable:true,value:nav});});
+ const seen=[];
+ const r=runtime(t,{workerFactory:workerFactory({onMessage:m=>seen.push(m)})});
+ assert.equal((await r.prefetch()).started,true);
+ assert.equal(seen[0].provider,'wasm','the warm-up must not download a GPU bundle it cannot use');
+ assert.equal((await generate(r)).provenance.route,'cpu');
+});
+
+test('a GPU object that yields an adapter still leads',async t=>{
+ environment(t);
+ const seen=[];
+ const r=runtime(t,{workerFactory:workerFactory({onMessage:m=>seen.push(m)})});
+ assert.equal((await r.prefetch()).started,true);
+ assert.equal(seen[0].provider,'webgpu');
 });

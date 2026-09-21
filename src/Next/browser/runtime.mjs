@@ -80,7 +80,23 @@ export function createBrowserRuntime({manifest: suppliedManifest, manifestSha256
  function remember(name,ms){try{const routes={...speeds(),[name]:ms};localStorage.setItem(SPEED_KEY,JSON.stringify({bundle:manifestHash,scope:'warm-synthesis-v1',routes}));}catch{}}
  // Only successful foreground synthesis after a prior run on this worker is measured.
  // Cold shader compilation, qualification, storage and downloads cannot become a speed verdict.
- function capability(){const base=capabilities();return {...base,webgpu:base.webgpu&&Boolean(manifest.webgpu),webgl:base.webgl&&Boolean(manifest.webgl)};}
+ // `navigator.gpu` existing is not the same as a GPU being available. iOS Safari 26.5 in the
+ // Simulator exposes the object and returns null from requestAdapter(), and the first run of the
+ // iOS lane caught what that costs: the warm-up chose webgpu, pulled the whole 212 MB GPU bundle,
+ // admission then failed for want of an adapter, and the 158 MB CPU bundle followed — 330 MiB
+ // cached on a device that could only ever use 158. Any device whose GPU object is a shell pays
+ // this, and eager loading makes it worse rather than better.
+ //
+ // So the adapter is probed once, for real, and the answer is remembered. Until it resolves the
+ // route is treated as offered, because the probe is fast and the priors are still the best guess
+ // available; once it answers, a shell GPU stops being a candidate at all.
+ let gpuAdapter;
+ async function probeGpu(){
+  if(gpuAdapter!==undefined)return gpuAdapter;
+  try{gpuAdapter=Boolean(await globalThis.navigator?.gpu?.requestAdapter());}catch{gpuAdapter=false;}
+  return gpuAdapter;
+ }
+ function capability(){const base=capabilities();return {...base,webgpu:base.webgpu&&gpuAdapter!==false&&Boolean(manifest.webgpu),webgl:base.webgl&&Boolean(manifest.webgl)};}
  function supportedRoutes(){const caps=capability();return ['cpu',...(caps.webgl?['webgl']:[]),...(caps.webgpu?['webgpu']:[])];}
  function orderedRoutes(){return rankedRoutes(capability(),supportedRoutes(),speeds(),failedRoutes);}
  function chooseRoute(){return orderedRoutes()[0];}
@@ -91,6 +107,7 @@ export function createBrowserRuntime({manifest: suppliedManifest, manifestSha256
   if(interruptions[route]){delete interruptions[route];saveInterruptions();}
  }
  async function admit(progress,signal){
+  if(capabilities().webgpu)await probeGpu();
   const candidates=preferredRoute==='auto'?orderedRoutes():[preferredRoute];
   // A route dropped before it is tried never reached `refused`, so the fallback was invisible:
   // the caption named the admitted route and nothing said the faster one had been set aside.
@@ -147,9 +164,15 @@ export function createBrowserRuntime({manifest: suppliedManifest, manifestSha256
   let own;
   try{
    await config();
+   // Probe before choosing what to download: this is exactly where guessing wrong costs 212 MB.
+   if(capabilities().webgpu)await probeGpu();
    const target=preferredRoute==='auto'?chooseRoute():preferredRoute;
    if(failedRoutes.has(target))return {started:false};
    if(warmingPhoto&&!manifest.encoderStream&&!manifest.landmarks)return {started:false};
+   // The preamble above awaits a manifest and an adapter probe, and a real operation can start
+   // during either. `stopPrefetch` only terminates a worker that already exists, so without this
+   // re-check the warm-up would create its worker *after* being cancelled and run unsupervised.
+   if(disposed||active||worker)return {started:false};
    own=workerFactory();prefetchWorker=own;
    const result=await new Promise((resolve,reject)=>{
     prefetchCancel=()=>reject(Error('Warm-up superseded.'));

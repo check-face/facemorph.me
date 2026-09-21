@@ -8,7 +8,7 @@ function harness({gpu=false,costs={},store=new Map()}={}){
  const admitted=[];
  const ctx=vm.createContext({Blob,Float32Array,AbortController,DOMException,crypto:webcrypto,console,setTimeout,clearTimeout,JSON,Date,
   localStorage:{getItem:k=>store.get(k),setItem:(k,v)=>store.set(k,v),removeItem:k=>store.delete(k)},
-  OffscreenCanvas:class{},navigator:{gpu:gpu?{}:undefined},
+  OffscreenCanvas:class{},navigator:{gpu:gpu?{requestAdapter:async()=>({limits:{}})}:undefined},
   openOriginals:async()=>({get:async()=>null,put:async()=>{},close(){}}),digest:async()=>'hash',
   generationIdentity:()=>({}),inputLatent:async()=>({identity:'seed'}),requireLatent:v=>v});
  return {ctx,admitted,costs};
