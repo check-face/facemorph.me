@@ -67,6 +67,10 @@ export const STAGE_LABELS = {
   // background canary failure) to this stage for the interface, which builds the sentence from
   // the rejected and current route names. The diagnostics record keeps the original stages.
   'route-rejected': 'This device rejected a graphics route.',
+  // Every route had failed at least once in this session. Rather than dead-end, the slate is
+  // cleared and the priors decide again; a genuinely broken route fails its canary again and
+  // is named again. Said plainly, because the visitor watched something fail a moment ago.
+  'routes-retried': 'Trying the graphics routes again from the start.',
   'codec-loading': 'Preparing video export…',
   // Generation.
   'synthesis': 'Generating…',

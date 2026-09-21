@@ -262,3 +262,91 @@ test('a GPU object that yields an adapter still leads',async t=>{
  assert.equal((await r.prefetch()).started,true);
  assert.equal(seen[0].provider,'webgpu');
 });
+
+// The operator's phone reached a state where every route had failed once, and the next face died
+// in 26 ms with "No local processing route remains available" before any worker started. A
+// failure is evidence about an attempt, not a permanent verdict on a route.
+test('a session that exhausted every route recovers on the next attempt',async t=>{
+ environment(t);
+ let failing=true;
+ const factory=workerFactory();
+ // A transient condition — a lost device, a stopped worker — knocks out every route in turn.
+ const r=runtime(t,{workerFactory:()=>{
+  const worker=factory(),post=worker.postMessage;let provider;
+  worker.postMessage=function(message){
+   if(message.type==='initialize')provider=message.provider;
+   if(message.type==='qualify'&&failing)
+    return queueMicrotask(()=>this.onmessage({data:{id:message.id,type:'error',
+     error:{name:'Error',message:'transient '+provider}}}));
+   post.call(this,message);
+  };
+  return worker;}});
+ // Exhausting every route inside one attempt is still a failure: something is wrong right now.
+ await assert.rejects(generate(r),/transient/);
+ // But the history must not poison the next attempt, which is what dead-ended the operator's
+ // phone at 26 ms with no worker started.
+ failing=false;
+ const seen=[];
+ const face=await r.generate({mode:'seed',value:'7'},{onProgress:e=>seen.push(e)});
+ assert.ok(face.provenance.route,'a face is produced rather than a dead end');
+ assert.ok(seen.some(e=>e.stage==='routes-retried'),'the retry is announced, not silent');
+});
+
+test('an explicitly selected route still fails rather than silently substituting',async t=>{
+ environment(t);
+ const r=runtime(t,{preferredRoute:'webgpu',workerFactory:workerFactory({admitted:false})});
+ await assert.rejects(generate(r),/correctness check/);
+});
+
+// The encoder correctness pass costs 20,920 ms on the operator's phone against 7,395 ms for the
+// real encode. It must run once per device per encoder build, not once per page load.
+const photoManifest=()=>({...manifest(),encoderStream:{sha256:'enc-1',phoneAdmitted:true},alignmentSha256:'align',landmarks:{sha256:'l'}});
+const alignedPhoto=async()=>({tensor:new Float32Array(196608),faceCount:1,didAlign:true,
+ alignmentWorkerTerminated:true,provenance:{preprocessingSha256:'align',facePolicy:'exactly-one-face-v1'}});
+
+function photoWorker(seen){
+ return ()=>({postMessage(message){seen.push(message);queueMicrotask(()=>{
+  const send=data=>this.onmessage?.({data:{id:message.id,...data}});
+  if(message.type==='qualify')return send({type:'complete',result:{deviceValidated:true}});
+  if(message.type==='encode-aligned')return send({type:'complete',result:{values:new Float32Array(9216),
+   encoderQualification:{passed:true,manifestSha256:'enc-1'}}});
+  if(message.type==='synthesize')return send({type:'complete',result:{blob:new Blob(['p'],{type:'image/png'}),
+   values:new Float32Array(9216),space:'w-plus',shape:[1,18,512]}});
+  send({type:'complete',result:{}});});},terminate(){}});
+}
+
+test('the encoder correctness pass is not repeated on a later page load',async t=>{
+ environment(t);
+ const first=[];
+ const a=createBrowserRuntime({manifest:photoManifest(),manifestSha256:hash,alignPhoto:alignedPhoto,workerFactory:photoWorker(first)});
+ await a.encodePhoto(new Blob(['x'],{type:'image/png'}));
+ assert.equal(first.find(m=>m.type==='encode-aligned').qualifiedEncoderSha256,undefined,
+  'the first device ever pays for the pass');
+ a.dispose();
+ // A fresh runtime is a fresh page load; the verdict must survive it.
+ const second=[];
+ const b=createBrowserRuntime({manifest:photoManifest(),manifestSha256:hash,alignPhoto:alignedPhoto,workerFactory:photoWorker(second)});
+ t.after(()=>b.dispose());
+ await b.encodePhoto(new Blob(['y'],{type:'image/png'}));
+ assert.equal(second.find(m=>m.type==='encode-aligned').qualifiedEncoderSha256,'enc-1',
+  'the second load reuses this device\'s recorded verdict');
+});
+
+test('a different encoder build qualifies again rather than trusting the old verdict',async t=>{
+ environment(t);
+ const first=[];
+ const a=createBrowserRuntime({manifest:photoManifest(),manifestSha256:hash,alignPhoto:alignedPhoto,workerFactory:photoWorker(first)});
+ await a.encodePhoto(new Blob(['x'],{type:'image/png'}));
+ a.dispose();
+ const changed={...photoManifest(),encoderStream:{sha256:'enc-2',phoneAdmitted:true}};
+ const second=[];
+ const b=createBrowserRuntime({manifest:changed,manifestSha256:hash,alignPhoto:alignedPhoto,
+  workerFactory:()=>{const w=photoWorker(second)();const post=w.postMessage;
+   w.postMessage=function(m){if(m.type==='encode-aligned'){second.push(m);return queueMicrotask(()=>this.onmessage({data:{id:m.id,type:'complete',
+    result:{values:new Float32Array(9216),encoderQualification:{passed:true,manifestSha256:'enc-2'}}}}));}post.call(this,m);};
+   return w;}});
+ t.after(()=>b.dispose());
+ await b.encodePhoto(new Blob(['y'],{type:'image/png'}));
+ assert.equal(second.find(m=>m.type==='encode-aligned').qualifiedEncoderSha256,undefined,
+  'a new encoder build is not covered by the old verdict');
+});
