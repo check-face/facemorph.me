@@ -461,7 +461,11 @@ let private setpointField (props:FieldProps) =
     let anchorEl = React.useRef None
     let (menuOpen, setMenuOpen) = React.useState false
     let modeMenuItem (kind:string) (icon:ReactElement) (text:string) =
-        Mui.menuItem [menuItem.selected (props.Item.mode=kind);prop.onClick(fun _ -> setMenuOpen false; props.OnMode kind)
+        // Choosing "Upload image" used to change the mode and stop, so the menu closed and nothing
+        // happened: the visitor had asked for a file picker and got an empty photo field. Picking
+        // a source that needs a file opens the picker in the same gesture.
+        Mui.menuItem [menuItem.selected (props.Item.mode=kind)
+                      prop.onClick(fun _ -> setMenuOpen false; props.OnMode kind; if kind="photo" then props.OnPick())
                       menuItem.children [Mui.listItemIcon [icon];Mui.listItemText text]]
     let endAdornment =
         match props.Item.mode with
@@ -600,6 +604,10 @@ let private tilesWithConnectors (state:State) dispatch =
     pairs @ [closing]
 
 // --- Morph controls, overflow, video and slider ---------------------------------------------
+
+/// Project import/export is withheld from the surface (operator, 21 September) until its shape
+/// is decided. Nothing else is removed, so restoring it is a one-line change.
+let private projectFilesVisible = false
 
 let private shapeOptions = ["pairwise-figure8","Figure eight";"pairwise-ellipse","Ellipse";"full-smooth-figure8","Smooth figure eight";"full-smooth-ellipse","Smooth ellipse";"linear","Classic linear"]
 let private lengthOptions = [8,"Length: short";16,"Length: standard";32,"Length: long"]
@@ -848,11 +856,15 @@ let view state dispatch = App.ThemedApp [
                 Mui.button [button.variant.text;prop.onClick(fun _ -> dispatch DismissError);button.children "Dismiss"]]]]]
         | None -> ()
         // Out of the primary action row: it protects a session, it is not a way to share.
-        Html.div [prop.className "next-actions next-project";prop.children [
-            Mui.button [button.variant.text;prop.disabled (state.Busy || state.Faces.Length<2);prop.onClick(fun _ -> dispatch Export);button.children "Export project"]
-            Html.label [prop.className "next-project-open";prop.children [
-                Html.span "Open project"
-                Html.input [prop.className "next-file-input";prop.type'.file;prop.accept ".json,.facemorph";prop.disabled state.Busy;prop.ariaLabel "Open project";prop.onChange(fun (e:Browser.Types.Event) -> dispatch(Import(firstFile e)))]]]]]
+        // Hidden 21 September (operator): project import and export stay out of the surface until
+        // we settle what they should be. Msg, handlers and ProjectJson are untouched, so this is
+        // one flag away from returning.
+        if projectFilesVisible then
+            Html.div [prop.className "next-actions next-project";prop.children [
+                Mui.button [button.variant.text;prop.disabled (state.Busy || state.Faces.Length<2);prop.onClick(fun _ -> dispatch Export);button.children "Export project"]
+                Html.label [prop.className "next-project-open";prop.children [
+                    Html.span "Open project"
+                    Html.input [prop.className "next-file-input";prop.type'.file;prop.accept ".json,.facemorph";prop.disabled state.Busy;prop.ariaLabel "Open project";prop.onChange(fun (e:Browser.Types.Event) -> dispatch(Import(firstFile e)))]]]]]
         // The explainer and FAQ are the page body (U-13): present in the DOM on load, below the
         // fold, without toggling anything.
         explainSection
@@ -906,6 +918,17 @@ let view state dispatch = App.ThemedApp [
                             Html.img [prop.src name.image;prop.alt "";prop.custom("loading","lazy");prop.width 200;prop.height 200];Html.span name.name]]]]
                 Mui.button [button.variant.text;prop.onClick(fun _ -> dispatch MoreNames);button.children "Show more"]
             ]]]]
-        Html.footer [prop.className "next-footer";prop.children [Html.a [prop.href "mailto:checkfaceml@gmail.com";prop.text "checkfaceml@gmail.com"]]]
+        // The classic footer, in the classic design language (App.fs `footer`): the same three
+        // lines and the same logo, because the candidate is the classic site extended, not a new
+        // visual system. The logo belongs at the bottom of the page, as it always has.
+        Html.footer [prop.className "next-footer";prop.children [
+            Html.div [prop.className "next-footer-inner";prop.children [
+                Html.div [prop.className "next-footer-text";prop.children [
+                    Html.p [Html.text "Contact: ";Mui.link [link.color.initial;prop.href ("mailto:"+contactEmail);prop.text contactEmail]]
+                    Html.p [Html.text "Source code: ";Mui.link [link.color.initial;prop.href ("https://github.com/"+githubRepo)
+                                                                prop.children [gitHubIcon [prop.style [style.fontSize (length.em 1.)]];Html.text (" "+githubRepo)]]]
+                    Html.p "If you find any bugs, please open an issue on GitHub."]]
+                Html.div [prop.className "next-footer-logo";prop.children [
+                    Mui.svgIcon [svgIcon.component' Logos.logo;prop.style [style.fontSize (length.rem 5)]]]]]]]]
     ]]
 ]

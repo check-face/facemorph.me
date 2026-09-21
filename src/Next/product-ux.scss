@@ -148,8 +148,11 @@
 .next-crop-zoom { display:flex; align-items:center; gap:.75rem; margin:1rem 0; }
 .next-crop-zoom input { flex:1; }
 .next-name-dialog { position:fixed; inset:0; z-index:1300; background:#0009; display:grid; place-items:center; padding:1rem; }
-.next-name-panel { max-width:900px; width:100%; max-height:90vh; overflow:auto; }
-.next-name-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(100px,1fr)); gap:.75rem; margin:1rem 0; }
+.next-name-panel { max-width:1100px; width:100%; max-height:90vh; overflow:auto; }
+// Faces at 100px were unreadable — classic showed names at 200px and you could actually tell the
+// faces apart, which is the entire point of browsing them. The floor rises with the viewport.
+.next-name-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:.75rem; margin:1rem 0; }
+@media (min-width: 700px) { .next-name-grid { grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); } }
 .next-name-choice { padding:0; overflow:hidden; border-radius:6px; }
 .next-name-choice img { width:100%; height:auto; display:block; }
 .next-name-choice span { display:block; padding:.35rem; }
@@ -204,3 +207,12 @@
 
 // R2-15: the failure-to-report tie. A quiet note line, never louder than the message above it.
 .next-error-reference { opacity:.8; font-size:.9rem; margin:.4rem 0 0; }
+
+// --- Footer: the classic arrangement, text left and logo right, stacking on a phone ----------
+.next-footer { margin-top:2.5rem; padding:1.5rem 1rem 2.5rem; border-top:1px solid rgba(128,128,128,.25); }
+.next-footer-inner { max-width:960px; margin:0 auto; display:flex; gap:1.5rem; align-items:center; justify-content:space-between; flex-wrap:wrap; }
+.next-footer-text p { margin:.25rem 0; }
+.next-footer-logo { display:flex; align-items:center; }
+@media (max-width: 640px) {
+    .next-footer-inner { flex-direction:column; align-items:center; text-align:center; }
+}

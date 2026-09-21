@@ -34,7 +34,21 @@ function progress(event){
  // on screen stands. Nothing is overwritten with a word that means nothing, and
  // stage-labels.test.mjs is what stops the second case ever shipping.
  if(text===null||text===undefined)return;
- listener({jobId:currentJob,stage,text,fraction:Number.isFinite(fraction)?fraction:0});}
+ // A job the visitor asked for has one honest measure of progress: how many of the things they
+ // asked for are finished. Reporting each stage's own fraction made the bar jump backwards at
+ // every face — a download is 0..1, then synthesis is 0..1, then the next face starts at 0
+ // again — and let "Face generated." land in the middle of a thirty-face run as though the job
+ // were done. While a multi-unit job is running the bar tracks completed units and the terminal
+ // per-unit stages stay silent; the sub-stage still speaks through its own line.
+ const units=jobCounts.framesTotal>1?{done:jobCounts.framesDone,total:jobCounts.framesTotal}
+            :jobCounts.facesTotal>1?{done:jobCounts.facesDone,total:jobCounts.facesTotal}:null;
+ if(units&&UNIT_TERMINAL_STAGES.has(stage))return;
+ const bar=units?units.done/units.total:(Number.isFinite(fraction)?fraction:0);
+ listener({jobId:currentJob,stage,text,fraction:bar});}
+// Stages that mean "this one unit finished". True, and useless mid-job: the visitor asked for
+// thirty faces, so one of them completing is not a status worth replacing the count with.
+const UNIT_TERMINAL_STAGES=new Set(['synthesis-complete','model-loaded','mapping-complete',
+ 'encoding-complete','alignment-complete','encoder-loaded','original-cached','original-cache-hit']);
 function canonicalProject(value){const decoded=decode(typeof value==='string'?value:JSON.stringify(value));if(decoded.tag!==0)throw Error('This project is invalid or uses an unsupported format.');const encoded=encode(decoded.fields[0]);if(encoded.tag!==0)throw Error('This project cannot be opened.');return JSON.parse(encoded.fields[0]);}
 async function engine(){
  if(runtime)return runtime;
