@@ -40,7 +40,10 @@ permissions:
   contents: read
 jobs:
   webgpu-benchmark:
-    runs-on: [self-hosted, truenas, gpu-gtx1050]
+    # gpu-vulkan, not gpu-gtx1050: the host runner has the same card but no NVIDIA Vulkan ICD,
+    # so Chrome there falls back to llvmpipe. Only the containerised runner, which carries the
+    # ICD, can answer this lane honestly.
+    runs-on: [self-hosted, truenas, gpu-vulkan]
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4

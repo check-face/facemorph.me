@@ -47,6 +47,16 @@ required = 134217728
 assert adapter['maxStorageBufferBindingSize'] >= required and adapter['maxBufferSize'] >= required, \
     'Adapter below the route binding floor: %r' % adapter
 
+# A software rasteriser satisfies every limit and answers every call, so limits alone cannot tell
+# a GPU from a CPU pretending to be one. TrueNAS ships the NVIDIA driver without its Vulkan ICD,
+# which left llvmpipe as the only Vulkan device on the box: the lane would have run, passed, and
+# recorded software timings in the ledger under a GPU heading. Chrome still enumerates llvmpipe
+# alongside a real adapter, so the name is checked on every run, not just on that machine.
+SOFTWARE = ('llvmpipe', 'swiftshader', 'softwarerasterizer', 'lavapipe', 'microsoft basic')
+identity = ' '.join(str(v) for v in (adapter.get('info') or {}).values()).lower()
+assert not any(name in identity for name in SOFTWARE), \
+    'This is a software adapter, not a GPU: %r. Check the Vulkan ICD.' % (adapter.get('info'),)
+
 # 2. Ask for WebGPU explicitly. Automatic selection is exercised by the CPU lane; here the point
 #    is to measure the GPU path, so a silent fallback must fail the run rather than be timed.
 js("""(()=>{const s=document.querySelector('%s');
