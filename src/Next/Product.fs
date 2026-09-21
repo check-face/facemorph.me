@@ -228,10 +228,16 @@ let update msg state =
             Cmd.OfPromise.either selectPhoto (createObj ["id" ==> id;"files" ==> oneFile file]) (fun result -> Photo(id,result)) (fun e -> PhotoError e.Message)
         | [] -> state,Cmd.none
     match msg with
-    | Edit(id,value) when not state.Busy ->
+    // A running job holds a snapshot of the inputs it was dispatched with, so editing the inputs
+    // afterwards cannot disturb it. Gating these on Busy silently swallowed the interaction
+    // instead: the operator uploaded a second photo while the first was encoding and nothing
+    // happened at all — no cleared tile, no crop window, no error — and had to re-upload and
+    // re-crop by hand. Choosing a photo, renaming a face, changing its source or removing a face
+    // other than the one in flight now always take effect, queueing where they must.
+    | Edit(id,value) ->
         invalidatePhotoSelections(); change id (fun item -> {item with value=if item.mode="seed" then value |> String.filter System.Char.IsDigit else value}), Cmd.none
-    | Mode(id,mode) when not state.Busy -> invalidatePhotoSelections(); change id (fun item -> {item with mode=mode;file=emptyFile}), Cmd.none
-    | PickPhoto(id,files) when not state.Busy -> state,Cmd.OfPromise.either selectPhoto (createObj ["id" ==> id;"files" ==> files]) (fun file -> Photo(id,file)) (fun e -> PhotoError e.Message)
+    | Mode(id,mode) -> invalidatePhotoSelections(); change id (fun item -> {item with mode=mode;file=emptyFile}), Cmd.none
+    | PickPhoto(id,files) -> state,Cmd.OfPromise.either selectPhoto (createObj ["id" ==> id;"files" ==> files]) (fun file -> Photo(id,file)) (fun e -> PhotoError e.Message)
     | Cropped(id,file) when not (isNull file) ->
         // CropAccept raised Busy itself ("Preparing your crop…"): by the time the rendered
         // crop lands, that flag is the crop's own, not a run's. Leaving it set made the
@@ -253,7 +259,7 @@ let update msg state =
         dequeue next
     // A photo the alignment route cannot take whole opens the crop step first; only the crop
     // is ever aligned. Cancelling leaves the existing face and its inputs alone.
-    | Photo(id,offer) when state.ActiveFace<>Some id && not (isNull offer) && isCropOffer offer ->
+    | Photo(id,offer) when not (isNull offer) && isCropOffer offer ->
         state.Crop |> Option.iter (fun previous -> revokeUrl previous.url)
         focusCropArea()
         {state with Error=None;Crop=Some {faceId=id;url=offer?url;file=offer?file;scale=offer?scale
@@ -287,20 +293,28 @@ let update msg state =
             let target=crop.faceId
             revokeUrl crop.url
             // Rendering the crop is real work: hold the controls until it lands, so nothing can
-            // be generated from the previous photo while the crop is still being prepared.
-            {state with Crop=None;Busy=true;Stage="cropping";Status="Preparing your crop…";Fraction=0.},
+            // be generated from the previous photo while the crop is still being prepared. When a
+            // real run is already in flight the crop must not take the status line from it —
+            // claiming Busy here would also make Cropped clear the run's own Busy flag.
+            {state with Crop=None
+                        Busy=true
+                        Stage=(if state.Busy then state.Stage else "cropping")
+                        Status=(if state.Busy then state.Status else "Preparing your crop…")
+                        Fraction=(if state.Busy then state.Fraction else 0.)},
             Cmd.OfPromise.either (fun () -> cropPhoto crop.file (cropRect crop.view) options) () (fun file -> Cropped(target,file)) (fun e -> PhotoError e.Message)
         | None -> state,Cmd.none
-    | Photo(id,file) when not state.Busy && not (isNull file) ->
-        // Direct accept (no crop needed): same eager-e4e rule as Cropped — the choice of
-        // photo IS the instruction to encode it. Busy here is impossible (guard above), but
-        // a multi-photo drop queues more selections; those faces encode as each lands.
-        let (next,nextCmd)=dequeue {change id (fun item -> {item with mode="photo";file=file;value=fileName file}) with Error=None;Status=""}
-        if next.PhotoQueue.Length>0 then next,nextCmd
+    | Photo(id,file) when not (isNull file) ->
+        // Direct accept (no crop needed): same eager-e4e rule as Cropped — the choice of photo IS
+        // the instruction to encode it. A run may well be in flight now that photo intents are no
+        // longer swallowed, so this queues exactly as the crop path does instead of dispatching a
+        // RunFace that the busy guard would drop on the floor.
+        let (next,nextCmd)=dequeue {change id (fun item -> {item with mode="photo";file=file;value=fileName file}) with Error=None;Status=(if state.Busy then state.Status else "")}
+        if next.Busy then {next with PendingFaces=next.PendingFaces@[id]},nextCmd
+        elif next.PhotoQueue.Length>0 then next,nextCmd
         else next,Cmd.batch [nextCmd;Cmd.ofMsg (RunFace id)]
     // A drop of one or more photos: the named tile (or the first empty face) takes the first,
     // and every further file creates its own face, in drop order.
-    | Photos(optId,files) when not state.Busy && not (isNull files) && fileListLength files>0 ->
+    | Photos(optId,files) when not (isNull files) && fileListLength files>0 ->
         invalidatePhotoSelections()
         let count=fileListLength files
         let mutable inputs=state.Inputs
@@ -321,11 +335,11 @@ let update msg state =
         let queue=[for i in 1..count-1 -> (targets.[i], fileAt files i)]
         {state with Inputs=inputs;PhotoQueue=queue;Error=None},
         Cmd.OfPromise.either selectPhoto (createObj ["id" ==> firstId;"files" ==> oneFile (fileAt files 0)]) (fun result -> Photo(firstId,result)) (fun e -> PhotoError e.Message)
-    | AddAt position when not state.Busy && state.Inputs.Length<64 ->
+    | AddAt position when state.Inputs.Length<64 ->
         let newFace={id="face-"+System.Guid.NewGuid().ToString("N");mode="text";value="";file=emptyFile}
         let (before,after)=state.Inputs |> List.indexed |> List.partition(fun (i,_) -> i<position)
         {state with Inputs=(before |> List.map snd) @ [newFace] @ (after |> List.map snd);NextId=state.NextId+1;VideoUrl=""},Cmd.none
-    | Remove id when not state.Busy && state.Inputs.Length>1 -> invalidatePhotoSelections(); {state with Inputs=state.Inputs |> List.filter(fun x -> x.id<>id);VideoUrl=""},Cmd.none
+    | Remove id when state.ActiveFace<>Some id && state.Inputs.Length>1 -> invalidatePhotoSelections(); {state with Inputs=state.Inputs |> List.filter(fun x -> x.id<>id);VideoUrl=""},Cmd.none
     | Kind value when not state.Busy -> {state with Kind=value;VideoUrl=""},Cmd.none
     | Frames value when not state.Busy -> {state with Frames=value;VideoUrl=""},Cmd.none
     | Provider value when not state.Busy -> {state with Provider=value},Cmd.none

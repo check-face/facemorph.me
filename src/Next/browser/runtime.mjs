@@ -51,7 +51,21 @@ export function createBrowserRuntime({manifest: suppliedManifest, manifestSha256
  // worker is still caught — just never blamed on being in the background.
  const hidden=()=>globalThis.document?.hidden===true;
  function send(type,payload={},progress,stall=stallMs){return new Promise((resolve,reject)=>{const id=++sequence;if(type!=='initialize'&&!payload.resume)mark(type,id);const task={resolve,reject,progress,operation:type};const timeout=()=>{if(hidden()){task.timer=setTimeout(timeout,stall);return;}stop(Error('Generation stopped responding. Your saved work is safe.'));};task.timer=setTimeout(timeout,stall);task.reset=()=>{clearTimeout(task.timer);task.timer=setTimeout(timeout,stall);};pending.set(id,task);try{worker.postMessage({id,type,...payload});}catch(error){clearTimeout(task.timer);pending.delete(id);reject(error);}});}
- async function start(progress){if(worker)return;await config();worker=workerFactory();worker.onmessage=({data})=>{const task=pending.get(data.id);if(!task)return;if(data.type==='progress'){task.reset();if(data.stage==='synthesis-complete'){synthesisRuns++;if(synthesisRuns>1&&['generate','synthesize'].includes(task.operation)&&Number.isFinite(data.elapsedMs)&&data.elapsedMs>0)task.synthesisMs=data.elapsedMs;}emit(data,task.progress);return;}clearTimeout(task.timer);pending.delete(data.id);unmark();if(data.type==='error'){if(task.operation==='encode-aligned'){encoderValidatedSha256=undefined;forgetEncoder();}validated=false;failedRoutes.add(route);const error=Object.assign(Error(data.error.message),{name:data.error.name,failedOperation:task.operation,correctnessFailure:data.error.correctnessFailure===true});stop(error);task.reject(error);}else{if(task.synthesisMs!==undefined)remember(route,task.synthesisMs);task.resolve(data.result);}};worker.onerror=()=>stop(Error('The local generation engine stopped.'));await send('initialize',{manifest,provider:route==='webgl'?'webgl2':route==='webgpu'?'webgpu':'wasm',manifestSha256:manifestHash,fullQualify:globalThis.__FACEMORPH_FULL_QUALIFY__===true,hostForcedQualify:globalThis.__FACEMORPH_FULL_QUALIFY__!==undefined,webdriver:globalThis.navigator?.webdriver===true,forceCanaryFail:globalThis.__FACEMORPH_FORCE_CANARY_FAIL__===true},progress);}
+ async function start(progress){if(worker)return;await config();worker=workerFactory();worker.onmessage=({data})=>{const task=pending.get(data.id);if(!task)return;if(data.type==='progress'){task.reset();if(data.stage==='synthesis-complete'){synthesisRuns++;if(synthesisRuns>1&&['generate','synthesize'].includes(task.operation)&&Number.isFinite(data.elapsedMs)&&data.elapsedMs>0)task.synthesisMs=data.elapsedMs;}emit(data,task.progress);return;}clearTimeout(task.timer);pending.delete(data.id);unmark();if(data.type==='error'){if(task.operation==='encode-aligned'){encoderValidatedSha256=undefined;forgetEncoder();}validated=false;failedRoutes.add(route);const error=Object.assign(Error(data.error.message),{name:data.error.name,failedOperation:task.operation,correctnessFailure:data.error.correctnessFailure===true});stop(error);task.reject(error);}else{if(task.synthesisMs!==undefined)remember(route,task.synthesisMs);task.resolve(data.result);}};worker.onerror=event=>{
+  // A worker that dies at startup is not a verdict on a route: the operator's phone burned
+  // webgpu, cpu and webgl in 257 ms — 154, 203 and 251 ms apart — which is far too fast for a
+  // canary, because a canary requires a synthesis. Every route was blamed for one engine that
+  // never started, and the run ended on "No local processing route remains available".
+  //
+  // The event's own detail is kept too. Reports said only "The local generation engine stopped",
+  // which names the symptom and nothing else; the message, file and line say what actually went
+  // wrong the next time this happens.
+  const detail=[event?.message,event?.filename&&event.filename.split('/').pop(),
+   Number.isFinite(event?.lineno)?'line '+event.lineno:null].filter(Boolean).join(' ');
+  const error=Object.assign(Error('The local generation engine stopped.'+(detail?' ('+detail+')':'')),
+   {engineStopped:true,workerDetail:detail||undefined});
+  stop(error);
+ };await send('initialize',{manifest,provider:route==='webgl'?'webgl2':route==='webgpu'?'webgpu':'wasm',manifestSha256:manifestHash,fullQualify:globalThis.__FACEMORPH_FULL_QUALIFY__===true,hostForcedQualify:globalThis.__FACEMORPH_FULL_QUALIFY__!==undefined,webdriver:globalThis.navigator?.webdriver===true,forceCanaryFail:globalThis.__FACEMORPH_FORCE_CANARY_FAIL__===true},progress);}
  // Acquisition warm-up. The first face on a cold device waits on roughly 200 MB, and none of
  // those bytes depend on which face is asked for, so they are fetched while the visitor is still
  // reading the page. It runs in a worker of its own: the inference worker's queue is strictly
@@ -170,6 +184,9 @@ export function createBrowserRuntime({manifest: suppliedManifest, manifestSha256
    }catch(error){
     if(signal.aborted)throw signal.reason;
     lastError=error;
+    // An engine that never started tells us nothing about this route, and trying the next one
+    // will meet the same wall. Report it once, honestly, instead of marking every route dead.
+    if(error.engineStopped){refused(progress,route,'engine-stopped');stop();throw error;}
     refused(progress,route,error.name==='NotSupportedError'?'unsupported':'canary-failed');
     failedRoutes.add(route);stop();
     // Explicit selection is a deliberate retry, never permission to silently substitute CPU.

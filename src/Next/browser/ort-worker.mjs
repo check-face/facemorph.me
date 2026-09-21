@@ -132,7 +132,19 @@ async function encodeStream(tensor,id,qualifiedEncoderSha256){
   const observerUrl=URL.createObjectURL(new Blob([`import factory from ${JSON.stringify(factoryUrl)};let ref;export default async function(config){const m=await factory(config);ref=new WeakRef(m);return m;}export function snapshot(){const buffer=ref?.deref()?.HEAPU8?.buffer;return {available:Boolean(buffer),shared:Object.prototype.toString.call(buffer)==='[object SharedArrayBuffer]',currentBytes:buffer?.byteLength};}`],{type:'text/javascript'}));urls.push(observerUrl);
   const observer=await import(/* webpackIgnore: true */ observerUrl),encoderOrt=await import(/* webpackIgnore: true */ apiUrl),executor=await import(/* webpackIgnore: true */ await verifiedModule(config.executor));encoderOrt.env.wasm.numThreads=1;encoderOrt.env.wasm.wasmPaths={mjs:observerUrl,wasm:wasmUrl};
   const execute=input=>executor.executeEncoderStream({ort:encoderOrt,manifest:config,tensor:input,acquireBytes:asset=>bytes(asset,id),snapshotMemory:observer.snapshot,onProgress:event=>report(id,event.stage,event)});
-  const encoderQualification=qualifiedEncoderSha256===descriptor.sha256?{passed:true,manifestSha256:descriptor.sha256,reusedRuntimeAdmission:true}:await qualifyEncoderReference({config,manifestSha256:descriptor.sha256,execute,acquireBytes:asset=>bytes(asset,id),onProgress:event=>report(id,event.stage,event)});
+  // Operator direction, 21 September: the product does not pay for expensive correctness passes.
+  // This one ran the whole 108-shard schedule against a pinned reference before touching a photo
+  // and cost 20,920 ms on the operator's Samsung against 7,395 ms for the real encode — the guard
+  // was 2.8x the work it guarded. The standing instruction is to assume an encoder that has been
+  // seen working on a device anywhere works everywhere, and to keep the verification in the labs.
+  //
+  // What this gives up, stated plainly: a device whose arithmetic is wrong here will now produce a
+  // wrong face from a photo instead of an error. `fullQualify` — set by the device lab and by CI —
+  // still runs the pass, so the check continues to exist where it is affordable.
+  const encoderQualification=
+   fullQualify?await qualifyEncoderReference({config,manifestSha256:descriptor.sha256,execute,acquireBytes:asset=>bytes(asset,id),onProgress:event=>report(id,event.stage,event)})
+   :qualifiedEncoderSha256===descriptor.sha256?{passed:true,manifestSha256:descriptor.sha256,reusedRuntimeAdmission:true}
+   :{passed:true,manifestSha256:descriptor.sha256,verifiedOnThisDevice:false,scope:'Encoder correctness is verified in the device lab, not per device (operator direction, 21 September)'};
   const result=await execute(tensor);result.encoderQualification=encoderQualification;
   requireLatent(result.values);const totals=result.encoderStats.steps.reduce((a,s)=>({acquireMs:a.acquireMs+s.acquireMs,createMs:a.createMs+s.createMs,runMs:a.runMs+s.runMs}),{acquireMs:0,createMs:0,runMs:0});report(id,'encoder-loaded',{elapsedMs:totals.createMs,scope:'Sum of108 sequential ORT session creations',acquisitionMs:totals.acquireMs});report(id,'encoding-complete',{elapsedMs:totals.runMs,scope:'Sum of108 session inference calls',totalWallMs:performance.now()-started});return result;
  }finally{for(const url of urls)URL.revokeObjectURL(url);}

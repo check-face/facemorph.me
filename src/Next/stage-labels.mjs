@@ -71,6 +71,10 @@ export const STAGE_LABELS = {
   // cleared and the priors decide again; a genuinely broken route fails its canary again and
   // is named again. Said plainly, because the visitor watched something fail a moment ago.
   'routes-retried': 'Trying the graphics routes again from the start.',
+  // The route bridge renames any non-admitted outcome to route-rejected, so this label is
+  // only reached through the diagnostics vocabulary; the interface says what went wrong
+  // through the error box, which carries the worker's own message.
+  'engine-stopped': 'The local generation engine stopped before it could start.',
   'codec-loading': 'Preparing video export…',
   // Generation.
   'synthesis': 'Generating…',

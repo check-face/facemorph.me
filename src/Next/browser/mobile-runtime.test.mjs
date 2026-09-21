@@ -350,3 +350,22 @@ test('a different encoder build qualifies again rather than trusting the old ver
  assert.equal(second.find(m=>m.type==='encode-aligned').qualifiedEncoderSha256,undefined,
   'a new encoder build is not covered by the old verdict');
 });
+
+// The operator's phone reported webgpu, cpu and webgl all "canary-failed" 154, 203 and 251 ms
+// apart — far too fast for a canary, which requires a synthesis. One engine that never started
+// was blamed on three routes, and the run ended on "No local processing route remains available".
+test('an engine that never starts is reported once, not blamed on every route',async t=>{
+ environment(t);
+ const refused=[];
+ const r=runtime(t,{workerFactory:()=>({postMessage(){queueMicrotask(()=>this.onerror?.({message:'out of memory',filename:'https://x/ort-worker.mjs',lineno:42}));},terminate(){}}),
+  onProgress:e=>{if(e.stage==='route-admitted')refused.push(e.routeOutcome);}});
+ await assert.rejects(generate(r),/local generation engine stopped/);
+ assert.deepEqual(refused,['engine-stopped'],'one honest report, not one per route');
+ assert.equal(r.status().route,'webgpu','no route was marked dead for an engine fault');
+});
+
+test('the worker error detail travels with the message', async t=>{
+ environment(t);
+ const r=runtime(t,{workerFactory:()=>({postMessage(){queueMicrotask(()=>this.onerror?.({message:'out of memory',filename:'https://x/ort-worker.mjs',lineno:42}));},terminate(){}})});
+ await assert.rejects(generate(r),/out of memory.*ort-worker\.mjs.*line 42/);
+});
