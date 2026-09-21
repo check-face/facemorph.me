@@ -11,6 +11,6 @@ const env={...process.env,FACEMORPH_BUILD_ID:'next-'+hash.digest('hex').slice(0,
 // side still exports that name; webpack only warns, then bundles `undefined`. That is how the
 // whole photo path shipped dead. The check runs between fable and webpack, so a rename fails
 // the build instead of the user's first tap.
-for(const [command,args] of [['dotnet',['tool','restore']],['dotnet',['fable','./src']],[process.execPath,[path.join(__dirname,'check-bridge-imports.mjs')]],[process.execPath,[require.resolve('webpack-cli/bin/cli.js'),'--config','webpack.config.js']]]){
+for(const [command,args] of [['dotnet',['tool','restore']],['dotnet',['fable','./src']],[process.execPath,[path.join(__dirname,'check-bridge-imports.mjs')]],[process.execPath,[path.join(__dirname,'check-progress-copy.mjs')]],[process.execPath,[require.resolve('webpack-cli/bin/cli.js'),'--config','webpack.config.js']]]){
  const result=spawnSync(command,args,{cwd:root,env,stdio:'inherit'});if(result.error)throw result.error;if(result.status!==0)process.exit(result.status||1);
 }

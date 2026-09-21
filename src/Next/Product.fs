@@ -120,6 +120,11 @@ let revokeUrl (url: string): unit = jsNative
 // overlaps choosing and cropping instead of following them (AGENTS.md, Performance Philosophy).
 [<Import("warmPhotoTools", "./product-bridge.mjs")>]
 let warmPhotoTools (): unit = jsNative
+/// The exact sentence align-photo.mjs raises when a photo holds more than one face. Pinned by
+/// `photo-selection.test.mjs` so the two cannot drift apart silently.
+[<Import("MULTIPLE_FACES_MESSAGE", "./photo/align-photo.mjs")>]
+let multipleFacesMessage : string = jsNative
+
 [<Import("photoFiles", "./photo-selection.mjs")>]
 let photoFiles (event: obj): obj = jsNative
 [<Import("selectPhotoReported", "./product-bridge.mjs")>]
@@ -397,6 +402,14 @@ let update msg state =
         let pendingRun=match next.PendingFaces with | head::_ -> Cmd.ofMsg (RunFace head) | [] -> Cmd.none
         let sliderCmd=if result.videoUrl<>"" && state.UseSlider then Cmd.OfPromise.either sliderFrames () SliderLoaded (fun _ -> SliderLoaded null) else Cmd.none
         drained,Cmd.batch [sliderCmd;pendingRun]
+    // More than one face in the photo is not a failure, it is a crop the visitor has not made
+    // yet. Alignment only ever aligns the crop, so offering the crop window is both the fix and
+    // the next step — telling them to "choose a clear photo containing exactly one face" made
+    // them go and find a different photo instead.
+    | Failed(id,message) when id=state.JobId && message=multipleFacesMessage && state.ActiveFace.IsSome ->
+        let face=state.ActiveFace.Value
+        {state with Busy=false;Error=None;Status="Crop to one face to continue.";Stage="idle";Fraction=0.;Warn=None;Remaining="";ActiveFace=None},
+        Cmd.ofMsg (RequestCrop face)
     | Failed(id,message) when id=state.JobId ->
         let next={state with Busy=false;Error=Some message;Status="";Stage="error";Fraction=0.;Warn=None;Remaining="";ActiveFace=None}
         // A failed run still drains queued faces: the second face was cropped on purpose.
@@ -583,7 +596,7 @@ let viewFace (state:State) dispatch (index:int) (item:Input) (label:string) =
             // never removable, so a morph always has something to morph from.
             if state.Inputs.Length>1 then
                 Mui.tooltip [tooltip.title (sprintf "Remove %s" label);tooltip.children (
-                    Mui.iconButton [prop.className "next-face-close";prop.ariaLabel (sprintf "Remove %s" label);prop.disabled state.Busy
+                    Mui.iconButton [prop.className "next-face-close";prop.ariaLabel (sprintf "Remove %s" label);prop.disabled (state.ActiveFace=Some item.id)
                                     iconButton.size.small;iconButton.children (closeIcon []);prop.onClick(fun _ -> dispatch(Remove item.id))])]]]
         setpointField {Item=item;Label=label;Disabled=false
                        OnEdit=(fun value -> dispatch(Edit(item.id,value)));OnMode=(fun mode -> dispatch(Mode(item.id,mode)))
@@ -621,7 +634,7 @@ let viewFace (state:State) dispatch (index:int) (item:Input) (label:string) =
 /// connector is the only thing on the surface that draws a plus.
 let connector (state:State) dispatch (position:int) (label:string) =
     Html.div [prop.className "next-connector";prop.children [
-        Mui.iconButton [prop.className "next-connector-add";prop.ariaLabel label;prop.disabled state.Busy
+        Mui.iconButton [prop.className "next-connector-add";prop.ariaLabel label
                         prop.onClick(fun _ -> dispatch(AddAt position));iconButton.children (addIcon [])]]]
 
 let private faceLabel (index:int) (item:Input) =
@@ -681,7 +694,7 @@ let private morphSlot (state:State) dispatch =
             Mui.button [button.variant.text;prop.disabled (state.Busy || not canMorph)
                         prop.custom("aria-expanded",state.Overflow);prop.custom("aria-controls","next-overflow")
                         prop.onClick(fun _ -> dispatch(OverflowToggle(not state.Overflow)));button.children "More options"]
-            Mui.button [button.variant.text;button.disabled (not canMorph || state.Busy || state.Inputs.Length>=64)
+            Mui.button [button.variant.text;button.disabled (not canMorph || state.Inputs.Length>=64)
                         prop.onClick(fun _ -> dispatch(AddAt state.Inputs.Length));button.children "Add face"]
             if state.Busy then Mui.button [button.variant.text;button.disabled (state.Stage="cancelling");prop.onClick(fun _ -> dispatch Cancel);button.children "Cancel"]]]
         if not canMorph then Html.p [prop.className "next-morph-reason";prop.custom("role","note");prop.text "Add a second face to create a morph — a single face still generates."]
@@ -746,12 +759,16 @@ let private videoSlot (state:State) dispatch =
         | true,Some frames -> nextSlider frames videoDim
         | true,None -> Html.p [prop.className "next-slider-empty";prop.custom("role","note");prop.text "This morph's frames are not saved on this device yet, so the slider has nothing to scrub. Generate the morph again once frame storage is on."]
         | _ -> Html.none
+    // Classic shows one result at a time: the slider REPLACES the video and the video replaces the
+    // slider. Rendering both stacked them, so a morph appeared twice down the page.
+    let showSlider = state.UseSlider
     let videoChildren = [
-        yield Html.video ([prop.src state.VideoUrl;prop.controls true;prop.loop true;prop.custom("playsInline",true)
-                           prop.ariaLabel "Your morph";prop.className "next-video"]
-                          @ (poster |> Option.map prop.poster |> Option.toList))
+        if not showSlider then
+            yield Html.video ([prop.src state.VideoUrl;prop.controls true;prop.loop true;prop.custom("playsInline",true)
+                               prop.ariaLabel "Your morph";prop.className "next-video"]
+                              @ (poster |> Option.map prop.poster |> Option.toList))
         yield Mui.formControlLabel [formControlLabel.control (Mui.checkbox [checkbox.checked' state.UseSlider;checkbox.onChange(UseSliderToggle >> dispatch)]);formControlLabel.label "Use Slider"]
-        yield sliderChoice
+        if showSlider then yield sliderChoice
         yield Html.div [prop.className "next-actions";prop.children [
             Mui.button [button.variant.text;prop.onClick(fun _ -> dispatch(Share "video"));button.children "Share morph"]
             Mui.button [button.variant.text;prop.onClick(fun _ -> dispatch(Save "video"));button.children "Save video"]]]
@@ -849,13 +866,13 @@ let view state dispatch = App.ThemedApp [
                     // so on a phone there was no way to add a face at either end, and on a
                     // desktop no plus at all — "Add face" in the morph slot was the whole story.
                     Html.div [prop.className "next-connector next-connector-lead";prop.children [
-                        Mui.iconButton [prop.className "next-connector-add";prop.ariaLabel "Add a face before Morph from";prop.disabled state.Busy
+                        Mui.iconButton [prop.className "next-connector-add";prop.ariaLabel "Add a face before Morph from"
                                         prop.onClick(fun _ -> dispatch(AddAt 0));iconButton.children (addIcon [])]]]
                     Html.div [prop.className "next-connector next-connector-stack";prop.children [
-                        Mui.iconButton [prop.className "next-connector-add";prop.ariaLabel "Add a face between these two";prop.disabled state.Busy
+                        Mui.iconButton [prop.className "next-connector-add";prop.ariaLabel "Add a face between these two"
                                         prop.onClick(fun _ -> dispatch(AddAt 1));iconButton.children (addIcon [])]]]
                     Html.div [prop.className "next-connector next-connector-trail";prop.children [
-                        Mui.iconButton [prop.className "next-connector-add";prop.ariaLabel "Add a face after Morph to";prop.disabled state.Busy
+                        Mui.iconButton [prop.className "next-connector-add";prop.ariaLabel "Add a face after Morph to"
                                         prop.onClick(fun _ -> dispatch(AddAt 2));iconButton.children (addIcon [])]]]]]
             | inputs ->
                 Html.div [prop.className "next-morph-content n3";prop.children [

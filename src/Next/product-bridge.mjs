@@ -17,6 +17,7 @@ let listener=()=>{},runtime,manifest,active,writer,currentJob=0,project=null,vid
 const faces=new Map(),urls=new Map();
 function progress(event){
  const stage=event.stage||'working';lastStage=stage;
+ reportStorage();
  const loaded=loadedBytes(event),fraction=event.total>0&&Number.isFinite(loaded)?loaded/event.total:0;
  // Byte ticks inside one asset are for the bar, not for the collector: at a megabyte apiece
  // they would turn a cold load into hundreds of POSTs and tell the ledger nothing new.
@@ -48,11 +49,21 @@ function progress(event){
   (jobCounts.framesTotal>1?recordFrame:recordFace)(event.elapsedMs);
  const units=jobCounts.framesTotal>1?{done:jobCounts.framesDone,total:jobCounts.framesTotal}
             :jobCounts.facesTotal>1?{done:jobCounts.facesDone,total:jobCounts.facesTotal}:null;
+ // Operator direction, 21 September, and this is a release gate: while a morph is rendering the
+ // line is an incrementing integer and nothing else. It used to flicker between "Generating…",
+ // "Encoding your photo…" (during a morph, where no photo exists) and "Face generated." — three
+ // values per frame where there should be one. Every stage but the frame counter and the export
+ // is silent for the duration; the phases still reach the diagnostics record above.
+ if(jobCounts.framesTotal>1&&!MORPH_SPOKEN_STAGES.has(stage))return;
  if(units&&UNIT_TERMINAL_STAGES.has(stage))return;
  const bar=units?units.done/units.total:(Number.isFinite(fraction)?fraction:0);
  listener({jobId:currentJob,stage,text,fraction:bar});}
 // Stages that mean "this one unit finished". True, and useless mid-job: the visitor asked for
 // thirty faces, so one of them completing is not a status worth replacing the count with.
+// The only stages allowed to speak while a morph renders: the frame counter, and the export that
+// follows it. `scripts/check-progress-copy.mjs` fails the build if anything else can reach the
+// line, and `stage-labels.test.mjs` fails if these lose their text.
+const MORPH_SPOKEN_STAGES=new Set(['morph','export']);
 const UNIT_TERMINAL_STAGES=new Set(['synthesis-complete','model-loaded','mapping-complete',
  'encoding-complete','alignment-complete','encoder-loaded','original-cached','original-cache-hit']);
 function canonicalProject(value){const decoded=decode(typeof value==='string'?value:JSON.stringify(value));if(decoded.tag!==0)throw Error('This project is invalid or uses an unsupported format.');const encoded=encode(decoded.fields[0]);if(encoded.tag!==0)throw Error('This project cannot be opened.');return JSON.parse(encoded.fields[0]);}
@@ -192,10 +203,12 @@ export async function execute(request){
    writer=videoWriter({codec:manifest.codec,fps:project.morph.framesPerSecond,signal:active.signal,onProgress:progress,framesKey,totalFrames:path.totalFrames});await writer.initialize();
    if(stored&&stored.length===path.totalFrames){
     // R2-13: the whole morph is already on this device — encode only, no synthesis at all.
-    progress({stage:'morph',text:`Frames already saved on this device — encoding your video…`,loaded:0,total:path.totalFrames});
+    // Every frame was already on the device, so the counter starts finished rather than saying a
+    // different thing in different words. The export stage speaks next.
+    progress({stage:'morph',text:`Generating ${path.totalFrames} / ${path.totalFrames} images`,loaded:path.totalFrames,total:path.totalFrames});
     for(const frame of path.frames()){checked();await writer.add(stored[frame.index],frame.index);jobCounts.framesDone=frame.index+1;}
    }else for(const frame of path.frames()){
-    checked();progress({stage:'morph',text:`Generating frame ${frame.index+1} of ${path.totalFrames}`,loaded:frame.index,total:path.totalFrames});
+    checked();progress({stage:'morph',text:`Generating ${frame.index+1} / ${path.totalFrames} images`,loaded:frame.index,total:path.totalFrames});
     const saved=frame.visitId?faces.get(frame.visitId):null;
     // The frame's own cost is reported by the runtime as synthesis-complete and recorded in
     // progress(); timing the call here would fold acquisition and storage into a per-frame figure.
@@ -291,8 +304,21 @@ function askForPersistentStorage(){
   reportStorage();
  }).catch(()=>{});
 }
-/** Put the storage facts into the record, whenever a run is open to receive them. */
-function reportStorage(){if(storageFacts)diagnostics.stage('storage',storageFacts);}
+/**
+ * Put the storage facts into the record at the first opportunity a run gives us.
+ *
+ * `diagnostics.stage('storage')` is dropped unless a run is open, and the facts resolve
+ * asynchronously — so reporting only at job start lost them whenever the persist() answer had not
+ * landed yet, and nothing retried. Three rounds of the operator's reports contained no storage
+ * record at all, which left a denied request and an evicted cache indistinguishable. This retries
+ * on every stage until one sticks, which costs one boolean per stage and settles the question.
+ */
+let storageReported=false;
+function reportStorage(){
+ if(storageReported||!storageFacts)return;
+ diagnostics.stage('storage',storageFacts);
+ if(diagnostics.status?.().enabled)storageReported=true;
+}
 // Reported wrappers: the UI calls these instead of the raw photo modules, so preparation
 // failures land in the record with their stage attached.
 /**

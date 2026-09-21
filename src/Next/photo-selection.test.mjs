@@ -1,4 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
 import {selectPhoto,photoFiles,invalidatePhotoSelections,dragPhoto,namesKey} from './photo-selection.mjs';
 /** Stands in for the browser's bounded decode so the crop route can be exercised here. */
 function withDecoder(run,{width=4000,height=3000}={}){
@@ -45,3 +46,19 @@ test('a photo beyond the pre-decode bound is refused without decoding it',async(
  });}finally{globalThis.Image=old;}
 });
 test('names dialog Tab wraps in both directions',()=>{const old=globalThis.document;let focus='';const first={focus(){focus='first'}},last={focus(){focus='last'}};globalThis.document={activeElement:last};let prevented=0;const e={key:'Tab',shiftKey:false,preventDefault(){prevented++},currentTarget:{querySelectorAll(){return[first,last]}}};try{namesKey(e,()=>{});assert.equal(focus,'first');document.activeElement=first;e.shiftKey=true;namesKey(e,()=>{});assert.equal(focus,'last');assert.equal(prevented,2);}finally{globalThis.document=old;}});
+
+// More than one face is a crop the visitor has not made yet, not a failure. Product.fs matches on
+// this exact sentence to open the crop window instead of showing an error, so the two must not
+// drift apart.
+test('the multiple-faces sentence is shared, not duplicated', async () => {
+  const {MULTIPLE_FACES_MESSAGE} = await import('./photo/align-photo.mjs');
+  assert.equal(typeof MULTIPLE_FACES_MESSAGE, 'string');
+  assert.ok(MULTIPLE_FACES_MESSAGE.length > 10);
+  const source = await readFile(new URL('./photo/align-photo.mjs', import.meta.url), 'utf8');
+  const raised = [...source.matchAll(/fail\(Error\(([^)]*)\)\)/g)].map(m => m[1].trim());
+  assert.ok(raised.includes('MULTIPLE_FACES_MESSAGE'),
+    'the constant is what gets raised, not a copy of its text');
+  const product = await readFile(new URL('./Product.fs', import.meta.url), 'utf8');
+  assert.ok(/message=multipleFacesMessage/.test(product),
+    'Product.fs compares against the imported constant rather than a literal');
+});
