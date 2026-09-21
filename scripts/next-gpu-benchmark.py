@@ -23,6 +23,29 @@ def q(expression):
     return js('(%s)' % expression)
 
 
+def dump(name):
+    """Whatever the page can still tell us, written next to the run.
+
+    A benchmark that fails with nothing but 'timed out' costs a whole cycle to learn anything
+    from. The stage log, the status line and the cache state are what distinguish a slow cold
+    download from a route that never started."""
+    try:
+        state = q("""(async()=>{const c=await caches.open('checkface-model-blobs-v1').catch(()=>null);
+          const keys=c?await c.keys():[];let b=0;
+          for(const r of keys){const m=await c.match(r);const l=m?.headers.get('Content-Length');if(l)b+=Number(l);}
+          return {cachedAssets:keys.length,cachedMiB:Math.round(b/1048576),
+            status:document.body.innerText.slice(0,1200),
+            stages:window.__bench||[],
+            routeCaption:document.querySelector('.next-route-caption')?.innerText||'',
+            speeds:localStorage.getItem('facemorph-route-speed-v2')};})()""")
+    except Exception as error:
+        state = {'dumpFailed': str(error)}
+    with open(os.path.join(EVIDENCE, name), 'w') as handle:
+        json.dump(state, handle, indent=2)
+    print(json.dumps({'diagnostic': name, 'cachedMiB': (state or {}).get('cachedMiB'),
+                      'stages': (state or {}).get('stages')})[:1500])
+
+
 def wait(check, seconds, what):
     deadline = time.time() + seconds
     while time.time() < deadline:
@@ -30,6 +53,7 @@ def wait(check, seconds, what):
         if value:
             return value
         time.sleep(1)
+    dump('failure-state.json')
     raise AssertionError('Timed out waiting for ' + what)
 
 
