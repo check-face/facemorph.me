@@ -1,5 +1,5 @@
 // An allowlist, not arbitrary error/string serialization. No pre-consent backlog.
-const allowedStages=new Set(['asset-acquisition','runtime-loading','model-loading','model-loaded','mapping-loading','mapping','canary','synthesis','synthesis-complete','alignment','alignment-complete','encoder-loading','encoder-loaded','encoder-correctness-check','encoder-correctness-complete','encoding','encoding-complete','mapping-complete','original-cache-hit','original-cached','original-cache-invalid','cache-unavailable','fallback-cpu','codec-loading','face','morph','export','route-admitted','photo-select','photo-preview','photo-crop','photo-align','photo-encode','storage']);
+const allowedStages=new Set(['asset-acquisition','runtime-loading','model-loading','model-loaded','mapping-loading','mapping','canary','synthesis','synthesis-complete','alignment','alignment-complete','encoder-loading','encoder-loaded','encoder-correctness-check','encoder-correctness-complete','encoding','encoding-complete','mapping-complete','original-cache-hit','original-cached','original-cache-invalid','cache-unavailable','fallback-cpu','codec-loading','face','morph','export','route-admitted','photo-select','photo-preview','photo-crop','photo-align','photo-encode','storage','cache-trouble']);
 const TERMINAL=new Set(['completed','cancelled','failed','interrupted']);
 let bundle,provider,device=null,consented=false,session=null,run=null,started=0;
 let aborters=new Set(),pendingStart=null,finished=false,interrupted=false,tally=null,persisted=true;
@@ -149,6 +149,11 @@ export const diagnostics={
   if(stage==='canary-invalidated'&&run){openRun();send({event:'stage',stage,provider:['cpu','webgl','webgpu'].includes(event.provider)?event.provider:undefined,elapsedMs:Math.round(performance.now()-started)});return;}
   // R2-15: storage facts ride their own stage so an eviction story is readable from the
   // record alone — persisted flag and rounded megabytes, closed fields, nothing else.
+  // Why the cache refused, lost or repaired an asset. A closed vocabulary, so the record can say
+  // "quota-exceeded" or "missing-after-acquire" instead of leaving a re-download to inference.
+  if(stage==='cache-trouble'&&run){openRun();send({event:'stage',stage,
+   cacheStatus:['quota-exceeded','save-failed','storage-unavailable','missing-after-acquire','repairing','corrupt-removed'].includes(event.cacheStatus)?event.cacheStatus:undefined,
+   elapsedMs:Math.round(performance.now()-started)});return;}
   if(stage==='storage'&&run){openRun();send({event:'stage',stage,persisted:event.persisted===true,usageMb:Number.isFinite(event.usageMb)?event.usageMb:undefined,quotaMb:Number.isFinite(event.quotaMb)?event.quotaMb:undefined,elapsedMs:Math.round(performance.now()-started)});return;}
   if(['cpu','webgl','webgpu','native-cpu','native-gpu'].includes(event.provider))provider=event.provider;
   if(!run||!allowedStages.has(stage))return;

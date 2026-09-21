@@ -31,7 +31,10 @@ export const SILENT_STAGES = new Set([
   // report can show a first face was fast because the bytes were already here, but it is not
   // spoken: nothing was asked for, so there is no status line it belongs in, and announcing a
   // finished download the visitor never started only raises a question it cannot answer.
-  'models-prefetched'
+  'models-prefetched',
+  // Diagnostics-only: a visitor cannot act on a storage status mid-download, and acquisition
+  // already speaks. It exists so a report can say why a gigabyte was fetched twice.
+  'cache-trouble'
 ]);
 
 /** Stages that carry bytes and deserve a byte count rather than an indeterminate bar. */
@@ -108,7 +111,11 @@ export const STAGE_LABELS = {
   // A cached original failed its checksum: the user is paying for a synthesis they should
   // not have needed, and they are told so rather than shown a present participle.
   'original-cache-invalid': 'A saved face failed its checksum, so it is being generated again.',
-  'cache-unavailable': 'Generated successfully; device storage is unavailable.'
+  'cache-unavailable': 'Generated successfully; device storage is unavailable.',
+  // The cache refused, lost or repaired an asset. Diagnostics-only: the interface already speaks
+  // about acquisition, and a visitor cannot act on a storage status mid-download. It exists so a
+  // report can say why a gigabyte was fetched twice instead of leaving it to inference.
+  'cache-unavailable-detail': 'Device storage had trouble holding the model files.'
 };
 
 const MB = 1024 * 1024;

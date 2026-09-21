@@ -153,6 +153,10 @@ type State = {
     Preparing: string
     Browse: string option; Names: NameFace array; NameQuery: string; NameLimit: int; Error: string option; DebugStatus: string; Debug: bool; NextId: int
     Crop: CropChoice option
+    /// Crops waiting their turn. A second photo that needs cropping used to revoke the first
+    /// one's preview URL and take its place, so queueing two encodes destroyed the first crop
+    /// and the visitor had to start it again. One crop is shown; the rest wait here in order.
+    CropQueue: CropChoice list
     Route: string
     Rejected: string option
     Invite: bool
@@ -186,8 +190,8 @@ let testingInvited (): bool = jsNative
 let emptyFile: obj = null
 let init () =
     { Inputs = [{id="face-1";mode="text";value="hello";file=emptyFile}; {id="face-2";mode="text";value=System.DateTime.Today.ToString("yyyy-MM-dd");file=emptyFile}]
-      Faces=[||];VideoUrl="";Kind="pairwise-figure8";Width=0.2;Pinch=false;Frames=16;Fps=16;Provider="auto"
-      Busy=false;JobId=0;Stage="idle";Status="";Fraction=0.;Preparing="";Browse=None;Names=[||];NameQuery="";NameLimit=48;Error=None;DebugStatus="";Debug=false;NextId=3;Crop=None;Route="";Rejected=None;Invite=testingInvited()
+      Faces=[||];VideoUrl="";Kind="full-smooth-figure8";Width=0.2;Pinch=true;Frames=16;Fps=16;Provider="auto"
+      Busy=false;JobId=0;Stage="idle";Status="";Fraction=0.;Preparing="";Browse=None;Names=[||];NameQuery="";NameLimit=48;Error=None;DebugStatus="";Debug=false;NextId=3;Crop=None;CropQueue=[];Route="";Rejected=None;Invite=testingInvited()
       UseSlider=false;SliderFrames=None;Warn=None;Overflow=false;PhotoQueue=[];PendingFaces=[];ActiveFace=None;Remaining="" },
     Cmd.batch [Cmd.ofSub(fun dispatch -> subscribe (Progressed >> dispatch)); if namesRequested() then Cmd.ofMsg(BrowseNames "face-1")]
 
@@ -225,6 +229,12 @@ let private isSlowDevice (state:State) =
 let update msg state =
     let change id f = {state with Inputs=state.Inputs |> List.map(fun item -> if item.id=id then f item else item); VideoUrl="";Status=""}
     let noticeTask fn arg = Cmd.OfPromise.either fn arg Notice (fun _ -> Notice "Couldn't save or share this file. Try Save instead.")
+    /// Shows the next crop waiting its turn, if any. Called wherever a crop leaves the screen so
+    /// a queued one can never be stranded behind a slot that is now free.
+    let nextCrop (state:State) =
+        match state.CropQueue with
+        | choice::rest -> focusCropArea(); {state with Crop=Some choice;CropQueue=rest}
+        | [] -> state
     /// Continues a multi-photo drop with the next queued photo, if any.
     let dequeue (state:State) =
         match state.PhotoQueue with
@@ -265,10 +275,19 @@ let update msg state =
     // A photo the alignment route cannot take whole opens the crop step first; only the crop
     // is ever aligned. Cancelling leaves the existing face and its inputs alone.
     | Photo(id,offer) when not (isNull offer) && isCropOffer offer ->
-        state.Crop |> Option.iter (fun previous -> revokeUrl previous.url)
-        focusCropArea()
-        {state with Error=None;Crop=Some {faceId=id;url=offer?url;file=offer?file;scale=offer?scale
-                                          view=createCrop(createObj ["previewWidth" ==> offer?previewWidth;"previewHeight" ==> offer?previewHeight;"scale" ==> offer?scale;"viewport" ==> 320.])}},Cmd.none
+        let choice={faceId=id;url=offer?url;file=offer?file;scale=offer?scale
+                    view=createCrop(createObj ["previewWidth" ==> offer?previewWidth;"previewHeight" ==> offer?previewHeight;"scale" ==> offer?scale;"viewport" ==> 320.])}
+        // Replacing the same face's pending crop is the visitor changing their mind; a crop for a
+        // different face waits its turn rather than destroying the one on screen.
+        match state.Crop with
+        | Some current when current.faceId=id ->
+            revokeUrl current.url; focusCropArea()
+            {state with Error=None;Crop=Some choice},Cmd.none
+        | Some _ ->
+            {state with Error=None;CropQueue=state.CropQueue @ [choice]},Cmd.none
+        | None ->
+            focusCropArea()
+            {state with Error=None;Crop=Some choice},Cmd.none
     | RequestCrop id when state.ActiveFace<>Some id ->
         match state.Inputs |> List.tryFind(fun item -> item.id=id) with
         | Some item when not (isNull item.file) ->
@@ -289,7 +308,7 @@ let update msg state =
     | CropCancel ->
         cancelPhotoRun()
         state.Crop |> Option.iter (fun crop -> revokeUrl crop.url)
-        let next={state with Crop=None}
+        let next=nextCrop {state with Crop=None}
         dequeue next
     | CropAccept ->
         match state.Crop with
@@ -301,7 +320,7 @@ let update msg state =
             // be generated from the previous photo while the crop is still being prepared. When a
             // real run is already in flight the crop must not take the status line from it —
             // claiming Busy here would also make Cropped clear the run's own Busy flag.
-            {state with Crop=None
+            {nextCrop {state with Crop=None} with
                         Busy=true
                         Stage=(if state.Busy then state.Stage else "cropping")
                         Status=(if state.Busy then state.Status else "Preparing your crop…")
@@ -655,7 +674,9 @@ let private tilesWithConnectors (state:State) dispatch =
 /// is decided. Nothing else is removed, so restoring it is a one-line change.
 let private projectFilesVisible = false
 
-let private shapeOptions = ["pairwise-figure8","Figure eight";"pairwise-ellipse","Ellipse";"full-smooth-figure8","Smooth figure eight";"full-smooth-ellipse","Smooth ellipse";"linear","Classic linear"]
+// Smooth figure eight, pinched, is the default shape (operator, 22 September) and leads the list;
+// smooth ellipse follows it rather than sitting below the pairwise pair.
+let private shapeOptions = ["full-smooth-figure8","Smooth figure eight";"full-smooth-ellipse","Smooth ellipse";"pairwise-figure8","Figure eight";"pairwise-ellipse","Ellipse";"linear","Classic linear"]
 let private lengthOptions = [8,"Length: short";16,"Length: standard";32,"Length: long"]
 
 let private lengthLabel (frames:int) =

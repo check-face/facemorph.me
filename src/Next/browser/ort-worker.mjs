@@ -17,7 +17,22 @@ const report=(id,stage,extra={})=>postMessage({id,type:'progress',stage,...extra
 
 const budget=createAcquisitionBudget();
 budget.attach(({loaded,total},progressOnly)=>report(currentId,'asset-acquisition',{loaded,total,progressOnly}));
-const cacheReport=event=>budget.cacheEvent(event);
+// The budget only cares about bytes, so every way the cache can fail was dropped here and never
+// reached a report. Three photos in a row re-downloaded the 1019 MiB encoder and the 212 MiB
+// models three times, and four rounds of reports could not say whether that was a quota refusal,
+// an immediate eviction, or a corrupt entry being repaired — because none of those statuses were
+// forwarded. They are now, once per status per asset, so the next run names the cause.
+const CACHE_TROUBLE=new Set(['quota-exceeded','save-failed','storage-unavailable',
+ 'missing-after-acquire','repairing','corrupt-removed']);
+const troubleSeen=new Set();
+const cacheReport=event=>{
+ if(CACHE_TROUBLE.has(event.status)){
+  const key=event.status+':'+event.sha256;
+  if(!troubleSeen.has(key)){troubleSeen.add(key);
+   report(currentId,'cache-trouble',{cacheStatus:event.status,bytes:event.bytes});}
+ }
+ budget.cacheEvent(event);
+};
 const planAsset=budget.planAsset;
 /** Everything the chosen route will ask for before it can produce a face. */
 function planRoute(){
