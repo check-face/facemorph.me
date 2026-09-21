@@ -2,10 +2,10 @@ name: Mobile browser components
 on:
   workflow_dispatch:
   push:
-    branches: ['master', 'candidate/mobile-ci-*']
-    paths: ['tests/mobile/**', 'src/Next/Assets/**', '.github/workflows/mobile-browser.yml']
+    branches: ['master', 'candidate/mobile-ci-*', 'candidate/next-delivery-*']
+    paths: ['tests/mobile/**', 'src/Next/**', 'scripts/next-ios-sim.py', '.github/workflows/mobile-browser.yml']
   pull_request:
-    paths: ['tests/mobile/**', 'src/Next/Assets/**', '.github/workflows/mobile-browser.yml']
+    paths: ['tests/mobile/**', 'src/Next/**', 'scripts/next-ios-sim.py', '.github/workflows/mobile-browser.yml']
 permissions:
   contents: read
 concurrency:
@@ -58,4 +58,29 @@ jobs:
         with:
           name: mobile-ios-components
           path: mobile-evidence
+          if-no-files-found: warn
+
+  # The memory-constrained tier drives every architecture decision here and is the one with no
+  # physical evidence at all. The Simulator exposes no WebGPU adapter, so this lane cannot rank
+  # the fast path and does not try; it answers what the constrained tier does with a change —
+  # route admitted, face produced at all, and at what memory. Per change, not per release.
+  ios-product-simulator:
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci
+      - name: Build the artifact under test
+        run: npm run build:next
+      - name: Product in an iOS Simulator
+        run: python3 scripts/next-ios-sim.py --device 'iPhone 16 Pro' --evidence next-ios-evidence
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: next-ios-simulator-${{ github.run_id }}
+          path: next-ios-evidence/
+          retention-days: 14
           if-no-files-found: warn

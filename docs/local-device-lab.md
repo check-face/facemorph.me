@@ -93,3 +93,38 @@ Simulator/emulator rows qualify **behaviour on that engine**, never a physical d
 same honesty rule as CI (`e4eExecuted`/`inferenceExecuted` stay false for component runs;
 the e2e pipeline runs mark which stages executed). Physical iPhone/Android verification
 remains a separate, required gate.
+
+## iOS Simulator product lane — 21 September
+
+`scripts/next-ios-sim.py` runs the built artifact in a real iOS Simulator and records what the
+memory-constrained tier does with a change: route admitted, whether a face appears at all, peak
+JS heap, cache bytes and storage quota. It runs per change, because that tier drives every memory
+decision in the product and is the only one with no physical evidence behind it.
+
+It does **not** rank the fast path and never claims to — the Simulator exposes no WebGPU adapter,
+so an iOS row from here is a memory and correctness row, not a speed one.
+
+Safari in a Simulator cannot be driven over CDP, so the page reports on itself: the harness serves
+the real `deploy-next` bytes with one campaign script appended at serve time and proxies
+`/runtime/*` from the deployed origin, so the bundle under test is the published one. Plain HTTP
+on `localhost` is deliberate — it is a secure context in Safari, so isolation, workers and the
+Cache API behave as in production, and it avoids `simctl keychain add-root-cert`, which hangs
+against a freshly booted device.
+
+```
+python3 scripts/next-ios-sim.py --device 'iPhone 17 Pro' --evidence next-ios-evidence
+```
+
+**Blocked on this Mac as of 21 September.** Xcode 27.0 is installed without the Simulator
+application component: `/Applications/Xcode.app/Contents/Developer/Applications/` does not exist
+and no `Simulator.app` is present anywhere under `Xcode.app`. `simctl` boots a device headlessly,
+but `simctl openurl` needs the Simulator UI process and hangs indefinitely without it (180 s
+timeouts against a Booted `iPhone 17 Pro`). Fix on the operator's machine:
+
+```
+xcodebuild -downloadPlatform iOS      # or Xcode → Settings → Components → iOS Simulator
+```
+
+The GitHub `macos-15` runner ships Xcode complete, so the CI job `ios-product-simulator` in
+`.github/workflows/mobile-browser.yml` is expected to run without this fix — that lane is
+unverified until its first green run.
