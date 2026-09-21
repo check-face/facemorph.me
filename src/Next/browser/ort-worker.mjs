@@ -47,6 +47,28 @@ function routeAssets(){
   if(!seen.has(asset.sha256)){seen.add(asset.sha256);ordered.push(asset);}
  return ordered;
 }
+/**
+ * Everything a photo needs, in the order it is needed: the face detector, the photo runtime, then
+ * the encoder's 108 shards. The shard list is not in the top-level manifest — it lives inside the
+ * encoder-stream descriptor — so the descriptor is acquired first and its schedule read.
+ *
+ * This is ~1.1 GiB, the largest thing the product will ever ask a device for, and none of it
+ * depends on which photo is chosen. Reaching for a photo is the earliest honest signal that it
+ * will be wanted (AGENTS.md, Performance Philosophy).
+ */
+async function photoAssets(){
+ if(!manifest)return [];
+ const ordered=[],seen=new Set();
+ const add=value=>{for(const asset of collectAssets(value))if(!seen.has(asset.sha256)){seen.add(asset.sha256);ordered.push(asset);}};
+ add([manifest.landmarks,manifest.photoCanary,manifest.photoCanaries]);
+ const descriptor=manifest.encoderStream;
+ if(descriptor){
+  add(descriptor);
+  try{add(JSON.parse(new TextDecoder().decode(await bytes(descriptor,currentId))));}
+  catch{/* the descriptor is unreadable offline; the real run will report it properly */}
+ }
+ return ordered;
+}
 async function bytes(asset,id){
  cache ||= await createBrowserModelCache({report:cacheReport});
  planAsset(asset);budget.progress(false);
@@ -65,16 +87,18 @@ async function floats(asset,id){const b=await bytes(asset,id);return new Float32
  * route. A failure here is swallowed, because the real run must be the one that reports an
  * acquisition problem in the user's words and drops the route on the evidence.
  */
-async function prefetchRoute(id){
+async function prefetchRoute(id,scope='route'){
  cache ||= await createBrowserModelCache({report:cacheReport});
- planRoute();budget.progress(false);
+ const list=scope==='photo'?await photoAssets():routeAssets();
+ if(scope==='photo')planAsset(list);else planRoute();
+ budget.progress(false);
  let assets=0,acquired=0;
- for(const asset of routeAssets()){
+ for(const asset of list){
   assets++;
   try{await cache.acquire(asset);acquired++;budget.progress(false);}
   catch{break;} // offline, evicted mid-run, or out of quota: the real run will say so properly
  }
- return {provider,assets,acquired,...budget.totals()};
+ return {provider,scope,assets,acquired,...budget.totals()};
 }
 async function ensureOrt(id){if(ort)return;report(id,'runtime-loading');const assets=manifest.runtime.assets,module=assets.find(a=>a.url===manifest.runtime.moduleUrl),factory=assets.find(a=>a.url.endsWith('/ort-wasm-simd-threaded.mjs')),wasm=assets.find(a=>a.url.endsWith('/ort-wasm-simd-threaded.wasm'));if(!module||!factory||!wasm)throw Error('Incomplete pinned runtime bundle');
  // Import exactly the verified bytes, avoiding a second unchecked network request.
@@ -192,7 +216,7 @@ self.onmessage=({data})=>{
   try{
    let result;
    if(type==='initialize'){manifest=request.manifest;provider=request.provider;manifestSha256=request.manifestSha256;fullQualify=request.fullQualify===true||(!request.hostForcedQualify&&request.webdriver===true);forceCanaryFail=request.forceCanaryFail===true;result={provider};}
-   else if(type==='qualify')result=await qualify(id);else if(type==='prefetch')result=await prefetchRoute(id);else if(type==='generate'){const input=await inputLatent(request.mode,request.value),values=await mappingFor(input.values,id);result={blob:await png(await run(values,id)),values,shape:[1,18,512],space:'w-plus',identity:input.identity};}else if(type==='synthesize'){const values=requireLatent(request.values);result={blob:await png(await run(values,id)),values,shape:[1,18,512],space:'w-plus'};}else if(type==='encode-aligned'){
+   else if(type==='qualify')result=await qualify(id);else if(type==='prefetch')result=await prefetchRoute(id,request.scope);else if(type==='generate'){const input=await inputLatent(request.mode,request.value),values=await mappingFor(input.values,id);result={blob:await png(await run(values,id)),values,shape:[1,18,512],space:'w-plus',identity:input.identity};}else if(type==='synthesize'){const values=requireLatent(request.values);result={blob:await png(await run(values,id)),values,shape:[1,18,512],space:'w-plus'};}else if(type==='encode-aligned'){
  // Sequential residency: e4e is released before loading synthesis.
  if(!manifest.encoder&&!manifest.encoderStream)throw Error('The browser encoder bundle is not available.');
  await synthesis?.release();synthesis=null;await webgl?.dispose();webgl=null;await webgpu?.dispose();webgpu=null;await mapping?.release();mapping=null;noise=null;

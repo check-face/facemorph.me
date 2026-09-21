@@ -68,7 +68,11 @@ let createEstimator (options: obj): obj = jsNative
 let describeMs (ms: float): string = jsNative
 [<Import("isSlowJob", "./estimate.mjs")>]
 let isSlowJob (ms: float): bool = jsNative
-let private estimator = createEstimator(createObj ["faceMs" ==> measuredFaceMs;"frameMs" ==> measuredFrameMs])
+/// The admitted route, for the cold estimate. Set from route-admitted; empty until a route is in.
+let mutable private admittedRoute = ""
+let private estimator =
+    createEstimator(createObj ["faceMs" ==> measuredFaceMs;"frameMs" ==> measuredFrameMs
+                               "route" ==> (fun () -> if admittedRoute="" then null else box admittedRoute)])
 
 [<Emit("$0 === null || $0 === undefined")>]
 let isJsNull (value: obj): bool = jsNative
@@ -112,6 +116,10 @@ let isCropOffer (value: obj): bool = jsNative
 [<Emit("URL.revokeObjectURL($0)")>]
 let revokeUrl (url: string): unit = jsNative
 
+// Reaching for a photo starts the ~1.1 GiB face detector and encoder immediately, so the wait
+// overlaps choosing and cropping instead of following them (AGENTS.md, Performance Philosophy).
+[<Import("warmPhotoTools", "./product-bridge.mjs")>]
+let warmPhotoTools (): unit = jsNative
 [<Import("photoFiles", "./photo-selection.mjs")>]
 let photoFiles (event: obj): obj = jsNative
 [<Import("selectPhotoReported", "./product-bridge.mjs")>]
@@ -135,6 +143,9 @@ type State = {
     Inputs: Input list; Faces: Face array; VideoUrl: string
     Kind: string; Width: float; Pinch: bool; Frames: int; Fps: int; Provider: string
     Busy: bool; JobId: int; Stage: string; Status: string; Fraction: float
+    /// The photo warm-up's line. It runs while nothing is busy, so it cannot use Status:
+    /// the job status line belongs to a job, and there isn't one yet.
+    Preparing: string
     Browse: string option; Names: NameFace array; NameQuery: string; NameLimit: int; Error: string option; DebugStatus: string; Debug: bool; NextId: int
     Crop: CropChoice option
     Route: string
@@ -171,7 +182,7 @@ let emptyFile: obj = null
 let init () =
     { Inputs = [{id="face-1";mode="text";value="hello";file=emptyFile}; {id="face-2";mode="text";value=System.DateTime.Today.ToString("yyyy-MM-dd");file=emptyFile}]
       Faces=[||];VideoUrl="";Kind="pairwise-figure8";Width=0.2;Pinch=false;Frames=16;Fps=16;Provider="auto"
-      Busy=false;JobId=0;Stage="idle";Status="";Fraction=0.;Browse=None;Names=[||];NameQuery="";NameLimit=48;Error=None;DebugStatus="";Debug=false;NextId=3;Crop=None;Route="";Rejected=None;Invite=testingInvited()
+      Busy=false;JobId=0;Stage="idle";Status="";Fraction=0.;Preparing="";Browse=None;Names=[||];NameQuery="";NameLimit=48;Error=None;DebugStatus="";Debug=false;NextId=3;Crop=None;Route="";Rejected=None;Invite=testingInvited()
       UseSlider=false;SliderFrames=None;Warn=None;Overflow=false;PhotoQueue=[];PendingFaces=[];ActiveFace=None;Remaining="" },
     Cmd.batch [Cmd.ofSub(fun dispatch -> subscribe (Progressed >> dispatch)); if namesRequested() then Cmd.ofMsg(BrowseNames "face-1")]
 
@@ -350,11 +361,19 @@ let update msg state =
                      | _ -> "Reporting is off."
         {state with DebugStatus=status;Debug=(match progress.stage with | "diagnostics-enabled" -> true | "diagnostics-disabled" -> false | _ -> state.Debug)},Cmd.none
     | Progressed progress when progress.stage="route-admitted" ->
+        // The cold estimate reads from the admitted route, because per-face cost differs by
+        // twenty times between them; an average across routes would be worse than no figure.
+        admittedRoute <- progress.text
         {state with Route=progress.text},Cmd.none
     | Progressed progress when progress.stage="route-rejected" ->
         // C-02: the interface names which route was refused. The route now in use arrives
         // separately as route-admitted, so Rejected stands next to Route in the caption.
         {state with Rejected=Some progress.text},Cmd.none
+    // Reaching for a photo starts a gigabyte. That happens before any job exists, so it cannot
+    // use the job status line — and it must be said, because a silent gigabyte is the one case
+    // where saying nothing is worse than saying something (AGENTS.md, Performance Philosophy).
+    | Progressed progress when progress.stage="photo-acquisition" || progress.stage="photo-tools-ready" ->
+        {state with Preparing=(if state.Busy then "" else progress.text)},Cmd.none
     | Progressed progress when state.Busy && progress.jobId=state.JobId ->
         let activeFace = if progress.stage="face" && not (isJsNull (box progress.face)) then Some progress.face else state.ActiveFace
         {state with Stage=progress.stage;Status=progress.text;Fraction=progress.fraction;ActiveFace=activeFace;Remaining=remainingText()},Cmd.none
@@ -465,7 +484,7 @@ let private setpointField (props:FieldProps) =
         // happened: the visitor had asked for a file picker and got an empty photo field. Picking
         // a source that needs a file opens the picker in the same gesture.
         Mui.menuItem [menuItem.selected (props.Item.mode=kind)
-                      prop.onClick(fun _ -> setMenuOpen false; props.OnMode kind; if kind="photo" then props.OnPick())
+                      prop.onClick(fun _ -> setMenuOpen false; props.OnMode kind; if kind="photo" then (warmPhotoTools(); props.OnPick()))
                       menuItem.children [Mui.listItemIcon [icon];Mui.listItemText text]]
     let endAdornment =
         match props.Item.mode with
@@ -541,7 +560,7 @@ let viewFace (state:State) dispatch (index:int) (item:Input) (label:string) =
                 // The empty tile is a photo drop target, never a bare plus: the plus belongs to
                 // the insertion connector between faces, and the two must not be mistaken.
                 Html.button [prop.type'.button;prop.className "next-face-empty";prop.tabIndex -1
-                             prop.ariaLabel "Choose photo";prop.onClick(fun _ -> openPhotoPicker item.id)
+                             prop.ariaLabel "Choose photo";prop.onClick(fun _ -> warmPhotoTools(); openPhotoPicker item.id)
                              prop.children [photoIcon [];Html.span "Drop a photo, or tap to choose"]]
             if active then Html.div [prop.className "next-face-progress";prop.children [Html.div [prop.className "next-face-progress-fill"]]]
             // A-3: remove is a close control on the tile it closes, not a stray dash in the
@@ -664,6 +683,8 @@ let private morphSlot (state:State) dispatch =
             if state.Busy then Html.progress [prop.className "next-sr";prop.max 1.;if state.Fraction>0. then prop.value state.Fraction]
             if state.Busy then progressBar (if state.Fraction>0. then state.Fraction else -1.)
             Html.span [prop.text state.Status]
+            if not state.Busy && state.Preparing<>"" then
+                Html.span [prop.className "next-preparing";prop.text state.Preparing]
             if state.Busy && perFrameText()<>"" then Html.span [prop.className "next-remaining";prop.text (perFrameText())]
             if state.Busy && state.Remaining<>"" then Html.span [prop.className "next-remaining";prop.text state.Remaining]]]
         // Slow-video warning (U-12): names the measured estimate, never blocks, dismissible.
@@ -781,7 +802,7 @@ let private debugArea (state:State) dispatch =
 let view state dispatch = App.ThemedApp [
     Mui.cssBaseline []
     Html.main [prop.className "facemorph-page next-product"
-               prop.onDragOver(fun (e:Browser.Types.DragEvent) -> e.preventDefault(); if not state.Busy then e.dataTransfer?dropEffect <- "copy")
+               prop.onDragOver(fun (e:Browser.Types.DragEvent) -> e.preventDefault(); if not state.Busy then (warmPhotoTools(); e.dataTransfer?dropEffect <- "copy"))
                prop.onDrop(fun (e:Browser.Types.DragEvent) ->
                    e.preventDefault()
                    // A drop on the page background fills the first empty face; if none are empty,
@@ -830,9 +851,19 @@ let view state dispatch = App.ThemedApp [
         match estimate state with
         | Some(perFace,frames) when not state.Busy ->
             let perFrame = perFrameText()
+            // A prior from other devices and a measurement from this one are both worth showing,
+            // and they must never read the same. Saying "on this device" about a number this
+            // device has not produced is the one thing an estimate must not do.
+            let measuredHere = estimator?measured() |> unbox<bool>
             Html.p [prop.className "next-estimate";prop.custom("role","note")
-                    prop.text (if frames>0. then sprintf "On this device a face took %s%s, so a %g-frame morph should take %s." (describeMs perFace) (if perFrame="" then "" else " (" + perFrame + ")") frames (describeMs (perFace*frames))
-                              else sprintf "On this device a face took %s." (describeMs perFace))]
+                    prop.custom("data-next-estimate", (if measuredHere then "measured" else "prior"))
+                    prop.text (
+                        if measuredHere then
+                            if frames>0. then sprintf "On this device a face took %s%s, so a %g-frame morph should take %s." (describeMs perFace) (if perFrame="" then "" else " (" + perFrame + ")") frames (describeMs (perFace*frames))
+                            else sprintf "On this device a face took %s." (describeMs perFace)
+                        else
+                            if frames>0. then sprintf "On similar devices a face takes %s, so a %g-frame morph would take %s. This device's own timing replaces this estimate after the first face." (describeMs perFace) frames (describeMs (perFace*frames))
+                            else sprintf "On similar devices a face takes %s. This device's own timing replaces this estimate after the first face." (describeMs perFace))]
         | _ -> Html.none
         // Guidance follows evidence, not the route's name: a qualified GPU route can still be slow
         // on a given machine, and this device has already shown what a face costs it.

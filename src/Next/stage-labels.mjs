@@ -35,7 +35,7 @@ export const SILENT_STAGES = new Set([
 ]);
 
 /** Stages that carry bytes and deserve a byte count rather than an indeterminate bar. */
-export const BYTE_STAGES = new Set(['asset-acquisition', 'alignment-model-download']);
+export const BYTE_STAGES = new Set(['asset-acquisition', 'alignment-model-download', 'photo-acquisition']);
 
 /**
  * Stages that repeat inside one phase and carry a step count. Their `-complete` is a tick,
@@ -47,6 +47,12 @@ export const STEP_STAGES = new Set(['encoder-shard-acquisition', 'encoder-shard-
 export const STAGE_LABELS = {
   // Acquisition and engine start-up.
   'asset-acquisition': 'Downloading model files…',
+  // Reaching for a photo starts the face detector and the 1 GB encoder immediately, so the
+  // wait overlaps choosing and cropping instead of following them. Unlike the silent route
+  // warm-up this one speaks: the visitor asked for it, and it is the largest thing the
+  // product ever fetches.
+  'photo-acquisition': 'Getting photo tools ready…',
+  'photo-tools-ready': 'Photo tools ready on this device.',
   'runtime-loading': 'Starting the local engine…',
   'model-loading': 'Loading the model…',
   'model-loaded': 'Model ready.',

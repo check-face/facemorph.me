@@ -131,29 +131,45 @@ export function createBrowserRuntime({manifest: suppliedManifest, manifestSha256
   });
  }
  const afterDelivery=promise=>promise.then(value=>{startQualificationResume();return value;});
- /** Start acquiring the route this device would choose. Resolves when warm, or quietly gives up. */
- async function prefetch(){
-  if(disposed||active||worker||prefetchWorker||validated||!prefetchWelcome())return {started:false};
+ /**
+  * Start acquiring what this device will need. `route` is the silent warm-up that runs as the
+  * interface settles; `photo` is the ~1.1 GiB face detector and encoder, started the moment
+  * someone reaches for a photo rather than when they commit to one.
+  *
+  * The photo scope speaks, and the route scope does not, because the visitor has expressed
+  * intent: they are about to wait on the largest thing the product ever asks for, and a silent
+  * gigabyte is the one case where saying nothing is worse than saying something.
+  */
+ async function prefetch(scope='route'){
+  const warmingPhoto=scope==='photo';
+  if(disposed||active||worker||prefetchWorker||!prefetchWelcome())return {started:false};
+  if(!warmingPhoto&&validated)return {started:false};
   let own;
   try{
    await config();
    const target=preferredRoute==='auto'?chooseRoute():preferredRoute;
    if(failedRoutes.has(target))return {started:false};
+   if(warmingPhoto&&!manifest.encoderStream&&!manifest.landmarks)return {started:false};
    own=workerFactory();prefetchWorker=own;
    const result=await new Promise((resolve,reject)=>{
     prefetchCancel=()=>reject(Error('Warm-up superseded.'));
     own.onerror=()=>reject(Error('The warm-up engine stopped.'));
     own.onmessage=({data})=>{
-     if(data.type==='progress')return; // the bar belongs to work the visitor asked for
+     // The route warm-up stays off the bar: nothing was asked for. The photo warm-up reports,
+     // because it was, and it is a gigabyte.
+     if(data.type==='progress'){
+      if(warmingPhoto)emit({...data,stage:data.stage==='asset-acquisition'?'photo-acquisition':data.stage});
+      return;}
      if(data.type==='error')reject(Error(data.error.message));
      else if(data.id===2)resolve(data.result);
     };
     own.postMessage({id:1,type:'initialize',manifest,provider:target==='webgl'?'webgl2':target==='webgpu'?'webgpu':'wasm',manifestSha256:manifestHash});
-    own.postMessage({id:2,type:'prefetch'});
+    own.postMessage({id:2,type:'prefetch',scope});
    });
    // Recorded, never spoken: a warm cache changes nothing the visitor can act on, and the
    // status line belongs to the operation they started. Reports still show what was warmed.
-   emit({stage:'models-prefetched',provider:target,...result});
+   const done=warmingPhoto?'photo-tools-ready':'models-prefetched';
+   emit({stage:done,provider:target,...result});
    return {started:true,...result};
   }catch{return {started:false};}
   finally{if(prefetchWorker===own)stopPrefetch();}

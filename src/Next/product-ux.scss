@@ -216,3 +216,7 @@
 @media (max-width: 640px) {
     .next-footer-inner { flex-direction:column; align-items:center; text-align:center; }
 }
+
+// The photo warm-up speaks while nothing is running, so it is quieter than a job's status
+// line and never competes with one.
+.next-preparing { display:block; opacity:.8; font-size:.9rem; margin-top:.2rem; }

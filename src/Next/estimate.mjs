@@ -8,15 +8,31 @@
 export const SLOW_JOB_MS = 30000;
 
 /**
+ * Per-face priors, in milliseconds, from `route-priors.mjs`'s measured table. These are other
+ * devices' numbers and are only ever used before this one has produced its own — a cold visitor
+ * deciding whether to start a thirty-face job deserves a figure rather than an unbounded wait
+ * (AGENTS.md, Performance Philosophy). `measured` on the returned estimate says which it is, so
+ * the interface can label a prior as a rough guide and never present it as measured here.
+ */
+export const COLD_FACE_MS = Object.freeze({webgpu: 686, webgl: 13000, cpu: 2582});
+
+/**
  * Builds an estimator from measurement suppliers. Both suppliers return a median
  * milliseconds figure or null when this device has not produced one yet; the product
  * keeps the medians over the last eight measured units with cache hits excluded.
+ *
+ * `route` supplies the admitted route name so a cold estimate can come from that route's prior
+ * rather than from an average of routes that differ by twenty times.
  */
-export function createEstimator({faceMs = null, frameMs = null} = {}) {
+export function createEstimator({faceMs = null, frameMs = null, route = null} = {}) {
 	const finite = value => Number.isFinite(value) && value > 0 ? value : null;
 	return {
-		/** Median measured milliseconds per face, or null. */
-		faceMs() {return finite(faceMs?.());},
+		/** True once this device has timed its own work; false while a prior is standing in. */
+		measured() {return finite(faceMs?.()) != null || finite(frameMs?.()) != null;},
+		/** This route's per-face prior, or null when the route is unknown or unranked. */
+		coldFaceMs() {const name = route?.(); return name ? (COLD_FACE_MS[name] ?? null) : null;},
+		/** Median measured milliseconds per face, falling back to this route's prior. */
+		faceMs() {return finite(faceMs?.()) ?? this.coldFaceMs();},
 		/** Median measured milliseconds per morph frame, falling back to the per-face
 		 * figure when only faces have been measured: a frame is one synthesis too. */
 		frameMs() {return finite(frameMs?.()) ?? this.faceMs();},

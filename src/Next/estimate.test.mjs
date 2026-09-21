@@ -1,6 +1,6 @@
 // The estimate must come from measurement and must not appear before there is one.
 import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs/promises';import vm from 'node:vm';import {webcrypto} from 'node:crypto';
-import {createEstimator,describeMs,isSlowJob} from './estimate.mjs';
+import {createEstimator, describeMs, isSlowJob, COLD_FACE_MS} from './estimate.mjs';
 const read=n=>fs.readFile(new URL(n,import.meta.url),'utf8');
 const plain=s=>s.replace(/^import .*;\n/gm,'').replaceAll('export ','').replaceAll('import.meta.url',JSON.stringify(import.meta.url));
 test('Face time is measured from real work only, and frames come from the shared geometry',async()=>{
@@ -38,4 +38,32 @@ test('The estimator predicts only from measurement and speaks the slow-run warni
  assert.equal(describeMs(90*1000),'about 2 minutes');
  assert.equal(isSlowJob(30000),false,'exactly at the threshold is not slow');
  assert.equal(isSlowJob(30001),true,'just over it warns');
+});
+
+// Estimate early, then correct with this device's own numbers (AGENTS.md, Performance Philosophy).
+// Refusing to estimate until the device has proven itself leaves a visitor staring at an unbounded
+// wait before a thirty-face job; never correcting leaves them with another machine's numbers.
+test('a cold device gets its route prior, labelled as not measured here', () => {
+  const estimator = createEstimator({route: () => 'webgpu'});
+  assert.equal(estimator.measured(), false);
+  assert.equal(estimator.faceMs(), COLD_FACE_MS.webgpu);
+  assert.equal(estimator.predict({faces: 30}), COLD_FACE_MS.webgpu * 30);
+});
+
+test('the prior follows the admitted route, not an average across routes', () => {
+  assert.equal(createEstimator({route: () => 'cpu'}).faceMs(), COLD_FACE_MS.cpu);
+  assert.equal(createEstimator({route: () => 'webgl'}).faceMs(), COLD_FACE_MS.webgl);
+  assert.notEqual(COLD_FACE_MS.cpu, COLD_FACE_MS.webgpu);
+});
+
+test('one real measurement on this device replaces the prior entirely', () => {
+  const estimator = createEstimator({faceMs: () => 315, route: () => 'webgpu'});
+  assert.equal(estimator.measured(), true);
+  assert.equal(estimator.faceMs(), 315, 'the device outranks anything recorded elsewhere');
+});
+
+test('an unknown or unranked route yields no estimate rather than a made-up one', () => {
+  assert.equal(createEstimator({route: () => 'quantum'}).faceMs(), null);
+  assert.equal(createEstimator({}).faceMs(), null);
+  assert.equal(createEstimator({}).predict({faces: 30}), null);
 });

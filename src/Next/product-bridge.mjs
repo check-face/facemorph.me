@@ -271,7 +271,16 @@ function reportStorage(){
 }
 // Reported wrappers: the UI calls these instead of the raw photo modules, so preparation
 // failures land in the record with their stage attached.
-export function selectPhotoReported(request){return photoStage('photo-select',()=>selectPhoto(request));}
+/**
+ * Reaching for a photo is the earliest honest signal that the ~1.1 GiB photo path will be needed
+ * (AGENTS.md, Performance Philosophy). Choosing the photo source, opening the picker and picking
+ * a file all count; warming is idempotent and declines while a job is running, so calling it from
+ * each entry point costs nothing.
+ */
+export function warmPhotoTools(){
+ engine().then(local=>local.prefetch?.('photo')).catch(()=>{});
+}
+export function selectPhotoReported(request){warmPhotoTools();return photoStage('photo-select',()=>selectPhoto(request));}
 export function previewPhotoReported(file,options){return photoStage('photo-preview',()=>previewPhoto(file,options));}
 export function cropPhotoReported(file,area,options){return photoStage('photo-crop',()=>cropPhoto(file,area,options));}
 export function cancelPhotoRun(){closePhotoRun('cancelled');}
