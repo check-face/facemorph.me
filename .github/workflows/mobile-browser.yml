@@ -60,13 +60,14 @@ jobs:
           path: mobile-evidence
           if-no-files-found: warn
 
-  # The memory-constrained tier drives every architecture decision here and is the one with no
-  # physical evidence at all. The Simulator exposes no WebGPU adapter, so this lane cannot rank
-  # the fast path and does not try; it answers what the constrained tier does with a change —
-  # route admitted, face produced at all, and at what memory. Per change, not per release.
-  ios-product-simulator:
-    runs-on: macos-15
-    timeout-minutes: 45
+  # global.json pins the .NET 5 SDK, which has no Apple-silicon build and is not installed on the
+  # macOS runner, so the Simulator lane could never build the thing it was meant to measure. The
+  # bytes are built where every other lane builds them — the same 5.0-focal container — and handed
+  # over, which also means the Simulator measures that artifact rather than a macOS-local rebuild.
+  ios-product-artifact:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    container: mcr.microsoft.com/dotnet/sdk:5.0-focal
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -75,6 +76,29 @@ jobs:
       - run: npm ci
       - name: Build the artifact under test
         run: npm run build:next
+      - uses: actions/upload-artifact@v4
+        with:
+          name: next-ios-artifact-${{ github.run_id }}
+          path: deploy-next/
+          if-no-files-found: error
+          retention-days: 7
+  # The memory-constrained tier drives every architecture decision here and is the one with no
+  # physical evidence at all. The Simulator exposes no WebGPU adapter, so this lane cannot rank
+  # the fast path and does not try; it answers what the constrained tier does with a change —
+  # route admitted, face produced at all, and at what memory. Per change, not per release.
+  ios-product-simulator:
+    runs-on: macos-15
+    timeout-minutes: 45
+    needs: ios-product-artifact
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          name: next-ios-artifact-${{ github.run_id }}
+          path: deploy-next
       - name: Product in an iOS Simulator
         run: python3 scripts/next-ios-sim.py --device 'iPhone 16 Pro' --evidence next-ios-evidence
       - uses: actions/upload-artifact@v4

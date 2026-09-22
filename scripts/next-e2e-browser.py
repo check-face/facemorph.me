@@ -272,18 +272,40 @@ def stage_localCrop():
  run(S['buttons']['generate'],predicate=lambda:len(faces())==2)
  wait(lambda:len(faces())==2 and all(i['width']==1024 and i['height']==1024 for i in faces()),60)
  save_check('localCrop',{'passed':True,'file':cropped})
+def project_files_shipped():
+ # Product.fs keeps project export and open behind `projectFilesVisible`, off since
+ # 21 September (operator). The harness asks the artifact in front of it rather than assuming,
+ # so the day the flag comes back the stage qualifies it again with no edit here.
+ return bool(js("(()=>{const b=[...document.querySelectorAll('button')].find(x=>x.textContent.trim()===%s);return !!b&&!!document.querySelector('%s');})()"%(json.dumps(S['buttons']['exportProject']),S['openProject'])))
 def stage_projectSaveReopen():
+ if not project_files_shipped():
+  # Neither a pass nor a silent skip. A control that is not on the surface cannot be qualified
+  # through the surface, and recording passed:true for it would be exactly the false
+  # confirmation this gate exists to prevent. The serialisation itself stays covered:
+  # src/Next/verify-fable.mjs round-trips every path kind and latent space against actual Fable
+  # output in the artifact job. promote.py reads shipped:false and stops demanding UI evidence
+  # for a feature this artifact does not offer.
+  save_check('projectSaveReopen',{'passed':None,'shipped':False,'reason':'Project export and open are hidden in this artifact (Product.fs projectFilesVisible=false); ProjectJson round-trip is covered by src/Next/verify-fable.mjs'})
+  return
  project=download(S['buttons']['exportProject']);parsed=json.loads(project.read_text());assert len(parsed['morph']['controls'])==2 and all(len(c['latent']['values'])==9216 for c in parsed['morph']['controls'])
  upload(S['openProject'],project);time.sleep(.5);wait(idle)
  CTX['project']=project
  assert js("[...document.querySelectorAll('%s')].every(s=>s.value==='project')"%S['faceSource'])
- save_check('projectSaveReopen',{'passed':True,'sha256':hashlib.sha256(project.read_bytes()).hexdigest()})
+ save_check('projectSaveReopen',{'passed':True,'shipped':True,'sha256':hashlib.sha256(project.read_bytes()).hexdigest()})
 def stage_morphVideo():
- js('location.reload()');wait_for_load();wait(idle,60)
- upload(S['openProject'],CTX['project']);time.sleep(.5);wait(idle)
- # The reopen is asynchronous: the morph button exists the moment the app renders (disabled
- # until both faces return), so wait for the restored inputs themselves.
- wait(lambda:js("[...document.querySelectorAll('%s')].length===2 && [...document.querySelectorAll('%s')].every(s=>s.value==='project')"%(S['faceSource'],S['faceSource'])),60)
+ # The morph used to be made from a reloaded, reopened project, which proved the restore and
+ # supplied the faces in one move. With project files off the surface there is nothing to
+ # reopen, so the morph is made from the faces the earlier stages actually built — the reload
+ # is dropped rather than faked, since reloading with no project to restore would only ever
+ # test the empty start.
+ if CTX.get('project'):
+  js('location.reload()');wait_for_load();wait(idle,60)
+  upload(S['openProject'],CTX['project']);time.sleep(.5);wait(idle)
+  # The reopen is asynchronous: the morph button exists the moment the app renders (disabled
+  # until both faces return), so wait for the restored inputs themselves.
+  wait(lambda:js("[...document.querySelectorAll('%s')].length===2 && [...document.querySelectorAll('%s')].every(s=>s.value==='project')"%(S['faceSource'],S['faceSource'])),60)
+ else:
+  wait(lambda:len(faces())==2,60)
  # Reopening a photo-mode project kicks its own re-encode; the morph button is disabled until
  # that settles. Click only when the button can actually receive it.
  wait(lambda:js("(()=>{const b=[...document.querySelectorAll('button')].find(x=>x.textContent.trim()==='Create morph');return b&&!b.disabled;})()"),300)

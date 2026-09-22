@@ -18,6 +18,10 @@ def cell(stage):
     if stage.get('buildLimitation'):
         # The test browser build could not check this; the shipping browser is not described.
         return 'not checkable here'
+    if stage.get('notShipped'):
+        # The control is not in this artifact, so no engine can check it. It is not the row's
+        # failure and not its pass, and it does not hold the row incomplete.
+        return 'not in artifact'
     if stage.get('passed'):
         return 'pass'
     return 'FAIL'
@@ -37,7 +41,8 @@ def main(root):
         # A build-limited stage is not a pass here either; the row stays incomplete.
         required_ok = all(report.get('stages', {}).get(name, {}).get('passed')
                           and not report.get('stages', {}).get(name, {}).get('buildLimitation')
-                          for name in REQUIRED)
+                          for name in REQUIRED
+                          if not report.get('stages', {}).get(name, {}).get('notShipped'))
         if not required_ok:
             complete = False
         rows.append((path.stem.replace('next-matrix-', ''), report.get('agent', '')[:80],

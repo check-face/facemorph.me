@@ -35,7 +35,13 @@ try:
     until(lambda s:js("!!document.querySelector('select[aria-label=\"Morph shape\"]')"))
     js("document.querySelector('.next-overflow').open=true")
     initial['pattern']=js("document.querySelector('select[aria-label=\"Morph shape\"]')?.value")
-    assert initial['pattern']=='pairwise-figure8' and not initial['errors'], initial
+    # Smooth figure eight, pinched, is the default (operator, 22 September). Pinch had been
+    # passed on every run for weeks with no control on the surface, so changing the default
+    # silently took the choice away; the gate now holds both halves — the shape AND the
+    # control that turns it off — so neither can go missing again without CI saying so.
+    initial['pinch']=js("(()=>{const c=document.querySelector('.next-overflow input[type=\"checkbox\"]');return c?c.checked:null;})()")
+    assert initial['pattern']=='full-smooth-figure8' and not initial['errors'], initial
+    assert initial['pinch'] is True, initial
     result['initial']=initial
     click('button','Add face')
     result['afterAdd']=until(lambda s:s['tiles']==3 and s['photoButtons']==3)

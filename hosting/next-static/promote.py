@@ -24,7 +24,16 @@ command('gh','run','download',str(a.build_run),'-R',REMOTE,'-n','next-site-'+bui
 command('gh','run','download',str(a.qualification_run),'-R',REMOTE,'-n','next-e2e-'+str(a.qualification_run),'-D',str(proof))
 command(sys.executable,'desktop/scripts/verify-web-artifact.py','--artifact',str(web),'--revision',build['head_sha'],'--receipt',str(work/'web-receipt.json'))
 report=json.loads((proof/'report.json').read_text());source=json.loads((proof/'source-run.json').read_text())
-required={'nameSeed','repeatOriginal','syntheticPhotoE4e','localCrop','projectSaveReopen','morphPlayableMp4','routeRejectionNamed'}
+required={'nameSeed','repeatOriginal','syntheticPhotoE4e','localCrop','morphPlayableMp4','routeRejectionNamed'}
+# Project export and open sit behind `projectFilesVisible` in Product.fs and have been off since
+# 21 September (operator), so no browser can demonstrate the save/reopen round trip through the
+# surface. The qualification states which artifact it saw: a missing record still fails, and the
+# pass is required again the moment the control ships. What the UI no longer covers stays covered
+# by src/Next/verify-fable.mjs, which round-trips every path kind and latent space against actual
+# Fable output in the artifact job.
+project=report.get('checks',{}).get('projectSaveReopen')
+if not isinstance(project,dict):raise ValueError('Required real-workflow evidence is missing')
+if project.get('shipped') is not False:required={*required,'projectSaveReopen'}
 if report.get('passed') is not True or not all(report.get('checks',{}).get(k,{}).get('passed') is True for k in required):raise ValueError('Required real-workflow evidence is missing')
 if source['id']!=a.build_run or source['head_sha']!=build['head_sha'] or (proof/'next-site-SHA256SUMS').read_bytes()!=(web/'next-site-SHA256SUMS').read_bytes():raise ValueError('Qualification tested a different artifact')
 manifest_sha=hashlib.sha256((a.runtime/'manifest.json').read_bytes()).hexdigest()
@@ -46,7 +55,7 @@ if ledger.exists():
 # bundle carried the pre-promotion kernel and the retired unsplit graph, and every WebGPU device
 # fell back to CPU after a 183 MB download. This checks the assets the engine actually imports.
 webgpu_contract.require(a.runtime, manifest)
-receipt={'buildRun':a.build_run,'qualificationRun':a.qualification_run,'source':build['head_sha'],'runtimeSha256':manifest_sha,'kernel':{k:kernel[k] for k in ('file','sha256','candidateId','sourceHash')},'published':False}
+receipt={'buildRun':a.build_run,'qualificationRun':a.qualification_run,'source':build['head_sha'],'runtimeSha256':manifest_sha,'kernel':{k:kernel[k] for k in ('file','sha256','candidateId','sourceHash')},'projectFiles':('qualified' if project.get('shipped') is not False else 'not in this artifact'),'published':False}
 command(sys.executable,'hosting/next-static/stage.py','--runtime',str(a.runtime.resolve()),'--frontend',str(web/'deploy-next'),'--catalogue',str(a.catalogue.resolve()),'--output',str(work/'public'))
 (work/'promotion.json').write_text(json.dumps(receipt,indent=2)+'\n')
 if a.publish:

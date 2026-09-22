@@ -45,7 +45,9 @@ async function stage(name,run,{optional=false}={}){
   const data=await run();
   // A stage the build could not exercise is not a pass. It is recorded, it counts against the
   // row, and it is never allowed to stand in for evidence that was never collected.
-  const verified=!(data&&data.buildLimitation);
+  // A control the artifact does not ship is the same shape of non-evidence: recorded, never
+  // counted as a pass, and never allowed to stand in for a check that could not run.
+  const verified=!(data&&(data.buildLimitation||data.notShipped));
   record(name,{passed:verified,seconds:(Date.now()-startedAt)/1000,...data});
   await save();
   return data;
@@ -156,6 +158,12 @@ try{
  });
 
  await stage('projectSaveReopen',async()=>{
+  // Project export and open sit behind `projectFilesVisible` in Product.fs, off since
+  // 21 September (operator). There is nothing on the surface to drive, and calling that a pass
+  // would be the false confirmation this lane exists to prevent. The round trip stays covered by
+  // src/Next/verify-fable.mjs, and this stage qualifies itself again the day the control returns.
+  if(!await page.evaluate(()=>!!document.querySelector('input[aria-label="Open project"]')))
+   return {notShipped:true,skipped:'Project export and open are not in this artifact (Product.fs projectFilesVisible=false); ProjectJson round-trip is covered by src/Next/verify-fable.mjs'};
   const file=await download('Export project');
   const parsed=JSON.parse(await fs.readFile(file,'utf8'));
   if(parsed.morph.controls.length!==2||!parsed.morph.controls.every(c=>c.latent.values.length===9216))throw Error('Exported project does not carry two W+ latents');
@@ -194,7 +202,11 @@ try{
   return playback;
  });
 
- const required=['nameSeed','repeatOriginal','photoE4e','localCrop','projectSaveReopen','morphExport','morphPlayback'];
+ // A stage whose control is not in the artifact leaves the requirement with its reason on the
+ // record; it is neither a failure of this engine nor evidence that anything was checked.
+ const required=['nameSeed','repeatOriginal','photoE4e','localCrop','projectSaveReopen','morphExport','morphPlayback']
+  .filter(name=>!report.stages[name]?.notShipped);
+ report.notShipped=Object.entries(report.stages).filter(([,v])=>v.notShipped).map(([k])=>k);
  report.buildLimited=Object.entries(report.stages).filter(([,v])=>v.buildLimitation).map(([k])=>k);
  report.failed=required.filter(name=>!report.stages[name]?.passed&&!report.stages[name]?.buildLimitation);
  // Complete means every required stage was actually verified here. A row that could not check a

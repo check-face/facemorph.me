@@ -132,7 +132,11 @@ def main():
         else:
             evidence['xcode'] = command('xcodebuild', '-version')
             evidence['simulatorSdk'] = command('xcrun', '--sdk', 'iphonesimulator', '--show-sdk-version')
-            devices = json.loads(command('xcrun', 'simctl', 'list', 'devices', 'available', '--json'))['devices']
+            # First contact with CoreSimulator on a cold runner is the slow one: the service has
+            # to start before it can answer, and 22 September it took longer than 90 seconds and
+            # failed the lane before a browser was ever involved. The wait is generous because
+            # what it protects against is a machine warming up, not a hang.
+            devices = json.loads(command('xcrun', 'simctl', 'list', 'devices', 'available', '--json', timeout=300))['devices']
             options = simulator_options(devices, evidence['simulatorSdk'])
             if not options:
                 raise RuntimeError('No installed iPhone Simulator matching selected Xcode SDK; no silent skip')
