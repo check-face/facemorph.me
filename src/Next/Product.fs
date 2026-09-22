@@ -161,6 +161,11 @@ type State = {
     Rejected: string option
     Invite: bool
     UseSlider: bool; SliderFrames: string array option
+    /// Which frame the slider is scrubbed to, 1-based. It lives here rather than inside the
+    /// slider component because unchecking "Use Slider" unmounts that component: the position a
+    /// visitor chose has to survive being hidden and shown again. A new morph puts it back to
+    /// the first face — the frames belong to a different morph by then.
+    SliderFrame: int
     Warn: string option; Overflow: bool; PhotoQueue: (string * obj) list
     PendingFaces: string list
     ActiveFace: string option
@@ -175,7 +180,7 @@ type Msg =
     | Progressed of Progress | Completed of int * Output | Failed of int * string
     | Save of string | Share of string | Export | Import of obj | Notice of string
     | Debug of bool | DismissError | DismissInvite | DismissWarn | OverflowToggle of bool
-    | UseSliderToggle of bool | SliderLoaded of obj
+    | UseSliderToggle of bool | SliderLoaded of obj | SliderFrameSet of int
     | BrowseNames of string | NamesLoaded of NameFace array | SearchNames of string | ChooseName of string | CloseNames | MoreNames
     | PinchToggle of bool
     | CropPan of float * float | CropZoom of float | CropRotate | CropAccept | CropCancel | RequestCrop of string | Cropped of string * obj
@@ -193,7 +198,7 @@ let init () =
     { Inputs = [{id="face-1";mode="text";value="hello";file=emptyFile}; {id="face-2";mode="text";value=System.DateTime.Today.ToString("yyyy-MM-dd");file=emptyFile}]
       Faces=[||];VideoUrl="";Kind="full-smooth-figure8";Width=0.2;Pinch=true;Frames=16;Fps=16;Provider="auto"
       Busy=false;JobId=0;Stage="idle";Status="";Fraction=0.;Preparing="";Browse=None;Names=[||];NameQuery="";NameLimit=48;Error=None;DebugStatus="";Debug=false;NextId=3;Crop=None;CropQueue=[];Route="";Rejected=None;Invite=testingInvited()
-      UseSlider=false;SliderFrames=None;Warn=None;Overflow=false;PhotoQueue=[];PendingFaces=[];ActiveFace=None;Remaining="" },
+      UseSlider=false;SliderFrames=None;SliderFrame=1;Warn=None;Overflow=false;PhotoQueue=[];PendingFaces=[];ActiveFace=None;Remaining="" },
     Cmd.batch [Cmd.ofSub(fun dispatch -> subscribe (Progressed >> dispatch)); if namesRequested() then Cmd.ofMsg(BrowseNames "face-1")]
 
 /// Time left in the job in flight, spoken. Empty without a measurement on this device.
@@ -381,7 +386,7 @@ let update msg state =
             invalidatePhotoSelections()
             let id=state.JobId+1
             let request={jobId=id;action="face";target=faceId;inputs=[|item|];kind=state.Kind;width=state.Width;pinch=state.Pinch;frames=state.Frames;fps=state.Fps;provider=state.Provider}
-            {state with Busy=true;JobId=id;Error=None;Stage="preparing";Status="Generating this face…";Fraction=0.;VideoUrl="";Warn=None;Remaining="";SliderFrames=None;PhotoQueue=[]},
+            {state with Busy=true;JobId=id;Error=None;Stage="preparing";Status="Generating this face…";Fraction=0.;VideoUrl="";Warn=None;Remaining="";SliderFrames=None;SliderFrame=1;PhotoQueue=[]},
             Cmd.OfPromise.either execute request (fun result -> Completed(id,result)) (fun e -> Failed(id,e.Message))
     | Run action when not state.Busy ->
         invalidatePhotoSelections()
@@ -395,7 +400,7 @@ let update msg state =
                  | Some ms when isSlowJob ms -> Some (sprintf "This video may take %s on this device. It keeps going if you switch tabs, and you can cancel at any time." (describeMs ms))
                  | _ -> if isSlowDevice state then Some "Generating is slow on this device, so this video may take a while. You can cancel at any time." else None
         let request={jobId=id;action=action;target="";inputs=Array.ofList state.Inputs;kind=state.Kind;width=state.Width;pinch=state.Pinch;frames=state.Frames;fps=state.Fps;provider=state.Provider}
-        {state with Busy=true;JobId=id;Error=None;Stage="preparing";Status="Preparing…";Fraction=0.;Warn=warn;Remaining="";SliderFrames=None;PhotoQueue=[];ActiveFace=None},
+        {state with Busy=true;JobId=id;Error=None;Stage="preparing";Status="Preparing…";Fraction=0.;Warn=warn;Remaining="";SliderFrames=None;SliderFrame=1;PhotoQueue=[];ActiveFace=None},
         Cmd.OfPromise.either execute request (fun result -> Completed(id,result)) (fun e -> Failed(id,e.Message))
     | Progressed progress when progress.stage.StartsWith("diagnostics-") ->
         let status = match progress.stage with
@@ -461,6 +466,7 @@ let update msg state =
         if want && state.SliderFrames.IsNone && state.VideoUrl<>"" then Cmd.OfPromise.either sliderFrames () SliderLoaded (fun _ -> SliderLoaded null) else Cmd.none
     | SliderLoaded frames ->
         {state with SliderFrames=(if isNull frames then None else Some (unbox<string array> frames))},Cmd.none
+    | SliderFrameSet frame -> {state with SliderFrame=max 1 frame},Cmd.none
     | BrowseNames id when not state.Busy -> openNamesFocus(); {state with Browse=Some id;NameQuery="";NameLimit=48},(if state.Names.Length=0 then Cmd.OfPromise.either loadNames () NamesLoaded (fun e -> Notice e.Message) else Cmd.none)
     | NamesLoaded names -> {state with Names=names},Cmd.none
     | SearchNames text -> {state with NameQuery=text;NameLimit=48},Cmd.none
@@ -759,41 +765,56 @@ let private morphSlot (state:State) dispatch =
         | None -> ()]]
 
 /// Classic's slider (U-14): every retained frame preloaded as an image, scrubbed onto a canvas.
+///
+/// The position is the caller's state, not this component's: unchecking "Use Slider" unmounts
+/// this, and a visitor who scrubbed somewhere and looked away expects to come back to it.
+///
+/// Two things kept the first frame off the screen entirely (operator, 22 September). The canvas
+/// is only drawn on a render where the image for the current frame has finished loading, and on
+/// the very first render none of them have — the ref is not even attached yet. The repaint that
+/// was supposed to follow `img.onload` called `reRender(0)` on a `useState(0)`, and React bails
+/// out of a state write that changes nothing, so no repaint ever happened. The result was a
+/// blank square until the visitor nudged the slider, which is the one interaction that forced an
+/// unrelated re-render. A monotonic tick repaints properly, and the draw happens in an effect
+/// after the ref exists.
 [<ReactComponent>]
-let private nextSlider (frames:string array) (dim:int) =
+let private nextSlider (frames:string array) (dim:int) (frameNum:int) (setFrameNum:int -> unit) =
     let canvasRef = React.useRef(None)
-    let (frameNum, setFrameNum) = React.useState(1 + frames.Length/2)
-    let (_, reRender) = React.useState(0)
+    let (_, setTick) = React.useState(0)
+    let ticks = React.useRef(0)
     let store = React.useRef None
+    let repaint () = ticks.current <- ticks.current + 1; setTick ticks.current
     let createImage (url:string) =
         let img = HTMLImageElement.Create(float dim,float dim)
-        img.onload <- fun _ -> reRender(0)
+        img.onload <- fun _ -> repaint()
         img.src <- url
         img
     match store.current with
-    | Some (images:HTMLImageElement list,count:int) when count=frames.Length ->
-        match canvasRef.current with
-        | Some canvas ->
+    | Some (_,count:int) when count=frames.Length -> ()
+    | _ -> store.current <- Some (frames |> Array.map createImage |> Array.toList, frames.Length)
+    // Draw after the commit, so the very first render paints as soon as its bytes are there
+    // rather than waiting for a second one that nothing was going to schedule.
+    React.useEffect(fun () ->
+        match store.current, canvasRef.current with
+        | Some (images:HTMLImageElement list,_), Some canvas ->
             let canvas = unbox<HTMLCanvasElement> canvas
             canvas.width <- float dim
             canvas.height <- float dim
             let context = canvas.getContext_2d()
-            let currentFrame = min frameNum images.Length
+            let currentFrame = max 1 (min frameNum images.Length)
             let currentImage = images.[currentFrame-1]
             if currentImage.complete then context?drawImage(currentImage,0.,0.,dim,dim)
-        | None -> ()
-    | _ ->
-        store.current <- Some (frames |> Array.map createImage |> Array.toList, frames.Length)
+        | _ -> ())
     Html.div [prop.className "next-slider";prop.children [
         Html.canvas [prop.ref canvasRef;prop.width dim;prop.height dim;prop.style [style.maxWidth(length.percent 100);style.height length.auto];prop.ariaLabel "Morph preview, frame by frame";prop.custom("role","img")]
-        Mui.slider [slider.min 1;slider.max frames.Length;slider.value frameNum;slider.onChange setFrameNum
+        Mui.slider [slider.min 1;slider.max frames.Length;slider.value (max 1 (min frameNum frames.Length));slider.onChange setFrameNum
                     prop.ariaLabel "Morph frame";prop.className "next-slider-control"]]]
 
 let private videoSlot (state:State) dispatch =
     let poster = state.Faces |> Array.tryHead |> Option.map(fun f -> f.url)
     let sliderChoice =
         match state.UseSlider,state.SliderFrames with
-        | true,Some frames -> nextSlider frames videoDim
+        | true,Some frames -> nextSlider frames videoDim state.SliderFrame (SliderFrameSet >> dispatch)
         | true,None -> Html.p [prop.className "next-slider-empty";prop.custom("role","note");prop.text "This morph's frames are not saved on this device yet, so the slider has nothing to scrub. Generate the morph again once frame storage is on."]
         | _ -> Html.none
     // Classic shows one result at a time: the slider REPLACES the video and the video replaces the
