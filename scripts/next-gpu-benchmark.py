@@ -56,6 +56,16 @@ def dump(name):
 def wait(check, seconds, what):
     deadline = time.time() + seconds
     while time.time() < deadline:
+        # An error on the surface is an answer, not something to keep waiting through. The route
+        # has failed on this runner since at least 21 September with "[Invalid CommandBuffer] is
+        # invalid" out of Queue.Submit, and every run spent its full deadline before reporting a
+        # timeout — which reads like a hang and named nothing. The product already puts the GPU's
+        # own words on screen; the lane repeats them and stops.
+        failure = q("document.querySelector('.next-error')?.innerText||''")
+        if failure:
+            dump('failure-state.json')
+            raise AssertionError('The product reported an error while waiting for %s: %s'
+                                 % (what, ' '.join(failure.split())[:300]))
         value = check()
         if value:
             return value
@@ -98,7 +108,7 @@ wait(lambda: q("document.querySelector('%s').value" % S['processingMode']) == 'w
 
 js("""(()=>{window.__bench=[];window.__t0=performance.now();
  new MutationObserver(()=>{const t=document.body.innerText;
-   for(const re of [/Done — ready to save or share[^\\n]*/,/Generating…/,/Loading the graphics model[^\\n]*/,/Model ready[^\\n]*/,/Downloading model files[^\\n]*/,/Loading model files from this device[^\\n]*/,/[^\\n]*much slower[^\\n]*/,/[^\\n]*rejected a graphics route[^\\n]*/]){
+   for(const re of [/Done — ready to save or share/,/Generating…/,/Loading the graphics model[^\\n]*/,/Model ready/,/Downloading model files/,/Loading model files from this device/,/[^\\n]*much slower[^\\n]*/,/[^\\n]*rejected a graphics route[^\\n]*/]){
      const m=t.match(re); if(m&&!window.__bench.some(e=>e.line===m[0]))
        window.__bench.push({ms:Math.round(performance.now()-window.__t0),line:m[0]});}
  }).observe(document.body,{subtree:true,childList:true,characterData:true});})()""")
