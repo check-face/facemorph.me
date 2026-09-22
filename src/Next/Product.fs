@@ -207,10 +207,14 @@ let private remainingText () =
     if isJsNull ms then "" else describeMs(unbox<float> ms) + " remaining"
 
 /// Per-frame cost this device has measured, spoken. Empty without a measurement.
+/// describeMs already speaks "about", and prefixing it again read "about about 1 seconds per
+/// frame" on the live site (22 September) — the same duplication R2-13 took out of the remaining
+/// line. The fallback says "per face" because a face is what this device measured; a per-frame
+/// figure it has never produced does not get relabelled as one.
 let private perFrameText () =
     match measuredFrameMs() with
-    | null -> (match measuredFaceMs() with null -> "" | value -> sprintf "about %s per frame" (describeMs(unbox<float> value)))
-    | value -> sprintf "about %s per frame" (describeMs(unbox<float> value))
+    | null -> (match measuredFaceMs() with null -> "" | value -> describeMs(unbox<float> value) + " per face")
+    | value -> describeMs(unbox<float> value) + " per frame"
 
 /// Predicted total for the morph as currently configured, from measurement only.
 let private predictedMorphMs (state:State) =
