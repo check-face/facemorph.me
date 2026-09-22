@@ -25,23 +25,37 @@ export function collectAssets(value, depth = 0, found = []) {
 
 export function createAcquisitionBudget() {
   const planned = new Map(), completed = new Map(), inflight = new Map();
+  // Which assets are actually crossing the network. The bar covers the whole acquisition on
+  // purpose — a cache read still costs the visitor time — but the words next to it must not
+  // claim a download that is not happening. A warm device reported "Downloading model files…
+  // 183 MB of 203 MB" with every one of those bytes already on disk, which is how a cache that
+  // was working read as a gigabyte re-downloading on every visit (operator, 22 September).
+  const fetching = new Set();
   let emitProgress = null;
   function planAsset(value) {
     for (const asset of collectAssets(value)) planned.set(asset.sha256, asset.size);
   }
   function totals() {
-    let total = 0, loaded = 0;
-    for (const [sha256, size] of planned) { total += size; loaded += completed.get(sha256) ?? Math.min(inflight.get(sha256) ?? 0, size); }
-    return { loaded, total };
+    let total = 0, loaded = 0, fetched = 0, fetchedTotal = 0;
+    for (const [sha256, size] of planned) {
+      const done = completed.get(sha256) ?? Math.min(inflight.get(sha256) ?? 0, size);
+      total += size; loaded += done;
+      if (fetching.has(sha256)) { fetchedTotal += size; fetched += done; }
+    }
+    return { loaded, total, fetched, fetchedTotal };
   }
   // progressOnly marks a reading that belongs to the bar and not to the diagnostics ledger: at a
   // megabyte a tick these would be hundreds of POSTs saying nothing the boundaries do not.
   function progress(progressOnly) {
     if (!emitProgress) return;
-    const { loaded, total } = totals();
-    emitProgress({ loaded, total }, progressOnly);
+    const { loaded, total, fetched, fetchedTotal } = totals();
+    emitProgress({ loaded, total, fetched, fetchedTotal }, progressOnly);
   }
   function cacheEvent(event) {
+    // The cache says 'missing' before it reaches for the network and 'downloading' as it does.
+    // Nothing else promotes an asset into the fetched set: a retained asset never becomes one,
+    // and a repair re-announces itself through the same two statuses.
+    if (event.status === 'missing' || event.status === 'downloading') { fetching.add(event.sha256); progress(true); return; }
     if (event.status === 'progress') { inflight.set(event.sha256, event.loaded); progress(true); return; }
     if (event.status === 'retained' || event.status === 'saved' || event.status === 'verified') {
       completed.set(event.sha256, event.bytes ?? planned.get(event.sha256) ?? 0);

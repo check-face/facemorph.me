@@ -119,6 +119,14 @@ export const STAGE_LABELS = {
 };
 
 const MB = 1024 * 1024;
+/**
+ * What a byte stage says when the bytes are already on this device. Only the stages whose label
+ * names a download need one: a stage that never claimed to be downloading is already true.
+ */
+const LOCAL_LABELS = {
+  'asset-acquisition': 'Loading model files from this device…',
+  'alignment-model-download': 'Loading the face detector from this device…'
+};
 // Byte counts are only worth showing once they are worth waiting for; below this a count
 // reads as "0 MB of 0 MB" and tells the user less than the label alone.
 const COUNTABLE_BYTES = 8 * MB;
@@ -141,8 +149,21 @@ export function labelFor(stage, event = {}) {
   const label = STAGE_LABELS[stage];
   if (label === undefined) return undefined;
   const loaded = loadedBytes(event);
-  if (BYTE_STAGES.has(stage) && event.total >= COUNTABLE_BYTES && Number.isFinite(loaded))
+  if (BYTE_STAGES.has(stage) && event.total >= COUNTABLE_BYTES && Number.isFinite(loaded)) {
+    // The emitter that knows the difference says so: `fetchedTotal` is the part of this
+    // acquisition that is actually crossing the network. On a warm device it is zero while the
+    // bar still moves — the cache read and its verification take real time — and the line then
+    // says what is happening instead of announcing a download of bytes already on the disk.
+    // That line read "Downloading model files… 183 MB of 203 MB" over a complete cache hit,
+    // which is how a working cache was read as a gigabyte re-downloading every visit
+    // (operator, 22 September).
+    if (Number.isFinite(event.fetchedTotal)) {
+      if (event.fetchedTotal < COUNTABLE_BYTES) return LOCAL_LABELS[stage] ?? label;
+      const fetched = Number.isFinite(event.fetched) ? event.fetched : 0;
+      return `${label} ${Math.round(fetched / MB)} MB of ${Math.round(event.fetchedTotal / MB)} MB`;
+    }
     return `${label} ${Math.round(loaded / MB)} MB of ${Math.round(event.total / MB)} MB`;
+  }
   if (STEP_STAGES.has(stage) && event.total > 1 && Number.isFinite(loaded))
     return `${label} ${loaded} of ${event.total}`;
   return label;

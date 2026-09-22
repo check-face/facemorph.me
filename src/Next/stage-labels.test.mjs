@@ -117,3 +117,24 @@ test('silence and self-text never overlap with a label', () => {
   for (const stage of SILENT_STAGES) assert.ok(!(stage in STAGE_LABELS), stage);
   for (const stage of SELF_TEXT_STAGES) assert.ok(!(stage in STAGE_LABELS), stage);
 });
+
+test('a cache hit is not announced as a download', () => {
+  const MB = 1048576;
+  // Every byte already on the device: the bar still crosses (reading and verifying 203 MB is not
+  // free) but the words must not claim a download. This is the line the operator read as a
+  // gigabyte re-downloading on every visit while the cache was in fact complete.
+  assert.equal(labelFor('asset-acquisition', { loaded: 183 * MB, total: 203 * MB, fetched: 0, fetchedTotal: 0 }),
+    'Loading model files from this device…');
+  // Partly warm: the count is what is crossing the network, not what the bar covers. Saying
+  // "20 MB of 20 MB" when 20 MB is being fetched is the whole point — the visitor is waiting on
+  // the network, not on the cache.
+  assert.equal(labelFor('asset-acquisition', { loaded: 190 * MB, total: 203 * MB, fetched: 7 * MB, fetchedTotal: 20 * MB }),
+    'Downloading model files… 7 MB of 20 MB');
+  // Cold: fetched and total agree, and the line reads exactly as it always did.
+  assert.equal(labelFor('asset-acquisition', { loaded: 60 * MB, total: 120 * MB, fetched: 60 * MB, fetchedTotal: 120 * MB }),
+    'Downloading model files… 60 MB of 120 MB');
+  // An emitter that does not know the difference keeps the old line rather than a silent lie
+  // in the other direction.
+  assert.equal(labelFor('asset-acquisition', { loaded: 60 * MB, total: 120 * MB }),
+    'Downloading model files… 60 MB of 120 MB');
+});

@@ -16,7 +16,7 @@ const report=(id,stage,extra={})=>postMessage({id,type:'progress',stage,...extra
  */
 
 const budget=createAcquisitionBudget();
-budget.attach(({loaded,total},progressOnly)=>report(currentId,'asset-acquisition',{loaded,total,progressOnly}));
+budget.attach(({loaded,total,fetched,fetchedTotal},progressOnly)=>report(currentId,'asset-acquisition',{loaded,total,fetched,fetchedTotal,progressOnly}));
 // The budget only cares about bytes, so every way the cache can fail was dropped here and never
 // reached a report. Three photos in a row re-downloaded the 1019 MiB encoder and the 212 MiB
 // models three times, and four rounds of reports could not say whether that was a quota refusal,

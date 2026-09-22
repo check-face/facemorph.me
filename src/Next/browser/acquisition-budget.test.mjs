@@ -47,7 +47,7 @@ test('a retained or verified asset is credited at its reported size without a do
   budget.cacheEvent({ status: 'retained', sha256: A, bytes: 100 });
   budget.cacheEvent({ status: 'verified', sha256: B, bytes: 40 }); // credited even before it is planned
   budget.planAsset(asset(B, 40));
-  assert.deepEqual(budget.totals(), { loaded: 140, total: 140 });
+  assert.deepEqual(budget.totals(), { loaded: 140, total: 140, fetched: 0, fetchedTotal: 0 });
   assert.deepEqual(readings.map(reading => reading.loaded), [100, 100]);
 });
 
@@ -57,7 +57,32 @@ test('boundary readings are ledger events, not bar-only ticks', () => {
   budget.attach((totals, progressOnly) => readings.push({ ...totals, progressOnly }));
   budget.planAsset(asset(A, 100));
   budget.progress(false);
-  assert.deepEqual(readings, [{ loaded: 0, total: 100, progressOnly: false }]);
+  assert.deepEqual(readings, [{ loaded: 0, total: 100, fetched: 0, fetchedTotal: 0, progressOnly: false }]);
   budget.progress(true);
   assert.equal(readings[1].progressOnly, true);
+});
+
+test('bytes already on the device are never counted as bytes being fetched', () => {
+  const budget = createAcquisitionBudget();
+  budget.planAsset({ a: { sha256: 'a'.repeat(64), size: 200, url: 'https://x/a' },
+                     b: { sha256: 'b'.repeat(64), size: 100, url: 'https://x/b' } });
+  budget.cacheEvent({ status: 'retained', sha256: 'a'.repeat(64), bytes: 200 });
+  // The bar covers the retained asset — reading and verifying it costs the visitor time — but
+  // nothing about it crossed the network.
+  assert.deepEqual(budget.totals(), { loaded: 200, total: 300, fetched: 0, fetchedTotal: 0 });
+  budget.cacheEvent({ status: 'missing', sha256: 'b'.repeat(64) });
+  assert.deepEqual(budget.totals(), { loaded: 200, total: 300, fetched: 0, fetchedTotal: 100 });
+  budget.cacheEvent({ status: 'progress', sha256: 'b'.repeat(64), loaded: 40, bytes: 100 });
+  assert.deepEqual(budget.totals(), { loaded: 240, total: 300, fetched: 40, fetchedTotal: 100 });
+  budget.cacheEvent({ status: 'saved', sha256: 'b'.repeat(64), bytes: 100 });
+  assert.deepEqual(budget.totals(), { loaded: 300, total: 300, fetched: 100, fetchedTotal: 100 });
+});
+
+test('a repaired asset joins the fetched set, because its bytes do cross the network', () => {
+  const budget = createAcquisitionBudget();
+  budget.planAsset({ sha256: 'c'.repeat(64), size: 50, url: 'https://x/c' });
+  budget.cacheEvent({ status: 'retained', sha256: 'c'.repeat(64), bytes: 50 });
+  budget.cacheEvent({ status: 'corrupt-removed', sha256: 'c'.repeat(64) });
+  budget.cacheEvent({ status: 'downloading', sha256: 'c'.repeat(64) });
+  assert.equal(budget.totals().fetchedTotal, 50);
 });
