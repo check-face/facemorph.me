@@ -60,7 +60,8 @@ CAMPAIGN = """
     new MutationObserver(() => {
       const t = document.body.innerText;
       for (const re of [/Using the \\w+ route[^\\n]*/, /Getting photo tools ready[^\\n]*/,
-                        /Downloading model files[^\\n]*/, /Generating[^\\n]*/, /Face generated[^\\n]*/,
+                        /Downloading model files[^\\n]*/, /Loading model files from this device[^\\n]*/,
+                        /Generating[^\\n]*/, /Face generated[^\\n]*/,
                         /[^\\n]*much slower[^\\n]*/, /[^\\n]*rejected a graphics route[^\\n]*/]) {
         const m = t.match(re);
         if (m && !report.stages.includes(m[0])) report.stages.push(m[0]);
@@ -206,6 +207,16 @@ def main():
     def sim(*args, timeout=180):
         return subprocess.run(['xcrun', 'simctl', *args], capture_output=True, text=True, timeout=timeout)
 
+    # A launch or openurl that outlasts its window on a cold runner is slowness, not failure: the
+    # retry loop below is what decides whether Safari ever came up. 22 September `simctl launch`
+    # spent more than 180 seconds warming CoreSimulator and the exception ended the lane before
+    # its own first retry. A timeout here now returns nothing and lets the loop do its job.
+    def patiently(*args, timeout=300):
+        try:
+            return sim(*args, timeout=timeout)
+        except subprocess.TimeoutExpired:
+            return None
+
     devices = json.loads(sim('list', 'devices', 'available', '--json').stdout)['devices']
     match = next((d for group in devices.values() for d in group if d['name'] == a.device), None)
     assert match, f'No available Simulator named {a.device!r}'
@@ -217,15 +228,15 @@ def main():
         # A freshly booted or erased device accepts `openurl` only once Safari and its URL
         # handlers are actually up; before that it times out with NSPOSIXErrorDomain 60. Launching
         # Safari first and retrying is the difference between a flaky lane and a usable one.
-        sim('launch', udid, 'com.apple.mobilesafari')
+        patiently('launch', udid, 'com.apple.mobilesafari')
         launch = None
         for attempt in range(6):
-            launch = sim('openurl', udid, url)
-            if launch.returncode == 0:
+            launch = patiently('openurl', udid, url)
+            if launch is not None and launch.returncode == 0:
                 break
             time.sleep(10)
-            sim('launch', udid, 'com.apple.mobilesafari')
-        assert launch is not None and launch.returncode == 0, launch.stderr if launch else 'no attempt'
+            patiently('launch', udid, 'com.apple.mobilesafari')
+        assert launch is not None and launch.returncode == 0, (launch.stderr if launch else 'Safari never accepted the URL within six attempts')
         print(json.dumps({'device': a.device, 'udid': udid, 'url': url}), flush=True)
         ready.wait(timeout=a.timeout)
         sim('io', udid, 'screenshot', str(a.evidence / 'screen.png'))
