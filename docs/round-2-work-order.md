@@ -94,6 +94,16 @@ validation from a client with no DNS override. Two standing reminders:
 - The Triton API fill is an **operator-authorised bounded live action**: only identities with
   no full-size candidate, identity-verified per result, historic bytes never overwritten.
   Record what was generated, from where, and the verification results.
+- **If you take a behaviour off the surface, its qualification stage does not get to pass**
+  (22 September). Project export and open went behind `projectFilesVisible` on 21 September, and
+  `projectSaveReopen` — one of the original six — cannot be driven through a surface that no
+  longer has the controls. It now asks the artifact and records `shipped:false` with its reason,
+  and `promote.py` drops it from `required` **only** on that record: a missing or malformed one
+  still fails, and the pass is demanded again the moment the control ships. This is the one
+  weakening of the original six, it is conditional, and it reverses itself. What the UI stopped
+  covering is covered by `src/Next/verify-fable.mjs` in the artifact job, which round-trips every
+  path kind and latent space against actual Fable output. If the intent was to keep that gate
+  running, the fix is to put the controls back rather than to relax the rule further.
 
 ## Claiming done
 
