@@ -38,6 +38,11 @@ on:
     - cron: '0 16 * * *'
 permissions:
   contents: read
+# One self-hosted machine with one GPU. Two runs of this lane contend for it and neither number
+# means anything, so a newer commit cancels the run it supersedes instead of queueing behind it.
+concurrency:
+  group: next-gpu-lane
+  cancel-in-progress: true
 jobs:
   webgpu-benchmark:
     # gpu-vulkan, not gpu-gtx1050: the host runner has the same card but no NVIDIA Vulkan ICD,

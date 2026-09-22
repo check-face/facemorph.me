@@ -15,6 +15,13 @@ S = {
     'processingMode': 'select[aria-label="Processing mode"]',
     'routeCaption': '.next-route-caption',
     'generate': 'GENERATE',
+    # A job is finished when the status line stops showing a progress element. Reading the whole
+    # page for the word "Generating" cannot work: the slow-device note says "Generating is slow on
+    # this device." and stays on screen, so from the moment this runner earned that note the wait
+    # below could never come true and every run burned its 900-second deadline on a face that had
+    # already been produced. The status line is the thing that actually says whether work is
+    # running, exactly as the e2e harness's idle() reads it.
+    'busy': '.next-status progress',
 }
 os.makedirs(EVIDENCE, exist_ok=True)
 
@@ -91,7 +98,7 @@ wait(lambda: q("document.querySelector('%s').value" % S['processingMode']) == 'w
 
 js("""(()=>{window.__bench=[];window.__t0=performance.now();
  new MutationObserver(()=>{const t=document.body.innerText;
-   for(const re of [/Face generated[^\\n]*/,/Generating…/,/Loading the graphics model[^\\n]*/,/Model ready[^\\n]*/,/[^\\n]*much slower[^\\n]*/,/[^\\n]*rejected a graphics route[^\\n]*/]){
+   for(const re of [/Done — ready to save or share[^\\n]*/,/Generating…/,/Loading the graphics model[^\\n]*/,/Model ready[^\\n]*/,/Downloading model files[^\\n]*/,/Loading model files from this device[^\\n]*/,/[^\\n]*much slower[^\\n]*/,/[^\\n]*rejected a graphics route[^\\n]*/]){
      const m=t.match(re); if(m&&!window.__bench.some(e=>e.line===m[0]))
        window.__bench.push({ms:Math.round(performance.now()-window.__t0),line:m[0]});}
  }).observe(document.body,{subtree:true,childList:true,characterData:true});})()""")
@@ -109,7 +116,7 @@ for index in range(FACES):
       [...document.querySelectorAll('button')].find(b=>b.textContent.trim().toLowerCase()===want).click();})()"""
        % (index, int(time.time()), S['generate']))
     wait(lambda: q("document.querySelectorAll('img[src^=\"blob:\"]').length") > 0
-         and not q("document.body.innerText.includes('Generating')"), 900, 'face %d' % index)
+         and q("document.querySelector('%s')===null" % S['busy']), 900, 'face %d' % index)
     elapsed = (time.time() - started) * 1000
     if index == 0:
         cold = elapsed
