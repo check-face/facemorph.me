@@ -75,3 +75,60 @@ test('C-03: a transient background failure stays quiet and retries on a later fa
   assert.ok(!events.some(event=>event.stage==='canary-invalidated'),'a network hiccup is not a correctness verdict');
  }finally{runtime.dispose();globalThis.indexedDB=oldIDB;}
 });
+
+// Encoding several photos in a row is the ordinary case, and the worker was thrown away around
+// every one of them: terminate, align, start, encode, terminate, start, synthesize. A wasm heap
+// never shrinks, so on a phone that teardown is the only way the gigabyte comes back and it stays.
+// A machine with memory to spare pays 15 s of re-reading and re-hashing the same gigabyte per
+// photo for nothing (photo-runtime/evidence/desktop-browser-five-photos.json).
+function photoRuntime(lifecycle,manifestExtra={}){
+ let live=0;
+ const worker=()=>{live++;lifecycle.push('start');return {postMessage(message){lifecycle.push(message.type+(message.retain===true?':retain':message.retain===false?':discard':''));
+  const result=message.type==='encode-aligned'?{values:new Float32Array(9216).fill(.1),shape:[1,18,512],space:'w-plus',encoderProvider:'wasm',encoderQualification:{passed:true,manifestSha256:'enc'}}
+   :['generate','synthesize'].includes(message.type)?{blob:new Blob(['mock-png'],{type:'image/png'}),values:new Float32Array(9216).fill(.1),space:'w-plus',shape:[1,18,512]}
+   :{deviceValidated:true};
+  queueMicrotask(()=>this.onmessage({data:{id:message.id,type:'complete',result}}));},
+  terminate(){live--;lifecycle.push('terminate');}};};
+ return createBrowserRuntime({manifestSha256:'0'.repeat(64),preferredRoute:'cpu',
+  manifest:{...testManifest(),alignmentSha256:'align',encoderStream:{sha256:'enc',size:1024,phoneAdmitted:true},...manifestExtra},
+  alignPhoto:async()=>({tensor:new Float32Array(196608),faceCount:1,didAlign:true,alignmentWorkerTerminated:true,
+   provenance:{preprocessingSha256:'align',facePolicy:'exactly-one-face-v1'}}),
+  workerFactory:worker});
+}
+test('A device with no stated memory budget still throws the encoder away after every photo',async()=>{
+ const lifecycle=[];const runtime=photoRuntime(lifecycle);
+ const old=Object.getOwnPropertyDescriptor(globalThis,'navigator');
+ Object.defineProperty(globalThis,'navigator',{configurable:true,value:{userAgent:'Mozilla/5.0'}});
+ try{
+  await runtime.encodePhoto(new Blob(['synthetic-input']));
+  assert.ok(lifecycle.includes('terminate'),lifecycle.join(' '));
+  assert.ok(lifecycle.includes('encode-aligned:discard'),lifecycle.join(' '));
+ }finally{runtime.dispose();if(old)Object.defineProperty(globalThis,'navigator',old);else delete globalThis.navigator;}
+});
+test('A machine with memory to spare keeps the encoder between the photo and its face',async()=>{
+ const lifecycle=[];const runtime=photoRuntime(lifecycle);
+ const old=Object.getOwnPropertyDescriptor(globalThis,'navigator');
+ Object.defineProperty(globalThis,'navigator',{configurable:true,value:{userAgent:'Mozilla/5.0 (Macintosh)',deviceMemory:16,maxTouchPoints:0}});
+ try{
+  await runtime.encodePhoto(new Blob(['synthetic-input']));
+  assert.equal(lifecycle.filter(x=>x==='terminate').length,0,lifecycle.join(' '));
+  assert.equal(lifecycle.filter(x=>x==='start').length,1,lifecycle.join(' '));
+  // The worker is told, per request, so it never holds a gigabyte in a thread about to be ended.
+  assert.ok(lifecycle.includes('encode-aligned:retain'),lifecycle.join(' '));
+ }finally{runtime.dispose();if(old)Object.defineProperty(globalThis,'navigator',old);else delete globalThis.navigator;}
+});
+test('A phone claiming 8 GB is not trusted with it until one has been measured holding it',async()=>{
+ const lifecycle=[];const runtime=photoRuntime(lifecycle);
+ const old=Object.getOwnPropertyDescriptor(globalThis,'navigator');
+ Object.defineProperty(globalThis,'navigator',{configurable:true,value:{userAgent:'Mozilla/5.0 (Linux; Android 14)',deviceMemory:8,maxTouchPoints:5}});
+ try{
+  await runtime.encodePhoto(new Blob(['synthetic-input']));
+  assert.ok(lifecycle.includes('encode-aligned:discard'),lifecycle.join(' '));
+  // ...and the override is how that measurement gets taken, in either direction.
+  globalThis.__FACEMORPH_HOLD_ENCODER__=true;
+  const forced=[];const second=photoRuntime(forced);
+  try{await second.encodePhoto(new Blob(['synthetic-input-2']));
+   assert.ok(forced.includes('encode-aligned:retain'),forced.join(' '));
+  }finally{second.dispose();delete globalThis.__FACEMORPH_HOLD_ENCODER__;}
+ }finally{runtime.dispose();if(old)Object.defineProperty(globalThis,'navigator',old);else delete globalThis.navigator;}
+});
