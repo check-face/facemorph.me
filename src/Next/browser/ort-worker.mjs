@@ -14,10 +14,12 @@ let manifest,ort,cache,mapping,synthesis,noise,average,provider,webgl,webgpu,cur
  * its runtime URLs and re-imported and recompiled ORT's wasm before touching the first shard.
  * On the e4e path moving weights is 79% of the run, so paying it per photo is most of the wait.
  *
- * The rule that keeps a phone alive is unchanged and is the reason this is held rather than
- * pinned: one live model at a time, released *before* the next is acquired, not after the job
- * that used it. `releaseEncoder` runs on the path to synthesis, so the peak is identical to
- * before — what changes is that a second photo finds the encoder still there.
+ * Who decides is the host, per request, because it is the half that knows whether it is about to
+ * terminate this worker. Told to discard — every phone, and anything that does not state a memory
+ * budget — the behaviour is exactly as before: one live model at a time, released before the next
+ * is acquired. Told to hold, the encoder stays through synthesis as well, so the peak really is
+ * higher: the encoder and the route are both resident. That is the trade, and it is only offered
+ * to a device that has said it has the room.
  */
 let encoder=null,encoderStream=null;
 async function releaseEncoder(){
