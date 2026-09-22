@@ -56,7 +56,11 @@ def ensure_instrumented():
  # not. Re-arm them so a mid-suite reload degrades to zero-counted transitions instead of
  # null comparisons, and late failures still carry the runtime's last words.
  js("if(!window.__ciLogs){window.__ciLogs=[];['log','warn','error','info'].forEach(k=>{const o=console[k].bind(console);console[k]=(...a)=>{try{window.__ciLogs.push(k+': '+a.map(x=>typeof x==='string'?x:JSON.stringify(x)).join(' ').slice(0,300));if(window.__ciLogs.length>40)window.__ciLogs.shift();}catch(e){}};});}")
- js("window.__ciBusyChanges=window.__ciBusyChanges||0;if(!window.__ciBusyObserver){window.__ciBusyObserver=new MutationObserver(()=>{window.__ciBusyChanges++;});window.__ciBusyObserver.observe(document.querySelector('.next-status'),{subtree:true,attributes:true,childList:true,characterData:true});window.__ciBusyChanges++;}")
+ # React replaces the status node on re-render, and an observer left watching the detached one
+ # counts nothing forever: every later click then looks like a click that did nothing. Re-arm
+ # whenever the node being watched is no longer the one in the document — a reload is not the
+ # only way instrumentation goes stale.
+ js("window.__ciBusyChanges=window.__ciBusyChanges||0;if(!window.__ciBusyObserver||!window.__ciBusyNode||!document.contains(window.__ciBusyNode)){if(window.__ciBusyObserver)window.__ciBusyObserver.disconnect();window.__ciBusyNode=document.querySelector('.next-status');window.__ciBusyObserver=new MutationObserver(()=>{window.__ciBusyChanges++;});window.__ciBusyObserver.observe(window.__ciBusyNode,{subtree:true,attributes:true,childList:true,characterData:true});window.__ciBusyChanges++;}")
 def q(expr):return json.loads(js('JSON.stringify('+expr+')'))
 def text(sel):return js("(document.querySelector('%s')?.innerText||'')"%sel)
 def wait(predicate,seconds=600):
@@ -96,10 +100,14 @@ def click(name,expect=None):
   n=next((n for n in nodes if n.get('role',{}).get('value')=='button' and n.get('name',{}).get('value','').lower()==name_lower),None)
   ident=n['backendDOMNodeId'];cdp('DOM.scrollIntoViewIfNeeded',backendNodeId=ident)
   box=cdp('DOM.getBoxModel',backendNodeId=ident)['model']['content'];x,y=sum(box[0::2])/4,sum(box[1::2])/4
-  if js("(()=>{const e=document.elementFromPoint(%f,%f),b=e&&e.closest('button');return !!(b&&(b.textContent===%s||b.getAttribute('aria-label')===%s));})()"%(x,y,json.dumps(name),json.dumps(name))):
+  if js("(()=>{const e=document.elementFromPoint(%f,%f),b=e&&e.closest('button');return !!(b&&(b.textContent.trim()===%s||b.getAttribute('aria-label')===%s));})()"%(x,y,json.dumps(name),json.dumps(name))):
    click_at_xy(x,y);return
   time.sleep(.5)
- raise RuntimeError('Could not place a click on '+name)
+ # Name what the page was actually showing: whether the button was there at all, whether it was
+ # disabled, and what the status line said. "Could not place a click" on its own sent the last
+ # failure looking for a missing button that was present and enabled the whole time.
+ seen=js("(()=>{const b=[...document.querySelectorAll('button')].find(x=>x.textContent.trim()===%s);return JSON.stringify({present:!!b,disabled:b?b.disabled:null,status:(document.querySelector('.next-status')?.innerText||'').slice(0,120)});})()"%json.dumps(name))
+ raise RuntimeError('Could not place a click on %s; page showed %s'%(name,seen))
 def idle():return js("!document.querySelector('%s') && [...document.querySelectorAll('button')].some(b=>b.textContent==='%s'&&!b.disabled)"%(S['busy'],S['buttons']['generate']))
 def run(name,predicate=None):
  # A warm cache can complete a run synchronously - the button's disabled state never flips -
@@ -108,8 +116,14 @@ def run(name,predicate=None):
  # may have reloaded the page since the driver last armed the observers, so re-arm here.
  ensure_instrumented()
  before=js('window.__ciBusyChanges')
- click(name,expect=lambda: js('window.__ciBusyChanges')>before or (predicate() if predicate else False))
- wait(lambda: js('window.__ciBusyChanges')>before or (predicate() if predicate else False),30);wait(idle)
+ # Three independent signals that the click landed, because each one alone has a blind spot: the
+ # busy counter misses a job whose status has not changed yet, the stage predicate can be minutes
+ # away on the CPU route, and the button's own disabled state says nothing once the job finishes.
+ # Every one of these buttons disables while a job runs, so that flip is the earliest honest
+ # evidence available and it does not depend on any instrumentation surviving a re-render.
+ started=lambda: js('window.__ciBusyChanges')>before or js("(()=>{const b=[...document.querySelectorAll('button')].find(x=>x.textContent.trim()===%s||x.getAttribute('aria-label')===%s);return !!b&&b.disabled;})()"%(json.dumps(name),json.dumps(name))) or (predicate() if predicate else False)
+ click(name,expect=started)
+ wait(started,30);wait(idle)
 def faces():
  return q("[...document.querySelectorAll('%s')].map(i=>({width:i.naturalWidth,height:i.naturalHeight,url:i.src}))"%S['faceImage'])
 def select_mode(value):
