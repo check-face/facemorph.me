@@ -42,7 +42,17 @@ export async function selectPhoto({id,files}){
   if(pending.get(id)!==token)return null;
   if(direct)return file;
   const preview=await previewPhoto(file);
-  return pending.get(id)===token?{crop:true,file,...preview}:(URL.revokeObjectURL(preview.url),null);
+  if(pending.get(id)!==token){URL.revokeObjectURL(preview.url);return null;}
+  // A container the header reader does not know — WebP, HEIC — used to go to the cropper whatever
+  // its size, because the crop step was doubling as a transcode: a 220x124 WebP asked the visitor
+  // to crop it. `previewPhoto` has already decoded it to a PNG, and for an image that fits whole
+  // in the preview that PNG *is* the image, so the direct path can take it and alignment can do
+  // its job unaided. Anything actually too large still needs a real crop.
+  if(!preview.resized&&preview.previewWidth*preview.previewHeight<=4*1024*1024&&preview.blob instanceof Blob){
+   URL.revokeObjectURL(preview.url);
+   return new File([preview.blob],(file.name||'photo').replace(/\.[^.]+$/,'')+'.png',{type:'image/png'});
+  }
+  return {crop:true,file,...preview};
  }catch(error){if(pending.get(id)!==token)return null;throw error;}finally{if(pending.get(id)===token)pending.delete(id);}
 }
 /** Moves focus into the crop square so its keyboard controls are usable on open. */

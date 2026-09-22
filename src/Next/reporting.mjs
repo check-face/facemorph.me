@@ -69,9 +69,74 @@ let staged=[];
 // a mid-run yes used to file a finished run's events under whatever was current by then.
 function stash(item){staged.push(item);if(staged.length>STAGE_LIMIT)staged.shift();}
 /** Sends what was staged before consent, oldest first, once the tester agrees. */
-function flush(){const pending=staged;staged=[];for(const record of pending)void deliver(record);}
+function sendStaged(){const pending=staged;staged=[];if(pending.length)void deliver(pending);}
 function record(payload,{terminal=false}={}){return {payload,run,bundle,provider,terminal};}
-function send(payload,options){const item=record(payload,options);if(!enabled()){stash(item);return;}void deliver(item);}
+/**
+ * Events leave in batches, not one POST each.
+ *
+ * The collector writes one KV key per request, and the Free plan allows 1,000 writes a day per
+ * namespace. A single morph is about a hundred events, so 21 September spent 1,430 writes and the
+ * collector began refusing — losing exactly the reports that were meant to explain a gigabyte
+ * re-downloading. Grouping a run's events into one request costs one write instead of a hundred.
+ *
+ * A terminal event flushes immediately and keeps `keepalive`, so a closing page still reports.
+ * Everything else waits for a short window, a full buffer, or that flush.
+ */
+const BATCH_WINDOW_MS=15000,BATCH_MAX=150,BATCH_ATTEMPTS=3;
+let batch=[],batchTimer=null;
+function flushBatch(){
+ if(batchTimer){clearTimeout(batchTimer);batchTimer=null;}
+ if(!batch.length)return;
+ const items=batch;batch=[];
+ persistBatch();
+ void deliver(items);
+}
+// A wider window is only safe if the buffer cannot evaporate. A page that is closing or going
+// into the background flushes what it holds — that is the moment a long-running job's record is
+// most likely to be lost — and a delivery that fails puts its events back at the front for the
+// next attempt rather than dropping them. Three attempts, then they are let go: a report is worth
+// retrying, never worth growing without bound.
+if(typeof globalThis.addEventListener==='function'){
+ globalThis.addEventListener('pagehide',flushBatch);
+ globalThis.addEventListener('visibilitychange',()=>{if(globalThis.document?.hidden)flushBatch();});
+}
+/**
+ * The buffer survives a refresh.
+ *
+ * A wider batching window means more unsent events in memory at any moment, and a reload — which
+ * is exactly what a visitor does when something looks stuck — would have taken them with it. The
+ * pending events are mirrored into sessionStorage on every change and picked up on the next load,
+ * so the reports that explain a bad run outlive the run.
+ */
+const BATCH_KEY='checkface-diagnostics-pending-v1';
+function persistBatch(){
+ try{
+  if(batch.length)sessionStorage.setItem(BATCH_KEY,JSON.stringify(batch.slice(-BATCH_MAX)));
+  else sessionStorage.removeItem(BATCH_KEY);
+ }catch{}
+}
+function recoverBatch(){
+ let saved=null;
+ try{saved=JSON.parse(sessionStorage.getItem(BATCH_KEY)||'null');}catch{}
+ try{sessionStorage.removeItem(BATCH_KEY);}catch{}
+ if(!Array.isArray(saved)||!saved.length)return;
+ // Anything recovered has already survived one page, so it goes out at once rather than waiting
+ // another window for a page that may not last either.
+ void deliver(saved.filter(item=>item&&item.payload&&item.run).slice(0,BATCH_MAX));
+}
+function requeue(items){
+ const keep=items.filter(item=>(item.attempts=(item.attempts||0)+1)<BATCH_ATTEMPTS);
+ if(!keep.length)return;
+ batch=keep.concat(batch).slice(0,BATCH_MAX);persistBatch();
+ if(!batchTimer)batchTimer=setTimeout(flushBatch,BATCH_WINDOW_MS);
+}
+function send(payload,options){
+ const item=record(payload,options);
+ if(!enabled()){stash(item);return;}
+ batch.push(item);persistBatch();
+ if(item.terminal||batch.length>=BATCH_MAX){flushBatch();return;}
+ if(!batchTimer)batchTimer=setTimeout(flushBatch,BATCH_WINDOW_MS);
+}
 /** One outcome per run, not one per POST: nineteen failures behind one late success is a lie. */
 function account(item,ok){
  if(!item.run)return;
@@ -79,16 +144,21 @@ function account(item,ok){
  ok?tally.sent++:tally.failed++;
  notice(tally.failed?'failed':'sent');
 }
-async function deliver(item){
+async function deliver(items){
  if(!enabled())return;
  const sendingSession=session,controller=new AbortController();aborters.add(controller);
  const timer=setTimeout(()=>controller.abort(),10000);
+ const terminal=items.some(item=>item.terminal),lead=items[items.length-1];
  try{
   // keepalive, not sendBeacon: the collector requires the consent header, and that header is
   // exactly what keeps an unauthenticated POST at 403. sendBeacon cannot set one.
-  const response=await fetch('https://next.facemorph.me/diagnostics/events',{method:'POST',credentials:'omit',keepalive:item.terminal,headers:{'Content-Type':'application/json','X-Facemorph-Diagnostics-Consent':'session-v1'},signal:controller.signal,body:JSON.stringify({schemaVersion:1,session:sendingSession,run:item.run,device,provider:item.provider,bundle:item.bundle,...item.payload})});
-  if(enabled()&&session===sendingSession)account(item,response.ok);
- }catch{if(enabled()&&session===sendingSession)account(item,false);}
+  // The batch carries its identity once; per-event fields stay exactly as they were.
+  const body={schemaVersion:1,session:sendingSession,run:lead.run,device,provider:lead.provider,bundle:lead.bundle,
+   events:items.map(item=>({...item.payload,...(item.run!==lead.run?{run:item.run}:{}),...(item.provider!==lead.provider?{provider:item.provider}:{})}))};
+  const response=await fetch('https://next.facemorph.me/diagnostics/events',{method:'POST',credentials:'omit',keepalive:terminal,headers:{'Content-Type':'application/json','X-Facemorph-Diagnostics-Consent':'session-v1'},signal:controller.signal,body:JSON.stringify(body)});
+  if(enabled()&&session===sendingSession)for(const item of items)account(item,response.ok);
+  if(!response.ok&&enabled()&&session===sendingSession)requeue(items);
+ }catch{if(enabled()&&session===sendingSession){for(const item of items)account(item,false);requeue(items);}}
  finally{clearTimeout(timer);aborters.delete(controller);}
 }
 /**
@@ -128,11 +198,13 @@ export const diagnostics={
   if(value){
    // Already consented is a no-op, not a reset: turning it on again must never discard the run.
    const fresh=!consented;begin();persisted=remember(true);
-   notice('enabled');if(fresh){flush();if(run)reference('open');}
+   notice('enabled');if(fresh){sendStaged();if(run)reference('open');}
   }else{withdraw();remember(false);persisted=true;notice('disabled');}
  },
  // Restores a previous explicit opt-in: reporting stays on across reloads until it is turned off.
- restore(){let saved=null;try{saved=localStorage.getItem(CONSENT);}catch{}if(saved!=='on'||consented)return false;begin();notice('enabled');return true;},
+ restore(){let saved=null;try{saved=localStorage.getItem(CONSENT);}catch{}if(saved!=='on'||consented)return false;begin();notice('enabled');recoverBatch();return true;},
+ /** Send anything buffered now rather than at the end of the window. */
+ flush(){flushBatch();},
  bundle(value){bundle=/^[a-f0-9]{64}$/.test(value||'')?value:undefined;openRun();},
  start(action,requestedProvider='auto'){
   provider=['auto','cpu','webgl','webgpu'].includes(requestedProvider)?requestedProvider:'auto';

@@ -12,6 +12,16 @@
     ]
   },
   "main": "worker.mjs",
+  // Diagnostics land in R2, not KV. The Free plan allows 1,000 KV writes a day per namespace and
+  // 21 September spent 1,430 — the collector began refusing exactly when the reports mattered
+  // most. R2's free tier is a million writes a month. KV stays bound as a fallback so a run is
+  // never lost to one sink being unavailable.
+  "r2_buckets": [
+    {
+      "binding": "DIAGNOSTICS_R2",
+      "bucket_name": "facemorph-diagnostics"
+    }
+  ],
   "kv_namespaces": [
     {
       "binding": "DIAGNOSTICS",

@@ -1,11 +1,16 @@
 // Same bounded payload contract as hosting/next/server.py; never serialize request metadata.
 export const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
-const stages=new Set('asset-acquisition runtime-loading model-loading model-loaded mapping-loading mapping canary canary-invalidated synthesis synthesis-complete alignment alignment-complete encoder-loading encoder-loaded encoder-correctness-check encoder-correctness-complete encoding encoding-complete mapping-complete original-cache-hit original-cached original-cache-invalid cache-unavailable fallback-cpu codec-loading face morph export route-admitted'.split(' '));
-const fields=new Set('schemaVersion session run event action platform language build stage elapsedMs stageMs errorCode browser provider device browserMajor bundle gpu routeOutcome cores memoryGb isolated errorStage errorKind'.split(' '));
+// This list is the collector's half of the contract and it silently fell behind the product's.
+// reporting.mjs has been sending storage, photo-select/preview/crop/align/encode and cache-trouble
+// for weeks; every one was rejected here with a 400, which is why four rounds of reports carried
+// no storage record and the reason a gigabyte re-downloading could not be diagnosed.
+// `worker.test.mjs` now pins this set against reporting.mjs's so they cannot drift again.
+const stages=new Set('asset-acquisition runtime-loading model-loading model-loaded mapping-loading mapping canary canary-invalidated synthesis synthesis-complete alignment alignment-complete encoder-loading encoder-loaded encoder-correctness-check encoder-correctness-complete encoding encoding-complete mapping-complete original-cache-hit original-cached original-cache-invalid cache-unavailable fallback-cpu codec-loading face morph export route-admitted storage photo-select photo-preview photo-crop photo-align photo-encode cache-trouble'.split(' '));
+const fields=new Set('schemaVersion session run event action platform language build stage elapsedMs stageMs errorCode browser provider device browserMajor bundle gpu routeOutcome cores memoryGb isolated errorStage errorKind persisted usageMb quotaMb cacheStatus'.split(' '));
 // gpu and routeOutcome answer why a device ended up on the path it did: whether the browser
 // offered WebGPU at all, and whether a route was admitted, refused or never attempted. Both are
 // closed vocabularies carrying no device detail beyond what provider/platform already say.
-const enums={event:['start','stage','completed','cancelled','failed','interrupted'],action:['faces','morph','project'],errorCode:['cancelled','operation_failed'],platform:['ios','android','macos','windows','linux','other'],browser:['safari','chromium','firefox','other'],provider:['cpu','webgl','webgpu','native-cpu','native-gpu','auto'],gpu:['webgpu','webgl-only','none'],routeOutcome:['admitted','canary-failed','unsupported','start-failed','superseded'],errorKind:['aborted','memory','integrity','network','unsupported','timeout','storage','decode','unknown']};
+const enums={event:['start','stage','completed','cancelled','failed','interrupted'],action:['faces','morph','project'],errorCode:['cancelled','operation_failed'],platform:['ios','android','macos','windows','linux','other'],browser:['safari','chromium','firefox','other'],provider:['cpu','webgl','webgpu','native-cpu','native-gpu','auto'],gpu:['webgpu','webgl-only','none'],routeOutcome:['admitted','canary-failed','unsupported','start-failed','superseded','interrupted','engine-stopped'],cacheStatus:['quota-exceeded','save-failed','storage-unavailable','missing-after-acquire','repairing','corrupt-removed'],errorKind:['aborted','memory','integrity','network','unsupported','timeout','storage','decode','unknown']};
 export function checkedEvent(value){
  if(!value||typeof value!=='object'||Array.isArray(value)||value.schemaVersion!==1||Object.keys(value).some(k=>!fields.has(k)))throw Error('fields');
  for(const key of ['session','run',...('device'in value?['device']:[])])if(typeof value[key]!=='string'||!UUID.test(value[key]))throw Error('identity');
@@ -17,6 +22,10 @@ export function checkedEvent(value){
  if('cores'in value&&(!Number.isInteger(value.cores)||value.cores<1||value.cores>256))throw Error('cores');
  if('memoryGb'in value&&(!Number.isInteger(value.memoryGb)||value.memoryGb<1||value.memoryGb>1024))throw Error('memory');
  if('isolated'in value&&typeof value.isolated!=='boolean')throw Error('isolated');
+ if('persisted'in value&&typeof value.persisted!=='boolean')throw Error('persisted');
+ // Rounded megabytes only, bounded: enough to tell a denied persistence request from a quota
+ // ceiling, and never precise enough to fingerprint a device's disk.
+ for(const key of ['usageMb','quotaMb'])if(key in value&&(!Number.isInteger(value[key])||value[key]<0||value[key]>16*1024*1024))throw Error('storage');
  if('errorStage'in value&&!stages.has(value.errorStage))throw Error('errorStage');
  if('language'in value&&(typeof value.language!=='string'||! /^[A-Za-z-]{2,20}$/.test(value.language)))throw Error('language');
  if('bundle'in value&&(typeof value.bundle!=='string'||! /^[a-f0-9]{64}$/.test(value.bundle)))throw Error('bundle');

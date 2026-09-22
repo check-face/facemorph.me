@@ -11,12 +11,17 @@ test('Route facts reach the collector and survive its allowlist',async()=>{
   localStorage:{getItem:()=>null,setItem(){},removeItem(){}},
   navigator:{userAgent:'Chrome/153 Android',platform:'Linux armv8l',language:'en-AU'},
   window:{dispatchEvent(){}},CustomEvent:class{constructor(t,{detail}){this.detail=detail;}},
-  fetch:async(url,request)=>{posts.push(JSON.parse(request.body));return {ok:true};}});
+  fetch:async(url,request)=>{// Events leave in batches; unwrap so each assertion still reads one event at a time.
+   const parsed=JSON.parse(request.body);const {events,...common}=parsed;
+   if(Array.isArray(events))for(const event of events)posts.push({...common,...event});
+   else posts.push(parsed);
+   return {ok:true};}});
  vm.runInContext(source+'\nglobalThis.d=diagnostics;',ctx);
  const d=ctx.d;d.enable(true);d.start('faces','auto');
  // The phone's shape: WebGPU offered, the route refused, the run continues elsewhere.
  d.stage('route-admitted',{provider:'webgpu',gpu:'webgpu',routeOutcome:'canary-failed'});
  d.stage('route-admitted',{provider:'webgl',gpu:'webgpu',routeOutcome:'admitted'});
+ ctx.d.flush?.();  // batched events leave on a timer this context stubs out
  const routeReports=posts.filter(p=>p.stage==='route-admitted');
  assert.equal(routeReports.length,2,'both the refusal and the admission are reported');
  assert.deepEqual(routeReports.map(r=>[r.provider,r.routeOutcome]),[['webgpu','canary-failed'],['webgl','admitted']]);

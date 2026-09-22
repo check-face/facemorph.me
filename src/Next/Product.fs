@@ -177,6 +177,7 @@ type Msg =
     | Debug of bool | DismissError | DismissInvite | DismissWarn | OverflowToggle of bool
     | UseSliderToggle of bool | SliderLoaded of obj
     | BrowseNames of string | NamesLoaded of NameFace array | SearchNames of string | ChooseName of string | CloseNames | MoreNames
+    | PinchToggle of bool
     | CropPan of float * float | CropZoom of float | CropRotate | CropAccept | CropCancel | RequestCrop of string | Cropped of string * obj
 
 [<Emit("window.location.pathname === '/names' || window.location.pathname === '/names/' || new URLSearchParams(window.location.search).has('names')")>]
@@ -365,6 +366,7 @@ let update msg state =
         {state with Inputs=(before |> List.map snd) @ [newFace] @ (after |> List.map snd);NextId=state.NextId+1;VideoUrl=""},Cmd.none
     | Remove id when state.ActiveFace<>Some id && state.Inputs.Length>1 -> invalidatePhotoSelections(); {state with Inputs=state.Inputs |> List.filter(fun x -> x.id<>id);VideoUrl=""},Cmd.none
     | Kind value when not state.Busy -> {state with Kind=value;VideoUrl=""},Cmd.none
+    | PinchToggle want -> {state with Pinch=want;VideoUrl=""},Cmd.none
     | Frames value when not state.Busy -> {state with Frames=value;VideoUrl=""},Cmd.none
     | Provider value when not state.Busy -> {state with Provider=value},Cmd.none
     | OverflowToggle expanded -> {state with Overflow=expanded},Cmd.none
@@ -700,6 +702,16 @@ let private overflow (state:State) dispatch =
                             (lengthOptions |> List.map(fun (value,label) -> Html.option [prop.value (string value);prop.text label]))
                             @ (if lengthOptions |> List.exists(fun (value,_) -> value=state.Frames) then []
                               else [Html.option [prop.value (string state.Frames);prop.text (sprintf "%d frames" state.Frames)]]))]]]
+        // Pinch centre has always been part of the morph request and was passed on every run, but
+        // no control ever reached the surface — so when smooth figure eight became the default
+        // (pinched, 22 September) there was no way to turn it off. It belongs beside the shape it
+        // modifies.
+        Html.label [prop.className "next-overflow-field";prop.children [
+            Mui.formControlLabel [
+                formControlLabel.control (Mui.checkbox [checkbox.checked' state.Pinch;prop.disabled state.Busy
+                                                        prop.ariaLabel "Pinch centre"
+                                                        checkbox.onChange(PinchToggle >> dispatch)])
+                formControlLabel.label "Pinch centre"]]]
         if not canShape then Html.p [prop.className "next-overflow-reason";prop.text "Add a second face to shape a morph — shape and length describe the path between faces."]]]
 
 let private morphSlot (state:State) dispatch =
