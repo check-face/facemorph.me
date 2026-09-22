@@ -299,7 +299,7 @@ def stage_projectSaveReopen():
   # src/Next/verify-fable.mjs round-trips every path kind and latent space against actual Fable
   # output in the artifact job. promote.py reads shipped:false and stops demanding UI evidence
   # for a feature this artifact does not offer.
-  save_check('projectSaveReopen',{'passed':None,'shipped':False,'reason':'Project export and open are hidden in this artifact (Product.fs projectFilesVisible=false); ProjectJson round-trip is covered by src/Next/verify-fable.mjs'})
+  save_check('projectSaveReopen',{'passed':None,'shipped':False,'reason':'Project export and open are not enabled at the moment — we are not sure what we need them for yet (operator, 22 September). Product.fs projectFilesVisible=false; the ProjectJson round trip stays covered by src/Next/verify-fable.mjs'})
   return
  project=download(S['buttons']['exportProject']);parsed=json.loads(project.read_text());assert len(parsed['morph']['controls'])==2 and all(len(c['latent']['values'])==9216 for c in parsed['morph']['controls'])
  upload(S['openProject'],project);time.sleep(.5);wait(idle)

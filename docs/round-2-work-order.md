@@ -94,10 +94,16 @@ validation from a client with no DNS override. Two standing reminders:
 - The Triton API fill is an **operator-authorised bounded live action**: only identities with
   no full-size candidate, identity-verified per result, historic bytes never overwritten.
   Record what was generated, from where, and the verification results.
+- **`projectSaveReopen` is not enabled at the moment, because we are not sure what we need it
+  for yet** (operator, 22 September). Project export and open are behind `projectFilesVisible` in
+  `Product.fs`, off since 21 September, and the stage that qualified them is conditional for as
+  long as that stays true. Nothing about the feature has been deleted: `Msg`, the handlers,
+  `ProjectJson` and its round-trip test are all intact, so it is one flag away from returning and
+  the gate comes back with it. When the question of what project files are for gets an answer,
+  turn the flag on and this stage becomes required again by itself.
 - **If you take a behaviour off the surface, its qualification stage does not get to pass**
-  (22 September). Project export and open went behind `projectFilesVisible` on 21 September, and
-  `projectSaveReopen` — one of the original six — cannot be driven through a surface that no
-  longer has the controls. It now asks the artifact and records `shipped:false` with its reason,
+  (22 September). `projectSaveReopen` — one of the original six — cannot be driven through a
+  surface that no longer has the controls. It asks the artifact and records `shipped:false`,
   and `promote.py` drops it from `required` **only** on that record: a missing or malformed one
   still fails, and the pass is demanded again the moment the control ships. This is the one
   weakening of the original six, it is conditional, and it reverses itself. What the UI stopped
