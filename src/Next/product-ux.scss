@@ -96,7 +96,7 @@
 .next-overflow-field select { font:inherit; padding:.35rem .5rem; border-radius:6px; border:1px solid rgba(128,128,128,.45); background:transparent; color:inherit; }
 .next-overflow-field select:focus-visible { outline:2px solid #ce621d; outline-offset:2px; }
 .next-overflow-reason { flex-basis:100%; text-align:center; margin:0; opacity:.8; }
-.next-slow-warning { max-width:650px; margin:.6rem auto; border-left:4px solid #d08a1e; line-height:1.55; }
+.next-slow-warning { max-width:650px; margin:.6rem auto; line-height:1.55; }
 .next-slow-warning p { margin:.5rem 0; }
 
 // --- Results ----------------------------------------------------------------------------------
@@ -115,13 +115,13 @@
 .next-text-input { font:inherit; padding:.5rem .65rem; border-radius:6px; border:1px solid rgba(128,128,128,.45); background:transparent; color:inherit; width:100%; }
 .next-text-input:focus-visible { outline:2px solid #ce621d; outline-offset:2px; }
 .next-estimate { max-width:650px; margin:.5rem auto; text-align:center; opacity:.85; }
-.next-slow-route { max-width:650px; margin:1rem auto; border-left:4px solid #d08a1e; line-height:1.55; }
+.next-slow-route { max-width:650px; margin:1rem auto; line-height:1.55; }
 .next-slow-route p { margin:.5rem 0; }
-.next-error { max-width:700px; margin:1rem auto; border-left:4px solid #d08a1e; padding:.75rem 1rem; }
+.next-error { max-width:700px; margin:1rem auto; padding:.75rem 1rem; }
 .next-error .next-actions { margin-top:.75rem; }
 
 // --- Explainer, testing, dialogs (page scaffolding) --------------------------------------------
-.next-invite { max-width:700px; margin:1rem auto; border-left:4px solid #2f7dd1; line-height:1.55; }
+.next-invite { max-width:700px; margin:1rem auto; line-height:1.55; }
 .next-invite h2 { font-size:1.15rem; margin:0 0 .5rem; }
 .next-invite p { margin:.5rem 0; }
 .next-invite-note { opacity:.8; font-size:.92rem; }
@@ -129,7 +129,7 @@
 .next-explain h2 { font-size:1.4rem; font-family:'Nunito','Segoe UI',sans-serif; }
 .next-explain h3 { margin-top:1rem; font-weight:600; }
 .next-explain p { margin:.65rem 0; }
-.next-debug { max-width:700px; margin:1rem auto 2rem; line-height:1.6; border-left:4px solid rgba(128,128,128,.35); }
+.next-debug { max-width:700px; margin:1rem auto 2rem; line-height:1.6; }
 .next-debug h2 { font-size:1.1rem; margin:.25rem 0 .5rem; }
 .next-debug p { margin:.5rem 0; }
 .next-debug select { font:inherit; padding:.35rem .5rem; border-radius:6px; border:1px solid rgba(128,128,128,.45); background:transparent; color:inherit; }
@@ -138,7 +138,6 @@
 .next-faq { border-top:1px solid rgba(128,128,128,.35); padding:.5rem 0; }
 .next-faq summary { cursor:pointer; font-weight:600; padding:.25rem 0; }
 .next-faq p { margin:.5rem 0 .5rem 1rem; }
-.next-footer { text-align:center; margin:2rem 0 1rem; font-size:.9rem; }
 
 .next-crop-dialog { position:fixed; inset:0; z-index:1300; background:#0009; display:grid; place-items:center; padding:1rem; }
 .next-crop-panel { max-width:420px; width:100%; max-height:90vh; overflow:auto; }
@@ -162,32 +161,41 @@
 // tiles never measure narrower than a face in the N=2 grid (the non-decreasing floor gate).
 // The insertion connector between the two faces is a stacked-layout affordance only.
 @media (min-width: 1000px) {
+    // Operator, 22 September: the middle column had become a seven-control stack — create,
+    // generate, more options, add face, shape, length, pinch — which pushed the two faces to
+    // opposite edges of the screen and buried the insertion plus underneath all of it. The
+    // faces come back together with nothing between them but the plus that inserts a face
+    // there, and every control moves below the pair where there is room to lay it out.
     .next-morph-content.n2 {
         display:grid;
         gap:1em;
         justify-content:center;
         align-items:start;
         grid-template-areas:
-            "lead from vid   to trail"
-            "lead from morph to trail"
-            "lead from tween to trail";
-        grid-template-columns: auto minmax(340px,400px) minmax(200px,260px) minmax(340px,400px) auto;
+            "lead from tween to    trail"
+            "morph morph morph morph morph"
+            "vid   vid   vid   vid  vid";
+        grid-template-columns: auto minmax(340px,400px) auto minmax(340px,400px) auto;
     }
     .next-morph-content.n2 .next-morph-from { grid-area:from; }
     .next-morph-content.n2 .next-morph-to { grid-area:to; }
-    .next-morph-content.n2 .next-morph-morph { grid-area:morph; align-self:end; margin-bottom:1em; }
-    .next-morph-content.n2 .next-morph-vid { grid-area:vid; }
+    .next-morph-content.n2 .next-morph-morph { grid-area:morph; justify-self:center; width:100%; }
+    .next-morph-content.n2 .next-morph-vid { grid-area:vid; justify-self:center; width:100%; }
     // A-1: all three insertion points exist at this width too. The stacked layout's single
     // between-faces plus used to be the only one, and it was hidden above 1000px, so a desktop
     // visitor had no plus on the surface at all.
     .next-morph-content.n2 .next-connector-lead { grid-area:lead; }
     .next-morph-content.n2 .next-connector-trail { grid-area:trail; }
-    .next-morph-content.n2 .next-connector-stack { grid-area:tween; align-self:start; }
+    .next-morph-content.n2 .next-connector-stack { grid-area:tween; }
+    // All three read as one affordance: a bare plus beside the tile it inserts next to, with no
+    // dashed rule to draw a line across a row that has no line in it.
     .next-morph-content.n2 .next-connector-lead,
+    .next-morph-content.n2 .next-connector-stack,
     .next-morph-content.n2 .next-connector-trail {
         width:auto; max-width:none; flex-direction:column; align-self:center; padding:0 .35rem;
     }
     .next-morph-content.n2 .next-connector-lead::before,.next-morph-content.n2 .next-connector-lead::after,
+    .next-morph-content.n2 .next-connector-stack::before,.next-morph-content.n2 .next-connector-stack::after,
     .next-morph-content.n2 .next-connector-trail::before,.next-morph-content.n2 .next-connector-trail::after { display:none; }
 
     // N>=3, wide: faces keep their size and the row scrolls (D-06).
@@ -208,13 +216,20 @@
 // R2-15: the failure-to-report tie. A quiet note line, never louder than the message above it.
 .next-error-reference { opacity:.8; font-size:.9rem; margin:.4rem 0 0; }
 
-// --- Footer: the classic arrangement, text left and logo right, stacking on a phone ----------
-.next-footer { margin-top:2.5rem; padding:1.5rem 1rem 2.5rem; border-top:1px solid rgba(128,128,128,.25); }
-.next-footer-inner { max-width:960px; margin:0 auto; display:flex; gap:1.5rem; align-items:center; justify-content:space-between; flex-wrap:wrap; }
+// --- Footer: classic's own arrangement, rule for rule -----------------------------------------
+// style.scss `.app-footer > div > div` inside a `container.maxWidth.md`: the text block takes the
+// room (flex-grow:100), the logo keeps a share of its own and centres in it, 3em between them.
+// The candidate had inherited a stray `text-align:center` that ragged the three lines down the
+// middle, and pushed the logo to the far edge of a wider box than classic ever used.
+.next-footer { margin-top:2.5rem; padding:1.5rem 1rem 2.5rem; border-top:1px solid rgba(128,128,128,.25); font-size:.9rem; }
+.next-footer-inner { max-width:960px; margin:0 auto; display:flex; flex-wrap:wrap; justify-content:space-between; gap:3em; }
+.next-footer-text { flex-grow:100; text-align:left; }
 .next-footer-text p { margin:.25rem 0; }
-.next-footer-logo { display:flex; align-items:center; }
+.next-footer-text a { white-space:nowrap; }
+.next-footer-logo { flex-grow:1; text-align:center; }
 @media (max-width: 640px) {
-    .next-footer-inner { flex-direction:column; align-items:center; text-align:center; }
+    .next-footer-inner { flex-direction:column; align-items:center; gap:1.5rem; }
+    .next-footer-text { text-align:center; }
 }
 
 // The photo warm-up speaks while nothing is running, so it is quieter than a job's status
