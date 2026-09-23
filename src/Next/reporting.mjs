@@ -1,15 +1,38 @@
 // An allowlist, not arbitrary error/string serialization. No pre-consent backlog.
 const allowedStages=new Set(['asset-acquisition','runtime-loading','model-loading','model-loaded','mapping-loading','mapping','canary','synthesis','synthesis-complete','alignment','alignment-complete','encoder-loading','encoder-loaded','encoder-correctness-check','encoder-correctness-complete','encoding','encoding-complete','mapping-complete','original-cache-hit','original-cached','original-cache-invalid','cache-unavailable','fallback-cpu','codec-loading','face','morph','export','route-admitted','photo-select','photo-preview','photo-crop','photo-align','photo-encode','storage','cache-trouble']);
 const TERMINAL=new Set(['completed','cancelled','failed','interrupted']);
-let bundle,provider,device=null,consented=false,session=null,run=null,started=0;
+let bundle,provider,device=null,consented=false,basis=null,session=null,run=null,started=0;
 let aborters=new Set(),pendingStart=null,finished=false,interrupted=false,tally=null,persisted=true;
 // One clock per stage name. A single shared clock dropped exactly the bursty boundaries the
 // parity ledger is made of: two different stages a few milliseconds apart are two facts.
 const lastStageAt=new Map();
-const CONSENT='facemorph-debug-consent-v1';
+const CONSENT='facemorph-debug-consent-v1',DEVICE='facemorph-debug-device-v1',BATCH_KEY='checkface-diagnostics-pending-v1';
+/**
+ * How consent was given, recorded with the choice itself and carried on every report sent under
+ * it. The stored value used to be the bare string 'on': it could not say when or how a tester
+ * agreed, and a "no" was not stored at all, so there was nothing to stop a first-visit prompt
+ * asking again on every load. A choice is now {choice, basis, at, policy}.
+ *   checkbox     - the reporting control in the For-testing area
+ *   invite       - the ?testing invitation panel
+ *   toast        - the first-visit trial-phase prompt
+ *   labs-default - on by default on the labs research origin, with a visible off control
+ *   legacy       - an 'on' stored before this record existed
+ *   once         - "Send this report": one failure's records, no standing consent
+ */
+export const CONSENT_BASES=['checkbox','invite','toast','labs-default','legacy','once'];
+/** The disclosure a choice was made against. Changing what is collected means bumping this. */
+export const CONSENT_POLICY='trial-2026-09';
+function readChoice(){
+ let raw=null;try{raw=localStorage.getItem(CONSENT);}catch{return null;}
+ if(raw==='on')return {choice:'on',basis:'legacy'};
+ try{const value=JSON.parse(raw);if(value&&(value.choice==='on'||value.choice==='off'))return {choice:value.choice,basis:CONSENT_BASES.includes(value.basis)?value.basis:'legacy',at:typeof value.at==='string'?value.at:undefined,policy:typeof value.policy==='string'?value.policy:undefined};}catch{}
+ return null;
+}
 /** Returns whether the choice actually persisted: a silent failure here is how "stays on until
- * you turn it off" quietly becomes "until you reload". */
-function remember(value){try{if(value)localStorage.setItem(CONSENT,'on');else localStorage.removeItem(CONSENT);return true;}catch{return false;}}
+ * you turn it off" quietly becomes "until you reload". A "no" is stored too, so it is respected. */
+function remember(choice,basis){try{localStorage.setItem(CONSENT,JSON.stringify({choice,basis,at:new Date().toISOString().slice(0,10),policy:CONSENT_POLICY}));return true;}catch{return false;}}
+/** The labs origin is a disclosed research surface: reporting starts on there, visibly. */
+function labsOrigin(){try{return /^labs\./.test(globalThis.location?.hostname||'');}catch{return false;}}
 function notice(status){window.dispatchEvent(new CustomEvent('facemorph-report-status',{detail:{status,...summary()}}));}
 function environment(){
  const ua=navigator.userAgent,version=Number((ua.match(/(?:Firefox|FxiOS|Chrome|Chromium|CriOS|Edg|Version)\/(\d+)/)||[])[1])||undefined,ios=/iPhone|iPad|iPod/.test(ua)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -51,12 +74,21 @@ const enabled=()=>consented;
  * dropped and the session is forgotten. It deliberately does not touch `run` — a job that is
  * still going is still going, and if consent comes back it reports the rest of that same run.
  */
-function withdraw(){consented=false;session=null;staged=[];tally=null;for(const controller of aborters)controller.abort();aborters.clear();}
+function withdraw(){
+ consented=false;basis=null;session=null;staged=[];tally=null;
+ for(const controller of aborters)controller.abort();aborters.clear();
+ // Undelivered events and their sessionStorage mirror go too: a "no" that left them in place
+ // let a later yes in the same tab deliver records from before the withdrawal.
+ batch=[];if(batchTimer){clearTimeout(batchTimer);batchTimer=null;}
+ try{sessionStorage.removeItem(BATCH_KEY);}catch{}
+ // The device id exists only to group one consenting device's runs. Withdrawal ends that.
+ device=null;try{localStorage.removeItem(DEVICE);}catch{}
+}
 /** Idempotent. Saying yes twice must not restart the session or split a run across two of them. */
-function begin(){
+function begin(how){
  if(consented)return;
- consented=true;session=crypto.randomUUID();
- try{device=localStorage.getItem('facemorph-debug-device-v1');if(!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(device||'')){device=crypto.randomUUID();localStorage.setItem('facemorph-debug-device-v1',device);}}catch{device=crypto.randomUUID();}
+ consented=true;basis=CONSENT_BASES.includes(how)?how:'checkbox';session=crypto.randomUUID();
+ try{device=localStorage.getItem(DEVICE);if(!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(device||'')){device=crypto.randomUUID();localStorage.setItem(DEVICE,device);}}catch{device=crypto.randomUUID();}
 }
 // Operator decision, 17 September: log generously and stage locally, so a tester who only
 // decides to help *after* something breaks can still send what led up to it. Staging is memory
@@ -108,7 +140,6 @@ if(typeof globalThis.addEventListener==='function'){
  * pending events are mirrored into sessionStorage on every change and picked up on the next load,
  * so the reports that explain a bad run outlive the run.
  */
-const BATCH_KEY='checkface-diagnostics-pending-v1';
 function persistBatch(){
  try{
   if(batch.length)sessionStorage.setItem(BATCH_KEY,JSON.stringify(batch.slice(-BATCH_MAX)));
@@ -138,27 +169,32 @@ function send(payload,options){
  if(!batchTimer)batchTimer=setTimeout(flushBatch,BATCH_WINDOW_MS);
 }
 /** One outcome per run, not one per POST: nineteen failures behind one late success is a lie. */
-function account(item,ok){
+function account(item,ok,once=false){
  if(!item.run)return;
- if(!tally||tally.run!==item.run)tally={run:item.run,sent:0,failed:0};
+ if(!tally||tally.run!==item.run)tally={run:item.run,sent:0,failed:0,once};
  ok?tally.sent++:tally.failed++;
  notice(tally.failed?'failed':'sent');
 }
-async function deliver(items){
- if(!enabled())return;
- const sendingSession=session,controller=new AbortController();aborters.add(controller);
+/**
+ * `once` is "Send this report": the staged records of one failure go out under a throwaway
+ * session with no device id, and no standing consent is created. Everything else requires it.
+ */
+async function deliver(items,once=null){
+ if(!enabled()&&!once)return;
+ const sendingSession=once?once.session:session,controller=new AbortController();aborters.add(controller);
+ const live=()=>once?true:enabled()&&session===sendingSession;
  const timer=setTimeout(()=>controller.abort(),10000);
  const terminal=items.some(item=>item.terminal),lead=items[items.length-1];
  try{
   // keepalive, not sendBeacon: the collector requires the consent header, and that header is
   // exactly what keeps an unauthenticated POST at 403. sendBeacon cannot set one.
   // The batch carries its identity once; per-event fields stay exactly as they were.
-  const body={schemaVersion:1,session:sendingSession,run:lead.run,device,provider:lead.provider,bundle:lead.bundle,
+  const body={schemaVersion:1,session:sendingSession,run:lead.run,...(once||!device?{}:{device}),consent:once?'once':basis||'legacy',provider:lead.provider,bundle:lead.bundle,
    events:items.map(item=>({...item.payload,...(item.run!==lead.run?{run:item.run}:{}),...(item.provider!==lead.provider?{provider:item.provider}:{})}))};
   const response=await fetch('https://next.facemorph.me/diagnostics/events',{method:'POST',credentials:'omit',keepalive:terminal,headers:{'Content-Type':'application/json','X-Facemorph-Diagnostics-Consent':'session-v1'},signal:controller.signal,body:JSON.stringify(body)});
-  if(enabled()&&session===sendingSession)for(const item of items)account(item,response.ok);
-  if(!response.ok&&enabled()&&session===sendingSession)requeue(items);
- }catch{if(enabled()&&session===sendingSession){for(const item of items)account(item,false);requeue(items);}}
+  if(live())for(const item of items)account(item,response.ok,!!once);
+  if(!response.ok&&!once&&live())requeue(items);
+ }catch{if(live()){for(const item of items)account(item,false,!!once);if(!once)requeue(items);}}
  finally{clearTimeout(timer);aborters.delete(controller);}
 }
 /**
@@ -192,17 +228,39 @@ if(typeof document!=='undefined')document.addEventListener('visibilitychange',on
  * not the run that merely started — so a tester is never handed an id nothing was saved
  * against, and never the *previous* run's id either. It stands until the next run replaces it.
  */
-function summary(){const of=tally?.run||'';return {enabled:consented,reference:of,sent:tally?.sent||0,failed:tally?.failed||0,staged:staged.length,persisted};}
+function summary(){const of=tally?.run||'';return {enabled:consented,basis,reference:of,once:!!tally?.once,sent:tally?.sent||0,failed:tally?.failed||0,staged:staged.length,persisted};}
 export const diagnostics={
- enable(value){
+ enable(value,how='checkbox'){
   if(value){
    // Already consented is a no-op, not a reset: turning it on again must never discard the run.
-   const fresh=!consented;begin();persisted=remember(true);
+   const fresh=!consented;begin(how);persisted=remember('on',basis);
    notice('enabled');if(fresh){sendStaged();if(run)reference('open');}
-  }else{withdraw();remember(false);persisted=true;notice('disabled');}
+  }else{withdraw();persisted=remember('off',CONSENT_BASES.includes(how)?how:'checkbox');notice('disabled');}
  },
+ /**
+  * "Send this report" after a failure: what this device staged goes out once, and reporting
+  * stays off. Returns whether anything was sent. Under standing consent it just flushes.
+  */
+ sendOnce(){
+  if(consented){flushBatch();return false;}
+  const pending=staged;staged=[];
+  if(!pending.length)return false;
+  void deliver(pending,{session:crypto.randomUUID()});
+  return true;
+ },
+ /** Whether this visitor has answered (yes or no), so a first-visit prompt is shown once. */
+ answered(){return readChoice()!==null;},
+ /** The stored choice, for the interface to explain; null before any answer. */
+ choice(){return readChoice();},
  // Restores a previous explicit opt-in: reporting stays on across reloads until it is turned off.
- restore(){let saved=null;try{saved=localStorage.getItem(CONSENT);}catch{}if(saved!=='on'||consented)return false;begin();notice('enabled');recoverBatch();return true;},
+ // On the labs origin, a visitor who has never answered starts with reporting on.
+ restore(){
+  if(consented)return false;
+  const saved=readChoice();
+  if(saved?.choice==='on'){begin(saved.basis);notice('enabled');recoverBatch();return true;}
+  if(!saved&&labsOrigin()){begin('labs-default');persisted=remember('on','labs-default');notice('enabled');return true;}
+  return false;
+ },
  /** Send anything buffered now rather than at the end of the window. */
  flush(){flushBatch();},
  bundle(value){bundle=/^[a-f0-9]{64}$/.test(value||'')?value:undefined;openRun();},

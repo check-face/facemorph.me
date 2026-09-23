@@ -1,0 +1,34 @@
+name: Problem with next.facemorph.me
+description: Something went wrong, looked wrong or was confusing on the experimental site.
+title: "[next] "
+labels: ["next.facemorph.me"]
+body:
+  - type: markdown
+    attributes:
+      value: Thanks for testing. Please don't attach photos of real people; describe what happened instead.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What you did, what you saw, and what you expected.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Filled in automatically when you use the site's "Report an issue" link.
+  - type: input
+    id: device
+    attributes:
+      label: Device and browser
+  - type: input
+    id: route
+    attributes:
+      label: Processing
+      description: The route the site said it was using (for example cpu or webgpu).
+  - type: input
+    id: reference
+    attributes:
+      label: Report reference
+      description: Shown next to an error if you sent a debug report.

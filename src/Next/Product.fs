@@ -58,7 +58,23 @@ let reportReference (): string = jsNative
 [<Import("cancelPhotoRun", "./product-bridge.mjs")>]
 let cancelPhotoRun (): unit = jsNative
 [<Import("setDebug", "./product-bridge.mjs")>]
-let setDebug (enabled: bool): unit = jsNative
+let setDebug (enabled: bool) (basis: string): unit = jsNative
+[<Import("sendReportOnce", "./product-bridge.mjs")>]
+let sendReportOnce (): bool = jsNative
+[<Import("consentAnswered", "./product-bridge.mjs")>]
+let consentAnswered (): bool = jsNative
+[<CLIMutable>]
+type Downloads = { known: bool; phase: string; scope: string; loaded: float; total: float; routeReady: bool; photoReady: bool; photoAvailable: bool; routeBytes: float; photoBytes: float }
+[<Import("subscribeDownloads", "./product-bridge.mjs")>]
+let subscribeDownloads (callback: Downloads -> unit): unit = jsNative
+[<Import("downloadModels", "./product-bridge.mjs")>]
+let downloadModels (includePhoto: bool): unit = jsNative
+[<Import("consentToDownload", "./product-bridge.mjs")>]
+let consentToDownload (scope: string): string = jsNative
+[<Import("sourceVersion", "./product-bridge.mjs")>]
+let sourceVersion (): string = jsNative
+[<Import("issueUrl", "./product-bridge.mjs")>]
+let issueUrl (route: string): string = jsNative
 
 // estimate.mjs turns the measured medians into predictions. One instance, so the pre-run
 // estimate, the time-remaining readout and the slow-video warning can never disagree.
@@ -170,16 +186,23 @@ type State = {
     PendingFaces: string list
     ActiveFace: string option
     Remaining: string
+    /// The trial-phase question, asked once per visitor as a toast (see `trialPhase`).
+    ConsentPrompt: bool
+    Downloads: Downloads
+    ModelToastHidden: bool
+    DownloadConsent: Set<string>
+    Gate: (string * Msg) option
 }
 and [<CLIMutable>] CropChoice = { faceId: string; url: string; file: obj; scale: float; view: obj }
-type Msg =
+and Msg =
     | Edit of string * string | Mode of string * string | Photo of string * obj
     | PickPhoto of string * obj | PhotoError of string
     | Photos of string option * obj | AddAt of int | Remove of string | Kind of string
     | Frames of int | Provider of string | Run of string | RunFace of string | Cancel
     | Progressed of Progress | Completed of int * Output | Failed of int * string
     | Save of string | Share of string | Export | Import of obj | Notice of string
-    | Debug of bool | DismissError | DismissInvite | DismissWarn | OverflowToggle of bool
+    | DownloadsChanged of Downloads | DownloadNow of bool | HideModelToast | GateAccept | GateCancel
+    | Debug of bool | Consent of bool * string | SendReportOnce | DismissConsentPrompt | DismissError | DismissInvite | DismissWarn | OverflowToggle of bool
     | UseSliderToggle of bool | SliderLoaded of obj | SliderFrameSet of int
     | BrowseNames of string | NamesLoaded of NameFace array | SearchNames of string | ChooseName of string | CloseNames | MoreNames
     | PinchToggle of bool
@@ -192,14 +215,25 @@ let namesRequested (): bool = jsNative
 // break, but it still only ever invites: nothing is enabled or sent until the tester says yes.
 [<Emit("new URLSearchParams(window.location.search).has('testing')")>]
 let testingInvited (): bool = jsNative
+[<Emit("/^labs\\./.test(window.location.hostname)")>]
+let labsOrigin (): bool = jsNative
+
+/// The public testing phase: now on next.facemorph.me, and for a while after the move to
+/// facemorph.me (operator, 23 September). While it is on, a first-time visitor is asked once, in a
+/// toast, whether to send debug reports. Turning this off removes the question, never the control
+/// in the For-testing area. Labs needs no question: reporting starts on there (reporting.mjs).
+let private trialPhase = true
 
 let emptyFile: obj = null
 let init () =
     { Inputs = [{id="face-1";mode="text";value="hello";file=emptyFile}; {id="face-2";mode="text";value=System.DateTime.Today.ToString("yyyy-MM-dd");file=emptyFile}]
       Faces=[||];VideoUrl="";Kind="full-smooth-figure8";Width=0.2;Pinch=true;Frames=16;Fps=16;Provider="auto"
       Busy=false;JobId=0;Stage="idle";Status="";Fraction=0.;Preparing="";Browse=None;Names=[||];NameQuery="";NameLimit=48;Error=None;DebugStatus="";Debug=false;NextId=3;Crop=None;CropQueue=[];Route="";Rejected=None;Invite=testingInvited()
-      UseSlider=false;SliderFrames=None;SliderFrame=1;Warn=None;Overflow=false;PhotoQueue=[];PendingFaces=[];ActiveFace=None;Remaining="" },
-    Cmd.batch [Cmd.ofSub(fun dispatch -> subscribe (Progressed >> dispatch)); if namesRequested() then Cmd.ofMsg(BrowseNames "face-1")]
+      UseSlider=false;SliderFrames=None;SliderFrame=1;Warn=None;Overflow=false;PhotoQueue=[];PendingFaces=[];ActiveFace=None;Remaining=""
+      ConsentPrompt=trialPhase && not (testingInvited()) && not (labsOrigin()) && not (consentAnswered())
+      Downloads={known=false;phase="idle";scope="";loaded=0.;total=0.;routeReady=false;photoReady=false;photoAvailable=false;routeBytes=0.;photoBytes=0.}
+      ModelToastHidden=false;DownloadConsent=Set.empty;Gate=None },
+    Cmd.batch [Cmd.ofSub(fun dispatch -> subscribe (Progressed >> dispatch)); Cmd.ofSub(fun dispatch -> subscribeDownloads (DownloadsChanged >> dispatch)); if namesRequested() then Cmd.ofMsg(BrowseNames "face-1")]
 
 /// Time left in the job in flight, spoken. Empty without a measurement on this device.
 /// R2-13: remaining() takes LEFT counts; feeding it jobProgress' done counts made this read
@@ -236,6 +270,26 @@ let private isSlowDevice (state:State) =
     | null -> state.Route="cpu"
     | value -> unbox<float> value > 20000. || state.Route="cpu"
 
+let private scopeReady (downloads:Downloads) scope =
+    if scope="photo" then downloads.photoReady && downloads.routeReady else downloads.routeReady
+
+let private gateScope (state:State) (msg:Msg) =
+    let needed =
+        match msg with
+        | RunFace id ->
+            state.Inputs |> List.tryFind(fun item -> item.id=id)
+            |> Option.map(fun item -> if item.mode="photo" then "photo" else "route")
+        | Run _ ->
+            let unencodedPhoto = state.Inputs |> List.exists(fun item -> item.mode="photo" && not (state.Faces |> Array.exists(fun face -> face.id=item.id)))
+            Some(if unencodedPhoto then "photo" else "route")
+        | _ -> None
+    match needed with
+    | Some scope when state.Downloads.known && not (scopeReady state.Downloads scope) && not (state.DownloadConsent.Contains scope) -> Some scope
+    | _ -> None
+
+let megabytes (bytes:float) =
+    if bytes >= 1024.*1024.*1024. then sprintf "%.1f GB" (bytes/1024./1024./1024.) else sprintf "%.0f MB" (max 1. (bytes/1024./1024.))
+
 let update msg state =
     let change id f = {state with Inputs=state.Inputs |> List.map(fun item -> if item.id=id then f item else item); VideoUrl="";Status=""}
     let noticeTask fn arg = Cmd.OfPromise.either fn arg Notice (fun _ -> Notice "Couldn't save or share this file. Try Save instead.")
@@ -253,6 +307,22 @@ let update msg state =
             Cmd.OfPromise.either selectPhoto (createObj ["id" ==> id;"files" ==> oneFile file]) (fun result -> Photo(id,result)) (fun e -> PhotoError e.Message)
         | [] -> state,Cmd.none
     match msg with
+    | (RunFace _ | Run _) when not state.Busy && (gateScope state msg).IsSome ->
+        {state with Gate=Some((gateScope state msg).Value,msg)},Cmd.none
+    | GateAccept ->
+        match state.Gate with
+        | Some(scope,pending) ->
+            consentToDownload scope |> ignore
+            let consented = if scope="photo" then state.DownloadConsent.Add("photo").Add("route") else state.DownloadConsent.Add scope
+            {state with Gate=None;DownloadConsent=consented;ModelToastHidden=true},Cmd.ofMsg pending
+        | None -> state,Cmd.none
+    | GateCancel -> {state with Gate=None},Cmd.none
+    | DownloadsChanged downloads -> {state with Downloads=downloads},Cmd.none
+    | DownloadNow includePhoto ->
+        downloadModels includePhoto
+        let consented = if includePhoto then state.DownloadConsent.Add("photo").Add("route") else state.DownloadConsent.Add "route"
+        {state with DownloadConsent=consented;ModelToastHidden=false},Cmd.none
+    | HideModelToast -> {state with ModelToastHidden=true},Cmd.none
     // A running job holds a snapshot of the inputs it was dispatched with, so editing the inputs
     // afterwards cannot disturb it. Gating these on Busy silently swallowed the interaction
     // instead: the operator uploaded a second photo while the first was encoding and nothing
@@ -408,7 +478,8 @@ let update msg state =
                      | "diagnostics-failed" -> "Report could not be saved. You can still email us."
                      | "diagnostics-enabled" -> "Reporting is on. It stays on until you turn it off."
                      | _ -> "Reporting is off."
-        {state with DebugStatus=status;Debug=(match progress.stage with | "diagnostics-enabled" -> true | "diagnostics-disabled" -> false | _ -> state.Debug)},Cmd.none
+        {state with DebugStatus=status;Debug=(match progress.stage with | "diagnostics-enabled" -> true | "diagnostics-disabled" -> false | _ -> state.Debug)
+                    ConsentPrompt=(if progress.stage="diagnostics-enabled" then false else state.ConsentPrompt)},Cmd.none
     | Progressed progress when progress.stage="route-admitted" ->
         // The cold estimate reads from the admitted route, because per-face cost differs by
         // twenty times between them; an average across routes would be worse than no figure.
@@ -458,7 +529,15 @@ let update msg state =
         {state with Busy=true;JobId=id;Stage="importing";Status="Opening project…";PhotoQueue=[]},
         Cmd.OfPromise.either importProject (createObj ["file" ==> file; "jobId" ==> id; "provider" ==> state.Provider]) (fun result -> Completed(id,result)) (fun e -> Failed(id,e.Message))
     | Notice text -> {state with Status=text},Cmd.none
-    | Debug enabled -> setDebug enabled;{state with Debug=enabled;Invite=false},Cmd.none
+    | Debug enabled -> setDebug enabled "checkbox";{state with Debug=enabled;Invite=false;ConsentPrompt=false},Cmd.none
+    // The invitation and the first-visit toast record which question was answered, so a report
+    // can show how its sender agreed. "No thanks" is stored too, so the toast is asked once.
+    | Consent(enabled,basis) -> setDebug enabled basis;{state with Debug=enabled;Invite=false;ConsentPrompt=false},Cmd.none
+    | DismissConsentPrompt -> {state with ConsentPrompt=false},Cmd.none
+    // One failure's records, once. Reporting stays off: this is not the standing consent.
+    | SendReportOnce ->
+        let sent=sendReportOnce()
+        {state with DebugStatus=(if sent then "Sending this report…" else state.DebugStatus)},Cmd.none
     | DismissInvite -> {state with Invite=false},Cmd.none
     | DismissWarn -> {state with Warn=None},Cmd.none
     | UseSliderToggle want ->
@@ -841,7 +920,7 @@ let faq (question:string) (answer:ReactElement list) =
 let private explainSection =
     Html.section [prop.className "next-explain box";prop.custom("data-next-explain","true");prop.id "next-explain";prop.children [
         Html.h2 "What is this?"
-        Html.p "Generate faces from words, seeds or photos. Add faces to build a longer loop. Share the image or video directly; export a project to keep editing."
+        Html.p "Generate faces from words, seeds or photos. Add faces to build a longer loop. Share the image or video directly."
         Html.p "Model files and full-size originals are saved on this device where storage is available. Your first generation takes longer while the models download."
         Html.h3 "How does it work?"
         Html.p [Html.text "Whatever you type is hashed and used to ";Html.a [prop.href "https://en.wikipedia.org/wiki/Random_seed";prop.text "seed"];Html.text " a random number generator, which picks a point in the latent space of ";Html.a [prop.href "https://github.com/NVlabs/stylegan2";prop.text "StyleGAN2"];Html.text ". The same text always gives the same face. A morph walks between those points and generates every frame along the way."]
@@ -866,7 +945,22 @@ let private explainSection =
             Html.p "Though it depends how you count. Morph between two faces and there is usually no single frame where you can say it has become a different face. Does every frame count?"
             Html.p "Technically the text is hashed with SHA-256, which puts an upper limit of 2^256 on the number of endpoints you can reach by typing."]
         faq "Can I morph a photo of a real face?" [
-            Html.p "Yes. Set Face source to Photo, or drop a photo onto a face. Photos are processed on your device."]
+            Html.p "Yes. Drop a photo onto a face, tap an empty face, or open a face's mode menu and choose Upload image. Photos are processed on your device and never uploaded."]
+        faq "What is next.facemorph.me?" [
+            Html.p [Html.text "It's an experimental preview of the next facemorph.me. Instead of a server making your faces, everything happens here on your device. The ";Html.a [prop.href "https://facemorph.me";prop.text "classic site"];Html.text " still works as it always has while we test this one."]
+            Html.p [Html.text "The classic site's server and API are being retired. ";Html.a [prop.href "https://facemorph.me/retirement";prop.text "Here's why, and what's changing"];Html.text "."]]
+        faq "Does anything leave my device?" [
+            Html.p "No. Your photos, the words you type and the faces you make stay here. The first visit downloads the face models, about 200 MB, plus about 1 GB more the first time you use a photo. They're saved on this device, so later visits don't download them again."
+            Html.p "Faces you've already made are saved too, so making the same one again is instant. Reloading the page clears the faces on screen for now; keeping your whole session across reloads is on the way."
+            Html.p "The only thing that can ever be sent is a debug report, and only if you turn reporting on."]
+        faq "Why is the first face slow? Will it work on my phone?" [
+            Html.p "The first face waits for the models to download and for a quick check that this device gets the maths right. After that a face takes under a second on a computer with a good graphics card, and longer on phones and on computers where the browser can't use the graphics card."
+            Html.p "Slower devices still finish; the page tells you how long it expects. For long morphs, a laptop or desktop with a graphics card is much quicker."]
+        faq "What's in a debug report?" [
+            Html.p "A random ID for the report, the site version, your browser and operating system, rough device facts like the number of processor cores, which processing mode was used, how long each step took, and error codes. Never your photos, words, faces or videos. Reports are deleted after 30 days."
+            Html.p "You can turn reporting on or off at any time under For testing. After an error you can also send just that one report without turning reporting on."]
+        faq "Something went wrong. How do I tell you?" [
+            Html.p [Html.a [prop.href (issueUrl "");prop.target "_blank";prop.rel "noopener";prop.text "Open an issue on GitHub"];Html.text " (the version and device are filled in for you), or email ";Html.a [prop.href "mailto:checkfaceml@gmail.com";prop.text "checkfaceml@gmail.com"];Html.text ". If you sent a debug report, include its reference."]]
         faq "Is there an API I can self-host?" [
             Html.p [Html.text "Yes. The server source is at ";Html.a [prop.href "https://github.com/check-face/checkface";prop.text "github.com/check-face/checkface"];Html.text " and is documented at ";Html.a [prop.href "https://checkface.facemorph.me/api";prop.text "checkface.facemorph.me/api"];Html.text "."]
             Html.p [Html.text "If you need a setup under your own control, self-hosting is the safest option. Bugs belong in a GitHub issue; for questions about the transition, email ";Html.a [prop.href "mailto:checkfaceml@gmail.com";prop.text "checkfaceml@gmail.com"];Html.text "."]]]]
@@ -898,6 +992,12 @@ let view state dispatch = App.ThemedApp [
                    // it appends. Multiple files create one face per file, in drop order.
                    if not state.Busy then dispatch(Photos(None,photoFiles e)))
                prop.children [
+        Html.aside [prop.className "next-preview-strip";prop.custom("role","note");prop.ariaLabel "About this preview";prop.children [
+            Html.span [prop.className "next-preview-strip-lead";prop.children [Html.strong "Experimental preview";Html.text " of the next facemorph.me. Everything runs on your device."]]
+            Html.span [prop.className "next-preview-strip-links";prop.children [
+                Html.a [prop.href "https://facemorph.me";prop.text "Classic facemorph.me"]
+                Html.a [prop.href "https://facemorph.me/retirement";prop.text "Its server is retiring"]
+                Html.a [prop.href (issueUrl state.Route);prop.target "_blank";prop.rel "noopener";prop.text "Report an issue"]]]]]
         App.header
         // Shown only to someone who opened the testing link, and only until they answer.
         if state.Invite && not state.Debug then
@@ -906,7 +1006,7 @@ let view state dispatch = App.ThemedApp [
                 Html.p "If anything is slow, wrong or broken, a debug report tells us what happened without you having to describe it."
                 Html.p "Reports contain a random device ID, app and browser versions, processing stages, timings and safe error codes. They never contain your photos, the words you type, the faces you make, or anything identifying you. They go to our private diagnostics service and are deleted after 30 days."
                 Html.div [prop.className "next-actions";prop.children [
-                    Mui.button [button.variant.contained;prop.onClick(fun _ -> dispatch(Debug true));button.children "Turn on debug reporting"]
+                    Mui.button [button.variant.contained;prop.onClick(fun _ -> dispatch(Consent(true,"invite")));button.children "Turn on debug reporting"]
                     Mui.button [button.variant.text;prop.onClick(fun _ -> dispatch DismissInvite);button.children "Not now"]]]
                 Html.p [prop.className "next-invite-note";prop.text "You can turn it off at any time in the testing area below. Generating works exactly the same either way."]]]
         Html.div [prop.className "next-faces-area";prop.custom("data-next-faces",state.Inputs.Length);prop.children [
@@ -970,9 +1070,10 @@ let view state dispatch = App.ThemedApp [
             if reference<>"" then Html.p [prop.className "next-error-reference";prop.custom("role","note");prop.text (sprintf "Report reference: %s" reference)]
             Html.div [prop.className "next-actions";prop.children [
                 // What led up to this failure is already on the device. Offer to send it now,
-                // even from someone who had not opted in before it happened.
+                // even from someone who had not opted in before it happened. This sends this
+                // failure once; it does not turn reporting on (that is the For-testing control).
                 if not state.Debug && stagedReportCount()>0 then
-                    Mui.button [button.variant.text;prop.onClick(fun _ -> dispatch(Debug true));button.children "Send debug report"]
+                    Mui.button [button.variant.text;prop.onClick(fun _ -> dispatch SendReportOnce);button.children "Send this report"]
                 Mui.button [button.variant.text;prop.onClick(fun _ -> dispatch DismissError);button.children "Dismiss"]]]]]
         | None -> ()
         // Out of the primary action row: it protects a session, it is not a way to share.
@@ -1038,6 +1139,74 @@ let view state dispatch = App.ThemedApp [
                             Html.img [prop.src name.image;prop.alt "";prop.custom("loading","lazy");prop.width 200;prop.height 200];Html.span name.name]]]]
                 Mui.button [button.variant.text;prop.onClick(fun _ -> dispatch MoreNames);button.children "Show more"]
             ]]]]
+        let downloads = state.Downloads
+        let photoOffer = downloads.photoAvailable && not downloads.photoReady
+        let modelToastVisible =
+            not state.ModelToastHidden && downloads.known
+            && ((downloads.phase="idle" && not downloads.routeReady) || downloads.phase="downloading" || downloads.phase="waiting" || downloads.phase="failed" || downloads.phase="done")
+        let fraction = if downloads.total > 0. then min 1. (downloads.loaded/downloads.total) else 0.
+        Mui.snackbar [
+            snackbar.open' modelToastVisible
+            snackbar.anchorOrigin.bottomCenter
+            if downloads.phase="done" then snackbar.autoHideDuration 5000
+            snackbar.onClose(fun _ -> if downloads.phase="done" then dispatch HideModelToast)
+            snackbar.ContentProps [prop.className "next-consent-toast next-model-toast"]
+            snackbar.message (Html.div [prop.className "next-consent-message";prop.children [
+                match downloads.phase with
+                | "downloading" ->
+                    Html.span [Html.strong (if downloads.scope="photo" then "Downloading photo tools… " else "Downloading the face model… ")
+                               Html.text (sprintf "%s of %s" (megabytes downloads.loaded) (megabytes downloads.total))]
+                    Mui.linearProgress [linearProgress.variant.determinate;linearProgress.value (int (fraction*100.));prop.className "next-model-progress";prop.ariaLabel "Model download progress"]
+                | "waiting" -> Html.span [Html.strong "Download paused. ";Html.text "It picks up again once this face is done."]
+                | "failed" -> Html.span [Html.strong "The download stopped. ";Html.text "Check your connection or free up some space, then try again. Anything already downloaded is kept."]
+                | "done" -> Html.span [Html.strong "Ready. ";Html.text "The models are saved on this device, so you won't download them again."]
+                | _ ->
+                    Html.span [Html.strong "Faces are made on this device."
+                               Html.text (sprintf " It needs the face model once (%s)%s. It stays on this device; your browser may ask whether to keep it." (megabytes downloads.routeBytes) (if photoOffer then sprintf ", and photos need photo tools (%s)" (megabytes downloads.photoBytes) else ""))]]])
+            snackbar.action [
+                match downloads.phase with
+                | "downloading" | "waiting" | "done" ->
+                    Mui.button [button.color.inherit';button.variant.text;prop.onClick(fun _ -> dispatch HideModelToast);button.children "Hide"]
+                | "failed" ->
+                    Mui.button [button.color.inherit';button.variant.text;prop.onClick(fun _ -> dispatch(DownloadNow photoOffer));button.children "Try again"]
+                    Mui.button [button.color.inherit';button.variant.text;prop.onClick(fun _ -> dispatch HideModelToast);button.children "Not now"]
+                | _ ->
+                    Mui.button [button.color.inherit';button.variant.outlined;prop.onClick(fun _ -> dispatch(DownloadNow false));button.children (sprintf "Download · %s" (megabytes downloads.routeBytes))]
+                    if photoOffer then
+                        Mui.button [button.color.inherit';button.variant.text;prop.onClick(fun _ -> dispatch(DownloadNow true));button.children (sprintf "With photos · %s" (megabytes (downloads.routeBytes+downloads.photoBytes)))]
+                    Mui.button [button.color.inherit';button.variant.text;prop.onClick(fun _ -> dispatch HideModelToast);button.children "Not now"]]]
+        match state.Gate with
+        | Some(scope,_) ->
+            let size = if scope="photo" then downloads.photoBytes + (if downloads.routeReady then 0. else downloads.routeBytes) else downloads.routeBytes
+            Mui.dialog [
+                dialog.open' true
+                dialog.onClose(fun _ -> dispatch GateCancel)
+                prop.className "next-download-dialog"
+                dialog.children [
+                    Mui.dialogTitle (if scope="photo" then "Download photo tools?" else "Download the face model?")
+                    Mui.dialogContent [
+                        Mui.dialogContentText (
+                            if scope="photo" then sprintf "Photos are turned into faces on this device, so it needs photo tools once: %s. Your photo never leaves your device." (megabytes size)
+                            else sprintf "Faces are made on this device, so it needs the face model once: %s." (megabytes size))
+                        Mui.dialogContentText "It's saved for next time. Your browser may ask whether this site can keep it; saying yes stops it being cleared when space runs low."]
+                    Mui.dialogActions [
+                        Mui.button [button.variant.text;prop.onClick(fun _ -> dispatch GateCancel);button.children "Cancel"]
+                        Mui.button [button.variant.contained;button.color.primary;prop.className "next-download-accept";prop.onClick(fun _ -> dispatch GateAccept);button.children "Download and continue"]]]]
+        | None -> ()
+        // The trial-phase question: once per visitor, answerable in one tap, never blocking. A toast
+        // rather than a banner (16 September decision: no blanket banner); clicking away is not an
+        // answer, so it only closes on a choice or the close control.
+        Mui.snackbar [
+            snackbar.open' (state.ConsentPrompt && not modelToastVisible && state.Gate.IsNone)
+            snackbar.anchorOrigin.bottomCenter
+            snackbar.ContentProps [prop.className "next-consent-toast"]
+            snackbar.message (Html.span [prop.className "next-consent-message";prop.children [
+                Html.strong "Help us test the new FaceMorph?"
+                Html.text " Send debug reports: timings, device type and error codes. Never your photos, words or faces. Deleted after 30 days."]])
+            snackbar.action [
+                Mui.button [button.color.inherit';button.variant.text;prop.onClick(fun _ -> dispatch(Consent(true,"toast")));button.children "Turn on"]
+                Mui.button [button.color.inherit';button.variant.text;prop.onClick(fun _ -> dispatch(Consent(false,"toast")));button.children "No thanks"]
+                Mui.iconButton [prop.ariaLabel "Ask me later";iconButton.color.inherit';iconButton.size.small;prop.onClick(fun _ -> dispatch DismissConsentPrompt);iconButton.children (closeIcon [])]]]
         // The classic footer, in the classic design language (App.fs `footer`): the same three
         // lines and the same logo, because the candidate is the classic site extended, not a new
         // visual system. The logo belongs at the bottom of the page, as it always has.
@@ -1047,7 +1216,8 @@ let view state dispatch = App.ThemedApp [
                     Html.p [Html.text "Contact: ";Mui.link [link.color.initial;prop.href ("mailto:"+contactEmail);prop.text contactEmail]]
                     Html.p [Html.text "Source code: ";Mui.link [link.color.initial;prop.href ("https://github.com/"+githubRepo)
                                                                 prop.children [gitHubIcon [prop.style [style.fontSize (length.em 1.)]];Html.text (" "+githubRepo)]]]
-                    Html.p "If you find any bugs, please open an issue on GitHub."]]
+                    Html.p [Html.text "Found a problem? ";Mui.link [link.color.initial;prop.href (issueUrl state.Route);prop.target "_blank";prop.rel "noopener";prop.text "Report an issue"];Html.text " — it fills in your version and device."]
+                    Html.p [prop.className "next-footer-version";prop.text ("Preview version " + sourceVersion())]]]
                 Html.div [prop.className "next-footer-logo";prop.children [
                     Mui.svgIcon [svgIcon.component' Logos.logo;prop.style [style.fontSize (length.rem 5)]]]]]]]]
     ]]

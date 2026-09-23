@@ -29,6 +29,9 @@ result={'passed':False,'scope':'Exact compiled artifact startup and face control
 try:
     new_tab('http://127.0.0.1:8080/')
     wait_for_load()
+    # Close the trial-phase reporting toast without answering it; it would cover coordinate clicks.
+    time.sleep(1)
+    result['consentToastShown']=bool(js('(()=>{const b=document.querySelector(\'.next-consent-toast button[aria-label="Ask me later"]\');if(b)b.click();return !!b;})()'))
     initial=until(lambda s:s['tiles']==2 and s['photoButtons']==2 and s['generate'])
     # U-09 moved morph shape into the overflow; open it before asserting the default pattern.
     js("document.querySelector('.next-overflow')||[...document.querySelectorAll('button')].find(b=>b.textContent==='More options').click()")

@@ -78,6 +78,7 @@ CAMPAIGN = """
     await wait(() => [...document.querySelectorAll('button')]
       .some(b => b.textContent.trim().toLowerCase() === 'generate'), 60000, 'the interface');
     const began = Date.now();
+    if(!window.__ciGate){window.__ciGate=0;setInterval(()=>{const b=document.querySelector('.next-download-dialog .next-download-accept');if(b){window.__ciGate++;b.click();}},250);}
     [...document.querySelectorAll('button')].find(b => b.textContent.trim().toLowerCase() === 'generate').click();
     const made = await wait(() => document.querySelector('img[src^="blob:"]'), 900000, 'the first face');
     say('firstFaceMs', made ? Date.now() - began : null);

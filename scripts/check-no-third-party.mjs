@@ -17,6 +17,13 @@ const targets = process.argv.slice(2).length ? process.argv.slice(2) : ['deploy-
 
 /** Origins a fetched/executed resource may come from. Runtime assets are same-origin by design. */
 const ALLOWED = [/^https:\/\/next\.facemorph\.me\//, /^https:\/\/facemorph-next\.[\w-]+\.workers\.dev\//];
+/**
+ * Where the names and seed gallery images may come from. The catalogue names its origin once and
+ * every image URL is derived from it, so an unlisted origin here is a runtime dependency nobody
+ * reviewed. The workers.dev entry is the current published gallery (16 September) and is
+ * temporary: U-18 moves it onto a facemorph.me host, hashes preserved, and this line goes then.
+ */
+const GALLERY_ORIGINS = ['https://facemorph-seed-gallery.cdilga.workers.dev'];
 
 const findings = [];
 
@@ -47,6 +54,14 @@ function walk(path) {
 }
 
 for (const target of targets) walk(resolve(root, target));
+
+for (const target of targets) {
+  const catalogue = resolve(root, target, 'catalogue.json');
+  if (!existsSync(catalogue)) continue;
+  const origin = String(JSON.parse(readFileSync(catalogue, 'utf8')).origin || '');
+  if (origin && !GALLERY_ORIGINS.includes(origin) && !ALLOWED.some(pattern => pattern.test(origin + '/')))
+    findings.push({ where: relative(root, catalogue), url: origin, how: 'gallery origin' });
+}
 
 const violations = findings.filter(item => !ALLOWED.some(pattern => pattern.test(item.url)));
 if (violations.length) {

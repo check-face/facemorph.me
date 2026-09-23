@@ -36,6 +36,10 @@ if not isinstance(project,dict):raise ValueError('Required real-workflow evidenc
 if project.get('shipped') is not False:required={*required,'projectSaveReopen'}
 if report.get('passed') is not True or not all(report.get('checks',{}).get(k,{}).get('passed') is True for k in required):raise ValueError('Required real-workflow evidence is missing')
 if source['id']!=a.build_run or source['head_sha']!=build['head_sha'] or (proof/'next-site-SHA256SUMS').read_bytes()!=(web/'next-site-SHA256SUMS').read_bytes():raise ValueError('Qualification tested a different artifact')
+# The catalogue is built into the artifact now. Publishing a different one would ship a names
+# index no qualification ever served, so the one passed here must be the one that was tested.
+built_catalogue=web/'deploy-next'/'catalogue.json'
+if built_catalogue.exists() and built_catalogue.read_bytes()!=a.catalogue.read_bytes():raise ValueError('Catalogue differs from the one built into the qualified artifact')
 manifest_sha=hashlib.sha256((a.runtime/'manifest.json').read_bytes()).hexdigest()
 if manifest_sha!=report['runtimeSha256']:raise ValueError('Runtime differs from qualified bundle')
 # Structural gate: a bundle may not be built from a kernel with no keep row in
@@ -55,7 +59,7 @@ if ledger.exists():
 # bundle carried the pre-promotion kernel and the retired unsplit graph, and every WebGPU device
 # fell back to CPU after a 183 MB download. This checks the assets the engine actually imports.
 webgpu_contract.require(a.runtime, manifest)
-receipt={'buildRun':a.build_run,'qualificationRun':a.qualification_run,'source':build['head_sha'],'runtimeSha256':manifest_sha,'kernel':{k:kernel[k] for k in ('file','sha256','candidateId','sourceHash')},'projectFiles':('qualified' if project.get('shipped') is not False else 'not in this artifact'),'published':False}
+receipt={'catalogueSha256':hashlib.sha256(a.catalogue.read_bytes()).hexdigest(),'buildRun':a.build_run,'qualificationRun':a.qualification_run,'source':build['head_sha'],'runtimeSha256':manifest_sha,'kernel':{k:kernel[k] for k in ('file','sha256','candidateId','sourceHash')},'projectFiles':('qualified' if project.get('shipped') is not False else 'not in this artifact'),'published':False}
 command(sys.executable,'hosting/next-static/stage.py','--runtime',str(a.runtime.resolve()),'--frontend',str(web/'deploy-next'),'--catalogue',str(a.catalogue.resolve()),'--output',str(work/'public'))
 (work/'promotion.json').write_text(json.dumps(receipt,indent=2)+'\n')
 if a.publish:

@@ -8,7 +8,9 @@ export const RETENTION_SECONDS=30*24*60*60;
 export const MAX_BODY_BYTES=64*1024;
 export const MAX_BATCH_EVENTS=200;
 // No arbitrary localhost ports, null origins, wildcard origins or user credentials.
-export const ORIGINS=new Set(['https://next.facemorph.me','tauri://localhost','http://tauri.localhost','https://tauri.localhost']);
+// facemorph.me and labs are listed ahead of the trial moving to the real site: the product's
+// reports go to this one collector wherever it is served from.
+export const ORIGINS=new Set(['https://next.facemorph.me','https://facemorph.me','https://labs.facemorph.me','tauri://localhost','http://tauri.localhost','https://tauri.localhost']);
 function reply(status,origin){const headers={'Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','Vary':'Origin'};if(ORIGINS.has(origin))Object.assign(headers,{'Access-Control-Allow-Origin':origin,'Access-Control-Allow-Methods':'POST, OPTIONS','Access-Control-Allow-Headers':'Content-Type, X-Facemorph-Diagnostics-Consent','Access-Control-Max-Age':'600'});return new Response(null,{status,headers});}
 function cancel(reader){try{Promise.resolve(reader?.cancel()).catch(()=>{});}catch{}}
 async function readEvent(request){

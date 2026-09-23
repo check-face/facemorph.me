@@ -351,7 +351,7 @@ let footer =
 
 let createTheme isDark = [
     if isDark then theme.palette.type'.dark else theme.palette.type'.light
-    theme.palette.background.default' <| if isDark then "#17181c" else "white"
+    theme.palette.background.default' <| if isDark then "#17181c" else "#fff"
     theme.palette.background.paper <| if isDark then "#353535" else "#fff"
     unbox<IThemeProp> ("palette.background.level2", if isDark then "#2a2a2a" else "#f5f5f5")
 

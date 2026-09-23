@@ -326,3 +326,115 @@ test('a photo-preparation failure is reported with its stage and kind, not lost 
   assert.equal(terminal.errorStage, 'photo-crop', 'the record names the exact step');
   assert.equal(terminal.errorKind, 'decode', 'the failure is bucketed as a decode failure');
 });
+
+// --- Consent recording (round 3, R3-02 / R3-14) -------------------------------------------------
+function sessionStore() {
+  const store = new Map();
+  globalThis.sessionStorage = {
+    getItem: key => store.has(key) ? store.get(key) : null,
+    setItem: (key, value) => store.set(key, String(value)),
+    removeItem: key => store.delete(key)
+  };
+  return store;
+}
+const failingRun = diagnostics => {
+  diagnostics.bundle('e'.repeat(64));
+  diagnostics.start('faces', 'cpu');
+  diagnostics.stage('synthesis', { elapsedMs: 5 });
+  diagnostics.finish('failed', new Error('Stored asset disappeared; acquire again'), { stage: 'synthesis' });
+};
+
+test('a choice records how and when it was made, and every report carries its basis', async () => {
+  const { diagnostics, posts, store } = await fresh();
+  diagnostics.enable(true, 'toast');
+  const saved = JSON.parse(store.get('facemorph-debug-consent-v1'));
+  assert.equal(saved.choice, 'on');
+  assert.equal(saved.basis, 'toast');
+  assert.match(saved.at, /^\d{4}-\d{2}-\d{2}$/);
+  assert.ok(saved.policy, 'the disclosure version is recorded');
+  failingRun(diagnostics);
+  await settle(diagnostics);
+  assert.ok(posts.length > 0);
+  for (const post of posts) assert.equal(post.body.consent, 'toast');
+});
+
+test('a "no" is remembered, so a first-visit prompt is not asked again, and nothing is sent', async () => {
+  const { diagnostics, posts, store } = await fresh();
+  assert.equal(diagnostics.answered(), false);
+  diagnostics.enable(false, 'toast');
+  assert.equal(diagnostics.answered(), true);
+  assert.equal(JSON.parse(store.get('facemorph-debug-consent-v1')).choice, 'off');
+  assert.equal(diagnostics.restore(), false, 'a stored no never restores reporting');
+  failingRun(diagnostics);
+  await settle(diagnostics);
+  assert.deepEqual(posts, []);
+});
+
+test('"Send this report" sends one failure once, without a device id, and leaves reporting off', async () => {
+  const { diagnostics, posts, store } = await fresh();
+  failingRun(diagnostics);
+  assert.ok(diagnostics.status().staged > 0);
+  assert.equal(diagnostics.sendOnce(), true);
+  await settle(diagnostics);
+  assert.ok(posts.length > 0, 'the staged failure went out');
+  for (const post of posts) {
+    assert.equal(post.body.consent, 'once');
+    assert.equal(post.body.device, undefined, 'a one-off report carries no device id');
+  }
+  assert.equal(diagnostics.status().enabled, false, 'no standing consent was created');
+  assert.equal(store.get('facemorph-debug-consent-v1'), undefined, 'and none was stored');
+  assert.equal(store.get('facemorph-debug-device-v1'), undefined);
+  assert.ok(diagnostics.status().reference, 'the tester is handed the reference it was filed under');
+  const sent = posts.length;
+  diagnostics.start('faces', 'cpu');
+  diagnostics.stage('synthesis', { elapsedMs: 5 });
+  await settle(diagnostics);
+  assert.equal(posts.length, sent, 'the next run is not reported');
+});
+
+test('withdrawal discards undelivered events and the device id; a later yes cannot send them', async () => {
+  const { diagnostics, posts, store } = await fresh();
+  const pending = sessionStore();
+  diagnostics.enable(true);
+  assert.ok(store.get('facemorph-debug-device-v1'), 'a consenting device groups its runs');
+  diagnostics.bundle('f'.repeat(64));
+  diagnostics.start('faces', 'cpu');
+  diagnostics.stage('synthesis', { elapsedMs: 5 });   // batched, not yet delivered
+  assert.ok(pending.size > 0, 'the batch is mirrored for reload survival');
+  diagnostics.enable(false);
+  assert.equal(pending.size, 0, 'the mirror is cleared on withdrawal');
+  assert.equal(store.get('facemorph-debug-device-v1'), undefined, 'the device id is forgotten');
+  await settle(diagnostics);
+  assert.deepEqual(posts.filter(p => p.body.event === 'start'), [], 'the withdrawn run start never left');
+  diagnostics.enable(true);
+  await settle(diagnostics);
+  assert.deepEqual(posts, [], 'events accepted before the withdrawal are gone, not held for the next yes');
+  delete globalThis.sessionStorage;
+});
+
+test('labs starts with reporting on and says so; an explicit no there is still respected', async () => {
+  globalThis.location = { hostname: 'labs.facemorph.me' };
+  try {
+    const first = await fresh();
+    assert.equal(first.diagnostics.restore(), true);
+    assert.equal(first.diagnostics.status().enabled, true);
+    assert.equal(first.diagnostics.status().basis, 'labs-default');
+    assert.ok(first.events.some(e => e.status === 'enabled'), 'the on state is announced, never silent');
+    const second = await fresh();
+    second.store.set('facemorph-debug-consent-v1', JSON.stringify({ choice: 'off', basis: 'checkbox' }));
+    assert.equal(second.diagnostics.restore(), false);
+    assert.equal(second.diagnostics.status().enabled, false);
+  } finally { delete globalThis.location; }
+});
+
+test('the product origin never starts reporting without an answer, and a legacy "on" still restores', async () => {
+  globalThis.location = { hostname: 'next.facemorph.me' };
+  try {
+    const first = await fresh();
+    assert.equal(first.diagnostics.restore(), false);
+    const second = await fresh();
+    second.store.set('facemorph-debug-consent-v1', 'on');
+    assert.equal(second.diagnostics.restore(), true);
+    assert.equal(second.diagnostics.status().basis, 'legacy');
+  } finally { delete globalThis.location; }
+});

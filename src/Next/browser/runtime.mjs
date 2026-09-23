@@ -248,10 +248,10 @@ export function createBrowserRuntime({manifest: suppliedManifest, manifestSha256
   * intent: they are about to wait on the largest thing the product ever asks for, and a silent
   * gigabyte is the one case where saying nothing is worse than saying something.
   */
- async function prefetch(scope='route'){
+ async function prefetch(scope='route',{explicit=false}={}){
   const warmingPhoto=scope==='photo';
-  if(disposed||active||worker||prefetchWorker||!prefetchWelcome())return {started:false};
-  if(!warmingPhoto&&validated)return {started:false};
+  if(disposed||active||worker||prefetchWorker||(!explicit&&!prefetchWelcome()))return {started:false};
+  if(!warmingPhoto&&validated&&!explicit)return {started:false};
   let own;
   try{
    await config();
@@ -272,6 +272,7 @@ export function createBrowserRuntime({manifest: suppliedManifest, manifestSha256
      // The route warm-up stays off the bar: nothing was asked for. The photo warm-up reports,
      // because it was, and it is a gigabyte.
      if(data.type==='progress'){
+      if(explicit){if(data.stage==='asset-acquisition')emit({stage:'models-download',scope,loaded:data.loaded,total:data.total,fetched:data.fetched,fetchedTotal:data.fetchedTotal});return;}
       if(warmingPhoto)emit({...data,stage:data.stage==='asset-acquisition'?'photo-acquisition':data.stage});
       return;}
      if(data.type==='error')reject(Error(data.error.message));
@@ -288,8 +289,36 @@ export function createBrowserRuntime({manifest: suppliedManifest, manifestSha256
   }catch{return {started:false};}
   finally{if(prefetchWorker===own)stopPrefetch();}
  }
+ function photoAvailable(){
+  if(!alignPhoto||(!manifest?.encoder&&!manifest?.encoderStream))return false;
+  const nav=globalThis.navigator,mobile=nav?.userAgentData?.mobile||/Android|iPhone|iPad|iPod/.test(nav?.userAgent||'')||(nav?.platform==='MacIntel'&&nav?.maxTouchPoints>1);
+  return !(mobile&&manifest.encoderStream&&manifest.encoderStream.phoneAdmitted!==true);
+ }
+ async function inventory(){
+  if(disposed)return null;
+  await config();
+  if(capabilities().webgpu)await probeGpu();
+  const target=preferredRoute==='auto'?chooseRoute():preferredRoute;
+  const own=workerFactory();
+  try{
+   const answers=await new Promise((resolve,reject)=>{
+    const results={};
+    own.onerror=()=>reject(Error('The model check stopped.'));
+    own.onmessage=({data})=>{
+     if(data.type==='error')reject(Error(data.error.message));
+     else if(data.id===2)results.route=data.result;
+     else if(data.id===3){results.photo=data.result;resolve(results);}
+    };
+    own.postMessage({id:1,type:'initialize',manifest,provider:target==='webgl'?'webgl2':target==='webgpu'?'webgpu':'wasm',manifestSha256:manifestHash});
+    own.postMessage({id:2,type:'inventory',scope:'route'});
+    own.postMessage({id:3,type:'inventory',scope:'photo'});
+   });
+   return {route:answers.route,photo:{...answers.photo,available:photoAvailable()}};
+  }finally{own.terminate();}
+ }
  const api={
  prefetch,
+ inventory,
  setPreferredRoute:(requested)=>{if(active)throw Error('Cannot change processing mode during generation.');if(!['auto','cpu','webgl','webgpu'].includes(requested))throw Error('Invalid preferred inference route');if(preferredRoute!==requested){stop();preferredRoute=requested;}},
  qualify:(requestedRoute='cpu',options={})=>afterDelivery(operation(async progress=>{if(!['cpu','webgl','webgpu'].includes(requestedRoute))throw Error('Choose CPU, WebGL or WebGPU.');if(route!==requestedRoute)stop();route=requestedRoute;await start(progress);const result=await send('qualify',{},progress);acceptQualification(result);return result;},options)),
  generate:(request,options={})=>afterDelivery(operation(async(progress,signal)=>{const {identity}=await inputLatent(request.mode,request.value);return cachedGenerate({kind:'seed',identity},async()=>{await start(progress);return send('generate',{mode:request.mode,value:request.value},progress,ACQUIRE_STALL);},progress,signal);},{...request,...options})),

@@ -41,6 +41,7 @@ var CONFIG = {
 var commonPlugins = [
     new (require('webpack').DefinePlugin)({
         'process.env.FACEMORPH_BUILD_ID': JSON.stringify(process.env.FACEMORPH_BUILD_ID || 'development'),
+        'process.env.FACEMORPH_SOURCE_SHA': JSON.stringify(process.env.FACEMORPH_SOURCE_SHA || 'unknown'),
         'process.env.FACEMORPH_NEXT': JSON.stringify(isNext ? '1' : '0'),
         'process.env.FACEMORPH_SELF_HOST': JSON.stringify(isSelfHost ? '1' : '0'),
         'process.env.FACEMORPH_TRIAL': JSON.stringify(isSelfHost ? '0' : (process.env.FACEMORPH_TRIAL || '0')),

@@ -235,3 +235,19 @@
 // The photo warm-up speaks while nothing is running, so it is quieter than a job's status
 // line and never competes with one.
 .next-preparing { display:block; opacity:.8; font-size:.9rem; margin-top:.2rem; }
+
+// First-visit reporting question (trial phase). MUI's own Snackbar, in the classic dark canvas,
+// without the accent borders R2-8 bans; it sits above the page, never over the action row for long.
+.next-consent-toast { background:#17181c!important; color:#fff!important; border:1px solid rgba(255,255,255,.14); max-width:40rem; }
+.next-consent-message { line-height:1.45; }
+.next-consent-message strong { font-family:'Nunito','Segoe UI',sans-serif; color:inherit!important; }
+
+.next-preview-strip { display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:.35rem 1rem; margin:-1.25rem -1.25rem 1rem; padding:.55rem 1rem; background:#17181c; color:#fff; font-size:.85rem; line-height:1.4; text-align:center; box-shadow:0 0 0 100vmax #17181c; clip-path:inset(0 -100vmax); }
+@media (max-width: 600px) { .next-preview-strip { font-size:.8rem; padding:.45rem .75rem; gap:.15rem .9rem; } .next-preview-strip a { padding:.3rem 0; } }
+.next-preview-strip strong { font-family:'Nunito','Segoe UI',sans-serif; color:inherit; }
+.next-preview-strip-links { display:inline-flex; flex-wrap:wrap; justify-content:center; gap:.25rem 1rem; }
+.next-preview-strip a { color:#fff; text-decoration:underline; text-underline-offset:2px; padding:.35rem 0; display:inline-block; }
+.next-preview-strip a:focus-visible { outline:2px solid #3CF0C5; outline-offset:2px; }
+.next-footer-version { opacity:.7; font-size:.85rem; }
+.next-model-progress { margin-top:.5rem; border-radius:2px; }
+.next-model-toast .MuiSnackbarContent-action { flex-wrap:wrap; justify-content:flex-end; }

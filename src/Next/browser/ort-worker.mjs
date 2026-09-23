@@ -177,6 +177,22 @@ async function floats(asset,id){const b=await bytes(asset,id);return new Float32
  * route. A failure here is swallowed, because the real run must be the one that reports an
  * acquisition problem in the user's words and drops the route on the evidence.
  */
+async function inventory(scope){
+ cache ||= await createBrowserModelCache({report:cacheReport});
+ let list,estimated=false;
+ if(scope==='photo'){
+  const descriptor=manifest.encoderStream;
+  if(descriptor&&!(await cache.has(descriptor.sha256))){
+   list=collectAssets([manifest.landmarks,manifest.photoCanary,manifest.photoCanaries,descriptor]);
+   const total=list.reduce((sum,asset)=>sum+asset.size,0)+(manifest.encoder?.size||0);
+   return {scope,provider,present:0,total,ready:false,estimated:true};
+  }
+  list=await photoAssets();
+ }else list=routeAssets();
+ let present=0,total=0;
+ for(const asset of list){total+=asset.size;if(await cache.has(asset.sha256))present+=asset.size;}
+ return {scope,provider,present,total,ready:list.length>0&&present===total,estimated};
+}
 async function prefetchRoute(id,scope='route'){
  cache ||= await createBrowserModelCache({report:cacheReport});
  const list=scope==='photo'?await photoAssets():routeAssets();
@@ -335,7 +351,7 @@ self.onmessage=({data})=>{
   try{
    let result;
    if(type==='initialize'){manifest=request.manifest;provider=request.provider;manifestSha256=request.manifestSha256;fullQualify=request.fullQualify===true||(!request.hostForcedQualify&&request.webdriver===true);forceCanaryFail=request.forceCanaryFail===true;result={provider};}
-   else if(type==='qualify')result=await qualify(id);else if(type==='prefetch')result=await prefetchRoute(id,request.scope);else if(type==='generate'){const input=await inputLatent(request.mode,request.value),values=await mappingFor(input.values,id);result={blob:await png(await run(values,id)),values,shape:[1,18,512],space:'w-plus',identity:input.identity};}else if(type==='synthesize'){const values=requireLatent(request.values);result={blob:await png(await run(values,id)),values,shape:[1,18,512],space:'w-plus'};}else if(type==='encode-aligned'){
+   else if(type==='qualify')result=await qualify(id);else if(type==='prefetch')result=await prefetchRoute(id,request.scope);else if(type==='inventory')result=await inventory(request.scope);else if(type==='generate'){const input=await inputLatent(request.mode,request.value),values=await mappingFor(input.values,id);result={blob:await png(await run(values,id)),values,shape:[1,18,512],space:'w-plus',identity:input.identity};}else if(type==='synthesize'){const values=requireLatent(request.values);result={blob:await png(await run(values,id)),values,shape:[1,18,512],space:'w-plus'};}else if(type==='encode-aligned'){
  // Sequential residency: e4e is released before loading synthesis.
  if(!manifest.encoder&&!manifest.encoderStream)throw Error('The browser encoder bundle is not available.');
  residency.mode=request.retain===true?'on':'off';

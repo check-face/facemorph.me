@@ -138,3 +138,12 @@ test('a cache hit is not announced as a download', () => {
   assert.equal(labelFor('asset-acquisition', { loaded: 60 * MB, total: 120 * MB }),
     'Downloading model files… 60 MB of 120 MB');
 });
+
+test('the morph counter counts finished frames and never goes backwards, in any order', async () => {
+  const { createFrameCounter } = await import('./stage-labels.mjs');
+  const counter = createFrameCounter(5);
+  assert.equal(counter.start().text, 'Generating 0 / 5 images');
+  const seen = [4, 0, 2, 2, 1, 3].map(index => counter.complete(index).done);
+  assert.deepEqual(seen, [1, 2, 3, 3, 4, 5]);
+  assert.equal(counter.complete(3).text, 'Generating 5 / 5 images');
+});

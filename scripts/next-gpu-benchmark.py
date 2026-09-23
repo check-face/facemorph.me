@@ -76,6 +76,10 @@ def wait(check, seconds, what):
 
 new_tab(os.environ.get('GPU_BENCH_URL', 'https://next.facemorph.me/'))
 wait_for_load()
+# Close the trial-phase reporting toast without answering it.
+time.sleep(1)
+js('(()=>{const b=document.querySelector(\'.next-consent-toast button[aria-label="Ask me later"]\');if(b)b.click();return !!b;})()')
+js("if(!window.__ciGate){window.__ciGate=0;setInterval(()=>{const b=document.querySelector('.next-download-dialog .next-download-accept');if(b){window.__ciGate++;b.click();}},250);}")
 
 # 1. The adapter must exist and clear the route's binding floor before anything else is claimed.
 adapter = q("""(async()=>{const a=await navigator.gpu?.requestAdapter();return a?{

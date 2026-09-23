@@ -32,6 +32,8 @@ export const SILENT_STAGES = new Set([
   // spoken: nothing was asked for, so there is no status line it belongs in, and announcing a
   // finished download the visitor never started only raises a question it cannot answer.
   'models-prefetched',
+  // Byte progress of a download the visitor asked for; the model toast shows it, not the job line.
+  'models-download',
   // Diagnostics-only: a visitor cannot act on a storage status mid-download, and acquisition
   // already speaks. It exists so a report can say why a gigabyte was fetched twice.
   'cache-trouble'
@@ -172,4 +174,19 @@ export function labelFor(stage, event = {}) {
 /** Every stage this file accounts for, in any way. Used by the enumeration test. */
 export function accountedStages() {
   return new Set([...Object.keys(STAGE_LABELS), ...SELF_TEXT_STAGES, ...SILENT_STAGES]);
+}
+
+export function morphCounter(done, total) {
+  return `Generating ${done} / ${total} images`;
+}
+
+export function createFrameCounter(total) {
+  const finished = new Set();
+  return {
+    complete(index) {
+      if (Number.isInteger(index) && index >= 0 && index < total) finished.add(index);
+      return { done: finished.size, text: morphCounter(finished.size, total) };
+    },
+    start() { return { done: 0, text: morphCounter(0, total) }; }
+  };
 }

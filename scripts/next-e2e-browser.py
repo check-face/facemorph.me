@@ -52,6 +52,7 @@ def alive():
  v=js('1+1')
  if v!=2:raise RuntimeError('renderer unresponsive (eval returned %r)'%(v,))
 def ensure_instrumented():
+ js("if(!window.__ciGate){window.__ciGate=0;setInterval(()=>{const b=document.querySelector('.next-download-dialog .next-download-accept');if(b){window.__ciGate++;b.click();}},250);}")
  # The Worker counters re-install on every document; the busy observer and the console tap do
  # not. Re-arm them so a mid-suite reload degrades to zero-counted transitions instead of
  # null comparisons, and late failures still carry the runtime's last words.
@@ -157,6 +158,11 @@ def stage_preflight():
  # Register on the actual tab too: the initial registration may belong to the prior tab.
  js("if(window.__ciWorkers===undefined){window.__ciWorkers=0;window.__ciWorkerRequests=0;const W=window.Worker;window.Worker=class extends W{constructor(...a){super(...a);window.__ciWorkers++;}postMessage(...args){window.__ciWorkerRequests++;return super.postMessage(...args);}};}")
  wait(idle,60);assert js('crossOriginIsolated'), 'Production isolation headers missing'
+ # The trial-phase reporting question appears on every fresh profile. "Ask me later" closes it
+ # without answering, so the harness neither consents nor declines on anyone's behalf, and the
+ # toast cannot sit over a control a later coordinate click aims at.
+ js("if(!window.__ciGate){window.__ciGate=0;setInterval(()=>{const b=document.querySelector('.next-download-dialog .next-download-accept');if(b){window.__ciGate++;b.click();}},250);}")
+ result['consentToastShown']=bool(js('(()=>{const b=document.querySelector(\'.next-consent-toast button[aria-label="Ask me later"]\');if(b)b.click();return !!b;})()'))
  result['agent']=q('navigator.userAgent');result['engine']=q("(/Firefox|FxiOS/.test(navigator.userAgent)?'gecko':/Chrome|Chromium|CriOS|Edg/.test(navigator.userAgent)?'blink':/Safari/.test(navigator.userAgent)?'webkit':'other')")
  js("window.__ciOrigin=null;fetch('/').then(r=>window.__ciOrigin=r.headers.get('X-Next-Artifact-Source')).catch(e=>window.__ciOrigin='error')")
  wait(lambda:js('window.__ciOrigin!==null'),60);assert js('window.__ciOrigin')==Path('next-site-source.txt').read_text().strip(), 'Chrome did not reach exact local artifact origin'
@@ -182,7 +188,8 @@ def stage_seedGeneration():
  # A native select popup left open (headless quirk) swallows every later click silently;
  # a real click on neutral space closes it. Blur then guard with Escape.
  js("document.activeElement instanceof HTMLElement&&document.activeElement.blur()")
- click_at_xy(400,20);time.sleep(.5)
+ spot=q("(()=>{const e=document.querySelector('.next-explain h2')||document.querySelector('h1');e.scrollIntoView({block:'center'});const r=e.getBoundingClientRect();return {x:r.left+4,y:r.top+r.height/2};})()")
+ click_at_xy(spot['x'],spot['y']);time.sleep(.5)
  mode=js("document.querySelector('%s').value"%S['processingMode'])
  selection='keyboard' if mode=='cpu' else 'scripted'
  if mode!='cpu':select_mode('cpu')
@@ -358,4 +365,6 @@ except Exception as error:
  result['error']=str(error)
  raise
 finally:
+ try:result['downloadGateAccepted']=js('window.__ciGate||0')
+ except Exception:pass
  result['finishedAt']=time.time();(out/'report.json').write_text(json.dumps(result,indent=2));print(json.dumps(result))

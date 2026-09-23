@@ -85,3 +85,15 @@ test('R2 takes the write, and KV catches it when R2 cannot', async () => {
     DIAGNOSTICS: {put: async () => {throw Error('kv down');}}};
   assert.equal((await worker.fetch(request(), dead)).status, 503);
 });
+
+// Every report says how its sender agreed. The client's vocabulary and the collector's must not
+// drift: a basis the collector does not know would 400 a whole batch, the same failure that hid
+// storage records for four rounds.
+test('the collector accepts every consent basis the product records, and nothing else',async()=>{
+ const {CONSENT_BASES}=await import('../../src/Next/reporting.mjs');
+ const {puts,env}=store();
+ for(const consent of CONSENT_BASES)
+  assert.equal((await worker.fetch(request({...event(),consent}),env)).status,204,`rejected consent basis ${consent}`);
+ assert.equal((await worker.fetch(request({...event(),consent:'assumed'}),env)).status,400);
+ assert.equal(puts.length,CONSENT_BASES.length);
+});

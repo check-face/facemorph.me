@@ -5,9 +5,10 @@ import {createLatentPath,GEOMETRY_VERSION} from './geometry/latent-path.mjs';
 import {decode,encode} from './ProjectJson.fs.js';
 import {saveFile,shareFile,videoWriter} from './media.mjs';
 import {diagnostics} from './reporting.mjs';
-import {labelFor,loadedBytes} from './stage-labels.mjs';
+import {labelFor,loadedBytes,createFrameCounter} from './stage-labels.mjs';
 import {frameStoreKey,frameStoreGet} from './morph-frames.mjs';
 import {selectPhoto} from './photo-selection.mjs';
+import {persistenceAction} from './storage-request.mjs';
 import {previewPhoto,cropPhoto} from './photo/crop.mjs';
 // The U-14 slider consumes frames through window.__nextFrames.get(key); wire the real store
 // here so the UI has exactly one integration point. Guarded so stripped-import test harnesses
@@ -16,7 +17,9 @@ if(typeof frameStoreGet!=='undefined'&&typeof window!=='undefined'&&!window.__ne
 let listener=()=>{},runtime,manifest,active,writer,currentJob=0,project=null,video=null;
 const faces=new Map(),urls=new Map();
 function progress(event){
- const stage=event.stage||'working';lastStage=stage;
+ const stage=event.stage||'working';
+ if(stage==='models-download'){Object.assign(downloads,{phase:'downloading',scope:event.scope,loaded:Number(event.loaded)||0,total:Number(event.total)||downloads.total});announceDownloads();return;}
+ lastStage=stage;
  reportStorage();
  const loaded=loadedBytes(event),fraction=event.total>0&&Number.isFinite(loaded)?loaded/event.total:0;
  // Byte ticks inside one asset are for the bar, not for the collector: at a megabyte apiece
@@ -157,18 +160,48 @@ async function admission(provider){
  // Native adapter checks its persistent original cache before qualification.
 
 }
-// A cold device spends its first minutes downloading models that are the same whichever face is
-// asked for. Warming starts as the interface settles, on the route this device would choose, so
-// the wait overlaps the time the visitor spends reading and choosing rather than following their
-// first Generate. It is deferred to idle so it never competes with first paint, and any real job
-// terminates it; every asset already committed stays on the device.
+// Issue #28 and operator, 23 September: nothing downloads until the visitor asks, through the
+// model toast or the download dialog in front of Generate. Load only observes: the manifest (a few
+// KB), what is already cached, and storage state.
 function warmUp(){
- // Before the warm-up writes anything, not after: a browser deciding whether ~1.4 GB may persist
- // should be asked before it arrives, and the answer must be on record either way.
  askForPersistentStorage();
- const begin=()=>{engine().then(local=>local.prefetch?.()).catch(()=>{});};
- if(typeof requestIdleCallback==='function')requestIdleCallback(begin,{timeout:5000});
- else setTimeout(begin,2000);
+ void refreshInventory();
+}
+const downloads={known:false,phase:'idle',scope:'',loaded:0,total:0,routeReady:false,photoReady:false,photoAvailable:false,routeBytes:0,photoBytes:0};
+const wanted=new Set(),downloadListeners=new Set();
+let downloading=null;
+function announceDownloads(){const snapshot={...downloads};for(const callback of downloadListeners){try{callback(snapshot);}catch{}}}
+export function subscribeDownloads(callback){downloadListeners.add(callback);callback({...downloads});}
+async function refreshInventory(){
+ try{
+  const service=await engine();if(!service.inventory)return;
+  const found=await service.inventory();if(!found)return;
+  Object.assign(downloads,{known:true,routeReady:found.route.ready,photoReady:found.photo.ready,photoAvailable:found.photo.available===true,
+   routeBytes:Math.max(0,found.route.total-found.route.present),photoBytes:Math.max(0,found.photo.total-found.photo.present)});
+  announceDownloads();
+ }catch(error){console.warn('Model inventory unavailable:',error?.message||error);}
+}
+export function downloadModels(includePhoto){
+ keepModelsOnDevice();
+ wanted.add('route');if(includePhoto)wanted.add('photo');
+ downloads.phase='downloading';announceDownloads();
+ void pumpDownloads();
+}
+export function consentToDownload(scope){keepModelsOnDevice();return scope;}
+async function pumpDownloads(){
+ if(downloading||active)return;
+ for(const scope of ['route','photo']){
+  if(!wanted.has(scope))continue;
+  downloading=scope;Object.assign(downloads,{phase:'downloading',scope,loaded:0,total:scope==='route'?downloads.routeBytes:downloads.photoBytes});announceDownloads();
+  let result={started:false};
+  try{result=await (await engine()).prefetch(scope,{explicit:true});}catch{}
+  downloading=null;
+  if(active){downloads.phase='waiting';announceDownloads();return;}
+  if(!result.started||result.acquired!==result.assets){downloads.phase='failed';wanted.clear();announceDownloads();await refreshInventory();return;}
+  wanted.delete(scope);
+ }
+ await refreshInventory();
+ downloads.phase=downloads.routeReady?'done':'idle';announceDownloads();
 }
 export function subscribe(callback){listener=callback;window.addEventListener('facemorph-report-status',({detail})=>callback({jobId:currentJob,stage:'diagnostics-'+detail.status,text:detail.reference||'',fraction:0}));diagnostics.restore();warmUp();}
 export async function execute(request){
@@ -201,25 +234,26 @@ export async function execute(request){
    const framesKey=await morphFramesKey();
    const stored=framesKey?await frameStoreGet(framesKey).catch(()=>null):null;
    writer=videoWriter({codec:manifest.codec,fps:project.morph.framesPerSecond,signal:active.signal,onProgress:progress,framesKey,totalFrames:path.totalFrames});await writer.initialize();
+   const counter=createFrameCounter(path.totalFrames);
    if(stored&&stored.length===path.totalFrames){
-    // R2-13: the whole morph is already on this device — encode only, no synthesis at all.
-    // Every frame was already on the device, so the counter starts finished rather than saying a
-    // different thing in different words. The export stage speaks next.
-    progress({stage:'morph',text:`Generating ${path.totalFrames} / ${path.totalFrames} images`,loaded:path.totalFrames,total:path.totalFrames});
     for(const frame of path.frames()){checked();await writer.add(stored[frame.index],frame.index);jobCounts.framesDone=frame.index+1;}
-   }else for(const frame of path.frames()){
-    checked();progress({stage:'morph',text:`Generating ${frame.index+1} / ${path.totalFrames} images`,loaded:frame.index,total:path.totalFrames});
+   }else{
+    const first=counter.start();progress({stage:'morph',text:first.text,loaded:first.done,total:path.totalFrames});
+    for(const frame of path.frames()){
+    checked();
     const saved=frame.visitId?faces.get(frame.visitId):null;
     // The frame's own cost is reported by the runtime as synthesis-complete and recorded in
     // progress(); timing the call here would fold acquisition and storage into a per-frame figure.
     const output=saved||await runtime.synthesize({space:'w-plus',shape:[1,18,512],values:Float32Array.from(frame.values)},{signal:active.signal,persist:false});
-    await writer.add(output.blob,frame.index);jobCounts.framesDone=frame.index+1;
-   }
+    await writer.add(output.blob,frame.index);
+    const finished=counter.complete(frame.index);jobCounts.framesDone=finished.done;
+    progress({stage:'morph',text:finished.text,loaded:finished.done,total:path.totalFrames});
+   }}
    progress({stage:'export',text:'Finishing your video…'});video=await writer.finish();writer=null;replaceUrl('video',video);
   }
   diagnostics.finish('completed');return snapshot();
  }catch(error){diagnostics.finish(error?.name==='AbortError'?'cancelled':'failed',error,{stage:lastStage});if(error?.name==='AbortError')return snapshot('Cancelled. Your completed faces are still available.');return {...snapshot(''),errorMessage:String(error?.message||'Generation failed. Your completed results are still available.')};}
- finally{writer?.dispose();writer=null;active=null;}
+ finally{writer?.dispose();writer=null;active=null;if(wanted.size)void pumpDownloads();else void refreshInventory();}
 }
 export function cancel(){active?.abort();writer?.dispose();runtime?.cancel();}
 export async function saveMedia(id){const blob=id==='video'?video:faces.get(id)?.blob;return saveFile(blob,id==='video'?'facemorph.mp4':'facemorph.png');}
@@ -247,13 +281,18 @@ export async function importProject(request){
   checked();await commit(next,imported);return snapshot('Project opened.',true);
  }finally{active=null;}
 }
-export function setDebug(enabled){diagnostics.enable(enabled);}
+/** `basis` records how the visitor agreed: checkbox, invite or toast (reporting.mjs CONSENT_BASES). */
+export function setDebug(enabled,basis){diagnostics.enable(enabled,basis||'checkbox');}
+/** "Send this report": the staged records of the failure go out once; reporting stays off. */
+export function sendReportOnce(){return diagnostics.sendOnce();}
+/** Whether this visitor has already answered the reporting question, yes or no. */
+export function consentAnswered(){return diagnostics.answered();}
 /** How much of this session is staged on the device, ready to send if the tester agrees. */
 export function stagedReportCount(){return diagnostics.status().staged||0;}
 /** The reference of the run a failure was filed under, for the error box (R2-15): a tester
  * who can read the reference next to the failure can tie it to the staged report. Empty
  * without consent. */
-export function reportReference(){const status=diagnostics.status();return status.enabled?status.reference||'':'';}
+export function reportReference(){const status=diagnostics.status();return status.enabled||status.once?status.reference||'':'';}
 
 // R2-15: photo preparation (select, preview, crop) used to run entirely outside the job
 // lifecycle — no run opened, so a consented session recorded NOTHING about the exact step
@@ -282,28 +321,25 @@ export function photoStage(name,run){
 // "Stored asset disappeared" report reads with its cause attached.
 let storageAsked=false,storageFacts=null;
 /**
- * Ask for persistent storage, once, as early as possible — and remember the answer.
- *
- * This used to run at the first job, which is after the warm-up has already written hundreds of
- * megabytes, and it recorded through a stage that is dropped unless a diagnostics run happens to
- * be open. On the operator's Samsung nothing survived between sessions and no storage record ever
- * reached the reports, so there was no way to tell a denied request from an evicted cache.
- *
- * Now the request goes out before the first byte is cached, which is also when a browser's
- * heuristics are most likely to say yes, and the facts are held so the next run that opens a
- * record can report them even if this one could not.
+ * Issue #28: Firefox shows a permission prompt for persist(), and asking on page load gave no
+ * reason. Engines that decide silently are still asked at once. Gecko is only asked through
+ * `keepModelsOnDevice`, from a control that has explained why; until then its storage facts are
+ * observed without asking.
  */
-function askForPersistentStorage(){
- if(storageAsked)return;storageAsked=true;
+function askForPersistentStorage({explained=false}={}){
+ const action=persistenceAction({userAgent:globalThis.navigator?.userAgent,explained,alreadyAsked:storageAsked});
+ if(action==='none')return;
+ if(action==='request')storageAsked=true;
  void Promise.resolve().then(async()=>{
   const {storageStatus}=await import('./Assets/model-cache.mjs');
-  const status=await storageStatus({requestPersistence:true});
+  const status=await storageStatus({requestPersistence:action==='request'});
   storageFacts={persisted:status.persistence==='granted',
    usageMb:Math.round((status.usage||0)/1048576)||undefined,
    quotaMb:Math.round((status.quota||0)/1048576)||undefined};
-  reportStorage();
+  storageReported=false;reportStorage();
  }).catch(()=>{});
 }
+export function keepModelsOnDevice(){askForPersistentStorage({explained:true});}
 /**
  * Put the storage facts into the record at the first opportunity a run gives us.
  *
@@ -321,14 +357,9 @@ function reportStorage(){
 }
 // Reported wrappers: the UI calls these instead of the raw photo modules, so preparation
 // failures land in the record with their stage attached.
-/**
- * Reaching for a photo is the earliest honest signal that the ~1.1 GiB photo path will be needed
- * (AGENTS.md, Performance Philosophy). Choosing the photo source, opening the picker and picking
- * a file all count; warming is idempotent and declines while a job is running, so calling it from
- * each entry point costs nothing.
- */
+/** Loads the manifest early on a photo intent. The ~1.1 GB photo model itself downloads only on request (issue #28). */
 export function warmPhotoTools(){
- engine().then(local=>local.prefetch?.('photo')).catch(()=>{});
+ engine().catch(()=>{});
 }
 export function selectPhotoReported(request){warmPhotoTools();return photoStage('photo-select',()=>selectPhoto(request));}
 export function previewPhotoReported(file,options){return photoStage('photo-preview',()=>previewPhoto(file,options));}
@@ -361,3 +392,18 @@ export async function loadNames(){
 }
 /** The published seed range, for the numeric seed browser. Null until the catalogue loads. */
 export function loadedGallery(){return gallery;}
+
+export function sourceVersion(){
+ let sha='unknown';try{sha=String(process.env.FACEMORPH_SOURCE_SHA||'unknown');}catch{}
+ const [commit,dirty]=sha.split('-');
+ return /^[0-9a-f]{40}$/.test(commit)?commit.slice(0,7)+(dirty?'+':''):'local';
+}
+const ISSUE_REPO='https://github.com/check-face/facemorph.me/issues/new';
+export function issueUrl(route){
+ const status=diagnostics.status(),reference=status.enabled||status.once?status.reference||'':'';
+ const version=sourceVersion(),device=String(globalThis.navigator?.userAgent||'').slice(0,300),path=String(globalThis.location?.pathname||'/');
+ const summary=['Site: next.facemorph.me'+path,'Version: '+version,'Device: '+device,'Processing: '+(route||'not started yet'),'Report reference: '+(reference||'none')].join('\n');
+ const params=new URLSearchParams({template:'next-facemorph.yml',labels:'next.facemorph.me',title:'[next] ',version,device,route:route||'not started yet',reference:reference||'none',
+  body:'**What happened?**\n\n\n**What did you expect?**\n\n\n---\n'+summary});
+ return ISSUE_REPO+'?'+params.toString();
+}
