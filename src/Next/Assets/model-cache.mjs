@@ -291,7 +291,10 @@ export function createModelCache({ store, fetcher = globalThis.fetch, locks,
   async function has(sha256) {
     try { return Boolean(await store.get(sha256)); } catch { return false; }
   }
-  return { acquire, records, has };
+  async function peek(sha256) {
+    try { return (await store.get(sha256)) || null; } catch { return null; }
+  }
+  return { acquire, records, has, peek };
 }
 
 export async function createBrowserModelCache(options = {}) {

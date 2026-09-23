@@ -9,6 +9,7 @@ import {labelFor,loadedBytes,createFrameCounter} from './stage-labels.mjs';
 import {frameStoreKey,frameStoreGet} from './morph-frames.mjs';
 import {selectPhoto} from './photo-selection.mjs';
 import {persistenceAction} from './storage-request.mjs';
+import {routeAssets,photoAssets,measure} from './model-inventory.mjs';
 import {previewPhoto,cropPhoto} from './photo/crop.mjs';
 // The U-14 slider consumes frames through window.__nextFrames.get(key); wire the real store
 // here so the UI has exactly one integration point. Guarded so stripped-import test harnesses
@@ -174,10 +175,15 @@ function announceDownloads(){const snapshot={...downloads};for(const callback of
 export function subscribeDownloads(callback){downloadListeners.add(callback);callback({...downloads});}
 async function refreshInventory(){
  try{
-  const service=await engine();if(!service.inventory)return;
-  const found=await service.inventory();if(!found)return;
-  Object.assign(downloads,{known:true,routeReady:found.route.ready,photoReady:found.photo.ready,photoAvailable:found.photo.available===true,
-   routeBytes:Math.max(0,found.route.total-found.route.present),photoBytes:Math.max(0,found.photo.total-found.photo.present)});
+  const service=await engine();if(!service.plan)return;
+  const planned=await service.plan();if(!planned)return;
+  const {createBrowserModelCache}=await import('./Assets/model-cache.mjs');
+  const cache=await createBrowserModelCache();
+  const route=await measure(routeAssets(planned.manifest,planned.route),cache);
+  const photoList=await photoAssets(planned.manifest,cache);
+  const photo=await measure(photoList.assets,cache,photoList.extraBytes||0);
+  Object.assign(downloads,{known:true,routeReady:route.ready,photoReady:photo.ready,photoAvailable:planned.photoAvailable===true,
+   routeBytes:Math.max(0,route.total-route.present),photoBytes:Math.max(0,photo.total-photo.present)});
   announceDownloads();
  }catch(error){console.warn('Model inventory unavailable:',error?.message||error);}
 }
@@ -253,7 +259,7 @@ export async function execute(request){
   }
   diagnostics.finish('completed');return snapshot();
  }catch(error){diagnostics.finish(error?.name==='AbortError'?'cancelled':'failed',error,{stage:lastStage});if(error?.name==='AbortError')return snapshot('Cancelled. Your completed faces are still available.');return {...snapshot(''),errorMessage:String(error?.message||'Generation failed. Your completed results are still available.')};}
- finally{writer?.dispose();writer=null;active=null;if(wanted.size)void pumpDownloads();else void refreshInventory();}
+ finally{writer?.dispose();writer=null;active=null;if(wanted.size)void pumpDownloads();else if(!downloads.routeReady||!downloads.photoReady)void refreshInventory();}
 }
 export function cancel(){active?.abort();writer?.dispose();runtime?.cancel();}
 export async function saveMedia(id){const blob=id==='video'?video:faces.get(id)?.blob;return saveFile(blob,id==='video'?'facemorph.mp4':'facemorph.png');}
