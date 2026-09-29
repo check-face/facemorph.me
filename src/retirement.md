@@ -6,17 +6,17 @@ We have pushed this back from the original June date. Part of that is popular de
 
 facemorph.me itself is not going away. What is changing is the current API and the way the checkface backend is hosted today.
 
-The goal is to move the site onto a provider that is easier for us to keep online over time, while keeping the main experience available. We are still exploring the exact path. Right now, **Hugging Face is the leading candidate**, but we are still testing options and we are not calling the details final yet.
+The goal is to keep the main experience available without depending on a server we pay for and maintain by hand. The path we have settled on is a **new experience that runs in your browser**, which you can try today at **[next.facemorph.me](https://next.facemorph.me)**. It is still in testing, and classic facemorph.me stays as it is while we do that.
 
 This is the direction we are working toward:
 
 - keep facemorph.me online
 - retire the current API in its current form
-- move the backend to a setup that is easier to support long-term
+- move face generation onto your own device, so there is no server to keep alive
 - preserve the workflows people actually use where we can
 - document what changes, what stays, and which alternatives still make sense
 
-Nothing changes overnight. We are in the transition period now, and we expect to test the next setup at **[testing.facemorph.me](https://testing.facemorph.me)** before any broader migration. We know some workflows will get harder. If you think this breaks a use case people care about, we would like to hear about it.
+Nothing changes overnight. We are in the transition period now, and the new experience is where we are collecting feedback before any broader change. We know some workflows will get harder. If you think this breaks a use case people care about, we would like to hear about it.
 
 If you think this could break something you rely on, or if there is a workflow that needs special care, email **checkfaceml@gmail.com**. We cannot promise support for every case, but we will read the feedback and try to help where we can.
 
@@ -45,23 +45,68 @@ So the goal is not to take things away. The whole reason we are moving to a new 
 
 ---
 
-#### What is the leading replacement plan?
-Hugging Face is the leading candidate right now, but we are still testing options before we make stronger promises about the final setup.
+#### What is the new experience?
+It is a new version of facemorph.me at **[next.facemorph.me](https://next.facemorph.me)**, built to look and work like the site you know. The difference is where the work happens: face generation runs on your own device, in your browser, instead of on our server. It is a test, not a replacement yet.
+
+---
+
+#### What can it do today?
+Generate faces from seeds and names, and morph between them with the familiar controls, including figure-eight and ellipse paths through several faces. You can also add your own photos, which are cropped and processed on your device. Morphs can be saved or shared as an image or an MP4. The names gallery is part of it too, with all of the names from names.facemorph.me.
+
+---
+
+#### Why does it run in the browser?
+Because that is the part we can keep online for as long as people want it. There is no GPU server to pay for, patch or eventually switch off. The cost of that choice is that your device does the work.
+
+---
+
+#### Does the first visit take a while?
+Yes. The models have to come to your device before they can run, and the photo tools are larger than the face generator, so the first visit downloads a lot. We start fetching them early, while you are still choosing what to make, and keep them so that later visits are fast. If your browser cannot store them, the site tells you rather than quietly downloading them again. Use Wi-Fi if you can.
+
+---
+
+#### Will it work on my phone or older computer?
+Often, but not everywhere yet. It uses your graphics hardware through WebGPU where the device supports it, and falls back to the processor where it does not. The fallback works but is much slower, and the site says on screen when that is happening. Phones have the least memory, so they are the least certain. That is a large part of why we are testing.
+
+---
+
+#### Do my photos leave my device?
+No. Photos you add are cropped and processed on your device. Nothing is sent to us to generate your result.
+
+---
+
+#### Does the new experience collect anything?
+Only if you choose it. Diagnostics, meaning timings and device details for a run, stay on your device until you say yes. They never include your photos or the words you typed, and they are deleted after 30 days. Generation works the same with reporting off.
+
+---
+
+#### Do I need an account?
+No. There is no sign-in, no ads and no charge, same as classic.
+
+---
+
+#### What about the old links and my old results?
+Preserving them comes first. We are working on keeping historic results and links reachable before the current API is retired, and we will not shut anything down until that is ready. We have not yet promised that every old result will look exactly the same in the new experience, and we will say plainly what has and has not moved.
+
+---
+
+#### Did you consider hosting it somewhere else, such as Hugging Face?
+We looked at Hugging Face and other hosted options while we were working out the next step, and earlier versions of this page named Hugging Face as the leading candidate. We did not go with it. The new experience does not use Hugging Face for hosting, sign-in or generation.
 
 ---
 
 #### Are you still exploring other options?
-Yes. We have a direction, not a finished answer. We want to test replacement paths before we claim that one approach is final.
+Some things are still open, especially how well it runs on small devices and how we keep old results available. We would rather test in the open than claim it is finished.
 
 ---
 
 #### Will there still be a local or offline path?
-We intend to document one. For some local image modification workflows, ComfyUI may be a useful fit, and we also want clearer notes for people who want to run parts of the workflow themselves.
+Partly. Once the models are on your device, the new experience does not need our server to generate faces. We also intend to document ways to run parts of the workflow yourself.
 
 ---
 
 #### Will the API stay exactly the same?
-We are exploring options that would let people sign in to a Hugging Face account and still use a familiar interface.
+No. The current API is being retired in its current form. The new experience does not offer a drop-in replacement for it, so if you build on the API, please email us and describe what you need.
 
 ---
 

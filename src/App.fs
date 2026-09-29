@@ -334,8 +334,8 @@ let retirementNotice dismiss =
                             Html.button [
                                 prop.type'.button
                                 prop.className "retirement-notice__dismiss"
-                                prop.custom ("aria-label", "Dismiss retirement notice")
-                                prop.title "Dismiss retirement notice"
+                                prop.custom ("aria-label", "Dismiss notice")
+                                prop.title "Dismiss notice"
                                 prop.onClick (fun _ -> dismiss ())
                                 prop.children [
                                     Html.span [
@@ -348,22 +348,27 @@ let retirementNotice dismiss =
                                 prop.className "retirement-notice__copy"
                                 prop.children [
                                     Html.p [
-                                        Html.strong "Update."
-                                        str " We have pushed the facemorph.me API retirement back to "
+                                        Html.strong "New experience, in testing."
+                                        str " We are building a new facemorph.me that runs in your browser."
+                                    ]
+                                    Html.p [
+                                        str "It is early, so classic facemorph.me stays as it is while you try it and tell us what breaks. The current API is still scheduled to retire on "
                                         Html.span [
                                             prop.className "retirement-notice__date"
                                             prop.text apiTransitionDateLabel
                                         ]
                                         str "."
                                     ]
-                                    Html.p [
-                                        str "facemorph.me is staying up. We moved the date after a lot of you asked us to, so we can give the feedback the consideration it deserves. Hugging Face is still the leading candidate while we keep testing options."
-                                    ]
                                 ]
                             ]
                             Html.div [
                                 prop.className "retirement-notice__actions"
                                 prop.children [
+                                    Mui.link [
+                                        link.color.initial
+                                        prop.href "https://next.facemorph.me"
+                                        prop.text "Try the new experience"
+                                    ]
                                     Mui.link [
                                         link.color.initial
                                         prop.href "/retirement"
@@ -409,7 +414,7 @@ let ThemedApp children =
     ]
 
 // Version the key when the notice changes so a new announcement is shown again.
-let retirementDismissalKey = "facemorph-retirement-dismissed-2026-10-25-v1"
+let retirementDismissalKey = "facemorph-retirement-dismissed-2026-10-25-v2-next-experience"
 
 [<ReactComponent>]
 let RenderHome (state:State) (dispatch: Msg -> unit) =
