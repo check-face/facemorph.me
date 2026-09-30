@@ -14,7 +14,7 @@ test('Face time is measured from real work only, and frames come from the shared
  const service={setPreferredRoute(){},onProgress:()=>{},generate:async()=>{
   service.onProgress({stage:'synthesis-complete',elapsedMs:synthesisMs});
   return {blob:new Blob(['i'],{type:'image/png'}),cached:false,latent:{space:'w-plus',shape:[18,512],values:new Float32Array(9216)},provenance:{bundleVersion:'t',manifestSha256:'0'.repeat(64),modelSha256:'m',noiseSha256:'n'}};}};
- const ctx=vm.createContext({Blob,Float32Array,AbortController,DOMException,TextDecoder,crypto:webcrypto,JSON,Map,Date,performance:{now:()=>Date.now()},
+ const ctx=vm.createContext({analytics:new Proxy({},{get:()=>()=>{}}),onJobEnd(){},Blob,Float32Array,AbortController,DOMException,TextDecoder,crypto:webcrypto,JSON,Map,Date,performance:{now:()=>Date.now()},
   URL:{createObjectURL:()=>'blob:'+ ++counter,revokeObjectURL(){}},
   fetch:async()=>({ok:true,arrayBuffer:async()=>new TextEncoder().encode(JSON.stringify({codec:{}})).buffer}),
   createBrowserRuntime:options=>{service.onProgress=options.onProgress;return service;},createDesktopRuntime:options=>{service.onProgress=options.onProgress;return service;},decode:s=>({tag:0,fields:[JSON.parse(s)]}),encode:x=>({tag:0,fields:[JSON.stringify(x)]}),

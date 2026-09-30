@@ -28,6 +28,14 @@
       "id": "3a71e4ec58354345be24a1e02a3edb82"
     }
   ],
+  // Page-view counts (analytics.mjs). NOT ENABLED YET: Workers Analytics Engine's Free-plan
+  // availability has not been confirmed, and the rule here is no plan assumptions. Enable in one
+  // change, together:
+  //   1. add  "analytics_engine_datasets": [{"binding": "PAGEVIEWS", "dataset": "facemorph_next_pageviews"}],
+  //   2. extend assets.run_worker_first to  ["/diagnostics/*", "/", "/names", "/names/"]
+  // Step 2 must stay an explicit allowlist: run_worker_first=true would put every model chunk
+  // through the Worker and spend the Free plan's 100,000 requests/day. Static asset requests are
+  // free only while the Worker is not invoked. Without step 1 the code is a no-op.
   "vars": {
     "FREE_PLAN_CONFIRMED": "true"
   },

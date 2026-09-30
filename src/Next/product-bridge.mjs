@@ -4,7 +4,9 @@ import {createBrowserRuntime} from './browser/runtime.mjs';
 import {createLatentPath,GEOMETRY_VERSION} from './geometry/latent-path.mjs';
 import {decode,encode} from './ProjectJson.fs.js';
 import {saveFile,shareFile,videoWriter} from './media.mjs';
-import {diagnostics} from './reporting.mjs';
+import {diagnostics,onJobEnd} from './reporting.mjs';
+import * as analytics from './analytics.mjs';
+onJobEnd(analytics.jobFinished);
 import {labelFor,loadedBytes,createFrameCounter} from './stage-labels.mjs';
 import {frameStoreKey,frameStoreGet} from './morph-frames.mjs';
 import {selectPhoto} from './photo-selection.mjs';
@@ -199,9 +201,10 @@ async function pumpDownloads(){
  for(const scope of ['route','photo']){
   if(!wanted.has(scope))continue;
   downloading=scope;Object.assign(downloads,{phase:'downloading',scope,loaded:0,total:scope==='route'?downloads.routeBytes:downloads.photoBytes});announceDownloads();
-  let result={started:false};
+  let result={started:false};const began=performance.now(),planned=downloads.total;
   try{result=await (await engine()).prefetch(scope,{explicit:true});}catch{}
   downloading=null;
+  analytics.modelsDownloaded({scope,outcome:result.started&&result.acquired===result.assets?'completed':active?'interrupted':'failed',sizeMb:planned/1048576,durationMs:performance.now()-began});
   if(active){downloads.phase='waiting';announceDownloads();return;}
   if(!result.started||result.acquired!==result.assets){downloads.phase='failed';wanted.clear();announceDownloads();await refreshInventory();return;}
   wanted.delete(scope);
@@ -212,6 +215,8 @@ async function pumpDownloads(){
 export function subscribe(callback){listener=callback;window.addEventListener('facemorph-report-status',({detail})=>callback({jobId:currentJob,stage:'diagnostics-'+detail.status,text:detail.reference||'',fraction:0}));diagnostics.restore();warmUp();}
 export async function execute(request){
  if(active)throw Error('Another job is still stopping.');active=new AbortController();currentJob=request.jobId;closePhotoRun('completed');diagnostics.start(request.action,request.provider);reportStorage();
+ analytics.setJobContext(()=>({faces:jobCounts.facesTotal,frames:jobCounts.framesTotal,input_kind:analytics.inputKind(request.inputs),morph_kind:request.action==='morph'?project?.morph?.kind:undefined}));
+ analytics.jobStarted({action:request.action,provider:request.provider||'auto',warm:downloads.routeReady});
  try{
   await admission(request.provider);
   // Per-face generate (U-03): work only the one face asked for, so no other face emits a
@@ -262,8 +267,10 @@ export async function execute(request){
  finally{writer?.dispose();writer=null;active=null;if(wanted.size)void pumpDownloads();else if(!downloads.routeReady||!downloads.photoReady)void refreshInventory();}
 }
 export function cancel(){active?.abort();writer?.dispose();runtime?.cancel();}
-export async function saveMedia(id){const blob=id==='video'?video:faces.get(id)?.blob;return saveFile(blob,id==='video'?'facemorph.mp4':'facemorph.png');}
-export async function shareMedia(id){const blob=id==='video'?video:faces.get(id)?.blob;if(!blob)throw Error('Generate a result first.');return shareFile(blob,id==='video'?'facemorph.mp4':'facemorph.png');}
+const kindOf=id=>id==='video'?'video':'image';
+function reported(kind,method,work){return Promise.resolve(work).then(result=>{analytics.exported({kind,method,outcome:'completed'});return result;},error=>{analytics.exported({kind,method,outcome:error?.name==='AbortError'?'cancelled':'failed'});throw error;});}
+export async function saveMedia(id){const blob=id==='video'?video:faces.get(id)?.blob;return reported(kindOf(id),'save',saveFile(blob,id==='video'?'facemorph.mp4':'facemorph.png'));}
+export async function shareMedia(id){const blob=id==='video'?video:faces.get(id)?.blob;if(!blob)throw Error('Generate a result first.');return reported(kindOf(id),'share',shareFile(blob,id==='video'?'facemorph.mp4':'facemorph.png'));}
 export async function exportProject(options){
  if(!project)throw Error('Generate or open a project first.');
  let selected=project;
@@ -272,7 +279,7 @@ export async function exportProject(options){
   selected={...project,morph:{...project.morph,kind:options.kind,width:options.width,pinchCenter:options.pinch,framesPerSegment:options.frames,framesPerSecond:options.fps,controls:options.inputs.map(input=>({visitId:input.id,latent:{...faces.get(input.id).latent,values:Array.from(faces.get(input.id).latent.values)}}))}};
  }
  const checked=canonicalProject(selected);createLatentPath(checked.morph);
- return saveFile(new Blob([JSON.stringify(checked)],{type:'application/json'}),'facemorph-project.json');
+ return reported('project','save',saveFile(new Blob([JSON.stringify(checked)],{type:'application/json'}),'facemorph-project.json'));
 }
 export async function importProject(request){
  const {file,jobId}=request;
@@ -284,7 +291,7 @@ export async function importProject(request){
   if(imported.morph.controls.some(x=>x.latent.space!=='w-plus'))throw Error('This generation bundle requires a W+ project.');
   await admission(request.provider||'auto');const next=new Map();
   for(const control of imported.morph.controls){checked();const result=await service.synthesize({...control.latent,shape:[1,18,512],values:Float32Array.from(control.latent.values)},{signal:active.signal});next.set(control.visitId,{...result,label:'Project face'});}
-  checked();await commit(next,imported);return snapshot('Project opened.',true);
+  checked();await commit(next,imported);analytics.exported({kind:'project',method:'open',outcome:'completed'});return snapshot('Project opened.',true);
  }finally{active=null;}
 }
 /** `basis` records how the visitor agreed: checkbox, invite or toast (reporting.mjs CONSENT_BASES). */
@@ -367,7 +374,7 @@ function reportStorage(){
 export function warmPhotoTools(){
  engine().catch(()=>{});
 }
-export function selectPhotoReported(request){warmPhotoTools();return photoStage('photo-select',()=>selectPhoto(request));}
+export function selectPhotoReported(request){warmPhotoTools();return Promise.resolve(photoStage('photo-select',()=>selectPhoto(request))).then(result=>{if(result)analytics.photoSelected({outcome:'ready'});return result;},error=>{analytics.photoSelected({outcome:'invalid'});throw error;});}
 export function previewPhotoReported(file,options){return photoStage('photo-preview',()=>previewPhoto(file,options));}
 export function cropPhotoReported(file,area,options){return photoStage('photo-crop',()=>cropPhoto(file,area,options));}
 export function cancelPhotoRun(){closePhotoRun('cancelled');}
@@ -391,6 +398,7 @@ export async function loadNames(){
  const origin=String(data.origin||'');
  if(origin&&new URL(origin).protocol!=='https:')throw Error('Invalid name gallery origin.');
  gallery={origin,seeds:data.seeds||null};
+ analytics.namesUsed({outcome:'ready'});
  return data.names.map(x=>({name:String(x.name),value:String(x.value),
   // A pre-v2 catalogue carried the preview URL directly; a v2 one carries the identity.
   image:x.id&&origin?galleryTextUrl(origin,String(x.id),200,'jpg'):String(x.image||''),

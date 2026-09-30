@@ -25,6 +25,15 @@ const ALLOWED = [/^https:\/\/next\.facemorph\.me\//, /^https:\/\/facemorph-next\
  */
 const GALLERY_ORIGINS = ['https://facemorph-seed-gallery.cdilga.workers.dev'];
 
+/**
+ * The one operator-approved exception (30 September 2026): Google Analytics 4 on next.facemorph.me,
+ * loaded by src/Next/analytics.mjs from this single URL. It is deliberately narrow: any other
+ * Google measurement or advertising origin in the shipped product is still a finding, so the
+ * exception cannot quietly widen to a second tag, a Tag Manager container or an ad pixel.
+ */
+const ANALYTICS_EXCEPTION = 'https://www.googletagmanager.com/gtag/js';
+const GOOGLE_MEASUREMENT = /https?:\/\/(?:[\w-]+\.)*(?:googletagmanager\.com|google-analytics\.com|doubleclick\.net|googleadservices\.com|googlesyndication\.com)[^"'`\s)]*/g;
+
 const findings = [];
 
 // Provenance records name where bytes came from; that is their whole job, and nothing fetches
@@ -42,6 +51,8 @@ function inspect(file) {
   // Markup: only resource-loading attributes, never <a href>.
   for (const [, url] of text.matchAll(/<(?:script|link|img|source|iframe|audio|video)\b[^>]*?\b(?:src|href)=["'](https?:\/\/[^"']+)/gi))
     findings.push({ where, url, how: 'markup resource' });
+  for (const [url] of text.matchAll(GOOGLE_MEASUREMENT))
+    if (!url.startsWith(ANALYTICS_EXCEPTION)) findings.push({ where, url, how: 'Google origin outside the approved analytics exception' });
   // Script: a literal pointing at a known package CDN is a runtime dependency however it is used.
   for (const [, url] of text.matchAll(/["'`](https?:\/\/(?:cdn\.jsdelivr\.net|unpkg\.com|cdnjs\.cloudflare\.com|fonts\.googleapis\.com|fonts\.gstatic\.com|esm\.sh|skypack\.dev)\/[^"'`]*)/g))
     findings.push({ where, url, how: 'package CDN literal' });

@@ -952,7 +952,10 @@ let private explainSection =
         faq "Does anything leave my device?" [
             Html.p "No. Your photos, the words you type and the faces you make stay here. The first visit downloads the face models, about 200 MB, plus about 1 GB more the first time you use a photo. They're saved on this device, so later visits don't download them again."
             Html.p "Faces you've already made are saved too, so making the same one again is instant. Reloading the page clears the faces on screen for now; keeping your whole session across reloads is on the way."
-            Html.p "The only thing that can ever be sent is a debug report, and only if you turn reporting on."]
+            Html.p "Two things are sent. Anonymous usage counts (see \"What do you count?\") go to Google Analytics. A debug report is sent only if you turn reporting on."]
+        faq "What do you count?" [
+            Html.p "So we can see whether this works for people, we use Google Analytics to count visits, which features get used (names, seeds, photos, morph shapes, saving and sharing), how each job ends and how long it took, which processing mode ran, and a rough device class such as phone or laptop, its operating system and how much memory it reports. When a job fails, we record the kind of failure and the step it failed at."
+            Html.p "We never send your photos, the words or seeds you type, your faces or videos, file names, or error messages. Advertising features and Google signals are off. Nothing is counted if your browser sends Do Not Track, Global Privacy Control or Save-Data, or if you block Google Analytics. It is separate from debug reports, which stay off until you turn them on."]
         faq "Why is the first face slow? Will it work on my phone?" [
             Html.p "The first face waits for the models to download and for a quick check that this device gets the maths right. After that a face takes under a second on a computer with a good graphics card, and longer on phones and on computers where the browser can't use the graphics card."
             Html.p "Slower devices still finish; the page tells you how long it expects. For long morphs, a laptop or desktop with a graphics card is much quicker."]

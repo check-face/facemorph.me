@@ -1,7 +1,8 @@
 import diagnostics from '../next-cloudflare/worker.mjs';
+import {record} from './analytics.mjs';
 export default {
-  fetch(request, env) {
+  async fetch(request, env) {
     if (new URL(request.url).pathname.startsWith('/diagnostics/')) return diagnostics.fetch(request, env);
-    return env.ASSETS.fetch(request);
+    return record(env, request, await env.ASSETS.fetch(request));
   }
 };

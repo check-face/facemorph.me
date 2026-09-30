@@ -2,6 +2,9 @@
 const allowedStages=new Set(['asset-acquisition','runtime-loading','model-loading','model-loaded','mapping-loading','mapping','canary','synthesis','synthesis-complete','alignment','alignment-complete','encoder-loading','encoder-loaded','encoder-correctness-check','encoder-correctness-complete','encoding','encoding-complete','mapping-complete','original-cache-hit','original-cached','original-cache-invalid','cache-unavailable','fallback-cpu','codec-loading','face','morph','export','route-admitted','photo-select','photo-preview','photo-crop','photo-align','photo-encode','storage','cache-trouble']);
 const TERMINAL=new Set(['completed','cancelled','failed','interrupted']);
 let bundle,provider,device=null,consented=false,basis=null,session=null,run=null,started=0;
+let runAction,jobEnded=null;
+/** One listener for how a job ended, closed vocabularies only. Product analytics registers here; this file imports nothing. */
+export function onJobEnd(listener){jobEnded=typeof listener==='function'?listener:null;}
 let aborters=new Set(),pendingStart=null,finished=false,interrupted=false,tally=null,persisted=true;
 // One clock per stage name. A single shared clock dropped exactly the bursty boundaries the
 // parity ledger is made of: two different stages a few milliseconds apart are two facts.
@@ -214,6 +217,8 @@ function openRun(){if(!pendingStart)return;const payload=pendingStart;pendingSta
 function reference(state,terminal){if(!consented||!run)return;window.dispatchEvent(new CustomEvent('facemorph-run-reference',{detail:{run,state,terminal}}));}
 function terminate(event,extra={}){
  if(!run)return;
+ // Product analytics hears every job end, consent or not: it carries closed vocabularies only.
+ try{jobEnded?.({action:runAction,outcome:event,provider,elapsedMs:Math.round(performance.now()-started),errorKind:extra.errorKind,errorStage:extra.errorStage});}catch{}
  openRun();send({event,elapsedMs:Math.round(performance.now()-started),...extra},{terminal:true});reference('closed',event);
 }
 // A phone that backgrounds mid-job is the device we most need the record from. Close the run
@@ -265,7 +270,7 @@ export const diagnostics={
  flush(){flushBatch();},
  bundle(value){bundle=/^[a-f0-9]{64}$/.test(value||'')?value:undefined;openRun();},
  start(action,requestedProvider='auto'){
-  provider=['auto','cpu','webgl','webgpu'].includes(requestedProvider)?requestedProvider:'auto';
+  provider=['auto','cpu','webgl','webgpu'].includes(requestedProvider)?requestedProvider:'auto';runAction=action==='morph'?'morph':action==='photo'?'photo':action==='face'?'face':'faces';
   run=crypto.randomUUID();started=performance.now();lastStageAt.clear();finished=false;interrupted=false;tally=null;
   pendingStart={event:'start',action:action==='morph'?'morph':action==='photo'?'photo':'faces',...environment(),language:navigator.language.replace(/[^A-Za-z-]/g,'').slice(0,20),build:buildId()};
   if(bundle)openRun();
