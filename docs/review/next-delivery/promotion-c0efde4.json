@@ -1,0 +1,15 @@
+{
+  "catalogueSha256": "c3daea230132a1a7b698c3f4492a4d6ce05a2b8fab14701cfb020a0a8cb0fdec",
+  "buildRun": 36668007722,
+  "qualificationRun": 36668007722,
+  "source": "c0efde49c97caa95dbd469f9c7b770404471a9c3",
+  "runtimeSha256": "d9e37e50a436e9fb7c0c7f973e70adee353c808f48c6a51fa5a9186f1c650a5c",
+  "kernel": {
+    "file": "src/Next/browser/fused-resample-v1.mjs",
+    "sha256": "6ee1eb7a0a894488e450242d72cb27b10a22b0b82b9aee9b4127c58efffb52f2",
+    "candidateId": "mobile-boundary-bounded-phone",
+    "sourceHash": "82bc9dd8a3128bd25c422eb36447787d4c041c4da79e7cad94aedeea1989dbd1"
+  },
+  "projectFiles": "not in this artifact",
+  "published": true
+}
