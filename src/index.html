@@ -11,7 +11,8 @@
       function gtag(){dataLayer.push(arguments);}
       gtag('js', new Date());
 
-      gtag('config', 'G-F5F6JBLJ54');
+      // Same property as next.facemorph.me: the linker keeps one visitor across the banner link.
+      gtag('config', 'G-F5F6JBLJ54', { linker: { domains: ['facemorph.me', 'next.facemorph.me'] } });
     </script>
     <script>
       // when you click "Change Mode" in the explain.md

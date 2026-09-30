@@ -76,7 +76,9 @@ No. Photos you add are cropped and processed on your device. Nothing is sent to 
 ---
 
 #### Does the new experience collect anything?
-Only if you choose it. Diagnostics, meaning timings and device details for a run, stay on your device until you say yes. They never include your photos or the words you typed, and they are deleted after 30 days. Generation works the same with reporting off.
+Yes, two things. It uses Google Analytics to count visits, which features get used, how jobs end and how long they take, and a rough device class. When a job fails, it records the kind of failure and the step it failed at. It never includes your photos, the words you type, your faces or videos, or error messages, and advertising features are turned off. It counts nothing if your browser sends Do Not Track or Global Privacy Control.
+
+Separately, diagnostics with more device detail stay on your device until you say yes, and they are deleted after 30 days. Generation works the same with either turned off.
 
 ---
 
