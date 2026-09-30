@@ -48,7 +48,7 @@ manifest=json.loads((a.runtime/'manifest.json').read_text())
 kernel=manifest.get('kernel') or {}
 for field in ('file','sha256','candidateId','sourceHash'):
     if not kernel.get(field):raise ValueError(f'Runtime manifest lacks kernel provenance field {field!r} — rebuild with a research-backed kernel')
-ledger=REPO.parent/'autoresearch'/'results.tsv'
+ledger=REPO/'autoresearch'/'results.tsv'
 if ledger.exists():
     keep=[line.split('\t') for line in ledger.read_text().splitlines()[1:] if '\t' in line]
     if not any(row and row[0]==kernel['candidateId'] and 'keep' in row for row in keep):

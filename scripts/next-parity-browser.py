@@ -4,7 +4,7 @@
 # the pinned ORT runtime plus the manifest synthesis model loaded directly in a module worker on
 # the same browser, same device, same served origin. The report emits benchMs, productMs and a
 # per-stage decomposition; every difference row beyond noise must map to a named
-# autoresearch/results.tsv entry (../autoresearch/results.tsv relative to facemorph.me) or the
+# autoresearch/results.tsv entry (autoresearch/results.tsv in this repo) or the
 # check fails. Scope: CPU engine only — CI has no GPU.
 #
 # The fixed latent is never assumed: the shipped bundle's own generate response carries the
@@ -22,7 +22,7 @@ out=Path('next-parity-evidence');out.mkdir(exist_ok=True)
 # same local UI bytes and the same pinned /runtime/ proxy; runtime asset URLs then resolve to
 # the pinned public origin instead, which the product and the bench both verify by sha256.
 ORIGIN=os.environ.get('PARITY_ORIGIN') or 'https://next.facemorph.me'
-LEDGER=Path('../autoresearch/results.tsv')
+LEDGER=Path('autoresearch/results.tsv')
 result={'passed':False,'checks':{},'scope':'CPU engine only (pinned ORT wasm); CI has no GPU, so no webgpu/webgl row is claimed. Product side is the shipped bundle driven through the real UI (Processing mode cpu) on the exact served artifact; bench side is the same pinned ORT runtime and the same manifest synthesis model loaded directly in a module worker on the same browser and device. Parity here is timing decomposition of the synthesis pipeline; numerical correctness is separate canary evidence (C-01/C-03). Shared-runner timings are diagnostic.',
  'runtimeSha256':os.environ['RUNTIME_SHA']}
 # Every decomposition row the harness knows how to interpret. A stage appearing in the product
@@ -44,7 +44,7 @@ STAGE_VOCABULARY={'asset-acquisition','runtime-loading','model-loading','model-l
 SYNTHESIS_NOISE_FLOOR_MS=1000.0;SYNTHESIS_NOISE_FRACTION=0.20
 
 def ledger_ids():
- # Canonical ledger is ../autoresearch/results.tsv relative to facemorph.me (local research
+ # Canonical ledger is autoresearch/results.tsv in this repo (local research
  # workspace). CI checks out only this repo, so a snapshot is vendored at
  # scripts/next-parity-ledger.tsv and must be regenerated whenever the canonical ledger gains
  # or changes a mapped entry. When both are readable they must agree on every mapped entry.

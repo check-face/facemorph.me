@@ -56,7 +56,7 @@ def seed_from_local():
    if isinstance(sha,str) and len(sha)==64 and isinstance(size,int):want.setdefault(size,set()).add(sha)
    stack.extend(node.values())
   elif isinstance(node,list):stack.extend(node)
- for d in [Path('../review-artifacts/browser-onnx-mod-fusion'),Path('../review-artifacts/device-lab-deploy/assets'),Path('../autoresearch/candidates')]:
+ for d in [Path('../review-artifacts/browser-onnx-mod-fusion'),Path('../review-artifacts/device-lab-deploy/assets'),Path('autoresearch/candidates')]:
   if not d.exists():continue
   for f in d.rglob('*'):
    try:
