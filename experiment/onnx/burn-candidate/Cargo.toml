@@ -1,0 +1,31 @@
+[package]
+name = "facemorph-burn-candidate"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+burn = { version = "=0.21.0", default-features = false, features = ["std", "webgpu", "fusion", "store"] }
+wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4"
+js-sys = "0.3"
+console_error_panic_hook = "0.1"
+getrandom = { version = "0.4", features = ["wasm_js"] }
+getrandom03 = { package = "getrandom", version = "0.3", features = ["wasm_js"] }
+
+cubecl = { version = "=0.10.0", default-features = false, features = ["wgpu"] }
+burn-fusion = { version = "=0.21.0", default-features = false, features = ["std"] }
+
+burn-store = { version = "=0.21.0", default-features = false, features = ["std", "burnpack"] }
+
+[build-dependencies]
+burn-onnx = "=0.21.0"
+
+[features]
+default = ["autotune"]
+autotune = ["burn/autotune"]
+exclusive-memory = []
+fused-backend = []
+full-model = []

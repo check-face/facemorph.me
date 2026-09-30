@@ -1,0 +1,56 @@
+<!doctype html><meta charset="utf-8"><title>Facemorph · e4e GPU round trip</title>
+<style>body{font:17px system-ui;background:#13171b;color:#eee;margin:28px;line-height:1.5}h1{font-weight:500}button,input{font:inherit;padding:10px}button{cursor:pointer}section{display:flex;gap:18px;flex-wrap:wrap}figure{margin:0;flex:1;min-width:180px}img,canvas{width:100%;max-width:450px}pre{font-size:13px;white-space:pre-wrap}a{color:#a9d7bc}.note{color:#b8c4ce}</style>
+<h1>Upload → e4e → reconstructed face</h1><p>Local experiment. e4e encoding and 1024px synthesis run in this browser on WebGPU.</p>
+<p class="note">Face alignment and preprocessing use the original local CPU implementation. Photos are sent only to the local server. Mapping and truncation are bypassed for encoded W+.</p>
+<input type="file" id="file" accept="image/*"><button id="example">Run synthetic reference face</button><p id="status">Ready to validate GPU execution and timings.</p>
+<section><figure><figcaption>Uploaded image</figcaption><img id="input"></figure><figure><figcaption>Aligned encoder input · 256px</figcaption><img id="aligned"></figure><figure><figcaption>Browser reconstruction · 1024px</figcaption><canvas width="1024" height="1024"></canvas></figure></section><pre id="report"></pre>
+<script src="../node_modules/onnxruntime-web/dist/ort.webgpu.min.js"></script>
+<script type="module">
+const base='/review-artifacts/browser-onnx-e4e/',generator='/review-artifacts/browser-onnx-phase1/';
+const status=document.querySelector('#status');
+async function save(name,data){const r=await fetch('/save/'+name,{method:'POST',body:data});if(!r.ok)throw Error('Could not save '+name);}
+async function f32(url){const r=await fetch(url);if(!r.ok)throw Error('Could not load '+url);return new Float32Array(await r.arrayBuffer());}
+function from64(text){return Uint8Array.from(atob(text),x=>x.charCodeAt(0));}
+async function run(blob,synthetic=false){
+ const report={started:new Date().toISOString(),userAgent:navigator.userAgent,runtime:'onnxruntime-web@1.24.3',executionProviders:['webgpu'],syntheticFixture:synthetic,preprocessing:'Local CPU original dlib + Pillow; model inference in browser',truncation:'bypassed',mapping:'bypassed'};
+ const originalSubmit=GPUQueue.prototype.submit;let submissions=0,encoder,synthesis,device;const gpuEvents=[];
+ document.querySelector('#example').disabled=true;document.querySelector('#file').disabled=true;
+ try{
+ document.querySelector('#input').src=URL.createObjectURL(blob);status.textContent='Aligning uploaded image locally…';let t=performance.now();
+ const preparedResponse=await fetch('/prepare',{method:'POST',body:blob});if(!preparedResponse.ok)throw Error(await preparedResponse.text());const prepared=await preparedResponse.json();
+ report.preprocessMs=performance.now()-t;report.didAlign=prepared.did_align;report.inputTensorSha256=prepared.tensor_sha256;
+ document.querySelector('#aligned').src=prepared.aligned;
+ const input=from64(prepared.tensor);await save('browser-input.f32',input);
+ const adapter=await navigator.gpu.requestAdapter();if(!adapter)throw Error('No WebGPU adapter');
+ report.adapter={vendor:adapter.info.vendor,architecture:adapter.info.architecture,device:adapter.info.device,description:adapter.info.description,isFallbackAdapter:adapter.info.isFallbackAdapter??adapter.isFallbackAdapter??null,features:[...adapter.features]};
+ ort.env.wasm.numThreads=1;ort.env.webgpu.profiling={mode:'default',ondata:e=>gpuEvents.push(e)};
+ GPUQueue.prototype.submit=function(...args){submissions++;return originalSubmit.apply(this,args);};
+ status.textContent='Loading e4e and synthesis models…';t=performance.now();
+ encoder=await ort.InferenceSession.create(base+'encoder.onnx',{executionProviders:['webgpu']});const encoderDevice=ort.env.webgpu.device;
+ synthesis=await ort.InferenceSession.create(generator+'synthesis.onnx',{executionProviders:['webgpu']});report.modelLoadMs=performance.now()-t;const synthesisDevice=ort.env.webgpu.device;report.deviceSource="Actual ORT device captured separately for each session";
+ const manifest=await (await fetch(generator+'manifest.json')).json(),feeds={};
+ for(const n of manifest.noise)feeds[n.name]=new ort.Tensor('float32',await f32(generator+n.file),n.shape);
+ async function measured(stage,fn){
+  device=stage==='encoder'?encoderDevice:synthesisDevice;
+  await device.queue.onSubmittedWorkDone();const before=submissions,start=performance.now(),ev=gpuEvents.length;
+  const tensor=await fn();await device.queue.onSubmittedWorkDone();const completed=performance.now();const data=new Float32Array(await tensor.getData());
+  report[stage]={gpuCompletedMs:completed-start,includingReadbackMs:performance.now()-start,gpuQueueSubmissions:submissions-before,profileEvents:gpuEvents.length-ev};tensor.dispose();return data;
+ }
+ status.textContent='Encoding face with e4e on WebGPU…';
+ const w=await measured('encoder',async()=> (await encoder.run({image:new ort.Tensor('float32',new Float32Array(input.buffer),[1,3,256,256])})).w);
+ await save('browser-w.f32',w);feeds.w=new ort.Tensor('float32',w,[1,18,512]);
+ status.textContent='Reconstructing full-size face on WebGPU…';
+ const raw=await measured('synthesis',async()=> (await synthesis.run(feeds)).image);await save('browser-image.f32',raw);
+ const canvas=document.querySelector('canvas'),ctx=canvas.getContext('2d'),rgba=ctx.createImageData(1024,1024),size=1024*1024;
+ for(let i=0;i<size;i++){for(let c=0;c<3;c++)rgba.data[i*4+c]=Math.trunc(Math.max(0,Math.min(255,Math.fround(Math.fround(raw[c*size+i]*127.5)+128))));rgba.data[i*4+3]=255;}ctx.putImageData(rgba,0,0);
+ await save('browser-reconstructed.png',await new Promise(resolve=>canvas.toBlob(resolve,'image/png')));
+ report.gpuQueueSubmissions=submissions;report.gpuProfile={events:gpuEvents.length,sample:gpuEvents.slice(0,6),kernelTypes:[...new Set(gpuEvents.map(e=>e.kernelType))]};
+ report.gpuPeakMemory='Not exposed';report.jsHeap=performance.memory?.usedJSHeapSize??null;report.completed=true;report.gpuValidated=report.encoder.gpuQueueSubmissions>0&&report.synthesis.gpuQueueSubmissions>0;
+ status.textContent=`GPU round trip complete · e4e ${(report.encoder.includingReadbackMs/1000).toFixed(2)}s · synthesis ${(report.synthesis.includingReadbackMs/1000).toFixed(2)}s`;
+ }catch(e){report.completed=false;report.error=String(e)+'\n'+e.stack;status.textContent='Run failed: '+String(e);}
+ finally{GPUQueue.prototype.submit=originalSubmit;if(encoder)await encoder.release();if(synthesis)await synthesis.release();}
+ window.e4eReport=report;document.querySelector('#report').textContent=JSON.stringify(report,null,2);await save('browser.json',JSON.stringify(report,null,2));
+}
+document.querySelector('#example').onclick=async()=>run(await (await fetch(base+'input.png')).blob(),true);
+document.querySelector('#file').onchange=e=>{if(e.target.files[0])run(e.target.files[0]);};
+</script>

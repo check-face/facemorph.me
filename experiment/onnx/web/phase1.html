@@ -1,0 +1,61 @@
+<!doctype html><meta charset="utf-8"><title>Facemorph · ONNX phase 1</title>
+<style>body{background:#13171b;color:#eee;font:18px system-ui;margin:40px}h1{font-weight:500}section{display:flex;gap:24px}figure{margin:0}img,canvas{width:420px;max-width:40vw}pre{white-space:pre-wrap;font-size:14px;color:#a9d7bc}button{padding:12px 25px;font-size:18px}</style>
+<h1>Seed 0 · browser ONNX comparison</h1><p>Preserved classic output alongside full 1024px WebGPU synthesis. Local experiment.</p>
+<button id="run">Run comparison</button><pre id="status">Ready. ONNX Runtime Web 1.24.3 • float32 • psi 0.7 • cutoff 8</pre>
+<section><figure><figcaption>Preserved classic · 512px JPEG</figcaption><img src="/review-artifacts/browser-onnx-phase1/reference.jpg"></figure><figure><figcaption>Browser ONNX · 1024px raw preview</figcaption><canvas id="output" width="1024" height="1024"></canvas></figure></section>
+<script src="../node_modules/onnxruntime-web/dist/ort.webgpu.min.js"></script>
+<script>
+const base='/review-artifacts/browser-onnx-phase1/';
+const status=document.querySelector('#status');
+if(new URLSearchParams(location.search).get('size')==='1024'){document.querySelector('img').src=base+'full-size/reference.webp';document.querySelector('figcaption').textContent='Live API · 1024px WebP';}
+async function save(name,data){await fetch('/save/'+name,{method:'POST',body:data});}
+async function floats(file){return new Float32Array(await (await fetch(base+file)).arrayBuffer());}
+function trunc(w,avg,psi,cutoff){const r=new Float32Array(w);for(let l=0;l<cutoff;l++)for(let i=0;i<512;i++){let k=l*512+i;r[k]=Math.fround(avg[i]+Math.fround(Math.fround(w[k]-avg[i])*Math.fround(psi)));}return r;}
+function selectNoise(original,mode='checkpoint',supplied=null,seed=0){
+ if(mode==='checkpoint')return new Float32Array(original);
+ if(mode==='supplied'){if(!supplied||supplied.length!==original.length)throw Error('Noise shape mismatch');return new Float32Array(supplied);}
+ if(mode==='zero')return new Float32Array(original.length);
+ if(mode!=='seeded')throw Error('Unknown noise mode');
+ // Mulberry32 + Box-Muller: this experiment's explicit PRNG, not legacy TF random noise.
+ let state=seed>>>0;function uniform(){state=(state+0x6D2B79F5)>>>0;let t=state;t=Math.imul(t^(t>>>15),t|1);t^=t+Math.imul(t^(t>>>7),t|61);return ((t^(t>>>14))>>>0)/4294967296;}
+ return Float32Array.from(original,()=>Math.sqrt(-2*Math.log(Math.max(uniform(),1/4294967296)))*Math.cos(2*Math.PI*uniform()));
+}
+window.runPhase1=async()=>{
+ document.querySelector('#run').disabled=true;
+ const report={runtime:'onnxruntime-web@1.24.3',userAgent:navigator.userAgent,platform:navigator.platform,executionProviders:['webgpu'],fallback:'No alternate EP requested; CPU shape/control nodes may still execute within ORT.',started:new Date().toISOString()};
+ try{
+ const adapter=await navigator.gpu.requestAdapter();if(!adapter)throw Error('No WebGPU adapter');
+ report.adapter={vendor:adapter.info.vendor,architecture:adapter.info.architecture,device:adapter.info.device,description:adapter.info.description,isFallbackAdapter:adapter.info.isFallbackAdapter??adapter.isFallbackAdapter??null,features:[...adapter.features]};
+ let device;
+ ort.env.wasm.numThreads=1;ort.env.logLevel='verbose';
+ let gpuSubmissions=0;const submit=GPUQueue.prototype.submit;GPUQueue.prototype.submit=function(...args){gpuSubmissions++;return submit.apply(this,args);};
+ const gpuEvents=[];ort.env.webgpu.profiling={mode:'default',ondata:e=>gpuEvents.push(e)};
+ const m=await (await fetch(base+'manifest.json')).json();const z=await floats(m.z.file),avg=await floats(m.average.file);
+ await save('browser-z.f32',z);
+ status.textContent='Loading separate mapping and synthesis models…';
+ const t=performance.now();
+ const options={executionProviders:['webgpu'],enableProfiling:true,logSeverityLevel:0};
+ const mapping=await ort.InferenceSession.create(base+'mapping.onnx',options);const mappingDevice=ort.env.webgpu.device;
+ const synthesis=await ort.InferenceSession.create(base+'synthesis.onnx',options);report.loadMs=performance.now()-t;const synthesisDevice=ort.env.webgpu.device;device=mappingDevice;report.deviceSource="Actual ORT device captured separately for each session";
+ await device.queue.onSubmittedWorkDone();const start=performance.now();const mappingStartSubmissions=gpuSubmissions;const mapped=(await mapping.run({z:new ort.Tensor('float32',z,[1,512])})).w;await device.queue.onSubmittedWorkDone();report.mappingGpuCompletedMs=performance.now()-start;report.mappingGpuQueueSubmissions=gpuSubmissions-mappingStartSubmissions;
+ const w=await mapped.getData();await save('browser-w.f32',w);
+ const wt=trunc(w,avg,.7,8);await save('browser-w-truncated.f32',wt);
+ const feeds={w:new ort.Tensor('float32',wt,[1,18,512])};
+ for(const n of m.noise)feeds[n.name]=new ort.Tensor('float32',await floats(n.file),n.shape);
+ status.textContent='Running full 1024×1024 synthesis in this browser…';
+ device=synthesisDevice;await device.queue.onSubmittedWorkDone();const submissionsBefore=gpuSubmissions;const st=performance.now();const result=(await synthesis.run(feeds)).image;await device.queue.onSubmittedWorkDone();report.synthesisGpuCompletedMs=performance.now()-st;const raw=await result.getData();report.synthesisMs=performance.now()-st;report.synthesisGpuQueueSubmissions=gpuSubmissions-submissionsBefore;report.inferenceMs=performance.now()-start;
+ await save('browser-image.f32',raw);
+ const ctx=document.querySelector('canvas').getContext('2d');const pixels=ctx.createImageData(1024,1024),size=1024*1024;
+ for(let i=0;i<size;i++){for(let c=0;c<3;c++)pixels.data[i*4+c]=Math.trunc(Math.max(0,Math.min(255,Math.fround(Math.fround(raw[c*size+i]*127.5)+128))));pixels.data[i*4+3]=255;}ctx.putImageData(pixels,0,0);
+ report.runtimeTruncation={psiChanged:trunc(w,avg,.5,8).some((v,i)=>v!==wt[i]),cutoffChanged:trunc(w,avg,.7,4).some((v,i)=>v!==wt[i]),bypassIdentical:trunc(w,avg,1,0).every((v,i)=>v===w[i])};
+ status.textContent='Image saved. Verifying supplied zero noise with the same synthesis model…';
+ for(const n of m.noise)feeds[n.name]=new ort.Tensor('float32',selectNoise(feeds[n.name].data,'zero'),n.shape);
+ const zero=await (await synthesis.run(feeds)).image.getData();await save('browser-zero.f32',zero);
+ report.seededNoiseRepeatable=selectNoise(new Float32Array(64),'seeded',null,42).every((v,i)=>v===selectNoise(new Float32Array(64),'seeded',null,42)[i]);report.suppliedNoiseRoundtrip=selectNoise(new Float32Array(2),'supplied',new Float32Array([1,2])).every((v,i)=>v===i+1);
+ report.suppliedNoiseChangesOutput=zero.some((v,i)=>v!==raw[i]);report.directWPlusAccepted=true;
+ report.memory=performance.memory?{usedJSHeapSize:performance.memory.usedJSHeapSize,totalJSHeapSize:performance.memory.totalJSHeapSize}:null;report.gpuPeakMemory='Not exposed by browser API';report.gpuQueueSubmissions=gpuSubmissions;GPUQueue.prototype.submit=submit;report.gpuProfile={events:gpuEvents.length,kernelTypes:[...new Set(gpuEvents.map(e=>e.kernelType))],sample:gpuEvents.slice(0,10)};report.completed=true;
+ await mapping.release();await synthesis.release();
+ }catch(e){report.error=String(e)+'\n'+e.stack;report.completed=false;}
+ window.phase1Report=report;await save('browser.json',JSON.stringify(report,null,2));status.textContent=JSON.stringify(report,null,2);
+};document.querySelector('#run').onclick=window.runPhase1;
+</script>

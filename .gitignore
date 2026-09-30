@@ -232,3 +232,19 @@ next-e2e-evidence/
 next-site-source.txt
 next-matrix-*.json
 .runtime-mirror/
+
+# Research candidates (autoresearch). Adapted from Karpathy's protocol: track what the experiment
+# *is* (source, harness, manifests, protocol) and never what it merely *produced or downloaded*.
+# Weights, built binaries and dependency trees are addressed by sha256 in the candidate's manifest
+# and rebuilt or fetched from there; git is not a model store (GitHub refuses files over 100 MB).
+__pycache__/
+*.pyc
+/experiment/hf/models/
+/experiment/**/*.onnx
+/experiment/**/*.pt
+/experiment/**/*.dat
+/experiment/**/*.wasm
+/experiment/device-lab/webgl-*/*.bin
+/experiment/onnx/burn-candidate/pkg*/
+/experiment/onnx/burn-candidate/target/
+/experiment/onnx/runtime-*/

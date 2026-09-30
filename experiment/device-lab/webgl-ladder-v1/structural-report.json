@@ -1,0 +1,303 @@
+{
+  "sourceSha256": "e2cae9655a4af5981f13d6e1af63f71ffcf9f564079de6f90d4f8da04db639bb",
+  "exporterSha256": "dd293e8b5d44f81abb364e6f8c19a13f1a4eed39fd753ac002a1b193b0b71953",
+  "manifestSha256": "e04860481e0fe6980a931bc5d3131fe52dcdbfa7a8cd2c325e71ee6a3b4c655c",
+  "learnedInputBytes": 32768,
+  "allCoefficientBytes": 123537568,
+  "blocks": [
+    {
+      "id": "b4",
+      "size": 4,
+      "inChannels": 512,
+      "outChannels": 512,
+      "coefficientBytes": 12597280,
+      "spatialMacs": {
+        "conv0": 0,
+        "filter0": 0,
+        "conv1": 37748736,
+        "toRgb": 24576,
+        "filterRgb": 0,
+        "total": 37773312
+      }
+    },
+    {
+      "id": "b8",
+      "size": 8,
+      "inChannels": 512,
+      "outChannels": 512,
+      "coefficientBytes": 24135856,
+      "spatialMacs": {
+        "conv0": 37748736,
+        "filter0": 524288,
+        "conv1": 150994944,
+        "toRgb": 98304,
+        "filterRgb": 3072,
+        "total": 189369344
+      }
+    },
+    {
+      "id": "b16",
+      "size": 16,
+      "inChannels": 512,
+      "outChannels": 512,
+      "coefficientBytes": 24135856,
+      "spatialMacs": {
+        "conv0": 150994944,
+        "filter0": 2097152,
+        "conv1": 603979776,
+        "toRgb": 393216,
+        "filterRgb": 12288,
+        "total": 757477376
+      }
+    },
+    {
+      "id": "b32",
+      "size": 32,
+      "inChannels": 512,
+      "outChannels": 512,
+      "coefficientBytes": 24135856,
+      "spatialMacs": {
+        "conv0": 603979776,
+        "filter0": 8388608,
+        "conv1": 2415919104,
+        "toRgb": 1572864,
+        "filterRgb": 49152,
+        "total": 3029909504
+      }
+    },
+    {
+      "id": "b64",
+      "size": 64,
+      "inChannels": 512,
+      "outChannels": 512,
+      "coefficientBytes": 24135856,
+      "spatialMacs": {
+        "conv0": 2415919104,
+        "filter0": 33554432,
+        "conv1": 9663676416,
+        "toRgb": 6291456,
+        "filterRgb": 196608,
+        "total": 12119638016
+      }
+    },
+    {
+      "id": "b128",
+      "size": 128,
+      "inChannels": 512,
+      "outChannels": 256,
+      "coefficientBytes": 9971888,
+      "spatialMacs": {
+        "conv0": 4831838208,
+        "filter0": 67108864,
+        "conv1": 9663676416,
+        "toRgb": 12582912,
+        "filterRgb": 786432,
+        "total": 14575992832
+      }
+    },
+    {
+      "id": "b256",
+      "size": 256,
+      "inChannels": 256,
+      "outChannels": 128,
+      "coefficientBytes": 3019952,
+      "spatialMacs": {
+        "conv0": 4831838208,
+        "filter0": 134217728,
+        "conv1": 9663676416,
+        "toRgb": 25165824,
+        "filterRgb": 3145728,
+        "total": 14658043904
+      }
+    },
+    {
+      "id": "b512",
+      "size": 512,
+      "inChannels": 128,
+      "outChannels": 64,
+      "coefficientBytes": 1018544,
+      "spatialMacs": {
+        "conv0": 4831838208,
+        "filter0": 268435456,
+        "conv1": 9663676416,
+        "toRgb": 50331648,
+        "filterRgb": 12582912,
+        "total": 14826864640
+      }
+    },
+    {
+      "id": "b1024",
+      "size": 1024,
+      "inChannels": 64,
+      "outChannels": 32,
+      "coefficientBytes": 386480,
+      "spatialMacs": {
+        "conv0": 4831838208,
+        "filter0": 536870912,
+        "conv1": 9663676416,
+        "toRgb": 100663296,
+        "filterRgb": 50331648,
+        "total": 15183380480
+      }
+    }
+  ],
+  "variants": {
+    "512": {
+      "firstGpuBlock": 512,
+      "stylesOnGPU": false,
+      "gpuBlocks": [
+        "b512",
+        "b1024"
+      ],
+      "spatialMacs": {
+        "cpu": 45368204288,
+        "gpu": 30010245120,
+        "total": 75378449408,
+        "gpuFraction": 0.39812765260749683
+      },
+      "gpuCoefficientBytes": 1405024,
+      "requiredMaxTextureSize": 1152,
+      "requiredMaxArrayTextureLayers": 32,
+      "prefix": {
+        "file": "prefix-512.onnx",
+        "sha256": "11c7282a47a04c4df2b1f303c6098d38f06696e58be5dfd2135510042fe56f31",
+        "bytes": 123234345,
+        "nodeCount": 373,
+        "opCounts": {
+          "Add": 49,
+          "Conv": 26,
+          "ConvTranspose": 6,
+          "Div": 17,
+          "Gemm": 26,
+          "LeakyRelu": 13,
+          "MatMul": 17,
+          "Mul": 85,
+          "Pad": 6,
+          "Reshape": 67,
+          "Slice": 9,
+          "Split": 9,
+          "Sqrt": 17,
+          "Squeeze": 26
+        },
+        "initializerBytes": 123160608,
+        "structuralVerification": "ONNX full checker; every retained node and initializer byte-identical to source"
+      }
+    },
+    "256": {
+      "firstGpuBlock": 256,
+      "stylesOnGPU": false,
+      "gpuBlocks": [
+        "b256",
+        "b512",
+        "b1024"
+      ],
+      "spatialMacs": {
+        "cpu": 30710160384,
+        "gpu": 44668289024,
+        "total": 75378449408,
+        "gpuFraction": 0.5925869976738909
+      },
+      "gpuCoefficientBytes": 4424976,
+      "requiredMaxTextureSize": 2304,
+      "requiredMaxArrayTextureLayers": 64,
+      "prefix": {
+        "file": "prefix-256.onnx",
+        "sha256": "7f564553dc82b480741be33b351ee142d6ba4b0490f7e2e43436aa0a85be34d9",
+        "bytes": 121448992,
+        "nodeCount": 347,
+        "opCounts": {
+          "Add": 44,
+          "Conv": 22,
+          "ConvTranspose": 5,
+          "Div": 17,
+          "Gemm": 26,
+          "LeakyRelu": 11,
+          "MatMul": 17,
+          "Mul": 76,
+          "Pad": 5,
+          "Reshape": 63,
+          "Slice": 9,
+          "Split": 9,
+          "Sqrt": 17,
+          "Squeeze": 26
+        },
+        "initializerBytes": 121380012,
+        "structuralVerification": "ONNX full checker; every retained node and initializer byte-identical to source"
+      }
+    },
+    "4": {
+      "firstGpuBlock": 4,
+      "stylesOnGPU": false,
+      "gpuBlocks": [
+        "b4",
+        "b8",
+        "b16",
+        "b32",
+        "b64",
+        "b128",
+        "b256",
+        "b512",
+        "b1024"
+      ],
+      "spatialMacs": {
+        "cpu": 0,
+        "gpu": 75378449408,
+        "total": 75378449408,
+        "gpuFraction": 1.0
+      },
+      "gpuCoefficientBytes": 123537568,
+      "requiredMaxTextureSize": 4608,
+      "requiredMaxArrayTextureLayers": 128,
+      "prefix": {
+        "file": "prefix-4.onnx",
+        "sha256": "6fe16b150f15e3528d97a0d2fde186f5fec9dde903701d249be9e77ec3cfbd86",
+        "bytes": 29174739,
+        "nodeCount": 207,
+        "opCounts": {
+          "Add": 17,
+          "Div": 17,
+          "Gemm": 26,
+          "MatMul": 17,
+          "Mul": 26,
+          "Reshape": 43,
+          "Slice": 9,
+          "Split": 9,
+          "Sqrt": 17,
+          "Squeeze": 26
+        },
+        "initializerBytes": 29130996,
+        "structuralVerification": "ONNX full checker; every retained node and initializer byte-identical to source"
+      }
+    },
+    "pure": {
+      "firstGpuBlock": 4,
+      "gpuBlocks": [
+        "b4",
+        "b8",
+        "b16",
+        "b32",
+        "b64",
+        "b128",
+        "b256",
+        "b512",
+        "b1024"
+      ],
+      "spatialMacs": {
+        "cpu": 0,
+        "gpu": 75378449408,
+        "total": 75378449408,
+        "gpuFraction": 1.0
+      },
+      "gpuCoefficientBytes": 123537568,
+      "requiredMaxTextureSize": 4608,
+      "requiredMaxArrayTextureLayers": 128,
+      "cpuPrefix": null,
+      "stylesOnGPU": true,
+      "stylePlanSource": "blocks[].stylePlans",
+      "structuralVerification": "Original Slice/Split/Squeeze W indices, Gemm attributes, energy matrices and scalar arithmetic asserted; GPU numerics unqualified",
+      "prefix": null
+    }
+  },
+  "inferenceRun": false,
+  "qualification": "pending"
+}

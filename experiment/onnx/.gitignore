@@ -1,0 +1,6 @@
+.venv/
+web/models/*
+!web/models/.gitkeep
+node_modules/
+burn-candidate/target/
+burn-candidate/pkg/

@@ -1,0 +1,4 @@
+import assert from 'node:assert/strict';import {samePrefix,frameRecipe,interpolationSpace} from './web/morph-reuse.js';
+const recipe=frameRecipe(50);assert.equal(recipe.unique.length,26);assert.deepEqual(recipe.indices.slice(24,29),[24,25,24,23,22]);assert.equal(frameRecipe(51).unique.length,51);assert.equal(frameRecipe(50,true).unique.length,50);
+const a={w:new Float32Array(9216).fill(1),noise:[new Float32Array(16)]},b={w:a.w.slice(),noise:[a.noise[0].slice()]},deps={styleIndices:[0,1,2],noiseIndices:[0],weightsIdA:'same',weightsIdB:'same'};
+assert(samePrefix(a,b,deps));b.w[5*512]=2;assert(samePrefix(a,b,deps));b.w[0]=2;assert(!samePrefix(a,b,deps));b.w[0]=1;b.noise[0][0]=1;assert(!samePrefix(a,b,deps));assert(interpolationSpace(new Float32Array(512),new Float32Array(512)).startsWith('Z:'));console.log('Reuse eligibility and 50-frame recipe assertions passed');
