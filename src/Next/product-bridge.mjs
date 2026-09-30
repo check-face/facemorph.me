@@ -7,6 +7,8 @@ import {saveFile,shareFile,videoWriter} from './media.mjs';
 import {diagnostics,onJobEnd} from './reporting.mjs';
 import * as analytics from './analytics.mjs';
 onJobEnd(analytics.jobFinished);
+// Start at load, not at the first event: a visit that does nothing is still a visit.
+analytics.start();
 import {labelFor,loadedBytes,createFrameCounter} from './stage-labels.mjs';
 import {frameStoreKey,frameStoreGet} from './morph-frames.mjs';
 import {selectPhoto} from './photo-selection.mjs';
