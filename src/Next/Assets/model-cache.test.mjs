@@ -260,6 +260,20 @@ test('read-ahead is bounded: a stalled writer holds the window, not the whole mo
   release(); await done;
   assert.equal(f.calls.length, 20);
 });
+test('read-ahead hands the store network-sized pieces, never a whole chunk (Firefox NetworkError, pre-deploy matrix)', async () => {
+  const parts = pieces(3, 600 * 1024), seen = [];
+  const f = fixture(async url => new Response(parts[Number(url.split('-')[1])]));
+  const store = { ...f.store, put: async (hash, response) => {
+    const reader = response.body.getReader(), got = [];
+    for (;;) { const { value, done } = await reader.read(); if (done) break; seen.push(value.byteLength); got.push(value); }
+    f.entries.set(hash, joined(got));
+  } };
+  const cache = createModelCache({ ...f.options, store, readAhead: 2 });
+  const handle = await cache.acquire(chunkAsset(parts));
+  assert.deepEqual(new Uint8Array(await (await handle.open()).arrayBuffer()), joined(parts));
+  assert.ok(Math.max(...seen) <= 256 * 1024, `largest piece handed to the store was ${Math.max(...seen)} bytes`);
+  assert.ok(seen.length >= 3 * 3, 'progress can move in pieces, not chunk-sized steps');
+});
 test('a corrupt chunk under read-ahead aborts the other downloads and commits nothing', async () => {
   const parts = pieces(5), signals = [];
   const f = fixture(async (url, init) => {
