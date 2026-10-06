@@ -25,6 +25,7 @@ export function validateAsset(asset) {
   return Object.freeze({ sha256: asset.sha256, size: asset.size, url: url.href, ...(chunks ? { chunks } : {}) });
 }
 
+const PIECE_BYTES = 256 * 1024;
 const hex = buffer => Array.from(new Uint8Array(buffer), x => x.toString(16).padStart(2, '0')).join('');
 /** One pinned chunk, fully read into a buffer of exactly its declared size and checked by the platform digest. */
 async function fetchVerifiedChunk(part, download, signal) {
@@ -215,7 +216,10 @@ export function createModelCache({ store, fetcher = globalThis.fetch, locks,
             if (!ahead.length) { release(); controller.close(); return; }
             const chunk = await ahead.shift();
             check(signal); fill();
-            controller.enqueue(chunk);
+            // Network-sized views, not the whole 16 MiB buffer: Firefox failed the first read-ahead build with a
+            // NetworkError (caught by the pre-deploy engine matrix), and the progress bar would move in 16 MiB
+            // steps. Views share the buffer, so this copies nothing.
+            for (let at = 0; at < chunk.byteLength; at += PIECE_BYTES) controller.enqueue(chunk.subarray(at, Math.min(at + PIECE_BYTES, chunk.byteLength)));
           } catch (error) { release(error); controller.error(error); }
         },
         cancel(reason) { release(reason ?? aborted()); }
