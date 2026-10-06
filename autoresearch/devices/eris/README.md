@@ -41,3 +41,13 @@ Open `tmux` on eris in `~/Work/dev/facemorph.me`, then give the agent:
 > Read autoresearch/program.md and autoresearch/devices/eris/README.md, inspect autoresearch/state and the tail
 > of results.tsv, and continue the next bounded experiment on eris. One hypothesis per iteration, control first,
 > ABBA, correctness before timing, ledger row for every result including discards.
+
+## Known limits
+
+- `artifact-bench.sh` serves a CI artifact with `scripts/next-e2e-server.py`. The exact artifact the live site was
+  promoted from fails the WebGPU route that way on eris (`Invalid Buffer`/`Invalid CommandBuffer`), while the same
+  bytes from next.facemorph.me work. Use it for CPU-side questions only; for GPU A/B use a Cloudflare preview
+  version (`wrangler versions upload`, not `deploy`: one Worker serves next.facemorph.me).
+- `acquire-bench.mjs` runs the product's `model-cache.mjs` in Node against the live origin: network, both hashes and
+  verification are real, browser Cache Storage is not.
+- eris is a shared desktop. `uptime` before every run; load above ~4 makes timings inconclusive.
