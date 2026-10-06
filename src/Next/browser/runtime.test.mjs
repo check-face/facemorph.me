@@ -12,6 +12,23 @@ import {generationIdentity} from './identity.mjs';
 import {decodeReferencePng,encodeRgbaPng} from './png.mjs';
 test('Moving hosts or changing canaries preserves original identity, weights invalidate',()=>{const m={synthesis:{sha256:'a',url:'https://one'},mapping:{sha256:'b'},average:{sha256:'c'},noise:[{name:'noise_0',shape:[4,4],sha256:'d'}]},moved={...m,synthesis:{...m.synthesis,url:'https://two'},canaries:['more'],releaseQualified:true};assert.deepEqual(generationIdentity(m,'seed'),generationIdentity(moved,'seed'));assert.notDeepEqual(generationIdentity(m,'seed'),generationIdentity({...m,synthesis:{sha256:'changed'}},'seed'));});
 test('Canonical PNG exact raw byte roundtrip without canvas',async()=>{const raw=Uint8Array.from({length:16*16*4},(_,i)=>i%256);const png=await encodeRgbaPng(raw,16,16);const decoded=await decodeReferencePng(await png.arrayBuffer(),{expectedWidth:16,expectedHeight:16});assert.deepEqual(new Uint8Array(decoded.rgba),raw);});
+import zlib from 'node:zlib';
+// The encoder is stored-by-default and its checksums are hand-rolled, so they are checked against Node's own
+// zlib (an independent implementation), not against the decoder that shares the same crc().
+function pngChunks(bytes){const view=new DataView(bytes.buffer,bytes.byteOffset,bytes.byteLength),out=[];for(let pos=8;pos<bytes.length;){const length=view.getUint32(pos),type=String.fromCharCode(...bytes.subarray(pos+4,pos+8));out.push({type,data:bytes.subarray(pos+8,pos+8+length),crc:view.getUint32(pos+8+length),span:bytes.subarray(pos+4,pos+8+length)});pos+=length+12;}return out;}
+test('Stored-by-default PNG: every chunk CRC and the zlib stream verify against Node zlib',{skip:typeof zlib.crc32!=='function'},async()=>{
+  for(const [width,height] of [[1,1],[3,5],[64,64],[1024,1024]]){
+    const rgba=new Uint8Array(width*height*4);let s=12345;for(let i=0;i<rgba.length;i++){s=(s*1664525+1013904223)>>>0;rgba[i]=i%4===3?255:(s>>>24)&0xe0|(i>>4)&0x1f;}
+    const bytes=new Uint8Array(await (await encodeRgbaPng(rgba,width,height)).arrayBuffer()),chunks=pngChunks(bytes);
+    assert.deepEqual(chunks.map(c=>c.type),['IHDR','IDAT','IEND']);
+    for(const chunk of chunks)assert.equal(chunk.crc,zlib.crc32(chunk.span),`${width}x${height} ${chunk.type} CRC`);
+    const scan=zlib.inflateSync(chunks[1].data);assert.equal(scan.length,(width*4+1)*height);
+    for(let y=0;y<height;y++){assert.equal(scan[y*(width*4+1)],0);assert.deepEqual(new Uint8Array(scan.subarray(y*(width*4+1)+1,(y+1)*(width*4+1))),rgba.subarray(y*width*4,(y+1)*width*4));}
+    const decoded=await decodeReferencePng(bytes.buffer,{expectedWidth:width,expectedHeight:height});assert.deepEqual(new Uint8Array(decoded.rgba),rgba);
+  }
+});
+test('Compressed PNG remains available and decodes to the same pixels',async()=>{const raw=Uint8Array.from({length:32*32*4},(_,i)=>i%7*30);const stored=await encodeRgbaPng(raw,32,32),packed=await encodeRgbaPng(raw,32,32,{compress:true});
+  const a=await decodeReferencePng(await stored.arrayBuffer(),{expectedWidth:32,expectedHeight:32}),b=await decodeReferencePng(await packed.arrayBuffer(),{expectedWidth:32,expectedHeight:32});assert.deepEqual(new Uint8Array(a.rgba),new Uint8Array(b.rgba));assert.ok(packed.size<stored.size);});
 import {createBrowserRuntime} from './runtime.mjs';
 const testManifest=()=>({schemaVersion:1,bundleVersion:'test-controller-only',modelSourceSha256:'source',noiseSha256:'noise',canaries:[{},{}],synthesis:{sha256:'s'},mapping:{sha256:'m'},average:{sha256:'a'},noise:[],webgpu:{}});
 function fakeStorage(){const values=new Map();return {getItem:k=>values.get(k)||null,setItem:(k,v)=>values.set(k,v),removeItem:k=>values.delete(k)};}
