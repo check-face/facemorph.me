@@ -8,7 +8,7 @@ import {createCanaryQualification} from './canary-qualification.mjs';
 // Chunks of a model download in flight at once (16 MiB each). Eight gigabytes stated by the device earns four;
 // everything else, including iOS where deviceMemory is undefined, gets two, a 32 MiB window.
 const readAhead=(globalThis.navigator?.deviceMemory||0)>=8?4:2;
-let manifest,ort,cache,mapping,synthesis,noise,average,provider,webgl,webgpu,currentId,manifestSha256,qualification,resumeDrain=null;
+let mappingReady=null,manifest,ort,cache,mapping,synthesis,noise,average,provider,webgl,webgpu,currentId,manifestSha256,qualification,resumeDrain=null;
 /**
  * What the encoder leaves behind between photos.
  *
@@ -262,7 +262,7 @@ async function load(id){if(synthesis||webgl||webgpu)return;
  if(residency.mode!=='on')await releaseEncoder();
  cache ||= await createBrowserModelCache({report:cacheReport,readAhead});planRoute();noise={};for(const item of manifest.noise)noise[item.name]=await floats(item,id);
  report(id,'model-loading');const started=performance.now();
- if(provider==='webgpu'){if(!manifest.webgpu)throw Error('WebGPU bundle unavailable');webgpu=await createWebGpuSession({config:manifest.webgpu,noiseManifest:manifest.noise,bytes:asset=>bytes(asset,currentId),progress:stage=>report(currentId,stage)});}
+ if(provider==='webgpu'){if(!manifest.webgpu)throw Error('WebGPU bundle unavailable');warmMapping();webgpu=await createWebGpuSession({config:manifest.webgpu,noiseManifest:manifest.noise,bytes:asset=>bytes(asset,currentId),progress:stage=>report(currentId,stage)});}
  else if(provider==='webgl2'){
    if(!manifest.webgl)throw Error('WebGL bundle unavailable');
    // Persistent acquisition verifies every input before the frozen engine fetches it.
@@ -276,7 +276,18 @@ async function load(id){if(synthesis||webgl||webgpu)return;
 async function run(values,id,noiseMode='original'){await load(id);requireLatent(values);const selected={};for(const [name,data] of Object.entries(noise))selected[name]=noiseMode==='original'?data:noiseMode==='zero'?new Float32Array(data.length):Float32Array.from(data,x=>-x);report(id,'synthesis');const start=performance.now();if(webgl||webgpu){const raw=await (webgl||webgpu).infer(values,selected);report(id,'synthesis-complete',{elapsedMs:performance.now()-start});return raw;}const feeds={w:new ort.Tensor('float32',values,[1,18,512])};for(const item of manifest.noise)feeds[item.name]=new ort.Tensor('float32',selected[item.name],item.shape);let output;try{output=(await synthesis.run(feeds)).image;const raw=new Float32Array(await output.getData());report(id,'synthesis-complete',{elapsedMs:performance.now()-start});return raw;}finally{for(const t of Object.values(feeds))t.dispose();output?.dispose();}}
 
 async function png(raw){return encodeRgbaPng(rgba1024(raw));}
-async function mappingFor(z,id){await load(id);await ensureOrt(id);if(!mapping){report(id,'mapping-loading');mapping=await ort.InferenceSession.create(await bytes(manifest.mapping,id),{executionProviders:['wasm']});average=await floats(manifest.average,id);}report(id,'mapping');const input=new ort.Tensor('float32',z,[1,512]);let out;try{out=(await mapping.run({z:input})).w;return truncate(await out.getData(),average);}finally{input.dispose();out?.dispose();}}
+// The face-mapping network is 8 MiB and nothing needs it before the first face, yet it was acquired and its ORT session
+// created only when `generate` arrived: after the model download, with the worker idle. Measured cold on eris that is
+// 330 ms to acquire plus 452 ms to create, 785 ms straight onto the first face. On the WebGPU route the weights live on
+// the GPU, so creating it beside the model load costs a few MiB of WASM heap and not a second working set; the CPU and
+// WebGL routes keep the sequential schedule that holds an iPhone inside its envelope. It reports under id -1, which no
+// request owns, so the visitor's stage sequence is unchanged. A failure here is not reported: mappingFor retries in line.
+// `average` is set before `mapping` so a visible mapping always has its average.
+function warmMapping(){
+  if(mapping||mappingReady)return;
+  mappingReady=(async()=>{await ensureOrt(-1);if(mapping)return;average=await floats(manifest.average,-1);mapping=await ort.InferenceSession.create(await bytes(manifest.mapping,-1),{executionProviders:['wasm']});})().catch(()=>{mappingReady=null;});
+}
+async function mappingFor(z,id){await load(id);if(mappingReady)await mappingReady;await ensureOrt(id);if(!mapping){report(id,'mapping-loading');average=await floats(manifest.average,id);mapping=await ort.InferenceSession.create(await bytes(manifest.mapping,id),{executionProviders:['wasm']});}report(id,'mapping');const input=new ort.Tensor('float32',z,[1,512]);let out;try{out=(await mapping.run({z:input})).w;return truncate(await out.getData(),average);}finally{input.dispose();out?.dispose();}}
 
 // CI and release qualification must always see every canary. The flags arrive on 'initialize'
 // from the main thread: a dedicated worker's globalThis is its own scope, so neither the page's
@@ -344,7 +355,7 @@ self.onmessage=({data})=>{
  residency.mode=request.retain===true?'on':'off';
  if(residency.mode==='off')shedShards();
  // Sequential residency, unchanged in its peak: synthesis goes before the encoder is acquired.
- await synthesis?.release();synthesis=null;await webgl?.dispose();webgl=null;await webgpu?.dispose();webgpu=null;await mapping?.release();mapping=null;noise=null;
+ await synthesis?.release();synthesis=null;await webgl?.dispose();webgl=null;await webgpu?.dispose();webgpu=null;await mapping?.release();mapping=null;mappingReady=null;noise=null;
  cache ||= await createBrowserModelCache({report:cacheReport,readAhead});
  // The encoder is the largest thing this device will fetch. Budget for it before the first
  // byte arrives, so the bar measures the wait the user is actually in for.
