@@ -4,7 +4,8 @@
 // Usage: PW_ROOT=<dir with playwright installed> node engine-cache-repro.mjs <engine> <sha256.mjs> variant ...
 import {createRequire} from 'node:module';
 import {readFile} from 'node:fs/promises';
-const require = createRequire((process.env.PW_ROOT || '.') + '/package.json');
+import {resolve} from 'node:path';
+const require = createRequire(resolve(process.env.PW_ROOT || '.', 'package.json'));
 const playwright = require('playwright');
 const [engine, shaPath, ...variants] = process.argv.slice(2);
 const specs = variants.map(v => { const [label, rest] = v.split('='); const [path, ra, flag] = rest.split(':'); return {label, path, readAhead: ra && ra !== '-' ? Number(ra) : undefined, nosubtle: flag === 'nosubtle'}; });
