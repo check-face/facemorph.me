@@ -1,7 +1,14 @@
 // Byte-exact reference decoding, deliberately limited to our RGB/RGBA PNG fixtures.
 // No canvas, browser color conversion or privacy-sensitive pixel readback.
 const table = Uint32Array.from({length:256},(_,n)=>{for(let k=0;k<8;k++)n=n&1?0xedb88320^(n>>>1):n>>>1;return n>>>0;});
-function crc(bytes,start,end){let n=0xffffffff;for(let i=start;i<end;i++)n=table[(n^bytes[i])&255]^(n>>>8);return (n^0xffffffff)>>>0;}
+// Slicing-by-8: eight table lookups per eight bytes instead of one per byte. The checksum is the same
+// function, so an encoded or decoded PNG is byte-identical; only the 4 MiB IDAT pass gets faster.
+const sliced=(()=>{const t=new Uint32Array(8*256);t.set(table);for(let i=0;i<256;i++){let c=t[i];for(let k=1;k<8;k++){c=t[c&255]^(c>>>8);t[k*256+i]=c;}}return t;})();
+function crc(bytes,start,end){let n=0xffffffff,i=start;
+  for(;i+8<=end;i+=8){const a=n^(bytes[i]|bytes[i+1]<<8|bytes[i+2]<<16|bytes[i+3]<<24);
+    n=sliced[1792+(a&255)]^sliced[1536+((a>>>8)&255)]^sliced[1280+((a>>>16)&255)]^sliced[1024+(a>>>24)]^sliced[768+bytes[i+4]]^sliced[512+bytes[i+5]]^sliced[256+bytes[i+6]]^sliced[bytes[i+7]];}
+  for(;i<end;i++)n=sliced[(n^bytes[i])&255]^(n>>>8);
+  return (n^0xffffffff)>>>0;}
 function paeth(a,b,c){const p=a+b-c,pa=Math.abs(p-a),pb=Math.abs(p-b),pc=Math.abs(p-c);return pa<=pb&&pa<=pc?a:pb<=pc?b:c;}
 export async function decodeReferencePng(input,{expectedWidth=1024,expectedHeight=1024,signal}={}) {
   const bytes=input instanceof Uint8Array?input:new Uint8Array(input);
@@ -58,5 +65,9 @@ export async function decodeReferencePng(input,{expectedWidth=1024,expectedHeigh
 
 // Canonical encoder operates on exact raw RGBA bytes, never canvas readback.
 function pngChunk(type,data){const out=new Uint8Array(data.length+12),v=new DataView(out.buffer);v.setUint32(0,data.length);out.set(new TextEncoder().encode(type),4);out.set(data,8);v.setUint32(out.length-4,crc(out,4,out.length-4));return out;}
-function storedDeflate(data){const count=Math.ceil(data.length/65535),out=new Uint8Array(2+data.length+count*5+4);out.set([0x78,0x01]);let p=2,a=1,b=0;for(let offset=0;offset<data.length;offset+=65535){const n=Math.min(65535,data.length-offset);out[p++]=offset+n===data.length?1:0;out[p++]=n&255;out[p++]=n>>>8;out[p++]=(~n)&255;out[p++]=((~n)>>>8)&255;out.set(data.subarray(offset,offset+n),p);p+=n;}for(const x of data){a=(a+x)%65521;b=(b+a)%65521;}new DataView(out.buffer).setUint32(p,((b<<16)|a)>>>0);return out;}
-export async function encodeRgbaPng(rgba,width=1024,height=1024){if(!Number.isInteger(width)||!Number.isInteger(height)||width<1||height<1||width>2048||height>2048||rgba.length!==width*height*4)throw Error('Invalid raw PNG dimensions');const ihdr=new Uint8Array(13),v=new DataView(ihdr.buffer);v.setUint32(0,width);v.setUint32(4,height);ihdr[8]=8;ihdr[9]=6;const scan=new Uint8Array((width*4+1)*height);for(let y=0;y<height;y++)scan.set(rgba.subarray(y*width*4,(y+1)*width*4),y*(width*4+1)+1);const compressed=typeof CompressionStream==='function'?new Uint8Array(await new Response(new Blob([scan]).stream().pipeThrough(new CompressionStream('deflate'))).arrayBuffer()):storedDeflate(scan);return new Blob([new Uint8Array([137,80,78,71,13,10,26,10]),pngChunk('IHDR',ihdr),pngChunk('IDAT',compressed),pngChunk('IEND',new Uint8Array())],{type:'image/png'});}
+function storedDeflate(data){const count=Math.ceil(data.length/65535),out=new Uint8Array(2+data.length+count*5+4);out.set([0x78,0x01]);let p=2,a=1,b=0;for(let offset=0;offset<data.length;offset+=65535){const n=Math.min(65535,data.length-offset);out[p++]=offset+n===data.length?1:0;out[p++]=n&255;out[p++]=n>>>8;out[p++]=(~n)&255;out[p++]=((~n)>>>8)&255;out.set(data.subarray(offset,offset+n),p);p+=n;}for(let i=0,n=data.length;i<n;){const stop=Math.min(i+5552,n);for(;i<stop;i++){a+=data[i];b+=a;}a%=65521;b%=65521;}new DataView(out.buffer).setUint32(p,((b<<16)|a)>>>0);return out;}
+// Stored (uncompressed) deflate blocks are the default. Measured on eris, in a Chromium worker on the shipped
+// bytes: CompressionStream deflate took 214 ms of a 388 ms warm face; stored blocks take a few ms. The PNG is
+// 41% larger (4.2 MB against 3.0 MB at 1024px) and decodes to the same RGBA. Pass {compress:true} for a
+// smaller file when nothing is waiting on it.
+export async function encodeRgbaPng(rgba,width=1024,height=1024,{compress=false}={}){if(!Number.isInteger(width)||!Number.isInteger(height)||width<1||height<1||width>2048||height>2048||rgba.length!==width*height*4)throw Error('Invalid raw PNG dimensions');const ihdr=new Uint8Array(13),v=new DataView(ihdr.buffer);v.setUint32(0,width);v.setUint32(4,height);ihdr[8]=8;ihdr[9]=6;const scan=new Uint8Array((width*4+1)*height);for(let y=0;y<height;y++)scan.set(rgba.subarray(y*width*4,(y+1)*width*4),y*(width*4+1)+1);const compressed=compress&&typeof CompressionStream==='function'?new Uint8Array(await new Response(new Blob([scan]).stream().pipeThrough(new CompressionStream('deflate'))).arrayBuffer()):storedDeflate(scan);return new Blob([new Uint8Array([137,80,78,71,13,10,26,10]),pngChunk('IHDR',ihdr),pngChunk('IDAT',compressed),pngChunk('IEND',new Uint8Array())],{type:'image/png'});}
