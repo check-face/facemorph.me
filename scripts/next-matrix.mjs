@@ -113,7 +113,7 @@ try{
  if(!report.crossOriginIsolated)throw Error('Production isolation headers missing');
 
  // Force CPU: an engine without a qualified GPU route must still complete the workflow.
- await page.evaluate(()=>{document.querySelector('.next-advanced').open=true;});
+ await page.evaluate(()=>{const advanced=document.querySelector('.next-advanced');if(advanced)advanced.open=true;});
  await page.selectOption('select[aria-label="Processing mode"]','cpu');
  if(await page.inputValue('select[aria-label="Processing mode"]')!=='cpu')throw Error('Could not select CPU processing');
 
