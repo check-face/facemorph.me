@@ -69,9 +69,11 @@ const downloads=await fs.mkdtemp(path.join(process.env.RUNNER_TEMP||'/tmp','next
 const profile=await fs.mkdtemp(path.join(process.env.RUNNER_TEMP||'/tmp','next-matrix-profile-'));
 const context=await engines[engineName].launchPersistentContext(profile,{acceptDownloads:true,ignoreHTTPSErrors:true});
 // TEMPORARY (experiment): serve this run from an uploaded-but-not-deployed Worker version on the real hostname, via
-// Cloudflare's version-override header, so the matrix can run before a deployment. Same-origin requests only.
-if(process.env.NEXT_MATRIX_VERSION_OVERRIDE)await context.route(new URL(origin).origin+'/**',route=>route.continue({headers:{...route.request().headers(),'cloudflare-workers-version-overrides':process.env.NEXT_MATRIX_VERSION_OVERRIDE}}));
-const page=context.pages()[0]||await context.newPage();
+// Cloudflare's version-override header. Context-level extra headers, not request interception: interception made
+// Firefox fail on concurrent large downloads and that is a property of the harness, not of the product.
+if(process.env.NEXT_MATRIX_VERSION_OVERRIDE)await context.setExtraHTTPHeaders({'Cloudflare-Workers-Version-Overrides':process.env.NEXT_MATRIX_VERSION_OVERRIDE});
+const workerUrls=[];context.on('page',p=>p.on('worker',w=>workerUrls.push(w.url())));
+const page=context.pages()[0]||await context.newPage();page.on('worker',w=>workerUrls.push(w.url()));
 page.on('console',message=>{if(message.type()==='error')report.consoleErrors=[...(report.consoleErrors||[]),message.text().slice(0,300)].slice(-20);});
 
 const control=name=>page.getByRole('button',{name,exact:true}).first();
@@ -102,6 +104,7 @@ try{
  report.appBundle=await page.evaluate(()=>(performance.getEntriesByType('resource').map(e=>e.name).find(n=>/\/app\.[0-9a-f]+\.js/.test(n))||'').split('/').pop());
  // Fail closed: a row that silently ran the production build must not read as a pass for the candidate.
  if(process.env.NEXT_MATRIX_EXPECT_BUNDLE&&report.appBundle!==process.env.NEXT_MATRIX_EXPECT_BUNDLE)throw Error(`Expected bundle ${process.env.NEXT_MATRIX_EXPECT_BUNDLE}, ran ${report.appBundle}`);
+ report.workerUrls=[...new Set(workerUrls.map(u=>u.split('/').pop()))];
  report.agent=await page.evaluate(()=>navigator.userAgent);
  report.storageQuota=await page.evaluate(()=>navigator.storage&&navigator.storage.estimate?navigator.storage.estimate().then(e=>e.quota).catch(()=>null):null);
  // Playwright's Chromium and WebKit builds ship without proprietary codecs, so they cannot play
