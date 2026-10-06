@@ -25,6 +25,28 @@ export function validateAsset(asset) {
   return Object.freeze({ sha256: asset.sha256, size: asset.size, url: url.href, ...(chunks ? { chunks } : {}) });
 }
 
+const hex = buffer => Array.from(new Uint8Array(buffer), x => x.toString(16).padStart(2, '0')).join('');
+/** One pinned chunk, fully read into a buffer of exactly its declared size and checked by the platform digest. */
+async function fetchVerifiedChunk(part, download, signal) {
+  const body = await download(part, signal);
+  if (!body) throw new Error('Asset response has no readable body');
+  const out = new Uint8Array(part.size), reader = body.getReader();
+  let at = 0;
+  try {
+    for (;;) {
+      const { value, done } = await reader.read();
+      check(signal);
+      if (done) break;
+      if (at + value.byteLength > part.size) throw new Error('Asset exceeds declared size');
+      out.set(value, at); at += value.byteLength;
+    }
+  } catch (error) { void reader.cancel(error).catch(() => {}); throw error; }
+  if (at !== part.size) throw new Error('Asset integrity mismatch');
+  const digest = hex(await globalThis.crypto.subtle.digest('SHA-256', out));
+  check(signal);
+  if (digest !== part.sha256) throw new Error('Asset integrity mismatch');
+  return out;
+}
 // Runs with backpressure; errors before EOF prevent Cache.put from committing.
 function verifiedStream(body, asset, signal) {
   if (!body) throw new Error('Asset response has no readable body');
@@ -108,8 +130,9 @@ export function createRecordAccess(store) {
  * Observers receive hashes/status only (no URLs or authentication material).
  */
 export function createModelCache({ store, fetcher = globalThis.fetch, locks,
-  timeoutMs = 300000, maxConcurrent = 2, report = () => {} }) {
-  if (!store || !Number.isFinite(timeoutMs) || timeoutMs <= 0 || !Number.isInteger(maxConcurrent) || maxConcurrent < 1)
+  timeoutMs = 300000, maxConcurrent = 2, readAhead = 2, report = () => {} }) {
+  if (!store || !Number.isFinite(timeoutMs) || timeoutMs <= 0 || !Number.isInteger(maxConcurrent) || maxConcurrent < 1
+    || !Number.isInteger(readAhead) || readAhead < 1 || readAhead > 8)
     throw new TypeError('Invalid cache settings');
   const pending = new Map(), queue = [];
   let active = 0;
@@ -156,9 +179,9 @@ export function createModelCache({ store, fetcher = globalThis.fetch, locks,
     } else emit({ status: 'missing', sha256: asset.sha256 }); // Missing alone does not prove eviction.
     check(signal);
     emit({ status: 'downloading', sha256: asset.sha256 });
-    async function download(part) {
-      const response = await fetcher(part.url, { signal, credentials: 'omit', cache: 'default', mode: 'cors' });
-      check(signal);
+    async function download(part, from = signal) {
+      const response = await fetcher(part.url, { signal: from, credentials: 'omit', cache: 'default', mode: 'cors' });
+      check(from);
       if (!response.ok || response.status !== 200 || response.type === 'opaque') {
         void response.body?.cancel().catch(() => {});
         throw new Error('Asset download requires a readable complete HTTP 200 response');
@@ -166,9 +189,39 @@ export function createModelCache({ store, fetcher = globalThis.fetch, locks,
       return response.body;
     }
     let body;
-    if (asset.chunks) {
-      // Pull one verified chunk at a time. Neither a whole model nor all chunks
-      // accumulate in JS memory; the existing atomic store commits only at EOF.
+    if (asset.chunks && globalThis.crypto?.subtle) {
+      // Read-ahead (measured on eris, 150 MiB model prefix): chunks fetched one at a time and hashed in
+      // JS twice cost 6.8 s of a cold first face, against a link ceiling of 2.7 s with four in flight.
+      // Up to `readAhead` 16 MiB chunks are fetched into memory concurrently; each is checked against
+      // its pinned digest by the platform's SHA-256 (8x the speed of sha256.mjs, off this thread) and
+      // handed on strictly in order. Memory is bounded by readAhead chunks. The whole-asset digest
+      // below is unchanged, and nothing commits until it matches at EOF.
+      const ahead = [], stop = new AbortController();
+      const relay = () => stop.abort(signal.reason || aborted());
+      signal.addEventListener('abort', relay, { once: true });
+      const release = reason => { signal.removeEventListener('abort', relay); if (reason !== undefined) stop.abort(reason); };
+      let started = 0;
+      const fill = () => {
+        while (ahead.length < readAhead && started < asset.chunks.length) {
+          const part = asset.chunks[started++], task = fetchVerifiedChunk(part, download, stop.signal);
+          task.catch(() => {}); // surfaced where it is awaited; a later chunk must not become an unhandled rejection
+          ahead.push(task);
+        }
+      };
+      body = new ReadableStream({
+        async pull(controller) {
+          try {
+            check(signal); fill();
+            if (!ahead.length) { release(); controller.close(); return; }
+            const chunk = await ahead.shift();
+            check(signal); fill();
+            controller.enqueue(chunk);
+          } catch (error) { release(error); controller.error(error); }
+        },
+        cancel(reason) { release(reason ?? aborted()); }
+      });
+    } else if (asset.chunks) {
+      // No platform digest (very old engines): one chunk at a time, hashed incrementally as before.
       let index = 0, reader;
       body = new ReadableStream({
         async pull(controller) {

@@ -232,6 +232,53 @@ test('corrupt chunk cannot commit a partial model', async () => {
 });
 
 
+// Read-ahead (eris, 150 MiB prefix: sequential chunk fetch + double JS hash = 6.8 s cold; 2.7 s link ceiling).
+const pieces = (count, size = 5) => Array.from({ length: count }, (_, i) => Uint8Array.from({ length: size }, (_, j) => (i * 31 + j * 7) & 255));
+const joined = parts => Uint8Array.from(parts.flatMap(part => [...part]));
+const chunkAsset = parts => ({ ...asset(joined(parts)), chunks: parts.map((part, i) => asset(part, `https://models.example/chunk-${i}`)) });
+test('read-ahead fetches up to the window concurrently and commits the exact bytes in order', async () => {
+  const parts = pieces(6), waiting = [];
+  const f = fixture(url => new Promise(resolve => waiting.push(() => resolve(new Response(parts[Number(url.split('-')[1])])))));
+  const cache = createModelCache({ ...f.options, readAhead: 3 });
+  const done = cache.acquire(chunkAsset(parts));
+  await pause(); await pause();
+  assert.equal(f.calls.length, 3, 'three chunks in flight before any has arrived');
+  while (waiting.length || f.calls.length < 6) { waiting.splice(0).forEach(release => release()); await pause(); }
+  const handle = await done;
+  assert.deepEqual(new Uint8Array(await (await handle.open()).arrayBuffer()), joined(parts));
+  assert.deepEqual(f.calls, parts.map((_, i) => `https://models.example/chunk-${i}`), 'requested in order');
+});
+test('read-ahead is bounded: a stalled writer holds the window, not the whole model', async () => {
+  const parts = pieces(20);
+  const f = fixture(async url => new Response(parts[Number(url.split('-')[1])]));
+  let release; const gate = new Promise(resolve => { release = resolve; });
+  const store = { ...f.store, put: async (hash, response) => { await gate; return f.store.put(hash, response); } };
+  const cache = createModelCache({ ...f.options, store, readAhead: 2 });
+  const done = cache.acquire(chunkAsset(parts));
+  for (let i = 0; i < 20; i++) await pause();
+  assert.ok(f.calls.length <= 2 + 3, `fetched ${f.calls.length} chunks with the writer stalled`);
+  release(); await done;
+  assert.equal(f.calls.length, 20);
+});
+test('a corrupt chunk under read-ahead aborts the other downloads and commits nothing', async () => {
+  const parts = pieces(5), signals = [];
+  const f = fixture(async (url, init) => {
+    signals.push(init.signal); const i = Number(url.split('-')[1]);
+    if (i < 3) return new Response(parts[i]);
+    if (i === 3) return new Response(new Uint8Array(parts[i].length));
+    return new Response(new ReadableStream({ start(controller) { init.signal.addEventListener('abort', () => controller.error(init.signal.reason), { once: true }); } }));
+  });
+  const cache = createModelCache({ ...f.options, readAhead: 4 });
+  await assert.rejects(cache.acquire(chunkAsset(parts)), /integrity|abort/i);
+  await pause();
+  assert.equal(f.assetEntries().length, 0);
+  assert.ok(signals.length >= 2 && signals.every(signal => signal.aborted), 'every download still in flight was cancelled');
+});
+test('readAhead is validated', () => {
+  const f = fixture();
+  for (const bad of [0, -1, 1.5, 9, '2']) assert.throws(() => createModelCache({ ...f.options, readAhead: bad }), /Invalid cache settings/);
+});
+
 test('native WebView uses HTTPS cache keys without fetching the logical key origin', async () => {
   const oldLocation=globalThis.location, oldCaches=globalThis.caches, entries=new Map(), requested=[];
   globalThis.location={origin:'tauri://localhost'};

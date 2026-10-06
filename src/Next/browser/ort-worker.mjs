@@ -5,6 +5,9 @@ import {inputLatent,truncate,requireLatent,rgba1024} from './identity.mjs';
 import {qualifyEncoderReference} from './encoder-preflight.mjs';
 import {createAcquisitionBudget,collectAssets} from './acquisition-budget.mjs';
 import {createCanaryQualification} from './canary-qualification.mjs';
+// Chunks of a model download in flight at once (16 MiB each). Eight gigabytes stated by the device earns four;
+// everything else, including iOS where deviceMemory is undefined, gets two, a 32 MiB window.
+const readAhead=(globalThis.navigator?.deviceMemory||0)>=8?4:2;
 let manifest,ort,cache,mapping,synthesis,noise,average,provider,webgl,webgpu,currentId,manifestSha256,qualification,resumeDrain=null;
 /**
  * What the encoder leaves behind between photos.
@@ -152,7 +155,7 @@ async function bytes(asset,id,retainable=false){
   }
   if(held)residency.held-=held.byteLength,residency.bytes.delete(asset.sha256);
  }
- cache ||= await createBrowserModelCache({report:cacheReport});
+ cache ||= await createBrowserModelCache({report:cacheReport,readAhead});
  planAsset(asset);budget.progress(false);
  const handle=await cache.acquire(asset);const data=await(await handle.open()).arrayBuffer();
  budget.cacheEvent({status:'saved',sha256:asset.sha256,bytes:asset.size});
@@ -178,7 +181,7 @@ async function floats(asset,id){const b=await bytes(asset,id);return new Float32
  * acquisition problem in the user's words and drops the route on the evidence.
  */
 async function prefetchRoute(id,scope='route'){
- cache ||= await createBrowserModelCache({report:cacheReport});
+ cache ||= await createBrowserModelCache({report:cacheReport,readAhead});
  const list=scope==='photo'?await photoAssets():routeAssets();
  if(scope==='photo')planAsset(list);else planRoute();
  budget.progress(false);
@@ -257,7 +260,7 @@ async function load(id){if(synthesis||webgl||webgpu)return;
  // which is the cost the holding exists to avoid. A device is only told to hold when it has the
  // room for both.
  if(residency.mode!=='on')await releaseEncoder();
- cache ||= await createBrowserModelCache({report:cacheReport});planRoute();noise={};for(const item of manifest.noise)noise[item.name]=await floats(item,id);
+ cache ||= await createBrowserModelCache({report:cacheReport,readAhead});planRoute();noise={};for(const item of manifest.noise)noise[item.name]=await floats(item,id);
  report(id,'model-loading');const started=performance.now();
  if(provider==='webgpu'){if(!manifest.webgpu)throw Error('WebGPU bundle unavailable');webgpu=await createWebGpuSession({config:manifest.webgpu,noiseManifest:manifest.noise,bytes:asset=>bytes(asset,currentId),progress:stage=>report(currentId,stage)});}
  else if(provider==='webgl2'){
@@ -283,7 +286,7 @@ async function mappingFor(z,id){await load(id);await ensureOrt(id);if(!mapping){
 let fullQualify=false,forceCanaryFail=false;
 async function ensureQualification(id){
  if(qualification)return qualification;
- cache ||= await createBrowserModelCache({report:cacheReport});
+ cache ||= await createBrowserModelCache({report:cacheReport,readAhead});
  qualification=createCanaryQualification({manifest,manifestSha256,provider,bundle:provider==='webgpu'?manifest.webgpu:provider==='webgl2'?manifest.webgl:manifest.synthesis,records:cache.records,acquireBytes:asset=>bytes(asset,id),runSynthesis:(values,noiseMode)=>run(values,id,noiseMode),full:fullQualify,forceFail:forceCanaryFail});
  await qualification.adopt();
  return qualification;
@@ -342,7 +345,7 @@ self.onmessage=({data})=>{
  if(residency.mode==='off')shedShards();
  // Sequential residency, unchanged in its peak: synthesis goes before the encoder is acquired.
  await synthesis?.release();synthesis=null;await webgl?.dispose();webgl=null;await webgpu?.dispose();webgpu=null;await mapping?.release();mapping=null;noise=null;
- cache ||= await createBrowserModelCache({report:cacheReport});
+ cache ||= await createBrowserModelCache({report:cacheReport,readAhead});
  // The encoder is the largest thing this device will fetch. Budget for it before the first
  // byte arrives, so the bar measures the wait the user is actually in for.
  planAsset(manifest.encoderStream||manifest.encoder);
