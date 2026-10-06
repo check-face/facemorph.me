@@ -61,8 +61,47 @@ jobs:
           path: next-matrix-*.json
           if-no-files-found: warn
           retention-days: 14
+  control:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            engine: chromium
+          - os: ubuntu-24.04
+            engine: firefox
+          - os: ubuntu-24.04
+            engine: webkit
+          - os: macos-14
+            engine: webkit
+          - os: macos-14
+            engine: firefox
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install the matrix runner only
+        run: npm ci --prefix scripts/matrix-tools
+      - run: npx --prefix scripts/matrix-tools playwright install --with-deps ${{ matrix.engine }}
+      - name: CONTROL: drive ${{ matrix.engine }} against production
+        env:
+          NEXT_MATRIX_ORIGIN: ${{ inputs.origin || 'https://next.facemorph.me' }}
+          NEXT_MATRIX_RUNTIME_SHA: ${{ inputs.runtime_sha || 'd9e37e50a436e9fb7c0c7f973e70adee353c808f48c6a51fa5a9186f1c650a5c' }}
+          NEXT_MATRIX_EXPECT_BUNDLE: app.51beb6b389527a01e354.js
+          NEXT_MATRIX_OUT: next-matrix-control-${{ matrix.os }}-${{ matrix.engine }}.json
+        run: node scripts/next-matrix.mjs ${{ matrix.engine }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: next-matrix-control-${{ matrix.os }}-${{ matrix.engine }}
+          path: next-matrix-*.json
+          if-no-files-found: warn
+          retention-days: 14
   summary:
-    needs: engines
+    needs: [engines, control]
     if: always()
     runs-on: ubuntu-24.04
     steps:
