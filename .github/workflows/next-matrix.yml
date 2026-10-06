@@ -86,7 +86,7 @@ jobs:
       - name: Install the matrix runner only
         run: npm ci --prefix scripts/matrix-tools
       - run: npx --prefix scripts/matrix-tools playwright install --with-deps ${{ matrix.engine }}
-      - name: CONTROL: drive ${{ matrix.engine }} against production
+      - name: CONTROL - drive ${{ matrix.engine }} against production
         env:
           NEXT_MATRIX_ORIGIN: ${{ inputs.origin || 'https://next.facemorph.me' }}
           NEXT_MATRIX_RUNTIME_SHA: ${{ inputs.runtime_sha || 'd9e37e50a436e9fb7c0c7f973e70adee353c808f48c6a51fa5a9186f1c650a5c' }}
