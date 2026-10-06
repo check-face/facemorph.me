@@ -1,9 +1,13 @@
-name: New site browser matrix
+name: EXPERIMENT new site browser matrix on preview 9c122f4 (temporary, not for merge)
 # Runs the product workflow on each engine and reports a row per engine. A row is evidence for
 # that engine on that operating system only. WebKit on Linux is not Safari on macOS or iOS, and
 # Chromium here is not Chrome on a phone; physical-device rows are attached separately and a
 # missing one stays missing rather than borrowing another row's result.
 on:
+  # TEMPORARY: workflow_dispatch only resolves for workflows on the default branch, so this branch adds a
+  # pull_request trigger to run the matrix against a non-live Worker version before it is deployed.
+  pull_request:
+    paths: ['.github/workflows/next-matrix.yml']
   workflow_dispatch:
     inputs:
       origin:
@@ -44,8 +48,8 @@ jobs:
       - run: npx --prefix scripts/matrix-tools playwright install --with-deps ${{ matrix.engine }}
       - name: Drive ${{ matrix.engine }} against the deployed candidate
         env:
-          NEXT_MATRIX_ORIGIN: ${{ inputs.origin }}
-          NEXT_MATRIX_RUNTIME_SHA: ${{ inputs.runtime_sha }}
+          NEXT_MATRIX_ORIGIN: ${{ inputs.origin || 'https://perf-9c122f4-facemorph-next.cdilga.workers.dev' }}
+          NEXT_MATRIX_RUNTIME_SHA: ${{ inputs.runtime_sha || 'd9e37e50a436e9fb7c0c7f973e70adee353c808f48c6a51fa5a9186f1c650a5c' }}
           NEXT_MATRIX_OUT: next-matrix-${{ matrix.os }}-${{ matrix.engine }}.json
         run: node scripts/next-matrix.mjs ${{ matrix.engine }}
       - uses: actions/upload-artifact@v4
