@@ -68,6 +68,9 @@ async function stage(name,run,{optional=false}={}){
 const downloads=await fs.mkdtemp(path.join(process.env.RUNNER_TEMP||'/tmp','next-matrix-'));
 const profile=await fs.mkdtemp(path.join(process.env.RUNNER_TEMP||'/tmp','next-matrix-profile-'));
 const context=await engines[engineName].launchPersistentContext(profile,{acceptDownloads:true,ignoreHTTPSErrors:true});
+// TEMPORARY (experiment): serve this run from an uploaded-but-not-deployed Worker version on the real hostname, via
+// Cloudflare's version-override header, so the matrix can run before a deployment. Same-origin requests only.
+if(process.env.NEXT_MATRIX_VERSION_OVERRIDE)await context.route(new URL(origin).origin+'/**',route=>route.continue({headers:{...route.request().headers(),'cloudflare-workers-version-overrides':process.env.NEXT_MATRIX_VERSION_OVERRIDE}}));
 const page=context.pages()[0]||await context.newPage();
 page.on('console',message=>{if(message.type()==='error')report.consoleErrors=[...(report.consoleErrors||[]),message.text().slice(0,300)].slice(-20);});
 
@@ -96,6 +99,9 @@ try{
  await page.waitForTimeout(1000);await page.evaluate(()=>{const b=document.querySelector('.next-consent-toast button[aria-label="Ask me later"]');if(b)b.click();});
  await page.evaluate(()=>{if(!window.__ciGate){window.__ciGate=0;setInterval(()=>{const b=document.querySelector('.next-download-dialog .next-download-accept');if(b){window.__ciGate++;b.click();}},250);}});
  await idle();
+ report.appBundle=await page.evaluate(()=>(performance.getEntriesByType('resource').map(e=>e.name).find(n=>/\/app\.[0-9a-f]+\.js/.test(n))||'').split('/').pop());
+ // Fail closed: a row that silently ran the production build must not read as a pass for the candidate.
+ if(process.env.NEXT_MATRIX_EXPECT_BUNDLE&&report.appBundle!==process.env.NEXT_MATRIX_EXPECT_BUNDLE)throw Error(`Expected bundle ${process.env.NEXT_MATRIX_EXPECT_BUNDLE}, ran ${report.appBundle}`);
  report.agent=await page.evaluate(()=>navigator.userAgent);
  report.storageQuota=await page.evaluate(()=>navigator.storage&&navigator.storage.estimate?navigator.storage.estimate().then(e=>e.quota).catch(()=>null):null);
  // Playwright's Chromium and WebKit builds ship without proprietary codecs, so they cannot play
