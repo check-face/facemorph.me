@@ -22,6 +22,7 @@ permissions:
   contents: read
 jobs:
   engines:
+    if: ${{ false }}
     strategy:
       fail-fast: false
       matrix:
@@ -62,6 +63,7 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
   control:
+    if: ${{ false }}
     strategy:
       fail-fast: false
       matrix:
@@ -101,9 +103,28 @@ jobs:
           path: next-matrix-*.json
           if-no-files-found: warn
           retention-days: 14
+  repro:
+    strategy:
+      fail-fast: false
+      matrix:
+        engine: [firefox, chromium, webkit]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci --prefix scripts/matrix-tools
+      - run: npx --prefix scripts/matrix-tools playwright install --with-deps ${{ matrix.engine }}
+      - name: Model cache variants in a Worker
+        run: |
+          d=autoresearch/devices/eris
+          PW_ROOT=scripts/matrix-tools node $d/engine-cache-repro.mjs ${{ matrix.engine }} $d/repro-variants/sha256.mjs \
+            old=$d/repro-variants/old.mjs new_ra2=$d/repro-variants/new.mjs:2 new_ra1=$d/repro-variants/new.mjs:1 new_nosubtle=$d/repro-variants/new.mjs:2:nosubtle
   summary:
     needs: [engines, control]
-    if: always()
+    if: ${{ false }}
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
