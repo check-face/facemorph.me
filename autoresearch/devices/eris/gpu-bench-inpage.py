@@ -146,7 +146,7 @@ for index in range(FACES):
         cdp('Profiler.enable'); cdp('Profiler.setSamplingInterval', interval=200); cdp('Profiler.start')
     started = time.time()
     js("""(()=>{const i=[...document.querySelectorAll('input[type=text]')].find(x=>x.placeholder==='Just type anything');
-      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(i,'gpu-bench-%d-%d');
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(i,'%s');
       i.dispatchEvent(new Event('input',{bubbles:true}));
       // MUI uppercases button labels in CSS, so textContent reads 'Generate' while the rendered
       // label reads 'GENERATE'. Match case-insensitively rather than on either spelling.
@@ -159,7 +159,7 @@ for index in range(FACES):
         if(fresh&&window.__shown===null){window.__shown=performance.now();requestAnimationFrame(()=>requestAnimationFrame(()=>{window.__painted=performance.now();}));}
         if(srcs()!==window.__pre&&!document.querySelector('.next-status progress')&&window.__shown!==null){window.__done=performance.now();clearInterval(tick);}},2);window.__painted=null;
       [...document.querySelectorAll('button')].find(b=>b.textContent.trim().toLowerCase()===want).click();})()"""
-       % (index, int(time.time()), S['generate']))
+       % ('gpu-bench-parity' if index == FACES - 1 else 'gpu-bench-%d-%d' % (index, int(time.time())), S['generate']))
     wait(lambda: q("document.querySelectorAll('img[src^=\"blob:\"]').length") > 0
          and q("document.querySelector('%s')===null" % S['busy']), 900, 'face %d' % index)
     elapsed = (time.time() - started) * 1000
@@ -177,6 +177,12 @@ for index in range(FACES):
     else:
         faces.append(elapsed)
 
+# Parity: the last face is a fixed name, so every arm generates the same face. Hash its decoded pixels (not the PNG
+# bytes: the container may legitimately differ between builds) so a change is checked against production on the GPU.
+pixel_sha = q("""(async()=>{const img=[...document.querySelectorAll('img[src^="blob:"]')].pop();const b=await (await fetch(img.src)).blob();
+  const bmp=await createImageBitmap(b,{colorSpaceConversion:'none',premultiplyAlpha:'none'});const c=new OffscreenCanvas(bmp.width,bmp.height);
+  const g=c.getContext('2d',{colorSpace:'srgb'});g.drawImage(bmp,0,0);const px=g.getImageData(0,0,bmp.width,bmp.height).data;
+  const h=await crypto.subtle.digest('SHA-256',px);return {w:bmp.width,h:bmp.height,pngBytes:b.size,sha:Array.from(new Uint8Array(h)).map(x=>x.toString(16).padStart(2,'0')).join('')};})()""")
 caption = q("document.querySelector('%s')?.innerText||''" % S['routeCaption'])
 assert 'webgpu' in caption, 'The product did not run on webgpu: %r' % caption
 assert 'much slower' not in q("document.body.innerText"), 'The CPU-fallback notice appeared'
@@ -194,6 +200,7 @@ report = {
     'warmMsPerFace': warm,
     'wallClockFirstFaceMs': round(cold),
     'wallClockSubsequentMedianMs': round(statistics.median(faces)) if faces else None,
+    'parityFace': pixel_sha,
     'inPageClickToFaceMs': inpage_ms,
     'imageDecodedMs': shown_ms,
     'imagePaintedMs': painted_ms,
@@ -215,4 +222,4 @@ report = {
 with open(os.path.join(EVIDENCE, 'gpu-benchmark.json'), 'w') as handle:
     json.dump(report, handle, indent=2)
 print(json.dumps({k: report[k] for k in
-                  ('route', 'warmMsPerFace', 'wallClockFirstFaceMs', 'wallClockSubsequentMedianMs', 'inPageClickToFaceMs', 'imageDecodedMs', 'imagePaintedMs', 'inPageClickToFaceMedianMs')}))
+                  ('route', 'warmMsPerFace', 'wallClockFirstFaceMs', 'wallClockSubsequentMedianMs', 'parityFace', 'inPageClickToFaceMs', 'imageDecodedMs', 'imagePaintedMs', 'inPageClickToFaceMedianMs')}))
