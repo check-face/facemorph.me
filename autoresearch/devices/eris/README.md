@@ -13,6 +13,8 @@ Reach it with `ssh eris` (LAN) or `ssh eris-remote` (Cloudflare Access). The che
 - Heavy runs go through the lease: `python3 autoresearch/run.py --lane browser-gpu --device eris -- <cmd>`.
   The lease is cooperative; look at `uptime` and `nvidia-smi` first. `run.py` journals execution only, it does not qualify.
 - `browser-harness` lives in `~/Work/runs/venv-bh`. `gpu-bench.sh` stops its own daemons on exit.
+- `gpu-bench.sh` and `artifact-bench.sh` exit 75 when more than 2500 MiB of VRAM is already in use
+  (`GPU_BUSY_MIB`). WebGPU allocation failures under contention surface as `Invalid Buffer ... previous error`.
 - A real GPU is only claimed when the adapter is not llvmpipe/SwiftShader; `scripts/next-gpu-benchmark.py` checks this.
 
 ## Measure
@@ -44,10 +46,10 @@ Open `tmux` on eris in `~/Work/dev/facemorph.me`, then give the agent:
 
 ## Known limits
 
-- `artifact-bench.sh` serves a CI artifact with `scripts/next-e2e-server.py`. The exact artifact the live site was
-  promoted from fails the WebGPU route that way on eris (`Invalid Buffer`/`Invalid CommandBuffer`), while the same
-  bytes from next.facemorph.me work. Use it for CPU-side questions only; for GPU A/B use a Cloudflare preview
-  version (`wrangler versions upload`, not `deploy`: one Worker serves next.facemorph.me).
+- `artifact-bench.sh` serves a CI artifact with `scripts/next-e2e-server.py`. Its WebGPU route has not yet been shown
+  to work on eris: the runs that failed were made while another process held 5.6 GB of VRAM, so that failure is
+  unexplained rather than attributed. For GPU A/B a Cloudflare preview version is the proven path
+  (`wrangler versions upload --preview-alias`, never `deploy`: one Worker serves next.facemorph.me).
 - `acquire-bench.mjs` runs the product's `model-cache.mjs` in Node against the live origin: network, both hashes and
   verification are real, browser Cache Storage is not.
 - eris is a shared desktop. `uptime` before every run; load above ~4 makes timings inconclusive.

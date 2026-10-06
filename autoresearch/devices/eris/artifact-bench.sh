@@ -17,6 +17,7 @@ repo="$HOME/Work/dev/facemorph.me"
 runtime_sha="d9e37e50a436e9fb7c0c7f973e70adee353c808f48c6a51fa5a9186f1c650a5c"
 root="$HOME/Work/runs/artifacts/$run_id"
 run="$HOME/Work/runs/$label"; port=$((9500 + RANDOM % 400))
+"$(dirname "$0")/require-quiet-gpu.sh"
 mkdir -p "$root" "$run" "$HOME/Work/runs/runtime-mirror"
 if [ ! -d "$root/deploy-next" ]; then
   gh run download "$run_id" -R check-face/facemorph.me -n "$artifact" -D "$root"

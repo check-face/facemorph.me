@@ -7,6 +7,7 @@ set -euo pipefail
 label="$1"; url="${2:-https://next.facemorph.me/}"; faces="${3:-6}"
 root="$(cd "$(dirname "$0")/../../.." && pwd)"
 run="$HOME/Work/runs/$label"; port=$((9500 + RANDOM % 400))
+"$(dirname "$0")/require-quiet-gpu.sh"
 mkdir -p "$run"
 "$root/autoresearch/devices/eris/launch-chromium.sh" "$run" "$port" > "$run/chrome.log" 2>&1 &
 chrome=$!
