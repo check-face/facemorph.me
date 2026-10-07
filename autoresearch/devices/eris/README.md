@@ -4,7 +4,7 @@ Linux x86-64 (Omarchy), RTX 2080 SUPER 8 GB (Turing, driver 610), 12 threads, 31
 .NET SDK (it cannot build the F# site; use the CI artifact). It is also the operator's desktop and runs audio and
 chat apps, so check for load before measuring and mark contended runs inconclusive.
 
-Reach it with `ssh eris` (LAN) or `ssh eris-remote` (Cloudflare Access). The checkout is `~/Work/dev/facemorph.me`.
+Reach it with `ssh eris` (LAN) or `ssh eris-remote` (Cloudflare Access). The workspace is `~/Work/dev/checkface` (mirrors the Mac layout; the repo is `facemorph.me/` inside it, legacy backend in `checkface/`).
 
 ## Git rules for autoresearch (operator, 8 October 2026)
 
@@ -27,7 +27,7 @@ Reach it with `ssh eris` (LAN) or `ssh eris-remote` (Cloudflare Access). The che
 ## Measure
 
 ```sh
-cd ~/Work/dev/facemorph.me
+cd ~/Work/dev/checkface/facemorph.me
 # whole product through the UI (default URL is the deployed candidate)
 python3 autoresearch/run.py --lane browser-gpu --device eris --timeout 1500 -- \
   autoresearch/devices/eris/gpu-bench.sh <label> [url] [faces]
@@ -45,7 +45,7 @@ Component benchmarks: `png-variants.py` (real Chromium worker, ABBA, bit-exact g
 
 ## Starting an agent session
 
-Open `tmux` on eris in `~/Work/dev/facemorph.me`, then give the agent:
+Open `tmux` on eris in `~/Work/dev/checkface/facemorph.me`, then give the agent:
 
 > Read autoresearch/program.md and autoresearch/devices/eris/README.md, inspect autoresearch/state and the tail
 > of results.tsv, and continue the next bounded experiment on eris. One hypothesis per iteration, control first,
