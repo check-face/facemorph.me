@@ -13,7 +13,7 @@ Reach it with `ssh eris` (LAN) or `ssh eris-remote` (Cloudflare Access). The che
 - Heavy runs go through the lease: `python3 autoresearch/run.py --lane browser-gpu --device eris -- <cmd>`.
   The lease is cooperative; look at `uptime` and `nvidia-smi` first. `run.py` journals execution only, it does not qualify.
 - `browser-harness` lives in `~/Work/runs/venv-bh`. `gpu-bench.sh` stops its own daemons on exit.
-- `gpu-bench.sh` and `artifact-bench.sh` exit 75 when more than 2500 MiB of VRAM is already in use
+- `gpu-bench.sh` and `artifact-bench.sh` exit 75 when more than 4000 MiB of VRAM is already in use
   (`GPU_BUSY_MIB`). WebGPU allocation failures under contention surface as `Invalid Buffer ... previous error`.
 - A real GPU is only claimed when the adapter is not llvmpipe/SwiftShader; `scripts/next-gpu-benchmark.py` checks this.
 
@@ -53,3 +53,19 @@ Open `tmux` on eris in `~/Work/dev/facemorph.me`, then give the agent:
 - `acquire-bench.mjs` runs the product's `model-cache.mjs` in Node against the live origin: network, both hashes and
   verification are real, browser Cache Storage is not.
 - eris is a shared desktop. `uptime` before every run; load above ~4 makes timings inconclusive.
+
+## Pre-deploy gate recipe (used for fe0da5a, 7 October 2026)
+
+One Cloudflare Worker serves next.facemorph.me, so `wrangler deploy` is live. To test a build before it is live:
+
+1. `promote.py` without `--publish` stages the qualified bytes; `wrangler versions upload --assets <work>/public --preview-alias <name>` makes a non-live version.
+2. `wrangler versions deploy <new>@0 <current>@100 --yes` puts it in the deployment at 0% traffic. Production is unchanged.
+3. Requests carrying `Cloudflare-Workers-Version-Overrides: facemorph-next="<version-id>"` get the candidate on the real hostname
+   (allow a few seconds to propagate). Check the app bundle name, not the status code.
+4. Know what the override cannot do: Playwright Firefox does not send an injected header on a Worker's `importScripts`, so a build whose worker
+   loads a second chunk fails with a worker `NetworkError` that is not a product defect. The candidate's own `*.workers.dev` alias origin has no such
+   problem for the generation stages (the photo stage needs the real hostname: runtime worker URLs are absolute).
+5. Always run a control with identical mechanics (current version via the same header) and read candidate against it. Bisect a red row with real-engine
+   repros (`engine-cache-repro.mjs`, `engine-png-repro.mjs`) before touching product code.
+6. Promote the exact tested version atomically: `wrangler versions deploy <id>@100 --yes`. Not a gradual split: hashed chunk names differ between versions.
+   Rollback is the same command with the previous version.
