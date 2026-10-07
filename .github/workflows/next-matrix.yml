@@ -1,4 +1,4 @@
-name: EXPERIMENT matrix on the candidate own preview origin (no header trick)
+name: POST-DEPLOY matrix on next.facemorph.me (fe0da5a live)
 # Runs the product workflow on each engine and reports a row per engine. A row is evidence for
 # that engine on that operating system only. WebKit on Linux is not Safari on macOS or iOS, and
 # Chromium here is not Chrome on a phone; physical-device rows are attached separately and a
@@ -48,7 +48,7 @@ jobs:
       - run: npx --prefix scripts/matrix-tools playwright install --with-deps ${{ matrix.engine }}
       - name: Drive ${{ matrix.engine }} against the deployed candidate
         env:
-          NEXT_MATRIX_ORIGIN: ${{ inputs.origin || 'https://perf-fe0da5a-facemorph-next.cdilga.workers.dev' }}
+          NEXT_MATRIX_ORIGIN: ${{ inputs.origin || 'https://next.facemorph.me' }}
           NEXT_MATRIX_RUNTIME_SHA: ${{ inputs.runtime_sha || 'd9e37e50a436e9fb7c0c7f973e70adee353c808f48c6a51fa5a9186f1c650a5c' }}
           NEXT_MATRIX_EXPECT_BUNDLE: app.4c99dcbab2ee92803b8a.js
           NEXT_MATRIX_OUT: next-matrix-${{ matrix.os }}-${{ matrix.engine }}.json
