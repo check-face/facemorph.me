@@ -32,7 +32,13 @@ self.onmessage = async ({data: {label, readAhead, asset}}) => {
     const events = [];
     const cache = await createBrowserModelCache({report: e => events.push(e.status), ...(readAhead ? {readAhead} : {})});
     const t = performance.now();
-    try { const handle = await cache.acquire(asset); const bytes = (await (await handle.open()).arrayBuffer()).byteLength; postMessage({label, ok: bytes === asset.size, ms: Math.round(performance.now() - t), bytes}); }
+    try {
+      const all = []; (function walk(o) { if (Array.isArray(o)) return o.forEach(walk); if (o && typeof o === 'object') { if (o.sha256 && o.size !== undefined && o.url) all.push(o); else Object.values(o).forEach(walk); } })(asset);
+      const unique = [...new Map(all.map(a => [a.sha256, a])).values()];
+      const handles = await Promise.all(unique.map(a => cache.acquire(a)));
+      let bytes = 0; for (const h of handles) bytes += (await (await h.open()).arrayBuffer()).byteLength;
+      postMessage({label, ok: bytes === unique.reduce((n, a) => n + a.size, 0), ms: Math.round(performance.now() - t), assets: unique.length, bytes});
+    }
     catch (error) { postMessage({label, ok: false, ms: Math.round(performance.now() - t), name: error.name, message: String(error.message).slice(0, 200), stack: String(error.stack).slice(0, 500), events: events.slice(-6)}); }
   } catch (error) { postMessage({label, ok: false, setup: true, name: error.name, message: String(error.message).slice(0, 300)}); }
 };`;
@@ -43,7 +49,7 @@ for (const spec of specs) {
     const worker = new Worker(URL.createObjectURL(new Blob([source], {type: 'text/javascript'})));
     worker.onmessage = e => { resolve(e.data); worker.terminate(); };
     worker.onerror = e => { resolve({label, ok: false, workerError: String(e.message || e)}); };
-    worker.postMessage({label, readAhead, asset: manifest.webgpu.prefix});
+    worker.postMessage({label, readAhead, asset: [manifest.webgpu, manifest.mapping, manifest.average, manifest.noise]});
   }), {label: spec.label, readAhead: spec.readAhead, source: workerSource}));
 }
 console.log('REPRO ' + JSON.stringify({engine, results}));
