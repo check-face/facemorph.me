@@ -73,6 +73,12 @@ const context=await engines[engineName].launchPersistentContext(profile,{acceptD
 // Firefox fail on concurrent large downloads and that is a property of the harness, not of the product.
 if(process.env.NEXT_MATRIX_VERSION_OVERRIDE)await context.setExtraHTTPHeaders({'Cloudflare-Workers-Version-Overrides':process.env.NEXT_MATRIX_VERSION_OVERRIDE});
 const workerUrls=[];context.on('page',p=>p.on('worker',w=>workerUrls.push(w.url())));
+await context.addInitScript(()=>{const W=window.Worker,t0=performance.now();window.__wlog=[];
+ window.Worker=function(...a){const w=new W(...a);const post=w.postMessage.bind(w);
+  w.postMessage=(m,...r)=>{window.__wlog.push([Math.round(performance.now()-t0),'>',m&&m.type,m&&m.id]);return post(m,...r);};
+  w.addEventListener('message',e=>{const d=e.data||{};if(d.stage==='asset-acquisition')return;window.__wlog.push([Math.round(performance.now()-t0),'<',d.type,d.stage||'',d.id,String(d.message||d.error||'').slice(0,200)]);});
+  w.addEventListener('error',e=>window.__wlog.push([Math.round(performance.now()-t0),'ERR',String(e.message).slice(0,200),String(e.filename).split('/').pop(),e.lineno,e.colno]));
+  return w;};window.Worker.prototype=W.prototype;});
 const page=context.pages()[0]||await context.newPage();page.on('worker',w=>workerUrls.push(w.url()));
 page.on('console',message=>{if(message.type()==='error')report.consoleErrors=[...(report.consoleErrors||[]),message.text().slice(0,300)].slice(-20);});
 
@@ -225,6 +231,7 @@ try{
  // stage is incomplete, not passed, however good the stages around it look.
  report.passed=required.every(name=>report.stages[name]?.passed);
 }catch(error){
+ try{console.log('WORKERLOG '+JSON.stringify(await page.evaluate(()=>(window.__wlog||[]).slice(-60))));}catch{}
  report.error=String(error?.message||error).slice(0,600);
 }finally{
  report.finishedAt=new Date().toISOString();
