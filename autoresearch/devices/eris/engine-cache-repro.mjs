@@ -8,11 +8,12 @@ import {resolve} from 'node:path';
 const require = createRequire(resolve(process.env.PW_ROOT || '.', 'package.json'));
 const playwright = require('playwright');
 const [engine, shaPath, ...variants] = process.argv.slice(2);
-const specs = variants.map(v => { const [label, rest] = v.split('='); const [path, ra, flag] = rest.split(':'); return {label, path, readAhead: ra && ra !== '-' ? Number(ra) : undefined, nosubtle: flag === 'nosubtle'}; });
+const specs = variants.map(v => { const [label, rest] = v.split('='); const [path, ra, flag] = rest.split(':'); return {label, path, readAhead: ra && ra !== '-' ? Number(ra) : undefined, nosubtle: flag === 'nosubtle', copy: flag === 'copy'}; });
 const files = {'sha256.mjs': await readFile(shaPath, 'utf8')};
 for (const spec of specs) {
   let text = await readFile(spec.path, 'utf8');
   if (spec.nosubtle) text = text.replaceAll('globalThis.crypto?.subtle', 'false');
+  if (spec.copy) text = text.replace('chunk.subarray(at, Math.min(at + PIECE_BYTES, chunk.byteLength))', 'chunk.slice(at, Math.min(at + PIECE_BYTES, chunk.byteLength))');
   files[`${spec.label}.mjs`] = text;
 }
 const browser = await playwright[engine].launch();
@@ -26,15 +27,12 @@ await page.goto('https://next.facemorph.me/runtime/manifest.json');
 const workerSource = `
 self.onmessage = async ({data: {label, readAhead, asset}}) => {
   try {
-    const {createModelCache} = await import('https://next.facemorph.me/__t/' + label + '.mjs');
-    const entries = new Map(), events = [], pieces = [];
-    const store = {get: async h => entries.has(h) ? new Response(entries.get(h)) : undefined,
-      put: async (h, r) => { const reader = r.body.getReader(), got = []; for (;;) { const {value, done} = await reader.read(); if (done) break; pieces.push(value.byteLength); got.push(value); }
-        let n = 0; for (const g of got) n += g.byteLength; const out = new Uint8Array(n); let at = 0; for (const g of got) { out.set(g, at); at += g.byteLength; } entries.set(h, out); },
-      remove: async h => entries.delete(h)};
-    const cache = createModelCache({store, report: e => events.push(e.status), ...(readAhead ? {readAhead} : {})});
+    const {createBrowserModelCache} = await import('https://next.facemorph.me/__t/' + label + '.mjs');
+    for (const key of await caches.keys()) await caches.delete(key);
+    const events = [];
+    const cache = await createBrowserModelCache({report: e => events.push(e.status), ...(readAhead ? {readAhead} : {})});
     const t = performance.now();
-    try { const handle = await cache.acquire(asset); await handle.open(); postMessage({label, ok: true, ms: Math.round(performance.now() - t), maxPiece: Math.max(...pieces), pieces: pieces.length}); }
+    try { const handle = await cache.acquire(asset); const bytes = (await (await handle.open()).arrayBuffer()).byteLength; postMessage({label, ok: bytes === asset.size, ms: Math.round(performance.now() - t), bytes}); }
     catch (error) { postMessage({label, ok: false, ms: Math.round(performance.now() - t), name: error.name, message: String(error.message).slice(0, 200), stack: String(error.stack).slice(0, 500), events: events.slice(-6)}); }
   } catch (error) { postMessage({label, ok: false, setup: true, name: error.name, message: String(error.message).slice(0, 300)}); }
 };`;

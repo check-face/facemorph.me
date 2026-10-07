@@ -121,7 +121,7 @@ jobs:
         run: |
           d=autoresearch/devices/eris
           PW_ROOT=scripts/matrix-tools node $d/engine-cache-repro.mjs ${{ matrix.engine }} $d/repro-variants/sha256.mjs \
-            old=$d/repro-variants/old.mjs new_ra2=$d/repro-variants/new.mjs:2 new_ra1=$d/repro-variants/new.mjs:1 new_nosubtle=$d/repro-variants/new.mjs:2:nosubtle
+            old=$d/repro-variants/old.mjs new_ra2=$d/repro-variants/new.mjs:2 new_ra1=$d/repro-variants/new.mjs:1 new_nosubtle=$d/repro-variants/new.mjs:2:nosubtle new_copy=$d/repro-variants/new.mjs:2:copy
   summary:
     needs: [engines, control]
     if: ${{ false }}
