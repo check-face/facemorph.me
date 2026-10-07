@@ -6,6 +6,15 @@ chat apps, so check for load before measuring and mark contended runs inconclusi
 
 Reach it with `ssh eris` (LAN) or `ssh eris-remote` (Cloudflare Access). The checkout is `~/Work/dev/facemorph.me`.
 
+## Git rules for autoresearch (operator, 8 October 2026)
+
+- Commit research straight to the long-lived branch `candidate/next-delivery-20260916` and push it. Do **not** create
+  `research/*` or any other branch, and do **not** open pull requests for experiments (iterations 1-2 did; that stops).
+  `git pull --rebase origin candidate/next-delivery-20260916` before each push; commit only `autoresearch/` paths you own.
+- GitHub Actions is permitted for experiments, especially to get iOS (macOS runner) build minutes. Use an explicitly
+  named experimental workflow with a bounded trigger and time budget, per program.md; `workflow_dispatch` only resolves
+  workflows present on `master`, so prefer `push` triggers scoped to `autoresearch/**` on this branch. No required-check changes.
+
 ## Rules for this device
 
 - Never drive the operator's Mac or desktop browser. Everything runs in a headless Chromium with its own
