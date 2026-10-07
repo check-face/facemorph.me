@@ -1,4 +1,4 @@
-name: EXPERIMENT Firefox bisection - baseline f517589 (f901d98a) via override
+name: EXPERIMENT PNG variants in real engines
 # Runs the product workflow on each engine and reports a row per engine. A row is evidence for
 # that engine on that operating system only. WebKit on Linux is not Safari on macOS or iOS, and
 # Chromium here is not Chrome on a phone; physical-device rows are attached separately and a
@@ -22,6 +22,7 @@ permissions:
   contents: read
 jobs:
   engines:
+    if: ${{ false }}
     strategy:
       fail-fast: false
       matrix:
@@ -97,7 +98,6 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
   repro:
-    if: ${{ false }}
     strategy:
       fail-fast: false
       matrix:
@@ -111,11 +111,10 @@ jobs:
           node-version: '22'
       - run: npm ci --prefix scripts/matrix-tools
       - run: npx --prefix scripts/matrix-tools playwright install --with-deps ${{ matrix.engine }}
-      - name: Model cache variants in a Worker
+      - name: PNG variants in a Worker
         run: |
           d=autoresearch/devices/eris
-          PW_ROOT=scripts/matrix-tools node $d/engine-cache-repro.mjs ${{ matrix.engine }} $d/repro-variants/sha256.mjs \
-            old=$d/repro-variants/old.mjs new_ra2=$d/repro-variants/new.mjs:2 new_ra1=$d/repro-variants/new.mjs:1 new_nosubtle=$d/repro-variants/new.mjs:2:nosubtle new_copy=$d/repro-variants/new.mjs:2:copy
+          PW_ROOT=scripts/matrix-tools node $d/engine-png-repro.mjs ${{ matrix.engine }} png_old=$d/repro-variants/png-old.mjs png_new=$d/repro-variants/png-new.mjs
   summary:
     needs: [engines, control]
     if: ${{ false }}
