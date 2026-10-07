@@ -1,4 +1,4 @@
-name: EXPERIMENT new site browser matrix on version d985389c (fe0da5a) via override (temporary, not for merge)
+name: EXPERIMENT Firefox bisection - baseline f517589 (f901d98a) via override
 # Runs the product workflow on each engine and reports a row per engine. A row is evidence for
 # that engine on that operating system only. WebKit on Linux is not Safari on macOS or iOS, and
 # Chromium here is not Chrome on a phone; physical-device rows are attached separately and a
@@ -22,19 +22,12 @@ permissions:
   contents: read
 jobs:
   engines:
-    if: ${{ false }}
     strategy:
       fail-fast: false
       matrix:
         include:
           - os: ubuntu-24.04
-            engine: chromium
-          - os: ubuntu-24.04
             engine: firefox
-          - os: ubuntu-24.04
-            engine: webkit
-          - os: macos-14
-            engine: webkit
           - os: macos-14
             engine: firefox
     runs-on: ${{ matrix.os }}
@@ -51,8 +44,8 @@ jobs:
         env:
           NEXT_MATRIX_ORIGIN: ${{ inputs.origin || 'https://next.facemorph.me' }}
           NEXT_MATRIX_RUNTIME_SHA: ${{ inputs.runtime_sha || 'd9e37e50a436e9fb7c0c7f973e70adee353c808f48c6a51fa5a9186f1c650a5c' }}
-          NEXT_MATRIX_VERSION_OVERRIDE: 'facemorph-next="d985389c-ad8f-42c0-8137-30f933d16ff7"'
-          NEXT_MATRIX_EXPECT_BUNDLE: app.4c99dcbab2ee92803b8a.js
+          NEXT_MATRIX_VERSION_OVERRIDE: 'facemorph-next="f901d98a-80ce-4cfd-abba-9744dfefc8d1"'
+          NEXT_MATRIX_EXPECT_BUNDLE: app.b2910260e2a04259c0ca.js
           NEXT_MATRIX_OUT: next-matrix-${{ matrix.os }}-${{ matrix.engine }}.json
         run: node scripts/next-matrix.mjs ${{ matrix.engine }}
       - uses: actions/upload-artifact@v4
@@ -104,6 +97,7 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
   repro:
+    if: ${{ false }}
     strategy:
       fail-fast: false
       matrix:
