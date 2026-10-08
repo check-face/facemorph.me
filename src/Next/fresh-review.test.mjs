@@ -16,6 +16,22 @@ test('Committed faces survive video failure and export the current morph setting
  await ctx.saveProject({...request,kind:'full-smooth-ellipse',width:.7});assert.equal(savedProject.morph.kind,'full-smooth-ellipse');assert.equal(savedProject.morph.width,.7);
  await assert.rejects(ctx.saveProject({...request,inputs:[{...request.inputs[0],value:'new face'},request.inputs[1]]}),/Generate the changed faces/);
 });
+test('Morph frames go to the runtime in bounded windows and reach the writer in order',async()=>{
+ const source=plain(await read('stage-labels.mjs'))+'\n'+plain(await read('morph-frames.mjs'))+'\n'+plain(await read('product-bridge.mjs'));let counter=0;
+ const face=label=>({blob:new Blob([label],{type:'image/png'}),latent:{space:'w-plus',shape:[18,512],values:new Float32Array(9216)},provenance:{bundleVersion:'test',manifestSha256:'0'.repeat(64),modelSha256:'m',noiseSha256:'n'}});
+ const batches=[],added=[];let single=0;
+ const service={setPreferredRoute(){},generate:async request=>face('saved-'+request.value),synthesize:async()=>{single++;return face('single');},
+  synthesizeFrames:async(latents,{onFrame})=>{batches.push(latents.length);for(let i=0;i<latents.length;i++){await Promise.resolve();onFrame(i,{blob:new Blob(['frame-'+latents[i].values[0]],{type:'image/png'})});}return {frames:latents.length};}};
+ const total=40,path={totalFrames:total,*frames(){for(let index=0;index<total;index++)yield {index,visitId:index===0?'a':index===total-1?'b':null,values:new Float32Array(9216).fill(index)};}};
+ const writer={initialize:async()=>({kind:'webcodecs'}),add:async(blob,index)=>{added.push([index,await blob.text()]);},finish:async()=>new Blob(['mp4'],{type:'video/mp4'}),dispose(){}};
+ const ctx=vm.createContext({analytics:new Proxy({},{get:()=>()=>{}}),onJobEnd(){},Blob,Float32Array,AbortController,DOMException,TextDecoder,crypto:webcrypto,JSON,Map,URL:{createObjectURL:()=> 'blob:'+ ++counter,revokeObjectURL(){}},fetch:async()=>({ok:true,arrayBuffer:async()=>new TextEncoder().encode(JSON.stringify({codec:{}})).buffer}),createBrowserRuntime:()=>service,createDesktopRuntime:()=>service,decode:s=>({tag:0,fields:[JSON.parse(s)]}),encode:x=>({tag:0,fields:[JSON.stringify(x)]}),saveFile:async()=>'Saved',GEOMETRY_VERSION:'test',createLatentPath:()=>path,videoWriter:()=>writer,diagnostics:{start(){},stage(){},finish(){},bundle(){}},window:{addEventListener(){}}});vm.runInContext(source+'\nglobalThis.run=execute;',ctx);
+ const request={jobId:1,action:'faces',provider:'auto',inputs:[{id:'a',mode:'seed',value:'1'},{id:'b',mode:'seed',value:'2'}],kind:'linear',width:0,pinch:false,frames:16,fps:16};
+ await ctx.run(request);const result=await ctx.run({...request,jobId:2,action:'morph'});
+ assert.ok(!result.errorMessage,result.errorMessage);assert.equal(single,0,'no frame takes the one-at-a-time path');
+ assert.deepEqual(added.map(([index])=>index),Array.from({length:total},(_,i)=>i),'every frame, in order');
+ assert.equal(added[0][1],'saved-1');assert.equal(added[total-1][1],'saved-2');assert.equal(added[7][1],'frame-7');
+ assert.ok(batches.every(n=>n<=16),'windows are bounded');assert.equal(batches.reduce((a,b)=>a+b,0),total-2,'saved faces are not synthesized again');
+});
 import {videoWriter} from './media.mjs';
 test('Video worker startup/message failures and preabort terminate promptly',async()=>{
  const original=globalThis.Worker;let worker;globalThis.Worker=class{constructor(){worker=this;}postMessage(){throw Error('post sentinel');}terminate(){this.terminated=true;}};

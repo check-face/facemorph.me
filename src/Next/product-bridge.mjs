@@ -71,6 +71,9 @@ function progress(event){
 // The only stages allowed to speak while a morph renders: the frame counter, and the export that
 // follows it. `scripts/check-progress-copy.mjs` fails the build if anything else can reach the
 // line, and `stage-labels.test.mjs` fails if these lose their text.
+// Morph frames per runtime request: enough that the pause between requests is a few percent of
+// the run, few enough that the PNGs a stalled writer could accumulate stay bounded.
+const FRAME_WINDOW=16;
 const MORPH_SPOKEN_STAGES=new Set(['morph','export']);
 const UNIT_TERMINAL_STAGES=new Set(['synthesis-complete','model-loaded','mapping-complete',
  'encoding-complete','alignment-complete','encoder-loaded','original-cached','original-cache-hit']);
@@ -252,16 +255,35 @@ export async function execute(request){
     for(const frame of path.frames()){checked();await writer.add(stored[frame.index],frame.index);jobCounts.framesDone=frame.index+1;}
    }else{
     const first=counter.start();progress({stage:'morph',text:first.text,loaded:first.done,total:path.totalFrames});
-    for(const frame of path.frames()){
-    checked();
-    const saved=frame.visitId?faces.get(frame.visitId):null;
+    const add=async(blob,index)=>{
+     await writer.add(blob,index);
+     const finished=counter.complete(index);jobCounts.framesDone=finished.done;
+     progress({stage:'morph',text:finished.text,loaded:finished.done,total:path.totalFrames});
+    };
     // The frame's own cost is reported by the runtime as synthesis-complete and recorded in
     // progress(); timing the call here would fold acquisition and storage into a per-frame figure.
-    const output=saved||await runtime.synthesize({space:'w-plus',shape:[1,18,512],values:Float32Array.from(frame.values)},{signal:active.signal,persist:false});
-    await writer.add(output.blob,frame.index);
-    const finished=counter.complete(frame.index);jobCounts.framesDone=finished.done;
-    progress({stage:'morph',text:finished.text,loaded:finished.done,total:path.totalFrames});
-   }}
+    if(typeof runtime.synthesizeFrames==='function'){
+     // Windows of frames go to the runtime as one request, so the worker can keep the GPU busy
+     // while it encodes the previous frame; each frame still reaches the writer in order, the
+     // saved endpoint faces in their places. A window bounds the latents in flight and the PNGs
+     // that could queue here if the writer fell behind.
+     const iterator=path.frames()[Symbol.iterator]();
+     for(let window=[];;window=[]){
+      for(let item;window.length<FRAME_WINDOW&&!(item=iterator.next()).done;)window.push(item.value);
+      if(!window.length)break;
+      checked();
+      const todo=window.filter(frame=>!(frame.visitId&&faces.get(frame.visitId))),ready=new Map();let cursor=0,chain=Promise.resolve();
+      const drain=async()=>{for(;cursor<window.length;cursor++){checked();const frame=window[cursor],output=(frame.visitId&&faces.get(frame.visitId))||ready.get(frame.index);if(!output)return;ready.delete(frame.index);await add(output.blob,frame.index);}};
+      if(todo.length)await runtime.synthesizeFrames(todo.map(frame=>({space:'w-plus',shape:[1,18,512],values:Float32Array.from(frame.values)})),{signal:active.signal,onFrame:(at,output)=>{ready.set(todo[at].index,output);chain=chain.then(drain);chain.catch(()=>{});}});
+      await (chain=chain.then(drain));
+      if(cursor<window.length)throw Error('Some morph frames were not produced. Your faces are saved.');
+     }
+    }else for(const frame of path.frames()){
+     checked();
+     const saved=frame.visitId?faces.get(frame.visitId):null;
+     const output=saved||await runtime.synthesize({space:'w-plus',shape:[1,18,512],values:Float32Array.from(frame.values)},{signal:active.signal,persist:false});
+     await add(output.blob,frame.index);
+    }}
    progress({stage:'export',text:'Finishing your video…'});video=await writer.finish();writer=null;replaceUrl('video',video);
   }
   diagnostics.finish('completed');return snapshot();

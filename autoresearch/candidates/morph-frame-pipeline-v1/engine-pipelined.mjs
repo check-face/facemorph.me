@@ -50,20 +50,13 @@ export async function createWebGpuSession({config,noiseManifest,bytes,progress=(
   const suffixFeeds=Object.fromEntries(split.suffixInputs.map(name=>[name,name===split.external?external.tensor:(outputs[name]||all[name]).tensor]));
   const kernelUrl=await moduleUrl(config.kernel);const {createBoundaryPipeline}=await importModule(kernelUrl);
   const fused=(await createBoundaryPipeline(device,meta,true,256,'bounded')).bind({phase:outputs[meta.phase+'__tile0'].buffer,phaseB:outputs[meta.phase+'__tile1'].buffer,demod:outputs[meta.demod]?.buffer,noise:all.noise_15.buffer,filter:filterBuffer.buffer,bias:biasBuffer.buffer,output:external.buffer});
-  // `submit` queues one face's whole GPU schedule, plus the copy into its own readback buffer, and
-  // starts the map before it returns; `raw` settles when that face is on the CPU. A morph queues
-  // frame N+1 before it converts and encodes frame N, so the GPU is not idle through that ~55 ms
-  // tail: measured on eris (RTX 2080 SUPER) 125 -> 67 ms a frame, every frame's floats
-  // bit-identical (autoresearch/candidates/morph-frame-pipeline-v1). Queue order is what keeps
-  // it exact: the copy out of `out` is submitted before the next face writes `out`. Two readback
-  // buffers cover a pipeline two deep; buffers beyond that are destroyed, not pooled.
+  // Split infer: `submit` queues one frame's whole GPU schedule plus the copy into its own readback
+  // buffer and starts the map before returning, so the caller can queue the next frame while this
+  // one is still on the GPU. Queue order keeps the copy ahead of the next frame's writes to `out`.
   const spare=[];
   async function submit(values,noise){if(failure)throw failure;if(closing)throw Error('GPU session closed.');device.queue.writeBuffer(all.w.buffer,0,values);for(const n of noiseManifest)device.queue.writeBuffer(all[n.name].buffer,0,noise[n.name]);await prefix.run(feeds,preout);const command=device.createCommandEncoder();fused.encode(command);device.queue.submit([command.finish()]);await suffix.run(suffixFeeds,{image:out.tensor});if(failure)throw failure;
-   let readback=spare.pop();if(!readback){readback=device.createBuffer({size:out.buffer.size,usage:GPUBufferUsage.MAP_READ|GPUBufferUsage.COPY_DST});buffers.add(readback);}
-   const drop=()=>{buffers.delete(readback);readback.destroy();};
-   const copy=device.createCommandEncoder();copy.copyBufferToBuffer(out.buffer,0,readback,0,out.buffer.size);device.queue.submit([copy.finish()]);const mapped=readback.mapAsync(GPUMapMode.READ);
-   const raw=(async()=>{try{await mapped;}catch(error){drop();throw failure||error;}const result=new Float32Array(readback.getMappedRange().slice(0));readback.unmap();if(failure){drop();throw failure;}if(closing||spare.length>=2)drop();else spare.push(readback);return result;})();
-   return {raw};}
+   const readback=spare.pop()||device.createBuffer({size:out.buffer.size,usage:GPUBufferUsage.MAP_READ|GPUBufferUsage.COPY_DST});const copy=device.createCommandEncoder();copy.copyBufferToBuffer(out.buffer,0,readback,0,out.buffer.size);device.queue.submit([copy.finish()]);const mapped=readback.mapAsync(GPUMapMode.READ);
+   return {raw:(async()=>{try{await mapped;}catch(error){readback.destroy();throw failure||error;}const raw=new Float32Array(readback.getMappedRange().slice(0));readback.unmap();if(failure){readback.destroy();throw failure;}if(spare.length<2)spare.push(readback);else readback.destroy();return raw;})()};}
   return {async infer(values,noise){return (await submit(values,noise)).raw;},submit,dispose,provider:'webgpu',runtime:'1.22.0',model:config.prefix.sha256};
  }catch(error){await dispose();throw error;}
 }

@@ -10,11 +10,11 @@ function fixture(t,{adapterLimit=128*MiB,deviceLimit=128*MiB,bufferLimit=256*MiB
  URL.createObjectURL=blob=>{const url=`blob:fixture-${urls.size}`;urls.set(url,blob);return url;};
  URL.revokeObjectURL=url=>revoked.push(url);
  t.after(()=>{URL.createObjectURL=originalCreate;URL.revokeObjectURL=originalRevoke;});
- let lose,validation,destroyed=0;
+ let lose,validation,destroyed=0;const queueLog=[];
  const device={limits:{maxStorageBufferBindingSize:deviceLimit,maxBufferSize:bufferLimit},lost:new Promise(resolve=>{lose=resolve;}),addEventListener(name,fn){if(name==='uncapturederror')validation=fn;},destroy(){destroyed++;},
-  queue:{writeBuffer(){},submit(){},async onSubmittedWorkDone(){}},
-  createCommandEncoder(){return {copyBufferToBuffer(){},finish(){return {};}};},
-  createBuffer({size,usage}){const buffer={size,usage,destroyed:0,destroy(){this.destroyed++;},async mapAsync(){},getMappedRange(){return new ArrayBuffer(size);},unmap(){}};allocations.push(buffer);return buffer;}};
+  queue:{writeBuffer(buffer){queueLog.push(buffer.size===9216*4?'write-w':'write');},submit(list){for(const c of list)queueLog.push(c.copy?'copy':'submit');},async onSubmittedWorkDone(){}},
+  createCommandEncoder(){const command={};return {copyBufferToBuffer(){command.copy=true;},finish(){return command;}};},
+  createBuffer({size,usage}){const buffer={size,usage,destroyed:0,destroy(){this.destroyed++;},async mapAsync(){queueLog.push('map');},getMappedRange(){return new ArrayBuffer(size);},unmap(){}};allocations.push(buffer);return buffer;}};
  const adapter={limits:{maxStorageBufferBindingSize:adapterLimit,maxBufferSize:bufferLimit}};
  globals.navigator={gpu:{async requestAdapter(){return adapter;}}};
  for(const [key,value] of Object.entries(globals)){
@@ -44,7 +44,7 @@ function fixture(t,{adapterLimit=128*MiB,deviceLimit=128*MiB,bufferLimit=256*MiB
   if(contents.includes('pinned runtime')){if(failAt==='import')throw Error('fixture import failure');return ort;}
   return {async createBoundaryPipeline(d,meta,tiled,workgroup,variant){assert.equal(d,device);assert.equal(variant,'bounded');return {bind(){return {encode(){}};}};}};
  }};
- return {args,urls,revoked,allocations,releases,imports,assets,order,lose:()=>lose({reason:'unknown'}),validation:()=>validation({error:{message:'fixture validation'}}),destroyed:()=>destroyed};
+ return {queueLog,args,urls,revoked,allocations,releases,imports,assets,order,lose:()=>lose({reason:'unknown'}),validation:()=>validation({error:{message:'fixture validation'}}),destroyed:()=>destroyed};
 }
 
 test('bounded mobile graph accepts exactly 128 MiB and uses verified JSEP paths',async t=>{
@@ -112,4 +112,20 @@ test('each model load stage is announced after its bytes arrive, not before',asy
  // stays truthful for the rest of start-up instead of being replaced by a byte count.
  const last=f.order.indexOf('stage:gpu-suffix-loading');
  assert.deepEqual(f.order.slice(last).filter(entry=>entry.startsWith('bytes:')),['bytes:kernel']);
+});
+
+// A morph queues frame N+1 before it encodes frame N. That is exact only because frame N's copy
+// out of the shared output buffer is queued, and its map started, before frame N+1 writes a byte.
+test('pipelined frames queue each copy before the next frame writes, and reuse their readbacks',async t=>{
+ const f=fixture(t);const session=await createWebGpuSession(f.args);
+ const before=f.allocations.length;f.queueLog.length=0;
+ const a=await session.submit(new Float32Array(9216),{noise_15:new Float32Array(1024*1024)});
+ const b=await session.submit(new Float32Array(9216),{noise_15:new Float32Array(1024*1024)});
+ const second=f.queueLog.indexOf('write-w',1);
+ assert.ok(f.queueLog.indexOf('copy')<second&&f.queueLog.indexOf('map')<second,f.queueLog.join(' '));
+ assert.equal((await a.raw).length,3*1024*1024);assert.equal((await b.raw).length,3*1024*1024);
+ for(let i=0;i<4;i++)await session.infer(new Float32Array(9216),{noise_15:new Float32Array(1024*1024)});
+ assert.ok(f.allocations.length-before<=2,'at most two readback buffers serve the whole run');
+ await session.dispose();
+ assert.ok(f.allocations.every(buffer=>buffer.destroyed===1),'pooled readbacks are destroyed exactly once');
 });

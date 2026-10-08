@@ -51,6 +51,13 @@ Open `tmux` on eris in `~/Work/dev/checkface/facemorph.me`, then give the agent:
 > of results.tsv, and continue the next bounded experiment on eris. One hypothesis per iteration, control first,
 > ABBA, correctness before timing, ledger row for every result including discards.
 
+## Component and runtime benches outside the built site
+
+`autoresearch/candidates/morph-frame-pipeline-v1/` serves any facemorph.me tree over `http://127.0.0.1` with
+COOP/COEP and runs either the WebGPU engine alone (`run-bench.sh`) or the real `runtime.mjs` + `ort-worker.mjs`
+from source (`run-product.sh`) against the live pinned assets. Unlike `artifact-bench.sh`, this route works on
+eris, so GPU A/B of runtime/worker changes no longer needs a Cloudflare preview. Control = a HEAD worktree.
+
 ## Known limits
 
 - `artifact-bench.sh` serves a CI artifact with `scripts/next-e2e-server.py`. The exact artifact the live site was

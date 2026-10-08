@@ -276,6 +276,28 @@ async function load(id){if(synthesis||webgl||webgpu)return;
 async function run(values,id,noiseMode='original'){await load(id);requireLatent(values);const selected={};for(const [name,data] of Object.entries(noise))selected[name]=noiseMode==='original'?data:noiseMode==='zero'?new Float32Array(data.length):Float32Array.from(data,x=>-x);report(id,'synthesis');const start=performance.now();if(webgl||webgpu){const raw=await (webgl||webgpu).infer(values,selected);report(id,'synthesis-complete',{elapsedMs:performance.now()-start});return raw;}const feeds={w:new ort.Tensor('float32',values,[1,18,512])};for(const item of manifest.noise)feeds[item.name]=new ort.Tensor('float32',selected[item.name],item.shape);let output;try{output=(await synthesis.run(feeds)).image;const raw=new Float32Array(await output.getData());report(id,'synthesis-complete',{elapsedMs:performance.now()-start});return raw;}finally{for(const t of Object.values(feeds))t.dispose();output?.dispose();}}
 
 async function png(raw){return encodeRgbaPng(rgba1024(raw));}
+// Morph frames, one request for a window of them, each posted back as it is ready. On WebGPU the
+// next frame is queued on the GPU before this one is converted and PNG-encoded, so the GPU never
+// waits on that tail; the other routes run the same schedule one frame at a time. Every frame's
+// cost is reported as the interval since the previous one, which is what a morph is paced by.
+const MAX_FRAMES=64;
+async function synthesizeFrames(list,id){
+ if(!Array.isArray(list)||!list.length||list.length>MAX_FRAMES)throw Error('Invalid frame batch');
+ for(const values of list)requireLatent(values);
+ await load(id);
+ // run() reports its own synthesis stages; only the pipelined path needs to report here.
+ if(!webgpu?.submit){for(let i=0;i<list.length;i++)postMessage({id,type:'frame',index:i,blob:await png(await run(list[i],id))});return {frames:list.length};}
+ report(id,'synthesis');let last=performance.now();
+ const deliver=async(index,raw)=>{const blob=await png(raw),now=performance.now();report(id,'synthesis-complete',{elapsedMs:now-last});last=now;postMessage({id,type:'frame',index,blob});};
+ let pending=await webgpu.submit(list[0],noise);
+ for(let i=0;i<list.length;i++){
+  let next=null;
+  try{next=i+1<list.length?await webgpu.submit(list[i+1],noise):null;await deliver(i,await pending.raw);}
+  catch(error){pending.raw.catch(()=>{});next?.raw.catch(()=>{});throw error;}
+  pending=next;
+ }
+ return {frames:list.length};
+}
 // The face-mapping network is 8 MiB and nothing needs it before the first face, yet it was acquired and its ORT session
 // created only when `generate` arrived: after the model download, with the worker idle. Measured cold on eris that is
 // 330 ms to acquire plus 452 ms to create, 785 ms straight onto the first face. On the WebGPU route the weights live on
@@ -349,7 +371,7 @@ self.onmessage=({data})=>{
   try{
    let result;
    if(type==='initialize'){manifest=request.manifest;provider=request.provider;manifestSha256=request.manifestSha256;fullQualify=request.fullQualify===true||(!request.hostForcedQualify&&request.webdriver===true);forceCanaryFail=request.forceCanaryFail===true;result={provider};}
-   else if(type==='qualify')result=await qualify(id);else if(type==='prefetch')result=await prefetchRoute(id,request.scope);else if(type==='generate'){const input=await inputLatent(request.mode,request.value),values=await mappingFor(input.values,id);result={blob:await png(await run(values,id)),values,shape:[1,18,512],space:'w-plus',identity:input.identity};}else if(type==='synthesize'){const values=requireLatent(request.values);result={blob:await png(await run(values,id)),values,shape:[1,18,512],space:'w-plus'};}else if(type==='encode-aligned'){
+   else if(type==='qualify')result=await qualify(id);else if(type==='prefetch')result=await prefetchRoute(id,request.scope);else if(type==='generate'){const input=await inputLatent(request.mode,request.value),values=await mappingFor(input.values,id);result={blob:await png(await run(values,id)),values,shape:[1,18,512],space:'w-plus',identity:input.identity};}else if(type==='synthesize-frames')result=await synthesizeFrames(request.frames,id);else if(type==='synthesize'){const values=requireLatent(request.values);result={blob:await png(await run(values,id)),values,shape:[1,18,512],space:'w-plus'};}else if(type==='encode-aligned'){
  // Sequential residency: e4e is released before loading synthesis.
  if(!manifest.encoder&&!manifest.encoderStream)throw Error('The browser encoder bundle is not available.');
  residency.mode=request.retain===true?'on':'off';
