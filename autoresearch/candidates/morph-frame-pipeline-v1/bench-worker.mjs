@@ -18,7 +18,7 @@ const floats=async a=>{const b=await bytes(a);return new Float32Array(b.buffer,b
 let session,noise,manifest;
 self.onmessage=async({data})=>{try{
  if(data.type==='init'){
-  manifest=data.manifest;const t=performance.now();
+  manifest=data.manifest;const t=performance.now();if(data.profile)globalThis.__ortProfile=[];if(data.ortBase)globalThis.__ortBase=new URL(data.ortBase,self.location.href).href;
   const mod=await import(data.engine);
   noise={};for(const n of manifest.noise)noise[n.name]=await floats(n);
   session=await mod.createWebGpuSession({config:manifest.webgpu,noiseManifest:manifest.noise,bytes});
@@ -28,6 +28,7 @@ self.onmessage=async({data})=>{try{
   const L=data.latents,t0=performance.now();let pending=await session.submit(L[0],noise);
   for(let i=0;i<L.length;i++){const next=i+1<L.length?await session.submit(L[i+1],noise):null;const raw=await pending.raw;const blob=await encodeRgbaPng(rgba1024(raw));postMessage({type:'frame',index:i,blob,hash:data.hash?hex(await crypto.subtle.digest('SHA-256',raw)):undefined,at:performance.now()-t0,sample:raw[12345]});pending=next;}
   return;}
+ if(data.type==='profile'){const p=globalThis.__ortProfile||[];globalThis.__ortProfile=[];postMessage({type:'profile',rows:p.map(d=>({k:d.kernelType||d.kernelName,n:d.kernelName,p:d.programName,ms:(d.endTime-d.startTime)/1e6,i:(d.inputsMetadata||[]).map(m=>m.dims.join('x')).join(' ')}))});return;}
  if(data.type==='frame'){
   const t0=performance.now();const raw=await session.infer(data.values,noise,data.sync);const t1=performance.now();
   const marks=session.marks?session.marks.map(([n,t])=>[n,t-t0]):[];

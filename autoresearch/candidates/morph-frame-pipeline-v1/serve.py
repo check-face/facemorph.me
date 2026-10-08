@@ -2,7 +2,7 @@
 """Local bench server: <root> (a facemorph.me tree) over plain HTTP on 127.0.0.1 (a secure context),
 cross-origin isolated like the product, with this candidate directory mounted at /bench/.
 Assets come from next.facemorph.me (CORS *, CORP cross-origin).  serve.py <port> [root]"""
-import http.server, pathlib, sys, urllib.parse
+import http.server, os, pathlib, sys, urllib.parse
 HERE = pathlib.Path(__file__).resolve().parent
 ROOT = pathlib.Path(sys.argv[2]).resolve() if len(sys.argv) > 2 else HERE.parents[2]
 class H(http.server.SimpleHTTPRequestHandler):
@@ -10,6 +10,9 @@ class H(http.server.SimpleHTTPRequestHandler):
     def translate_path(self, path):
         p = urllib.parse.unquote(urllib.parse.urlparse(path).path)
         if p.startswith('/bench/'): return str(HERE / p[len('/bench/'):])
+        if p.startswith('/ort/'):   # local onnxruntime-web releases: /ort/<version>/<file> -> $ORT_PKGS/<version>/package/dist/<file>
+            v, _, f = p[len('/ort/'):].partition('/')
+            return str(pathlib.Path(os.environ.get('ORT_PKGS', '')) / v / 'package/dist' / f)
         return super().translate_path(path)
     def end_headers(self):
         self.send_header('Cross-Origin-Opener-Policy', 'same-origin')

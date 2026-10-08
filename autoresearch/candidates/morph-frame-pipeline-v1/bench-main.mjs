@@ -9,7 +9,7 @@ const digest=async b=>crypto.subtle.digest('SHA-256',b);
 async function derivatives(blob,size=512){const bitmap=await createImageBitmap(blob);try{const c=new OffscreenCanvas(size,size),x=c.getContext('2d',{willReadFrequently:true});x.drawImage(bitmap,0,0,size,size);const rgba=x.getImageData(0,0,size,size).data;const jpeg=await c.convertToBlob({type:'image/jpeg',quality:.85});return {rgba,jpeg};}finally{bitmap.close();}}
 export function latent(i,n){const v=new Float32Array(9216);for(let k=0;k<9216;k++)v[k]=Math.sin(k*0.37+i/n*3)*0.8;return v;}
 window.bench={
- async init(engine){manifest=await (await fetch(MANIFEST)).json();boot();const p=next();worker.postMessage({type:'init',manifest,engine});return (await p).ms;},
+ async init(engine,profile=false,ortBase=''){manifest=await (await fetch(MANIFEST)).json();boot();const p=next();worker.postMessage({type:'init',manifest,engine,profile,ortBase});return (await p).ms;},
  // Product-shaped sequential loop: worker synth+png, then main-thread digests + derivatives, then next frame.
  // Candidate loop: one batch request, frames stream back; main-thread tail runs as each arrives,
  // never holding the worker.
@@ -18,6 +18,7 @@ window.bench={
   worker.onmessage=({data})=>{if(data.type==='error'){done({error:data.message});return;}chain=chain.then(async()=>{await digest(await data.blob.arrayBuffer());await digest(L[data.index]);await derivatives(data.blob);got.push({index:data.index,arrive:data.at,done:performance.now()-t0,sample:data.sample,hash:data.hash});if(data.index===warm-1)tw=performance.now();if(got.length===L.length)done();});};
   worker.postMessage({type:'batch',latents:L,hash});const r=await all;worker.onmessage=saved;if(r?.error)throw Error(r.error);
   const perFrame=(performance.now()-tw)/n;return [{perFrame,hashes:got.sort((a,b)=>a.index-b.index).map(g=>g.hash)}];},
+ async profile(n){await this.frames(n,{tail:'none',warm:0});const p=next();worker.postMessage({type:'profile'});return (await p).rows;},
  async frames(n,{sync=false,tail='product',warm=3,hash=false}={}){
   const rows=[];
   for(let i=0;i<n+warm;i++){

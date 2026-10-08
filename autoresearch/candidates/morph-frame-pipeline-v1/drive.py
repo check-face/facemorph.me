@@ -15,7 +15,7 @@ for _ in range(30):
     if js("document.getElementById('out')?.textContent")=='loaded': break
     time.sleep(0.5)
 print(json.dumps({'adapter':call("navigator.gpu.requestAdapter().then(a=>a.info.vendor+' '+a.info.architecture+' '+a.info.description)")}))
-print(json.dumps({'initMs':call("bench.init(%s)"%json.dumps(os.environ['BENCH_ENGINE']))}))
+print(json.dumps({'initMs':call("bench.init(%s,%s"%(json.dumps(os.environ['BENCH_ENGINE']),'true' if os.environ.get('BENCH_PROFILE') else 'false')+','+json.dumps(os.environ.get('BENCH_ORT',''))+')')}))
 for label, method, n, opts in json.loads(os.environ['BENCH_PLAN']):
     rows=call("bench.%s(%d,%s)"%(method,n,json.dumps(opts)))
     print(json.dumps({'label':label,'rows':rows}))

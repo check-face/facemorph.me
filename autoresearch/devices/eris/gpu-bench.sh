@@ -10,7 +10,9 @@ run="$HOME/Work/runs/$label"; port=$((9500 + RANDOM % 400))
 mkdir -p "$run"
 "$root/autoresearch/devices/eris/launch-chromium.sh" "$run" "$port" > "$run/chrome.log" 2>&1 &
 chrome=$!
-trap 'kill $chrome 2>/dev/null || true; pkill -f "venv-bh/bin/python3 -m browser_harness.daemon" 2>/dev/null || true' EXIT
+# Stop only this run's harness daemon: several sessions share eris.
+own_daemon(){ for p in $(pgrep -f "browser_harness[.]daemon"); do tr '\0' '\n' < /proc/$p/environ 2>/dev/null | grep -qx "BU_NAME=$1" && kill $p; done; }
+trap 'kill $chrome 2>/dev/null || true; own_daemon "$label" || true' EXIT
 for _ in $(seq 1 30); do curl -fsS "http://127.0.0.1:$port/json/version" >/dev/null 2>&1 && break; sleep 1; done
 { uptime; nvidia-smi --query-gpu=name,utilization.gpu,memory.used,temperature.gpu,clocks.sm --format=csv; } > "$run/env-before.txt"
 cd "$root"
