@@ -369,3 +369,33 @@ test('the worker error detail travels with the message', async t=>{
  const r=runtime(t,{workerFactory:()=>({postMessage(){queueMicrotask(()=>this.onerror?.({message:'out of memory',filename:'https://x/ort-worker.mjs',lineno:42}));},terminate(){}})});
  await assert.rejects(generate(r),/out of memory.*ort-worker\.mjs.*line 42/);
 });
+
+// The direct WebGPU engine (webgpu-direct.mjs) is offered only to a non-mobile device whose adapter clears
+// its limits; phones keep the ORT engine, and a direct failure retries WebGPU on ORT before any other route.
+const DESKTOP='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/152.0.0.0 Safari/537.36';
+const bigLimits={maxStorageBufferBindingSize:2**31,maxBufferSize:2**31,maxComputeWorkgroupStorageSize:49152,maxComputeInvocationsPerWorkgroup:1024,maxComputeWorkgroupSizeX:1024,maxComputeWorkgroupSizeY:1024,maxStorageBuffersPerShaderStage:10};
+function withLimits(t,agent,limits){environment(t,agent);globalThis.navigator.gpu={requestAdapter:async()=>({limits})};}
+function engines(t,options={}){
+ const seen=[];const factory=workerFactory(options);
+ const r=runtime(t,{preferredRoute:'auto',workerFactory:()=>{const w=factory();const post=w.postMessage;let engine;
+  w.postMessage=function(message){if(message.type==='initialize'){engine=message.gpuEngine;seen.push(engine);}
+   if(message.type==='qualify'&&options.directFails&&engine==='direct'){queueMicrotask(()=>this.onmessage?.({data:{id:message.id,type:'error',error:{name:'Error',message:'Device correctness check failed: frame-00',correctnessFailure:true}}}));return;}
+   return post.call(this,message);};return w;}});
+ return {r,seen};
+}
+test('a desktop GPU that clears the direct limits runs the direct engine',async t=>{
+ withLimits(t,DESKTOP,bigLimits);const {r,seen}=engines(t);
+ assert.equal((await generate(r)).provenance.route,'webgpu');assert.equal(seen[0],'direct');
+});
+test('a phone never gets the direct engine, whatever its adapter reports',async t=>{
+ withLimits(t,'Mozilla/5.0 (Linux; Android 14; SM-S928B) Chrome/152.0.0.0 Mobile',bigLimits);const {r,seen}=engines(t);
+ await generate(r);assert.ok(seen.length&&seen.every(e=>e==='ort'),seen.join());
+});
+test('an adapter below the direct limits keeps the ORT engine',async t=>{
+ withLimits(t,DESKTOP,{...bigLimits,maxStorageBufferBindingSize:134217728});const {r,seen}=engines(t);
+ await generate(r);assert.equal(seen[0],'ort');
+});
+test('a failed direct engine retries WebGPU on ORT before any other route',async t=>{
+ withLimits(t,DESKTOP,bigLimits);const {r,seen}=engines(t,{directFails:true});
+ assert.equal((await generate(r)).provenance.route,'webgpu');assert.deepEqual(seen.slice(0,2),['direct','ort']);
+});

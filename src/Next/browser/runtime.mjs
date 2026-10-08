@@ -2,6 +2,7 @@ import {openOriginals,digest} from './originals.mjs';
 import {capabilities} from './route-priors.mjs';
 import {rankedRoutes} from './route-selection.mjs';
 import {inputLatent,requireLatent,generationIdentity} from './identity.mjs';
+import {directSupported} from './webgpu-direct.mjs';
 const abortError=()=>new DOMException('Generation cancelled','AbortError');
 /** One foreground operation, one worker, explicit route qualification. */
 export function createBrowserRuntime({manifest: suppliedManifest, manifestSha256:suppliedManifestSha256, manifestUrl='/runtime/manifest.json',onProgress=()=>{},alignPhoto,preferredRoute='auto',workerFactory=()=>new Worker(new URL('./ort-worker.mjs',import.meta.url),{type:'module'}),stallMs=300000}={}){
@@ -51,7 +52,7 @@ export function createBrowserRuntime({manifest: suppliedManifest, manifestSha256
  // worker is still caught — just never blamed on being in the background.
  const hidden=()=>globalThis.document?.hidden===true;
  function send(type,payload={},progress,stall=stallMs,onFrame){return new Promise((resolve,reject)=>{const id=++sequence;if(type!=='initialize'&&!payload.resume)mark(type,id);const task={resolve,reject,progress,operation:type,onFrame};const timeout=()=>{if(hidden()){task.timer=setTimeout(timeout,stall);return;}stop(Error('Generation stopped responding. Your saved work is safe.'));};task.timer=setTimeout(timeout,stall);task.reset=()=>{clearTimeout(task.timer);task.timer=setTimeout(timeout,stall);};pending.set(id,task);try{worker.postMessage({id,type,...payload});}catch(error){clearTimeout(task.timer);pending.delete(id);reject(error);}});}
- async function start(progress){if(worker)return;await config();worker=workerFactory();worker.onmessage=({data})=>{const task=pending.get(data.id);if(!task)return;if(data.type==='frame'){task.reset();task.onFrame?.(data.index,data.blob);return;}if(data.type==='progress'){task.reset();if(data.stage==='synthesis-complete'){synthesisRuns++;if(synthesisRuns>1&&['generate','synthesize'].includes(task.operation)&&Number.isFinite(data.elapsedMs)&&data.elapsedMs>0)task.synthesisMs=data.elapsedMs;}emit(data,task.progress);return;}clearTimeout(task.timer);pending.delete(data.id);unmark();if(data.type==='error'){if(task.operation==='encode-aligned'){encoderValidatedSha256=undefined;forgetEncoder();}validated=false;failedRoutes.add(route);const error=Object.assign(Error(data.error.message),{name:data.error.name,failedOperation:task.operation,correctnessFailure:data.error.correctnessFailure===true});stop(error);task.reject(error);}else{if(task.synthesisMs!==undefined)remember(route,task.synthesisMs);task.resolve(data.result);}};worker.onerror=event=>{
+ async function start(progress){if(worker)return;await config();worker=workerFactory();worker.onmessage=({data})=>{const task=pending.get(data.id);if(!task)return;if(data.type==='frame'){task.reset();task.onFrame?.(data.index,data.blob);return;}if(data.type==='progress'){task.reset();if(data.stage==='synthesis-complete'){synthesisRuns++;if(synthesisRuns>1&&['generate','synthesize'].includes(task.operation)&&Number.isFinite(data.elapsedMs)&&data.elapsedMs>0)task.synthesisMs=data.elapsedMs;}emit(data,task.progress);return;}clearTimeout(task.timer);pending.delete(data.id);unmark();if(data.type==='error'){if(task.operation==='encode-aligned'){encoderValidatedSha256=undefined;forgetEncoder();}validated=false;failRoute(route);const error=Object.assign(Error(data.error.message),{name:data.error.name,failedOperation:task.operation,correctnessFailure:data.error.correctnessFailure===true});stop(error);task.reject(error);}else{if(task.synthesisMs!==undefined)remember(route,task.synthesisMs);task.resolve(data.result);}};worker.onerror=event=>{
   // A worker that dies at startup is not a verdict on a route: the operator's phone burned
   // webgpu, cpu and webgl in 257 ms — 154, 203 and 251 ms apart — which is far too fast for a
   // canary, because a canary requires a synthesis. Every route was blamed for one engine that
@@ -65,7 +66,7 @@ export function createBrowserRuntime({manifest: suppliedManifest, manifestSha256
   const error=Object.assign(Error('The local generation engine stopped.'+(detail?' ('+detail+')':'')),
    {engineStopped:true,workerDetail:detail||undefined});
   stop(error);
- };await send('initialize',{manifest,provider:route==='webgl'?'webgl2':route==='webgpu'?'webgpu':'wasm',manifestSha256:manifestHash,fullQualify:globalThis.__FACEMORPH_FULL_QUALIFY__===true,hostForcedQualify:globalThis.__FACEMORPH_FULL_QUALIFY__!==undefined,webdriver:globalThis.navigator?.webdriver===true,forceCanaryFail:globalThis.__FACEMORPH_FORCE_CANARY_FAIL__===true},progress);}
+ };if(route==='webgpu')await probeGpu();engine=gpuEngine();await send('initialize',{manifest,provider:route==='webgl'?'webgl2':route==='webgpu'?'webgpu':'wasm',gpuEngine:engine,manifestSha256:manifestHash,fullQualify:globalThis.__FACEMORPH_FULL_QUALIFY__===true,hostForcedQualify:globalThis.__FACEMORPH_FULL_QUALIFY__!==undefined,webdriver:globalThis.navigator?.webdriver===true,forceCanaryFail:globalThis.__FACEMORPH_FORCE_CANARY_FAIL__===true},progress);}
  // Acquisition warm-up. The first face on a cold device waits on roughly 200 MB, and none of
  // those bytes depend on which face is asked for, so they are fetched while the visitor is still
  // reading the page. It runs in a worker of its own: the inference worker's queue is strictly
@@ -165,10 +166,22 @@ export function createBrowserRuntime({manifest: suppliedManifest, manifestSha256
  // So the adapter is probed once, for real, and the answer is remembered. Until it resolves the
  // route is treated as offered, because the probe is fast and the priors are still the best guess
  // available; once it answers, a shell GPU stops being a candidate at all.
- let gpuAdapter;
+ let gpuAdapter,gpuLimits,directFailed=false,engine='ort';
+ /**
+  * Which engine runs the WebGPU route. The direct engine (webgpu-direct.mjs: WGSL kernels, no ORT) is
+  * ~1.7x faster on desktop GPUs but is tuned for them: its largest binding exceeds the 128 MiB phones
+  * report and it has no phone evidence. So it is offered only to a non-mobile device whose adapter clears
+  * its limits, and a direct failure falls back to the ORT engine on the same route before any other route.
+  */
+ function gpuEngine(target=route){
+  const nav=globalThis.navigator,mobile=nav?.userAgentData?.mobile||/Android|iPhone|iPad|iPod/.test(nav?.userAgent||'')||(nav?.platform==='MacIntel'&&nav?.maxTouchPoints>1);
+  return target==='webgpu'&&!directFailed&&!mobile&&manifest?.webgl&&directSupported(gpuLimits)?'direct':'ort';
+ }
+ // A failed direct engine costs the engine, not the route: the next attempt uses ORT on WebGPU.
+ function failRoute(name){if(name==='webgpu'&&engine==='direct'&&!directFailed){directFailed=true;return;}failedRoutes.add(name);}
  async function probeGpu(){
   if(gpuAdapter!==undefined)return gpuAdapter;
-  try{gpuAdapter=Boolean(await globalThis.navigator?.gpu?.requestAdapter());}catch{gpuAdapter=false;}
+  try{const adapter=await globalThis.navigator?.gpu?.requestAdapter();gpuAdapter=Boolean(adapter);gpuLimits=adapter?.limits;}catch{gpuAdapter=false;}
   return gpuAdapter;
  }
  function capability(){const base=capabilities();return {...base,webgpu:base.webgpu&&gpuAdapter!==false&&Boolean(manifest.webgpu),webgl:base.webgl&&Boolean(manifest.webgl)};}
@@ -202,7 +215,8 @@ export function createBrowserRuntime({manifest: suppliedManifest, manifestSha256
   for(const name of supportedRoutes())
    if(!candidates.includes(name)&&interruptions[name]>=INTERRUPT_LIMIT)refused(progress,name,'interrupted');
   let lastError;
-  for(const next of candidates){
+  for(let i=0;i<candidates.length;i++){
+   const next=candidates[i];
    if(route!==next)stop();
    route=next;
    try{
@@ -214,6 +228,8 @@ export function createBrowserRuntime({manifest: suppliedManifest, manifestSha256
     // An engine that never started tells us nothing about this route, and trying the next one
     // will meet the same wall. Report it once, honestly, instead of marking every route dead.
     if(error.engineStopped){refused(progress,route,'engine-stopped');stop();throw error;}
+    // The direct engine failing on WebGPU retries the same route on the ORT engine before moving on.
+    if(route==='webgpu'&&engine==='direct'){directFailed=true;engine='ort';stop();emit({stage:'gpu-engine-fallback'},progress);i--;continue;}
     refused(progress,route,error.name==='NotSupportedError'?'unsupported':'canary-failed');
     failedRoutes.add(route);stop();
     // Explicit selection is a deliberate retry, never permission to silently substitute CPU.
@@ -222,7 +238,7 @@ export function createBrowserRuntime({manifest: suppliedManifest, manifestSha256
   }
   throw lastError||Error('No local processing route remains available. Try an explicitly selected route before continuing.');
  }
- async function cachedGenerate(keyData,produce,progress,signal,persist=true,beforeAdmission=()=>{}){await config();const generationSha256=await digest(JSON.stringify(generationIdentity(manifest,keyData.kind))),key=await digest(JSON.stringify({generationSha256,...keyData})),store=await cache();let saved;try{saved=await store?.get(key);}catch{emit({stage:'cache-unavailable'},progress);}if(signal.aborted)throw signal.reason;if(saved?.blob instanceof Blob&&saved.blob.type==='image/png'&&saved.space==='w-plus'&&saved.generationSha256===generationSha256&&(keyData.kind!=='latent'||saved.latentSha256===keyData.sha256)){try{requireLatent(saved.values);if(saved.imageSha256===await digest(await saved.blob.arrayBuffer())&&saved.latentSha256===await digest(saved.values)){if(signal.aborted)throw signal.reason;emit({stage:'original-cache-hit'},progress);return {...saved,cached:true};}}catch(error){if(signal.aborted)throw error;emit({stage:'original-cache-invalid'},progress);}}beforeAdmission();if(!validated)await admit(progress,signal);if(signal.aborted)throw signal.reason;let result;try{result=await produce();}catch(error){if(signal.aborted)throw signal.reason;if(route==='cpu'||preferredRoute!=='auto'||!['generate','synthesize'].includes(error.failedOperation))throw error;failedRoutes.add(route);stop();if(chooseRoute()==='cpu')emit({stage:'fallback-cpu'},progress);await admit(progress,signal);result=await produce();}if(signal.aborted)throw signal.reason;const value={...result,generationSha256,imageSha256:await digest(await result.blob.arrayBuffer()),latentSha256:await digest(result.values),latent:{space:result.space,shape:[18,512],values:result.values},width:1024,height:1024,cached:false,provenance:{bundleVersion:manifest.bundleVersion,manifestSha256:manifestHash,modelSha256:manifest.modelSourceSha256,noiseSha256:manifest.noiseSha256,provider:route==='webgl'?'webgl2':route==='webgpu'?'webgpu':'wasm',mappingProvider:keyData.kind==='seed'?'wasm':null,route,truncationPsi:keyData.kind==='seed'?.7:null,truncationCutoff:keyData.kind==='seed'?8:null,createdAt:new Date().toISOString()}};try{if(persist){const aliases=[];if(keyData.kind==='seed'||keyData.kind==='photo'){const latentGenerationSha256=await digest(JSON.stringify(generationIdentity(manifest,'latent')));aliases.push({generationSha256:latentGenerationSha256,key:await digest(JSON.stringify({generationSha256:latentGenerationSha256,kind:'latent',sha256:value.latentSha256}))});}await store?.put(key,value,aliases);}emit({stage:!persist?'transient-frame':store?'original-cached':'cache-unavailable'},progress);}catch{emit({stage:'cache-unavailable'},progress);}return value;}
+ async function cachedGenerate(keyData,produce,progress,signal,persist=true,beforeAdmission=()=>{}){await config();const generationSha256=await digest(JSON.stringify(generationIdentity(manifest,keyData.kind))),key=await digest(JSON.stringify({generationSha256,...keyData})),store=await cache();let saved;try{saved=await store?.get(key);}catch{emit({stage:'cache-unavailable'},progress);}if(signal.aborted)throw signal.reason;if(saved?.blob instanceof Blob&&saved.blob.type==='image/png'&&saved.space==='w-plus'&&saved.generationSha256===generationSha256&&(keyData.kind!=='latent'||saved.latentSha256===keyData.sha256)){try{requireLatent(saved.values);if(saved.imageSha256===await digest(await saved.blob.arrayBuffer())&&saved.latentSha256===await digest(saved.values)){if(signal.aborted)throw signal.reason;emit({stage:'original-cache-hit'},progress);return {...saved,cached:true};}}catch(error){if(signal.aborted)throw error;emit({stage:'original-cache-invalid'},progress);}}beforeAdmission();if(!validated)await admit(progress,signal);if(signal.aborted)throw signal.reason;let result;try{result=await produce();}catch(error){if(signal.aborted)throw signal.reason;if(route==='cpu'||preferredRoute!=='auto'||!['generate','synthesize'].includes(error.failedOperation))throw error;failRoute(route);stop();if(chooseRoute()==='cpu')emit({stage:'fallback-cpu'},progress);await admit(progress,signal);result=await produce();}if(signal.aborted)throw signal.reason;const value={...result,generationSha256,imageSha256:await digest(await result.blob.arrayBuffer()),latentSha256:await digest(result.values),latent:{space:result.space,shape:[18,512],values:result.values},width:1024,height:1024,cached:false,provenance:{bundleVersion:manifest.bundleVersion,manifestSha256:manifestHash,modelSha256:manifest.modelSourceSha256,noiseSha256:manifest.noiseSha256,provider:route==='webgl'?'webgl2':route==='webgpu'?'webgpu':'wasm',mappingProvider:keyData.kind==='seed'?'wasm':null,route,truncationPsi:keyData.kind==='seed'?.7:null,truncationCutoff:keyData.kind==='seed'?8:null,createdAt:new Date().toISOString()}};try{if(persist){const aliases=[];if(keyData.kind==='seed'||keyData.kind==='photo'){const latentGenerationSha256=await digest(JSON.stringify(generationIdentity(manifest,'latent')));aliases.push({generationSha256:latentGenerationSha256,key:await digest(JSON.stringify({generationSha256:latentGenerationSha256,kind:'latent',sha256:value.latentSha256}))});}await store?.put(key,value,aliases);}emit({stage:!persist?'transient-frame':store?'original-cached':'cache-unavailable'},progress);}catch{emit({stage:'cache-unavailable'},progress);}return value;}
  // C-03: the cold path pays for exactly one canary before the first face. Once that face is
  // delivered, the remaining canaries finish on the worker's background lane, preempted by any
  // user operation. A canary that fails there invalidates the route loudly instead of silently
@@ -232,7 +248,7 @@ export function createBrowserRuntime({manifest: suppliedManifest, manifestSha256
   qualificationPending=false;
   send('qualify',{resume:true}).then(result=>{validated=result.deviceValidated===true;}).catch(error=>{
    if(error?.failedOperation==='qualify'&&error.correctnessFailure===true){
-    validated=false;failedRoutes.add(route);
+    validated=false;failRoute(route);
     // C-02: the rejection names the route that failed, not just that one failed.
     emit({stage:'canary-invalidated',provider:route});
    }else qualificationPending=true; // stopped worker or transient failure; retry on a later face
@@ -278,7 +294,7 @@ export function createBrowserRuntime({manifest: suppliedManifest, manifestSha256
      if(data.type==='error')reject(Error(data.error.message));
      else if(data.id===2)resolve(data.result);
     };
-    own.postMessage({id:1,type:'initialize',manifest,provider:target==='webgl'?'webgl2':target==='webgpu'?'webgpu':'wasm',manifestSha256:manifestHash});
+    own.postMessage({id:1,type:'initialize',manifest,provider:target==='webgl'?'webgl2':target==='webgpu'?'webgpu':'wasm',gpuEngine:gpuEngine(target),manifestSha256:manifestHash});
     own.postMessage({id:2,type:'prefetch',scope});
    });
    // Recorded, never spoken: a warm cache changes nothing the visitor can act on, and the
@@ -323,7 +339,7 @@ export function createBrowserRuntime({manifest: suppliedManifest, manifestSha256
   const produce=async()=>{await start(progress);const offset=delivered;
    await send('synthesize-frames',{frames:list.slice(offset)},progress,stallMs,(index,blob)=>{const at=offset+index;if(at!==delivered||signal.aborted)return;delivered++;emit({stage:'transient-frame'},progress);options.onFrame?.(at,{blob,values:list[at],space:'w-plus',shape:[1,18,512]});});};
   try{await produce();}
-  catch(error){if(signal.aborted)throw signal.reason;if(route==='cpu'||preferredRoute!=='auto'||error.failedOperation!=='synthesize-frames')throw error;failedRoutes.add(route);stop();if(chooseRoute()==='cpu')emit({stage:'fallback-cpu'},progress);await admit(progress,signal);await produce();}
+  catch(error){if(signal.aborted)throw signal.reason;if(route==='cpu'||preferredRoute!=='auto'||error.failedOperation!=='synthesize-frames')throw error;failRoute(route);stop();if(chooseRoute()==='cpu')emit({stage:'fallback-cpu'},progress);await admit(progress,signal);await produce();}
   if(signal.aborted)throw signal.reason;
   return {frames:delivered};
  },options)),

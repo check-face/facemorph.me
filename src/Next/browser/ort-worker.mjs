@@ -1,4 +1,5 @@
 import {createWebGpuSession} from './webgpu-engine.mjs';
+import {createDirectWebGpuSession} from './webgpu-direct.mjs';
 import {encodeRgbaPng} from './png.mjs';
 import {createBrowserModelCache} from '../Assets/model-cache.mjs';
 import {inputLatent,truncate,requireLatent,rgba1024} from './identity.mjs';
@@ -8,7 +9,7 @@ import {createCanaryQualification} from './canary-qualification.mjs';
 // Chunks of a model download in flight at once (16 MiB each). Eight gigabytes stated by the device earns four;
 // everything else, including iOS where deviceMemory is undefined, gets two, a 32 MiB window.
 const readAhead=(globalThis.navigator?.deviceMemory||0)>=8?4:2;
-let mappingReady=null,manifest,ort,cache,mapping,synthesis,noise,average,provider,webgl,webgpu,currentId,manifestSha256,qualification,resumeDrain=null;
+let mappingReady=null,gpuEngine='ort',manifest,ort,cache,mapping,synthesis,noise,average,provider,webgl,webgpu,currentId,manifestSha256,qualification,resumeDrain=null;
 /**
  * What the encoder leaves behind between photos.
  *
@@ -59,10 +60,13 @@ const cacheReport=event=>{
 };
 const planAsset=budget.planAsset;
 /** Everything the chosen route will ask for before it can produce a face. */
+// The WebGPU route's model bundle: the direct engine reads the block-stream coefficients (manifest.webgl),
+// the ORT engine its split graph (manifest.webgpu).
+const gpuBundle=()=>gpuEngine==='direct'?manifest.webgl:manifest.webgpu;
 function planRoute(){
  if(!manifest)return;
  planAsset([manifest.runtime,manifest.mapping,manifest.average,manifest.noise]);
- if(provider==='webgpu')planAsset(manifest.webgpu);
+ if(provider==='webgpu')planAsset(gpuBundle());
  else if(provider==='webgl2')planAsset(manifest.webgl);
  else planAsset(manifest.synthesis);
  // Canary references are only fetched while this device still owes correctness checks; a bundle
@@ -78,7 +82,7 @@ function planRoute(){
  */
 function routeAssets(){
  if(!manifest)return [];
- const bundle=provider==='webgpu'?manifest.webgpu:provider==='webgl2'?manifest.webgl:manifest.synthesis;
+ const bundle=provider==='webgpu'?gpuBundle():provider==='webgl2'?manifest.webgl:manifest.synthesis;
  const rest=[[manifest.runtime,manifest.mapping,manifest.average,manifest.noise]];
  if(!qualification||!qualification.complete())rest.push([manifest.sampleIndices,manifest.canaries]);
  const seen=new Set(),ordered=[];
@@ -262,7 +266,8 @@ async function load(id){if(synthesis||webgl||webgpu)return;
  if(residency.mode!=='on')await releaseEncoder();
  cache ||= await createBrowserModelCache({report:cacheReport,readAhead});planRoute();noise={};for(const item of manifest.noise)noise[item.name]=await floats(item,id);
  report(id,'model-loading');const started=performance.now();
- if(provider==='webgpu'){if(!manifest.webgpu)throw Error('WebGPU bundle unavailable');warmMapping();webgpu=await createWebGpuSession({config:manifest.webgpu,noiseManifest:manifest.noise,bytes:asset=>bytes(asset,currentId),progress:stage=>report(currentId,stage)});}
+ if(provider==='webgpu'&&gpuEngine==='direct'){if(!manifest.webgl)throw Error('WebGPU direct bundle unavailable');warmMapping();webgpu=await createDirectWebGpuSession({config:manifest.webgl,noiseManifest:manifest.noise,bytes:asset=>bytes(asset,currentId),progress:stage=>report(currentId,stage)});}
+ else if(provider==='webgpu'){if(!manifest.webgpu)throw Error('WebGPU bundle unavailable');warmMapping();webgpu=await createWebGpuSession({config:manifest.webgpu,noiseManifest:manifest.noise,bytes:asset=>bytes(asset,currentId),progress:stage=>report(currentId,stage)});}
  else if(provider==='webgl2'){
    if(!manifest.webgl)throw Error('WebGL bundle unavailable');
    // Persistent acquisition verifies every input before the frozen engine fetches it.
@@ -320,7 +325,7 @@ let fullQualify=false,forceCanaryFail=false;
 async function ensureQualification(id){
  if(qualification)return qualification;
  cache ||= await createBrowserModelCache({report:cacheReport,readAhead});
- qualification=createCanaryQualification({manifest,manifestSha256,provider,bundle:provider==='webgpu'?manifest.webgpu:provider==='webgl2'?manifest.webgl:manifest.synthesis,records:cache.records,acquireBytes:asset=>bytes(asset,id),runSynthesis:(values,noiseMode)=>run(values,id,noiseMode),full:fullQualify,forceFail:forceCanaryFail});
+ qualification=createCanaryQualification({manifest,manifestSha256,provider,bundle:provider==='webgpu'?gpuBundle():provider==='webgl2'?manifest.webgl:manifest.synthesis,records:cache.records,acquireBytes:asset=>bytes(asset,id),runSynthesis:(values,noiseMode)=>run(values,id,noiseMode),full:fullQualify,forceFail:forceCanaryFail});
  await qualification.adopt();
  return qualification;
 }
@@ -370,7 +375,7 @@ self.onmessage=({data})=>{
  foreground.push(async()=>{
   try{
    let result;
-   if(type==='initialize'){manifest=request.manifest;provider=request.provider;manifestSha256=request.manifestSha256;fullQualify=request.fullQualify===true||(!request.hostForcedQualify&&request.webdriver===true);forceCanaryFail=request.forceCanaryFail===true;result={provider};}
+   if(type==='initialize'){manifest=request.manifest;provider=request.provider;gpuEngine=request.gpuEngine==='direct'&&request.provider==='webgpu'?'direct':'ort';manifestSha256=request.manifestSha256;fullQualify=request.fullQualify===true||(!request.hostForcedQualify&&request.webdriver===true);forceCanaryFail=request.forceCanaryFail===true;result={provider};}
    else if(type==='qualify')result=await qualify(id);else if(type==='prefetch')result=await prefetchRoute(id,request.scope);else if(type==='generate'){const input=await inputLatent(request.mode,request.value),values=await mappingFor(input.values,id);result={blob:await png(await run(values,id)),values,shape:[1,18,512],space:'w-plus',identity:input.identity};}else if(type==='synthesize-frames')result=await synthesizeFrames(request.frames,id);else if(type==='synthesize'){const values=requireLatent(request.values);result={blob:await png(await run(values,id)),values,shape:[1,18,512],space:'w-plus'};}else if(type==='encode-aligned'){
  // Sequential residency: e4e is released before loading synthesis.
  if(!manifest.encoder&&!manifest.encoderStream)throw Error('The browser encoder bundle is not available.');

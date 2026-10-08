@@ -17,6 +17,8 @@ export const SELF_TEXT_STAGES = new Set(['face', 'morph', 'export', 'route-admit
  * followed by a labelled stage, and announcing it only makes the line flicker.
  */
 export const SILENT_STAGES = new Set([
+  // The direct engine fell back to ORT on the same route; the route's own loading stages follow.
+  'gpu-engine-fallback',
   'gpu-stage',
   // Repeats once per morph frame inside the synthesis phase; the phase's own stages speak.
   'transient-frame',
@@ -86,6 +88,8 @@ export const STAGE_LABELS = {
   'synthesis-complete': 'Face generated.',
   'gpu-prefix-loading': 'Loading the graphics model (1 of 2)…',
   'gpu-suffix-loading': 'Loading the graphics model (2 of 2)…',
+  // The direct WebGPU engine has finished building its passes; the next stage is the first face.
+  'gpu-direct-ready': 'Graphics model ready…',
   // The most consequential thing that can happen during a run. It used to read "Working…".
   'fallback-cpu': 'Graphics acceleration was not used on this device. Generating on the processor, which is much slower.',
   // Photos.
