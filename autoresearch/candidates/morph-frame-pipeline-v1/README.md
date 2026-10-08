@@ -17,6 +17,10 @@ the per-frame schedule). `runtime.mjs` gains `synthesizeFrames(latents,{onFrame}
 fallback as a face, resuming at the first undelivered frame. `product-bridge.mjs` sends windows of 16 when the
 runtime has `synthesizeFrames`; the desktop runtime keeps the per-frame loop.
 
+**Against native (added the same day, `../native-cuda-morph-v1`).** This is not faster than native. On the
+same RTX 2080 SUPER, native PyTorch CUDA does 30–31 ms/frame (44 ms with the self-host's reference ops), and
+the live GTX 1080 server spends ~57 ms of GPU per image. The browser's remaining cost is GPU kernels (~62 ms).
+
 **Not established.** Built-UI/video-writer run, phones (a slow GPU gains only its CPU-tail share), other
 browsers. Separate lead found here: a ~1 s main-thread derivative stall after ~19 images in cold headless
 profiles, present in HEAD too (`eris-it3-cold-derivative-stall`).
