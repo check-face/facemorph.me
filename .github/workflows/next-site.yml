@@ -129,3 +129,58 @@ jobs:
             ${{ runner.temp }}/next-chrome.log
           if-no-files-found: warn
           retention-days: 14
+  # Every candidate push that builds, qualifies through the real product workflow and passes the
+  # compiled-UI check goes live on next.facemorph.me (operator, 9 October: next is a preview, and
+  # deploys go through CI, not an operator's machine). The runtime is rebuilt from the pinned
+  # manifest by mirror-runtime.py, every file checked against its digest, and cached by manifest
+  # hash; the frontend is the exact artifact the qualification tested. Rollback: `wrangler
+  # versions deploy <previous version>@100`, the previous version is in `wrangler deployments list`.
+  deploy:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/candidate/next-delivery-20260916'
+    needs: [artifact, qualify, compiled-ui]
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    concurrency:
+      group: next-deploy
+      cancel-in-progress: false
+    environment:
+      name: next-preview
+      url: https://next.facemorph.me/
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/download-artifact@v4
+        with:
+          name: next-site-${{ github.sha }}
+          path: web
+      - name: Verify the artifact is the one that was built and qualified
+        run: cd web && sha256sum --quiet -c next-site-SHA256SUMS
+      - name: Restore the runtime mirror
+        uses: actions/cache@v4
+        with:
+          path: .runtime-public
+          key: runtime-public-${{ hashFiles('hosting/next-static/runtime-overlay/manifest.json') }}
+          restore-keys: runtime-public-
+      - name: Rebuild the runtime from the pinned manifest
+        run: |
+          python3 hosting/next-static/mirror-runtime.py --output .runtime-public
+          python3 hosting/next-static/webgpu_contract.py --runtime .runtime-public
+      - name: Stage
+        # The names index must be the one built into the qualified artifact (promote.py's rule).
+        run: |
+          cmp hosting/next-static/catalogue.json web/deploy-next/catalogue.json
+          python3 hosting/next-static/stage.py --runtime .runtime-public --frontend web/deploy-next --catalogue hosting/next-static/catalogue.json --output public
+      - name: Deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          npx -y wrangler@4.149.0 deploy --config hosting/next-static/wrangler.jsonc --assets public \
+            --message "CI ${GITHUB_SHA::7}: next-site run ${GITHUB_RUN_ID}, qualified in the same run"
+      - name: Check the live site serves this build
+        run: |
+          app=$(ls web/deploy-next | grep -E '^app\.[0-9a-f]+\.js$')
+          for attempt in $(seq 1 20); do curl -fsS https://next.facemorph.me/ | grep -q "$app" && exit 0; sleep 6; done
+          echo "next.facemorph.me is not serving $app"; exit 1
