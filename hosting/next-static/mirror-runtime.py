@@ -19,6 +19,7 @@ p = argparse.ArgumentParser()
 p.add_argument('--overlay', type=Path, default=Path(__file__).resolve().parent / 'runtime-overlay')
 p.add_argument('--origin', default='https://next.facemorph.me')
 p.add_argument('--output', type=Path, required=True)
+p.add_argument('--photo-only', action='store_true', help='Only the photo directory (qualification serves the pinned assets itself)')
 a = p.parse_args()
 PREFIX = a.origin.rstrip('/') + '/runtime/'
 
@@ -67,6 +68,7 @@ manifest = json.loads(manifest_bytes)
 files = {}
 pinned(manifest, files)
 photo = manifest.get('photo') or {}
+photo_files = set()
 if photo:
     for url, sha in ((photo['manifestUrl'], photo['manifestSha256']), (photo['workerUrl'], photo['workerSha256'])):
         rel = relative(url); dest = a.output / rel
@@ -75,7 +77,19 @@ if photo:
             with urllib.request.urlopen(urllib.request.Request(url, headers={'User-Agent': 'facemorph-ci-mirror'}), timeout=60) as r: data = r.read()
             if hashlib.sha256(data).hexdigest() != sha: raise SystemExit(f'Digest mismatch: {url}')
             dest.write_bytes(data)
-    pinned(json.loads((a.output / relative(photo['manifestUrl'])).read_bytes()), files)
+    photo_manifest = json.loads((a.output / relative(photo['manifestUrl'])).read_bytes())
+    pinned(photo_manifest, files)
+    # The worker imports its siblings (align-photo, image-header, sha256) by relative URL, and none
+    # of them is a manifest asset: the first CI deploy published the worker alone and every photo
+    # failed with "The local alignment worker stopped". The photo manifest pins the source of each
+    # file photo-runtime/stage.py publishes, so they come from the repository, checked against it.
+    photo_dir = relative(photo['manifestUrl']).rsplit('/', 1)[0]
+    for name in ['align-photo.mjs', 'photo-worker.mjs', 'image-header.mjs', 'sha256.mjs', 'THIRD_PARTY_NOTICES.txt']:
+        source = Path(__file__).resolve().parents[2] / 'photo-runtime' / name
+        if hashlib.sha256(source.read_bytes()).hexdigest() != photo_manifest['sources'][name]:
+            raise SystemExit(f'photo-runtime/{name} differs from the source the pinned photo manifest names')
+        shutil.copyfile(source, a.output / photo_dir / name); photo_files.add(f'{photo_dir}/{name}')
+if a.photo_only: files = {}
 with ThreadPoolExecutor(8) as pool:
     results = list(pool.map(lambda item: fetch(item[0], *item[1]), files.items()))
 wanted = {rel for rel, _ in results} | {'manifest.json'}
@@ -84,7 +98,7 @@ notices = Path(__file__).resolve().parents[1] / 'next' / 'notices'
 (a.output / 'notices').mkdir(exist_ok=True)
 for notice in notices.iterdir():
     shutil.copyfile(notice, a.output / 'notices' / notice.name); wanted.add('notices/' + notice.name)
-if photo: wanted |= {relative(photo['manifestUrl']), relative(photo['workerUrl'])}
+if photo: wanted |= {relative(photo['manifestUrl']), relative(photo['workerUrl'])} | photo_files
 # Anything left from an older runtime in a restored cache must not be published with this one.
 for stale in [f for f in a.output.rglob('*') if f.is_file() and f.relative_to(a.output).as_posix() not in wanted]: stale.unlink()
 fetched = sum(1 for _, how in results if how == 'fetched')

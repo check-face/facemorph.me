@@ -184,3 +184,12 @@ jobs:
           app=$(ls web/deploy-next | grep -E '^app\.[0-9a-f]+\.js$')
           for attempt in $(seq 1 20); do curl -fsS https://next.facemorph.me/ | grep -q "$app" && exit 0; sleep 6; done
           echo "next.facemorph.me is not serving $app"; exit 1
+      # Qualification runs before the deploy, against the old origin, so it cannot see a file the
+      # new tree left out (the first CI deploy dropped the photo worker's sibling modules). Every
+      # staged runtime file must answer from the live site.
+      - name: Check the live site serves every runtime file
+        run: |
+          cd public && find runtime -type f ! -name index.html | sort > ../runtime-files
+          missing=$(xargs -P 16 -I{} sh -c 'code=$(curl -s -o /dev/null -I -w "%{http_code}" "https://next.facemorph.me/{}"); [ "$code" = 200 ] || echo "$code {}"' < ../runtime-files)
+          [ -z "$missing" ] || { echo "$missing"; exit 1; }
+          echo "$(wc -l < ../runtime-files) runtime files served"
