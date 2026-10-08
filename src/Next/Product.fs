@@ -192,6 +192,11 @@ type State = {
     ModelToastHidden: bool
     DownloadConsent: Set<string>
     Gate: (string * Msg) option
+    /// The Run/RunFace that started the latest job, so a failure can offer "Try again" without
+    /// the visitor working out which button they pressed.
+    LastRun: Msg option
+    /// After a failure with reporting off, a toast asks once for this failure's report.
+    FailureToast: bool
 }
 and [<CLIMutable>] CropChoice = { faceId: string; url: string; file: obj; scale: float; view: obj }
 and Msg =
@@ -202,7 +207,7 @@ and Msg =
     | Progressed of Progress | Completed of int * Output | Failed of int * string
     | Save of string | Share of string | Export | Import of obj | Notice of string
     | DownloadsChanged of Downloads | DownloadNow of bool | HideModelToast | GateAccept | GateCancel
-    | Debug of bool | Consent of bool * string | SendReportOnce | DismissConsentPrompt | DismissError | DismissInvite | DismissWarn | OverflowToggle of bool
+    | Debug of bool | Consent of bool * string | SendReportOnce | ReportFailure | DismissFailureToast | Retry | DismissConsentPrompt | DismissError | DismissInvite | DismissWarn | OverflowToggle of bool
     | UseSliderToggle of bool | SliderLoaded of obj | SliderFrameSet of int
     | BrowseNames of string | NamesLoaded of NameFace array | SearchNames of string | ChooseName of string | CloseNames | MoreNames
     | PinchToggle of bool
@@ -232,7 +237,7 @@ let init () =
       UseSlider=false;SliderFrames=None;SliderFrame=1;Warn=None;Overflow=false;PhotoQueue=[];PendingFaces=[];ActiveFace=None;Remaining=""
       ConsentPrompt=trialPhase && not (testingInvited()) && not (labsOrigin()) && not (consentAnswered())
       Downloads={known=false;phase="idle";scope="";loaded=0.;total=0.;routeReady=false;photoReady=false;photoAvailable=false;routeBytes=0.;photoBytes=0.}
-      ModelToastHidden=false;DownloadConsent=Set.empty;Gate=None },
+      ModelToastHidden=false;DownloadConsent=Set.empty;Gate=None;LastRun=None;FailureToast=false },
     Cmd.batch [Cmd.ofSub(fun dispatch -> subscribe (Progressed >> dispatch)); Cmd.ofSub(fun dispatch -> subscribeDownloads (DownloadsChanged >> dispatch)); if namesRequested() then Cmd.ofMsg(BrowseNames "face-1")]
 
 /// Time left in the job in flight, spoken. Empty without a measurement on this device.
@@ -350,7 +355,7 @@ let update msg state =
         elif queued.PhotoQueue.Length>0 then queued,queuedCmd
         else queued,Cmd.batch [queuedCmd;Cmd.ofMsg (RunFace id)]
     | PhotoError message when not state.Busy || state.Stage="cropping" ->
-        let next={state with Error=Some message;Busy=false;Stage=(if state.Stage="cropping" then "idle" else state.Stage);Status=""}
+        let next={state with Error=Some message;Busy=false;Stage=(if state.Stage="cropping" then "idle" else state.Stage);Status="";FailureToast=not state.Debug;LastRun=None} // "Try again" would rerun some earlier job, not this photo
         dequeue next
     // A photo the alignment route cannot take whole opens the crop step first; only the crop
     // is ever aligned. Cancelling leaves the existing face and its inputs alone.
@@ -456,7 +461,7 @@ let update msg state =
             invalidatePhotoSelections()
             let id=state.JobId+1
             let request={jobId=id;action="face";target=faceId;inputs=[|item|];kind=state.Kind;width=state.Width;pinch=state.Pinch;frames=state.Frames;fps=state.Fps;provider=state.Provider}
-            {state with Busy=true;JobId=id;Error=None;Stage="preparing";Status="Generating this face…";Fraction=0.;VideoUrl="";Warn=None;Remaining="";SliderFrames=None;SliderFrame=1;PhotoQueue=[]},
+            {state with Busy=true;JobId=id;LastRun=Some msg;FailureToast=false;Error=None;Stage="preparing";Status="Generating this face…";Fraction=0.;VideoUrl="";Warn=None;Remaining="";SliderFrames=None;SliderFrame=1;PhotoQueue=[]},
             Cmd.OfPromise.either execute request (fun result -> Completed(id,result)) (fun e -> Failed(id,e.Message))
     | Run action when not state.Busy ->
         invalidatePhotoSelections()
@@ -470,7 +475,7 @@ let update msg state =
                  | Some ms when isSlowJob ms -> Some (sprintf "This video may take %s on this device. It keeps going if you switch tabs, and you can cancel at any time." (describeMs ms))
                  | _ -> if isSlowDevice state then Some "Generating is slow on this device, so this video may take a while. You can cancel at any time." else None
         let request={jobId=id;action=action;target="";inputs=Array.ofList state.Inputs;kind=state.Kind;width=state.Width;pinch=state.Pinch;frames=state.Frames;fps=state.Fps;provider=state.Provider}
-        {state with Busy=true;JobId=id;Error=None;Stage="preparing";Status="Preparing…";Fraction=0.;Warn=warn;Remaining="";SliderFrames=None;SliderFrame=1;PhotoQueue=[];ActiveFace=None},
+        {state with Busy=true;JobId=id;LastRun=Some msg;FailureToast=false;Error=None;Stage="preparing";Status="Preparing…";Fraction=0.;Warn=warn;Remaining="";SliderFrames=None;SliderFrame=1;PhotoQueue=[];ActiveFace=None},
         Cmd.OfPromise.either execute request (fun result -> Completed(id,result)) (fun e -> Failed(id,e.Message))
     | Progressed progress when progress.stage.StartsWith("diagnostics-") ->
         let status = match progress.stage with
@@ -497,8 +502,11 @@ let update msg state =
     | Progressed progress when state.Busy && progress.jobId=state.JobId ->
         let activeFace = if progress.stage="face" && not (isJsNull (box progress.face)) then Some progress.face else state.ActiveFace
         {state with Stage=progress.stage;Status=progress.text;Fraction=progress.fraction;ActiveFace=activeFace;Remaining=remainingText()},Cmd.none
+    // Every way a failure reaches Error (here, Failed and PhotoError) also raises FailureToast:
+    // without reporting on, a failure leaves nothing we can see, so ask right then, while the
+    // staged records of what led up to it are still on the device.
     | Completed(id,result) when id=state.JobId ->
-        let next={state with Inputs=(if result.restored then List.ofArray result.inputs else state.Inputs);Kind=(if result.restored then result.kind else state.Kind);Width=(if result.restored then result.width else state.Width);Pinch=(if result.restored then result.pinch else state.Pinch);Frames=(if result.restored then result.frames else state.Frames);Fps=(if result.restored then result.fps else state.Fps);Busy=false;Faces=result.faces;VideoUrl=result.videoUrl;Status=result.message;Error=(if result.errorMessage="" then None else Some result.errorMessage);Stage=(if result.errorMessage="" then "done" else "error");Fraction=(if result.errorMessage="" then 1. else 0.);Warn=None;Remaining="";ActiveFace=None;PhotoQueue=[]}
+        let next={state with Inputs=(if result.restored then List.ofArray result.inputs else state.Inputs);Kind=(if result.restored then result.kind else state.Kind);Width=(if result.restored then result.width else state.Width);Pinch=(if result.restored then result.pinch else state.Pinch);Frames=(if result.restored then result.frames else state.Frames);Fps=(if result.restored then result.fps else state.Fps);Busy=false;Faces=result.faces;VideoUrl=result.videoUrl;Status=result.message;Error=(if result.errorMessage="" then None else Some result.errorMessage);FailureToast=result.errorMessage<>"" && not state.Debug;Stage=(if result.errorMessage="" then "done" else "error");Fraction=(if result.errorMessage="" then 1. else 0.);Warn=None;Remaining="";ActiveFace=None;PhotoQueue=[]}
         let drained={next with PendingFaces=[]}
         let pendingRun=match next.PendingFaces with | head::_ -> Cmd.ofMsg (RunFace head) | [] -> Cmd.none
         let sliderCmd=if result.videoUrl<>"" && state.UseSlider then Cmd.OfPromise.either sliderFrames () SliderLoaded (fun _ -> SliderLoaded null) else Cmd.none
@@ -512,7 +520,7 @@ let update msg state =
         {state with Busy=false;Error=None;Status="Crop to one face to continue.";Stage="idle";Fraction=0.;Warn=None;Remaining="";ActiveFace=None},
         Cmd.ofMsg (RequestCrop face)
     | Failed(id,message) when id=state.JobId ->
-        let next={state with Busy=false;Error=Some message;Status="";Stage="error";Fraction=0.;Warn=None;Remaining="";ActiveFace=None}
+        let next={state with Busy=false;Error=Some message;Status="";Stage="error";Fraction=0.;Warn=None;Remaining="";ActiveFace=None;FailureToast=not state.Debug}
         // A failed run still drains queued faces: the second face was cropped on purpose.
         match next.PendingFaces with
         | head::_ -> {next with PendingFaces=[]},Cmd.ofMsg (RunFace head)
@@ -557,7 +565,15 @@ let update msg state =
         | None -> state,Cmd.none
     | CloseNames -> closeNamesFocus(); {state with Browse=None},Cmd.none
     | MoreNames -> {state with NameLimit=state.NameLimit+48},Cmd.none
-    | DismissError -> {state with Error=None},Cmd.none
+    | DismissError -> {state with Error=None;FailureToast=false},Cmd.none
+    // Turning reporting on sends what this device staged before the failure (reporting.mjs
+    // enable -> sendStaged), so one tap both files this failure and keeps reporting the next.
+    | ReportFailure -> setDebug true "toast";{state with Debug=true;Invite=false;ConsentPrompt=false;FailureToast=false},Cmd.none
+    | DismissFailureToast -> {state with FailureToast=false},Cmd.none
+    | Retry when not state.Busy ->
+        match state.LastRun with
+        | Some run -> {state with Error=None;FailureToast=false},Cmd.ofMsg run
+        | None -> {state with Error=None;FailureToast=false},Cmd.none
     | _ -> state,Cmd.none
 
 // Pointer drag needs the previous position between events; the view itself stays declarative.
@@ -1077,7 +1093,13 @@ let view state dispatch = App.ThemedApp [
                 // failure once; it does not turn reporting on (that is the For-testing control).
                 if not state.Debug && stagedReportCount()>0 then
                     Mui.button [button.variant.text;prop.onClick(fun _ -> dispatch SendReportOnce);button.children "Send this report"]
-                Mui.button [button.variant.text;prop.onClick(fun _ -> dispatch DismissError);button.children "Dismiss"]]]]]
+                if state.LastRun.IsSome then
+                    Mui.button [button.variant.text;prop.className "next-error-retry";prop.onClick(fun _ -> dispatch Retry);button.children "Try again"]
+                Mui.button [button.variant.text;prop.onClick(fun _ -> dispatch DismissError);button.children "Dismiss"]]]
+            // The classic site still works everywhere it always did, while it is being retired.
+            Html.p [prop.className "next-error-classic";prop.children [
+                Html.a [prop.href "https://facemorph.me";prop.text "Use classic FaceMorph"]
+                Html.text " while we fix this."]]]]
         | None -> ()
         // Out of the primary action row: it protects a session, it is not a way to share.
         // Hidden 21 September (operator): project import and export stay out of the surface until
@@ -1199,8 +1221,22 @@ let view state dispatch = App.ThemedApp [
         // The trial-phase question: once per visitor, answerable in one tap, never blocking. A toast
         // rather than a banner (16 September decision: no blanket banner); clicking away is not an
         // answer, so it only closes on a choice or the close control.
+        // After a failure with reporting off: the moment a report is worth most and the visitor
+        // knows why we ask. Never over the model toast or the gate; it replaces the first-visit
+        // question, which asks the same thing with less reason.
+        let failureToastVisible = state.FailureToast && not state.Debug && state.Error.IsSome && not modelToastVisible && state.Gate.IsNone
         Mui.snackbar [
-            snackbar.open' (state.ConsentPrompt && not modelToastVisible && state.Gate.IsNone)
+            snackbar.open' failureToastVisible
+            snackbar.anchorOrigin.bottomCenter
+            snackbar.ContentProps [prop.className "next-consent-toast next-failure-toast"]
+            snackbar.message (Html.span [prop.className "next-consent-message";prop.children [
+                Html.strong "Something went wrong."
+                Html.text " Send a debug report so we can fix it? Timings, device type and error codes only. Never your photos, words or faces. Deleted after 30 days."]])
+            snackbar.action [
+                Mui.button [button.color.inherit';button.variant.text;prop.onClick(fun _ -> dispatch ReportFailure);button.children "Send report"]
+                Mui.button [button.color.inherit';button.variant.text;prop.onClick(fun _ -> dispatch DismissFailureToast);button.children "Not now"]]]
+        Mui.snackbar [
+            snackbar.open' (state.ConsentPrompt && not modelToastVisible && state.Gate.IsNone && not failureToastVisible)
             snackbar.anchorOrigin.bottomCenter
             snackbar.ContentProps [prop.className "next-consent-toast"]
             snackbar.message (Html.span [prop.className "next-consent-message";prop.children [
