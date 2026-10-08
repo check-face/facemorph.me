@@ -1,7 +1,9 @@
 import { collectAssets } from './browser/acquisition-budget.mjs';
 
-export function routeAssets(manifest, route) {
-  const bundle = route === 'webgpu' ? manifest.webgpu : route === 'webgl' ? manifest.webgl : manifest.synthesis;
+// On desktop the WebGPU route runs the direct engine, which reads the block-stream coefficients
+// (manifest.webgl) rather than the ORT split graph; size what the device will actually download.
+export function routeAssets(manifest, route, engine = 'ort') {
+  const bundle = route === 'webgpu' ? (engine === 'direct' ? manifest.webgl : manifest.webgpu) : route === 'webgl' ? manifest.webgl : manifest.synthesis;
   return unique(collectAssets([bundle, manifest.runtime, manifest.mapping, manifest.average, manifest.noise]));
 }
 

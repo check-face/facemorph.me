@@ -186,7 +186,7 @@ async function refreshInventory(){
   const planned=await service.plan();if(!planned)return;
   const {createBrowserModelCache}=await import('./Assets/model-cache.mjs');
   const cache=await createBrowserModelCache();
-  const route=await measure(routeAssets(planned.manifest,planned.route),cache);
+  const route=await measure(routeAssets(planned.manifest,planned.route,planned.engine),cache);
   const photoList=await photoAssets(planned.manifest,cache);
   const photo=await measure(photoList.assets,cache,photoList.extraBytes||0);
   Object.assign(downloads,{known:true,routeReady:route.ready,photoReady:photo.ready,photoAvailable:planned.photoAvailable===true,

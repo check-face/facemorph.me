@@ -314,7 +314,8 @@ export function createBrowserRuntime({manifest: suppliedManifest, manifestSha256
   if(disposed)return null;
   await config();
   if(capabilities().webgpu)await probeGpu();
-  return {route:preferredRoute==='auto'?chooseRoute():preferredRoute,photoAvailable:photoAvailable(),manifest};
+  const planned=preferredRoute==='auto'?chooseRoute():preferredRoute;
+  return {route:planned,engine:gpuEngine(planned),photoAvailable:photoAvailable(),manifest};
  }
  const api={
  prefetch,

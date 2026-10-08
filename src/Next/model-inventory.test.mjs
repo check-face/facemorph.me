@@ -18,6 +18,8 @@ test('the route set follows the route the device will use', () => {
   const sizes = route => routeAssets(manifest, route).reduce((sum, a) => sum + a.size, 0);
   assert.equal(sizes('cpu'), 136);
   assert.equal(sizes('webgpu'), 216);
+  // The direct engine downloads the block-stream coefficients, not the ORT split graph.
+  assert.equal(routeAssets(manifest, 'webgpu', 'direct').reduce((sum, a) => sum + a.size, 0), sizes('webgl'));
   assert.equal(sizes('webgl'), 126);
 });
 
