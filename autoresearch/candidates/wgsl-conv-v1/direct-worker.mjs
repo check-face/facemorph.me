@@ -1,5 +1,6 @@
 import {rgba1024} from '../../../src/Next/browser/identity.mjs';
 import {encodeRgbaPng} from '../../../src/Next/browser/png.mjs';
+import {createCanaryQualification} from '../../../src/Next/browser/canary-qualification.mjs';
 const hex=b=>Array.from(new Uint8Array(b),x=>x.toString(16).padStart(2,'0')).join('');
 let cache;
 async function bytes(asset){
@@ -41,6 +42,15 @@ self.onmessage=async({data})=>{try{
    let diff=0,max=0,ex=null;for(let k=0;k<cpu.length;k++){const d=Math.abs(cpu[k]-gpu[k]);if(d){diff++;if(d>max)max=d;if(!ex)ex={k,cpu:cpu[k],gpu:gpu[k],f:raw[(k%4)*1048576+(k>>2)]};}}
    rows.push({diff,max,ex});}
   await eng.dispose();postMessage({type:'done',result:rows});return;}
+ if(data.type==='qualify'){
+  // The product's own canary gate (fixed reference PNGs, RGB max 1, sampled float 0.002), with the direct
+  // engine as the synthesis step. Records are in memory: every canary runs.
+  const m=data.manifestOverride||manifest,store=new Map();
+  const q=createCanaryQualification({manifest:m,manifestSha256:'0'.repeat(64),provider:'webgpu-direct',bundle:{},records:{get:async k=>store.get(k),put:async(k,v)=>store.set(k,v)},acquireBytes:bytes,full:true,
+   runSynthesis:(values,mode)=>{const nz=mode==='original'?noise:Object.fromEntries(Object.entries(noise).map(([k,v])=>[k,mode==='zero'?new Float32Array(v.length):Float32Array.from(v,x=>-x)]));return direct.infer(values,nz);}});
+  await q.adopt();const results=[];
+  while(!q.complete()){try{results.push(await q.runNext());}catch(e){results.push({error:String(e.message)});break;}}
+  postMessage({type:'done',result:results});return;}
  if(data.type==='time'){
   const n=data.n,warm=3,L=Array.from({length:n+warm},(_,i)=>latent(i,n));const res={};
   // GPU-only sequential (infer), then product-shaped pipelined batch with rgba+png tail
