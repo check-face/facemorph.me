@@ -9,7 +9,7 @@ export async function photoAssets(manifest, cache) {
   const base = collectAssets([manifest.landmarks, manifest.photoCanary, manifest.photoCanaries]);
   const descriptor = manifest.encoderStream;
   if (!descriptor) return { assets: unique([...base, ...collectAssets(manifest.encoder)]), estimated: false };
-  const stored = await cache.peek(descriptor.sha256);
+  const stored = await cache.peek(descriptor);
   if (!stored) return { assets: unique([...base, descriptor]), estimated: true, extraBytes: manifest.encoder?.size || 0 };
   try {
     const shards = collectAssets(JSON.parse(await stored.text()));
@@ -23,7 +23,7 @@ export async function measure(assets, cache, extraBytes = 0) {
   let present = 0, total = extraBytes;
   for (const asset of assets) {
     total += asset.size;
-    if (await cache.has(asset.sha256)) present += asset.size;
+    if (await cache.has(asset)) present += asset.size;
   }
   return { present, total, ready: assets.length > 0 && extraBytes === 0 && present === total };
 }

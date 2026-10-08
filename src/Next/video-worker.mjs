@@ -55,7 +55,7 @@ export function muxMp4(samples,avcC,trackWidth,trackHeight,trackFps){
  return concat(ftyp,moov,mdat);
 }
 const ftyp=box('ftyp',type('isom'),u32(512),type('isom'),type('iso2'),type('avc1'),type('mp41'));
-async function bytes(asset,cache){const h=await cache.acquire(asset);return new Uint8Array(await (await h.open()).arrayBuffer());}
+async function bytes(asset,cache){const h=await cache.acquire(asset);return h.bytes();}
 function begin(){stream=core.FS.open('frames.rgba','w+');segmentFrames=0;}
 function flush(){
  if(!segmentFrames)return;core.FS.close(stream);stream=null;

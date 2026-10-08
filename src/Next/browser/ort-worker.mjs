@@ -161,10 +161,9 @@ async function bytes(asset,id,retainable=false){
  }
  cache ||= await createBrowserModelCache({report:cacheReport,readAhead});
  planAsset(asset);budget.progress(false);
- const handle=await cache.acquire(asset);const data=await(await handle.open()).arrayBuffer();
+ const handle=await cache.acquire(asset);const out=await handle.bytes();
  budget.cacheEvent({status:'saved',sha256:asset.sha256,bytes:asset.size});
  budget.progress(false);
- const out=new Uint8Array(data);
  if(retainable){
   residency.budget=residencyBudget();
   if(residency.held+out.byteLength<=residency.budget){

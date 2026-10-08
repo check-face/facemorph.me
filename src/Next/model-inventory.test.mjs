@@ -10,8 +10,8 @@ const manifest = {
   encoderStream: asset('l', 1), encoder: asset('m', 1000)
 };
 const cacheWith = (present, descriptor) => ({
-  has: async sha => present.has(sha),
-  peek: async sha => descriptor && sha === manifest.encoderStream.sha256 ? { text: async () => JSON.stringify(descriptor) } : null
+  has: async asset => present.has(asset.sha256),
+  peek: async asset => descriptor && asset.sha256 === manifest.encoderStream.sha256 ? { text: async () => JSON.stringify(descriptor) } : null
 });
 
 test('the route set follows the route the device will use', () => {

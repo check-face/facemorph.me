@@ -1,4 +1,5 @@
 import { Sha256 } from './sha256.mjs';
+import { openShardStore } from './shard-store.mjs';
 
 export const MODEL_CACHE_NAME = 'checkface-model-blobs-v1'; // Never app-versioned or age-purged.
 const aborted = () => new DOMException('Asset acquisition cancelled', 'AbortError');
@@ -26,6 +27,7 @@ export function validateAsset(asset) {
 }
 
 const PIECE_BYTES = 256 * 1024;
+const SHARD_UNIT_LIMIT = 64 * 1024 * 1024; // unchunked assets above this stay in Cache Storage
 const hex = buffer => Array.from(new Uint8Array(buffer), x => x.toString(16).padStart(2, '0')).join('');
 /** One pinned chunk, fully read into a buffer of exactly its declared size and checked by the platform digest. */
 async function fetchVerifiedChunk(part, download, signal) {
@@ -130,7 +132,7 @@ export function createRecordAccess(store) {
  * remove(hash) removes only that corrupt identity. Never expose partial writes.
  * Observers receive hashes/status only (no URLs or authentication material).
  */
-export function createModelCache({ store, fetcher = globalThis.fetch, locks,
+export function createModelCache({ store, shards = null, fetcher = globalThis.fetch, locks,
   timeoutMs = 300000, maxConcurrent = 2, readAhead = 2, report = () => {} }) {
   if (!store || !Number.isFinite(timeoutMs) || timeoutMs <= 0 || !Number.isInteger(maxConcurrent) || maxConcurrent < 1
     || !Number.isInteger(readAhead) || readAhead < 1 || readAhead > 8)
@@ -139,6 +141,128 @@ export function createModelCache({ store, fetcher = globalThis.fetch, locks,
   let active = 0;
   const emit = event => { try { report(event); } catch { /* observers cannot break storage */ } };
   const records = createRecordAccess(store);
+  async function fetchBody(part, signal) {
+    const response = await fetcher(part.url, { signal, credentials: 'omit', cache: 'default', mode: 'cors' });
+    check(signal);
+    if (!response.ok || response.status !== 200 || response.type === 'opaque') {
+      void response.body?.cancel().catch(() => {});
+      throw new Error('Asset download requires a readable complete HTTP 200 response');
+    }
+    return response.body;
+  }
+  // ---- Shard store (OPFS) -------------------------------------------------------------------
+  // Each pinned unit (a manifest chunk, or a small unchunked asset) is its own file, and every
+  // read digests every unit with the platform SHA-256 against the manifest's pin. There is no
+  // verified marker of any kind: what vouches for bytes is a hash of those bytes, taken when they
+  // are handed out. Measured on eris (autoresearch/candidates/opfs-shard-cache-v1) this replaces
+  // a JS hash of the whole asset plus a second full read; a bad unit costs one unit's re-fetch.
+  // The whole-asset digest is not recomputed: the chunk list comes from the same pinned manifest
+  // as the whole digest, so every byte is already bound to it through its chunk.
+  const usesShards = asset => Boolean(shards) && (asset.chunks || asset.size <= SHARD_UNIT_LIMIT);
+  const unitsOf = asset => asset.chunks || [asset];
+  const platformHex = async bytes => hex(await globalThis.crypto.subtle.digest('SHA-256', bytes));
+  const underLock = (name, run) => locks?.request ? locks.request(`${MODEL_CACHE_NAME}:${name}`, run) : run();
+  async function commitUnit(asset, unit, bytes) {
+    try { await shards.write(unit.sha256, bytes); }
+    catch (error) {
+      emit({ status: error?.name === 'QuotaExceededError' ? 'quota-exceeded' : 'save-failed', sha256: asset.sha256 });
+      throw error;
+    }
+  }
+  // Bounded-concurrency map over units, in order of index; the first failure stops new work.
+  async function eachUnit(list, limit, run) {
+    let next = 0, failure;
+    const lane = async () => { while (next < list.length && !failure) { const i = next++; try { await run(list[i], i); } catch (error) { failure ??= error; } } };
+    await Promise.all(Array.from({ length: Math.min(limit, list.length) }, lane));
+    if (failure) throw failure;
+  }
+  // Bytes saved by the Cache Storage backend move across without a download: each unit is
+  // checked against its pin on the way, and the old entry is dropped once every unit is in place
+  // (keeping both would double the quota the model takes, which iOS does not have to spare).
+  async function migrateLegacy(asset, missing, signal) {
+    let response;
+    try { response = await store.get(asset.sha256); } catch { return; }
+    if (!response?.body) return;
+    const wanted = new Set(missing.map(unit => unit.sha256)), reader = response.body.getReader();
+    let index = 0, unit = unitsOf(asset)[0], buffer = new Uint8Array(unit.size), at = 0, moved = 0;
+    try {
+      for (;;) {
+        const { value, done } = await reader.read();
+        check(signal);
+        if (done) break;
+        let offset = 0;
+        while (offset < value.byteLength && unit) {
+          const take = Math.min(unit.size - at, value.byteLength - offset);
+          buffer.set(value.subarray(offset, offset + take), at); at += take; offset += take;
+          if (at === unit.size) {
+            if (wanted.has(unit.sha256) && await platformHex(buffer) === unit.sha256) { await commitUnit(asset, unit, buffer); moved++; }
+            unit = unitsOf(asset)[++index]; at = 0; buffer = unit ? new Uint8Array(unit.size) : null;
+          }
+        }
+        if (!unit) break;
+      }
+    } catch (error) { if (signal.aborted) throw error; } // a broken old entry is not fatal: download what is left
+    finally { void reader.cancel().catch(() => {}); }
+    if (moved) emit({ status: 'migrated', sha256: asset.sha256, units: moved });
+    return moved;
+  }
+  async function missingUnits(asset) {
+    const out = [];
+    for (const unit of unitsOf(asset)) if (!(await shards.has(unit.sha256, unit.size))) out.push(unit);
+    return out;
+  }
+  async function ensureShards(asset, signal) {
+    let missing = await missingUnits(asset);
+    check(signal);
+    if (!missing.length) { emit({ status: 'retained', sha256: asset.sha256, bytes: asset.size }); return; }
+    // Migration is local: it announces nothing until it is known that the network is needed.
+    if (await migrateLegacy(asset, missing, signal)) {
+      missing = await missingUnits(asset);
+      if (!missing.length) { void store.remove(asset.sha256).catch(() => {}); emit({ status: 'saved', sha256: asset.sha256, bytes: asset.size }); return; }
+    }
+    check(signal);
+    emit({ status: 'missing', sha256: asset.sha256 });
+    emit({ status: 'downloading', sha256: asset.sha256 });
+    let loaded = asset.size - missing.reduce((sum, unit) => sum + unit.size, 0);
+    const stop = new AbortController(), relay = () => stop.abort(signal.reason || aborted());
+    signal.addEventListener('abort', relay, { once: true });
+    try {
+      await eachUnit(missing, readAhead, async unit => {
+        try { await commitUnit(asset, unit, await fetchVerifiedChunk(unit, fetchBody, stop.signal)); }
+        catch (error) { stop.abort(error); throw error; }
+        loaded += unit.size;
+        emit({ status: 'progress', sha256: asset.sha256, loaded, bytes: asset.size });
+      });
+    } finally { signal.removeEventListener('abort', relay); }
+    check(signal);
+    void store.remove(asset.sha256).catch(() => {}); // a partly migrated old entry is no longer needed
+    emit({ status: 'saved', sha256: asset.sha256, bytes: asset.size });
+  }
+  // Every unit read is digested against its pin, every time. A unit that is absent, uncommitted or
+  // wrong is removed and fetched again on its own, under the same lock that guards its writes.
+  async function readShards(asset, { allowRepair }) {
+    const units = unitsOf(asset), out = units.length === 1 ? null : new Uint8Array(asset.size);
+    const offsets = []; units.reduce((at, unit) => { offsets.push(at); return at + unit.size; }, 0);
+    let single;
+    await eachUnit(units, 4, async (unit, i) => {
+      let bytes = await shards.read(unit.sha256, unit.size);
+      if (!bytes || await platformHex(bytes) !== unit.sha256) {
+        emit({ status: bytes ? 'corrupt-removed' : 'missing-after-acquire', sha256: asset.sha256 });
+        if (!allowRepair) throw new Error(bytes ? 'Asset integrity mismatch' : 'Stored asset disappeared; acquire again');
+        emit({ status: 'repairing', sha256: asset.sha256 });
+        bytes = await underLock(unit.sha256, async () => {
+          const again = await shards.read(unit.sha256, unit.size); // another tab may have repaired it
+          if (again && await platformHex(again) === unit.sha256) return again;
+          await shards.remove(unit.sha256);
+          const fresh = await fetchVerifiedChunk(unit, fetchBody, AbortSignal.timeout(timeoutMs));
+          await commitUnit(asset, unit, fresh).catch(() => {}); // the verified bytes are served even if saving fails
+          return fresh;
+        });
+      }
+      if (out) out.set(bytes, offsets[i]); else single = bytes;
+    });
+    return out || single;
+  }
   // C-05, amended 19 September: the digest of an asset is computed at most once per session.
   // Bytes verified on download (or on first open of bytes stored earlier) carry the in-memory
   // mark; the marker is deliberately NOT durable any more — a durable marker vouches for bytes
@@ -168,6 +292,7 @@ export function createModelCache({ store, fetcher = globalThis.fetch, locks,
   });
   async function ensure(asset, signal) {
     check(signal);
+    if (usesShards(asset)) return ensureShards(asset, signal);
     let cached;
     try { cached = await store.get(asset.sha256); }
     catch (error) { emit({ status: 'storage-unavailable', sha256: asset.sha256 }); throw error; }
@@ -330,8 +455,12 @@ export function createModelCache({ store, fetcher = globalThis.fetch, locks,
       const finish = (error) => {
         if (settled) return; settled = true; signal?.removeEventListener('abort', cancel); task.waiters--;
         if (error) reject(error);
-        else resolve(Object.freeze({ sha256: asset.sha256, size: asset.size, open: async () =>
-          openVerified(asset, { allowRepair: true }) }));
+        else if (usesShards(asset)) resolve(Object.freeze({ sha256: asset.sha256, size: asset.size,
+          bytes: () => readShards(asset, { allowRepair: true }),
+          open: async () => new Response(await readShards(asset, { allowRepair: true })) }));
+        else resolve(Object.freeze({ sha256: asset.sha256, size: asset.size,
+          bytes: async () => new Uint8Array(await (await openVerified(asset, { allowRepair: true })).arrayBuffer()),
+          open: async () => openVerified(asset, { allowRepair: true }) }));
       };
       const cancel = () => {
         finish(signal.reason || aborted());
@@ -345,10 +474,16 @@ export function createModelCache({ store, fetcher = globalThis.fetch, locks,
       if (signal?.aborted) cancel();
     });
   }
-  async function has(sha256) {
+  // Both take an asset descriptor (or, for Cache Storage only, a bare hash). Bytes still in the
+  // old Cache Storage entry count as present: the next acquisition moves them without a download.
+  async function has(input) {
+    const asset = typeof input === 'string' ? null : input, sha256 = asset ? asset.sha256 : input;
+    if (asset && usesShards(asset) && !(await missingUnits(asset).catch(() => [asset])).length) return true;
     try { return Boolean(await store.get(sha256)); } catch { return false; }
   }
-  async function peek(sha256) {
+  async function peek(input) {
+    const asset = typeof input === 'string' ? null : input, sha256 = asset ? asset.sha256 : input;
+    if (asset && usesShards(asset)) { try { return new Response(await readShards(asset, { allowRepair: false })); } catch { /* fall through */ } }
     try { return (await store.get(sha256)) || null; } catch { return null; }
   }
   return { acquire, records, has, peek };
@@ -361,7 +496,8 @@ export async function createBrowserModelCache(options = {}) {
   // This HTTPS namespace is a local storage key only; no request is sent here.
   const origin = /^https?:\/\//.test(location.origin) ? location.origin : 'https://next.facemorph.me';
   const key = hash => new URL(`/__checkface_model_blobs__/sha256/${hash}`, origin).href;
-  return createModelCache({ ...options, locks: globalThis.navigator?.locks,
+  const shards = options.shards !== undefined ? options.shards : await openShardStore();
+  return createModelCache({ ...options, shards, locks: globalThis.navigator?.locks,
     store: {
       get: hash => cache.match(key(hash)),
       put: (hash, response) => cache.put(key(hash), response),

@@ -338,3 +338,110 @@ test('an asset already held reports no download ticks at all', async () => {
   await f.cache.acquire(asset());
   assert.deepEqual(f.events.map(e => e.status), ['retained']);
 });
+
+// ---- OPFS shard store: per-unit files, digest on every read, no marker of any kind ----
+import { createShardStore, TRAILER_BYTES } from './shard-store.mjs';
+function fakeDirectory({ syncOnly = false } = {}) {
+  const files = new Map();
+  const handle = name => {
+    const h = {
+      getFile: async () => { if (!files.has(name)) throw Object.assign(new Error('gone'), { name: 'NotFoundError' }); return new Blob([files.get(name)]); }
+    };
+    if (syncOnly) h.createSyncAccessHandle = async () => {
+      let data = files.get(name) || new Uint8Array();
+      return {
+        truncate: n => { data = data.slice(0, n); files.set(name, data); },
+        write: (bytes, { at }) => { const next = new Uint8Array(Math.max(data.length, at + bytes.byteLength)); next.set(data); next.set(bytes, at); data = next; files.set(name, data); return bytes.byteLength; },
+        flush: () => {}, close: () => {}
+      };
+    };
+    else h.createWritable = async () => {
+      const parts = [];
+      return { write: async bytes => { parts.push(new Uint8Array(bytes)); }, close: async () => { files.set(name, new Uint8Array(await new Blob(parts).arrayBuffer())); }, abort: async () => {} };
+    };
+    return h;
+  };
+  return {
+    files,
+    getFileHandle: async (name, { create = false } = {}) => {
+      if (!files.has(name) && !create) throw Object.assign(new Error('missing'), { name: 'NotFoundError' });
+      if (!files.has(name)) files.set(name, new Uint8Array());
+      return handle(name);
+    },
+    removeEntry: async name => { if (!files.delete(name)) throw Object.assign(new Error('missing'), { name: 'NotFoundError' }); }
+  };
+}
+const shardModel = randomBytes(5000);
+const unitPieces = [shardModel.subarray(0, 2048), shardModel.subarray(2048, 4096), shardModel.subarray(4096)];
+const chunked = () => ({ sha256: digest(shardModel), size: shardModel.length, url: 'https://models.example/model',
+  chunks: unitPieces.map((piece, i) => ({ sha256: digest(piece), size: piece.length, url: `https://models.example/model.${i}` })) });
+function shardFixture(options = {}) {
+  const dir = fakeDirectory(options), f = fixture(async url => new Response(/\.\d$/.test(url) ? unitPieces[Number(url.split('.').pop())] : bytes));
+  const shards = createShardStore(dir);
+  return { ...f, dir, shards, cache: createModelCache({ ...f.options, shards }), again: () => createModelCache({ ...f.options, shards }) };
+}
+
+for (const syncOnly of [false, true]) test(`shards (${syncOnly ? 'sync access handles' : 'createWritable'}): one file per chunk, later sessions read with no network and no Cache Storage entry`, async () => {
+  const f = shardFixture({ syncOnly });
+  await f.cache.acquire(chunked());
+  assert.equal(f.calls.length, 3); assert.equal(f.assetEntries().length, 0);
+  assert.equal(f.dir.files.size, 3);
+  for (const piece of unitPieces) assert.equal(f.dir.files.get(digest(piece)).length, piece.length + TRAILER_BYTES);
+  const handle = await f.again().acquire(chunked());
+  assert.deepEqual(Buffer.from(await handle.bytes()), Buffer.from(shardModel));
+  assert.deepEqual(Buffer.from(await (await handle.open()).arrayBuffer()), Buffer.from(shardModel));
+  assert.equal(f.calls.length, 3, 'a warm read never touches the network');
+});
+test('shards: a corrupt unit is caught on read, whatever the trailer says, and only that unit is fetched again', async () => {
+  const f = shardFixture(); await f.cache.acquire(chunked());
+  const name = digest(unitPieces[1]), stored = f.dir.files.get(name); stored[7] ^= 0xff; // payload byte; trailer intact
+  const fresh = f.again(), handle = await fresh.acquire(chunked());
+  assert.equal(f.calls.length, 3, 'acquisition trusts presence; integrity is checked when bytes are handed out');
+  assert.deepEqual(Buffer.from(await handle.bytes()), Buffer.from(shardModel));
+  assert.deepEqual(f.calls.slice(3), ['https://models.example/model.1']);
+  assert.ok(f.events.some(e => e.status === 'corrupt-removed')); assert.ok(f.events.some(e => e.status === 'repairing'));
+  assert.deepEqual(Buffer.from(await (await fresh.acquire(chunked())).bytes()), Buffer.from(shardModel));
+  assert.equal(f.calls.length, 4, 'the repaired unit stays a hit');
+});
+test('shards: a write cut short (no trailer), a foreign trailer and a deleted unit read as missing and are fetched', async () => {
+  const f = shardFixture(); await f.cache.acquire(chunked());
+  const [a, b, c] = unitPieces.map(piece => digest(piece));
+  f.dir.files.set(a, f.dir.files.get(a).slice(0, 2048));                  // payload only: the commit never happened
+    const wrong = new Uint8Array(unitPieces[1].length + TRAILER_BYTES); wrong.set(f.dir.files.get(c).subarray(-TRAILER_BYTES), unitPieces[1].length); f.dir.files.set(b, wrong); // right size, someone else's trailer
+  f.dir.files.delete(c);
+  const cache = f.again();
+  assert.equal(await cache.has(chunked()), false, 'inventory sees the gaps without reading');
+  await cache.acquire(chunked());
+  assert.deepEqual(Buffer.from(await (await cache.acquire(chunked())).bytes()), Buffer.from(shardModel));
+  assert.equal(await cache.has(chunked()), true);
+  assert.equal(f.calls.length, 6, 'one re-fetch per bad unit, nothing else');
+});
+test('shards: bytes saved by the Cache Storage backend move across without a download, and the old entry is dropped', async () => {
+  const f = shardFixture(); f.entries.set(digest(shardModel), new Uint8Array(shardModel));
+  assert.equal(await f.cache.has(chunked()), true, 'old bytes count as present');
+  const handle = await f.cache.acquire(chunked());
+  assert.equal(f.calls.length, 0); assert.equal(f.dir.files.size, 3); assert.equal(f.assetEntries().length, 0);
+  assert.ok(f.events.some(e => e.status === 'migrated' && e.units === 3));
+  assert.deepEqual(Buffer.from(await handle.bytes()), Buffer.from(shardModel));
+});
+test('shards: a corrupt old entry migrates its good units and downloads the rest', async () => {
+  const f = shardFixture(), old = new Uint8Array(shardModel); old[3000] ^= 1; f.entries.set(digest(shardModel), old);
+  await f.cache.acquire(chunked());
+  assert.deepEqual(f.calls, ['https://models.example/model.1']);
+  assert.deepEqual(Buffer.from(await (await f.cache.acquire(chunked())).bytes()), Buffer.from(shardModel));
+  assert.equal(f.assetEntries().length, 0);
+});
+test('shards: small unchunked assets are one unit; peek reads them back verified', async () => {
+  const f = shardFixture();
+  await f.cache.acquire(asset());
+  assert.equal(f.dir.files.size, 1); assert.equal(f.assetEntries().length, 0);
+  assert.equal(await (await f.again().peek(asset())).text(), 'synthetic model fixture');
+  f.dir.files.get(asset().sha256)[0] ^= 1;
+  assert.equal(await f.again().peek(asset()), null, 'peek never hands out unverified bytes');
+});
+test('shards: invalid network bytes never commit a unit', async () => {
+  const dir = fakeDirectory(), shards = createShardStore(dir);
+  const f = fixture(async () => new Response(new Uint8Array(2048)));
+  await assert.rejects(createModelCache({ ...f.options, shards }).acquire(chunked()), /integrity/);
+  assert.equal([...dir.files.values()].filter(v => v.length).length, 0);
+});

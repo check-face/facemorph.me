@@ -1,0 +1,6 @@
+<!doctype html><meta charset="utf-8"><title>shard storage suite</title><pre id="out">running</pre>
+<script type="module">
+import {run} from './suite.mjs';
+const worker=()=>new Promise(r=>{const w=new Worker('./worker.mjs',{type:'module'});w.onmessage=e=>r(e.data);w.onerror=e=>r({ok:false,error:String(e.message)});});
+window.result=(async()=>{const res={};try{res.worker=await worker();}catch(e){res.worker={ok:false,error:String(e)};}try{res.main=await run();}catch(e){res.main={ok:false,error:String(e&&e.stack||e)};}return res;})();
+</script>
