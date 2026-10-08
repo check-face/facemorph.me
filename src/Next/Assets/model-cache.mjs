@@ -420,7 +420,9 @@ export function createModelCache({ store, shards = null, fetcher = globalThis.fe
       return openVerified(asset, { allowRepair: false });
     }
     if (verifiedAssets.has(asset.sha256)) return response;
-    const failure = await digestFailure(response.body, asset);
+    // A stored body that cannot be read (NotReadableError: Android Chrome loses the file behind a
+    // Cache Storage entry) is corrupt like a wrong digest, and is repaired the same way.
+    const failure = await digestFailure(response.body, asset).catch(error => error);
     if (!failure) { markVerified(asset.sha256); emit({ status: 'verified', sha256: asset.sha256, bytes: asset.size }); return await store.get(asset.sha256); }
     // Corrupt: drop the identity and its record, then repair once.
     verifiedAssets.delete(asset.sha256);
@@ -431,6 +433,20 @@ export function createModelCache({ store, shards = null, fetcher = globalThis.fe
     emit({ status: 'repairing', sha256: asset.sha256 });
     await ensure(asset, new AbortController().signal);
     return openVerified(asset, { allowRepair: false });
+  }
+  // Bytes verified earlier this session are handed back without a second digest, so a file that
+  // became unreadable since is only found here: drop the identity and repair it once.
+  async function readVerified(asset) {
+    try { return new Uint8Array(await (await openVerified(asset, { allowRepair: true })).arrayBuffer()); }
+    catch (error) {
+      if (error?.name !== 'NotReadableError') throw error;
+      verifiedAssets.delete(asset.sha256);
+      await store.remove(asset.sha256).catch(() => {});
+      emit({ status: 'corrupt-removed', sha256: asset.sha256 });
+      emit({ status: 'repairing', sha256: asset.sha256 });
+      await ensure(asset, new AbortController().signal);
+      return new Uint8Array(await (await openVerified(asset, { allowRepair: false })).arrayBuffer());
+    }
   }
   function acquire(input, { signal } = {}) {
     let asset;
@@ -459,7 +475,7 @@ export function createModelCache({ store, shards = null, fetcher = globalThis.fe
           bytes: () => readShards(asset, { allowRepair: true }),
           open: async () => new Response(await readShards(asset, { allowRepair: true })) }));
         else resolve(Object.freeze({ sha256: asset.sha256, size: asset.size,
-          bytes: async () => new Uint8Array(await (await openVerified(asset, { allowRepair: true })).arrayBuffer()),
+          bytes: () => readVerified(asset),
           open: async () => openVerified(asset, { allowRepair: true }) }));
       };
       const cancel = () => {

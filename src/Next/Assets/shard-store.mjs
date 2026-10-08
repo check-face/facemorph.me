@@ -46,9 +46,13 @@ export function createShardStore(dir) {
     if (!stored || stored.size !== size + TRAILER_BYTES) return undefined;
     // Payload and trailer are read separately so the payload is an exact-length buffer: consumers
     // build typed arrays over `.buffer`, and trailing bytes there corrupted the first canary.
-    if (!trailerMatches(new Uint8Array(await stored.slice(size).arrayBuffer()), sha256, size)) return undefined;
-    const payload = new Uint8Array(await stored.slice(0, size).arrayBuffer());
-    return payload.byteLength === size ? payload : undefined;
+    // A File whose backing bytes can no longer be read (NotReadableError, seen on Android Chrome) is
+    // an absent unit: the caller removes it and fetches it again, instead of failing every read.
+    try {
+      if (!trailerMatches(new Uint8Array(await stored.slice(size).arrayBuffer()), sha256, size)) return undefined;
+      const payload = new Uint8Array(await stored.slice(0, size).arrayBuffer());
+      return payload.byteLength === size ? payload : undefined;
+    } catch (error) { if (error?.name === 'NotReadableError' || error?.name === 'NotFoundError') return undefined; throw error; }
   }
   async function has(sha256, size) {
     try { return (await file(sha256))?.size === size + TRAILER_BYTES; } catch { return false; }

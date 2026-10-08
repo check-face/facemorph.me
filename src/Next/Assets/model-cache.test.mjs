@@ -403,6 +403,35 @@ test('shards: a corrupt unit is caught on read, whatever the trailer says, and o
   assert.deepEqual(Buffer.from(await (await fresh.acquire(chunked())).bytes()), Buffer.from(shardModel));
   assert.equal(f.calls.length, 4, 'the repaired unit stays a hit');
 });
+const notReadable = () => Object.assign(new Error('The requested file could not be read'), { name: 'NotReadableError' });
+const unreadableResponse = () => new Response(new ReadableStream({ pull(controller) { controller.error(notReadable()); } }));
+test('a Cache Storage entry whose bytes can no longer be read is repaired, on first open and after it was verified (Android Chrome)', async () => {
+  const f = fixture(); f.entries.set(asset().sha256, bytes);
+  let broken = true; const get = f.store.get;
+  f.store.get = async hash => broken && f.entries.has(hash) ? unreadableResponse() : get(hash);
+  f.store.remove = async hash => { broken = false; return f.entries.delete(hash); };
+  const handle = await f.cache.acquire(asset());
+  assert.deepEqual([...await handle.bytes()], [...bytes], 'the unreadable entry is dropped and fetched again');
+  assert.equal(f.calls.length, 1);
+  assert.ok(f.events.some(e => e.status === 'corrupt-removed'));
+  broken = true; // the file behind an entry verified this session disappears
+  assert.deepEqual([...await handle.bytes()], [...bytes]);
+  assert.equal(f.calls.length, 2, 'repaired once more, not failed');
+});
+test('shards: a unit whose file can no longer be read is fetched again, not failed on every read (Android Chrome)', async () => {
+  const f = shardFixture(); await f.cache.acquire(chunked());
+  const name = digest(unitPieces[1]), open = f.dir.getFileHandle, remove = f.dir.removeEntry;
+  let broken = true;
+  f.dir.getFileHandle = async (n, o) => {
+    const h = await open(n, o);
+    if (n !== name || !broken || o?.create) return h;
+    return { ...h, getFile: async () => { const real = await h.getFile(); return { size: real.size, slice: () => ({ arrayBuffer: async () => { throw notReadable(); } }) }; } };
+  };
+  f.dir.removeEntry = async n => { if (n === name) broken = false; return remove(n); };
+  const handle = await f.again().acquire(chunked());
+  assert.deepEqual(Buffer.from(await handle.bytes()), Buffer.from(shardModel));
+  assert.deepEqual(f.calls.slice(3), ['https://models.example/model.1']);
+});
 test('shards: a write cut short (no trailer), a foreign trailer and a deleted unit read as missing and are fetched', async () => {
   const f = shardFixture(); await f.cache.acquire(chunked());
   const [a, b, c] = unitPieces.map(piece => digest(piece));

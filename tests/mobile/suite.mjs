@@ -1,4 +1,5 @@
 import {createBrowserModelCache, MODEL_CACHE_NAME} from '/src/Next/Assets/model-cache.mjs';
+import {openShardStore} from '/src/Next/Assets/shard-store.mjs';
 
 const runId = new URLSearchParams(location.search).get('run');
 const storageKey = `mobile-ci-${runId}`;
@@ -38,7 +39,12 @@ try {
     report.completed=true;await submit();
   } else {
     // Only synthetic identities on a dedicated ephemeral CI origin are removed.
-    const raw=await caches.open(MODEL_CACHE_NAME);await raw.delete(key);
+    // Small assets live as OPFS shards where the engine has them (Android Chrome), Cache Storage
+    // elsewhere: every test starts from neither, and checks both for committed bytes.
+    const raw=await caches.open(MODEL_CACHE_NAME),shards=await openShardStore();
+    const forget=async()=>{await raw.delete(key);await shards?.remove(hash);};
+    const committed=async()=>!!await raw.match(key)||!!await shards?.has(hash,bytes.length);
+    await forget();
     await test('worker-module-hash',()=>new Promise((resolve,reject)=>{
       const worker=new Worker('./hash-worker.mjs',{type:'module'});
       const timer=setTimeout(()=>{worker.terminate();reject(Error('Worker timeout'));},10000);
@@ -49,7 +55,7 @@ try {
     }));
     await test('integrity-rejection',async()=>{
       const cache=await createBrowserModelCache({fetcher:async()=>new Response('abd')});
-      await rejected(cache.acquire(asset));check(!await raw.match(key),'Corrupt bytes committed');
+      await rejected(cache.acquire(asset));check(!await committed(),'Corrupt bytes committed');
     });
     await test('cancel-partial-retry',async()=>{
       let ready;const started=new Promise(resolve=>{ready=resolve;});
@@ -58,10 +64,10 @@ try {
       const pending=rejected(cache.acquire(asset,{signal:controller.signal}));
       await started;controller.abort();const error=await pending;
       check(error.name==='AbortError','Wrong cancellation error');
-      check(!await raw.match(key),'Partial bytes committed');
+      check(!await committed(),'Partial bytes committed');
       const retry=await createBrowserModelCache({fetcher:async()=>new Response(bytes)});
       check(await (await (await retry.acquire(asset)).open()).text()==='abc','Retry failed');
-      await raw.delete(key);
+      await forget();
     });
     await test('concurrent-download-dedup',async()=>{
       let calls=0;
@@ -71,7 +77,8 @@ try {
       for (const handle of handles) check(await (await handle.open()).text()==='abc','Cached bytes changed');
     });
     await test('corrupt-cache-repair',async()=>{
-      await raw.put(key,new Response('bad'));let calls=0;
+      await forget();const bad=new TextEncoder().encode('bad');
+      if(shards)await shards.write(hash,bad);else await raw.put(key,new Response(bad));let calls=0;
       const cache=await createBrowserModelCache({fetcher:async()=>{calls++;return new Response(bytes);}});
       check(await (await (await cache.acquire(asset)).open()).text()==='abc','Repair failed');
       check(calls===1,'Repair did not acquire replacement');
