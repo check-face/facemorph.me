@@ -35,3 +35,12 @@ test('priorOrder keeps only supported routes and appends unranked ones last', ()
  const androidCaps = { ...capabilities({ navigator: { userAgent: 'Android' } }), webgpu: false, webgl: true };
  assert.deepEqual(priorOrder(androidCaps, ['cpu', 'webgl']), ['cpu', 'webgl'], 'S24 fallback order: CPU before WebGL, never the reverse');
 });
+
+test('desktop without a usable WebGPU adapter tries CPU before WebGL', () => {
+ // A Linux desktop whose navigator.gpu had no adapter ran every face on WebGL at 7.4 s (8 Oct
+ // diagnostics). The operator ruling is WebGPU -> CPU -> WebGL until data shows otherwise.
+ for (const userAgent of ['Mozilla/5.0 (X11; Linux x86_64) Chrome/154', 'Mozilla/5.0 (Windows NT 10.0) Chrome/153', 'Mozilla/5.0 (Macintosh; Intel Mac OS X) Chrome/151']) {
+  const desktop = { ...capabilities({ navigator: { userAgent } }), webgpu: false, webgl: true };
+  assert.deepEqual(priorOrder(desktop, ['cpu', 'webgl']), ['cpu', 'webgl'], userAgent);
+ }
+});

@@ -73,11 +73,15 @@ export const ROUTE_PRIORS = Object.freeze([
     because: 'iOS WebGL avoids the large WASM heap; Simulator runs have no WebGPU adapter to compare'
   },
   {
-    // On desktop without WebGPU neither order has been measured, so try the GPU path first and let
-    // the device's own timings settle it. Stated as unmeasured rather than dressed up as a finding.
+    // Desktop without a usable WebGPU adapter. Desktop WebGL against desktop CPU is not measured,
+    // but no measurement anywhere puts WebGL ahead of CPU: S24 Ultra WebGL ~13,000 ms against CPU
+    // 2,582-5,911 ms, and the iOS Simulator's pure WebGL ran about three times slower than
+    // four-thread CPU. Operator ruling, 8 October 2026: keep WebGPU -> CPU -> WebGL until data
+    // shows otherwise. Diagnostics caught a 32-core Linux desktop on WebGL at 7.4 s per face
+    // because this entry used to put WebGL first. This device's own timings still replace it.
     when: () => true,
-    order: ['webgl', 'cpu'],
-    because: 'Desktop WebGL against desktop CPU is not measured; the device decides'
+    order: ['cpu', 'webgl'],
+    because: 'Desktop WebGL against desktop CPU is not measured; nothing recorded favours WebGL, so CPU first (operator ruling WebGPU -> CPU -> WebGL)'
   }
 ]);
 
