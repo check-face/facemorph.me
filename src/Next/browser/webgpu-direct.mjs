@@ -151,6 +151,25 @@ fn main(@builtin(global_invocation_id) g:vec3u){
  let pix=g.x+g.y*65535u*64u; if(pix>=1048576u){return;}
  let v=rgb[pix]; y[pix]=v.x; y[1048576u+pix]=v.y; y[2097152u+pix]=v.z;
 }`;
+// The product's own output conversion (identity.mjs rgba1024: trunc(clamp(v*127.5+128))) on the GPU, so a
+// face crosses the bus as 4 MB of RGBA8 instead of 12 MB of floats and the worker skips its per-pixel loop.
+// Non-finite values are counted rather than silently clamped; a count above zero fails the face as before.
+const RGBA8=/* wgsl */`
+@group(0)@binding(0) var<storage,read> rgb:array<vec4f>;
+@group(0)@binding(1) var<storage,read_write> y:array<u32>;
+@group(0)@binding(2) var<storage,read_write> bad:atomic<u32>;
+// Always zero, but only known at run time: XOR-ing the product's bits with it makes the compiler round
+// v*127.5 to f32 before the add, as identity.mjs does. Without it the two contract into one FMA and the
+// handful of values that land exactly on an integer truncate one level lower.
+@group(0)@binding(3) var<uniform> zero:vec4u;
+fn q(v:f32)->u32{let t=bitcast<f32>(bitcast<u32>(v*127.5)^zero.x); let s=t+128.0; return u32(trunc(clamp(s,0.0,255.0)));}
+fn finite(v:vec3f)->bool{return all(v==v)&&all(abs(v)<=vec3f(3.4e38));}
+@compute @workgroup_size(64)
+fn main(@builtin(global_invocation_id) g:vec3u){
+ let pix=g.x+g.y*65535u*64u; if(pix>=1048576u){return;}
+ let v=rgb[pix].xyz; if(!finite(v)){atomicAdd(&bad,1u);}
+ y[pix]=q(v.x)|(q(v.y)<<8u)|(q(v.z)<<16u)|(255u<<24u);
+}`;
 
 // conv1 taps (correlation, q = p + (ky-1, kx-1)), tap order ky-major.
 const TAPS3=[];for(let ky=0;ky<3;ky++)for(let kx=0;kx<3;kx++)TAPS3.push([ky-1,kx-1,ky*3+kx]);
@@ -173,8 +192,8 @@ export async function createDirectWebGpuSession({config,noiseManifest,bytes,prog
  let failure=null,closing=false;
  device.lost.then(info=>{if(!closing)failure=Error('GPU device lost: '+info.reason);});
  device.addEventListener('uncapturederror',e=>{failure=failure||Error('GPU validation: '+e.error.message);});
- const all=[],spare=[];
- const dispose=async()=>{if(closing)return;closing=true;for(const b of all)b.destroy();for(const b of spare)b.destroy();device.destroy();};
+ const all=[],pools={raw:[],rgba:[]};
+ const dispose=async()=>{if(closing)return;closing=true;for(const b of all)b.destroy();for(const b of [...pools.raw,...pools.rgba])b.destroy();device.destroy();};
  try{
   const byName=new Map(config.assets.map(a=>[a.url.slice(a.url.lastIndexOf('/')+1),a]));
   const asset=file=>{const a=byName.get(file);if(!a)throw Error('Direct engine asset missing: '+file);return a;};
@@ -215,6 +234,7 @@ export async function createDirectWebGpuSession({config,noiseManifest,bytes,prog
    features=out;skip=rgb;
   }
   const output=buffer(3*1048576*4,S|CS);step(OUT,[skip,output],grid(1048576));
+  const outSteps=steps.length;const rgba=buffer(1048576*4+16,S|CS|CD),bad=buffer(16,S|CS|CD);step(RGBA8,[skip,rgba,bad,upload(new Uint32Array(4),U|CD)],grid(1048576));
   progress('gpu-direct-ready');
   let lastNoise={};
   function writeInputs(values,noise){
@@ -223,14 +243,27 @@ export async function createDirectWebGpuSession({config,noiseManifest,bytes,prog
    for(const n of noiseManifest){const a=noise[n.name];if(lastNoise[n.name]!==a){device.queue.writeBuffer(noiseBuf[n.name],0,a);lastNoise[n.name]=a;}}
   }
   // Same contract as the ORT engine's submit: queue a face and its readback, return before it lands.
-  async function submit(values,noise){
+  const zero=new Uint32Array(4);
+  function queue(values,noise,mode){
    if(failure)throw failure;if(closing)throw Error('GPU session closed.');writeInputs(values,noise);
-   const e=device.createCommandEncoder(),pass=e.beginComputePass();for(const s of steps){pass.setPipeline(s.pipe);pass.setBindGroup(0,s.group);pass.dispatchWorkgroups(...s.wg);}pass.end();
-   let readback=spare.pop();if(!readback){readback=device.createBuffer({size:output.size,usage:GPUBufferUsage.MAP_READ|CD});}
-   e.copyBufferToBuffer(output,0,readback,0,output.size);device.queue.submit([e.finish()]);const mapped=readback.mapAsync(GPUMapMode.READ);
-   return {raw:(async()=>{try{await mapped;}catch(error){readback.destroy();throw failure||error;}const r=new Float32Array(readback.getMappedRange().slice(0));readback.unmap();
-    if(closing||spare.length>=2)readback.destroy();else spare.push(readback);if(failure)throw failure;return r;})()};
+   const e=device.createCommandEncoder(),pass=e.beginComputePass();
+   steps.forEach((s,i)=>{if(mode==='raw'?i>=outSteps:i===outSteps-1)return;pass.setPipeline(s.pipe);pass.setBindGroup(0,s.group);pass.dispatchWorkgroups(...s.wg);});pass.end();
+   const src=mode==='raw'?output:rgba,size=mode==='raw'?output.size:1048576*4,pool=pools[mode];
+   if(mode==='rgba'){e.copyBufferToBuffer(bad,0,rgba,1048576*4,4);}
+   let readback=pool.pop();if(!readback){readback=device.createBuffer({size:mode==='raw'?size:size+16,usage:GPUBufferUsage.MAP_READ|CD});}
+   e.copyBufferToBuffer(src,0,readback,0,mode==='raw'?size:size+16);
+   device.queue.submit([e.finish()]);if(mode==='rgba')device.queue.writeBuffer(bad,0,zero);
+   const mapped=readback.mapAsync(GPUMapMode.READ);
+   return (async()=>{try{await mapped;}catch(error){readback.destroy();throw failure||error;}
+    const range=readback.getMappedRange();let out;
+    if(mode==='raw')out=new Float32Array(range.slice(0));
+    else{const nonFinite=new Uint32Array(range,size,1)[0];out=new Uint8ClampedArray(range.slice(0,size));if(nonFinite){readback.unmap();readback.destroy();throw Error('Nonfinite synthesis output');}}
+    readback.unmap();if(closing||pool.length>=2)readback.destroy();else pool.push(readback);if(failure)throw failure;return out;})();
   }
-  return {async infer(values,noise){return (await submit(values,noise)).raw;},submit,dispose,provider:'webgpu',engine:'direct',model:manifest.sourceSha256};
+  // Same contract as the ORT engine's submit: queue a face and its readback, return before it lands.
+  async function submit(values,noise){return {raw:queue(values,noise,'raw')};}
+  // Morph frames and faces: RGBA8 converted on the GPU (identity.mjs semantics), 4 MB per face.
+  async function submitRgba(values,noise){return {rgba:queue(values,noise,'rgba')};}
+  return {async infer(values,noise){return (await submit(values,noise)).raw;},submit,submitRgba,dispose,provider:'webgpu',engine:'direct',model:manifest.sourceSha256};
  }catch(error){await dispose();throw error;}
 }

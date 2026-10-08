@@ -33,6 +33,14 @@ self.onmessage=async({data})=>{try{
    rows.push({name:c.name,maxFloat:maxF,maxRgb,diffFrac:diffPix/ra.length,finite:fin});
   }
   postMessage({type:'done',result:rows});return;}
+ if(data.type==='rgbacheck'){
+  // Product engine: GPU RGBA8 conversion vs identity.mjs rgba1024 on the same floats.
+  const m=await import('../../../src/Next/browser/webgpu-direct.mjs');
+  const eng=await m.createDirectWebGpuSession({config:manifest.webgl,noiseManifest:manifest.noise,bytes});const rows=[];
+  for(let i=0;i<data.n;i++){const v=latent(i,data.n);const raw=await eng.infer(v,noise);const gpu=await (await eng.submitRgba(v,noise)).rgba;const cpu=rgba1024(raw);
+   let diff=0,max=0,ex=null;for(let k=0;k<cpu.length;k++){const d=Math.abs(cpu[k]-gpu[k]);if(d){diff++;if(d>max)max=d;if(!ex)ex={k,cpu:cpu[k],gpu:gpu[k],f:raw[(k%4)*1048576+(k>>2)]};}}
+   rows.push({diff,max,ex});}
+  await eng.dispose();postMessage({type:'done',result:rows});return;}
  if(data.type==='time'){
   const n=data.n,warm=3,L=Array.from({length:n+warm},(_,i)=>latent(i,n));const res={};
   // GPU-only sequential (infer), then product-shaped pipelined batch with rgba+png tail
