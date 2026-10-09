@@ -1,6 +1,6 @@
 // The estimate must come from measurement and must not appear before there is one.
 import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs/promises';import vm from 'node:vm';import {webcrypto} from 'node:crypto';
-import {createEstimator, describeMs, isSlowJob, COLD_FACE_MS} from './estimate.mjs';
+import {createEstimator, describeMs, describeMeasuredMs, isSlowJob, COLD_FACE_MS} from './estimate.mjs';
 const read=n=>fs.readFile(new URL(n,import.meta.url),'utf8');
 const plain=s=>s.replace(/^import .*;\n/gm,'').replaceAll('export ','').replaceAll('import.meta.url',JSON.stringify(import.meta.url));
 test('Face time is measured from real work only, and frames come from the shared geometry',async()=>{
@@ -71,4 +71,10 @@ test('an unknown or unranked route yields no estimate rather than a made-up one'
   assert.equal(createEstimator({route: () => 'quantum'}).faceMs(), null);
   assert.equal(createEstimator({}).faceMs(), null);
   assert.equal(createEstimator({}).predict({faces: 30}), null);
+});
+
+test('a measured face time is spoken to the millisecond, not rounded up to a second', () => {
+ assert.equal(describeMeasuredMs(63),'0.063 seconds');
+ assert.equal(describeMeasuredMs(1238.4),'1.238 seconds');
+ assert.equal(describeMeasuredMs(75*1000),'about 75 seconds');
 });

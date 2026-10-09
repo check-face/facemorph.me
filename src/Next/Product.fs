@@ -82,6 +82,8 @@ let issueUrl (route: string): string = jsNative
 let createEstimator (options: obj): obj = jsNative
 [<Import("describeMs", "./estimate.mjs")>]
 let describeMs (ms: float): string = jsNative
+[<Import("describeMeasuredMs", "./estimate.mjs")>]
+let describeMeasuredMs (ms: float): string = jsNative
 [<Import("isSlowJob", "./estimate.mjs")>]
 let isSlowJob (ms: float): bool = jsNative
 /// The admitted route, for the cold estimate. Set from route-admitted; empty until a route is in.
@@ -257,8 +259,8 @@ let private remainingText () =
 /// figure it has never produced does not get relabelled as one.
 let private perFrameText () =
     match measuredFrameMs() with
-    | null -> (match measuredFaceMs() with null -> "" | value -> describeMs(unbox<float> value) + " per face")
-    | value -> describeMs(unbox<float> value) + " per frame"
+    | null -> (match measuredFaceMs() with null -> "" | value -> describeMeasuredMs(unbox<float> value) + " per face")
+    | value -> describeMeasuredMs(unbox<float> value) + " per frame"
 
 /// Predicted total for the morph as currently configured, from measurement only.
 let private predictedMorphMs (state:State) =
@@ -1069,8 +1071,8 @@ let view state dispatch = App.ThemedApp [
                     prop.custom("data-next-estimate", (if measuredHere then "measured" else "prior"))
                     prop.text (
                         if measuredHere then
-                            if frames>0. then sprintf "On this device a face took %s%s, so a %g-frame morph should take %s." (describeMs perFace) (if perFrame="" then "" else " (" + perFrame + ")") frames (describeMs (perFace*frames))
-                            else sprintf "On this device a face took %s." (describeMs perFace)
+                            if frames>0. then sprintf "On this device a face took %s%s, so a %g-frame morph should take %s." (describeMeasuredMs perFace) (if perFrame="" then "" else " (" + perFrame + ")") frames (describeMs (perFace*frames))
+                            else sprintf "On this device a face took %s." (describeMeasuredMs perFace)
                         else
                             if frames>0. then sprintf "On similar devices a face takes %s, so a %g-frame morph would take %s. This device's own timing replaces this estimate after the first face." (describeMs perFace) frames (describeMs (perFace*frames))
                             else sprintf "On similar devices a face takes %s. This device's own timing replaces this estimate after the first face." (describeMs perFace))]

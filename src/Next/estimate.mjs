@@ -61,5 +61,16 @@ export function describeMs(ms) {
 	return `about ${(seconds / 3600).toFixed(1)} hours`;
 }
 
+/**
+ * A measured duration, said as measured: to the millisecond under ten seconds, so a 63 ms face
+ * reads "0.063 seconds" instead of being rounded up to "about 1 seconds". Predictions keep
+ * describeMs; only a number this device produced earns the precision.
+ */
+export function describeMeasuredMs(ms) {
+	if (!Number.isFinite(ms))return '';
+	if (ms < 10000)return `${(ms / 1000).toFixed(3)} seconds`;
+	return describeMs(ms);
+}
+
 /** True when a predicted duration deserves the slow-run warning. Never blocking. */
 export function isSlowJob(ms) {return Number.isFinite(ms) && ms > SLOW_JOB_MS;}
