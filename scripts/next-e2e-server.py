@@ -10,7 +10,7 @@ The 256MiB bound fits the webgpu segments the previous 32MiB bound could never p
 import argparse,hashlib,json,re,ssl,traceback,urllib.error,urllib.request
 from pathlib import Path
 from http.server import ThreadingHTTPServer,SimpleHTTPRequestHandler
-p=argparse.ArgumentParser();p.add_argument('--manifest-sha',required=True);p.add_argument('--cert',required=True);p.add_argument('--key',required=True);p.add_argument('--runtime-overlay',type=Path,default=None);p.add_argument('--runtime-files',type=Path,default=None,help='Unpinned runtime files laid out as served under /runtime/ (mirror-runtime.py --photo-only)');a=p.parse_args()
+p=argparse.ArgumentParser();p.add_argument('--manifest-sha',required=True);p.add_argument('--cert',required=True);p.add_argument('--key',required=True);p.add_argument('--runtime-overlay',type=Path,default=None);p.add_argument('--runtime-files',type=Path,default=None,help='The runtime tree the deploy publishes, laid out as served under /runtime/ (mirror-runtime.py)');a=p.parse_args()
 ORIGIN='https://next.facemorph.me'
 SOURCE=Path('next-site-source.txt').read_text().strip()
 MIRROR=Path('.runtime-mirror');MIRROR.mkdir(exist_ok=True)
@@ -101,7 +101,7 @@ class Handler(SimpleHTTPRequestHandler):
    if sha is None:
     m=re.fullmatch(r'/runtime/chunks/([0-9a-f]{64})\.bin',self.path)
     sha=m.group(1) if m else None
-   # Unpinned files (the photo worker and its sibling modules) come from the tree the deploy will
+   # Unpinned files (photo worker modules, the encoder stream) come from the tree the deploy will
    # publish, not from production: production can lack them, which is the bug this catches.
    local=(a.runtime_files.resolve()/self.path[len('/runtime/'):]) if a.runtime_files and sha is None else None
    if local is not None and local.is_file():return self.respond(local.read_bytes(),self.mime_for(self.path))

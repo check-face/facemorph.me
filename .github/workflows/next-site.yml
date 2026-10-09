@@ -161,7 +161,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .runtime-public
-          key: runtime-public-${{ hashFiles('hosting/next-static/runtime-overlay/manifest.json') }}
+          key: runtime-public-${{ hashFiles('hosting/next-static/runtime-overlay/manifest.json', 'hosting/next-static/mirror-runtime.py') }}
           restore-keys: runtime-public-
       - name: Rebuild the runtime from the pinned manifest
         run: |
