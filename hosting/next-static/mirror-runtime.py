@@ -7,8 +7,8 @@ same tree: every file the manifest names is fetched from the origin, or from the
 overlay carries it, and checked against its pinned size and SHA-256 before it is kept. Pinned
 manifests inside the runtime (photo, encoder-stream) are followed the same way, including entries
 named by a `file` relative to their manifest. Which host the bytes come from does not matter, since
-each one is checked against its pin: when the origin lacks a file, the --fallback origins are
-tried (the first CI deploy dropped files the previous version still serves). A file already in --output with the right digest is not fetched
+each one is checked against its pin: when the origin lacks a file, any --fallback origins are
+tried. A file already in --output with the right digest is not fetched
 again, so an actions/cache of --output makes a redeploy cost only what changed.
 
 An asset that is served in chunks is mirrored as its chunks only: the whole file is above the
@@ -22,8 +22,7 @@ REPO = Path(__file__).resolve().parents[2]
 p = argparse.ArgumentParser()
 p.add_argument('--overlay', type=Path, default=Path(__file__).resolve().parent / 'runtime-overlay')
 p.add_argument('--origin', default='https://next.facemorph.me')
-# d985389c is the fe0da5a version, the last one staged from a complete operator runtime directory.
-p.add_argument('--fallback', action='append', default=['https://d985389c-facemorph-next.cdilga.workers.dev'])
+p.add_argument('--fallback', action='append', default=[])
 p.add_argument('--output', type=Path, required=True)
 a = p.parse_args()
 PREFIX = a.origin.rstrip('/') + '/runtime/'
