@@ -190,6 +190,11 @@ jobs:
       - name: Check the live site serves every runtime file
         run: |
           cd public && find runtime -type f ! -name index.html | sort > ../runtime-files
-          missing=$(xargs -P 16 -I{} sh -c 'code=$(curl -s -o /dev/null -I -w "%{http_code}" "https://next.facemorph.me/{}"); [ "$code" = 200 ] || echo "$code {}"' < ../runtime-files)
+          # New assets take a minute or two to reach every edge after the deploy returns.
+          for attempt in $(seq 1 12); do
+            missing=$(xargs -P 16 -I{} sh -c 'code=$(curl -s -o /dev/null -I -w "%{http_code}" "https://next.facemorph.me/{}"); [ "$code" = 200 ] || echo "$code {}"' < ../runtime-files)
+            [ -z "$missing" ] && break
+            echo "attempt $attempt: $(echo "$missing" | wc -l) not served yet"; sleep 15
+          done
           [ -z "$missing" ] || { echo "$missing"; exit 1; }
           echo "$(wc -l < ../runtime-files) runtime files served"
