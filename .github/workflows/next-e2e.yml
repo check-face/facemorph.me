@@ -52,6 +52,7 @@ jobs:
           restore-keys: runtime-public-
       - name: Rebuild the runtime tree from the pinned manifest
         run: python3 hosting/next-static/mirror-runtime.py --output .runtime-public
+      - name: Validate artifact run provenance
         env:
           GH_TOKEN: ${{ github.token }}
           RUN_ID: ${{ inputs.artifact_run }}
