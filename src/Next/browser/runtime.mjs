@@ -266,7 +266,11 @@ export function createBrowserRuntime({manifest: suppliedManifest, manifestSha256
   */
  async function prefetch(scope='route',{explicit=false}={}){
   const warmingPhoto=scope==='photo';
-  if(disposed||active||worker||prefetchWorker||(!explicit&&!prefetchWelcome()))return {started:false};
+  // An explicit download only fills the cache (no session), so it may run beside the idle engine a
+  // finished face leaves behind. Refusing it there turned every resume after a face into a false
+  // "The download stopped" whose Try again refused the same way.
+  const busy=()=>disposed||active||(worker&&!explicit);
+  if(busy()||prefetchWorker||(!explicit&&!prefetchWelcome()))return {started:false};
   if(!warmingPhoto&&validated&&!explicit)return {started:false};
   let own;
   try{
@@ -279,7 +283,7 @@ export function createBrowserRuntime({manifest: suppliedManifest, manifestSha256
    // The preamble above awaits a manifest and an adapter probe, and a real operation can start
    // during either. `stopPrefetch` only terminates a worker that already exists, so without this
    // re-check the warm-up would create its worker *after* being cancelled and run unsupervised.
-   if(disposed||active||worker)return {started:false};
+   if(busy()||prefetchWorker)return {started:false};
    own=workerFactory();prefetchWorker=own;
    const result=await new Promise((resolve,reject)=>{
     prefetchCancel=()=>reject(Error('Warm-up superseded.'));

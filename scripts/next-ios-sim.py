@@ -59,7 +59,7 @@ CAMPAIGN = """
 
     new MutationObserver(() => {
       const t = document.body.innerText;
-      for (const re of [/Using the \\w+ route[^\\n]*/, /Getting photo tools ready[^\\n]*/,
+      for (const re of [/Using the \\w+ route[^\\n]*/, /Getting the photo encoder ready[^\\n]*/,
                         /Downloading model files[^\\n]*/, /Loading model files from this device[^\\n]*/,
                         /Generating[^\\n]*/, /Face generated[^\\n]*/,
                         /[^\\n]*much slower[^\\n]*/, /[^\\n]*rejected a graphics route[^\\n]*/]) {

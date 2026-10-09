@@ -203,8 +203,13 @@ export function downloadModels(includePhoto){
 export function consentToDownload(scope){keepModelsOnDevice();return scope;}
 async function pumpDownloads(){
  if(downloading||active)return;
+ // A face made while the download was paused fetches what it needs itself, so re-measure first
+ // and skip whatever is already on the device instead of announcing a 1 MB of 1 MB download.
+ if(downloads.phase==='waiting')await refreshInventory();
+ if(downloading||active)return;
  for(const scope of ['route','photo']){
   if(!wanted.has(scope))continue;
+  if(scope==='route'?downloads.routeReady:downloads.photoReady){wanted.delete(scope);continue;}
   downloading=scope;Object.assign(downloads,{phase:'downloading',scope,loaded:0,total:scope==='route'?downloads.routeBytes:downloads.photoBytes});announceDownloads();
   let result={started:false};const began=performance.now(),planned=downloads.total;
   try{result=await (await engine()).prefetch(scope,{explicit:true});}catch{}
@@ -316,7 +321,7 @@ export async function importProject(request){
   await admission(request.provider||'auto');const next=new Map();
   for(const control of imported.morph.controls){checked();const result=await service.synthesize({...control.latent,shape:[1,18,512],values:Float32Array.from(control.latent.values)},{signal:active.signal});next.set(control.visitId,{...result,label:'Project face'});}
   checked();await commit(next,imported);analytics.exported({kind:'project',method:'open',outcome:'completed'});return snapshot('Project opened.',true);
- }finally{active=null;}
+ }finally{active=null;if(wanted.size)void pumpDownloads();}
 }
 /** `basis` records how the visitor agreed: checkbox, invite or toast (reporting.mjs CONSENT_BASES). */
 export function setDebug(enabled,basis){diagnostics.enable(enabled,basis||'checkbox');}

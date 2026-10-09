@@ -59,6 +59,8 @@ const cacheReport=event=>{
  budget.cacheEvent(event);
 };
 const planAsset=budget.planAsset;
+// Settle the denominator before bytes move: what is already on this device is not a download.
+const probePlanned=()=>budget.probe(asset=>cache.has(asset));
 /** Everything the chosen route will ask for before it can produce a face. */
 // The WebGPU route's model bundle: the direct engine reads the block-stream coefficients (manifest.webgl),
 // the ORT engine its split graph (manifest.webgpu).
@@ -160,7 +162,7 @@ async function bytes(asset,id,retainable=false){
   if(held)residency.held-=held.byteLength,residency.bytes.delete(asset.sha256);
  }
  cache ||= await createBrowserModelCache({report:cacheReport,readAhead});
- planAsset(asset);budget.progress(false);
+ planAsset(asset);await probePlanned();budget.progress(false);
  const handle=await cache.acquire(asset);const out=await handle.bytes();
  budget.cacheEvent({status:'saved',sha256:asset.sha256,bytes:asset.size});
  budget.progress(false);
@@ -187,7 +189,7 @@ async function prefetchRoute(id,scope='route'){
  cache ||= await createBrowserModelCache({report:cacheReport,readAhead});
  const list=scope==='photo'?await photoAssets():routeAssets();
  if(scope==='photo')planAsset(list);else planRoute();
- budget.progress(false);
+ await probePlanned();budget.progress(false);
  let assets=0,acquired=0;
  for(const asset of list){
   assets++;
@@ -220,7 +222,7 @@ function cpuThreads(){
 
 async function encodeStream(tensor,id,qualifiedEncoderSha256){
  const started=performance.now();const descriptor=manifest.encoderStream,config=JSON.parse(new TextDecoder().decode(await bytes(descriptor,id)));
- planAsset(config); // 108 shards, known the moment the descriptor is verified: budget for all of them.
+ planAsset(config);await probePlanned(); // 108 shards, known the moment the descriptor is verified: budget for all of them.
  if(config.sourceEncoderSha256!==descriptor.sourceEncoderSha256||config.sourceEncoderSha256!==manifest.encoder?.sha256||config.preprocessingSha256!==manifest.alignmentSha256||config.preprocessingSha256!==descriptor.preprocessingSha256||config.runtime?.unshared!==true||config.runtime.maxWasmBytes!==268435456)throw Error('Streamed encoder identity mismatch.');
  // The runtime is the small half: three modules and a wasm binary, none of which are weights.
  // Holding them across photos skips a re-import and a wasm recompile per encode; the 108 shards
@@ -263,7 +265,7 @@ async function load(id){if(synthesis||webgl||webgpu)return;
  // which is the cost the holding exists to avoid. A device is only told to hold when it has the
  // room for both.
  if(residency.mode!=='on')await releaseEncoder();
- cache ||= await createBrowserModelCache({report:cacheReport,readAhead});planRoute();noise={};for(const item of manifest.noise)noise[item.name]=await floats(item,id);
+ cache ||= await createBrowserModelCache({report:cacheReport,readAhead});planRoute();await probePlanned();noise={};for(const item of manifest.noise)noise[item.name]=await floats(item,id);
  report(id,'model-loading');const started=performance.now();
  if(provider==='webgpu'&&gpuEngine==='direct'){if(!manifest.webgl)throw Error('WebGPU direct bundle unavailable');warmMapping();webgpu=await createDirectWebGpuSession({config:manifest.webgl,noiseManifest:manifest.noise,bytes:asset=>bytes(asset,currentId),progress:stage=>report(currentId,stage)});}
  else if(provider==='webgpu'){if(!manifest.webgpu)throw Error('WebGPU bundle unavailable');warmMapping();webgpu=await createWebGpuSession({config:manifest.webgpu,noiseManifest:manifest.noise,bytes:asset=>bytes(asset,currentId),progress:stage=>report(currentId,stage)});}
@@ -396,7 +398,7 @@ self.onmessage=({data})=>{
  cache ||= await createBrowserModelCache({report:cacheReport,readAhead});
  // The encoder is the largest thing this device will fetch. Budget for it before the first
  // byte arrives, so the bar measures the wait the user is actually in for.
- planAsset(manifest.encoderStream||manifest.encoder);
+ planAsset(manifest.encoderStream||manifest.encoder);await probePlanned();
  if(!(request.tensor instanceof Float32Array)||request.tensor.length!==196608||!request.tensor.every(Number.isFinite))throw Error('Invalid aligned photo tensor');
  if(manifest.encoderStream){result=await encodeStream(request.tensor,id,request.qualifiedEncoderSha256);}else{await ensureOrt(id);let input,out,values;try{if(!encoder){report(id,'encoder-loading');const created=performance.now();encoder=await ort.InferenceSession.create(await bytes(manifest.encoder,id),{executionProviders:['wasm']});report(id,'encoder-loaded',{elapsedMs:Math.round(performance.now()-created)});}input=new ort.Tensor('float32',request.tensor,[1,3,256,256]);report(id,'encoding');const started=performance.now();out=(await encoder.run({image:input})).w;values=requireLatent(new Float32Array(await out.getData()));report(id,'encoding-complete',{elapsedMs:Math.round(performance.now()-started)});}finally{out?.dispose();input?.dispose();}result={values,shape:[1,18,512],space:'w-plus',encoderProvider:'wasm'};}
  }else throw Error('Unknown runtime operation');postMessage({id,type:'complete',result});}catch(error){postMessage({id,type:'error',error:{name:error.name,message:error.message}});}});

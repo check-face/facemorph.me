@@ -153,7 +153,10 @@
 .next-name-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:.75rem; margin:1rem 0; }
 @media (min-width: 700px) { .next-name-grid { grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); } }
 .next-name-choice { padding:0; overflow:hidden; border-radius:6px; }
-.next-name-choice img { width:100%; height:auto; display:block; }
+/* MUI's button label is an inline flex row, which shrank the face to its 200px intrinsic size
+   inside wider cells; stack it and let the image take the whole cell. */
+.next-name-choice > .MuiButton-label { display:flex; flex-direction:column; align-items:stretch; width:100%; }
+.next-name-choice img { width:100%; height:auto; aspect-ratio:1; object-fit:cover; display:block; }
 .next-name-choice span { display:block; padding:.35rem; }
 
 // --- Wide screens --------------------------------------------------------------------------------

@@ -86,3 +86,21 @@ test('a repaired asset joins the fetched set, because its bytes do cross the net
   budget.cacheEvent({ status: 'downloading', sha256: 'c'.repeat(64) });
   assert.equal(budget.totals().fetchedTotal, 50);
 });
+
+test('the fetched denominator is settled up front, not grown asset by asset as the download goes on', async () => {
+  const budget = createAcquisitionBudget();
+  const readings = [];
+  budget.attach(({ fetched, fetchedTotal }) => readings.push({ fetched, fetchedTotal }));
+  const C = 'c'.repeat(64);
+  budget.planAsset([asset(A, 100), asset(B, 50), asset(C, 30)]);
+  await budget.probe(async planned => planned.sha256 === C);
+  budget.progress(false);
+  budget.cacheEvent({ status: 'missing', sha256: A });
+  budget.cacheEvent({ status: 'progress', sha256: A, loaded: 60 });
+  budget.cacheEvent({ status: 'saved', sha256: A, bytes: 100 });
+  budget.cacheEvent({ status: 'retained', sha256: C, bytes: 30 });
+  budget.cacheEvent({ status: 'missing', sha256: B });
+  budget.cacheEvent({ status: 'saved', sha256: B, bytes: 50 });
+  assert.ok(readings.every(reading => reading.fetchedTotal === 150), JSON.stringify(readings));
+  assert.equal(readings.at(-1).fetched, 150);
+});

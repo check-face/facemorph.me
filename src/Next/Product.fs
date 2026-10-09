@@ -561,7 +561,9 @@ let update msg state =
         invalidatePhotoSelections()
         closeNamesFocus()
         match state.Browse with
-        | Some id -> {change id (fun item -> {item with mode="text";value=value;file=emptyFile}) with Browse=None},Cmd.none
+        // Picking a name is the request: make the face straight away rather than leave a second
+        // Generate press. RunFace still goes through the download gate on a cold device.
+        | Some id -> {change id (fun item -> {item with mode="text";value=value;file=emptyFile}) with Browse=None},Cmd.ofMsg(RunFace id)
         | None -> state,Cmd.none
     | CloseNames -> closeNamesFocus(); {state with Browse=None},Cmd.none
     | MoreNames -> {state with NameLimit=state.NameLimit+48},Cmd.none
@@ -1179,7 +1181,7 @@ let view state dispatch = App.ThemedApp [
             snackbar.message (Html.div [prop.className "next-consent-message";prop.children [
                 match downloads.phase with
                 | "downloading" ->
-                    Html.span [Html.strong (if downloads.scope="photo" then "Downloading photo tools… " else "Downloading the face model… ")
+                    Html.span [Html.strong (if downloads.scope="photo" then "Downloading the photo encoder… " else "Downloading the face model… ")
                                Html.text (sprintf "%s of %s" (megabytes downloads.loaded) (megabytes downloads.total))]
                     Mui.linearProgress [linearProgress.variant.determinate;linearProgress.value (int (fraction*100.));prop.className "next-model-progress";prop.ariaLabel "Model download progress"]
                 | "waiting" -> Html.span [Html.strong "Download paused. ";Html.text "It picks up again once this face is done."]
@@ -1187,7 +1189,7 @@ let view state dispatch = App.ThemedApp [
                 | "done" -> Html.span [Html.strong "Ready. ";Html.text "The models are saved on this device, so you won't download them again."]
                 | _ ->
                     Html.span [Html.strong "Faces are made on this device."
-                               Html.text (sprintf " It needs the face model once (%s)%s. It stays on this device; your browser may ask whether to keep it." (megabytes downloads.routeBytes) (if photoOffer then sprintf ", and photos need photo tools (%s)" (megabytes downloads.photoBytes) else ""))]]])
+                               Html.text (sprintf " It needs the face model once (%s)%s. It stays on this device; your browser may ask whether to keep it." (megabytes downloads.routeBytes) (if photoOffer then sprintf ", and using your own photos needs the photo encoder (%s)" (megabytes downloads.photoBytes) else ""))]]])
             snackbar.action [
                 match downloads.phase with
                 | "downloading" | "waiting" | "done" ->
@@ -1198,7 +1200,7 @@ let view state dispatch = App.ThemedApp [
                 | _ ->
                     Mui.button [button.color.inherit';button.variant.outlined;prop.onClick(fun _ -> dispatch(DownloadNow false));button.children (sprintf "Download · %s" (megabytes downloads.routeBytes))]
                     if photoOffer then
-                        Mui.button [button.color.inherit';button.variant.text;prop.onClick(fun _ -> dispatch(DownloadNow true));button.children (sprintf "With photos · %s" (megabytes (downloads.routeBytes+downloads.photoBytes)))]
+                        Mui.button [button.color.inherit';button.variant.text;prop.onClick(fun _ -> dispatch(DownloadNow true));button.children (sprintf "Plus photo encoder · %s" (megabytes (downloads.routeBytes+downloads.photoBytes)))]
                     Mui.button [button.color.inherit';button.variant.text;prop.onClick(fun _ -> dispatch HideModelToast);button.children "Not now"]]]
         match state.Gate with
         | Some(scope,_) ->
@@ -1208,10 +1210,10 @@ let view state dispatch = App.ThemedApp [
                 dialog.onClose(fun _ -> dispatch GateCancel)
                 prop.className "next-download-dialog"
                 dialog.children [
-                    Mui.dialogTitle (if scope="photo" then "Download photo tools?" else "Download the face model?")
+                    Mui.dialogTitle (if scope="photo" then "Download the photo encoder?" else "Download the face model?")
                     Mui.dialogContent [
                         Mui.dialogContentText (
-                            if scope="photo" then sprintf "Photos are turned into faces on this device, so it needs photo tools once: %s. Your photo never leaves your device." (megabytes size)
+                            if scope="photo" then sprintf "Photos are turned into faces on this device, so it needs the photo encoder once: %s. Your photo never leaves your device." (megabytes size)
                             else sprintf "Faces are made on this device, so it needs the face model once: %s." (megabytes size))
                         Mui.dialogContentText "It's saved for next time. Your browser may ask whether this site can keep it; saying yes stops it being cleared when space runs low."]
                     Mui.dialogActions [

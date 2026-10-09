@@ -31,16 +31,20 @@ export function createAcquisitionBudget() {
   // 183 MB of 203 MB" with every one of those bytes already on disk, which is how a cache that
   // was working read as a gigabyte re-downloading on every visit (operator, 22 September).
   const fetching = new Set();
+  // Presence answers from the cache, taken when an asset is planned. Without them an asset only
+  // joined the fetched set when the cache reached for the network, so the denominator grew asset
+  // by asset as the download went on ("40 MB of 60 MB" becoming "of 120 MB").
+  const probed = new Map(), descriptors = new Map();
   let emitProgress = null;
   function planAsset(value) {
-    for (const asset of collectAssets(value)) planned.set(asset.sha256, asset.size);
+    for (const asset of collectAssets(value)) { planned.set(asset.sha256, asset.size); descriptors.set(asset.sha256, asset); }
   }
   function totals() {
     let total = 0, loaded = 0, fetched = 0, fetchedTotal = 0;
     for (const [sha256, size] of planned) {
       const done = completed.get(sha256) ?? Math.min(inflight.get(sha256) ?? 0, size);
       total += size; loaded += done;
-      if (fetching.has(sha256)) { fetchedTotal += size; fetched += done; }
+      if (fetching.has(sha256) || probed.get(sha256) === false) { fetchedTotal += size; fetched += done; }
     }
     return { loaded, total, fetched, fetchedTotal };
   }
@@ -63,5 +67,13 @@ export function createAcquisitionBudget() {
       progress(true);
     }
   }
-  return { planAsset, totals, progress, cacheEvent, attach: fn => { emitProgress = fn; } };
+  /** Ask the cache once about every planned asset it has not been asked about yet. */
+  async function probe(has) {
+    for (const [sha256, asset] of descriptors) {
+      if (probed.has(sha256) || completed.has(sha256)) continue;
+      probed.set(sha256, true);
+      try { probed.set(sha256, await has(asset) === true); } catch { probed.delete(sha256); }
+    }
+  }
+  return { planAsset, probe, totals, progress, cacheEvent, attach: fn => { emitProgress = fn; } };
 }

@@ -58,7 +58,7 @@ export const STAGE_LABELS = {
   // wait overlaps choosing and cropping instead of following them. Unlike the silent route
   // warm-up this one speaks: the visitor asked for it, and it is the largest thing the
   // product ever fetches.
-  'photo-acquisition': 'Getting photo tools ready…',
+  'photo-acquisition': 'Getting the photo encoder ready…',
   'photo-tools-ready': 'Photo tools ready on this device.',
   'runtime-loading': 'Starting the local engine…',
   'model-loading': 'Loading the model…',

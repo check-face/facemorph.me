@@ -189,6 +189,13 @@ test('warm-up declines only on an explicit data saver, never on an effectiveType
  assert.equal((await bare.prefetch()).started,true,'a browser without connection hints still warms');
 });
 
+test('an explicit download still runs beside the idle engine a finished face leaves',async t=>{
+ environment(t);
+ const r=runtime(t,{workerFactory:workerFactory()});
+ await generate(r);
+ assert.equal((await r.prefetch('route',{explicit:true})).started,true,'resuming after a face must not report a failed download');
+});
+
 test('warm-up never runs twice, nor after the route is already admitted',async t=>{
  environment(t);
  let created=0;
