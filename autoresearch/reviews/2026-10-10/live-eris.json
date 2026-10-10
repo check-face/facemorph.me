@@ -1,0 +1,4578 @@
+{
+  "date": "2026-10-10T04:18:43.116Z",
+  "scope": "Single unpaired headless live-UI observation on eris; not full31 or physical-phone qualification",
+  "host": "NVIDIA GeForce RTX 2080 SUPER, 610.57.04, 3254 MiB, 0 %",
+  "loadBefore": "14:18:43 up 6 days,  7:30, 10 users,  load average: 2.16, 1.63, 1.16",
+  "url": "https://next.facemorph.me/",
+  "steps": [
+    {
+      "name": "cold-first-single-face",
+      "passed": true,
+      "elapsedMs": 8750.754999995232,
+      "workers": 1,
+      "events": [
+        {
+          "at": 187.3399999141693,
+          "type": "complete"
+        },
+        {
+          "at": 196.9649999141693,
+          "type": "progress",
+          "stage": "canary"
+        },
+        {
+          "at": 200.9649999141693,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 204.3549998998642,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 208.59499990940094,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 237.3399999141693,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 241.44999992847443,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 247.13499999046326,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 253.49500000476837,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 256.68999993801117,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 259.664999961853,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 262.375,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 273.4599999189377,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 276.6200000047684,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 279.04499995708466,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 281.15499997138977,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 283.39999997615814,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 285.7999999523163,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 288.14999997615814,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 313.6299999952316,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 317.0549999475479,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 319.34499990940094,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 322.6200000047684,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 325.57999992370605,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 328.3249999284744,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 331.0149999856949,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 342.7999999523163,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 346.4799998998642,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 349.875,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 353.2099999189377,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 356.77499997615814,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 360.15499997138977,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 363.3700000047684,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 369.0349999666214,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 372.2699999809265,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 374.32999992370605,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 376.2450000047684,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 378.0749999284744,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 379.89999997615814,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 381.7549999952316,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 385.43499994277954,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 387.8549998998642,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 391.34499990940094,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 394.7099999189377,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 397.5899999141693,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 400.36500000953674,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 403.21999990940094,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 411.09499990940094,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 414.45499992370605,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 417.47499990463257,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 420.375,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 423.3549998998642,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 426.2299998998642,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 428.99000000953674,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 439.57999992370605,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 441.93499994277954,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 444.039999961853,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 445.9249999523163,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 447.6299999952316,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 449.4599999189377,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 451.2299998998642,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 462.13499999046326,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 464.6749999523163,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 466.68999993801117,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 468.50999999046326,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 470.96999990940094,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 472.79499995708466,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 474.539999961853,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 501.2350000143051,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 503.52999997138977,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 505.8949999809265,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 507.72499990463257,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 509.4299999475479,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 511.2149999141693,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 512.8949999809265,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 543.6949999332428,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 546.3399999141693,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 549.6299999952316,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 552.5149999856949,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 554.4449999332428,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 556.4499999284744,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 559.2400000095367,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 617.7299998998642,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 620.6200000047684,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 622.6299999952316,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 624.3849999904633,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 627.6449999809265,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 629.4850000143051,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 631.2400000095367,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 648.8499999046326,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 652.1049998998642,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 655.0499999523163,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 656.9699999094009,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 658.7949999570847,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 660.6049998998642,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 662.3949999809265,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 709.829999923706,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 713.204999923706,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 716.0549999475479,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 718.6449999809265,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 721.0449999570847,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 723.1749999523163,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 724.8799999952316,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 770.9649999141693,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 773.4900000095367,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 777.4900000095367,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 779.5699999332428,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 781.3199999332428,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 783.4749999046326,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 785.1549999713898,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 827.9749999046326,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 830.2949999570847,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 832.7099999189377,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 835.0049999952316,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 836.8449999094009,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 839.2199999094009,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 841.0699999332428,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 964.8849999904633,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 968.0349999666214,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 974.7099999189377,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 976.9349999427795,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 978.7099999189377,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 980.454999923706,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 982.1499999761581,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1114.0249999761581,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1116.75,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1123.5149999856949,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1125.8349999189377,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1127.6299999952316,
+          "type": "progress",
+          "stage": "model-loading"
+        },
+        {
+          "at": 1129.6299999952316,
+          "type": "progress",
+          "stage": "runtime-loading"
+        },
+        {
+          "at": 1129.6549999713898,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1131.625,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1133.9900000095367,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1146.0599999427795,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1148.3499999046326,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1150.3899999856949,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1152.5149999856949,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1154.5049999952316,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1156.914999961853,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1159.1899999380112,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1167.414999961853,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1169.75,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1172.3700000047684,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1174.5649999380112,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1176.3799999952316,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1178.0449999570847,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1179.8600000143051,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1269.9099999666214,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1272.4950000047684,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1275.0349999666214,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1307.3899999856949,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1311.1699999570847,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1313.7749999761581,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1315.8799999952316,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1318.1449999809265,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1320.2149999141693,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1322.3999999761581,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1356.4599999189377,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1359.1200000047684,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1361.429999947548,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1363.9049999713898,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1366.5999999046326,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1368.8600000143051,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1371.2799999713898,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1374.4599999189377,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1377.6749999523163,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1386.7849999666214,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1390.3249999284744,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1407.3899999856949,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1409.6899999380112,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1411.4850000143051,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1432.8399999141693,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1435.4900000095367,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1437.539999961853,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1439.454999923706,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1441.1150000095367,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1442.7299998998642,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1444.3149999380112,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1890.125,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1893.4799998998642,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1896.875,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1900.125,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1913.1599999666214,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1916.804999947548,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1941.6899999380112,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1950.3700000047684,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1953.3499999046326,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1962.6150000095367,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1965.2849999666214,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 2726.039999961853,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 2728.899999976158,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 2762.7099999189377,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 2764.9249999523163,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 2808.125,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 2811.7799999713898,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 2813.735000014305,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 3522.929999947548,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 3525.1749999523163,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 3555.039999961853,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 3557.360000014305,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 3591.6749999523163,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 3598.375,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 3600.479999899864,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 4329.354999899864,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 4331.589999914169,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 4362.139999985695,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 4364.9349999427795,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 4401.979999899864,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 4411.094999909401,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 4413.454999923706,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 5067.834999918938,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 5069.979999899864,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 5101.75,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 5104.299999952316,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 5141.6849999427795,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 5150.399999976158,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 5153.485000014305,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 5435.819999933243,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 5437.979999899864,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 5451.084999918938,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 5453.25,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 5461.65499997139,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 5463.814999938011,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 5465.589999914169,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 5573.829999923706,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 5576.784999966621,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 5580.704999923706,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 5582.694999933243,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 5584.77999997139,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 5586.634999990463,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 5588.804999947548,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 5634.384999990463,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 5636.579999923706,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 5640.469999909401,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 5642.884999990463,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 5644.75,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 5646.52999997139,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 5648.370000004768,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 5668.799999952316,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 5671.990000009537,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 5677.204999923706,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 5680.924999952316,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 5683.569999933243,
+          "type": "progress",
+          "stage": "gpu-direct-ready"
+        },
+        {
+          "at": 5685.615000009537,
+          "type": "progress",
+          "stage": "model-loaded",
+          "elapsedMs": 4548.9800000190735
+        },
+        {
+          "at": 5687.5599999427795,
+          "type": "progress",
+          "stage": "synthesis"
+        },
+        {
+          "at": 6430.344999909401,
+          "type": "progress",
+          "stage": "synthesis-complete",
+          "elapsedMs": 759.0500000715256
+        },
+        {
+          "at": 6433.120000004768,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 6435.149999976158,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 6437.039999961853,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 6449.954999923706,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 6452.379999995232,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 6454.329999923706,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 6456.139999985695,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 6457.814999938011,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 6459.490000009537,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 6461.0599999427795,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 6476.115000009537,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 6478.65499997139,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 6480.5199999809265,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 6482.159999966621,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 6483.819999933243,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 6485.625,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 6487.219999909401,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 6541.125,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 6544.424999952316,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 6547.439999938011,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 6550.52999997139,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 6638.194999933243,
+          "type": "progress",
+          "stage": "canary"
+        },
+        {
+          "at": 6641.419999957085,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 6644.0199999809265,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 6646.479999899864,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 6664.774999976158,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 6667.745000004768,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 6670.409999966621,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 6672.9349999427795,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 6675.365000009537,
+          "type": "progress",
+          "stage": "synthesis"
+        },
+        {
+          "at": 6721.709999918938,
+          "type": "progress",
+          "stage": "synthesis-complete",
+          "elapsedMs": 54.87999999523163
+        },
+        {
+          "at": 6724.409999966621,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 6726.699999928474,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 6728.819999933243,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 6730.884999990463,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 6732.899999976158,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 6735.115000009537,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 6737.2699999809265,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 6747.969999909401,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 6750.549999952316,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 6752.814999938011,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 6754.954999923706,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 6757.169999957085,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 6759.784999966621,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 6762.599999904633,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 6806.495000004768,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 6808.694999933243,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 6810.490000009537,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 6812.179999947548,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 6922.125,
+          "type": "progress",
+          "stage": "canary"
+        },
+        {
+          "at": 6925.174999952316,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 6927.534999966621,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 6929.284999966621,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 6963.485000014305,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 6966.15499997139,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 6968.079999923706,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 6969.914999961853,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 6972.610000014305,
+          "type": "progress",
+          "stage": "synthesis"
+        },
+        {
+          "at": 7017.52999997139,
+          "type": "progress",
+          "stage": "synthesis-complete",
+          "elapsedMs": 52.1450001001358
+        },
+        {
+          "at": 7020.584999918938,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 7022.849999904633,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 7026.229999899864,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 7028.125,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 7029.704999923706,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 7031.3099999427795,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 7032.860000014305,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 7043.419999957085,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 7045.674999952316,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 7047.514999985695,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 7049.159999966621,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 7050.745000004768,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 7052.324999928474,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 7053.914999961853,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 7091.189999938011,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 7093.620000004768,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 7095.409999966621,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 7097.159999966621,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 7186.464999914169,
+          "type": "progress",
+          "stage": "canary"
+        },
+        {
+          "at": 7188.949999928474,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 7194.049999952316,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 7197.789999961853,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 7201.594999909401,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 7204.194999933243,
+          "type": "progress",
+          "stage": "synthesis"
+        },
+        {
+          "at": 7255.399999976158,
+          "type": "progress",
+          "stage": "synthesis-complete",
+          "elapsedMs": 64.33500003814697
+        },
+        {
+          "at": 7258.429999947548,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 7260.40499997139,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 7262.064999938011,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 7263.704999923706,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 7265.235000014305,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 7266.784999966621,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 7268.924999952316,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 7277.204999923706,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 7280.429999947548,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 7283.149999976158,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 7285.819999933243,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 7288.334999918938,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 7290.724999904633,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 7293.064999938011,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 7314.709999918938,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 7317.314999938011,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 7319.304999947548,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 7322.164999961853,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 7440.674999952316,
+          "type": "progress",
+          "stage": "canary"
+        },
+        {
+          "at": 7442.909999966621,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 7445.209999918938,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 7446.929999947548,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 7448.549999952316,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 7774.104999899864,
+          "type": "progress",
+          "stage": "synthesis"
+        },
+        {
+          "at": 7838.169999957085,
+          "type": "progress",
+          "stage": "synthesis-complete",
+          "elapsedMs": 63.480000019073486
+        },
+        {
+          "at": 7840.5,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 7842.495000004768,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 7844.104999899864,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 7845.689999938011,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 7847.259999990463,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 7848.819999933243,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 7850.40499997139,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 7863.944999933243,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 7866.189999938011,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 7868.2699999809265,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 7869.9349999427795,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 7871.564999938011,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 7873.174999952316,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 7874.740000009537,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 7956.014999985695,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 7958.149999976158,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 7960.724999904633,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 7962.759999990463,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 8032.944999933243,
+          "type": "progress",
+          "stage": "canary"
+        },
+        {
+          "at": 8035.254999995232,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 8037,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 8038.589999914169,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 8053.039999961853,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 8055.209999918938,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 8058.40499997139,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 8061.469999909401,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 8066.074999928474,
+          "type": "progress",
+          "stage": "synthesis"
+        },
+        {
+          "at": 8121.584999918938,
+          "type": "progress",
+          "stage": "synthesis-complete",
+          "elapsedMs": 66.12999999523163
+        },
+        {
+          "at": 8123.735000014305,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 8125.649999976158,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 8127.245000004768,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 8128.829999923706,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 8130.634999990463,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 8132.3099999427795,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 8133.929999947548,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 8155.784999966621,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 8158.620000004768,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 8161.174999952316,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 8163.054999947548,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 8164.674999952316,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 8166.284999966621,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 8168.25,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 8229.659999966621,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 8231.870000004768,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 8238.414999961853,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 8240.424999952316,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 8322.735000014305,
+          "type": "progress",
+          "stage": "canary"
+        },
+        {
+          "at": 8326.174999952316,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 8328.079999923706,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 8329.990000009537,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 8344.774999976158,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 8347.849999904633,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 8350.569999933243,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 8353.049999952316,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 8355.534999966621,
+          "type": "progress",
+          "stage": "synthesis"
+        },
+        {
+          "at": 8423.534999966621,
+          "type": "progress",
+          "stage": "synthesis-complete",
+          "elapsedMs": 77.07499992847443
+        },
+        {
+          "at": 8426.77999997139,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 8429.485000014305,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 8431.074999928474,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 8432.625,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 8434.199999928474,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 8436.314999938011,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 8437.929999947548,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 8444.174999952316,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 8446.324999928474,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 8448.074999928474,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 8449.68499994278,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 8451.209999918938,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 8452.759999990463,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 8454.30999994278,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 8509.894999980927,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 8512.974999904633,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 8515.689999938011,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 8518.409999966621,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 8603.229999899864,
+          "type": "complete"
+        },
+        {
+          "at": 8608.104999899864,
+          "type": "progress",
+          "stage": "mapping"
+        },
+        {
+          "at": 8619.584999918938,
+          "type": "progress",
+          "stage": "synthesis"
+        },
+        {
+          "at": 8694.084999918938,
+          "type": "progress",
+          "stage": "synthesis-complete",
+          "elapsedMs": 74.54500007629395
+        },
+        {
+          "at": 8711.65499997139,
+          "type": "complete"
+        }
+      ],
+      "route": "Using the webgpu route.",
+      "dimensions": [
+        [
+          1024,
+          1024
+        ]
+      ],
+      "video": null,
+      "controllerMs": 8780.338905
+    },
+    {
+      "name": "warm-single-face-1",
+      "passed": true,
+      "elapsedMs": 190.41999995708466,
+      "workers": 0,
+      "events": [
+        {
+          "at": 59.574999928474426,
+          "type": "progress",
+          "stage": "mapping"
+        },
+        {
+          "at": 64.75499999523163,
+          "type": "progress",
+          "stage": "synthesis"
+        },
+        {
+          "at": 136.58499991893768,
+          "type": "progress",
+          "stage": "synthesis-complete",
+          "elapsedMs": 74.73500001430511
+        },
+        {
+          "at": 151.11499989032745,
+          "type": "complete"
+        }
+      ],
+      "route": "Using the webgpu route.",
+      "dimensions": [
+        [
+          1024,
+          1024
+        ]
+      ],
+      "video": null,
+      "controllerMs": 192.42125699999997
+    },
+    {
+      "name": "warm-single-face-2",
+      "passed": true,
+      "elapsedMs": 193.25499999523163,
+      "workers": 0,
+      "events": [
+        {
+          "at": 61.860000014305115,
+          "type": "progress",
+          "stage": "mapping"
+        },
+        {
+          "at": 64.62000000476837,
+          "type": "progress",
+          "stage": "synthesis"
+        },
+        {
+          "at": 138.00499999523163,
+          "type": "progress",
+          "stage": "synthesis-complete",
+          "elapsedMs": 74.95499992370605
+        },
+        {
+          "at": 152.0549999475479,
+          "type": "complete"
+        }
+      ],
+      "route": "Using the webgpu route.",
+      "dimensions": [
+        [
+          1024,
+          1024
+        ]
+      ],
+      "video": null,
+      "controllerMs": 195.09919600000103
+    },
+    {
+      "name": "warm-single-face-3",
+      "passed": true,
+      "elapsedMs": 207.5,
+      "workers": 0,
+      "events": [
+        {
+          "at": 64.11000001430511,
+          "type": "progress",
+          "stage": "mapping"
+        },
+        {
+          "at": 67.67000007629395,
+          "type": "progress",
+          "stage": "synthesis"
+        },
+        {
+          "at": 141.00499999523163,
+          "type": "progress",
+          "stage": "synthesis-complete",
+          "elapsedMs": 75.85500001907349
+        },
+        {
+          "at": 167,
+          "type": "complete"
+        }
+      ],
+      "route": "Using the webgpu route.",
+      "dimensions": [
+        [
+          1024,
+          1024
+        ]
+      ],
+      "video": null,
+      "controllerMs": 207.01457300000038
+    },
+    {
+      "name": "repeat-original-same-session",
+      "passed": true,
+      "elapsedMs": 81.8199999332428,
+      "workers": 0,
+      "events": [],
+      "route": "Using the webgpu route.",
+      "dimensions": [
+        [
+          1024,
+          1024
+        ]
+      ],
+      "video": null,
+      "controllerMs": 81.82002499999908
+    },
+    {
+      "name": "generate-second-face",
+      "passed": true,
+      "elapsedMs": 209.99500000476837,
+      "workers": 0,
+      "events": [
+        {
+          "at": 51.144999980926514,
+          "type": "progress",
+          "stage": "mapping"
+        },
+        {
+          "at": 54.1049998998642,
+          "type": "progress",
+          "stage": "synthesis"
+        },
+        {
+          "at": 127.87000000476837,
+          "type": "progress",
+          "stage": "synthesis-complete",
+          "elapsedMs": 75.67499995231628
+        },
+        {
+          "at": 173.0349999666214,
+          "type": "complete"
+        }
+      ],
+      "route": "Using the webgpu route.",
+      "dimensions": [
+        [
+          1024,
+          1024
+        ],
+        [
+          1024,
+          1024
+        ]
+      ],
+      "video": null,
+      "controllerMs": 210.45458399999916
+    },
+    {
+      "name": "default-morph-to-playable-video",
+      "passed": true,
+      "elapsedMs": 1834.7949999570847,
+      "workers": 1,
+      "events": [
+        {
+          "at": 373.7849999666214
+        },
+        {
+          "at": 395.0900000333786,
+          "type": "progress",
+          "stage": "synthesis"
+        },
+        {
+          "at": 499.1299999952316,
+          "type": "progress",
+          "stage": "synthesis-complete",
+          "elapsedMs": 104.4099999666214
+        },
+        {
+          "at": 499.36500000953674,
+          "type": "frame"
+        },
+        {
+          "at": 527.6299999952316
+        },
+        {
+          "at": 548.2050000429153
+        },
+        {
+          "at": 557.0249999761581
+        },
+        {
+          "at": 560.9550000429153
+        },
+        {
+          "at": 572.5800000429153,
+          "type": "progress",
+          "stage": "synthesis-complete",
+          "elapsedMs": 73.4650000333786
+        },
+        {
+          "at": 572.6699999570847,
+          "type": "frame"
+        },
+        {
+          "at": 589.8949999809265
+        },
+        {
+          "at": 594.6749999523163
+        },
+        {
+          "at": 643.9450000524521,
+          "type": "progress",
+          "stage": "synthesis-complete",
+          "elapsedMs": 71.35500001907349
+        },
+        {
+          "at": 644.0349999666214,
+          "type": "frame"
+        },
+        {
+          "at": 672.3849999904633
+        },
+        {
+          "at": 676.8300000429153
+        },
+        {
+          "at": 703.9199999570847,
+          "type": "progress",
+          "stage": "synthesis-complete",
+          "elapsedMs": 59.27999997138977
+        },
+        {
+          "at": 704.0249999761581,
+          "type": "frame"
+        },
+        {
+          "at": 723.5199999809265
+        },
+        {
+          "at": 729.0950000286102
+        },
+        {
+          "at": 748.7250000238419,
+          "type": "progress",
+          "stage": "synthesis-complete",
+          "elapsedMs": 45.50499999523163
+        },
+        {
+          "at": 748.8300000429153,
+          "type": "frame"
+        },
+        {
+          "at": 773.4249999523163
+        },
+        {
+          "at": 778.7400000095367
+        },
+        {
+          "at": 788.2649999856949,
+          "type": "progress",
+          "stage": "synthesis-complete",
+          "elapsedMs": 39.550000071525574
+        },
+        {
+          "at": 788.3500000238419,
+          "type": "frame"
+        },
+        {
+          "at": 813.914999961853
+        },
+        {
+          "at": 822.0800000429153
+        },
+        {
+          "at": 830.2400000095367,
+          "type": "progress",
+          "stage": "synthesis-complete",
+          "elapsedMs": 41.949999928474426
+        },
+        {
+          "at": 830.3300000429153,
+          "type": "frame"
+        },
+        {
+          "at": 856.6349999904633
+        },
+        {
+          "at": 861.0199999809265,
+          "type": "progress",
+          "stage": "synthesis-complete",
+          "elapsedMs": 30.795000076293945
+        },
+        {
+          "at": 861.1100000143051,
+          "type": "frame"
+        },
+        {
+          "at": 862.3849999904633
+        },
+        {
+          "at": 890.1050000190735
+        },
+        {
+          "at": 894.8450000286102,
+          "type": "progress",
+          "stage": "synthesis-complete",
+          "elapsedMs": 33.824999928474426
+        },
+        {
+          "at": 894.960000038147,
+          "type": "frame"
+        },
+        {
+          "at": 896.6050000190735
+        },
+        {
+          "at": 923.3999999761581
+        },
+        {
+          "at": 927.5099999904633,
+          "type": "progress",
+          "stage": "synthesis-complete",
+          "elapsedMs": 32.670000076293945
+        },
+        {
+          "at": 927.6050000190735,
+          "type": "frame"
+        },
+        {
+          "at": 929.3650000095367
+        },
+        {
+          "at": 956.5750000476837
+        },
+        {
+          "at": 962.1499999761581
+        },
+        {
+          "at": 973.9500000476837,
+          "type": "progress",
+          "stage": "synthesis-complete",
+          "elapsedMs": 46.38499999046326
+        },
+        {
+          "at": 974.0700000524521,
+          "type": "frame"
+        },
+        {
+          "at": 996.5199999809265
+        },
+        {
+          "at": 1001.9199999570847
+        },
+        {
+          "at": 1004.4500000476837,
+          "type": "progress",
+          "stage": "synthesis-complete",
+          "elapsedMs": 30.549999952316284
+        },
+        {
+          "at": 1004.5599999427795,
+          "type": "frame"
+        },
+        {
+          "at": 1022.75
+        },
+        {
+          "at": 1030.7450000047684
+        },
+        {
+          "at": 1039.8799999952316,
+          "type": "progress",
+          "stage": "synthesis-complete",
+          "elapsedMs": 35.419999957084656
+        },
+        {
+          "at": 1040.0099999904633,
+          "type": "frame"
+        },
+        {
+          "at": 1055.4900000095367
+        },
+        {
+          "at": 1060.9700000286102
+        },
+        {
+          "at": 1078.2949999570847,
+          "type": "progress",
+          "stage": "synthesis-complete",
+          "elapsedMs": 38.360000014305115
+        },
+        {
+          "at": 1078.414999961853,
+          "type": "frame"
+        },
+        {
+          "at": 1105.8550000190735
+        },
+        {
+          "at": 1110.9550000429153,
+          "type": "progress",
+          "stage": "synthesis-complete",
+          "elapsedMs": 32.71000003814697
+        },
+        {
+          "at": 1111.070000052452,
+          "type": "frame"
+        },
+        {
+          "at": 1111.4099999666214,
+          "type": "complete"
+        },
+        {
+          "at": 1111.5599999427795
+        },
+        {
+          "at": 1142.1100000143051
+        },
+        {
+          "at": 1159.7549999952316
+        },
+        {
+          "at": 1161.375,
+          "type": "progress",
+          "stage": "synthesis"
+        },
+        {
+          "at": 1213.3600000143051,
+          "type": "progress",
+          "stage": "synthesis-complete",
+          "elapsedMs": 52.43499994277954
+        },
+        {
+          "at": 1213.445000052452,
+          "type": "frame"
+        },
+        {
+          "at": 1240.1449999809265
+        },
+        {
+          "at": 1247.4400000572205
+        },
+        {
+          "at": 1264.4750000238419,
+          "type": "progress",
+          "stage": "synthesis-complete",
+          "elapsedMs": 49.06500005722046
+        },
+        {
+          "at": 1264.7549999952316,
+          "type": "frame"
+        },
+        {
+          "at": 1270.4950000047684
+        },
+        {
+          "at": 1276.4700000286102
+        },
+        {
+          "at": 1292.125,
+          "type": "progress",
+          "stage": "synthesis-complete",
+          "elapsedMs": 28.56499993801117
+        },
+        {
+          "at": 1292.289999961853,
+          "type": "frame"
+        },
+        {
+          "at": 1294.0299999713898
+        },
+        {
+          "at": 1301.6849999427795
+        },
+        {
+          "at": 1323.3400000333786
+        },
+        {
+          "at": 1327.3899999856949,
+          "type": "progress",
+          "stage": "synthesis-complete",
+          "elapsedMs": 35.639999985694885
+        },
+        {
+          "at": 1327.4750000238419,
+          "type": "frame"
+        },
+        {
+          "at": 1329.9500000476837
+        },
+        {
+          "at": 1356.4199999570847
+        },
+        {
+          "at": 1362.4900000095367
+        },
+        {
+          "at": 1363.8999999761581,
+          "type": "progress",
+          "stage": "synthesis-complete",
+          "elapsedMs": 37.25999999046326
+        },
+        {
+          "at": 1364.0199999809265,
+          "type": "frame"
+        },
+        {
+          "at": 1399.2699999809265
+        },
+        {
+          "at": 1406.1699999570847
+        },
+        {
+          "at": 1407.4349999427795,
+          "type": "progress",
+          "stage": "synthesis-complete",
+          "elapsedMs": 43.56000006198883
+        },
+        {
+          "at": 1407.5099999904633,
+          "type": "frame"
+        },
+        {
+          "at": 1428.1100000143051
+        },
+        {
+          "at": 1433.8300000429153,
+          "type": "progress",
+          "stage": "synthesis-complete",
+          "elapsedMs": 26.360000014305115
+        },
+        {
+          "at": 1433.9400000572205,
+          "type": "frame"
+        },
+        {
+          "at": 1435.2450000047684
+        },
+        {
+          "at": 1456.2949999570847
+        },
+        {
+          "at": 1467.0099999904633
+        },
+        {
+          "at": 1471.1000000238419,
+          "type": "progress",
+          "stage": "synthesis-complete",
+          "elapsedMs": 37.27499997615814
+        },
+        {
+          "at": 1471.2150000333786,
+          "type": "frame"
+        },
+        {
+          "at": 1500.4750000238419
+        },
+        {
+          "at": 1507.1349999904633
+        },
+        {
+          "at": 1512.2200000286102,
+          "type": "progress",
+          "stage": "synthesis-complete",
+          "elapsedMs": 41.09500002861023
+        },
+        {
+          "at": 1512.3899999856949,
+          "type": "frame"
+        },
+        {
+          "at": 1540.085000038147
+        },
+        {
+          "at": 1544.7350000143051,
+          "type": "progress",
+          "stage": "synthesis-complete",
+          "elapsedMs": 32.55999994277954
+        },
+        {
+          "at": 1544.835000038147,
+          "type": "frame"
+        },
+        {
+          "at": 1548.3500000238419
+        },
+        {
+          "at": 1573.0650000572205
+        },
+        {
+          "at": 1579.585000038147,
+          "type": "progress",
+          "stage": "synthesis-complete",
+          "elapsedMs": 34.81500005722046
+        },
+        {
+          "at": 1579.7350000143051,
+          "type": "frame"
+        },
+        {
+          "at": 1581.25
+        },
+        {
+          "at": 1609.5
+        },
+        {
+          "at": 1617.1349999904633
+        },
+        {
+          "at": 1621.9950000047684,
+          "type": "progress",
+          "stage": "synthesis-complete",
+          "elapsedMs": 42.424999952316284
+        },
+        {
+          "at": 1622.1100000143051,
+          "type": "frame"
+        },
+        {
+          "at": 1653.3849999904633,
+          "type": "progress",
+          "stage": "synthesis-complete",
+          "elapsedMs": 31.055000066757202
+        },
+        {
+          "at": 1653.5449999570847,
+          "type": "frame"
+        },
+        {
+          "at": 1657.2649999856949
+        },
+        {
+          "at": 1663.4750000238419
+        },
+        {
+          "at": 1682.2350000143051
+        },
+        {
+          "at": 1688.4900000095367
+        },
+        {
+          "at": 1688.75,
+          "type": "progress",
+          "stage": "synthesis-complete",
+          "elapsedMs": 35.71999990940094
+        },
+        {
+          "at": 1688.8500000238419,
+          "type": "frame"
+        },
+        {
+          "at": 1716.6900000572205
+        },
+        {
+          "at": 1722.789999961853
+        },
+        {
+          "at": 1727.929999947548,
+          "type": "progress",
+          "stage": "synthesis-complete",
+          "elapsedMs": 39.19000005722046
+        },
+        {
+          "at": 1728.054999947548,
+          "type": "frame"
+        },
+        {
+          "at": 1728.4249999523163,
+          "type": "complete"
+        },
+        {
+          "at": 1757.8700000047684
+        },
+        {
+          "at": 1771.335000038147
+        },
+        {
+          "at": 1776.710000038147
+        }
+      ],
+      "route": "Using the webgpu route.",
+      "dimensions": [
+        [
+          1024,
+          1024
+        ],
+        [
+          1024,
+          1024
+        ]
+      ],
+      "video": {
+        "width": 1024,
+        "height": 1024,
+        "duration": 2,
+        "readyState": 4
+      },
+      "controllerMs": 1843.7853049999994
+    },
+    {
+      "name": "repeat-morph-to-playable-video",
+      "passed": true,
+      "elapsedMs": 1180.8450000286102,
+      "workers": 1,
+      "events": [
+        {
+          "at": 165.82999992370605
+        },
+        {
+          "at": 207.80999994277954
+        },
+        {
+          "at": 231.0549999475479
+        },
+        {
+          "at": 232.94999992847443
+        },
+        {
+          "at": 238.61500000953674
+        },
+        {
+          "at": 259.91999995708466
+        },
+        {
+          "at": 265.68999993801117
+        },
+        {
+          "at": 293.125
+        },
+        {
+          "at": 299.4649999141693
+        },
+        {
+          "at": 314.3949999809265
+        },
+        {
+          "at": 321.7849999666214
+        },
+        {
+          "at": 343.22500002384186
+        },
+        {
+          "at": 350.84500002861023
+        },
+        {
+          "at": 370.72000002861023
+        },
+        {
+          "at": 378.25999999046326
+        },
+        {
+          "at": 393.4850000143051
+        },
+        {
+          "at": 399.8399999141693
+        },
+        {
+          "at": 412.72000002861023
+        },
+        {
+          "at": 419.1399999856949
+        },
+        {
+          "at": 452.1599999666214
+        },
+        {
+          "at": 458.32999992370605
+        },
+        {
+          "at": 497.93999993801117
+        },
+        {
+          "at": 504.3249999284744
+        },
+        {
+          "at": 526.9199999570847
+        },
+        {
+          "at": 533.8500000238419
+        },
+        {
+          "at": 552.4800000190735
+        },
+        {
+          "at": 565.3199999332428
+        },
+        {
+          "at": 576.6299999952316
+        },
+        {
+          "at": 583.5199999809265
+        },
+        {
+          "at": 597.9449999332428
+        },
+        {
+          "at": 610.039999961853
+        },
+        {
+          "at": 635.125
+        },
+        {
+          "at": 640.6050000190735
+        },
+        {
+          "at": 662.3550000190735
+        },
+        {
+          "at": 668.25
+        },
+        {
+          "at": 694.0549999475479
+        },
+        {
+          "at": 699.3049999475479
+        },
+        {
+          "at": 727.2799999713898
+        },
+        {
+          "at": 733.7149999141693
+        },
+        {
+          "at": 760.4449999332428
+        },
+        {
+          "at": 765.5049999952316
+        },
+        {
+          "at": 798.789999961853
+        },
+        {
+          "at": 812.0950000286102
+        },
+        {
+          "at": 827.5699999332428
+        },
+        {
+          "at": 834.3899999856949
+        },
+        {
+          "at": 852.2450000047684
+        },
+        {
+          "at": 857.4099999666214
+        },
+        {
+          "at": 880.1299999952316
+        },
+        {
+          "at": 891.7699999809265
+        },
+        {
+          "at": 910.6999999284744
+        },
+        {
+          "at": 917.7849999666214
+        },
+        {
+          "at": 944.4950000047684
+        },
+        {
+          "at": 951.0299999713898
+        },
+        {
+          "at": 976.9900000095367
+        },
+        {
+          "at": 982.4599999189377
+        },
+        {
+          "at": 998.2849999666214
+        },
+        {
+          "at": 1004.2949999570847
+        },
+        {
+          "at": 1034.6849999427795
+        },
+        {
+          "at": 1040.929999947548
+        },
+        {
+          "at": 1064.5699999332428
+        },
+        {
+          "at": 1072.1000000238419
+        },
+        {
+          "at": 1092.9649999141693
+        },
+        {
+          "at": 1099.0499999523163
+        },
+        {
+          "at": 1114.625
+        },
+        {
+          "at": 1126.8899999856949
+        },
+        {
+          "at": 1140.8650000095367
+        }
+      ],
+      "route": "Using the webgpu route.",
+      "dimensions": [
+        [
+          1024,
+          1024
+        ],
+        [
+          1024,
+          1024
+        ]
+      ],
+      "video": {
+        "width": 1024,
+        "height": 1024,
+        "duration": 2,
+        "readyState": 4
+      },
+      "controllerMs": 1183.7434399999984
+    },
+    {
+      "name": "repeat-original-after-reload",
+      "passed": true,
+      "elapsedMs": 133.75999999046326,
+      "workers": 0,
+      "events": [],
+      "route": "",
+      "dimensions": [
+        [
+          1024,
+          1024
+        ]
+      ],
+      "video": null,
+      "controllerMs": 133.59092799999962
+    },
+    {
+      "name": "warm-storage-new-face-after-reload",
+      "passed": true,
+      "elapsedMs": 2662.3949999809265,
+      "workers": 1,
+      "events": [
+        {
+          "at": 212.66999995708466,
+          "type": "complete"
+        },
+        {
+          "at": 227.31499993801117,
+          "type": "progress",
+          "stage": "canary"
+        },
+        {
+          "at": 232.27999997138977,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 235.87000000476837,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 239.65499997138977,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 241.59499990940094,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 255.625,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 259.39999997615814,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 263.2649999856949,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 265.5749999284744,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 267.6449999809265,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 270,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 272.0749999284744,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 274.3899999856949,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 276.414999961853,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 278.77499997615814,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 280.84499990940094,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 282.7699999809265,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 286.8199999332428,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 290.30999994277954,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 293.75999999046326,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 296.18999993801117,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 299.96999990940094,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 303.11500000953674,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 308.3600000143051,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 312.21999990940094,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 314.5,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 316.6449999809265,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 319.0549999475479,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 321.02999997138977,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 323.6949999332428,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 325.8049999475479,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 328.75,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 332.0199999809265,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 335.289999961853,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 338.75,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 341.6200000047684,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 343.8199999332428,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 346.3249999284744,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 348.5199999809265,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 350.4950000047684,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 352.4249999523163,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 355.0749999284744,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 357.1299999952316,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 359.25,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 361.49000000953674,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 364.75,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 368.25,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 370.18999993801117,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 372.14999997615814,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 374.09499990940094,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 375.9299999475479,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 378.5549999475479,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 381.1200000047684,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 383.95499992370605,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 386.18999993801117,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 388.0149999856949,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 389.8199999332428,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 391.6399999856949,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 393.9249999523163,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 395.75999999046326,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 397.625,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 399.5749999284744,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 402.18499994277954,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 405.289999961853,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 407.3700000047684,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 411.07999992370605,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 413.5849999189377,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 415.8199999332428,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 417.77499997615814,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 419.9599999189377,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 421.8799999952316,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 424.14999997615814,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 426.2099999189377,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 428.3550000190735,
+          "type": "progress",
+          "stage": "model-loading"
+        },
+        {
+          "at": 433.16999995708466,
+          "type": "progress",
+          "stage": "runtime-loading"
+        },
+        {
+          "at": 433.20499992370605,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 435.49000000953674,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 438.0499999523163,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 440.0899999141693,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 443.1799999475479,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 446.64999997615814,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 448.88499999046326,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 451.4649999141693,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 454.25999999046326,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 456.7450000047684,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 459.0699999332428,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 461.27499997615814,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 464.81499993801117,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 466.7699999809265,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 468.5349999666214,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 470.289999961853,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 472.4249999523163,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 474.59499990940094,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 476.3949999809265,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 478.7849999666214,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 581.3449999094009,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 583.7199999094009,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 586.2999999523163,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 588.9249999523163,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 591.2649999856949,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 595.5849999189377,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 598.8550000190735,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 601.7799999713898,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 604.8899999856949,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 608.0549999475479,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 618.0599999427795,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 620.1949999332428,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 640.7649999856949,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 643.0149999856949,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 675.3899999856949,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 678.1949999332428,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 723.1699999570847,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 729.8700000047684,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 764.6599999666214,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 767.5449999570847,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 797.5699999332428,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 800.8650000095367,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 836.2149999141693,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 838.4399999380112,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 860.5449999570847,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 865,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 901.4249999523163,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 904.5849999189377,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 924.3499999046326,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 927.1599999666214,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 941.1150000095367,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 943.7949999570847,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 951.0499999523163,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 954.2649999856949,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 960.204999923706,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 962.2149999141693,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 963.9749999046326,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 965.6349999904633,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 968.914999961853,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 971.0999999046326,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 973.164999961853,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 975,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 976.7699999809265,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 978.6150000095367,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 981.625,
+          "type": "progress",
+          "stage": "gpu-direct-ready"
+        },
+        {
+          "at": 983.9649999141693,
+          "type": "progress",
+          "stage": "model-loaded",
+          "elapsedMs": 643.3100000619888
+        },
+        {
+          "at": 985.8550000190735,
+          "type": "progress",
+          "stage": "synthesis"
+        },
+        {
+          "at": 1081.9900000095367,
+          "type": "progress",
+          "stage": "synthesis-complete",
+          "elapsedMs": 108.46000003814697
+        },
+        {
+          "at": 1084.4850000143051,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1087.4850000143051,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1090.3499999046326,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1093.454999923706,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1095.5349999666214,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1097.4049999713898,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1099.6599999666214,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1102.304999947548,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1104.8999999761581,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1108.204999923706,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1114.5149999856949,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1119.3650000095367,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1219.1050000190735,
+          "type": "progress",
+          "stage": "canary"
+        },
+        {
+          "at": 1221.6449999809265,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1224.4399999380112,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1226.2999999523163,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1227.9499999284744,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1229.5199999809265,
+          "type": "progress",
+          "stage": "synthesis"
+        },
+        {
+          "at": 1280.204999923706,
+          "type": "progress",
+          "stage": "synthesis-complete",
+          "elapsedMs": 57.43999993801117
+        },
+        {
+          "at": 1283.3199999332428,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1285.5749999284744,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1287.3499999046326,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1289.0999999046326,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1291.0899999141693,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1292.9749999046326,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1294.7549999952316,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1296.5,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1298.4649999141693,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1300.9049999713898,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1304.8650000095367,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1306.789999961853,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1411.2549999952316,
+          "type": "progress",
+          "stage": "canary"
+        },
+        {
+          "at": 1413.7699999809265,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1415.6599999666214,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1417.4049999713898,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1419.204999923706,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1420.8399999141693,
+          "type": "progress",
+          "stage": "synthesis"
+        },
+        {
+          "at": 1461.6849999427795,
+          "type": "progress",
+          "stage": "synthesis-complete",
+          "elapsedMs": 48.6599999666214
+        },
+        {
+          "at": 1464.579999923706,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1466.8849999904633,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1468.679999947548,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1470.4950000047684,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1472.204999923706,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1473.8799999952316,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1476.2649999856949,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1478,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1479.6499999761581,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1481.3349999189377,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1482.9900000095367,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1484.5749999284744,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1563.4449999332428,
+          "type": "progress",
+          "stage": "canary"
+        },
+        {
+          "at": 1565.8949999809265,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1568.289999961853,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1570.8999999761581,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1573.6349999904633,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1576.3349999189377,
+          "type": "progress",
+          "stage": "synthesis"
+        },
+        {
+          "at": 1629.5899999141693,
+          "type": "progress",
+          "stage": "synthesis-complete",
+          "elapsedMs": 60.79000008106232
+        },
+        {
+          "at": 1632.2599999904633,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1634.7799999713898,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1636.9599999189377,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1638.8199999332428,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1640.6200000047684,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1642.5249999761581,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1644.3949999809265,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1646.094999909401,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1647.7400000095367,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1649.4099999666214,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1651.0099999904633,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1652.6299999952316,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1764.594999909401,
+          "type": "progress",
+          "stage": "canary"
+        },
+        {
+          "at": 1767.079999923706,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1769.1999999284744,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1771.6349999904633,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 1774.5249999761581,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 2079.985000014305,
+          "type": "progress",
+          "stage": "synthesis"
+        },
+        {
+          "at": 2137.0599999427795,
+          "type": "progress",
+          "stage": "synthesis-complete",
+          "elapsedMs": 57.019999980926514
+        },
+        {
+          "at": 2140.289999961853,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 2143.5999999046326,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 2147.5449999570847,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 2149.9599999189377,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 2151.954999923706,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 2153.9049999713898,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 2156.2099999189377,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 2158.5599999427795,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 2160.485000014305,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 2162.3349999189377,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 2164.079999923706,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 2165.75,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 2260.5999999046326,
+          "type": "progress",
+          "stage": "canary"
+        },
+        {
+          "at": 2263.194999933243,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 2265.2999999523163,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 2267.2300000190735,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 2268.9599999189377,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 2270.8949999809265,
+          "type": "progress",
+          "stage": "synthesis"
+        },
+        {
+          "at": 2320.0599999427795,
+          "type": "progress",
+          "stage": "synthesis-complete",
+          "elapsedMs": 56.360000014305115
+        },
+        {
+          "at": 2322.9249999523163,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 2325.1549999713898,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 2326.899999976158,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 2328.7300000190735,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 2330.804999947548,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 2334.25,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 2336.844999909401,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 2338.610000014305,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 2340.2949999570847,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 2342.125,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 2343.8249999284744,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 2345.7699999809265,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 2405.1599999666214,
+          "type": "progress",
+          "stage": "canary"
+        },
+        {
+          "at": 2407.9900000095367,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 2410.7849999666214,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 2414.0999999046326,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 2416.0749999284744,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 2417.7450000047684,
+          "type": "progress",
+          "stage": "synthesis"
+        },
+        {
+          "at": 2457.1200000047684,
+          "type": "progress",
+          "stage": "synthesis-complete",
+          "elapsedMs": 49.0349999666214
+        },
+        {
+          "at": 2459.8799999952316,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 2463.0899999141693,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 2465.514999985695,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 2467.4049999713898,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 2469.429999947548,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 2471.7999999523163,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 2474.149999976158,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 2476.3099999427795,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 2478.429999947548,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 2480.5899999141693,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 2482.9800000190735,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 2485.414999961853,
+          "type": "progress",
+          "stage": "asset-acquisition"
+        },
+        {
+          "at": 2550.7799999713898,
+          "type": "complete"
+        },
+        {
+          "at": 2555.539999961853,
+          "type": "progress",
+          "stage": "mapping"
+        },
+        {
+          "at": 2560.929999947548,
+          "type": "progress",
+          "stage": "synthesis"
+        },
+        {
+          "at": 2605.8249999284744,
+          "type": "progress",
+          "stage": "synthesis-complete",
+          "elapsedMs": 46.9449999332428
+        },
+        {
+          "at": 2624.0599999427795,
+          "type": "complete"
+        }
+      ],
+      "route": "Using the webgpu route.",
+      "dimensions": [
+        [
+          1024,
+          1024
+        ]
+      ],
+      "video": null,
+      "controllerMs": 2682.797474000001
+    }
+  ],
+  "errors": [],
+  "startup": {
+    "controllerToUiMs": 798.6199450000001,
+    "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/152.0.0.0 Safari/537.36",
+    "webdriver": true,
+    "isolation": true,
+    "adapter": {
+      "info": {
+        "vendor": "nvidia",
+        "architecture": "turing"
+      },
+      "bindingBytes": 2147483644
+    },
+    "scripts": [
+      "https://next.facemorph.me/runtime.6f67e921bae679214856.js",
+      "https://next.facemorph.me/vendors.6f67e921bae679214856.js",
+      "https://next.facemorph.me/app.6f67e921bae679214856.js",
+      "https://static.cloudflareinsights.com/beacon.min.js/v4bc70e2c01a94c73b74392e4234840661791215815920"
+    ],
+    "facesShown": 0
+  },
+  "morphSettings": {
+    "note": "Default product loop; two faces, 16 frames per segment, 32 output frames, smooth figure-eight and pinched centre"
+  },
+  "loadAfter": "14:18:59 up 6 days,  7:30, 10 users,  load average: 3.04, 1.84, 1.24",
+  "completed": true,
+  "deployedSourceSha": "b322a26858275f0e361127836d0fd1854e868ef9",
+  "sourceAttribution": "Live script filenames match the successful CI deployment run 37886427733, 9 October 2026"
+}
