@@ -11,7 +11,8 @@ export function rankedRoutes(capability,supported,measured={},failed=new Set()){
  const unknown=candidates.filter(name=>!hasTiming(name));
  if(!known.length)return candidates;
  const best=known[0];
- const explore=unknown.find(name=>candidates.indexOf(name)<candidates.indexOf(best))
-  ??(measured[best]>3000?unknown[0]:undefined);
+ // A >3-second winner is not permission to try a lower-priority unmeasured route on
+ // the next reload. That rotated phones from a working 4-second CPU to 18-second WebGL.
+ const explore=unknown.find(name=>candidates.indexOf(name)<candidates.indexOf(best));
  return [...new Set([explore,...known,...unknown].filter(Boolean))];
 }

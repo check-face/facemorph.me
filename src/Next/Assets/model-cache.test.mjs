@@ -340,7 +340,7 @@ test('an asset already held reports no download ticks at all', async () => {
 });
 
 // ---- OPFS shard store: per-unit files, digest on every read, no marker of any kind ----
-import { createShardStore, TRAILER_BYTES } from './shard-store.mjs';
+import { createShardStore, openShardStore, TRAILER_BYTES } from './shard-store.mjs';
 function fakeDirectory({ syncOnly = false } = {}) {
   const files = new Map();
   const handle = name => {
@@ -372,6 +372,21 @@ function fakeDirectory({ syncOnly = false } = {}) {
   };
 }
 const shardModel = randomBytes(5000);
+test('simultaneous cache opens use distinct probes and retain existing model shards',async()=>{
+ const dir=fakeDirectory();const storage={getDirectory:async()=>({getDirectoryHandle:async()=>dir})};
+ const source=createShardStore(dir),hash=digest(bytes);await source.write(hash,bytes);
+ const stores=await Promise.all(Array.from({length:8},()=>openShardStore({storage})));
+ assert.ok(stores.every(Boolean),'All callers must select the same durable store');
+ assert.equal(dir.files.size,1,'Only each caller\'s own probe is removed');
+ assert.deepEqual(await stores[0].read(hash,bytes.length),bytes);
+});
+test('main-thread inventory can see worker OPFS without needing write handles',async()=>{
+ const dir=fakeDirectory(),hash=digest(bytes);await createShardStore(dir).write(hash,bytes);
+ const readDir={getFileHandle:async name=>({getFile:async()=>new Blob([dir.files.get(name)])})};
+ const storage={getDirectory:async()=>({getDirectoryHandle:async()=>readDir})};
+ assert.equal(await openShardStore({storage}),null,'Worker-only writes are unavailable here');
+ const inventory=await openShardStore({storage,readOnly:true});assert.ok(inventory);assert.equal(await inventory.has(hash,bytes.length),true);
+});
 const unitPieces = [shardModel.subarray(0, 2048), shardModel.subarray(2048, 4096), shardModel.subarray(4096)];
 const chunked = () => ({ sha256: digest(shardModel), size: shardModel.length, url: 'https://models.example/model',
   chunks: unitPieces.map((piece, i) => ({ sha256: digest(piece), size: piece.length, url: `https://models.example/model.${i}` })) });

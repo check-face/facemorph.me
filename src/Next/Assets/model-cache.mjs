@@ -512,7 +512,7 @@ export async function createBrowserModelCache(options = {}) {
   // This HTTPS namespace is a local storage key only; no request is sent here.
   const origin = /^https?:\/\//.test(location.origin) ? location.origin : 'https://next.facemorph.me';
   const key = hash => new URL(`/__checkface_model_blobs__/sha256/${hash}`, origin).href;
-  const shards = options.shards !== undefined ? options.shards : await openShardStore();
+  const shards = options.shards !== undefined ? options.shards : await openShardStore({readOnly:options.readOnly===true});
   return createModelCache({ ...options, shards, locks: globalThis.navigator?.locks,
     store: {
       get: hash => cache.match(key(hash)),

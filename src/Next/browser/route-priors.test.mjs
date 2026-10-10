@@ -5,6 +5,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { ROUTE_PRIORS, priorOrder, capabilities } from './route-priors.mjs';
+import {rankedRoutes} from './route-selection.mjs';
+
+test('reload never explores slower-prior WebGL just because the known route costs over 3 seconds',()=>{
+ assert.deepEqual(rankedRoutes({android:true,webgpu:true},['webgpu','cpu','webgl'],{webgpu:3100,cpu:4100}),['webgpu','cpu','webgl']);
+ assert.deepEqual(rankedRoutes({android:true,webgpu:false},['cpu','webgl'],{cpu:4100}),['cpu','webgl']);
+ assert.deepEqual(rankedRoutes({android:true,webgpu:true},['webgpu','cpu','webgl'],{cpu:4100}),['webgpu','cpu','webgl'],'A newly available higher-priority route is still eligible');
+});
 
 test('every measured prior orders routes ascending by recorded per-face cost', () => {
  let measuredEntries = 0;

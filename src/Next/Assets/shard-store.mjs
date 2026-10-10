@@ -85,14 +85,17 @@ export function createShardStore(dir) {
   return { read, has, write, remove };
 }
 
-export async function openShardStore({ storage = globalThis.navigator?.storage } = {}) {
+export async function openShardStore({ storage = globalThis.navigator?.storage, readOnly=false } = {}) {
   if (typeof storage?.getDirectory !== 'function' || !globalThis.crypto?.subtle) return null;
   try {
     const dir = await (await storage.getDirectory()).getDirectoryHandle(SHARD_DIRECTORY, { create: true });
     const store = createShardStore(dir);
+    // Inventory on the main thread must see worker-written shards even on Safari, where
+    // only workers can obtain synchronous write handles. It never acquires or repairs bytes.
+    if(readOnly)return store;
     // Prove a round trip before relying on it: some engines expose getDirectory and then refuse
     // writes (private modes, a main thread with only synchronous handles).
-    const probe = new Uint8Array([1, 2, 3, 4]), name = '0'.repeat(64);
+    const probe = new Uint8Array([1, 2, 3, 4]), name = Array.from(crypto.getRandomValues(new Uint8Array(32)),x=>x.toString(16).padStart(2,'0')).join('');
     await store.write(name, probe);
     const back = await store.read(name, probe.byteLength);
     await store.remove(name);
