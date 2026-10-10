@@ -1,0 +1,132 @@
+{
+  "passed": true,
+  "scope": "Exact e0b2192 artifact controls in Android emulator; HTTP UI only, not inference/isolation qualification",
+  "rows": [
+    {
+      "width": 320,
+      "scroll": 320,
+      "tiles": 2,
+      "generate": 2,
+      "shapes": [
+        {
+          "value": "full-smooth-figure8",
+          "checked": true
+        },
+        {
+          "value": "full-smooth-ellipse",
+          "checked": false
+        },
+        {
+          "value": "pairwise-figure8",
+          "checked": false
+        },
+        {
+          "value": "pairwise-ellipse",
+          "checked": false
+        },
+        {
+          "value": "linear",
+          "checked": false
+        }
+      ],
+      "length": "16",
+      "agent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Mobile Safari/537.36"
+    },
+    {
+      "width": 360,
+      "scroll": 360,
+      "tiles": 2,
+      "generate": 2,
+      "shapes": [
+        {
+          "value": "full-smooth-figure8",
+          "checked": true
+        },
+        {
+          "value": "full-smooth-ellipse",
+          "checked": false
+        },
+        {
+          "value": "pairwise-figure8",
+          "checked": false
+        },
+        {
+          "value": "pairwise-ellipse",
+          "checked": false
+        },
+        {
+          "value": "linear",
+          "checked": false
+        }
+      ],
+      "length": "16",
+      "agent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Mobile Safari/537.36"
+    },
+    {
+      "width": 390,
+      "scroll": 390,
+      "tiles": 2,
+      "generate": 2,
+      "shapes": [
+        {
+          "value": "full-smooth-figure8",
+          "checked": true
+        },
+        {
+          "value": "full-smooth-ellipse",
+          "checked": false
+        },
+        {
+          "value": "pairwise-figure8",
+          "checked": false
+        },
+        {
+          "value": "pairwise-ellipse",
+          "checked": false
+        },
+        {
+          "value": "linear",
+          "checked": false
+        }
+      ],
+      "length": "16",
+      "agent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Mobile Safari/537.36"
+    },
+    {
+      "width": 1280,
+      "scroll": 1280,
+      "tiles": 2,
+      "generate": 2,
+      "shapes": [
+        {
+          "value": "full-smooth-figure8",
+          "checked": true
+        },
+        {
+          "value": "full-smooth-ellipse",
+          "checked": false
+        },
+        {
+          "value": "pairwise-figure8",
+          "checked": false
+        },
+        {
+          "value": "pairwise-ellipse",
+          "checked": false
+        },
+        {
+          "value": "linear",
+          "checked": false
+        }
+      ],
+      "length": "16",
+      "agent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Mobile Safari/537.36"
+    }
+  ],
+  "processingModes": [
+    "auto",
+    "cpu",
+    "webgpu",
+    "webgl"
+  ]
+}

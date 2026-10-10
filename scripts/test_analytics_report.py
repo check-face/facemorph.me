@@ -10,6 +10,9 @@ class ReportTest(unittest.TestCase):
         output=report.summarize(rows,as_of=100000)['groups'];cpu=next(r for r in output if r['route']=='cpu');auto=next(r for r in output if r['route']=='auto')
         self.assertEqual(cpu['starts'],1);self.assertEqual(cpu['resolved_denominator'],1);self.assertEqual(cpu['completed_latency_ms'],{'n':1,'p50':400,'p95':400});self.assertEqual(cpu['cache_state'],'cold');self.assertEqual(auto['unknown_after_24h'],1);self.assertEqual(auto['pending_under_24h'],1)
         self.assertEqual(report.percentile(list(range(1,101)),.95),95)
+    def test_first_terminal_wins_even_when_export_order_differs(self):
+        rows=[event('job_finish',30,attempt_id='a',route='webgl',outcome='failed'),event('job_start',1,attempt_id='a',route='auto'),event('job_finish',20,attempt_id='a',route='cpu',outcome='completed',duration_ms=400)]
+        groups=report.summarize(rows)['groups'];self.assertEqual(len(groups),1);self.assertEqual(groups[0]['route'],'cpu');self.assertEqual(groups[0]['outcomes'],{'completed':1})
     def test_other_hosts_excluded_and_empty_not_zero_latency(self):
         self.assertEqual(report.summarize([event('job_start',1,page_location='https://facemorph.me/')])['groups'],[])
         self.assertIsNone(report.percentile([], .5))

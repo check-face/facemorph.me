@@ -1,0 +1,19 @@
+{
+  "passed": true,
+  "samples": [
+    {
+      "asset": "latent",
+      "size": 36864,
+      "sha256": "57aff08919ca441248db1d95cede8c07341309ead0017c27c83ba2003faa3d86",
+      "cors": "*",
+      "corp": "cross-origin"
+    },
+    {
+      "asset": "fullAsset",
+      "size": 111577,
+      "sha256": "d3090159ff82b70a08e2e255894a3327adac4ac25663d0a983575ee88a6bd001",
+      "cors": "*",
+      "corp": "cross-origin"
+    }
+  ]
+}

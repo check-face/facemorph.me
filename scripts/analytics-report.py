@@ -23,8 +23,11 @@ def summarize(events,as_of=None):
     as_of=as_of if as_of is not None else max((row[0] for row in rows),default=0)
     # Join across route transitions and preserve the start's cache context. Fallback must
     # not turn a resolved request into an apparent unknown start in the 'auto' bucket.
-    start_context={p['attempt_id']:p for _,name,p in rows if name=='job_start' and p.get('attempt_id')}
-    finish_context={p['attempt_id']:p for _,name,p in rows if name=='job_finish' and p.get('attempt_id')}
+    rows.sort(key=lambda row:row[0])
+    start_context={};finish_context={}
+    for _,name,p in rows:
+        if p.get('attempt_id') and name in ('job_start','job_finish'):
+            (start_context if name=='job_start' else finish_context).setdefault(p['attempt_id'],p)
     groups=collections.defaultdict(list)
     for timestamp,name,p in rows:
         if name in ('job_start','job_finish') and p.get('attempt_id'):
@@ -51,8 +54,8 @@ def summarize(events,as_of=None):
             'starts':len(starts),'outcomes':dict(outcomes),'unknown_after_24h':unresolved,'pending_under_24h':pending,
             'terminals_without_start':sum(attempt not in starts for attempt in finishes),
             'failure_numerator':outcomes['failed'],'resolved_denominator':resolved,'failure_rate':outcomes['failed']/resolved if resolved else None,
-            'completed_latency_ms':{'n':sum(isinstance(v,(int,float)) for v in durations),'p50':percentile(durations,.5),'p95':percentile(durations,.95)},
-            'operations':dict(operations),'milestones':{name:{'n':len(values),'p50':percentile(values,.5),'p95':percentile(values,.95)} for name,values in milestones.items()},**other})
+            'completed_latency_ms':{'n':sum(isinstance(v,(int,float)) and math.isfinite(v) and v>=0 for v in durations),'p50':percentile(durations,.5),'p95':percentile(durations,.95)},
+            'operations':dict(operations),'milestones':{name:{'n':sum(isinstance(v,(int,float)) and math.isfinite(v) and v>=0 for v in values),'p50':percentile(values,.5),'p95':percentile(values,.95)} for name,values in milestones.items()},**other})
     return {'hostname':'next.facemorph.me','as_of_seconds':as_of,'unknown_expiry_hours':24,'percentile_method':'nearest-rank','groups':output}
 
 def main():

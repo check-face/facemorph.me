@@ -1,0 +1,65 @@
+{
+  "passed": true,
+  "source": "e0b2192c26f6b921b9fb5e24c94be358c508c052",
+  "run": 38030647695,
+  "origin": "https://next.facemorph.me",
+  "indexMatchesForCurlClient": true,
+  "browserClientPlatformBeaconObserved": true,
+  "assets": [
+    {
+      "path": "465.daf50d7ec5f0db710691.js",
+      "sha256": "6a7db2e07da4d1c7f15aef65c1344a3165ab86414f8a3fa3d4dfba9e456ed616",
+      "bytes": 11550
+    },
+    {
+      "path": "516.daf50d7ec5f0db710691.js",
+      "sha256": "ccd0170e1f42cb5053a8d30020060bc3abafb2a97b8dc0e71a89c2a66f08d385",
+      "bytes": 45421
+    },
+    {
+      "path": "590.daf50d7ec5f0db710691.js",
+      "sha256": "789958ddb911f579b4c749092d4421220106c003aa31a87b3b128d27d8acc6d4",
+      "bytes": 7933
+    },
+    {
+      "path": "744.daf50d7ec5f0db710691.js",
+      "sha256": "5586a83dc07a522fe1fa3079b9469f683c660db83e42241119bd06dc57f08e87",
+      "bytes": 17267
+    },
+    {
+      "path": "825.daf50d7ec5f0db710691.js",
+      "sha256": "5f68f1188f80115535ebc659627c9fefd10af1eaefcb236be30760bd7db7463a",
+      "bytes": 17845
+    },
+    {
+      "path": "app.daf50d7ec5f0db710691.js",
+      "sha256": "5a91540b5bf2376d60e00a3af94091e296e1f934771bf9aa5be88ce452720773",
+      "bytes": 422529
+    },
+    {
+      "path": "runtime.daf50d7ec5f0db710691.js",
+      "sha256": "f15e1d6af394cda1b170dffa192ba82b8e9348cbea6cc0b1132011341a88e58a",
+      "bytes": 3523
+    },
+    {
+      "path": "style.daf50d7ec5f0db710691.css",
+      "sha256": "14fa7a43cf443717c15fc3b11135f1ea5381eed1af308d1dceba3953fa7a865c",
+      "bytes": 410347
+    },
+    {
+      "path": "vendors.daf50d7ec5f0db710691.js",
+      "sha256": "439d243f0135e759616676c46afbc339cf2802097c78d6c35b08ea196d858283",
+      "bytes": 453495
+    },
+    {
+      "path": "catalogue.json",
+      "sha256": "4a9e1c199e2a629f11cc5d016128b36efbcde301928ae2735c42e5025c13c341",
+      "bytes": 3405692
+    },
+    {
+      "path": "runtime/manifest.json",
+      "sha256": "d9e37e50a436e9fb7c0c7f973e70adee353c808f48c6a51fa5a9186f1c650a5c",
+      "bytes": 41236
+    }
+  ]
+}

@@ -1,0 +1,54 @@
+{
+  "scope": "Android live app queued analytics schema; not GA server receipt",
+  "events": [
+    {
+      "name": "operation_result",
+      "release": "e0b2192c26f6b921b9fb5e24c94be358c508c052",
+      "schema": 2,
+      "keys": [
+        "schema_version",
+        "release",
+        "visit_kind",
+        "operation",
+        "outcome"
+      ]
+    },
+    {
+      "name": "visit_milestone",
+      "release": "e0b2192c26f6b921b9fb5e24c94be358c508c052",
+      "schema": 2,
+      "keys": [
+        "schema_version",
+        "release",
+        "visit_kind",
+        "milestone",
+        "duration_ms"
+      ]
+    },
+    {
+      "name": "visit_milestone",
+      "release": "e0b2192c26f6b921b9fb5e24c94be358c508c052",
+      "schema": 2,
+      "keys": [
+        "schema_version",
+        "release",
+        "visit_kind",
+        "milestone",
+        "duration_ms"
+      ]
+    },
+    {
+      "name": "operation_result",
+      "release": "e0b2192c26f6b921b9fb5e24c94be358c508c052",
+      "schema": 2,
+      "keys": [
+        "schema_version",
+        "release",
+        "visit_kind",
+        "operation",
+        "outcome",
+        "reason"
+      ]
+    }
+  ]
+}

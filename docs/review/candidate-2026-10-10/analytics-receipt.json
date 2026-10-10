@@ -1,0 +1,17 @@
+{
+  "confirmedAt": "2026-10-10T06:34Z",
+  "property": 364008169,
+  "stream": 4891958029,
+  "method": "GA Realtime UI drill-down: operation_result -> release",
+  "release": "e0b2192c26f6b921b9fb5e24c94be358c508c052",
+  "observedEvents": 2,
+  "scope": "Current release receipt, alongside a controlled Android startup visit; not proof that every outcome path or percentile export is populated",
+  "customPayloadPrivacy": "Live Android queued parameters reviewed; release/schema2/closed operation and milestone keys, no input content",
+  "enhancedMeasurement": {
+    "siteSearch": false,
+    "formInteractions": false,
+    "outboundClicks": false,
+    "sharedStream": true
+  },
+  "outboundPrivacyFix": "Automatic outbound collection disabled and saved; issue-report hrefs include raw browser details and diagnostics references"
+}

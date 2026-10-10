@@ -1,0 +1,50 @@
+{
+  "stages": [
+    "Generating this face\u2026",
+    "Downloading model files\u2026",
+    "Downloading model files\u2026 0 MB of 158 MB",
+    "Downloading model files\u2026 1 MB of 158 MB",
+    "Downloading model files\u2026 2 MB of 158 MB",
+    "Downloading model files\u2026 3 MB of 158 MB",
+    "Downloading model files\u2026 7 MB of 158 MB",
+    "Downloading model files\u2026 11 MB of 158 MB",
+    "Downloading model files\u2026 23 MB of 158 MB",
+    "Downloading model files\u2026 39 MB of 158 MB",
+    "Downloading model files\u2026 55 MB of 158 MB",
+    "Downloading model files\u2026 71 MB of 158 MB",
+    "Downloading model files\u2026 87 MB of 158 MB",
+    "Downloading model files\u2026 103 MB of 158 MB",
+    "Downloading model files\u2026 119 MB of 158 MB",
+    "Downloading model files\u2026 125 MB of 158 MB",
+    "Downloading model files\u2026 141 MB of 158 MB",
+    "Generating\u2026",
+    "Face generated.",
+    "Downloading model files\u2026 142 MB of 158 MB",
+    "Generating is slow on this device. No graphics acceleration qualified here, so it is running on the processor.",
+    "Downloading model files\u2026 150 MB of 158 MB"
+  ],
+  "errors": [],
+  "startedAt": 1791613598788,
+  "webgpu": null,
+  "agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1",
+  "crossOriginIsolated": true,
+  "deviceMemory": null,
+  "hardwareConcurrency": 4,
+  "memoryAtStart": null,
+  "firstFaceMs": 84948,
+  "faceProduced": true,
+  "memoryAfterFace": null,
+  "route": "Ready \u00b7 this device\u2019s CPU.",
+  "speeds": "{\"bundle\":\"d9e37e50a436e9fb7c0c7f973e70adee353c808f48c6a51fa5a9186f1c650a5c\",\"scope\":\"warm-synthesis-v1\",\"routes\":{\"cpu\":5078.159999999993}}",
+  "cpuFallbackShown": false,
+  "cache": {
+    "entries": 1,
+    "bytes": 0
+  },
+  "storage": {
+    "quota": 41231686042,
+    "usage": 320903951
+  },
+  "completed": true,
+  "elapsedMs": 85940
+}

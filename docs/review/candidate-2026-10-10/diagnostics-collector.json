@@ -1,0 +1,15 @@
+{
+  "passed": true,
+  "scope": "Controlled synthetic collector contract receipt; not user-phone performance evidence",
+  "source": "e0b2192",
+  "status": 204,
+  "privateR2ObjectConfirmed": true,
+  "transferFields": {
+    "modelLoadedMb": 212,
+    "modelTotalMb": 212,
+    "networkLoadedMb": 0,
+    "networkPlannedMb": 0
+  },
+  "expiryDays": 30,
+  "expiryMetadataMatches": true
+}

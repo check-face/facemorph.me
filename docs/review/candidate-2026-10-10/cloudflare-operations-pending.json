@@ -1,0 +1,13 @@
+{
+  "site": "next.facemorph.me",
+  "platformBeaconAutoInjection": true,
+  "standaloneExclusionAttempt": "rejected: configuration maxRulesError (409)",
+  "existingRuleUnchanged": true,
+  "candidateSourceUnaffected": true,
+  "retentionExpiryMetadataDays": 30,
+  "r2DeleteRulePresent": false,
+  "pendingDecisions": [
+    "Restrict zone Web Analytics include rule to apex host, removing injection from candidate/labs",
+    "Apply runs-prefix 30-day R2 lifecycle expiry, permanently deleting expired reports"
+  ]
+}

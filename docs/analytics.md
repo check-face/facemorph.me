@@ -17,7 +17,7 @@ start a new session.
 | Question | Answered by |
 |---|---|
 | Who arrives, from where, on what? | `page_view` (automatic), source/medium, hostname, `platform`, `webgpu`, `cores_band`, `memory_band` |
-| Does the classic banner send people? | automatic `click` (outbound) on classic to next.facemorph.me, then sessions on hostname `next.facemorph.me` |
+| Does the classic banner send people? | Candidate sessions/referrer-host cohorts; automatic outbound click collection is disabled on the shared stream. |
 | Do new people get a result? | `first_result` (once per device) with `ttfr_ms`. Mark it as a **key event** once it has arrived (GA only lists received events) |
 | What does the first visit cost? | `models_download`: `scope`, `size_mb`, `duration_ms`, `outcome`. Kept apart from job time on purpose |
 | Which features are used? | `job_start` / `job_finish` by `action`, `input_kind`, `morph_kind`, `faces`, `frames`; `export` by `export_kind` and `method`; `photo_select`; `names_use` |
@@ -64,7 +64,9 @@ Photo size band (`size_band`). New metrics: Queue wait ms (`wait_ms`, millisecon
 Queue depth (`queue_depth`, standard), Responsiveness value (`metric_value`, standard; units depend
 on metric). Registration can take 24 hours to become reportable; it is not receipt evidence.
 
-Enhanced measurement: page views, scroll, outbound click, video and file-download collection remain.
+Enhanced measurement: page views, scroll, video and file-download collection remain.
+Automatic outbound click collection was disabled and saved on 10 October: issue-report
+links contain raw browser details and diagnostic references, which must not enter GA.
 Automatic **site search and form interaction** were disabled and saved on this shared stream on
 10 October, reducing automatic content metadata on both classic and candidate. Custom tag config
 sanitizes page location to origin+pathname, title to FaceMorph, and referrer to origin.
@@ -89,10 +91,11 @@ requires the promoted source, and is tracked in the delivery record.
   edge-side page-view counter that blockers cannot stop, written and tested but **not enabled** (see the
   comment in `wrangler.jsonc`). If enabled, it counts document loads, not unique visitors or job attempts.
 - GA reports the visitors it can see. Blockers, opt-outs and lost events can bias observed error rates in either direction.
-- The beacon path under this site's cross-origin isolation was checked as far as the script loading and
-  `crossOriginIsolated` staying true. Delivery could not be confirmed from the two browsers available
-  while building (one blocks Google, the other reports beacons as aborted with and without isolation).
-  Confirm in GA Realtime from a phone after the first promotion.
+- Current-release receipt is confirmed in GA Realtime: `operation_result` → `release` showed
+  `e0b2192c26f6b921b9fb5e24c94be358c508c052` with two events after the controlled Android
+  startup visit. This proves receipt for that event/release, not every lifecycle path or a
+  populated raw export. The controlled visit is retained in the delivery evidence with its
+  time/scope; do not use its timings as natural traffic or performance measurements.
 
 ## Percentiles and unresolved requests
 
@@ -120,3 +123,17 @@ Debug reports remain separately opted in. Acquisition rows now contain rounded, 
 model-read progress describes cache reads/verification, not a redownload. Prior reports lacked
 these fields and cannot establish network transfer. Storage observations preserve zero usage,
 persistence denied and unknown values distinctly. Sender and collector validate the same fields.
+
+## Platform operations found during live verification
+
+Cloudflare's existing zone setting injects a separate Web Analytics beacon into
+browser HTML, outside the built artifact. A candidate-only exclusion was rejected
+by the current rule cap. Restricting the include rule to the apex host would also
+remove it from labs/other subdomains; that choice is pending with the operator.
+The source-disabled edge page counter is a different mechanism.
+
+The private R2 collector confirms the new transfer fields and writes 30-day expiry
+metadata. Bucket inspection found no object deletion rule enforcing it. A checked
+`runs/`-prefix age rule is prepared, with permanent deletion of existing expired
+reports awaiting operator approval. Until applied, metadata is not proof of
+enforced retention; the product's 30-day deletion promise has this operational gap.
