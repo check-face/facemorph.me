@@ -71,7 +71,12 @@ CAMPAIGN = """
     // One face is the whole product path: acquisition, route admission, a canary and synthesis.
     const wait = async (check, ms, what) => {
       const deadline = Date.now() + ms;
-      while (Date.now() < deadline) { if (check()) return true; await new Promise(r => setTimeout(r, 500)); }
+      while (Date.now() < deadline) {
+        const error = document.querySelector('.next-error');
+        if (error) throw Error(error.innerText);
+        if (check()) return true;
+        await new Promise(r => setTimeout(r, 500));
+      }
       report.errors.push('timed out waiting for ' + what);
       return false;
     };
@@ -80,7 +85,16 @@ CAMPAIGN = """
     const began = Date.now();
     if(!window.__ciGate){window.__ciGate=0;setInterval(()=>{const b=document.querySelector('.next-download-dialog .next-download-accept');if(b){window.__ciGate++;b.click();}},250);}
     [...document.querySelectorAll('button')].find(b => b.textContent.trim().toLowerCase() === 'generate').click();
-    const made = await wait(() => document.querySelector('img[src^="blob:"]'), 900000, 'the first face');
+    const made = await wait(() => {
+      const tile = document.querySelector('[data-next-face="face-1"]');
+      const image = tile?.querySelector('.next-face-image img:not([data-public-preview])');
+      const canvas = tile?.querySelector('.next-face-image canvas[data-face-drawn="true"]');
+      return ((image?.complete && image.naturalWidth === 1024 && image.naturalHeight === 1024)
+        || (canvas?.width === 1024 && canvas.height === 1024))
+        && !document.querySelector('.next-status progress') && !document.querySelector('.next-face-active');
+    }, 900000, 'the full1024 decoded/drawn generated first face');
+    say('firstFaceBoundary', 'Generate click to full1024 decoded image or drawn canvas and idle; 500ms polling, not compositor paint');
+    say('faceSurface', document.querySelector('[data-next-face="face-1"] canvas[data-face-drawn="true"]') ? 'rgba-canvas' : made ? 'decoded-image' : null);
     say('firstFaceMs', made ? Date.now() - began : null);
     say('faceProduced', made);
     say('memoryAfterFace', mem());
