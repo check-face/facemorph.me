@@ -1,0 +1,69 @@
+{
+  "status": "passed",
+  "source_revision": "e7c582bfe172770d96e085bb21bb81461a9439bb",
+  "public_clone": true,
+  "source_hashes_match_qualified_image": true,
+  "fresh_model_database_cache_volumes": true,
+  "documented_commands": "build; setup; up --wait; curl face; curl mp4; curl multipart upload; curl saved-guid reconstruction; restart; latent persistence",
+  "health": {
+    "cpu_threads": {
+      "available_cpus": 12,
+      "default_max": 8,
+      "effective_threads": 8,
+      "limited_by_allocation": false,
+      "requested": "auto"
+    },
+    "cuda_version": "12.8",
+    "generation_capacity": 8,
+    "gpu": "NVIDIA GeForce RTX 2080 SUPER",
+    "gpu_capability": [
+      7,
+      5
+    ],
+    "original_cache": {
+      "generated": 0,
+      "hits": 0,
+      "write_failures": 0
+    },
+    "provider": "cuda",
+    "queue": 0,
+    "ready": true,
+    "torch_version": "2.9.1+cu128"
+  },
+  "aligned_upload": {
+    "did_align": true,
+    "guid": "7bcc648a-40fe-44ea-91e6-c431e98abbb3"
+  },
+  "saved_guid_survives_restart": true,
+  "face_jpeg_sha256": "49cc2564aaf2de12eb5cc5c71d3f05c01151c517eaa0c543c354efc265b73557",
+  "face_jpeg_bytes": 28506,
+  "mp4_bytes": 55270,
+  "reconstruction_jpeg_bytes": 27247,
+  "gpu_validation_run": "20261010T053842Z-dde6ef5b",
+  "build_cache_note": "First source build compiled/downloaded dependencies locally. The subsequent public clone build reused Docker dependency layers; its model/database/cache volumes were fresh.",
+  "host_driver": "610.57.04",
+  "hardware": "NVIDIA GeForce RTX 2080 SUPER, 8 GiB, Linux x86_64",
+  "limits": [
+    "One NVIDIA GPU/driver was tested; other NVIDIA architectures and host platforms were not physically qualified.",
+    "No production photos or volumes used; uploaded input was a generated synthetic face.",
+    "No GPU image, frontend image or model bundle was published to a registry."
+  ],
+  "cpu_ci": {
+    "source_revision": "e7c582bfe172770d96e085bb21bb81461a9439bb",
+    "url": "https://github.com/check-face/facemorph.me/actions/runs/38028133812",
+    "status": "completed",
+    "conclusion": "success",
+    "jobs": [
+      {
+        "name": "inference (ubuntu-24.04-arm, arm64)",
+        "conclusion": "success",
+        "url": "https://github.com/check-face/facemorph.me/actions/runs/38028133812/job/114143249237"
+      },
+      {
+        "name": "inference (ubuntu-24.04, amd64)",
+        "conclusion": "success",
+        "url": "https://github.com/check-face/facemorph.me/actions/runs/38028133812/job/114143249301"
+      }
+    ]
+  }
+}
