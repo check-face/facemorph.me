@@ -95,3 +95,29 @@ a new entry with the superseded ID. Follow [record standards](../../records.md).
 - Resources / failures: not_measured; GA access/registration reported in progress, receipt/performance unverified
 - Evidence: [UI source commit](https://github.com/check-face/facemorph.me/commit/f506892), [handoff](next-pass.md), message 15 in UI/research thread
 - Conclusion / next action: preserve proposed experiment contract; obtain qualified/promoted identity and recent matching analytics before controlled measurement
+
+### 2026-10-10T06:35:04Z — review-20261010-008
+
+- Phase / status: observed / component correctness passed; performance inconclusive
+- Round / experiment / correction: 2026-10-10 / R03-R04 direct-rgba-media-v1 / not_applicable
+- Hypothesis / decision: bypass foreground PNG and defer compact recoverable image encoding; screen lossy WebP and encoder latency settings before product integration
+- Identity: frozen source `b322a26858275f0e361127836d0fd1854e868ef9`; candidate file hashes in [source snapshot](../../candidates/direct-rgba-media-v1/source-snapshot.json); API hello fixture SHA-256 `0fd3aacaf63a9b574960f926e4fbd48fadf853ba16189519053438e55fb9d615`
+- Context: eris / Linux / Chromium 152 / NVIDIA Turing for raw synthesis; isolated headless profile; contended correctness runs, load ~14–19; 7 canaries/runtime, single plus 31 synthetic W+ samples; codec hello fixture only
+- Boundary / samples: speed not_measured; correctness-report timings not qualified; benchmark attempts refused above load 4. Raw report's early control firstDrawMs includes subsequent validation decode and must not be used; harness fixed before any speed experiment.
+- Correctness / workflow: 9 Node tests pass; raw RGBA agrees for 31 synthetic samples; PNG/WebP decode1024 and recovery pass; 32-frame/16 FPS H.264 outputs playable2s; fixed full31/compiled UI/save/re-upload/phone gates pending
+- Resources / failures: hello PNG+metadata 4,245,531 B; WebP q0.8+metadata 129,932 B; client peak reserved raw4MiB/cap8MiB, external surfaces unmeasured; rejected archived512 fixtures establish no full1024 coverage
+- Evidence: [candidate](../../candidates/direct-rgba-media-v1/README.md), [codec report](../../candidates/direct-rgba-media-v1/correctness-browser.json), [raw report](../../candidates/direct-rgba-media-v1/correctness-raw.json); runner IDs `20261010T061226Z-c7899f5c`, `20261010T061801Z-02cc46bd`, `20261010T062309Z-8530827a`, refusals `20261010T062459Z-e8fd956b`/`20261010T062617Z-50611334`, latest tests `20261010T063402Z-d79be2ea`
+- Conclusion / next action: correctness/size evidence supports bounded CI codec screening; no speed keep or deployment claim. Preserve sparse indices and ordered video; all32 raw frames would violate the budget.
+
+### 2026-10-10T06:35:04Z — review-20261010-009
+
+- Phase / status: proposed / bounded experimental CI and qualified UI control handoff
+- Round / experiment / correction: 2026-10-10 / R03-R04 / not_applicable
+- Hypothesis / decision: isolated CI can measure codec costs while eris is contended; it does not establish desktop GPU/phone E2E speed
+- Identity: versioned [experimental workflow](../../../.github/workflows/research-rgba-screen-v1.yml); current development source `e0b2192` passed [artifact run38030647695](https://github.com/check-face/facemorph.me/actions/runs/38030647695); exact live identity still being requested
+- Context: Ubuntu24.04 GitHub runner / stable Chrome actual version reported / Playwright1.55.0; ABBA×3 after fixed warmup; new image worker per sample, per-clip video worker
+- Boundary / samples: display draw+RAF, file-ready, decoded playable video; not_measured until reports; no compositor/OS-share claim
+- Correctness / workflow: Node and actual browser decode/recovery/playback before timing; separate experimental workflow, no required-check changes
+- Resources / failures: 20min job, bounded60/240/360s steps, artifacts14days; triggers retired after screen; report load and bounded queue separately from total memory
+- Evidence: [candidate recipe](../../candidates/direct-rgba-media-v1/README.md); agent-mail message26 requests stable Product/media integration and final live control
+- Conclusion / next action: publish prepared screen and collect scoped results, integrate only qualified useful candidates, then verify built/deployed UI

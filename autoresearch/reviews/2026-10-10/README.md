@@ -1,8 +1,12 @@
 # Research round: first use and returning visits — 10 October 2026
 
-**Status: evidence review and experiment design; performance changes not yet qualified or deployed by this round.** Priorities are instant `hello`, automatic cached-face restoration and ordinary-policy warm hydration. This round also targets **direct RGBA display/video with deferred image encoding, persistence and latent metadata**. Finished-video caching is excluded by operator direction.
+**Status: active experiments; raw/codec component correctness passed, paired measurement and product integration in progress. No RGBA speed winner or product deployment is claimed yet.** Priorities are instant `hello`, automatic cached-face restoration and ordinary-policy warm hydration. This round also targets **direct RGBA display/video with deferred image encoding, persistence and latent metadata**. Finished-video caching is excluded by operator direction.
 
 The [performance-history README](../../history/performance-through-2026-10-09/README.md) holds the optimization narrative and older per-device comparisons. This document holds only this round's evidence, gaps and decisions. Older-build diagnostics below describe coverage, not current latency. The [round log](log.md) preserves append-only events; the [UI handoff](next-pass.md) defines ownership and the control freeze; [experiment specifications](experiments.md) define the work to try.
+
+## Current experiment progress
+
+The [direct RGBA candidate](../../candidates/direct-rgba-media-v1/README.md) passed bounded raw transport, compact metadata and browser decode/playback checks. Its hello WebP output including exact W+ recovery metadata is 129,932 bytes; PNG is 4,245,531 bytes for the same public fixture. Local contention prevents a speed claim. A bounded CI ABBA screen is prepared; see journal events `review-20261010-008` and `review-20261010-009`. Development artifact `e0b2192` passed; a new live/UI observation will supersede the older snapshot below without rewriting its raw evidence.
 
 ## Measurement identity and boundaries
 

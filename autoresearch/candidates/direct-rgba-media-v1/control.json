@@ -1,0 +1,9 @@
+{
+  "source": "b322a26858275f0e361127836d0fd1854e868ef9",
+  "scope": "Frozen PNG encoder for component screening only; current UI artifact control pending",
+  "files": {
+    "src/Next/browser/png.mjs": "694cc2e83f76a674330d28f3ba125510930351e2aab7c132225cb9d870435785",
+    "src/Next/video-worker.mjs": "bec91cdc08c64f1da9259cbc1fb75d7ba5aaec7cf905d90aa11f93a352d71614"
+  },
+  "served_video_sha256": "56162a9e9af7c8789880a8631553d3de5cc87c776a26db48fc918ec644533921"
+}

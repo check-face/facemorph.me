@@ -1,0 +1,47 @@
+name: Experimental RGBA media codec screen v1
+on:
+  push:
+    branches: ['candidate/next-delivery-20260916']
+    paths: ['.github/workflows/research-rgba-screen-v1.yml']
+permissions:
+  contents: read
+concurrency:
+  group: research-rgba-screen-v1
+  cancel-in-progress: false
+jobs:
+  codec-screen:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: browser-actions/setup-chrome@v1
+        id: chrome
+        with:
+          chrome-version: stable
+      - name: Pinned browser controller (the actual browser version is in the report)
+        run: npm install --prefix /tmp/rgba-pw --no-audit --no-fund playwright@1.55.0
+      - name: Integrity, privacy and bounded-buffer correctness
+        run: python3 autoresearch/run.py --lane browser-cpu --device github-codec --timeout 60 -- node --test autoresearch/candidates/direct-rgba-media-v1/correctness.test.mjs
+      - name: Actual browser decode, metadata recovery and playable output
+        env:
+          PLAYWRIGHT_MODULE: /tmp/rgba-pw/node_modules/playwright
+          CHROMIUM_PATH: ${{ steps.chrome.outputs.chrome-path }}
+        run: python3 autoresearch/run.py --lane browser-cpu --device github-codec --timeout 240 -- node autoresearch/candidates/direct-rgba-media-v1/run-screen.mjs correctness autoresearch/candidates/direct-rgba-media-v1/ci-correctness.json
+      - name: Alternating paired codec and delivery screen
+        env:
+          PLAYWRIGHT_MODULE: /tmp/rgba-pw/node_modules/playwright
+          CHROMIUM_PATH: ${{ steps.chrome.outputs.chrome-path }}
+        run: python3 autoresearch/run.py --lane browser-cpu --device github-codec --timeout 360 -- node autoresearch/candidates/direct-rgba-media-v1/run-screen.mjs benchmark autoresearch/candidates/direct-rgba-media-v1/ci-paired-codec.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: research-rgba-codec-${{ github.sha }}
+          path: |
+            autoresearch/candidates/direct-rgba-media-v1/ci-*.json
+            autoresearch/candidates/direct-rgba-media-v1/ci-*.png
+            autoresearch/state/
+          retention-days: 14
+          if-no-files-found: warn
