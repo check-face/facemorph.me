@@ -26,7 +26,11 @@ does likewise). The deployed Pillow version/defaults are not freshly verified;
 do not claim browser quality 0.8 produces identical API bytes or pixels. Use 0.8
 as an initial candidate setting and measure encode time, file size and visible
 result. PNG remains a control/fallback; WebP is chosen only after timing and recovery
-checks. No codec winner has yet been measured in this round.
+checks. The isolated component screen measured the tradeoff: WebP file-ready was slower
+than PNG, while its total file was much smaller. The candidate uses WebP out of
+band for downloads, retains PNG cache compatibility and keeps the existing video
+quality settings after realtime failed to improve latency. Built-UI transfer and
+deployment qualification remain separate; see the [candidate evidence](../../candidates/direct-rgba-media-v1/ci-analysis.md).
 
 ## Acceptance
 

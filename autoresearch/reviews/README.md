@@ -7,7 +7,7 @@ implemented or deployed performance result.
 
 | Round | State | Scope / evidence |
 | --- | --- | --- |
-| [10 October 2026](2026-10-10/README.md) | Active: component correctness passed; paired codec screen and product integration underway | First use, returning visits, restoration, warm hydration, direct RGBA/deferred media encoding; [experiments](2026-10-10/experiments.md), [log](2026-10-10/log.md), [handoff](2026-10-10/next-pass.md) |
+| [10 October 2026](2026-10-10/README.md) | Active: raw media qualified and deployed; corrected paired built-UI screen running | First use, returning visits, restoration, warm hydration, direct RGBA/deferred media encoding; [experiments](2026-10-10/experiments.md), [log](2026-10-10/log.md), [handoff](2026-10-10/next-pass.md) |
 
 The separate [performance-history README](../history/performance-through-2026-10-09/README.md)
 preserves the recorded gains and older device matrix through 9 October. Historical

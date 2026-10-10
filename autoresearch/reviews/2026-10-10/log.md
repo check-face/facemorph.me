@@ -173,3 +173,29 @@ a new entry with the superseded ID. Follow [record standards](../../records.md).
 - Resources / failures: silent PNG fallback from DataCloneError meant the earlier WebP source-screen result did not establish compiled UI WebP behavior; cloneable recovery descriptor omits raw pixels, promises and source files
 - Evidence: `src/Next/recovery-metadata.test.mjs`; runner `20261010T071304Z-9ee61b65`; corrected exact artifact pending
 - Conclusion / next action: rebuild/qualify and refreeze paired CPU artifacts before continuing measurement
+
+### 2026-10-10T07:29:00Z — review-20261010-014
+
+- Phase / status: deployed / corrected raw media candidate qualified and live bytes verified
+- Round / experiment / correction: 2026-10-10 / R03-R04 / follows review-20261010-013
+- Hypothesis / decision: deliver direct display/video pixels with deferred PNG persistence and recoverable WebP downloads; retain video quality/queue8
+- Identity: `bce320418a694bc48f25a609217bb81861ee6e47`, diagnostic build `next-995b477854d97c7a`, app `app.25b21e2904ae5841d01e.js`, runtime `d9e37e50a436e9fb7c0c7f973e70adee353c808f48c6a51fa5a9186f1c650a5c`, [successful run38033695234](https://github.com/check-face/facemorph.me/actions/runs/38033695234)
+- Context: exact built UI Linux Chrome154 CPU; unchanged numerical/privacy/asset tests and compiled UI pass; iOS/Android component lanes pass, exact iOS simulator still running; physical phone unmeasured
+- Boundary / samples: correctness only; paired built UI screen remains in progress, no product speed claim
+- Correctness / workflow: named face synthesis, named rejection, repeated originals with zero workers/messages, real WebP download/re-upload without processing workers, metadata-free photo e4e, crop, decoded1024 playable2s MP4 pass. Hidden project-file controls are explicitly skipped, not passed; serialization is separately checked
+- Resources / failures: actual downloaded face126,158B =76,116B image +50,042B exact metadata; repeat file identical. Saved MP4 1,419,362B contains two-control16FPS/16-frames-per-segment project. Initial live HTML verifier saw the existing injected Cloudflare beacon; exact application HTML verified after separating that one known platform tag, all app/worker/style/catalogue/hello asset bytes match
+- Evidence: [CPU qualification](../../candidates/direct-rgba-media-v1/cpu-qualification.json), [live identity](live-bce-identity.json), [verification recipe](verify-live.py)
+- Conclusion / next action: deployment is verified; finish paired product transfer screen and record remaining GPU/phone/analytics coverage without assigning component timings to users
+
+### 2026-10-10T07:29:00Z — review-20261010-015
+
+- Phase / status: observed / reporting refresh and research harness corrections
+- Round / experiment / correction: 2026-10-10 / R01-R05 / not_applicable
+- Hypothesis / decision: accept timings only for their actual workload/cache/boundary; require photo encoder events rather than rely on an upload nonce
+- Identity: live build `next-995b477854d97c7a`; paired control/candidate remain e0/bce; no application changes in these research harness corrections
+- Context: R2 receipt query07:23:21UTC, window10October00:00UTC onward;339 listed objects,36 selected/21 run IDs, zero current-build runs; observed provider values kept distinct from requested route in prospective collector schema2
+- Boundary / samples: no current-user latency baseline; no accepted paired built UI outcome yet. Warmup diagnostic timings are discarded
+- Correctness / workflow: run38033742264 failed before candidate artifact upload, bounded wait added. Run38033815020 completed both warmups then stopped because restored project input is disabled; mode now changes through the actual menu. Run38034284294 cancelled after the warmup report exposed normalized-photo cache reuse; ignored RIFF nonce was stripped by selection, so next photo had no encoder events. Deterministic whole-image RGB-offset variants and encode-aligned/encoding-complete gates replace that faulty cache assumption; bounded command1800s/job35min
+- Resources / failures: explicit GPU control run38033339860 reached GTX1050/Chrome141 processing then failed invalid command buffer; no successful face or timing, separate from earlier obsolete-selector failures and from the raw-media candidate
+- Evidence: [non-identifying reporting](reporting-coverage-bce.json), [GPU control failure](../../candidates/direct-rgba-media-v1/gpu-control-failure.json), [paired recipe](../../candidates/direct-rgba-media-v1/built-ui-paired.mjs); current experiment run38034405920
+- Conclusion / next action: complete corrected paired screen; keep current user/device latency unknown where reporting does not establish it; GPU compatibility and physical coverage remain explicit follow-up directions

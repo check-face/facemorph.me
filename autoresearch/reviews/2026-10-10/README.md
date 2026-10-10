@@ -1,6 +1,6 @@
 # Research round: first use and returning visits — 10 October 2026
 
-**Status: active experiments; raw/codec component correctness passed, paired measurement and product integration in progress. Direct display/video component transport wins are recorded; application integration was pushed as `d0d8d7a`; its repeat-original qualification failed and the reuse correction is being qualified. No product speedup or deployment of that integration is claimed yet.** Priorities are instant `hello`, automatic cached-face restoration and ordinary-policy warm hydration. This round also targets **direct RGBA display/video with deferred image encoding, persistence and latent metadata**. Finished-video caching is excluded by operator direction.
+**Status: corrected candidate `bce3204` is qualified and deployed to next.facemorph.me, with matching live bytes. Component direct display/video wins are recorded; the corrected paired e0/bce built-UI screen is running. No current-user latency or overall product speedup is claimed yet.** Priorities are instant `hello`, automatic cached-face restoration and ordinary-policy warm hydration. This round also targets **direct RGBA display/video with deferred image encoding, persistence and latent metadata**. Finished-video caching is excluded by operator direction.
 
 The [performance-history README](../../history/performance-through-2026-10-09/README.md) holds the optimization narrative and older per-device comparisons. This document holds only this round's evidence, gaps and decisions. Older-build diagnostics below describe coverage, not current latency. The [round log](log.md) preserves append-only events; the [UI handoff](next-pass.md) defines ownership and the control freeze; [experiment specifications](experiments.md) define the work to try.
 
@@ -8,9 +8,42 @@ The [performance-history README](../../history/performance-through-2026-10-09/RE
 
 The [direct RGBA candidate](../../candidates/direct-rgba-media-v1/README.md) passed bounded raw transport, compact metadata and browser decode/playback checks. Its public hello WebP including exact W+ recovery metadata is 129,932 bytes; PNG is 4,245,531 bytes. Isolated CI measured draw+RAF **65.31 → 5.02 ms** and decoded-playable raw video codec **1,316.24 → 186.07 ms**, excluding synthesis and compiled UI. WebP encoding was slower but smaller; realtime video settings were discarded. See the [paired analysis](../../candidates/direct-rgba-media-v1/ci-analysis.md).
 
-The contended eris source screen established correctness only. Application integration was pushed as [`d0d8d7a`](https://github.com/check-face/facemorph.me/commit/d0d8d7a6332652dbc09cc7418520f8863aed11f8); build and compiled UI passed, but [real CPU UI qualification](https://github.com/check-face/facemorph.me/actions/runs/38032536121) stopped at repeat-original. A local exact-artifact trace found **zero repeat inference** but a repeated download encode: per-face Generate lost the prepared download. The correction reuses a same-input face and waits for deferred canonical encoding before recording the last result. Regression tests pass; exact-artifact qualification remains required.
+The contended eris source screen established correctness only. Application integration was pushed as [`d0d8d7a`](https://github.com/check-face/facemorph.me/commit/d0d8d7a6332652dbc09cc7418520f8863aed11f8); build and compiled UI passed, but [real CPU UI qualification](https://github.com/check-face/facemorph.me/actions/runs/38032536121) stopped at repeat-original. A local exact-artifact trace found **zero repeat inference** but a repeated download encode: per-face Generate lost the prepared download. The correction reuses a same-input face and waits for deferred canonical encoding before recording the last result. That fix passed the e590 CPU UI journey. A further worker-clone issue made deferred WebP fall back to PNG; `bce3204` sends only recovery identity/latents and adds Chrome WebP plus no-processing-worker re-upload gates. Regression tests pass; the corrected artifact passed build, compiled UI, full CPU UI and deployment. [Live identity](live-bce-identity.json) binds diagnostic build `next-995b477854d97c7a` and app `app.25b21e2904ae5841d01e.js` to that artifact. Real Chrome downloads are WebP, repeat without workers, and re-upload bypasses processing workers; a saved1024/2s MP4 carries its two-control project. The corrected [built-UI experiment](https://github.com/check-face/facemorph.me/actions/runs/38034405920) compares e0/bce. Earlier attempts stopped at artifact upload, restored-field interaction or a normalized-photo cache shortcut; they supply no accepted paired timing. Photo variants now change decoded pixels and must execute the encoder.
 
 The qualified control is now `e0b2192`, with [live byte identity](../../../docs/review/candidate-2026-10-10/live-identity.json). The observations below are the **earlier round snapshot**, retained as dated evidence; they do not describe today's live delivery.
+
+## Delivered behavior and recent reporting
+
+Generated pixels now draw directly to canvas; video consumes ordered raw frames.
+Canonical PNG storage and lossy WebP download encoding run in bounded workers.
+Four sparse anchors keep early scrub availability before ordered streaming. The
+existing video quality/queue settings remain, and finished videos are not cached.
+Initial `hello` and automatic original restoration came from the aligned UI control
+and remain in the delivered candidate.
+
+The [qualified Chrome UI check](../../candidates/direct-rgba-media-v1/cpu-qualification.json)
+covers unchanged-input reuse, true metadata-free photo/e4e, local crop, WebP recovery
+without processing workers and decoded1024 playable video. One actual downloaded
+face is **126,158 bytes: 76,116 image + 50,042 metadata**. Its exact9,216 W+ values
+recover; the **1,419,362-byte MP4** carries a two-control project. These are sizes
+and correctness results, not latency distributions. Hidden project-file UI remains
+explicitly skipped, with serialization tested separately.
+
+A [fresh private-R2 coverage query](reporting-coverage-bce.json) at **07:23:21 UTC**
+found339 listed objects; the10October receipt window held36 objects/21 run IDs,
+with **zero matching the new live build**. Raw private events stayed in memory.
+Recent older-build Android reports include mixed provider and cache/job boundaries;
+their short job timers do not establish warm inference. Current user/device
+latency therefore remains unknown. The prospective collector now separates
+requested route from observed provider values.
+
+The explicit **GTX1050 / Chrome141** [control attempt](../../candidates/direct-rgba-media-v1/gpu-control-failure.json)
+reached processing after its stale selector was fixed, then failed with an invalid
+command buffer before a face. It provides no GPU timing and does not qualify the
+raw candidate. Eris source correctness and Linux CPU UI qualification remain
+separate. Android/iOS component lanes passed; a corrected iOS product campaign is
+running after its obsolete image-only completion selector was replaced with
+decoded-image/drawn-canvas checks. Physical phones remain unmeasured.
 
 ## Earlier round snapshot: identity and boundaries
 

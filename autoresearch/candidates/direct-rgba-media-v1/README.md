@@ -1,12 +1,12 @@
 # Direct RGBA and deferred image encoding — current round candidate
 
 Status: **paired codec screen complete; direct display/video transport retained,
-realtime video settings discarded; product integration qualification in progress**. This belongs to the [10 October round](../../reviews/2026-10-10/README.md),
+realtime video settings discarded; product integration qualified and deployed; corrected paired built-UI transfer screen running**. This belongs to the [10 October round](../../reviews/2026-10-10/README.md),
 separate from historical iteration 3. Follow its [quality ruling](../../reviews/2026-10-10/quality-policy.md).
 
 ## Hypothesis and staged comparisons
 
-The current image pipeline encodes generated pixels as PNG before delivery; video
+The frozen control image pipeline encodes generated pixels as PNG before delivery; video
 then decodes PNG back to RGBA. Display and video can consume raw pixels while a
 bounded worker prepares a downloadable/persistable image and recovery metadata.
 First isolate direct delivery with unchanged PNG output, then compare PNG against
@@ -69,16 +69,17 @@ The automatic CI push trigger has been retired.
 
 ## Integration constraints and next gates
 
-Current sparse infill produces out-of-order frames, persists them, then encodes
+The frozen control sparse infill produces out-of-order frames, persists them, then encodes
 ordered video. Holding 32 raw1024 frames would take 128 MiB. A direct-video variant
 must preserve indexed sparse availability while using a few preview anchors followed
 by ordered streaming, or decompress already persisted out-of-order frames when
 their presentation index is due. Blocking sparse production on a missing earlier
 video frame can deadlock; no all-frame raw array is acceptable.
 
-The staged product candidate must integrate canvas display, worker encoding,
+The `bce3204` product candidate implements canvas display, worker encoding,
 Download/Share while encoding, format-aware recovery, cache/index transactions,
-revision/cancellation and sparse scrub. Keep existing PNG/v1 recovery compatibility.
+revision/cancellation and sparse scrub. Exact-artifact CPU UI checks qualify those paths
+separately; [retained receipt](cpu-qualification.json) and [live identity](../../reviews/2026-10-10/live-bce-identity.json) verify delivery. Existing PNG/v1 recovery compatibility is retained.
 Compact v2 uses exact float32 little-endian W+ in base64; WebP stores an ignorable
 `FMRP` RIFF chunk, PNG uses the existing FaceMorph text namespace. These readers
 validate encoded image and latent hashes, dimensions and generation identity;
@@ -122,8 +123,10 @@ per side then ABBA×3 (six observations each). Reopen each side's isolated retai
 profile for every sample. Record navigation to preview/restored1024 image, first
 new face after reload, next new face, first/repeat completed download, repeated
 original, 32-frame/16 FPS decoded playable video, first/next metadata-free synthetic
-photo and its download. Matching cases use the same new inputs and decoded public
-hello pixels; ignored RIFF nonces prevent original-cache shortcuts. Photo assets
+photo and its download. Matching cases use the same new inputs and deterministic public hello RGB-offset
+variants, prepared as WebP q.95 outside timing; each photo must execute the encoder.
+RIFF nonces were rejected as a cache control because product selection normalizes
+the file and strips them. Photo assets
 are acquired in the discarded warmup. This is a synthetic same-photo pipeline
 screen, not varied real-photo or physical-phone performance.
 
@@ -136,5 +139,5 @@ is not a new numerical-kernel claim. Worker surfaces/total process memory remain
 unmeasured; the implemented copy budget is not a measured process peak.
 
 Stop on a wrong artifact, contention above load4, invalid output, browser error,
-or the1200s command/25min job limit. Keep partial evidence as inconclusive. Retain
+or the1800s command/35min job limit. Keep partial evidence as inconclusive. Retain
 the raw report in Git; retire the automatic experimental trigger after completion.

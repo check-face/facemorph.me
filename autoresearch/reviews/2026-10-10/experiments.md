@@ -1,7 +1,10 @@
 # Experiment queue — 10 October 2026
 
-All entries are **proposed**, with no new timing samples, qualified candidate or
-deployment. Follow [program.md](../../program.md), [record standards](../../records.md)
+R03/R04 component screens are complete: direct display/video transport was retained,
+WebP is a deferred size tradeoff, and realtime video settings were discarded.
+The corrected `bce3204` product is qualified and deployed; the e0/bce built-UI comparison is
+running. R01/R02/R05 remain measurement directions, partly covered by that screen.
+No product latency claim is established yet. Follow [program.md](../../program.md), [record standards](../../records.md)
 and the [UI handoff](next-pass.md). Freeze the qualified UI source/artifact before
 paired measurement; preserve concurrent product work. Prioritize first use and
 returning visits, then choose the next causal change from current evidence.
@@ -37,13 +40,14 @@ Preserve synthesis correctness, generation identity, recovery and local retentio
 
 ### Mechanism and control
 
-The inspected source currently has a concrete round-trip:
+The frozen `e0b2192` control (and earlier `b322a26` snapshot) has this round-trip:
 [`ort-worker.mjs`](../../../src/Next/browser/ort-worker.mjs) encodes RGBA to PNG;
 [`runtime.mjs`](../../../src/Next/browser/runtime.mjs) delivers frame blobs;
 [`media.mjs`](../../../src/Next/media.mjs) decodes them and reads RGBA back for video.
-The current runtime/original store also expects canonical `image/png` blobs.
-Freeze exact source hashes before calling this the control; these paths are owned
-by concurrent development and may change before qualification.
+The control expects canonical `image/png` blobs. The integrated `bce3204` candidate
+bypasses foreground PNG for display/video and preserves deferred canonical PNG
+storage compatibility. Exact source/artifact identities are frozen in the
+[candidate recipe](../../candidates/direct-rgba-media-v1/README.md).
 
 | Consumer | Proposed candidate path | Observable finish |
 | --- | --- | --- |

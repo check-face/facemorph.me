@@ -58,8 +58,10 @@ cohorts = collections.defaultdict(list)
 for events in by_run.values():
     starts = [event for event in events if event.get('event') == 'start']
     context = starts[0] if starts else {}
-    identity = tuple(context.get(field) for field in
-                     ['build', 'platform', 'browser', 'browserMajor', 'action'])
+    routes = tuple(sorted({event.get('provider') for event in events
+                           if event.get('provider') in ['cpu', 'webgl', 'webgl2', 'webgpu', 'native-cpu', 'native-gpu']}))
+    identity = (*tuple(context.get(field) for field in
+                       ['build', 'platform', 'browser', 'browserMajor', 'action', 'provider']), routes)
     cohorts[identity].append(events)
 
 summaries = []
@@ -85,7 +87,8 @@ for identity, runs in cohorts.items():
                 if isinstance(value, (int, float)) and not isinstance(value, bool):
                     stages[event['stage']].append(value)
     summaries.append({
-        **dict(zip(['build', 'platform', 'browser', 'browser_major', 'action'], identity)),
+        **dict(zip(['build', 'platform', 'browser', 'browser_major', 'action', 'requested_route'], identity[:6])),
+        'observed_provider_values': list(identity[6]),
         'matches_live_build': identity[0] == args.live_build,
         'run_ids': len(runs), 'terminal_events': dict(terminal_counts),
         'run_ids_with_multiple_terminal_events': multiple_terminals,
@@ -96,7 +99,7 @@ for identity, runs in cohorts.items():
     })
 
 report = {
-    'queried_at_utc': now.isoformat(), 'source': 'Private consented diagnostics R2',
+    'schema_version': 2, 'queried_at_utc': now.isoformat(), 'source': 'Private consented diagnostics R2',
     'live_build': args.live_build, 'receipt_window_start': args.window_start,
     'receipt_window_end': max((row['last_modified'] for row in selected), default=None),
     'listed_objects': len(objects), 'selected_objects': len(selected),
@@ -108,6 +111,7 @@ report = {
     'limitations': [
         'R2 only; excludes KV fallback and GA4. Receipt time can differ from execution time.',
         'Stage events can include canaries, endpoints and loading; they are not warm frame throughput.',
+        'Cohorts retain requested route and observed provider values separately; observed values alone do not establish successful admission or exclude fallback.',
         'No exact GPU/physical device, workload settings or cache-state inference from platform alone.',
         'Completed job timer is not a decoded-image or playable-video timestamp.',
         'Multiple terminal events are not independent requests; no outcome rate is computed.',
