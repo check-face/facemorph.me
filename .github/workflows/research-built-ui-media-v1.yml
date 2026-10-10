@@ -30,6 +30,17 @@ jobs:
           run-id: 38030647695
           github-token: ${{ github.token }}
           path: /tmp/media-control
+      - name: Wait for the explicitly pinned candidate artifact upload
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for attempt in $(seq 1 30); do
+            count=$(gh api repos/check-face/facemorph.me/actions/runs/38033695234/artifacts --jq '[.artifacts[]|select(.name=="next-site-bce320418a694bc48f25a609217bb81861ee6e47" and .expired==false)]|length')
+            if [ "$count" = 1 ]; then exit 0; fi
+            sleep 10
+          done
+          echo 'Pinned candidate artifact was not uploaded within five minutes' >&2
+          exit 1
       - uses: actions/download-artifact@v4
         with:
           name: next-site-bce320418a694bc48f25a609217bb81861ee6e47
