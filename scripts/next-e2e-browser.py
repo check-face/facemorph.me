@@ -216,6 +216,8 @@ def stage_seedGeneration():
  assert 'synthesize' in messages and 'generate' not in messages, 'Published name silently fell back to mapping: '+str(messages)
  save_check('nameSeed',{'passed':True,'dimensions':[[i['width'],i['height']] for i in images],'processingSelection':selection,'publishedLatentSynthesis':True})
  first=download(S['buttons']['saveImage'])
+ assert first.suffix=='.webp' and first.read_bytes()[8:12]==b'WEBP', 'Chrome deferred download did not use the supported WebP encoder'
+ CTX['seedDownload']=first
  CTX['seedSha']=hashlib.sha256(first.read_bytes()).hexdigest()
  # The photo-face upload needs its own cache identity: same pixels as the seed PNG (decoders
  # ignore bytes after IEND) but different bytes, so the e4e encode really runs instead of
@@ -290,6 +292,13 @@ def stage_repeatOriginal():
  run(S['buttons']['generate'],predicate=lambda:len(faces())==2);second=download(S['buttons']['saveImage']);assert hashlib.sha256(second.read_bytes()).hexdigest()==CTX['seedSha'];assert js('window.__ciWorkers')==workers,'Repeat created an inference worker';assert js('window.__ciWorkerRequests')==requests,'Repeat invoked the inference worker'
  save_check('repeatOriginal',{'passed':True,'sha256':CTX['seedSha'],'newWorkers':0,'newWorkerRequests':0})
  CTX['workerBaseline']=workers
+def stage_recoveredDownload():
+ workers=js('window.__ciWorkers');requests=js('window.__ciWorkerRequests')
+ upload(S['choosePhoto'],CTX['seedDownload'])
+ wait(lambda:js("document.querySelector('%s').value==='project'"%S['faceSource']) and len(faces())==2 and idle(),60)
+ assert js('window.__ciWorkers')==workers,'Recovery created a processing worker'
+ assert js('window.__ciWorkerRequests')==requests,'Recovery invoked a processing worker'
+ save_check('recoveredDownload',{'passed':True,'format':'webp','newWorkers':0,'newWorkerRequests':0,'dimensions':[[i['width'],i['height']] for i in faces()]})
 def stage_syntheticPhotoE4e():
  upload(S['choosePhoto'],CTX['seedPng'])
  wait(lambda:js("document.querySelector('%s').value==='photo'"%S['faceSource']),60)
@@ -382,7 +391,7 @@ def stage_morphVideo():
 
 # --- Driver ------------------------------------------------------------------------------
 STAGES=[('preflight',stage_preflight),('seedGeneration',stage_seedGeneration),('routeRejection',stage_routeRejection),
-        ('repeatOriginal',stage_repeatOriginal),('syntheticPhotoE4e',stage_syntheticPhotoE4e),('localCrop',stage_localCrop),
+        ('repeatOriginal',stage_repeatOriginal),('recoveredDownload',stage_recoveredDownload),('syntheticPhotoE4e',stage_syntheticPhotoE4e),('localCrop',stage_localCrop),
         ('projectSaveReopen',stage_projectSaveReopen),('morphVideo',stage_morphVideo)]
 SKIP=set(filter(None,os.environ.get('E2E_SKIP','').split(',')))
 try:

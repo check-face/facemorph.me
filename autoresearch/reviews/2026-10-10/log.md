@@ -160,3 +160,16 @@ a new entry with the superseded ID. Follow [record standards](../../records.md).
 - Resources / failures: redundant download worker, not a numerical/GPU failure. First local diagnostic attempt had a harness quoting syntax error; subsequent attempt reproduced the product fault. Existing zero-worker check remains unchanged
 - Evidence: [worker trace](../../candidates/direct-rgba-media-v1/repeat-failure.json); runner `20261010T070519Z-79aca28e`, regression tests `20261010T070644Z-f8c00fd7`
 - Conclusion / next action: qualify corrected exact artifact; retain failure evidence and separate deployed state from pushed source
+
+### 2026-10-10T07:13:39Z — review-20261010-013
+
+- Phase / status: implemented / download worker transport corrected; new exact-artifact qualification required
+- Round / experiment / correction: 2026-10-10 / R03-R04 / followup to review-20261010-012
+- Hypothesis / decision: the worker receives only cloneable latent/provenance/generation identity; displayed face promises and UI/source state must remain on the page
+- Identity: correction follows `e590de2`; initial built-UI experiment [run38033537996](https://github.com/check-face/facemorph.me/actions/runs/38033537996) cancelled by research before accepting measurements
+- Context: actual bridge-ready result includes `fileReady`; source codec screen used a pure canonical record and did not cover this structured-clone boundary
+- Boundary / samples: no new speed claim; worker-transport regression reproduces Promise clone rejection and confirms successful WebP dispatch after correction
+- Correctness / workflow: focused metadata/bridge tests pass; Chrome exact-artifact gate now requires WebP and checks downloaded-face re-upload bypasses processing workers; PNG fallback retained for unsupported encoders
+- Resources / failures: silent PNG fallback from DataCloneError meant the earlier WebP source-screen result did not establish compiled UI WebP behavior; cloneable recovery descriptor omits raw pixels, promises and source files
+- Evidence: `src/Next/recovery-metadata.test.mjs`; runner `20261010T071304Z-9ee61b65`; corrected exact artifact pending
+- Conclusion / next action: rebuild/qualify and refreeze paired CPU artifacts before continuing measurement

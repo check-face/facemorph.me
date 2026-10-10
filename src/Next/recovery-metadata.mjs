@@ -60,7 +60,10 @@ export async function downloadImage(result,seed){
  const encoder=createImageEncoder();
  try{
   const slot=await encoder.acquire(1024*1024*4);
-  const output=await encoder.encode(slot,{blob:result.blob,format:'webp',quality:.8,recovery:{result,seed:seed===undefined?undefined:Number(seed)}});
+  // A displayed face also carries UI state and deferred file/download promises.
+  // Only the recovery identity belongs across the worker boundary.
+  const identity={latent:result.latent,provenance:result.provenance,generationKind:result.generationKind,generationSha256:result.generationSha256};
+  const output=await encoder.encode(slot,{blob:result.blob,format:'webp',quality:.8,recovery:{result:identity,seed:seed===undefined?undefined:Number(seed)}});
   return output.blob;
  }catch(error){
   if(result.blob.type==='image/png')return decorateImage(result,seed);

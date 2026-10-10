@@ -1,4 +1,12 @@
-import test from 'node:test';import assert from 'node:assert/strict';import {decorateImage,recoverImage} from './recovery-metadata.mjs';import {digest} from './browser/originals.mjs';
+import test from 'node:test';import assert from 'node:assert/strict';import {decorateImage,recoverImage,downloadImage} from './recovery-metadata.mjs';import {digest} from './browser/originals.mjs';
+test('deferred product faces send only cloneable recovery identity to the download worker',async t=>{
+ const previous=globalThis.Worker,requests=[],webp=new Blob(['webp'],{type:'image/webp'});let disposed=0;
+ globalThis.Worker=class{postMessage(message){requests.push(structuredClone(message));queueMicrotask(()=>this.onmessage({data:{id:message.id,result:{blob:webp}}}));}terminate(){disposed++;}};
+ t.after(()=>{globalThis.Worker=previous;});
+ const face={blob:new Blob(['canonical'],{type:'image/png'}),latent:{space:'w-plus',values:new Float32Array(9216)},provenance:{modelSha256:'m',noiseSha256:'n'},generationKind:'seed',generationSha256:'a'.repeat(64),fileReady:Promise.resolve(),downloadReady:Promise.resolve(),pixels:{rgba:null},source:{file:new Blob(['private photo'])}};
+ assert.equal(await downloadImage(face,'123'),webp,'must use WebP rather than silently fall back on a DataCloneError');
+ assert.equal(requests.length,1);assert.deepEqual(Object.keys(requests[0].recovery.result).sort(),['generationKind','generationSha256','latent','provenance']);assert.equal(requests[0].recovery.seed,123);assert.equal(disposed,1);
+});
 test('PNG recovery preserves canonical bytes and W+ without treating the generated face as a new photo',async()=>{
  const bytes=Uint8Array.from(Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jv1sAAAAASUVORK5CYII=','base64'));
  const blob=new Blob([bytes],{type:'image/png'}),values=new Float32Array(9216);values[3]=.25;
