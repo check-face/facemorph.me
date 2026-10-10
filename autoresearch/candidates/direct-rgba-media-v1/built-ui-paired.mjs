@@ -56,7 +56,7 @@ async function one(side,caseId,warmup=false){
   for(const which of ['first','next'])await step('photo-'+which,()=>page.locator('[data-next-face="face-2"] input[aria-label="Choose photo"]').setInputFiles(photo(caseId,which)),()=>waitFace('face-2'));
   await download('photo-download','face-2');
   entry.passed=!entry.pageErrors?.length;entry.loadAfter=loadavg();if(!entry.passed)throw Error('Browser page errors');
- }finally{if(context)await context.close();server.kill();await new Promise(resolve=>server.once('exit',resolve));await save();}
+ }finally{if(context)await context.close();if(server.exitCode===null){server.kill();await new Promise(resolve=>server.once('exit',resolve));}await save();}
 }
 try{await mkdir(resolve(out,'..'),{recursive:true});await one('control',-1,true);await one('candidate',-1,true);for(let block=0;block<3;block++)for(const [j,side] of ['control','candidate','candidate','control'].entries())await one(side,block*2+(j>=2?1:0));report.passed=true;}catch(error){report.passed=false;report.errors.push(error.message);}finally{report.finishedAt=new Date().toISOString();report.loadAfter=loadavg();await save();}
 console.log(JSON.stringify({passed:report.passed,samples:report.samples.length,errors:report.errors}));if(!report.passed)process.exitCode=1;

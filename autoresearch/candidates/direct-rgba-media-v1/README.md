@@ -110,7 +110,7 @@ use synthetic/public fixtures and send no diagnostics or private photos.
 ## Exact built-UI transfer experiment
 
 The bounded [built-UI recipe](built-ui-paired.mjs) compares qualified control
-`e0b2192` with corrected integration `e590de2`, using exact artifact receipts and
+`e0b2192` with corrected integration `bce3204` (supersedes `e590de2` after the cloneable-download fix), using exact artifact receipts and
 one pinned runtime. Hypothesis: removing foreground PNG improves full-resolution
 face display and playable video; the smaller deferred WebP improves download size
 without moving encoding into the display critical path. CPU synthesis may dominate

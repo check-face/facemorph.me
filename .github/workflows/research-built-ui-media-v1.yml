@@ -32,14 +32,14 @@ jobs:
           path: /tmp/media-control
       - uses: actions/download-artifact@v4
         with:
-          name: next-site-e590de2823508d718195a6c3228cc62736c0ae64
-          run-id: 38033339858
+          name: next-site-bce320418a694bc48f25a609217bb81861ee6e47
+          run-id: 38033695234
           github-token: ${{ github.token }}
           path: /tmp/media-candidate
       - name: Verify exact artifact bytes and source receipts
         run: |
           python desktop/scripts/verify-web-artifact.py --artifact /tmp/media-control --revision e0b2192c26f6b921b9fb5e24c94be358c508c052 --receipt /tmp/control-receipt.json
-          python desktop/scripts/verify-web-artifact.py --artifact /tmp/media-candidate --revision e590de2823508d718195a6c3228cc62736c0ae64 --receipt /tmp/candidate-receipt.json
+          python desktop/scripts/verify-web-artifact.py --artifact /tmp/media-candidate --revision bce320418a694bc48f25a609217bb81861ee6e47 --receipt /tmp/candidate-receipt.json
       - uses: actions/cache@v4
         with:
           path: .runtime-public
@@ -54,6 +54,7 @@ jobs:
         run: |
           python3 hosting/next-static/mirror-runtime.py --output .runtime-public
           npm install --prefix /tmp/media-pw --no-audit --no-fund playwright@1.55.0
+          mkdir -p .runtime-mirror
           ln -s "$GITHUB_WORKSPACE/.runtime-mirror" /tmp/media-control/.runtime-mirror
           ln -s "$GITHUB_WORKSPACE/.runtime-mirror" /tmp/media-candidate/.runtime-mirror
       - name: Paired built UI first and next use with retained models
