@@ -102,6 +102,11 @@ identity = ' '.join(str(v) for v in (adapter.get('info') or {}).values()).lower(
 assert not any(name in identity for name in SOFTWARE), \
     'This is a software adapter, not a GPU: %r. Check the Vulkan ICD.' % (adapter.get('info'),)
 
+# Match the current UI: processing controls are mounted under More options.
+js("(()=>{if(!document.querySelector('select[aria-label=\"Processing mode\"]'))[...document.querySelectorAll('button')].find(b=>b.textContent.trim()==='More options')?.click();})()")
+wait(lambda:q("!!document.querySelector('select[aria-label=\"Processing mode\"]')"),30,'the advanced processing controls')
+js("document.querySelector('.next-advanced').open=true")
+
 # 2. Ask for WebGPU explicitly. Automatic selection is exercised by the CPU lane; here the point
 #    is to measure the GPU path, so a silent fallback must fail the run rather than be timed.
 js("""(()=>{const s=document.querySelector('%s');
@@ -121,15 +126,15 @@ js("""(()=>{window.__bench=[];window.__t0=performance.now();
 faces, cold = [], None
 for index in range(FACES):
     started = time.time()
-    js("""(()=>{const i=[...document.querySelectorAll('input[type=text]')].find(x=>x.placeholder==='Just type anything');
+    js("""(()=>{const tile=document.querySelector('[data-next-face=\"face-1\"]'),i=tile?.querySelector('input[type=text]');if(!i)throw Error('First face text field missing');
       Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(i,'gpu-bench-%d-%d');
       i.dispatchEvent(new Event('input',{bubbles:true}));
       // MUI uppercases button labels in CSS, so textContent reads 'Generate' while the rendered
       // label reads 'GENERATE'. Match case-insensitively rather than on either spelling.
       const want='%s'.toLowerCase();
-      [...document.querySelectorAll('button')].find(b=>b.textContent.trim().toLowerCase()===want).click();})()"""
+      tile.querySelector('.next-face-generate').click();})()"""
        % (index, int(time.time()), S['generate']))
-    wait(lambda: q("document.querySelectorAll('img[src^=\"blob:\"]').length") > 0
+    wait(lambda: q("(()=>{const tile=document.querySelector('[data-next-face=\"face-1\"]'),i=tile?.querySelector('img:not([data-public-preview])'),c=tile?.querySelector('canvas[data-face-drawn=\"true\"]');return !!((i?.complete&&i.naturalWidth===1024)||(c?.width===1024&&c.height===1024));})()")
          and q("document.querySelector('%s')===null" % S['busy']), 900, 'face %d' % index)
     elapsed = (time.time() - started) * 1000
     if index == 0:
@@ -156,7 +161,10 @@ report = {
     'wallClockSubsequentMedianMs': round(statistics.median(faces)) if faces else None,
     'faces': FACES,
     'routeCaption': caption,
-    'manifestSha256': q("(window.__FACEMORPH_BUNDLE||'')") or os.environ.get('RUNTIME_SHA', ''),
+    'manifestSha256': q("(async()=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',await (await fetch('/runtime/manifest.json')).arrayBuffer())),b=>b.toString(16).padStart(2,'0')).join(''))()"),
+    'liveScripts':q("[...document.scripts].map(s=>s.src).filter(Boolean)"),
+    'webdriver':q('navigator.webdriver'),
+    'admissionPolicy':'actual automated policy; ordinary-user startup not inferred',
     'stages': q('window.__bench'),
     # The browser's adapter block is deliberately vague (Chrome redacts vendor and device on
     # many platforms), so the host's own view of the GPU travels with the row. A ledger entry
@@ -164,7 +172,7 @@ report = {
     'hostGpu': os.environ.get('GPU_BENCH_HOST_GPU', '').strip(),
     'runner': os.environ.get('RUNNER_NAME', ''),
     'scope': 'Self-hosted runner, headless Chrome with a real GPU, through the product UI. '
-             'Not a physical-phone measurement and not a 31-case correctness qualification.',
+             'Live assets identified separately from triggering source; observational one-second controller polling, not ABBA, physical phone or full31 qualification.',
     'finishedAt': time.time(),
 }
 with open(os.path.join(EVIDENCE, 'gpu-benchmark.json'), 'w') as handle:

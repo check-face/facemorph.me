@@ -147,3 +147,16 @@ a new entry with the superseded ID. Follow [record standards](../../records.md).
 - Resources / failures: global worker raw copies capped8MiB across image/video/download encoders; foreground/readback/surfaces accounted separately, total process/GPU peaks unmeasured. Video retains4 sparse anchors then streams ordered frames; no all-frame raw array. Report's after-add reservation snapshot0 is not a queue peak.
 - Evidence: [source screen](../../candidates/direct-rgba-media-v1/product-screen.mjs), [screenshot](../../candidates/direct-rgba-media-v1/product-correctness.png), tests run `20261010T065053Z-d81473c9`/`20261010T065232Z-79721cd0`; BlueHarbor agent-mail27/28 releases stable paths and confirms qualified live control
 - Conclusion / next action: commit integration and let unchanged required artifact/CPU/mobile workflows qualify the real UI before deployment; new paired product/live reporting still separate from component benefit
+
+### 2026-10-10T07:07:27Z — review-20261010-012
+
+- Phase / status: observed then implemented / exact-artifact repeat reuse failure corrected; qualification pending
+- Round / experiment / correction: 2026-10-10 / R03-R04 / followup to review-20261010-011
+- Hypothesis / decision: preserve the completed download on an unchanged per-face request; never repeat inference or background file encoding for that retained result
+- Identity: failed candidate `d0d8d7a6332652dbc09cc7418520f8863aed11f8`; control `e0b2192`; [CI run38032536121](https://github.com/check-face/facemorph.me/actions/runs/38032536121)
+- Context: hosted Linux Chrome154 CI, replicated on contended eris Chrome152 exact artifact; correctness only, no speed claim
+- Boundary / samples: one CI failure and one instrumented reproduction; after baseline only the image encoder worker posted blob/format/quality/recovery, no inference worker creation or inference messages
+- Correctness / workflow: build and compiled UI passed; real CPU UI failed and deployment skipped. Per-face same-input reuse and deferred last-result remembrance corrected, including superseded-result rejection; focused regression tests pass
+- Resources / failures: redundant download worker, not a numerical/GPU failure. First local diagnostic attempt had a harness quoting syntax error; subsequent attempt reproduced the product fault. Existing zero-worker check remains unchanged
+- Evidence: [worker trace](../../candidates/direct-rgba-media-v1/repeat-failure.json); runner `20261010T070519Z-79aca28e`, regression tests `20261010T070644Z-f8c00fd7`
+- Conclusion / next action: qualify corrected exact artifact; retain failure evidence and separate deployed state from pushed source

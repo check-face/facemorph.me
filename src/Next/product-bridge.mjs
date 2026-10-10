@@ -292,14 +292,15 @@ export async function execute(request){
    progress({stage:'face',face:item.id,text:'Generating this face…',loaded:0,total:1});
    const service=await engine();
    let result;
-   if(item.mode==='project'){result=faces.get(item.id);if(!result)throw Error('Open the saved project again to restore this face.');}
+   if(sameSource(faces.get(item.id),item)){result=faces.get(item.id);}
+   else if(item.mode==='project'){result=faces.get(item.id);if(!result)throw Error('Open the saved project again to restore this face.');}
    else if(item.mode==='photo'){if(!(item.file instanceof Blob))throw Error('Choose a photo for this face.');result=await service.encodePhoto(item.file,{signal:active.signal,raw:!globalThis.__TAURI__});}
    else {if(!String(item.value??'').length)throw Error('Type a name or seed first.');result=await generateNameOrSeed(service,item);}
    checked();if(revisionOf(item.id)!==revisions.get(item.id))throw superseded();await register(item.id,result,item.mode==='photo'?'Photo':item.value);
    const current=faces.get(item.id);current.source={mode:item.mode,value:item.value,file:item.file};
    // A changed face invalidates the saved morph and its video, never the other faces.
    project=null;video=null;
-   jobCounts.facesDone=1;if(typeof rememberLast==='function')void rememberLast(result,request);
+   jobCounts.facesDone=1;if(typeof rememberLast==='function')void readyFace(current).then(complete=>{if(revisionOf(item.id)===revisions.get(item.id))return rememberLast(complete,request);}).catch(()=>{});
    diagnostics.finish('completed');return snapshot('Face updated.');
   }
   jobCounts.facesDone=0;jobCounts.facesTotal=request.inputs.length;jobCounts.framesDone=0;jobCounts.framesTotal=0;jobCounts.videoFramesDone=0;jobCounts.videoFramesTotal=0;

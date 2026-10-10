@@ -1,0 +1,238 @@
+{
+  "passed": false,
+  "checks": {
+    "preflight": {
+      "passed": true,
+      "modeOptions": [
+        "auto",
+        "cpu",
+        "webgpu",
+        "webgl"
+      ],
+      "engine": "blink"
+    },
+    "nameSeed": {
+      "passed": true,
+      "dimensions": [
+        [
+          1024,
+          1024
+        ],
+        [
+          1024,
+          1024
+        ]
+      ],
+      "processingSelection": "keyboard",
+      "publishedLatentSynthesis": true
+    },
+    "routeRejectionNamed": {
+      "passed": true,
+      "caption": "Ready \u00b7 this device\u2019s CPU. The webgpu route failed its device check on this device.",
+      "error": "WebGPU is unavailable.\n\nSEND THIS REPORT\nTRY AGAIN\nDISMISS\n\nUse classic FaceMorph while we fix this."
+    }
+  },
+  "runtimeSha256": "d9e37e50a436e9fb7c0c7f973e70adee353c808f48c6a51fa5a9186f1c650a5c",
+  "scope": "Exact d0 artifact repeat-failure diagnosis on contended eris; worker message kinds/field names only, no input values. Correctness only.",
+  "stage": "repeatOriginal",
+  "consentToastShown": false,
+  "agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/152.0.0.0 Safari/537.36",
+  "engine": "blink",
+  "processingSelection": "keyboard",
+  "stageError": "repeatOriginal: Repeat created an inference worker logs=",
+  "error": "Repeat created an inference worker",
+  "downloadGateAccepted": 1,
+  "workerTrace": [
+    {
+      "event": "create",
+      "url": "https://next.facemorph.me/516.2abe3c168353a5b6c657.js"
+    },
+    {
+      "event": "post",
+      "type": "initialize",
+      "keys": [
+        "id",
+        "type",
+        "manifest",
+        "provider",
+        "gpuEngine",
+        "manifestSha256",
+        "fullQualify",
+        "hostForcedQualify",
+        "webdriver",
+        "forceCanaryFail"
+      ]
+    },
+    {
+      "event": "post",
+      "type": "qualify",
+      "keys": [
+        "id",
+        "type"
+      ]
+    },
+    {
+      "event": "post",
+      "type": "generate",
+      "keys": [
+        "id",
+        "type",
+        "mode",
+        "value",
+        "raw"
+      ]
+    },
+    {
+      "event": "create",
+      "url": "https://next.facemorph.me/230.2abe3c168353a5b6c657.js"
+    },
+    {
+      "event": "post",
+      "keys": [
+        "id",
+        "rgba",
+        "format"
+      ]
+    },
+    {
+      "event": "post",
+      "type": "qualify",
+      "keys": [
+        "id",
+        "type",
+        "resume"
+      ]
+    },
+    {
+      "event": "post",
+      "type": "synthesize",
+      "keys": [
+        "id",
+        "type",
+        "values",
+        "raw"
+      ]
+    },
+    {
+      "event": "post",
+      "keys": [
+        "id",
+        "rgba",
+        "format"
+      ]
+    },
+    {
+      "event": "create",
+      "url": "https://next.facemorph.me/230.2abe3c168353a5b6c657.js"
+    },
+    {
+      "event": "post",
+      "keys": [
+        "id",
+        "blob",
+        "format",
+        "quality",
+        "recovery"
+      ]
+    },
+    {
+      "event": "create",
+      "url": "https://next.facemorph.me/516.2abe3c168353a5b6c657.js"
+    },
+    {
+      "event": "post",
+      "type": "initialize",
+      "keys": [
+        "id",
+        "type",
+        "manifest",
+        "provider",
+        "gpuEngine",
+        "manifestSha256",
+        "fullQualify",
+        "hostForcedQualify",
+        "webdriver",
+        "forceCanaryFail"
+      ]
+    },
+    {
+      "event": "post",
+      "type": "qualify",
+      "keys": [
+        "id",
+        "type"
+      ]
+    },
+    {
+      "event": "create",
+      "url": "https://next.facemorph.me/516.2abe3c168353a5b6c657.js"
+    },
+    {
+      "event": "post",
+      "type": "initialize",
+      "keys": [
+        "id",
+        "type",
+        "manifest",
+        "provider",
+        "gpuEngine",
+        "manifestSha256",
+        "fullQualify",
+        "hostForcedQualify",
+        "webdriver",
+        "forceCanaryFail"
+      ]
+    },
+    {
+      "event": "post",
+      "type": "qualify",
+      "keys": [
+        "id",
+        "type"
+      ]
+    },
+    {
+      "event": "post",
+      "type": "generate",
+      "keys": [
+        "id",
+        "type",
+        "mode",
+        "value",
+        "raw"
+      ]
+    },
+    {
+      "event": "post",
+      "keys": [
+        "id",
+        "rgba",
+        "format"
+      ]
+    },
+    {
+      "event": "post",
+      "type": "qualify",
+      "keys": [
+        "id",
+        "type",
+        "resume"
+      ]
+    },
+    {
+      "event": "create",
+      "url": "https://next.facemorph.me/230.2abe3c168353a5b6c657.js"
+    },
+    {
+      "event": "post",
+      "keys": [
+        "id",
+        "blob",
+        "format",
+        "quality",
+        "recovery"
+      ]
+    }
+  ],
+  "finishedAt": 1791615951.133652
+}

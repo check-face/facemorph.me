@@ -105,6 +105,26 @@ test('editing/removing an in-flight face discards its result and retains an unre
  const pending=ctx.run({...singleRequest('b','2'),jobId:2});await began;ctx.invalidate('b');resolve(face);
  const result=await pending;assert.deepEqual(Array.from(result.faces,f=>f.id),['a']);assert.match(result.message,/Cancelled/);
 });
+test('a repeated single face preserves its download and skips all generation work',async()=>{
+ let generated=0,encoded=0;const downloads=[];
+ const ctx=await bridgeContext({generate:async()=>{generated++;return {blob:new Blob(['image'],{type:'image/png'}),latent:{space:'w-plus',values:new Float32Array(9216)}};}});
+ ctx.downloadImage=async()=>{encoded++;return new Blob(['download'],{type:'image/webp'});};ctx.saveFile=async blob=>{downloads.push(blob);return 'Saved';};
+ vm.runInContext('globalThis.save=saveMedia;',ctx);
+ const request=singleRequest('a','1');await ctx.run(request);await ctx.save('a');
+ await ctx.run(request);await ctx.save('a');
+ assert.equal(generated,1);assert.equal(encoded,1);assert.equal(downloads[0],downloads[1]);
+ ctx.invalidate('a');await ctx.run(singleRequest('a','2'));await ctx.save('a');
+ assert.equal(generated,2);assert.equal(encoded,2);assert.notEqual(downloads[1],downloads[2]);
+});
+test('single raw face remembrance waits for encoding and refuses a superseded result',async()=>{
+ let complete;const remembered=[];
+ const result={blob:new Blob(['image'],{type:'image/png'}),latent:{space:'w-plus',values:new Float32Array(9216)}};
+ const ctx=await bridgeContext({generate:async()=>({...result,blob:undefined,pixels:{rgba:new ArrayBuffer(4*1024*1024)},fileReady:new Promise(resolve=>{complete=resolve;})})});
+ ctx.rememberLast=async face=>remembered.push(face);
+ await ctx.run(singleRequest('a','1'));assert.equal(remembered.length,0);complete(result);await new Promise(resolve=>setImmediate(resolve));
+ assert.equal(remembered.length,1);assert.equal(remembered[0].blob,result.blob);
+ await ctx.run(singleRequest('b','2'));ctx.invalidate('b');complete(result);await new Promise(resolve=>setImmediate(resolve));assert.equal(remembered.length,1);
+});
 test('arrival restoration cannot publish after an input interaction during slow storage',async()=>{
  let resolve;const ctx=await bridgeContext({readLast:()=>new Promise(r=>resolve=r),fetchManifest:{modelSourceSha256:'m',noiseSha256:'n'}});
  const restoring=ctx.restore();ctx.arrivalChange();resolve({result:{blob:new Blob(['image'],{type:'image/png'}),latent:{space:'w-plus',values:new Float32Array(9216)},provenance:{modelSha256:'m',noiseSha256:'n'}},generationKind:'seed',generationSha256:'hash',settings:{}});
