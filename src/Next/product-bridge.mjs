@@ -20,7 +20,7 @@ import {selectPhoto} from './photo-selection.mjs';
 import {persistenceAction} from './storage-request.mjs';
 import {routeAssets,photoAssets,measure} from './model-inventory.mjs';
 import {previewPhoto,cropPhoto} from './photo/crop.mjs';
-import {getPublicCatalogue,galleryTextUrl} from './public-previews.mjs';
+import {getPublicCatalogue,galleryTextUrl,publicNameLatent} from './public-previews.mjs';
 export {galleryTextUrl,gallerySeedUrl,publicPreview} from './public-previews.mjs';
 // The U-14 slider consumes frames through window.__nextFrames.get(key); wire the real store
 // here so the UI has exactly one integration point. Guarded so stripped-import test harnesses
@@ -43,6 +43,7 @@ let liveFrames=[],liveFrameKey=null;
 function clearLiveFrames(){for(const url of liveFrames)if(url)URL.revokeObjectURL(url);liveFrames=[];liveFrameKey=null;}
 function progress(event){
  let stage=event.stage||'working';
+ if(stage==='route-attempt')analytics.operationStarted?.('qualification',{route:event.provider});
  if(stage==='encoding'&&jobCounts.framesDone===jobCounts.framesTotal&&jobCounts.framesTotal>1){jobCounts.videoFramesDone=Number(event.loaded)||0;stage='export';event={...event,stage,text:`Encoding ${jobCounts.videoFramesDone} / ${jobCounts.framesTotal} images`,total:jobCounts.framesTotal};}
  if(Number.isFinite(event.elapsedMs)&&/-complete$/.test(stage))analytics.stageDuration?.(stage,event.elapsedMs);
  if(stage==='fallback-cpu')analytics.operationResult?.('fallback','ready',undefined,{reason:'rejected'});
@@ -176,7 +177,7 @@ async function inputs(request,revisions){
   if(sameSource(faces.get(item.id),item)){result=faces.get(item.id);}
   else if(item.mode==='project'){result=faces.get(item.id);if(!result)throw Error('Open the saved project again to restore this face.');}
   else if(item.mode==='photo'){if(!(item.file instanceof Blob))throw Error('Choose a photo for each photo input.');result=await service.encodePhoto(item.file,{signal:active.signal});}
-  else {result=await service.generate({mode:item.mode,value:item.value,signal:active.signal});}
+  else {result=await generateNameOrSeed(service,item);}
   if(revisionOf(item.id)!==revisions.get(item.id))throw superseded();
   jobCounts.facesDone=i+1;
   next.set(item.id,{...result,label:item.mode==='photo'?'Photo':item.value,source:{mode:item.mode,value:item.value,file:item.file}});
@@ -275,7 +276,7 @@ export async function execute(request){
    let result;
    if(item.mode==='project'){result=faces.get(item.id);if(!result)throw Error('Open the saved project again to restore this face.');}
    else if(item.mode==='photo'){if(!(item.file instanceof Blob))throw Error('Choose a photo for this face.');result=await service.encodePhoto(item.file,{signal:active.signal});}
-   else {if(!String(item.value??'').length)throw Error('Type a name or seed first.');result=await service.generate({mode:item.mode,value:item.value,signal:active.signal});}
+   else {if(!String(item.value??'').length)throw Error('Type a name or seed first.');result=await generateNameOrSeed(service,item);}
    checked();if(revisionOf(item.id)!==revisions.get(item.id))throw superseded();await register(item.id,result,item.mode==='photo'?'Photo':item.value);
    const current=faces.get(item.id);current.source={mode:item.mode,value:item.value,file:item.file};
    // A changed face invalidates the saved morph and its video, never the other faces.
@@ -337,7 +338,7 @@ export async function execute(request){
    progress({stage:'export',text:'Finishing your video…'});const finished=await writer.finish();recordUnit(videoTimings,(now()-videoBegan)/path.totalFrames);analytics.stageDuration?.('export',now()-videoBegan);writer=null;if(renderToken!==morphRevision||request.inputs.some(item=>revisionOf(item.id)!==revisions.get(item.id)))throw superseded();video=finished;replaceUrl('video',video);
   }
   diagnostics.finish('completed');return snapshot();
- }catch(error){diagnostics.finish(error?.name==='AbortError'?'cancelled':'failed',error,{stage:lastStage});if(error?.name==='AbortError')return snapshot('Cancelled. Your completed faces are still available.');analytics.operationResult?.('selection',error.alignmentStats?.faceCount>1?'shown':'failed',undefined,{face_count:error.alignmentStats?.faceCount===0?'zero':error.alignmentStats?.faceCount===1?'one':error.alignmentStats?.faceCount>1?'multiple':undefined});const choice=error.alignmentStats?.faceBoxes?.length>1&&revisionOf(request.target)===revisions.get(request.target)?await prepareFaceChoices(request.target,error.alignmentStats.faceBoxes,request.inputs.find(item=>item.id===request.target)?.file):null;return {...snapshot(''),errorMessage:choice?'':String(error?.message||'Generation failed. Your completed results are still available.'),photoChoices:choice,cropFace:!choice&&request.target&&sourceFiles.has(request.target)&&/No face was found|More than one face was found/.test(error.message)?request.target:null};}
+ }catch(error){diagnostics.finish(error?.name==='AbortError'?'cancelled':'failed',error,{stage:lastStage});if(error?.name==='AbortError')return snapshot('Cancelled. Your completed faces are still available.');if(error.alignmentStats)analytics.operationResult?.('selection',error.alignmentStats.faceCount>1?'shown':'failed',undefined,{face_count:error.alignmentStats.faceCount===0?'zero':error.alignmentStats.faceCount===1?'one':error.alignmentStats.faceCount>1?'multiple':undefined});const choice=error.alignmentStats?.faceBoxes?.length>1&&revisionOf(request.target)===revisions.get(request.target)?await prepareFaceChoices(request.target,error.alignmentStats.faceBoxes,request.inputs.find(item=>item.id===request.target)?.file):null;return {...snapshot(''),errorMessage:choice?'':String(error?.message||'Generation failed. Your completed results are still available.'),photoChoices:choice,cropFace:!choice&&request.target&&sourceFiles.has(request.target)&&/No face was found|More than one face was found/.test(error.message)?request.target:null};}
  finally{writer?.dispose();writer=null;active=null;if(wanted.size)void pumpDownloads();else if(!downloads.routeReady||!downloads.photoReady)void refreshInventory();}
 }
 export function cancel(){active?.abort();writer?.dispose();runtime?.cancel();}
@@ -360,14 +361,21 @@ export async function importProject(request){
  const {file,jobId}=request;
  if(active)throw Error('Wait for the current job to finish.');if(!(file instanceof Blob)||file.size>16*1024*1024)throw Error('Choose a FaceMorph project smaller than 16 MB.');
  active=new AbortController();currentJob=jobId;
+ closePhotoRun('completed');diagnostics.start('faces',request.provider||'auto');
+ jobCounts.facesDone=0;jobCounts.facesTotal=0;jobCounts.framesDone=0;jobCounts.framesTotal=0;
+ analytics.setJobContext(()=>({action:'import',requested_route:request.provider||'auto',input_kind:'project',faces:jobCounts.facesTotal,frames:0}));
+ analytics.jobStarted({action:'import',provider:request.provider||'auto',warm:downloads.routeReady,target:'import'});
+ analytics.exported({kind:'project',method:'open',outcome:'ready'});
  try{
   const imported=canonicalProject(await file.text());createLatentPath(imported.morph);const service=await engine();
+  jobCounts.facesTotal=imported.morph.controls.length;
   if(imported.modelSha256!==manifest.modelSourceSha256||imported.noiseSha256!==manifest.noiseSha256)throw Error('This project needs a different model bundle. Its saved file has not been changed.');
   if(imported.morph.controls.some(x=>x.latent.space!=='w-plus'))throw Error('This generation bundle requires a W+ project.');
   await admission(request.provider||'auto');const next=new Map();
   for(const control of imported.morph.controls){checked();const result=await service.synthesize({...control.latent,shape:[1,18,512],values:Float32Array.from(control.latent.values)},{signal:active.signal});next.set(control.visitId,{...result,label:'Project face'});}
-  checked();await commit(next,imported,true);analytics.exported({kind:'project',method:'open',outcome:'completed'});return snapshot('Project opened.',true);
- }finally{active=null;if(wanted.size)void pumpDownloads();}
+  checked();await commit(next,imported,true);diagnostics.finish('completed');analytics.exported({kind:'project',method:'open',outcome:'completed'});return snapshot('Project opened.',true);
+ }catch(error){diagnostics.finish(error?.name==='AbortError'?'cancelled':'failed',error,{stage:lastStage});analytics.exported({kind:'project',method:'open',outcome:error?.name==='AbortError'?'cancelled':'failed'});throw error;}
+ finally{active=null;if(wanted.size)void pumpDownloads();}
 }
 /** `basis` records how the visitor agreed: checkbox, invite or toast (reporting.mjs CONSENT_BASES). */
 export function setDebug(enabled,basis){diagnostics.enable(enabled,basis||'checkbox');}
@@ -504,7 +512,12 @@ export function rememberSourcePhoto(id,file){const previous=photoSources.get(id)
 export function sourcePhotoUrl(id){return photoSources.get(id)||'';}
 let arrivalRevision=0;
 export function invalidateArrivalRestore(){arrivalRevision++;}
-export async function checkCachedFace(item){try{const service=await engine();return !!(await service.peekOriginal?.(item));}catch{return false;}}
+async function namedLatent(item){
+ if(item.mode!=='text'||globalThis.__TAURI__||typeof publicNameLatent!=='function')return null;
+ try{return await publicNameLatent(item.value,manifest,{signal:active?.signal});}catch(error){checked();return null;}
+}
+async function generateNameOrSeed(service,item){const latent=await namedLatent(item);return latent?service.synthesize(latent,{signal:active.signal}):service.generate({mode:item.mode,value:item.value,signal:active.signal});}
+export async function checkCachedFace(item){try{const service=await engine();if(await service.peekOriginal?.(item))return true;const latent=await namedLatent(item);return !!(latent&&await service.peekOriginal?.({mode:'latent',latent}));}catch{return false;}}
 export async function restoreLastResult(){
  const revision=arrivalRevision;analytics.operationResult?.('restore','ready');let reason='missing';
  const saved=await readLast(value=>reason=value);if(!saved){analytics.operationResult?.('restore',reason==='missing'?'miss':'failed',undefined,{reason});return null;}

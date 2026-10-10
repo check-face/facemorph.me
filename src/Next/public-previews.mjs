@@ -34,7 +34,7 @@ export function previewUrl(catalogue, mode, value) {
   if (!origin || new URL(origin).protocol !== 'https:') return '';
   if (mode === 'text') {
     const row = catalogue.names?.find(name => name.value === value && HEX64.test(name.id || ''));
-    return row ? galleryTextUrl(origin, row.id, row.full ? 1024 : 200, row.full || 'jpg') : '';
+    return row?.fullAsset ? checkedAssetUrl(row.fullAsset, row.id, 'full', 'jpg') : row ? galleryTextUrl(origin, row.id, row.full ? 1024 : 200, row.full || 'jpg') : '';
   }
   if (mode === 'seed' && /^(0|[1-9][0-9]*)$/.test(value || '')) {
     const seed = Number(value), range = catalogue.seeds;
@@ -42,6 +42,35 @@ export function previewUrl(catalogue, mode, value) {
       return gallerySeedUrl(origin, seed, range.dimension, range.format);
   }
   return '';
+}
+
+const NAME_ORIGIN='https://facemorph-name-catalogue.cdilga.workers.dev';
+function checkedAssetUrl(asset,id,folder,extension){
+ if(!HEX64.test(id||'')||!HEX64.test(asset?.sha256||'')||!Number.isInteger(asset?.size)||asset.size<=0||asset.size>4*1024*1024)throw Error('Invalid public name asset.');
+ const expected=`${NAME_ORIGIN}/${folder}/${id}.${extension}`;
+ if(asset.url!==expected)throw Error('Invalid public name asset origin or identity.');
+ return expected;
+}
+
+/** Only deliberate generation requests fetch W+. Hosted JPEGs never enter the original cache. */
+export async function publicNameLatent(value,manifest,{signal}={}){
+ const catalogue=await getPublicCatalogue();
+ const row=catalogue.names.find(row=>row.value===value);
+ if(!row?.latent)return null;
+ const asset=row.latent;
+ const id=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value))),x=>x.toString(16).padStart(2,'0')).join('');
+ if(row.id!==id||asset.size!==36864||asset.space!=='w-plus'||JSON.stringify(asset.shape)!=='[18,512]'||asset.modelSha256!==manifest.modelSourceSha256)throw Error('Public name latent identity mismatch.');
+ const {generationIdentity}=await import('./browser/identity.mjs');
+ const identity=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify(generationIdentity(manifest,'seed'))));
+ if(asset.generationSha256!==Array.from(new Uint8Array(identity),x=>x.toString(16).padStart(2,'0')).join(''))throw Error('Public name generation identity mismatch.');
+ const response=await fetch(checkedAssetUrl(asset,id,'latent','f32'),{signal});
+ if(!response.ok)throw Error('Public name latent unavailable.');
+ const bytes=await response.arrayBuffer();
+ const hash=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',bytes)),x=>x.toString(16).padStart(2,'0')).join('');
+ if(bytes.byteLength!==asset.size||hash!==asset.sha256)throw Error('Public name latent integrity mismatch.');
+ const view=new DataView(bytes),values=Float32Array.from({length:9216},(_,i)=>view.getFloat32(i*4,true));
+ if(!values.every(Number.isFinite))throw Error('Invalid public name latent values.');
+ return {space:'w-plus',shape:[1,18,512],values};
 }
 
 function imageAvailable(url) {

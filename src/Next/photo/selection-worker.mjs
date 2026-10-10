@@ -56,7 +56,7 @@ self.onmessage=async({data})=>{
   if(landmarks.sha256!==LANDMARK_HASH||landmarks.size!==99693937)throw Error('Unexpected landmark model.');
   stats.preprocessingSha256=manifest.preprocessingSha256;stats.landmarksSha256=landmarks.sha256;stats.wasmSha256=wasm.sha256;
   const imageBytes=new Uint8Array(await data.blob.arrayBuffer()),header=inspectImage(imageBytes);stats.input=header;
-  await stage('alignment-runtime',async()=>{const js=await checkedSmall(glue),binary=await checkedSmall(wasm);moduleObjectUrl=URL.createObjectURL(new Blob([js],{type:'text/javascript'}));const factory=(await import(moduleObjectUrl)).default;m=await factory({wasmBinary:binary,locateFile:path=>new URL(path,wasm.url).href,print:()=>{},printErr:()=>{}});URL.revokeObjectURL(moduleObjectUrl);moduleObjectUrl=null;});
+  await stage('alignment-runtime',async()=>{const js=await checkedSmall(glue),binary=await checkedSmall(wasm);moduleObjectUrl=URL.createObjectURL(new Blob([js],{type:'text/javascript'}));const factory=(await import(/* webpackIgnore: true */ moduleObjectUrl)).default;m=await factory({wasmBinary:binary,locateFile:path=>new URL(path,wasm.url).href,print:()=>{},printErr:()=>{}});URL.revokeObjectURL(moduleObjectUrl);moduleObjectUrl=null;});
   if(data.tryAlign||data.requireSingleFace){
    pointer=await stage('alignment-model',()=>modelToHeap(m,landmarks,progress,stats));
    await stage('alignment-model-deserialize',()=>readError(m,m._cf_init_predictor(pointer,landmarks.size)));m._free(pointer);pointer=0;

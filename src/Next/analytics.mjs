@@ -187,6 +187,7 @@ export function safeReferrer(value){try{const url=new URL(value);return /^https?
 export function milestone(value){if(milestones.has(value))return;milestones.add(value);track('visit_milestone',{milestone:value,duration_ms:(globalThis.performance?.now?.()||0)-arrival});}
 export function queuedRequest(id,depth){if(queued.has(id))return;queued.set(id,performance.now());track('queue_enter',{operation:'queue',queue_depth:depth});}
 export function cancelQueued(id){if(!queued.has(id))return;const began=queued.get(id);queued.delete(id);track('queue_finish',{operation:'queue',outcome:'cancelled',wait_ms:performance.now()-began,queue_depth:queued.size});}
+export function operationStarted(operation,extra={}){track('operation_start',{operation,...extra});}
 export function operationResult(operation,outcome,durationMs,extra={}){track('operation_result',{operation,outcome,duration_ms:durationMs,...extra});}
 export function routeAttempt(route,outcome){track('route_admission',{route,outcome});}
 export function stageDuration(stage,durationMs){track('stage_duration',{error_stage:stage,duration_ms:durationMs});}

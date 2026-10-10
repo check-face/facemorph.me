@@ -17,6 +17,7 @@ export const SELF_TEXT_STAGES = new Set(['face', 'morph', 'export', 'route-admit
  * followed by a labelled stage, and announcing it only makes the line flicker.
  */
 export const SILENT_STAGES = new Set([
+  'route-attempt',
   'frames-available',
   // The direct engine fell back to ORT on the same route; the route's own loading stages follow.
   'gpu-engine-fallback',

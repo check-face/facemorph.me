@@ -220,6 +220,7 @@ export function createBrowserRuntime({manifest: suppliedManifest, manifestSha256
    if(route!==next)stop();
    route=next;
    try{
+    emit({stage:'route-attempt',provider:route},progress);
     await start(progress);acceptQualification(await send('qualify',{},progress,ACQUIRE_STALL));
     announce(progress);return;
    }catch(error){
@@ -324,12 +325,13 @@ export function createBrowserRuntime({manifest: suppliedManifest, manifestSha256
  const api={
  peekOriginal:async(request)=>{
   await config();let keyData;
-  if(request.mode==='photo'){if(!(request.file instanceof Blob))return null;keyData={kind:'photo',sha256:await digest(await request.file.arrayBuffer()),tryAlign:true,facePolicy:'exactly-one-face-v1'};}
+  if(request.mode==='latent'){if(request.latent?.space!=='w-plus'||JSON.stringify(request.latent.shape)!=='[1,18,512]')return null;keyData={kind:'latent',sha256:await digest(requireLatent(request.latent.values))};}
+  else if(request.mode==='photo'){if(!(request.file instanceof Blob))return null;keyData={kind:'photo',sha256:await digest(await request.file.arrayBuffer()),tryAlign:true,facePolicy:'exactly-one-face-v1'};}
   else {const {identity}=await inputLatent(request.mode,request.value);keyData={kind:'seed',identity};}
   const generationSha256=await digest(JSON.stringify(generationIdentity(manifest,keyData.kind))),key=await digest(JSON.stringify({generationSha256,...keyData}));
   const store=await cache();let saved;try{saved=await store?.get(key);}catch{return null;}
   if(!(saved?.blob instanceof Blob)||saved.generationSha256!==generationSha256)return null;
-  try{requireLatent(saved.values);if(saved.imageSha256!==await digest(await saved.blob.arrayBuffer())||saved.latentSha256!==await digest(saved.values))return null;}catch{return null;}
+  try{requireLatent(saved.values);if((keyData.kind==='latent'&&saved.latentSha256!==keyData.sha256)||saved.imageSha256!==await digest(await saved.blob.arrayBuffer())||saved.latentSha256!==await digest(saved.values))return null;}catch{return null;}
   return {...saved,cacheKey:key,generationKind:keyData.kind,cached:true};
  },
  prefetch,
