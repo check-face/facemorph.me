@@ -29,3 +29,14 @@ and negative tests explicitly block missing release/reliability evidence, stale
 canaries, runtime failure, memory contention and unverified video export. Product
 integration remains separate. The shared lab's S21 candidates and colour/reference
 diagnostics are versioned, selectable and automatically saved.
+
+## Research rounds and append-only records
+
+Use the [round registry](reviews/README.md) for active review status and the
+[record standards](records.md) for prospective formats, correction entries and
+reporting requirements. The [performance-history README](history/performance-through-2026-10-09/README.md)
+holds dated gains and older device comparisons separately from current rounds.
+Preserve existing `results.tsv` rows verbatim; append new outcomes and corrections.
+Round journals record proposals, observations, implementation and deployment as
+separate events. Current latency claims require recent actual analytics/debug
+reporting matched to build, device/browser, route, workload and cache state.

@@ -1,12 +1,12 @@
 # Research/UI coordination — 10 October 2026
 
-Status: ownership/integration boundary confirmed with **BlueHarbor** in agent-mail message **4**, thread `ui-autoresearch-2026-10-10`; implementation, qualification and performance measurements remain pending. This research session is **CoralPeak** and reserves only `autoresearch/reviews/2026-10-10/**`. Development leaves these research edits out of its commits. Application and plan paths remain with development.
+Status: ownership/integration boundary confirmed with **BlueHarbor** in agent-mail message **4**, thread `ui-autoresearch-2026-10-10`; UI implementation is now committed as [`f506892`](https://github.com/check-face/facemorph.me/commit/f506892); a qualified artifact/promoted live identity and performance measurements remain pending. This research session is **CoralPeak**. Research scope now also includes the history archive, round registry and prospective record standards (scope update sent in agent-mail message **11**); development leaves those edits out of its commits. Application and plan paths remain with development.
 
 BlueHarbor's first increment covers the planned UI, serial queue, original-only last-result restore, sparse infill/live scrub and aggregate telemetry fixes. It preserves existing `hello`/public-preview work and excludes finished-video caching. BlueHarbor owns **U-16 export/re-upload recovery** as part of complete delivery and will send the exact qualified revision for a frozen research control. No live analytics receipt claim precedes actual receiver evidence.
 
 ## Shared direction
 
-Use the [candidate UI plan](../../../docs/plans/candidate-ui-2026-10-10.md), its [fresh review](../../../docs/plans/review-2026-10-10.md), and the [analytics plan](../../../docs/plans/analytics-2026-10-10.md). Development owns application behavior, UI/harness qualification changes and delivery. This research session owns this review folder and measurements; it will not commit concurrent product/plan edits.
+Use the [candidate UI plan](../../../docs/plans/candidate-ui-2026-10-10.md), its [fresh review](../../../docs/plans/review-2026-10-10.md), and the [analytics plan](../../../docs/plans/analytics-2026-10-10.md). Development owns application behavior, UI/harness qualification changes and delivery. This research session owns this round, its history/record documentation and measurements; it will not commit concurrent product/plan edits.
 
 Operator priorities from this conversation:
 
@@ -14,7 +14,7 @@ Operator priorities from this conversation:
 2. Automatically restore the last completed generated face and useful settings from local storage. Cached-original lookup precedes model-download gating. Preserve the current plan's last-result scope; a full library is deferred. Source photos remain tab-only.
 3. Optimize **ordinary-policy warm hydration** before first-time model acquisition. Keep explicit model-download choice.
 4. Measure current retained-model photo processing before selecting an optimization; historical acquisition costs are not current product timings.
-5. Reinstate the existing **U-16 export/re-upload recovery requirement** in delivery tracking: seed/latent metadata for saved images and morph-project metadata for MP4s. It is currently unimplemented. Inspect metadata before photo crop/alignment/e4e/download gating. Same-device valid hits use originals; a cold recipient regenerates from seed/latent without photo encoding.
+5. Reinstate the existing **U-16 export/re-upload recovery requirement** in delivery tracking: seed/latent metadata for saved images and morph-project metadata for MP4s. It was unimplemented at the reviewed live snapshot; development has committed the implementation in `f506892`; promoted verification remains pending. Inspect metadata before photo crop/alignment/e4e/download gating. Same-device valid hits use originals; a cold recipient regenerates from seed/latent without photo encoding.
 6. No finished-video cache experiment this round. Existing retained-frame reuse remains valid.
 
 ## Interfaces to agree with UI development
@@ -58,3 +58,38 @@ CoralPeak sent a read-only review of the evolving implementation in message **7*
 These are draft integration findings sent to the owning session, not completed fixes or defects asserted against a final qualified artifact. Research will recheck the affected paths after development resolves them; it does not edit the overlapping source.
 
 These are coordination questions for the implementation session, not new operator approvals.
+
+## Added iteration goal: direct pixels and deferred encoding
+
+Operator direction adds [R03](experiments.md#r03--direct-rgba-with-deferred-image-encoding):
+direct RGBA for display and WebCodecs/FFmpeg video, with bounded background-worker
+PNG/WebP encoding for download/cache and latent metadata injection.
+Research sent the scope and ownership question to BlueHarbor in agent-mail message
+**14**. This is a proposed experiment, not a product change or measured speedup.
+Keep the qualified UI/recovery path as control; coordinate runtime/frame/media/UI
+interfaces before candidate edits. Initial candidate keeps PNG in the background
+to isolate scheduling; format choice is a separate paired comparison.
+
+The current `blob`-only frame callbacks, canonical-PNG store checks, sparse scrub
+consumer, writer scaling/backpressure and save/share metadata writer all need an
+explicit candidate contract. Require bounded buffers/ownership, request revisions,
+cache/index consistency, immediate Save before file readiness, interrupted writes
+and downloaded-file re-import. Measure next-visit restore as well as first display.
+No all-frames raw cache and no finished-video cache task is implied. The complete
+gates and stop conditions live in the experiment specification.
+
+## Development update received during documentation review
+
+Agent-mail message **13** confirms the guide ownership: research commits only its
+new navigation hunks; BlueHarbor will commit the existing guide/history split
+separately. Message **12** reports local race/queue safeguards ready for review,
+not a frozen measurement control. The subsequent implementation commit is
+`f506892`. A fresh live HTML check still returned `app.6f67e921bae679214856.js`;
+this round's snapshot and absent-live-metadata statement therefore remain scoped
+to the old deployed bytes. Research does not infer deployment from the source commit.
+
+The operator subsequently ruled that **face downloads may be lossy**, with
+API-like visual quality/file-size scale; video has no exact pixel-parity gate.
+[Quality policy](quality-policy.md) and journal event `review-20261010-006`
+supersede the initial lossless-download assumption. Preserve latent identity and
+recovery; separately test any lossy cache format/migration.

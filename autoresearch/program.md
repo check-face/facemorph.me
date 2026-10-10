@@ -435,3 +435,14 @@ each prior's `measured` table pins its order (ascending cost, enforced by
 on its slowest measured route, is removed. New keep rows update `measured` and `order`
 together; an ordering without measurements must state its justification (for example iOS WebGL
 for working-set reasons) in the prior's `because` field.
+
+## Research rounds and append-only records
+
+Use the [round registry](reviews/README.md) for active review status and the
+[record standards](records.md) for prospective formats, correction entries and
+reporting requirements. The [performance-history README](history/performance-through-2026-10-09/README.md)
+holds dated gains and older device comparisons separately from current rounds.
+Preserve existing `results.tsv` rows verbatim; append new outcomes and corrections.
+Round journals record proposals, observations, implementation and deployment as
+separate events. Current latency claims require recent actual analytics/debug
+reporting matched to build, device/browser, route, workload and cache state.
