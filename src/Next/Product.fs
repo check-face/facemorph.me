@@ -14,7 +14,7 @@ open FancyButton
 [<CLIMutable>]
 type Input = { id: string; mode: string; value: string; file: obj }
 [<CLIMutable>]
-type Face = { id: string; url: string; label: string; sourceMode: string; sourceFile: obj }
+type Face = { id: string; raw: bool; url: string; label: string; sourceMode: string; sourceFile: obj }
 [<CLIMutable>]
 type PublicPreview = { id: string; mode: string; value: string; url: string }
 [<CLIMutable>]
@@ -30,6 +30,9 @@ type Request = { jobId: int; action: string; target: string; inputs: Input array
 let loadNames (): JS.Promise<NameFace array> = jsNative
 [<Import("publicPreview", "./product-bridge.mjs")>]
 let publicPreview (mode: string) (value: string): JS.Promise<string> = jsNative
+
+[<Import("drawFace", "./product-bridge.mjs")>]
+let drawFace (canvas: obj) (id: string): unit = jsNative
 
 [<Import("execute", "./product-bridge.mjs")>]
 let execute (request: Request): JS.Promise<Output> = jsNative
@@ -857,6 +860,7 @@ let viewFace (state:State) dispatch (index:int) (item:Input) (label:string) =
         Html.input [prop.id ("photo-"+item.id);prop.type'.file;prop.hidden true;prop.accept "image/*,video/mp4";prop.ariaLabel "Choose photo";prop.onChange(fun (e:Browser.Types.Event) -> dispatch(PickPhoto(item.id,photoFiles e)))]
         Html.div [prop.className "next-face-image";prop.children [
             match face with
+            | Some f when f.raw && state.Comparing<>Some item.id -> Html.canvas [prop.ref(fun element -> drawFace element item.id);prop.width 1024;prop.height 1024;prop.className "next-face-img";prop.ariaLabel (sprintf "Generated face from %s" label);prop.custom("role","img")]
             | Some f -> Html.img [prop.onLoad(fun _ -> if state.Comparing<>Some item.id then displayMilestone (if item.mode="project" then "restored-visible" else "generated-visible"));prop.src (if state.Comparing=Some item.id then sourcePhotoUrl item.id else f.url);prop.alt (sprintf "Generated face from %s" label);prop.width 1024;prop.height 1024;prop.className "next-face-img"]
             | None ->
                 match preview with

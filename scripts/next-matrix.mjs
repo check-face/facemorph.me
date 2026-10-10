@@ -88,7 +88,7 @@ async function generate(name='Generate faces'){
  const error=await page.evaluate(()=>document.querySelector('.next-error')?.innerText||'');
  if(error)throw Error(error);
 }
-const faces=()=>page.evaluate(()=>[...document.querySelectorAll('.next-face-image img')].map(i=>({width:i.naturalWidth,height:i.naturalHeight})));
+const faces=()=>page.evaluate(()=>[...document.querySelectorAll('.next-face-image img:not([data-public-preview]), .next-face-image canvas[data-face-drawn="true"]')].map(i=>({width:i.naturalWidth||i.width,height:i.naturalHeight||i.height})));
 
 try{
  await page.goto(origin,{waitUntil:'load',timeout:120000});

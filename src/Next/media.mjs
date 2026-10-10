@@ -13,6 +13,7 @@
 // browsers. ffmpeg with the libx264 baseline args remains the fallback. Encoding is
 // pipelined: `add()` hands the frame to the worker and returns, so frame N encodes while
 // frame N+1 synthesizes; the encode surfaces as its own 'encoding' stage in diagnostics.
+import {createImageEncoder} from './image-encoder.mjs';
 import { frameStorePut, frameKey } from './morph-frames.mjs';
 
 export async function saveFile(blob,name){
@@ -106,9 +107,9 @@ export async function probeVideoEncoder({width=1024,fallbackWidth=512,fps=16,bun
 /** Test seam: forget the per-session encoder decision. */
 export function resetEncoderProbe(){encoderProbe=null;correctnessChecks=0;}
 
-export function videoWriter({codec,encoder,fps=16,framesKey,totalFrames,derivativeSize=512,signal,onProgress=()=>{}}){
- const worker=new Worker(new URL('./video-worker.mjs',import.meta.url),{type:'module'});let id=0,closed=false,mode='',encodeSize=0,nextIndex=0,submitted=0,encoded=0;const pending=new Map(),persisting=[],drainWaiters=[];
- const stop=(reason=new DOMException('Video cancelled','AbortError'))=>{if(closed)return;closed=true;signal?.removeEventListener('abort',abort);try{worker.terminate();}catch{}finally{for(const p of pending.values()){clearTimeout(p.timer);p.reject(reason);}pending.clear();for(const w of drainWaiters.splice(0))w();}};
+export function videoWriter({codec,encoder,fps=16,framesKey,totalFrames,derivativeSize=512,signal,onProgress=()=>{},imageEncoderFactory=()=>createImageEncoder()}){
+ const worker=new Worker(new URL('./video-worker.mjs',import.meta.url),{type:'module'});let id=0,closed=false,mode='',encodeSize=0,nextIndex=0,submitted=0,encoded=0;const pending=new Map(),persisting=[],drainWaiters=[];let images;
+ const stop=(reason=new DOMException('Video cancelled','AbortError'))=>{if(closed)return;closed=true;images?.dispose();signal?.removeEventListener('abort',abort);try{worker.terminate();}catch{}finally{for(const p of pending.values()){clearTimeout(p.timer);p.reject(reason);}pending.clear();for(const w of drainWaiters.splice(0))w();}};
  const abort=()=>stop();signal?.addEventListener('abort',abort,{once:true});if(signal?.aborted)stop();
  worker.onmessage=({data})=>{if(closed)return;if(data.progress){if(data.progress.stage==='encoding')encoded=data.progress.loaded;if(submitted-encoded<=4)for(const w of drainWaiters.splice(0))w();try{onProgress({...data.progress,total:submitted||undefined});}catch{}return;}const p=pending.get(data.id);if(!p){if(data.error)stop(Error(data.error));return;}clearTimeout(p.timer);pending.delete(data.id);data.error?p.reject(Error(data.error)):p.resolve(data.result);};
  worker.onerror=()=>stop(Error('The video encoder stopped. Your faces are saved.'));
@@ -117,6 +118,22 @@ export function videoWriter({codec,encoder,fps=16,framesKey,totalFrames,derivati
  // Pipelining backpressure: frames are handed to the worker without awaiting their encode;
  // only when the worker falls too far behind does the frame loop yield until it drains.
  const drained=()=>new Promise(resolve=>{if(closed||submitted-encoded<=4)resolve();else drainWaiters.push(resolve);});
+ const rawImage=async(frame,index,encode)=>{
+  if(closed||signal?.aborted)throw new DOMException('Video cancelled','AbortError');
+  if(!(frame.rgba instanceof ArrayBuffer)||frame.rgba.byteLength!==1024*1024*4)throw Error('Invalid raw morph frame.');
+  images??=imageEncoderFactory();const slot=await images.acquire(frame.rgba.byteLength,{signal});
+  const file=images.encode(slot,{rgba:encode?frame.rgba.slice(0):frame.rgba,format:'png',derivativeSize:framesKey?derivativeSize:0},{signal});
+  file.catch(()=>{});
+  if(encode){
+   let rgba=frame.rgba;
+   if(encodeSize!==1024){const source=new OffscreenCanvas(1024,1024);source.getContext('2d').putImageData(new ImageData(new Uint8ClampedArray(rgba),1024,1024),0,0);const target=new OffscreenCanvas(encodeSize,encodeSize),context=target.getContext('2d',{willReadFrequently:true});context.drawImage(source,0,0,encodeSize,encodeSize);rgba=context.getImageData(0,0,encodeSize,encodeSize).data.buffer;}
+   submitted++;await call('frame',{rgba,width:encodeSize,height:encodeSize},[rgba]);
+   if(mode==='webcodecs'&&submitted-encoded>8)await drained();
+  }
+  const prepared=await file;
+  if(framesKey)await frameStorePut(frameKey(framesKey,index),prepared.blob,prepared.derivative,totalFrames);
+  return prepared.derivative;
+ };
  return {
   initialize:async()=>{
    // Without WebCodecs the probe answer needs no await, so the initialize call is registered
@@ -129,6 +146,8 @@ export function videoWriter({codec,encoder,fps=16,framesKey,totalFrames,derivati
    else await call('initialize',{mode:'ffmpeg',codec,fps,width:choice.width,height:choice.height});
    return choice;
   },
+  addRaw:(frame,index)=>rawImage(frame,index,true),
+  retainRaw:(frame,index)=>rawImage(frame,index,false),
   retain:async(blob,index)=>{
    if(closed||signal?.aborted)throw new DOMException('Video cancelled','AbortError');
    const prepared=await frameDerivatives(blob,{encodeSize,derivativeSize});

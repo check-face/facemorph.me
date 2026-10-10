@@ -1,6 +1,7 @@
+import {paintRgba} from './image-encoder.mjs';
 import {generationIdentity} from './browser/identity.mjs';
 import {digest} from './browser/originals.mjs';
-import {decorateImage,recoverImage,decorateVideo,recoverVideoProject} from './recovery-metadata.mjs';
+import {decorateImage,downloadImage,recoverImage,decorateVideo,recoverVideoProject} from './recovery-metadata.mjs';
 import {createPhotoAligner} from './photo/align-photo.mjs';
 import {createDesktopRuntime} from '../../desktop/runtime.mjs';
 import {createBrowserRuntime} from './browser/runtime.mjs';
@@ -116,7 +117,7 @@ async function engine(){
 }
 function replaceUrl(key,blob){const old=urls.get(key);if(old)URL.revokeObjectURL(old);const url=URL.createObjectURL(blob);urls.set(key,url);return url;}
 function snapshot(message='Done — ready to save or share.',restore=false){
- return {errorMessage:'',faces:[...faces].map(([id,f])=>({id,url:urls.get(id),label:f.label||'Face',sourceMode:f.source?.mode||'',sourceFile:f.source?.file||null})),videoUrl:video?urls.get('video'):'',projectJson:project?JSON.stringify(project):'',message,restored:restore,inputs:restore?[...faces].map(([id])=>({id,mode:'project',value:'Project face',file:null})):[],kind:project?.morph.kind||'',width:project?.morph.width||0,pinch:!!project?.morph.pinchCenter,frames:project?.morph.framesPerSegment||16,fps:project?.morph.framesPerSecond||16};
+ return {errorMessage:'',faces:[...faces].map(([id,f])=>({id,url:urls.get(id)||'',raw:!!f.pixels,label:f.label||'Face',sourceMode:f.source?.mode||'',sourceFile:f.source?.file||null})),videoUrl:video?urls.get('video'):'',projectJson:project?JSON.stringify(project):'',message,restored:restore,inputs:restore?[...faces].map(([id])=>({id,mode:'project',value:'Project face',file:null})):[],kind:project?.morph.kind||'',width:project?.morph.width||0,pinch:!!project?.morph.pinchCenter,frames:project?.morph.framesPerSegment||16,fps:project?.morph.framesPerSecond||16};
 }
 function checked(){if(active?.signal.aborted)throw new DOMException('Cancelled','AbortError');}
 // What a face actually costs on this device, so the interface can estimate from measurement
@@ -168,7 +169,24 @@ export async function sliderFrames(){
   return frames.map(frame=>URL.createObjectURL(frame instanceof Blob?frame:new Blob([frame],{type:'image/png'})));
  }catch{return null;}
 }
-async function register(id,result,label){if(!(result.blob instanceof Blob)||result.blob.type!=='image/png'||!result.latent)throw Error('The generation engine returned an incomplete face.');faces.set(id,{...result,label});replaceUrl(id,result.blob);}
+function completeFace(result){return !!result?.latent&&((result.blob instanceof Blob&&['image/png','image/webp'].includes(result.blob.type))||(result.pixels&&(result.pixels.rgba===null||result.pixels.rgba instanceof ArrayBuffer)&&typeof result.fileReady?.then==='function'));}
+async function readyFace(face){return face.fileReady?{...face,...await face.fileReady}:face;}
+async function register(id,result,label){
+ if(!completeFace(result))throw Error('The generation engine returned an incomplete face.');
+ const face={...result,label};faces.set(id,face);
+ if(face.blob)replaceUrl(id,face.blob);
+ else {const old=urls.get(id);if(old)URL.revokeObjectURL(old);urls.delete(id);}
+}
+export function drawFace(canvas,id){
+ if(!canvas)return;const face=faces.get(id);if(!face)return;
+ if(canvas.__faceResult===face&&canvas.dataset?.faceDrawn==='true')return;canvas.__faceResult=face;
+ if(face.pixels?.rgba){paintRgba(canvas,{rgba:face.pixels.rgba});face.pixels.rgba=null;canvas.dataset.faceDrawn='true';displayMilestone('generated-visible');return;}
+ void readyFace(face).then(async complete=>{
+  if(faces.get(id)!==face||canvas.__faceResult!==face||!canvas.isConnected)return;
+  const bitmap=await createImageBitmap(complete.blob);try{canvas.width=1024;canvas.height=1024;canvas.getContext('2d').drawImage(bitmap,0,0);canvas.dataset.faceDrawn='true';displayMilestone('generated-visible');}finally{bitmap.close();}
+ }).catch(()=>{});
+}
+
 async function inputs(request,revisions){
  const service=await engine(),next=new Map();
  for(let i=0;i<request.inputs.length;i++){
@@ -176,19 +194,19 @@ async function inputs(request,revisions){
   let result;
   if(sameSource(faces.get(item.id),item)){result=faces.get(item.id);}
   else if(item.mode==='project'){result=faces.get(item.id);if(!result)throw Error('Open the saved project again to restore this face.');}
-  else if(item.mode==='photo'){if(!(item.file instanceof Blob))throw Error('Choose a photo for each photo input.');result=await service.encodePhoto(item.file,{signal:active.signal});}
+  else if(item.mode==='photo'){if(!(item.file instanceof Blob))throw Error('Choose a photo for each photo input.');result=await service.encodePhoto(item.file,{signal:active.signal,raw:!globalThis.__TAURI__});}
   else {result=await generateNameOrSeed(service,item);}
   if(revisionOf(item.id)!==revisions.get(item.id))throw superseded();
   jobCounts.facesDone=i+1;
   next.set(item.id,{...result,label:item.mode==='photo'?'Photo':item.value,source:{mode:item.mode,value:item.value,file:item.file}});
  }
  const provenance=next.get(request.inputs[0].id).provenance;
- if(typeof rememberLast==='function'&&next.size)void rememberLast([...next.values()].at(-1),request);
+ if(typeof rememberLast==='function'&&next.size){const lastId=[...next.keys()].at(-1),last=next.get(lastId),revision=revisions.get(lastId);void readyFace(last).then(complete=>{if(revisionOf(lastId)===revision)return rememberLast(complete,request);}).catch(()=>{});}
  const nextProject=canonicalProject({schemaVersion:1,bundle:{version:provenance.bundleVersion,manifestSha256:provenance.manifestSha256},modelSha256:provenance.modelSha256,noiseSha256:provenance.noiseSha256,truncationPsi:1,truncationCutoff:0,morph:{algorithmVersion:GEOMETRY_VERSION,kind:request.kind,closed:true,width:request.width,pinchCenter:request.pinch,framesPerSegment:request.frames,framesPerSecond:request.fps,controls:request.inputs.map(item=>({visitId:item.id,latent:{...next.get(item.id).latent,values:Array.from(next.get(item.id).latent.values)}}))}});
  checked();await commit(next,nextProject);
 }
 async function commit(next,nextProject,replace=false){
- for(const result of next.values())if(!(result.blob instanceof Blob)||result.blob.type!=='image/png'||!result.latent)throw Error('The generation engine returned an incomplete face.');
+ for(const result of next.values())if(!completeFace(result))throw Error('The generation engine returned an incomplete face.');
  invalidateMorph();
  if(replace)for(const id of [...faces.keys()])if(!next.has(id)){invalidateFace(id);rememberSourcePhoto(id,null);}
  for(const [id,result] of next)await register(id,result,result.label);
@@ -275,7 +293,7 @@ export async function execute(request){
    const service=await engine();
    let result;
    if(item.mode==='project'){result=faces.get(item.id);if(!result)throw Error('Open the saved project again to restore this face.');}
-   else if(item.mode==='photo'){if(!(item.file instanceof Blob))throw Error('Choose a photo for this face.');result=await service.encodePhoto(item.file,{signal:active.signal});}
+   else if(item.mode==='photo'){if(!(item.file instanceof Blob))throw Error('Choose a photo for this face.');result=await service.encodePhoto(item.file,{signal:active.signal,raw:!globalThis.__TAURI__});}
    else {if(!String(item.value??'').length)throw Error('Type a name or seed first.');result=await generateNameOrSeed(service,item);}
    checked();if(revisionOf(item.id)!==revisions.get(item.id))throw superseded();await register(item.id,result,item.mode==='photo'?'Photo':item.value);
    const current=faces.get(item.id);current.source={mode:item.mode,value:item.value,file:item.file};
@@ -293,10 +311,35 @@ export async function execute(request){
    const framesKey=await morphFramesKey();clearLiveFrames();liveFrameKey=framesKey;liveFrames=Array(path.totalFrames).fill('');
    const stored=framesKey?await frameStoreGet(framesKey).catch(()=>null):null;analytics.operationResult?.('frame-cache',stored?'hit':'miss');
    writer=videoWriter({codec:manifest.codec,fps:project.morph.framesPerSecond,signal:active.signal,onProgress:progress,framesKey,totalFrames:path.totalFrames});await writer.initialize();
-   const counter=createFrameCounter(path.totalFrames);
+   const counter=createFrameCounter(path.totalFrames);let directEncoded=false;
    if(stored&&stored.length===path.totalFrames){
     liveFrames=stored.map(blob=>URL.createObjectURL(blob));
     for(const frame of path.frames()){checked();await writer.add(stored[frame.index],frame.index);jobCounts.framesDone=frame.index+1;}
+   }else if(writer.addRaw&&runtime.synthesizeFrames&&typeof OffscreenCanvas==='function'&&!globalThis.__TAURI__){
+    // Sparse anchors land first; all remaining frames stream in presentation order.
+    // Waiting for an ordered frame while producing a full sparse window would deadlock.
+    directEncoded=true;
+    const first=counter.start();progress({stage:'morph',text:first.text,loaded:first.done,total:path.totalFrames});
+    const anchors=new Set();
+    const publish=async(index,display)=>{checked();if(renderToken!==morphRevision)throw superseded();liveFrames[index]=URL.createObjectURL(display);listener({jobId:currentJob,stage:'frames-available',text:'',fraction:0});const finished=counter.complete(index);jobCounts.framesDone=finished.done;progress({stage:'morph',text:finished.text,loaded:finished.done,total:path.totalFrames});};
+    // Two endpoints plus two midpoints for a usual two-face morph; bounded independently of duration.
+    for(const frame of infillFrames(path,project.morph)){
+     if(anchors.size>=4)break;checked();
+     const saved=frame.visitId?faces.get(frame.visitId):null;
+     const output=saved?await readyFace(saved):await runtime.synthesize({space:'w-plus',shape:[1,18,512],values:Float32Array.from(frame.values)},{signal:active.signal,persist:false,raw:true});
+     const display=output.rgba?await writer.retainRaw(output,frame.index):await writer.retain(output.blob,frame.index);
+     anchors.add(frame.index);await publish(frame.index,display);
+    }
+    const iterator=path.frames()[Symbol.iterator]();
+    for(let window=[];;window=[]){
+     for(let item;window.length<FRAME_WINDOW&&!(item=iterator.next()).done;)window.push(item.value);
+     if(!window.length)break;checked();const ready=new Map();
+     for(const frame of window)if(anchors.has(frame.index)){const blob=await frameStoreGetOne(framesKey,frame.index);if(!blob)throw Error('A preview frame is unavailable.');ready.set(frame.index,{blob});}
+     const todo=window.filter(frame=>!anchors.has(frame.index));let cursor=0,chain=Promise.resolve();
+     const drain=async()=>{for(;cursor<window.length;cursor++){checked();if(renderToken!==morphRevision)throw superseded();const frame=window[cursor],output=ready.get(frame.index);if(!output)return;ready.delete(frame.index);if(output.rgba){const display=await writer.addRaw(output,frame.index);await publish(frame.index,display);}else await writer.add(output.blob,frame.index);}};
+     if(todo.length)await runtime.synthesizeFrames(todo.map(frame=>({space:'w-plus',shape:[1,18,512],values:Float32Array.from(frame.values)})),{signal:active.signal,raw:true,onFrame:(at,output)=>{ready.set(todo[at].index,output);chain=chain.then(drain);return chain;}});
+     await (chain=chain.then(drain));if(cursor<window.length)throw Error('Some morph frames were not produced. Your faces are saved.');
+    }
    }else{
     const first=counter.start();progress({stage:'morph',text:first.text,loaded:first.done,total:path.totalFrames});
     const add=async(blob,index)=>{
@@ -319,7 +362,7 @@ export async function execute(request){
       if(!window.length)break;
       checked();
       const todo=window.filter(frame=>!(frame.visitId&&faces.get(frame.visitId))),ready=new Map();let cursor=0,chain=Promise.resolve();
-      const drain=async()=>{for(;cursor<window.length;cursor++){checked();const frame=window[cursor],output=(frame.visitId&&faces.get(frame.visitId))||ready.get(frame.index);if(!output)return;ready.delete(frame.index);await add(output.blob,frame.index);}};
+      const drain=async()=>{for(;cursor<window.length;cursor++){checked();const frame=window[cursor],output=(frame.visitId&&faces.get(frame.visitId))||ready.get(frame.index);if(!output)return;ready.delete(frame.index);await add((await readyFace(output)).blob,frame.index);}};
       if(todo.length)await runtime.synthesizeFrames(todo.map(frame=>({space:'w-plus',shape:[1,18,512],values:Float32Array.from(frame.values)})),{signal:active.signal,onFrame:(at,output)=>{ready.set(todo[at].index,output);chain=chain.then(drain);chain.catch(()=>{});}});
       await (chain=chain.then(drain));
       if(cursor<window.length)throw Error('Some morph frames were not produced. Your faces are saved.');
@@ -328,10 +371,10 @@ export async function execute(request){
      checked();
      const saved=frame.visitId?faces.get(frame.visitId):null;
      const output=saved||await runtime.synthesize({space:'w-plus',shape:[1,18,512],values:Float32Array.from(frame.values)},{signal:active.signal,persist:false});
-     await add(output.blob,frame.index);
+     await add((await readyFace(output)).blob,frame.index);
     }}
    const videoBegan=now();
-   if(writer.retain&&!stored){
+   if(writer.retain&&!stored&&!directEncoded){
     progress({stage:'export',text:'Encoding your video…'});
     for(let index=0;index<path.totalFrames;index++){checked();const blob=await frameStoreGetOne(framesKey,index);if(!blob)throw Error('A morph frame is unavailable. Your faces are saved.');await writer.add(blob,index);}
    }
@@ -344,9 +387,9 @@ export async function execute(request){
 export function cancel(){active?.abort();writer?.dispose();runtime?.cancel();}
 const kindOf=id=>id==='video'?'video':'image';
 function reported(kind,method,work){analytics.exported({kind,method,outcome:'ready'});const began=now();return Promise.resolve().then(()=>typeof work==='function'?work():work).then(result=>{const text=String(result||'');const cancelled=/cancelled/i.test(text),fallback=method==='share'&&/download|save/i.test(text);analytics.exported({kind,method,outcome:cancelled?'cancelled':'completed',durationMs:now()-began,fallback});return result;},error=>{analytics.exported({kind,method,outcome:error?.name==='AbortError'?'cancelled':'failed',durationMs:now()-began});throw error;});}
-async function exportBlob(id){if(id==='video')return decorateVideo(video,project);const face=faces.get(id);if(!face)throw Error('Generate a result first.');return decorateImage(face,face.source?.mode==='seed'?face.source.value:undefined);}
-export async function saveMedia(id){return reported(kindOf(id),'save',async()=>saveFile(await exportBlob(id),id==='video'?'facemorph.mp4':'facemorph.png'));}
-export async function shareMedia(id){return reported(kindOf(id),'share',async()=>{const blob=await exportBlob(id);if(!blob)throw Error('Generate a result first.');return shareFile(blob,id==='video'?'facemorph.mp4':'facemorph.png');});}
+async function exportBlob(id){if(id==='video')return decorateVideo(video,project);const face=faces.get(id);if(!face)throw Error('Generate a result first.');face.downloadReady??=(async()=>{const result=await readyFace(face);return (typeof downloadImage==='function'?downloadImage:decorateImage)(result,face.source?.mode==='seed'?face.source.value:undefined);})();try{return await face.downloadReady;}catch(error){face.downloadReady=null;throw error;}}
+export async function saveMedia(id){return reported(kindOf(id),'save',async()=>{const blob=await exportBlob(id);return saveFile(blob,id==='video'?'facemorph.mp4':blob.type==='image/webp'?'facemorph.webp':'facemorph.png');});}
+export async function shareMedia(id){return reported(kindOf(id),'share',async()=>{const blob=await exportBlob(id);if(!blob)throw Error('Generate a result first.');return shareFile(blob,id==='video'?'facemorph.mp4':blob.type==='image/webp'?'facemorph.webp':'facemorph.png');});}
 export async function exportProject(options){
  if(!project)throw Error('Generate or open a project first.');
  let selected=project;
@@ -516,7 +559,7 @@ async function namedLatent(item){
  if(item.mode!=='text'||globalThis.__TAURI__||typeof publicNameLatent!=='function')return null;
  try{return await publicNameLatent(item.value,manifest,{signal:active?.signal});}catch(error){checked();return null;}
 }
-async function generateNameOrSeed(service,item){const latent=await namedLatent(item);return latent?service.synthesize(latent,{signal:active.signal}):service.generate({mode:item.mode,value:item.value,signal:active.signal});}
+async function generateNameOrSeed(service,item){const latent=await namedLatent(item);return latent?service.synthesize(latent,{signal:active.signal,raw:!globalThis.__TAURI__}):service.generate({mode:item.mode,value:item.value,signal:active.signal},{raw:!globalThis.__TAURI__});}
 export async function checkCachedFace(item){try{const service=await engine();if(await service.peekOriginal?.(item))return true;const latent=await namedLatent(item);return !!(latent&&await service.peekOriginal?.({mode:'latent',latent}));}catch{return false;}}
 export async function restoreLastResult(){
  const revision=arrivalRevision;analytics.operationResult?.('restore','ready');let reason='missing';

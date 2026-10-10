@@ -149,3 +149,22 @@ test('A phone claiming 8 GB is not trusted with it until one has been measured h
   }finally{second.dispose();delete globalThis.__FACEMORPH_HOLD_ENCODER__;}
  }finally{runtime.dispose();if(old)Object.defineProperty(globalThis,'navigator',old);else delete globalThis.navigator;}
 });
+
+test('raw face display completes before encoding; the file and exact cache become ready together',async()=>{
+ const old=globalThis.indexedDB,fixture=indexedDbFixture();globalThis.indexedDB=fixture.api;
+ let finishEncode,rawRequested=false;
+ const encoder={acquire:async bytes=>({bytes}),encode:(slot,request)=>{assert.equal(slot.bytes,4*1024*1024);assert.equal(request.format,'png');return new Promise(resolve=>finishEncode=()=>resolve({blob:new Blob(['exact-canonical'],{type:'image/png'})}));},dispose(){}};
+ const runtime=createBrowserRuntime({manifest:testManifest(),manifestSha256:'0'.repeat(64),preferredRoute:'cpu',imageEncoderFactory:()=>encoder,workerFactory:()=>({postMessage(message){let result={deviceValidated:true};if(message.type==='generate'){rawRequested=message.raw;result={rgba:new ArrayBuffer(4*1024*1024),values:new Float32Array(9216),space:'w-plus',shape:[1,18,512]};}queueMicrotask(()=>this.onmessage({data:{id:message.id,type:'complete',result}}));},terminate(){}})});
+ try{const face=await runtime.generate({mode:'seed',value:'123'},{raw:true});assert.equal(rawRequested,true);assert.equal(face.pixels.rgba.byteLength,4*1024*1024);assert.equal(face.blob,undefined);assert.equal(fixture.records.size,0);
+ finishEncode();const completed=await face.fileReady;assert.equal(completed.blob.type,'image/png');assert.equal(completed.pixels,undefined);assert.equal(completed.fileReady,undefined);assert.equal(fixture.records.size,2);
+ const hit=await runtime.generate({mode:'seed',value:'123'},{raw:true});assert.equal(hit.cached,true);assert.equal(hit.imageSha256,completed.imageSha256);
+ }finally{runtime.dispose();globalThis.indexedDB=old;}
+});
+test('raw frame credit waits for async consumers and rejects their failure without blaming inference',async()=>{
+ let resolve,entered;const began=new Promise(r=>entered=r),acks=[];
+ const worker={postMessage(message){if(message.type==='synthesize-frames')queueMicrotask(()=>this.onmessage({data:{id:message.id,type:'frame',index:0,rgba:new ArrayBuffer(4*1024*1024)}}));else if(message.type==='raw-frame-ack'){acks.push(message.index);queueMicrotask(()=>this.onmessage({data:{id:message.id,type:'complete',result:{frames:1}}}));}else queueMicrotask(()=>this.onmessage({data:{id:message.id,type:'complete',result:{deviceValidated:true}}}));},terminate(){}};
+ const runtime=createBrowserRuntime({manifest:testManifest(),manifestSha256:'0'.repeat(64),preferredRoute:'cpu',workerFactory:()=>worker});
+ try{const frames=runtime.synthesizeFrames([{space:'w-plus',shape:[1,18,512],values:new Float32Array(9216)}],{raw:true,onFrame:()=>{entered();return new Promise(r=>resolve=r);}});await began;assert.equal(acks.length,0);resolve();assert.equal((await frames).frames,1);assert.deepEqual(acks,[0]);
+ await assert.rejects(runtime.synthesizeFrames([{space:'w-plus',shape:[1,18,512],values:new Float32Array(9216)}],{raw:true,onFrame:async()=>{throw Error('consumer sentinel');}}),/consumer sentinel/);
+ }finally{runtime.dispose();}
+});

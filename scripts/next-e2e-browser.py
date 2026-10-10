@@ -27,7 +27,7 @@ S={
  'status':'.next-status',
  'busy':'.next-status progress',
  'routeCaption':'.next-route-caption',
- 'faceImage':'.next-face-image img',
+ 'faceImage':'.next-face-image img:not([data-public-preview]), .next-face-image canvas[data-face-drawn="true"]',
  'faceTextInputs':'.next-face input',
  'processingMode':'select[aria-label="Processing mode"]',
  'faceSource':'select[aria-label="Face source"]',
@@ -133,7 +133,7 @@ def run(name,predicate=None):
  click(name,expect=started)
  wait(started,30);wait(idle)
 def faces():
- return q("[...document.querySelectorAll('%s')].map(i=>({width:i.naturalWidth,height:i.naturalHeight,url:i.src}))"%S['faceImage'])
+ return q("[...document.querySelectorAll('%s')].map(i=>({width:i.naturalWidth||i.width,height:i.naturalHeight||i.height,url:i.src||'canvas:rgba'}))"%S['faceImage'])
 def select_mode(value):
  if not js("!!document.querySelector('select[aria-label=\"Processing mode\"]')"):click('More options')
  js("document.querySelector('.next-advanced').open=true")
@@ -220,14 +220,23 @@ def stage_seedGeneration():
  # The photo-face upload needs its own cache identity: same pixels as the seed PNG (decoders
  # ignore bytes after IEND) but different bytes, so the e4e encode really runs instead of
  # replaying a cached entry on the warm profiles this harness accumulates.
- uniq=first.with_name(first.stem+'-e4e.png')
- data=first.read_bytes();clean=bytearray(data[:8]);at=8
- while at+12<=len(data):
-  size=int.from_bytes(data[at:at+4],'big');end=at+12+size
-  if not(data[at+4:at+8]==b'tEXt' and data[at+8:at+8+9]==b'FaceMorph'):
-   clean.extend(data[at:end])
-  at=end
- assert b'FaceMorph\0' not in clean, 'e4e fixture still contains recovery metadata'
+ uniq=first.with_name(first.stem+'-e4e'+first.suffix)
+ data=first.read_bytes()
+ if data[:4]==b'RIFF' and data[8:12]==b'WEBP':
+  clean=bytearray(data[:12]);at=12
+  while at+8<=len(data):
+   size=int.from_bytes(data[at+4:at+8],'little');end=at+8+size+(size&1)
+   if data[at:at+4]!=b'FMRP':clean.extend(data[at:end])
+   at=end
+  nonce=str(time.time_ns()).encode();clean.extend(b'CIUN'+len(nonce).to_bytes(4,'little')+nonce+(b'\0' if len(nonce)&1 else b''));clean[4:8]=(len(clean)-8).to_bytes(4,'little')
+ else:
+  clean=bytearray(data[:8]);at=8
+  while at+12<=len(data):
+   size=int.from_bytes(data[at:at+4],'big');end=at+12+size
+   if not(data[at+4:at+8]==b'tEXt' and data[at+8:at+8+9]==b'FaceMorph'):
+    clean.extend(data[at:end])
+   at=end
+ assert b'FaceMorph\0' not in clean and b'facemorph-image-v2' not in clean, 'e4e fixture still contains recovery metadata'
  uniq.write_bytes(clean)
  CTX['seedPng']=uniq
 def stage_routeRejection():

@@ -121,3 +121,29 @@ a new entry with the superseded ID. Follow [record standards](../../records.md).
 - Resources / failures: 20min job, bounded60/240/360s steps, artifacts14days; triggers retired after screen; report load and bounded queue separately from total memory
 - Evidence: [candidate recipe](../../candidates/direct-rgba-media-v1/README.md); agent-mail message26 requests stable Product/media integration and final live control
 - Conclusion / next action: publish prepared screen and collect scoped results, integrate only qualified useful candidates, then verify built/deployed UI
+
+### 2026-10-10T06:49:54Z — review-20261010-010
+
+- Phase / status: observed / paired codec results; scoped keeps and discard
+- Round / experiment / correction: 2026-10-10 / R03-R04 / not_applicable
+- Hypothesis / decision: remove foreground PNG round trips; evaluate WebP size and realtime H.264 settings independently
+- Identity: experimental source `afb20d9c9aae0ac5e99e9c2ee6309927a0490efc`; exact input/source hashes in [CI report](../../candidates/direct-rgba-media-v1/ci-paired-codec.json); workflow [run38031453811](https://github.com/check-face/facemorph.me/actions/runs/38031453811)
+- Context: Ubuntu24.04 GitHub runner / headless Chrome155 / visible document / public hello1024 / fixed warmup, ABBA×3,6 observations per side per question; load0.27→0.58
+- Boundary / samples: draw+RAF65.31→5.02ms; file-ready PNG55.36/WebP113.17ms; 32-frame1024/16FPS H.264 decoded playable PNG1,316.24/raw186.07ms; quality153.36/realtime158.22ms medians; excludes synthesis/compiled UI/compositor/OS share
+- Correctness / workflow:9 integrity tests and browser image/recovery/playback pass; quality spot-check public fixture; fixed full31 not applicable to isolated codec screen, product qualification still separate
+- Resources / failures: PNG4,245,531B/WebP129,932B; two-frame worker copy budget; codec/GPU surface memory not measured; no errors; new image worker per sample, video worker per clip
+- Evidence: [grouped analysis](../../candidates/direct-rgba-media-v1/ci-analysis.md), durable JSON/PNG in candidate folder; reports retained in Git beyond14-day CI expiry
+- Conclusion / next action: keep direct transport at component scope; WebP slower but smaller, choose deferred downloads with PNG cache compatibility; discard realtime settings. Retire automatic CI trigger; integrate and verify actual artifact next.
+
+### 2026-10-10T06:54:02Z — review-20261010-011
+
+- Phase / status: implemented / raw display, deferred cache/download encoding and ordered raw video prepared for artifact qualification
+- Round / experiment / correction: 2026-10-10 / R03-R04 / not_applicable
+- Hypothesis / decision: transfer measured transport benefit without making WebP encode part of foreground display; preserve exact PNG originals and legacy recovery
+- Identity: application changes based on qualified development control `e0b2192c26f6b921b9fb5e24c94be358c508c052`; report [product-correctness.json](../../candidates/direct-rgba-media-v1/product-correctness.json) binds tested source modules; subsequent runtime edit only suppresses late background storage progress; bridge integration gated separately
+- Context: eris / Linux / Chromium152 / NVIDIA Turing / visible isolated source screen /7 original canaries, generated seed31719, changing32-frame1024/16FPS video / contended load21–22; no timing qualification
+- Boundary / samples: speed not_measured; canonical/cache/download/recovery and decoded playable checks only
+- Correctness / workflow: raw display agrees with exact canonical PNG; deferred cache reused; WebP download109,188B decoded1024 and recovers exact W+; MP4 project recovers and2s video decodes1024; all289 product/hosting Node tests pass before final revision test, targeted followup passes; import/progress gates pass; actual compiled UI pending
+- Resources / failures: global worker raw copies capped8MiB across image/video/download encoders; foreground/readback/surfaces accounted separately, total process/GPU peaks unmeasured. Video retains4 sparse anchors then streams ordered frames; no all-frame raw array. Report's after-add reservation snapshot0 is not a queue peak.
+- Evidence: [source screen](../../candidates/direct-rgba-media-v1/product-screen.mjs), [screenshot](../../candidates/direct-rgba-media-v1/product-correctness.png), tests run `20261010T065053Z-d81473c9`/`20261010T065232Z-79721cd0`; BlueHarbor agent-mail27/28 releases stable paths and confirms qualified live control
+- Conclusion / next action: commit integration and let unchanged required artifact/CPU/mobile workflows qualify the real UI before deployment; new paired product/live reporting still separate from component benefit

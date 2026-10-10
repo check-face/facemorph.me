@@ -1,0 +1,182 @@
+{
+  "at": "2026-10-10T06:35:34.499Z",
+  "scope": "Component image/video codec screen; no model or compiled product UI; not full31 or physical phone qualification",
+  "mode": "correctness",
+  "loadBefore": 0.29,
+  "fixtures": [
+    {
+      "path": "/src/public/preview/hello-1024.webp",
+      "sha256": "0fd3aacaf63a9b574960f926e4fbd48fadf853ba16189519053438e55fb9d615",
+      "bytes": 92624,
+      "mime": "image/webp",
+      "scope": "decoded fixed synthetic/public image for codec screening; no model execution"
+    }
+  ],
+  "images": [
+    {
+      "fixture": "/src/public/preview/hello-1024.webp",
+      "mode": "blob",
+      "format": "png",
+      "workerLifecycle": "new image worker per sample; startup included; persistent-worker throughput not measured",
+      "displayDrawAndRafMs": 69.5450000000128,
+      "fileReadyMs": 57.670000000012806,
+      "imageBytes": 4195716,
+      "metadataBytes": 49815,
+      "encodeMs": 22.269999999989523,
+      "totalMs": 44.11999999999534,
+      "totalBytes": 4245531,
+      "returnedMime": "image/png",
+      "decoded": true,
+      "recovered": true,
+      "encoderStatus": {
+        "rawBytes": 0,
+        "pending": 0,
+        "waiting": 0,
+        "closed": false
+      },
+      "qualification": "correctness_only_not_timing"
+    },
+    {
+      "fixture": "/src/public/preview/hello-1024.webp",
+      "mode": "direct",
+      "format": "png",
+      "workerLifecycle": "new image worker per sample; startup included; persistent-worker throughput not measured",
+      "displayDrawAndRafMs": 3.3950000000186265,
+      "fileReadyMs": 54.96499999999651,
+      "imageBytes": 4195716,
+      "metadataBytes": 49815,
+      "encodeMs": 21.445000000006985,
+      "totalMs": 42.16500000000815,
+      "totalBytes": 4245531,
+      "returnedMime": "image/png",
+      "decoded": true,
+      "recovered": true,
+      "encoderStatus": {
+        "rawBytes": 0,
+        "pending": 0,
+        "waiting": 0,
+        "closed": false
+      },
+      "qualification": "correctness_only_not_timing"
+    },
+    {
+      "fixture": "/src/public/preview/hello-1024.webp",
+      "mode": "direct",
+      "format": "webp",
+      "workerLifecycle": "new image worker per sample; startup included; persistent-worker throughput not measured",
+      "displayDrawAndRafMs": 9.619999999995343,
+      "fileReadyMs": 114.95000000001164,
+      "imageBytes": 80130,
+      "metadataBytes": 49802,
+      "encodeMs": 95.40499999999884,
+      "totalMs": 102.58999999999651,
+      "totalBytes": 129932,
+      "returnedMime": "image/webp",
+      "decoded": true,
+      "recovered": true,
+      "encoderStatus": {
+        "rawBytes": 0,
+        "pending": 0,
+        "waiting": 0,
+        "closed": false
+      },
+      "qualification": "correctness_only_not_timing"
+    }
+  ],
+  "videos": [
+    {
+      "mode": "quality",
+      "input": "png",
+      "frames": 32,
+      "config": {
+        "codec": "avc1.42002A",
+        "width": 1024,
+        "height": 1024,
+        "bitrate": 4194000,
+        "framerate": 16,
+        "avc": {
+          "format": "avc"
+        }
+      },
+      "initializedMs": 13.945000000006985,
+      "processingMs": 1035.9200000000128,
+      "flushMuxMs": 5.429999999993015,
+      "finishMs": 1106.2099999999919,
+      "decodedPlayableMs": 1112.9649999999965,
+      "bytes": 105917,
+      "decodedWidth": 1024,
+      "decodedHeight": 1024,
+      "duration": 2,
+      "qualification": "correctness_only_not_timing"
+    },
+    {
+      "mode": "quality",
+      "input": "raw",
+      "frames": 32,
+      "config": {
+        "codec": "avc1.42002A",
+        "width": 1024,
+        "height": 1024,
+        "bitrate": 4194000,
+        "framerate": 16,
+        "avc": {
+          "format": "avc"
+        }
+      },
+      "initializedMs": 24.470000000001164,
+      "processingMs": 42.51000000006752,
+      "flushMuxMs": 21.349999999976717,
+      "finishMs": 146.26499999998487,
+      "decodedPlayableMs": 155.76999999998952,
+      "bytes": 105862,
+      "decodedWidth": 1024,
+      "decodedHeight": 1024,
+      "duration": 2,
+      "qualification": "correctness_only_not_timing"
+    },
+    {
+      "mode": "realtime",
+      "input": "raw",
+      "frames": 32,
+      "config": {
+        "codec": "avc1.42002A",
+        "width": 1024,
+        "height": 1024,
+        "bitrate": 4194000,
+        "framerate": 16,
+        "avc": {
+          "format": "avc"
+        }
+      },
+      "initializedMs": 17.44000000000233,
+      "processingMs": 44.904999999911524,
+      "flushMuxMs": 12.85000000000582,
+      "finishMs": 133.8300000000163,
+      "decodedPlayableMs": 142.98500000001513,
+      "bytes": 105886,
+      "decodedWidth": 1024,
+      "decodedHeight": 1024,
+      "duration": 2,
+      "qualification": "correctness_only_not_timing"
+    }
+  ],
+  "errors": [],
+  "sourceHashes": {
+    "control-png.mjs": "694cc2e83f76a674330d28f3ba125510930351e2aab7c132225cb9d870435785",
+    "control-video-worker.mjs": "56162a9e9af7c8789880a8631553d3de5cc87c776a26db48fc918ec644533921",
+    "realtime-video-worker.mjs": "0eac2134e98f8f3fac9199a3d07633d73864b01760e20e45a8bf3c95aca7c43a",
+    "encode-worker.mjs": "19dbb958a86f677d6bab7f49509fb6710afedc88e68b93bf1a105830a579c66b",
+    "encode-client.mjs": "f6529014893a0d2b113f5b17f8ad410849eb298f8acc320bb5dd28e22ef89a94",
+    "recovery.mjs": "19724fb44d4a6bed111ea948d8fd74f5d4a068e54fcce2d5f851e65a3628b4d9",
+    "screen.mjs": "05590b63ba332edb4eccd7765e507bd725d6834e5ba39b19c82a0d570ccd49f5"
+  },
+  "browser": {
+    "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/155.0.0.0 Safari/537.36",
+    "isolation": true,
+    "visibility": "visible",
+    "webdriver": true
+  },
+  "passed": true,
+  "loadAfter": 0.27,
+  "timingQualified": false
+}

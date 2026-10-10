@@ -297,14 +297,29 @@ async function faceBlob(values,id){
 // waits on that tail; the other routes run the same schedule one frame at a time. Every frame's
 // cost is reported as the interval since the previous one, which is what a morph is paced by.
 const MAX_FRAMES=64;
-async function synthesizeFrames(list,id){
+const rawAcks=new Map();
+function rawAck(id,index){return new Promise(resolve=>rawAcks.set(id+':'+index,()=>{rawAcks.delete(id+':'+index);resolve();}));}
+async function faceRgba(values,id){
+ await load(id);if(!webgpu?.submitRgba)return rgba1024(await run(values,id));
+ requireLatent(values);report(id,'synthesis');const start=performance.now();
+ const rgba=await (await webgpu.submitRgba(values,noise)).rgba;report(id,'synthesis-complete',{elapsedMs:performance.now()-start});return rgba;
+}
+async function synthesizeFrames(list,id,rawOutput=false){
  if(!Array.isArray(list)||!list.length||list.length>MAX_FRAMES)throw Error('Invalid frame batch');
  for(const values of list)requireLatent(values);
  await load(id);
  // run() reports its own synthesis stages; only the pipelined path needs to report here.
- if(!webgpu?.submit){for(let i=0;i<list.length;i++)postMessage({id,type:'frame',index:i,blob:await png(await run(list[i],id))});return {frames:list.length};}
+ if(!webgpu?.submit){for(let i=0;i<list.length;i++){
+ const raw=await run(list[i],id);
+ if(rawOutput){const rgba=rgba1024(raw),ack=rawAck(id,i);postMessage({id,type:'frame',index:i,rgba:rgba.buffer,width:1024,height:1024},[rgba.buffer]);await ack;}
+ else postMessage({id,type:'frame',index:i,blob:await png(raw)});
+ }return {frames:list.length};}
  report(id,'synthesis');let last=performance.now();
- const deliver=async(index,raw,isRgba=false)=>{const blob=isRgba?await encodeRgbaPng(raw):await png(raw),now=performance.now();report(id,'synthesis-complete',{elapsedMs:now-last});last=now;postMessage({id,type:'frame',index,blob});};
+ const deliver=async(index,raw,isRgba=false)=>{
+ if(rawOutput){const rgba=isRgba?raw:rgba1024(raw),now=performance.now();report(id,'synthesis-complete',{elapsedMs:now-last});last=now;
+  const ack=rawAck(id,index);postMessage({id,type:'frame',index,rgba:rgba.buffer,width:1024,height:1024},[rgba.buffer]);await ack;
+ }else{const blob=isRgba?await encodeRgbaPng(raw):await png(raw),now=performance.now();report(id,'synthesis-complete',{elapsedMs:now-last});last=now;postMessage({id,type:'frame',index,blob});}
+};
  const rgbaPath=Boolean(webgpu.submitRgba),queue=values=>rgbaPath?webgpu.submitRgba(values,noise):webgpu.submit(values,noise),landed=p=>rgbaPath?p.rgba:p.raw;
  let pending=await queue(list[0]);
  for(let i=0;i<list.length;i++){
@@ -382,13 +397,13 @@ function startResumeDrain(id){
  step();
 }
 self.onmessage=({data})=>{
- const {id,type,...request}=data;currentId=id;
+ const {id,type,...request}=data;if(type==='raw-frame-ack'){rawAcks.get(id+':'+request.index)?.();return;}currentId=id;
  if(type==='qualify'&&request.resume){startResumeDrain(id);return;}
  foreground.push(async()=>{
   try{
    let result;
    if(type==='initialize'){manifest=request.manifest;provider=request.provider;gpuEngine=request.gpuEngine==='direct'&&request.provider==='webgpu'?'direct':'ort';manifestSha256=request.manifestSha256;fullQualify=request.fullQualify===true||(!request.hostForcedQualify&&request.webdriver===true);forceCanaryFail=request.forceCanaryFail===true;result={provider};}
-   else if(type==='qualify')result=await qualify(id);else if(type==='prefetch')result=await prefetchRoute(id,request.scope);else if(type==='generate'){const input=await inputLatent(request.mode,request.value),values=await mappingFor(input.values,id);result={blob:await faceBlob(values,id),values,shape:[1,18,512],space:'w-plus',identity:input.identity};}else if(type==='synthesize-frames')result=await synthesizeFrames(request.frames,id);else if(type==='synthesize'){const values=requireLatent(request.values);result={blob:await faceBlob(values,id),values,shape:[1,18,512],space:'w-plus'};}else if(type==='encode-aligned'){
+   else if(type==='qualify')result=await qualify(id);else if(type==='prefetch')result=await prefetchRoute(id,request.scope);else if(type==='generate'){const input=await inputLatent(request.mode,request.value),values=await mappingFor(input.values,id);result={...(request.raw===true?{rgba:(await faceRgba(values,id)).buffer,width:1024,height:1024}:{blob:await faceBlob(values,id)}),values,shape:[1,18,512],space:'w-plus',identity:input.identity};}else if(type==='synthesize-frames')result=await synthesizeFrames(request.frames,id,request.raw===true);else if(type==='synthesize'){const values=requireLatent(request.values);result={...(request.raw===true?{rgba:(await faceRgba(values,id)).buffer,width:1024,height:1024}:{blob:await faceBlob(values,id)}),values,shape:[1,18,512],space:'w-plus'};}else if(type==='encode-aligned'){
  // Sequential residency: e4e is released before loading synthesis.
  if(!manifest.encoder&&!manifest.encoderStream)throw Error('The browser encoder bundle is not available.');
  residency.mode=request.retain===true?'on':'off';
@@ -401,6 +416,6 @@ self.onmessage=({data})=>{
  planAsset(manifest.encoderStream||manifest.encoder);await probePlanned();
  if(!(request.tensor instanceof Float32Array)||request.tensor.length!==196608||!request.tensor.every(Number.isFinite))throw Error('Invalid aligned photo tensor');
  if(manifest.encoderStream){result=await encodeStream(request.tensor,id,request.qualifiedEncoderSha256);}else{await ensureOrt(id);let input,out,values;try{if(!encoder){report(id,'encoder-loading');const created=performance.now();encoder=await ort.InferenceSession.create(await bytes(manifest.encoder,id),{executionProviders:['wasm']});report(id,'encoder-loaded',{elapsedMs:Math.round(performance.now()-created)});}input=new ort.Tensor('float32',request.tensor,[1,3,256,256]);report(id,'encoding');const started=performance.now();out=(await encoder.run({image:input})).w;values=requireLatent(new Float32Array(await out.getData()));report(id,'encoding-complete',{elapsedMs:Math.round(performance.now()-started)});}finally{out?.dispose();input?.dispose();}result={values,shape:[1,18,512],space:'w-plus',encoderProvider:'wasm'};}
- }else throw Error('Unknown runtime operation');postMessage({id,type:'complete',result});}catch(error){postMessage({id,type:'error',error:{name:error.name,message:error.message}});}});
+ }else throw Error('Unknown runtime operation');postMessage({id,type:'complete',result},result?.rgba?[result.rgba]:[]);}catch(error){postMessage({id,type:'error',error:{name:error.name,message:error.message}});}});
  pump();
 };

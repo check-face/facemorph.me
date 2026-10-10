@@ -1,8 +1,7 @@
 name: Experimental RGBA media codec screen v1
+# Automatic push trigger retired after successful run38031453811; evidence retained in Git.
 on:
-  push:
-    branches: ['candidate/next-delivery-20260916']
-    paths: ['.github/workflows/research-rgba-screen-v1.yml']
+  workflow_dispatch:
 permissions:
   contents: read
 concurrency:

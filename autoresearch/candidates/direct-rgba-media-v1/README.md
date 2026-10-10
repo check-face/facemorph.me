@@ -1,7 +1,7 @@
 # Direct RGBA and deferred image encoding — current round candidate
 
-Status: **prepared; component correctness passed, speed and product qualification
-pending**. This belongs to the [10 October round](../../reviews/2026-10-10/README.md),
+Status: **paired codec screen complete; direct display/video transport retained,
+realtime video settings discarded; product integration qualification in progress**. This belongs to the [10 October round](../../reviews/2026-10-10/README.md),
 separate from historical iteration 3. Follow its [quality ruling](../../reviews/2026-10-10/quality-policy.md).
 
 ## Hypothesis and staged comparisons
@@ -57,6 +57,15 @@ Image samples include new-worker startup, so this screen measures first-use deli
 and file readiness rather than persistent-worker throughput. Video samples include
 per-clip startup, matching the current product writer lifetime.
 Its push trigger will be retired after the experiment, retaining its reports.
+
+## Paired codec result
+
+The isolated [CI analysis](ci-analysis.md) has six observations per side and question.
+Direct draw+RAF:65.31→5.02ms; raw-video codec path:1,316.24→186.07ms.
+WebP file-ready is slower:55.36→113.17ms, but its size fits the API scale.
+Realtime video settings did not help:153.36→158.22ms, so they are discarded.
+These are component results; compiled product and current-user latency are separate.
+The automatic CI push trigger has been retired.
 
 ## Integration constraints and next gates
 

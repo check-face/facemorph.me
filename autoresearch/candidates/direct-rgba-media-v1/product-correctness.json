@@ -1,0 +1,2134 @@
+{
+  "at": "2026-10-10T06:48:27.886Z",
+  "qualification": "correctness_only_not_timing",
+  "loadBefore": "16:48:27 up 6 days, 10:00,  7 users,  load average: 21.13, 20.38, 18.90",
+  "sourceHashes": {
+    "browser/runtime.mjs": "03073e9648d6c1508ec8876952ba352213f57db0a945735af31d0d18d34b8b27",
+    "browser/ort-worker.mjs": "af51532c1bac18db595325aef4a3e4bb32de281eb617eec2b8b713163b241296",
+    "image-encoder.mjs": "c6efbe89ebe501424b6150d572f604d2cd1fceb6897a8e27cffecef468a8c8e9",
+    "image-encoder-worker.mjs": "a39bf5fce0ff1423f13ca57ff2927a7c7098fe72ac047ba6c4e840ed95e30abb",
+    "image-envelope.mjs": "cb24e02f00637987c125efbef592904f3dab1d249d5e2ee6132d858fd8ad8ee2",
+    "recovery-metadata.mjs": "900900fc21c869468c131da674ea7b001cd503f6c66386563ed774bb8bd9968f",
+    "media.mjs": "2f0e09e25ec40db2caef02b15f6e10eda35b9112304a41ddaeec1bc83b69c40a",
+    "video-worker.mjs": "bec91cdc08c64f1da9259cbc1fb75d7ba5aaec7cf905d90aa11f93a352d71614"
+  },
+  "errors": [],
+  "browser": {
+    "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/152.0.0.0 Safari/537.36",
+    "isolation": true,
+    "visibility": "visible",
+    "adapter": {
+      "vendor": "nvidia",
+      "architecture": "turing"
+    }
+  },
+  "scope": "Current source runtime/media/worker integration correctness only; not compiled UI or timing-qualified",
+  "manifestSha256": "d9e37e50a436e9fb7c0c7f973e70adee353c808f48c6a51fa5a9186f1c650a5c",
+  "canaries": [
+    {
+      "name": "frame-00",
+      "maxRgb": 1,
+      "maxFloat": 0.000007331371307373047,
+      "passed": true
+    },
+    {
+      "name": "frame-25",
+      "maxRgb": 1,
+      "maxFloat": 0.000007748603820800781,
+      "passed": true
+    },
+    {
+      "name": "encoded-synthetic-photo",
+      "maxRgb": 1,
+      "maxFloat": 0.000026434659957885742,
+      "passed": true
+    },
+    {
+      "name": "zero-noise",
+      "maxRgb": 1,
+      "maxFloat": 0.000007450580596923828,
+      "passed": true
+    },
+    {
+      "name": "alternate-noise",
+      "maxRgb": 1,
+      "maxFloat": 0.000009447336196899414,
+      "passed": true
+    },
+    {
+      "name": "trunc-psi-0",
+      "maxRgb": 1,
+      "maxFloat": 0.000009417533874511719,
+      "passed": true
+    },
+    {
+      "name": "trunc-psi-1",
+      "maxRgb": 1,
+      "maxFloat": 0.000006735324859619141,
+      "passed": true
+    }
+  ],
+  "face": {
+    "rawHash": "fecc075e9ec2fb9d551f18b1f0aa522559452f27af4c6ba411a68798b1939a84",
+    "canonicalBytes": 4195716,
+    "downloadBytes": 109188,
+    "downloadMime": "image/webp",
+    "latentRecovered": true,
+    "cached": true,
+    "dimensions": [
+      1024,
+      1024
+    ]
+  },
+  "encoder": {
+    "kind": "webcodecs",
+    "codec": "avc1.42002A",
+    "width": 1024,
+    "height": 1024,
+    "bitrate": 4194000,
+    "framerate": 16,
+    "correctnessChecks": 1
+  },
+  "video": {
+    "bytes": 1222529,
+    "dimensions": [
+      1024,
+      1024
+    ],
+    "duration": 2,
+    "projectRecovered": true,
+    "frames": 32,
+    "queueCapBytes": 8388608,
+    "peakMeasuredReservedAfterAdd": 0,
+    "externalSurfaces": "not_measured"
+  },
+  "events": [
+    {
+      "stage": "canary",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "model-loading",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "gpu-direct-ready",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "model-loaded",
+      "elapsedMs": 5523.645000100136,
+      "provider": "webgpu"
+    },
+    {
+      "stage": "synthesis",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "synthesis-complete",
+      "elapsedMs": 466.5149999856949,
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "canary",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "synthesis",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "synthesis-complete",
+      "elapsedMs": 58.49000000953674,
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "canary",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "synthesis",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "synthesis-complete",
+      "elapsedMs": 47.21000003814697,
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "canary",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "synthesis",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "synthesis-complete",
+      "elapsedMs": 59.11500000953674,
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "canary",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "synthesis",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "synthesis-complete",
+      "elapsedMs": 95.29499995708466,
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "canary",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "synthesis",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "synthesis-complete",
+      "elapsedMs": 100.63499999046326,
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "canary",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "synthesis",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "synthesis-complete",
+      "elapsedMs": 161.77499997615814,
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "asset-acquisition",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "mapping",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "synthesis",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "synthesis-complete",
+      "elapsedMs": 53.20999991893768,
+      "provider": "webgpu"
+    },
+    {
+      "stage": "original-cache-hit",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "synthesis",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "synthesis-complete",
+      "elapsedMs": 54.63499999046326,
+      "provider": "webgpu"
+    },
+    {
+      "stage": "transient-frame",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "synthesis-complete",
+      "elapsedMs": 83.78999996185303,
+      "provider": "webgpu"
+    },
+    {
+      "stage": "transient-frame",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "synthesis-complete",
+      "elapsedMs": 50.69500005245209,
+      "provider": "webgpu"
+    },
+    {
+      "stage": "transient-frame",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "synthesis-complete",
+      "elapsedMs": 50.25999999046326,
+      "provider": "webgpu"
+    },
+    {
+      "stage": "transient-frame",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "synthesis-complete",
+      "elapsedMs": 62.7150000333786,
+      "provider": "webgpu"
+    },
+    {
+      "stage": "transient-frame",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "synthesis-complete",
+      "elapsedMs": 49.05999994277954,
+      "provider": "webgpu"
+    },
+    {
+      "stage": "transient-frame",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "synthesis-complete",
+      "elapsedMs": 41.360000014305115,
+      "provider": "webgpu"
+    },
+    {
+      "stage": "transient-frame",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "synthesis-complete",
+      "elapsedMs": 52.33500003814697,
+      "provider": "webgpu"
+    },
+    {
+      "stage": "transient-frame",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "synthesis-complete",
+      "elapsedMs": 49.514999985694885,
+      "provider": "webgpu"
+    },
+    {
+      "stage": "transient-frame",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "synthesis-complete",
+      "elapsedMs": 45.71000003814697,
+      "provider": "webgpu"
+    },
+    {
+      "stage": "transient-frame",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "synthesis-complete",
+      "elapsedMs": 40.855000019073486,
+      "provider": "webgpu"
+    },
+    {
+      "stage": "transient-frame",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "synthesis-complete",
+      "elapsedMs": 42.0349999666214,
+      "provider": "webgpu"
+    },
+    {
+      "stage": "transient-frame",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "synthesis-complete",
+      "elapsedMs": 43.6949999332428,
+      "provider": "webgpu"
+    },
+    {
+      "stage": "transient-frame",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "synthesis-complete",
+      "elapsedMs": 44.32000005245209,
+      "provider": "webgpu"
+    },
+    {
+      "stage": "transient-frame",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "synthesis-complete",
+      "elapsedMs": 71.93999993801117,
+      "provider": "webgpu"
+    },
+    {
+      "stage": "transient-frame",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "synthesis-complete",
+      "elapsedMs": 46.6800000667572,
+      "provider": "webgpu"
+    },
+    {
+      "stage": "transient-frame",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "synthesis-complete",
+      "elapsedMs": 45.10000002384186,
+      "provider": "webgpu"
+    },
+    {
+      "stage": "transient-frame",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "synthesis-complete",
+      "elapsedMs": 44.9449999332428,
+      "provider": "webgpu"
+    },
+    {
+      "stage": "transient-frame",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "synthesis-complete",
+      "elapsedMs": 50.07000005245209,
+      "provider": "webgpu"
+    },
+    {
+      "stage": "transient-frame",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "synthesis-complete",
+      "elapsedMs": 43.45999991893768,
+      "provider": "webgpu"
+    },
+    {
+      "stage": "transient-frame",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "synthesis-complete",
+      "elapsedMs": 41.080000042915344,
+      "provider": "webgpu"
+    },
+    {
+      "stage": "transient-frame",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "synthesis-complete",
+      "elapsedMs": 43.99000000953674,
+      "provider": "webgpu"
+    },
+    {
+      "stage": "transient-frame",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "synthesis-complete",
+      "elapsedMs": 47.07000005245209,
+      "provider": "webgpu"
+    },
+    {
+      "stage": "transient-frame",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "synthesis-complete",
+      "elapsedMs": 40.83499991893768,
+      "provider": "webgpu"
+    },
+    {
+      "stage": "transient-frame",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "synthesis-complete",
+      "elapsedMs": 44.21000003814697,
+      "provider": "webgpu"
+    },
+    {
+      "stage": "transient-frame",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "synthesis-complete",
+      "elapsedMs": 42.00999999046326,
+      "provider": "webgpu"
+    },
+    {
+      "stage": "transient-frame",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "synthesis-complete",
+      "elapsedMs": 48.7849999666214,
+      "provider": "webgpu"
+    },
+    {
+      "stage": "transient-frame",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "synthesis-complete",
+      "elapsedMs": 40.18500006198883,
+      "provider": "webgpu"
+    },
+    {
+      "stage": "transient-frame",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "synthesis-complete",
+      "elapsedMs": 52.0900000333786,
+      "provider": "webgpu"
+    },
+    {
+      "stage": "transient-frame",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "synthesis-complete",
+      "elapsedMs": 52.204999923706055,
+      "provider": "webgpu"
+    },
+    {
+      "stage": "transient-frame",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "synthesis-complete",
+      "elapsedMs": 56.64999997615814,
+      "provider": "webgpu"
+    },
+    {
+      "stage": "transient-frame",
+      "provider": "webgpu"
+    },
+    {
+      "stage": "synthesis-complete",
+      "elapsedMs": 43.77500009536743,
+      "provider": "webgpu"
+    },
+    {
+      "stage": "transient-frame",
+      "provider": "webgpu"
+    }
+  ],
+  "passed": true,
+  "loadAfter": "16:48:41 up 6 days, 10:00,  7 users,  load average: 22.06, 20.64, 19.01"
+}

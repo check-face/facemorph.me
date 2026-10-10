@@ -1,3 +1,5 @@
+import {createImageEncoder} from './image-encoder.mjs';
+import {recoverEnvelope,embedRecovery} from './image-envelope.mjs';
 import {digest} from './browser/originals.mjs';
 import {validateLast} from './last-result.mjs';
 const encoder=new TextEncoder(),decoder=new TextDecoder(),KEY='FaceMorph';
@@ -14,6 +16,7 @@ export async function decorateImage(result,seed){
 }
 export async function recoverImage(file){
  if(!(file instanceof Blob)||file.size>64*1024*1024)return null;
+ const v2=await recoverEnvelope(file);if(v2&&!v2.legacy)return v2;
  const bytes=new Uint8Array(await file.arrayBuffer()),parts=chunks(bytes);if(!parts)return null;
  const metadata=parts.filter(own);if(!metadata.length)return null;
  if(metadata.length!==1||metadata[0].size>MAX)throw Error('Invalid FaceMorph recovery metadata.');
@@ -49,4 +52,18 @@ export async function recoverVideoProject(file){
   at+=size;
  }
  return null;
+}
+
+// Download quality is deliberately independent of the exact canonical PNG cache.
+// Encoding and compact metadata stay in a bounded worker; WebP absence keeps PNG recovery.
+export async function downloadImage(result,seed){
+ const encoder=createImageEncoder();
+ try{
+  const slot=await encoder.acquire(1024*1024*4);
+  const output=await encoder.encode(slot,{blob:result.blob,format:'webp',quality:.8,recovery:{result,seed:seed===undefined?undefined:Number(seed)}});
+  return output.blob;
+ }catch(error){
+  if(result.blob.type==='image/png')return decorateImage(result,seed);
+  return (await embedRecovery(result.blob,result,{seed:seed===undefined?undefined:Number(seed)})).blob;
+ }finally{encoder.dispose();}
 }

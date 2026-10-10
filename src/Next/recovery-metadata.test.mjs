@@ -19,3 +19,10 @@ test('MP4 embeds a bounded project without changing media boxes',async()=>{
  assert.equal(await recoverVideoProject(new Blob(['not an mp4'])),null);
  await assert.rejects(decorateVideo(null,project),/Create a morph/);
 });
+
+import {embedRecovery} from './image-envelope.mjs';import {readFile} from 'node:fs/promises';
+test('product recovery dispatches compact WebP to exact W+ and retains legacy PNG reader',async()=>{
+ const blob=new Blob([await readFile(new URL('../public/preview/hello-1024.webp',import.meta.url))],{type:'image/webp'}),values=new Float32Array(9216).fill(.25);
+ const record={latent:{values},generationKind:'latent',generationSha256:'a'.repeat(64),provenance:{modelSha256:'b'.repeat(64),noiseSha256:'c'.repeat(64)}};
+ const saved=await embedRecovery(blob,record),recovered=await recoverImage(saved.blob);assert.deepEqual(recovered.latent.values,values);assert.equal(recovered.blob.type,'image/webp');assert.equal(recovered.generationSha256,record.generationSha256);
+});
