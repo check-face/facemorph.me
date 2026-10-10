@@ -1,0 +1,140 @@
+{
+  "passed": true,
+  "scope": "Exact compiled artifact startup and face controls only; no inference, photo generation or physical-device qualification",
+  "agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/154.0.0.0 Safari/537.36",
+  "consentToastShown": true,
+  "initial": {
+    "tiles": 2,
+    "photoButtons": 1,
+    "helloPreview": true,
+    "generate": true,
+    "errors": "",
+    "shapes": [
+      "full-smooth-figure8",
+      "full-smooth-ellipse",
+      "pairwise-figure8",
+      "pairwise-ellipse",
+      "linear"
+    ],
+    "pattern": "full-smooth-figure8",
+    "pinch": true,
+    "frames": "16",
+    "routes": [
+      "auto",
+      "cpu",
+      "webgpu",
+      "webgl"
+    ]
+  },
+  "afterAdd": {
+    "tiles": 3,
+    "photoButtons": 2,
+    "helloPreview": true,
+    "generate": false,
+    "pattern": "full-smooth-figure8",
+    "errors": ""
+  },
+  "afterRemove": {
+    "tiles": 2,
+    "photoButtons": 1,
+    "helloPreview": true,
+    "generate": true,
+    "pattern": "full-smooth-figure8",
+    "errors": ""
+  },
+  "namesDialogEscape": true,
+  "layouts": [
+    {
+      "width": 320,
+      "scrollWidth": 320,
+      "overflow": false,
+      "shapes": 5,
+      "buttons": [
+        {
+          "width": 84.046875,
+          "right": 116.046875
+        },
+        {
+          "width": 84.046875,
+          "right": 116.046875
+        }
+      ],
+      "canvas": {
+        "width": 256,
+        "height": 256,
+        "tileWidth": 256,
+        "tileHeight": 256,
+        "fitsTile": true
+      }
+    },
+    {
+      "width": 360,
+      "scrollWidth": 360,
+      "overflow": false,
+      "shapes": 5,
+      "buttons": [
+        {
+          "width": 84.046875,
+          "right": 328
+        },
+        {
+          "width": 84.046875,
+          "right": 328
+        }
+      ],
+      "canvas": {
+        "width": 296,
+        "height": 296,
+        "tileWidth": 296,
+        "tileHeight": 296,
+        "fitsTile": true
+      }
+    },
+    {
+      "width": 390,
+      "scrollWidth": 390,
+      "overflow": false,
+      "shapes": 5,
+      "buttons": [
+        {
+          "width": 84.046875,
+          "right": 358
+        },
+        {
+          "width": 84.046875,
+          "right": 358
+        }
+      ],
+      "canvas": {
+        "width": 326,
+        "height": 326,
+        "tileWidth": 326,
+        "tileHeight": 326,
+        "fitsTile": true
+      }
+    },
+    {
+      "width": 1280,
+      "scrollWidth": 1265,
+      "overflow": false,
+      "shapes": 5,
+      "buttons": [
+        {
+          "width": 84.046875,
+          "right": 574.90625
+        },
+        {
+          "width": 84.046875,
+          "right": 1066.09375
+        }
+      ],
+      "canvas": {
+        "width": 376,
+        "height": 376,
+        "tileWidth": 376,
+        "tileHeight": 376,
+        "fitsTile": true
+      }
+    }
+  ]
+}

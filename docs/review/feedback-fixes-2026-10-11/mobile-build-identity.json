@@ -1,0 +1,21 @@
+{
+  "passed": true,
+  "source": "001ba853b277775a060030a3ab23a3900af28f16",
+  "candidateRun": 38066762339,
+  "mobileRun": 38067059174,
+  "sourceIdentityMatches": true,
+  "contentBuildIds": [
+    [
+      "next-04403766fff8630a"
+    ],
+    [
+      "next-04403766fff8630a"
+    ]
+  ],
+  "appFiles": [
+    "app.3cd82ce73a97b620d455.js",
+    "app.dfc5234aadfd55b5cea3.js"
+  ],
+  "exactByteParity": false,
+  "scope": "The separate mobile build embeds the same source revision and source-content diagnostic build ID. Markdown email entity randomization changes the application chunk and webpack fullhash; minifier bindings can differ too. This is source/build identity evidence, not exact artifact byte qualification. Exact live-to-qualified-artifact bytes are independently checked in live-assets.json."
+}

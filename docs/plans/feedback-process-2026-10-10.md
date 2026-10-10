@@ -1,7 +1,7 @@
 # Screenshot feedback and process correction — 10 October 2026
 
-Status: current operator direction; investigation and two local UI fixes, not a
-new deployment. This supersedes conflicting controls/retention decisions in
+Status: historical audit and current acceptance direction. Implementation and
+delivery status are recorded in [the delivery receipt](feedback-delivery-2026-10-11.md). This supersedes conflicting controls/retention decisions in
 [the earlier UI plan](candidate-ui-2026-10-10.md). Preserve the earlier evidence.
 
 ## Next iteration

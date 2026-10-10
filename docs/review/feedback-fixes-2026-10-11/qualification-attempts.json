@@ -1,0 +1,74 @@
+[
+  {
+    "run": 38065128737,
+    "source": "766fe150510c3556a327caf5c0cd042d3f3986f9",
+    "passed": false,
+    "stage": "sessionRestore",
+    "error": "UI stage deadline exceeded",
+    "checksPassed": [
+      "preflight",
+      "nameSeed",
+      "routeRejectionNamed",
+      "repeatOriginal",
+      "recoveredDownload",
+      "syntheticPhotoE4e",
+      "localCrop",
+      "morphPlayableMp4"
+    ],
+    "retentionProbe": null,
+    "storageProbe": null,
+    "finding": "Hidden mounted menu item targeted the first face."
+  },
+  {
+    "run": 38065614863,
+    "source": "c635aafa2d4ab9867280e77ed5067813bfb2eb8e",
+    "passed": false,
+    "stage": "sessionRestore",
+    "error": "Complete session/video was not persisted",
+    "checksPassed": [
+      "preflight",
+      "nameSeed",
+      "routeRejectionNamed",
+      "repeatOriginal",
+      "recoveredDownload",
+      "syntheticPhotoE4e",
+      "localCrop",
+      "morphPlayableMp4"
+    ],
+    "retentionProbe": null,
+    "storageProbe": null,
+    "finding": "Retention polling cleared its asynchronous result between reads."
+  },
+  {
+    "run": 38066230550,
+    "source": "e1e6b6693ab36bce30535cc6c918e15ed1bbb0cf",
+    "passed": false,
+    "stage": "sessionRestore",
+    "error": "Complete session/video was not persisted",
+    "checksPassed": [
+      "preflight",
+      "nameSeed",
+      "routeRejectionNamed",
+      "repeatOriginal",
+      "recoveredDownload",
+      "syntheticPhotoE4e",
+      "localCrop",
+      "morphPlayableMp4"
+    ],
+    "retentionProbe": {
+      "faces": 2,
+      "video": true,
+      "compressed": true
+    },
+    "storageProbe": {
+      "quota": 12221308308,
+      "usage": 1483890068,
+      "usageDetails": {
+        "caches": 1536,
+        "fileSystem": 1351673585,
+        "indexedDB": 132214947
+      }
+    },
+    "finding": "Same polling race; final probe confirmed retained faces and video with headroom."
+  }
+]

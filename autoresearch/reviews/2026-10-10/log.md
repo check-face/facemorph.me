@@ -265,3 +265,34 @@ a new entry with the superseded ID. Follow [record standards](../../records.md).
 - Evidence: [full next-iteration/process audit](../../../docs/plans/feedback-process-2026-10-10.md), [anonymous observations](../../../docs/review/feedback-2026-10-10/diagnostics.json), [geometry](../../../docs/review/feedback-2026-10-10/geometry.json), [failure aggregate](../../../docs/review/feedback-2026-10-10/failures.json), prior paired built-UI analysis unchanged
 - Conclusion / next action: local tagline/canvas corrections and strengthened guides/harnesses are distinct from remaining implementation and qualification. Measure format/worker/persistence variants through actual first/repeat video journeys; complete non-square/EXIF/rotation crop correspondence and face-list/video/slider restoration. Keep failure-only WebGPU→CPU→WebGL; slow timings/reload markers never demote a successful route. No performance speedup claimed by this audit.
 - Local validation followup: Docker .NET5 build passed, 293 component tests and44 compiled project checks passed; import/test-list/progress/dependency checks passed. Built-static UI canvas layout/tagline probe passed320/360/390/1280px; no inference/runtime mirror or physical phone exercised. Updated exact-runtime CPU/iOS qualification and delivery pending. Host SDK missing and first unprivileged Docker attempt encountered pre-existing root-owned build outputs; retained runner records distinguish failed attempts from the successful build.
+
+
+## 11 October 2026 — implemented feedback fixes and verified candidate delivery
+
+Implemented the screenshot correction: reorganized controls, persistent visible
+adornments, disabled Generate, fitted canvases, cleared restored/photo input labels,
+responsive crop geometry/EXIF decode normalization, compressed originals and bounded
+ordered face/video/slider retention. Updated guidance makes complete first/repeat
+playable/save-ready video the primary UX performance journey; numerical identity
+remains exact independently of lossy retained pixels. Existing successful-slow-GPU
+failure-only routing remains unchanged and tested.
+
+Experimental evidence: the common-fixture compressed encoding screen confirms a
+4,195,716B PNG → 80,130B WebP size reduction; timings are inconclusive under host
+contention. This does not establish a complete-journey or phone latency gain.
+
+Delivered `001ba853b277775a060030a3ab23a3900af28f16` to next.facemorph.me via successful
+CI run 38066762339; Cloudflare version 1349887c-5d1c-4740-b708-4b25dd0069d0,
+diagnostic build next-04403766fff8630a. Live application/assets match the qualified
+artifact and all 300 runtime files respond. The 298-test suite, compiled UI and
+real CPU photo/crop/video/full-session reload pass. Final-source mobile run
+38067059174 passes Android/iOS components and fitted iOS single-face CPU generation.
+These separate mobile builds are not exact promoted bytes or physical-phone/full
+mobile photo/video evidence. No WebGPU adapter was available in the independent
+GPU benchmark. Issue 13 is closed after verified slider position/preference reload.
+
+Earlier qualification attempts were rejected for harness defects (hidden mounted
+menu targeting, missing crop-server allowlist and a result-clearing asynchronous
+polling race). Assertions remain required; failed and successful receipts are
+retained in docs/review/feedback-fixes-2026-10-11. See the complete delivery record
+in docs/plans/feedback-delivery-2026-10-11.md.

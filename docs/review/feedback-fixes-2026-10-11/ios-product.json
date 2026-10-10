@@ -1,0 +1,45 @@
+{
+  "stages": [
+    "Generating this face\u2026",
+    "Downloading model files\u2026",
+    "Downloading model files\u2026 0 MB of 17 MB",
+    "Generating\u2026",
+    "Face generated.",
+    "Downloading model files\u2026 1 MB of 17 MB",
+    "Generating is slow on this device. No graphics acceleration qualified here, so it is running on the processor.",
+    "Downloading model files\u2026 9 MB of 17 MB"
+  ],
+  "errors": [],
+  "startedAt": 1791649298972,
+  "webgpu": null,
+  "agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1",
+  "crossOriginIsolated": true,
+  "deviceMemory": null,
+  "hardwareConcurrency": 4,
+  "memoryAtStart": null,
+  "firstFaceBoundary": "Generate click to full1024 decoded image or drawn canvas and idle; 500ms polling, not compositor paint",
+  "faceSurface": "rgba-canvas",
+  "firstFaceMs": 25287,
+  "faceProduced": true,
+  "faceLayout": {
+    "width": 338,
+    "height": 338,
+    "tileWidth": 338,
+    "tileHeight": 338,
+    "fitsTile": true
+  },
+  "memoryAfterFace": null,
+  "route": "Ready \u00b7 this device\u2019s CPU.",
+  "speeds": "{\"bundle\":\"d9e37e50a436e9fb7c0c7f973e70adee353c808f48c6a51fa5a9186f1c650a5c\",\"scope\":\"warm-synthesis-v1\",\"routes\":{\"cpu\":4741.200000000001}}",
+  "cpuFallbackShown": false,
+  "cache": {
+    "entries": 1,
+    "bytes": 0
+  },
+  "storage": {
+    "quota": 41231686042,
+    "usage": 322962429
+  },
+  "completed": true,
+  "elapsedMs": 25896
+}
