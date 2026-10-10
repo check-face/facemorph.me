@@ -1,7 +1,7 @@
 # Direct RGBA and deferred image encoding — current round candidate
 
 Status: **paired codec screen complete; direct display/video transport retained,
-realtime video settings discarded; product integration qualified and deployed; paired built-UI transfer screen timed out; unchanged-workload 3000 s rerun prepared**. This belongs to the [10 October round](../../reviews/2026-10-10/README.md),
+realtime video settings discarded; product integration qualified and deployed; paired built-UI transfer screen timed out; unchanged-workload 3000 s rerun running**. This belongs to the [10 October round](../../reviews/2026-10-10/README.md),
 separate from historical iteration 3. Follow its [quality ruling](../../reviews/2026-10-10/quality-policy.md).
 
 ## Hypothesis and staged comparisons
