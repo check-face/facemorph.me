@@ -28,7 +28,10 @@ test('an oversized photo is automatically downscaled within alignment limits',as
  const old=globalThis.Image;globalThis.Image=class{constructor(){throw Error('must not decode');}};
  try{
   const offer=await withDecoder(async made=>{
-   const result=await selectPhoto({id:'large',files:[png(4000,3000)]});
+   const original=png(4000,3000);
+   const result=await selectPhoto({id:'large',files:[original]});
+   assert.equal(result.facemorphOriginal,original,'Whole-image detection can recrop the original source');
+   assert.equal(Object.keys(result).includes('facemorphOriginal'),false,'Source pointer is tab-only and non-enumerable');
    assert.equal(made.some(b=>b.width===4000&&b.height===3000&&!b.closed),false,'The full-size probe is released');
    return result;
   });

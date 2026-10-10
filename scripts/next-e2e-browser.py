@@ -253,7 +253,8 @@ def stage_routeRejection():
  deadline=time.monotonic()+120
  while time.monotonic()<deadline:
   caption=text(S['routeCaption'])
-  if 'webgpu' in caption and 'cpu' in caption and 'failed' in caption:break
+  named=caption.lower()
+  if 'webgpu' in named and 'cpu' in named and 'failed' in named:break
   time.sleep(.5)
  else:raise AssertionError('route caption never named the refused and current routes: '+caption)
  save_check('routeRejectionNamed',{'passed':True,'caption':caption,'error':text(S['error'])})

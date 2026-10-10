@@ -50,7 +50,10 @@ export async function selectPhoto({id,files}){
   // its job unaided. Anything actually too large still needs a real crop.
   if(preview.previewWidth*preview.previewHeight<=4*1024*1024&&preview.blob instanceof Blob){
    URL.revokeObjectURL(preview.url);
-   return new File([preview.blob],(file.name||'photo').replace(/\.[^.]+$/,'')+'.png',{type:'image/png'});
+   const prepared=new File([preview.blob],(file.name||'photo').replace(/\.[^.]+$/,'')+'.png',{type:'image/png'});
+   // Whole-image preview coordinates still map to this source. Cropped outputs carry no
+   // such pointer, so a later chooser cannot apply crop-relative boxes to the full source.
+   Object.defineProperty(prepared,'facemorphOriginal',{value:file});return prepared;
   }
   return {crop:true,file,...preview};
  }catch(error){if(pending.get(id)!==token)return null;throw error;}finally{if(pending.get(id)===token)pending.delete(id);}
