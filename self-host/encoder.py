@@ -1,4 +1,4 @@
-"""Deployed e4e preprocessing/encoder on CPU; W+ goes directly to synthesis.
+"""Deployed e4e preprocessing/encoder on CPU or CUDA; W+ goes directly to synthesis.
 
 API owns the inference_lock shared with synthesis. This module additionally guards
 its lazy singleton for standalone callers. Never loads uploaded model checkpoints.
@@ -13,6 +13,7 @@ from PIL import Image, UnidentifiedImageError
 import torch
 
 from encoder_assets import verified_asset, verify_assets
+from runtime_device import configure_device
 from e4e.models.encoders.psp_encoders import Encoder4Editing
 
 Image.MAX_IMAGE_PIXELS = 8192 * 4096  # Same deployed encoder limit.
@@ -21,6 +22,7 @@ _encoder = None
 
 class Encoder:
     def __init__(self):
+        self.device = configure_device(torch)
         # Digest and byte count must match before trusted checkpoint deserialization.
         checkpoint = torch.load(verified_asset('e4e_ffhq_encode.pt'), map_location='cpu', weights_only=False)
         opts = SimpleNamespace(**checkpoint['opts'])
@@ -29,8 +31,8 @@ class Encoder:
         self.net = Encoder4Editing(50, 'ir_se', opts)
         state = {k.removeprefix('encoder.'): v for k, v in checkpoint['state_dict'].items() if k.startswith('encoder.')}
         self.net.load_state_dict(state, strict=True)
-        self.net.eval().requires_grad_(False).to('cpu')
-        self.latent_avg = checkpoint['latent_avg'].to('cpu') if opts.start_from_latent_avg else None
+        self.net.eval().requires_grad_(False).to(self.device)
+        self.latent_avg = checkpoint['latent_avg'].to(self.device) if opts.start_from_latent_avg else None
         self.predictor = None
 
     @torch.inference_mode()
@@ -49,7 +51,7 @@ class Encoder:
         image = image.resize((256, 256), Image.Resampling.BILINEAR)
         pixels = np.asarray(image, dtype=np.float32) / 255.0
         batch = torch.from_numpy(pixels).permute(2, 0, 1).unsqueeze(0)
-        codes = self.net((batch - 0.5) / 0.5)
+        codes = self.net(((batch - 0.5) / 0.5).to(self.device))
         if self.latent_avg is not None:
             codes = codes + self.latent_avg.unsqueeze(0)
         if codes.shape != (1, 18, 512) or not torch.isfinite(codes).all():

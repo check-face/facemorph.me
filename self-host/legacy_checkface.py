@@ -10,6 +10,7 @@ from pathlib import Path
 from bson.binary import Binary, UuidRepresentation
 from api import load_model
 from cpu_threads import thread_status
+from runtime_device import device_status
 from original_cache import OriginalCache
 from torch_adapter import TorchGenerator
 import time
@@ -49,7 +50,7 @@ db = client.test
 def fetch_model():
     return TorchGenerator(load_model(), original_cache=original_cache)
 
-num_gpus = 0  # Portable candidate uses CPU; the legacy parameter remains internal.
+num_gpus = 0  # Unused legacy graph parameter; runtime device is selected separately.
 synthesis_kwargs = {}
 
 # We need to have access to this dimension to generate qlatents and we don't
@@ -929,7 +930,7 @@ def initialize_runtime():
     GsInputDim = Gs.input_shape[1]
     model_adapter = Gs
     model_ready.set()
-    app.logger.info('Generator ready (CPU)')
+    app.logger.info('Generator ready (%s)', device_status())
 
 
 def worker():
@@ -1046,7 +1047,7 @@ def generation_release(_error):
 
 @app.route('/healthz', methods=['GET'])
 def readiness():
-    return jsonify({'ready': model_ready.is_set(), 'provider': 'cpu', 'queue': q.qsize(), 'generation_capacity': GENERATION_CAPACITY, 'cpu_threads': thread_status(), 'original_cache': {'hits': original_cache.hits, 'generated': original_cache.generated, 'write_failures': original_cache.write_failures}}), (200 if model_ready.is_set() else 503)
+    return jsonify({'ready': model_ready.is_set(), **device_status(), 'queue': q.qsize(), 'generation_capacity': GENERATION_CAPACITY, 'cpu_threads': thread_status(), 'original_cache': {'hits': original_cache.hits, 'generated': original_cache.generated, 'write_failures': original_cache.write_failures}}), (200 if model_ready.is_set() else 503)
 
 
 @app.errorhandler(queue.Full)

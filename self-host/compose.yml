@@ -25,7 +25,7 @@ services:
       CHECKFACE_CPU_THREADS: ${CHECKFACE_CPU_THREADS:-auto}
       MONGODB_CONNECTION_STRING: mongodb://db:27017
     ports:
-      - "127.0.0.1:8080:8080"
+      - "${CHECKFACE_BIND:-127.0.0.1}:${CHECKFACE_PORT:-8080}:8080"
     volumes:
       - models:/models:ro
       - cache:/app/checkfacedata

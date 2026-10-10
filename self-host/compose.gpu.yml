@@ -1,0 +1,23 @@
+# docker compose -f compose.yml -f compose.gpu.yml <command>
+services:
+  setup:
+    build:
+      context: .
+      args:
+        TORCH_INDEX: cu128
+  api:
+    build:
+      context: .
+      args:
+        TORCH_INDEX: cu128
+    environment:
+      CHECKFACE_DEVICE: cuda
+      NVIDIA_DRIVER_CAPABILITIES: compute,utility
+      CUBLAS_WORKSPACE_CONFIG: ":4096:8"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]

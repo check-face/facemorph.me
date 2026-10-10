@@ -8,8 +8,10 @@ import torch
 
 
 class TorchGenerator:
-    def __init__(self, model, original_cache=None):
+    def __init__(self, model, original_cache=None, device=None):
         self.model = model
+        model_device = next(model.parameters()).device if hasattr(model, 'parameters') else 'cpu'
+        self.device = torch.device(device or model_device)
         self.original_cache = original_cache
         self.input_shape = [None, 512]
         self.components = SimpleNamespace(mapping=SimpleNamespace(run=self.mapping),
@@ -22,7 +24,7 @@ class TorchGenerator:
 
     @torch.inference_mode()
     def mapping(self, latents, _labels=None):
-        z = torch.as_tensor(np.asarray(latents, dtype=np.float32), device='cpu')
+        z = torch.as_tensor(np.asarray(latents, dtype=np.float32), device=self.device)
         return self.model.mapping(z, None, truncation_psi=1).cpu().numpy()
 
     @torch.inference_mode()
@@ -33,7 +35,7 @@ class TorchGenerator:
             if latent.shape != (18, 512) or not np.isfinite(latent).all():
                 raise ValueError('Synthesis requires finite W+ with shape (18, 512)')
             def generate():
-                ws = torch.from_numpy(latent[None]).to('cpu')
+                ws = torch.from_numpy(latent[None]).to(self.device)
                 out = self.model.synthesis(ws, noise_mode='const', force_fp32=True, fused_modconv=False)
                 if not torch.isfinite(out).all():
                     raise ValueError('Non-finite synthesis output')
@@ -47,12 +49,17 @@ class TorchGenerator:
                     'latent': {'shape': list(latent.shape), 'dtype': '<f4',
                                'sha256': hashlib.sha256(latent.astype('<f4').tobytes()).hexdigest()},
                     'noise': 'checkpoint-constant', 'force_fp32': True, 'fused_modconv': False,
-                    'provider': 'cpu', 'architecture': platform.machine(),
+                    'provider': self.device.type,
+                    'architecture': platform.machine(),
                     'torch_version': str(torch.__version__),
                     'torch_build_sha256': hashlib.sha256(torch.__config__.show().encode()).hexdigest(),
                     'threads': torch.get_num_threads(),
                     'input_stage': 'resolved-w-plus-after-mapping-truncation-or-photo-preprocessing',
                 }
+                if self.device.type == 'cuda':
+                    identity.update(cuda_version=torch.version.cuda,
+                                    gpu=torch.cuda.get_device_name(self.device),
+                                    gpu_capability=list(torch.cuda.get_device_capability(self.device)))
                 original = self.original_cache.get_or_create(identity, generate)
             else:
                 original = generate()

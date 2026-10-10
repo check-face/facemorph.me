@@ -3,9 +3,26 @@
 [![Gitpod ready-to-code](https://img.shields.io/badge/Gitpod-ready--to--code-blue?logo=gitpod)](https://gitpod.io/#https://github.com/check-face/facemorph.me)
 
 The site is written in F# using [Fable](https://fable.io/).
-It uses the [CheckFace API](https://checkface.facemorph.me/api) for generating images and videos.
+The historical frontend uses the CheckFace API for generating images and videos.
+The current candidate frontend at **https://next.facemorph.me** performs inference
+locally and does **not** use that API.
 
-## Building and running the app
+## Run your own API
+
+[Self-host with Docker](self-host/README.md): NVIDIA GPU or CPU, the original UI,
+verified model downloads, and persistent saved faces. See the [API reference](docs/api.md).
+
+This package preserves the historical server API and builds its original frontend
+from pinned commit `0abb215f27b16e17e3919cf78b616b6ae4998a5d`. The current
+`candidate/next-delivery-20260916` frontend at `next.facemorph.me` runs inference
+locally and does **not** use this API. Sharing a repository does not make the
+self-host API a dependency of the current web or desktop application.
+
+## Building and running the classic app
+
+These commands build the historical application. The current candidate uses
+`npm ci` and `npm run build:next`, with output in `deploy-next/`. The Docker
+self-host package independently builds its pinned historical frontend.
 
 > Install pre-requisites: [.NET 5 SDK](https://dotnet.microsoft.com/download/dotnet/5.0), [node.js](https://nodejs.org/en/), [npm](https://www.npmjs.com/)
 

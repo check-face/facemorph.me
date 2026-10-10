@@ -14,13 +14,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends git ca-certific
 RUN git clone https://github.com/NVlabs/stylegan2-ada-pytorch.git /opt/stylegan && cd /opt/stylegan && git checkout "$STYLEGAN_REV" && rm -rf .git
 WORKDIR /app
 COPY requirements.txt ./
-RUN pip install --no-cache-dir torch==2.9.1 --index-url https://download.pytorch.org/whl/cpu && pip install --no-cache-dir -r requirements.txt
+ARG TORCH_INDEX=cpu
+RUN pip install --no-cache-dir torch==2.9.1 --index-url https://download.pytorch.org/whl/${TORCH_INDEX} && pip install --no-cache-dir -r requirements.txt
 
 FROM runtime-deps AS api-base
 COPY *.py ./
 COPY templates ./templates
 COPY assets ./checkfacedata/assets
 COPY e4e ./e4e
+COPY licenses ./licenses
 COPY fixtures ./fixtures
 COPY legacy-route-inventory.json ./
 RUN mkdir -p /app/checkfacedata && chown -R 10001:10001 /app/checkfacedata

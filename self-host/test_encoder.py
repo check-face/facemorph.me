@@ -36,6 +36,6 @@ def main():
         try: encoder.encode_image(image,align)
         except ValueError: pass
         else: raise AssertionError('Invalid input was accepted')
-    print(json.dumps({'encoder_cases':results,'no_face_fallback_exact':True,'malformed_uploads_rejected':True,'device':'cpu','torch':torch.__version__}))
+    print(json.dumps({'encoder_cases':results,'no_face_fallback_exact':True,'malformed_uploads_rejected':True,'device':str(encoder._encoder.device),'torch':torch.__version__}))
 
 if __name__ == '__main__': main()

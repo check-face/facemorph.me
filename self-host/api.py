@@ -19,6 +19,8 @@ def load_model():
     from torch_utils.ops import bias_act, upfirdn2d, conv2d_gradfix
     from cpu_threads import configure_torch
     configure_torch(torch)
+    from runtime_device import configure_device
+    device = configure_device(torch)
     torch.use_deterministic_algorithms(True)
     original_bias, original_up = bias_act.bias_act, upfirdn2d.upfirdn2d
     def bias(*args, **kwargs):
@@ -41,7 +43,7 @@ def load_model():
     else:
         raise RuntimeError('Untrusted or wrong model: expected pinned CheckFace checkpoint')
     model._checkface_source_sha256 = actual
-    return model.eval().requires_grad_(False).to('cpu')
+    return model.eval().requires_grad_(False).to(device)
 
 
 def seed(query, key):
@@ -72,12 +74,12 @@ def render(model, z):
     import torch
     from PIL import Image
     with torch.inference_mode():
-        w = model.mapping(torch.from_numpy(np.asarray(z, dtype=np.float32)[None]), None,
+        w = model.mapping(torch.from_numpy(np.asarray(z, dtype=np.float32)[None]).to(next(model.parameters()).device), None,
                           truncation_psi=0.7, truncation_cutoff=8)
         out = model.synthesis(w, noise_mode='const', force_fp32=True, fused_modconv=False)
         if not torch.isfinite(out).all():
             raise RuntimeError('Non-finite synthesis output')
-        pixels = (out.permute(0, 2, 3, 1) * 127.5 + 128).clamp(0, 255).to(torch.uint8)[0].numpy()
+        pixels = (out.permute(0, 2, 3, 1) * 127.5 + 128).clamp(0, 255).to(torch.uint8)[0].cpu().numpy()
     output = io.BytesIO()
     Image.fromarray(pixels).save(output, format='PNG')
     return output.getvalue()

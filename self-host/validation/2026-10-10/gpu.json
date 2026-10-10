@@ -1,0 +1,286 @@
+{
+  "status": "passed",
+  "scope": "Local source build; fresh model/database/cache volumes; real NVIDIA Docker passthrough; full retained-route and photo suite; restart persistence. Public clone check recorded separately after source publication.",
+  "hardware": "NVIDIA GeForce RTX 2080 SUPER, 8 GiB, compute capability 7.5",
+  "host_driver": "610.57.04",
+  "platform": "Linux x86_64",
+  "torch": "2.9.1+cu128",
+  "cuda": "12.8",
+  "image_id": "sha256:6444a9805fd23cb0340e1ad609c1976db53ef8ad304c5a7150c8397864123952",
+  "first_build_run": "20261010T052042Z-ccc1c330",
+  "final_build_run": "20261010T053131Z-7aed7911",
+  "fresh_setup_run": "20261010T053203Z-c59215bd",
+  "gpu_suite_run": "20261010T053346Z-048b606a",
+  "test_command": "COMPOSE_FILE=compose.yml:compose.gpu.yml ./verify.sh",
+  "results": [
+    {
+      "health": {
+        "cpu_threads": {
+          "available_cpus": 12,
+          "default_max": 8,
+          "effective_threads": 8,
+          "limited_by_allocation": false,
+          "requested": "auto"
+        },
+        "cuda_version": "12.8",
+        "generation_capacity": 8,
+        "gpu": "NVIDIA GeForce RTX 2080 SUPER",
+        "gpu_capability": [
+          7,
+          5
+        ],
+        "original_cache": {
+          "generated": 1,
+          "hits": 0,
+          "write_failures": 0
+        },
+        "provider": "cuda",
+        "queue": 0,
+        "ready": true,
+        "torch_version": "2.9.1+cu128"
+      },
+      "seed": 953047690,
+      "jpeg_bytes": 37286,
+      "cuda_tensor": true
+    },
+    {
+      "original_ui_static_assets": 4,
+      "spa_paths": true,
+      "local_oembed": true
+    },
+    {
+      "encoder_cases": [
+        {
+          "seed": 0,
+          "did_align": true,
+          "repeat_exact": true,
+          "max_reference_error": 4.112720489501953e-06
+        },
+        {
+          "seed": 1,
+          "did_align": true,
+          "repeat_exact": true,
+          "max_reference_error": 4.380941390991211e-06
+        }
+      ],
+      "no_face_fallback_exact": true,
+      "malformed_uploads_rejected": true,
+      "device": "cuda",
+      "torch": "2.9.1+cu128"
+    },
+    {
+      "result": "pass",
+      "checks": [
+        "status/queue/upload form",
+        "deployed seed/text identity",
+        "register/read GUID and imported legacy BSON UUID",
+        "JPEG/WebP/default/legacy image routes and conditional cache",
+        "weighted Z/mixed W+ blends and mixed-space interpolation",
+        "classic trig deduplication and linear endpoint frames",
+        "GIF/animated WebP/MP4 codecs, cache, byte ranges, embed HTML and link preview",
+        "multipart encoding, aligned reference W+, reconstruction and aligned/unaligned GUID cache",
+        "responsive health under queued inference, bounded admission and recovery"
+      ],
+      "reference_jpeg_max_error": 7,
+      "reference_jpeg_mean_error": 0.006014506022135417,
+      "guid": "792a8ad7-9f53-4416-afb2-d0c04a0f23b6"
+    },
+    {
+      "multipart_face_alignment": true,
+      "max_encoder_reference_error": 4.112720489501953e-06,
+      "repeat_guid_dedup": true,
+      "unaligned_default": true,
+      "no_face_fallback": true,
+      "w_plus_retrieval": true,
+      "reconstruction_and_mixed_morph": true,
+      "previous_receipt_survived": false,
+      "receipt": "/app/checkfacedata/self-host-encoder-validation.json"
+    },
+    {
+      "after_restart": false,
+      "before": {
+        "generated": 20,
+        "hits": 13,
+        "write_failures": 0
+      },
+      "after": {
+        "generated": 21,
+        "hits": 15,
+        "write_failures": 0
+      }
+    },
+    {
+      "health": {
+        "cpu_threads": {
+          "available_cpus": 12,
+          "default_max": 8,
+          "effective_threads": 8,
+          "limited_by_allocation": false,
+          "requested": "auto"
+        },
+        "cuda_version": "12.8",
+        "generation_capacity": 8,
+        "gpu": "NVIDIA GeForce RTX 2080 SUPER",
+        "gpu_capability": [
+          7,
+          5
+        ],
+        "original_cache": {
+          "generated": 22,
+          "hits": 15,
+          "write_failures": 0
+        },
+        "provider": "cuda",
+        "queue": 0,
+        "ready": true,
+        "torch_version": "2.9.1+cu128"
+      },
+      "seed": 3965906108,
+      "jpeg_bytes": 29915,
+      "cuda_tensor": true
+    },
+    {
+      "result": "pass",
+      "checks": [
+        "status/queue/upload form",
+        "deployed seed/text identity",
+        "prior GUID/cache survives restart",
+        "register/read GUID and imported legacy BSON UUID",
+        "JPEG/WebP/default/legacy image routes and conditional cache",
+        "weighted Z/mixed W+ blends and mixed-space interpolation",
+        "classic trig deduplication and linear endpoint frames",
+        "GIF/animated WebP/MP4 codecs, cache, byte ranges, embed HTML and link preview",
+        "encoded upload cache survives restart",
+        "multipart encoding, aligned reference W+, reconstruction and aligned/unaligned GUID cache",
+        "responsive health under queued inference, bounded admission and recovery"
+      ],
+      "reference_jpeg_max_error": 7,
+      "reference_jpeg_mean_error": 0.006014506022135417,
+      "guid": "65d3af72-cb51-4d1a-818c-69af4f433773"
+    },
+    {
+      "multipart_face_alignment": true,
+      "max_encoder_reference_error": 4.112720489501953e-06,
+      "repeat_guid_dedup": true,
+      "unaligned_default": true,
+      "no_face_fallback": true,
+      "w_plus_retrieval": true,
+      "reconstruction_and_mixed_morph": true,
+      "previous_receipt_survived": true,
+      "receipt": "/app/checkfacedata/self-host-encoder-validation.json"
+    },
+    {
+      "after_restart": true,
+      "before": {
+        "generated": 8,
+        "hits": 4,
+        "write_failures": 0
+      },
+      "after": {
+        "generated": 8,
+        "hits": 6,
+        "write_failures": 0
+      }
+    },
+    {
+      "external_http_health": {
+        "cpu_threads": {
+          "available_cpus": 12,
+          "default_max": 8,
+          "effective_threads": 8,
+          "limited_by_allocation": false,
+          "requested": "auto"
+        },
+        "cuda_version": "12.8",
+        "generation_capacity": 8,
+        "gpu": "NVIDIA GeForce RTX 2080 SUPER",
+        "gpu_capability": [
+          7,
+          5
+        ],
+        "original_cache": {
+          "generated": 8,
+          "hits": 6,
+          "write_failures": 0
+        },
+        "provider": "cuda",
+        "queue": 0,
+        "ready": true,
+        "torch_version": "2.9.1+cu128"
+      },
+      "external_jpeg_bytes": 28506,
+      "external_jpeg_sha256": "49cc2564aaf2de12eb5cc5c71d3f05c01151c517eaa0c543c354efc265b73557"
+    }
+  ],
+  "source_file_sha256": {
+    "Dockerfile": "7d851443fb716e41089562ff648aef19c5378273d38cd36fed5cad13910b3fff",
+    "api.py": "780eb7af2e4ed57d05f93526a51d09fa553d2b921e3aa077318faadec7047545",
+    "assets/preview-logo.png": "14899a86db58a8e3333a901e744e1d8a1a2bad4a983600f3e540bbd45a924cd2",
+    "assets/preview-sitename.png": "4d173ae0fb757f3578545b8b2ca348b831122a83d6122289bfcb47904569c3b8",
+    "assets/provenance.json": "0421a0f66e8e9e3716eb305c5b5d30dc9d2068a950cc0531df1dae754e543b11",
+    "compose.gpu.yml": "0aff26e5ed9bdb5edf80bf07bf6669bc9c3d94c47f22faa3c2f45b340949466b",
+    "compose.yml": "37f42290f9564fac65c5b0633f5590eafa0e595e0c8f7edf0136d87ecd3ed2be",
+    "cpu_threads.py": "0403aa898b4a9d42de40a37462caa4749704609ebe79a260af94aa50c62cf5fc",
+    "e4e/LICENSE": "898c5cade80d057efcc9c80614505eeae73251c9e217ffd3331bfc8f6e4a14b6",
+    "e4e/models/encoders/equal_linear.py": "2ab39699338e6c0ec7ec44ec0fb12b05f1b3c4e93a15fb3b2a2abd9c34d1ef1e",
+    "e4e/models/encoders/helpers.py": "12d80f36932949a55aa2e3628445d73a71269d0eac5940b133ee6b3226e95f23",
+    "e4e/models/encoders/psp_encoders.py": "9fa592ad7bb3d5e1c5212be206424edfaee28ccdcefc2f4d17b95b7481db0c1a",
+    "e4e/utils/alignment.py": "263e4860769ce456d7f2b1b8ae2a5546e9e5feebd9efc118f9898ae944f1ade8",
+    "encoder.py": "7336f907dbcc6566c3b12ee9f7ae377aa9b531956645f5dc3cb1103263460701",
+    "encoder_assets.py": "22909f3119d93a60ce800702ec16c2e90c36d2151209b48a95031de72d9fdf34",
+    "fixtures/encoder-reference.json": "85d6cc4b29ad57e2641e0279bc6367414337e80bbe5d6992458eae727a27a90e",
+    "fixtures/seed-0-encoded-w-plus.npy": "82116989dbf0ffd7d439a589f32aa43a8776a34a7d537aa5012d649dba54b4cb",
+    "fixtures/seed-0.png": "b58b292299a10c95c78e33fd2c737237c67df65412f72675b1ca48caef35a16a",
+    "fixtures/seed-1-encoded-w-plus.npy": "772159651f7c736c8582e3360fe2a0e601ab18832cb4d97708a1af734c1f5ecb",
+    "fixtures/seed-1.png": "0d3cff97366f99c180b2ff7a6cc56fce4753d0f2b51236c1615ef3d3bac9ce0e",
+    "frontend-overlay/browser-smoke.py": "488c5a72efbb778f9f73d826063cb1ecc1d961270859489a672648d0d06fc48f",
+    "frontend-overlay/source/global.json": "6264f46005d456984c3e4ab3730a5f67f2baf4ac4d62543f81e9a2f792bb4ace",
+    "frontend-overlay/source/package.json": "9d3fbc6a22c2654b1042d75c358d4a177d12835349ec99bd98e91039151043e4",
+    "frontend-overlay/source/scripts/build-self-host.cjs": "60b0b0164c768efc387e448f18ce9e6e5914cd51dec90425a9508b415c4bf074",
+    "frontend-overlay/source/src/App.fs": "c028a3faaa7c7fc867bf306c7e674d9c657e1aa279bcf05ddac5a6460c43a83c",
+    "frontend-overlay/source/src/BrowseFacesDialog.fs": "787ad0f28407c1abbfb7895c7dc0984bc4835fd93151d8996fc353d560c9ea02",
+    "frontend-overlay/source/src/Config.fs": "ac52a2cfb4424f9a0dd46246ae23e96bc9b4654e9da7d037ba5e3075674b664f",
+    "frontend-overlay/source/src/MorphForm.fs": "940821d7faed15875ba22bb5d573c6a072c3a44ef9a279df9e53ea3e635300aa",
+    "frontend-overlay/source/src/Utils.fs": "61767f8dcbe5fe3060c64e4168bc2b211b9cbecae99c104ca686c3eddc478b3c",
+    "frontend-overlay/source/src/index.html": "4d4ebaae493147d32913567502ef54ef6dc4a52ad7292e790ccbc49a932cf056",
+    "frontend-overlay/source/webpack.config.js": "014754ad0933ef0293e27771ac8707b46b58269796764e9556ab4985853bd030",
+    "frontend-overlay/source.json": "7da974166cd8c57231c6a8910637c48d87652b5ff0439fb56dd7d0cb215c3f81",
+    "frontend-overlay/verify-config.mjs": "6b6433965f0007e94792afef573af60336b852ecd6b50facce29a07ac335703d",
+    "frontend-overlay/verify-overlay.py": "6a6db818e1bcd5c423858160fa7263f3476da8f122d92e3c3d55cc18ca50f885",
+    "legacy-route-inventory.json": "9d30ba2d9e7664fedd9f45f35787a09638e4cb3691beacc97df9e3534c6dd685",
+    "legacy_checkface.py": "3a5ee7fd6a23c06360945227baf8458eb23032668586bfb17c6b5d39843ce728",
+    "licenses/CheckFace-LICENSE.txt": "10a069b34636425ed529d999166190c7468bdd08877b3bd45f4db3aeb878cb04",
+    "local-smoke.py": "ffad29e3884af69cb29830bc7530fe5a95382c4c75f9379c3ec5a90aeb44169c",
+    "original_cache.py": "f9769362cb99029deb0c7e0a8d9ab2529c653305c4f2895accf5c60c9167950d",
+    "prepare_encoder.py": "ca82837c44e1d7dd3aafbc413b382f6a27fbeda03a7953fcef19ebfb6063a412",
+    "prepare_model.py": "891ccd55b07d9851f363aa6227b325c44baf603e4d89d2adfc4361cb90830752",
+    "requirements.txt": "179532d123390ccc9a30a8fcab1f79d390889d293171fa1d6dd4d20e263ad0d6",
+    "runtime_device.py": "d1ba63a0fcf98cac79445476105a3d081a0358a130bcc90f510fb9eb2ffbe84c",
+    "setup.py": "a76345dc9fcc4303b7533aa407f2497b64145cb68c11752f2cef8c92d9e4c1c7",
+    "smoke.py": "1cdaf4bdcf05a7a4ed76925541944f327d41f1f36b7ea8413c6086269896a628",
+    "smoke_encoder_http.py": "4405c2640416d86b55a6620d148b8d87e98a027f3c2682f6c85a654d936a2f2b",
+    "smoke_frontend.py": "c1870844fc1a0f241455cb4f30e360b61b70c712e7e71606abc5b24b098882e0",
+    "smoke_gpu.py": "21bdb289aea235877d47614573720a47ad40384d6522d1093e8835b7176606f8",
+    "smoke_legacy.py": "4f096b1a0598736612bbd863120338922a9af01a400afa4175f05b4b88014ede",
+    "smoke_original_cache.py": "970acb8ece117e141a76cba5e2965e964ce961d0251c08f3023f8e4000be80b7",
+    "templates/encode.html": "47b324c4db38778263f5ac0306e2eab065967de6fc73a954bb5ae10e61ea729d",
+    "templates/mp4.html": "aecdb00b93df83f5657b3c42da06698c662f0c06721378901398cdbf9f50c5da",
+    "test_adapter_cache.py": "0d760679d153368671a87ec997e59a0b32d707a74d391ce56b7057141b371c0f",
+    "test_cpu_threads.py": "d790e7a4394904704834cc14a2567f7cfed7250e9254a4469b8a98d128eac85f",
+    "test_encoder.py": "145553404ff4d86beab3d54b32aedc800f26f53aadcb2541efcceed6a447859b",
+    "test_encoder_assets.py": "8ab4c6eaf66f7b6478837460eff4abac499261f15054ea6ea770d2dd8f5fa701",
+    "test_legacy_contract.py": "203d05fc1c506d01af782aa2507402001f26ae17e3566dd793bcd8be1a03123e",
+    "test_original_cache.py": "81d977723a1315079c4540f3adc8b83b04848b33729bd30ffe7968398c1d8c39",
+    "test_runtime_device.py": "05a19046b1b6e0e730f378f512b1ad4782aa3553539567820b5fd906229d0a33",
+    "test_transport.py": "f9b33a39a42806bcf156c64510093c818680ed935ba09ff7469d1ddd4ff106f7",
+    "torch_adapter.py": "f6217c49b9bd04f73a68eece19fc40e0ef0eefba6c6d680763e7f6107d3d1489",
+    "verify.sh": "c7dd7970bce9f4da8db1a65148b446ebd0f669b5bd7eeffa7253ae1d4da92c21"
+  },
+  "limits": [
+    "One real NVIDIA GPU/driver was tested; this does not qualify every NVIDIA architecture or driver.",
+    "Uses original models with PyTorch CUDA operators, not the legacy TensorFlow runtime or optional NVIDIA custom CUDA extensions.",
+    "All test inputs were synthetic fixtures/generated faces; no production data or volumes were used.",
+    "Source-only delivery: no GPU image or model files published to a registry."
+  ],
+  "python_source_matches_tested_image": true
+}

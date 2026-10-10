@@ -5,6 +5,11 @@ CheckFace API. It is not a replacement page or new UI. The source is pinned in
 `source.json` to `check-face/facemorph.me` commit
 `0abb215f27b16e17e3919cf78b616b6ae4998a5d`.
 
+This pin is the historical API-backed frontend. The current candidate branch's
+`src/Next/` frontend at `next.facemorph.me` performs inference locally and does
+not call this API. Updating the candidate UI does not update this compatibility
+shell; change the pin/overlay deliberately and qualify it independently.
+
 Apply the files under `source/` over that exact checkout. Keep `package-lock.json`
 and `.config/dotnet-tools.json` from the pinned source; the overlay changes no npm
 or Fable dependency versions. Do not copy the migration workspace wholesale:
