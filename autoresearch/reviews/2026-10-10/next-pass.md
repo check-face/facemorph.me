@@ -1,6 +1,8 @@
 # Research/UI coordination — 10 October 2026
 
-Status: research handoff aligned to the current UI plan; implementation and measurements pending. Registered with agent-mail as **CoralPeak**, on the same application project as **BlueHarbor**, and sent coordination message **2**, thread `ui-autoresearch-2026-10-10`. This session reserves only `autoresearch/reviews/2026-10-10/**`; application and plan paths remain with development. Awaiting the other session's ownership/increment confirmation; alignment to its written plan is not yet a negotiated agreement.
+Status: ownership/integration boundary confirmed with **BlueHarbor** in agent-mail message **4**, thread `ui-autoresearch-2026-10-10`; implementation, qualification and performance measurements remain pending. This research session is **CoralPeak** and reserves only `autoresearch/reviews/2026-10-10/**`. Development leaves these research edits out of its commits. Application and plan paths remain with development.
+
+BlueHarbor's first increment covers the planned UI, serial queue, original-only last-result restore, sparse infill/live scrub and aggregate telemetry fixes. It preserves existing `hello`/public-preview work and excludes finished-video caching. BlueHarbor owns **U-16 export/re-upload recovery** as part of complete delivery and will send the exact qualified revision for a frozen research control. No live analytics receipt claim precedes actual receiver evidence.
 
 ## Shared direction
 
@@ -21,7 +23,7 @@ Operator priorities from this conversation:
 | --- | --- |
 | Last-result index + cache-only bridge restore | Verify canonical identity, image/latent integrity, no inference/model downloads on a valid hit; ignore late results after input revision/removal. Missing/blocked/corrupt storage must not hold up initial `hello`. Do not confuse a public preview with a restored original. |
 | Serial scheduler and per-face progress | Keep one heavy runtime job. Give requests stable IDs/revisions; record queue wait separately from active processing. Merge results by ID/revision. Research compares matched workloads and reports queueing separately, rather than attributing another tile's work to this face. |
-| Advanced processing controls | Update exact-artifact qualification to open More options → Advanced and exercise per-face Generate/Create morph. The existing observational script uses a direct Processing mode selector; preserve it as historical reproduction and adapt a new pass once the revised UI exists. Do not retain obsolete visible controls for a benchmark. |
+| Advanced processing controls | Confirmed selector contract: per-face Generate, Create morph, More options → `details.next-advanced` → select with aria-label Processing mode. Update exact-artifact qualification accordingly. Batch Generate faces is temporarily available only under `?testing` for historical harness migration. Preserve the existing observational script as historical reproduction and adapt a new pass to the qualified revision. Do not retain obsolete visible controls for a benchmark. |
 | Infill/live scrubbing | Record first usable scrub frame and final playable video separately. Persist canonical frame indices and encode in presentation order; do not interpret arrival order as video order. Keep bounded buffering and sparse availability. |
 | Photo selection/compare | Record upload/selection/crop/alignment/e4e/reconstruction separately. Use a metadata-free synthetic fixture for true photo encoding and a separate exported-image fixture for recovery. No source-photo persistence; compare is unavailable after reload. |
 | Debug/GA lifecycle additions | Tag release/runtime, actual route and route attempts. Preserve opt-outs and debug consent. Distinguish visibility interruption from final product request outcome; aggregate denominators must be idempotent. Existing start-only build metadata needs joining across batches. |
@@ -44,9 +46,15 @@ The 8–9 October R2 check found only one run matching the currently deployed di
 
 ## Questions for the other session
 
-- Which UI increment is starting, and which files/harness selectors are changing first?
-- Who owns last-result indexing, cache-before-gate behavior, initial `hello`, and U-16 export/import recovery? Keep one owner per product path.
-- Which queue, cache and hydration timing boundaries will the next artifact report, and when can research freeze a control?
-- Confirm use of the same eris lease and separate research-only commits from product promotion.
+The increment, selector contract and ownership are confirmed above. Remaining coordination: obtain the qualified control, final queue/cache/hydration timer semantics and real reporting receipt. Both sessions preserve the shared checkout and use the same eris lease for heavy work. Research documentation commits remain separate from product promotion.
+
+CoralPeak sent a read-only review of the evolving implementation in message **7**. Acceptance questions to resolve before research freezes that implementation:
+
+- Reject delayed restoration in **both** UI and bridge when inputs/revisions change; a UI guard alone does not undo bridge registration.
+- Bind the restored result to full canonical generation identity, rather than only model/noise source hashes, and validate saved settings. Prefer the planned small index over duplicating an entire stored PNG/W+ record.
+- Emit generated/restored/playable **user-visible** milestones at decoded image or actual video-ready boundaries. Job/blob completion occurs earlier. Navigation-to-result starts at navigation, not analytics-module evaluation.
+- Cover a valid named/seeded original with model cache absent before the UI download gate. The existing runtime already checks originals before qualification; the browser bridge's `admission()` helper currently reads configuration/sets route, rather than itself performing canaries.
+
+These are draft integration findings sent to the owning session, not completed fixes or defects asserted against a final qualified artifact. Research will recheck the affected paths after development resolves them; it does not edit the overlapping source.
 
 These are coordination questions for the implementation session, not new operator approvals.
