@@ -1,0 +1,42 @@
+name: Public name catalogue
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  publish:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    environment: next-preview
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install numpy==2.2.6 Pillow==11.3.0 onnxruntime==1.22.1
+      - uses: actions/cache@v4
+        with:
+          path: hosting/gallery/names-public
+          key: public-names-${{ hashFiles('hosting/gallery/materialize.py', 'hosting/next-static/catalogue.json', 'hosting/next-static/runtime-overlay/manifest.json') }}
+          restore-keys: public-names-
+      - name: Materialize and independently verify all public name identities
+        run: python hosting/gallery/materialize.py --output hosting/gallery/names-public --origin https://facemorph-name-catalogue.cdilga.workers.dev
+      - uses: actions/upload-artifact@v4
+        with:
+          name: public-name-catalogue-${{ github.sha }}
+          path: |
+            hosting/gallery/names-public/catalogue.json
+            hosting/gallery/names-public/ledger.json
+          retention-days: 30
+      - name: Publish verified static assets
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx -y wrangler@4.149.0 deploy --config hosting/gallery/names-wrangler.jsonc --message "Verified public names ${GITHUB_SHA::7}"
+      - name: Verify published catalogue bytes
+        run: |
+          curl -fsS --retry 8 --retry-all-errors https://facemorph-name-catalogue.cdilga.workers.dev/catalogue.json -o /tmp/published-catalogue.json
+          cmp hosting/gallery/names-public/catalogue.json /tmp/published-catalogue.json
