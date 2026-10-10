@@ -66,14 +66,14 @@ export async function rememberSession({ids,faces,settings,project,video,frames=[
   let savedVideo=null;
   if(video instanceof Blob&&video.type==='video/mp4'&&video.size+bytes<=MAX_SESSION_BYTES){
    let headroom=true;try{const estimate=await navigator.storage.estimate();headroom=Number.isFinite(estimate.quota)&&estimate.quota-(estimate.usage||0)>video.size+bytes+8*1024*1024;}catch{headroom=false;}
-   if(headroom)savedVideo=video;
+   if(headroom)savedVideo=video;else console.warn('Last video retention skipped: storage headroom unavailable.');
   }
   const record={kind:SESSION,ids:[...ids],faces:selected,settings:{kind:settings.kind,width:settings.width,pinch:settings.pinch,frames:settings.frames,fps:settings.fps},project:project||null,frames,frameHashes,video:savedVideo,videoSha256:savedVideo?await digest(await savedVideo.arrayBuffer()):null};
   if(!isCurrent())return false;store=await openOriginals();if(!isCurrent())return false;
-  try{await store.put(SESSION,record);}catch{
+  try{await store.put(SESSION,record);}catch(error){console.warn('Last session write retried without video:',error?.name||'Error');
    if(!isCurrent())return false;
    await store.put(SESSION,{...record,video:null,videoSha256:null});
   }return true;
- }catch{try{if(isCurrent())await store?.put(SESSION,{kind:SESSION,faces:[],ids:[]});}catch{}return false;}finally{store?.close();}
+ }catch(error){console.warn('Last session write failed:',error?.name||'Error');try{if(isCurrent())await store?.put(SESSION,{kind:SESSION,faces:[],ids:[]});}catch{}return false;}finally{store?.close();}
 }
 export async function readSession(){let store;try{store=await openOriginals();const record=await store.get(SESSION);if(record)return await validateSession(record)||{kind:SESSION,faces:[],ids:[]};}catch{}finally{store?.close();}return null;}

@@ -136,7 +136,7 @@ function retainSession(){
   const frames=[];let bytes=completed.reduce((n,f)=>n+f.result.blob.size,0);
   if(savedVideo&&frameUrls.length&&frameUrls.every(Boolean))for(const url of frameUrls){if(epoch!==sessionEpoch)return;const frame=await (await fetch(url)).blob();bytes+=frame.size;if(bytes>32*1024*1024){frames.length=0;break;}frames.push(frame);}
   await rememberSession({ids:view.inputs.map(item=>item.id),faces:completed,settings:view,project:savedProject,video:savedVideo,frames},()=>epoch===sessionEpoch);
- }).catch(()=>{});
+ }).catch(error=>console.warn('Last session retention failed:',error?.name||'Error'));
 }
 function checked(){if(active?.signal.aborted)throw new DOMException('Cancelled','AbortError');}
 // What a face actually costs on this device, so the interface can estimate from measurement

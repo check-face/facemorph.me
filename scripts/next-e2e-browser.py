@@ -395,7 +395,8 @@ def stage_sessionRestore():
  js("window.__ciSavedSession=null;(async()=>{const db=await new Promise((r,j)=>{const q=indexedDB.open('checkface-originals-v1',1);q.onsuccess=()=>r(q.result);q.onerror=()=>j(q.error);});try{const value=await new Promise((r,j)=>{const q=db.transaction('originals').objectStore('originals').get('last-generated-session-v2');q.onsuccess=()=>r(q.result);q.onerror=()=>j(q.error);});window.__ciSavedSession={faces:value?.faces?.length||0,video:!!value?.video,compressed:value?.faces?.every(f=>f.result.blob.type==='image/webp')};}finally{db.close();}})();0")
  deadline=time.monotonic()+60
  while not js('window.__ciSavedSession?.video'):
-  assert time.monotonic()<deadline, 'Complete session/video was not persisted'
+  if time.monotonic()>=deadline:
+   result['retentionProbe']=q('window.__ciSavedSession');js('window.__ciStorage=null;navigator.storage.estimate().then(v=>window.__ciStorage=v);0');time.sleep(.5);result['storageProbe']=q('window.__ciStorage');raise AssertionError('Complete session/video was not persisted')
   time.sleep(.5)
   js("window.__ciSavedSession=null;(async()=>{const q=indexedDB.open('checkface-originals-v1',1);q.onsuccess=()=>{const db=q.result,r=db.transaction('originals').objectStore('originals').get('last-generated-session-v2');r.onsuccess=()=>{const v=r.result;window.__ciSavedSession={faces:v?.faces?.length||0,video:!!v?.video,compressed:v?.faces?.every(f=>f.result.blob.type==='image/webp')};db.close();};};})();0")
  saved=q('window.__ciSavedSession');assert saved['faces']==2 and saved['compressed'], saved
