@@ -225,3 +225,29 @@ a new entry with the superseded ID. Follow [record standards](../../records.md).
 - Resources / failures: video wall about 110 s on this runner, above prior warmup estimate; no product correctness failure recorded; total memory unmeasured
 - Evidence: [retained timeout report](../../candidates/direct-rgba-media-v1/built-ui-timeout.json); CI runner journal downloaded to `/tmp/facemorph-rgba-built-budget` (raw JSON durable in Git)
 - Conclusion / next action: restart complete campaign with command 3000 s / job 55 min, within runner maximum; all source, workload, order and correctness checks unchanged; retain failure rather than relaxing gates
+
+### 2026-10-10T08:49:40+00:00 — review-20261010-018
+
+- Phase / status: observed / complete paired built-UI campaign accepted within amended budget
+- Round / experiment / correction: 2026-10-10 / R01-R05 / completes review-20261010-017; timeout samples are not merged
+- Hypothesis / decision: component transport gains need not improve whole CPU journeys; retain scoped repeat-result reuse and deferred WebP size/quality tradeoff, no broad generation/photo/video speed claim
+- Identity: control `e0b2192c26f6b921b9fb5e24c94be358c508c052`, candidate `bce320418a694bc48f25a609217bb81861ee6e47`; experiment source `9bbf06a5a6c319df0fbd22749ecedc604ca6d8ea`; raw harness/artifact hashes retained; [successful run 38036307932](https://github.com/check-face/facemorph.me/actions/runs/38036307932); runtime manifest unchanged
+- Context: Ubuntu 24.04 hosted CPU (processor model not recorded), headless Chrome 155 / Playwright 1.55, visible/isolated; ordinary admission explicitly emulated, webdriver true; pinned local mirror; separate retained profiles reopened each visit; fixed warmup each side then ABBA ×3, six matched cases/side; recorded visit-boundary load below 4
+- Boundary / samples: action → full 1024px drawn/decoded face and idle; navigation → first decoded restored original; 32-frame/16 FPS/1024px decoded playable 2 s video; browser download complete. All twelve measured visits plus two discarded warmups pass; full per-case distributions in statistics
+- Correctness / workflow: exact source/runtime identities, matched photo inputs+encoder dispatch/completion, repeat file identity+zero workers/messages, CPU route and no browser errors pass; kernels unchanged, canaries/source agreement/shipping checks separate from a new fixed-full31 qualification
+- Resources / failures: repeat-original and prepared-file Save faster in all6 matched cases; first Save and restore slower in all6. First-Save median matched cost88.41ms; new-face file median4384042 → 117428B. Generation/photo/video totals show no material benefit. Total process/codec/GPU memory unmeasured; worker events lack request IDs and stage spans are not additive
+- Evidence: [raw report](../../candidates/direct-rgba-media-v1/ci-built-ui.json), [analysis](../../candidates/direct-rgba-media-v1/built-ui-analysis.md), [statistics](../../candidates/direct-rgba-media-v1/built-ui-analysis.json), [analysis recipe](../../candidates/direct-rgba-media-v1/analyze-built-ui.py); raw SHA-256 `98cac450904caccab733f9b0546c7db9582b6ff7ac0b00fa0cfac06af66261a0`
+- Conclusion / next action: keep repeat-result gains and prior scoped component wins; WebP stays a smaller-file choice, not faster encoding. Broad CPU generation/photo/video and faster restoration are inconclusive. Input-dependent photo warp regimes suggest a separate investigation, not a proven cause or real-photo prediction
+
+### 2026-10-10T08:49:40+00:00 — review-20261010-019
+
+- Phase / status: deployed / current round closed with scoped decisions and next directions recorded
+- Round / experiment / correction: 2026-10-10 / R01-R05 / closure following review-20261010-018
+- Hypothesis / decision: separate component keeps, implementation, verified delivery and current-user latency; stop this round without extending missing evidence
+- Identity: live source `bce320418a694bc48f25a609217bb81861ee6e47`, qualified deploy run38033695234, diagnostic build `next-995b477854d97c7a`, app `app.25b21e2904ae5841d01e.js`, runtime manifest unchanged; exact application bytes reverified 2026-10-10T08:46:31.941446+00:00
+- Context: Chrome CPU workflow qualification and complete paired hosted CPU screen; iOS Simulator one-face CPU screen at separate source `549ecdf`; physical-phone and raw-candidate GPU transfer unmeasured
+- Boundary / samples: delivery identity/correctness only; final private R2 query 2026-10-10T08:46:33.749296+00:00:339 listed objects /36 selected /21 run IDs, zero current-build matches; current-user latency unknown
+- Correctness / workflow: shipping tests, compiled UI/full CPU UI pass; actual WebP W+ and MP4 project recovery verified. Hidden project-file controls explicitly skipped with serialization tested separately. Live application assets match; existing known Cloudflare platform beacon separated by verifier, not changed
+- Resources / failures: implemented worker raw-copy cap8MiB is not whole-process/GPU/codec memory qualification; explicit GPU control failed before a face; simulator is not a physical phone. Failed/interrupted campaigns retained; append-only prefixes preserved
+- Evidence: [final live identity](live-round-close.json), [final reporting coverage](reporting-round-close.json), [CPU qualification](../../candidates/direct-rgba-media-v1/cpu-qualification.json), [iOS scope](../../candidates/direct-rgba-media-v1/ios-qualification.json), [next directions](next-directions.md)
+- Conclusion / next action: automatic component/built-UI triggers retired; registry closed. Next loop prioritizes ordinary-policy hydration/admission attribution, padded-photo preparation and streamed-e4e wall overhead, with matched user/device resource/recovery reporting and GPU compatibility. Historical performance README remains separate. No more product edits or finished-video cache this round

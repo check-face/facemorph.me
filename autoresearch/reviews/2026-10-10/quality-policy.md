@@ -28,8 +28,9 @@ actual Chrome download/re-upload checks. PNG remains the compatible cache format
 and fallback. The isolated component screen measured the tradeoff: WebP file-ready was slower
 than PNG, while its total file was much smaller. The candidate uses WebP out of
 band for downloads, retains PNG cache compatibility and keeps the existing video
-quality settings after realtime failed to improve latency. Deployment is qualified and verified; paired built-UI performance transfer remains
-a separate decision; see the [candidate evidence](../../candidates/direct-rgba-media-v1/ci-analysis.md).
+quality settings after realtime failed to improve latency. Deployment is qualified and verified; the complete paired CPU screen confirms
+much smaller files with slower first Save and faster prepared-file reuse; see the [component evidence](../../candidates/direct-rgba-media-v1/ci-analysis.md)
+and [built-UI outcome](../../candidates/direct-rgba-media-v1/built-ui-analysis.md).
 
 ## Acceptance
 

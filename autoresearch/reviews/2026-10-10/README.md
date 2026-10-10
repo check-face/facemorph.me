@@ -1,16 +1,77 @@
 # Research round: first use and returning visits — 10 October 2026
 
-**Status: corrected candidate `bce3204` is qualified and deployed to next.facemorph.me, with matching live bytes. Component direct display/video wins are recorded; the corrected paired e0/bce built-UI screen reached its 1800 s limit; an unchanged-workload rerun has a 3000 s budget. No current-user latency or overall product speedup is claimed yet.** Priorities are instant `hello`, automatic cached-face restoration and ordinary-policy warm hydration. This round also targets **direct RGBA display/video with deferred image encoding, persistence and latent metadata**. Finished-video caching is excluded by operator direction.
+**Status: closed — scoped component wins and repeat-result improvements are measured; `bce3204` is qualified, deployed and live-byte verified. The complete e0/bce built-UI CPU screen passed. It shows no material improvement in new-face, photo or full-video totals; WebP is a smaller-file tradeoff, with slower first Save. Current-user latency remains unmeasured.** Priorities are instant `hello`, automatic cached-face restoration and ordinary-policy warm hydration. This round also targets **direct RGBA display/video with deferred image encoding, persistence and latent metadata**. Finished-video caching is excluded by operator direction.
 
 The [performance-history README](../../history/performance-through-2026-10-09/README.md) holds the optimization narrative and older per-device comparisons. This document holds only this round's evidence, gaps and decisions. Older-build diagnostics below describe coverage, not current latency. The [round log](log.md) preserves append-only events; the [UI handoff](next-pass.md) defines ownership and the control freeze; [experiment specifications](experiments.md) define the work to try.
 
-## Current experiment progress
+## Completed experiment and delivery
 
 The [direct RGBA candidate](../../candidates/direct-rgba-media-v1/README.md) passed bounded raw transport, compact metadata and browser decode/playback checks. Its public hello WebP including exact W+ recovery metadata is 129,932 bytes; PNG is 4,245,531 bytes. Isolated CI measured draw+RAF **65.31 → 5.02 ms** and decoded-playable raw video codec **1,316.24 → 186.07 ms**, excluding synthesis and compiled UI. WebP encoding was slower but smaller; realtime video settings were discarded. See the [paired analysis](../../candidates/direct-rgba-media-v1/ci-analysis.md).
 
-The contended eris source screen established correctness only. Application integration was pushed as [`d0d8d7a`](https://github.com/check-face/facemorph.me/commit/d0d8d7a6332652dbc09cc7418520f8863aed11f8); build and compiled UI passed, but [real CPU UI qualification](https://github.com/check-face/facemorph.me/actions/runs/38032536121) stopped at repeat-original. A local exact-artifact trace found **zero repeat inference** but a repeated download encode: per-face Generate lost the prepared download. The correction reuses a same-input face and waits for deferred canonical encoding before recording the last result. That fix passed the e590 CPU UI journey. A further worker-clone issue made deferred WebP fall back to PNG; `bce3204` sends only recovery identity/latents and adds Chrome WebP plus no-processing-worker re-upload gates. Regression tests pass; the corrected artifact passed build, compiled UI, full CPU UI and deployment. [Live identity](live-bce-identity.json) binds diagnostic build `next-995b477854d97c7a` and app `app.25b21e2904ae5841d01e.js` to that artifact. Real Chrome downloads are WebP, repeat without workers, and re-upload bypasses processing workers; a saved 1024px / 2 s MP4 carries its two-control project. The corrected [built-UI experiment](https://github.com/check-face/facemorph.me/actions/runs/38034405920) compares e0/bce. Earlier attempts stopped at artifact upload, restored-field interaction or a normalized-photo cache shortcut; they supply no accepted paired timing. Photo variants now change decoded pixels and must execute the encoder. That corrected run hit the 1800 s budget after eight complete measured visits and a partial ninth. Its [retained partial report](../../candidates/direct-rgba-media-v1/built-ui-timeout.json) is inconclusive; [replacement run 38036307932](https://github.com/check-face/facemorph.me/actions/runs/38036307932) repeats the full ABBA ×3 campaign with the same frozen artifacts, inputs and policy with a 3000 s command / 55 min job budget. No partial sample selection is used as a speed result.
+Integration needed two fixes: unchanged-input Generate now preserves its prepared
+download, and the download worker receives cloneable recovery identity rather
+than promises in the UI face object. The earlier [repeat-download failure](https://github.com/check-face/facemorph.me/actions/runs/38032536121)
+had zero repeated inference but repeated encoding. Corrected `bce3204` passed
+build, compiled UI, full CPU UI and deployment, including real WebP recovery.
+[Live identity](live-bce-identity.json) binds it to `next-995b477854d97c7a` and
+`app.25b21e2904ae5841d01e.js`.
+
+Earlier measurement attempts stopped at artifact upload, restored-field interaction
+or a normalized-photo cache shortcut. Pixel-changing variants and explicit encoder
+events corrected the workload. The [1800 s attempt](../../candidates/direct-rgba-media-v1/built-ui-timeout.json)
+completed eight measured visits and part of a ninth, then timed out; it remains
+inconclusive. [Replacement run 38036307932](https://github.com/check-face/facemorph.me/actions/runs/38036307932)
+completed the full unchanged ABBA ×3 comparison within its 3000 s budget. The
+accepted results are below; partial attempts are not merged.
 
 The qualified control is now `e0b2192`, with [live byte identity](../../../docs/review/candidate-2026-10-10/live-identity.json). The observations below are the **earlier round snapshot**, retained as dated evidence; they do not describe today's live delivery.
+
+## What the complete end-to-end comparison showed
+
+The [full analysis](../../candidates/direct-rgba-media-v1/built-ui-analysis.md) retains
+all twelve measured visits, raw events and matched statistics. This is **hosted
+Linux Chrome 155 / CPU research evidence**, with retained models, explicitly
+emulated ordinary admission, fixed warmups and ABBA ×3. These are not current
+user/device promises, GPU timings or real-photo percentiles.
+
+| Journey / finish | Frozen e0 control median | Delivered bce candidate median | Interpretation |
+| --- | --- | --- | --- |
+| Navigation → first decoded restored original | 483 ms | 501 ms | All six candidate cases slower; median matched cost 12 ms. No faster-restore claim. |
+| First new face after process reopen, retained model bytes | 5,180 ms | 5,124 ms | Median matched improvement 25 ms; no material generation win. |
+| Next different face | 3,858 ms | 3,851 ms | Three of six faster; unchanged for this screen. |
+| Same original requested again | 113 ms | 89 ms | All six faster; median matched improvement 36 ms, zero new workers/messages. |
+| First Save after both faces | 109 ms | 202 ms | Median matched cost 88 ms; much smaller recoverable file. |
+| Repeat Save of prepared file | 101 ms | 66 ms | All six faster; median matched improvement 35 ms, identical file and zero new workers/messages. |
+| New 32-frame / 16 FPS / 1024px decoded playable video | 113.043 s | 113.404 s | No full-video speed win; only one of six faster. |
+| First / next metadata-free synthetic photo | 28.381 / 24.745 s | 28.445 / 24.809 s | No material photo improvement; RGB-offset public-face fixtures, not typical user photos. |
+
+The new-face download median is **4,384,042 → 117,428 B**, including recovery
+metadata: about **37× smaller**. Photo downloads are **4,380,149 → 129,905 B**,
+about **34× smaller**. These are matched-case sizes; the independently qualified
+file below supplies an actual image/metadata byte breakdown.
+
+The interesting outcome is that eliminating a costly media round-trip does not
+make every workflow faster. The component draw and codec paths improved sharply,
+but complete CPU generation/video/photo totals barely moved. Keeping encoded
+files ready does improve repeat-result use, while lossy WebP spends a little more
+Save time to deliver API-scale files. A slight restore cost also remains visible.
+These boundaries guide the next loop rather than a single headline speedup.
+
+**Round decisions:** retain direct pixel transport and the delivered repeat-file
+reuse; retain deferred WebP as an explicit size/quality tradeoff with PNG fallback
+and canonical persistence compatibility; discard realtime video settings. Mark
+broad CPU generation/photo/video speed gains and faster restoration **inconclusive**.
+Whole-process memory, FFmpeg-specific speed, fixed-full31 breadth and physical
+phone/GPU transfer remain open coverage, not assumed wins. Automatic experiment
+push triggers are retired; frozen recipes and reports remain available.
+
+Photo preparation deserves a separate investigation: complete-run first-photo
+warp spans were about **8.1–8.3 s** for four cases and **14–17 ms** for two cases,
+on both builds. The source's padding/Gaussian path is a plausible lead, not a
+proven cause. Worker events lack request IDs; stage spans cannot be summed or
+subtracted to attribute the UI total. [Next directions](next-directions.md) put
+warm-hydration/admission attribution first, then padded preparation and streamed
+e4e overhead, with expanded device/resource reporting.
 
 ## Delivered behavior and recent reporting
 
@@ -31,7 +92,7 @@ explicitly skipped, with serialization tested separately.
 
 A [fresh private-R2 coverage query](reporting-coverage-bce.json) at **07:23:21 UTC**
 found 339 listed objects; the 10 October receipt window held 36 objects / 21 run IDs,
-with **zero matching the new live build**. Raw private events stayed in memory.
+with **zero matching the new live build**. Raw private events stayed in memory. The [round-close refresh](reporting-round-close.json) found the same counts and zero current-build runs; [live bytes were reverified](live-round-close.json).
 Recent older-build Android reports include mixed provider and cache/job boundaries;
 their short job timers do not establish warm inference. Current user/device
 latency therefore remains unknown. The prospective collector now separates
@@ -113,11 +174,11 @@ The [next-direction notes](next-directions.md) separate warm-hydration attributi
 | --- | --- | --- |
 | 1 | Instant initial preview and automatic restored face | Preview/restore is delivered. The current screen measures navigation → decoded restored original with zero startup workers; extend model-absent, corrupt/evicted/denied storage and rapid-edit coverage. A valid hit must avoid inference/model download gating. |
 | 2 | Ordinary-policy warm hydration | Measure reload and fresh-process retained models with normal admission, separating read/verify, session creation, upload/compile, admission, synthesis and display. The webdriver totals above are insufficient controls. Pair a causal change against the frozen UI revision. |
-| 3 | Direct RGBA display and video; encode media out of band | Direct pixels and deferred PNG/WebP are delivered, with recovery qualified. Evaluate the accepted built-UI comparison for display, playable video and download/restore transfer; total memory, physical-device resources and FFmpeg-specific stage profiling remain follow-up. [Detailed design and gates](experiments.md#r03--direct-rgba-with-deferred-image-encoding). |
+| 3 | Direct RGBA display and video; encode media out of band | Direct pixels and deferred PNG/WebP are delivered, with recovery qualified. The accepted built-UI screen shows repeat-result and file-size benefits, no broad CPU generation/video win, and a small restore cost; total memory, physical-device resources and FFmpeg-specific stage profiling remain follow-up. [Detailed design and gates](experiments.md#r03--direct-rgba-with-deferred-image-encoding). |
 | 4 | Current first/next photo with retained models | Record actual upload/crop/alignment/e4e/reconstruction/display/save on the frozen build. Use a metadata-free fixture; exported-face re-upload is a separate recovery workload. Select a photo optimization only after a matched baseline. |
 | 5 | Export writer costs and fallback | Profile raw handoff, conversion/scaling, queue wait, encoder init/flush, mux and playable decode for the **actual selected codec**. Browser WebCodecs and FFmpeg fallback are separate lanes. No extra FFmpeg pass or thread change without evidence. |
 
-Direct RGBA is component-tested and deployed; the e0/bce comparison measures its whole-journey effect. Warm hydration is the next independent causal research lane, chosen from the stage breakdown. Faster display alone is insufficient if persistence, immediate download or next-visit restore regresses. WebP quality 0.8 is selected and deployed for deferred downloads; canonical PNG persistence remains compatible. Direct raw handoff has a measured component codec benefit, while realtime settings were discarded. Whole-journey transfer is evaluated separately below. Video quality uses practical visual acceptance, with no exact pixel parity requirement; face downloads may be lossy too, aiming for API-like quality and file-size scale. Record speed/size/quality tradeoffs separately from latent/raw-synthesis correctness. See the [recorded quality ruling](quality-policy.md).
+Direct RGBA is component-tested and deployed; the complete e0/bce comparison found repeat-result and size benefits, with no broad CPU generation/photo/video speedup. Warm hydration is the next independent causal research lane, chosen from the stage breakdown. Faster display alone is insufficient if persistence, immediate download or next-visit restore regresses. WebP quality 0.8 is selected and deployed for deferred downloads; canonical PNG persistence remains compatible. Direct raw handoff has a measured component codec benefit, while realtime settings were discarded. Whole-journey transfer is evaluated separately below. Video quality uses practical visual acceptance, with no exact pixel parity requirement; face downloads may be lossy too, aiming for API-like quality and file-size scale. Record speed/size/quality tradeoffs separately from latent/raw-synthesis correctness. See the [recorded quality ruling](quality-policy.md).
 
 The native API's cached `hello` returned **107.4 / 61.1 / 78.2 ms** HTTP wall from eris (median **78.2 ms**, three identical 92,624-byte responses). [Raw observations](api-hello.json). This measures existing-image network delivery, not generation or browser preview display. A Prometheus refresh returned HTTP 401; the native generation/MP4 baseline remains in the dated history archive.
 

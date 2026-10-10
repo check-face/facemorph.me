@@ -38,7 +38,11 @@ exposed a strong branch difference: its first-photo cases 0–2 spent about 8–
 between `photo-warp-resize` and its completion, but case 3 spent only about
 15–22 ms. Both builds saw the branch difference on identical matched inputs.
 These are investigative timestamps from an inconclusive campaign, not an
-accepted speedup, ordinary-photo percentile or current device latency.
+accepted speedup, ordinary-photo percentile or current device latency. The
+[complete matched screen](../../candidates/direct-rgba-media-v1/built-ui-analysis.md)
+reproduced two regimes: four first-photo cases around 8.1–8.3 s, two around
+14–17 ms, on both builds. Full photo totals showed no material improvement.
+Stage spans remain exploratory, without exclusive attribution or real-photo prediction.
 
 The [native preparation source](../../../photo-runtime/native/photo.cpp) reflects
 and pads images, applies a full padded-image Gaussian and median/color blending,

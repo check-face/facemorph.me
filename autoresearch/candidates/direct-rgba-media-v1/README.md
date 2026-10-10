@@ -1,7 +1,7 @@
 # Direct RGBA and deferred image encoding — current round candidate
 
 Status: **paired codec screen complete; direct display/video transport retained,
-realtime video settings discarded; product integration qualified and deployed; paired built-UI transfer screen timed out; unchanged-workload 3000 s rerun running**. This belongs to the [10 October round](../../reviews/2026-10-10/README.md),
+realtime video settings discarded; product integration qualified and deployed; complete paired built-UI screen passed; repeat use improves, first Save is slower but much smaller, broad CPU generation/video/photo gains are inconclusive**. This belongs to the [10 October round](../../reviews/2026-10-10/README.md),
 separate from historical iteration 3. Follow its [quality ruling](../../reviews/2026-10-10/quality-policy.md).
 
 ## Hypothesis and staged comparisons
@@ -87,8 +87,8 @@ validate encoded image and latent hashes, dimensions and generation identity;
 the runtime must additionally match the currently admitted generation identity.
 
 Component `keep` decisions are scoped to the measured transport paths. The exact
-product artifacts are frozen and delivery is verified. The paired built-UI screen
-evaluates useful-result/file-ready/restore transfer separately; it cannot establish
+product artifacts are frozen and delivery is verified. The completed [paired built-UI screen](built-ui-analysis.md) evaluates
+useful-result/file-ready/restore transfer separately; it cannot establish
 process-memory peaks, physical-device resource budgets or current-user latency.
 Those remain follow-up coverage alongside expanded cancellation/quota/eviction
 journeys and cold-second-device recovery.
@@ -143,3 +143,26 @@ unmeasured; the implemented copy budget is not a measured process peak.
 Stop on a wrong artifact, contention above load4, invalid output, browser error,
 or the amended 3000 s command / 55 min job limit. Keep partial evidence as inconclusive. Retain
 the raw report in Git; retire the automatic experimental trigger after completion.
+
+## Complete built-UI outcome
+
+[Run 38036307932](https://github.com/check-face/facemorph.me/actions/runs/38036307932)
+passed two warmups and all twelve measured visits. [Raw report](ci-built-ui.json),
+[analysis](built-ui-analysis.md) and [statistics](built-ui-analysis.json) retain
+exact e0/bce artifact identities and six matched cases per side. Recorded load
+stayed below the fixed threshold at visit boundaries. The earlier
+[1800 s timeout](built-ui-timeout.json) is inconclusive and is not merged.
+
+Repeat-original and repeat-download actions improved in every case, with zero
+new workers/messages. First Save costs a median matched 88 ms more while the
+new-face file median falls from 4,384,042 to 117,428 B. Restore is slightly slower;
+new-face, photo and complete video totals show no material benefit on this CPU
+runner. Component transport keeps do not establish a broad product speed win.
+WebP remains a deferred size/quality choice, not a faster foreground encoder.
+Total process/codec/GPU memory, physical-device transfer, FFmpeg-specific timing
+and a new fixed-full31 qualification remain open coverage. The automatic
+experimental trigger is retired. Recreate statistics with:
+
+```sh
+python3 autoresearch/candidates/direct-rgba-media-v1/analyze-built-ui.py 38036307932
+```

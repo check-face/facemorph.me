@@ -1,9 +1,7 @@
 name: Experimental built UI media transfer v1
-# Bounded exact-artifact CPU experiment, independent of unchanged release qualification.
+# Retired automatic trigger after successful frozen experiment 38036307932.
+# Retained exact-artifact recipe; release qualification is unchanged.
 on:
-  push:
-    branches: ['candidate/next-delivery-20260916']
-    paths: ['autoresearch/candidates/direct-rgba-media-v1/built-ui-paired.mjs', '.github/workflows/research-built-ui-media-v1.yml']
   workflow_dispatch:
 permissions:
   contents: read

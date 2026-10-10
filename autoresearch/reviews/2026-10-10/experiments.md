@@ -2,9 +2,12 @@
 
 R03/R04 component screens are complete: direct display/video transport was retained,
 WebP is a deferred size tradeoff, and realtime video settings were discarded.
-The corrected `bce3204` product is qualified and deployed; the e0/bce built-UI comparison is
-restarting with a 3000 s budget after timeout. R01/R02/R05 remain measurement directions, partly covered by that screen.
-No product latency claim is established yet. Follow [program.md](../../program.md), [record standards](../../records.md)
+The corrected `bce3204` product is qualified and deployed; the complete e0/bce
+built-UI comparison passed. Repeat-result use improves and downloads are much
+smaller; new-face/photo/video totals show no material CPU benefit and restore has
+a small cost. See [the accepted analysis](../../candidates/direct-rgba-media-v1/built-ui-analysis.md).
+R01/R02/R05 remain future edge/device and causal research directions. No
+current-user latency claim is established. Follow [program.md](../../program.md), [record standards](../../records.md)
 and the [UI handoff](next-pass.md). The e0/bce qualified source/artifacts are already frozen for the paired screen.
 For subsequent experiments, freeze the qualified UI source/artifact before
 measurement; preserve concurrent product work. Prioritize first use and
