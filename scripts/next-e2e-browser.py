@@ -398,7 +398,7 @@ def stage_sessionRestore():
   if time.monotonic()>=deadline:
    result['retentionProbe']=q('window.__ciSavedSession');js('window.__ciStorage=null;navigator.storage.estimate().then(v=>window.__ciStorage=v);0');time.sleep(.5);result['storageProbe']=q('window.__ciStorage');raise AssertionError('Complete session/video was not persisted')
   time.sleep(.5)
-  js("window.__ciSavedSession=null;(async()=>{const q=indexedDB.open('checkface-originals-v1',1);q.onsuccess=()=>{const db=q.result,r=db.transaction('originals').objectStore('originals').get('last-generated-session-v2');r.onsuccess=()=>{const v=r.result;window.__ciSavedSession={faces:v?.faces?.length||0,video:!!v?.video,compressed:v?.faces?.every(f=>f.result.blob.type==='image/webp')};db.close();};};})();0")
+  js("(async()=>{const q=indexedDB.open('checkface-originals-v1',1);q.onsuccess=()=>{const db=q.result,r=db.transaction('originals').objectStore('originals').get('last-generated-session-v2');r.onsuccess=()=>{const v=r.result;window.__ciSavedSession={faces:v?.faces?.length||0,video:!!v?.video,compressed:v?.faces?.every(f=>f.result.blob.type==='image/webp')};db.close();};};})();0")
  saved=q('window.__ciSavedSession');assert saved['faces']==2 and saved['compressed'], saved
  js("[...document.querySelectorAll('label')].find(l=>l.textContent.includes('Use Slider')).querySelector('input').click()")
  wait(lambda:js("!!document.querySelector('.next-slider-control')"),60)
