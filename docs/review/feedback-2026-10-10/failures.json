@@ -1,0 +1,16 @@
+{
+  "failed_events": [
+    {
+      "event": "failed",
+      "provider": "webgpu",
+      "errorKind": "unknown",
+      "elapsedMs": 4101
+    },
+    {
+      "event": "failed",
+      "provider": "webgpu",
+      "errorKind": "unknown",
+      "elapsedMs": 8466
+    }
+  ]
+}

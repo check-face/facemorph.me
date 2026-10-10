@@ -28,8 +28,10 @@ export function limit(state){
 export function pan(state,dx,dy){
  const {side}=baseSquare(state.previewWidth,state.previewHeight);
  const previewPerScreen=(side/state.zoom)/(state.viewport||side);
- return limit({...state,offsetX:state.offsetX-dx*previewPerScreen,offsetY:state.offsetY-dy*previewPerScreen});
+ const angle=state.rotation*Math.PI/180,c=Math.cos(angle),s=Math.sin(angle);
+ return limit({...state,offsetX:state.offsetX-(c*dx+s*dy)*previewPerScreen,offsetY:state.offsetY-(-s*dx+c*dy)*previewPerScreen});
 }
+export function resizeViewport(state,viewport){return {...state,viewport:Math.max(1,viewport)};}
 export function zoomTo(state,zoom){return limit({...state,zoom:clamp(zoom,MIN_ZOOM,MAX_ZOOM)});}
 export function rotate(state){return {...state,rotation:(state.rotation+90)%360};}
 
@@ -47,5 +49,5 @@ export function rect(state){
 export function frame(state,viewport){
  const area=rect(state);
  const factor=viewport/area.width;
- return {width:state.previewWidth*factor,height:state.previewHeight*factor,x:-area.left*factor,y:-area.top*factor,rotation:state.rotation};
+ return {width:state.previewWidth*factor,height:state.previewHeight*factor,x:-area.left*factor,y:-area.top*factor,rotation:state.rotation,originX:(area.left+area.width/2)*factor,originY:(area.top+area.height/2)*factor};
 }

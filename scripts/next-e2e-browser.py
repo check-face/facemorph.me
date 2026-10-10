@@ -2,7 +2,7 @@
 #
 # Qualifies the exact served artifact bytes in a real browser through the real user flow.
 # What the gate protects, in order: (1) provenance - the browser demonstrably reached the
-# pinned artifact origin; (2) determinism - same seed produces byte-identical PNGs, project
+# pinned artifact origin; (2) determinism - repeat requests reuse the identical prepared file, project
 # export survives reopen with identical latents; (3) honest degradation - a refused route is
 # NAMED next to the route in use; (4) cache/worker hygiene - repeats stay cache hits with zero
 # new inference workers; (5) real flows - crop, photo e4e, morph, playable MP4 download.
@@ -133,7 +133,7 @@ def run(name,predicate=None):
  click(name,expect=started)
  wait(started,30);wait(idle)
 def faces():
- return q("[...document.querySelectorAll('%s')].map(i=>({width:i.naturalWidth||i.width,height:i.naturalHeight||i.height,url:i.src||'canvas:rgba'}))"%S['faceImage'])
+ return q("[...document.querySelectorAll('%s')].map(i=>{const r=i.getBoundingClientRect(),t=i.closest('.next-face-image').getBoundingClientRect();return {width:i.naturalWidth||i.width,height:i.naturalHeight||i.height,url:i.src||'canvas:rgba',renderedWidth:r.width,renderedHeight:r.height,fitsTile:r.width>0&&r.height>0&&Math.abs(r.width-t.width)<=1&&Math.abs(r.height-t.height)<=1&&Math.abs(r.left-t.left)<=1&&Math.abs(r.top-t.top)<=1};})"%S['faceImage'])
 def select_mode(value):
  if not js("!!document.querySelector('select[aria-label=\"Processing mode\"]')"):click('More options')
  js("document.querySelector('.next-advanced').open=true")
@@ -212,6 +212,7 @@ def stage_seedGeneration():
  js("window.__ciNameMessages=[];const post=Worker.prototype.postMessage;Worker.prototype.postMessage=function(m,...a){if(m&&['generate','synthesize'].includes(m.type))window.__ciNameMessages.push(m.type);return post.call(this,m,...a);};")
  js("(()=>{const ins=[...document.querySelectorAll('.next-face input')].filter(x=>x.type==='text');const i=ins.at(-1);Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(i,'charlotte');i.dispatchEvent(new Event('input',{bubbles:true}));})()")
  run(labels[-1]);images=wait(lambda:faces() if len(faces())==2 and all(i['width']==1024 and i['height']==1024 for i in faces()) else None,60)
+ assert all(i['fitsTile'] for i in images), 'Generated face is clipped or does not fill its tile: '+str(images)
  messages=q('window.__ciNameMessages')
  assert 'synthesize' in messages and 'generate' not in messages, 'Published name silently fell back to mapping: '+str(messages)
  save_check('nameSeed',{'passed':True,'dimensions':[[i['width'],i['height']] for i in images],'processingSelection':selection,'publishedLatentSynthesis':True})
@@ -389,10 +390,40 @@ def stage_morphVideo():
  video=download(S['buttons']['saveVideo']);assert video.stat().st_size>1000 and b'ftyp' in video.read_bytes()[:32]
  save_check('morphPlayableMp4',{'passed':True,**playback,'bytes':video.stat().st_size,'sha256':hashlib.sha256(video.read_bytes()).hexdigest()})
 
+def stage_sessionRestore():
+ # Wait for the best-effort retained session to commit before navigating away.
+ js("window.__ciSavedSession=null;(async()=>{const db=await new Promise((r,j)=>{const q=indexedDB.open('checkface-originals-v1',1);q.onsuccess=()=>r(q.result);q.onerror=()=>j(q.error);});try{const value=await new Promise((r,j)=>{const q=db.transaction('originals').objectStore('originals').get('last-generated-session-v2');q.onsuccess=()=>r(q.result);q.onerror=()=>j(q.error);});window.__ciSavedSession={faces:value?.faces?.length||0,video:!!value?.video,compressed:value?.faces?.every(f=>f.result.blob.type==='image/webp')};}finally{db.close();}})();0")
+ deadline=time.monotonic()+60
+ while not js('window.__ciSavedSession?.video'):
+  assert time.monotonic()<deadline, 'Complete session/video was not persisted'
+  time.sleep(.5)
+  js("window.__ciSavedSession=null;(async()=>{const q=indexedDB.open('checkface-originals-v1',1);q.onsuccess=()=>{const db=q.result,r=db.transaction('originals').objectStore('originals').get('last-generated-session-v2');r.onsuccess=()=>{const v=r.result;window.__ciSavedSession={faces:v?.faces?.length||0,video:!!v?.video,compressed:v?.faces?.every(f=>f.result.blob.type==='image/webp')};db.close();};};})();0")
+ saved=q('window.__ciSavedSession');assert saved['faces']==2 and saved['compressed'], saved
+ js("[...document.querySelectorAll('label')].find(l=>l.textContent.includes('Use Slider')).querySelector('input').click()")
+ wait(lambda:js("!!document.querySelector('.next-slider-control')"),60)
+ js("document.querySelector('.next-slider-control [role=slider]').focus()")
+ cdp('Input.dispatchKeyEvent',type='keyDown',key='ArrowRight',code='ArrowRight',windowsVirtualKeyCode=39)
+ cdp('Input.dispatchKeyEvent',type='keyUp',key='ArrowRight',code='ArrowRight',windowsVirtualKeyCode=39)
+ preference=q("JSON.parse(localStorage.getItem('facemorph-slider-v1'))")
+ assert preference['enabled'] and preference['frame']>1,preference
+ js('location.reload()');wait_for_load();ensure_instrumented()
+ wait(lambda:len(faces())==2 and all(i['fitsTile'] for i in faces()),60)
+ wait(lambda:js("!!document.querySelector('.next-slider-control')"),60)
+ assert q("JSON.parse(localStorage.getItem('facemorph-slider-v1'))")==preference
+ assert js("[...document.querySelectorAll('select[aria-label=\"Face source\"]')].every(s=>s.value==='project')")
+ assert js('window.__ciWorkerRequests')==0, 'Restore performed inference'
+ js("[...document.querySelectorAll('label')].find(l=>l.textContent.includes('Use Slider')).querySelector('input').click()")
+ wait(lambda:js("document.querySelector('.next-video-slot video')?.readyState>=2"),30)
+ js("document.querySelectorAll('button[aria-label=\"Change mode\"]')[1].click()")
+ js("[...document.querySelectorAll('[role=menuitem]')].find(e=>e.getBoundingClientRect().width>0&&e.textContent.trim()==='Name or words').click()")
+ wait(lambda:js("[...document.querySelectorAll('.next-face input[type=text]')].at(-1)?.value===''"),10)
+ assert js("[...document.querySelectorAll('.next-face-generate')].at(-1).disabled"), 'Empty restored-mode edit must disable Generate'
+ save_check('completeSessionRestore',{'passed':True,'faces':2,'compressed':True,'video':True,'sliderFrame':preference['frame'],'newWorkerRequests':0})
+
 # --- Driver ------------------------------------------------------------------------------
 STAGES=[('preflight',stage_preflight),('seedGeneration',stage_seedGeneration),('routeRejection',stage_routeRejection),
         ('repeatOriginal',stage_repeatOriginal),('recoveredDownload',stage_recoveredDownload),('syntheticPhotoE4e',stage_syntheticPhotoE4e),('localCrop',stage_localCrop),
-        ('projectSaveReopen',stage_projectSaveReopen),('morphVideo',stage_morphVideo)]
+        ('projectSaveReopen',stage_projectSaveReopen),('morphVideo',stage_morphVideo),('sessionRestore',stage_sessionRestore)]
 SKIP=set(filter(None,os.environ.get('E2E_SKIP','').split(',')))
 try:
  for name,fn in STAGES:

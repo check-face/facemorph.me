@@ -1,0 +1,51 @@
+{
+  "scope": "Built UI controls and styling; no inference",
+  "layouts": [
+    {
+      "width": 320,
+      "scrollWidth": 320,
+      "shapeOptions": 5,
+      "iconsVisible": true,
+      "buttonsPresent": 2,
+      "emptyDisabled": true,
+      "matchingHeight": true,
+      "advancedBelow": true,
+      "advancedBorder": "1px"
+    },
+    {
+      "width": 360,
+      "scrollWidth": 360,
+      "shapeOptions": 5,
+      "iconsVisible": true,
+      "buttonsPresent": 2,
+      "emptyDisabled": true,
+      "matchingHeight": true,
+      "advancedBelow": true,
+      "advancedBorder": "1px"
+    },
+    {
+      "width": 390,
+      "scrollWidth": 390,
+      "shapeOptions": 5,
+      "iconsVisible": true,
+      "buttonsPresent": 2,
+      "emptyDisabled": true,
+      "matchingHeight": true,
+      "advancedBelow": true,
+      "advancedBorder": "1px"
+    },
+    {
+      "width": 1280,
+      "scrollWidth": 1280,
+      "shapeOptions": 5,
+      "iconsVisible": true,
+      "buttonsPresent": 2,
+      "emptyDisabled": true,
+      "matchingHeight": true,
+      "advancedBelow": true,
+      "advancedBorder": "1px"
+    }
+  ],
+  "errors": [],
+  "passed": true
+}

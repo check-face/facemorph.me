@@ -86,3 +86,21 @@ test('without a viewport the pan keeps its historical preview-pixel behaviour', 
   const state = createCrop({ previewWidth: 4000, previewHeight: 3000 });
   assert.equal(state.viewport, 3000, 'the default viewport is the min side, preserving pre-R2-12 callers');
 });
+
+test('rotation maps screen drags back to source coordinates and rotates around the selected square',async()=>{
+ const {resizeViewport}=await import('./crop-view.mjs');
+ let state=zoomTo(createCrop({previewWidth:800,previewHeight:1200,viewport:256}),2);
+ state=resizeViewport(rotate(state),240);
+ const before=frame(state,240),after=frame(pan(state,24,0),240);
+ assert(Math.abs(after.x-before.x)<1e-6);
+ assert(Math.abs(after.y-before.y+24)<1e-6,'A rightward drag becomes upward source motion at 90 degrees');
+ assert.equal(before.x+before.originX,120);assert.equal(before.y+before.originY,120,'Rotation pivot is the viewport center, not the photo center');
+});
+test('browser decode neutralizes EXIF without changing JPEG pixels or original bytes',async()=>{
+ const {browserDecodeBytes}=await import('./crop.mjs');
+ const scan=Uint8Array.from([255,216,255,225,0,10,69,120,105,102,0,0,1,2,255,218,0,2,1,2,3,255,217]);
+ const before=scan.slice(),clean=browserDecodeBytes(scan);
+ assert.deepEqual(scan,before,'Chosen file is immutable');
+ assert.deepEqual(clean,Uint8Array.from([255,216,255,218,0,2,1,2,3,255,217]));
+ assert.equal(browserDecodeBytes(clean),clean,'No extra copy for ordinary images');
+});

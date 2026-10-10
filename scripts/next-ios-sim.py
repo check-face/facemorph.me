@@ -97,6 +97,10 @@ CAMPAIGN = """
     say('faceSurface', document.querySelector('[data-next-face="face-1"] canvas[data-face-drawn="true"]') ? 'rgba-canvas' : made ? 'decoded-image' : null);
     say('firstFaceMs', made ? Date.now() - began : null);
     say('faceProduced', made);
+    const surface = document.querySelector('[data-next-face="face-1"] .next-face-image canvas[data-face-drawn="true"], [data-next-face="face-1"] .next-face-image img:not([data-public-preview])');
+    const rendered = surface?.getBoundingClientRect(), tileBounds = surface?.closest('.next-face-image').getBoundingClientRect();
+    const faceFitsTile = !!rendered && rendered.width > 0 && rendered.height > 0 && Math.abs(rendered.width - tileBounds.width) <= 1 && Math.abs(rendered.height - tileBounds.height) <= 1 && Math.abs(rendered.left - tileBounds.left) <= 1 && Math.abs(rendered.top - tileBounds.top) <= 1;
+    say('faceLayout', rendered ? {width: rendered.width, height: rendered.height, tileWidth: tileBounds.width, tileHeight: tileBounds.height, fitsTile: faceFitsTile} : null);
     say('memoryAfterFace', mem());
     say('route', (document.querySelector('.next-route-caption')?.innerText || '').trim());
     say('speeds', localStorage.getItem('facemorph-route-speed-v2'));
@@ -271,6 +275,8 @@ def main():
     # A lane that cannot produce a face on the constrained tier is the finding, and it fails.
     if not report.get('faceProduced'):
         print('The constrained tier did not produce a face.', file=sys.stderr); sys.exit(1)
+    if not report.get('faceLayout', {}).get('fitsTile'):
+        print('The generated face is clipped or does not fit its tile.', file=sys.stderr); sys.exit(1)
 
 
 if __name__ == '__main__':

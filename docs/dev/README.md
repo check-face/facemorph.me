@@ -32,6 +32,14 @@ the current frontend, not the self-host compatibility shell.
 
 Inspect existing changes and identify the requirement before editing. Recover
 earlier session feedback with [Cass](https://github.com/Dicklesworthstone/coding_agent_session_search).
+
+Follow the current [screenshot/process correction](../plans/feedback-process-2026-10-10.md).
+For representation/layout/crop changes, verify rendered bounds and preview/export
+correspondence in the actual built UI, including narrow widths and oriented,
+non-square inputs. Intrinsic dimensions, button counts and component existence
+do not establish usable appearance. Record component, simulator product and
+physical-phone coverage separately for the delivered artifact; identify which
+checks actually gate deployment and which run independently.
 Refresh with `cass index --json` when needed, then use robot mode:
 
 ```sh

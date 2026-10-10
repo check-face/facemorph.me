@@ -10,13 +10,13 @@ import {decode,encode} from './ProjectJson.fs.js';
 import {saveFile,shareFile,videoWriter} from './media.mjs';
 import {diagnostics,onJobEnd} from './reporting.mjs';
 import * as analytics from './analytics.mjs';
-import {rememberLast,readLast} from './last-result.mjs';
+import {rememberLast,readLast,rememberSession,readSession} from './last-result.mjs';
 onJobEnd(analytics.jobFinished);
 // Start at load, not at the first event: a visit that does nothing is still a visit.
 analytics.start();analytics.observeVitals?.();
 import {labelFor,loadedBytes,createFrameCounter} from './stage-labels.mjs';
 import {infillFrames} from './infill.mjs';
-import {frameStoreKey,frameStoreGet,frameStoreGetOne} from './morph-frames.mjs';
+import {frameStoreKey,frameStoreGet,frameStoreGetDisplay,frameStoreGetOne} from './morph-frames.mjs';
 import {selectPhoto} from './photo-selection.mjs';
 import {persistenceAction} from './storage-request.mjs';
 import {routeAssets,photoAssets,measure} from './model-inventory.mjs';
@@ -26,11 +26,11 @@ export {galleryTextUrl,gallerySeedUrl,publicPreview} from './public-previews.mjs
 // The U-14 slider consumes frames through window.__nextFrames.get(key); wire the real store
 // here so the UI has exactly one integration point. Guarded so stripped-import test harnesses
 // (which leave the identifier undefined) skip the install instead of crashing module load.
-if(typeof frameStoreGet!=='undefined'&&typeof window!=='undefined'&&!window.__nextFrames)window.__nextFrames={get:frameStoreGet};
+if(typeof frameStoreGet!=='undefined'&&typeof window!=='undefined'&&!window.__nextFrames)window.__nextFrames={get:typeof frameStoreGetDisplay==='function'?frameStoreGetDisplay:frameStoreGet};
 let listener=()=>{},runtime,manifest,active,writer,currentJob=0,project=null,video=null;
 const faces=new Map(),urls=new Map(),faceRevisions=new Map();
 let morphRevision=0;
-export function invalidateMorph(){morphRevision++;video=null;const url=urls.get('video');if(url)URL.revokeObjectURL(url);urls.delete('video');clearLiveFrames();}
+export function invalidateMorph(){morphRevision++;video=null;project=null;const url=urls.get('video');if(url)URL.revokeObjectURL(url);urls.delete('video');clearLiveFrames();retainSession();}
 export function invalidateFace(id){
  arrivalRevision++;faceRevisions.set(id,(faceRevisions.get(id)||0)+1);
  faces.delete(id);const url=urls.get(id);if(url)URL.revokeObjectURL(url);urls.delete(id);
@@ -118,6 +118,25 @@ async function engine(){
 function replaceUrl(key,blob){const old=urls.get(key);if(old)URL.revokeObjectURL(old);const url=URL.createObjectURL(blob);urls.set(key,url);return url;}
 function snapshot(message='Done — ready to save or share.',restore=false){
  return {errorMessage:'',faces:[...faces].map(([id,f])=>({id,url:urls.get(id)||'',raw:!!f.pixels,label:f.label||'Face',sourceMode:f.source?.mode||'',sourceFile:f.source?.file||null})),videoUrl:video?urls.get('video'):'',projectJson:project?JSON.stringify(project):'',message,restored:restore,inputs:restore?[...faces].map(([id])=>({id,mode:'project',value:'Project face',file:null})):[],kind:project?.morph.kind||'',width:project?.morph.width||0,pinch:!!project?.morph.pinchCenter,frames:project?.morph.framesPerSegment||16,fps:project?.morph.framesPerSecond||16};
+}
+let sessionView=null,sessionEpoch=0,sessionTail=Promise.resolve();
+export function rememberView(options){sessionView={...options,inputs:options.inputs.map(({id})=>({id}))};retainSession();}
+function retainSession(){
+ if(!sessionView||typeof rememberSession!=='function')return;
+ const epoch=++sessionEpoch,view=sessionView,entries=view.inputs.filter(item=>faces.has(item.id)).map(item=>({id:item.id,face:faces.get(item.id)})),savedProject=project,savedVideo=video,frameUrls=[...liveFrames];
+ sessionTail=sessionTail.catch(()=>{}).then(async()=>{
+  if(epoch!==sessionEpoch)return;
+  const completed=await Promise.all(entries.map(async item=>{
+   item.face.sessionReady??=(async()=>{const r=await readyFace(item.face);if(r.blob.type!=='image/png'||typeof downloadImage!=='function')return r;
+    const encoded=await downloadImage(r);item.face.downloadReady??=Promise.resolve(encoded);
+    if(encoded.type!=='image/webp')return r;const recovered=await recoverImage(encoded);return recovered?{...r,...recovered}:r;
+   })();return {id:item.id,result:await item.face.sessionReady};
+  }));
+  if(epoch!==sessionEpoch)return;
+  const frames=[];let bytes=completed.reduce((n,f)=>n+f.result.blob.size,0);
+  if(savedVideo&&frameUrls.length&&frameUrls.every(Boolean))for(const url of frameUrls){if(epoch!==sessionEpoch)return;const frame=await (await fetch(url)).blob();bytes+=frame.size;if(bytes>32*1024*1024){frames.length=0;break;}frames.push(frame);}
+  await rememberSession({ids:view.inputs.map(item=>item.id),faces:completed,settings:view,project:savedProject,video:savedVideo,frames},()=>epoch===sessionEpoch);
+ }).catch(()=>{});
 }
 function checked(){if(active?.signal.aborted)throw new DOMException('Cancelled','AbortError');}
 // What a face actually costs on this device, so the interface can estimate from measurement
@@ -301,7 +320,7 @@ export async function execute(request){
    // A changed face invalidates the saved morph and its video, never the other faces.
    project=null;video=null;
    jobCounts.facesDone=1;if(typeof rememberLast==='function')void readyFace(current).then(complete=>{if(revisionOf(item.id)===revisions.get(item.id))return rememberLast(complete,request);}).catch(()=>{});
-   diagnostics.finish('completed');return snapshot('Face updated.');
+   if(!sessionView)rememberView(request);retainSession();diagnostics.finish('completed');return snapshot('Face updated.');
   }
   jobCounts.facesDone=0;jobCounts.facesTotal=request.inputs.length;jobCounts.framesDone=0;jobCounts.framesTotal=0;jobCounts.videoFramesDone=0;jobCounts.videoFramesTotal=0;
   await inputs(request,revisions);checked();
@@ -381,6 +400,7 @@ export async function execute(request){
    }
    progress({stage:'export',text:'Finishing your video…'});const finished=await writer.finish();recordUnit(videoTimings,(now()-videoBegan)/path.totalFrames);analytics.stageDuration?.('export',now()-videoBegan);writer=null;if(renderToken!==morphRevision||request.inputs.some(item=>revisionOf(item.id)!==revisions.get(item.id)))throw superseded();video=finished;replaceUrl('video',video);
   }
+  rememberView(request);retainSession();
   diagnostics.finish('completed');return snapshot();
  }catch(error){diagnostics.finish(error?.name==='AbortError'?'cancelled':'failed',error,{stage:lastStage});if(error?.name==='AbortError')return snapshot('Cancelled. Your completed faces are still available.');if(error.alignmentStats)analytics.operationResult?.('selection',error.alignmentStats.faceCount>1?'shown':'failed',undefined,{face_count:error.alignmentStats.faceCount===0?'zero':error.alignmentStats.faceCount===1?'one':error.alignmentStats.faceCount>1?'multiple':undefined});const choice=error.alignmentStats?.faceBoxes?.length>1&&revisionOf(request.target)===revisions.get(request.target)?await prepareFaceChoices(request.target,error.alignmentStats.faceBoxes,request.inputs.find(item=>item.id===request.target)?.file):null;return {...snapshot(''),errorMessage:choice?'':String(error?.message||'Generation failed. Your completed results are still available.'),photoChoices:choice,cropFace:!choice&&request.target&&sourceFiles.has(request.target)&&/No face was found|More than one face was found/.test(error.message)?request.target:null};}
  finally{writer?.dispose();writer=null;active=null;if(wanted.size)void pumpDownloads();else if(!downloads.routeReady||!downloads.photoReady)void refreshInventory();}
@@ -564,12 +584,24 @@ async function generateNameOrSeed(service,item){const latent=await namedLatent(i
 export async function checkCachedFace(item){try{const service=await engine();if(await service.peekOriginal?.(item))return true;const latent=await namedLatent(item);return !!(latent&&await service.peekOriginal?.({mode:'latent',latent}));}catch{return false;}}
 export async function restoreLastResult(){
  const revision=arrivalRevision;analytics.operationResult?.('restore','ready');let reason='missing';
- const saved=await readLast(value=>reason=value);if(!saved){analytics.operationResult?.('restore',reason==='missing'?'miss':'failed',undefined,{reason});return null;}
- // Check the currently pinned model identity without initializing inference.
- try{const response=await fetch('/runtime/manifest.json');if(!response.ok)return null;const current=await response.json();if(current.modelSourceSha256!==saved.result.provenance.modelSha256||current.noiseSha256!==saved.result.provenance.noiseSha256||await digest(JSON.stringify(generationIdentity(current,saved.generationKind)))!==saved.generationSha256){analytics.operationResult?.('restore','failed',undefined,{reason:'incompatible'});return null;}}catch{analytics.operationResult?.('restore','failed',undefined,{reason:'unavailable'});return null;}
+ const session=typeof readSession==='function'?await readSession():null;
+ const legacy=session?null:await readLast(value=>reason=value);
+ const saved=session||(legacy&&{faces:[{id:'face-1',generationKind:legacy.generationKind,result:legacy.result}],ids:['face-1'],settings:legacy.settings});
+ if(!saved?.faces?.length){analytics.operationResult?.('restore','miss');return null;}
+ try{
+  const response=await fetch('/runtime/manifest.json');if(!response.ok)return null;const current=await response.json();
+  for(const face of saved.faces){const r=face.result;if(current.modelSourceSha256!==r.provenance.modelSha256||current.noiseSha256!==r.provenance.noiseSha256||await digest(JSON.stringify(generationIdentity(current,face.generationKind)))!==r.generationSha256)return null;}
+ }catch{return null;}
  if(active||faces.size||revision!==arrivalRevision){analytics.operationResult?.('restore','superseded');return null;}
- await register('face-1',saved.result,'Saved face');analytics.milestone?.('restored-ready');analytics.operationResult?.('restore','completed');
- return {...snapshot('Welcome back — your last generated face is saved on this device.'),restored:true,inputs:[{id:'face-1',mode:'project',value:'Saved face',file:null}],...saved.settings};
+ let restoredProject=null;
+ if(saved.project){try{const candidate=canonicalProject(saved.project);if(candidate.morph.controls.length===saved.faces.length&&candidate.morph.controls.every(control=>{const face=saved.faces.find(f=>f.id===control.visitId);return face&&control.latent.values.length===face.result.latent.values.length&&control.latent.values.every((v,i)=>Math.fround(v)===face.result.latent.values[i]);}))restoredProject=candidate;}catch{}}
+ for(const face of saved.faces)await register(face.id,face.result,'Restored face');
+ project=restoredProject;video=restoredProject?saved.video:null;if(video)replaceUrl('video',video);
+ if(restoredProject&&saved.frames?.length){try{if(createLatentPath(restoredProject.morph).totalFrames===saved.frames.length)liveFrames=saved.frames.map(blob=>URL.createObjectURL(blob));}catch{}}
+ const ids=[...saved.ids];for(let n=1;ids.length<2;n++){const id='face-'+n;if(!ids.includes(id))ids.push(id);}
+ sessionView={...saved.settings,inputs:ids.map(id=>({id}))};
+ analytics.milestone?.('restored-ready');analytics.operationResult?.('restore','completed');
+ return {...snapshot('Welcome back — your faces'+(video?' and last video are':' are')+' restored on this device.'),restored:true,inputs:ids.map(id=>({id,mode:faces.has(id)?'project':'text',value:faces.has(id)?'Restored face':'',file:null})),...saved.settings};
 }
 
 export function queueFace(id,depth){analytics.queuedRequest?.(id,depth);}

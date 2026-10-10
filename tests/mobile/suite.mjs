@@ -1,4 +1,5 @@
 import {createBrowserModelCache, MODEL_CACHE_NAME} from '/src/Next/Assets/model-cache.mjs';
+import {decodeBounded,cropPhoto} from '/src/Next/photo/crop.mjs';
 import {openShardStore} from '/src/Next/Assets/shard-store.mjs';
 
 const runId = new URLSearchParams(location.search).get('run');
@@ -97,6 +98,22 @@ try {
         const actual=ctx.getImageData(0,0,1024,1024).data;
         check(actual.every((v,i)=>v===input.data[i]),'Lossless image roundtrip changed pixels');
       } finally {URL.revokeObjectURL(url);canvas.width=canvas.height=1;}
+    });
+    await test('portrait-exif-crop',async()=>{
+      const canvas=document.createElement('canvas');canvas.width=800;canvas.height=1200;
+      const ctx=canvas.getContext('2d');ctx.fillStyle='#f00';ctx.fillRect(0,0,400,600);ctx.fillStyle='#0f0';ctx.fillRect(400,0,400,600);ctx.fillStyle='#00f';ctx.fillRect(0,600,400,600);ctx.fillStyle='#ff0';ctx.fillRect(400,600,400,600);
+      const jpeg=new Uint8Array(await (await new Promise(resolve=>canvas.toBlob(resolve,'image/jpeg',.95))).arrayBuffer());
+      for(let orientation=1;orientation<=8;orientation++){
+        const app=new Uint8Array(36),view=new DataView(app.buffer);app.set([255,225,0,34,69,120,105,102,0,0,73,73],0);view.setUint16(12,42,true);view.setUint32(14,8,true);view.setUint16(18,1,true);view.setUint16(20,0x112,true);view.setUint16(22,3,true);view.setUint32(24,1,true);view.setUint16(28,orientation,true);
+        const file=new File([jpeg.subarray(0,2),app,jpeg.subarray(2)],'portrait.jpg',{type:'image/jpeg'});
+        const decoded=await decodeBounded(file,{edge:600});
+        check(decoded.bitmap.width===400&&decoded.bitmap.height===600,'EXIF '+orientation+' distorted portrait dimensions');decoded.bitmap.close();
+        const crop=await cropPhoto(file,{left:0,top:0,width:200,height:200},{previewScale:.5,rotation:90,output:128});
+        const bitmap=await createImageBitmap(crop);canvas.width=canvas.height=128;canvas.getContext('2d').drawImage(bitmap,0,0);bitmap.close();const pixel=canvas.getContext('2d').getImageData(64,64,1,1).data;
+        check(pixel[0]>230&&pixel[1]<20&&pixel[2]<20,'EXIF '+orientation+' crop used the wrong source region');
+        canvas.width=800;canvas.height=1200;
+      }
+      canvas.width=canvas.height=1;
     });
     sessionStorage.setItem(storageKey,JSON.stringify(report.results));
     location.reload();

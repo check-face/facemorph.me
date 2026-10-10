@@ -1,5 +1,12 @@
 # Research direction after the raw-media round
 
+**Later operator revision:** the
+[screenshot/process correction](../../../docs/plans/feedback-process-2026-10-10.md)
+adds bounded last-video retention, complete face-list/slider restoration and
+principal playable/save-ready-video UX comparisons. It supersedes the finished-video
+cache exclusion below. PNG-only persistence is a migration candidate, not a
+quality requirement. This document retains the earlier round-close proposals.
+
 The operator prioritizes **faster first use and returning visits**, especially
 ordinary-policy warm hydration. The current product already delivers initial
 `hello`, automatic original restoration, direct display/video pixels and deferred

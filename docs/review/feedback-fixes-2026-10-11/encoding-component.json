@@ -1,0 +1,104 @@
+{
+  "samples": [
+    {
+      "side": "control",
+      "ms": 171.90000009536743,
+      "cacheBytes": 4195716,
+      "fileBytes": 80130
+    },
+    {
+      "side": "candidate",
+      "ms": 109.70000004768372,
+      "cacheBytes": 80130,
+      "fileBytes": 80130
+    },
+    {
+      "side": "candidate",
+      "ms": 128.60000002384186,
+      "cacheBytes": 80130,
+      "fileBytes": 80130
+    },
+    {
+      "side": "control",
+      "ms": 199.89999997615814,
+      "cacheBytes": 4195716,
+      "fileBytes": 80130
+    },
+    {
+      "side": "control",
+      "ms": 189.30000007152557,
+      "cacheBytes": 4195716,
+      "fileBytes": 80130
+    },
+    {
+      "side": "candidate",
+      "ms": 121,
+      "cacheBytes": 80130,
+      "fileBytes": 80130
+    },
+    {
+      "side": "candidate",
+      "ms": 144.89999997615814,
+      "cacheBytes": 80130,
+      "fileBytes": 80130
+    },
+    {
+      "side": "control",
+      "ms": 183.59999990463257,
+      "cacheBytes": 4195716,
+      "fileBytes": 80130
+    },
+    {
+      "side": "control",
+      "ms": 159.5,
+      "cacheBytes": 4195716,
+      "fileBytes": 80130
+    },
+    {
+      "side": "candidate",
+      "ms": 126.5,
+      "cacheBytes": 80130,
+      "fileBytes": 80130
+    },
+    {
+      "side": "candidate",
+      "ms": 123.5,
+      "cacheBytes": 80130,
+      "fileBytes": 80130
+    },
+    {
+      "side": "control",
+      "ms": 169.89999997615814,
+      "cacheBytes": 4195716,
+      "fileBytes": 80130
+    }
+  ],
+  "agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/152.0.0.0 Safari/537.36",
+  "input": "public hello-1024 WebP decoded to common RGBA",
+  "dimensions": [
+    1024,
+    1024
+  ],
+  "warmup": "one per side",
+  "order": "ABBA x3",
+  "scope": "Single-worker component screen: PNG persistence plus PNG-to-WebP preparation versus direct WebP persistence; excludes metadata, IDB, synthesis, paint, video and OS handoff; not built-UI E2E or physical phone evidence",
+  "control": {
+    "n": 6,
+    "medianMs": 177.75,
+    "cacheBytes": 4195716,
+    "fileBytes": 80130
+  },
+  "candidate": {
+    "n": 6,
+    "medianMs": 125,
+    "cacheBytes": 80130,
+    "fileBytes": 80130
+  },
+  "sourceHashes": {
+    "src/Next/image-encoder.mjs": "c6efbe89ebe501424b6150d572f604d2cd1fceb6897a8e27cffecef468a8c8e9",
+    "src/Next/image-encoder-worker.mjs": "a39bf5fce0ff1423f13ca57ff2927a7c7098fe72ac047ba6c4e840ed95e30abb",
+    "src/Next/browser/runtime.mjs": "283363af087e930f4f7f7f916c616618201f4fa91f7b9d04e0dbe16839d5d34c"
+  },
+  "timingsQualified": false,
+  "contention": "Host load observed 19.41/20.86/20.61 after run; UI verification overlapped. Timings inconclusive; size/dimension observations remain useful."
+}

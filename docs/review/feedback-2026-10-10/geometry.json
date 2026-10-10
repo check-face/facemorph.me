@@ -1,0 +1,31 @@
+{
+  "layout": {
+    "tile": 300,
+    "canvas": 1024
+  },
+  "images": [
+    {
+      "name": "portrait",
+      "none": [
+        800,
+        1200
+      ],
+      "from-image": [
+        800,
+        1200
+      ]
+    },
+    {
+      "name": "exif",
+      "none": [
+        1200,
+        800
+      ],
+      "from-image": [
+        1200,
+        800
+      ]
+    }
+  ],
+  "scope": "Synthetic Chromium layout and bitmap dimensions; not a performance benchmark or physical phone test"
+}

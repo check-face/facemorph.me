@@ -8,6 +8,8 @@ nonconflicting correctness, privacy, consent and artifact-verification rules rem
 
 | Document | Status and purpose |
 | --- | --- |
+| [Feedback delivery, 11 October](feedback-delivery-2026-10-11.md) | Controls, crop and complete compressed session implemented; qualification/promotion receipt follows. |
+| [Screenshot feedback and process correction, 10 October](feedback-process-2026-10-10.md) | Current controls, complete-session retention and UX measurement direction; audit and local fixes, delivery pending. |
 | [Candidate UI and delivery, 10 October](candidate-ui-2026-10-10.md) | Approved implementation; follow the delivery record for qualified/deployed coverage. |
 | [Candidate analytics, 10 October](analytics-2026-10-10.md) | Approved measurements; local implementation and operational verification tracked in the delivery record. |
 | [Development guide](../dev/README.md) | Current implementation and candidate delivery workflow. |

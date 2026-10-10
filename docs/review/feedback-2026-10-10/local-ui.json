@@ -1,0 +1,39 @@
+{
+  "scope": "Locally built UI; synthetic 1024 canvas styling at four widths, no inference or phone performance",
+  "layouts": [
+    {
+      "viewport": 320,
+      "width": 256,
+      "height": 256,
+      "tileWidth": 256,
+      "tileHeight": 256,
+      "fitsTile": true
+    },
+    {
+      "viewport": 360,
+      "width": 296,
+      "height": 296,
+      "tileWidth": 296,
+      "tileHeight": 296,
+      "fitsTile": true
+    },
+    {
+      "viewport": 390,
+      "width": 326,
+      "height": 326,
+      "tileWidth": 326,
+      "tileHeight": 326,
+      "fitsTile": true
+    },
+    {
+      "viewport": 1280,
+      "width": 347.03125,
+      "height": 347.03125,
+      "tileWidth": 347.03125,
+      "tileHeight": 347.03125,
+      "fitsTile": true
+    }
+  ],
+  "taglineHasActions": 0,
+  "passed": true
+}

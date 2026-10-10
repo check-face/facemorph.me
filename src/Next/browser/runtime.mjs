@@ -238,7 +238,7 @@ export function createBrowserRuntime({manifest: suppliedManifest, manifestSha256
   const generationSha256=await digest(JSON.stringify(generationIdentity(manifest,keyData.kind))),key=await digest(JSON.stringify({generationSha256,...keyData})),store=await cache();
   let saved;try{saved=await store?.get(key);}catch{emit({stage:'cache-unavailable'},progress);}
   if(signal.aborted)throw signal.reason;
-  if(saved?.blob instanceof Blob&&saved.blob.type==='image/png'&&saved.space==='w-plus'&&saved.generationSha256===generationSha256&&(keyData.kind!=='latent'||saved.latentSha256===keyData.sha256)){
+  if(saved?.blob instanceof Blob&&['image/png','image/webp'].includes(saved.blob.type)&&saved.space==='w-plus'&&saved.generationSha256===generationSha256&&(keyData.kind!=='latent'||saved.latentSha256===keyData.sha256)){
    try{requireLatent(saved.values);if(saved.imageSha256===await digest(await saved.blob.arrayBuffer())&&saved.latentSha256===await digest(saved.values)){if(signal.aborted)throw signal.reason;emit({stage:'original-cache-hit'},progress);return {...saved,cached:true,cacheKey:key,generationKind:keyData.kind};}}
    catch(error){if(signal.aborted)throw error;emit({stage:'original-cache-invalid'},progress);}
   }
@@ -258,7 +258,11 @@ export function createBrowserRuntime({manifest: suppliedManifest, manifestSha256
    if(!(rgba instanceof ArrayBuffer)||rgba.byteLength!==1024*1024*4)throw Error('Invalid raw face.');
    imageEncoder??=imageEncoderFactory();
    const slot=await imageEncoder.acquire(rgba.byteLength,{signal});
-   const fileReady=imageEncoder.encode(slot,{rgba:rgba.slice(0),format:'png'},{signal}).then(output=>finish(output.blob));
+   const fileReady=imageEncoder.encode(slot,{rgba:rgba.slice(0),format:'webp',quality:.8},{signal}).catch(async error=>{
+    if(signal.aborted)throw error;
+    const fallback=await imageEncoder.acquire(rgba.byteLength,{signal});
+    return imageEncoder.encode(fallback,{rgba:rgba.slice(0),format:'png'},{signal});
+   }).then(output=>finish(output.blob));
    fileReady.catch(()=>{});
    return {...value,pixels:{rgba},fileReady};
   }

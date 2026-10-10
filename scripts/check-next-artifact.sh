@@ -16,7 +16,7 @@ def click(role,name):
     ident=item['backendDOMNodeId'];cdp('DOM.scrollIntoViewIfNeeded',backendNodeId=ident)
     q=cdp('DOM.getBoxModel',backendNodeId=ident)['model']['content'];click_at_xy(sum(q[0::2])/4,sum(q[1::2])/4)
 def state():
-    return json.loads(js("JSON.stringify({tiles:document.querySelectorAll('.next-face').length,photoButtons:document.querySelectorAll('button[aria-label=\"Choose photo\"]').length,helloPreview:(()=>{const i=document.querySelector('[data-next-face=\"face-1\"] img[data-public-preview=\"true\"]');return !!i&&i.complete&&i.naturalWidth===1024&&i.naturalHeight===1024;})(),generate:document.querySelectorAll('.next-face-generate').length===2,pattern:document.querySelector('input[name=\"morph-shape\"]:checked')?.value,errors:document.querySelector('.next-error')?.innerText||''})"))
+    return json.loads(js("JSON.stringify({tiles:document.querySelectorAll('.next-face').length,photoButtons:document.querySelectorAll('button[aria-label=\"Choose photo\"]').length,helloPreview:(()=>{const i=document.querySelector('[data-next-face=\"face-1\"] img[data-public-preview=\"true\"]');return !!i&&i.complete&&i.naturalWidth===1024&&i.naturalHeight===1024;})(),generate:document.querySelectorAll('.next-face-generate').length===2,pattern:document.querySelector('select[aria-label=\"Morph shape\"]')?.value,errors:document.querySelector('.next-error')?.innerText||''})"))
 def until(predicate, timeout=15):
     deadline=time.monotonic()+timeout
     last=None
@@ -34,10 +34,12 @@ try:
     time.sleep(1)
     result['consentToastShown']=bool(js('(()=>{const b=document.querySelector(\'.next-consent-toast button[aria-label="Ask me later"]\');if(b)b.click();return !!b;})()'))
     initial=until(lambda s:s['tiles']==2 and s['photoButtons']==1 and s['helloPreview'] and s['generate'])
-    initial['shapes']=js("[...document.querySelectorAll('input[name=\"morph-shape\"]')].map(x=>x.value)")
-    assert len(initial['shapes'])==5, initial
+    assert not js("document.querySelector('.next-tagline a, .next-tagline button')"), 'Tagline must not replace an implicitly selected face'
     click('button','More options')
     until(lambda s:js("!!document.querySelector('.next-overflow')"))
+    initial['shapes']=js("[...document.querySelectorAll('select[aria-label=\"Morph shape\"] option')].map(x=>x.value)")
+    assert len(initial['shapes'])==5, initial
+    initial['pattern']=js("document.querySelector('select[aria-label=\"Morph shape\"]')?.value")
     initial['pinch']=js("document.querySelector('.next-overflow input[type=\"checkbox\"]')?.checked")
     initial['frames']=js("document.querySelector('select[aria-label=\"Morph length\"]')?.value")
     assert initial['frames']=='16', initial
@@ -49,6 +51,7 @@ try:
     result['initial']=initial
     click('button','Add face')
     result['afterAdd']=until(lambda s:s['tiles']==3 and s['photoButtons']==2)
+    assert js("[...document.querySelectorAll('.next-face-generate')].at(-1).disabled"), 'Empty face must retain a disabled Generate button'
     click('button','Remove Face 3')
     result['afterRemove']=until(lambda s:s['tiles']==2 and s['photoButtons']==1)
     assert not result['afterRemove']['errors'], result['afterRemove']
@@ -68,9 +71,14 @@ try:
     for width in [320,360,390,1280]:
         cdp('Emulation.setDeviceMetricsOverride',width=width,height=900,deviceScaleFactor=1,mobile=width<500)
         time.sleep(.2)
-        layout=json.loads(js("JSON.stringify({width:innerWidth,scrollWidth:document.documentElement.scrollWidth,overflow:document.documentElement.scrollWidth>visualViewport.width+1,shapes:document.querySelectorAll('input[name=\"morph-shape\"]').length,buttons:[...document.querySelectorAll('.next-face-generate')].map(b=>({width:b.getBoundingClientRect().width,right:b.getBoundingClientRect().right}))})"))
+        layout=json.loads(js("JSON.stringify({width:innerWidth,scrollWidth:document.documentElement.scrollWidth,overflow:document.documentElement.scrollWidth>visualViewport.width+1,shapes:document.querySelectorAll('select[aria-label=\"Morph shape\"] option').length,buttons:[...document.querySelectorAll('.next-face-generate')].map(b=>({width:b.getBoundingClientRect().width,right:b.getBoundingClientRect().right}))})"))
         assert not layout['overflow'] and layout['scrollWidth']<=width+1 and layout['shapes']==5, layout
         assert all(b['width']>0 and b['right']<=width+1 for b in layout['buttons']), layout
+        # Exercise the actual shipped canvas styling without paying for model admission.
+        # Intrinsic 1024 dimensions are not evidence that its CSS surface fits the tile.
+        layout['canvas']=json.loads(js("JSON.stringify((()=>{const tile=document.querySelector('.next-face-image'),children=[...tile.childNodes],canvas=document.createElement('canvas');canvas.width=canvas.height=1024;canvas.className='next-face-img';try{tile.replaceChildren(canvas);const r=canvas.getBoundingClientRect(),t=tile.getBoundingClientRect();return {width:r.width,height:r.height,tileWidth:t.width,tileHeight:t.height,fitsTile:r.width>0&&r.height>0&&Math.abs(r.width-t.width)<=1&&Math.abs(r.height-t.height)<=1&&Math.abs(r.left-t.left)<=1&&Math.abs(r.top-t.top)<=1};}finally{tile.replaceChildren(...children);}})())"))
+        assert layout['canvas']['fitsTile'], layout
+        assert js("[...document.querySelectorAll('.next-adornment')].every(e=>Number(getComputedStyle(e).opacity)===1)"), 'Face selectors must remain visible at rest'
         result['layouts'].append(layout)
     cdp('Emulation.clearDeviceMetricsOverride')
     result['passed']=True

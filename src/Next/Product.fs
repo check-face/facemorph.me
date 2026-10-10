@@ -58,6 +58,14 @@ let measuredVideoMs (): obj = jsNative
 let jobProgress (): obj = jsNative
 [<Import("sliderFrames", "./product-bridge.mjs")>]
 let sliderFrames (): JS.Promise<obj> = jsNative
+[<Import("sliderPreference", "./last-result.mjs")>]
+let sliderPreference (): bool = jsNative
+[<Import("sliderPosition", "./last-result.mjs")>]
+let sliderPosition (): int = jsNative
+[<Import("rememberSlider", "./last-result.mjs")>]
+let rememberSlider (want:bool) (frame:int): unit = jsNative
+[<Import("rememberView", "./product-bridge.mjs")>]
+let rememberView (options:obj): unit = jsNative
 [<Import("plannedFrames", "./product-bridge.mjs")>]
 let plannedFrames (options: obj): obj = jsNative
 [<Import("stagedReportCount", "./product-bridge.mjs")>]
@@ -169,6 +177,8 @@ let rotateCrop (state: obj): obj = jsNative
 let cropRect (state: obj): obj = jsNative
 [<Import("frame", "./photo/crop-view.mjs")>]
 let cropFrame (state: obj) (viewport: float): obj = jsNative
+[<Import("resizeViewport", "./photo/crop-view.mjs")>]
+let resizeCrop (state:obj) (viewport:float): obj = jsNative
 [<Emit("$0 && $0.crop === true")>]
 let isCropOffer (value: obj): bool = jsNative
 [<Emit("URL.revokeObjectURL($0)")>]
@@ -266,7 +276,7 @@ and Msg =
     | RestoredLast of Output
     | PreviewLoaded of string * string * string * string
     | PinchToggle of bool
-    | CropPan of float * float | CropZoom of float | CropRotate | CropAccept | CropCancel | RequestCrop of string | Cropped of string * int * obj
+    | CropViewport of float | CropPan of float * float | CropZoom of float | CropRotate | CropAccept | CropCancel | RequestCrop of string | Cropped of string * int * obj
 
 [<Emit("window.location.pathname === '/names' || window.location.pathname === '/names/' || new URLSearchParams(window.location.search).has('names')")>]
 let namesRequested (): bool = jsNative
@@ -294,7 +304,7 @@ let init () =
     { Inputs = [{id="face-1";mode="text";value="hello";file=emptyFile}; {id="face-2";mode="text";value=System.DateTime.Today.ToString("yyyy-MM-dd");file=emptyFile}]
       Faces=[||];Previews=[{id="face-1";mode="text";value="hello";url="/preview/hello-1024.webp"}];VideoUrl="";Kind="full-smooth-figure8";Width=0.2;Pinch=true;Frames=16;Fps=16;Provider="auto"
       Busy=false;JobId=0;Stage="idle";Status="";Fraction=0.;Preparing="";Browse=None;Names=[||];NameQuery="";NameLimit=48;Error=None;DebugStatus="";Debug=false;NextId=3;Crop=None;CropQueue=[];Route="";Rejected=None;Invite=testingInvited()
-      UseSlider=false;SliderFrames=None;SliderFrame=1;Warn=None;Overflow=false;PhotoQueue=[];PendingFaces=[];PendingJobs=[];PendingMorph=false;PendingImport=None;RunInputs=[];RunSettings="";PreparingFaces=Set.empty;Comparing=None;PhotoChoice=None;CachedFaces=Set.empty;ActiveFace=None;Remaining=""
+      UseSlider=sliderPreference();SliderFrames=None;SliderFrame=sliderPosition();Warn=None;Overflow=false;PhotoQueue=[];PendingFaces=[];PendingJobs=[];PendingMorph=false;PendingImport=None;RunInputs=[];RunSettings="";PreparingFaces=Set.empty;Comparing=None;PhotoChoice=None;CachedFaces=Set.empty;ActiveFace=None;Remaining=""
       ConsentPrompt=trialPhase && not (testingInvited()) && not (labsOrigin()) && not (consentAnswered())
       Downloads={known=false;phase="idle";scope="";loaded=0.;total=0.;routeReady=false;photoReady=false;photoAvailable=false;routeBytes=0.;photoBytes=0.}
       ModelToastHidden=false;DownloadConsent=Set.empty;Gate=None;LastRun=None;FailureToast=false },
@@ -358,7 +368,7 @@ let private gateScope (state:State) (msg:Msg) =
 let megabytes (bytes:float) =
     if bytes >= 1024.*1024.*1024. then sprintf "%.1f GB" (bytes/1024./1024./1024.) else sprintf "%.0f MB" (max 1. (bytes/1024./1024.))
 
-let update msg state =
+let private updateCore msg state =
     let change id f =
         invalidateFace id
         {state with CachedFaces=state.CachedFaces.Remove id;Faces=state.Faces |> Array.filter(fun face -> face.id<>id);Inputs=state.Inputs |> List.map(fun item -> if item.id=id then f item else item); VideoUrl="";Status=""}
@@ -428,7 +438,7 @@ let update msg state =
         invalidateArrivalRestore()
         rememberSourcePhoto id null
         invalidatePhotoSelections id
-        let next=change id (fun item -> {item with mode=mode;file=emptyFile})
+        let next=change id (fun item -> {item with mode=mode;file=emptyFile;value=if item.mode="photo" || item.mode="project" then "" else if mode="seed" then item.value |> String.filter System.Char.IsDigit else item.value})
         let cmd=next.Inputs |> List.tryFind(fun item -> item.id=id) |> Option.map(fun item -> previewCmd id item.mode item.value) |> Option.defaultValue Cmd.none
         {next with CachedFaces=next.CachedFaces.Remove id},cmd
     | PickPhoto(id,files) ->
@@ -485,6 +495,10 @@ let update msg state =
         match state.Inputs |> List.tryFind(fun item -> item.id=id) with
         | Some item when not (isNull item.file) ->
             state,Cmd.OfPromise.either (fun () -> previewPhoto item.file null) () (fun preview -> Photo(id,cropOffer preview item.file)) (fun e -> PhotoFailed(id,e.Message))
+        | _ -> state,Cmd.none
+    | CropViewport width ->
+        match state.Crop with
+        | Some crop when abs ((crop.view?viewport:float)-width)>0.5 -> {state with Crop=Some {crop with view=resizeCrop crop.view width}},Cmd.none
         | _ -> state,Cmd.none
     | CropPan(dx,dy) ->
         match state.Crop with
@@ -585,6 +599,7 @@ let update msg state =
         | None -> state,Cmd.none
         | Some item ->
             let id=state.JobId+1
+            rememberView(createObj ["inputs" ==> Array.ofList state.Inputs;"kind" ==> state.Kind;"width" ==> state.Width;"pinch" ==> state.Pinch;"frames" ==> state.Frames;"fps" ==> state.Fps])
             let request={jobId=id;action="face";target=faceId;inputs=[|item|];kind=state.Kind;width=state.Width;pinch=state.Pinch;frames=state.Frames;fps=state.Fps;provider=state.Provider}
             {state with Busy=true;JobId=id;LastRun=Some msg;FailureToast=false;Error=None;Stage="preparing";Status="Generating this face…";ActiveFace=Some faceId;RunInputs=[item];RunSettings="";PendingJobs=state.PendingJobs |> List.filter((<>) (RunFace faceId));PendingFaces=state.PendingFaces |> List.filter((<>) faceId);Fraction=0.;VideoUrl="";Warn=None;Remaining="";SliderFrames=None;SliderFrame=1},
             Cmd.OfPromise.either execute request (fun result -> Completed(id,result)) (fun e -> Failed(id,e.Message))
@@ -602,7 +617,8 @@ let update msg state =
         {state with Busy=true;JobId=id;LastRun=Some msg;FailureToast=false;Error=None;Stage="preparing";Status="Preparing…";RunInputs=state.Inputs;RunSettings=sprintf "%s|%f|%b|%d|%d" state.Kind state.Width state.Pinch state.Frames state.Fps;PendingMorph=false;PendingJobs=state.PendingJobs |> List.filter((<>) (Run "morph"));Fraction=0.;Warn=warn;Remaining="";SliderFrames=None;SliderFrame=1;ActiveFace=None},
         Cmd.OfPromise.either execute request (fun result -> Completed(id,result)) (fun e -> Failed(id,e.Message))
     | RestoredLast result when not (isNull (box result)) && state.JobId=0 && state.RunInputs.IsEmpty && (state.Inputs.Head.value="hello") ->
-        {state with Inputs=(result.inputs |> Array.toList) @ state.Inputs.Tail;Faces=result.faces;Previews=[];Status=result.message;Kind=result.kind;Width=result.width;Pinch=result.pinch;Frames=result.frames;Fps=result.fps},Cmd.none
+        {state with Inputs=result.inputs |> Array.toList;Faces=result.faces;VideoUrl=result.videoUrl;Previews=[];Status=result.message;Kind=result.kind;Width=result.width;Pinch=result.pinch;Frames=result.frames;Fps=result.fps},
+        if state.UseSlider && result.videoUrl<>"" then Cmd.OfPromise.either sliderFrames () SliderLoaded (fun _ -> SliderLoaded null) else Cmd.none
     | Progressed progress when progress.stage="frames-available" && progress.jobId=state.JobId ->
         state,Cmd.OfPromise.either sliderFrames () SliderLoaded (fun _ -> SliderLoaded null)
     | Progressed progress when progress.stage.StartsWith("diagnostics-") ->
@@ -692,11 +708,12 @@ let update msg state =
     | DismissInvite -> {state with Invite=false},Cmd.none
     | DismissWarn -> {state with Warn=None},Cmd.none
     | UseSliderToggle want ->
+        rememberSlider want state.SliderFrame
         {state with UseSlider=want},
         if want && state.SliderFrames.IsNone && state.VideoUrl<>"" then Cmd.OfPromise.either sliderFrames () SliderLoaded (fun _ -> SliderLoaded null) else Cmd.none
     | SliderLoaded frames ->
         {state with SliderFrames=(if isNull frames then None else Some (unbox<string array> frames))},Cmd.none
-    | SliderFrameSet frame -> {state with SliderFrame=max 1 frame},Cmd.none
+    | SliderFrameSet frame -> rememberSlider state.UseSlider (max 1 frame); {state with SliderFrame=max 1 frame},Cmd.none
     | BrowseNames id -> openNamesFocus(); {state with Browse=Some id;NameQuery="";NameLimit=48},(if state.Names.Length=0 then Cmd.OfPromise.either loadNames () NamesLoaded (fun e -> Notice e.Message) else Cmd.none)
     | NamesLoaded names -> {state with Names=names},Cmd.none
     | PreviewLoaded(id,mode,value,url) ->
@@ -725,6 +742,12 @@ let update msg state =
         | Some run -> {state with Error=None;FailureToast=false},Cmd.ofMsg run
         | None -> {state with Error=None;FailureToast=false},Cmd.none
     | _ -> state,Cmd.none
+
+let update msg state =
+    let next,cmd=updateCore msg state
+    if next.Inputs<>state.Inputs || next.Kind<>state.Kind || next.Frames<>state.Frames || next.Pinch<>state.Pinch then
+        rememberView(createObj ["inputs" ==> Array.ofList next.Inputs;"kind" ==> next.Kind;"width" ==> next.Width;"pinch" ==> next.Pinch;"frames" ==> next.Frames;"fps" ==> next.Fps])
+    next,cmd
 
 // Pointer drag needs the previous position between events; the view itself stays declarative.
 let mutable dragStart : (float * float) option = None
@@ -802,14 +825,14 @@ let private setpointField (props:FieldProps) =
                 Mui.tooltip [tooltip.title "Browse names";tooltip.children (
                     Mui.iconButton [prop.className "next-adornment";prop.tabIndex -1;prop.ariaLabel "Browse names"
                                     iconButton.edge.end';iconButton.children (imageSearchIcon []);prop.onClick(fun _ -> props.OnBrowse())])]]]
-    let placeholder = match props.Item.mode with | "seed" -> "Input an integer seed" | "project" -> "" | _ -> "Just type anything"
+    let placeholder = match props.Item.mode with | "seed" -> "Just type anything" | "project" -> "" | _ -> "Just type anything"
     Mui.noSsr [
         Mui.menu [menu.anchorEl (anchorEl :?> IRefValue<Option<Element>>);menu.keepMounted true;menu.open' menuOpen;menu.onClose(fun _ -> setMenuOpen false)
                   menu.children [
             modeMenuItem "text" (textFieldsIcon []) "Name or words"
             modeMenuItem "seed" (dialpadIcon []) "Numeric seed"
             modeMenuItem "photo" (photoCameraIcon []) "Upload image"
-            if props.Item.mode="project" then modeMenuItem "project" (refreshIcon []) "Saved project face"
+            if props.Item.mode="project" then modeMenuItem "project" (refreshIcon []) "Restored face"
         ]]
         Html.div [prop.className "next-field";prop.children [
             Mui.textField [
@@ -833,7 +856,7 @@ let private setpointField (props:FieldProps) =
                             prop.ref anchorEl
                             prop.children [
                                 Mui.tooltip [tooltip.title "Change mode";tooltip.children (
-                                    Mui.iconButton [prop.className "focuswithin-child next-adornment";prop.tabIndex -1;prop.ariaLabel "Change mode"
+                                    Mui.iconButton [prop.className "next-adornment";prop.tabIndex -1;prop.ariaLabel "Change mode"
                                                     iconButton.edge.start;iconButton.children (menuIcon []);prop.onClick(fun _ -> setMenuOpen true)])]]
                         ])
                     prop.custom ("endAdornment", endAdornment)
@@ -846,6 +869,7 @@ let viewFace (state:State) dispatch (index:int) (item:Input) (label:string) =
     let active = state.ActiveFace = Some item.id
     let queued = state.PendingFaces |> List.contains item.id
     let preparing = state.PreparingFaces.Contains item.id
+    let canGenerate = item.mode="project" && face.IsSome || item.mode="photo" && not (isNull item.file) || (item.mode="text" || item.mode="seed") && not (System.String.IsNullOrWhiteSpace item.value)
     Html.section [prop.key item.id
                   prop.className ("next-face box" + (if active then " next-face-active" else ""))
                   prop.custom("data-next-face",item.id)
@@ -901,14 +925,13 @@ let viewFace (state:State) dispatch (index:int) (item:Input) (label:string) =
             setpointField {Item=item;Label=label;Disabled=false
                            OnEdit=(fun value -> dispatch(Edit(item.id,value)));OnMode=(fun mode -> dispatch(Mode(item.id,mode)))
                            OnBrowse=(fun () -> dispatch(BrowseNames item.id));OnPick=(fun () -> openPhotoPicker item.id)}
-            if face.IsSome || (item.mode="photo" && not (isNull item.file)) || ((item.mode="text" || item.mode="seed") && not (System.String.IsNullOrWhiteSpace item.value)) then
-                FancyButton [button.variant.contained;button.size.small;prop.className "next-face-generate";prop.ariaLabel ("Generate " + label)
-                             prop.onClick(fun _ -> dispatch(RunFace item.id));button.children "Generate"]]]
+            FancyButton [button.variant.contained;button.size.small;prop.className "next-face-generate";prop.ariaLabel ("Generate " + label);
+                             prop.disabled (not canGenerate || active || preparing || queued);prop.onClick(fun _ -> dispatch(RunFace item.id));button.children "Generate"]]]
         // Compatibility and state mirror for tooling that reads the per-face source as a
         // select (next-e2e does). Mode is changed through the field's mode menu; this control
         // is deliberately not focusable, so the field stays the one tab stop per face.
         Html.select [prop.className "next-sr";prop.value item.mode;prop.tabIndex -1;prop.disabled true;prop.ariaLabel "Face source";prop.onChange(fun (_:string) -> ())
-                     prop.children((if item.mode="project" then ["project","Saved project face"] else []) @ ["text","Name or words";"seed","Seed";"photo","Photo"]
+                     prop.children((if item.mode="project" then ["project","Restored face"] else []) @ ["text","Name or words";"seed","Seed";"photo","Photo"]
                                    |> List.map(fun (key,text) -> Html.option [prop.value key;prop.text text]))]
         if item.mode="photo" then
             Html.div [prop.className "next-file";prop.children [
@@ -966,10 +989,10 @@ let private lengthLabel (frames:int) =
 
 let private shapeControls (state:State) dispatch =
     Html.div [prop.className "next-shape-controls";prop.children [
-        Html.div [prop.className "next-shape-selector";prop.custom("role","radiogroup");prop.ariaLabel "Morph shape";prop.children (
-            shapeOptions |> List.map(fun (key,text) -> Html.label [prop.className "next-shape-choice";prop.children [
-                Html.input [prop.type'.radio;prop.name "morph-shape";prop.value key;prop.isChecked (state.Kind=key);prop.disabled state.Busy;prop.onChange(fun (_:bool) -> dispatch(Kind key))]
-                Html.span text]]))]
+        Html.label [prop.className "next-overflow-field";prop.children [
+            Html.span "Shape"
+            Html.select [prop.ariaLabel "Morph shape";prop.value state.Kind;prop.disabled state.Busy;prop.onChange(Kind >> dispatch)
+                         prop.children(shapeOptions |> List.map(fun (key,text) -> Html.option [prop.value key;prop.text text]))]]]
         Html.label [prop.className "next-overflow-field";prop.children [
             Html.span "Length"
             Html.select [prop.value (string state.Frames);prop.disabled state.Busy;prop.ariaLabel "Morph length";prop.onChange(fun (v:string) -> dispatch(Frames(int v)))
@@ -980,6 +1003,7 @@ let private shapeControls (state:State) dispatch =
 
 let private overflow (state:State) dispatch =
     Html.div [prop.className "next-overflow";prop.children [
+        shapeControls state dispatch
         Mui.formControlLabel [formControlLabel.control (Mui.checkbox [checkbox.checked' state.Pinch;prop.disabled state.Busy;prop.ariaLabel "Pinch centre";checkbox.onChange(PinchToggle >> dispatch)])
                               formControlLabel.label "Pinch centre"]
         Html.details [prop.className "next-advanced";prop.children [
@@ -993,7 +1017,6 @@ let private overflow (state:State) dispatch =
 let private morphSlot (state:State) dispatch =
     let canMorph = state.Inputs.Length>=2
     Html.div [prop.className "next-morph-slot";prop.children [
-        shapeControls state dispatch
         FancyButton [button.variant.contained;button.size.large;prop.className "next-primary-action"
                      prop.custom("data-next-primary","true");prop.type'.button
                      button.disabled (not canMorph)
@@ -1199,9 +1222,7 @@ let view state dispatch = App.ThemedApp [
                     Html.button [prop.type'.button;prop.onClick(fun _ -> dispatch DismissDetected);prop.text "Cancel"]]]]]
         | None -> Html.none
         App.header
-        Html.p [prop.className "next-tagline";prop.children [
-            Html.text "Morph between any faces. Type a word, ";Html.a [prop.href "/names";prop.onClick(fun e -> e.preventDefault(); dispatch(BrowseNames "face-1"));prop.text "pick a name"]
-            Html.text ", or ";Html.button [prop.type'.button;prop.onClick(fun _ -> openPhotoPicker "face-1");prop.text "use your own photo"];Html.text "."]]
+        Html.p [prop.className "next-tagline";prop.text "Morph between any faces. Use each face’s controls to enter words, pick a name or choose a photo."]
         // Shown only to someone who opened the testing link, and only until they answer.
         if state.Invite && not state.Debug then
             Html.section [prop.className "next-invite box";prop.custom("role","region");prop.ariaLabel "Help us with this test";prop.children [
@@ -1301,14 +1322,14 @@ let view state dispatch = App.ThemedApp [
         debugArea state dispatch
         match state.Crop with
         | Some crop ->
-            let placed=cropFrame crop.view 320.
+            let placed=cropFrame crop.view (crop.view?viewport:float)
             Html.div [prop.className "next-crop-dialog";prop.custom("role","dialog");prop.custom("aria-modal",true);prop.ariaLabel "Crop photo"
                       prop.onKeyDown(fun (e:Browser.Types.KeyboardEvent) -> if e.key="Escape" then (e.preventDefault(); dispatch CropCancel))
                       prop.children [
                 Html.div [prop.className "next-crop-panel box";prop.children [
                     Html.div [prop.className "next-topline";prop.children [Html.h2 "Crop your photo";Mui.button [button.variant.text;prop.onClick(fun _ -> dispatch CropCancel);button.children "Cancel crop"]]]
                     Html.p "Drag to move, or use the arrow keys. Zoom to fill the square. Only this square is processed."
-                    Html.div [prop.className "next-crop-view";prop.ariaLabel "Crop area";prop.custom("role","application");prop.tabIndex 0
+                    Html.div [prop.className "next-crop-view";prop.ref(fun element -> if not (isNull element) then dispatch(CropViewport(element?getBoundingClientRect()?width:float)));prop.ariaLabel "Crop area";prop.custom("role","application");prop.tabIndex 0
                               // The square can be moved and sized without a pointer.
                               prop.onKeyDown(fun (e:Browser.Types.KeyboardEvent) ->
                                 let step=if e.shiftKey then 320. else 40. // screen px: one viewport, or an eighth
@@ -1330,7 +1351,7 @@ let view state dispatch = App.ThemedApp [
                               prop.onPointerCancel(fun _ -> dragStart <- None)
                               prop.children [
                                 Html.img [prop.src crop.url;prop.alt "Photo being cropped";prop.className "next-crop-image"
-                                          prop.style [style.width (length.px (placed?width: float));style.height (length.px (placed?height: float));style.left (length.px (placed?x: float));style.top (length.px (placed?y: float));style.custom("transform", sprintf "rotate(%gdeg)" (placed?rotation: float))]]]]
+                                          prop.style [style.width (length.px (placed?width: float));style.height (length.px (placed?height: float));style.left (length.px (placed?x: float));style.top (length.px (placed?y: float));style.custom("transform-origin",sprintf "%gpx %gpx" (placed?originX:float) (placed?originY:float));style.custom("transform", sprintf "rotate(%gdeg)" (placed?rotation: float))]]]]
                     Html.label [prop.className "next-crop-zoom";prop.children [
                         Html.span "Zoom"
                         Html.input [prop.type'.range;prop.min 1;prop.max 8;prop.step 0.1;prop.ariaLabel "Zoom";prop.value (crop.view?zoom: float);prop.onChange(fun (v:float) -> dispatch(CropZoom v))]]]

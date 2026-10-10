@@ -54,9 +54,10 @@ export async function recoverVideoProject(file){
  return null;
 }
 
-// Download quality is deliberately independent of the exact canonical PNG cache.
+// New WebP originals are reused directly; legacy PNG originals remain readable.
 // Encoding and compact metadata stay in a bounded worker; WebP absence keeps PNG recovery.
 export async function downloadImage(result,seed){
+ if(result.blob.type==='image/webp')return (await embedRecovery(result.blob,result,{seed:seed===undefined?undefined:Number(seed)})).blob;
  const encoder=createImageEncoder();
  try{
   const slot=await encoder.acquire(1024*1024*4);

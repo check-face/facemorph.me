@@ -9,6 +9,23 @@ export const CROP_MAX_BYTES=64*1024*1024;
 export const CROP_MAX_PIXELS=120*1024*1024;
 export const CROP_MAX_EDGE=20000;
 
+// Browser decoders may ignore imageOrientation:'none'. Remove EXIF APP1 metadata
+// from the browser-only decode copy, retaining the native legacy-ignore-exif policy.
+export function browserDecodeBytes(bytes){
+ if(bytes[0]!==255||bytes[1]!==216)return bytes;
+ const parts=[bytes.subarray(0,2)];let at=2,changed=false;
+ while(at+4<=bytes.length){
+  const start=at;if(bytes[at++]!==255)return bytes;
+  while(bytes[at]===255)at++;const marker=bytes[at++];
+  if(marker===0xda||marker===0xd9){parts.push(bytes.subarray(start));if(!changed)return bytes;const result=new Uint8Array(parts.reduce((n,p)=>n+p.length,0));let offset=0;for(const part of parts){result.set(part,offset);offset+=part.length;}return result;}
+  if(marker===1||marker>=0xd0&&marker<=0xd7){parts.push(bytes.subarray(start,at));continue;}
+  const size=(bytes[at]<<8)|bytes[at+1];if(size<2||at+size>bytes.length)return bytes;
+  const exif=marker===0xe1&&size>=8&&bytes[at+2]===69&&bytes[at+3]===120&&bytes[at+4]===105&&bytes[at+5]===102&&bytes[at+6]===0&&bytes[at+7]===0;
+  if(exif)changed=true;else parts.push(bytes.subarray(start,at+size));at+=size;
+ }
+ return bytes;
+}
+
 function scaleTo(width,height,edge){
  const longest=Math.max(width,height);
  if(!(longest>edge))return null;
@@ -23,8 +40,9 @@ export async function decodeBounded(file,options){
  if(file.size<8||file.size>CROP_MAX_BYTES)throw Error('Choose a photo smaller than 64 MB.');
  if(typeof createImageBitmap!=='function')throw Error('This browser cannot prepare photos for cropping.');
  signal?.throwIfAborted?.();
- let header;
- try{header=inspectImage(new Uint8Array(await file.arrayBuffer()),{maxPixels:CROP_MAX_PIXELS,maxBytes:CROP_MAX_BYTES,maxEdge:CROP_MAX_EDGE,requireEightBit:false});}catch(error){if(error.code!=='unknown-container')throw error;}
+ let header;const bytes=new Uint8Array(await file.arrayBuffer());
+ try{header=inspectImage(bytes,{maxPixels:CROP_MAX_PIXELS,maxBytes:CROP_MAX_BYTES,maxEdge:CROP_MAX_EDGE,requireEightBit:false});}catch(error){if(error.code!=='unknown-container')throw error;}
+ const decodedBytes=browserDecodeBytes(bytes);if(decodedBytes!==bytes)file=new Blob([decodedBytes],{type:file.type});
  if(header){
   const target=scaleTo(header.width,header.height,edge);
   if(target){const bitmap=await createImageBitmap(file,{resizeWidth:target.width,resizeHeight:target.height,resizeQuality:'high',imageOrientation:'none'});if(signal?.aborted){bitmap.close?.();signal.throwIfAborted?.();throw new DOMException('Cancelled','AbortError');}return {bitmap,width:header.width,height:header.height,scale:bitmap.width/header.width,detached:true};}
@@ -79,10 +97,11 @@ export async function cropPhoto(file,rect,options){
  if(rotation%360===0&&Number.isFinite(rect.left)&&Number.isFinite(rect.top)&&rect.width>0&&rect.height>0){
   let bitmap;
   try{
-   const header=inspectImage(new Uint8Array(await file.arrayBuffer()),{maxPixels:CROP_MAX_PIXELS,maxBytes:CROP_MAX_BYTES,maxEdge:CROP_MAX_EDGE,requireEightBit:false});
+   const bytes=new Uint8Array(await file.arrayBuffer()),header=inspectImage(bytes,{maxPixels:CROP_MAX_PIXELS,maxBytes:CROP_MAX_BYTES,maxEdge:CROP_MAX_EDGE,requireEightBit:false});
+   const decodedBytes=browserDecodeBytes(bytes),source=decodedBytes===bytes?file:new Blob([decodedBytes],{type:file.type});
    const left=Math.max(0,Math.round(rect.left/previewScale)),top=Math.max(0,Math.round(rect.top/previewScale));
    const size=Math.min(Math.round(Math.min(rect.width,rect.height)/previewScale),header.width-left,header.height-top);
-   if(size>0){bitmap=await createImageBitmap(file,left,top,size,size,{resizeWidth:output,resizeHeight:output,resizeQuality:'high',imageOrientation:'none'});signal?.throwIfAborted?.();const blob=await encode(paint(bitmap,output,output));return new File([blob],'cropped.png',{type:'image/png'});}
+   if(size>0){bitmap=await createImageBitmap(source,left,top,size,size,{resizeWidth:output,resizeHeight:output,resizeQuality:'high',imageOrientation:'none'});signal?.throwIfAborted?.();const blob=await encode(paint(bitmap,output,output));return new File([blob],'cropped.png',{type:'image/png'});}
   }catch(error){if(signal?.aborted)throw error;}finally{bitmap?.close?.();}
  }
  const {bitmap,scale}=await decodeBounded(file,{edge:Math.max(PREVIEW_MAX_EDGE,output),signal});

@@ -153,10 +153,10 @@ test('A phone claiming 8 GB is not trusted with it until one has been measured h
 test('raw face display completes before encoding; the file and exact cache become ready together',async()=>{
  const old=globalThis.indexedDB,fixture=indexedDbFixture();globalThis.indexedDB=fixture.api;
  let finishEncode,rawRequested=false;
- const encoder={acquire:async bytes=>({bytes}),encode:(slot,request)=>{assert.equal(slot.bytes,4*1024*1024);assert.equal(request.format,'png');return new Promise(resolve=>finishEncode=()=>resolve({blob:new Blob(['exact-canonical'],{type:'image/png'})}));},dispose(){}};
+ const encoder={acquire:async bytes=>({bytes}),encode:(slot,request)=>{assert.equal(slot.bytes,4*1024*1024);assert.equal(request.format,'webp');return new Promise(resolve=>finishEncode=()=>resolve({blob:new Blob(['compressed-original'],{type:'image/webp'})}));},dispose(){}};
  const runtime=createBrowserRuntime({manifest:testManifest(),manifestSha256:'0'.repeat(64),preferredRoute:'cpu',imageEncoderFactory:()=>encoder,workerFactory:()=>({postMessage(message){let result={deviceValidated:true};if(message.type==='generate'){rawRequested=message.raw;result={rgba:new ArrayBuffer(4*1024*1024),values:new Float32Array(9216),space:'w-plus',shape:[1,18,512]};}queueMicrotask(()=>this.onmessage({data:{id:message.id,type:'complete',result}}));},terminate(){}})});
  try{const face=await runtime.generate({mode:'seed',value:'123'},{raw:true});assert.equal(rawRequested,true);assert.equal(face.pixels.rgba.byteLength,4*1024*1024);assert.equal(face.blob,undefined);assert.equal(fixture.records.size,0);
- finishEncode();const completed=await face.fileReady;assert.equal(completed.blob.type,'image/png');assert.equal(completed.pixels,undefined);assert.equal(completed.fileReady,undefined);assert.equal(fixture.records.size,2);
+ finishEncode();const completed=await face.fileReady;assert.equal(completed.blob.type,'image/webp');assert.equal(completed.pixels,undefined);assert.equal(completed.fileReady,undefined);assert.equal(fixture.records.size,2);
  const hit=await runtime.generate({mode:'seed',value:'123'},{raw:true});assert.equal(hit.cached,true);assert.equal(hit.imageSha256,completed.imageSha256);
  }finally{runtime.dispose();globalThis.indexedDB=old;}
 });

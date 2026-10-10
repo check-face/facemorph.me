@@ -16,7 +16,7 @@ import uuid
 ROOT = Path(__file__).resolve().parents[2]
 EXPECTED = {'worker-module-hash', 'integrity-rejection', 'cancel-partial-retry',
             'concurrent-download-dedup', 'corrupt-cache-repair',
-            'png-1024-roundtrip', 'reload-retained-offline'}
+            'png-1024-roundtrip', 'portrait-exif-crop', 'reload-retained-offline'}
 
 
 def assess(report, run_id):

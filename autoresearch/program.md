@@ -21,6 +21,17 @@ with cached outputs, and continued-session measurements separate. Do not compare
 different devices, providers, workloads, or timing boundaries as a paired speedup.
 Prefix-cache/style-mixing workloads do not stand in for ordinary/custom morphs.
 
+Principal happy-path benchmark: navigation/selection to decoded playable and
+save-ready video, including actual metadata-free photo encoding, in separate
+first-visit, model-cached reload and continued-session cohorts. Record first
+correctly fitted face, first useful scrub frame, UI responsiveness, file-ready,
+save/share handoff and restore alongside the total. Fix frame count/schedule,
+resolution/FPS/quality; cached-video replay is never new generation performance.
+Use actual built-UI rendered bounds and preview/export correspondence checks for
+representation/crop changes. Report phone component, simulator product and
+physical-route evidence separately. See the current
+[UX/process correction](../docs/plans/feedback-process-2026-10-10.md).
+
 ## One iteration
 
 1. Read Cass feedback, `git status`, `results.tsv`, the device recipe, and the run

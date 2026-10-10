@@ -14,6 +14,17 @@ requirements and integrates/delivers improvements. Autoresearch identifies the
 bottleneck, tests a hypothesis, measures its effect, and records the evidence.
 A research win needs product integration and verification before it is a shipped win.
 
+The [10 October screenshot/process correction](../docs/plans/feedback-process-2026-10-10.md)
+is the current UX/retention direction. Use navigation or photo selection through
+decoded playable, save-ready video as the principal happy-path comparison across
+available device/route cohorts, with fixed workload and separate first/repeat
+visits. Keep first-face, responsiveness, restore and failure measurements beside
+that total so a codec/kernel win cannot conceal a worse useful experience.
+Bounded last-video retention is now allowed; replay is a separate cache journey.
+Lossy cache/output pixels need practical quality, not exact decoded-pixel parity;
+latent/model identity and integrity remain exact. Worker/PNG use are candidates
+to measure rather than immutable product requirements.
+
 ## What to measure
 
 Keep these scenarios separate; record the actual cache state, device, engine,

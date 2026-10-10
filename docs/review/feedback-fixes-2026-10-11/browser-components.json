@@ -1,0 +1,56 @@
+{
+  "runId": "feedback",
+  "completed": true,
+  "evidenceLevel": "browser-component",
+  "e4eExecuted": false,
+  "inferenceExecuted": false,
+  "physicalDeviceQualified": false,
+  "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/152.0.0.0 Safari/537.36",
+  "secureContext": true,
+  "results": [
+    {
+      "id": "worker-module-hash",
+      "passed": true,
+      "elapsedMs": 44
+    },
+    {
+      "id": "integrity-rejection",
+      "passed": true,
+      "elapsedMs": 35.10000002384186
+    },
+    {
+      "id": "cancel-partial-retry",
+      "passed": true,
+      "elapsedMs": 30.899999976158142
+    },
+    {
+      "id": "concurrent-download-dedup",
+      "passed": true,
+      "elapsedMs": 28
+    },
+    {
+      "id": "corrupt-cache-repair",
+      "passed": true,
+      "elapsedMs": 37.39999997615814
+    },
+    {
+      "id": "png-1024-roundtrip",
+      "passed": true,
+      "elapsedMs": 105.30000007152557
+    },
+    {
+      "id": "portrait-exif-crop",
+      "passed": true,
+      "elapsedMs": 218
+    },
+    {
+      "id": "reload-retained-offline",
+      "passed": true,
+      "elapsedMs": 27
+    }
+  ],
+  "capabilities": {
+    "webgpuExposed": true,
+    "cacheStorage": true
+  }
+}

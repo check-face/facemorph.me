@@ -1,5 +1,10 @@
 # Candidate UI and delivery plan — 10 October 2026
 
+**Later operator revision:** [screenshot feedback/process correction](feedback-process-2026-10-10.md)
+supersedes tagline actions, visible shape/length controls and single-result-only
+retention. Use that revision for the next iteration; the delivery evidence below
+records the earlier scope.
+
 **Status: approved; implementation and qualification in progress.** The operator
 authorized implementation through candidate deployment. Completion and deployed
 evidence are recorded in [the delivery record](delivery-2026-10-10.md). Work in `facemorph.me`, on the candidate

@@ -1,0 +1,379 @@
+{
+  "schema_version": 2,
+  "queried_at_utc": "2026-10-10T10:08:57.342548+00:00",
+  "source": "Private consented diagnostics R2",
+  "live_build": "next-995b477854d97c7a",
+  "receipt_window_start": "2026-10-10T00:00:00Z",
+  "receipt_window_end": "2026-10-10T09:22:26.770Z",
+  "listed_objects": 349,
+  "selected_objects": 46,
+  "run_ids": 28,
+  "run_ids_without_start_in_window": 3,
+  "expired_events_excluded": 0,
+  "limitations": [
+    "R2 only; excludes KV fallback and GA4. Receipt time can differ from execution time.",
+    "Stage events can include canaries, endpoints and loading; they are not warm frame throughput.",
+    "Cohorts retain requested route and observed provider values separately; observed values alone do not establish successful admission or exclude fallback.",
+    "No exact GPU/physical device, workload settings or cache-state inference from platform alone.",
+    "Completed job timer is not a decoded-image or playable-video timestamp.",
+    "Multiple terminal events are not independent requests; no outcome rate is computed.",
+    "Raw events, run/device/session IDs and storage object keys are never written to output."
+  ],
+  "cohorts": [
+    {
+      "build": "next-2ff6791800ad7dbf",
+      "platform": "android",
+      "browser": "chromium",
+      "browser_major": 154,
+      "action": "faces",
+      "requested_route": "auto",
+      "observed_provider_values": [
+        "webgpu"
+      ],
+      "matches_live_build": false,
+      "run_ids": 6,
+      "terminal_events": {
+        "completed": 6
+      },
+      "run_ids_with_multiple_terminal_events": 0,
+      "run_ids_with_original_cache_hit": 1,
+      "run_ids_with_model_loaded": 2,
+      "completed_job_ms": {
+        "n": 6,
+        "min": 69,
+        "median": 3472.0,
+        "max": 13160
+      },
+      "reported_stage_ms": {
+        "synthesis-complete": {
+          "n": 6,
+          "min": 3296,
+          "median": 3378.5,
+          "max": 4869
+        },
+        "model-loaded": {
+          "n": 2,
+          "min": 3464,
+          "median": 3632.0,
+          "max": 3800
+        }
+      }
+    },
+    {
+      "build": "next-2ff6791800ad7dbf",
+      "platform": "android",
+      "browser": "chromium",
+      "browser_major": 154,
+      "action": "faces",
+      "requested_route": "auto",
+      "observed_provider_values": [
+        "cpu"
+      ],
+      "matches_live_build": false,
+      "run_ids": 5,
+      "terminal_events": {
+        "completed": 5
+      },
+      "run_ids_with_multiple_terminal_events": 0,
+      "run_ids_with_original_cache_hit": 3,
+      "run_ids_with_model_loaded": 1,
+      "completed_job_ms": {
+        "n": 5,
+        "min": 84,
+        "median": 167,
+        "max": 12097
+      },
+      "reported_stage_ms": {
+        "synthesis-complete": {
+          "n": 3,
+          "min": 4010,
+          "median": 4237,
+          "max": 4604
+        },
+        "model-loaded": {
+          "n": 1,
+          "min": 2281,
+          "median": 2281,
+          "max": 2281
+        }
+      }
+    },
+    {
+      "build": "next-2ff6791800ad7dbf",
+      "platform": "android",
+      "browser": "chromium",
+      "browser_major": 154,
+      "action": "faces",
+      "requested_route": "auto",
+      "observed_provider_values": [
+        "webgl"
+      ],
+      "matches_live_build": false,
+      "run_ids": 2,
+      "terminal_events": {
+        "completed": 2
+      },
+      "run_ids_with_multiple_terminal_events": 0,
+      "run_ids_with_original_cache_hit": 0,
+      "run_ids_with_model_loaded": 1,
+      "completed_job_ms": {
+        "n": 2,
+        "min": 25165,
+        "median": 32495.5,
+        "max": 39826
+      },
+      "reported_stage_ms": {
+        "synthesis-complete": {
+          "n": 3,
+          "min": 18002,
+          "median": 18439,
+          "max": 19519
+        },
+        "model-loaded": {
+          "n": 1,
+          "min": 129,
+          "median": 129,
+          "max": 129
+        }
+      }
+    },
+    {
+      "build": "next-2ff6791800ad7dbf",
+      "platform": "android",
+      "browser": "chromium",
+      "browser_major": 154,
+      "action": "morph",
+      "requested_route": "auto",
+      "observed_provider_values": [
+        "webgpu"
+      ],
+      "matches_live_build": false,
+      "run_ids": 1,
+      "terminal_events": {
+        "completed": 1
+      },
+      "run_ids_with_multiple_terminal_events": 0,
+      "run_ids_with_original_cache_hit": 1,
+      "run_ids_with_model_loaded": 0,
+      "completed_job_ms": {
+        "n": 1,
+        "min": 102903,
+        "median": 102903,
+        "max": 102903
+      },
+      "reported_stage_ms": {
+        "synthesis-complete": {
+          "n": 30,
+          "min": 99,
+          "median": 3252.5,
+          "max": 7228
+        }
+      }
+    },
+    {
+      "build": "next-2ff6791800ad7dbf",
+      "platform": "android",
+      "browser": "chromium",
+      "browser_major": 154,
+      "action": "morph",
+      "requested_route": "auto",
+      "observed_provider_values": [
+        "webgl"
+      ],
+      "matches_live_build": false,
+      "run_ids": 1,
+      "terminal_events": {
+        "interrupted": 1
+      },
+      "run_ids_with_multiple_terminal_events": 0,
+      "run_ids_with_original_cache_hit": 1,
+      "run_ids_with_model_loaded": 0,
+      "completed_job_ms": null,
+      "reported_stage_ms": {
+        "synthesis-complete": {
+          "n": 4,
+          "min": 19667,
+          "median": 19756.5,
+          "max": 21402
+        }
+      }
+    },
+    {
+      "build": "next-995b477854d97c7a",
+      "platform": "android",
+      "browser": "chromium",
+      "browser_major": 154,
+      "action": "faces",
+      "requested_route": "auto",
+      "observed_provider_values": [
+        "webgpu"
+      ],
+      "matches_live_build": true,
+      "run_ids": 3,
+      "terminal_events": {
+        "completed": 2,
+        "failed": 1
+      },
+      "run_ids_with_multiple_terminal_events": 0,
+      "run_ids_with_original_cache_hit": 0,
+      "run_ids_with_model_loaded": 2,
+      "completed_job_ms": {
+        "n": 2,
+        "min": 4728,
+        "median": 18543.0,
+        "max": 32358
+      },
+      "reported_stage_ms": {
+        "alignment-complete": {
+          "n": 1,
+          "min": 3318,
+          "median": 3318,
+          "max": 3318
+        },
+        "encoder-loaded": {
+          "n": 1,
+          "min": 856,
+          "median": 856,
+          "max": 856
+        },
+        "encoding-complete": {
+          "n": 1,
+          "min": 5722,
+          "median": 5722,
+          "max": 5722
+        },
+        "model-loaded": {
+          "n": 2,
+          "min": 2815,
+          "median": 3124.5,
+          "max": 3434
+        },
+        "synthesis-complete": {
+          "n": 2,
+          "min": 1369,
+          "median": 1663.5,
+          "max": 1958
+        }
+      }
+    },
+    {
+      "build": "next-995b477854d97c7a",
+      "platform": "android",
+      "browser": "chromium",
+      "browser_major": 154,
+      "action": "morph",
+      "requested_route": "auto",
+      "observed_provider_values": [
+        "webgpu"
+      ],
+      "matches_live_build": true,
+      "run_ids": 3,
+      "terminal_events": {
+        "completed": 2,
+        "failed": 1
+      },
+      "run_ids_with_multiple_terminal_events": 0,
+      "run_ids_with_original_cache_hit": 0,
+      "run_ids_with_model_loaded": 0,
+      "completed_job_ms": {
+        "n": 2,
+        "min": 22922,
+        "median": 34227.0,
+        "max": 45532
+      },
+      "reported_stage_ms": {
+        "synthesis-complete": {
+          "n": 92,
+          "min": 631,
+          "median": 742.5,
+          "max": 803
+        }
+      }
+    },
+    {
+      "build": "next-9a4f9a5c5d9d6c15",
+      "platform": "android",
+      "browser": "chromium",
+      "browser_major": 154,
+      "action": "faces",
+      "requested_route": "auto",
+      "observed_provider_values": [
+        "webgpu"
+      ],
+      "matches_live_build": false,
+      "run_ids": 3,
+      "terminal_events": {
+        "completed": 3
+      },
+      "run_ids_with_multiple_terminal_events": 0,
+      "run_ids_with_original_cache_hit": 0,
+      "run_ids_with_model_loaded": 1,
+      "completed_job_ms": {
+        "n": 3,
+        "min": 722,
+        "median": 765,
+        "max": 6992
+      },
+      "reported_stage_ms": {
+        "synthesis-complete": {
+          "n": 3,
+          "min": 629,
+          "median": 643,
+          "max": 2365
+        },
+        "model-loaded": {
+          "n": 1,
+          "min": 3873,
+          "median": 3873,
+          "max": 3873
+        }
+      }
+    },
+    {
+      "build": "next-9a4f9a5c5d9d6c15",
+      "platform": "android",
+      "browser": "chromium",
+      "browser_major": 154,
+      "action": "faces",
+      "requested_route": "auto",
+      "observed_provider_values": [
+        "cpu"
+      ],
+      "matches_live_build": false,
+      "run_ids": 1,
+      "terminal_events": {
+        "completed": 1
+      },
+      "run_ids_with_multiple_terminal_events": 0,
+      "run_ids_with_original_cache_hit": 1,
+      "run_ids_with_model_loaded": 0,
+      "completed_job_ms": {
+        "n": 1,
+        "min": 51,
+        "median": 51,
+        "max": 51
+      },
+      "reported_stage_ms": {}
+    },
+    {
+      "build": null,
+      "platform": null,
+      "browser": null,
+      "browser_major": null,
+      "action": null,
+      "requested_route": null,
+      "observed_provider_values": [],
+      "matches_live_build": false,
+      "run_ids": 3,
+      "terminal_events": {
+        "interrupted": 2,
+        "cancelled": 1
+      },
+      "run_ids_with_multiple_terminal_events": 1,
+      "run_ids_with_original_cache_hit": 0,
+      "run_ids_with_model_loaded": 0,
+      "completed_job_ms": null,
+      "reported_stage_ms": {}
+    }
+  ]
+}
