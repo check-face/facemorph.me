@@ -24,7 +24,7 @@ test('decoded selection, unreadable file, superseded selection and busy invalida
 });
 test('busy drop prevents navigation and highlight, dialog Escape closes',()=>{let prevented=0,closed=0;const classes=new Set();const e={preventDefault(){prevented++},stopPropagation(){},currentTarget:{classList:{add:v=>classes.add(v),remove:v=>classes.delete(v)}},dataTransfer:{}};dragPhoto(e,false);assert(classes.has('next-photo-over'));dragPhoto(e,true);assert.equal(classes.size,0);assert.equal(e.dataTransfer.dropEffect,'none');assert.equal(prevented,2);namesKey({key:'Escape',preventDefault(){}},()=>closed++);assert.equal(closed,1);});
 
-test('an oversized photo goes to the crop step instead of a full-size decode',async()=>{
+test('an oversized photo is automatically downscaled within alignment limits',async()=>{
  const old=globalThis.Image;globalThis.Image=class{constructor(){throw Error('must not decode');}};
  try{
   const offer=await withDecoder(async made=>{
@@ -32,10 +32,8 @@ test('an oversized photo goes to the crop step instead of a full-size decode',as
    assert.equal(made.some(b=>b.width===4000&&b.height===3000&&!b.closed),false,'The full-size probe is released');
    return result;
   });
-  assert.equal(offer.crop,true);
-  assert.equal(offer.sourceWidth,4000);assert.equal(offer.sourceHeight,3000);
-  assert.equal(offer.previewWidth<=4096&&offer.previewHeight<=4096,true,'The preview is bounded');
-  assert.equal(offer.url,'blob:preview');
+  assert.ok(offer instanceof Blob);
+  assert.equal(offer.type,'image/png');
  }finally{globalThis.Image=old;}
 });
 test('a photo beyond the pre-decode bound is refused without decoding it',async()=>{

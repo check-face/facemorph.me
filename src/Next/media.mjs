@@ -129,6 +129,12 @@ export function videoWriter({codec,encoder,fps=16,framesKey,totalFrames,derivati
    else await call('initialize',{mode:'ffmpeg',codec,fps,width:choice.width,height:choice.height});
    return choice;
   },
+  retain:async(blob,index)=>{
+   if(closed||signal?.aborted)throw new DOMException('Video cancelled','AbortError');
+   const prepared=await frameDerivatives(blob,{encodeSize,derivativeSize});
+   await frameStorePut(frameKey(framesKey,index),blob,prepared.derivative,totalFrames);
+   return prepared.derivative;
+  },
   add:async(blob,index)=>{
    if(closed||signal?.aborted)throw new DOMException('Video cancelled','AbortError');
    const frameIndex=Number.isInteger(index)?index:nextIndex++;

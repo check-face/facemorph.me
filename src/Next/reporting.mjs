@@ -215,17 +215,17 @@ function openRun(){if(!pendingStart)return;const payload=pendingStart;pendingSta
  * nothing was filed under.
  */
 function reference(state,terminal){if(!consented||!run)return;window.dispatchEvent(new CustomEvent('facemorph-run-reference',{detail:{run,state,terminal}}));}
-function terminate(event,extra={}){
+function terminate(event,extra={},notifyAnalytics=true){
  if(!run)return;
  // Product analytics hears every job end, consent or not: it carries closed vocabularies only.
- try{jobEnded?.({action:runAction,outcome:event,provider,elapsedMs:Math.round(performance.now()-started),errorKind:extra.errorKind,errorStage:extra.errorStage});}catch{}
+ try{if(notifyAnalytics)jobEnded?.({action:runAction,outcome:event,provider,elapsedMs:Math.round(performance.now()-started),errorKind:extra.errorKind,errorStage:extra.errorStage});}catch{}
  openRun();send({event,elapsedMs:Math.round(performance.now()-started),...extra},{terminal:true});reference('closed',event);
 }
 // A phone that backgrounds mid-job is the device we most need the record from. Close the run
 // from the last moment the page is certain to get: `hidden`.
 function onHidden(){
  if(globalThis.document?.visibilityState!=='hidden'||!run||finished||interrupted)return;
- interrupted=true;terminate('interrupted');
+ interrupted=true;terminate('interrupted',{},false);
 }
 if(typeof document!=='undefined')document.addEventListener('visibilitychange',onHidden);
 /**

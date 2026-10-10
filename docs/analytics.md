@@ -9,6 +9,10 @@ purpose: one journey (banner on classic, then next) is one visitor, told apart b
 linking is in the tag (`linker.domains`), and "facemorph.me" is an unwanted referral so the hop does not
 start a new session.
 
+> **Planned additions:** see the [10 October analytics plan](plans/analytics-2026-10-10.md).
+> The implementation below is distinct from planned coverage; dashboard registration
+> and receipt claims from September need current verification.
+
 ## What we want to know, and what answers it
 
 | Question | Answered by |
@@ -19,7 +23,7 @@ start a new session.
 | What does the first visit cost? | `models_download`: `scope`, `size_mb`, `duration_ms`, `outcome`. Kept apart from job time on purpose |
 | Which features are used? | `job_start` / `job_finish` by `action`, `input_kind`, `morph_kind`, `faces`, `frames`; `export` by `export_kind` and `method`; `photo_select`; `names_use` |
 | Do jobs work? | `job_finish.outcome` by `route`, `platform`, `memory_band`, `isolated`; failures by `error_kind` and `error_stage` |
-| Is the fast route being used? | `route` against user property `webgpu`. A device with WebGPU running `cpu` is the worst outcome in the product |
+| Is the fast route being used? | `route` against user property `webgpu`. GPU availability does not imply qualification; evaluate fallback correctness and measured cost |
 | Warm or cold? | `cache_state` on `job_start` |
 
 ## Events
@@ -52,8 +56,8 @@ Event data retention is 14 months (default was 2). Adding a parameter in code me
 
 - Ad and privacy blockers stop GA. Their share is unknown. `hosting/next-static/analytics.mjs` is an
   edge-side page-view counter that blockers cannot stop, written and tested but **not enabled** (see the
-  comment in `wrangler.jsonc`). Enabling it gives the denominator.
-- GA reports the visitors it can see. Error rates from here are a floor for the people it reaches.
+  comment in `wrangler.jsonc`). If enabled, it counts document loads, not unique visitors or job attempts.
+- GA reports the visitors it can see. Blockers, opt-outs and lost events can bias observed error rates in either direction.
 - The beacon path under this site's cross-origin isolation was checked as far as the script loading and
   `crossOriginIsolated` staying true. Delivery could not be confirmed from the two browsers available
   while building (one blocks Google, the other reports beacons as aborted with and without isolation).

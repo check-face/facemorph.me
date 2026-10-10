@@ -1,3 +1,6 @@
+import {generationIdentity} from './browser/identity.mjs';
+import {digest} from './browser/originals.mjs';
+import {decorateImage,recoverImage,decorateVideo,recoverVideoProject} from './recovery-metadata.mjs';
 import {createPhotoAligner} from './photo/align-photo.mjs';
 import {createDesktopRuntime} from '../../desktop/runtime.mjs';
 import {createBrowserRuntime} from './browser/runtime.mjs';
@@ -6,23 +9,45 @@ import {decode,encode} from './ProjectJson.fs.js';
 import {saveFile,shareFile,videoWriter} from './media.mjs';
 import {diagnostics,onJobEnd} from './reporting.mjs';
 import * as analytics from './analytics.mjs';
+import {rememberLast,readLast} from './last-result.mjs';
 onJobEnd(analytics.jobFinished);
 // Start at load, not at the first event: a visit that does nothing is still a visit.
-analytics.start();
+analytics.start();analytics.observeVitals?.();
 import {labelFor,loadedBytes,createFrameCounter} from './stage-labels.mjs';
-import {frameStoreKey,frameStoreGet} from './morph-frames.mjs';
+import {infillFrames} from './infill.mjs';
+import {frameStoreKey,frameStoreGet,frameStoreGetOne} from './morph-frames.mjs';
 import {selectPhoto} from './photo-selection.mjs';
 import {persistenceAction} from './storage-request.mjs';
 import {routeAssets,photoAssets,measure} from './model-inventory.mjs';
 import {previewPhoto,cropPhoto} from './photo/crop.mjs';
+import {getPublicCatalogue,galleryTextUrl} from './public-previews.mjs';
+export {galleryTextUrl,gallerySeedUrl,publicPreview} from './public-previews.mjs';
 // The U-14 slider consumes frames through window.__nextFrames.get(key); wire the real store
 // here so the UI has exactly one integration point. Guarded so stripped-import test harnesses
 // (which leave the identifier undefined) skip the install instead of crashing module load.
 if(typeof frameStoreGet!=='undefined'&&typeof window!=='undefined'&&!window.__nextFrames)window.__nextFrames={get:frameStoreGet};
 let listener=()=>{},runtime,manifest,active,writer,currentJob=0,project=null,video=null;
-const faces=new Map(),urls=new Map();
+const faces=new Map(),urls=new Map(),faceRevisions=new Map();
+let morphRevision=0;
+export function invalidateMorph(){morphRevision++;video=null;const url=urls.get('video');if(url)URL.revokeObjectURL(url);urls.delete('video');clearLiveFrames();}
+export function invalidateFace(id){
+ arrivalRevision++;faceRevisions.set(id,(faceRevisions.get(id)||0)+1);
+ faces.delete(id);const url=urls.get(id);if(url)URL.revokeObjectURL(url);urls.delete(id);
+ invalidateMorph();
+}
+export const photoRevision=id=>faceRevisions.get(id)||0;
+const revisionOf=photoRevision;
+function sameSource(face,item){return face&&(item.mode==='project'||(face.source?.mode===item.mode&&face.source?.value===item.value&&face.source?.file===item.file));}
+function superseded(){const error=new DOMException('Input changed. The old result was discarded.','AbortError');return error;}
+let liveFrames=[],liveFrameKey=null;
+function clearLiveFrames(){for(const url of liveFrames)if(url)URL.revokeObjectURL(url);liveFrames=[];liveFrameKey=null;}
 function progress(event){
- const stage=event.stage||'working';
+ let stage=event.stage||'working';
+ if(stage==='encoding'&&jobCounts.framesDone===jobCounts.framesTotal&&jobCounts.framesTotal>1){jobCounts.videoFramesDone=Number(event.loaded)||0;stage='export';event={...event,stage,text:`Encoding ${jobCounts.videoFramesDone} / ${jobCounts.framesTotal} images`,total:jobCounts.framesTotal};}
+ if(Number.isFinite(event.elapsedMs)&&/-complete$/.test(stage))analytics.stageDuration?.(stage,event.elapsedMs);
+ if(stage==='fallback-cpu')analytics.operationResult?.('fallback','ready',undefined,{reason:'rejected'});
+ if(stage==='original-cache-hit')analytics.operationResult?.('original-cache','hit');
+ if(stage==='cache-unavailable')analytics.operationResult?.('original-cache','failed',undefined,{reason:'unavailable'});
  if(stage==='models-download'){Object.assign(downloads,{phase:'downloading',scope:event.scope,loaded:Number(event.loaded)||0,total:Number(event.total)||downloads.total});announceDownloads();return;}
  lastStage=stage;
  reportStorage();
@@ -35,6 +60,7 @@ function progress(event){
  // non-admitted outcomes, plus a background canary failure) is carried as route-rejected so the
  // interface can name which route failed and which is in use instead of silently swallowing it.
  if(stage==='route-admitted'){
+ analytics.routeAttempt?.(event.provider,event.routeOutcome==='admitted'?'completed':'rejected');
   if(event.routeOutcome&&event.routeOutcome!=='admitted'){listener({jobId:currentJob,stage:'route-rejected',text:String(event.provider||''),fraction:0});return;}
   listener({jobId:currentJob,stage,text:String(event.provider||''),fraction:0});return;}
  if(stage==='canary-invalidated'){listener({jobId:currentJob,stage:'route-rejected',text:String(event.provider||''),fraction:0});return;}
@@ -64,7 +90,7 @@ function progress(event){
  // is silent for the duration; the phases still reach the diagnostics record above.
  if(jobCounts.framesTotal>1&&!MORPH_SPOKEN_STAGES.has(stage))return;
  if(units&&UNIT_TERMINAL_STAGES.has(stage))return;
- const bar=units?units.done/units.total:(Number.isFinite(fraction)?fraction:0);
+ const bar=stage==='export'?fraction:units?units.done/units.total:(Number.isFinite(fraction)?fraction:0);
  listener({jobId:currentJob,stage,text,fraction:bar});}
 // Stages that mean "this one unit finished". True, and useless mid-job: the visitor asked for
 // thirty faces, so one of them completing is not a status worth replacing the count with.
@@ -83,13 +109,13 @@ async function engine(){
  const response=await fetch('/runtime/manifest.json',{cache:'no-cache',signal:active?.signal});if(!response.ok)throw Error('Model setup is unavailable. Please try again shortly.');const raw=await response.arrayBuffer();if(raw.byteLength>4*1024*1024)throw Error('Model manifest is too large.');manifest=JSON.parse(new TextDecoder().decode(raw));const manifestSha256=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',raw)),x=>x.toString(16).padStart(2,'0')).join('');
  diagnostics.bundle(manifestSha256);
  // The browser adapter rejects missing photo support rather than silently using a server.
- const photoAligner=manifest.photo?createPhotoAligner({manifestUrl:manifest.photo.manifestUrl,workerUrl:manifest.photo.workerUrl}):null;
+ const photoAligner=manifest.photo?createPhotoAligner({manifestUrl:manifest.photo.manifestUrl,workerFactory:()=>new Worker(new URL('./photo/selection-worker.mjs',import.meta.url),{type:'module'})}):null;
  const alignPhoto=photoAligner?async(blob,options)=>{const prepared=await photoAligner(blob,options);if(prepared.provenance?.preprocessingSha256!==manifest.alignmentSha256)throw Error('Photo processing files changed. Reload before trying again.');return prepared;}:undefined;
  runtime=globalThis.__TAURI__?createDesktopRuntime({onProgress:progress}):createBrowserRuntime({manifest,manifestSha256,onProgress:progress,alignPhoto});return runtime;
 }
 function replaceUrl(key,blob){const old=urls.get(key);if(old)URL.revokeObjectURL(old);const url=URL.createObjectURL(blob);urls.set(key,url);return url;}
 function snapshot(message='Done — ready to save or share.',restore=false){
- return {errorMessage:'',faces:[...faces].map(([id,f])=>({id,url:urls.get(id),label:f.label||'Face'})),videoUrl:video?urls.get('video'):'',projectJson:project?JSON.stringify(project):'',message,restored:restore,inputs:restore?[...faces].map(([id])=>({id,mode:'project',value:'Project face',file:null})):[],kind:project?.morph.kind||'',width:project?.morph.width||0,pinch:!!project?.morph.pinchCenter,frames:project?.morph.framesPerSegment||16,fps:project?.morph.framesPerSecond||16};
+ return {errorMessage:'',faces:[...faces].map(([id,f])=>({id,url:urls.get(id),label:f.label||'Face',sourceMode:f.source?.mode||'',sourceFile:f.source?.file||null})),videoUrl:video?urls.get('video'):'',projectJson:project?JSON.stringify(project):'',message,restored:restore,inputs:restore?[...faces].map(([id])=>({id,mode:'project',value:'Project face',file:null})):[],kind:project?.morph.kind||'',width:project?.morph.width||0,pinch:!!project?.morph.pinchCenter,frames:project?.morph.framesPerSegment||16,fps:project?.morph.framesPerSecond||16};
 }
 function checked(){if(active?.signal.aborted)throw new DOMException('Cancelled','AbortError');}
 // What a face actually costs on this device, so the interface can estimate from measurement
@@ -97,6 +123,7 @@ function checked(){if(active?.signal.aborted)throw new DOMException('Cancelled',
 let lastStage;
 const faceTimings=[];
 const frameTimings=[];
+const videoTimings=[];
 const now=()=>globalThis.performance?.now?.()??Date.now();
 function recordUnit(timings,ms){if(Number.isFinite(ms)&&ms>0){timings.push(ms);if(timings.length>8)timings.shift();}}
 function recordFace(ms){recordUnit(faceTimings,ms);}
@@ -107,8 +134,9 @@ export function measuredFaceMs(){return median(faceTimings);}
 /** Median measured synthesis time per morph frame in milliseconds, or null until this device
  * has synthesised a frame. Cached endpoints are not measurements of work. */
 export function measuredFrameMs(){return median(frameTimings);}
+export function measuredVideoMs(){return median(videoTimings);}
 /** Progress counters for the job in flight, so the interface can say what is left. */
-const jobCounts={facesDone:0,facesTotal:0,framesDone:0,framesTotal:0};
+const jobCounts={facesDone:0,facesTotal:0,framesDone:0,framesTotal:0,videoFramesDone:0,videoFramesTotal:0};
 export function jobProgress(){return {...jobCounts};}
 /** Frames the current settings would render, from the same geometry the morph uses. */
 export function plannedFrames(options){
@@ -130,6 +158,7 @@ export async function morphFramesKey(){
  * direct store import touches only this function. Null when the frames are not on this
  * device; the interface then says so rather than promising a scrub it cannot do. */
 export async function sliderFrames(){
+ if(liveFrames.length)return [...liveFrames];
  try{
   const store=globalThis.__nextFrames,key=await morphFramesKey();
   if(!store||typeof store.get!=='function'||!key)return null;
@@ -139,24 +168,28 @@ export async function sliderFrames(){
  }catch{return null;}
 }
 async function register(id,result,label){if(!(result.blob instanceof Blob)||result.blob.type!=='image/png'||!result.latent)throw Error('The generation engine returned an incomplete face.');faces.set(id,{...result,label});replaceUrl(id,result.blob);}
-async function inputs(request){
+async function inputs(request,revisions){
  const service=await engine(),next=new Map();
  for(let i=0;i<request.inputs.length;i++){
   checked();const item=request.inputs[i];progress({stage:'face',face:item.id,text:`Face ${i+1} of ${request.inputs.length}`,loaded:i,total:request.inputs.length});
   let result;
-  if(item.mode==='project'){result=faces.get(item.id);if(!result)throw Error('Open the saved project again to restore this face.');}
+  if(sameSource(faces.get(item.id),item)){result=faces.get(item.id);}
+  else if(item.mode==='project'){result=faces.get(item.id);if(!result)throw Error('Open the saved project again to restore this face.');}
   else if(item.mode==='photo'){if(!(item.file instanceof Blob))throw Error('Choose a photo for each photo input.');result=await service.encodePhoto(item.file,{signal:active.signal});}
   else {result=await service.generate({mode:item.mode,value:item.value,signal:active.signal});}
+  if(revisionOf(item.id)!==revisions.get(item.id))throw superseded();
   jobCounts.facesDone=i+1;
   next.set(item.id,{...result,label:item.mode==='photo'?'Photo':item.value,source:{mode:item.mode,value:item.value,file:item.file}});
  }
  const provenance=next.get(request.inputs[0].id).provenance;
+ if(typeof rememberLast==='function'&&next.size)void rememberLast([...next.values()].at(-1),request);
  const nextProject=canonicalProject({schemaVersion:1,bundle:{version:provenance.bundleVersion,manifestSha256:provenance.manifestSha256},modelSha256:provenance.modelSha256,noiseSha256:provenance.noiseSha256,truncationPsi:1,truncationCutoff:0,morph:{algorithmVersion:GEOMETRY_VERSION,kind:request.kind,closed:true,width:request.width,pinchCenter:request.pinch,framesPerSegment:request.frames,framesPerSecond:request.fps,controls:request.inputs.map(item=>({visitId:item.id,latent:{...next.get(item.id).latent,values:Array.from(next.get(item.id).latent.values)}}))}});
  checked();await commit(next,nextProject);
 }
-async function commit(next,nextProject){
+async function commit(next,nextProject,replace=false){
  for(const result of next.values())if(!(result.blob instanceof Blob)||result.blob.type!=='image/png'||!result.latent)throw Error('The generation engine returned an incomplete face.');
- for(const url of urls.values())URL.revokeObjectURL(url);urls.clear();faces.clear();video=null;
+ invalidateMorph();
+ if(replace)for(const id of [...faces.keys()])if(!next.has(id)){invalidateFace(id);rememberSourcePhoto(id,null);}
  for(const [id,result] of next)await register(id,result,result.label);
  project=nextProject;
 }
@@ -222,11 +255,13 @@ async function pumpDownloads(){
  await refreshInventory();
  downloads.phase=downloads.routeReady?'done':'idle';announceDownloads();
 }
-export function subscribe(callback){listener=callback;window.addEventListener('facemorph-report-status',({detail})=>callback({jobId:currentJob,stage:'diagnostics-'+detail.status,text:detail.reference||'',fraction:0}));diagnostics.restore();warmUp();}
+export function subscribe(callback){listener=callback;window.addEventListener('facemorph-report-status',({detail})=>callback({jobId:currentJob,stage:'diagnostics-'+detail.status,text:detail.reference||'',fraction:0}));diagnostics.restore();warmUp();requestAnimationFrame(()=>analytics.milestone?.('usable-ui'));}
 export async function execute(request){
  if(active)throw Error('Another job is still stopping.');active=new AbortController();currentJob=request.jobId;closePhotoRun('completed');diagnostics.start(request.action,request.provider);reportStorage();
- analytics.setJobContext(()=>({faces:jobCounts.facesTotal,frames:jobCounts.framesTotal,input_kind:analytics.inputKind(request.inputs),morph_kind:request.action==='morph'?project?.morph?.kind:undefined}));
- analytics.jobStarted({action:request.action,provider:request.provider||'auto',warm:downloads.routeReady});
+ const revisions=new Map(request.inputs.map(item=>[item.id,revisionOf(item.id)]));
+ analytics.setJobContext(()=>({requested_route:request.provider||'auto',faces:jobCounts.facesTotal,frames:jobCounts.framesTotal,input_kind:analytics.inputKind(request.inputs),morph_kind:request.action==='morph'?project?.morph?.kind:undefined}));
+ jobCounts.facesDone=0;jobCounts.facesTotal=request.action==='face'?1:request.inputs.length;jobCounts.framesDone=0;jobCounts.framesTotal=0;jobCounts.videoFramesDone=0;jobCounts.videoFramesTotal=0;
+ analytics.jobStarted({action:request.action,provider:request.provider||'auto',warm:downloads.routeReady,target:request.target||'morph'});
  try{
   await admission(request.provider);
   // Per-face generate (U-03): work only the one face asked for, so no other face emits a
@@ -234,34 +269,39 @@ export async function execute(request){
   if(request.action==='face'){
    const item=(request.inputs||[]).find(candidate=>candidate.id===request.target);
    if(!item)throw Error('Choose a face to generate.');
-   jobCounts.facesDone=0;jobCounts.facesTotal=1;jobCounts.framesDone=0;jobCounts.framesTotal=0;
+   jobCounts.facesDone=0;jobCounts.facesTotal=1;jobCounts.framesDone=0;jobCounts.framesTotal=0;jobCounts.videoFramesDone=0;jobCounts.videoFramesTotal=0;
    progress({stage:'face',face:item.id,text:'Generating this face…',loaded:0,total:1});
    const service=await engine();
    let result;
    if(item.mode==='project'){result=faces.get(item.id);if(!result)throw Error('Open the saved project again to restore this face.');}
    else if(item.mode==='photo'){if(!(item.file instanceof Blob))throw Error('Choose a photo for this face.');result=await service.encodePhoto(item.file,{signal:active.signal});}
    else {if(!String(item.value??'').length)throw Error('Type a name or seed first.');result=await service.generate({mode:item.mode,value:item.value,signal:active.signal});}
-   checked();await register(item.id,result,item.mode==='photo'?'Photo':item.value);
+   checked();if(revisionOf(item.id)!==revisions.get(item.id))throw superseded();await register(item.id,result,item.mode==='photo'?'Photo':item.value);
    const current=faces.get(item.id);current.source={mode:item.mode,value:item.value,file:item.file};
    // A changed face invalidates the saved morph and its video, never the other faces.
    project=null;video=null;
-   jobCounts.facesDone=1;diagnostics.finish('completed');return snapshot('Face updated.');
+   jobCounts.facesDone=1;if(typeof rememberLast==='function')void rememberLast(result,request);
+   diagnostics.finish('completed');return snapshot('Face updated.');
   }
-  jobCounts.facesDone=0;jobCounts.facesTotal=request.inputs.length;jobCounts.framesDone=0;jobCounts.framesTotal=0;
-  await inputs(request);checked();
+  jobCounts.facesDone=0;jobCounts.facesTotal=request.inputs.length;jobCounts.framesDone=0;jobCounts.framesTotal=0;jobCounts.videoFramesDone=0;jobCounts.videoFramesTotal=0;
+  await inputs(request,revisions);checked();
+  const renderToken=morphRevision;
   if(request.action==='morph'){
    const path=createLatentPath(project.morph);if(path.totalFrames>4096)throw Error('Choose fewer faces or frames for this export.');
-   jobCounts.framesTotal=path.totalFrames;
-   const framesKey=await morphFramesKey();
-   const stored=framesKey?await frameStoreGet(framesKey).catch(()=>null):null;
+   jobCounts.framesTotal=path.totalFrames;jobCounts.videoFramesTotal=path.totalFrames;
+   const framesKey=await morphFramesKey();clearLiveFrames();liveFrameKey=framesKey;liveFrames=Array(path.totalFrames).fill('');
+   const stored=framesKey?await frameStoreGet(framesKey).catch(()=>null):null;analytics.operationResult?.('frame-cache',stored?'hit':'miss');
    writer=videoWriter({codec:manifest.codec,fps:project.morph.framesPerSecond,signal:active.signal,onProgress:progress,framesKey,totalFrames:path.totalFrames});await writer.initialize();
    const counter=createFrameCounter(path.totalFrames);
    if(stored&&stored.length===path.totalFrames){
+    liveFrames=stored.map(blob=>URL.createObjectURL(blob));
     for(const frame of path.frames()){checked();await writer.add(stored[frame.index],frame.index);jobCounts.framesDone=frame.index+1;}
    }else{
     const first=counter.start();progress({stage:'morph',text:first.text,loaded:first.done,total:path.totalFrames});
     const add=async(blob,index)=>{
-     await writer.add(blob,index);
+     checked();if(renderToken!==morphRevision)throw superseded();
+     if(writer.retain){const display=await writer.retain(blob,index);liveFrames[index]=URL.createObjectURL(display);listener({jobId:currentJob,stage:'frames-available',text:'',fraction:0});}
+     else await writer.add(blob,index);
      const finished=counter.complete(index);jobCounts.framesDone=finished.done;
      progress({stage:'morph',text:finished.text,loaded:finished.done,total:path.totalFrames});
     };
@@ -272,7 +312,7 @@ export async function execute(request){
      // while it encodes the previous frame; each frame still reaches the writer in order, the
      // saved endpoint faces in their places. A window bounds the latents in flight and the PNGs
      // that could queue here if the writer fell behind.
-     const iterator=path.frames()[Symbol.iterator]();
+     const iterator=(writer.retain?infillFrames(path,project.morph):path.frames())[Symbol.iterator]();
      for(let window=[];;window=[]){
       for(let item;window.length<FRAME_WINDOW&&!(item=iterator.next()).done;)window.push(item.value);
       if(!window.length)break;
@@ -283,23 +323,29 @@ export async function execute(request){
       await (chain=chain.then(drain));
       if(cursor<window.length)throw Error('Some morph frames were not produced. Your faces are saved.');
      }
-    }else for(const frame of path.frames()){
+    }else for(const frame of (writer.retain?infillFrames(path,project.morph):path.frames())){
      checked();
      const saved=frame.visitId?faces.get(frame.visitId):null;
      const output=saved||await runtime.synthesize({space:'w-plus',shape:[1,18,512],values:Float32Array.from(frame.values)},{signal:active.signal,persist:false});
      await add(output.blob,frame.index);
     }}
-   progress({stage:'export',text:'Finishing your video…'});video=await writer.finish();writer=null;replaceUrl('video',video);
+   const videoBegan=now();
+   if(writer.retain&&!stored){
+    progress({stage:'export',text:'Encoding your video…'});
+    for(let index=0;index<path.totalFrames;index++){checked();const blob=await frameStoreGetOne(framesKey,index);if(!blob)throw Error('A morph frame is unavailable. Your faces are saved.');await writer.add(blob,index);}
+   }
+   progress({stage:'export',text:'Finishing your video…'});const finished=await writer.finish();recordUnit(videoTimings,(now()-videoBegan)/path.totalFrames);analytics.stageDuration?.('export',now()-videoBegan);writer=null;if(renderToken!==morphRevision||request.inputs.some(item=>revisionOf(item.id)!==revisions.get(item.id)))throw superseded();video=finished;replaceUrl('video',video);
   }
   diagnostics.finish('completed');return snapshot();
- }catch(error){diagnostics.finish(error?.name==='AbortError'?'cancelled':'failed',error,{stage:lastStage});if(error?.name==='AbortError')return snapshot('Cancelled. Your completed faces are still available.');return {...snapshot(''),errorMessage:String(error?.message||'Generation failed. Your completed results are still available.')};}
+ }catch(error){diagnostics.finish(error?.name==='AbortError'?'cancelled':'failed',error,{stage:lastStage});if(error?.name==='AbortError')return snapshot('Cancelled. Your completed faces are still available.');analytics.operationResult?.('selection',error.alignmentStats?.faceCount>1?'shown':'failed',undefined,{face_count:error.alignmentStats?.faceCount===0?'zero':error.alignmentStats?.faceCount===1?'one':error.alignmentStats?.faceCount>1?'multiple':undefined});const choice=error.alignmentStats?.faceBoxes?.length>1&&revisionOf(request.target)===revisions.get(request.target)?await prepareFaceChoices(request.target,error.alignmentStats.faceBoxes):null;return {...snapshot(''),errorMessage:choice?'':String(error?.message||'Generation failed. Your completed results are still available.'),photoChoices:choice,cropFace:!choice&&request.target&&sourceFiles.has(request.target)&&/No face was found|More than one face was found/.test(error.message)?request.target:null};}
  finally{writer?.dispose();writer=null;active=null;if(wanted.size)void pumpDownloads();else if(!downloads.routeReady||!downloads.photoReady)void refreshInventory();}
 }
 export function cancel(){active?.abort();writer?.dispose();runtime?.cancel();}
 const kindOf=id=>id==='video'?'video':'image';
-function reported(kind,method,work){return Promise.resolve(work).then(result=>{analytics.exported({kind,method,outcome:'completed'});return result;},error=>{analytics.exported({kind,method,outcome:error?.name==='AbortError'?'cancelled':'failed'});throw error;});}
-export async function saveMedia(id){const blob=id==='video'?video:faces.get(id)?.blob;return reported(kindOf(id),'save',saveFile(blob,id==='video'?'facemorph.mp4':'facemorph.png'));}
-export async function shareMedia(id){const blob=id==='video'?video:faces.get(id)?.blob;if(!blob)throw Error('Generate a result first.');return reported(kindOf(id),'share',shareFile(blob,id==='video'?'facemorph.mp4':'facemorph.png'));}
+function reported(kind,method,work){analytics.exported({kind,method,outcome:'ready'});const began=now();return Promise.resolve().then(()=>typeof work==='function'?work():work).then(result=>{const text=String(result||'');const cancelled=/cancelled/i.test(text),fallback=method==='share'&&/download|save/i.test(text);analytics.exported({kind,method,outcome:cancelled?'cancelled':'completed',durationMs:now()-began,fallback});return result;},error=>{analytics.exported({kind,method,outcome:error?.name==='AbortError'?'cancelled':'failed',durationMs:now()-began});throw error;});}
+async function exportBlob(id){if(id==='video')return decorateVideo(video,project);const face=faces.get(id);if(!face)throw Error('Generate a result first.');return decorateImage(face,face.source?.mode==='seed'?face.source.value:undefined);}
+export async function saveMedia(id){return reported(kindOf(id),'save',async()=>saveFile(await exportBlob(id),id==='video'?'facemorph.mp4':'facemorph.png'));}
+export async function shareMedia(id){return reported(kindOf(id),'share',async()=>{const blob=await exportBlob(id);if(!blob)throw Error('Generate a result first.');return shareFile(blob,id==='video'?'facemorph.mp4':'facemorph.png');});}
 export async function exportProject(options){
  if(!project)throw Error('Generate or open a project first.');
  let selected=project;
@@ -320,7 +366,7 @@ export async function importProject(request){
   if(imported.morph.controls.some(x=>x.latent.space!=='w-plus'))throw Error('This generation bundle requires a W+ project.');
   await admission(request.provider||'auto');const next=new Map();
   for(const control of imported.morph.controls){checked();const result=await service.synthesize({...control.latent,shape:[1,18,512],values:Float32Array.from(control.latent.values)},{signal:active.signal});next.set(control.visitId,{...result,label:'Project face'});}
-  checked();await commit(next,imported);analytics.exported({kind:'project',method:'open',outcome:'completed'});return snapshot('Project opened.',true);
+  checked();await commit(next,imported,true);analytics.exported({kind:'project',method:'open',outcome:'completed'});return snapshot('Project opened.',true);
  }finally{active=null;if(wanted.size)void pumpDownloads();}
 }
 /** `basis` records how the visitor agreed: checkbox, invite or toast (reporting.mjs CONSENT_BASES). */
@@ -344,6 +390,7 @@ let photoRun=false;
 function closePhotoRun(status){if(photoRun){diagnostics.finish(status);photoRun=false;}}
 export function photoStage(name,run){
  if(!diagnostics.status().enabled)return run();
+ if(active){diagnostics.stage(name,{});return run();}
  try{
   if(!photoRun){diagnostics.start('photo');photoRun=true;}
   diagnostics.stage(name,{});
@@ -403,7 +450,17 @@ function reportStorage(){
 export function warmPhotoTools(){
  engine().catch(()=>{});
 }
-export function selectPhotoReported(request){warmPhotoTools();return Promise.resolve(photoStage('photo-select',()=>selectPhoto(request))).then(result=>{if(result)analytics.photoSelected({outcome:'ready'});return result;},error=>{analytics.photoSelected({outcome:'invalid'});throw error;});}
+export async function selectPhotoReported(request){
+ const selectionRevision=revisionOf(request.id);
+ const file=request.files?.[0];if(file)analytics.operationResult?.('selection','ready',undefined,{size_band:file.size<1024*1024?'small':file.size<8*1024*1024?'medium':'large'});
+ const projectText=file?await recoverVideoProject(file):null;if(selectionRevision!==revisionOf(request.id))return null;if(projectText)return {projectFile:new Blob([projectText],{type:'application/json'})};
+ const recovered=file?await recoverImage(file):null;
+ if(recovered){
+  const response=await fetch('/runtime/manifest.json');if(!response.ok)throw Error('Unable to verify this saved face.');const m=await response.json();
+  if(m.modelSourceSha256!==recovered.provenance.modelSha256||m.noiseSha256!==recovered.provenance.noiseSha256||(recovered.generationSha256&&await digest(JSON.stringify(generationIdentity(m,recovered.generationKind)))!==recovered.generationSha256))throw Error('This saved face uses a different model.');
+  if(selectionRevision!==revisionOf(request.id))return null;await register(request.id,recovered,'Saved face');analytics.operationResult?.('restore','completed');return {recovered:true,...snapshot('Saved face recovered without photo encoding.')};
+ }
+ warmPhotoTools();return Promise.resolve(photoStage('photo-select',()=>selectPhoto(request))).then(result=>{if(selectionRevision!==revisionOf(request.id)){if(result?.url)URL.revokeObjectURL(result.url);return null;}if(result)analytics.photoSelected({outcome:'ready'});return result;},error=>{analytics.photoSelected({outcome:'invalid'});throw error;});}
 export function previewPhotoReported(file,options){return photoStage('photo-preview',()=>previewPhoto(file,options));}
 export function cropPhotoReported(file,area,options){return photoStage('photo-crop',()=>cropPhoto(file,area,options));}
 export function cancelPhotoRun(){closePhotoRun('cancelled');}
@@ -413,17 +470,8 @@ export function cancelPhotoRun(){closePhotoRun('cancelled');}
 // These are historic lossy previews. They are never canonical originals and must never be
 // written into the device originals cache.
 let gallery=null;
-export function galleryTextUrl(origin,hash,dimension,format){
- if(!/^[a-f0-9]{64}$/.test(hash||''))throw Error('Invalid gallery identity.');
- return `${origin}/outputImages/hash-${hash.slice(0,2)}/${hash.slice(2,4)}/hash-${hash}_${dimension}.${format}`;
-}
-export function gallerySeedUrl(origin,seed,dimension,format){
- if(!Number.isInteger(seed)||seed<0)throw Error('Invalid gallery seed.');
- return `${origin}/outputImages/s${seed%100}/${seed}/s${seed}_${dimension}.${format}`;
-}
 export async function loadNames(){
- const response=await fetch('/catalogue.json');if(!response.ok)throw Error('The name gallery is unavailable. You can still enter any name.');
- const data=await response.json();if(!Array.isArray(data.names)||data.names.length>10000)throw Error('Invalid name gallery.');
+ const data=await getPublicCatalogue();
  const origin=String(data.origin||'');
  if(origin&&new URL(origin).protocol!=='https:')throw Error('Invalid name gallery origin.');
  gallery={origin,seeds:data.seeds||null};
@@ -450,3 +498,31 @@ export function issueUrl(route){
   body:'**What happened?**\n\n\n**What did you expect?**\n\n\n---\n'+summary});
  return ISSUE_REPO+'?'+params.toString();
 }
+
+const photoSources=new Map(),sourceFiles=new Map();
+export function rememberSourcePhoto(id,file){const previous=photoSources.get(id);if(previous)URL.revokeObjectURL(previous);photoSources.delete(id);sourceFiles.delete(id);if(file instanceof Blob){photoSources.set(id,URL.createObjectURL(file));sourceFiles.set(id,file);}}
+export function sourcePhotoUrl(id){return photoSources.get(id)||'';}
+let arrivalRevision=0;
+export function invalidateArrivalRestore(){arrivalRevision++;}
+export async function checkCachedFace(item){try{const service=await engine();return !!(await service.peekOriginal?.(item));}catch{return false;}}
+export async function restoreLastResult(){
+ const revision=arrivalRevision;analytics.operationResult?.('restore','ready');let reason='missing';
+ const saved=await readLast(value=>reason=value);if(!saved){analytics.operationResult?.('restore',reason==='missing'?'miss':'failed',undefined,{reason});return null;}
+ // Check the currently pinned model identity without initializing inference.
+ try{const response=await fetch('/runtime/manifest.json');if(!response.ok)return null;const current=await response.json();if(current.modelSourceSha256!==saved.result.provenance.modelSha256||current.noiseSha256!==saved.result.provenance.noiseSha256||await digest(JSON.stringify(generationIdentity(current,saved.generationKind)))!==saved.generationSha256){analytics.operationResult?.('restore','failed',undefined,{reason:'incompatible'});return null;}}catch{analytics.operationResult?.('restore','failed',undefined,{reason:'unavailable'});return null;}
+ if(active||faces.size||revision!==arrivalRevision){analytics.operationResult?.('restore','superseded');return null;}
+ await register('face-1',saved.result,'Saved face');analytics.milestone?.('restored-ready');analytics.operationResult?.('restore','completed');
+ return {...snapshot('Welcome back — your last generated face is saved on this device.'),restored:true,inputs:[{id:'face-1',mode:'project',value:'Saved face',file:null}],...saved.settings};
+}
+
+export function queueFace(id,depth){analytics.queuedRequest?.(id,depth);}
+export function cancelQueuedFace(id){analytics.cancelQueued?.(id);}
+
+async function prepareFaceChoices(id,boxes){const file=sourceFiles.get(id);if(!file)return null;try{const preview=await previewPhoto(file,{edge:2048});return {id,file,boxes,...preview};}catch{return null;}}
+export async function chooseDetectedFace(choice,index){
+ analytics.operationResult?.('selection','completed');const box=choice.boxes[index];if(!box)throw Error('Choose a detected face.');
+ const size=Math.min(box.width*choice.previewWidth,box.height*choice.previewHeight);
+ return cropPhoto(choice.file,{left:box.x*choice.previewWidth,top:box.y*choice.previewHeight,width:size,height:size},{previewScale:choice.scale,rotation:0});
+}
+
+export function displayMilestone(kind){if(kind==='preview')analytics.milestone?.(kind);else analytics.visibleResult?.(kind);}

@@ -55,5 +55,7 @@ copy_tree(Path(__file__).parent.parent/'next/notices',a.output/'runtime/notices'
   Cache-Control: no-cache
 /catalogue.json
   Cache-Control: no-cache
+/preview/*
+  Cache-Control: public, max-age=86400
 ''')
 print('Independent static candidate staged:',a.output)

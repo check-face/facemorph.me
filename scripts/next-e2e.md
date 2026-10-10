@@ -1,11 +1,47 @@
-# Manual exact-artifact CPU qualification
+# Exact-artifact CPU UI qualification
 
-Dispatch `.github/workflows/next-e2e.yml` with a **successful branch push or manual** `next-site.yml` run ID, its exact `next-site-<source SHA>` artifact name and the public runtime manifest SHA256. It performs no build and changes no public assets. Artifact source, file checksums and the top-level runtime pin are checked before generation; production runtime loaders verify nested descriptors/assets normally.
+Updated **10 October 2026**. Run product commands from the **facemorph.me repo**.
+The candidate target is **https://next.facemorph.me**; see the
+[development guide](../docs/dev/README.md) for the build/delivery flow.
 
-Chrome alone maps `next.facemorph.me:443` to the local TLS server on8443. Python still resolves the real public host when acquiring immutable `/runtime/` assets. No manifest or application bytes are rewritten. The self-signed certificate exception is isolated to this temporary CI browser; COOP/COEP remain enabled. Uploads/diagnostics are refused. The public manifest must still equal the requested pin; an older pin requires a separately preserved manifest acquisition URL before it can be replayed.
+## Current flow
 
-The job checks two1024 CPU name/seed outputs, repeat original bytes with **zero new worker messages or workers**, a generated synthetic face passed back through the real photo picker/e4e path, downloaded project reopening, and a real default16-frame/segment morph decoded to a presented512 video frame and saved as MP4. The generated photo must satisfy production strict single-face admission; a detection failure is a failed case, never bypassed. Worker wrapping only counts construction/messages and forwards originals unchanged. Inputs and downloaded evidence are synthetic, with diagnostics off.
+`.github/workflows/next-site.yml` builds the selected source into a
+`next-site-<source SHA>` artifact, then runs compiled UI and real CPU UI
+qualification before candidate-branch deployment. The standalone
+`.github/workflows/next-e2e.yml` provides a separate qualification entry point.
+Use the arguments and artifact/runtime inputs in the selected workflow; this
+page does not replace its current invocation.
 
-This is Linux headless Chromium CPU workflow evidence. It does not qualify GPU execution, a physical phone, desktop packaging, cross-browser parity, clean offline installation, or all imported-project/interaction/recovery scenarios. Runtime/device canaries remain separate numerical evidence enforced by the production code. Performance on shared GitHub runners is diagnostic only.
+`scripts/next-e2e-server.py` serves the exact UI artifact and pinned runtime tree.
+The qualification browser maps the production origin to its local TLS server;
+server-side runtime acquisition still uses the public origin. Runtime overlay
+and local mirrored runtime options permit qualification of the bytes that will
+be deployed. Preserve production isolation headers, source receipts, file
+checksums, and manifest pins. The harness refuses uploads/diagnostic POSTs.
 
-Partial checkpoints and errors are saved under `next-e2e-evidence/report.json`; synthetic downloads, source/hash receipts and browser/server logs are retained14 days. A60-minute job budget bounds the CPU qualification/model acquisition cost; generation starts have30-second deadlines; active UI stages have90-minute deadlines (the outer job budget is authoritative). Run35066728740 failed before UI startup because the runtime host rejected Python’s default User-Agent (HTTP403); the proxy now uses an explicitly tested User-Agent. Run35066964468 passed real CPU name/seed1024 generation, then exposed a harness download-overwrite bug on the second Save image. Downloads now use distinct directories; remaining E2E checks are pending the corrected rerun. Neither partial run qualifies the complete workflow.
+The UI harness exercises name/seed generation, named route rejection, repeated
+original-cache reuse with no new inference workers/requests, synthetic photo e4e,
+local crop, and a playable saved MP4 morph. Project save/reopen is conditional:
+**it is skipped while the product hides project controls**. A skipped check is
+not a passed integrated workflow, even if component round-trip tests pass.
+Check the actual report and feature state for every run.
+
+## Evidence and limits
+
+The [retained b322a26 CPU report](../docs/review/round-2-2026-10-10/cpu-qualification.json)
+passed those enabled scenarios in Linux headless Chromium and saved a decoded
+1024×1024 MP4. It explicitly skipped project save/reopen. This supersedes this
+page's earlier partial-run descriptions and its old 512px-only account.
+
+The report, synthetic downloads, source/hash receipts and browser/server logs
+are workflow artifacts. Retain a durable report/receipt when making a long-lived
+claim, since CI artifacts expire. Overall success covers the executed scenarios
+only. CPU UI evidence does not establish GPU performance, physical phone memory,
+whole-session restore, names-grid visual parity, native packaging, or offline
+installation. Shared-runner timing is diagnostic; performance claims require
+[autoresearch's controlled measurements](../autoresearch/README.md).
+
+For current deployed/source gaps, use the
+[round 2 review](../docs/round-2-gap-2026-10-10.md). Avoid treating an old run,
+source-only assertion, or component pass as today's product qualification.

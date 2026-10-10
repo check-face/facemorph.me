@@ -2,7 +2,7 @@
 import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs/promises';import vm from 'node:vm';import {webcrypto} from 'node:crypto';
 import {createEstimator, describeMs, describeMeasuredMs, isSlowJob, COLD_FACE_MS} from './estimate.mjs';
 const read=n=>fs.readFile(new URL(n,import.meta.url),'utf8');
-const plain=s=>s.replace(/^import .*;\n/gm,'').replaceAll('export ','').replaceAll('import.meta.url',JSON.stringify(import.meta.url));
+const plain=s=>s.replace(/^(?:import .*|export \{.*\} from .*);\n/gm,'').replaceAll('export ','').replaceAll('import.meta.url',JSON.stringify(import.meta.url));
 test('Face time is measured from real work only, and frames come from the shared geometry',async()=>{
  // product-bridge reads its stage labels from stage-labels.mjs and its morph key from
  // morph-frames.mjs; inline both so the stripped harness defines the real implementations.

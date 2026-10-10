@@ -1,6 +1,6 @@
 import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs/promises';import vm from 'node:vm';import {webcrypto} from 'node:crypto';
 const read=n=>fs.readFile(new URL(n,import.meta.url),'utf8');
-const plain=s=>s.replace(/^import .*;\n/gm,'').replaceAll('export ','').replaceAll('import.meta.url',JSON.stringify(import.meta.url));
+const plain=s=>s.replace(/^(?:import .*|export \{.*\} from .*);\n/gm,'').replaceAll('export ','').replaceAll('import.meta.url',JSON.stringify(import.meta.url));
 test('Explicit route selection preserves cache-first lookup without allocating a worker',async()=>{
  const source=plain(await read('browser/runtime.mjs'));let allocated=0;
  const saved={blob:new Blob(['original'],{type:'image/png'}),space:'w-plus',generationSha256:'hash',imageSha256:'hash',latentSha256:'hash',values:new Float32Array(9216)};
@@ -80,4 +80,42 @@ test('Measured stages bypass progress throttling; build and device identity rema
  d.enable(true);const flushed=posts.length;d.bundle('a'.repeat(64));d.start('faces','webgpu');d.stage('asset-acquisition',{loaded:1});d.stage('asset-acquisition',{loaded:2});d.stage('model-loaded',{elapsedMs:12.4,photo:'private'});d.stage('synthesis-complete',{elapsedMs:5.6});d.flush();
  assert.deepEqual(posts.slice(flushed).map(p=>p.stage||p.event),['start','asset-acquisition','model-loaded','synthesis-complete']);assert.equal(posts[flushed+2].stageMs,12);assert.equal(posts[flushed+3].stageMs,6);assert.equal(posts[flushed].build,'next-reviewed-build');assert.equal(posts[flushed].browserMajor,26);assert.equal(posts[flushed].bundle,'a'.repeat(64));assert.equal(posts[flushed].provider,'webgpu');
  assert.match(posts[flushed].device,/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);assert.equal(writes,1);assert.equal(consentWrites,1);assert.equal(JSON.parse(stored.get('facemorph-debug-consent-v1')).choice,'on');assert(!JSON.stringify(posts).includes('private'));d.enable(false);assert.equal(JSON.parse(stored.get('facemorph-debug-consent-v1')).choice,'off','Turning reporting off replaces the stored opt-in with a recorded no');assert.equal(stored.has('facemorph-debug-device-v1'),false,'and forgets the device id');const count=posts.length;d.stage('encoding-complete',{elapsedMs:10});d.flush();assert.equal(posts.length,count);
+});
+
+// These tests hold actual bridge operations open across edits, rather than checking source text.
+async function bridgeContext({generate,writer,readLast,fetchManifest,identity}={}){
+ const service={setPreferredRoute(){},generate:generate|| (async request=>({blob:new Blob([request.value],{type:'image/png'}),latent:{space:'w-plus',values:new Float32Array(9216)},provenance:{bundleVersion:'test',manifestSha256:'0'.repeat(64),modelSha256:'m',noiseSha256:'n'}}))};
+ let count=0;
+ const ctx=vm.createContext({analytics:new Proxy({},{get:()=>()=>{}}),onJobEnd(){},Blob,Float32Array,AbortController,DOMException,TextDecoder,crypto:webcrypto,JSON,Map,
+ URL:{createObjectURL:()=>`blob:${++count}`,revokeObjectURL(){}},
+ fetch:async()=>({ok:true,json:async()=>fetchManifest||{},arrayBuffer:async()=>new TextEncoder().encode(JSON.stringify({codec:{}})).buffer}),
+ createBrowserRuntime:()=>service,createDesktopRuntime:()=>service,decode:s=>({tag:0,fields:[JSON.parse(s)]}),encode:x=>({tag:0,fields:[JSON.stringify(x)]}),GEOMETRY_VERSION:'test',
+ diagnostics:{start(){},stage(){},finish(){},bundle(){}},labelFor:s=>s,loadedBytes:e=>e.loaded||0,window:{addEventListener(){}},readLast:readLast||(async()=>null),generationIdentity:()=>identity||{},digest:async()=> 'hash',
+ videoWriter:()=>writer,createLatentPath:m=>({totalFrames:32,*frames(){},sample:(segment,u)=>new Float32Array(9216).fill(segment*16+u*16)}),infillFrames:(await import('./infill.mjs')).infillFrames,
+ frameStoreGet:async()=>null,frameStoreGetOne:async(key,index)=>ctx.retained.get(index),frameStoreKey:async()=> 'frames',retained:new Map()});
+ vm.runInContext(plain(await read('stage-labels.mjs'))+'\n'+plain(await read('product-bridge.mjs'))+'\nglobalThis.run=execute;globalThis.invalidate=invalidateFace;globalThis.restore=restoreLastResult;globalThis.arrivalChange=invalidateArrivalRestore;',ctx);
+ return ctx;
+}
+const singleRequest=(id,value)=>({jobId:1,action:'face',target:id,provider:'cpu',inputs:[{id,mode:'seed',value}],kind:'linear',width:0,pinch:false,frames:16,fps:16});
+test('editing/removing an in-flight face discards its result and retains an unrelated completed face',async()=>{
+ let resolve,started;const began=new Promise(r=>started=r);
+ const face={blob:new Blob(['image'],{type:'image/png'}),latent:{space:'w-plus',values:new Float32Array(9216)}};
+ const ctx=await bridgeContext({generate:async request=>{if(request.value==='2'){started();return new Promise(r=>resolve=r);}return face;}});
+ assert.equal((await ctx.run(singleRequest('a','1'))).faces.length,1);
+ const pending=ctx.run({...singleRequest('b','2'),jobId:2});await began;ctx.invalidate('b');resolve(face);
+ const result=await pending;assert.deepEqual(Array.from(result.faces,f=>f.id),['a']);assert.match(result.message,/Cancelled/);
+});
+test('arrival restoration cannot publish after an input interaction during slow storage',async()=>{
+ let resolve;const ctx=await bridgeContext({readLast:()=>new Promise(r=>resolve=r),fetchManifest:{modelSourceSha256:'m',noiseSha256:'n'}});
+ const restoring=ctx.restore();ctx.arrivalChange();resolve({result:{blob:new Blob(['image'],{type:'image/png'}),latent:{space:'w-plus',values:new Float32Array(9216)},provenance:{modelSha256:'m',noiseSha256:'n'}},generationKind:'seed',generationSha256:'hash',settings:{}});
+ assert.equal(await restoring,null);
+});
+test('infill availability remains sparse and video encoding drains in canonical order',async()=>{
+ const available=[],encoded=[];let ctx;
+ const writer={initialize:async()=>{},retain:async(blob,index)=>{available.push(index);ctx.retained.set(index,blob);return blob;},add:async(blob,index)=>{encoded.push(index);},finish:async()=>new Blob(['video'],{type:'video/mp4'}),dispose(){}};
+ ctx=await bridgeContext({writer});
+ // Exercise the one-at-a-time runtime fallback with real endpoint/midpoint/quarter indices.
+ vm.runInContext('globalThis.__service=engine;',ctx);const runtime=await ctx.__service();runtime.synthesize=async()=>({blob:new Blob(['frame'],{type:'image/png'})});
+ const request={...singleRequest('a','1'),action:'morph',inputs:[{id:'a',mode:'seed',value:'1'},{id:'b',mode:'seed',value:'2'}]};
+ const result=await ctx.run(request);assert.equal(result.errorMessage,'');assert.deepEqual(available.slice(0,4),[0,16,8,24]);assert.deepEqual(encoded,Array.from({length:32},(_,i)=>i));assert.equal(new Set(available).size,32);
 });

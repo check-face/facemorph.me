@@ -1,0 +1,76 @@
+{
+  "passed": true,
+  "checks": {
+    "preflight": {
+      "passed": true,
+      "modeOptions": [
+        "auto",
+        "cpu",
+        "webgpu",
+        "webgl"
+      ],
+      "engine": "blink"
+    },
+    "nameSeed": {
+      "passed": true,
+      "dimensions": [
+        [
+          1024,
+          1024
+        ],
+        [
+          1024,
+          1024
+        ]
+      ],
+      "processingSelection": "keyboard"
+    },
+    "routeRejectionNamed": {
+      "passed": true,
+      "caption": "Using the cpu route. The webgpu route failed its device check on this device.",
+      "error": "WebGPU is unavailable.\n\nSEND THIS REPORT\nTRY AGAIN\nDISMISS\n\nUse classic FaceMorph while we fix this."
+    },
+    "repeatOriginal": {
+      "passed": true,
+      "sha256": "9787b61ec1b3cab9eca987a28dfe95fdcc1657b7a5796f69f5442086faf9be4a",
+      "newWorkers": 0,
+      "newWorkerRequests": 0
+    },
+    "syntheticPhotoE4e": {
+      "passed": true,
+      "newWorkers": 1,
+      "widths": [
+        1024,
+        1024
+      ]
+    },
+    "localCrop": {
+      "passed": true,
+      "file": "cropped.png"
+    },
+    "projectSaveReopen": {
+      "passed": null,
+      "shipped": false,
+      "reason": "Project export and open are not enabled at the moment \u2014 we are not sure what we need them for yet (operator, 22 September). Product.fs projectFilesVisible=false; the ProjectJson round trip stays covered by src/Next/verify-fable.mjs"
+    },
+    "morphPlayableMp4": {
+      "passed": true,
+      "done": true,
+      "width": 1024,
+      "height": 1024,
+      "duration": 2,
+      "time": 0.001278,
+      "bytes": 1034153,
+      "sha256": "8084e9775e880c05165eefc66b1ba375bd36d3315338ae3ebac4ea25c344f371"
+    }
+  },
+  "runtimeSha256": "d9e37e50a436e9fb7c0c7f973e70adee353c808f48c6a51fa5a9186f1c650a5c",
+  "scope": "Exact compiled UI CPU qualification; synthetic inputs only; not physical-phone evidence. The agent string below states which engine actually ran this; one engine is not evidence for another.",
+  "stage": "morphVideo",
+  "consentToastShown": true,
+  "agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/154.0.0.0 Safari/537.36",
+  "engine": "blink",
+  "processingSelection": "keyboard",
+  "downloadGateAccepted": 2,
+  "finishedAt": 1791522310.7109168
+}

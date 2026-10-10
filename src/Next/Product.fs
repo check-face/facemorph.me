@@ -14,18 +14,22 @@ open FancyButton
 [<CLIMutable>]
 type Input = { id: string; mode: string; value: string; file: obj }
 [<CLIMutable>]
-type Face = { id: string; url: string; label: string }
+type Face = { id: string; url: string; label: string; sourceMode: string; sourceFile: obj }
+[<CLIMutable>]
+type PublicPreview = { id: string; mode: string; value: string; url: string }
 [<CLIMutable>]
 type NameFace = { name:string; value:string; image:string }
 [<CLIMutable>]
 type Progress = { jobId: int; stage: string; text: string; fraction: float; face: string }
 [<CLIMutable>]
-type Output = { faces: Face array; videoUrl: string; projectJson: string; message: string; errorMessage: string; restored: bool; inputs: Input array; kind: string; width: float; pinch: bool; frames: int; fps: int }
+type Output = { faces: Face array; videoUrl: string; projectJson: string; message: string; errorMessage: string; restored: bool; inputs: Input array; kind: string; width: float; pinch: bool; frames: int; fps: int; photoChoices: obj; cropFace: string }
 [<CLIMutable>]
 type Request = { jobId: int; action: string; target: string; inputs: Input array; kind: string; width: float; pinch: bool; frames: int; fps: int; provider: string }
 
 [<Import("loadNames", "./product-bridge.mjs")>]
 let loadNames (): JS.Promise<NameFace array> = jsNative
+[<Import("publicPreview", "./product-bridge.mjs")>]
+let publicPreview (mode: string) (value: string): JS.Promise<string> = jsNative
 
 [<Import("execute", "./product-bridge.mjs")>]
 let execute (request: Request): JS.Promise<Output> = jsNative
@@ -45,6 +49,8 @@ let importProject (request: obj): JS.Promise<Output> = jsNative
 let measuredFaceMs (): obj = jsNative
 [<Import("measuredFrameMs", "./product-bridge.mjs")>]
 let measuredFrameMs (): obj = jsNative
+[<Import("measuredVideoMs", "./product-bridge.mjs")>]
+let measuredVideoMs (): obj = jsNative
 [<Import("jobProgress", "./product-bridge.mjs")>]
 let jobProgress (): obj = jsNative
 [<Import("sliderFrames", "./product-bridge.mjs")>]
@@ -75,6 +81,37 @@ let consentToDownload (scope: string): string = jsNative
 let sourceVersion (): string = jsNative
 [<Import("issueUrl", "./product-bridge.mjs")>]
 let issueUrl (route: string): string = jsNative
+
+[<Import("restoreLastResult", "./product-bridge.mjs")>]
+let restoreLastResult (): JS.Promise<Output> = jsNative
+[<Import("rememberSourcePhoto", "./product-bridge.mjs")>]
+let rememberSourcePhoto (id:string) (file:obj): unit = jsNative
+[<Import("sourcePhotoUrl", "./product-bridge.mjs")>]
+let sourcePhotoUrl (id:string): string = jsNative
+
+[<Import("queueFace", "./product-bridge.mjs")>]
+let queueFace (id:string) (depth:int): unit = jsNative
+[<Import("cancelQueuedFace", "./product-bridge.mjs")>]
+let cancelQueuedFace (id:string): unit = jsNative
+
+[<Import("chooseDetectedFace", "./product-bridge.mjs")>]
+let chooseDetectedFace (choice:obj) (index:int): JS.Promise<obj> = jsNative
+
+[<Import("invalidateArrivalRestore", "./product-bridge.mjs")>]
+let invalidateArrivalRestore (): unit = jsNative
+[<Import("nextScheduled", "./scheduler.mjs")>]
+let nextScheduled (jobs:obj array) (options:obj): int = jsNative
+[<Import("photoRevision", "./product-bridge.mjs")>]
+let photoRevision (id:string): int = jsNative
+[<Import("invalidateFace", "./product-bridge.mjs")>]
+let invalidateFace (id:string): unit = jsNative
+[<Import("invalidateMorph", "./product-bridge.mjs")>]
+let invalidateMorph (): unit = jsNative
+[<Import("checkCachedFace", "./product-bridge.mjs")>]
+let checkCachedFace (item:Input): JS.Promise<bool> = jsNative
+
+[<Import("displayMilestone", "./product-bridge.mjs")>]
+let displayMilestone (kind:string): unit = jsNative
 
 // estimate.mjs turns the measured medians into predictions. One instance, so the pre-run
 // estimate, the time-remaining readout and the slow-video warning can never disagree.
@@ -152,7 +189,7 @@ let openPhotoPicker (id: string): unit = jsNative
 [<Import("dragPhoto", "./photo-selection.mjs")>]
 let dragPhoto (event: obj) (busy: bool) (leaving: bool): unit = jsNative
 [<Import("invalidatePhotoSelections", "./photo-selection.mjs")>]
-let invalidatePhotoSelections (): unit = jsNative
+let invalidatePhotoSelections (id:string): unit = jsNative
 [<Import("focusCropArea", "./photo-selection.mjs")>]
 let focusCropArea (): unit = jsNative
 [<Import("openNamesFocus", "./photo-selection.mjs")>]
@@ -163,7 +200,7 @@ let closeNamesFocus (): unit = jsNative
 let namesKey (event: obj) (close: unit -> unit): unit = jsNative
 
 type State = {
-    Inputs: Input list; Faces: Face array; VideoUrl: string
+    Inputs: Input list; Faces: Face array; Previews: PublicPreview list; VideoUrl: string
     Kind: string; Width: float; Pinch: bool; Frames: int; Fps: int; Provider: string
     Busy: bool; JobId: int; Stage: string; Status: string; Fraction: float
     /// The photo warm-up's line. It runs while nothing is busy, so it cannot use Status:
@@ -186,6 +223,15 @@ type State = {
     SliderFrame: int
     Warn: string option; Overflow: bool; PhotoQueue: (string * obj) list
     PendingFaces: string list
+    PendingJobs: Msg list
+    PendingMorph: bool
+    PendingImport: obj option
+    RunInputs: Input list
+    RunSettings: string
+    PreparingFaces: Set<string>
+    Comparing: string option
+    PhotoChoice: obj option
+    CachedFaces: Set<string>
     ActiveFace: string option
     Remaining: string
     /// The trial-phase question, asked once per visitor as a toast (see `trialPhase`).
@@ -203,8 +249,9 @@ type State = {
 and [<CLIMutable>] CropChoice = { faceId: string; url: string; file: obj; scale: float; view: obj }
 and Msg =
     | Edit of string * string | Mode of string * string | Photo of string * obj
-    | PickPhoto of string * obj | PhotoError of string
+    | PickPhoto of string * obj | PhotoError of string | PhotoFailed of string * string
     | Photos of string option * obj | AddAt of int | Remove of string | Kind of string
+    | CancelFace of string | Compare of string option | ChooseDetected of int | DismissDetected
     | Frames of int | Provider of string | Run of string | RunFace of string | Cancel
     | Progressed of Progress | Completed of int * Output | Failed of int * string
     | Save of string | Share of string | Export | Import of obj | Notice of string
@@ -212,8 +259,11 @@ and Msg =
     | Debug of bool | Consent of bool * string | SendReportOnce | ReportFailure | DismissFailureToast | Retry | DismissConsentPrompt | DismissError | DismissInvite | DismissWarn | OverflowToggle of bool
     | UseSliderToggle of bool | SliderLoaded of obj | SliderFrameSet of int
     | BrowseNames of string | NamesLoaded of NameFace array | SearchNames of string | ChooseName of string | CloseNames | MoreNames
+    | CachedFaceChecked of Input * bool
+    | RestoredLast of Output
+    | PreviewLoaded of string * string * string * string
     | PinchToggle of bool
-    | CropPan of float * float | CropZoom of float | CropRotate | CropAccept | CropCancel | RequestCrop of string | Cropped of string * obj
+    | CropPan of float * float | CropZoom of float | CropRotate | CropAccept | CropCancel | RequestCrop of string | Cropped of string * int * obj
 
 [<Emit("window.location.pathname === '/names' || window.location.pathname === '/names/' || new URLSearchParams(window.location.search).has('names')")>]
 let namesRequested (): bool = jsNative
@@ -231,16 +281,21 @@ let labsOrigin (): bool = jsNative
 /// in the For-testing area. Labs needs no question: reporting starts on there (reporting.mjs).
 let private trialPhase = true
 
+let private previewCmd id mode value =
+    Cmd.OfPromise.either (fun () -> publicPreview mode value) ()
+        (fun url -> PreviewLoaded(id,mode,value,url))
+        (fun _ -> PreviewLoaded(id,mode,value,""))
+
 let emptyFile: obj = null
 let init () =
     { Inputs = [{id="face-1";mode="text";value="hello";file=emptyFile}; {id="face-2";mode="text";value=System.DateTime.Today.ToString("yyyy-MM-dd");file=emptyFile}]
-      Faces=[||];VideoUrl="";Kind="full-smooth-figure8";Width=0.2;Pinch=true;Frames=16;Fps=16;Provider="auto"
+      Faces=[||];Previews=[{id="face-1";mode="text";value="hello";url="/preview/hello-1024.webp"}];VideoUrl="";Kind="full-smooth-figure8";Width=0.2;Pinch=true;Frames=16;Fps=16;Provider="auto"
       Busy=false;JobId=0;Stage="idle";Status="";Fraction=0.;Preparing="";Browse=None;Names=[||];NameQuery="";NameLimit=48;Error=None;DebugStatus="";Debug=false;NextId=3;Crop=None;CropQueue=[];Route="";Rejected=None;Invite=testingInvited()
-      UseSlider=false;SliderFrames=None;SliderFrame=1;Warn=None;Overflow=false;PhotoQueue=[];PendingFaces=[];ActiveFace=None;Remaining=""
+      UseSlider=false;SliderFrames=None;SliderFrame=1;Warn=None;Overflow=false;PhotoQueue=[];PendingFaces=[];PendingJobs=[];PendingMorph=false;PendingImport=None;RunInputs=[];RunSettings="";PreparingFaces=Set.empty;Comparing=None;PhotoChoice=None;CachedFaces=Set.empty;ActiveFace=None;Remaining=""
       ConsentPrompt=trialPhase && not (testingInvited()) && not (labsOrigin()) && not (consentAnswered())
       Downloads={known=false;phase="idle";scope="";loaded=0.;total=0.;routeReady=false;photoReady=false;photoAvailable=false;routeBytes=0.;photoBytes=0.}
       ModelToastHidden=false;DownloadConsent=Set.empty;Gate=None;LastRun=None;FailureToast=false },
-    Cmd.batch [Cmd.ofSub(fun dispatch -> subscribe (Progressed >> dispatch)); Cmd.ofSub(fun dispatch -> subscribeDownloads (DownloadsChanged >> dispatch)); if namesRequested() then Cmd.ofMsg(BrowseNames "face-1")]
+    Cmd.batch [Cmd.OfPromise.either restoreLastResult () RestoredLast (fun _ -> Notice ""); Cmd.ofSub(fun dispatch -> subscribe (Progressed >> dispatch)); Cmd.ofSub(fun dispatch -> subscribeDownloads (DownloadsChanged >> dispatch)); if namesRequested() then Cmd.ofMsg(BrowseNames "face-1")]
 
 /// Time left in the job in flight, spoken. Empty without a measurement on this device.
 /// R2-13: remaining() takes LEFT counts; feeding it jobProgress' done counts made this read
@@ -249,7 +304,8 @@ let private remainingText () =
     let jp = jobProgress()
     let facesLeft = (jp?facesTotal: float) - (jp?facesDone: float)
     let framesLeft = (jp?framesTotal: float) - (jp?framesDone: float)
-    let ms = estimator?remaining(createObj ["facesLeft" ==> facesLeft;"framesLeft" ==> framesLeft])
+    let encodeFramesLeft = (jp?videoFramesTotal:float) - (jp?videoFramesDone:float)
+    let ms = estimator?remaining(createObj ["facesLeft" ==> facesLeft;"framesLeft" ==> framesLeft;"encodeFramesLeft" ==> encodeFramesLeft])
     if isJsNull ms then "" else describeMs(unbox<float> ms) + " remaining"
 
 /// Per-frame cost this device has measured, spoken. Empty without a measurement.
@@ -267,7 +323,7 @@ let private predictedMorphMs (state:State) =
     match plannedFrames(createObj ["inputs" ==> Array.ofList state.Inputs;"kind" ==> state.Kind;"width" ==> state.Width;"pinch" ==> state.Pinch;"frames" ==> state.Frames;"fps" ==> state.Fps]) with
     | null -> None
     | frames ->
-        let ms = estimator?predict(createObj ["faces" ==> state.Inputs.Length;"frames" ==> unbox<float> frames])
+        let ms = estimator?predict(createObj ["faces" ==> state.Inputs.Length;"frames" ==> unbox<float> frames;"encodeFrames" ==> unbox<float> frames])
         if isJsNull ms then None else Some(unbox<float> ms)
 
 /// Guidance follows evidence, not the route's name: a qualified GPU route can still be slow
@@ -283,9 +339,11 @@ let private scopeReady (downloads:Downloads) scope =
 let private gateScope (state:State) (msg:Msg) =
     let needed =
         match msg with
+        | RunFace id when state.CachedFaces.Contains id -> None
         | RunFace id ->
             state.Inputs |> List.tryFind(fun item -> item.id=id)
-            |> Option.map(fun item -> if item.mode="photo" then "photo" else "route")
+            |> Option.bind(fun item -> if item.mode="project" then None else Some(if item.mode="photo" then "photo" else "route"))
+        | Import _ -> Some "route"
         | Run _ ->
             let unencodedPhoto = state.Inputs |> List.exists(fun item -> item.mode="photo" && not (state.Faces |> Array.exists(fun face -> face.id=item.id)))
             Some(if unencodedPhoto then "photo" else "route")
@@ -298,7 +356,9 @@ let megabytes (bytes:float) =
     if bytes >= 1024.*1024.*1024. then sprintf "%.1f GB" (bytes/1024./1024./1024.) else sprintf "%.0f MB" (max 1. (bytes/1024./1024.))
 
 let update msg state =
-    let change id f = {state with Inputs=state.Inputs |> List.map(fun item -> if item.id=id then f item else item); VideoUrl="";Status=""}
+    let change id f =
+        invalidateFace id
+        {state with CachedFaces=state.CachedFaces.Remove id;Faces=state.Faces |> Array.filter(fun face -> face.id<>id);Inputs=state.Inputs |> List.map(fun item -> if item.id=id then f item else item); VideoUrl="";Status=""}
     let noticeTask fn arg = Cmd.OfPromise.either fn arg Notice (fun _ -> Notice "Couldn't save or share this file. Try Save instead.")
     /// Shows the next crop waiting its turn, if any. Called wherever a crop leaves the screen so
     /// a queued one can never be stranded behind a slot that is now free.
@@ -310,11 +370,30 @@ let update msg state =
     let dequeue (state:State) =
         match state.PhotoQueue with
         | (id,file)::rest ->
-            {state with PhotoQueue=rest},
-            Cmd.OfPromise.either selectPhoto (createObj ["id" ==> id;"files" ==> oneFile file]) (fun result -> Photo(id,result)) (fun e -> PhotoError e.Message)
+            {state with PhotoQueue=rest;PreparingFaces=state.PreparingFaces.Add id},
+            Cmd.OfPromise.either selectPhoto (createObj ["id" ==> id;"files" ==> oneFile file]) (fun result -> Photo(id,result)) (fun e -> PhotoFailed(id,e.Message))
         | [] -> state,Cmd.none
+    let schedule (next:State) (commands:Cmd<Msg>) =
+        let waiting id = next.PreparingFaces.Contains id || (next.Crop |> Option.exists(fun crop -> crop.faceId=id)) || (next.CropQueue |> List.exists(fun crop -> crop.faceId=id)) || (next.PhotoChoice |> Option.exists(fun choice -> (choice?id:string)=id))
+        let jobs=next.PendingJobs |> List.filter(fun job -> match job with | RunFace id -> next.Inputs |> List.exists(fun input -> input.id=id) | _ -> true)
+        let descriptors=jobs |> List.map(fun job -> match job with | RunFace id -> createObj ["kind" ==> "face";"id" ==> id] | Run "morph" -> createObj ["kind" ==> "morph"] | _ -> createObj ["kind" ==> "import"]) |> List.toArray
+        let blocked=next.Inputs |> List.filter(fun input -> waiting input.id) |> List.map(fun input -> input.id) |> List.toArray
+        let index=nextScheduled descriptors (createObj ["busy" ==> next.Busy;"blockedFaces" ==> blocked;"blockMorph" ==> (not next.PreparingFaces.IsEmpty || next.PhotoChoice.IsSome || next.Crop.IsSome || not next.CropQueue.IsEmpty || not next.PhotoQueue.IsEmpty)])
+        if index<0 then {next with PendingJobs=jobs},commands
+        else
+            let job=List.item index jobs
+            {next with PendingJobs=jobs |> List.indexed |> List.filter(fun (i,_) -> i<>index) |> List.map snd},Cmd.batch [commands;Cmd.ofMsg job]
     match msg with
-    | (RunFace _ | Run _) when not state.Busy && (gateScope state msg).IsSome ->
+    | CachedFaceChecked(item,hit) ->
+        if state.Inputs |> List.exists((=) item) then
+            if hit then {state with CachedFaces=state.CachedFaces.Add item.id},Cmd.ofMsg(RunFace item.id)
+            else {state with Gate=Some((if item.mode="photo" then "photo" else "route"),RunFace item.id)},Cmd.none
+        else state,Cmd.none
+    | RunFace id when not state.Busy && (gateScope state msg).IsSome ->
+        match state.Inputs |> List.tryFind(fun input -> input.id=id) with
+        | Some item -> state,Cmd.OfPromise.either checkCachedFace item (fun hit -> CachedFaceChecked(item,hit)) (fun _ -> CachedFaceChecked(item,false))
+        | None -> state,Cmd.none
+    | (RunFace _ | Run _ | Import _) when not state.Busy && (gateScope state msg).IsSome ->
         {state with Gate=Some((gateScope state msg).Value,msg)},Cmd.none
     | GateAccept ->
         match state.Gate with
@@ -337,31 +416,55 @@ let update msg state =
     // re-crop by hand. Choosing a photo, renaming a face, changing its source or removing a face
     // other than the one in flight now always take effect, queueing where they must.
     | Edit(id,value) ->
-        invalidatePhotoSelections(); change id (fun item -> {item with value=if item.mode="seed" then value |> String.filter System.Char.IsDigit else value}), Cmd.none
-    | Mode(id,mode) -> invalidatePhotoSelections(); change id (fun item -> {item with mode=mode;file=emptyFile}), Cmd.none
-    | PickPhoto(id,files) -> state,Cmd.OfPromise.either selectPhoto (createObj ["id" ==> id;"files" ==> files]) (fun file -> Photo(id,file)) (fun e -> PhotoError e.Message)
-    | Cropped(id,file) when not (isNull file) ->
+        invalidateArrivalRestore()
+        invalidatePhotoSelections id
+        let next=change id (fun item -> {item with value=if item.mode="seed" then value |> String.filter System.Char.IsDigit else value})
+        let cmd=next.Inputs |> List.tryFind(fun item -> item.id=id) |> Option.map(fun item -> previewCmd id item.mode item.value) |> Option.defaultValue Cmd.none
+        {next with CachedFaces=next.CachedFaces.Remove id},cmd
+    | Mode(id,mode) ->
+        invalidateArrivalRestore()
+        rememberSourcePhoto id null
+        invalidatePhotoSelections id
+        let next=change id (fun item -> {item with mode=mode;file=emptyFile})
+        let cmd=next.Inputs |> List.tryFind(fun item -> item.id=id) |> Option.map(fun item -> previewCmd id item.mode item.value) |> Option.defaultValue Cmd.none
+        {next with CachedFaces=next.CachedFaces.Remove id},cmd
+    | PickPhoto(id,files) ->
+        invalidateFace id
+        invalidatePhotoSelections id
+        if not (isNull files) && fileListLength files>0 then rememberSourcePhoto id (fileAt files 0)
+        {state with PreparingFaces=state.PreparingFaces.Add id;Faces=state.Faces |> Array.filter(fun face -> face.id<>id);CachedFaces=state.CachedFaces.Remove id},Cmd.OfPromise.either selectPhoto (createObj ["id" ==> id;"files" ==> files]) (fun file -> Photo(id,file)) (fun e -> PhotoFailed(id,e.Message))
+    | Cropped(id,revision,file) when revision<>photoRevision id -> state,Cmd.none
+    | Cropped(id,_,file) when not (isNull file) ->
         // CropAccept raised Busy itself ("Preparing your crop…"): by the time the rendered
         // crop lands, that flag is the crop's own, not a run's. Leaving it set made the
         // idle-accept path see Busy and queue the face into PendingFaces, where nothing
         // would ever dispatch it - a stuck "busy" with no run. A crop accepted while a real
         // run is in flight keeps Busy and queues, exactly as before.
         let cropOwnsBusy=state.Stage="cropping"
-        let next={change id (fun item -> {item with mode="photo";file=file;value=fileName file}) with Error=None;Busy=(if cropOwnsBusy then false else state.Busy)}
+        let next={change id (fun item -> {item with mode="photo";file=file;value=fileName file}) with Error=None;PreparingFaces=state.PreparingFaces.Remove id;Busy=(if cropOwnsBusy then false else state.Busy)}
         let (queued,queuedCmd)=dequeue next
         // The crop IS the photo choice. With no run in flight and no queued photo, the e4e
         // encode for this face starts now instead of waiting for a second button press.
         // While another face IS still encoding, the accepted crop must not clobber that
         // run's progress state: the face joins PendingFaces and starts on completion.
-        if queued.Busy then {queued with PendingFaces=queued.PendingFaces@[id]},queuedCmd
-        elif queued.PhotoQueue.Length>0 then queued,queuedCmd
+        if queued.Busy then {queued with PendingFaces=(queued.PendingFaces@[id] |> List.distinct);PendingJobs=(queued.PendingJobs@[RunFace id] |> List.distinct)},queuedCmd
         else queued,Cmd.batch [queuedCmd;Cmd.ofMsg (RunFace id)]
-    | PhotoError message when not state.Busy || state.Stage="cropping" ->
-        let next={state with Error=Some message;Busy=false;Stage=(if state.Stage="cropping" then "idle" else state.Stage);Status="";FailureToast=not state.Debug;LastRun=None} // "Try again" would rerun some earlier job, not this photo
+    | PhotoFailed(id,message) ->
+        let next,cmd=dequeue {state with PreparingFaces=state.PreparingFaces.Remove id;PendingJobs=state.PendingJobs |> List.filter((<>) (RunFace id));PendingFaces=state.PendingFaces |> List.filter((<>) id);Error=Some message;FailureToast=not state.Debug}
+        schedule next cmd
+    | PhotoError message ->
+        let next={state with Error=Some message;Busy=state.Busy;Stage=(if state.Stage="cropping" then "idle" else state.Stage);Status="";FailureToast=not state.Debug;LastRun=None} // "Try again" would rerun some earlier job, not this photo
         dequeue next
     // A photo the alignment route cannot take whole opens the crop step first; only the crop
     // is ever aligned. Cancelling leaves the existing face and its inputs alone.
+    | Photo(_,offer) when not (isNull offer) && not (isJsNull offer?projectFile) ->
+        state,Cmd.ofMsg(Import offer?projectFile)
+    | Photo(id,offer) when not (isNull offer) && (offer?recovered |> unbox<bool>) ->
+        let next={state with Inputs=state.Inputs |> List.map(fun item -> if item.id=id then {item with mode="project";file=null;value="Saved face"} else item);CachedFaces=state.CachedFaces.Remove id;Faces=offer?faces;PreparingFaces=state.PreparingFaces.Remove id}
+        let queued,cmd=dequeue next
+        schedule queued cmd
     | Photo(id,offer) when not (isNull offer) && isCropOffer offer ->
+        let state={state with PreparingFaces=state.PreparingFaces.Remove id}
         let choice={faceId=id;url=offer?url;file=offer?file;scale=offer?scale
                     view=createCrop(createObj ["previewWidth" ==> offer?previewWidth;"previewHeight" ==> offer?previewHeight;"scale" ==> offer?scale;"viewport" ==> 320.])}
         // Replacing the same face's pending crop is the visitor changing their mind; a crop for a
@@ -378,7 +481,7 @@ let update msg state =
     | RequestCrop id when state.ActiveFace<>Some id ->
         match state.Inputs |> List.tryFind(fun item -> item.id=id) with
         | Some item when not (isNull item.file) ->
-            state,Cmd.OfPromise.either (fun () -> previewPhoto item.file null) () (fun preview -> Photo(id,cropOffer preview item.file)) (fun e -> PhotoError e.Message)
+            state,Cmd.OfPromise.either (fun () -> previewPhoto item.file null) () (fun preview -> Photo(id,cropOffer preview item.file)) (fun e -> PhotoFailed(id,e.Message))
         | _ -> state,Cmd.none
     | CropPan(dx,dy) ->
         match state.Crop with
@@ -395,38 +498,38 @@ let update msg state =
     | CropCancel ->
         cancelPhotoRun()
         state.Crop |> Option.iter (fun crop -> revokeUrl crop.url)
-        let next=nextCrop {state with Crop=None}
-        dequeue next
+        let id=state.Crop |> Option.map(fun crop -> crop.faceId)
+        let next=nextCrop {state with Crop=None;PendingJobs=state.PendingJobs |> List.filter(fun job -> match job with | RunFace face -> Some face<>id | _ -> true);PendingFaces=state.PendingFaces |> List.filter(fun face -> Some face<>id)}
+        let ready,cmd=dequeue next
+        schedule ready cmd
     | CropAccept ->
         match state.Crop with
         | Some crop ->
             let options=createObj ["previewScale" ==> crop.scale;"rotation" ==> crop.view?rotation]
             let target=crop.faceId
+            let revision=photoRevision target
             revokeUrl crop.url
             // Rendering the crop is real work: hold the controls until it lands, so nothing can
             // be generated from the previous photo while the crop is still being prepared. When a
             // real run is already in flight the crop must not take the status line from it —
             // claiming Busy here would also make Cropped clear the run's own Busy flag.
             {nextCrop {state with Crop=None} with
-                        Busy=true
-                        Stage=(if state.Busy then state.Stage else "cropping")
-                        Status=(if state.Busy then state.Status else "Preparing your crop…")
-                        Fraction=(if state.Busy then state.Fraction else 0.)},
-            Cmd.OfPromise.either (fun () -> cropPhoto crop.file (cropRect crop.view) options) () (fun file -> Cropped(target,file)) (fun e -> PhotoError e.Message)
+                        PreparingFaces=state.PreparingFaces.Add target},
+            Cmd.OfPromise.either (fun () -> cropPhoto crop.file (cropRect crop.view) options) () (fun file -> Cropped(target,revision,file)) (fun e -> PhotoFailed(target,e.Message))
         | None -> state,Cmd.none
+    | Photo(id,file) when isNull file -> schedule {state with PreparingFaces=state.PreparingFaces.Remove id} Cmd.none
     | Photo(id,file) when not (isNull file) ->
         // Direct accept (no crop needed): same eager-e4e rule as Cropped — the choice of photo IS
         // the instruction to encode it. A run may well be in flight now that photo intents are no
         // longer swallowed, so this queues exactly as the crop path does instead of dispatching a
         // RunFace that the busy guard would drop on the floor.
-        let (next,nextCmd)=dequeue {change id (fun item -> {item with mode="photo";file=file;value=fileName file}) with Error=None;Status=(if state.Busy then state.Status else "")}
-        if next.Busy then {next with PendingFaces=next.PendingFaces@[id]},nextCmd
-        elif next.PhotoQueue.Length>0 then next,nextCmd
+        let (next,nextCmd)=dequeue {change id (fun item -> {item with mode="photo";file=file;value=fileName file}) with Error=None;PreparingFaces=state.PreparingFaces.Remove id;Status=(if state.Busy then state.Status else "")}
+        if next.Busy then {next with PendingFaces=(next.PendingFaces@[id] |> List.distinct);PendingJobs=(next.PendingJobs@[RunFace id] |> List.distinct)},nextCmd
         else next,Cmd.batch [nextCmd;Cmd.ofMsg (RunFace id)]
     // A drop of one or more photos: the named tile (or the first empty face) takes the first,
     // and every further file creates its own face, in drop order.
     | Photos(optId,files) when not (isNull files) && fileListLength files>0 ->
-        invalidatePhotoSelections()
+        invalidateArrivalRestore()
         let count=fileListLength files
         let mutable inputs=state.Inputs
         let targets=System.Collections.Generic.List<string>()
@@ -442,31 +545,47 @@ let update msg state =
             | Some index when index < List.length inputs -> targets.Add((List.item index inputs).id); emptyLeft <- None
             | _ -> targets.Add(appendFace ())
         for _ in 2..count do targets.Add(appendFace ())
+        for i in 0..count-1 do
+            invalidateFace targets.[i]
+            invalidatePhotoSelections targets.[i]
+            rememberSourcePhoto targets.[i] (fileAt files i)
         let firstId=targets.[0]
         let queue=[for i in 1..count-1 -> (targets.[i], fileAt files i)]
-        {state with Inputs=inputs;PhotoQueue=queue;Error=None},
-        Cmd.OfPromise.either selectPhoto (createObj ["id" ==> firstId;"files" ==> oneFile (fileAt files 0)]) (fun result -> Photo(firstId,result)) (fun e -> PhotoError e.Message)
+        {state with Inputs=inputs;PhotoQueue=queue;Error=None;PreparingFaces=state.PreparingFaces.Add firstId;CachedFaces=Set.empty;Faces=state.Faces |> Array.filter(fun face -> not(targets.Contains face.id))},
+        Cmd.OfPromise.either selectPhoto (createObj ["id" ==> firstId;"files" ==> oneFile (fileAt files 0)]) (fun result -> Photo(firstId,result)) (fun e -> PhotoFailed(firstId,e.Message))
     | AddAt position when state.Inputs.Length<64 ->
+        invalidateArrivalRestore()
+        invalidateMorph()
         let newFace={id="face-"+System.Guid.NewGuid().ToString("N");mode="text";value="";file=emptyFile}
         let (before,after)=state.Inputs |> List.indexed |> List.partition(fun (i,_) -> i<position)
         {state with Inputs=(before |> List.map snd) @ [newFace] @ (after |> List.map snd);NextId=state.NextId+1;VideoUrl=""},Cmd.none
-    | Remove id when state.ActiveFace<>Some id && state.Inputs.Length>1 -> invalidatePhotoSelections(); {state with Inputs=state.Inputs |> List.filter(fun x -> x.id<>id);VideoUrl=""},Cmd.none
-    | Kind value when not state.Busy -> {state with Kind=value;VideoUrl=""},Cmd.none
-    | PinchToggle want -> {state with Pinch=want;VideoUrl=""},Cmd.none
-    | Frames value when not state.Busy -> {state with Frames=value;VideoUrl=""},Cmd.none
+    | Remove id when state.Inputs.Length>1 -> invalidateFace id; rememberSourcePhoto id null; invalidatePhotoSelections id; {state with Faces=state.Faces |> Array.filter(fun face -> face.id<>id);PreparingFaces=state.PreparingFaces.Remove id;CachedFaces=state.CachedFaces.Remove id;Inputs=state.Inputs |> List.filter(fun x -> x.id<>id);PendingJobs=state.PendingJobs |> List.filter((<>) (RunFace id));PendingFaces=state.PendingFaces |> List.filter((<>) id);VideoUrl=""},Cmd.none
+    | Kind value -> invalidateMorph(); {state with Kind=value;VideoUrl="";SliderFrames=None},Cmd.none
+    | PinchToggle want -> invalidateMorph(); {state with Pinch=want;VideoUrl="";SliderFrames=None},Cmd.none
+    | Frames value -> invalidateMorph(); {state with Frames=value;VideoUrl="";SliderFrames=None},Cmd.none
     | Provider value when not state.Busy -> {state with Provider=value},Cmd.none
     | OverflowToggle expanded -> {state with Overflow=expanded},Cmd.none
+    | Compare id -> {state with Comparing=id},Cmd.none
+    | CancelFace id ->
+        cancelQueuedFace id
+        if state.ActiveFace=Some id then cancelWork(); {state with PendingJobs=state.PendingJobs |> List.filter((<>) (RunFace id));PendingFaces=state.PendingFaces |> List.filter((<>) id);Comparing=None;Stage="cancelling"},Cmd.none
+        else
+            invalidateFace id
+            invalidatePhotoSelections id
+            schedule {state with PreparingFaces=state.PreparingFaces.Remove id;PendingJobs=state.PendingJobs |> List.filter((<>) (RunFace id));PendingFaces=state.PendingFaces |> List.filter((<>) id)} Cmd.none
+    | RunFace faceId when state.Busy || state.PreparingFaces.Contains faceId ->
+        queueFace faceId (state.PendingFaces.Length+1)
+        {state with PendingFaces=(state.PendingFaces@[faceId] |> List.distinct);PendingJobs=(state.PendingJobs@[msg] |> List.distinct)},Cmd.none
+    | Run "morph" when state.Busy || not state.PreparingFaces.IsEmpty || state.PhotoChoice.IsSome || state.Crop.IsSome -> {state with PendingMorph=true;PendingJobs=(state.PendingJobs@[msg] |> List.distinct)},Cmd.none
     | RunFace faceId when not state.Busy ->
         match state.Inputs |> List.tryFind(fun item -> item.id=faceId) with
         | None -> state,Cmd.none
         | Some item ->
-            invalidatePhotoSelections()
             let id=state.JobId+1
             let request={jobId=id;action="face";target=faceId;inputs=[|item|];kind=state.Kind;width=state.Width;pinch=state.Pinch;frames=state.Frames;fps=state.Fps;provider=state.Provider}
-            {state with Busy=true;JobId=id;LastRun=Some msg;FailureToast=false;Error=None;Stage="preparing";Status="Generating this face…";Fraction=0.;VideoUrl="";Warn=None;Remaining="";SliderFrames=None;SliderFrame=1;PhotoQueue=[]},
+            {state with Busy=true;JobId=id;LastRun=Some msg;FailureToast=false;Error=None;Stage="preparing";Status="Generating this face…";ActiveFace=Some faceId;RunInputs=[item];RunSettings="";PendingJobs=state.PendingJobs |> List.filter((<>) (RunFace faceId));PendingFaces=state.PendingFaces |> List.filter((<>) faceId);Fraction=0.;VideoUrl="";Warn=None;Remaining="";SliderFrames=None;SliderFrame=1},
             Cmd.OfPromise.either execute request (fun result -> Completed(id,result)) (fun e -> Failed(id,e.Message))
     | Run action when not state.Busy ->
-        invalidatePhotoSelections()
         let id=state.JobId+1
         // Slow-video warning (U-12): a measured prediction above the threshold is spoken,
         // never blocking — the job starts and the warning can be dismissed. The run itself
@@ -477,8 +596,12 @@ let update msg state =
                  | Some ms when isSlowJob ms -> Some (sprintf "This video may take %s on this device. It keeps going if you switch tabs, and you can cancel at any time." (describeMs ms))
                  | _ -> if isSlowDevice state then Some "Generating is slow on this device, so this video may take a while. You can cancel at any time." else None
         let request={jobId=id;action=action;target="";inputs=Array.ofList state.Inputs;kind=state.Kind;width=state.Width;pinch=state.Pinch;frames=state.Frames;fps=state.Fps;provider=state.Provider}
-        {state with Busy=true;JobId=id;LastRun=Some msg;FailureToast=false;Error=None;Stage="preparing";Status="Preparing…";Fraction=0.;Warn=warn;Remaining="";SliderFrames=None;SliderFrame=1;PhotoQueue=[];ActiveFace=None},
+        {state with Busy=true;JobId=id;LastRun=Some msg;FailureToast=false;Error=None;Stage="preparing";Status="Preparing…";RunInputs=state.Inputs;RunSettings=sprintf "%s|%f|%b|%d|%d" state.Kind state.Width state.Pinch state.Frames state.Fps;PendingMorph=false;PendingJobs=state.PendingJobs |> List.filter((<>) (Run "morph"));Fraction=0.;Warn=warn;Remaining="";SliderFrames=None;SliderFrame=1;ActiveFace=None},
         Cmd.OfPromise.either execute request (fun result -> Completed(id,result)) (fun e -> Failed(id,e.Message))
+    | RestoredLast result when not (isNull (box result)) && state.JobId=0 && state.RunInputs.IsEmpty && (state.Inputs.Head.value="hello") ->
+        {state with Inputs=(result.inputs |> Array.toList) @ state.Inputs.Tail;Faces=result.faces;Previews=[];Status=result.message;Kind=result.kind;Width=result.width;Pinch=result.pinch;Frames=result.frames;Fps=result.fps},Cmd.none
+    | Progressed progress when progress.stage="frames-available" && progress.jobId=state.JobId ->
+        state,Cmd.OfPromise.either sliderFrames () SliderLoaded (fun _ -> SliderLoaded null)
     | Progressed progress when progress.stage.StartsWith("diagnostics-") ->
         let status = match progress.stage with
                      | "diagnostics-sent" -> "Report saved. Reference: " + progress.text
@@ -507,12 +630,29 @@ let update msg state =
     // Every way a failure reaches Error (here, Failed and PhotoError) also raises FailureToast:
     // without reporting on, a failure leaves nothing we can see, so ask right then, while the
     // staged records of what led up to it are still on the device.
+    | DismissDetected ->
+        closeNamesFocus()
+        state.PhotoChoice |> Option.iter(fun choice -> revokeUrl choice?url)
+        let waiting=state.PhotoChoice |> Option.map(fun choice -> (choice?id:string))
+        schedule {state with PhotoChoice=None;PendingJobs=state.PendingJobs |> List.filter(fun job -> match job with | RunFace id -> Some id<>waiting | _ -> true);PendingFaces=state.PendingFaces |> List.filter(fun id -> Some id<>waiting)} Cmd.none
+    | ChooseDetected index ->
+        closeNamesFocus()
+        match state.PhotoChoice with
+        | Some choice ->
+            let id:string=choice?id
+            let revision=photoRevision id
+            revokeUrl choice?url
+            {state with PhotoChoice=None;PreparingFaces=state.PreparingFaces.Add id},Cmd.OfPromise.either (chooseDetectedFace choice) index (fun file -> Cropped(id,revision,file)) (fun e -> PhotoFailed(id,e.Message))
+        | None -> state,Cmd.none
+    | Completed(id,result) when id=state.JobId && not (isJsNull result.photoChoices) ->
+        openNamesFocus()
+        schedule {state with Busy=false;ActiveFace=None;PhotoChoice=Some result.photoChoices;Status="Choose the face you mean.";Fraction=0.} Cmd.none
+    | Completed(id,result) when id=state.JobId && not (isJsNull (box result.cropFace)) ->
+        schedule {state with Busy=false;ActiveFace=None;Status="Crop to a clear face to continue.";Fraction=0.;PreparingFaces=state.PreparingFaces.Add result.cropFace} (Cmd.ofMsg(RequestCrop result.cropFace))
     | Completed(id,result) when id=state.JobId ->
-        let next={state with Inputs=(if result.restored then List.ofArray result.inputs else state.Inputs);Kind=(if result.restored then result.kind else state.Kind);Width=(if result.restored then result.width else state.Width);Pinch=(if result.restored then result.pinch else state.Pinch);Frames=(if result.restored then result.frames else state.Frames);Fps=(if result.restored then result.fps else state.Fps);Busy=false;Faces=result.faces;VideoUrl=result.videoUrl;Status=result.message;Error=(if result.errorMessage="" then None else Some result.errorMessage);FailureToast=result.errorMessage<>"" && not state.Debug;Stage=(if result.errorMessage="" then "done" else "error");Fraction=(if result.errorMessage="" then 1. else 0.);Warn=None;Remaining="";ActiveFace=None;PhotoQueue=[]}
-        let drained={next with PendingFaces=[]}
-        let pendingRun=match next.PendingFaces with | head::_ -> Cmd.ofMsg (RunFace head) | [] -> Cmd.none
+        let next={state with Inputs=(if result.restored then List.ofArray result.inputs else state.Inputs);Kind=(if result.restored then result.kind else state.Kind);Width=(if result.restored then result.width else state.Width);Pinch=(if result.restored then result.pinch else state.Pinch);Frames=(if result.restored then result.frames else state.Frames);Fps=(if result.restored then result.fps else state.Fps);Busy=false;Faces=(if result.restored then result.faces else result.faces |> Array.filter(fun face -> state.Inputs |> List.exists(fun item -> item.id=face.id)));VideoUrl=(if state.RunInputs=state.Inputs && state.RunSettings=sprintf "%s|%f|%b|%d|%d" state.Kind state.Width state.Pinch state.Frames state.Fps then result.videoUrl else "");Status=result.message;Error=(if result.errorMessage="" then None else Some result.errorMessage);FailureToast=result.errorMessage<>"" && not state.Debug;Stage=(if result.errorMessage="" then "done" else "error");Fraction=(if result.errorMessage="" then 1. else 0.);Warn=None;Remaining="";ActiveFace=None}
         let sliderCmd=if result.videoUrl<>"" && state.UseSlider then Cmd.OfPromise.either sliderFrames () SliderLoaded (fun _ -> SliderLoaded null) else Cmd.none
-        drained,Cmd.batch [sliderCmd;pendingRun]
+        schedule next sliderCmd
     // More than one face in the photo is not a failure, it is a crop the visitor has not made
     // yet. Alignment only ever aligns the crop, so offering the crop window is both the fix and
     // the next step — telling them to "choose a clear photo containing exactly one face" made
@@ -524,19 +664,17 @@ let update msg state =
     | Failed(id,message) when id=state.JobId ->
         let next={state with Busy=false;Error=Some message;Status="";Stage="error";Fraction=0.;Warn=None;Remaining="";ActiveFace=None;FailureToast=not state.Debug}
         // A failed run still drains queued faces: the second face was cropped on purpose.
-        match next.PendingFaces with
-        | head::_ -> {next with PendingFaces=[]},Cmd.ofMsg (RunFace head)
-        | [] -> next,Cmd.none
+        schedule next Cmd.none
     | Cancel when state.Busy -> cancelWork(); {state with Stage="cancelling";Status="Cancelling…"},Cmd.none
     | Save id -> state,noticeTask saveMedia id
     | Share id -> state,noticeTask shareMedia id
     | Export when not state.Busy ->
         let options=createObj ["inputs" ==> Array.ofList state.Inputs;"kind" ==> state.Kind;"width" ==> state.Width;"pinch" ==> state.Pinch;"frames" ==> state.Frames;"fps" ==> state.Fps]
         state,Cmd.OfPromise.either exportProject options Notice (fun e -> Notice e.Message)
+    | Import file when state.Busy && not (isNull file) -> {state with PendingImport=Some file;PendingJobs=(state.PendingJobs@[msg] |> List.distinct)},Cmd.none
     | Import file when not state.Busy && not (isNull file) ->
-        invalidatePhotoSelections()
         let id=state.JobId+1
-        {state with Busy=true;JobId=id;Stage="importing";Status="Opening project…";PhotoQueue=[]},
+        {state with Busy=true;JobId=id;Stage="importing";PendingImport=None;PendingJobs=state.PendingJobs |> List.filter((<>) msg);Status="Opening project…";RunInputs=state.Inputs;RunSettings=""},
         Cmd.OfPromise.either importProject (createObj ["file" ==> file; "jobId" ==> id; "provider" ==> state.Provider]) (fun result -> Completed(id,result)) (fun e -> Failed(id,e.Message))
     | Notice text -> {state with Status=text},Cmd.none
     | Debug enabled -> setDebug enabled "checkbox";{state with Debug=enabled;Invite=false;ConsentPrompt=false},Cmd.none
@@ -556,16 +694,21 @@ let update msg state =
     | SliderLoaded frames ->
         {state with SliderFrames=(if isNull frames then None else Some (unbox<string array> frames))},Cmd.none
     | SliderFrameSet frame -> {state with SliderFrame=max 1 frame},Cmd.none
-    | BrowseNames id when not state.Busy -> openNamesFocus(); {state with Browse=Some id;NameQuery="";NameLimit=48},(if state.Names.Length=0 then Cmd.OfPromise.either loadNames () NamesLoaded (fun e -> Notice e.Message) else Cmd.none)
+    | BrowseNames id -> openNamesFocus(); {state with Browse=Some id;NameQuery="";NameLimit=48},(if state.Names.Length=0 then Cmd.OfPromise.either loadNames () NamesLoaded (fun e -> Notice e.Message) else Cmd.none)
     | NamesLoaded names -> {state with Names=names},Cmd.none
+    | PreviewLoaded(id,mode,value,url) ->
+        match state.Inputs |> List.tryFind(fun item -> item.id=id) with
+        | Some item when item.mode=mode && item.value=value ->
+            let remaining=state.Previews |> List.filter(fun preview -> preview.id<>id)
+            {state with Previews=(if url="" then remaining else {id=id;mode=mode;value=value;url=url}::remaining)},Cmd.none
+        | _ -> state,Cmd.none
     | SearchNames text -> {state with NameQuery=text;NameLimit=48},Cmd.none
-    | ChooseName value when not state.Busy ->
-        invalidatePhotoSelections()
+    | ChooseName value ->
         closeNamesFocus()
         match state.Browse with
         // Picking a name is the request: make the face straight away rather than leave a second
         // Generate press. RunFace still goes through the download gate on a cold device.
-        | Some id -> {change id (fun item -> {item with mode="text";value=value;file=emptyFile}) with Browse=None},Cmd.ofMsg(RunFace id)
+        | Some id -> {change id (fun item -> {item with mode="text";value=value;file=emptyFile}) with Browse=None},Cmd.batch [previewCmd id "text" value;Cmd.ofMsg(RunFace id)]
         | None -> state,Cmd.none
     | CloseNames -> closeNamesFocus(); {state with Browse=None},Cmd.none
     | MoreNames -> {state with NameLimit=state.NameLimit+48},Cmd.none
@@ -695,42 +838,68 @@ let private setpointField (props:FieldProps) =
             ]]]]
 
 let viewFace (state:State) dispatch (index:int) (item:Input) (label:string) =
-    let face = state.Faces |> Array.tryFind(fun f -> f.id=item.id)
+    let face = state.Faces |> Array.tryFind(fun f -> f.id=item.id && ((item.mode="photo" && f.sourceMode="photo" && f.sourceFile=item.file) || item.mode="project" || (f.sourceMode=item.mode && f.label=item.value)))
+    let preview = state.Previews |> List.tryFind(fun p -> p.id=item.id && p.mode=item.mode && p.value=item.value)
     let active = state.ActiveFace = Some item.id
+    let queued = state.PendingFaces |> List.contains item.id
+    let preparing = state.PreparingFaces.Contains item.id
     Html.section [prop.key item.id
                   prop.className ("next-face box" + (if active then " next-face-active" else ""))
                   prop.custom("data-next-face",item.id)
-                  prop.custom("data-next-state",(match item.mode with | "photo" -> "photo" | "project" -> "project" | _ -> if face.IsSome then "filled" else "empty"))
-                  prop.onDragOver(fun e -> dragPhoto e state.Busy false)
-                  prop.onDragLeave(fun e -> dragPhoto e state.Busy true)
+                  prop.custom("data-next-state",(match item.mode with | "photo" -> "photo" | "project" -> "project" | _ -> if face.IsSome then "filled" else if preview.IsSome then "preview" else "empty"))
+                  prop.onDragOver(fun e -> dragPhoto e false false)
+                  prop.onDragLeave(fun e -> dragPhoto e false true)
                   prop.onDrop(fun e ->
-                    dragPhoto e state.Busy true
-                    if not state.Busy then
-                        let files=photoFiles e
-                        dispatch(if fileListLength files>1 then Photos(Some item.id,files) else PickPhoto(item.id,files)))
+                    dragPhoto e false true
+                    let files=photoFiles e
+                    dispatch(if fileListLength files>1 then Photos(Some item.id,files) else PickPhoto(item.id,files)))
                   prop.children [
-        Html.input [prop.id ("photo-"+item.id);prop.type'.file;prop.hidden true;prop.accept "image/*";prop.ariaLabel "Choose photo";prop.onChange(fun (e:Browser.Types.Event) -> dispatch(PickPhoto(item.id,photoFiles e)))]
+        Html.input [prop.id ("photo-"+item.id);prop.type'.file;prop.hidden true;prop.accept "image/*,video/mp4";prop.ariaLabel "Choose photo";prop.onChange(fun (e:Browser.Types.Event) -> dispatch(PickPhoto(item.id,photoFiles e)))]
         Html.div [prop.className "next-face-image";prop.children [
             match face with
-            | Some f -> Html.img [prop.src f.url;prop.alt (sprintf "Generated face from %s" label);prop.width 1024;prop.height 1024;prop.className "next-face-img"]
+            | Some f -> Html.img [prop.onLoad(fun _ -> if state.Comparing<>Some item.id then displayMilestone (if item.mode="project" then "restored-visible" else "generated-visible"));prop.src (if state.Comparing=Some item.id then sourcePhotoUrl item.id else f.url);prop.alt (sprintf "Generated face from %s" label);prop.width 1024;prop.height 1024;prop.className "next-face-img"]
             | None ->
-                // The empty tile is a photo drop target, never a bare plus: the plus belongs to
-                // the insertion connector between faces, and the two must not be mistaken.
-                Html.button [prop.type'.button;prop.className "next-face-empty";prop.tabIndex -1
-                             prop.ariaLabel "Choose photo";prop.onClick(fun _ -> warmPhotoTools(); openPhotoPicker item.id)
-                             prop.children [photoIcon [];Html.span "Drop a photo, or tap to choose"]]
-            if active then Html.div [prop.className "next-face-progress";prop.children [Html.div [prop.className "next-face-progress-fill"]]]
+                match preview with
+                | Some p ->
+                    Html.fragment [
+                        Html.img [prop.onLoad(fun _ -> displayMilestone "preview");prop.src p.url;prop.alt (sprintf "Preview of %s" label);prop.width 1024;prop.height 1024;prop.className "next-face-img";prop.custom("data-public-preview","true")]
+                        Html.span [prop.className "next-sr";prop.text "Cached preview"]]
+                | None ->
+                    // The empty tile is a photo drop target, never a bare plus: the plus belongs to
+                    // the insertion connector between faces, and the two must not be mistaken.
+                    Html.button [prop.type'.button;prop.className "next-face-empty";prop.tabIndex -1
+                                 prop.ariaLabel "Choose photo";prop.onClick(fun _ -> warmPhotoTools(); openPhotoPicker item.id)
+                                 prop.children [photoIcon [];Html.span "Drop a photo, or tap to choose"]]
+            if active || preparing then
+                Html.div [
+                    prop.className "next-face-progress"
+                    prop.custom("role","progressbar")
+                    prop.ariaLabel (label + " progress")
+                    if active && state.Fraction>0. then prop.custom("aria-valuenow",state.Fraction*100.)
+                    prop.children [Html.div [
+                        prop.className ("next-face-progress-fill" + (if active && state.Fraction>0. then " next-face-progress-determinate" else ""))
+                        if active && state.Fraction>0. then prop.style [style.custom("transform",sprintf "scaleX(%g)" state.Fraction)]
+                    ]]
+                ]
             // A-3: remove is a close control on the tile it closes, not a stray dash in the
             // actions row where testers never found it. Visible at rest on touch and desktop —
             // hover-gating hides it on exactly the devices that cannot hover. The last face is
             // never removable, so a morph always has something to morph from.
             if state.Inputs.Length>1 then
                 Mui.tooltip [tooltip.title (sprintf "Remove %s" label);tooltip.children (
-                    Mui.iconButton [prop.className "next-face-close";prop.ariaLabel (sprintf "Remove %s" label);prop.disabled (state.ActiveFace=Some item.id)
+                    Mui.iconButton [prop.className "next-face-close";prop.ariaLabel (sprintf "Remove %s" label);prop.disabled false
                                     iconButton.size.small;iconButton.children (closeIcon []);prop.onClick(fun _ -> dispatch(Remove item.id))])]]]
-        setpointField {Item=item;Label=label;Disabled=false
-                       OnEdit=(fun value -> dispatch(Edit(item.id,value)));OnMode=(fun mode -> dispatch(Mode(item.id,mode)))
-                       OnBrowse=(fun () -> dispatch(BrowseNames item.id));OnPick=(fun () -> openPhotoPicker item.id)}
+        if active || queued || preparing then
+            Html.div [prop.className "next-tile-status";prop.custom("role","status");prop.children [
+                Html.span (if active then state.Status else if preparing then "Preparing photo…" else "Queued")
+                if active || queued || preparing then Mui.button [button.size.small;prop.onClick(fun _ -> dispatch(CancelFace item.id));button.children "Cancel"]]]
+        Html.div [prop.className "next-input-row";prop.children [
+            setpointField {Item=item;Label=label;Disabled=false
+                           OnEdit=(fun value -> dispatch(Edit(item.id,value)));OnMode=(fun mode -> dispatch(Mode(item.id,mode)))
+                           OnBrowse=(fun () -> dispatch(BrowseNames item.id));OnPick=(fun () -> openPhotoPicker item.id)}
+            if face.IsSome || (item.mode="photo" && not (isNull item.file)) || ((item.mode="text" || item.mode="seed") && not (System.String.IsNullOrWhiteSpace item.value)) then
+                FancyButton [button.variant.contained;button.size.small;prop.className "next-face-generate";prop.ariaLabel ("Generate " + label)
+                             prop.onClick(fun _ -> dispatch(RunFace item.id));button.children "Generate"]]]
         // Compatibility and state mirror for tooling that reads the per-face source as a
         // select (next-e2e does). Mode is changed through the field's mode menu; this control
         // is deliberately not focusable, so the field stays the one tab stop per face.
@@ -742,17 +911,13 @@ let viewFace (state:State) dispatch (index:int) (item:Input) (label:string) =
                 Html.span item.value
                 Mui.button [button.variant.text;button.size.small;button.disabled ((state.ActiveFace=Some item.id) || isNull item.file)
                             prop.onClick(fun _ -> dispatch(RequestCrop item.id));button.children "Crop photo"]]]
-        let faceReady =
-            match item.mode with
-            | "text" | "seed" -> not (System.String.IsNullOrWhiteSpace item.value)
-            | "photo" -> not (isNull item.file)
-            | _ -> false
-        if face.IsSome || faceReady then
-            // Per-face generate (U-03): regenerating one face never synthesises any other.
-            // Text and seed faces get the button too: typing a name is the input, and the
-            // button is how that one face is generated without touching the others.
-            FancyButton [button.variant.contained;button.size.small;prop.className "next-face-generate"
-                         button.disabled state.Busy;prop.onClick(fun _ -> dispatch(RunFace item.id));button.children "Generate"]
+        if face.IsSome && sourcePhotoUrl item.id<>"" then
+            Html.button [prop.type'.button;prop.className "next-compare";prop.text "Hold to compare"
+                         prop.onPointerDown(fun _ -> dispatch(Compare(Some item.id)))
+                         prop.onPointerUp(fun _ -> dispatch(Compare None));prop.onPointerLeave(fun _ -> dispatch(Compare None));prop.onPointerCancel(fun _ -> dispatch(Compare None))
+                         prop.onBlur(fun _ -> dispatch(Compare None))
+                         prop.onKeyDown(fun e -> if e.key=" " || e.key="Enter" then e.preventDefault(); dispatch(Compare(Some item.id)))
+                         prop.onKeyUp(fun _ -> dispatch(Compare None))]
         // Remove has moved onto the image as a close control (A-3), so this row keeps only the
         // things a finished face offers and stays on one line at 320 px.
         Html.div [prop.className "next-actions next-face-actions";prop.children [
@@ -795,45 +960,44 @@ let private lengthLabel (frames:int) =
     | Some (_,label) -> label
     | None -> sprintf "Length: %d frames" frames
 
-/// The overflow (D-17): morph shape and video length live here, not on the main surface.
-/// Width, pinch and raw frame counts are gone from the user surface entirely (U-09).
-let private overflow (state:State) dispatch =
-    let canShape = state.Inputs.Length>=2
-    Html.div [prop.className "next-overflow";prop.children [
+let private shapeControls (state:State) dispatch =
+    Html.div [prop.className "next-shape-controls";prop.children [
+        Html.div [prop.className "next-shape-selector";prop.custom("role","radiogroup");prop.ariaLabel "Morph shape";prop.children (
+            shapeOptions |> List.map(fun (key,text) -> Html.label [prop.className "next-shape-choice";prop.children [
+                Html.input [prop.type'.radio;prop.name "morph-shape";prop.value key;prop.isChecked (state.Kind=key);prop.disabled state.Busy;prop.onChange(fun (_:bool) -> dispatch(Kind key))]
+                Html.span text]]))]
         Html.label [prop.className "next-overflow-field";prop.children [
-            Html.span "Morph shape"
-            Html.select [prop.value state.Kind;prop.disabled state.Busy;prop.ariaLabel "Morph shape";prop.onChange(fun (v:string) -> dispatch(Kind v))
-                         prop.children(shapeOptions |> List.map(fun (key,text) -> Html.option [prop.value key;prop.text text]))]]]
-        Html.label [prop.className "next-overflow-field";prop.children [
-            Html.span (lengthLabel state.Frames)
+            Html.span "Length"
             Html.select [prop.value (string state.Frames);prop.disabled state.Busy;prop.ariaLabel "Morph length";prop.onChange(fun (v:string) -> dispatch(Frames(int v)))
-                         prop.children(
-                            (lengthOptions |> List.map(fun (value,label) -> Html.option [prop.value (string value);prop.text label]))
-                            @ (if lengthOptions |> List.exists(fun (value,_) -> value=state.Frames) then []
-                              else [Html.option [prop.value (string state.Frames);prop.text (sprintf "%d frames" state.Frames)]]))]]]
-        // Pinch centre has always been part of the morph request and was passed on every run, but
-        // no control ever reached the surface — so when smooth figure eight became the default
-        // (pinched, 22 September) there was no way to turn it off. It belongs beside the shape it
-        // modifies.
-        Html.label [prop.className "next-overflow-field";prop.children [
-            Mui.formControlLabel [
-                formControlLabel.control (Mui.checkbox [checkbox.checked' state.Pinch;prop.disabled state.Busy
-                                                        prop.ariaLabel "Pinch centre"
-                                                        checkbox.onChange(PinchToggle >> dispatch)])
-                formControlLabel.label "Pinch centre"]]]
-        if not canShape then Html.p [prop.className "next-overflow-reason";prop.text "Add a second face to shape a morph — shape and length describe the path between faces."]]]
+                         prop.children(lengthOptions |> List.map(fun (value,label) -> Html.option [prop.value (string value);prop.text (sprintf "%s · %d frames per segment" label value)]))]]]
+        match plannedFrames(createObj ["inputs" ==> Array.ofList state.Inputs;"kind" ==> state.Kind;"width" ==> state.Width;"pinch" ==> state.Pinch;"frames" ==> state.Frames;"fps" ==> state.Fps]) with
+        | null -> Html.span [prop.className "next-frame-count";prop.text (sprintf "%d frames total" (state.Inputs.Length*state.Frames))]
+        | count -> Html.span [prop.className "next-frame-count";prop.text (sprintf "%g frames total" (unbox<float> count))]]]
+
+let private overflow (state:State) dispatch =
+    Html.div [prop.className "next-overflow";prop.children [
+        Mui.formControlLabel [formControlLabel.control (Mui.checkbox [checkbox.checked' state.Pinch;prop.disabled state.Busy;prop.ariaLabel "Pinch centre";checkbox.onChange(PinchToggle >> dispatch)])
+                              formControlLabel.label "Pinch centre"]
+        Html.details [prop.className "next-advanced";prop.children [
+            Html.summary "Advanced"
+            Html.label [prop.className "next-overflow-field";prop.children [
+                Html.span "Processing mode"
+                Html.select [prop.value state.Provider;prop.disabled state.Busy;prop.ariaLabel "Processing mode";prop.onChange(Provider >> dispatch)
+                             prop.children(["auto","Automatic processing";"cpu","CPU";"webgpu","WebGPU";"webgl","WebGL GPU"] |> List.map(fun (key,text) -> Html.option [prop.value key;prop.text text]))]]]
+            Html.p "Leave processing on automatic unless you are comparing routes. Forced routes still need to pass this device’s checks."]]]]
 
 let private morphSlot (state:State) dispatch =
     let canMorph = state.Inputs.Length>=2
     Html.div [prop.className "next-morph-slot";prop.children [
+        shapeControls state dispatch
         FancyButton [button.variant.contained;button.size.large;prop.className "next-primary-action"
                      prop.custom("data-next-primary","true");prop.type'.button
-                     button.disabled (state.Busy || not canMorph)
+                     button.disabled (not canMorph)
                      prop.onClick(fun _ -> dispatch(Run "morph"))
-                     button.children "Create morph"]
+                     button.children (if state.PendingMorph then "Morph queued" else "Create morph")]
         Html.div [prop.className "next-actions next-generate";prop.children [
-            Mui.button [button.variant.outlined;prop.disabled state.Busy;prop.onClick(fun _ -> dispatch(Run "faces"));button.children "Generate faces"]
-            Mui.button [button.variant.text;prop.disabled (state.Busy || not canMorph)
+            if testingInvited() then Mui.button [button.variant.outlined;prop.disabled state.Busy;prop.onClick(fun _ -> dispatch(Run "faces"));button.children "Generate faces"]
+            Mui.button [button.variant.text;prop.disabled false
                         prop.custom("aria-expanded",state.Overflow);prop.custom("aria-controls","next-overflow")
                         prop.onClick(fun _ -> dispatch(OverflowToggle(not state.Overflow)));button.children "More options"]
             Mui.button [button.variant.text;button.disabled (not canMorph || state.Inputs.Length>=64)
@@ -844,13 +1008,13 @@ let private morphSlot (state:State) dispatch =
         // so a silent fallback or a failed canary never hides what the user is actually running.
         if state.Route<>"" then
             Html.p [prop.className "next-route-caption";prop.custom("data-next-route",state.Route);
-                    prop.text (sprintf "Using the %s route.%s" state.Route
+                    prop.text (sprintf "Ready · %s.%s" (if state.Route="cpu" || state.Route="native-cpu" then "this device’s CPU" else sprintf "this device’s GPU (%s)" state.Route)
                                  (match state.Rejected with Some r -> sprintf " The %s route failed its device check on this device." r | None -> ""))]
         if state.Overflow then Html.div [prop.id "next-overflow";prop.children [overflow state dispatch]]
         // Status, progress and the measured time remaining live next to the action they describe.
         Html.div [prop.className "next-status";prop.custom("role","status");prop.ariaLive.polite;prop.children [
             if state.Busy then Html.progress [prop.className "next-sr";prop.max 1.;if state.Fraction>0. then prop.value state.Fraction]
-            if state.Busy then progressBar (if state.Fraction>0. then state.Fraction else -1.)
+            if state.Busy && state.ActiveFace.IsNone then progressBar (if state.Fraction>0. then state.Fraction else -1.)
             Html.span [prop.text state.Status]
             if not state.Busy && state.Preparing<>"" then
                 Html.span [prop.className "next-preparing";prop.text state.Preparing]
@@ -881,30 +1045,27 @@ let private nextSlider (frames:string array) (dim:int) (frameNum:int) (setFrameN
     let canvasRef = React.useRef(None)
     let (_, setTick) = React.useState(0)
     let ticks = React.useRef(0)
-    let store = React.useRef None
-    let repaint () = ticks.current <- ticks.current + 1; setTick ticks.current
-    let createImage (url:string) =
-        let img = HTMLImageElement.Create(float dim,float dim)
-        img.onload <- fun _ -> repaint()
-        img.src <- url
-        img
-    match store.current with
-    | Some (_,count:int) when count=frames.Length -> ()
-    | _ -> store.current <- Some (frames |> Array.map createImage |> Array.toList, frames.Length)
-    // Draw after the commit, so the very first render paints as soon as its bytes are there
-    // rather than waiting for a second one that nothing was going to schedule.
-    React.useEffect(fun () ->
-        match store.current, canvasRef.current with
-        | Some (images:HTMLImageElement list,_), Some canvas ->
-            let canvas = unbox<HTMLCanvasElement> canvas
-            canvas.width <- float dim
-            canvas.height <- float dim
-            let context = canvas.getContext_2d()
-            let currentFrame = max 1 (min frameNum images.Length)
-            let currentImage = images.[currentFrame-1]
-            if currentImage.complete then context?drawImage(currentImage,0.,0.,dim,dim)
-        | _ -> ())
+    let selected = max 1 (min frameNum frames.Length)
+    let url = frames.[selected-1]
+    React.useEffect((fun () ->
+        if url<>"" then
+            let img=HTMLImageElement.Create(float dim,float dim)
+            img.onload <- fun _ ->
+                match canvasRef.current with
+                | Some canvas ->
+                    let canvas=unbox<HTMLCanvasElement> canvas
+                    canvas.width <- float dim;canvas.height <- float dim
+                    canvas.getContext_2d()?drawImage(img,0.,0.,dim,dim)
+                | None -> ()
+            img.src <- url
+            React.createDisposable(fun () -> img.onload <- fun _ -> (); img.src <- "")
+        else
+            match canvasRef.current with
+            | Some canvas -> let canvas=unbox<HTMLCanvasElement> canvas in canvas.getContext_2d()?clearRect(0.,0.,float dim,float dim)
+            | None -> ()
+            React.createDisposable(fun () -> ())),[|box url|])
     Html.div [prop.className "next-slider";prop.children [
+        if url="" then Html.p [prop.custom("role","status");prop.text "This frame is still queued. Scrub to an available frame or wait for generation."]
         Html.canvas [prop.ref canvasRef;prop.width dim;prop.height dim;prop.style [style.maxWidth(length.percent 100);style.height length.auto];prop.ariaLabel "Morph preview, frame by frame";prop.custom("role","img")]
         Mui.slider [slider.min 1;slider.max frames.Length;slider.value (max 1 (min frameNum frames.Length));slider.onChange setFrameNum
                     prop.ariaLabel "Morph frame";prop.className "next-slider-control"]]]
@@ -918,7 +1079,7 @@ let private videoSlot (state:State) dispatch =
         | _ -> Html.none
     // Classic shows one result at a time: the slider REPLACES the video and the video replaces the
     // slider. Rendering both stacked them, so a morph appeared twice down the page.
-    let showSlider = state.UseSlider
+    let showSlider = state.UseSlider || (state.Busy && state.SliderFrames.IsSome)
     let videoChildren = [
         if not showSlider then
             yield Html.video ([prop.src state.VideoUrl;prop.controls true;prop.loop true;prop.custom("playsInline",true)
@@ -971,8 +1132,8 @@ let private explainSection =
             Html.p [Html.text "The classic site's server and API are being retired. ";Html.a [prop.href "https://facemorph.me/retirement";prop.text "Here's why, and what's changing"];Html.text "."]]
         faq "Does anything leave my device?" [
             Html.p "No. Your photos, the words you type and the faces you make stay here. The first visit downloads the face models, about 200 MB, plus about 1 GB more the first time you use a photo. They're saved on this device, so later visits don't download them again."
-            Html.p "Faces you've already made are saved too, so making the same one again is instant. Reloading the page clears the faces on screen for now; keeping your whole session across reloads is on the way."
-            Html.p "Two things are sent. Anonymous usage counts (see \"What do you count?\") go to Google Analytics. A debug report is sent only if you turn reporting on."]
+            Html.p "Completed generated faces are cached on this device when storage is available. Your last generated face can be restored on return; source photos are kept only in the current tab."
+            Html.p "Two things are sent. Cookie-based usage analytics (see \"What do you count?\") go to Google Analytics. A debug report is sent only if you turn reporting on."]
         faq "What do you count?" [
             Html.p "So we can see whether this works for people, we use Google Analytics to count visits, which features get used (names, seeds, photos, morph shapes, saving and sharing), how each job ends and how long it took, which processing mode ran, and a rough device class such as phone or laptop, its operating system and how much memory it reports. When a job fails, we record the kind of failure and the step it failed at."
             Html.p "We never send your photos, the words or seeds you type, your faces or videos, file names, or error messages. Advertising features and Google signals are off. Nothing is counted if your browser sends Do Not Track, Global Privacy Control or Save-Data, or if you block Google Analytics. It is separate from debug reports, which stay off until you turn them on."]
@@ -994,9 +1155,6 @@ let private explainSection =
 let private debugArea (state:State) dispatch =
     Html.section [prop.className "next-debug box";prop.custom("role","region");prop.ariaLabel "For testing";prop.children [
         Html.h2 "For testing"
-        Html.p "Force a processing mode (for testing) — leave it on automatic unless you are comparing routes:"
-        Html.select [prop.value state.Provider;prop.disabled state.Busy;prop.ariaLabel "Processing mode";prop.onChange(Provider >> dispatch)
-                     prop.children(["auto","Automatic processing";"cpu","CPU";"webgpu","WebGPU";"webgl","WebGL GPU"] |> List.map(fun (key,text) -> Html.option [prop.value key;prop.text text]))]
         Html.label [prop.className "next-debug-report";prop.children [
             Mui.checkbox [checkbox.checked' state.Debug;checkbox.onChange(fun (v:bool) -> dispatch(Debug v))]
             Html.span "Send debug reports until I turn this off"]]
@@ -1007,13 +1165,13 @@ let private debugArea (state:State) dispatch =
 
 let view state dispatch = App.ThemedApp [
     Mui.cssBaseline []
-    Html.main [prop.className "facemorph-page next-product"
-               prop.onDragOver(fun (e:Browser.Types.DragEvent) -> e.preventDefault(); if not state.Busy then (warmPhotoTools(); e.dataTransfer?dropEffect <- "copy"))
+    Html.main [prop.className "facemorph-page next-product";prop.custom("data-next-busy",state.Busy)
+               prop.onDragOver(fun (e:Browser.Types.DragEvent) -> e.preventDefault(); e.dataTransfer?dropEffect <- "copy")
                prop.onDrop(fun (e:Browser.Types.DragEvent) ->
                    e.preventDefault()
                    // A drop on the page background fills the first empty face; if none are empty,
                    // it appends. Multiple files create one face per file, in drop order.
-                   if not state.Busy then dispatch(Photos(None,photoFiles e)))
+                   dispatch(Photos(None,photoFiles e)))
                prop.children [
         Html.aside [prop.className "next-preview-strip";prop.custom("role","note");prop.ariaLabel "About this preview";prop.children [
             Html.span [prop.className "next-preview-strip-lead";prop.children [Html.strong "Experimental preview";Html.text " of the next facemorph.me. Everything runs on your device."]]
@@ -1021,7 +1179,25 @@ let view state dispatch = App.ThemedApp [
                 Html.a [prop.href "https://facemorph.me";prop.text "Classic facemorph.me"]
                 Html.a [prop.href "https://facemorph.me/retirement";prop.text "Its server is retiring"]
                 Html.a [prop.href (issueUrl state.Route);prop.target "_blank";prop.rel "noopener";prop.text "Report an issue"]]]]]
+        match state.PhotoChoice with
+        | Some choice ->
+            let boxes:obj array=choice?boxes
+            Html.div [prop.className "next-crop-dialog next-name-dialog";prop.onKeyDown(fun e -> namesKey e (fun () -> dispatch DismissDetected));prop.custom("role","dialog");prop.custom("aria-modal",true);prop.ariaLabel "Which face?";prop.children [
+                Html.div [prop.className "next-face-picker";prop.children [
+                    Html.h2 "Which face?"
+                    Html.p "More than one face here. Tap the one you mean."
+                    Html.div [prop.className "next-face-picker-image";prop.children [
+                        Html.img [prop.src choice?url;prop.alt "Select a face from your photo"]
+                        for i in 0..boxes.Length-1 do
+                            let box=boxes.[i]
+                            Html.button [prop.type'.button;prop.ariaLabel (sprintf "Choose face %d" (i+1));prop.onClick(fun _ -> dispatch(ChooseDetected i))
+                                         prop.style [style.left (length.percent ((unbox<float> box?x)*100.));style.top (length.percent ((unbox<float> box?y)*100.));style.width (length.percent ((unbox<float> box?width)*100.));style.height (length.percent ((unbox<float> box?height)*100.))]]]]
+                    Html.button [prop.type'.button;prop.onClick(fun _ -> dispatch DismissDetected);prop.text "Cancel"]]]]]
+        | None -> Html.none
         App.header
+        Html.p [prop.className "next-tagline";prop.children [
+            Html.text "Morph between any faces. Type a word, ";Html.a [prop.href "/names";prop.onClick(fun e -> e.preventDefault(); dispatch(BrowseNames "face-1"));prop.text "pick a name"]
+            Html.text ", or ";Html.button [prop.type'.button;prop.onClick(fun _ -> openPhotoPicker "face-1");prop.text "use your own photo"];Html.text "."]]
         // Shown only to someone who opened the testing link, and only until they answer.
         if state.Invite && not state.Debug then
             Html.section [prop.className "next-invite box";prop.custom("role","region");prop.ariaLabel "Help us with this test";prop.children [
@@ -1082,8 +1258,8 @@ let view state dispatch = App.ThemedApp [
         if isSlowDevice state then
             Html.div [prop.className "next-slow-route box";prop.custom("role","note");prop.children [
                 Html.p [Html.strong "Generating is slow on this device.";Html.text (if state.Route="cpu" then " No graphics acceleration qualified here, so it is running on the processor." else sprintf " It qualified the %s route, but this machine is still taking a long time per face." state.Route)]
-                Html.p "It will still finish, and everything is saved as it goes. A laptop or desktop with a graphics card — or the desktop app — is dramatically quicker for morphs."
-                Html.p [Html.a [prop.href "https://github.com/check-face/facemorph.me/releases";prop.text "Desktop builds"]]]]
+                Html.p "You can keep using the page while work is queued. Try a shorter morph, or compare available processing routes under More options → Advanced. A capable desktop browser may help if you are using a phone."
+                Html.p [Html.a [prop.href "https://github.com/check-face/facemorph.me/blob/candidate/next-delivery-20260916/desktop/README.md";prop.text "Desktop app capabilities and availability"]]]]
         match state.Error with
         | Some message -> Html.div [prop.className "next-error box";prop.custom("role","alert");prop.children [
             Html.p message
@@ -1244,7 +1420,7 @@ let view state dispatch = App.ThemedApp [
             snackbar.anchorOrigin.bottomCenter
             snackbar.ContentProps [prop.className "next-consent-toast"]
             snackbar.message (Html.span [prop.className "next-consent-message";prop.children [
-                Html.strong "Help us test the new FaceMorph?"
+                Html.strong "Help us test?"
                 Html.text " Send debug reports: timings, device type and error codes. Never your photos, words or faces. Deleted after 30 days."]])
             snackbar.action [
                 Mui.button [button.color.inherit';button.variant.text;prop.onClick(fun _ -> dispatch(Consent(true,"toast")));button.children "Turn on"]

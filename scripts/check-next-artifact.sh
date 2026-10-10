@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 browser-harness <<'PY'
-import json,time
+import json,time,os
 from pathlib import Path
 def click(role,name):
     nodes=cdp('Accessibility.getFullAXTree')['nodes']
@@ -16,7 +16,7 @@ def click(role,name):
     ident=item['backendDOMNodeId'];cdp('DOM.scrollIntoViewIfNeeded',backendNodeId=ident)
     q=cdp('DOM.getBoxModel',backendNodeId=ident)['model']['content'];click_at_xy(sum(q[0::2])/4,sum(q[1::2])/4)
 def state():
-    return json.loads(js("JSON.stringify({tiles:document.querySelectorAll('.next-face').length,photoButtons:document.querySelectorAll('button[aria-label=\"Choose photo\"]').length,generate:[...document.querySelectorAll('button')].some(b=>b.textContent==='Generate faces'),pattern:document.querySelector('select[aria-label=\"Morph pattern\"]')?.value,errors:document.querySelector('.next-error')?.innerText||''})"))
+    return json.loads(js("JSON.stringify({tiles:document.querySelectorAll('.next-face').length,photoButtons:document.querySelectorAll('button[aria-label=\"Choose photo\"]').length,helloPreview:(()=>{const i=document.querySelector('[data-next-face=\"face-1\"] img[data-public-preview=\"true\"]');return !!i&&i.complete&&i.naturalWidth===1024&&i.naturalHeight===1024;})(),generate:document.querySelectorAll('.next-face-generate').length===2,pattern:document.querySelector('input[name=\"morph-shape\"]:checked')?.value,errors:document.querySelector('.next-error')?.innerText||''})"))
 def until(predicate, timeout=15):
     deadline=time.monotonic()+timeout
     last=None
@@ -27,29 +27,30 @@ def until(predicate, timeout=15):
     raise AssertionError(f'UI condition timed out: {last}')
 result={'passed':False,'scope':'Exact compiled artifact startup and face controls only; no inference, photo generation or physical-device qualification'}
 try:
-    new_tab('http://127.0.0.1:8080/')
+    new_tab(os.environ.get('NEXT_ARTIFACT_ORIGIN','http://127.0.0.1:8080/'))
     wait_for_load()
+    result['agent']=js('navigator.userAgent')
     # Close the trial-phase reporting toast without answering it; it would cover coordinate clicks.
     time.sleep(1)
     result['consentToastShown']=bool(js('(()=>{const b=document.querySelector(\'.next-consent-toast button[aria-label="Ask me later"]\');if(b)b.click();return !!b;})()'))
-    initial=until(lambda s:s['tiles']==2 and s['photoButtons']==2 and s['generate'])
-    # U-09 moved morph shape into the overflow; open it before asserting the default pattern.
-    js("document.querySelector('.next-overflow')||[...document.querySelectorAll('button')].find(b=>b.textContent==='More options').click()")
-    until(lambda s:js("!!document.querySelector('select[aria-label=\"Morph shape\"]')"))
-    js("document.querySelector('.next-overflow').open=true")
-    initial['pattern']=js("document.querySelector('select[aria-label=\"Morph shape\"]')?.value")
-    # Smooth figure eight, pinched, is the default (operator, 22 September). Pinch had been
-    # passed on every run for weeks with no control on the surface, so changing the default
-    # silently took the choice away; the gate now holds both halves — the shape AND the
-    # control that turns it off — so neither can go missing again without CI saying so.
-    initial['pinch']=js("(()=>{const c=document.querySelector('.next-overflow input[type=\"checkbox\"]');return c?c.checked:null;})()")
+    initial=until(lambda s:s['tiles']==2 and s['photoButtons']==1 and s['helloPreview'] and s['generate'])
+    initial['shapes']=js("[...document.querySelectorAll('input[name=\"morph-shape\"]')].map(x=>x.value)")
+    assert len(initial['shapes'])==5, initial
+    click('button','More options')
+    until(lambda s:js("!!document.querySelector('.next-overflow')"))
+    initial['pinch']=js("document.querySelector('.next-overflow input[type=\"checkbox\"]')?.checked")
+    initial['frames']=js("document.querySelector('select[aria-label=\"Morph length\"]')?.value")
+    assert initial['frames']=='16', initial
+    js("document.querySelector('.next-advanced').open=true")
+    initial['routes']=js("[...document.querySelectorAll('select[aria-label=\"Processing mode\"] option')].map(x=>x.value)")
+    assert set(initial['routes'])=={'auto','cpu','webgpu','webgl'}, initial
     assert initial['pattern']=='full-smooth-figure8' and not initial['errors'], initial
     assert initial['pinch'] is True, initial
     result['initial']=initial
     click('button','Add face')
-    result['afterAdd']=until(lambda s:s['tiles']==3 and s['photoButtons']==3)
-    click('button','Remove')
-    result['afterRemove']=until(lambda s:s['tiles']==2 and s['photoButtons']==2)
+    result['afterAdd']=until(lambda s:s['tiles']==3 and s['photoButtons']==2)
+    click('button','Remove Face 3')
+    result['afterRemove']=until(lambda s:s['tiles']==2 and s['photoButtons']==1)
     assert not result['afterRemove']['errors'], result['afterRemove']
     click('button','Browse names')
     deadline=time.monotonic()+10
@@ -63,6 +64,15 @@ try:
         assert time.monotonic()<deadline, 'Escape did not close names dialog'
         time.sleep(.1)
     result['namesDialogEscape']=True
+    result['layouts']=[]
+    for width in [320,360,390,1280]:
+        cdp('Emulation.setDeviceMetricsOverride',width=width,height=900,deviceScaleFactor=1,mobile=width<500)
+        time.sleep(.2)
+        layout=json.loads(js("JSON.stringify({width:innerWidth,scrollWidth:document.documentElement.scrollWidth,overflow:document.documentElement.scrollWidth>visualViewport.width+1,shapes:document.querySelectorAll('input[name=\"morph-shape\"]').length,buttons:[...document.querySelectorAll('.next-face-generate')].map(b=>({width:b.getBoundingClientRect().width,right:b.getBoundingClientRect().right}))})"))
+        assert not layout['overflow'] and layout['scrollWidth']<=width+1 and layout['shapes']==5, layout
+        assert all(b['width']>0 and b['right']<=width+1 for b in layout['buttons']), layout
+        result['layouts'].append(layout)
+    cdp('Emulation.clearDeviceMetricsOverride')
     result['passed']=True
 except Exception as error:
     result['error']=str(error)

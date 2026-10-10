@@ -29,7 +29,7 @@ jobs:
       - name: Every test file is actually run
         run: node scripts/check-tests-listed.mjs
       - name: Shipping runtime, media, privacy and input regressions
-        run: node --test src/Next/analytics.test.mjs hosting/next-static/analytics.test.mjs src/Next/video-worker.test.mjs src/Next/browser/route-priors.test.mjs src/Next/Assets/model-cache.test.mjs src/Next/browser/runtime.test.mjs src/Next/browser/mobile-runtime.test.mjs src/Next/browser/originals.test.mjs src/Next/browser/webgpu-engine.test.mjs src/Next/browser/canary-qualification.test.mjs src/Next/browser/acquisition-budget.test.mjs src/Next/browser/fused-resample.test.mjs src/Next/media.test.mjs src/Next/morph-frames.test.mjs src/Next/fresh-review.test.mjs src/Next/photo-selection.test.mjs src/Next/crop-queue.test.mjs src/Next/browser/encoder-preflight.test.mjs src/Next/photo/crop-view.test.mjs src/Next/estimate.test.mjs src/Next/testing-link.test.mjs src/Next/route-choice.test.mjs src/Next/route-report.test.mjs src/Next/reporting.test.mjs src/Next/stage-labels.test.mjs src/Next/storage-request.test.mjs src/Next/model-inventory.test.mjs src/Next/logging.test.mjs hosting/next-cloudflare/worker.test.mjs
+        run: node --test src/Next/scheduler.test.mjs src/Next/recovery-metadata.test.mjs src/Next/infill.test.mjs src/Next/last-result.test.mjs src/Next/analytics.test.mjs hosting/next-static/analytics.test.mjs src/Next/video-worker.test.mjs src/Next/browser/route-priors.test.mjs src/Next/Assets/model-cache.test.mjs src/Next/browser/runtime.test.mjs src/Next/browser/mobile-runtime.test.mjs src/Next/browser/originals.test.mjs src/Next/browser/webgpu-engine.test.mjs src/Next/browser/canary-qualification.test.mjs src/Next/browser/acquisition-budget.test.mjs src/Next/browser/fused-resample.test.mjs src/Next/media.test.mjs src/Next/morph-frames.test.mjs src/Next/fresh-review.test.mjs src/Next/photo-selection.test.mjs src/Next/crop-queue.test.mjs src/Next/browser/encoder-preflight.test.mjs src/Next/photo/crop-view.test.mjs src/Next/estimate.test.mjs src/Next/testing-link.test.mjs src/Next/route-choice.test.mjs src/Next/route-report.test.mjs src/Next/reporting.test.mjs src/Next/stage-labels.test.mjs src/Next/storage-request.test.mjs src/Next/model-inventory.test.mjs src/Next/logging.test.mjs src/Next/public-previews.test.mjs hosting/next-cloudflare/worker.test.mjs
       - name: Compiled UI imports resolve against the hand-written bridges
         run: node scripts/check-bridge-imports.mjs
       # Operator release gate: while a morph renders the line increments an integer and says
@@ -40,6 +40,8 @@ jobs:
         run: node src/Next/geometry/verify.mjs
       - name: Build the actual new-site artifact
         run: npm run build:next
+      - name: Historic hello preview is included byte for byte
+        run: cmp src/public/preview/hello-1024.webp deploy-next/preview/hello-1024.webp
       - name: Exercise compiled project import and export
         run: node src/Next/verify-fable.mjs src/Next/ProjectJson.fs.js
       # AGENTS.md, binding: no third-party CDN at runtime. The ffmpeg codec and the webfonts
@@ -184,6 +186,10 @@ jobs:
           app=$(ls web/deploy-next | grep -E '^app\.[0-9a-f]+\.js$')
           for attempt in $(seq 1 20); do curl -fsS https://next.facemorph.me/ | grep -q "$app" && exit 0; sleep 6; done
           echo "next.facemorph.me is not serving $app"; exit 1
+      - name: Check the live historic hello preview
+        run: |
+          curl --fail --silent --show-error --retry 5 --retry-all-errors https://next.facemorph.me/preview/hello-1024.webp --output "$RUNNER_TEMP/hello-1024.webp"
+          cmp src/public/preview/hello-1024.webp "$RUNNER_TEMP/hello-1024.webp"
       # Qualification runs before the deploy, against the old origin, so it cannot see a file the
       # new tree left out (the first CI deploy dropped the photo worker's sibling modules). Every
       # staged runtime file must answer from the live site.

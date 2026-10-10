@@ -1,5 +1,9 @@
 # Round 3 plan review: contradictions, broken flows and weak contracts
 
+> **Historical review:** retain nonconflicting decisions; the [plan registry](plans/README.md)
+> and [current candidate plan](plans/candidate-ui-2026-10-10.md) record later
+> operator choices and explicit supersessions. This review is not live status.
+
 Written **23 September 2026** as the next plan iteration after the
 [round-2 work order](round-2-work-order.md) and the
 [19 September audit](candidate-audit-2026-09-19.md).

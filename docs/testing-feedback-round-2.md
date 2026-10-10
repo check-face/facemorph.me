@@ -1,4 +1,10 @@
-# Testing round 2 — fifteen items, sense-checked against the working tree
+# Testing round 2 — feedback and September status (R2-1–R2-16)
+
+> **Historical status:** the deployment and completion labels below describe September 2026.
+> Use the [10 October gap review](round-2-gap-2026-10-10.md) for the identified current
+> deployed build, local work, and remaining requirements.
+> Current direction and supersessions: [plan registry](plans/README.md) and
+> [candidate UI plan](plans/candidate-ui-2026-10-10.md).
 
 Raised **18 September 2026**, after the round-1 work landed on
 `candidate/next-delivery-20260916` (`364c2d4`…`084d698`). Every "current behaviour" below was

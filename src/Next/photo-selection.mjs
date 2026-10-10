@@ -3,7 +3,7 @@ import {CROP_MAX_BYTES,CROP_MAX_EDGE,CROP_MAX_PIXELS,previewPhoto} from './photo
 /** True when the alignment route can consume these exact bytes without a re-encode. */
 function inspectableDirectly(bytes){try{inspectImage(bytes);return true;}catch{return false;}}
 const pending=new Map();
-export function invalidatePhotoSelections(){pending.clear();}
+export function invalidatePhotoSelections(id){if(id)pending.delete(id);else pending.clear();}
 export function photoFiles(event){const files=Array.from(event.dataTransfer?.files||event.target?.files||[]);if(!event.dataTransfer&&event.target)event.target.value='';return files;}
 export function openPhotoPicker(id){document.getElementById(`photo-${id}`)?.click();}
 export function dragPhoto(event,busy,leaving=false){event.preventDefault();event.stopPropagation();if(leaving||busy)event.currentTarget.classList.remove('next-photo-over');else event.currentTarget.classList.add('next-photo-over');if(event.dataTransfer)event.dataTransfer.dropEffect=busy?'none':'copy';}
@@ -41,14 +41,14 @@ export async function selectPhoto({id,files}){
   }
   if(pending.get(id)!==token)return null;
   if(direct)return file;
-  const preview=await previewPhoto(file);
+  const preview=await previewPhoto(file,{edge:2048});
   if(pending.get(id)!==token){URL.revokeObjectURL(preview.url);return null;}
   // A container the header reader does not know — WebP, HEIC — used to go to the cropper whatever
   // its size, because the crop step was doubling as a transcode: a 220x124 WebP asked the visitor
   // to crop it. `previewPhoto` has already decoded it to a PNG, and for an image that fits whole
   // in the preview that PNG *is* the image, so the direct path can take it and alignment can do
   // its job unaided. Anything actually too large still needs a real crop.
-  if(!preview.resized&&preview.previewWidth*preview.previewHeight<=4*1024*1024&&preview.blob instanceof Blob){
+  if(preview.previewWidth*preview.previewHeight<=4*1024*1024&&preview.blob instanceof Blob){
    URL.revokeObjectURL(preview.url);
    return new File([preview.blob],(file.name||'photo').replace(/\.[^.]+$/,'')+'.png',{type:'image/png'});
   }
@@ -58,6 +58,6 @@ export async function selectPhoto({id,files}){
 /** Moves focus into the crop square so its keyboard controls are usable on open. */
 export function focusCropArea(){requestAnimationFrame(()=>document.querySelector('.next-crop-view')?.focus());}
 let previousFocus;
-export function openNamesFocus(){previousFocus=document.activeElement;requestAnimationFrame(()=>document.querySelector('.next-name-dialog input')?.focus());}
+export function openNamesFocus(){previousFocus=document.activeElement;requestAnimationFrame(()=>document.querySelector('.next-name-dialog input,.next-name-dialog button')?.focus());}
 export function closeNamesFocus(){const target=previousFocus;previousFocus=null;requestAnimationFrame(()=>{if(target?.isConnected)target.focus();});}
 export function namesKey(event,close){if(event.key==='Escape'){event.preventDefault();close();return;}if(event.key!=='Tab')return;const items=Array.from(event.currentTarget.querySelectorAll('button:not(:disabled),input:not(:disabled),[tabindex="0"]'));const first=items[0],last=items.at(-1);if(event.shiftKey&&document.activeElement===first){event.preventDefault();last?.focus();}else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first?.focus();}}

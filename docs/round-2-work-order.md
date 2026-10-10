@@ -1,5 +1,11 @@
 # Round 2 work order — what to read, and what counts as done
 
+> **Historical status:** the deployment and completion labels below describe September 2026.
+> Use the [10 October gap review](round-2-gap-2026-10-10.md) for the identified current
+> deployed build, local work, and remaining requirements.
+> Current direction and supersessions: [plan registry](plans/README.md) and
+> [candidate UI plan](plans/candidate-ui-2026-10-10.md).
+
 Handoff brief for implementing the round-2 feedback and the 19 September audit findings.
 Written **19 September 2026**, after the operator sanctioned every A finding.
 

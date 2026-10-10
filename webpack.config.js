@@ -51,6 +51,7 @@ var commonPlugins = [
     new HtmlWebpackPlugin({
         filename: 'index.html',
         selfHost: isSelfHost || isNext,
+        next: isNext,
         template: resolve(CONFIG.indexHtmlTemplate)
     })
 ];

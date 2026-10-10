@@ -136,6 +136,7 @@ function createStore({ indexedDB: idb = globalThis.indexedDB, maxBytes = DEFAULT
  }
 
  function rememberMemory(key, morphKey, canonical, derivative, bytes) {
+  const previous=memory.get(key);if(previous){memoryBytes-=previous.bytes;const old=memoryIndex.get(morphKey);if(old)old.bytes-=previous.bytes;}
   memory.set(key, { morph: morphKey, index: frameIndexOf(key), canonical, derivative, bytes });
   memoryBytes += bytes;
   const record = memoryIndex.get(morphKey) || { key: morphKey, bytes: 0, lastUsed: 0, keys: [], frames: null };
@@ -276,3 +277,6 @@ export async function frameStoreStatus() {
  const store = await openFrameStore();
  return { mode: store.mode, degraded: store.degraded };
 }
+
+/** One canonical indexed frame, also available before the whole morph is complete. */
+export async function frameStoreGetOne(morphKey,index){return (await (await openFrameStore()).get(frameKey(morphKey,index)))?.canonical||null;}

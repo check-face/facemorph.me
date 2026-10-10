@@ -1,5 +1,11 @@
 # FaceMorph — next candidate plan
 
+> **Historical status:** the deployment and completion labels below describe September 2026.
+> Use the [10 October gap review](round-2-gap-2026-10-10.md) for the identified current
+> deployed build, local work, and remaining requirements.
+> Current direction and supersessions: [plan registry](plans/README.md) and
+> [candidate UI plan](plans/candidate-ui-2026-10-10.md).
+
 Updated **16 September 2026**. **Status: deployed and qualified; cross-engine matrix in progress.**
 
 **Goal:** give friends and family the actual new site at **https://next.facemorph.me**, collect useful feedback, then resume the remaining platform work. This is a testing candidate, not a production cutover or a claim that every device is qualified.

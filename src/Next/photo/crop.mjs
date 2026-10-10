@@ -1,3 +1,4 @@
+import {inspectImage} from './image-header.mjs';
 // Local cropping ahead of alignment, so an arbitrary camera original never has to be
 // aligned whole. The preview is decoded once at a bounded size and the crop is rendered
 // straight to the square the encoder wants, so no full-resolution bitmap is ever held.
@@ -22,11 +23,18 @@ export async function decodeBounded(file,options){
  if(file.size<8||file.size>CROP_MAX_BYTES)throw Error('Choose a photo smaller than 64 MB.');
  if(typeof createImageBitmap!=='function')throw Error('This browser cannot prepare photos for cropping.');
  signal?.throwIfAborted?.();
+ let header;
+ try{header=inspectImage(new Uint8Array(await file.arrayBuffer()),{maxPixels:CROP_MAX_PIXELS,maxBytes:CROP_MAX_BYTES,maxEdge:CROP_MAX_EDGE,requireEightBit:false});}catch(error){if(error.code!=='unknown-container')throw error;}
+ if(header){
+  const target=scaleTo(header.width,header.height,edge);
+  if(target){const bitmap=await createImageBitmap(file,{resizeWidth:target.width,resizeHeight:target.height,resizeQuality:'high',imageOrientation:'none'});if(signal?.aborted){bitmap.close?.();signal.throwIfAborted?.();throw new DOMException('Cancelled','AbortError');}return {bitmap,width:header.width,height:header.height,scale:bitmap.width/header.width,detached:true};}
+ }
  let probe;
- try{probe=await createImageBitmap(file);}
+ try{probe=await createImageBitmap(file,{imageOrientation:'none'});}
  catch{throw Error('This photo could not be read. Try a JPEG or PNG copy.');}
  const width=probe.width,height=probe.height;
  try{
+  signal?.throwIfAborted?.();
   if(!(width>0&&height>0))throw Error('This photo could not be read.');
   if(width*height>CROP_MAX_PIXELS)throw Error('This photo is too large to open. Resize a copy and try again.');
   const target=scaleTo(width,height,edge);
@@ -68,6 +76,15 @@ export async function previewPhoto(file,options){
  */
 export async function cropPhoto(file,rect,options){
  const {output=CROP_OUTPUT,previewScale=1,rotation=0,signal}=options||{};
+ if(rotation%360===0&&Number.isFinite(rect.left)&&Number.isFinite(rect.top)&&rect.width>0&&rect.height>0){
+  let bitmap;
+  try{
+   const header=inspectImage(new Uint8Array(await file.arrayBuffer()),{maxPixels:CROP_MAX_PIXELS,maxBytes:CROP_MAX_BYTES,maxEdge:CROP_MAX_EDGE,requireEightBit:false});
+   const left=Math.max(0,Math.round(rect.left/previewScale)),top=Math.max(0,Math.round(rect.top/previewScale));
+   const size=Math.min(Math.round(Math.min(rect.width,rect.height)/previewScale),header.width-left,header.height-top);
+   if(size>0){bitmap=await createImageBitmap(file,left,top,size,size,{resizeWidth:output,resizeHeight:output,resizeQuality:'high',imageOrientation:'none'});signal?.throwIfAborted?.();const blob=await encode(paint(bitmap,output,output));return new File([blob],'cropped.png',{type:'image/png'});}
+  }catch(error){if(signal?.aborted)throw error;}finally{bitmap?.close?.();}
+ }
  const {bitmap,scale}=await decodeBounded(file,{edge:Math.max(PREVIEW_MAX_EDGE,output),signal});
  try{
   // Preview coordinates -> this bitmap's coordinates.

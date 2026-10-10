@@ -24,7 +24,7 @@ export const COLD_FACE_MS = Object.freeze({webgpu: 686, webgl: 13000, cpu: 2582}
  * `route` supplies the admitted route name so a cold estimate can come from that route's prior
  * rather than from an average of routes that differ by twenty times.
  */
-export function createEstimator({faceMs = null, frameMs = null, route = null} = {}) {
+export function createEstimator({faceMs = null, frameMs = null, encodeMs = null, route = null} = {}) {
 	const finite = value => Number.isFinite(value) && value > 0 ? value : null;
 	return {
 		/** True once this device has timed its own work; false while a prior is standing in. */
@@ -38,16 +38,16 @@ export function createEstimator({faceMs = null, frameMs = null, route = null} = 
 		frameMs() {return finite(frameMs?.()) ?? this.faceMs();},
 		/** Predicted total milliseconds for a job with the given unit counts, or null
 		 * without a measurement. Missing units contribute nothing rather than guessing. */
-		predict({faces = 0, frames = 0} = {}) {
+		predict({faces = 0, frames = 0, encodeFrames = 0} = {}) {
 			const perFace = this.faceMs(), perFrame = this.frameMs();
 			if (perFace == null && perFrame == null)return null;
-			return (perFace ?? 0) * faces + (perFrame ?? 0) * frames;
+			return (perFace ?? 0) * faces + (perFrame ?? 0) * frames + (finite(encodeMs?.()) ?? 0) * encodeFrames;
 		},
 		/** Predicted milliseconds still to run in the job in flight, or null. */
-		remaining({facesLeft = 0, framesLeft = 0} = {}) {
+		remaining({facesLeft = 0, framesLeft = 0, encodeFramesLeft = 0} = {}) {
 			const perFace = this.faceMs(), perFrame = this.frameMs();
 			if (perFace == null && perFrame == null)return null;
-			return (perFace ?? 0) * facesLeft + (perFrame ?? 0) * framesLeft;
+			return (perFace ?? 0) * facesLeft + (perFrame ?? 0) * framesLeft + (finite(encodeMs?.()) ?? 0) * encodeFramesLeft;
 		},
 	};
 }

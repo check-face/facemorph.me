@@ -1,0 +1,30 @@
+{
+  "reviewDate": "2026-10-10",
+  "repository": "check-face/facemorph.me",
+  "site": "https://next.facemorph.me",
+  "source": "b322a26858275f0e361127836d0fd1854e868ef9",
+  "workflowRun": 37886427733,
+  "artifact": "next-site-b322a26858275f0e361127836d0fd1854e868ef9",
+  "comparedLiveFiles": [
+    {
+      "file": "app.6f67e921bae679214856.js",
+      "sha256": "c781c22f18429798e875d132b3d9fc3f84b87fc3afacdd5515362feaf71d75f6",
+      "matchesQualifiedArtifact": true
+    },
+    {
+      "file": "style.6f67e921bae679214856.css",
+      "sha256": "d9bde4efd67038e71a2f7ef5722d12ddf20b1847bbcfb854b5c1e52a3f2a3415",
+      "matchesQualifiedArtifact": true
+    },
+    {
+      "file": "catalogue.json",
+      "sha256": "c3daea230132a1a7b698c3f4492a4d6ce05a2b8fab14701cfb020a0a8cb0fdec",
+      "matchesQualifiedArtifact": true
+    }
+  ],
+  "catalogue": {
+    "names": 5055,
+    "fullSizeMarkers": 2911
+  },
+  "scope": "Public file byte comparison, qualified artifact receipt, retained CPU CI report, and source inspection; no fresh interactive workflow or physical-phone test."
+}

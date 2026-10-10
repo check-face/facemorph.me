@@ -74,6 +74,7 @@ def wait(predicate,seconds=600):
   time.sleep(.5)
  raise TimeoutError('UI stage deadline exceeded')
 def click(name,expect=None):
+ if name==S['buttons']['generate']:name=q("[...document.querySelectorAll('.next-face-generate')].map(b=>b.getAttribute('aria-label'))")[-1]
  # A click must be verified: a stale React node or a re-render can swallow it silently, which
  # used to surface minutes later as an unrelated stage timeout. The DOM route clicks the exact
  # button; `expect` (when given) re-queries up to three times, re-clicking if the UI did not
@@ -109,8 +110,14 @@ def click(name,expect=None):
  # failure looking for a missing button that was present and enabled the whole time.
  seen=js("(()=>{const b=[...document.querySelectorAll('button')].find(x=>x.textContent.trim()===%s);return JSON.stringify({present:!!b,disabled:b?b.disabled:null,status:(document.querySelector('.next-status')?.innerText||'').slice(0,120)});})()"%json.dumps(name))
  raise RuntimeError('Could not place a click on %s; page showed %s'%(name,seen))
-def idle():return js("!document.querySelector('%s') && [...document.querySelectorAll('button')].some(b=>b.textContent==='%s'&&!b.disabled)"%(S['busy'],S['buttons']['generate']))
+def idle():return js("document.querySelector('.next-product')?.getAttribute('data-next-busy')==='false'")
+
 def run(name,predicate=None):
+ if name==S['buttons']['generate']:
+  labels=q("[...document.querySelectorAll('.next-face-generate')].map(b=>b.getAttribute('aria-label'))")
+  for label in labels:run(label)
+  if predicate:wait(predicate,60)
+  return
  # A warm cache can complete a run synchronously - the button's disabled state never flips -
  # so a busy transition cannot be required. Accept either the transition or the stage's own
  # completion evidence, then wait for idle. Outcome assertions stay with the callers. A stage
@@ -128,6 +135,8 @@ def run(name,predicate=None):
 def faces():
  return q("[...document.querySelectorAll('%s')].map(i=>({width:i.naturalWidth,height:i.naturalHeight,url:i.src}))"%S['faceImage'])
 def select_mode(value):
+ if not js("!!document.querySelector('select[aria-label=\"Processing mode\"]')"):click('More options')
+ js("document.querySelector('.next-advanced').open=true")
  js("(()=>{const s=document.querySelector('%s');Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype,'value').set.call(s,'%s');s.dispatchEvent(new Event('change',{bubbles:true}));})()"%(S['processingMode'],value))
  deadline=time.monotonic()+10
  while time.monotonic()<deadline:
@@ -168,7 +177,9 @@ def stage_preflight():
  wait(lambda:js('window.__ciOrigin!==null'),60);assert js('window.__ciOrigin')==Path('next-site-source.txt').read_text().strip(), 'Chrome did not reach exact local artifact origin'
  js("window.__ciLogs=[];['log','warn','error','info'].forEach(k=>{const o=console[k].bind(console);console[k]=(...a)=>{try{window.__ciLogs.push(k+': '+a.map(x=>typeof x==='string'?x:JSON.stringify(x)).join(' ').slice(0,300));if(window.__ciLogs.length>40)window.__ciLogs.shift();}catch(e){}};});")
  js("window.__ciBusyChanges=0;window.__ciBusyObserver=new MutationObserver(()=>{window.__ciBusyChanges++;});window.__ciBusyObserver.observe(document.querySelector('.next-status'),{subtree:true,attributes:true,childList:true,characterData:true});window.__ciBusyChanges++;")
- state=q("({tiles:document.querySelectorAll('.next-face').length,photos:document.querySelectorAll('%s').length,words:!!document.querySelector('%s'),generate:[...document.querySelectorAll('button')].some(b=>b.textContent==='%s'),modeOptions:[...document.querySelectorAll('%s option')].map(o=>o.value),error:(document.querySelector('%s')?.innerText||'')})"%(S['choosePhoto'],S['faceTextInputs'],S['buttons']['generate'],S['processingMode'],S['error']))
+ click('More options')
+ js("document.querySelector('.next-advanced').open=true")
+ state=q("({tiles:document.querySelectorAll('.next-face').length,photos:document.querySelectorAll('%s').length,words:!!document.querySelector('%s'),generate:[...document.querySelectorAll('button')].some(b=>b.classList.contains('next-face-generate')&&b.textContent==='Generate'),modeOptions:[...document.querySelectorAll('%s option')].map(o=>o.value),error:(document.querySelector('%s')?.innerText||'')})"%(S['choosePhoto'],S['faceTextInputs'],S['processingMode'],S['error']))
  assert state['tiles']==2 and state['photos']==2 and state['words'] and state['generate'],state
  assert set(['auto','cpu','webgpu','webgl'])<=set(state['modeOptions']),state
  assert not state['error'],state['error']
@@ -201,7 +212,15 @@ def stage_seedGeneration():
  # The photo-face upload needs its own cache identity: same pixels as the seed PNG (decoders
  # ignore bytes after IEND) but different bytes, so the e4e encode really runs instead of
  # replaying a cached entry on the warm profiles this harness accumulates.
- uniq=first.with_name(first.stem+'-e4e.png');uniq.write_bytes(first.read_bytes()+b'\n<!-- e4e '+str(time.time_ns()).encode()+b' -->')
+ uniq=first.with_name(first.stem+'-e4e.png')
+ data=first.read_bytes();clean=bytearray(data[:8]);at=8
+ while at+12<=len(data):
+  size=int.from_bytes(data[at:at+4],'big');end=at+12+size
+  if not(data[at+4:at+8]==b'tEXt' and data[at+8:at+8+9]==b'FaceMorph'):
+   clean.extend(data[at:end])
+  at=end
+ assert b'FaceMorph\0' not in clean, 'e4e fixture still contains recovery metadata'
+ uniq.write_bytes(clean)
  CTX['seedPng']=uniq
 def stage_routeRejection():
  # C-02: force the canary comparison to fail on a second route and assert the interface names
