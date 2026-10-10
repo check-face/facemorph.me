@@ -76,7 +76,7 @@ def main():
                 'physicalDeviceQualified': False, 'inferenceQualified': False, 'photoWorkflowQualified': False,
                 'sourceCommit': command('git', '-C', str(ROOT), 'rev-parse', 'HEAD'),
                 'sourceSha256': {str(p.relative_to(ROOT)): hashlib.sha256(p.read_bytes()).hexdigest()
-                                 for folder in ['tests/mobile', 'src/Next/Assets']
+                                 for folder in ['tests/mobile', 'src/Next/Assets', 'src/Next/photo']
                                  for p in (ROOT/folder).glob('*') if p.suffix in ['.py', '.mjs', '.html']},
                 'runnerImage': os.environ.get('ImageVersion'), 'completed': False}
     state = {'report': None}
@@ -94,7 +94,7 @@ def main():
         def do_GET(self):
             # Serve only test/component sources, never arbitrary checkout files.
             path = (ROOT/urlsplit(self.path).path.lstrip('/')).resolve()
-            allowed = any(path.is_relative_to(ROOT/folder) for folder in ['tests/mobile', 'src/Next/Assets'])
+            allowed = any(path.is_relative_to(ROOT/folder) for folder in ['tests/mobile', 'src/Next/Assets', 'src/Next/photo'])
             if not allowed or not path.is_file() or path.suffix not in ['.html', '.mjs']:
                 self.send_error(404)
                 return

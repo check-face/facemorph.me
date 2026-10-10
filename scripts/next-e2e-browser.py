@@ -410,12 +410,12 @@ def stage_sessionRestore():
  wait(lambda:len(faces())==2 and all(i['fitsTile'] for i in faces()),60)
  wait(lambda:js("!!document.querySelector('.next-slider-control')"),60)
  assert q("JSON.parse(localStorage.getItem('facemorph-slider-v1'))")==preference
- assert js("[...document.querySelectorAll('select[aria-label=\"Face source\"]')].every(s=>s.value==='project')")
+ assert js("[...document.querySelectorAll('.next-face')].length===2&&[...document.querySelectorAll('.next-face')].every(s=>s.dataset.nextState==='project')")
  assert js('window.__ciWorkerRequests')==0, 'Restore performed inference'
  js("[...document.querySelectorAll('label')].find(l=>l.textContent.includes('Use Slider')).querySelector('input').click()")
  wait(lambda:js("document.querySelector('.next-video-slot video')?.readyState>=2"),30)
  js("document.querySelectorAll('button[aria-label=\"Change mode\"]')[1].click()")
- js("[...document.querySelectorAll('[role=menuitem]')].find(e=>e.getBoundingClientRect().width>0&&e.textContent.trim()==='Name or words').click()")
+ js("[...document.querySelectorAll('[role=menuitem]')].find(e=>getComputedStyle(e).visibility==='visible'&&e.getBoundingClientRect().width>0&&e.textContent.trim()==='Name or words').click()")
  wait(lambda:js("[...document.querySelectorAll('.next-face input[type=text]')].at(-1)?.value===''"),10)
  assert js("[...document.querySelectorAll('.next-face-generate')].at(-1).disabled"), 'Empty restored-mode edit must disable Generate'
  save_check('completeSessionRestore',{'passed':True,'faces':2,'compressed':True,'video':True,'sliderFrame':preference['frame'],'newWorkerRequests':0})
