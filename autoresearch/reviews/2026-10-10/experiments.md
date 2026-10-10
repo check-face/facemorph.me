@@ -3,10 +3,11 @@
 R03/R04 component screens are complete: direct display/video transport was retained,
 WebP is a deferred size tradeoff, and realtime video settings were discarded.
 The corrected `bce3204` product is qualified and deployed; the e0/bce built-UI comparison is
-running. R01/R02/R05 remain measurement directions, partly covered by that screen.
+restarting with a 3000 s budget after timeout. R01/R02/R05 remain measurement directions, partly covered by that screen.
 No product latency claim is established yet. Follow [program.md](../../program.md), [record standards](../../records.md)
-and the [UI handoff](next-pass.md). Freeze the qualified UI source/artifact before
-paired measurement; preserve concurrent product work. Prioritize first use and
+and the [UI handoff](next-pass.md). The e0/bce qualified source/artifacts are already frozen for the paired screen.
+For subsequent experiments, freeze the qualified UI source/artifact before
+measurement; preserve concurrent product work. Prioritize first use and
 returning visits, then choose the next causal change from current evidence.
 
 ## R01 — Initial preview and cached-original restoration
@@ -49,7 +50,7 @@ bypasses foreground PNG for display/video and preserves deferred canonical PNG
 storage compatibility. Exact source/artifact identities are frozen in the
 [candidate recipe](../../candidates/direct-rgba-media-v1/README.md).
 
-| Consumer | Proposed candidate path | Observable finish |
+| Consumer | Delivered candidate path | Observable finish |
 | --- | --- | --- |
 | Generated face / live scrub | RGBA → canvas or transferable bitmap, with explicit pixel/color semantics | First correct visible frame; record delivery, draw and observable presentation separately |
 | WebCodecs video | Raw pixels → VideoFrame → selected H.264 encoder and MP4 mux | First usable scrub frame and final decoded playable MP4 |

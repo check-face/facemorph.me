@@ -1,0 +1,102 @@
+{
+  "stages": [
+    "Generating this face\u2026",
+    "Downloading model files\u2026",
+    "Downloading model files\u2026 0 MB of 158 MB",
+    "Downloading model files\u2026 1 MB of 158 MB",
+    "Downloading model files\u2026 2 MB of 158 MB",
+    "Downloading model files\u2026 3 MB of 158 MB",
+    "Downloading model files\u2026 7 MB of 158 MB",
+    "Downloading model files\u2026 11 MB of 158 MB",
+    "Downloading model files\u2026 23 MB of 158 MB",
+    "Downloading model files\u2026 39 MB of 158 MB",
+    "Downloading model files\u2026 55 MB of 158 MB",
+    "Downloading model files\u2026 71 MB of 158 MB",
+    "Downloading model files\u2026 87 MB of 158 MB",
+    "Downloading model files\u2026 103 MB of 158 MB",
+    "Downloading model files\u2026 119 MB of 158 MB",
+    "Downloading model files\u2026 135 MB of 158 MB",
+    "Downloading model files\u2026 141 MB of 158 MB",
+    "Generating\u2026",
+    "Face generated.",
+    "Downloading model files\u2026 142 MB of 158 MB",
+    "Generating is slow on this device. No graphics acceleration qualified here, so it is running on the processor.",
+    "Downloading model files\u2026 150 MB of 158 MB"
+  ],
+  "errors": [],
+  "startedAt": 1791617769456,
+  "webgpu": null,
+  "agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1",
+  "crossOriginIsolated": true,
+  "deviceMemory": null,
+  "hardwareConcurrency": 4,
+  "memoryAtStart": null,
+  "firstFaceBoundary": "Generate click to full1024 decoded image or drawn canvas and idle; 500ms polling, not compositor paint",
+  "faceSurface": "rgba-canvas",
+  "firstFaceMs": 34876,
+  "faceProduced": true,
+  "memoryAfterFace": null,
+  "route": "Ready \u00b7 this device\u2019s CPU.",
+  "speeds": "{\"bundle\":\"d9e37e50a436e9fb7c0c7f973e70adee353c808f48c6a51fa5a9186f1c650a5c\",\"scope\":\"warm-synthesis-v1\",\"routes\":{\"cpu\":3453.880000000001}}",
+  "cpuFallbackShown": false,
+  "cache": {
+    "entries": 1,
+    "bytes": 0
+  },
+  "storage": {
+    "quota": 41231686042,
+    "usage": 320864595
+  },
+  "completed": true,
+  "elapsedMs": 35698,
+  "harnessSource": "549ecdf",
+  "workflowRun": 38034719345,
+  "scope": "One generated face through exact compiled UI in iPhone16Pro Simulator on macOS15 CI; automatic CPU fallback, drawn1024 canvas. Harness-only/source-version followup to deployed bce; not physical phone, paired timing, photo/download/video or process-memory qualification.",
+  "artifactAssets": [
+    {
+      "path": "230.25e6ec0644d80a10b3a1.js",
+      "sha256": "adce3fc2776647259e295342eb534f63f536df94a0d9fad2a722bee2089acaf0",
+      "bytes": 8594
+    },
+    {
+      "path": "465.25e6ec0644d80a10b3a1.js",
+      "sha256": "0e18780de15917642202443613a026e789187e054fd4613b91b3f1d478bb204d",
+      "bytes": 11550
+    },
+    {
+      "path": "516.25e6ec0644d80a10b3a1.js",
+      "sha256": "0b83bb228ea7b75e3dbcff19360f57fe6666411a2e697dc8fb6afa57575812fd",
+      "bytes": 46329
+    },
+    {
+      "path": "590.25e6ec0644d80a10b3a1.js",
+      "sha256": "08d7d41e1af17802ccec4cf5e43e467a17eaa5f260379965714d968c0843b3fc",
+      "bytes": 7933
+    },
+    {
+      "path": "744.25e6ec0644d80a10b3a1.js",
+      "sha256": "8c965b11174dfa501dff22015687a69775e4cf8bf1702e0fec22362d9073b07f",
+      "bytes": 17267
+    },
+    {
+      "path": "825.25e6ec0644d80a10b3a1.js",
+      "sha256": "18a32b2f962b8f29aad7d6d8330c8f6a112839537ce433b18c7aeb69569dc4ad",
+      "bytes": 17845
+    },
+    {
+      "path": "app.25e6ec0644d80a10b3a1.js",
+      "sha256": "117e34f7fa539819b0818a4b122fb789ee5b183e6eb76a2e381b0c2c203bd00e",
+      "bytes": 439819
+    },
+    {
+      "path": "runtime.25e6ec0644d80a10b3a1.js",
+      "sha256": "3c053d4f86d26346a8f5ed8ba05d3478bea4b4b5bba3fda98eedd9b299a8b5d6",
+      "bytes": 3523
+    },
+    {
+      "path": "vendors.25e6ec0644d80a10b3a1.js",
+      "sha256": "48af44ac582d1cb20ba79acd8a73430591887117b395a3ddb8627f4d1999a5c1",
+      "bytes": 453495
+    }
+  ]
+}

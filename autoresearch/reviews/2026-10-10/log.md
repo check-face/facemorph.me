@@ -199,3 +199,29 @@ a new entry with the superseded ID. Follow [record standards](../../records.md).
 - Resources / failures: explicit GPU control run38033339860 reached GTX1050/Chrome141 processing then failed invalid command buffer; no successful face or timing, separate from earlier obsolete-selector failures and from the raw-media candidate
 - Evidence: [non-identifying reporting](reporting-coverage-bce.json), [GPU control failure](../../candidates/direct-rgba-media-v1/gpu-control-failure.json), [paired recipe](../../candidates/direct-rgba-media-v1/built-ui-paired.mjs); current experiment run38034405920
 - Conclusion / next action: complete corrected paired screen; keep current user/device latency unknown where reporting does not establish it; GPU compatibility and physical coverage remain explicit follow-up directions
+
+### 2026-10-10T07:48:36+00:00 — review-20261010-016
+
+- Phase / status: observed / corrected iOS simulator product screen passed
+- Round / experiment / correction: 2026-10-10 / R03-R04 / follows pending mobile coverage in review-20261010-014
+- Hypothesis / decision: accept drawn full-resolution canvas as the delivered face surface; retain decoded-image compatibility without weakening error/idle checks
+- Identity: harness-only follow-up `549ecdf`; [successful run 38034719345](https://github.com/check-face/facemorph.me/actions/runs/38034719345); artifact hashes retained in the receipt, different bundle identity from live `bce3204`
+- Context: macOS 15 hosted runner / iPhone 16 Pro Simulator / Safari iOS 18.5 / CPU after no WebGPU adapter; one first-face functional attempt, acquisition/setup included
+- Boundary / samples: Generate click → full 1024px drawn canvas and idle; 500 ms polling; diagnostic 34,876 ms is unpaired and not warm/physical-phone performance
+- Correctness / workflow: faceProduced and completed true, RGBA canvas, errors empty; Android/iOS component checks passed; photo/download/video/total-memory not qualified by this one-face screen
+- Resources / failures: memory fields unavailable; cache.bytes 0 reflects missing Content-Length and does not establish zero retained bytes; simulator is not physical-device evidence
+- Evidence: [iOS receipt](../../candidates/direct-rgba-media-v1/ios-qualification.json)
+- Conclusion / next action: simulator functional gap closed; physical-phone resource/recovery coverage remains follow-up, not a barrier to the already qualified candidate delivery
+
+### 2026-10-10T07:59:07+00:00 — review-20261010-017
+
+- Phase / status: observed then proposed / built-UI budget timeout; unchanged comparison restarted with a larger bounded budget
+- Round / experiment / correction: 2026-10-10 / R01-R05 / amends the run budget in review-20261010-015, not the workload or qualification gates
+- Hypothesis / decision: complete the originally planned six matched cases per side; do not select incomplete samples as a general speed win
+- Identity: control `e0b2192c26f6b921b9fb5e24c94be358c508c052`; candidate `bce320418a694bc48f25a609217bb81861ee6e47`; timed-out harness `2f3e54770ba72d621ea7435783e9b6dd47fcb550`, [run 38034405920](https://github.com/check-face/facemorph.me/actions/runs/38034405920)
+- Context: Ubuntu 24.04 / visible headless Chrome 155 / CPU, retained independent profiles, explicit ordinary-policy admission emulation; same source/artifacts/inputs and fixed warmup → ABBA ×3 on rerun
+- Boundary / samples: two warmups and eight complete measured visits plus partial ninth; original 1800 s command limit reached during video, exit 124; accepted performance outcome inconclusive
+- Correctness / workflow: completed visits passed full 1024px faces, matching downloads, metadata-free photo encoder events and 2 s playable video; planned campaign is incomplete
+- Resources / failures: video wall about 110 s on this runner, above prior warmup estimate; no product correctness failure recorded; total memory unmeasured
+- Evidence: [retained timeout report](../../candidates/direct-rgba-media-v1/built-ui-timeout.json); CI runner journal downloaded to `/tmp/facemorph-rgba-built-budget` (raw JSON durable in Git)
+- Conclusion / next action: restart complete campaign with command 3000 s / job 55 min, within runner maximum; all source, workload, order and correctness checks unchanged; retain failure rather than relaxing gates

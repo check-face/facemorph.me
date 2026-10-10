@@ -1,7 +1,7 @@
 # Direct RGBA and deferred image encoding — current round candidate
 
 Status: **paired codec screen complete; direct display/video transport retained,
-realtime video settings discarded; product integration qualified and deployed; corrected paired built-UI transfer screen running**. This belongs to the [10 October round](../../reviews/2026-10-10/README.md),
+realtime video settings discarded; product integration qualified and deployed; paired built-UI transfer screen timed out; unchanged-workload 3000 s rerun prepared**. This belongs to the [10 October round](../../reviews/2026-10-10/README.md),
 separate from historical iteration 3. Follow its [quality ruling](../../reviews/2026-10-10/quality-policy.md).
 
 ## Hypothesis and staged comparisons
@@ -22,8 +22,9 @@ lossy WebP and profile video configuration. No finished-video cache is proposed.
 `control.json` pins the frozen PNG/video source. `prepare-source.py` creates immutable
 source snapshots in ignored `state/`, records all hashes in [source-snapshot.json](source-snapshot.json)
 and emits reviewable runtime/worker patches. It uses `git archive`, **no worktree**.
-The prototype raw API is deliberately transient (`persist:false`); product cache,
-last-result and download integration still need a qualified UI control.
+The prototype raw API was deliberately transient (`persist:false`). The delivered
+product now integrates canonical storage, last-result restoration and deferred
+downloads against qualified frozen control `e0b2192`.
 
 ## Recorded correctness, not a speed win
 
@@ -31,7 +32,7 @@ last-result and download integration still need a qualified UI control.
 runner on 10 October. They cover encoded-image/latent tampering, compact recovery,
 privacy, invalid dimensions/identity, detached transfer, pre-allocation capacity,
 cancellation, timeout and disposal. The browser [codec correctness report](correctness-browser.json)
-verifies decorated PNG/WebP decode and recovery plus full1024 two-second H.264
+verifies decorated PNG/WebP decode and recovery plus full 1024px two-second H.264
 playback. It used the public `hello` fixture; the attempted archived seed fixtures
 were 512px and were rejected, so they establish no additional 1024 coverage.
 
@@ -51,26 +52,26 @@ unbounded window of raw frames.
 
 Local host load was contended during correctness. Timing values in those reports
 are **not qualified performance samples**. Benchmark attempts refused above load 4.
-The bounded experimental CI screen collects alternating ABBA ×3 comparisons on its
+The completed bounded experimental CI screen collected alternating ABBA ×3 comparisons on its
 own Linux/browser CPU environment; it cannot establish an eris GPU or phone gain.
 Image samples include new-worker startup, so this screen measures first-use delivery
 and file readiness rather than persistent-worker throughput. Video samples include
 per-clip startup, matching the current product writer lifetime.
-Its push trigger will be retired after the experiment, retaining its reports.
+Its automatic push trigger is retired; the reports remain retained.
 
 ## Paired codec result
 
 The isolated [CI analysis](ci-analysis.md) has six observations per side and question.
-Direct draw+RAF:65.31→5.02ms; raw-video codec path:1,316.24→186.07ms.
-WebP file-ready is slower:55.36→113.17ms, but its size fits the API scale.
-Realtime video settings did not help:153.36→158.22ms, so they are discarded.
+Direct draw+RAF: **65.31 → 5.02 ms**; raw-video codec path: **1,316.24 → 186.07 ms**.
+WebP file-ready is slower: **55.36 → 113.17 ms**, but its size fits the API scale.
+Realtime video settings did not help: **153.36 → 158.22 ms**, so they are discarded.
 These are component results; compiled product and current-user latency are separate.
 The automatic CI push trigger has been retired.
 
 ## Integration constraints and next gates
 
 The frozen control sparse infill produces out-of-order frames, persists them, then encodes
-ordered video. Holding 32 raw1024 frames would take 128 MiB. A direct-video variant
+ordered video. Holding 32 raw 1024px frames would take 128 MiB. A direct-video variant
 must preserve indexed sparse availability while using a few preview anchors followed
 by ordered streaming, or decompress already persisted out-of-order frames when
 their presentation index is due. Blocking sparse production on a missing earlier
@@ -85,11 +86,12 @@ Compact v2 uses exact float32 little-endian W+ in base64; WebP stores an ignorab
 validate encoded image and latent hashes, dimensions and generation identity;
 the runtime must additionally match the currently admitted generation identity.
 
-Before `keep`, collect paired uncontended useful-result/file-ready/restore timings,
-resource peaks, applicable existing numerical checks and actual built UI
-save/re-upload/cancellation/quota/eviction workflows. Verify the promoted artifact
-separately. Current Product/media paths are stable per development; bridge/runtime
-diagnostics and final live control freeze remain coordinated in agent mail.
+Component `keep` decisions are scoped to the measured transport paths. The exact
+product artifacts are frozen and delivery is verified. The paired built-UI screen
+evaluates useful-result/file-ready/restore transfer separately; it cannot establish
+process-memory peaks, physical-device resource budgets or current-user latency.
+Those remain follow-up coverage alongside expanded cancellation/quota/eviction
+journeys and cold-second-device recovery.
 
 ## Reproduce
 
@@ -120,7 +122,7 @@ speed claim even when direct transport remains useful.
 
 Linux hosted Chrome, CPU explicitly selected, pinned Playwright 1.55, fixed warmup
 per side then ABBA×3 (six observations each). Reopen each side's isolated retained
-profile for every sample. Record navigation to preview/restored1024 image, first
+profile for every sample. Record navigation to preview/restored 1024px image, first
 new face after reload, next new face, first/repeat completed download, repeated
 original, 32-frame/16 FPS decoded playable video, first/next metadata-free synthetic
 photo and its download. Matching cases use the same new inputs and deterministic public hello RGB-offset
@@ -139,5 +141,5 @@ is not a new numerical-kernel claim. Worker surfaces/total process memory remain
 unmeasured; the implemented copy budget is not a measured process peak.
 
 Stop on a wrong artifact, contention above load4, invalid output, browser error,
-or the1800s command/35min job limit. Keep partial evidence as inconclusive. Retain
+or the amended 3000 s command / 55 min job limit. Keep partial evidence as inconclusive. Retain
 the raw report in Git; retire the automatic experimental trigger after completion.

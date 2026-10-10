@@ -23,14 +23,13 @@ where practical, accounting for required recovery metadata separately and in tot
 The retained API source calls Pillow `save(..., 'WEBP')` without explicit quality
 or lossless parameters (the preserved [compatibility implementation](../../../self-host/legacy_checkface.py)
 does likewise). The deployed Pillow version/defaults are not freshly verified;
-do not claim browser quality 0.8 produces identical API bytes or pixels. Use 0.8
-as an initial candidate setting and measure encode time, file size and visible
-result. PNG remains a control/fallback; WebP is chosen only after timing and recovery
-checks. The isolated component screen measured the tradeoff: WebP file-ready was slower
+do not claim browser quality 0.8 produces identical API bytes or pixels. WebP quality 0.8 was selected and deployed after component timing, recovery and
+actual Chrome download/re-upload checks. PNG remains the compatible cache format
+and fallback. The isolated component screen measured the tradeoff: WebP file-ready was slower
 than PNG, while its total file was much smaller. The candidate uses WebP out of
 band for downloads, retains PNG cache compatibility and keeps the existing video
-quality settings after realtime failed to improve latency. Built-UI transfer and
-deployment qualification remain separate; see the [candidate evidence](../../candidates/direct-rgba-media-v1/ci-analysis.md).
+quality settings after realtime failed to improve latency. Deployment is qualified and verified; paired built-UI performance transfer remains
+a separate decision; see the [candidate evidence](../../candidates/direct-rgba-media-v1/ci-analysis.md).
 
 ## Acceptance
 
@@ -54,9 +53,10 @@ deployment qualification remain separate; see the [candidate evidence](../../can
   identity.
 
 Report **image payload bytes, metadata bytes and total bytes**. A W+ float32 tensor
-contains 18×512×4 = **36,864 raw bytes**, while the currently committed JSON numeric
-array can be larger. Consider a versioned compact representation if metadata
-dominates file size; do not drop recovery or silently change the reader format.
+contains 18×512×4 = **36,864 raw bytes**, while legacy v1 JSON numeric
+arrays can be larger. The delivered v2 representation stores exact little-endian
+float32 in base64, with about 50 KB of validated metadata in the qualified face.
+The legacy reader remains compatible; recovery is not dropped to reduce size.
 Seed-only compact metadata also needs a verified reproduction identity. The
 chosen output format must support metadata writing/reading, and save/share must
 still work when clicked before background encoding finishes.
