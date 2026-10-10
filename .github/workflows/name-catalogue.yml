@@ -1,6 +1,12 @@
 name: Public name catalogue
 on:
   workflow_dispatch:
+  push:
+    branches: [candidate/next-delivery-20260916]
+    paths:
+      - .github/workflows/name-catalogue.yml
+      - hosting/gallery/materialize.py
+      - hosting/gallery/names-wrangler.jsonc
 permissions:
   contents: read
 jobs:
