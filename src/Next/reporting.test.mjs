@@ -1,9 +1,18 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { webcrypto } from 'node:crypto';
+import {checkedEvent} from '../../hosting/next-cloudflare/validation.mjs';
 
 // Browser globals the reporter legitimately depends on, supplied here rather than mocked away.
 if (!globalThis.crypto) globalThis.crypto = webcrypto;
+
+test('model acquisition distinguishes retained bytes from network transfer through the collector',async()=>{
+ const {diagnostics,posts}=await fresh();diagnostics.enable(true,'checkbox');diagnostics.start('faces');diagnostics.bundle('a'.repeat(64));
+ diagnostics.stage('asset-acquisition',{loaded:212*1048576,total:212*1048576,fetched:0,fetchedTotal:0});diagnostics.flush();
+ const row=posts.map(p=>p.body).find(b=>b.stage==='asset-acquisition');assert.ok(row);
+ assert.equal(row.modelLoadedMb,212);assert.equal(row.modelTotalMb,212);assert.equal(row.networkLoadedMb,0);assert.equal(row.networkPlannedMb,0);
+ assert.doesNotThrow(()=>checkedEvent(row));assert.throws(()=>checkedEvent({...row,networkLoadedMb:Infinity}),/transfer/);
+});
 if (!globalThis.CustomEvent) globalThis.CustomEvent = class { constructor(type, init) { this.type = type; this.detail = init?.detail; } };
 
 /**

@@ -431,8 +431,8 @@ function askForPersistentStorage({explained=false}={}){
   const {storageStatus}=await import('./Assets/model-cache.mjs');
   const status=await storageStatus({requestPersistence:action==='request'});
   storageFacts={persisted:status.persistence==='granted',
-   usageMb:Math.round((status.usage||0)/1048576)||undefined,
-   quotaMb:Math.round((status.quota||0)/1048576)||undefined};
+   usageMb:Number.isFinite(status.usage)?Math.round(status.usage/1048576):undefined,
+   quotaMb:Number.isFinite(status.quota)?Math.round(status.quota/1048576):undefined};
   storageReported=false;reportStorage();
  }).catch(()=>{});
 }

@@ -256,3 +256,17 @@ closes the whole plan.
 Development owns behavior and delivery. Autoresearch measures first/nth arrival,
 face/photo/morph latency through share, model/cache state, route and scheduling
 costs. Record experimental, implemented, qualified and deployed states separately.
+
+## Operator clarification during delivery — phone reloads
+
+10 October: keep automatic **WebGPU → CPU → WebGL** preference on every platform.
+Fall back on unavailability/admission/inference failure, never because a successful route is slow.
+Measured costs support diagnostics and estimates only. Reload/background interruption markers
+do not prove failure and cannot demote routes. Advanced explicit overrides remain.
+This supersedes prior adaptive timing ranking and the historical iOS WebGL-first default.
+
+Matching Android Chrome154 diagnostics corroborate WebGPU3.3s → CPU4.1s → WebGL18s on
+successive reloads, without any recorded rejection. The old over-three-second exploration rule
+caused this rotation and is removed. [Sanitized run evidence](../review/candidate-2026-10-10/phone-reload-summary.json)
+retains exact run/build facts. Existing acquisition rows cannot prove network redownloads; the
+new rounded model/network counters and cache-inventory fixes provide explicit evidence.

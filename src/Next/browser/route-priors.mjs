@@ -23,14 +23,12 @@
  * Sources: autoresearch/results.tsv, phone_gpu_success_2026-09-14.md, s24_ultra_findings_2026-09-14.md,
  * and opted-in reports from the deployed site.
  *
- * A prior only decides what to try first. An admission timing measured on this device replaces it,
- * because the device in front of us outranks anything recorded on another one.
+ * Operator, 10 October: fixed WebGPU -> CPU -> WebGL preference on all platforms.
+ * Timings are recorded for estimates/diagnostics; only route unavailability or failure
+ * causes automatic fallback. Historical measurement-driven ranking is superseded.
  *
- * FALLBACK INVARIANT (operator direction, 19 September): a fallback must never select a route
- * whose recorded per-face cost is higher than another route still available on the device.
- * Each entry's `measured` table is the evidence that fixes its `order`, and
- * route-priors.test.mjs asserts every ordering is ascending by measured cost. When a new keep
- * row lands in autoresearch/results.tsv, update `measured` and `order` together.
+ * Historical measured tables provide context only; new timing results do not change this
+ * preference without a new operator decision.
  */
 
 export const ROUTE_PRIORS = Object.freeze([
@@ -54,31 +52,19 @@ export const ROUTE_PRIORS = Object.freeze([
     because: 'S24 Ultra: CPU 5,911 ms against WebGL about 13,000 ms per face'
   },
   {
-    // iOS without WebGPU keeps the GPU path first, and not for speed. WebGL was adopted there to
-    // remove the large ORT/WASM synthesis heap on a device that may not have room for it, and no
-    // iPhone measurement shows CPU beating it. The Android ordering must not be borrowed here: it
-    // would trade a memory-driven choice for another platform's timings.
-    //
-    // Operator direction, 17 September: a large working set is wanted when it buys speed, so long
-    // as the run stays stable and below the point where the tab is reclaimed. Memory is therefore
-    // not a reason to pass over a faster route — only an observed reset or failure is, and that
-    // arrives as a refused admission which already removes the route from contention.
-    //
-    // Every iPhone figure on record is from the Simulator, which returns no WebGPU adapter at
-    // all, so those runs cannot speak to the fast path and must not be read as if they rank it.
-    // Safari 26 ships WebGPU on iOS, so a current iPhone should match the rule above instead of
-    // this one, and its own timings replace this starting point either way.
+    // Operator, 10 October: the same failure-only preference applies on iOS.
+    // Historical memory-driven WebGL preference is superseded; availability and actual
+    // failed admission still select a supported fallback.
     when: capabilities => capabilities.ios,
-    order: ['webgl', 'cpu'],
-    because: 'iOS WebGL avoids the large WASM heap; Simulator runs have no WebGPU adapter to compare'
+    order: ['cpu', 'webgl'],
+    because: 'iOS CPU/WebGL speed is not measured here; operator fixed CPU before WebGL on 10 October'
   },
   {
     // Desktop without a usable WebGPU adapter. Desktop WebGL against desktop CPU is not measured,
     // but no measurement anywhere puts WebGL ahead of CPU: S24 Ultra WebGL ~13,000 ms against CPU
     // 2,582-5,911 ms, and the iOS Simulator's pure WebGL ran about three times slower than
-    // four-thread CPU. Operator ruling, 8 October 2026: keep WebGPU -> CPU -> WebGL until data
-    // shows otherwise. Diagnostics caught a 32-core Linux desktop on WebGL at 7.4 s per face
-    // because this entry used to put WebGL first. This device's own timings still replace it.
+    // four-thread CPU. Operator ruling, 8 October 2026: keep WebGPU -> CPU -> WebGL until an explicit operator decision changes it. Diagnostics caught a 32-core Linux desktop on WebGL at 7.4 s per face
+    // because this entry used to put WebGL first. Device timings are observational only.
     when: () => true,
     order: ['cpu', 'webgl'],
     because: 'Desktop WebGL against desktop CPU is not measured; nothing recorded favours WebGL, so CPU first (operator ruling WebGPU -> CPU -> WebGL)'
@@ -99,7 +85,7 @@ export function capabilities(scope = globalThis) {
 }
 
 /**
- * Routes to try, best first, for a device with no measurements of its own.
+ * Routes to try in the fixed operator preference order.
  * `supported` filters the order down to what this build can actually run.
  */
 export function priorOrder(capability, supported) {

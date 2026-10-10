@@ -1,0 +1,12 @@
+{
+  "publicNameCount": 5055,
+  "newFullCount": 2144,
+  "independentZIdentities": 5055,
+  "mappingSha256": "4453826529a88cf640a340a9bd54d9453ac26e4398c0a8c8c814dc1fbab7edd1",
+  "averageSha256": "082c662391d30eade08be993ac20dc27f3f2e7c80052efb7cb518a4cceeb5a93",
+  "run": 38029582696,
+  "source": "189005ead137cc229d9c81d2659c474769a370bd",
+  "catalogueSha256": "4a9e1c199e2a629f11cc5d016128b36efbcde301928ae2735c42e5025c13c341",
+  "publishedOrigin": "https://facemorph-name-catalogue.cdilga.workers.dev",
+  "publishedCatalogueMatches": true
+}

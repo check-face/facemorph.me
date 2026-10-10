@@ -1,0 +1,500 @@
+{
+  "collectedAt": "2026-10-10T06:12Z",
+  "collector": "private R2 facemorph-diagnostics",
+  "identityFinding": "All listed starts share one device token across four page-session tokens; tokens omitted.",
+  "limitations": [
+    "Diagnostics intentionally do not contain hardware model or raw user agent.",
+    "asset-acquisition records omit retained/downloading status and bytes; acquisition is not proof of network transfer.",
+    "Only first session contains storage records: persisted=false, quotaMb10240; usageMb is absent. No cache-trouble records observed.",
+    "No route rejection recorded in matching route cycles; admitted cpu and webgl still offered WebGPU.",
+    "Visibility interrupted morph has later stage events in same run; terminal time alone is not actual cancellation."
+  ],
+  "runs": [
+    {
+      "run": "72d2e40a-e387-44e6-8d7e-801fa5e2609c",
+      "firstReceivedAt": "2026-10-10T05:46:02.000Z",
+      "lastReceivedAt": "2026-10-10T05:46:41.000Z",
+      "action": "faces",
+      "build": "next-2ff6791800ad7dbf",
+      "platform": "android",
+      "browser": "chromium",
+      "browserMajor": 154,
+      "cores": 8,
+      "memoryGb": 8,
+      "isolated": true,
+      "bundle": "d9e37e50a436e9fb7c0c7f973e70adee353c808f48c6a51fa5a9186f1c650a5c",
+      "routes": [
+        {
+          "provider": "webgpu",
+          "outcome": "admitted",
+          "gpuOffer": "webgpu",
+          "elapsedMs": 9438
+        }
+      ],
+      "synthesisMs": [
+        4743,
+        3432
+      ],
+      "terminal": [
+        {
+          "outcome": "completed",
+          "provider": "webgpu",
+          "elapsedMs": 13160
+        }
+      ],
+      "assetAcquisitionEventCount": 11,
+      "storageEventCount": 141,
+      "storagePersistedObserved": [
+        false
+      ],
+      "quotaMbObserved": [
+        10240
+      ],
+      "cacheTrouble": []
+    },
+    {
+      "run": "9a75deba-11b6-4cc8-9f75-39ab1b9cfc69",
+      "firstReceivedAt": "2026-10-10T05:46:41.000Z",
+      "lastReceivedAt": "2026-10-10T05:46:41.000Z",
+      "action": "faces",
+      "build": "next-2ff6791800ad7dbf",
+      "platform": "android",
+      "browser": "chromium",
+      "browserMajor": 154,
+      "cores": 8,
+      "memoryGb": 8,
+      "isolated": true,
+      "bundle": "d9e37e50a436e9fb7c0c7f973e70adee353c808f48c6a51fa5a9186f1c650a5c",
+      "routes": [],
+      "synthesisMs": [
+        3296
+      ],
+      "terminal": [
+        {
+          "outcome": "completed",
+          "provider": "webgpu",
+          "elapsedMs": 3450
+        }
+      ],
+      "assetAcquisitionEventCount": 0,
+      "storageEventCount": 0,
+      "storagePersistedObserved": [],
+      "quotaMbObserved": [],
+      "cacheTrouble": []
+    },
+    {
+      "run": "e12004da-224c-47d1-984f-332a799a6303",
+      "firstReceivedAt": "2026-10-10T05:46:53.000Z",
+      "lastReceivedAt": "2026-10-10T05:46:53.000Z",
+      "action": "faces",
+      "build": "next-2ff6791800ad7dbf",
+      "platform": "android",
+      "browser": "chromium",
+      "browserMajor": 154,
+      "cores": 8,
+      "memoryGb": 8,
+      "isolated": true,
+      "bundle": "d9e37e50a436e9fb7c0c7f973e70adee353c808f48c6a51fa5a9186f1c650a5c",
+      "routes": [],
+      "synthesisMs": [
+        3306
+      ],
+      "terminal": [
+        {
+          "outcome": "completed",
+          "provider": "webgpu",
+          "elapsedMs": 3458
+        }
+      ],
+      "assetAcquisitionEventCount": 0,
+      "storageEventCount": 0,
+      "storagePersistedObserved": [],
+      "quotaMbObserved": [],
+      "cacheTrouble": []
+    },
+    {
+      "run": "9160c462-64ec-40ff-8499-71526f6bdb1e",
+      "firstReceivedAt": "2026-10-10T05:53:33.000Z",
+      "lastReceivedAt": "2026-10-10T05:53:33.000Z",
+      "action": "faces",
+      "build": "next-2ff6791800ad7dbf",
+      "platform": "android",
+      "browser": "chromium",
+      "browserMajor": 154,
+      "cores": 8,
+      "memoryGb": 8,
+      "isolated": true,
+      "bundle": "d9e37e50a436e9fb7c0c7f973e70adee353c808f48c6a51fa5a9186f1c650a5c",
+      "routes": [],
+      "synthesisMs": [],
+      "terminal": [
+        {
+          "outcome": "completed",
+          "provider": "webgpu",
+          "elapsedMs": 69
+        }
+      ],
+      "assetAcquisitionEventCount": 0,
+      "storageEventCount": 0,
+      "storagePersistedObserved": [],
+      "quotaMbObserved": [],
+      "cacheTrouble": []
+    },
+    {
+      "run": "912fd6fc-5c1b-45bf-afd4-2d113fb0846c",
+      "firstReceivedAt": "2026-10-10T06:04:01.000Z",
+      "lastReceivedAt": "2026-10-10T06:04:01.000Z",
+      "action": "faces",
+      "build": "next-2ff6791800ad7dbf",
+      "platform": "android",
+      "browser": "chromium",
+      "browserMajor": 154,
+      "cores": 8,
+      "memoryGb": 8,
+      "isolated": true,
+      "bundle": "d9e37e50a436e9fb7c0c7f973e70adee353c808f48c6a51fa5a9186f1c650a5c",
+      "routes": [],
+      "synthesisMs": [],
+      "terminal": [
+        {
+          "outcome": "completed",
+          "provider": "cpu",
+          "elapsedMs": 93
+        }
+      ],
+      "assetAcquisitionEventCount": 0,
+      "storageEventCount": 0,
+      "storagePersistedObserved": [],
+      "quotaMbObserved": [],
+      "cacheTrouble": []
+    },
+    {
+      "run": "70976bbf-1b01-440d-a224-1f61f7ddc66e",
+      "firstReceivedAt": "2026-10-10T06:04:19.000Z",
+      "lastReceivedAt": "2026-10-10T06:04:32.000Z",
+      "action": "faces",
+      "build": "next-2ff6791800ad7dbf",
+      "platform": "android",
+      "browser": "chromium",
+      "browserMajor": 154,
+      "cores": 8,
+      "memoryGb": 8,
+      "isolated": true,
+      "bundle": "d9e37e50a436e9fb7c0c7f973e70adee353c808f48c6a51fa5a9186f1c650a5c",
+      "routes": [
+        {
+          "provider": "cpu",
+          "outcome": "admitted",
+          "gpuOffer": "webgpu",
+          "elapsedMs": 7640
+        }
+      ],
+      "synthesisMs": [
+        4604,
+        4237
+      ],
+      "terminal": [
+        {
+          "outcome": "completed",
+          "provider": "cpu",
+          "elapsedMs": 12097
+        }
+      ],
+      "assetAcquisitionEventCount": 5,
+      "storageEventCount": 0,
+      "storagePersistedObserved": [],
+      "quotaMbObserved": [],
+      "cacheTrouble": []
+    },
+    {
+      "run": "13fa9606-8fda-4ace-ac34-9422fb945455",
+      "firstReceivedAt": "2026-10-10T06:04:32.000Z",
+      "lastReceivedAt": "2026-10-10T06:04:51.000Z",
+      "action": "faces",
+      "build": "next-2ff6791800ad7dbf",
+      "platform": "android",
+      "browser": "chromium",
+      "browserMajor": 154,
+      "cores": 8,
+      "memoryGb": 8,
+      "isolated": true,
+      "bundle": "d9e37e50a436e9fb7c0c7f973e70adee353c808f48c6a51fa5a9186f1c650a5c",
+      "routes": [],
+      "synthesisMs": [
+        4010
+      ],
+      "terminal": [
+        {
+          "outcome": "completed",
+          "provider": "cpu",
+          "elapsedMs": 5803
+        }
+      ],
+      "assetAcquisitionEventCount": 1,
+      "storageEventCount": 0,
+      "storagePersistedObserved": [],
+      "quotaMbObserved": [],
+      "cacheTrouble": []
+    },
+    {
+      "run": "1e318573-00db-4b83-acd0-92b115829710",
+      "firstReceivedAt": "2026-10-10T06:05:45.000Z",
+      "lastReceivedAt": "2026-10-10T06:05:45.000Z",
+      "action": "faces",
+      "build": "next-2ff6791800ad7dbf",
+      "platform": "android",
+      "browser": "chromium",
+      "browserMajor": 154,
+      "cores": 8,
+      "memoryGb": 8,
+      "isolated": true,
+      "bundle": "d9e37e50a436e9fb7c0c7f973e70adee353c808f48c6a51fa5a9186f1c650a5c",
+      "routes": [],
+      "synthesisMs": [],
+      "terminal": [
+        {
+          "outcome": "completed",
+          "provider": "cpu",
+          "elapsedMs": 167
+        }
+      ],
+      "assetAcquisitionEventCount": 0,
+      "storageEventCount": 0,
+      "storagePersistedObserved": [],
+      "quotaMbObserved": [],
+      "cacheTrouble": []
+    },
+    {
+      "run": "c434a801-a217-4254-86a3-9835f7209b09",
+      "firstReceivedAt": "2026-10-10T06:05:55.000Z",
+      "lastReceivedAt": "2026-10-10T06:05:55.000Z",
+      "action": "faces",
+      "build": "next-2ff6791800ad7dbf",
+      "platform": "android",
+      "browser": "chromium",
+      "browserMajor": 154,
+      "cores": 8,
+      "memoryGb": 8,
+      "isolated": true,
+      "bundle": "d9e37e50a436e9fb7c0c7f973e70adee353c808f48c6a51fa5a9186f1c650a5c",
+      "routes": [],
+      "synthesisMs": [],
+      "terminal": [
+        {
+          "outcome": "completed",
+          "provider": "cpu",
+          "elapsedMs": 84
+        }
+      ],
+      "assetAcquisitionEventCount": 0,
+      "storageEventCount": 0,
+      "storagePersistedObserved": [],
+      "quotaMbObserved": [],
+      "cacheTrouble": []
+    },
+    {
+      "run": "bd23c646-f167-489b-b575-22238fef4ffc",
+      "firstReceivedAt": "2026-10-10T06:06:18.000Z",
+      "lastReceivedAt": "2026-10-10T06:06:58.000Z",
+      "action": "faces",
+      "build": "next-2ff6791800ad7dbf",
+      "platform": "android",
+      "browser": "chromium",
+      "browserMajor": 154,
+      "cores": 8,
+      "memoryGb": 8,
+      "isolated": true,
+      "bundle": "d9e37e50a436e9fb7c0c7f973e70adee353c808f48c6a51fa5a9186f1c650a5c",
+      "routes": [
+        {
+          "provider": "webgl",
+          "outcome": "admitted",
+          "gpuOffer": "webgpu",
+          "elapsedMs": 19232
+        }
+      ],
+      "synthesisMs": [
+        18439,
+        19519
+      ],
+      "terminal": [
+        {
+          "outcome": "completed",
+          "provider": "webgl",
+          "elapsedMs": 39826
+        }
+      ],
+      "assetAcquisitionEventCount": 3,
+      "storageEventCount": 0,
+      "storagePersistedObserved": [],
+      "quotaMbObserved": [],
+      "cacheTrouble": []
+    },
+    {
+      "run": "ad1965f2-bca0-4e98-904b-ab49c53ed0f9",
+      "firstReceivedAt": "2026-10-10T06:06:58.000Z",
+      "lastReceivedAt": "2026-10-10T06:07:19.000Z",
+      "action": "faces",
+      "build": "next-2ff6791800ad7dbf",
+      "platform": "android",
+      "browser": "chromium",
+      "browserMajor": 154,
+      "cores": 8,
+      "memoryGb": 8,
+      "isolated": true,
+      "bundle": "d9e37e50a436e9fb7c0c7f973e70adee353c808f48c6a51fa5a9186f1c650a5c",
+      "routes": [],
+      "synthesisMs": [
+        18002
+      ],
+      "terminal": [
+        {
+          "outcome": "completed",
+          "provider": "webgl",
+          "elapsedMs": 25165
+        }
+      ],
+      "assetAcquisitionEventCount": 1,
+      "storageEventCount": 0,
+      "storagePersistedObserved": [],
+      "quotaMbObserved": [],
+      "cacheTrouble": []
+    },
+    {
+      "run": "e5289995-69dd-47fd-9e47-4c73e5c9d882",
+      "firstReceivedAt": "2026-10-10T06:07:46.000Z",
+      "lastReceivedAt": "2026-10-10T06:09:56.000Z",
+      "action": "morph",
+      "build": "next-2ff6791800ad7dbf",
+      "platform": "android",
+      "browser": "chromium",
+      "browserMajor": 154,
+      "cores": 8,
+      "memoryGb": 8,
+      "isolated": true,
+      "bundle": "d9e37e50a436e9fb7c0c7f973e70adee353c808f48c6a51fa5a9186f1c650a5c",
+      "routes": [],
+      "synthesisMs": [
+        19745,
+        21402,
+        19768,
+        19667
+      ],
+      "terminal": [
+        {
+          "outcome": "interrupted",
+          "provider": "webgl",
+          "elapsedMs": 31144
+        }
+      ],
+      "assetAcquisitionEventCount": 1,
+      "storageEventCount": 0,
+      "storagePersistedObserved": [],
+      "quotaMbObserved": [],
+      "cacheTrouble": []
+    },
+    {
+      "run": "3adae5c9-928c-4194-a1e6-c23fe5e7edc7",
+      "firstReceivedAt": "2026-10-10T06:10:22.000Z",
+      "lastReceivedAt": "2026-10-10T06:10:22.000Z",
+      "action": "faces",
+      "build": "next-2ff6791800ad7dbf",
+      "platform": "android",
+      "browser": "chromium",
+      "browserMajor": 154,
+      "cores": 8,
+      "memoryGb": 8,
+      "isolated": true,
+      "bundle": "d9e37e50a436e9fb7c0c7f973e70adee353c808f48c6a51fa5a9186f1c650a5c",
+      "routes": [
+        {
+          "provider": "auto",
+          "outcome": "admitted",
+          "gpuOffer": "webgpu",
+          "elapsedMs": 199
+        }
+      ],
+      "synthesisMs": [
+        4869
+      ],
+      "terminal": [
+        {
+          "outcome": "completed",
+          "provider": "webgpu",
+          "elapsedMs": 9410
+        }
+      ],
+      "assetAcquisitionEventCount": 3,
+      "storageEventCount": 0,
+      "storagePersistedObserved": [],
+      "quotaMbObserved": [],
+      "cacheTrouble": []
+    },
+    {
+      "run": "0f1f401c-3c46-49e2-a6ca-08ec5c227522",
+      "firstReceivedAt": "2026-10-10T06:10:37.000Z",
+      "lastReceivedAt": "2026-10-10T06:10:37.000Z",
+      "action": "faces",
+      "build": "next-2ff6791800ad7dbf",
+      "platform": "android",
+      "browser": "chromium",
+      "browserMajor": 154,
+      "cores": 8,
+      "memoryGb": 8,
+      "isolated": true,
+      "bundle": "d9e37e50a436e9fb7c0c7f973e70adee353c808f48c6a51fa5a9186f1c650a5c",
+      "routes": [],
+      "synthesisMs": [
+        3325
+      ],
+      "terminal": [
+        {
+          "outcome": "completed",
+          "provider": "webgpu",
+          "elapsedMs": 3486
+        }
+      ],
+      "assetAcquisitionEventCount": 0,
+      "storageEventCount": 0,
+      "storagePersistedObserved": [],
+      "quotaMbObserved": [],
+      "cacheTrouble": []
+    },
+    {
+      "run": "b658f845-7d01-4110-bc39-744083db9b84",
+      "firstReceivedAt": "2026-10-10T06:10:58.000Z",
+      "lastReceivedAt": "2026-10-10T06:11:31.000Z",
+      "action": "morph",
+      "build": "next-2ff6791800ad7dbf",
+      "platform": "android",
+      "browser": "chromium",
+      "browserMajor": 154,
+      "cores": 8,
+      "memoryGb": 8,
+      "isolated": true,
+      "bundle": "d9e37e50a436e9fb7c0c7f973e70adee353c808f48c6a51fa5a9186f1c650a5c",
+      "routes": [],
+      "synthesisMs": [
+        7228,
+        99,
+        3915,
+        3747,
+        6023,
+        1332,
+        6701,
+        108,
+        3942,
+        3212,
+        3264,
+        3209,
+        3285
+      ],
+      "terminal": [],
+      "assetAcquisitionEventCount": 0,
+      "storageEventCount": 0,
+      "storagePersistedObserved": [],
+      "quotaMbObserved": [],
+      "cacheTrouble": []
+    }
+  ]
+}

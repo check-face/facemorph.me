@@ -1,18 +1,8 @@
 import {priorOrder} from './route-priors.mjs';
 
-/** Rank only available, non-failed routes using comparable warmed synthesis timings.
- * An unmeasured route ahead of the current winner in the device priors still gets a try:
- * learning CPU and WebGL costs must not permanently hide newly available WebGPU.
+/** Operator, 10 October: WebGPU -> CPU -> WebGL. Timings are observations, never a
+ * reason to demote a working route. Only availability/admission/inference failure filters it.
  */
 export function rankedRoutes(capability,supported,measured={},failed=new Set()){
- const candidates=priorOrder(capability,supported).filter(name=>!failed.has(name));
- const hasTiming=name=>Number.isFinite(measured[name])&&measured[name]>0;
- const known=candidates.filter(hasTiming).sort((a,b)=>measured[a]-measured[b]);
- const unknown=candidates.filter(name=>!hasTiming(name));
- if(!known.length)return candidates;
- const best=known[0];
- // A >3-second winner is not permission to try a lower-priority unmeasured route on
- // the next reload. That rotated phones from a working 4-second CPU to 18-second WebGL.
- const explore=unknown.find(name=>candidates.indexOf(name)<candidates.indexOf(best));
- return [...new Set([explore,...known,...unknown].filter(Boolean))];
+ return priorOrder(capability,supported).filter(name=>!failed.has(name));
 }

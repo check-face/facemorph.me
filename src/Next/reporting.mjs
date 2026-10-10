@@ -24,7 +24,7 @@ const CONSENT='facemorph-debug-consent-v1',DEVICE='facemorph-debug-device-v1',BA
  */
 export const CONSENT_BASES=['checkbox','invite','toast','labs-default','legacy','once'];
 /** The disclosure a choice was made against. Changing what is collected means bumping this. */
-export const CONSENT_POLICY='trial-2026-09';
+export const CONSENT_POLICY='trial-2026-10';
 function readChoice(){
  let raw=null;try{raw=localStorage.getItem(CONSENT);}catch{return null;}
  if(raw==='on')return {choice:'on',basis:'legacy'};
@@ -295,7 +295,11 @@ export const diagnostics={
   const timing=Number.isFinite(event.elapsedMs)?Math.round(event.elapsedMs):undefined,at=performance.now();
   if(timing===undefined&&at-(lastStageAt.get(stage)??-Infinity)<1000)return;
   lastStageAt.set(stage,at);openRun();
-  send({event:'stage',stage,elapsedMs:Math.round(at-started),stageMs:timing});
+  const transfer={};
+  if(stage==='asset-acquisition')for(const [key,source] of [['modelLoadedMb','loaded'],['modelTotalMb','total'],['networkLoadedMb','fetched'],['networkPlannedMb','fetchedTotal']]){
+   if(Number.isFinite(event[source])&&event[source]>=0)transfer[key]=Math.min(4096,Math.round(event[source]/1048576));
+  }
+  send({event:'stage',stage,elapsedMs:Math.round(at-started),stageMs:timing,...transfer});
  },
  /**
   * A failure records where it happened and what kind it was, from closed vocabularies. The error's

@@ -11,6 +11,7 @@ test('reload never explores slower-prior WebGL just because the known route cost
  assert.deepEqual(rankedRoutes({android:true,webgpu:true},['webgpu','cpu','webgl'],{webgpu:3100,cpu:4100}),['webgpu','cpu','webgl']);
  assert.deepEqual(rankedRoutes({android:true,webgpu:false},['cpu','webgl'],{cpu:4100}),['cpu','webgl']);
  assert.deepEqual(rankedRoutes({android:true,webgpu:true},['webgpu','cpu','webgl'],{cpu:4100}),['webgpu','cpu','webgl'],'A newly available higher-priority route is still eligible');
+ assert.deepEqual(rankedRoutes({android:true,webgpu:true},['webgpu','cpu','webgl'],{webgpu:18000,cpu:4100,webgl:1000}),['webgpu','cpu','webgl'],'Slow timings never demote a working route');
 });
 
 test('every measured prior orders routes ascending by recorded per-face cost', () => {

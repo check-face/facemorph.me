@@ -1,0 +1,39 @@
+{
+  "passed": true,
+  "agent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Mobile Safari/537.36",
+  "visits": [
+    {
+      "done": true,
+      "passed": true,
+      "transfers": 1,
+      "events": [
+        "missing",
+        "downloading",
+        "progress",
+        "saved"
+      ],
+      "bytes": 8411270,
+      "inventoryRetained": true
+    },
+    {
+      "done": true,
+      "passed": true,
+      "transfers": 0,
+      "events": [
+        "retained"
+      ],
+      "bytes": 8411270,
+      "inventoryRetained": true
+    },
+    {
+      "done": true,
+      "passed": true,
+      "transfers": 0,
+      "events": [
+        "retained"
+      ],
+      "bytes": 8411270,
+      "inventoryRetained": true
+    }
+  ]
+}

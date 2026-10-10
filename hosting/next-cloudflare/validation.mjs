@@ -6,7 +6,7 @@ export const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a
 // no storage record and the reason a gigabyte re-downloading could not be diagnosed.
 // `worker.test.mjs` now pins this set against reporting.mjs's so they cannot drift again.
 const stages=new Set('asset-acquisition runtime-loading model-loading model-loaded mapping-loading mapping canary canary-invalidated synthesis synthesis-complete alignment alignment-complete encoder-loading encoder-loaded encoder-correctness-check encoder-correctness-complete encoding encoding-complete mapping-complete original-cache-hit original-cached original-cache-invalid cache-unavailable fallback-cpu codec-loading face morph export route-admitted storage photo-select photo-preview photo-crop photo-align photo-encode cache-trouble'.split(' '));
-const fields=new Set('schemaVersion session run event action platform language build stage elapsedMs stageMs errorCode browser provider device browserMajor bundle gpu routeOutcome cores memoryGb isolated errorStage errorKind persisted usageMb quotaMb cacheStatus consent'.split(' '));
+const fields=new Set('schemaVersion session run event action platform language build stage elapsedMs stageMs errorCode browser provider device browserMajor bundle gpu routeOutcome cores memoryGb isolated errorStage errorKind persisted usageMb quotaMb cacheStatus consent modelLoadedMb modelTotalMb networkLoadedMb networkPlannedMb'.split(' '));
 // gpu and routeOutcome answer why a device ended up on the path it did: whether the browser
 // offered WebGPU at all, and whether a route was admitted, refused or never attempted. Both are
 // closed vocabularies carrying no device detail beyond what provider/platform already say.
@@ -28,6 +28,7 @@ export function checkedEvent(value){
  // Rounded megabytes only, bounded: enough to tell a denied persistence request from a quota
  // ceiling, and never precise enough to fingerprint a device's disk.
  for(const key of ['usageMb','quotaMb'])if(key in value&&(!Number.isInteger(value[key])||value[key]<0||value[key]>16*1024*1024))throw Error('storage');
+ for(const key of ['modelLoadedMb','modelTotalMb','networkLoadedMb','networkPlannedMb'])if(key in value&&(!Number.isInteger(value[key])||value[key]<0||value[key]>4096))throw Error('transfer');
  if('errorStage'in value&&!stages.has(value.errorStage))throw Error('errorStage');
  if('language'in value&&(typeof value.language!=='string'||! /^[A-Za-z-]{2,20}$/.test(value.language)))throw Error('language');
  if('bundle'in value&&(typeof value.bundle!=='string'||! /^[a-f0-9]{64}$/.test(value.bundle)))throw Error('bundle');

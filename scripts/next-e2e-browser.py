@@ -205,8 +205,16 @@ def stage_seedGeneration():
  selection='keyboard' if mode=='cpu' else 'scripted'
  if mode!='cpu':select_mode('cpu')
  result['processingSelection']=selection
- run(S['buttons']['generate'],predicate=lambda:len(faces())==2);images=wait(lambda:faces() if len(faces())==2 and all(i['width']==1024 and i['height']==1024 for i in faces()) else None,60)
- save_check('nameSeed',{'passed':True,'dimensions':[[i['width'],i['height']] for i in images],'processingSelection':selection})
+ # Keep the arbitrary-name mapping path and independently qualify the published
+ # public-name W+ pathway. Record message kinds only, never inputs or latents.
+ labels=q("[...document.querySelectorAll('.next-face-generate')].map(b=>b.getAttribute('aria-label'))")
+ run(labels[0])
+ js("window.__ciNameMessages=[];const post=Worker.prototype.postMessage;Worker.prototype.postMessage=function(m,...a){if(m&&['generate','synthesize'].includes(m.type))window.__ciNameMessages.push(m.type);return post.call(this,m,...a);};")
+ js("(()=>{const ins=[...document.querySelectorAll('.next-face input')].filter(x=>x.type==='text');const i=ins.at(-1);Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(i,'charlotte');i.dispatchEvent(new Event('input',{bubbles:true}));})()")
+ run(labels[-1]);images=wait(lambda:faces() if len(faces())==2 and all(i['width']==1024 and i['height']==1024 for i in faces()) else None,60)
+ messages=q('window.__ciNameMessages')
+ assert 'synthesize' in messages and 'generate' not in messages, 'Published name silently fell back to mapping: '+str(messages)
+ save_check('nameSeed',{'passed':True,'dimensions':[[i['width'],i['height']] for i in images],'processingSelection':selection,'publishedLatentSynthesis':True})
  first=download(S['buttons']['saveImage'])
  CTX['seedSha']=hashlib.sha256(first.read_bytes()).hexdigest()
  # The photo-face upload needs its own cache identity: same pixels as the seed PNG (decoders

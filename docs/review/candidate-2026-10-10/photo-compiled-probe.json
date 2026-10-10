@@ -1,0 +1,32 @@
+{
+  "done": true,
+  "passed": true,
+  "multiple": {
+    "message": "More than one face was found. Choose a photo containing only one face.",
+    "count": 2,
+    "boxes": [
+      {
+        "x": 0.4984375,
+        "y": 0.0015625000000000222,
+        "width": 0.49921875,
+        "height": 0.9984375
+      },
+      {
+        "x": 0,
+        "y": 0,
+        "width": 0.5,
+        "height": 1
+      }
+    ]
+  },
+  "selected": {
+    "count": 1,
+    "aligned": true,
+    "workerTerminated": true,
+    "capacity": 176488448
+  },
+  "zero": {
+    "count": 0,
+    "message": "No face was found. Choose a clear photo containing one face."
+  }
+}

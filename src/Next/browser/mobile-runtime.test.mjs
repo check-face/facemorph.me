@@ -41,11 +41,11 @@ test('a newly exposed WebGPU route is tried despite two measured alternatives',a
  environment(t);costs({cpu:2582,webgl:13000});
  assert.equal((await generate(runtime(t))).provenance.route,'webgpu');
 });
-test('supported warm measurements override priors, including fallback order',async t=>{
+test('failure falls back WebGPU to CPU even when WebGL has a faster stored timing',async t=>{
  environment(t);costs({cpu:2000,webgl:1000,webgpu:600});
  const factory=workerFactory();
  const r=runtime(t,{workerFactory:()=>{const w=factory();const post=w.postMessage;let provider;w.postMessage=function(message){if(message.type==='initialize')provider=message.provider;if(message.type==='qualify'&&provider==='webgpu'){queueMicrotask(()=>this.onmessage({data:{id:message.id,type:'error',error:{name:'NotSupportedError',message:'adapter refused'}}}));}else post.call(this,message);};return w;}});
- assert.equal((await generate(r)).provenance.route,'webgl');
+ assert.equal((await generate(r)).provenance.route,'cpu');
 });
 test('unsupported and invalid stored routes cannot win selection',async t=>{
  environment(t,'Android',false);costs({webgpu:1,cpu:2500,webgl:13000,unknown:0.1});
@@ -64,7 +64,7 @@ test('explicit WebGPU selection retries an interrupted GPU instead of silently u
 // a reload, a backgrounded tab and a real crash are indistinguishable here, and the fast route
 // invites reclamation precisely because its working set is the largest. One interruption now
 // earns a retry; `two interruptions in a row drop the route` below pins the limit.
-test('automatic selection retries a route interrupted once, then drops it on a repeat',async t=>{
+test('automatic selection retries a route after reload without treating interruption as failure',async t=>{
  environment(t);
  sessionStorage.setItem('checkface-runtime-active-v1',JSON.stringify({route:'webgpu'}));
  assert.equal((await generate(runtime(t))).provenance.route,'webgpu');
@@ -218,7 +218,7 @@ test('one interruption costs the fast route a retry, not the whole session',asyn
  assert.equal((await generate(runtime(t))).provenance.route,'webgpu','WebGPU is tried again after a single interruption');
 });
 
-test('two interruptions in a row drop the route, and the drop is announced',async t=>{
+test('repeated reload interruptions cannot demote a working route',async t=>{
  environment(t);
  interrupted('webgpu');
  const first=runtime(t);await generate(first);first.dispose();
@@ -230,10 +230,9 @@ test('two interruptions in a row drop the route, and the drop is announced',asyn
  interrupted('webgpu');
  const third=createBrowserRuntime({manifest:manifest(),manifestSha256:hash,workerFactory:workerFactory(),onProgress:e=>seen.push(e)});
  t.after(()=>third.dispose());
- assert.equal((await third.generate({mode:'seed',value:'7'})).provenance.route,'cpu');
+ assert.equal((await third.generate({mode:'seed',value:'7'})).provenance.route,'webgpu');
  const dropped=seen.find(e=>e.stage==='route-admitted'&&e.routeOutcome==='interrupted');
- assert.ok(dropped,'the set-aside route is announced, never silently skipped');
- assert.equal(dropped.provider,'webgpu');
+ assert.equal(dropped,undefined,'Reload observations are not false route failures');
 });
 
 test('a route that qualifies forgets its interruption history',async t=>{
