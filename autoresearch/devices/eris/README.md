@@ -47,7 +47,7 @@ Component benchmarks: `png-variants.py` (real Chromium worker, ABBA, bit-exact g
 
 Open `tmux` on eris in `~/Work/dev/checkface/facemorph.me`, then give the agent:
 
-> Read autoresearch/program.md and autoresearch/devices/eris/README.md, inspect autoresearch/state and the tail
+> Read autoresearch/README.md, autoresearch/program.md, and autoresearch/devices/eris/README.md, inspect autoresearch/state and the tail
 > of results.tsv, and continue the next bounded experiment on eris. One hypothesis per iteration, control first,
 > ABBA, correctness before timing, ledger row for every result including discards.
 
@@ -56,7 +56,7 @@ Open `tmux` on eris in `~/Work/dev/checkface/facemorph.me`, then give the agent:
 `autoresearch/candidates/morph-frame-pipeline-v1/` serves any facemorph.me tree over `http://127.0.0.1` with
 COOP/COEP and runs either the WebGPU engine alone (`run-bench.sh`) or the real `runtime.mjs` + `ort-worker.mjs`
 from source (`run-product.sh`) against the live pinned assets. Unlike `artifact-bench.sh`, this route works on
-eris, so GPU A/B of runtime/worker changes no longer needs a Cloudflare preview. Control = a HEAD worktree.
+eris, so GPU A/B of runtime/worker changes no longer needs a Cloudflare preview. Control = a recorded build artifact or immutable source snapshot with its source/hash recorded. Do not create or use worktrees.
 
 ## Known limits
 
