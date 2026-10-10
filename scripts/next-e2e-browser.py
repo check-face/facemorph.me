@@ -304,7 +304,9 @@ def stage_localCrop():
  wait(lambda:js("!document.querySelector('%s')"%S['cropView']),60)
  deadline=time.monotonic()+300
  while time.monotonic()<deadline:
-  if idle():break
+  # Local crop preparation keeps the UI responsive and does not own the heavy-job busy
+  # flag. Wait for publication of the cropped input as well as the eager encode settling.
+  if text(S['fileName'])=='cropped.png' and idle():break
   time.sleep(1)
  else:
   raise RuntimeError('crop accept never settled: status=%r error=%r workers=%r logs=%s'%(text(S['status']),text(S['error']),js('window.__ciWorkers'),logs_tail()))
