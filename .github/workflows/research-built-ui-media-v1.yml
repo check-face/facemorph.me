@@ -14,7 +14,7 @@ concurrency:
 jobs:
   paired-ui:
     runs-on: ubuntu-24.04
-    timeout-minutes: 25
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -72,7 +72,7 @@ jobs:
         env:
           PLAYWRIGHT_MODULE: /tmp/media-pw/node_modules/playwright
           CHROMIUM_PATH: ${{ steps.chrome.outputs.chrome-path }}
-        run: python3 autoresearch/run.py --lane browser-cpu --device github-built-ui --timeout 1200 -- node autoresearch/candidates/direct-rgba-media-v1/built-ui-paired.mjs /tmp/media-control /tmp/media-candidate autoresearch/candidates/direct-rgba-media-v1/ci-built-ui.json
+        run: python3 autoresearch/run.py --lane browser-cpu --device github-built-ui --timeout 1800 -- node autoresearch/candidates/direct-rgba-media-v1/built-ui-paired.mjs /tmp/media-control /tmp/media-candidate autoresearch/candidates/direct-rgba-media-v1/ci-built-ui.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:

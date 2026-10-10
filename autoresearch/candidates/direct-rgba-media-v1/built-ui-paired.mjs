@@ -15,8 +15,17 @@ const work=await mkdtemp(tmpdir()+'/facemorph-built-paired-'),profiles={control:
 execFileSync('openssl',['req','-x509','-newkey','rsa:2048','-nodes','-keyout',work+'/key','-out',work+'/crt','-days','1','-subj','/CN=next.facemorph.me'],{stdio:'ignore'});
 for(const [side,root] of Object.entries(artifacts))report.artifacts[side]={source:(await readFile(root+'/next-site-source.txt','utf8')).trim(),artifactReceiptSha256:createHash('sha256').update(await readFile(root+'/next-site-SHA256SUMS')).digest('hex'),runtimeManifestSha256:pin};
 const save=()=>writeFile(out,JSON.stringify(report,null,2)+'\n');
-const fixture=await readFile('src/public/preview/hello-1024.webp');report.fixture={sha256:createHash('sha256').update(fixture).digest('hex'),dimensions:[1024,1024],provenance:'Public API hello preview; unique ignored RIFF chunk per sample; same decoded photo pixels, no recovery metadata'};
-function photo(caseId,which){const nonce=Buffer.from('paired-photo-'+caseId+'-'+which),chunk=Buffer.alloc(8+nonce.length+(nonce.length&1));chunk.write('CIUN');chunk.writeUInt32LE(nonce.length,4);nonce.copy(chunk,8);const bytes=Buffer.concat([fixture,chunk]);bytes.writeUInt32LE(bytes.length-8,4);return {name:'synthetic-public-photo.webp',mimeType:'image/webp',buffer:bytes};}
+const fixture=await readFile('src/public/preview/hello-1024.webp');report.fixture={sha256:createHash('sha256').update(fixture).digest('hex'),dimensions:[1024,1024],provenance:'Public API hello preview; deterministic whole-image RGB offset per case and first/next, then WebP q.95 prepared outside timing. Same variant per matched side, no recovery metadata; encoder event required to exclude normalized-photo cache hits.'};
+async function photo(page,caseId,which){
+ const shift=(caseId+2)*2+(which==='next'?1:0);
+ const bytes=Buffer.from(await page.evaluate(async ({source,shift})=>{
+  const bitmap=await createImageBitmap(new Blob([Uint8Array.from(source)],{type:'image/webp'}));
+  const canvas=new OffscreenCanvas(1024,1024),ctx=canvas.getContext('2d',{willReadFrequently:true});ctx.drawImage(bitmap,0,0);bitmap.close();
+  const pixels=ctx.getImageData(0,0,1024,1024);for(let i=0;i<pixels.data.length;i+=4)for(let c=0;c<3;c++)pixels.data[i+c]=Math.min(255,pixels.data[i+c]+shift);ctx.putImageData(pixels,0,0);
+  return Array.from(new Uint8Array(await (await canvas.convertToBlob({type:'image/webp',quality:.95})).arrayBuffer()));
+ },{source:Array.from(fixture),shift}));
+ return {name:'synthetic-public-photo.webp',mimeType:'image/webp',buffer:bytes};
+}
 async function one(side,caseId,warmup=false){
  if(loadavg()[0]>4)throw Error('Contention during paired run: measurement refused');
  const root=artifacts[side],server=spawn('python3',[repo+'/scripts/next-e2e-server.py','--manifest-sha',pin,'--runtime-overlay',repo+'/hosting/next-static/runtime-overlay','--runtime-files',repo+'/.runtime-public','--cert',work+'/crt','--key',work+'/key'],{cwd:root,stdio:['ignore','ignore','pipe']});let context;const entry={side,caseId,warmup,loadBefore:loadavg(),steps:[]};report.samples.push(entry);await save();
@@ -53,7 +62,7 @@ async function one(side,caseId,warmup=false){
   entry.video=await page.locator('.next-video-slot video').evaluate(v=>({width:v.videoWidth,height:v.videoHeight,duration:v.duration,readyState:v.readyState}));
   // Photo warmup creates retained photo assets on each side; subsequent samples measure
   // the first photo session after reload and the next photo, never an original-cache hit.
-  for(const which of ['first','next'])await step('photo-'+which,()=>page.locator('[data-next-face="face-2"] input[aria-label="Choose photo"]').setInputFiles(photo(caseId,which)),()=>waitFace('face-2'));
+  for(const which of ['first','next']){const input=await photo(page,caseId,which);const result=await step('photo-'+which,()=>page.locator('[data-next-face="face-2"] input[aria-label="Choose photo"]').setInputFiles(input),()=>waitFace('face-2'));result.inputSha256=createHash('sha256').update(input.buffer).digest('hex');result.inputBytes=input.buffer.length;if(!result.events.some(e=>e.posted==='encode-aligned')||!result.events.some(e=>e.stage==='encoding-complete'))throw Error('Photo did not execute encoding; do not accept an original-cache shortcut');}
   await download('photo-download','face-2');
   entry.passed=!entry.pageErrors?.length;entry.loadAfter=loadavg();if(!entry.passed)throw Error('Browser page errors');
  }finally{if(context)await context.close();if(server.exitCode===null){server.kill();await new Promise(resolve=>server.once('exit',resolve));}await save();}
