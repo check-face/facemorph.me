@@ -106,3 +106,35 @@ For the raw benchmark, matching correctness evidence is required. Source snapsho
 are immutable; do not rerun preparation over them. The scripts use an isolated
 profile and loopback server, never the operator's normal browser. Component screens
 use synthetic/public fixtures and send no diagnostics or private photos.
+
+## Exact built-UI transfer experiment
+
+The bounded [built-UI recipe](built-ui-paired.mjs) compares qualified control
+`e0b2192` with corrected integration `e590de2`, using exact artifact receipts and
+one pinned runtime. Hypothesis: removing foreground PNG improves full-resolution
+face display and playable video; the smaller deferred WebP improves download size
+without moving encoding into the display critical path. CPU synthesis may dominate
+the total and erase a component benefit; that observation refutes a general E2E
+speed claim even when direct transport remains useful.
+
+Linux hosted Chrome, CPU explicitly selected, pinned Playwright 1.55, fixed warmup
+per side then ABBA×3 (six observations each). Reopen each side's isolated retained
+profile for every sample. Record navigation to preview/restored1024 image, first
+new face after reload, next new face, first/repeat completed download, repeated
+original, 32-frame/16 FPS decoded playable video, first/next metadata-free synthetic
+photo and its download. Matching cases use the same new inputs and decoded public
+hello pixels; ignored RIFF nonces prevent original-cache shortcuts. Photo assets
+are acquired in the discarded warmup. This is a synthetic same-photo pipeline
+screen, not varied real-photo or physical-phone performance.
+
+The host seam explicitly emulates ordinary-user canary admission while webdriver
+remains true; record it rather than present the run as real-user analytics.
+Visibility/isolation/artifact identity, dimensions/duration, repeat file identity,
+route/stage events and browser errors are gates. Existing product CI retains the
+numerical, privacy and workflow gates. Raw synthesis kernels are unchanged; fixed31
+is not a new numerical-kernel claim. Worker surfaces/total process memory remain
+unmeasured; the implemented copy budget is not a measured process peak.
+
+Stop on a wrong artifact, contention above load4, invalid output, browser error,
+or the1200s command/25min job limit. Keep partial evidence as inconclusive. Retain
+the raw report in Git; retire the automatic experimental trigger after completion.

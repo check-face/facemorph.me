@@ -1,0 +1,72 @@
+name: Experimental built UI media transfer v1
+# Bounded exact-artifact CPU experiment, independent of unchanged release qualification.
+on:
+  push:
+    branches: ['candidate/next-delivery-20260916']
+    paths: ['autoresearch/candidates/direct-rgba-media-v1/built-ui-paired.mjs', '.github/workflows/research-built-ui-media-v1.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: research-built-ui-media-v1
+  cancel-in-progress: false
+jobs:
+  paired-ui:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: browser-actions/setup-chrome@v1
+        id: chrome
+        with:
+          chrome-version: stable
+      - uses: actions/download-artifact@v4
+        with:
+          name: next-site-e0b2192c26f6b921b9fb5e24c94be358c508c052
+          run-id: 38030647695
+          github-token: ${{ github.token }}
+          path: /tmp/media-control
+      - uses: actions/download-artifact@v4
+        with:
+          name: next-site-e590de2823508d718195a6c3228cc62736c0ae64
+          run-id: 38033339858
+          github-token: ${{ github.token }}
+          path: /tmp/media-candidate
+      - name: Verify exact artifact bytes and source receipts
+        run: |
+          python desktop/scripts/verify-web-artifact.py --artifact /tmp/media-control --revision e0b2192c26f6b921b9fb5e24c94be358c508c052 --receipt /tmp/control-receipt.json
+          python desktop/scripts/verify-web-artifact.py --artifact /tmp/media-candidate --revision e590de2823508d718195a6c3228cc62736c0ae64 --receipt /tmp/candidate-receipt.json
+      - uses: actions/cache@v4
+        with:
+          path: .runtime-public
+          key: runtime-public-${{ hashFiles('hosting/next-static/runtime-overlay/manifest.json', 'hosting/next-static/mirror-runtime.py') }}
+          restore-keys: runtime-public-
+      - uses: actions/cache@v4
+        with:
+          path: .runtime-mirror
+          key: runtime-mirror-d9e37e50a436e9fb7c0c7f973e70adee353c808f48c6a51fa5a9186f1c650a5c
+          restore-keys: runtime-mirror-
+      - name: Prepare pinned runtime and controller
+        run: |
+          python3 hosting/next-static/mirror-runtime.py --output .runtime-public
+          npm install --prefix /tmp/media-pw --no-audit --no-fund playwright@1.55.0
+          ln -s "$GITHUB_WORKSPACE/.runtime-mirror" /tmp/media-control/.runtime-mirror
+          ln -s "$GITHUB_WORKSPACE/.runtime-mirror" /tmp/media-candidate/.runtime-mirror
+      - name: Paired built UI first and next use with retained models
+        env:
+          PLAYWRIGHT_MODULE: /tmp/media-pw/node_modules/playwright
+          CHROMIUM_PATH: ${{ steps.chrome.outputs.chrome-path }}
+        run: python3 autoresearch/run.py --lane browser-cpu --device github-built-ui --timeout 1200 -- node autoresearch/candidates/direct-rgba-media-v1/built-ui-paired.mjs /tmp/media-control /tmp/media-candidate autoresearch/candidates/direct-rgba-media-v1/ci-built-ui.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: research-built-ui-media-${{ github.sha }}
+          path: |
+            autoresearch/candidates/direct-rgba-media-v1/ci-built-ui.json
+            autoresearch/state/
+          retention-days: 14
+          if-no-files-found: warn
