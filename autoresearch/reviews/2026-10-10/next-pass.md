@@ -93,3 +93,11 @@ API-like visual quality/file-size scale; video has no exact pixel-parity gate.
 [Quality policy](quality-policy.md) and journal event `review-20261010-006`
 supersede the initial lossless-download assumption. Preserve latent identity and
 recovery; separately test any lossy cache format/migration.
+
+Agent-mail message **15** confirms that the RGBA/background encoding experiment
+is compatible with the UI increment when sparse frames retain canonical indices
+and video receives canonical presentation order. BlueHarbor reports local
+component/build/compiled-control checks, while exact-artifact CI/live identity
+remains pending. `f506892` is a provisional source-review revision, not yet the
+frozen performance control. GA access and registration progress do not establish
+a reporting receipt or latency claim.

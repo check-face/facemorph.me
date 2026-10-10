@@ -82,3 +82,16 @@ a new entry with the superseded ID. Follow [record standards](../../records.md).
 - Resources / failures: target API-like size scale, roughly 10^5-byte image payload where practical; metadata can add size, preserve recovery; original raw-memory budgets unchanged
 - Evidence: [quality policy](quality-policy.md), [API observations](api-hello.json), [hello provenance](../../../hosting/gallery/hello-provenance.md), [updated experiments](experiments.md)
 - Conclusion / next action: try lossy WebP first against background PNG, choose fastest acceptable output with metadata; visual/size tradeoffs are permitted and must be reported
+
+### 2026-10-10T05:58:00Z — review-20261010-007
+
+- Phase / status: proposed / development confirms RGBA experiment compatibility; control freeze pending
+- Round / experiment / correction: 2026-10-10 / R03 / not_applicable
+- Hypothesis / decision: direct RGBA/deferred encoding fits the UI increment provided sparse availability retains canonical indices and video receives presentation order
+- Identity: provisional development source `f506892`; qualified artifact/live build pending; research documentation published as `e5b04bc`
+- Context: agent-mail message 15 from BlueHarbor; local 270 component tests/build/compiled controls and Android emulator controls reported by development, not physical inference qualification or research timing
+- Boundary / samples: control/candidate not_measured; no codec or ordinary-policy latency claim
+- Correctness / workflow: keep bounded memory, source privacy, immediate save/recovery/cancellation and canonical-order gates; exact-artifact CI/live identity still required before freeze
+- Resources / failures: not_measured; GA access/registration reported in progress, receipt/performance unverified
+- Evidence: [UI source commit](https://github.com/check-face/facemorph.me/commit/f506892), [handoff](next-pass.md), message 15 in UI/research thread
+- Conclusion / next action: preserve proposed experiment contract; obtain qualified/promoted identity and recent matching analytics before controlled measurement
