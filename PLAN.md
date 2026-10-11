@@ -1196,8 +1196,8 @@ the displayed face was clipped. No physical-phone pass becomes a release gate.
 12 October 2026. This is an implementation-readiness review, as if the plan were
 about to be decomposed into execution work. These are user journeys and design
 findings, not tasks, issue IDs or execution records. **Specified** means a usable
-journey contract, not completed implementation. **Gap** means an implementer must
-still needs a concrete engineering transition or observable outcome. **Settled**
+journey contract, not completed implementation. **Gap** identifies a transition
+whose contract or implementation check is listed below; it does not authorize an implementer to invent extra UI. **Settled**
 records an operator decision; **Deferred** excludes a journey from this release.
 The contracts below resolve the previous choices without adding unrelated features
 or changing locked designs. Remaining gaps use the accepted layout/action areas.
@@ -1210,44 +1210,44 @@ coverage remains scoped to evidence.
 
 | User journey | Required useful outcome | Readiness / missing contract |
 | --- | --- | --- |
-| First app visit | Usable inputs, names and working defaults; no model prompt/download on arrival | Gap: default text/previews versus an empty Generate tile need reconciliation; distinguish a preview from a usable morph input. |
-| Return with completed retained work | Display/play/save without regeneration; preserve usable slider choice | Gap: partial recovery, unavailable retained frames and missing original labels need distinct outcomes. |
+| First app visit | Usable inputs, names and working defaults; no model prompt/download on arrival | Planned: preserve default preview inside tile; Generate prepares it, Morph can prepare unfinished text, and preview pixels alone are never a valid result. |
+| Return with completed retained work | Display/play/save without regeneration; preserve usable slider choice | Planned: compatible completed records restore independently; missing scrub frames retain video playback and labels may be generic. Reject late restore after user edits. |
 | No compute route admitted | Browse/select/save static names and view compatible files | Specified; distinguish unsupported compute from catalogue/codec/storage failure. |
-| Enter new words | Clear old displayed result; one Generate action inside the tile | Gap: defaults, eligibility, Enter activation and empty/whitespace handling need a state table. |
-| Enter a numeric seed | Validate and generate the requested supported seed, including zero | Gap: candidate edits strip non-digits; invalid pasted numbers must not silently become a different valid seed. |
+| Enter new words | Clear old displayed result; one Generate action inside the tile | Planned: compact action-state table covers eligibility, exact text identity, Enter/IME and invalid input without another control row. |
+| Enter a numeric seed | Validate and generate the requested supported seed, including zero | Planned: preserve supported seed range and validate original input; invalid pasted numbers cannot silently become a different seed. |
 | Cancel/fail text/seed generation, retry unchanged input | Retry without typing another character | Settled: Retry uses the current revision without an additional edit; verify the compact action-slot state table. |
-| Edit/change mode/remove a queued or running tile | Supersede only that tile; preserve siblings; reject late results | Gap: actual cancellation versus result invalidation, and controls while stopping, need explicit behavior. |
+| Edit/change mode/remove a queued or running tile | Supersede only that tile; preserve siblings; reject late results | Planned: abort owned work where supported, invalidate revision, show Cancelling until settlement and preserve independent siblings. |
 | Open names from a face menu | Picker binds to that face; selection returns there | Specified; use the originating stable face ID rather than adding a page-wide selection control. |
-| Pick a name on a cold/slow/offline connection | Prompt preview, validated static result, no synthesis fallback | Gap: pending/error/Retry placement and replacement commit point are unnamed. |
+| Pick a name on a cold/slow/offline connection | Prompt preview, validated static result, no synthesis fallback | Planned: existing target action slot carries loading/Retry; prepared result validates before Save/Morph, with revision checks and no synthesis fallback. |
 | Edit a picked name as text/change source | Selection fills ordinary text and displays its prepared face; editing clears it and enables normal Generate | Settled: catalogue examples are generated exactly from their displayed names using normal text semantics. Store result identity/provenance, not a separate persistent names mode. |
 | Find a particular known name | Type the exact name in the normal text field and Generate | Settled: the modal is for browsing example faces, not exact-name lookup; no search or lookup UI is needed. |
 | Open/close fullscreen names modal, Back/Escape | Return to the same app panel and preserve work | Settled modal, no `/names` route; gap is focus/history ownership, stale restore and bounded scroll preservation. |
-| Run/skip/timeout device check | Useful guidance without blocking names/fetching models | Gap: place check/skip in the existing action/modal area; avoid another wizard/dialog. |
+| Run/skip/timeout device check | Useful guidance without blocking names/fetching models | Planned: check/skip uses existing guidance/action area and a bounded deadline; browsing continues and unknown estimates do not block consent. |
 | Choose CPU/WebGPU for the next job | Top dropdown drives action; queue retains route chosen at Start/Download approval | Settled binding at user request/approval, not later queue admission; verify forced-route failure and native CPU-only mapping. |
-| Approve/refuse missing-model acquisition | Known scope/remaining bytes; refusal abandons continuation | Initial consent specified; gap for visible Cancel during acquisition/load and shared-download ownership. |
-| Download/cache/quota failure | Bounded retry, truthful bytes and preserved completed work | Gap: transient execution versus a hard storage requirement; retry must not revive abandoned actions. |
+| Approve/refuse missing-model acquisition | Known scope/remaining bytes; refusal abandons continuation | Planned: bounded asset/route grant and existing action Cancel; stop abandoned acquisition unless another authorized owner remains. |
+| Download/cache/quota failure | Bounded retry, truthful bytes and preserved completed work | Planned: distinguish cache failure from execution capability; bounded explicit Retry, no revived abandoned intent or assumed transient support. |
 | Replace a face with a photo, cancel picker/crop | Predictable commit point, no stale results or damage to unrelated panels | Settled: preserve target where inexpensive; old-face rollback is desirable, not mandatory. Failed replacement can leave a retryable/empty target. |
-| Paste an image/drop one on tile or background | Same recovery/photo dispatch and consent/crop flow with stable target | Gap: mixed clipboard text/image, MIME priority, background target and unsupported-file dispatch. |
+| Paste an image/drop one on tile or background | Same recovery/photo dispatch and consent/crop flow with stable target | Planned: image-first paste and recovery inspection; background drop uses first empty/appended slot, unsupported input stays contextual. |
 | Drop several files containing several faces | One global face-click sequence replaces the originating panel; unrelated panels remain | Settled order/insertion; compose existing file entry with bounded batch selection and per-slot cancel/retry, without file-first sorting. |
 | Confirm one detected crop | Exact preview geometry reaches one encoder attempt | Specified; verify pixels/orientations, not merely modal/component presence. |
-| Adjust/rotate crop, cancel/accept editor | Cancel restores proposal; Use Crop returns to confirmation | Single crop specified; gap for which selected crop the multi-face editor modifies. |
-| No detected face/refused detector assets | Visible manual crop path; eligible confirmed pixels reach e4e | Gap: locate manual continuation and distinguish detector refusal from abandoning the photo. |
-| Select several detected faces | Review each crop; confirm once; insert in click order | Ordering specified; gap for selected-crop navigation and slot/frame admission before OK. |
-| Confirm photo with encoder/generator assets absent | Clear download decision, then automatic encoding after OK | Gap: detector consent, confirmation and deferred large-model acquisition need one sequence. |
-| Cancel/retry one confirmed photo encode | Cancel then Retry in same slot; no recrop/duplicate keypoints | Gap: reconcile Retry with no photo Generate; missing tab-only retry pixels need another outcome. |
+| Adjust/rotate crop, cancel/accept editor | Cancel restores proposal; Use Crop returns to confirmation | Planned: Adjust Crop edits focused/last-selected candidate only; Cancel restores it and Use Crop preserves selection order. |
+| No detected face/refused detector assets | Visible manual crop path; eligible confirmed pixels reach e4e | Planned: optional Adjust Crop/proceed in existing crop flow; detector refusal abandons that acquisition, not local source access. |
+| Select several detected faces | Review each crop; confirm once; insert in click order | Planned: common cross-file batch proposal with ordered badges and identified crop adjustment; slot/pixel budgets before atomic insertion. |
+| Confirm photo with encoder/generator assets absent | Clear download decision, then automatic encoding after OK | Planned: scoped consent, detector proposal, optional adjustment, OK, deferred authorized encoder/generator acquisition, then automatic encode. |
+| Cancel/retry one confirmed photo encode | Cancel then Retry in same slot; no recrop/duplicate keypoints | Planned: confirmed photo Retry reuses one slot/crop; lost tab-only pixels require existing Encode image entry again. |
 | Add/remove controls | Stable ordered inputs and clear morph invalidation | Settled: retain insert/remove; no direct face reordering UI. |
 | Morph unfinished valid text/seed inputs | Create Morph automatically generates them before frames | Settled: one accepted intent, shared consent/progress/Cancel, no duplicate queued morphs or separate Generate requirement. |
-| Change morph settings/start/cancel/retry | Bounded schedule, correct progress, completed faces retained | Gap: edits during active morph, repeated clicks during preparation, and cancellation of queued morph intent. |
-| Play video/switch to slider | One useful result; absent frames cannot strand the user | Gap: keep playable retained/imported video usable when independent scrub frames are unavailable. |
-| Save face WebP/PNG or morph MP4 | Current prepared file, correct format/name and recovery metadata | Specified; gap for PNG fallback updating selection/extension and compact filename-edit entry. |
-| Share/cancel share/use unsupported host | User-gesture sharing; cancellation preserves file; obvious Save | Gap: unsupported-host Share-first behavior and cancellation versus failure fallback. |
-| Save repeatedly/rename/change format/save after reload | Reuse bytes and distinguish identities without overwrite | Gap: recovery excludes words/source basenames, so descriptive labels cannot always be reconstructed. |
-| Reopen recovery-bearing still | View/save immediately, restore latent without photo encoding | Gap: discoverable file-open control and view-only unknown/mismatched-model state. |
+| Change morph settings/start/cancel/retry | Bounded schedule, correct progress, completed faces retained | Planned: snapshot intent, disable duplicate starts, dependency-aware scheduler/Cancel and monotonic progress through prepared MP4 readiness. |
+| Play video/switch to slider | One useful result; absent frames cannot strand the user | Planned: fall back to usable video playback when scrub frames are unavailable; no regeneration or external video import. |
+| Save face WebP/PNG or morph MP4 | Current prepared file, correct format/name and recovery metadata | Planned: prepared bytes reused; actual PNG fallback updates MIME/extension and filename editing stays in existing result action area. |
+| Share/cancel share/use unsupported host | User-gesture sharing; cancellation preserves file; obvious Save | Planned: Save primary without file-share capability; cancelled share preserves file, actual failure uses same-file fallback. |
+| Save repeatedly/rename/change format/save after reload | Reuse bytes and distinguish identities without overwrite | Planned: preserve stable export identity; restored labels use opened filename or generic safe label when original text is unavailable. |
+| Reopen recovery-bearing still | View/save immediately, restore latent without photo encoding | Planned: per-face file/menu entry restores compatible still without models; mismatched media remains viewable/saveable with compute disabled. |
 | Reopen external project-bearing MP4 | Outside current UI scope | Deferred by operator: retain export/internal metadata readers and same-origin session playback; do not add import/preview restoration as a release gate. |
 | Missing/damaged/incompatible still recovery or unsupported media | Reasonably preserve current work; clear valid recovery/photo options | No silent fresh encoding; explicit use-as-photo in existing action area. Avoid costly whole-project transactions; MP4 opening is deferred. |
-| Background/reload/close during unfinished work | Truthful interruption; completed work retained | Loss of photo retry pixels specified; gap for distinguishing unavailable input from retryable errors. |
+| Background/reload/close during unfinished work | Truthful interruption; completed work retained | Planned: completed records/files remain useful; lost photo inputs require source selection, and unfinished/background work is not promised complete. |
 | Report error with/without standing consent | One-shot report stays one-shot; no work blocked by reporting | Specified; Retry/error actions must identify the actual failed tile/action. |
-| Same journeys in installed desktop host | Shared product behavior with actual supported capabilities | Gap: browser CPU/WebGPU labels must not imply new native GPU support; limits/bytes describe the host. |
+| Same journeys in installed desktop host | Shared product behavior with actual supported capabilities | Planned: shared controller and journeys; top native selector offers actual CPU-only capability, and bytes/limits are host-specific. |
 
 #### Operator dispositions — 12 October 2026
 
@@ -1274,18 +1274,45 @@ full-project recovery is not. These rulings supersede the earlier proposals.
 **Tile action states.** Freeze one slot for new eligible text/seed (Generate), queued/
 downloading/loading/encoding/synthesis (Cancel where cancellable), stopping (disabled
 Cancelling), and failed/cancelled retryable (Retry). Photo Retry is not Generate and
-does not recrop. Name acquisition may show loading/Retry while the selected ordinary-text revision is acquiring its static result:
+does not recrop. Static-name acquisition may show loading/Retry for the selected text revision:
 “instant” excludes synthesis, not network failure. A reloaded photo with lost retry
 pixels needs Choose image again. Eligibility means no valid result for the current
 revision, rather than a string different from the last attempt. Include keyboard/
 Enter activation and seed validation. Generate and the candidate's empty-tile
 photo-click behavior cannot share one click target: keep source-menu/drop photo
-entry when Generate is in the tile. State the exception for preserved initial
-previews. Completed-result Share/Save stays outside this operation slot.
+entry when Generate is in the tile. A historic initial preview is display-only:
+keep the action inside that tile; Morph may generate its unfinished text but cannot
+use preview pixels as a verified input, and Save waits for a verified current result. No extra preview badge or onboarding is needed. Completed-result
+Share/Save stays outside this operation slot.
 
 The existing seed range is 0 through 4,294,967,295 inclusive. Empty, negative,
 fractional and out-of-range input needs field validation rather than digit stripping
 that changes the requested seed. The operator did not request a new seed mapping.
+
+Words reject empty/whitespace-only input and enforce the existing 512 UTF-8-byte
+limit. Preserve the exact accepted string's case/spacing/Unicode generation semantics;
+do not silently normalize it into another face. Enter invokes the same eligible
+Generate/Retry action, respects IME composition, and cannot duplicate an active job.
+Tab reaches menus/actions in visual order; buttons removed by the plan leave no
+hidden shortcuts or stale focus targets.
+
+| Current revision / state | Existing tile action area |
+| --- | --- |
+| Empty or invalid words/seed | No enabled Generate; concise field error for invalid input |
+| Valid unfinished words/seed, including initial display-only preview | Generate |
+| Verified selected-name/text/seed/photo/restored result | Result actions when its file is ready; no redundant Generate |
+| Static selection pending | Loading and cancellable request; Retry for fetch failure, never implicit synthesis |
+| Accepted queued or active compute/acquisition | Cancel for that operation |
+| Non-preemptible work is stopping | Disabled Cancelling until settlement, then Retry if input remains available |
+| Failed/cancelled words/seed or confirmed photo with retry pixels | Retry for the same input/slot, using a new attempt identity |
+| Interrupted photo whose retry pixels are gone | Existing Encode image entry to choose the source again |
+| Pixels ready, selected file pending/failed | Preparing file, or file-preparation Retry; keep visible pixels |
+
+Typing or changing a source creates a new revision and invalidates its old prepared
+file/morph immediately. Cancel attempts actual abort/worker stop where supported;
+revision invalidation alone is not permission to run abandoned work in the background.
+Wait for owned resources to settle before reuse. Removal invalidates and releases
+that slot without affecting unrelated completed faces.
 
 **Replacement commit points.** Define when source/result identity changes and when
 morph/file readiness invalidates. Keep the previous target through cancelled file
@@ -1296,7 +1323,7 @@ Never save the old face under a newly selected name or install a late result int
 a newer target. Local staging/revision checks are enough; do not build undo/history
 or transactional whole-project import. External MP4 opening is deferred.
 
-**Cold photo sequence.** A workable proposal: local recovery/file inspection; one
+**Cold photo sequence.** Planned sequence: local recovery/file inspection; one
 consent for known detector/encoder/generator scope; acquire required detector assets;
 review/adjust/select crops; OK; acquire remaining already-authorized encoder/generator
 assets; queue encodes. Deferring large-model acquisition until OK avoids spending
@@ -1312,11 +1339,23 @@ immediately after it in that global order, retaining unrelated panels. File orde
 detector order and asynchronous completion must not reorder that sequence.
 Deselect removes; reselect appends. Review/adjust each chosen crop using existing
 selection badges and Adjust Crop, without adding post-insertion reorder UI. Before
-OK no extra keypoints exist; OK freezes the sequence and reserves slot/pixel/frame
+OK no extra keypoints exist; OK freezes the sequence and reserves slot/pixel
 budgets once. Modal Cancel discards the uncommitted batch. A bad file is identified
 and can be omitted without silently shifting the target or losing selected valid
 crops; after OK per-slot failures/cancel/retry preserve siblings. Walk A1, B2, A2
 clicks across two files, omit a corrupt third file, then cancel one queued slot.
+
+The current candidate allocates one slot per dropped file and `selectPhoto` admits
+one source at a time. Replace that composition with one bounded batch proposal and
+one confirmation containing candidates from all supplied files. A sequence of isolated
+file modals cannot support A1 → B2 → A2; users must be able to select across files
+before OK. Reuse the crop modal/grid visual language, with minimal source grouping
+where needed to distinguish candidates. One sole candidate can remain the default
+single-crop proposal; multi-candidate selection starts empty and OK requires a choice.
+Adjust Crop applies to the focused/last-selected candidate, clearly identified in
+the existing action/preview, and never changes selection order. Editor Cancel restores
+that candidate only; Use Crop returns to the same batch. No file-navigation toolbar,
+per-file duplicate panel allocation or post-insertion reorder control is needed.
 
 **Operation/resource ownership.** Snapshot provider/model/input revisions when the
 user requests work or approves Download and continue, as shown in the top dropdown /
@@ -1329,6 +1368,25 @@ provider support. A single Busy/LastRun/Retry cannot represent independent slots
 imports/downloads; associate errors and Retry with their existing action areas.
 Existing candidate download Cancel is a capability to retain and verify, not an
 assumed missing feature.
+
+Freeze acquisition authorization as a bounded grant over manifest identity, route,
+purpose, required asset digests and advertised remaining-byte scope. Candidate
+`DownloadConsent` is a broad route/photo set, and unknown inventory currently bypasses
+`gateScope`; neither is sufficient for the new boundary. Cache inspection failure
+must settle with Retry, not implicit acquisition. Approval may cover deferred stages
+of that same request and an explicit retry within unchanged scope; it is not perpetual
+authorization for a new checkpoint/provider or abandoned action. Revalidate cache
+without inflating the approved budget silently; additional/replacement scope needs
+a revised decision. Declined detector acquisition leaves local crop access, but its
+continuation is abandoned; OK/manual continuation is a new explicit request for its
+remaining encoder/generator prerequisites, not revival of the refused detector.
+
+Separate Cancel from Hide. Candidate action cancellation aborts the active controller
+and runtime; explicit prefetch has worker-stop/settlement primitives, while its toast
+currently offers Hide. Use the existing action Cancel for acquisition owned by that
+intent and test that network/worker submissions stop within the declared bound. A
+shared fetch stops when its final authorized consumer leaves; other explicit owners
+may continue. Cancelling a morph never destroys a separately requested face job.
 
 **Open/share/export affordances.** Use existing per-face menu/file entry for still
 images; drop alone is insufficient for touch/keyboard. Inspect metadata before
@@ -1350,6 +1408,16 @@ replace a newer selection. Preserve picker scroll where inexpensive. Use bounded
 preview window/cache rather than accumulating thousands of images after scrolling;
 windowing preserves keyboard focus/navigation. No search/header/X is added.
 
+Only the topmost active modal owns Escape/Back and keyboard focus; temporarily
+suspend the underlying page while it is open. Modal Back dismisses once and prevents
+reopening loops on Forward or leaving the app unexpectedly. Crop editor Back behaves
+like editor Cancel; confirmation Back behaves like confirmation Cancel; acquisition
+Back behaves like its Cancel. If a new consent needs to follow crop OK, replace the
+completed dialog rather than stacking a second focus trap. During detector failure,
+keep optional manual/proceed actions inside the crop flow. Contextual errors contain
+one short explanation and the useful existing recovery action; raw exceptions,
+duplicate toasts and focus-stealing reporting prompts are not product copy.
+
 **Whole-action progress.** One operation progress contract spans the requested action:
 missing-model acquisition, local checks/load, confirmed input preparation, encoding /
 synthesis, morph frames and selected file preparation as applicable. A crop decision
@@ -1364,6 +1432,63 @@ usable output/file is ready, not merely the final inference frame. A later expli
 format-change/Save preparation is its own bounded action. Retry starts a new attempt;
 cancellation/failure settles the bar and retains usable results. Keep stable short
 copy and the frame counter where helpful; no technical stage dashboard.
+
+Freeze the progress completion boundary per action: face generation/photo encode
+finishes when its default recovery-bearing file is ready; Morph finishes when the
+playable default MP4 with project metadata is ready; name selection finishes after
+its static result is validated and default file prepared. Pixels may display sooner.
+Best-effort persistence and optional diagnostics are outside that completion boundary
+and never hold the bar open. Release compute admission after compute settles; awaiting
+bounded file preparation does not retain an otherwise idle heavyweight compute lease. For a confirmed batch, a common acquisition/preparation
+prefix belongs to each affected slot's whole-action progress; individual slots may
+finish independently. Morph composes prerequisite progress without double-counting
+shared downloads or re-starting a completed tile's bar. Unknown-duration setup stays
+honestly indeterminate; a precise percentage cannot be promised without measurement.
+
+**Entry, recovery and result transitions.** Resolve the remaining journey variants
+through existing controls:
+
+- Image clipboard data takes precedence over coincident plain text in the targeted
+  text field. Without image data, preserve ordinary paste. A single clipboard image
+  uses the same still-recovery-first/photo dispatch as the file chooser; mixed or
+  unsupported items produce a contextual message and no unintended text replacement.
+  Drop on a face binds that stable target. Background drop uses the first empty face,
+  or appends one if none is empty, without replacing an unrelated populated face.
+- Inspect a recovery-bearing still before photo preparation; valid matching recovery
+  installs its image/latent in the target without model acquisition or encoding.
+  Damaged/incompatible recovery offers explicit Use as photo when decodable; it never
+  silently changes identity. Unknown-model media can remain viewable/saveable but is
+  excluded from morph compute. Preserve the old target on rejected input when simple;
+  there is no project-wide import or external MP4-open flow.
+- Restore completed compatible records before applying them, and abandon a late
+  restore after any user edit/selection. If retained scrub frames are absent, keep
+  the video player usable and fall back from slider mode without regeneration.
+  Partial recovery may restore valid completed faces independently; lost unfinished
+  photo inputs point to Encode image, not an impossible Retry. Do not promise original
+  words/filenames or all-or-nothing recovery from best-effort session storage.
+- A morph request snapshots ordered compatible input revisions and settings. Valid
+  unfinished words/seeds are prepared automatically; already pending selected-name or
+  confirmed-photo results are dependencies. Unconfirmed/invalid inputs block acceptance
+  with a short reason in the existing area, not an additional wizard. Changing an input
+  or morph setting supersedes the affected intent/result, aborts obsolete production
+  and cannot install stale files. Completed unrelated faces stay usable. Keep settings
+  disabled during active morph as in the candidate; a newer face edit abandons the
+  old morph rather than continuing to export obsolete work.
+- Keep one current prepared file per selected revision/format, with a bounded cache
+  for additional formats. A format change invalidates only that file's action readiness;
+  do not re-run inference. If WebP falls back to PNG, show PNG with its actual MIME /
+  extension. Share is primary where supported, Save where not; cancelled share does
+  nothing further, actual share failure offers/saves the same file. Editing the proposed
+  filename is optional within the result action area and retains the identity suffix.
+- Device check is cancellable/skippable in the existing guidance/action area; browsing
+  does not wait for it. The download decision remains usable with a labelled unknown
+  estimate at its deadline. In native CPU-only hosts, the top control offers only actual
+  supported choices and states CPU plainly; shared UI does not invent native WebGPU.
+  Background/reload interruption never claims success or guaranteed continued compute.
+
+These close design ambiguities using the accepted layout. Implementation evidence
+must exercise each matrix row, including stale completions, denied consent and
+partial failure, rather than marking the whole UI complete from a happy-path demo.
 
 #### Accepted limits that should not become surprise requirements
 
@@ -1412,9 +1537,23 @@ machinery, and neither introduces hosted request-time inference or user uploads.
 Catalogue entries must use exactly the same name-to-text generation mapping, model
 and settings as ordinary text entry, with that identity recorded in the publication
 manifest. A displayed name must not point to an unrelated latent or historic face.
+
+Use one canonical text-generation resolver for catalogue preparation and typed input.
+Candidate `generateNameOrSeed` currently tries a catalogue W+ latent and silently
+falls back to ordinary text mapping when that fetch fails; those paths are not proof
+of equal results. Qualify published entries against the same canonical resolver
+used by the ordinary typed-name path, including cold/offline catalogue and cache-miss
+cases, using provider tolerances for pixels and exact declared latent/identity checks.
+Existing qualified named-text mappings may be retained if shared by both paths;
+do not choose a new mapping merely to simplify publication. Reuse an old asset only
+if those checks pass; otherwise prepare it once from the canonical resolver. Prevent
+transient catalogue availability from changing the face associated with a typed string. Case, Unicode
+and whitespace variants retain the same rules as ordinary text, without a new
+lookup UI or silent identity remapping.
+
 Selection fills that name in the ordinary text field, shows its available preview
-immediately and fetches only that selected
-result's bounded assets; the current text revision becomes a completed morph input/Save result after
+immediately and fetches only that selected result's bounded assets; the current text
+revision becomes a completed morph input/Save result after
 integrity validation. “Instant” means no model download/inference/Generate step,
 not zero network latency. Show loading/retry/offline states, reject stale target
 responses, and never silently substitute synthesis on catalogue failure. Fetch
@@ -1502,6 +1641,27 @@ additional concurrency only with measured aggregate memory and cancellation evid
 Waiting jobs must acquire budgets without holding resources needed by the active job.
 Browser and native adapters report unavailable/busy capabilities through the same
 contract. [morph pipeline](#morph-pipeline) verifies competing intents, disposal and no starvation/deadlock.
+
+Treat Morph as a parent intent, not an extra heavyweight lease while waiting for
+its own prerequisite face jobs. Dependencies are admitted once; join an existing
+operation for the same slot/revision rather than enqueueing duplicate inference.
+Release/yield compute admission before awaiting dependencies or download consent.
+When ready, request the frame-production lease through the same scheduler. Distinct
+photo-encoder and generator routes remain explicit; the top generator dropdown does
+not imply GPU e4e. Parent Cancel stops work owned solely by that parent, detaches from
+independently requested face jobs and leaves their completed results available. Failed
+or cancelled required inputs settle the waiting parent with a specific recovery action;
+no permanently disabled Morph or waiting promise remains. Check photo → queued Morph,
+Morph auto-generation → explicit face request, route changes while queued and Cancel
+at each dependency boundary. Existing bounded internal pipeline parallelism remains.
+
+Before Morph-owned acquisition/inference, estimate frame/slot budgets from the
+selected count, current geometry/settings and actual output shape. Independently
+requested photo encoding need not wait for a future morph to fit its frame budget.
+Use the existing 4,096-frame path limit unless separately qualified; a legal photo
+selection can still require reducing morph length before Morph. Do not truncate
+selected faces to force a fit. Batch pixel limits and frame limits have separate
+messages within existing actions; neither introduces a new settings screen.
 
 The 120 × 1024²-pixel source limit can represent 480 MiB for just one RGBA buffer,
 before decoder, canvas, crop and encoder copies. A compressed-file limit and a
@@ -1597,6 +1757,17 @@ retained/rebuildable input; uncertainties are explicit; this inventory makes no
 new remote changes. Include licenses and required notices for imported app,
 package, converter and model/data inputs. Preserve provenance/restrictions and
 name unresolved redistribution rights before deciding distribution contents.
+
+Map the remaining native/research consumers before retiring Fable/webpack wrappers:
+`desktop/` packaging, updater source and resource paths may still assume the classic
+layout. Keep their compatibility until the shared web build and native adapters are
+qualified. Freeze package contract schemas first, rather than requiring a completed
+manager implementation merely to design the engine. Independent consumer examples
+may use packed local artifacts before npm publication; qualification must not depend
+on publishing unqualified packages. Catalogue construction uses qualified compute /
+media contracts, and hosting machinery remains separate from app/domain promotion.
+This keeps the workstream order acyclic and preserves an independently working
+candidate throughout the migration.
 
 ### Package and operation contracts
 
@@ -1787,7 +1958,9 @@ weight-exclusion checks apply to artifacts actually being published. Record the
 small intended-feature matrix and which version was exercised.
 Include preflight-without-model-network evidence, denied/skipped/timed-out checks,
 unknown calibration, context-specific photo/synthesis estimates, cold/warm overhead and
-slower-fallback consent. Verify action-gated acquisition, unknown cache status, Escape /
+slower-fallback consent. Exercise composed scheduler dependencies, route snapshots,
+shared-download ownership, and whole-action progress through default file readiness.
+Verify action-gated acquisition, unknown cache status, Escape /
 backdrop/Cancel, no late continuation, and no model prompt for static names or valid
 cache hits. Inspect default modal copy at narrow widths: irrelevant operation rows
 and technical breakdowns stay out of the main decision. Check prediction error against available paired measurements;
@@ -2267,3 +2440,35 @@ short heights, zoom and active-state testing rather than only endpoint breakpoin
 These are planned acceptance contracts. Historical reviews above record their
 then-open proposals; the latest dispositions govern implementation. No application
 changes, inference benchmarks, deployment or execution-tracker conversion occurred.
+
+
+### Follow-up whole-plan review — 12 October 2026
+
+Reviewed the active plan after publication of operator dispositions at `bdeb0a4`.
+Checked all 38 journeys and the architecture/migration/package/conversion/hosting /
+classic/release sequencing. Source grounding included candidate `Product.fs`,
+`product-bridge.mjs`, `photo-selection.mjs`, `browser/runtime.mjs`, `public-previews.mjs`,
+`browser/identity.mjs`, `last-result.mjs` and geometry frame-budget validation.
+
+Load-bearing corrections: a composite Morph must not hold the compute lease needed
+by its prerequisite jobs; global A1 → B2 → A2 selection needs one shared batch proposal,
+not isolated file modals; broad route/photo consent and unknown-cache bypass are not
+the required bounded acquisition authorization; catalogue-latent fallback does not
+prove equality to ordinary typed names; progress finishes at default recoverable-file
+readiness, excluding optional persistence/diagnostics. Existing cancel/worker-stop
+primitives are retained, with action-owned acquisition cancellation verified separately
+from the current prefetch toast's Hide. Added compact action states and concrete
+paste/open/restore/modal/error/result transitions using existing UI areas.
+
+Clarified early frame-budget checks, dependency cancellation ownership, native build
+consumer migration and packed-consumer qualification before npm publication. No new
+user decision or visible dashboard, reorder/search/project toolbar was introduced.
+Precise progress percentages remain conditional on calibration; an indeterminate
+whole-action bar is required when a truthful denominator is unavailable. Actual device
+capability, model redistribution/hosting allowance and organization/npm availability
+still need their planned execution checks; no planning conclusion claims them passed.
+
+This follow-up is a source-grounded review of planned work, not an independent agent
+round, application implementation, benchmark, live device qualification, deployment
+or tracker conversion. Publication receipts are Git commits; product delivery is
+unchanged. Historical proposals above remain as dated records only.
