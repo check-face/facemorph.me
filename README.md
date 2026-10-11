@@ -18,4 +18,6 @@ model conversion and classic API. Planned packages: `stylegan-js`,
 a conversion Docker environment are specified in the plan, not installed here.
 
 Portable execution records are in `.beads/issues.jsonl`; all 20 tasks and epic
-remain deferred. No model weights, credentials or legacy runtime are bundled.
+remain deferred. They predate the current remaining-work review and are not
+synchronized during planning. The plan is the scope authority; execution setup is
+a separate later step. No model weights, credentials or legacy runtime are bundled.

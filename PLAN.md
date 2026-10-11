@@ -30,17 +30,19 @@ The supplied [UI archive references](#supplied-ui-references) and
 engine-only choices and older UX requirements for the next release. Existing
 nonconflicting identity, correctness, privacy, retention and evidence rules survive.
 
-The operator has authorized repository setup now: rename the existing repository
-to `facemorph.me-classic` and create a fresh `facemorph.me` based on this plan.
-This setup does not qualify the new application or promote it to either site.
-The existing candidate remains the delivery and rollback source until verified
-application cutover. Archive `checkface` as-is under the updated operator ruling; complete Docker/PyTorch work in `facemorph.me-classic`.
+Repository bootstrap is complete. The new checkout is the continuation point;
+classic remains the current delivery/rollback source until application cutover.
+No application extraction, TS migration, new CI/domain promotion or classic
+Docker/PyTorch qualification is established by the setup.
 
 ## Starting facts and boundaries
 
 - New initiative checkout: `facemorph.me/`, origin `github.com/check-face/facemorph.me`,
   default branch `main`, fresh repository ID `1413979666`. This is the continuation
   point for the monorepo plan; it has no application build or deployment yet.
+  Repo creation, local directory rename, plan publication and workspace setup
+  are complete. Sibling `facemorph-names/` and `encoder4editing/` are also cloned;
+  `fm-control/` and `fm-direct/` are retained historical benchmark copies.
 - Retained application/source checkout: sibling `facemorph.me-classic/`, origin
   `github.com/check-face/facemorph.me-classic`, ID `295956585`, branch
   `candidate/next-delivery-20260916`. Existing candidate delivery remains
@@ -55,9 +57,12 @@ application cutover. Archive `checkface` as-is under the updated operator ruling
 - `self-host/` already has a pinned original frontend, a PyTorch-based NVIDIA
   runtime and Compose packaging. Its Dockerfile clones the current GitHub repo
   at a historical commit. Reconcile this implementation before porting duplicate
-  server work; the namespace migration must update its clone source.
+  server work. Candidate commit `b2d945a8c7f0ff9f382fbfefaecc2651943077a3`
+  already repairs the Dockerfile/README clone URLs for the repository rename;
+  inspect default-branch and remaining integration references separately.
 - The sibling `checkface/` is the legacy backend. Inspect it read-only for migration
-  provenance; archive its remote as-is under the operator’s setup authorization; archived history remains readable for migration.
+  provenance. Its remote is already archived as-is (ID `185985766`); history
+  remains readable/cloneable. Do not re-archive or rewrite it.
 - Model staging still consumes selected old lab inputs and external artifacts.
   Do not delete `experiment/` or move production weights without an input inventory.
 - Preserve other sessions' `.gitignore` / `.cloudflare/` and `desktop/README.md` work. No worktrees, branch
@@ -74,9 +79,8 @@ and [record standards](https://github.com/check-face/facemorph.me-classic/blob/b
 | Surface | Required end state | Migration constraint |
 | --- | --- | --- |
 | GitHub organization | Rename `check-face` to the selected compliant login `facemorph-me` (brand: FaceMorph.me). | Verify the actual available/valid organization login and permissions. `facemorph-me` is the chosen URL login; verify availability/permissions at execution. `facemorph.me` remains the product/domain brand. |
-| Existing `facemorph.me` repository | Rename to `facemorph.me-classic`; integrate the legacy server and original frontend with PyTorch and easy Compose. | Preserve history, pinned frontend commit, API behavior, model sources and attribution. |
-| Existing `checkface` repository | Archive as-is. | No rewriting or deletion of its history; Operator authorizes archival now; classic Docker/PyTorch remains a separate qualification gate. |
-| New `facemorph.me` repository | Monorepo with UI, engine, model manager, model-host tooling and model converter. | Establish source provenance, package boundaries, CI, deployment pins and a rollback route before cutover. |
+| `facemorph.me-classic` | Complete/qualify the legacy server and original frontend with PyTorch and easy Compose. | Repository rename is done; preserve history, pinned frontend commit, API behavior, model sources and attribution. |
+| Existing fresh `facemorph.me` repository | Implement monorepo with UI, engine, model manager, model-host tooling and model converter. | Establish source provenance, package boundaries, CI, deployment pins and a rollback route before cutover. |
 | `checkface.facemorph.me` | Retire completely: no hosted site, API, proxy, redirect or DNS record remains. | Inventory consumers/hosting first; classic Compose and the new app must work without this endpoint. Preserve archived source history, not a live service. |
 | npm publication | Publish the reusable engine; resolve real npm names/scope when publishing. | Working folder names are not reserved package names. Pack/smoke-test first; ship no pretrained weights. |
 
@@ -106,11 +110,12 @@ Python conversion/build dependencies can remain Python tooling within their owne
 [Workspace contract](https://docs.npmjs.com/cli/v11/using-npm/workspaces/).
 Source paths throughout task instructions refer to the retained classic checkout
 until inventoried and imported into the new monorepo; they are not already present
-in this fresh repo. Source and history mapping must be decided from the inventory; creating the new
-remote does not authorize abandoning existing branches or evidence.
+in this fresh repo. Source/history transfer still needs RN-01 inventory; the
+completed bootstrap does not authorize abandoning existing branches or evidence.
 
-Prepare artifacts and migration manifests before namespace cutover. Reusing the
-old organization/repository path for the new application can replace old redirects.
+The old repository path is already occupied by the fresh repo: old redirects
+cannot be relied upon. Prepare artifacts and manifests before the remaining
+organization/integration/domain cutover.
 Update Dockerfile historical clones, remotes, Actions references, badges, docs,
 webhooks and Cloudflare integration explicitly. GitHub does not redirect every
 surface, including reusable action calls and Pages URLs.
@@ -136,16 +141,28 @@ classic repository and update live FAQ/docs references before shutdown. Archived
 files remain unchanged as historical evidence; disabling Pages and hosting is an
 account/infrastructure operation, not a rewrite of archived commits.
 
-RN-20 removes every site/API deployment and proxy route serving the hostname,
-disables its Pages/custom-domain binding, and removes its DNS records. Remove
+RN-20 prepares the retirement manifest and verifies consumers/rollback readiness.
+RN-12 performs retirement only after the new app is promoted to `facemorph.me`
+and its supported live journeys are verified. Retaining the old hostname during
+`next.facemorph.me` candidate trials is allowed; it is not the completed end state.
+Remove every site/API deployment and proxy route serving the hostname,
+disable its Pages/custom-domain binding, and remove its DNS records. Remove
 service-specific automation and revoke credentials used exclusively by the retired
 service after confirming they are not shared with classic, names, models or next.
-Do not leave a redirect, placeholder site, proxy or alternate live legacy API.
+Do not leave a redirect, placeholder site or proxy serving the retired hostname.
+This retirement does not authorize shutting down an independent `api.facemorph.me`
+or another shared service; inventory and resolve actual dependencies explicitly.
+Before shutdown, inventory whether `api.facemorph.me`, current production or
+any proxy/redirect still uses this hostname, and remove/replace those dependencies
+through qualified application cutover. The chosen site rollback artifact must be
+verified to work without the retired host; an old hosted classic build still
+requiring that host/API is not a valid post-retirement rollback. Preserve shared
+API/hosting resources still needed by another live surface.
 Record before/after configuration, owner, time and verification in the cutover
 manifest; check authoritative DNS after propagation and confirm hosting/provider
 route bindings are absent. An HTTP outage alone does not establish retirement.
 
-RN-12 release acceptance requires that new/classic supported journeys succeed
+RN-12 final release acceptance requires that new/classic supported journeys succeed
 without this endpoint, active links/config contain no dependency, and the manifest
 has DNS/hosting retirement evidence. Existing site and model hosting must remain
 functional. This paragraph authorizes planning the work; no live DNS, Pages or
@@ -312,7 +329,7 @@ Oxfmt uses a shared style (100-column width, two-space indentation); leave autom
 import/package-field reordering off initially so formatting does not introduce
 side-effect ordering changes. Include authored app/package files, maintained
 scripts, configs and current docs; exclude dependencies, generated Fable outputs,
-build/distribution assets, vendored code, weights, fixtures, `.beads` state/export,
+build/distribution assets, vendored code, weights, fixtures, execution-tracker state/export,
 and immutable historical scripts/reports identified by RN-01. Exclusions name frozen
 artifacts rather than hiding all future autoresearch code or maintained adapters.
 Python, F#, Rust and shader formatting is outside these tools' declared scope.
@@ -368,8 +385,10 @@ RN-18 apply the declared UX changes afterward. If the TS UI parity revision cann
 pass, retain the current app as the qualified control and repair the migration;
 do not weaken parity or claim completion of the new TS app. The user requires
 idiomatic TypeScript for the revamp; React/Vite is the recommended framework/build
-choice. Package extraction may progress against the temporary Fable control, while
-new-monorepo release completion requires its TS migration gates. The operator permits
+choice. The temporary Fable facade is an RN-05 migration milestone; RN-06
+compute extraction begins after all RN-05 parity milestones and RN-13 loaded
+handles are accepted. Manager/host/converter work can follow its earlier table
+prerequisites. This ordering isolates UI/build parity from compute refactoring. The operator permits
 F# removal, not unverified deletion of consumers or classic historical inputs. F# tools can leave new-repo CI only after no new-app
 consumer remains, without changing classic's historical build requirements.
 
@@ -445,6 +464,14 @@ package migration. Split model caches from application retention policy. Cold,
 model-cached and output-cached cases remain distinct. Bound resources and fallback;
 CPU and WebGPU handles identify actual providers, admission and validation state.
 
+Loaded handles hold reference-counted leases on required verified local assets.
+Manager-controlled deletion/eviction cannot remove leased assets. Browser eviction,
+corruption, cross-tab deletion or device/worker loss invalidates the capability
+with a typed error; affected operations settle and release resources without
+network repair. Leases constrain manager behavior, not the browser’s ability to
+reclaim storage. Reacquisition and re-admission occur outside engine execution
+through the application’s acquisition/consent policy.
+
 ### cloudflare-model-host
 
 Own chunk staging/publication tooling, manifest generation and digest-consistent
@@ -479,7 +506,7 @@ seed/text semantics, photo reconstruction, morph/media endpoints, saved identiti
 health checks and persistent model/media volumes. Validate both empty-volume
 startup and restart reuse on an available GPU; lack of GPU evidence stays explicit.
 The new monorepo web app runs locally in the browser and does not acquire the classic
-API as a dependency. The operator authorizes archiving `checkface` now; verify Docker/PyTorch in `facemorph.me-classic` before claiming classic complete.
+API as a dependency. Backend archival is complete; verify Docker/PyTorch in `facemorph.me-classic` before claiming classic complete.
 
 ## Next-release UI and photo requirements
 
@@ -563,8 +590,13 @@ transient decode separately, before batch admission. Preserve existing single-in
 limits (`src/Next/photo/crop.mjs`: 64 MiB compressed, 120 × 1024² pixels, 20,000px edge)
 unless a separately qualified rule changes them; these are not browser RSS bounds.
 Reserve batch budget before allocating keypoints; an oversized batch receives an
-actionable reduce-selection/remove-retry-input message, not truncation or hidden eviction. A valid crop that
-fails alignment reaches one direct e4e attempt or an actionable terminal error.
+actionable reduce-selection/remove-retry-input message, not truncation or hidden eviction. Complete any detector-driven alignment/warp used to propose a crop before
+confirmation, and display the resulting proposal. After OK, derive encoder pixels
+only from the frozen confirmed crop and declared orientation/rotation/resize /
+color/normalization policy. Do not redetect/rewarp to replace approved geometry.
+Optional post-confirmation validation cannot alter pixels or block otherwise
+eligible direct-crop encoding; detector/alignment failure cannot reopen the crop
+prompt. An eligible confirmed crop reaches one e4e attempt or an actionable error.
 Only a user's explicit Adjust Crop starts another adjustment. RN-02 freezes batch,
 revision, cancellation and retry types; RN-08 owns real encoding/fallback; RN-17 owns
 modal, ordered selection, atomic keypoint insertion and interaction evidence.
@@ -663,32 +695,32 @@ receipts distinguish measured, implemented and deployed state.
 
 ## Task graph
 
-All work is planned/deferred. RN IDs identify release scope; existing Beads IDs are
-retained where the engine work is refined, with new children for added scope.
+The table contains remaining planned work only. RN IDs are specification labels
+used to express dependencies and acceptance; no issue records are created here.
 Dependencies are blocking edges; not merely a suggested chronological list.
 
-| Task | Beads ID | Depends on | Deliverable / gate |
-| --- | --- | --- | --- |
-| RN-01 Inventory and freeze baseline | `fm-fy2.1` | — | Repository/source/asset/consumer/receipt inventory; migration manifest. |
-| RN-02 Freeze package and operation contracts | `fm-fy2.2` | RN-01 | Typed loaded-model/batch boundaries, manager/host/convert formats, resources and parity matrix. |
-| RN-03 Freeze workloads and comparison rules | `fm-fy2.3` | RN-01 | Versioned specs, control identity and decision rules. |
-| RN-04 Prepare monorepo build/CI identity | `fm-fy2.4` | RN-01, RN-02 | Strict TS/workspace/type/worker linkage, Oxlint/Oxfmt gates, new-path hashing/discovery. |
-| RN-05 Move UI behind package facade | `fm-fy2.5` | RN-02, RN-04, RN-10 | Parity-preserving facade and isolated recommended TS/React/Vite migration. |
-| RN-06 Extract stylegan-js compute | `fm-fy2.6` | RN-05, RN-13 | Caller-supplied loaded models; no model I/O/weights; tested browser/native capabilities. |
-| RN-07 Separate media and metadata helpers | `fm-fy2.7` | RN-06 | PNG/lossless-WebP recovery API, video pipeline, application Save/share boundary. |
-| RN-08 Repair crop-confirm-to-encode flow | `fm-fy2.8` | RN-06 | Bounded direct confirmed-crop path, actual e4e and no crop loop. |
-| RN-09 Extract morph/frame pipeline | `fm-fy2.9` | RN-07, RN-08 | All geometry modes, ordered bounded frames, cancel/reload compatibility. |
-| RN-10 Build evaluator and freeze noise baseline | `fm-fy2.10` | RN-03 | Same versioned wrapper/control apparatus before facade/extraction. |
-| RN-11 Qualify release artifacts and packages | `fm-fy2.11` | RN-09, RN-14, RN-15, RN-17, RN-18 | Correctness, UI parity/change matrix, paired regression verdicts and pack/install tests. |
-| RN-12 Publish and verify release | `fm-fy2.12` | RN-11, RN-20 | Candidate/site/package receipts and verified runtime/live bytes; distinct classic coverage. |
-| RN-13 Extract browser-model-manager | `fm-fy2.13` | RN-02, RN-04 | Chunks/checksums/OPFS/caching/loaded handles with consent and compatibility. |
-| RN-14 Extract cloudflare-model-host | `fm-fy2.14` | RN-02, RN-04 | Reproducible chunk host, limits/terms check and exact qualified manifest. |
-| RN-15 Create model-conv tooling | `fm-fy2.15` | RN-02 | Containerized supported conversions, shape/provenance manifests and numerical reports. |
-| RN-16 Prepare classic repository and Compose successor | `fm-fy2.16` | RN-01 | Original UI/API/PyTorch migration, one-command GPU bootstrap and verified reuse. |
-| RN-17 Apply revised face controls and consent modals | `fm-fy2.17` | RN-05, RN-08, RN-19 | Referenced crop modals, ordered multi-selection, compare removal, paste/file/cancel matrix. |
-| RN-18 Restore fullscreen instant-name picker | `fm-fy2.18` | RN-05 | Classic-like edge-to-edge layout, accessible dismissal and instant selection. |
-| RN-19 Remove WebGL with compatibility handling | `fm-fy2.19` | RN-05, RN-13 | CPU/WebGPU-only admission, persisted-preference migration and required fallback coverage. |
-| RN-20 Prepare and execute repository namespace cutover | `fm-fy2.20` | RN-11, RN-16 | Valid namespace, classic rename/new repo/archive sequence, integration/revert manifest. |
+| Workstream | Depends on | Deliverable / gate |
+| --- | --- | --- |
+| RN-01 Inventory and freeze baseline | — | Repository/source/asset/consumer/receipt inventory; migration manifest. |
+| RN-02 Freeze package and operation contracts | RN-01 | Typed loaded-model/batch boundaries, manager/host/convert formats, resources and parity matrix. |
+| RN-03 Freeze workloads and comparison rules | RN-01 | Versioned specs, control identity and decision rules. |
+| RN-04 Prepare monorepo build/CI identity | RN-01, RN-02 | Strict TS/workspace/type/worker linkage, Oxlint/Oxfmt gates, new-path hashing/discovery. |
+| RN-05 Move UI behind package facade | RN-02, RN-04, RN-10 | Parity-preserving facade and isolated recommended TS/React/Vite migration. |
+| RN-06 Extract stylegan-js compute | RN-05, RN-13 | Caller-supplied loaded models; no model I/O/weights; tested browser/native capabilities. |
+| RN-07 Separate media and metadata helpers | RN-06 | PNG/lossless-WebP recovery API, video pipeline, application Save/share boundary. |
+| RN-08 Repair crop-confirm-to-encode flow | RN-06 | Bounded direct confirmed-crop path, actual e4e and no crop loop. |
+| RN-09 Extract morph/frame pipeline | RN-07, RN-08 | All geometry modes, ordered bounded frames, cancel/reload compatibility. |
+| RN-10 Build evaluator and freeze noise baseline | RN-03 | Same versioned wrapper/control apparatus before facade/extraction. |
+| RN-11 Qualify release artifacts and packages | RN-09, RN-14, RN-15, RN-17, RN-18 | Correctness, UI parity/change matrix, paired regression verdicts and pack/install tests. |
+| RN-12 Publish and verify release | RN-11, RN-20 | Candidate/site/package receipts and verified runtime/live bytes; distinct classic coverage. |
+| RN-13 Extract browser-model-manager | RN-02, RN-04 | Chunks/checksums/OPFS/caching/loaded handles with consent and compatibility. |
+| RN-14 Extract cloudflare-model-host | RN-02, RN-04 | Reproducible chunk host, limits/terms check and exact qualified manifest. |
+| RN-15 Create model-conv tooling | RN-02 | Containerized supported conversions, shape/provenance manifests and numerical reports. |
+| RN-16 Prepare classic repository and Compose successor | RN-01 | Original UI/API/PyTorch migration, one-command GPU bootstrap and verified reuse. |
+| RN-17 Apply revised face controls and consent modals | RN-05, RN-08, RN-19 | Referenced crop modals, ordered multi-selection, compare removal, paste/file/cancel matrix. |
+| RN-18 Restore fullscreen instant-name picker | RN-05 | Classic-like edge-to-edge layout, accessible dismissal and instant selection. |
+| RN-19 Remove WebGL with compatibility handling | RN-05, RN-13 | CPU/WebGPU-only admission, persisted-preference migration and required fallback coverage. |
+| RN-20 Complete organization/integration migration and prepare domain cutover/retirement | RN-11, RN-16 | Organization/integration migration, retirement readiness and host-independent recovery manifest. |
 
 ### Task instructions and acceptance
 
@@ -697,7 +729,10 @@ Dependencies are blocking edges; not merely a suggested chronological list.
 Record every moving path, consumer, build/worker URL, persistent identity, source
 revision and live receipt in `docs/plans/repo-cleanup-and-architecture-refactor/inventory.md`. Identify provenance/history transfer
 and external model sources. Acceptance: all release surfaces have an owner and a
-retained/rebuildable input; uncertainties are explicit; no remote changes yet.
+retained/rebuildable input; uncertainties are explicit; this inventory makes no
+new remote changes. Include licenses and required notices for imported app,
+package, converter and model/data inputs. Preserve provenance/restrictions and
+name unresolved redistribution rights before deciding distribution contents.
 
 **RN-02:** Write `docs/plans/repo-cleanup-and-architecture-refactor/contracts.md` using
 RN-01's inventory at `docs/plans/repo-cleanup-and-architecture-refactor/inventory.md`.
@@ -712,6 +747,10 @@ creation/execution/release. It may read verified local shard storage lazily; no
 network acquisition occurs during engine execution. Consent-authorized acquisition
 and verification of all required shards finish before admission. Loaded means ready
 for offline execution, not all sessions/weights simultaneously resident in RAM.
+Freeze verified-asset lease ownership, manager eviction exclusion and typed
+invalidation/settlement on browser eviction, corruption, cross-tab deletion or
+device loss. Active operations cannot fetch replacement shards; reacquisition and
+re-admission belong to the application/manager outside engine execution.
 The engine sees typed encode/abort/dispose operations, no URLs, OPFS handles or
 `acquireBytes` callbacks. RN-02 records exact signatures, memory bounds and the
 encoder-to-synthesis residency transition; any alternative needs equivalent
@@ -794,9 +833,13 @@ decodable supported pixels within declared size/shape limits, explicit orientati
 alpha/color handling and the qualified encoder's preprocessing requirements; it does
 not mean successful redetection. Freeze all eight EXIF orientations, resizing,
 normalization and crop coordinates in the contract and cache/provenance identity.
-Pass the exact confirmed crop once through this preprocessing, with bounded alignment
-attempt/fallback and no automatic crop-loop. Update both wrappers, runtime admission,
-product errors and worker identities together; keep older unconfirmed paths distinct.
+Complete detector-driven alignment/warping for a proposed crop before user
+confirmation and display that proposal. After confirmation, apply only the frozen
+orientation/rotation/resize/color/normalization preprocessing to approved pixels.
+Do not redetect/rewarp approved geometry; optional validation cannot change pixels
+or block eligible direct-crop e4e. Preserve cancellation/input revisions and
+include forced successful and failed detector/alignment outcomes proving the same
+confirmed-pixel preprocessing identity, without another crop prompt.
 Acceptance: built-UI forced detection/alignment failure after confirmation executes
 real e4e once and finishes or reports an actionable terminal error without reopening
 crop. Include every independently confirmed multi-selection crop with click-order
@@ -826,21 +869,38 @@ crop/encoding/name/cancel/recovery, ordered multi-selection and keypoint inserti
 absence of hold-to-compare, cache quotas and fixed paired workloads.
 Record `docs/plans/repo-cleanup-and-architecture-refactor/ui-change-matrix.md` with source bullet,
 before/after state, intentional change or retained behavior, and exact-artifact evidence. Test
-tarballs in a clean consumer with caller-loaded models. Acceptance: required supported
+tarballs in a clean consumer with caller-loaded models. Verify source-license /
+notice/provenance obligations for actual package/container contents, not only
+weight exclusion; unresolved redistribution rights block the affected artifact.
+Acceptance: required supported
 correctness/non-regression cells pass; confidence limits/incomplete coverage are
 explicit; no declared UI change is confused with accidental parity loss.
 
-**RN-12:** Publish under validated package names only after pack/install checks;
-deliver the qualified app through verified new-repo CI. Bind npm versions/tarball
-digests, source, manifest/runtime pins, site receipts and live assets. Acceptance:
-implemented, published and deployed facts are distinct and auditable; ordinary
-phone trials are bounded/consented after available checks, with failures preserved.
+**RN-12:** Deliver in explicit stages using verified new-repo CI: 12a promotes
+qualified bytes to `next.facemorph.me` for candidate review; 12b promotes the
+accepted exact artifact to `facemorph.me` and verifies supported live journeys;
+12c completes `checkface.facemorph.me` retirement from RN-20’s manifest, then
+rechecks production/classic independence, authoritative DNS and provider bindings.
+Do not retire the legacy host while current production or the selected rollback
+artifact still depends on it. Candidate delivery alone does not complete this
+workstream. Publish npm packages under validated names after pack/install checks and license /
+notice checks for actual tarball contents; declared license must match imported
+source rights. Unresolved rights block that artifact’s publication; excluding
+weights alone is not sufficient.
+Bind npm versions/tarball digests, source, manifest/runtime pins, stage-specific
+site receipts and live assets. Acceptance: implemented, published and deployed
+facts are distinct and auditable; available qualification precedes bounded /
+consented phone trials, with failures preserved; final retirement has retrievable
+configuration evidence and a qualified host-independent site rollback artifact.
 
 **RN-13:** Split `Assets/model-cache.mjs`, shard/OPFS stores, acquisition/session
 setup and manifest logic into model manager. Preserve keys/hashes and reject corrupt
 chunks with bounded recovery. Acceptance: load/cache/read/reload/quota/checksum/error
 and cancel cases, no download before authorization, no unnecessary download when
 an output cache hit can satisfy the action, and proper loaded-handle disposal.
+Test missing/corrupt shards after admission, leased-cache deletion, cross-tab
+effects, cancellation and disposal: every affected operation settles, releases
+resources and reports typed invalidation without hidden network repair.
 
 **RN-14:** Start from `hosting/next-static/{stage.py,restage-runtime.py,mirror-runtime.py,
 promote.py,webgpu_contract.py}`, `hosting/next/prepare-runtime.py`,
@@ -852,7 +912,12 @@ Record commands, inputs and schema in `packages/cloudflare-model-host/README.md`
 Qualify staging and an explicitly identified test origin here; final production
 promotion and live-byte receipts belong to RN-12. Document independently usable
 hosting instructions and verify current limits for the exact artifacts. Acceptance:
-every published chunk reconstructs its declared asset, client manager/engine agree
+record the chosen Cloudflare product/tier, total bytes/file count, per-file/chunk
+limits, request routing and storage/request/bandwidth allowances. Verify model
+requests use the intended path without accidental Worker invocation. If qualified
+artifacts cannot meet the free-tier target, record the limitation and resolve an
+explicit hosting/cost decision before production publication; do not silently
+enable paid services. Every published chunk reconstructs its declared asset, client manager/engine agree
 on schema and hashes, and the exact tested headers/runtime bytes are served.
 
 **RN-15:** Package existing converters with pinned sources, reproducible invocation,
@@ -872,7 +937,12 @@ CPU/GPU/architecture cells remain explicit, not substituted with silent fallback
 
 **RN-16:** Inspect `self-host/compose.yml`, `self-host/compose.gpu.yml`,
 `self-host/setup.py`, `self-host/Dockerfile`, `self-host/legacy-route-inventory.json`
-and `self-host/verify.sh`. Reconcile existing PyTorch self-host with the sibling legacy server's API
+and `self-host/verify.sh`. Inventory remote default branch (`master` at setup)
+and select the supported distribution branch/commit; current self-host work is on
+`candidate/next-delivery-20260916`. Record default-branch promotion or an explicit
+branch-selecting quickstart. Correct cloned directory instructions to
+`facemorph.me-classic/self-host` and qualify the exact documented fresh-clone /
+Compose commands, not an already prepared local tree. Reconcile existing PyTorch self-host with the sibling legacy server's API
 inventory; migrate only missing verified functionality into the classic successor.
 Replace the current manual setup-profile step with a documented CUDA Compose
 entry point whose API waits for checksum-verified setup and logs the URL. Preserve
@@ -918,43 +988,55 @@ needed by the classic/history surface. Acceptance: CPU-only devices and WebGPU
 failure/cancel/reload paths produce correct bounded outcomes; no forced/auto WebGL
 route remains. Missing physical-phone evidence is a documented release limitation.
 
-**RN-20:** Write `docs/plans/repo-cleanup-and-architecture-refactor/cutover-manifest.md` before
-mutations: stable organization/repository IDs, old/new URLs, retained commits,
-source-transfer mapping, integration owners, ordered mutations, verification gates
-and rollback commands per stage. Resolve destination-name collisions before reversal;
-retain both repositories/histories and restore site delivery independently of
-namespace rollback. Prepare exact rename/create/archive sequence and namespace validity from
-actual account/repository settings. Name/permission resolution is part of this task,
-not a reason to guess or reserve npm names now. Preserve classic history/commits,
-create monorepo source provenance, and update GitHub/Cloudflare/Actions/Docker clone
-references. Acceptance: qualified source exists in its intended destination and
-destination CI/integrations are verified before release; backend archival may occur during setup under the updated ruling;
-recovery route and integration changes are recorded without relying on stale redirects.
-After final names exist, fresh-clone classic and verify its Dockerfile fetches the
-pinned historical frontend commit from that destination. Verify new monorepo CI and
-Cloudflare integration without promoting unqualified bytes. Execute and verify
-complete `checkface.facemorph.me` retirement under the dedicated architecture
-section, including DNS, Pages, origins/proxies and all live references; record
-evidence and validate classic/new app independence before RN-12. Backend `checkface` archival is authorized during setup; classic must still succeed
-from its final destination before RN-16 or release completion is claimed.
+**RN-20:** Complete the remaining organization/integration migration and prepare
+application-domain cutover and legacy-host retirement.
+Write `docs/plans/repo-cleanup-and-architecture-refactor/cutover-manifest.md` with
+current stable repo IDs/URLs, retained commits, source-transfer mapping, owners,
+ordered mutations, verification gates and stage-specific rollback commands.
+Repository creation/rename and backend archival are already complete; do not
+repeat them. Verify availability and owner permissions for organization login
+`facemorph-me`, then perform the organization rename and update GitHub/Cloudflare /
+Actions/Docker clone references, remotes, badges, docs, webhooks and integration
+bindings. Record unresolved integrations explicitly; do not rely on old redirects.
+
+Consume RN-11/RN-16 evidence before final cutover. Fresh-clone classic at its final
+organization URL using RN-16’s documented distribution branch/default-branch
+policy and verify its Dockerfile fetches the pinned historical frontend commit. Verify new monorepo CI/integrations without promoting unqualified bytes.
+Prepare complete `checkface.facemorph.me` retirement under the dedicated
+architecture section, including DNS, Pages, origins/proxies and active references.
+Inventory current production, `api.facemorph.me` and proxy dependencies, name the
+verified host-independent site rollback artifact and freeze shutdown/recovery
+commands. Actual domain promotion and destructive retirement belong to RN-12’s
+ordered stages; preparation must not disable the current production route.
+
+Preserve both repo histories and archived backend source. Recovery must restore
+site delivery independently of organization rollback; name stable IDs, exact
+previous source/artifact/Cloudflare versions and recovery owners. If a repository
+name ever needs restoration, move the fresh repo to a chosen unused holding name
+first, then restore the classic name; never delete a history to resolve collisions.
+Acceptance: qualified source exists at the intended organization URLs; classic
+bootstrap and new integrations pass; retirement readiness and host-independent
+site recovery are qualified and recorded. Legacy-host absence is verified during
+RN-12 after production cutover. Setup alone does not satisfy these gates.
 
 ## Open choices and release stopping rules
 
 Open design choices: availability/permissions for selected GitHub login `facemorph-me` and npm scope/names;
 detailed multi-selection visuals; unspecified drag/drop target and Save/share placement.
 Resolve names at their named tasks; RN-05 fixes migration milestone ordering. Remove hold-to-compare now
-as planned; preserve existing usable Save/share until a reviewed placement decision exists. Package extraction can progress against the temporary Fable facade. The old app
+as planned; preserve existing usable Save/share until a reviewed placement decision exists. Compute extraction follows all RN-05 parity milestones; the temporary Fable
+facade is used during migration, not as an exemption from that dependency. The old app
 remains the measured comparison/rollback control. TS monorepo completion requires
 RN-05 parity gates; a failed migration blocks that completion claim, not the checks.
 
 Stop a candidate on identity/privacy/correctness errors, unbounded resources or
 material predeclared regressions. Missing supported gates remain inconclusive;
 retain failed attempts, controls and historical reports. Revert only owned changes
-with additive commits; never reset/clean the shared checkout. Remote rename/archive
-and public package/site actions belong to the concrete cutover/release tasks, not
-this planning pass.
+with additive commits; never reset/clean the shared checkout. Organization rename,
+legacy-host retirement and public package/site actions belong to the concrete
+cutover/release workstreams, not this planning pass.
 
-Completion: classic successor verified and old backend archived as-is; new monorepo
+Completion: classic successor verified; new monorepo
 strict TS application/package boundaries and supported converter/host/manager flows qualified; revised app
 UX/photo/names/provider behavior accepted; engine publication and site delivery have
 actual receipts. Unsupported devices/models and unresolved optional interactions
@@ -966,402 +1048,41 @@ Retrieved: 2026-10-11T04:54:31.206267+00:00
 
 Export SHA-256: `d8818ed151034b733d654f2db1b945800033a152e5566ccdf8982dad7f8fdd6b`. This is the overview supplied
 for the release planning pass; later explicit operator revisions supersede it.
-Use [the release plan](#latest-plan--repo-cleanup-and-architecture-refactor) for reconciled requirements and task dependencies.
+The active requirements above incorporate the overview and subsequent operator
+clarifications. Current rulings are: classic is `facemorph.me-classic`, the chosen
+organization login is `facemorph-me`, backend source is already archived, and
+`checkface.facemorph.me` must be retired completely. The reusable engine takes
+caller-loaded models, model management stays separate, and all application work
+is planned in idiomatic TypeScript with exact approved UI parity.
 
-The DOCX export contains one screenshot of the existing two-face page. It was
-viewed for this pass; it is not a complete crop-modal specification. Its personal
-photo pixels are not copied into this repository. Open the source document for
-the visual reference. The unfinished bullets and question marks below remain
-unresolved, rather than being treated as approved interactions.
-
----
-
-Repo architecture
-1. Rename github.com/check-face to github.com/facemorph.me
-2. Rename facemorph.me repo to classic.facemorph.me and integrate the server part of the checkface repo into it (migrated to pytorch for better compatibility) with easy docker-compose
-   1. Git clone
-   2. Docker compose up (works, they have a running working nvidia docker (over pytorch for nvidia gpus) facemorph api and frontend running locally (and log a link - how to open in browser, one click) but they use the actual nvidia hosted stylegan models and download them from there, we don’t host them.
-3. Archive the checkface repo as-is
-4. Create facemorph.me repo (monorepo) with UI, engine, and model-loader packages.
-5. We will find out what name we can publish under on npm once we actually publish…
-
-
-Next
-
-
-6. Create a library (stylegan-js) which we can push to npm which contains the “engine”. Do not bundle any of the resources like the model. Include the morphing algorithms, in the selectors (linear, figure 8 etc). A function for encoding raw pixel data to png or lossless webp (on webworker?) with embedded latent and stylegan-js metadata. Another function for retrieving metadata and latent from a png/webp. Give instructions for how someone is able to download whatever weights they want from nvlabs / stylegan (if they wanted to do one of the other published datasets)
-
-
-7. Move the webgpu / cpu selector to the top of the page with explanation (above the first + button). Modal if someone tries to do actions that require downloads (remove toast, but similar concept)
-8. Remove webgl nobody seems to use it. Ensure that it doesn’t break anything though.
-9. We no longer care about F#, we may remove it, but the requirement would be exact parity on the current frontend.
-10. Provide a model loader package as well which is responsible for loading from the cloudflare hosting (in chunks) and device caching.
-11. Bug: There is a bug where the faces get cropped, but fail to end up encoded. I’m not sure why. It shouldn’t be failing as often as it does, and the user ends up stuck on a loop where they keep getting prompted to crop the image, but it was already cropped. Guessing alignment or something was run after the crop and fails? But it should just take the crop and if it can’t align, just run e4e.
-
-
-
-The stylegan-js package is not responsible for managing or loading model files. Users of the library are expected to hand it a model already-loaded.
-“Browser-model-manager” package, also in the monorepo, will have the logic for downloading chunks, saving in opfs, recovering from checksum errors
-“Cloudflare-model-host” package for hosting model chunks on cloudflare for free
-“Model-conv” package for converting pretrained stylegan2 models (eg from https://github.com/justinpinkney/awesome-pretrained-stylegan2 ) to required format(s)
-
-
-UI Changes
-
-
-
-
-
-
-* Generate should only
-* Remove the Browse Names button and put it in the burger menu. For either the “baby names” or the encode image, we don't need generate button at all to show, only show it when someone chooses seeds and words. We now don’t need to show the generate button unless we have typed something new in the text box, in it’s place, move the generate button inside the image box - which should be blank, if you start typing anyway. Though, it only needs to show if we’re using text or numeric seeds.
-* Rename Upload image to “encode image”
-* Pasting an image in the text box automatically kicks of the old “upload an image” which is now “encode an image” should kick off the same flow as if they chose an image with the system ui dialog to upload an image.
-* Delete the line of text below the text box referring to the name of the image, inside the text box is fine!
-* When doing any encoding or generating, the cancel button shouldn’t be on a separate line, but rather the generate button should change to a cancel button for all the flows that can be canceled, which is encode, (once the crop confirm modal closes, and we’re back to watching status for the face happen) and the 2 seeds, but not the “names” selection, because the names selection is instant.
-* Crop photo should only happen before encoding, not it’s own button visible after. It only needs to happen in the modals for doing encoding. A crop should be proposed, (and keep the multi-face flow) but - the user needs to get a chance in their modal to confirm the crop (and move/change it if they desire before doing encoding). Once they confirm the crop - it should encode. See UI mock attached. Use the style of modal from facemorph.me with the logo top right.
-* For the morph button (disable it), add a cancel button to the right of the progress bar once you’ve pressed it once if you wish to cancel
-* Add drag drop to
-* The “baby names” from names.facemorph.me have degraded. It should very closely match the visual experience on the old facemorph.me site - no gaps between the images, the names displayed on top of the images etc - in full screen.
-* The baby name picker should not have a search function, and have no header or x icon facemorph.me. It’s important there are no borders between faces. The experience after selecting (because we don’t need to generate a face) is that it instantly displays. It should look very similar to names.facemorph.me anyway.
-* Hold to compare ???? (conflict with potentially uploading images if clicking on the image)
-* Save / Share image ????
-
-
-### Later operator clarification — 11 October 2026
-
-The operator pasted the release requirements into this conversation and supplied
-workspace `image-archive.zip`. This explicit clarification supersedes conflicting
-or incomplete items in the earlier exported overview. Repeated repository/package,
-CPU/WebGPU, consent, Generate/Cancel, names and crop-loop requirements remain.
-Additional/revised requirements:
-
-> When click Adjust Crop, it should use something very similar to the existing UI.
-> If face isn't detected, show existing message. If multiple faces are detected,
-> create a very similar UI to the below screenshots, for choosing which face(s)
-> you want to encode. If multiple are selected, they should automatically create
-> extra next-face keypoints according to the order that you clicked, once clicking OK.
-
-> Just remove hold to compare.
-
-> Architect this as a clean monorepo. Remember to refactor when necessary and
-> write idiomatic typescript.
-
-The operator also requested a language/framework recommendation and the planning
-process skill for this pass. [Technology recommendation](#language-and-framework-direction) and
-[inspected visual references](#supplied-ui-references) record the response. The earlier
-question-mark compare idea is now decided: remove it. Save/share placement and an
-unspecified drag/drop target remain open; existing usable Save/share and accepted
-photo dropping behavior continue. No rename, archival or runtime work is performed
-by this planning update.
+The inspected image descriptions and checksums are retained in
+[Supplied UI references](#supplied-ui-references). Original setup instructions and
+superseded naming/hold addenda are removed from the remaining-work plan; Git
+history retains their provenance.
 
 ## Planning review and scope-change record
-Initiative: `release-next-facemorph-me`. Date: 11 October 2026.
-This records planning, not implementation, experiments, publication or deployment.
 
-### Scope and method
-
-Applied the local Jeff Emanuel planning-workflow skill (workstation source: `/home/cdilga/.claude/skills/planning-workflow/SKILL.md`):
-grounded source checks, explicit rationale, self-contained tasks, dependency graph,
-four fresh review rounds and Beads conversion. The user requested a simpler layout;
-detail is scaled to actionable decisions rather than arbitrary line-count targets.
-Reviewers use the available session model; no cross-model or GPT Pro review is claimed.
-
-The operator overview broadens the earlier engine plan into a release: monorepo and
-reusable packages, classic distribution/repository migration, UI/photo fixes and
-research qualification. The [captured overview](#operator-overview-and-clarifications) records source
-retrieval and image interpretation. Earlier engine reviews qualify only their dated
-engine-only snapshot retained locally at `../facemorph.me-classic/docs/plans/engine-research/plan-2026-10-11.md`, not this expanded scope.
-
-Root `PLAN.md` is the stable latest pointer. README, agent guides, documentation and
-research indexes point here; the former engine entry redirects while history remains.
-No application code or research ledger rows are changed by this planning pass.
-
-### Round 1 — loaded-model ownership and confirmed-crop policy
-
-Reviewer: `release_review_1`, fresh context, read-only. Substantive clarifications:
-
-- RN-02 explicitly resolves the bounded 108-session encoder stream, verified bytes,
-  acquisition boundary and encoder-to-synthesis residency. A consumer must work
-  without importing the model manager; the engine cannot fetch more model files.
-- RN-08 replaces the conflicting detector-dependent exactly-one-face policy for
-  confirmed crops. Named bridge/runtime/wrapper/worker updates and real-e4e forced
-  failure tests prevent another crop loop without weakening unrelated admission.
-- Prerequisite artifact paths and preprocessing/ownership requirements are explicit
-  in detached task instructions. The unfinished drag/drop bullet stays unresolved.
-
-Validation: 20 tasks, 35 blocking edges, acyclic; all tasks feed release completion.
-No task/DAG change was required. Concrete contract revisions required another review.
-
-### Round 2 — repository grounding and release graph
-
-Reviewer: `release_review_2`, fresh context, read-only. No substantive revisions.
-Checked actual runtime/cache/converter/build roots, streamed encoder, Compose setup
-and historical clone. Package boundaries, source reconciliation and qualification /
-cutover ordering are coherent; the graph remains acyclic.
-
-### Round 3 — hosting, classic bootstrap and collision-aware rollback
-
-Reviewer: `release_review_3`, fresh context, read-only. Bounded task clarifications:
-
-- RN-14 names extraction inputs and separates chunk-host staging/test-origin gates
-  from application-domain promotion and RN-12 production receipts.
-- RN-16 resolves the manual setup-profile/CUDA override mismatch, preserves explicit
-  model-term acknowledgement and adds acquisition failure/reuse checks. Historical
-  real-GPU evidence stays useful with its one-GPU/driver and synthetic-input limits.
-- RN-20 requires stable IDs, stage-specific rollback commands, collision handling,
-  independent site recovery and classic fresh-clone verification at final names
-  before archival. RN-11 gains an explicit UI change/evidence matrix artifact.
-
-Validation: no task or blocking-edge change; standalone migration/host tasks now
-name source inputs, deliverables and test/publication boundaries. Another fresh
-review checks these revisions before task export.
-
-### Round 4 — final contract and cutover check
-
-Reviewer: `release_review_4`, fresh context, read-only. No substantive revision
-remains. Checked standalone RN-02/RN-14/RN-16/RN-20, confirmed-crop policy, source
-fidelity and latest pointers. All 20 tasks feed RN-12; 35 blocking edges, no cycles.
-The final round is marginal rather than structural; planning review converged.
-
-### Beads conversion and checks
-
-Epic `fm-fy2` is renamed to `release-next-facemorph-me`; children `.1`–`.12` retain
-IDs from the earlier engine initiative and `.13`–`.20` cover the added release
-scope. Historical scope remains in the engine snapshot and issue history. The
-release label/reference is canonical; the former label on retained records is an
-alias. All 21 records are deferred; none starts implementation.
-
-Task descriptions include instructions, concrete prerequisite artifact locations,
-applicable package/UI/classic requirements, baseline facts, resource/evidence
-contracts, stopping rules and acceptance. Blocking edges match the release table;
-parent links remain. Portable export: `.beads/issues.jsonl`; local DB is ignored.
-
-Focused export checks cover specification/task congruence, exact graph and cycles,
-detached task context, repository-relative links, status/label readiness, and
-DB/portable-export parity. `br ready --json` stays empty during planning.
-Local Markdown links and whitespace are checked; the append-only research ledger
-is byte-identical to HEAD. No app code, build, experiments or remote actions are
-performed. Existing concurrent `.gitignore` and `.cloudflare/` work is preserved.
-
-### Operator ruling — browser/desktop alignment, 11 October 2026
-
-Following the raw RGBA/canvas investigation discussion, the operator asked why
-Tauri diverges and directed closer alignment. The active specification now
-[records the ruling](#browser-and-desktop-alignment-ruling--11-october-2026):
-shared product/media behavior by default, capability-based path selection and
-documented, justified adapter exceptions. RN-02/RN-09/RN-11 own contract,
-integration and qualification coverage within the existing graph.
-
-Source inspection found the native adapter returns an `image.png` artifact and
-does not expose raw results or streamed synthesis; the product bridge explicitly
-excludes Tauri from the newer raw paths. No native raw-vs-PNG measurement was
-found in the inspected investigation records. The browser component results do
-not establish native IPC performance. This is a policy addition only: no runtime
-change, new experiment, desktop qualification or deployment is claimed. Earlier
-review rounds predate this addition; no fresh multi-agent review is claimed.
-
-
-### Revamp clarification pass — reviewed, 11 October 2026
-
-The operator clarified multi-face selection/keypoints in click order, supplied
-`image-archive.zip`, removed hold-to-compare and requested idiomatic TypeScript plus
-a language/framework recommendation. All four PNGs were inspected; the archive
-contains no multi-face/names grid mock. Primary React, Vite, TypeScript, React Router,
-Svelte and Next.js documentation grounds the [technology recommendation](#language-and-framework-direction).
-Concurrent browser/desktop alignment additions and `desktop/README.md` are preserved.
-Earlier four reviews precede these changes; this pass has its own fresh rounds.
-
-#### Revamp round 1 — stream ownership and isolated TS migration
-
-Reviewer: `revamp_review_1`, fresh context, read-only. Three bounded changes:
-
-- RN-05 has four ordered parity milestones: typed compatibility facade, unchanged
-  path move, TS/React state/rendering translation, then Vite delivery migration.
-- Caller provider capability owns bounded sequential sessions with verified local
-  shard storage and completed network acquisition. Core sees operations rather
-  than downloader/OPFS callbacks. This resolves the load-bearing stream baseline.
-- Idiomatic TS is required for the declared revamp; React/Vite is the recommendation.
-  The old app remains comparison/rollback control, and package extraction can
-  progress against the facade. Failed TS parity blocks the completion claim.
-
-Validation: no task or edge change; RN-02/RN-05 standalone instructions improved,
-framework/package decisions have concrete reasons. Further fresh review required.
-
-#### Revamp round 2 — cancellation scope and detector consent
-
-Reviewer: `revamp_review_2`, fresh context, read-only. Three small clarifications:
-removed the obsolete open migration-sequencing choice; distinguished pre-confirmation
-detection from e4e encoding and required detector-asset consent; froze per-tile Cancel,
-pre-OK modal cancellation and retry of one existing slot. Queued siblings continue
-in order and retain stable keypoints. Added mixed queued/running cancellation cases.
-
-Validation: no graph changes; input revisions and source lifecycle remain per-slot
-post-commit. Diagram/table ordering and ownership choices remain justified; next
-review checks edge cases rather than a new structural plan.
-
-#### Revamp round 3 — retry input lifetime
-
-Reviewer: `revamp_review_3`, fresh context, read-only. One lifecycle correction:
-retryable slots retain minimal tab-only source/crop pixels after jobs settle;
-success/removal/replacement/disposal releases ownership. RN-02 freezes numeric
-source/crop/count/transient limits before batch admission; oversize batches fail
-before keypoint allocation. Added cancel-all-then-retry and boundary cleanup checks.
-The current source admission caps are cited separately from measured browser memory.
-
-Validation: no graph changes. Detached tasks, screenshot fidelity, TS migration,
-package/stream ownership and browser/Tauri alignment otherwise converge. Final
-fresh review checks this lifecycle correction before refreshing the task export.
-
-#### Revamp round 4 — final lifecycle and dependency closure
-
-Reviewer: `revamp_review_4`, fresh context, read-only. No substantive findings.
-Standalone contracts/migration/UI tasks, offline provider ownership, crop/keypoint
-order, cancellation/retry lifetime, budget admission, visual/source fidelity and
-browser/Tauri alignment converge. All 20 tasks feed RN-12 with 35 acyclic blocking
-edges. No additional task or ordering change was required.
-
-#### Refreshed Beads export and verification
-
-Updated the existing deferred epic and all 20 task descriptions after convergence.
-IDs, history, parent links and all 35 blocking edges are retained. Descriptions now
-include applicable technology/visual decisions and the browser/desktop ruling;
-optimistic revision checks protect concurrent task updates. No task was opened.
-
-Verification covers task/specification agreement, exact dependency closure/cycles,
-detached task context, portable links, states/readiness and DB/JSONL parity. Planning
-Markdown links and whitespace pass; `autoresearch/results.tsv` remains byte-identical
-to HEAD. Source/model/application pixels, code, deployment and remote repositories
-are untouched. No runtime test or performance result is claimed for this plan.
-
-
-### Tooling/container planning addendum — 11 October 2026
-
-Operator requested Oxlint/Oxfmt and explicitly limited this to the plan, then added
-a model-conversion Docker environment. The technology contract and RN-04/RN-15 /
-RN-11 now include these requirements; existing task IDs and blocking edges remain.
-Official Oxc source docs/npm metadata ground supported file types, configs, commands
-and Node compatibility. Container requirements retain checkpoint provenance, model
-terms, independent numerical qualification and explicit supported hardware limits.
-
-This is a bounded planning addendum, not another four-round review claim. No tools
-are installed, files reformatted, package manifests/lockfiles changed or containers
-built/run. The task descriptions are refreshed and checked against the specification.
-
-### Single-file consolidation — 11 October 2026
-
-Operator requested one plan Markdown file. Root `PLAN.md` now contains the full
-release specification, language/framework recommendation, Oxfmt/Oxlint requirements,
-conversion Docker environment, inspected visual-reference descriptions, ordered
-tasks, captured operator direction and review history. Former split active files
-are removed after their content is integrated; links and deferred task descriptions
-point to this file. Historical engine plans remain dated background. This changes
-presentation and ownership of documentation, not release scope or task dependencies.
-No HTML/site publication, runtime change, installation or deployment is performed.
-
-### Initiative naming and human review hold — 11 October 2026
-
-The active initiative is `repo-cleanup-and-architecture-refactor`, formerly
-`release-next-facemorph-me`. Root `PLAN.md` remains the single plan; scope, task IDs
-and dependencies are retained. Dated review records retain the former identity.
-
-The operator requested a fresh repository based on this plan, delivering first to
-`next.facemorph.me` and eventually to `facemorph.me` after qualification and cutover.
-Repository creation, organization/repository renames and delivery changes await
-human review. No fresh repository has been created and no deployment changed.
-
-The operator briefly authorized archival of `check-face/checkface`, then asked to
-hold off pending human review. The archive API call completed before the hold
-arrived; it was reversed immediately and the API confirmed `archived: false`.
-Repository ID `185985766` and its history remain intact. The original classic
-qualification-before-archival gate remains in force; archival is not complete.
-
-### Repository setup authorization and manifest — 11 October 2026
-
-This operator direction supersedes the earlier human-review hold for repository
-setup only. The required classic name is now **`facemorph.me-classic`**, replacing
-`classic.facemorph.me` in the active architecture. The quoted original overview
-and dated review records remain historical.
-
-Stage 1 (authorized now): retain repository ID `295956585`, all branches, tags and
-history; rename `check-face/facemorph.me` to `check-face/facemorph.me-classic`.
-Move its entire local checkout to sibling `facemorph.me-classic/`, preserving
-uncommitted and concurrent work, and update its origin. Create a new public
-`check-face/facemorph.me` with a fresh history, this single `PLAN.md`, entry guides
-and the portable deferred task graph. No source/model files or secrets are copied.
-The classic checkout remains the source for inventory, migration and baseline
-qualification; the new checkout is the continuation point for this initiative.
-
-Stage 2 (deferred): implement and qualify the new monorepo and classic Docker /
-PyTorch distribution. The new repository will deliver `next.facemorph.me` only
-after qualified artifact/CI/Cloudflare setup, then `facemorph.me` after production
-cutover. Current site routes, deployment credentials and classic candidate
-workflows remain in the retained repository; no empty app is deployed. Update
-historical clone URLs before reusing the former name: redirects stop working once
-the new repository occupies that path. Retain pinned frontend commit provenance.
-
-Legacy backend ID `185985766` / `check-face/checkface` is archived as-is under
-the final operator ruling below. Classic qualification from its final destination
-under RN-16 is still deferred. RN-20 remains incomplete: this early namespace
-setup satisfies only its preparation portion; RN-11/RN-16 still block final cutover.
-
-Selected organization login is `facemorph-me`, subject to availability and
-owner access at execution. GitHub organization logins cannot contain `.`; the
-brand `facemorph.me` is not a valid login. Keep `check-face` during this repository
-setup until the organization rename is completed. No npm scope is reserved by these repository names.
-
-Rollback: keep both repository IDs and histories. If the original URL must be
-restored, first move the fresh repository to an explicitly chosen unused holding
-name, then rename ID `295956585` back to `facemorph.me`; update origins and guides.
-Never delete either history to resolve a name collision. Site delivery recovery
-uses the retained candidate workflow and qualified Cloudflare versions independently
-of namespace recovery. Do not archive the backend as a rollback action.
-
-### Final setup rulings — 11 October 2026
-
-The operator permits archiving `check-face/checkface` now, as-is. This supersedes
-the earlier human-review hold and qualification-before-archival sequencing.
-Docker/PyTorch integration and fresh-clone Compose qualification still belong in
-`facemorph.me-classic` under RN-16; archival does not establish their completion.
-Use existing classic `self-host/` first, then reconcile the archived backend’s
-server behavior/provenance. Archival preserves read/clone access and all history.
-
-Selected compliant organization login: **`facemorph-me`**. GitHub organization
-URLs will be `github.com/facemorph-me`; repositories will be
-`facemorph-me/facemorph.me` and `facemorph-me/facemorph.me-classic` after the
-organization rename. `facemorph.me` remains the domain/brand. The selected login
-uses only letters and a hyphen; absence of a public account is not a reservation.
-Organization rename requires availability and owner access in GitHub settings;
-repository setup proceeds under the existing `check-face` owner until it is done.
-
-### Setup receipt and continuation — 11 October 2026
-
-- Retained classic remote: `https://github.com/check-face/facemorph.me-classic`,
-  repository ID `295956585`; all existing branches/history retained.
-- Fresh monorepo remote: `https://github.com/check-face/facemorph.me`, repository
-  ID `1413979666`, branch `main`. Initial contents are this plan, entry guides and
-  the portable task graph, with a fresh Git history.
-- Local directories match these names. The entire old checkout, including other
-  sessions’ uncommitted work, remains in `../facemorph.me-classic/`.
-- Backend `https://github.com/check-face/checkface`, ID `185985766`, is archived
-  as-is under the final operator ruling. Its source remains cloneable/readable.
-- Classic candidate commit `b2d945a8c7f0ff9f382fbfefaecc2651943077a3` repairs the self-host Dockerfile
-  clone URL and README URLs. This does not claim Compose/PyTorch qualification.
-- GitHub organization remains `check-face`; selected next login is `facemorph-me`.
-  Organization rename and integration migration are still outstanding.
-- No app deployment, model migration, npm publication or runtime extraction has
-  occurred. Existing `next.facemorph.me` delivery remains in the retained classic
-  candidate; new-repo CI, credential binding and domain promotion remain gated.
-
-Continue in this fresh checkout with RN-01 inventory and RN-02 contracts, consulting
-the sibling classic source and pinned evidence links. The transferred 20 tasks
-retain IDs, deferred states, parent links and all 35 blocking edges. Explicitly
-start the appropriate tasks when application work begins; namespace bootstrap
-alone does not close RN-20 or satisfy its RN-11/RN-16 prerequisite gates.
-
-### Legacy hostname retirement ruling — 11 October 2026
-
-Operator requested complete retirement of `checkface.facemorph.me`. Added the
-architecture requirement and RN-01/RN-11/RN-16/RN-20/RN-12 responsibilities and
-acceptance; existing task IDs and dependency graph are unchanged. This is planned
-work only. Archiving the repository does not disable its deployed services.
+This pass reviews only the remaining architecture, migration, classic qualification,
+UI, research and delivery work. Completed repository setup is current context,
+not a task to repeat. Older review history remains in Git; it does not qualify
+this revised plan. Fresh review findings and their disposition are recorded here.
+
+This is a planning-only pass. RN identifiers name specification workstreams, not
+issue records. Do not create, convert, import, update or open execution-tracker
+records during plan drafting or review. Existing tracker data is separate from
+this document and remains untouched; conversion/synchronization is a distinct
+later step after the plan is reviewed and the operator requests execution setup.
+
+### Fresh review findings integrated — 11 October 2026
+
+Three independent read-only reviewers checked the cleaned remaining-work plan
+against classic/backend source. Integrated corrections: staged next/production
+promotion before destructive legacy-host retirement; host-independent rollback;
+RN-05/RN-06 scheduling consistent with the graph; immutable confirmed-crop geometry;
+verified local-asset leases and typed offline invalidation; exact classic branch /
+clone quickstart qualification; explicit free-tier serving/billing checks; and
+source-license/notice gates for distributions. A fourth fresh reviewer read the revised plan and source, found no remaining
+substantive issue, and requested only matching the RN-20 table label to its
+preparation-only retirement ownership. That wording correction is integrated.
+These were three independent initial reviews followed by one fresh convergence
+review; no cross-model or GPT Pro review is claimed. No execution-tracker records were created or updated.

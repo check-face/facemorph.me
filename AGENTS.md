@@ -23,3 +23,9 @@ The portable Beads graph is `.beads/issues.jsonl`; preserve IDs and dependencies
 Initialize/import a local DB with Beads Rust (`br`) when needed; DB files are ignored.
 All tasks remain deferred until implementation is explicitly started. The selected
 organization login is `facemorph-me`, while remotes currently use `check-face`.
+
+Planning-pass rule: keep specification workstreams in `PLAN.md` separate from
+execution records. Do not create, import, update or open Beads during planning or
+fresh review. Existing `.beads` descriptions predate the revised remaining-work
+plan; treat them as deferred historical execution setup until a separate requested
+synchronization. Use the reviewed plan as the scope authority.
