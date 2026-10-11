@@ -77,6 +77,7 @@ and [record standards](https://github.com/check-face/facemorph.me-classic/blob/b
 | Existing `facemorph.me` repository | Rename to `facemorph.me-classic`; integrate the legacy server and original frontend with PyTorch and easy Compose. | Preserve history, pinned frontend commit, API behavior, model sources and attribution. |
 | Existing `checkface` repository | Archive as-is. | No rewriting or deletion of its history; Operator authorizes archival now; classic Docker/PyTorch remains a separate qualification gate. |
 | New `facemorph.me` repository | Monorepo with UI, engine, model manager, model-host tooling and model converter. | Establish source provenance, package boundaries, CI, deployment pins and a rollback route before cutover. |
+| `checkface.facemorph.me` | Retire completely: no hosted site, API, proxy, redirect or DNS record remains. | Inventory consumers/hosting first; classic Compose and the new app must work without this endpoint. Preserve archived source history, not a live service. |
 | npm publication | Publish the reusable engine; resolve real npm names/scope when publishing. | Working folder names are not reserved package names. Pack/smoke-test first; ship no pretrained weights. |
 
 Target layout for the new monorepo:
@@ -115,6 +116,40 @@ webhooks and Cloudflare integration explicitly. GitHub does not redirect every
 surface, including reusable action calls and Pages URLs.
 [Repository rename rules](https://docs.github.com/en/repositories/creating-and-managing-repositories/renaming-a-repository),
 [organization rename rules](https://docs.github.com/en/organizations/managing-organization-settings/renaming-an-organization).
+
+
+### Retire `checkface.facemorph.me` completely
+
+The operator requires complete retirement of `checkface.facemorph.me`, separate
+from archival of the `checkface` GitHub repository. RN-01 inventories DNS records,
+GitHub Pages/custom-domain configuration, origin/API services, Cloudflare proxy
+workers/routes, monitoring, automation and all live clients of this hostname.
+Grounded source references include archived backend `CNAME`, `docs/CNAME`,
+`docs/opensearch.xml` and `src/cloudflare-worker/cloudflare-worker.js`, plus classic
+`src/explain.md` and the FAQ in `src/Next/Product.fs`. These are inventory leads,
+not evidence of which services are currently live.
+
+RN-16 qualifies classic’s local PyTorch/Compose API and frontend without requests
+to this hostname. RN-11 checks that the new app and user-facing links no longer
+depend on or advertise it. Put replacement API/self-host documentation in the
+classic repository and update live FAQ/docs references before shutdown. Archived
+files remain unchanged as historical evidence; disabling Pages and hosting is an
+account/infrastructure operation, not a rewrite of archived commits.
+
+RN-20 removes every site/API deployment and proxy route serving the hostname,
+disables its Pages/custom-domain binding, and removes its DNS records. Remove
+service-specific automation and revoke credentials used exclusively by the retired
+service after confirming they are not shared with classic, names, models or next.
+Do not leave a redirect, placeholder site, proxy or alternate live legacy API.
+Record before/after configuration, owner, time and verification in the cutover
+manifest; check authoritative DNS after propagation and confirm hosting/provider
+route bindings are absent. An HTTP outage alone does not establish retirement.
+
+RN-12 release acceptance requires that new/classic supported journeys succeed
+without this endpoint, active links/config contain no dependency, and the manifest
+has DNS/hosting retirement evidence. Existing site and model hosting must remain
+functional. This paragraph authorizes planning the work; no live DNS, Pages or
+service deletion is performed by this plan update.
 
 ## Browser and desktop alignment ruling — 11 October 2026
 
@@ -897,7 +932,10 @@ destination CI/integrations are verified before release; backend archival may oc
 recovery route and integration changes are recorded without relying on stale redirects.
 After final names exist, fresh-clone classic and verify its Dockerfile fetches the
 pinned historical frontend commit from that destination. Verify new monorepo CI and
-Cloudflare integration without promoting unqualified bytes. Backend `checkface` archival is authorized during setup; classic must still succeed
+Cloudflare integration without promoting unqualified bytes. Execute and verify
+complete `checkface.facemorph.me` retirement under the dedicated architecture
+section, including DNS, Pages, origins/proxies and all live references; record
+evidence and validate classic/new app independence before RN-12. Backend `checkface` archival is authorized during setup; classic must still succeed
 from its final destination before RN-16 or release completion is claimed.
 
 ## Open choices and release stopping rules
@@ -1320,3 +1358,10 @@ the sibling classic source and pinned evidence links. The transferred 20 tasks
 retain IDs, deferred states, parent links and all 35 blocking edges. Explicitly
 start the appropriate tasks when application work begins; namespace bootstrap
 alone does not close RN-20 or satisfy its RN-11/RN-16 prerequisite gates.
+
+### Legacy hostname retirement ruling — 11 October 2026
+
+Operator requested complete retirement of `checkface.facemorph.me`. Added the
+architecture requirement and RN-01/RN-11/RN-16/RN-20/RN-12 responsibilities and
+acceptance; existing task IDs and dependency graph are unchanged. This is planned
+work only. Archiving the repository does not disable its deployed services.
