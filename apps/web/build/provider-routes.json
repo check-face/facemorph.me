@@ -1,0 +1,5 @@
+{
+  "note": "Route values the Processing mode select must offer, by artifact label (fm-x6h5). The control is classic's candidate build and still offers WebGL (a control fact); a destination-built artifact offers exactly these three.",
+  "control": ["auto", "cpu", "webgl", "webgpu"],
+  "destination": ["auto", "cpu", "webgpu"]
+}

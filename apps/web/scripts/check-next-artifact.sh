@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
+# The processing-mode probe and its expected routes live beside the app (fm-x6h5), wherever this runs from.
+WEB="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+export NEXT_PROVIDER_PROBE="${NEXT_PROVIDER_PROBE:-$WEB/build/provider-probe.js}"
+export NEXT_PROVIDER_ROUTES="${NEXT_PROVIDER_ROUTES:-$WEB/build/provider-routes.json}"
 browser-harness <<'PY'
 import json,time,os
 from pathlib import Path
@@ -43,9 +47,12 @@ try:
     initial['pinch']=js("document.querySelector('.next-overflow input[type=\"checkbox\"]')?.checked")
     initial['frames']=js("document.querySelector('select[aria-label=\"Morph length\"]')?.value")
     assert initial['frames']=='16', initial
-    js("document.querySelector('.next-advanced').open=true")
-    initial['routes']=js("[...document.querySelectorAll('select[aria-label=\"Processing mode\"] option')].map(x=>x.value)")
-    assert set(initial['routes'])=={'auto','cpu','webgpu','webgl'}, initial
+    # The select is found by its accessible name wherever it lives (fm-x6h5); the expected routes follow the label.
+    js(Path(os.environ.get('NEXT_PROVIDER_PROBE','build/provider-probe.js')).read_text())
+    probe=js("JSON.stringify(__probeProvider())");probe=json.loads(probe) if isinstance(probe,str) else probe
+    expected=json.loads(Path(os.environ.get('NEXT_PROVIDER_ROUTES','build/provider-routes.json')).read_text())[os.environ.get('NEXT_ARTIFACT_KIND','control')]
+    initial['routes']=probe['routes'];result['providerLocation']=probe['providerLocation']
+    assert probe['found']==1 and sorted(probe['routes'])==sorted(expected), (probe, expected)
     assert initial['pattern']=='full-smooth-figure8' and not initial['errors'], initial
     assert initial['pinch'] is True, initial
     result['initial']=initial

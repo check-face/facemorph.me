@@ -232,9 +232,11 @@ async function commit(next,nextProject,replace=false){
  for(const [id,result] of next)await register(id,result,result.label);
  project=nextProject;
 }
+/** Saved settings with a removed WebGL preference read as Automatic; every other value is kept as saved. */
+export function migrateRoutePreference(settings){return settings&&settings.provider==='webgl'?{...settings,provider:'auto'}:settings;}
 async function admission(provider){
  const service=await engine();
- if(!['auto','cpu','webgl','webgpu'].includes(provider))throw Error('Choose a supported processing mode.');
+ if(!['auto','cpu','webgpu'].includes(provider))throw Error('Choose a supported processing mode.');
  service.setPreferredRoute(provider);
 }
 // Issue #28 and operator, 23 September: nothing downloads until the visitor asks, through the
@@ -597,9 +599,12 @@ export async function restoreLastResult(){
  project=restoredProject;video=restoredProject?saved.video:null;if(video)replaceUrl('video',video);
  if(restoredProject&&saved.frames?.length){try{if(createLatentPath(restoredProject.morph).totalFrames===saved.frames.length)liveFrames=saved.frames.map(blob=>URL.createObjectURL(blob));}catch{}}
  const ids=[...saved.ids];for(let n=1;ids.length<2;n++){const id='face-'+n;if(!ids.includes(id))ids.push(id);}
- sessionView={...saved.settings,inputs:ids.map(id=>({id}))};
+ // A saved WebGL preference (removed 17 October, fm-x6h5) becomes Automatic once, and is written back here.
+ const settings=migrateRoutePreference(saved.settings);
+ sessionView={...settings,inputs:ids.map(id=>({id}))};
+ if(settings!==saved.settings)retainSession();
  analytics.milestone?.('restored-ready');analytics.operationResult?.('restore','completed');
- return {...snapshot('Welcome back — your faces'+(video?' and last video are':' are')+' restored on this device.'),restored:true,inputs:ids.map(id=>({id,mode:faces.has(id)?'project':'text',value:faces.has(id)?'Restored face':'',file:null})),...saved.settings};
+ return {...snapshot('Welcome back — your faces'+(video?' and last video are':' are')+' restored on this device.'),restored:true,inputs:ids.map(id=>({id,mode:faces.has(id)?'project':'text',value:faces.has(id)?'Restored face':'',file:null})),...settings};
 }
 
 export function queueFace(id,depth){analytics.queuedRequest?.(id,depth);}

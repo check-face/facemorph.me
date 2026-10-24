@@ -4,6 +4,8 @@ import {capabilities} from './route-priors.mjs';
 import {rankedRoutes} from './route-selection.mjs';
 import {inputLatent,requireLatent,generationIdentity} from './identity.mjs';
 import {directSupported} from './webgpu-direct.mjs';
+/** WebGL execution was removed (fm-x6h5): asking for it is a typed refusal, never a silent fallback. */
+export class RemovedRouteError extends Error{constructor(route='webgl'){super('WebGL processing was removed; use Automatic, CPU or WebGPU.');this.name='RemovedRouteError';this.code='route-removed';this.route=route;}}
 const abortError=()=>new DOMException('Generation cancelled','AbortError');
 /** One foreground operation, one worker, explicit route qualification. */
 export function createBrowserRuntime({manifest: suppliedManifest, manifestSha256:suppliedManifestSha256, manifestUrl='/runtime/manifest.json',onProgress=()=>{},alignPhoto,preferredRoute='auto',workerFactory=()=>new Worker(new URL('./ort-worker.mjs',import.meta.url),{type:'module'}),imageEncoderFactory=()=>createImageEncoder(),stallMs=300000}={}){
@@ -20,7 +22,7 @@ export function createBrowserRuntime({manifest: suppliedManifest, manifestSha256
   }
   sessionStorage.removeItem('checkface-runtime-active-v1');}catch{}
  const markerOwner=crypto.randomUUID();const mark=(stage,id)=>{try{sessionStorage.setItem('checkface-runtime-active-v1',JSON.stringify({owner:markerOwner,route,stage,id,at:Date.now()}));}catch{}};const unmark=()=>{try{const item=JSON.parse(sessionStorage.getItem('checkface-runtime-active-v1')||'null');if(item?.owner===markerOwner)sessionStorage.removeItem('checkface-runtime-active-v1');}catch{}};
- if(!['auto','cpu','webgl','webgpu'].includes(preferredRoute))throw Error('Invalid preferred inference route');
+ if(preferredRoute==='webgl')throw new RemovedRouteError();if(!['auto','cpu','webgpu'].includes(preferredRoute))throw Error('Invalid preferred inference route');
  let manifest=suppliedManifest,manifestHash=suppliedManifestSha256,worker,active,disposed=false,validated=false,encoderValidatedSha256,originals,route='cpu',qualificationPending=false;const pending=new Map();let sequence=0,synthesisRuns=0;
  const emit=(event,extra)=>{try{const detail={provider:route,...event};onProgress(detail);extra?.(detail);}catch{}};
  async function config(){
@@ -64,7 +66,7 @@ export function createBrowserRuntime({manifest: suppliedManifest, manifestSha256
   const error=Object.assign(Error('The local generation engine stopped.'+(detail?' ('+detail+')':'')),
    {engineStopped:true,workerDetail:detail||undefined});
   stop(error);
- };if(route==='webgpu')await probeGpu();engine=gpuEngine();await send('initialize',{manifest,provider:route==='webgl'?'webgl2':route==='webgpu'?'webgpu':'wasm',gpuEngine:engine,manifestSha256:manifestHash,fullQualify:globalThis.__FACEMORPH_FULL_QUALIFY__===true,hostForcedQualify:globalThis.__FACEMORPH_FULL_QUALIFY__!==undefined,webdriver:globalThis.navigator?.webdriver===true,forceCanaryFail:globalThis.__FACEMORPH_FORCE_CANARY_FAIL__===true},progress);}
+ };if(route==='webgpu')await probeGpu();engine=gpuEngine();await send('initialize',{manifest,provider:route==='webgpu'?'webgpu':'wasm',gpuEngine:engine,manifestSha256:manifestHash,fullQualify:globalThis.__FACEMORPH_FULL_QUALIFY__===true,hostForcedQualify:globalThis.__FACEMORPH_FULL_QUALIFY__!==undefined,webdriver:globalThis.navigator?.webdriver===true,forceCanaryFail:globalThis.__FACEMORPH_FORCE_CANARY_FAIL__===true},progress);}
  // Acquisition warm-up. The first face on a cold device waits on roughly 200 MB, and none of
  // those bytes depend on which face is asked for, so they are fetched while the visitor is still
  // reading the page. It runs in a worker of its own: the inference worker's queue is strictly
@@ -121,7 +123,6 @@ export function createBrowserRuntime({manifest: suppliedManifest, manifestSha256
  /** What this browser offers, so a report says whether WebGPU was even on the table. */
  function gpuOffer(){
   if(globalThis.navigator?.gpu&&manifest.webgpu)return 'webgpu';
-  if(manifest.webgl&&typeof OffscreenCanvas!=='undefined')return 'webgl-only';
   return 'none';
  }
  function announce(progress,outcome='admitted'){emit({stage:'route-admitted',provider:route,gpu:gpuOffer(),routeOutcome:outcome},progress);}
@@ -182,8 +183,9 @@ export function createBrowserRuntime({manifest: suppliedManifest, manifestSha256
   try{const adapter=await globalThis.navigator?.gpu?.requestAdapter();gpuAdapter=Boolean(adapter);gpuLimits=adapter?.limits;}catch{gpuAdapter=false;}
   return gpuAdapter;
  }
- function capability(){const base=capabilities();return {...base,webgpu:base.webgpu&&gpuAdapter!==false&&Boolean(manifest.webgpu),webgl:base.webgl&&Boolean(manifest.webgl)};}
- function supportedRoutes(){const caps=capability();return ['cpu',...(caps.webgl?['webgl']:[]),...(caps.webgpu?['webgpu']:[])];}
+ function capability(){const base=capabilities();return {...base,webgpu:base.webgpu&&gpuAdapter!==false&&Boolean(manifest.webgpu)};}
+ // WebGL execution is gone (fm-x6h5, 17 October decision); manifest.webgl stays: it is the direct WebGPU engine's coefficient bundle.
+ function supportedRoutes(){const caps=capability();return ['cpu',...(caps.webgpu?['webgpu']:[])];}
  function orderedRoutes(){return rankedRoutes(capability(),supportedRoutes(),speeds(),failedRoutes);}
  function chooseRoute(){return orderedRoutes()[0];}
  function acceptQualification(result){
@@ -246,7 +248,7 @@ export function createBrowserRuntime({manifest: suppliedManifest, manifestSha256
   let result;try{result=await produce();}catch(error){if(signal.aborted)throw signal.reason;if(route==='cpu'||preferredRoute!=='auto'||!['generate','synthesize'].includes(error.failedOperation))throw error;failRoute(route);stop();if(chooseRoute()==='cpu')emit({stage:'fallback-cpu'},progress);await admit(progress,signal);result=await produce();}
   if(signal.aborted)throw signal.reason;
   const rgba=result.rgba;delete result.rgba;
-  const value={...result,cacheKey:key,generationKind:keyData.kind,generationSha256,latentSha256:await digest(result.values),latent:{space:result.space,shape:[18,512],values:result.values},width:1024,height:1024,cached:false,provenance:{bundleVersion:manifest.bundleVersion,manifestSha256:manifestHash,modelSha256:manifest.modelSourceSha256,noiseSha256:manifest.noiseSha256,provider:route==='webgl'?'webgl2':route==='webgpu'?'webgpu':'wasm',mappingProvider:keyData.kind==='seed'?'wasm':null,route,truncationPsi:keyData.kind==='seed'?.7:null,truncationCutoff:keyData.kind==='seed'?8:null,createdAt:new Date().toISOString()}};
+  const value={...result,cacheKey:key,generationKind:keyData.kind,generationSha256,latentSha256:await digest(result.values),latent:{space:result.space,shape:[18,512],values:result.values},width:1024,height:1024,cached:false,provenance:{bundleVersion:manifest.bundleVersion,manifestSha256:manifestHash,modelSha256:manifest.modelSourceSha256,noiseSha256:manifest.noiseSha256,provider:route==='webgpu'?'webgpu':'wasm',mappingProvider:keyData.kind==='seed'?'wasm':null,route,truncationPsi:keyData.kind==='seed'?.7:null,truncationCutoff:keyData.kind==='seed'?8:null,createdAt:new Date().toISOString()}};
   const finish=async blob=>{
    const completed={...value,blob,imageSha256:await digest(await blob.arrayBuffer())};
    try{if(persist){const aliases=[];if(keyData.kind==='seed'||keyData.kind==='photo'){const latentGenerationSha256=await digest(JSON.stringify(generationIdentity(manifest,'latent')));aliases.push({generationSha256:latentGenerationSha256,key:await digest(JSON.stringify({generationSha256:latentGenerationSha256,kind:'latent',sha256:completed.latentSha256}))});}await store?.put(key,completed,aliases);}}
@@ -327,7 +329,7 @@ export function createBrowserRuntime({manifest: suppliedManifest, manifestSha256
      if(data.type==='error')reject(Error(data.error.message));
      else if(data.id===2)resolve(data.result);
     };
-    own.postMessage({id:1,type:'initialize',manifest,provider:target==='webgl'?'webgl2':target==='webgpu'?'webgpu':'wasm',gpuEngine:gpuEngine(target),manifestSha256:manifestHash});
+    own.postMessage({id:1,type:'initialize',manifest,provider:target==='webgpu'?'webgpu':'wasm',gpuEngine:gpuEngine(target),manifestSha256:manifestHash});
     own.postMessage({id:2,type:'prefetch',scope});
    });
    // Recorded, never spoken: a warm cache changes nothing the visitor can act on, and the
@@ -364,8 +366,8 @@ export function createBrowserRuntime({manifest: suppliedManifest, manifestSha256
  },
  prefetch,
  plan,
- setPreferredRoute:(requested)=>{if(active)throw Error('Cannot change processing mode during generation.');if(!['auto','cpu','webgl','webgpu'].includes(requested))throw Error('Invalid preferred inference route');if(preferredRoute!==requested){stop();preferredRoute=requested;}},
- qualify:(requestedRoute='cpu',options={})=>afterDelivery(operation(async progress=>{if(!['cpu','webgl','webgpu'].includes(requestedRoute))throw Error('Choose CPU, WebGL or WebGPU.');if(route!==requestedRoute)stop();route=requestedRoute;await start(progress);const result=await send('qualify',{},progress);acceptQualification(result);return result;},options)),
+ setPreferredRoute:(requested)=>{if(active)throw Error('Cannot change processing mode during generation.');if(requested==='webgl')throw new RemovedRouteError();if(!['auto','cpu','webgpu'].includes(requested))throw Error('Invalid preferred inference route');if(preferredRoute!==requested){stop();preferredRoute=requested;}},
+ qualify:(requestedRoute='cpu',options={})=>afterDelivery(operation(async progress=>{if(requestedRoute==='webgl')throw new RemovedRouteError();if(!['cpu','webgpu'].includes(requestedRoute))throw Error('Choose CPU or WebGPU.');if(route!==requestedRoute)stop();route=requestedRoute;await start(progress);const result=await send('qualify',{},progress);acceptQualification(result);return result;},options)),
  generate:(request,options={})=>afterDelivery(operation(async(progress,signal)=>{const {identity}=await inputLatent(request.mode,request.value);return cachedGenerate({kind:'seed',identity},async()=>{await start(progress);return send('generate',{mode:request.mode,value:request.value,raw:options.raw===true},progress,ACQUIRE_STALL);},progress,signal);},{...request,...options})),
  synthesize:(latent,options={})=>afterDelivery(operation(async(progress,signal)=>{if(latent.space!=='w-plus'||JSON.stringify(latent.shape)!=='[1,18,512]')throw Error('Only explicit W+ [1,18,512] is accepted.');const values=requireLatent(latent.values);
  if(options.raw===true&&options.persist===false){await config();if(!validated)await admit(progress,signal);await start(progress);return send('synthesize',{values,raw:true},progress);}

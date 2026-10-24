@@ -1041,7 +1041,13 @@
       "sha256": "2fe64365a3149ca6adb71914514bb0fb8f4badf54eb0042ab43b8516b628c3fa",
       "bytes": 7084,
       "class": "temporary-root",
-      "temporary": true
+      "temporary": true,
+      "ported": {
+        "sha256": "93a7652436bb1e958cc7c28344c6df8749dc47a27e048c3240df54bb15c7338c",
+        "bytes": 7815,
+        "bead": "fm-x6h5",
+        "reason": "the Processing mode select is found by accessible name through build/provider-probe.js (no .next-advanced), routes expected by artifact label from build/provider-routes.json, providerLocation recorded"
+      }
     },
     {
       "source": "scripts/check-no-third-party.mjs",
@@ -1371,7 +1377,13 @@
       "destination": "apps/web/src/Next/browser/ort-worker.mjs",
       "sha256": "af51532c1bac18db595325aef4a3e4bb32de281eb617eec2b8b713163b241296",
       "bytes": 33331,
-      "class": "src-next"
+      "class": "src-next",
+      "ported": {
+        "sha256": "9a5f640b90ae333b13c151726770a5a3297ca0f108ead7c0bb8252cf7e5214ab",
+        "bytes": 32189,
+        "bead": "fm-x6h5",
+        "reason": "WebGL execution removed: no webgl2 session or WebGL bundle; initialize refuses providers other than wasm/webgpu; manifest.webgl kept as the direct engine coefficient bundle"
+      }
     },
     {
       "source": "src/Next/browser/png.mjs",
@@ -1385,7 +1397,13 @@
       "destination": "apps/web/src/Next/browser/route-priors.mjs",
       "sha256": "95243921416cb4dd317b002bb05d7e36885436009094f14d41a90a928181eef4",
       "bytes": 5291,
-      "class": "src-next"
+      "class": "src-next",
+      "ported": {
+        "sha256": "d3349d4582d5f936253f4452a6ee89df8a2aaf5c064c6ea3797e526a06204acf",
+        "bytes": 5319,
+        "bead": "fm-x6h5",
+        "reason": "WebGL removed from every route order and from the capability reading; the measured WebGL figures stay as history"
+      }
     },
     {
       "source": "src/Next/browser/route-priors.test.mjs",
@@ -1399,7 +1417,13 @@
       "destination": "apps/web/src/Next/browser/route-selection.mjs",
       "sha256": "b145fe233f87ee046c037a7923605efb057645b6a2136f8f3ce9a8ccff713dd5",
       "bytes": 388,
-      "class": "src-next"
+      "class": "src-next",
+      "ported": {
+        "sha256": "ad0780297962fc511421bf545c78fa74e5ba2d39ca20bab4870c9dfef54395c9",
+        "bytes": 425,
+        "bead": "fm-x6h5",
+        "reason": "comment: WebGPU -> CPU after the WebGL removal"
+      }
     },
     {
       "source": "src/Next/browser/runtime-test.html",
@@ -1413,7 +1437,13 @@
       "destination": "apps/web/src/Next/browser/runtime.mjs",
       "sha256": "283363af087e930f4f7f7f916c616618201f4fa91f7b9d04e0dbe16839d5d34c",
       "bytes": 37783,
-      "class": "src-next"
+      "class": "src-next",
+      "ported": {
+        "sha256": "79737ca01d054e0448e85d28d59a5ef536c511a403603aa5a5acee840b4a9067",
+        "bytes": 38152,
+        "bead": "fm-x6h5",
+        "reason": "WebGL execution removed: routes auto/cpu/webgpu, webgl requests throw RemovedRouteError, no webgl-only offer or webgl2 provider; manifest.webgl kept for the direct WebGPU engine"
+      }
     },
     {
       "source": "src/Next/browser/runtime.test.mjs",
@@ -1700,10 +1730,10 @@
       "bytes": 54317,
       "class": "src-next",
       "ported": {
-        "sha256": "ad940fb86b6d3db6a05ecd9c938c29adba208e748f4f3ad815dd64d014872c43",
-        "bytes": 53804,
-        "bead": "fm-be10",
-        "reason": "Native retirement: no desktop/runtime.mjs import or globalThis.__TAURI__ branches; the browser runtime, raw pixels, preferred route and frames path are unconditional"
+        "sha256": "f3701183c5af33b395eda11a5ec734700de523f61d83b1b060730e1c532665ad",
+        "bytes": 54240,
+        "bead": "fm-be10, fm-x6h5",
+        "reason": "Native retirement: no desktop/runtime.mjs import or globalThis.__TAURI__ branches; the browser runtime, raw pixels, preferred route and frames path are unconditional; fm-x6h5: webgl no longer accepted, a saved webgl preference migrates to Automatic on restore and is written back"
       }
     },
     {

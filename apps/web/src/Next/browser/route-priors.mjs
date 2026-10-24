@@ -23,7 +23,8 @@
  * Sources: autoresearch/results.tsv, phone_gpu_success_2026-09-14.md, s24_ultra_findings_2026-09-14.md,
  * and opted-in reports from the deployed site.
  *
- * Operator, 10 October: fixed WebGPU -> CPU -> WebGL preference on all platforms.
+ * Operator, 10 October: fixed WebGPU -> CPU -> WebGL preference on all platforms; WebGL execution removed
+ * 17 October (fm-x6h5), so the order is WebGPU -> CPU. The WebGL figures below stay as history.
  * Timings are recorded for estimates/diagnostics; only route unavailability or failure
  * causes automatic fallback. Historical measurement-driven ranking is superseded.
  *
@@ -38,7 +39,7 @@ export const ROUTE_PRIORS = Object.freeze([
     // including on iOS: its larger working set is acceptable while the run stays stable, and an
     // unstable one fails admission rather than being pre-emptively avoided.
     when: capabilities => capabilities.webgpu,
-    order: ['webgpu', 'cpu', 'webgl'],
+    order: ['webgpu', 'cpu'],
     measured: {webgpu: 618, cpu: 2582, webgl: 13000},
     because: 'WebGPU measured 618 ms on a phone and 294 ms on a Mac; nothing else is close'
   },
@@ -47,7 +48,7 @@ export const ROUTE_PRIORS = Object.freeze([
     // reversal that the old "a GPU route exists, so use it" rule got wrong. Scoped to Android,
     // because it is an Android measurement.
     when: capabilities => capabilities.android,
-    order: ['cpu', 'webgl'],
+    order: ['cpu'],
     measured: {cpu: 5911, webgl: 13000},
     because: 'S24 Ultra: CPU 5,911 ms against WebGL about 13,000 ms per face'
   },
@@ -56,7 +57,7 @@ export const ROUTE_PRIORS = Object.freeze([
     // Historical memory-driven WebGL preference is superseded; availability and actual
     // failed admission still select a supported fallback.
     when: capabilities => capabilities.ios,
-    order: ['cpu', 'webgl'],
+    order: ['cpu'],
     because: 'iOS CPU/WebGL speed is not measured here; operator fixed CPU before WebGL on 10 October'
   },
   {
@@ -66,7 +67,7 @@ export const ROUTE_PRIORS = Object.freeze([
     // four-thread CPU. Operator ruling, 8 October 2026: keep WebGPU -> CPU -> WebGL until an explicit operator decision changes it. Diagnostics caught a 32-core Linux desktop on WebGL at 7.4 s per face
     // because this entry used to put WebGL first. Device timings are observational only.
     when: () => true,
-    order: ['cpu', 'webgl'],
+    order: ['cpu'],
     because: 'Desktop WebGL against desktop CPU is not measured; nothing recorded favours WebGL, so CPU first (operator ruling WebGPU -> CPU -> WebGL)'
   }
 ]);
@@ -76,7 +77,6 @@ export function capabilities(scope = globalThis) {
   const agent = scope.navigator?.userAgent || '';
   return {
     webgpu: Boolean(scope.navigator?.gpu),
-    webgl: typeof scope.OffscreenCanvas !== 'undefined',
     android: /Android/i.test(agent),
     ios: /iPhone|iPad|iPod/i.test(agent)||(scope.navigator?.platform==='MacIntel'&&scope.navigator?.maxTouchPoints>1),
     mobile: /Android|iPhone|iPad|iPod/i.test(agent),
