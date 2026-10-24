@@ -48,6 +48,11 @@ jobs:
         working-directory: .
       - run: npx playwright install --with-deps chromium firefox webkit
       - run: npm run build
+      - name: build:next (the pinned control, served by the verification harness's artifact fixture, fm-48bj)
+        run: npm run build:next
+        working-directory: .
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
       - run: npm run test:e2e
         env:
           GITHUB_TOKEN: ${{ github.token }}
