@@ -1,0 +1,8 @@
+{
+  // Shared CI pieces (fm-o8xn): Node scripts run with type stripping, typed strictly.
+  "extends": "../../tsconfig.node.json",
+  "compilerOptions": {
+    "allowImportingTsExtensions": true
+  },
+  "include": ["*.ts"]
+}

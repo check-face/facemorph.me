@@ -1,0 +1,62 @@
+name: fetch-artifact
+description: >-
+  Shared artifact lookup with explicit provenance (fm-o8xn): fetch a workflow artifact by numeric source repository
+  ID, workflow file, run ID, full commit SHA and artifact name, refuse a run whose repository, head SHA or workflow
+  differ, verify its sums and source file, and report its identity digest. No input defaults to the running
+  repository. Needs Node 24 or later on the runner (actions/setup-node first).
+inputs:
+  source_repo_id:
+    description: Numeric repository ID of the source (not owner/name), e.g. 295956585 for the classic repository
+    required: true
+  workflow:
+    description: Workflow file of the run, e.g. .github/workflows/next-site.yml
+    required: true
+  run_id:
+    description: Numeric workflow run ID
+    required: true
+  commit:
+    description: Full 40-hex commit SHA the run built
+    required: true
+  artifact_name:
+    description: Artifact name, e.g. next-site-<sha>
+    required: true
+  out:
+    description: Directory to unpack into (replaced)
+    required: false
+    default: .cache/fetched-artifact
+  retention_days:
+    description: The source's artifact retention; a missing artifact on an older run is reported expired
+    required: false
+    default: '14'
+  token:
+    description: Token that can read the source's artifacts (the job token for a public source)
+    required: false
+    default: ${{ github.token }}
+outputs:
+  artifact_dir:
+    description: The verified deploy-next directory
+    value: ${{ steps.fetch.outputs.artifact_dir }}
+  artifact_digest:
+    description: Identity digest of deploy-next (SHA-256 of its sorted '<sha256>  <path>' listing)
+    value: ${{ steps.fetch.outputs.artifact_digest }}
+  provenance_json:
+    description: Source repository, workflow, run, commit, artifact ID, zip SHA-256 and file count
+    value: ${{ steps.fetch.outputs.provenance_json }}
+runs:
+  using: composite
+  steps:
+    - id: fetch
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ inputs.token }}
+        IN_REPO: ${{ inputs.source_repo_id }}
+        IN_WORKFLOW: ${{ inputs.workflow }}
+        IN_RUN: ${{ inputs.run_id }}
+        IN_COMMIT: ${{ inputs.commit }}
+        IN_NAME: ${{ inputs.artifact_name }}
+        IN_OUT: ${{ inputs.out }}
+        IN_RETENTION: ${{ inputs.retention_days }}
+      run: >-
+        node "$GITHUB_ACTION_PATH/../../../scripts/ci/fetch-artifact.ts" --source-repo-id "$IN_REPO" --workflow
+        "$IN_WORKFLOW" --run-id "$IN_RUN" --commit "$IN_COMMIT" --artifact-name "$IN_NAME" --out "$IN_OUT"
+        --retention-days "$IN_RETENTION" --github-output "$GITHUB_OUTPUT"

@@ -17,6 +17,7 @@ on:
         'autoresearch/lease.py',
         'scripts/**',
         '.github/workflows/research-built-ui-media.yml',
+        '.github/actions/**',
       ]
   workflow_dispatch:
     inputs:
@@ -28,7 +29,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: research-built-ui-media
+  group: research-built-ui-media-${{ github.ref }}
   cancel-in-progress: false
 jobs:
   smoke:

@@ -20,6 +20,7 @@ on:
         'autoresearch/lease.py',
         'scripts/**',
         '.github/workflows/research-rgba-screen.yml',
+        '.github/actions/**',
       ]
   workflow_dispatch:
     inputs:
@@ -31,7 +32,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: research-rgba-screen
+  group: research-rgba-screen-${{ github.ref }}
   cancel-in-progress: false
 jobs:
   smoke:

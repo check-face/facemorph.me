@@ -1,0 +1,52 @@
+{
+  "schema": "facemorph.path-filters/1",
+  "bead": "fm-o8xn",
+  "note": "One path-filter list for every CI lane. A lane's push filter is the shared list, or a declared narrowing of it, plus its own extras, its workflow file and the shared actions. Every top-level code root is either in the shared list or excluded here with a reason (scripts/ci/path-filters.ts checks both). Concurrency: group '<lane>-${{ github.ref }}', cancel-in-progress false (AGENTS.md: CI is newest-only; a pending run is replaced by a newer push, a running one finishes; publish and deploy are never cancelled). Caches: dependencies keyed by the lockfile hash, immutable runtime and model assets by their manifest digest; never by branch, ref, run or date.",
+  "shared": [
+    "apps/web/**",
+    "packages/**",
+    "scripts/**",
+    "hosting/**",
+    "services/**",
+    "tests/**",
+    "package.json",
+    "package-lock.json",
+    "tsconfig*.json",
+    ".oxlintrc.json",
+    ".oxfmtrc.json",
+    ".nvmrc",
+    ".github/actions/**"
+  ],
+  "excluded": {
+    "autoresearch": "research code and records; the research lanes add their maintained paths as extras",
+    "tools": "development tools with their own workflows (device lab, names generator and spike, decode measure)",
+    "ops": "dashboards, lease and swarm documentation; the lease code is autoresearch/lease.py",
+    "docs": "prose and dated records",
+    "import": "generated import inventory",
+    "inventory": "generated surfaces inventory",
+    ".beads": "the tracker's own data",
+    ".github": "workflows are added per lane (its own file) and the shared actions are in the shared list"
+  },
+  "lanes": {
+    "research-built-ui-media": {
+      "workflow": ".github/workflows/research-built-ui-media.yml",
+      "shared": ["apps/web/**", "packages/**", "scripts/**"],
+      "extra": [
+        "autoresearch/drivers/**",
+        "autoresearch/workers/**",
+        "autoresearch/run.py",
+        "autoresearch/lease.py"
+      ]
+    },
+    "research-rgba-screen": {
+      "workflow": ".github/workflows/research-rgba-screen.yml",
+      "shared": ["apps/web/**", "packages/**", "scripts/**"],
+      "extra": [
+        "autoresearch/drivers/**",
+        "autoresearch/workers/**",
+        "autoresearch/run.py",
+        "autoresearch/lease.py"
+      ]
+    }
+  }
+}
