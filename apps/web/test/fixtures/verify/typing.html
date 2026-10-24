@@ -1,0 +1,18 @@
+<!doctype html>
+<!-- The per-keystroke fixture (fm-48bj): #quiet makes no request while typing; #chatty fetches on its third
+     keystroke, as a per-keystroke lookup would. -->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Typing fixture</title>
+  </head>
+  <body>
+    <label>Quiet <input id="quiet" /></label>
+    <label>Chatty <input id="chatty" /></label>
+    <script>
+      document.getElementById('chatty').addEventListener('input', (e) => {
+        if (e.target.value.length === 3) fetch('/verify/typing.html?lookup=' + e.target.value);
+      });
+    </script>
+  </body>
+</html>

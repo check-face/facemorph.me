@@ -38,7 +38,7 @@ export interface StepRequests {
 export interface StepRecord {
   readonly step: string;
   readonly control: string;
-  readonly input: 'mouse' | 'touch';
+  readonly input: 'mouse' | 'touch' | 'keyboard';
   readonly point: { readonly x: number; readonly y: number } | null;
   readonly hit: string | null;
   readonly ok: boolean;
@@ -59,14 +59,18 @@ const byOrigin: Classify = (url) => {
 export class StepLog {
   readonly entries: StepRecord[] = [];
   readonly classify: Classify;
-  constructor(classify: Classify = byOrigin) {
+  /** The artifact this run judges (artifact.ts RunTag): every log names the digest of the bytes it tested. */
+  readonly run: Readonly<Record<string, string>> | undefined;
+  constructor(classify: Classify = byOrigin, run?: Readonly<Record<string, string>>) {
     this.classify = classify;
+    this.run = run;
   }
   add(r: StepRecord) {
     this.entries.push(r);
   }
   text(): string {
-    return this.entries.map((e) => JSON.stringify(e)).join('\n');
+    const head = this.run ? [JSON.stringify({ run: this.run })] : [];
+    return [...head, ...this.entries.map((e) => JSON.stringify(e))].join('\n');
   }
   /** Written as a CI artifact; printed in full when a step fails. */
   write(path: string) {
@@ -237,3 +241,53 @@ export async function operatedClick(
 
 export const operatedTap = (page: Page, control: Locator, options: Omit<OperateOptions, 'touch'>) =>
   operatedClick(page, control, { ...options, touch: true });
+
+export interface TypeOptions {
+  readonly step: string;
+  readonly log: StepLog;
+  /** How long each keystroke's step stays open for the requests it causes, as a person's typing pace. */
+  readonly keyMs?: number;
+  /** Host classes a keystroke may reach; by default none but local (data:, blob:). */
+  readonly allow?: readonly string[];
+}
+
+/** Types `text` into the focused field one key at a time, one step per keystroke (`<step>/key-<n>`), and fails on
+ * the first keystroke step that made a request outside `allow`: no request per keystroke. */
+export async function typeOperated(
+  page: Page,
+  text: string,
+  { step, log, keyMs = 60, allow = ['local'] }: TypeOptions,
+): Promise<StepRecord[]> {
+  const out: StepRecord[] = [];
+  let n = 0;
+  for (const key of text) {
+    n += 1;
+    const id = `${step}/key-${n}`;
+    const { requests } = await watchRequests(page, log.classify, async () => {
+      await page.keyboard.type(key);
+      await page.waitForTimeout(keyMs);
+    });
+    const outside = Object.entries(requests).filter(([cls]) => !allow.includes(cls));
+    const record: StepRecord = {
+      step: id,
+      control: 'keyboard',
+      input: 'keyboard',
+      point: null,
+      hit: null,
+      ok: outside.length === 0,
+      ...(outside.length
+        ? {
+            problem: `keystroke ${n} (${JSON.stringify(key)}) made requests: ${JSON.stringify(Object.fromEntries(outside))}`,
+          }
+        : {}),
+      target: null,
+      smallTarget: false,
+      requests,
+    };
+    log.add(record);
+    out.push(record);
+    if (!record.ok)
+      throw new AssertionError({ message: `${id}: ${record.problem}\nstep log:\n${log.text()}` });
+  }
+  return out;
+}
