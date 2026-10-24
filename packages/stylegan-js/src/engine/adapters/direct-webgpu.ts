@@ -103,7 +103,7 @@ export async function loadDirectWebGpuGenerator(o: {
     unsupported: [],
     ...(o.now ? { now: o.now } : {}),
     ...(o.release ? { release: o.release } : {}),
-    backend: async (): Promise<SynthesisBackend> => {
+    backend: async (_noise, _trace, reader): Promise<SynthesisBackend> => {
       const device = await adapter.requestDevice({
         requiredLimits: Object.fromEntries(
           Object.keys(DIRECT_LIMITS).map((k) => [k, limits[k] as number]),

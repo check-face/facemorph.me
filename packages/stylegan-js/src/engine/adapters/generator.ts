@@ -91,6 +91,12 @@ export interface GeneratorInspection {
   readonly pending: number;
 }
 
+export interface LoadTimings {
+  readonly verifiedReadMs: number;
+  readonly sessionCreateMs: number;
+  readonly totalMs: number;
+}
+
 export type InvalidationKind = 'device-loss' | 'worker-loss' | 'disposed';
 
 /** An operation stopped because the generator is gone (disposed, or its device lost). */
@@ -110,6 +116,8 @@ export interface Generator extends LoadedModelCapability {
   readonly assets: readonly { readonly sha256: string; readonly bytes: number }[];
   /** Load order, for the sequential-CPU / overlapped-WebGPU check. */
   readonly loadTrace: readonly LoadEvent[];
+  /** The load split as the candidate attributed it: verified reads, session creation, total. */
+  readonly loadTimings: LoadTimings;
   /** The canaries' raw float path, with the manifest's noise modes ('alternate' negates the noise). */
   synthesizeRaw(values: Float32Array, noise?: NoiseMode): Promise<Float32Array>;
   /**
@@ -153,7 +161,12 @@ export async function assembleGenerator(o: {
   readonly manifestSha256: string;
   readonly requested: RequestedRoute;
   readonly mapping: CpuMapping;
-  readonly backend: (noise: NoiseSet, trace: (e: LoadEvent) => void) => Promise<SynthesisBackend>;
+  /** Builds the backend from `reader` (timed for loadTimings). */
+  readonly backend: (
+    noise: NoiseSet,
+    trace: (e: LoadEvent) => void,
+    reader: LocalAssetReader,
+  ) => Promise<SynthesisBackend>;
   readonly extraAssets: readonly EngineAsset[];
   readonly unsupported: readonly UnsupportedCapability[];
   readonly now?: () => number;
@@ -162,8 +175,24 @@ export async function assembleGenerator(o: {
   readonly warmMapping: boolean;
   readonly release?: () => void;
 }): Promise<Generator> {
-  const { reader, manifest } = o;
+  const { manifest } = o;
   const now = o.now ?? (() => performance.now());
+  const loadStarted = now();
+  let readMs = 0;
+  let timing = true;
+  // Reads during the load are timed; later ones (mapping on first use, canaries) are not load time.
+  const reader: LocalAssetReader = {
+    allowRepair: false,
+    async read(asset) {
+      if (!timing) return o.reader.read(asset);
+      const t = now();
+      try {
+        return await o.reader.read(asset);
+      } finally {
+        readMs += now() - t;
+      }
+    },
+  };
   const schema = o.latent ?? FFHQ_LATENT;
   const trace: LoadEvent[] = [];
   const noise: Record<string, Float32Array> = {};
@@ -218,9 +247,9 @@ export async function assembleGenerator(o: {
       trace.push('mapping-load-start');
       const ort = await o.mapping.ort();
       assertLive();
-      const avg = new Float32Array(floats(await readLocal(reader, manifest.average)));
+      const avg = new Float32Array(floats(await readLocal(o.reader, manifest.average)));
       assertLive();
-      const bytes = await readLocal(reader, manifest.mapping);
+      const bytes = await readLocal(o.reader, manifest.mapping);
       assertLive();
       const session = await ort.InferenceSession.create(bytes, { executionProviders: ['wasm'] });
       if (disposed || lost) {
@@ -241,9 +270,11 @@ export async function assembleGenerator(o: {
 
   if (o.warmMapping) void loadMapping().catch(() => {}); // a failure here retries in line on the first map()
   trace.push('synthesis-load-start');
+  const backendStarted = now();
+  const readBefore = readMs;
   let backend: SynthesisBackend;
   try {
-    backend = await o.backend(noise, (e) => trace.push(e));
+    backend = await o.backend(noise, (e) => trace.push(e), reader);
   } catch (error) {
     if (mappingLoad) await (mappingLoad as Promise<void>).catch(() => {});
     await (mapping as OrtSession | null)?.release();
@@ -251,6 +282,13 @@ export async function assembleGenerator(o: {
     throw error;
   }
   trace.push('synthesis-load-done');
+  const loadEnded = now();
+  const loadTimings: LoadTimings = {
+    verifiedReadMs: readMs,
+    sessionCreateMs: loadEnded - backendStarted - (readMs - readBefore),
+    totalMs: loadEnded - loadStarted,
+  };
+  timing = false;
   const route = backend.route;
   backend.onLost?.((message) => {
     if (disposed || lost) return;
@@ -298,6 +336,7 @@ export async function assembleGenerator(o: {
       bytes: a.size,
     })),
     loadTrace: trace,
+    loadTimings,
 
     synthesizeRaw: (values, mode = 'original') =>
       guarded(async () => (await submitRaw(values, mode)).done),

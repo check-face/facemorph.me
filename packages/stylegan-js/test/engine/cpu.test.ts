@@ -120,6 +120,11 @@ test(
       'no mapping session beside the CPU model load',
     );
     assert.equal(g.engine, 'ort-wasm');
+    const { verifiedReadMs, sessionCreateMs, totalMs } = g.loadTimings;
+    assert.ok(
+      verifiedReadMs > 0 && sessionCreateMs > 0 && totalMs >= verifiedReadMs + sessionCreateMs - 1,
+      JSON.stringify(g.loadTimings),
+    );
     assert.deepEqual(g.provider, {
       requested: 'cpu',
       actual: 'cpu',

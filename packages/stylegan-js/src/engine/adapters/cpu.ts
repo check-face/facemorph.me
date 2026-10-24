@@ -36,7 +36,7 @@ export async function loadCpuGenerator(o: {
     unsupported: [{ capability: 'webgpu', reason: 'This generator runs the CPU (WASM) route.' }],
     ...(o.now ? { now: o.now } : {}),
     ...(o.release ? { release: o.release } : {}),
-    backend: async (): Promise<SynthesisBackend> => {
+    backend: async (_noise, _trace, reader): Promise<SynthesisBackend> => {
       const ort = await o.ort();
       let session: OrtSession | null = await ort.InferenceSession.create(
         await readLocal(reader, manifest.synthesis),

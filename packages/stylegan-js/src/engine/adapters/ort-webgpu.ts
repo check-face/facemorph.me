@@ -100,7 +100,7 @@ export async function loadOrtWebGpuGenerator(o: {
     unsupported: [],
     ...(o.now ? { now: o.now } : {}),
     ...(o.release ? { release: o.release } : {}),
-    backend: async (): Promise<SynthesisBackend> => {
+    backend: async (_noise, _trace, reader): Promise<SynthesisBackend> => {
       const sessions: OrtSession[] = [];
       const buffers = new Set<GPUBuffer>();
       let device: GPUDevice | undefined;
