@@ -30,12 +30,14 @@ export interface QualifyReport {
   readonly chunked: number;
   readonly unreconstructed: readonly string[];
   readonly contract: string | null;
-  readonly digests: { readonly missing: readonly string[]; readonly extra: readonly string[] } | null;
+  readonly digests: {
+    readonly missing: readonly string[];
+    readonly extra: readonly string[];
+  } | null;
 }
 
 const sha = (b: Uint8Array) => createHash('sha256').update(b).digest('hex');
-const digestSet = (manifest: unknown) =>
-  new Set(assets(manifest).map((a) => a.asset.sha256));
+const digestSet = (manifest: unknown) => new Set(assets(manifest).map((a) => a.asset.sha256));
 
 export async function qualifyOrigin(options: QualifyOptions): Promise<QualifyReport> {
   const base = (options.basePath ?? '/').replace(/\/?$/, '/');
