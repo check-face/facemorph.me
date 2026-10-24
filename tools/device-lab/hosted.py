@@ -199,6 +199,16 @@ class HostedBrowser(lab.Desktop):
         self.ctx.close()
         self._open()
 
+    def type_into(self, selector, text, index=0):
+        """lab.Desktop's typing clears with End then Backspace; on macOS End does not move the caret
+        to the end of an input, so clear by select-all with the platform's modifier instead."""
+        self.tap(selector, index)
+        self.page.keyboard.press('ControlOrMeta+A')
+        self.page.keyboard.press('Backspace')
+        self.page.keyboard.type(text, delay=30)
+        time.sleep(0.5)
+        return self.js("([s,i])=>document.querySelectorAll(s)[i].value", [selector, index])
+
     def version(self):
         return self.page.evaluate('navigator.userAgent')
 
@@ -373,7 +383,7 @@ def cmd_ios(args):
         stages.append(msg)
         lab.log('ios_stage', stage=msg.get('stage'), ok=msg.get('ok'), error=msg.get('error'))
         if msg.get('ok'):
-            rec['cold' if msg['stage'] == 'cold' else msg['stage']] = msg['result']
+            rec[msg['stage']] = msg['result']
         else:
             rec['error'] = f"{msg.get('stage')}: {msg.get('error')}"
         if msg.get('userAgent'):
