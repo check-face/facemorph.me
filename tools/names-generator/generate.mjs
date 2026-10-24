@@ -135,7 +135,7 @@ export function serve(classicDir) {
 }
 
 // Every request a browser context makes, by host, with transferred bytes.
-function recordRequests(context, hosts) {
+export function recordRequests(context, hosts) {
   context.on('requestfinished', async (req) => {
     const host = new URL(req.url()).host || '(none)';
     const h = (hosts[host] ??= { requests: 0, bytes: 0 });
@@ -154,7 +154,7 @@ function recordRequests(context, hosts) {
   });
 }
 
-async function openHarness(pw, { origin, route, chromium, profile, hosts }) {
+export async function openHarness(pw, { origin, route, chromium, profile, hosts }) {
   const gpu = route === 'webgpu';
   // Headless on every route: no window on the shared desktop. On eris WebGPU reaches the NVIDIA card through
   // Vulkan via ANGLE (autoresearch/devices/eris/launch-chromium.sh); the adapter only appears once the GPU

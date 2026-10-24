@@ -10,6 +10,8 @@ import {
   parseManifest,
   headerLine,
   rowLine,
+  sampleRows,
+  sampleVerdict,
   rowValid,
   plan,
   latentCheck,
@@ -216,4 +218,37 @@ test('API hosts: the two retired hosts and their subdomains only', () => {
   assert.equal(isApiHost('x.api.facemorph.me'), true);
   assert.equal(isApiHost('next.facemorph.me'), false);
   assert.equal(isApiHost('models.facemorph.me'), false);
+});
+
+test('the sample is deterministic per seed, a subset, and different for another seed', () => {
+  const rows = Array.from({ length: 50 }, (_, i) => ({ id: sha256(`n${i}`), value: `n${i}` }));
+  const a = sampleRows(rows, 5, 'fm-a40f');
+  assert.deepEqual(sampleRows([...rows].reverse(), 5, 'fm-a40f'), a);
+  assert.equal(new Set(a.map((r) => r.id)).size, 5);
+  assert.notDeepEqual(sampleRows(rows, 5, 'other'), a);
+  assert.equal(sampleRows(rows, 80, 'x').length, 50);
+});
+
+test('a sampled row passes only with exact identity and synthesis within the frozen tolerance', () => {
+  const row = { value: 'eleanor', latentSha256: 'l' };
+  const typed = { latentSha256: 'l', generationSha256: 'g', modelSha256: 'm' };
+  const envelope = { latentSha256: 'l', generationSha256: 'g', modelSha256: 'm' };
+  assert.deepEqual(sampleVerdict(row, { typed, envelope, synthesis: { maxDiff: 1 } }), {
+    value: 'eleanor',
+    ok: true,
+    problems: [],
+    maxRgbDiff: 1,
+  });
+  const p = (o) =>
+    sampleVerdict(row, { typed, envelope, synthesis: { maxDiff: 0 }, ...o }).problems;
+  assert.deepEqual(p({ typed: { ...typed, latentSha256: 'x' } }), [
+    'latent differs from the typed name',
+  ]);
+  assert.deepEqual(p({ envelope: { ...envelope, generationSha256: 'x' } }), [
+    'generation identity differs',
+  ]);
+  assert.deepEqual(p({ envelope: { ...envelope, modelSha256: 'x' } }), ['model identity differs']);
+  assert.deepEqual(p({ envelope: null }), ['the catalogue file carries no recovery envelope']);
+  assert.deepEqual(p({ synthesis: { maxDiff: 2 } }), ['raw synthesis differs by 2 (> 1)']);
+  assert.deepEqual(p({ synthesis: null }), ['raw synthesis differs by unknown (> 1)']);
 });

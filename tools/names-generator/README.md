@@ -36,5 +36,18 @@ Per-row checks, all recorded in the manifest:
   WebGPU (direct WGSL; headless Chromium with Vulkan via ANGLE on eris, after waiting for a hardware adapter). Sampled raw-float error is covered by each route's
   canary qualification at start-up, which the candidate does not expose per face.
 
+## Sampled typed-vs-catalogue check
+
+```sh
+python3 autoresearch/run.py --lane browser-cpu --device eris --timeout 3600 -- \
+  node tools/names-generator/sample-check.mjs --out=$HOME/.cache/facemorph-names-generator/out --samples=25
+```
+
+For a deterministic sample of valid rows (seed `fm-a40f`, `--seed` to change), in a fresh browser profile: the
+name is typed through the candidate's typed-name path, the catalogue file's envelope is read with the
+candidate's own reader, and the latent (SHA-256), generation and model identity must be identical; the catalogue
+latent's raw synthesis must be within a max RGBA channel difference of 1 of the typed result's lossless output.
+Every request is recorded by host; any API host fails the check.
+
 Tests: `npm test`. These are the pure logic, plus a real kill-and-resume run on two names. That run
 needs Chromium, the classic checkout (`FACEMORPH_CLASSIC`) and network access to the runtime assets.

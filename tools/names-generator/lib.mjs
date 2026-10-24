@@ -160,3 +160,41 @@ export function referenceRows(rows, mode) {
 // Hosts the generator must never contact.
 export const API_HOSTS = ['api.facemorph.me', 'checkface.facemorph.me'];
 export const isApiHost = (host) => API_HOSTS.some((h) => host === h || host.endsWith(`.${h}`));
+
+// Sampled typed-vs-catalogue check (fm-a40f acceptance 3): a deterministic sample of n rows, the ones whose
+// SHA-256(seed + id) sort first, so a seed names the same sample on every machine.
+export function sampleRows(rows, n, seed) {
+  return [...rows]
+    .map((r) => ({ r, k: sha256(`${seed}:${r.id}`) }))
+    .sort((a, b) => (a.k < b.k ? -1 : a.k > b.k ? 1 : 0))
+    .slice(0, n)
+    .map((x) => x.r);
+}
+
+// One sampled row's verdict. typed: what typing the name gave in a fresh profile ({latentSha256,
+// generationSha256, modelSha256}); envelope: what the catalogue file carries; synthesis: the catalogue latent's
+// RGBA against the typed result's lossless output ({maxDiff}). Identity must be exact, synthesis within the
+// frozen RGBA tolerance.
+export function sampleVerdict(row, { typed, envelope, synthesis }) {
+  const problems = [];
+  if (!envelope) problems.push('the catalogue file carries no recovery envelope');
+  else {
+    if (typed.latentSha256 !== envelope.latentSha256)
+      problems.push('latent differs from the typed name');
+    if (envelope.latentSha256 !== row.latentSha256)
+      problems.push('latent differs from the manifest row');
+    if (typed.generationSha256 !== envelope.generationSha256)
+      problems.push('generation identity differs');
+    if (typed.modelSha256 !== envelope.modelSha256) problems.push('model identity differs');
+  }
+  if (!synthesis || synthesis.maxDiff > MAX_RGB_DIFF)
+    problems.push(
+      `raw synthesis differs by ${synthesis?.maxDiff ?? 'unknown'} (> ${MAX_RGB_DIFF})`,
+    );
+  return {
+    value: row.value,
+    ok: problems.length === 0,
+    problems,
+    maxRgbDiff: synthesis?.maxDiff ?? null,
+  };
+}

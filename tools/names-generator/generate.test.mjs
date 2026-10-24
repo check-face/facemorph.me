@@ -39,12 +39,12 @@ const rowLines = (path) =>
     : [];
 
 // Run the generator; resolves with its exit and log lines. onTick may kill it.
-function generate(args, onTick) {
+function generate(args, onTick, script = 'generate.mjs') {
   return new Promise((resolve, reject) => {
     const p = spawn(
       process.execPath,
       [
-        join(here, 'generate.mjs'),
+        join(here, script),
         ...args,
         `--classic=${CLASSIC}`,
         `--chromium=${CHROMIUM}`,
@@ -164,6 +164,35 @@ test(
       assert.ok(
         Object.keys(third.lines.find((l) => l.event === 'summary').hosts).some(
           (h) => h === 'next.facemorph.me',
+        ),
+      );
+
+      // Acceptance 3 on these rows: typing each name in a fresh profile gives the catalogue file's latent and
+      // identity exactly, and the catalogue latent's synthesis matches within the frozen tolerance.
+      const sample = await generate([`--out=${out}`, '--samples=2'], null, 'sample-check.mjs');
+      assert.equal(sample.code, 0, sample.err);
+      const rowsChecked = sample.lines.filter((l) => l.event === 'row');
+      assert.deepEqual(
+        rowsChecked.map((l) => [l.value, l.ok]).sort(),
+        NAMES.map((n) => [n, true]).sort(),
+      );
+      assert.equal(sample.lines.find((l) => l.event === 'summary').apiRequests, 0);
+      // A planted manifest that files one name's result under the other name fails the check.
+      const planted = join(dir, 'planted');
+      mkdirSync(planted);
+      for (const r of after.rows.values()) {
+        mkdirSync(join(planted, dirname(r.file)), { recursive: true });
+        writeFileSync(join(planted, r.file), readFileSync(join(out, r.file)));
+      }
+      writeFileSync(
+        join(planted, 'manifest.jsonl'),
+        readFileSync(manifest, 'utf8').replace(`"value":"${NAMES[1]}"`, `"value":"${NAMES[0]}"`),
+      );
+      const wrong = await generate([`--out=${planted}`, '--samples=2'], null, 'sample-check.mjs');
+      assert.equal(wrong.code, 1);
+      assert.ok(
+        wrong.lines.some(
+          (l) => l.event === 'row' && l.problems.includes('latent differs from the typed name'),
         ),
       );
     } finally {

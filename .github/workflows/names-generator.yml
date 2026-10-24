@@ -1,6 +1,6 @@
 name: names-generator
 # Catalogue result generator (bead fm-a40f, tools/names-generator): pure-logic tests, then the real
-# kill-and-resume test with the pinned candidate runtime in Chromium. eris: Playwright does not support
+# kill-and-resume test and the sampled typed-vs-catalogue check with the pinned candidate runtime in Chromium. eris: Playwright does not support
 # triton's Ubuntu 20.04, and the runner reads the pinned classic commit from the local classic checkout.
 on:
   push:
@@ -13,7 +13,7 @@ concurrency:
 jobs:
   test:
     runs-on: [self-hosted, eris]
-    timeout-minutes: 30
+    timeout-minutes: 90
     defaults:
       run:
         working-directory: tools/names-generator
@@ -26,4 +26,5 @@ jobs:
         with:
           node-version: '22'
       - run: npm ci --no-audit --no-fund
-      - run: npm test
+      - name: Tests, the real runs under the eris device lease (a full catalogue run may hold it in chunks)
+        run: python3 ../../autoresearch/run.py --lane browser-cpu --device eris --wait 3000 --timeout 1800 -- npm test
