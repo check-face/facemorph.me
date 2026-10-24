@@ -254,16 +254,21 @@ class Runner(Machine):
 
 
 def classic_run_py(dest):
-    """classic's autoresearch/run.py at the pinned revision, or None when no checkout has it."""
+    """classic's autoresearch/run.py at the pinned revision: (path, None), or (None, why not)."""
     checkout = Path(os.environ.get('CLASSIC_CHECKOUT', REPO.parent / 'facemorph.me-classic'))
-    r = subprocess.run(['git', '-C', str(checkout), 'show', f'{CLASSIC_PINNED}:autoresearch/run.py'],
-                       capture_output=True, text=True)
-    if r.returncode:
-        return None
+    head = subprocess.run(['git', '-C', str(checkout), 'rev-parse', 'HEAD'], capture_output=True, text=True)
+    if head.stdout.strip() == CLASSIC_PINNED:  # CI checks out exactly the pinned revision
+        source = (checkout / 'autoresearch' / 'run.py').read_text()
+    else:
+        r = subprocess.run(['git', '-C', str(checkout), 'show', f'{CLASSIC_PINNED}:autoresearch/run.py'],
+                           capture_output=True, text=True)
+        if r.returncode:
+            return None, f'{checkout}: {(r.stderr or head.stderr).strip()}'
+        source = r.stdout
     path = dest / 'classic' / 'autoresearch' / 'run.py'
     path.parent.mkdir(parents=True)
-    path.write_text(r.stdout)
-    return path
+    path.write_text(source)
+    return path, None
 
 
 class CrossRepo(Machine):
@@ -272,9 +277,9 @@ class CrossRepo(Machine):
 
     def setUp(self):
         super().setUp()
-        self.classic = classic_run_py(self.tmp)
+        self.classic, why = classic_run_py(self.tmp)
         if not self.classic:
-            self.skipTest(f'untested: no classic checkout with {CLASSIC_PINNED[:8]} (set CLASSIC_CHECKOUT)')
+            self.skipTest(f'untested: no classic checkout with {CLASSIC_PINNED[:8]} (set CLASSIC_CHECKOUT): {why}')
 
     def classic_argv(self, *args):
         return [sys.executable, str(self.classic), '--lane', 'build', '--device', HOST,
