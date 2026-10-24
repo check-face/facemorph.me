@@ -1,0 +1,24 @@
+{
+  "name": "@facemorph/stylegan-js",
+  "version": "0.0.0",
+  "private": true,
+  "description": "StyleGAN mapping, synthesis and e4e encoding in the browser (engine contracts so far).",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.test.json",
+    "test": "node --test test/*.test.ts"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.2",
+    "typescript": "7.0.2"
+  }
+}

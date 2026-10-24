@@ -1,0 +1,26 @@
+name: stylegan-js-contracts
+# Engine contracts in packages/stylegan-js (fm-z5wy): strict typecheck (contracts without DOM/Node
+# globals; type-level tests) and the unit, vector and fuzz tests. Folds into the workspace gates
+# once the scaffold (fm-fy2.4) lands.
+on:
+  push:
+    branches: [main]
+    paths: ['packages/stylegan-js/**', '.github/workflows/stylegan-js-contracts.yml']
+  workflow_dispatch:
+concurrency:
+  group: stylegan-js-contracts
+  cancel-in-progress: false
+jobs:
+  check:
+    runs-on: [self-hosted, triton]
+    defaults:
+      run:
+        working-directory: packages/stylegan-js
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm ci --no-audit --no-fund
+      - run: npm run typecheck
+      - run: npm test
