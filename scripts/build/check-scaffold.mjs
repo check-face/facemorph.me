@@ -5,6 +5,7 @@
 // Prints one JSON line per violation; exit 1 if any. The judge functions are exported for
 // unit tests; the file reads are the only I/O.
 
+import { execFileSync } from 'node:child_process';
 import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
@@ -77,7 +78,11 @@ export function checkScripts(pkg) {
   // Latest releases as caret ranges, never an exact pin or a held-back version (operator, 24 October 2026).
   for (const name of ['oxlint', 'oxfmt']) {
     const version = pkg.devDependencies?.[name];
-    if (!/^\^\d+\.\d+\.\d+/.test(version ?? '')) violations.push({ rule: 'oxc-caret', detail: `${name} must be a caret range at its latest release, got "${version}"` });
+    if (!/^\^\d+\.\d+\.\d+/.test(version ?? ''))
+      violations.push({
+        rule: 'oxc-caret',
+        detail: `${name} must be a caret range at its latest release, got "${version}"`,
+      });
   }
   return violations;
 }
@@ -160,6 +165,26 @@ export function checkScope(scope, oxfmt, oxlint) {
   return violations;
 }
 
+// Every tracked top-level directory is either covered by the gates (scope.included) or declared outside them with
+// its reason (scope.outside), so a new root cannot fall outside formatting and lint unnoticed.
+export function checkRoots(scope, roots) {
+  const violations = [];
+  for (const root of roots) {
+    if (!scope.included.includes(root) && !(root in (scope.outside ?? {})))
+      violations.push({
+        rule: 'oxc-root',
+        detail: `${root}/ is neither included in nor declared outside scripts/build/oxc-scope.json`,
+      });
+  }
+  for (const root of [...scope.included, ...Object.keys(scope.outside ?? {})])
+    if (!roots.includes(root))
+      violations.push({
+        rule: 'oxc-root-stale',
+        detail: `${root}/ is declared in scripts/build/oxc-scope.json but not tracked`,
+      });
+  return violations;
+}
+
 // No floating installs anywhere CI or scripts run: npm ci only, no @latest, no npx <pkg>@<version>.
 export function checkInstalls(files) {
   const violations = [];
@@ -204,6 +229,12 @@ function main() {
     ...checkOxlintConfig(oxlint),
     ...checkScope(read('scripts/build/oxc-scope.json'), oxfmt, oxlint),
   );
+  const roots = execFileSync('git', ['-C', root, 'ls-tree', '-d', '--name-only', 'HEAD'], {
+    encoding: 'utf8',
+  })
+    .split('\n')
+    .filter(Boolean);
+  violations.push(...checkRoots(read('scripts/build/oxc-scope.json'), roots));
   const workflows = readdirSync(`${root}/.github/workflows`)
     .filter((f) => /\.ya?ml$/.test(f))
     .map((f) => [`.github/workflows/${f}`, readFileSync(`${root}/.github/workflows/${f}`, 'utf8')]);

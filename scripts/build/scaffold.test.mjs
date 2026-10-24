@@ -12,6 +12,7 @@ import {
   checkOxlintConfig,
   checkScope,
   checkInstalls,
+  checkRoots,
   WORKSPACES,
   OXC_SCRIPTS,
 } from './check-scaffold.mjs';
@@ -26,14 +27,33 @@ test('workspaces must be exactly apps/web plus the four packages', () => {
 });
 
 test('the four oxc scripts are exact, and oxlint and oxfmt are caret ranges', () => {
-  assert.deepEqual(checkScripts({ scripts: { ...OXC_SCRIPTS }, devDependencies: { oxlint: '^1.89.0', oxfmt: '^0.74.0' } }), []);
-  const missing = checkScripts({ scripts: {}, devDependencies: { oxlint: '^1.89.0', oxfmt: '^0.74.0' } });
+  assert.deepEqual(
+    checkScripts({
+      scripts: { ...OXC_SCRIPTS },
+      devDependencies: { oxlint: '^1.89.0', oxfmt: '^0.74.0' },
+    }),
+    [],
+  );
+  const missing = checkScripts({
+    scripts: {},
+    devDependencies: { oxlint: '^1.89.0', oxfmt: '^0.74.0' },
+  });
   assert.equal(missing.length, 4);
   assert.ok(missing.every((v) => v.rule === 'oxc-script'));
-  const pinned = checkScripts({ scripts: { ...OXC_SCRIPTS }, devDependencies: { oxlint: '1.89.0', oxfmt: '~0.74.0' } });
-  assert.deepEqual(pinned.map((v) => v.rule), ['oxc-caret', 'oxc-caret']);
+  const pinned = checkScripts({
+    scripts: { ...OXC_SCRIPTS },
+    devDependencies: { oxlint: '1.89.0', oxfmt: '~0.74.0' },
+  });
+  assert.deepEqual(
+    pinned.map((v) => v.rule),
+    ['oxc-caret', 'oxc-caret'],
+  );
   assert.match(pinned[0].detail, /oxlint/);
-  assert.equal(checkScripts({ scripts: { ...OXC_SCRIPTS }, devDependencies: {} }).length, 2, 'both tools must be declared');
+  assert.equal(
+    checkScripts({ scripts: { ...OXC_SCRIPTS }, devDependencies: {} }).length,
+    2,
+    'both tools must be declared',
+  );
 });
 
 test('base strictness is required and package lowering is a violation', () => {
@@ -211,4 +231,17 @@ test('a rename-only .mjs -> .ts change is a violation; other renames are not', (
         'packages/stylegan-js/src/old.mjs -> packages/stylegan-js/src/old.ts changed only the extension',
     },
   ]);
+});
+
+test('root discovery: every tracked top-level directory is in the scope or declared outside it', () => {
+  const scope = { included: ['apps', 'packages'], outside: { docs: 'prose' } };
+  assert.deepEqual(checkRoots(scope, ['apps', 'docs', 'packages']), []);
+  assert.deepEqual(
+    checkRoots(scope, ['apps', 'docs', 'packages', 'spikes']).map((v) => v.rule),
+    ['oxc-root'],
+  );
+  assert.deepEqual(
+    checkRoots(scope, ['apps', 'packages']).map((v) => v.rule),
+    ['oxc-root-stale'],
+  );
 });

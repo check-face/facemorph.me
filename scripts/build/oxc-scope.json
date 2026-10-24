@@ -1,7 +1,7 @@
 {
   "note": "fm-fy2.4: what the Oxc format and lint gates cover. Included: authored code, configs and maintained scripts. Ignored: dependencies and build output; the candidate closure imported byte-identical into apps/web (import/allowlist.json); the frozen research directories (docs/research-import/digest-list.json frozenDirectories); generated data, recordings and fixtures; .beads/; and Markdown (PLAN.md, AGENTS.md and the docs are prose owned by the operator and their beads). .oxfmtrc.json and .oxlintrc.json carry exactly this ignore list (scripts/build/check-scaffold.mjs).",
   "included": [
-    "apps/web",
+    "apps",
     "packages",
     "scripts",
     "services",
@@ -39,5 +39,12 @@
     "docs/**",
     "scripts/names-snapshot/manifest.tsv",
     "packages/model-conv/**"
-  ]
+  ],
+  "outside": {
+    ".beads": "the tracker's own data (br)",
+    "docs": "prose and dated records: Markdown is not formatted",
+    "import": "generated import inventory (scripts/inventory regenerates it from classic's Git objects)",
+    "inventory": "generated surfaces inventory",
+    "tests": "classic-style browser tests (Python) for the crop design reference"
+  }
 }
