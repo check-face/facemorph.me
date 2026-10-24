@@ -5,7 +5,12 @@ name: model-conv
 on:
   push:
     branches: [main]
-    paths: ['packages/model-conv/**', 'packages/browser-model-manager/schema/**', '.github/workflows/model-conv.yml']
+    paths:
+      [
+        'packages/model-conv/**',
+        'packages/browser-model-manager/schema/**',
+        '.github/workflows/model-conv.yml',
+      ]
   workflow_dispatch:
 concurrency:
   group: model-conv
