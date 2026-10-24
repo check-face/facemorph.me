@@ -1,0 +1,10 @@
+# Converter toolchain, compiled to requirements.lock with hashes (docs/usage.md, "Updating the lock").
+# torch matches the producer of the candidate's shipped mapping.onnx (pytorch 2.14.0); onnxruntime matches
+# the browser runtime (1.24.3); numpy as classic experiment/hf.
+torch==2.14.0+cpu
+numpy==2.2.6
+onnx==1.19.1
+onnxruntime==1.24.3
+# stylegan2-ada-pytorch legacy.py / dnnlib imports
+click==8.2.1
+requests==2.32.4

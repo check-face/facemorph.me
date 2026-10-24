@@ -1,0 +1,92 @@
+{
+  "classic": {
+    "repository": "check-face/facemorph.me-classic",
+    "commit": "a42829bb0582b5a7a55ba6b1045a05861612b8a5",
+    "note": "Frozen import revision (import/allowlist.json). Ported files keep their arithmetic; workspace paths became arguments."
+  },
+  "ported": [
+    {
+      "destination": "model_conv/convert.py (export)",
+      "source": "experiment/onnx/phase1_export.py",
+      "blob": "9ff9d051ec622de91ad9ac0df44d6023c620f690",
+      "sha256": "f7dea682d0308398508523ce46dcd811a2558648dd325f247c1c1f059980b8a7"
+    },
+    {
+      "destination": "model_conv/transforms.py simplify",
+      "source": "experiment/onnx/simplify_model.py",
+      "blob": "4891189f49d8fcb8f00f6af3032199037e633e09",
+      "sha256": "89a5d617a3929bb2c1ee85b19af96d8ee9fc460366faa2d616227d8e781390f9"
+    },
+    {
+      "destination": "model_conv/transforms.py remove_dead_spatial",
+      "source": "experiment/onnx/remove_dead_spatial_ops.py",
+      "blob": "bb8585d9b9f514120d2a6e74c58b2f0d1d494f8e",
+      "sha256": "48e8de44f5523e5037d8f3f495efadcbcd84cd41dd9e5e3541de8aee7a9504d0"
+    },
+    {
+      "destination": "model_conv/transforms.py precompute_energy",
+      "source": "experiment/onnx/precompute_demodulation.py",
+      "blob": "2afef783299943f01436d30614e42da1a4e7182b",
+      "sha256": "c195d794482617cb571fcbe36e61cd9343c20d6b9c95991e815f1612682f5bb3"
+    },
+    {
+      "destination": "model_conv/upstream.py (reference ops, load)",
+      "source": "experiment/hf/engine.py",
+      "blob": "e01579a0d8a2b4bc243f21b2c5504ed0415539c3",
+      "sha256": "0d06b7a056242bce476d321512266af00a6d445abc29580f1280bc06d8a66e3a"
+    },
+    {
+      "destination": "model_conv/upstream.py (legacy G_ema conversion)",
+      "source": "experiment/hf/scripts/prepare_model.py",
+      "blob": "ab91b8026e32c59cb22cf4cec21ec8317eeb51e7",
+      "sha256": "8cf001315af1a5fbe9d12dee830c825a0604f80b1355199e328105fb952753d3"
+    },
+    {
+      "destination": "model_conv/manifest.py (chunking, noiseSha256)",
+      "source": "src/Next/browser/stage-assets.py",
+      "blob": "6567c577c549fc93cb50edc1c7306fbfc1439981",
+      "sha256": "a0394f9bfa1b5d0096772f782bc70081af6372e6ca9416ca3b39fc8f77916b9a"
+    }
+  ],
+  "notPorted": [
+    {
+      "source": "experiment/onnx/export.py",
+      "blob": "9c3fb21dabccb7889bd4533c15e355fc3a323666",
+      "sha256": "e44750c15be70c5d512f80d974f0cf8aacfc47b7b331aa30d446bb1e123e4d32",
+      "reason": "single-graph config-F export; superseded by the split mapping/synthesis path the product ships"
+    },
+    {
+      "source": "experiment/onnx/e4e_export.py",
+      "blob": "d9c956c213ad0be78a7eb203074f1edb863dba04",
+      "sha256": "0d08ad37bebd778ee7cd27103467f7ba8a3cc5a79b5ff4b65a09d7545d976969",
+      "reason": "e4e encoder; not yet ported (encoder rows of the compatibility table are untested)"
+    },
+    {
+      "source": "photo-runtime/encoder-stream/export.py",
+      "blob": "f761cc740c2acce3414b2d173d468deb2b3995dc",
+      "sha256": "fcd7a79c073b83d9e9a2bdb57e79e4c7b67720f14329ca7eb72f5e021166ee24",
+      "reason": "e4e-onnx-sequential-shards-v1; not yet ported"
+    },
+    {
+      "source": "experiment/onnx/block_export.py",
+      "blob": "4884ec72bbdbe49d1fec277036f522b8b9bab054",
+      "sha256": "b7b7a712e3549e356113c6850c78face74172494974083553b9e60993bac3f1f",
+      "reason": "per-block research graphs; not part of the shipped artifact"
+    },
+    {
+      "source": "experiment/onnx/fold_resampling.py",
+      "blob": "478459ac7a5d04c2fa800fbddc9bed540085462e",
+      "sha256": "23149c306c947ec7ac53f9907514a417fa34cb87569839c3269afd09d3dc817a",
+      "reason": "research rewrite; not part of the shipped artifact"
+    }
+  ],
+  "upstream": [
+    {
+      "name": "NVlabs/stylegan2-ada-pytorch",
+      "revision": "d72cc7d041b42ec8e806021a205ed9349f87c6a4",
+      "archive": "https://github.com/NVlabs/stylegan2-ada-pytorch/archive/d72cc7d041b42ec8e806021a205ed9349f87c6a4.tar.gz",
+      "archiveSha256": "e09a4f09499bad8019d87b18b6ce19c91c0ae6d82e8a7af1fc16b22b4f9ebbba",
+      "licence": "NVIDIA Source Code License (LICENSE.txt in the archive)"
+    }
+  ]
+}

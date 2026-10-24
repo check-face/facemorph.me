@@ -1,0 +1,8 @@
+# Build context: the converter code, its lock and notices only.
+*
+!Dockerfile
+!requirements.lock
+!model_conv/
+!NOTICE.md
+!PROVENANCE.json
+model_conv/__pycache__/

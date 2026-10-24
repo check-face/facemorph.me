@@ -63,8 +63,14 @@ def export(g, decl: ModelDeclaration, work: Path) -> dict:
     mapping, synthesis = Mapping(g), Synthesis(g)
     # Batch-one export: anchor convolution kernel dimensions after traced resampling.
     conv, transpose = torch.nn.functional.conv2d, torch.nn.functional.conv_transpose2d
-    conv2d_gradfix.conv2d = lambda x, w, *a, **k: conv(x, w.reshape(tuple(int(d) for d in w.shape)), *a, **k)
-    conv2d_gradfix.conv_transpose2d = lambda x, w, *a, **k: transpose(x, w.reshape(tuple(int(d) for d in w.shape)), *a, **k)
+
+    def static_conv(input, weight, *args, **kwargs):
+        return conv(input, weight.reshape(tuple(int(d) for d in weight.shape)), *args, **kwargs)
+
+    def static_transpose(input, weight, *args, **kwargs):
+        return transpose(input, weight.reshape(tuple(int(d) for d in weight.shape)), *args, **kwargs)
+
+    conv2d_gradfix.conv2d, conv2d_gradfix.conv_transpose2d = static_conv, static_transpose
     z = np.random.RandomState(0).randn(1, decl.z_dim).astype('<f4')
     noise = [m.noise_const.clone() for m in synthesis.layers]
     if [list(n.shape) for n in noise] != decl.noise_shapes():

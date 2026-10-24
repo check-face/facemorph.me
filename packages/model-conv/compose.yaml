@@ -1,0 +1,13 @@
+# Opt-in conversion service: `docker compose --profile conversion run --rm convert ...` (docs/usage.md).
+# CHECKPOINTS: directory holding caller-acquired checkpoints (mounted read-only). OUTPUT: writable output root.
+services:
+  convert:
+    profiles: [conversion]
+    build: .
+    image: facemorph/model-conv
+    user: "${UID:-1000}:${GID:-1000}"
+    environment:
+      MODEL_CONV_IMAGE: facemorph/model-conv
+    volumes:
+      - ${CHECKPOINTS:?set CHECKPOINTS to the checkpoint directory}:/checkpoints:ro
+      - ${OUTPUT:?set OUTPUT to the output directory}:/out
