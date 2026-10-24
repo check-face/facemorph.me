@@ -45,6 +45,12 @@ jobs:
       - run: npm run test:e2e
         env:
           GITHUB_TOKEN: ${{ github.token }}
+      - name: The ubuntu-chrome cell (the runner's Google Chrome)
+        run: npm run test:e2e
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          FACEMORPH_E2E_ENGINES: chromium
+          FACEMORPH_E2E_CHROMIUM: /usr/bin/google-chrome
       - if: always()
         uses: actions/upload-artifact@v4
         with:
