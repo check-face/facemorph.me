@@ -1116,7 +1116,13 @@
       "sha256": "61a29eccd74af5b1c3985a49c70ca3e7bfa3aec816328e18ca89daa5b5d5f330",
       "bytes": 37776,
       "class": "temporary-root",
-      "temporary": true
+      "temporary": true,
+      "ported": {
+        "sha256": "77d6129442fa796f0203c5ab0786e77eeb9d7c697a55e41d6f4d5d44ae6de2cd",
+        "bytes": 37872,
+        "bead": "fm-stth",
+        "reason": "projectSaveReopen reason and comment name project-json.test.ts, which replaced verify-fable.mjs"
+      }
     },
     {
       "source": "scripts/next-e2e-server.py",
@@ -1164,7 +1170,13 @@
       "sha256": "0fdd4341aa82751c289a64ea0a55e37f654a7e8ae6509a2d38874ac51095495a",
       "bytes": 14224,
       "class": "temporary-root",
-      "temporary": true
+      "temporary": true,
+      "ported": {
+        "sha256": "0f231ff2b7e81079e547e5ca8be44889af802a86ad38d3466c313d24d8c80dd3",
+        "bytes": 21243,
+        "bead": "fm-pud",
+        "reason": "repaired harness: stage verdicts in next-matrix-stages.mjs (classic stage list, not-shipped never a pass), project round trip covered by project-json.test.ts"
+      }
     },
     {
       "source": "scripts/next-parity-browser.py",
@@ -1192,7 +1204,13 @@
       "destination": "apps/web/src/Next/Assets/model-cache.test.mjs",
       "sha256": "0e37041e5992326ac5b310203d7be3cfc4e9809cd7e0dc7f9bbfd968e3e58913",
       "bytes": 37543,
-      "class": "src-next"
+      "class": "src-next",
+      "ported": {
+        "sha256": "0fb314dc574f20e204849f0d75150b3624725aa26f4ebc158496de8ca98b9b57",
+        "bytes": 38052,
+        "bead": "fm-fr9s",
+        "reason": "acquire takes a grant since c228ae9: each carried case passes a grant for exactly its asset; mirrorOf became alternateOrigins and the runtimeMirror case asserts the app config modelAlternateOrigins; other assertions unchanged"
+      }
     },
     {
       "source": "src/Next/Assets/sha256.mjs",
@@ -1357,7 +1375,13 @@
       "destination": "apps/web/src/Next/browser/mobile-runtime.test.mjs",
       "sha256": "f460497ecc303f6405beada0c44f4cd99ba326f714162414073e54b9a18c0c9a",
       "bytes": 23849,
-      "class": "src-next"
+      "class": "src-next",
+      "ported": {
+        "sha256": "aa8ee2758afcdc23339b16f1c72c55ef9b5366be0254dcc16c902e86673bd185",
+        "bytes": 24155,
+        "bead": "fm-lt2p",
+        "reason": "stand-in adapter reports the WebGPU spec default limits that route admission reads"
+      }
     },
     {
       "source": "src/Next/browser/originals.mjs",
@@ -1380,10 +1404,10 @@
       "bytes": 33331,
       "class": "src-next",
       "ported": {
-        "sha256": "9a5f640b90ae333b13c151726770a5a3297ca0f108ead7c0bb8252cf7e5214ab",
-        "bytes": 32189,
-        "bead": "fm-x6h5",
-        "reason": "WebGL execution removed: no webgl2 session or WebGL bundle; initialize refuses providers other than wasm/webgpu; manifest.webgl kept as the direct engine coefficient bundle"
+        "sha256": "46ed5b59bfbb968a9de2bb0280267f839b7de7a69c5f16fa94a8327f179ea8bb",
+        "bytes": 33259,
+        "bead": "fm-fr9s",
+        "reason": "acquires under the candidate bridge scope as a grant (bridge-grant.mjs), widened by the streamed encoder descriptor; passes modelAlternateOrigins(location.hostname)"
       }
     },
     {
@@ -1440,10 +1464,10 @@
       "bytes": 37783,
       "class": "src-next",
       "ported": {
-        "sha256": "79737ca01d054e0448e85d28d59a5ef536c511a403603aa5a5acee840b4a9067",
-        "bytes": 38152,
-        "bead": "fm-x6h5",
-        "reason": "WebGL execution removed: routes auto/cpu/webgpu, webgl requests throw RemovedRouteError, no webgl-only offer or webgl2 provider; manifest.webgl kept for the direct WebGPU engine"
+        "sha256": "a0825d614954aa1e8548b4c66f416d15c3e3a812321d7be5de3140b743a1b01c",
+        "bytes": 40800,
+        "bead": "fm-lt2p",
+        "reason": "WebGL execution removed (fm-x6h5); per-operation admission through admission/route-admission.ts before any worker or model request, photo encoding admitted by capability instead of user-agent labels (fm-lt2p)"
       }
     },
     {
@@ -1451,7 +1475,13 @@
       "destination": "apps/web/src/Next/browser/runtime.test.mjs",
       "sha256": "22db1beaf9c3441c4fc1d59d987f5250b7b281f6304644d461de3e51daf7cd64",
       "bytes": 20752,
-      "class": "src-next"
+      "class": "src-next",
+      "ported": {
+        "sha256": "faf89964245ac17a8e26e509f8f8cccaaab05fa487608fcc8f0295ef50c07f70",
+        "bytes": 21370,
+        "bead": "fm-lt2p",
+        "reason": "stand-in adapter reports the WebGPU spec default limits; the iPhone-label monolithic-encoder case restated as capability admission (no encoder stream refuses before allocation)"
+      }
     },
     {
       "source": "src/Next/browser/serve-local.py",
@@ -1737,10 +1767,10 @@
       "bytes": 54317,
       "class": "src-next",
       "ported": {
-        "sha256": "f3701183c5af33b395eda11a5ec734700de523f61d83b1b060730e1c532665ad",
-        "bytes": 54240,
-        "bead": "fm-be10, fm-x6h5",
-        "reason": "Native retirement: no desktop/runtime.mjs import or globalThis.__TAURI__ branches; the browser runtime, raw pixels, preferred route and frames path are unconditional; fm-x6h5: webgl no longer accepted, a saved webgl preference migrates to Automatic on restore and is written back"
+        "sha256": "44267c9e7f50c85bb13254ed63f909e36cc80c341b8bb56019bfc074787ef414",
+        "bytes": 54712,
+        "bead": "fm-lt2p",
+        "reason": "ProjectJson imported from project/bridge-result.ts (fm-stth, one line); Morph admitted on its own and refusals returned with reasonKey/text/helpAnchor (fm-lt2p)"
       }
     },
     {
@@ -1888,7 +1918,13 @@
       "destination": "apps/web/src/Next/video-worker.mjs",
       "sha256": "bec91cdc08c64f1da9259cbc1fb75d7ba5aaec7cf905d90aa11f93a352d71614",
       "bytes": 10432,
-      "class": "src-next"
+      "class": "src-next",
+      "ported": {
+        "sha256": "8f03929fb2adf31846eb80f382222e6768ec41cb4328d23da872fa29f6d5c374",
+        "bytes": 10597,
+        "bead": "fm-fr9s",
+        "reason": "acquires the codec under a grant for exactly the codec assets (bridge-grant.mjs)"
+      }
     },
     {
       "source": "src/Next/video-worker.test.mjs",
