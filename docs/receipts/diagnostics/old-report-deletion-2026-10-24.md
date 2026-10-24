@@ -55,3 +55,13 @@ run's two tokens were created with the same 45-minute expiry; their IDs were in 
 - 5 agent session transcript file(s) under /home/cdilga/.claude/projects mention report identifiers; left in place as history, not deleted
 - read token could not be deleted by this login; it expires at 2026-10-24T08:27:54Z
 - read-write token could not be deleted by this login; it expires at 2026-10-24T08:27:55Z
+
+## Addendum, 2026-10-25 (token state, fm-xgww close)
+- Both tokens read through the Cloudflare API: read token `a0a1a1d2062fbe2d697940499a2f2999` status `expired`
+  (expires_on 2026-10-24T08:27:54Z, last_used_on null in the API's record), read-write token
+  `9dc20cdcaaa712de59fc411d9e90e88a` status `expired` (expires_on 2026-10-24T08:27:55Z). Neither can authenticate.
+- Deleting them was refused again for this login (`cf user tokens delete --force`: API error 9109, unauthorized), so
+  the expired token records remain in the account. They grant nothing; an operator with token-write permission may
+  delete them. Revocation in the bead's sense (a token that no longer authenticates) holds by expiry, not deletion.
+- Committed script: `422cf9b`, blob SHA-256 `69c695d7600c3eedb9550104efb954a524caf8b4d660596e222847a479d93e3d`, equal to
+  the run-time blob recorded above. CI for the scripts' tests: `.github/workflows/diagnostics-retention.yml`.

@@ -1,0 +1,30 @@
+name: diagnostics-retention
+# The old-wording report deletion and the learnings-note scan (bead fm-xgww, scripts/diagnostics/): every
+# precondition stop, the repeat path, post-checks and the working-copy scan against a real S3-compatible
+# store (SeaweedFS in Docker, data on tmpfs) and real temporary Git repositories with a bare remote.
+on:
+  push:
+    branches: [main]
+    paths: ['scripts/diagnostics/**', 'docs/findings/diagnostics-learnings-*.md', '.github/workflows/diagnostics-retention.yml']
+  workflow_dispatch:
+concurrency:
+  group: diagnostics-retention
+  cancel-in-progress: false
+jobs:
+  test:
+    runs-on: [self-hosted, triton]
+    defaults:
+      run:
+        working-directory: scripts/diagnostics
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci --no-audit --no-fund
+      # The S3 tests skip without Docker; here that must fail instead.
+      - run: docker info --format '{{.ServerVersion}}'
+      # Includes receipt.test.mjs: the receipt and the learnings note carry no key, run ID or token value.
+      - run: node --test delete-old-wording-reports.test.mjs scan-learnings-note.test.mjs receipt.test.mjs

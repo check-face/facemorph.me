@@ -41,6 +41,9 @@ before(async () => {
       '--rm',
       '-p',
       `${PORT}:8333`,
+      // Data on a sized tmpfs: the store never writes to the host's disk (triton's root filled up once).
+      '--tmpfs',
+      '/data:size=256m',
       IMAGE,
       'server',
       '-s3',
