@@ -45,3 +45,30 @@ All four are ignored by Git.
 not the pinned one, any missing, changed or extra file under `deploy-next/`, or a control build without the control label
 or classic's identity. The later Vite build writes `kind: "monorepo"` with its own commit and import provenance; until
 then no other kind is accepted.
+
+## Runtime acquisition (clean clone)
+
+The runtime the control loads (overlay manifest `d9e37e50…`, every file it pins, nested manifests and photo worker
+siblings) is acquired into the ignored `.cache/runtime/`, each file checked against `import/build-inputs.json`.
+It downloads model weights (about 2.8 GB), so it needs explicit acceptance of the terms in `import/licences.json`:
+
+```sh
+ACCEPT_MODEL_TERMS=yes node scripts/runtime/acquire.mjs
+node scripts/inventory/check-build-inputs.mjs --acquired .cache/runtime   # exits 0: 301 files, no findings
+```
+
+## Destination checks and the exact-artifact harness
+
+```sh
+npm run build:next
+node scripts/import/destination-checks.mjs   # classic's next-site.yml artifact checks, in this repository
+python3 scripts/import/control-harness.py --runtime .cache/runtime --out control-harness-evidence
+```
+
+The harness needs openssl, Chromium or Chrome, and Python with `browser-harness==0.1.8` and `playwright`. It serves
+`deploy-next/` and the acquired runtime under the production origin with classic's `next-e2e-server.py`, runs classic's
+`next-e2e-browser.py` in a headless Chrome it starts on a free debugging port (never 9222: on eris that is the device
+lab's adb forward to the phone), records every browser request by host class, then cancels a running morph and reads
+worker and heap figures. Hosts other than the artifact origin are made unresolvable, so the control's analytics calls
+are recorded as attempts and never delivered. `report.json`, logs and, on failure, a trace and screenshot land in
+`--out`.
