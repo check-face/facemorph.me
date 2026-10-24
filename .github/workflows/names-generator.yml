@@ -1,0 +1,29 @@
+name: names-generator
+# Catalogue result generator (bead fm-a40f, tools/names-generator): pure-logic tests, then the real
+# kill-and-resume test with the pinned candidate runtime in Chromium. eris: Playwright does not support
+# triton's Ubuntu 20.04, and the runner reads the pinned classic commit from the local classic checkout.
+on:
+  push:
+    branches: [main]
+    paths: ['tools/names-generator/**', '.github/workflows/names-generator.yml']
+  workflow_dispatch:
+concurrency:
+  group: names-generator
+  cancel-in-progress: false
+jobs:
+  test:
+    runs-on: [self-hosted, eris]
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: tools/names-generator
+    env:
+      FACEMORPH_CLASSIC: /home/cdilga/Work/dev/checkface/facemorph.me-classic
+      CHROMIUM: /usr/bin/chromium
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci --no-audit --no-fund
+      - run: npm test

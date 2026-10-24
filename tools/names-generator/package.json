@@ -1,0 +1,9 @@
+{
+  "name": "facemorph-names-generator",
+  "private": true,
+  "type": "module",
+  "description": "Catalogue result generator (fm-a40f): canonical recovery-bearing WebP per catalogue name from the pinned candidate runtime. Not a workspace package.",
+  "engines": { "node": ">=22" },
+  "scripts": { "test": "node --test lib.test.mjs generate.test.mjs" },
+  "devDependencies": { "playwright": "1.64.1" }
+}
