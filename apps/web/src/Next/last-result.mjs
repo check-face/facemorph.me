@@ -32,11 +32,15 @@ export async function readLast(onOutcome=()=>{}){let store;try{
 
 const SESSION='last-generated-session-v2',SLIDER='facemorph-slider-v1';
 const MAX_SESSION_BYTES=32*1024*1024;
+// Restore is bounded by bytes, not by a face count (operator, 24 October; fm-udut). The frame list follows the morph
+// frame budget, the classic 4,096 until contracts milestone 2 measures it.
+export const MORPH_FRAME_BUDGET=4096;
+export const SESSION_TOO_LARGE='These faces are too large to keep for next time. They stay here until you close this tab.';
 export function sliderPreference(){try{return JSON.parse(localStorage.getItem(SLIDER)||'{}').enabled===true;}catch{return false;}}
 export function sliderPosition(){try{const n=JSON.parse(localStorage.getItem(SLIDER)||'{}').frame;return Number.isInteger(n)&&n>0&&n<=4096?n:1;}catch{return 1;}}
 export function rememberSlider(enabled,frame){try{localStorage.setItem(SLIDER,JSON.stringify({enabled:enabled===true,frame:Number.isInteger(frame)&&frame>0?Math.min(frame,4096):1}));}catch{}}
 export async function validateSession(record){
- if(record?.kind!==SESSION||!Array.isArray(record.faces)||record.faces.length>64||!Array.isArray(record.ids)||record.ids.length>64||new Set(record.ids).size!==record.ids.length||record.ids.some(id=>typeof id!=='string'||id.length>128))return null;
+ if(record?.kind!==SESSION||!Array.isArray(record.faces)||!Array.isArray(record.ids)||new Set(record.ids).size!==record.ids.length||record.ids.some(id=>typeof id!=='string'||id.length>128))return null;
  const checked=[];
  for(const face of record.faces){
   if(!record.ids.includes(face.id)||checked.some(f=>f.id===face.id)||!['seed','photo','latent'].includes(face.generationKind)||!/^[a-f0-9]{64}$/.test(face.result?.generationSha256||''))return null;
@@ -46,18 +50,18 @@ export async function validateSession(record){
  const bytes=checked.reduce((n,f)=>n+f.result.blob.size,0);
  if(bytes>MAX_SESSION_BYTES)return null;
  let frames=[];
- if(Array.isArray(record.frames)&&record.frames.length<=4096&&Array.isArray(record.frameHashes)&&record.frameHashes.length===record.frames.length&&record.frames.every(f=>f instanceof Blob&&['image/jpeg','image/png','image/webp'].includes(f.type))&&record.frames.reduce((n,f)=>n+f.size,bytes)<=MAX_SESSION_BYTES){
+ if(Array.isArray(record.frames)&&record.frames.length<=MORPH_FRAME_BUDGET&&Array.isArray(record.frameHashes)&&record.frameHashes.length===record.frames.length&&record.frames.every(f=>f instanceof Blob&&['image/jpeg','image/png','image/webp'].includes(f.type))&&record.frames.reduce((n,f)=>n+f.size,bytes)<=MAX_SESSION_BYTES){
   let valid=true;for(let i=0;i<record.frames.length;i++)if(await digest(await record.frames[i].arrayBuffer())!==record.frameHashes[i]){valid=false;break;}if(valid)frames=record.frames;
  }
  let video=null;
  if(record.video instanceof Blob&&record.video.type==='video/mp4'&&record.video.size+bytes+frames.reduce((n,f)=>n+f.size,0)<=MAX_SESSION_BYTES&&record.project&&record.videoSha256===await digest(await record.video.arrayBuffer()))video=record.video;
  return {...record,faces:checked.sort((a,b)=>record.ids.indexOf(a.id)-record.ids.indexOf(b.id)),video,frames};
 }
-export async function rememberSession({ids,faces,settings,project,video,frames=[]},isCurrent=()=>true){
+export async function rememberSession({ids,faces,settings,project,video,frames=[]},isCurrent=()=>true,onRefused=()=>{}){
  let store;try{
   const selected=[];let bytes=0;
   for(const face of faces){
-   const r=face.result;bytes+=r.blob.size;if(bytes>MAX_SESSION_BYTES){if(!isCurrent())return false;store=await openOriginals();if(isCurrent())await store.put(SESSION,{kind:SESSION,faces:[],ids:[]});return false;}
+   const r=face.result;bytes+=r.blob.size;if(bytes>MAX_SESSION_BYTES){if(!isCurrent())return false;try{onRefused(SESSION_TOO_LARGE);}catch{}store=await openOriginals();if(isCurrent())await store.put(SESSION,{kind:SESSION,faces:[],ids:[]});return false;}
    selected.push({id:face.id,generationKind:r.generationKind||'latent',result:{blob:r.blob,latent:r.latent,values:r.latent.values,space:'w-plus',imageSha256:r.imageSha256,latentSha256:r.latentSha256,generationSha256:r.generationSha256,generationKind:r.generationKind||'latent',cacheKey:r.cacheKey,provenance:r.provenance,width:1024,height:1024}});
   }
   if(frames.reduce((n,f)=>n+f.size,bytes)>MAX_SESSION_BYTES)frames=[];

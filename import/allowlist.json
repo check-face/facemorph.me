@@ -1603,7 +1603,13 @@
       "destination": "apps/web/src/Next/last-result.mjs",
       "sha256": "225797879173701e53e7a90a7435092847ea5792c1a681dccd74f1d536b69be5",
       "bytes": 7269,
-      "class": "src-next"
+      "class": "src-next",
+      "ported": {
+        "sha256": "8b71a89724e6c741ff8776e8544aba580b1c0db25ce3faec16d7a4eb80191a46",
+        "bytes": 7651,
+        "bead": "fm-udut",
+        "reason": "session restore bounded by bytes, not a face count (the >64 face and id checks removed, operator 24 October); frames follow MORPH_FRAME_BUDGET (classic 4,096); an over-bound save reports one plain message through an optional callback"
+      }
     },
     {
       "source": "src/Next/last-result.test.mjs",
