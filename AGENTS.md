@@ -47,7 +47,8 @@ completion from repository setup.
 
 The portable Beads graph is `.beads/issues.jsonl`; preserve IDs and dependencies.
 Initialize/import a local DB with Beads Rust (`br`) when needed; DB files are ignored.
-All tasks remain deferred until implementation is explicitly started. The selected
+Implementation started 24 October 2026 (operator): beads are open and claimable; `gate`-labelled
+beads stay deferred for the operator. The selected
 organization login is `facemorph-me`, while remotes currently use `check-face`.
 
 Execution graph (converted 24 October 2026 at the operator's request, then consolidated to
