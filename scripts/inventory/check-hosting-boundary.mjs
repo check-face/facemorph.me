@@ -54,7 +54,7 @@ function main() {
   const arg = (name, fallback) => (args.includes(name) ? args[args.indexOf(name) + 1] : fallback);
   const root = fileURLToPath(new URL('../..', import.meta.url));
   const classic = arg('--classic', `${root}../facemorph.me-classic`);
-  const rev = arg('--rev', '6107f80fbc5acc6019c1d22d90523cca3b02001b');
+  const rev = arg('--rev', 'a42829bb0582b5a7a55ba6b1045a05861612b8a5');
   const readme = arg('--readme', `${root}packages/cloudflare-model-host/README.md`);
 
   const violations = compareWithTree(parseBoundaryTable(readFileSync(readme, 'utf8')), hostingTree(classic, rev));

@@ -3,8 +3,8 @@
   "description": "Paths that model staging, the self-host distribution and the second origin still read, plus external model sources. The wind-down stage precondition check (fm-y9m) loads this file: experiment/ is not deleted and production weights are not moved while any keep row still has its reader in classic.",
   "source": {
     "repo": "check-face/facemorph.me-classic",
-    "frozen_revision": "6107f80fbc5acc6019c1d22d90523cca3b02001b",
-    "read_note": "Reader evidence cites the classic working tree at a42829b, identical to 6107f80 for every cited file (verified drift limited to .github/workflows/next-site.yml's test list, which does not change any reader relationship). Line numbers are as of 2026-10-24.",
+    "frozen_revision": "a42829bb0582b5a7a55ba6b1045a05861612b8a5",
+    "read_note": "Reader evidence cites the classic working tree at a42829b, the frozen import revision pinned by import/allowlist.json (fm-fy2.1). No hosting/, src/Next or self-host reader relationship changes between 6107f80 and a42829b (only next-site.yml's test list changed, 551b607). Line numbers are as of 2026-10-24.",
     "dispositions": {
       "keep": "a live reader depends on it; do not delete or move without re-homing the reader first (the boundary table in packages/cloudflare-model-host/README.md names future homes)",
       "historical": "no attested future consumer; keep bytes as history, safe to archive with the classic repo"

@@ -3,7 +3,8 @@
 Status: **not implemented** (bead fm-3osh builds it; this README is fm-p7v's hosting-boundary
 assignment table, which `scripts/inventory/check-hosting-boundary.mjs` enforces against
 `git ls-tree hosting/` in `check-face/facemorph.me-classic` at the frozen revision
-`6107f80fbc5acc6019c1d22d90523cca3b02001b`).
+`a42829bb0582b5a7a55ba6b1045a05861612b8a5`, the frozen import revision pinned by
+`import/allowlist.json`; `hosting/` is byte-identical there back to `6107f80`).
 
 ## Purpose (from the plan; nothing built yet)
 

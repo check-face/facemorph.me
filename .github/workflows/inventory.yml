@@ -19,7 +19,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: check-face/facemorph.me-classic
-          ref: 6107f80fbc5acc6019c1d22d90523cca3b02001b
+          ref: a42829bb0582b5a7a55ba6b1045a05861612b8a5
           path: classic
       - uses: actions/setup-node@v4
         with:

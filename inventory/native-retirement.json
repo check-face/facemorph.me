@@ -3,8 +3,8 @@
   "description": "Native retirement inventory: what desktop/ and the desktop workflows contain, what still reads them, and each item's disposition (retire / re-home as a shared browser check / keep as history). Produced with the release scan from scripts/inventory/native-releases.mjs.",
   "source": {
     "repo": "check-face/facemorph.me-classic",
-    "frozen_revision": "6107f80fbc5acc6019c1d22d90523cca3b02001b",
-    "read_note": "desktop/ tree and workflows read at exactly 6107f80 (GitHub API, byte-equivalent to git show). No desktop/ file changed between 6107f80 and a42829b."
+    "frozen_revision": "a42829bb0582b5a7a55ba6b1045a05861612b8a5",
+    "read_note": "desktop/ tree and workflows read at exactly the frozen revision (GitHub API at a42829b, byte-equivalent to git show; desktop/ is identical from 6107f80 through a42829b)."
   },
   "release_scan": {
     "scanned": "2026-10-24",

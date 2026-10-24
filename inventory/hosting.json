@@ -5,7 +5,7 @@
   "observation_methods": {
     "dns": "resolvectl query from eris (read-only resolution)",
     "headers": "curl -sI of each hostname root (read-only)",
-    "repo": "classic working tree at a42829b (identical to frozen 6107f80 for every cited file except next-site.yml test list, see inventory/surfaces.json source.read_note)",
+    "repo": "classic working tree at a42829b = the frozen import revision pinned by import/allowlist.json (fm-fy2.1); relative to 6107f80 only next-site.yml's test list changed (551b607), which does not affect any binding or publisher row below",
     "needs_inspection": "Cloudflare console-only facts (custom-domain attachment details, zone settings, Vercel project settings, GitHub Pages repo mapping for checkface.facemorph.me) are marked needs-inspection, not asserted"
   },
   "hostnames": [

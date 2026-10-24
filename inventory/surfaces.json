@@ -4,9 +4,9 @@
   "source": {
     "repo": "check-face/facemorph.me-classic (id 295956585)",
     "branch": "candidate/next-delivery-20260916",
-    "frozen_revision": "6107f80fbc5acc6019c1d22d90523cca3b02001b",
+    "frozen_revision": "a42829bb0582b5a7a55ba6b1045a05861612b8a5",
     "read_revision": "a42829bb0582b5a7a55ba6b1045a05861612b8a5 (working tree head, 2026-10-24)",
-    "read_note": "Facts were read from the classic working tree at a42829b. That tree is identical to 6107f80 for every file cited here except .github/workflows/next-site.yml, whose only later change (551b607) adds src/Next/usage-stats.test.mjs to a test-list line; the stats sink is therefore recorded as surface added by 551b607 per the bead rule. Commits 91b7778 and a42829b touched only next-site.yml workflow steps (device-lab deploy gate added then removed) and are recorded in the hosting inventory.",
+    "read_note": "The frozen import revision is the candidate head on 24 October, a42829b, pinned by import/allowlist.json (fm-fy2.1); facts were read from the classic working tree at exactly that commit. Relative to planning reference b2d945a, later surface additions get their own row with the commit that added them: the 551b607 stats sink below. Commits 91b7778 and a42829b changed only next-site.yml workflow steps (device-lab deploy gate added then removed); the hosting inventory records them.",
     "live_receipts": "next.facemorph.me build identity is re-read from live bytes per capture in inventory/visual-references.json; fm-a4b (identity map) owns the standing per-host identity reader."
   },
   "surfaces": [
@@ -14,7 +14,7 @@
       "id": "candidate-app",
       "name": "Candidate app src/Next/",
       "owner": "ws-migration",
-      "revision": "6107f80 (surface present since before b2d945a)",
+      "revision": "a42829b (frozen; surface present since before b2d945a)",
       "moving_paths": [
         "src/Next/** (imported wholesale into apps/web under the same structure)",
         "runtime/manifests and the immutable prefixes runtime/{assets,chunks,manifests,photo,encoder-stream}/ fetched from https://next.facemorph.me/runtime/... (hosting/next-mirror/worker.mjs:7)"
@@ -36,7 +36,7 @@
       "id": "runtime-overlay",
       "name": "Hosted runtime overlay hosting/next-static/runtime-overlay/manifest.json",
       "owner": "ws-hosting",
-      "revision": "6107f80",
+      "revision": "a42829b (frozen)",
       "moving_paths": [
         "hosting/next-static/runtime-overlay/manifest.json (schemaVersion 1, bundleVersion next-browser-cpu-v1, releaseQualified false; every asset URL https://next.facemorph.me/runtime/assets/<sha256>/<file> with sha256 and size)",
         "hosting/next-static/runtime-overlay/assets/<sha256>/* (small reviewable overlay assets: split-segment.json 2d71c033..., fused-resample-v1.mjs 6ee1eb7a...)"
@@ -59,7 +59,7 @@
       "id": "models-origin",
       "name": "Second runtime origin models.facemorph.me (classic hosting/next-mirror/, added 6107f80)",
       "owner": "ws-hosting",
-      "revision": "6107f80",
+      "revision": "a42829b (frozen)",
       "moving_paths": ["hosting/next-mirror/{worker.mjs,worker.test.mjs,wrangler.jsonc}"],
       "inputs": "Copies immutable prefixes runtime/{assets,chunks,manifests,photo,encoder-stream}/ from https://next.facemorph.me/ via service binding SITE on first request into R2 bucket facemorph-runtime-mirror (worker.mjs:6-7, wrangler.jsonc). Content-addressed paths: a path no longer served by next is fillable only if already held.",
       "consumers": [
@@ -76,7 +76,7 @@
       "id": "site-worker",
       "name": "Site Worker facemorph-next (model chunks + static site origin)",
       "owner": "ws-hosting",
-      "revision": "6107f80",
+      "revision": "a42829b (frozen)",
       "moving_paths": ["hosting/next-static/{worker.mjs,wrangler.jsonc}", "public/ assets built by stage.py (model chunks are static assets under runtime/...)"],
       "inputs": "deploy-next/ frontend + .runtime-public rebuilt from the overlay pins + catalogue.json (next-site.yml:170-176).",
       "consumers": ["Browsers fetch model chunks and manifests same-origin from next.facemorph.me; third-party origins are rejected (prepare-runtime.py reject_local)", "Diagnostics events POST https://next.facemorph.me/diagnostics/events (routed by run_worker_first /diagnostics/* to hosting/next-cloudflare/worker.mjs)"],
@@ -89,7 +89,7 @@
       "id": "diagnostics-collector",
       "name": "Diagnostics collector hosting/next-cloudflare/",
       "owner": "ws-diag",
-      "revision": "6107f80",
+      "revision": "a42829b (frozen)",
       "moving_paths": ["hosting/next-cloudflare/{worker.mjs,worker.test.mjs,validation.mjs,delete-run.mjs,wrangler.toml}"],
       "inputs": "POST /diagnostics/events with consent header x-facemorph-diagnostics-consent: session-v1; origin allowlist [next.facemorph.me, facemorph.me, labs.facemorph.me, tauri://localhost, http(s)://tauri.localhost] (worker.mjs:12).",
       "consumers": ["src/Next/reporting.mjs (client sender)", "R2 bucket facemorph-diagnostics (keys runs/<run>/<uuid>) with KV 3a71e4ec58354345be24a1e02a3edb82 fallback; retention 30 days"],
@@ -102,7 +102,7 @@
       "id": "names-catalogue",
       "name": "Names catalogue and seed-gallery Workers",
       "owner": "ws-names",
-      "revision": "6107f80",
+      "revision": "a42829b (frozen)",
       "moving_paths": ["hosting/gallery/{materialize.py,names-wrangler.jsonc,wrangler.jsonc,public/,names-public/}"],
       "inputs": "catalogue.json (names/seed index, staged into the site by stage.py --catalogue and copied into deploy-next/ by scripts/build-next.cjs:28) materialized by hosting/gallery/materialize.py and published byte-verified by name-catalogue.yml.",
       "consumers": [
@@ -147,7 +147,7 @@
       "id": "self-host",
       "name": "Self-host Compose distribution self-host/",
       "owner": "ws-classic",
-      "revision": "6107f80 with frontend pin 0abb215f27b16e17e3919cf78b616b6ae4998a5d",
+      "revision": "a42829b (frozen) with frontend pin 0abb215f27b16e17e3919cf78b616b6ae4998a5d",
       "moving_paths": ["self-host/** (compose.yml, compose.gpu.yml, Dockerfile, api.py, legacy_checkface.py, encoder.py, prepare_model.py, frontend-overlay/source.json)", "models docker volume (stylegan2-ffhq-config-f.pkl sha256 adf127ea..., 381673535 B, downloaded at setup from nvlabs-fi-cdn, self-host/prepare_model.py:5-51)"],
       "inputs": "Frontend pinned: Dockerfile:5-6 clones classic at FRONTEND_REV 0abb215... and overlays self-host/frontend-overlay/source/ (11 files, per-file sha256 in frontend-overlay/source.json:3); verified by frontend-overlay/verify-config.mjs and verify-overlay.py.",
       "consumers": [".github/workflows/self-host-build.yml (amd64+arm64: compose build, setup --accept-research-license, full smoke suite, saves tested image tar.gz + SHA256SUMS + source-revision.txt :62-70; never publishes)", "Operator: docker compose up (acceptance bead fm-fy2.16 re-runs the README clean-clone acceptance)"],
@@ -160,7 +160,7 @@
       "id": "research-tree",
       "name": "Research tree autoresearch/",
       "owner": "ws-research",
-      "revision": "6107f80",
+      "revision": "a42829b (frozen)",
       "moving_paths": ["autoresearch/ (program.md protocol, results.tsv ledger, run.py device lease, candidates/<id>/ experiments)"],
       "inputs": "Runs against built deploy-next/ artifacts and the device lab; append-only experiment history (read-only reference for the new repo until autoresearch re-homing lands).",
       "consumers": [".github/workflows/research-built-ui-media-v1.yml, research-rgba-screen-v1.yml (workflow_dispatch only; both retired after single runs)", "build wrappers consumed: serve.py, prepare-source.py, run-*.mjs screen drivers (candidates/direct-rgba-media-v1/)"],
@@ -173,7 +173,7 @@
       "id": "desktop-native",
       "name": "Desktop/native leftovers desktop/",
       "owner": "ws-inventory",
-      "revision": "6107f80",
+      "revision": "a42829b (frozen)",
       "moving_paths": ["desktop/** — full retirement inventory and dispositions in inventory/native-retirement.json"],
       "inputs": "Shared browser dependencies to retain/re-home: desktop/runtime.mjs (imported by src/Next/product-bridge.mjs:6, hashed into the build id by scripts/build-next.cjs:8) and desktop/scripts/verify-web-artifact.py (browser/E2E workflows).",
       "consumers": ["src/Next/product-bridge.mjs:6 (createDesktopRuntime when globalThis.__TAURI__)", "scripts/build-next.cjs:8", "desktop-candidates.yml, desktop-product.yml, desktop-native-inference.yml (all artifact-only, no releases)", "next-e2e.yml (verify-web-artifact.py provenance check)"],
