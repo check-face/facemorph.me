@@ -77,6 +77,13 @@ class Decisions(unittest.TestCase):
         self.assertFalse(lease.held_by_ancestor('p30pro', chain, holders))
         self.assertFalse(lease.held_by_ancestor('triton', chain, holders))
 
+    def test_preempts(self):
+        local, ci = {'pid': 10, 'holder': 'run.py'}, {'pid': 11, 'holder': 'run.py', 'ci': True}
+        self.assertTrue(lease.preempts(True, local))
+        self.assertFalse(lease.preempts(True, ci), 'CI never preempts CI')
+        self.assertFalse(lease.preempts(False, local), 'local work never preempts')
+        self.assertFalse(lease.preempts(True, None), 'no live holder record (classic run.py): nothing to signal')
+
     def test_describe(self):
         self.assertIn('no holder record', lease.describe(None))
         text = lease.describe({'holder': 'run.py', 'run': 'r1', 'lane': 'build', 'pid': 4, 'since': 'now', 'repo': '/r'})
@@ -109,7 +116,7 @@ class Machine(unittest.TestCase):
         self.state = self.tmp / 'lease'
         self.config = self.tmp / 'lease.json'
         self.config.write_text(json.dumps({'stateDir': str(self.state), 'devices': [HOST, PHONE]}))
-        self.env = {k: v for k, v in os.environ.items() if k not in (lease.STATE_DIR_ENV, lease.HELD_ENV)}
+        self.env = {k: v for k, v in os.environ.items() if k not in (lease.STATE_DIR_ENV, lease.HELD_ENV, 'GITHUB_ACTIONS')}
         self.env[lease.CONFIG_ENV] = str(self.config)
         self.procs = []
 
@@ -171,6 +178,26 @@ class Runner(Machine):
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertIn('Waiting for', r.stderr)
         self.assertEqual([x['status'] for x in self.journal()], ['completed', 'completed'])
+
+    def test_ci_preempts_a_local_holder_which_records_preempted(self):
+        holder = self.hold_with_run_py(120)
+        t0 = time.monotonic()
+        r = self.run_py('--wait', '60', '--', 'true', env=dict(self.env, GITHUB_ACTIONS='true'))
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertLess(time.monotonic() - t0, 30, 'CI waited out the local run instead of taking the device')
+        self.assertIn('CI takes', r.stderr)
+        self.assertEqual(holder.wait(15), lease.BUSY)
+        statuses = {x['status'] for x in self.journal()}
+        self.assertEqual(statuses, {'preempted', 'completed'})
+        [ci] = [x for x in self.journal() if x['status'] == 'completed']
+        self.assertEqual(ci['exit_code'], 0)
+
+    def test_ci_never_preempts_ci(self):
+        ci_env = dict(self.env, GITHUB_ACTIONS='true')
+        self.start([sys.executable, str(RUN), '--lane', 'build', '--device', HOST, '--', 'sleep', '30'], env=ci_env)
+        self.assertTrue(wait_for(lambda: lease.live_holder(self.state, HOST)), 'holder never took the lease')
+        r = self.run_py('--wait', '2', '--', 'true', env=ci_env)
+        self.assertEqual(r.returncode, 75, r.stderr)
 
     def test_bounded_wait_gives_up(self):
         self.hold_with_run_py(30)

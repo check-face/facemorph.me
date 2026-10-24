@@ -85,13 +85,14 @@ def execute(command, args, state, run_id, host):
     except subprocess.TimeoutExpired:
         record['status'], code = 'timeout', 124
     except Stopped as exc:
-        record['status'], code = 'interrupted', 128 + exc.signum
+        # Preempted by CI (lease.PREEMPT): the device was needed; this run is untested, not failed.
+        record['status'], code = ('preempted', lease.BUSY) if exc.signum == lease.PREEMPT else ('interrupted', 128 + exc.signum)
     except KeyboardInterrupt:
         record['status'], code = 'interrupted', 130
     except OSError as exc:
         record['status'], record['error'], code = 'failed', str(exc), 127
     finally:
-        for sig in (signal.SIGTERM, signal.SIGHUP, signal.SIGINT):
+        for sig in (signal.SIGTERM, signal.SIGHUP, signal.SIGINT, lease.PREEMPT):
             signal.signal(sig, signal.SIG_IGN)  # a second signal must not cut the cleanup short
         if child is not None:
             stop_group(child)
@@ -129,19 +130,21 @@ def main():
                                 'would wait on itself or book a second device from inside the first')
     except lease.Refused as exc:
         parser.error(str(exc))
-    for sig in (signal.SIGTERM, signal.SIGHUP):
+    for sig in (signal.SIGTERM, signal.SIGHUP, lease.PREEMPT):
         signal.signal(sig, _stop)
+    ci = os.environ.get('GITHUB_ACTIONS') == 'true'
     run_id = dt.datetime.now(dt.timezone.utc).strftime('%Y%m%dT%H%M%SZ') + '-' + uuid.uuid4().hex[:8]
     try:
         with lease.hold(state, args.device, args.wait, holder='run.py', run=run_id, lane=args.lane,
-                        repo=str(ROOT.parent),
+                        repo=str(ROOT.parent), ci=ci,
+                        on_preempt=lambda h: print(f'CI takes {args.device}: asked the local holder to stop, {lease.describe(h)}', file=sys.stderr),
                         on_wait=lambda h: print(f'Waiting for {args.device}, {lease.describe(h)}', file=sys.stderr)):
             return execute(command, args, state, run_id, host)
     except lease.Busy as exc:
         print(f'Device busy; no experiment started. {exc}', file=sys.stderr)
         return lease.BUSY
     except Stopped as exc:  # while waiting for the lease: nothing was started
-        return 128 + exc.signum
+        return lease.BUSY if exc.signum == lease.PREEMPT else 128 + exc.signum
     except KeyboardInterrupt:
         return 130
 

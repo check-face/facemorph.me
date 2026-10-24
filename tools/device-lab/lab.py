@@ -734,7 +734,7 @@ def lab_lock(cells):
             try:
                 held.enter_context(lease.hold(
                     state, device, max(0.0, end - time.time()), poll=5, holder='device-lab', lane='lab',
-                    cells=','.join(cells), repo=str(REPO),
+                    cells=','.join(cells), repo=str(REPO), ci=os.environ.get('GITHUB_ACTIONS') == 'true',
                     on_wait=lambda h, d=device: log('waiting_for_device_lease', device=d, holder=lease.describe(h))))
             except lease.Busy as e:
                 raise SystemExit(f'device lease: {e}')
@@ -1006,6 +1006,8 @@ def run_matrix(args):
     import signal
     signal.signal(signal.SIGTERM, _terminate)
     signal.signal(signal.SIGHUP, _terminate)
+    # CI preempts a local lab session (lease.PREEMPT): end it through the same cleanup (Wi-Fi back on, camera).
+    signal.signal(lease.PREEMPT, _terminate)
     cells = args.cells.split(',') if getattr(args, 'cells', None) else [args.cell]
     with lab_lock(cells):
         out = HERE / 'out' / (datetime.now().strftime('%Y%m%d-%H%M%S') + '-' + args.label)

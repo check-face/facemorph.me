@@ -15,6 +15,7 @@ import json
 import os
 from pathlib import Path
 import re
+import signal
 import socket
 import time
 
@@ -28,6 +29,10 @@ RUN_ENV = 'FACEMORPH_LEASE_RUN'  # set for a leased command: its run id (the fol
 # one account may use that account's file instead.
 CONFIG_FILES = (Path('/etc/facemorph/lease.json'), Path.home() / '.config' / 'facemorph' / 'lease.json')
 SETUP = 'see ops/lease/README.md'
+# CI never waits behind local work (operator, 25 October 2026): a CI waiter asks a local holder to stop with this
+# signal, and the holder ends its command and releases. A CI job waiting on local work could run out its
+# timeout-minutes and be cancelled in flight, which is never allowed.
+PREEMPT = signal.SIGUSR1
 
 
 class Refused(Exception):
@@ -91,6 +96,11 @@ def held_by_ancestor(device, chain, holders):
     under run.py) honours it rather than waiting on itself."""
     chain = {tuple(link) for link in chain}
     return any(r.get('device') == device and (r.get('pid'), r.get('start')) in chain for r in holders)
+
+
+def preempts(waiter_ci, holder):
+    """Whether a waiter takes the lease from holder: CI always does from a local holder, never from CI."""
+    return bool(waiter_ci) and bool(holder) and not holder.get('ci') and bool(holder.get('pid'))
 
 
 def describe(holder):
@@ -167,13 +177,14 @@ def live_holder(state, device):
 
 
 @contextmanager
-def hold(state, device, wait=0.0, poll=0.1, on_wait=None, **owner):
+def hold(state, device, wait=0.0, poll=0.1, on_wait=None, on_preempt=None, **owner):
     """Hold device's lease in state for the with-block, or raise Busy if it is still held after wait
     seconds. on_wait(holder record) is called once, when the lease has to be waited for. owner fields
-    (holder, run, lane, repo) go into the holder record."""
+    (holder, run, lane, repo, ci) go into the holder record. An owner with ci=True preempts a local holder
+    (PREEMPT, once per holder; on_preempt(holder) is told) and waits for it to release."""
     state.mkdir(parents=True, exist_ok=True)
     with (state / f'{device}.lock').open('a+') as lock:
-        deadline, waited = time.monotonic() + wait, False
+        deadline, waited, asked = time.monotonic() + wait, False, set()
         while True:
             try:
                 fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
@@ -181,9 +192,18 @@ def hold(state, device, wait=0.0, poll=0.1, on_wait=None, **owner):
             except BlockingIOError:
                 if time.monotonic() >= deadline:
                     raise Busy(device, live_holder(state, device)) from None
+                current = live_holder(state, device)
                 if on_wait and not waited:
-                    on_wait(live_holder(state, device))
+                    on_wait(current)
                 waited = True
+                if preempts(owner.get('ci'), current) and (current['pid'], current.get('start')) not in asked:
+                    asked.add((current['pid'], current.get('start')))
+                    try:
+                        os.kill(current['pid'], PREEMPT)
+                        if on_preempt:
+                            on_preempt(current)
+                    except ProcessLookupError:
+                        pass
                 time.sleep(min(poll, max(0.0, deadline - time.monotonic())))
         me = identity(os.getpid())
         record = dict(owner, device=device, host=host(), pid=os.getpid(), start=me[1] if me else None,
