@@ -11,7 +11,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.node.json",
-    "test": "node --test test/build/*.test.ts"
+    "test": "node --test test/build/*.test.ts",
+    "check:inventory": "node build/check-inventory.ts"
   },
   "dependencies": {
     "@emotion/react": "11.14.0",
