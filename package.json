@@ -15,7 +15,7 @@
   "scripts": {
     "typecheck": "npm run typecheck --workspaces --if-present",
     "build": "npm run build -w packages/stylegan-js -w packages/browser-model-manager -w packages/cloudflare-model-host --if-present && npm run build -w apps/web",
-    "test": "npm test --workspaces --if-present && node --test scripts/build/scaffold.test.mjs scripts/hosting/hosting.test.mjs tools/ort-qualify/qualify.test.mjs scripts/delivery/runbook.test.mjs scripts/ci/fetch-artifact.test.ts scripts/ci/path-filters.test.ts scripts/ci/intercept/intercept.test.ts && python3 scripts/ci/intercept/test_intercept.py && python3 scripts/ci/lease/test_lease_run.py",
+    "test": "npm test --workspaces --if-present && node --test scripts/build/scaffold.test.mjs scripts/hosting/hosting.test.mjs tools/ort-qualify/qualify.test.mjs scripts/delivery/runbook.test.mjs scripts/delivery/post-delivery-check.test.mjs scripts/ci/fetch-artifact.test.ts scripts/ci/path-filters.test.ts scripts/ci/intercept/intercept.test.ts && python3 scripts/ci/intercept/test_intercept.py && python3 scripts/ci/lease/test_lease_run.py",
     "lint": "oxlint --deny-warnings",
     "lint:fix": "oxlint --fix",
     "format": "oxfmt",

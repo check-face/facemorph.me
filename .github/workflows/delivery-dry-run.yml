@@ -26,7 +26,7 @@ jobs:
       - run: npm ci --no-audit --no-fund
       - run: npm run format:check
       - run: npm run lint
-      - run: node --test scripts/delivery/runbook.test.mjs
+      - run: node --test scripts/delivery/runbook.test.mjs scripts/delivery/post-delivery-check.test.mjs
       - name: handover.md is what the runbook renders
         run: node scripts/delivery/render-handover.mjs --check
       - name: Dry run of every command (one JSON line each)

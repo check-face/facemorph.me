@@ -8,7 +8,8 @@ Zone `facemorph.me` is `893772fe7a5a4ee368f71706bc19e609`; account `8f550a622a48
 
 | Artifact | Build | Source | Digest |
 | --- | --- | --- | --- |
-| classic candidate build (the pinned control): what next.facemorph.me serves (`candidate`) | next-dbc2925ff6e7dcb6 | `check-face/facemorph.me-classic@551b60726290b2d67a32c62477b2fd964de51f96` | `aaeb99a92a082b5399aa809a5aadd802c3c61ccc167f306aa86fc091b527bf50` |
+| classic candidate build serving next.facemorph.me (observed 24 October, 15:40 UTC) (`candidate`) | next-site.yml run 40080943175, artifact next-site-45463b630e5ed3ce6bc00a7af5fecaa93b5a5b94 | `check-face/facemorph.me-classic@45463b630e5ed3ce6bc00a7af5fecaa93b5a5b94` | `228eb615fdbd6d46d34459a4574b660e540aeb0c3903cf20018e8107ebd14f6b` |
+| the pinned control (import/control-artifact.json): an earlier candidate build, no longer what next.facemorph.me serves (`control`) | next-dbc2925ff6e7dcb6 | `check-face/facemorph.me-classic@551b60726290b2d67a32c62477b2fd964de51f96` | `aaeb99a92a082b5399aa809a5aadd802c3c61ccc167f306aa86fc091b527bf50` |
 | legacy facemorph.me on Vercel: classic master's last successful deploy.yml (`legacyProduction`) | deploy.yml run 36654890071 | `check-face/facemorph.me-classic@e6e229831533244133f80aea61ae944c811bf9a0` | none (not an on-device artifact) |
 | names.facemorph.me on Vercel (facemorph-names) (`namesSite`) | GitHub deployment 359827192 (Production) | `check-face/facemorph-names@9243fef8a34050ccf0a08d37de02784bd06fb57b` | none (not an on-device artifact) |
 
@@ -57,9 +58,10 @@ Remove items run at the action named in "When"; keep items stay, with the reason
 - **Action:** `early-promotion`
 - **Owner:** operator
 - **Preconditions:**
-  - The retained candidate artifact (deploy-next aaeb99a9…) passes post-delivery-check --mode app on next.facemorph.me.
+  - The retained candidate artifact (deploy-next 228eb615…) passes post-delivery-check --mode app on next.facemorph.me.
   - Every mirrored runtime file of the candidate is held by models.facemorph.me (the dry run's R2 listing).
   - The operator's explicit decision to promote early is recorded in PLAN.md's decisions table.
+  - artifacts.candidate names the build serving next.facemorph.me now (re-pin it from classic's latest next-site.yml run if it moved, then re-render handover.md).
 - **Commands:**
   - Route facemorph.me to Worker facemorph-next, which serves the retained candidate: replace A record ef8a8938cd3275bf1a4e83a7050e8eb6 (76.76.21.21, Vercel) with a proxied AAAA 100:: and add the facemorph.me/* Worker route (cf dns records update ef8a8938cd3275bf1a4e83a7050e8eb6 --zone 893772fe7a5a4ee368f71706bc19e609 --body '{"type":"AAAA","name":"facemorph.me","content":"100::","proxied":true}').
   - Dry run: `cf dns records update ef8a8938cd3275bf1a4e83a7050e8eb6 --zone 893772fe7a5a4ee368f71706bc19e609 --body {"type":"AAAA","name":"facemorph.me","content":"100::","proxied":true} --dry-run`
@@ -67,8 +69,8 @@ Remove items run at the action named in "When"; keep items stay, with the reason
 - **Rollback steps:**
   - cf dns records update ef8a8938cd3275bf1a4e83a7050e8eb6 --zone 893772fe7a5a4ee368f71706bc19e609 --body '{"type":"A","name":"facemorph.me","content":"76.76.21.21","proxied":false}' (Vercel production, deploy.yml run 36654890071).
 - **One publisher:** Classic deploy.yml (vercel --prod) is disabled (gh workflow disable deploy.yml -R check-face/facemorph.me-classic); classic next-site.yml remains the only publisher of facemorph-next until the candidate-source handover.
-- **Post-delivery check:** `node scripts/delivery/post-delivery-check.mjs --mode app --host facemorph.me --expect-digest aaeb99a92a082b5399aa809a5aadd802c3c61ccc167f306aa86fc091b527bf50`
-- **Cutover annotation:** `node scripts/delivery/annotate-cutover.mjs --action early-promotion --host facemorph.me --digest aaeb99a92a082b5399aa809a5aadd802c3c61ccc167f306aa86fc091b527bf50`
+- **Post-delivery check:** `node scripts/delivery/post-delivery-check.mjs --mode app --host facemorph.me --expect-digest 228eb615fdbd6d46d34459a4574b660e540aeb0c3903cf20018e8107ebd14f6b --identity next-site-SHA256SUMS`
+- **Cutover annotation:** `node scripts/delivery/annotate-cutover.mjs --action early-promotion --host facemorph.me --digest 228eb615fdbd6d46d34459a4574b660e540aeb0c3903cf20018e8107ebd14f6b`
 
 ### Candidate-source handover: next.facemorph.me from classic candidate/next-delivery-20260916 to the monorepo
 
@@ -79,11 +81,11 @@ Remove items run at the action named in "When"; keep items stay, with the reason
   - models.facemorph.me holds every runtime path of the live and rollback artifacts (warm them, or re-point the mirror's origin, before the switch; verified by the dry-run HEAD list).
 - **Commands:**
   - Deploy the monorepo artifact to Worker facemorph-next through the monorepo's deploy workflow (fm-6fx6), then disable classic next-site.yml's deploy job: gh workflow disable next-site.yml -R check-face/facemorph.me-classic.
-- **Rollback target:** classic candidate build (the pinned control): what next.facemorph.me serves: next-dbc2925ff6e7dcb6, `check-face/facemorph.me-classic@551b60726290b2d67a32c62477b2fd964de51f96`, deploy-next digest `aaeb99a92a082b5399aa809a5aadd802c3c61ccc167f306aa86fc091b527bf50`
+- **Rollback target:** classic candidate build serving next.facemorph.me (observed 24 October, 15:40 UTC): next-site.yml run 40080943175, artifact next-site-45463b630e5ed3ce6bc00a7af5fecaa93b5a5b94, `check-face/facemorph.me-classic@45463b630e5ed3ce6bc00a7af5fecaa93b5a5b94`, deploy-next digest `228eb615fdbd6d46d34459a4574b660e540aeb0c3903cf20018e8107ebd14f6b`
 - **Rollback steps:**
-  - Redeploy the classic candidate artifact next-site-551b60726290b2d67a32c62477b2fd964de51f96 (deploy-next aaeb99a9…) to facemorph-next and re-enable classic next-site.yml.
+  - Redeploy the classic candidate artifact next-site-551b60726290b2d67a32c62477b2fd964de51f96 (deploy-next 228eb615…) to facemorph-next and re-enable classic next-site.yml.
 - **One publisher:** After the switch only the monorepo deploy workflow publishes facemorph-next; classic next-site.yml is disabled.
-- **Post-delivery check:** `node scripts/delivery/post-delivery-check.mjs --mode app --host next.facemorph.me --expect-digest <the monorepo artifact's deploy-next digest>`
+- **Post-delivery check:** `node scripts/delivery/post-delivery-check.mjs --mode app --host next.facemorph.me --expect-digest <the monorepo artifact's deploy-next digest> --identity next-site-SHA256SUMS`
 - **Cutover annotation:** `node scripts/delivery/annotate-cutover.mjs --action candidate-source-handover --host next.facemorph.me --digest <the monorepo artifact's deploy-next digest>`
 
 ### Production promotion: facemorph.me from legacy Vercel (classic master) to the chosen on-device artifact
@@ -100,7 +102,7 @@ Remove items run at the action named in "When"; keep items stay, with the reason
 - **Rollback steps:**
   - cf dns records update ef8a8938cd3275bf1a4e83a7050e8eb6 --zone 893772fe7a5a4ee368f71706bc19e609 --body '{"type":"A","name":"facemorph.me","content":"76.76.21.21","proxied":false}' (Vercel production, deploy.yml run 36654890071).
 - **One publisher:** Classic deploy.yml (vercel --prod) is disabled: gh workflow disable deploy.yml -R check-face/facemorph.me-classic.
-- **Post-delivery check:** `node scripts/delivery/post-delivery-check.mjs --mode app --host facemorph.me --expect-digest <the promoted artifact's deploy-next digest>`
+- **Post-delivery check:** `node scripts/delivery/post-delivery-check.mjs --mode app --host facemorph.me --expect-digest <the promoted artifact's deploy-next digest> --identity next-site-SHA256SUMS`
 - **Cutover annotation:** `node scripts/delivery/annotate-cutover.mjs --action production-promotion --host facemorph.me --digest <the promoted artifact's deploy-next digest>`
 
 ### API retirement
@@ -112,14 +114,15 @@ Remove items run at the action named in "When"; keep items stay, with the reason
   - The names catalogue and previews read the snapshot, not the API (fm-old).
   - The multi-morph-test.vercel.app user (the Synthetic Data Ltd tester) has been told that it stops and that the on-device weighted blend replaces it; old GUIDs do not carry over, they re-add their photos.
   - A retained working on-device artifact and its immutable runtime, model and catalogue assets are held for rollback within the declared retention window.
+  - artifacts.candidate names the build serving next.facemorph.me now (re-pin it from classic's latest next-site.yml run if it moved, then re-render handover.md).
 - **Commands:**
   - Run every retirement item with when = api-retirement, in table order (DNS first, then routes and processes, then GitHub Pages).
-- **Rollback target:** classic candidate build (the pinned control): what next.facemorph.me serves: next-dbc2925ff6e7dcb6, `check-face/facemorph.me-classic@551b60726290b2d67a32c62477b2fd964de51f96`, deploy-next digest `aaeb99a92a082b5399aa809a5aadd802c3c61ccc167f306aa86fc091b527bf50`
+- **Rollback target:** classic candidate build serving next.facemorph.me (observed 24 October, 15:40 UTC): next-site.yml run 40080943175, artifact next-site-45463b630e5ed3ce6bc00a7af5fecaa93b5a5b94, `check-face/facemorph.me-classic@45463b630e5ed3ce6bc00a7af5fecaa93b5a5b94`, deploy-next digest `228eb615fdbd6d46d34459a4574b660e540aeb0c3903cf20018e8107ebd14f6b`
 - **Rollback steps:**
-  - Rollback serves the retained on-device artifact (deploy-next aaeb99a9…) with its immutable assets; Triton and the API are never restarted and historic production data is never restored.
+  - Rollback serves the retained on-device artifact (deploy-next 228eb615…) with its immutable assets; Triton and the API are never restarted and historic production data is never restored.
 - **One publisher:** No publisher remains for api.facemorph.me, e4e.facemorph.me or checkface.facemorph.me.
 - **Post-delivery check:** `node scripts/delivery/post-delivery-check.mjs --mode retired --host api.facemorph.me --retired api.facemorph.me,e4e.facemorph.me,checkface.facemorph.me`
-- **Cutover annotation:** `node scripts/delivery/annotate-cutover.mjs --action api-retirement --host api.facemorph.me --digest aaeb99a92a082b5399aa809a5aadd802c3c61ccc167f306aa86fc091b527bf50`
+- **Cutover annotation:** `node scripts/delivery/annotate-cutover.mjs --action api-retirement --host api.facemorph.me --digest 228eb615fdbd6d46d34459a4574b660e540aeb0c3903cf20018e8107ebd14f6b`
 
 ### Names-host redirect: names.facemorph.me to the main app's names modal
 
@@ -147,7 +150,7 @@ Remove items run at the action named in "When"; keep items stay, with the reason
 - **Rollback steps:**
   - Vercel keeps deleted projects' builds only until deletion; rollback after this point is the on-device artifact (artifacts.candidate).
 - **One publisher:** No Vercel publisher remains for any facemorph.me host.
-- **Post-delivery check:** `node scripts/delivery/post-delivery-check.mjs --mode unchanged --host facemorph.me --before <the production-promotion run's identity file>`
+- **Post-delivery check:** `node scripts/delivery/post-delivery-check.mjs --mode unchanged --host facemorph.me --before <the production-promotion run's identity file> --identity next-site-SHA256SUMS`
 
 ### Classic publication's default-branch switch (pre-checks only)
 
@@ -157,11 +160,11 @@ Remove items run at the action named in "When"; keep items stay, with the reason
   - See the classic publication bead's pre-checks; this runbook only records that the switch follows the candidate-source handover.
 - **Commands:**
   - None here.
-- **Rollback target:** classic candidate build (the pinned control): what next.facemorph.me serves: next-dbc2925ff6e7dcb6, `check-face/facemorph.me-classic@551b60726290b2d67a32c62477b2fd964de51f96`, deploy-next digest `aaeb99a92a082b5399aa809a5aadd802c3c61ccc167f306aa86fc091b527bf50`
+- **Rollback target:** classic candidate build serving next.facemorph.me (observed 24 October, 15:40 UTC): next-site.yml run 40080943175, artifact next-site-45463b630e5ed3ce6bc00a7af5fecaa93b5a5b94, `check-face/facemorph.me-classic@45463b630e5ed3ce6bc00a7af5fecaa93b5a5b94`, deploy-next digest `228eb615fdbd6d46d34459a4574b660e540aeb0c3903cf20018e8107ebd14f6b`
 - **Rollback steps:**
   - None here.
 - **One publisher:** Unchanged by this action.
-- **Post-delivery check:** `node scripts/delivery/post-delivery-check.mjs --mode unchanged --host next.facemorph.me --before <identity before the switch>`
+- **Post-delivery check:** `node scripts/delivery/post-delivery-check.mjs --mode unchanged --host next.facemorph.me --before <identity before the switch> --identity next-site-SHA256SUMS`
 
 ## Names host
 

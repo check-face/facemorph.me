@@ -1,7 +1,7 @@
 {
   "schema": "facemorph.delivery-runbook/1",
   "bead": "fm-5u9",
-  "note": "The operator-controlled delivery actions, prepared so nothing is improvised at cutover (domain.actions). One source: scripts/delivery/render-handover.mjs writes handover.md from it and scripts/delivery/dry-run.mjs runs every command's dry-run or read-only form. Nothing here executes an action. Values observed read-only on 24 October 2026 (Cloudflare API through the cf CLI, ssh to triton, gh api, HTTPS); credentials are named, never valued. Cloudflare commands use the cf CLI, never Wrangler (operator, 24 October 2026).",
+  "note": "The operator-controlled delivery actions, prepared so nothing is improvised at cutover (domain.actions). One source: scripts/delivery/render-handover.mjs writes handover.md from it and scripts/delivery/dry-run.mjs runs every command's dry-run or read-only form. Nothing here executes an action. Values observed read-only on 24 October 2026 (Cloudflare API through the cf CLI, ssh to triton, gh api, HTTPS); credentials are named, never valued. Cloudflare commands use the cf CLI, never Wrangler (operator, 24 October 2026). Checks name the action's artifact by its digest and its file list (--identity, the next-site-SHA256SUMS every classic artifact carries); the candidate moves as classic keeps deploying, so its entry is re-pinned at action time (artifacts.candidate, then re-run render-handover).",
   "observed_at": "2026-10-24",
   "zone": {
     "name": "facemorph.me",
@@ -10,7 +10,14 @@
   "account": "8f550a622a484c03d9267efd45573583",
   "artifacts": {
     "candidate": {
-      "label": "classic candidate build (the pinned control): what next.facemorph.me serves",
+      "label": "classic candidate build serving next.facemorph.me (observed 24 October, 15:40 UTC)",
+      "source": "check-face/facemorph.me-classic@45463b630e5ed3ce6bc00a7af5fecaa93b5a5b94",
+      "run": "https://github.com/check-face/facemorph.me-classic/actions/runs/40080943175",
+      "buildId": "next-site.yml run 40080943175, artifact next-site-45463b630e5ed3ce6bc00a7af5fecaa93b5a5b94",
+      "deployNextSha256": "228eb615fdbd6d46d34459a4574b660e540aeb0c3903cf20018e8107ebd14f6b"
+    },
+    "control": {
+      "label": "the pinned control (import/control-artifact.json): an earlier candidate build, no longer what next.facemorph.me serves",
       "source": "check-face/facemorph.me-classic@551b60726290b2d67a32c62477b2fd964de51f96",
       "run": "https://github.com/check-face/facemorph.me-classic/actions/runs/40056009101",
       "buildId": "next-dbc2925ff6e7dcb6",
@@ -525,9 +532,10 @@
       "owner": "operator",
       "changesVisitors": true,
       "preconditions": [
-        "The retained candidate artifact (deploy-next aaeb99a9…) passes post-delivery-check --mode app on next.facemorph.me.",
+        "The retained candidate artifact (deploy-next 228eb615…) passes post-delivery-check --mode app on next.facemorph.me.",
         "Every mirrored runtime file of the candidate is held by models.facemorph.me (the dry run's R2 listing).",
-        "The operator's explicit decision to promote early is recorded in PLAN.md's decisions table."
+        "The operator's explicit decision to promote early is recorded in PLAN.md's decisions table.",
+        "artifacts.candidate names the build serving next.facemorph.me now (re-pin it from classic's latest next-site.yml run if it moved, then re-render handover.md)."
       ],
       "commands": [
         "Route facemorph.me to Worker facemorph-next, which serves the retained candidate: replace A record ef8a8938cd3275bf1a4e83a7050e8eb6 (76.76.21.21, Vercel) with a proxied AAAA 100:: and add the facemorph.me/* Worker route (cf dns records update ef8a8938cd3275bf1a4e83a7050e8eb6 --zone 893772fe7a5a4ee368f71706bc19e609 --body '{\"type\":\"AAAA\",\"name\":\"facemorph.me\",\"content\":\"100::\",\"proxied\":true}')."
@@ -539,8 +547,8 @@
         ]
       },
       "onePublisher": "Classic deploy.yml (vercel --prod) is disabled (gh workflow disable deploy.yml -R check-face/facemorph.me-classic); classic next-site.yml remains the only publisher of facemorph-next until the candidate-source handover.",
-      "check": "node scripts/delivery/post-delivery-check.mjs --mode app --host facemorph.me --expect-digest aaeb99a92a082b5399aa809a5aadd802c3c61ccc167f306aa86fc091b527bf50",
-      "annotate": "node scripts/delivery/annotate-cutover.mjs --action early-promotion --host facemorph.me --digest aaeb99a92a082b5399aa809a5aadd802c3c61ccc167f306aa86fc091b527bf50",
+      "check": "node scripts/delivery/post-delivery-check.mjs --mode app --host facemorph.me --expect-digest 228eb615fdbd6d46d34459a4574b660e540aeb0c3903cf20018e8107ebd14f6b --identity next-site-SHA256SUMS",
+      "annotate": "node scripts/delivery/annotate-cutover.mjs --action early-promotion --host facemorph.me --digest 228eb615fdbd6d46d34459a4574b660e540aeb0c3903cf20018e8107ebd14f6b",
       "dryRun": {
         "type": "cf",
         "argv": [
@@ -586,11 +594,11 @@
       "rollback": {
         "target": "artifacts.candidate",
         "steps": [
-          "Redeploy the classic candidate artifact next-site-551b60726290b2d67a32c62477b2fd964de51f96 (deploy-next aaeb99a9…) to facemorph-next and re-enable classic next-site.yml."
+          "Redeploy the classic candidate artifact next-site-551b60726290b2d67a32c62477b2fd964de51f96 (deploy-next 228eb615…) to facemorph-next and re-enable classic next-site.yml."
         ]
       },
       "onePublisher": "After the switch only the monorepo deploy workflow publishes facemorph-next; classic next-site.yml is disabled.",
-      "check": "node scripts/delivery/post-delivery-check.mjs --mode app --host next.facemorph.me --expect-digest <the monorepo artifact's deploy-next digest>",
+      "check": "node scripts/delivery/post-delivery-check.mjs --mode app --host next.facemorph.me --expect-digest <the monorepo artifact's deploy-next digest> --identity next-site-SHA256SUMS",
       "annotate": "node scripts/delivery/annotate-cutover.mjs --action candidate-source-handover --host next.facemorph.me --digest <the monorepo artifact's deploy-next digest>",
       "probe": {
         "type": "gh",
@@ -619,7 +627,7 @@
         ]
       },
       "onePublisher": "Classic deploy.yml (vercel --prod) is disabled: gh workflow disable deploy.yml -R check-face/facemorph.me-classic.",
-      "check": "node scripts/delivery/post-delivery-check.mjs --mode app --host facemorph.me --expect-digest <the promoted artifact's deploy-next digest>",
+      "check": "node scripts/delivery/post-delivery-check.mjs --mode app --host facemorph.me --expect-digest <the promoted artifact's deploy-next digest> --identity next-site-SHA256SUMS",
       "annotate": "node scripts/delivery/annotate-cutover.mjs --action production-promotion --host facemorph.me --digest <the promoted artifact's deploy-next digest>",
       "dryRun": {
         "type": "cf",
@@ -660,7 +668,8 @@
         "facemorph.me serves an on-device artifact (production-promotion done) and nothing in it calls api.facemorph.me or e4e.facemorph.me.",
         "The names catalogue and previews read the snapshot, not the API (fm-old).",
         "The multi-morph-test.vercel.app user (the Synthetic Data Ltd tester) has been told that it stops and that the on-device weighted blend replaces it; old GUIDs do not carry over, they re-add their photos.",
-        "A retained working on-device artifact and its immutable runtime, model and catalogue assets are held for rollback within the declared retention window."
+        "A retained working on-device artifact and its immutable runtime, model and catalogue assets are held for rollback within the declared retention window.",
+        "artifacts.candidate names the build serving next.facemorph.me now (re-pin it from classic's latest next-site.yml run if it moved, then re-render handover.md)."
       ],
       "commands": [
         "Run every retirement item with when = api-retirement, in table order (DNS first, then routes and processes, then GitHub Pages)."
@@ -668,12 +677,12 @@
       "rollback": {
         "target": "artifacts.candidate",
         "steps": [
-          "Rollback serves the retained on-device artifact (deploy-next aaeb99a9…) with its immutable assets; Triton and the API are never restarted and historic production data is never restored."
+          "Rollback serves the retained on-device artifact (deploy-next 228eb615…) with its immutable assets; Triton and the API are never restarted and historic production data is never restored."
         ]
       },
       "onePublisher": "No publisher remains for api.facemorph.me, e4e.facemorph.me or checkface.facemorph.me.",
       "check": "node scripts/delivery/post-delivery-check.mjs --mode retired --host api.facemorph.me --retired api.facemorph.me,e4e.facemorph.me,checkface.facemorph.me",
-      "annotate": "node scripts/delivery/annotate-cutover.mjs --action api-retirement --host api.facemorph.me --digest aaeb99a92a082b5399aa809a5aadd802c3c61ccc167f306aa86fc091b527bf50",
+      "annotate": "node scripts/delivery/annotate-cutover.mjs --action api-retirement --host api.facemorph.me --digest 228eb615fdbd6d46d34459a4574b660e540aeb0c3903cf20018e8107ebd14f6b",
       "probe": {
         "type": "http",
         "url": "https://api.facemorph.me/",
@@ -727,7 +736,7 @@
         ]
       },
       "onePublisher": "No Vercel publisher remains for any facemorph.me host.",
-      "check": "node scripts/delivery/post-delivery-check.mjs --mode unchanged --host facemorph.me --before <the production-promotion run's identity file>",
+      "check": "node scripts/delivery/post-delivery-check.mjs --mode unchanged --host facemorph.me --before <the production-promotion run's identity file> --identity next-site-SHA256SUMS",
       "probe": {
         "type": "http",
         "url": "https://facemorph.me/",
@@ -749,7 +758,7 @@
         "steps": ["None here."]
       },
       "onePublisher": "Unchanged by this action.",
-      "check": "node scripts/delivery/post-delivery-check.mjs --mode unchanged --host next.facemorph.me --before <identity before the switch>",
+      "check": "node scripts/delivery/post-delivery-check.mjs --mode unchanged --host next.facemorph.me --before <identity before the switch> --identity next-site-SHA256SUMS",
       "probe": {
         "type": "gh",
         "path": "repos/check-face/facemorph.me-classic",
