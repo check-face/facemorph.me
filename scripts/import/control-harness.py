@@ -27,6 +27,9 @@ from urllib.parse import urlsplit
 REPO = Path(__file__).resolve().parents[2]
 ORIGIN_HOST = 'next.facemorph.me'
 MIRROR_HOST = 'models.facemorph.me'
+# The candidate's own public catalogue Workers (name latents, previews): project hosts the control reads, so the
+# harness lets them through; blocking them makes the control silently fall back to mapping.
+PROJECT_HOSTS = ('facemorph-name-catalogue.cdilga.workers.dev', 'facemorph-seed-gallery.cdilga.workers.dev')
 PORT = 8443  # fixed by classic's next-e2e-server.py
 
 
@@ -46,6 +49,8 @@ def host_class(url):
         return 'artifact-origin'
     if parts.hostname == MIRROR_HOST:
         return 'runtime-mirror (models.facemorph.me)'
+    if parts.hostname in PROJECT_HOSTS:
+        return 'project catalogue hosts'
     return 'other'
 
 
@@ -125,7 +130,8 @@ async def network_and_extra_checks(evidence: Path, harness_cmd, harness_env, wor
         classic_report = json.loads(classic.read_text()) if classic.exists() else {}
         report['functional'] = {'exit': code, 'seconds': round(time.monotonic() - started), 'passed': code == 0 and classic_report.get('passed') is True,
                                 'partial': classic_report.get('partial', False), 'skipped': classic_report.get('skipped', []),
-                                'checks': {k: v.get('passed') for k, v in classic_report.get('checks', {}).items()},
+                                # A check the product skips (project save/reopen while its controls are hidden) is not a pass.
+                                'checks': {k: (v.get('passed') if v.get('passed') is not None else 'skipped') for k, v in classic_report.get('checks', {}).items()},
                                 'stageError': classic_report.get('stageError'), 'engine': classic_report.get('engine'), 'runtimeSha256': classic_report.get('runtimeSha256')}
 
         # Cancellation and resource, on a fresh page in the same profile (its faces are cached by now).
@@ -235,7 +241,8 @@ def main():
         chrome = subprocess.Popen([a.chrome, '--headless=new', '--no-sandbox', '--ignore-certificate-errors', '--no-proxy-server',
                                    # The artifact origin maps to the local server; every other host fails to resolve, so a
                                    # test run attempts (and records) but never delivers third-party or analytics requests.
-                                   f'--host-resolver-rules=MAP {ORIGIN_HOST}:443 127.0.0.1:{PORT},MAP * ~NOTFOUND,EXCLUDE 127.0.0.1',
+                                   f'--host-resolver-rules=MAP {ORIGIN_HOST}:443 127.0.0.1:{PORT},MAP * ~NOTFOUND,EXCLUDE 127.0.0.1,'
+                                   + ','.join(f'EXCLUDE {h}' for h in PROJECT_HOSTS),
                                    f'--remote-debugging-port={cdp_port}',
                                    f'--user-data-dir={work / "chrome"}', 'about:blank'], stdout=open(evidence / 'chrome.log', 'wb'), stderr=subprocess.STDOUT)
         procs.append(chrome)
@@ -271,6 +278,14 @@ def main():
             except subprocess.TimeoutExpired:
                 p.kill()
         shutil.rmtree(work, ignore_errors=True)
+    # Known candidate defects (PLAN.md "Known candidate defects", 18 October) are reported against their numbers and
+    # are not import regressions.
+    known = []
+    if report.get('network', {}).get('other', {}).get('requests'):
+        known.append({'defect': 11, 'what': 'third-party requests (analytics) from the control', 'hosts': report['network']['other']['hosts']})
+    if 'silently fell back to mapping' in str(report.get('functional', {}).get('stageError')):
+        known.append({'defect': 'names: generateNameOrSeed silent fallback (PLAN.md names selection gap)', 'what': report['functional']['stageError']})
+    report['knownDefects'] = known
     report['passed'] = bool(report.get('functional', {}).get('passed') and report.get('cancellation', {}).get('passed') and report.get('network', {}).get('passed'))
     (evidence / 'report.json').write_text(json.dumps(report, indent=2) + '\n')
     print(json.dumps({k: report.get(k) for k in ['passed', 'artifact', 'runtime', 'functional', 'cancellation', 'resource', 'network']}, indent=1))

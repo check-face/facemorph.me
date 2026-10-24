@@ -69,6 +69,6 @@ The harness needs openssl, Chromium or Chrome, and Python with `browser-harness=
 `deploy-next/` and the acquired runtime under the production origin with classic's `next-e2e-server.py`, runs classic's
 `next-e2e-browser.py` in a headless Chrome it starts on a free debugging port (never 9222: on eris that is the device
 lab's adb forward to the phone), records every browser request by host class, then cancels a running morph and reads
-worker and heap figures. Hosts other than the artifact origin are made unresolvable, so the control's analytics calls
+worker and heap figures. Hosts other than the artifact origin and the two project catalogue Workers are made unresolvable, so the control's analytics calls
 are recorded as attempts and never delivered. `report.json`, logs and, on failure, a trace and screenshot land in
 `--out`.
