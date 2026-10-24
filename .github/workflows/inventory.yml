@@ -1,0 +1,40 @@
+name: inventory-checks
+# fm-p7v: the inventory's own gates - protected-paths schema, hosting-boundary completeness
+# against classic hosting/ at the frozen revision, and the native release scan whose JSON is
+# attached as a workflow artifact.
+on:
+  push:
+    branches: [main]
+    paths: ['inventory/**', 'scripts/inventory/**', 'packages/cloudflare-model-host/README.md', '.github/workflows/inventory.yml']
+  workflow_dispatch:
+concurrency:
+  group: inventory-checks
+  cancel-in-progress: false
+jobs:
+  checks:
+    runs-on: [self-hosted, triton]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Classic checkout at the frozen import revision (read-only)
+        uses: actions/checkout@v4
+        with:
+          repository: check-face/facemorph.me-classic
+          ref: 6107f80fbc5acc6019c1d22d90523cca3b02001b
+          path: classic
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --test scripts/inventory/protected-paths.test.mjs scripts/inventory/boundary-table.test.mjs
+      - run: node scripts/inventory/check-hosting-boundary.mjs --classic classic
+      - name: Native release scan (read-only; JSON attached)
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          node scripts/inventory/native-releases.mjs > "$RUNNER_TEMP/native-releases-scan.json"
+          cat "$RUNNER_TEMP/native-releases-scan.json"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: native-releases-scan
+          path: native-releases-scan.json
+          retention-days: 90
+          if-no-files-found: error
