@@ -40,7 +40,8 @@ jobs:
       - name: Converted manifests validate against the producer-facing model manifest schema
         run: |
           set -euo pipefail
-          for m in out/*/manifest.json; do
+          # Generator outputs; the e4e encoder output has its own manifest form.
+          for m in out/ffhq/manifest.json out/afhqcat/manifest.json; do
             npx --yes ajv-cli@5.0.0 validate --spec=draft2020 -s ../browser-model-manager/schema/model-manifest.v1.schema.json -d "$m" --errors=text
           done
       - name: Hand-off set (manifests, verify reports; no weights)

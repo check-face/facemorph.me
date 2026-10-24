@@ -46,6 +46,25 @@
       "source": "src/Next/browser/stage-assets.py",
       "blob": "6567c577c549fc93cb50edc1c7306fbfc1439981",
       "sha256": "a0394f9bfa1b5d0096772f782bc70081af6372e6ca9416ca3b39fc8f77916b9a"
+    },
+    {
+      "destination": "model_conv/e4e.py (load_encoder)",
+      "source": "self-host/encoder.py",
+      "blob": "b051e9a91c7191b0807bb40161f6e6bdb8a831ca",
+      "sha256": "7336f907dbcc6566c3b12ee9f7ae377aa9b531956645f5dc3cb1103263460701"
+    },
+    {
+      "destination": "model_conv/e4e.py (export_full)",
+      "source": "experiment/onnx/e4e_export.py",
+      "blob": "d9c956c213ad0be78a7eb203074f1edb863dba04",
+      "sha256": "0d08ad37bebd778ee7cd27103467f7ba8a3cc5a79b5ff4b65a09d7545d976969"
+    },
+    {
+      "destination": "model_conv/e4e.py (build_stream and its pure partition/liveness functions)",
+      "source": "photo-runtime/encoder-stream/export.py",
+      "blob": "f761cc740c2acce3414b2d173d468deb2b3995dc",
+      "sha256": "fcd7a79c073b83d9e9a2bdb57e79e4c7b67720f14329ca7eb72f5e021166ee24",
+      "note": "Same partitioning rule and manifest fields; source path and output directory are arguments and the hard-coded expectation of source SHA d525a985... is replaced by recording and comparing."
     }
   ],
   "notPorted": [
@@ -54,18 +73,6 @@
       "blob": "9c3fb21dabccb7889bd4533c15e355fc3a323666",
       "sha256": "e44750c15be70c5d512f80d974f0cf8aacfc47b7b331aa30d446bb1e123e4d32",
       "reason": "single-graph config-F export; superseded by the split mapping/synthesis path the product ships"
-    },
-    {
-      "source": "experiment/onnx/e4e_export.py",
-      "blob": "d9c956c213ad0be78a7eb203074f1edb863dba04",
-      "sha256": "0d08ad37bebd778ee7cd27103467f7ba8a3cc5a79b5ff4b65a09d7545d976969",
-      "reason": "e4e encoder; not yet ported (encoder rows of the compatibility table are untested)"
-    },
-    {
-      "source": "photo-runtime/encoder-stream/export.py",
-      "blob": "f761cc740c2acce3414b2d173d468deb2b3995dc",
-      "sha256": "fcd7a79c073b83d9e9a2bdb57e79e4c7b67720f14329ca7eb72f5e021166ee24",
-      "reason": "e4e-onnx-sequential-shards-v1; not yet ported"
     },
     {
       "source": "experiment/onnx/block_export.py",
@@ -87,6 +94,109 @@
       "archive": "https://github.com/NVlabs/stylegan2-ada-pytorch/archive/d72cc7d041b42ec8e806021a205ed9349f87c6a4.tar.gz",
       "archiveSha256": "e09a4f09499bad8019d87b18b6ce19c91c0ae6d82e8a7af1fc16b22b4f9ebbba",
       "licence": "NVIDIA Source Code License (LICENSE.txt in the archive)"
+    },
+    {
+      "name": "omertov/encoder4editing",
+      "licence": "MIT (code); the e4e_ffhq_encode.pt weights were trained on FFHQ (CC BY-NC-SA 4.0)",
+      "checkpoint": {
+        "sha256": "2ace1d9a8c05c10a399bcd500b8dda118f759ff1aac89dbdab7435f2136a0999",
+        "bytes": 1201649680,
+        "source": "Google Drive link in the upstream README; not bundled, not in the image, not in Git"
+      }
+    }
+  ],
+  "vendored": [
+    {
+      "destination": "model_conv/vendor/e4e/LICENSE",
+      "source": "self-host/e4e/LICENSE",
+      "blob": "88ba9d421ea8acea9b4e3937535e72c282b3d4e6",
+      "sha256": "898c5cade80d057efcc9c80614505eeae73251c9e217ffd3331bfc8f6e4a14b6",
+      "note": "byte-identical; MIT, omertov/encoder4editing. Added only empty __init__.py files so relative imports work."
+    },
+    {
+      "destination": "model_conv/vendor/e4e/PROVENANCE.md",
+      "source": "self-host/e4e/PROVENANCE.md",
+      "blob": "e8ab818827642a591ff9e4b4af8b6c6ff7dd8169",
+      "sha256": "24920210747779691b5a1204730420d50993a928d96c599fffd37a57c0826128",
+      "note": "byte-identical"
+    },
+    {
+      "destination": "model_conv/vendor/e4e/models/encoders/psp_encoders.py",
+      "source": "self-host/e4e/models/encoders/psp_encoders.py",
+      "blob": "6fca701430523d2e354ab3ac669a1ffd79a5be26",
+      "sha256": "9fa592ad7bb3d5e1c5212be206424edfaee28ccdcefc2f4d17b95b7481db0c1a",
+      "note": "byte-identical"
+    },
+    {
+      "destination": "model_conv/vendor/e4e/models/encoders/helpers.py",
+      "source": "self-host/e4e/models/encoders/helpers.py",
+      "blob": "c4a58b34ea5ca6912fe53c63dede0a8696f5c024",
+      "sha256": "12d80f36932949a55aa2e3628445d73a71269d0eac5940b133ee6b3226e95f23",
+      "note": "byte-identical"
+    },
+    {
+      "destination": "model_conv/vendor/e4e/models/encoders/equal_linear.py",
+      "source": "self-host/e4e/models/encoders/equal_linear.py",
+      "blob": "9626def8f7c9d45edde110976619514557170997",
+      "sha256": "2ab39699338e6c0ec7ec44ec0fb12b05f1b3c4e93a15fb3b2a2abd9c34d1ef1e",
+      "note": "byte-identical"
+    }
+  ],
+  "plantedInputs": [
+    {
+      "destination": "tests/e4e-qualification/report.json",
+      "source": "photo-runtime/encoder-stream/qualification/report.json",
+      "sha256": "e963d204be4bfdb55c3c7934309515a8cbf66874fdbc1ce37e7588ca1ba1d0e6"
+    },
+    {
+      "destination": "tests/e4e-qualification/seed-0-aligned.input.f32",
+      "source": "photo-runtime/encoder-stream/qualification/seed-0-aligned.input.f32",
+      "sha256": "06b9830ac039949d8a43c26b11a8e4b9d133a2d33e727c75451854d90092aaa8"
+    },
+    {
+      "destination": "tests/e4e-qualification/seed-0-aligned.w.f32",
+      "source": "photo-runtime/encoder-stream/qualification/seed-0-aligned.w.f32",
+      "sha256": "0756827f0e94d9de27bf276c34e27c650da15e923efbaebbaebee4c0dd951ee7"
+    },
+    {
+      "destination": "tests/e4e-qualification/seed-0-unaligned.input.f32",
+      "source": "photo-runtime/encoder-stream/qualification/seed-0-unaligned.input.f32",
+      "sha256": "51529b7a56d218a191b308a889db37fbff311a0bd4c2096e46b2334f7d835726"
+    },
+    {
+      "destination": "tests/e4e-qualification/seed-0-unaligned.w.f32",
+      "source": "photo-runtime/encoder-stream/qualification/seed-0-unaligned.w.f32",
+      "sha256": "ac37d0021725943919755d826b6c041b462add0496d5785d38d4610d079a5301"
+    },
+    {
+      "destination": "tests/e4e-qualification/seed-1-aligned.input.f32",
+      "source": "photo-runtime/encoder-stream/qualification/seed-1-aligned.input.f32",
+      "sha256": "8c9a28b5520a3d9a34d32367e87a278ec5dd3f140cfa84101e1ee9fa1e0b7cae"
+    },
+    {
+      "destination": "tests/e4e-qualification/seed-1-aligned.w.f32",
+      "source": "photo-runtime/encoder-stream/qualification/seed-1-aligned.w.f32",
+      "sha256": "bf4fd36a75235a1d5bc55e54dedb0862d1dd78883be4db95fb627a23ba3d336b"
+    },
+    {
+      "destination": "tests/e4e-qualification/seed-1-unaligned.input.f32",
+      "source": "photo-runtime/encoder-stream/qualification/seed-1-unaligned.input.f32",
+      "sha256": "db49d70e029fc0d80c3cd0004bac579c4dd208a200606cf116f464259d8c2ee9"
+    },
+    {
+      "destination": "tests/e4e-qualification/seed-1-unaligned.w.f32",
+      "source": "photo-runtime/encoder-stream/qualification/seed-1-unaligned.w.f32",
+      "sha256": "77fb5310b7a7ccc83414ca22372d0ed8ec7afd05f11edfda7c37877c0c404741"
+    },
+    {
+      "destination": "tests/e4e-qualification/no-face-aligned.input.f32",
+      "source": "photo-runtime/encoder-stream/qualification/no-face-aligned.input.f32",
+      "sha256": "2a0db9dafd24471a6b874e8810aae5e75508ad019ba3a24c2e957aa766d2f218"
+    },
+    {
+      "destination": "tests/e4e-qualification/no-face-aligned.w.f32",
+      "source": "photo-runtime/encoder-stream/qualification/no-face-aligned.w.f32",
+      "sha256": "5f59b2060c0075c8800dc96b0c75e5696fbb576d4dd36cdeb1e04a4d980bf910"
     }
   ]
 }

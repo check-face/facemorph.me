@@ -6,3 +6,4 @@
 !NOTICE.md
 !PROVENANCE.json
 model_conv/__pycache__/
+!tests/e4e-qualification/

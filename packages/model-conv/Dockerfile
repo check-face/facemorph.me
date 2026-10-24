@@ -22,6 +22,9 @@ RUN mkdir -p /opt/upstream && tar -xzf /tmp/upstream.tar.gz -C /opt/upstream && 
 
 COPY model_conv /opt/model-conv/model_conv
 COPY NOTICE.md PROVENANCE.json /opt/model-conv/
+# Tiny planted e4e qualification tensors (inputs and recorded references, not weights) for verify-encoder.
+COPY tests/e4e-qualification /opt/model-conv/e4e-qualification
+ENV MODEL_CONV_E4E_QUALIFICATION=/opt/model-conv/e4e-qualification
 WORKDIR /opt/model-conv
 ENV PYTHONPATH=/opt/model-conv
 ENTRYPOINT ["python", "-m", "model_conv"]

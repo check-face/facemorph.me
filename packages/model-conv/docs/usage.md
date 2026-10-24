@@ -34,7 +34,18 @@ docker run --rm --user "$(id -u):$(id -g)" -e MODEL_CONV_IMAGE="$IMAGE" \
 docker run --rm --user "$(id -u):$(id -g)" -e MODEL_CONV_IMAGE="$IMAGE" \
   -v ~/.cache/facemorph-model-conv/checkpoints:/checkpoints:ro -v "$PWD/out":/out \
   facemorph/model-conv verify --checkpoint /checkpoints/stylegan2-ffhq-config-f.pkl --out /out/ffhq
+
+# The candidate runtime's own product canaries (RGB <= 1, sampled raw float <= 0.002) on the converted synthesis:
+python3 tests/fetch_canary_runtime.py ~/.cache/facemorph-model-conv/runtime
+docker run --rm --user "$(id -u):$(id -g)" \
+  -v ~/.cache/facemorph-model-conv/runtime:/runtime:ro -v "$PWD/out":/out \
+  facemorph/model-conv canaries --out /out/ffhq --runtime /runtime
 ```
+
+`canaries` runs the candidate's canary comparison unchanged (`canary-qualification.mjs`: seven W+ canaries with
+original, zero and negated noise, every RGB channel within 1 of the reference PNG after the product's output
+pipeline, sampled raw floats within 0.002) and writes `out/ffhq/canaries.json`. `tests/fetch_canary_runtime.py`
+fetches only the pinned runtime manifest (SHA-256 `d9e37e50…0a5c`) and its canary assets, each checked by digest.
 
 ### A non-face model: AFHQ cat, 512 px
 
@@ -67,6 +78,50 @@ docker run --rm --user "$(id -u):$(id -g)" -e MODEL_CONV_IMAGE="$IMAGE" \
 Its output is a 512 px model: 16 W+ layers of 512, 15 constant noise planes (4 px to 512 px), synthesis
 output `[1, 3, 512, 512]`. Generation and morphs for it never load a face detector or the FFHQ e4e encoder:
 FFHQ e4e is not an encoder for this generator.
+
+### Photo encoder: e4e (FFHQ)
+
+`convert-encoder` turns the official e4e FFHQ checkpoint into `encoder.onnx` (full FP32, opset 17,
+`image [1,3,256,256]` to `w [1,18,512]`, latent average added once inside the graph) and the encoder stream: the
+same graph split into sequential sessions of at most 16 MiB of initializers each (108 sessions), with
+`stream/manifest.json` in the `e4e-onnx-sequential-shards-v1` form. `verify-encoder` builds the reference with
+PyTorch from the original checkpoint (never from converted files), runs `encoder.onnx` and the stream (one session
+at a time, released after use) under ONNX Runtime CPU on five planted qualification inputs
+(`tests/e4e-qualification/`, copied into the image; they are inputs and recorded references, not weights), and
+reports max absolute W+ error against the frozen 0.0001, and compares digests with the hosted encoder and stream.
+It passes on identical digests to the qualified hosted artifacts or on numerical parity, and says which. Measured on
+eris (x86-64, ONNX Runtime 1.24.3 CPU): `encoder.onnx` and all 108 sessions are byte-identical to the hosted ones;
+four cases are within 3.1e-6, and `no-face-aligned` reaches 1.07e-4 (2.6e-5 with graph optimisation off). Because
+the files are the hosted ones, that is how the hosted encoder behaves on this platform, recorded in `verify.json` as
+a finding; the tolerance is never widened.
+
+The checkpoint (`e4e_ffhq_encode.pt`, 1,201,649,680 bytes) has no stable public direct URL. Acquire it yourself from
+the Google Drive link in the README of [omertov/encoder4editing](https://github.com/omertov/encoder4editing) and
+place it at `~/.cache/facemorph-model-conv/checkpoints/e4e_ffhq_encode.pt`; the block below stops with a clear
+message if it is absent or its SHA-256 differs (the CI runner on eris keeps it cached). Terms: e4e code is MIT; the
+model was trained on FFHQ (CC BY-NC-SA 4.0). It is never bundled, in Git or in the image.
+
+<!-- ci: verbatim -->
+```sh
+cd packages/model-conv
+docker build -t facemorph/model-conv .
+IMAGE="facemorph/model-conv@$(docker image inspect --format '{{.Id}}' facemorph/model-conv)"
+
+E4E="$HOME/.cache/facemorph-model-conv/checkpoints/e4e_ffhq_encode.pt"
+[ -f "$E4E" ] || { echo "missing $E4E: download e4e_ffhq_encode.pt from the Google Drive link in https://github.com/omertov/encoder4editing and place it there" >&2; exit 1; }
+echo "2ace1d9a8c05c10a399bcd500b8dda118f759ff1aac89dbdab7435f2136a0999  $E4E" | sha256sum -c -
+
+mkdir -p out
+docker run --rm --user "$(id -u):$(id -g)" -e MODEL_CONV_IMAGE="$IMAGE" \
+  -v ~/.cache/facemorph-model-conv/checkpoints:/checkpoints:ro -v "$PWD/out":/out \
+  facemorph/model-conv convert-encoder --checkpoint /checkpoints/e4e_ffhq_encode.pt --out /out/e4e
+docker run --rm --user "$(id -u):$(id -g)" -e MODEL_CONV_IMAGE="$IMAGE" \
+  -v ~/.cache/facemorph-model-conv/checkpoints:/checkpoints:ro -v "$PWD/out":/out \
+  facemorph/model-conv verify-encoder --checkpoint /checkpoints/e4e_ffhq_encode.pt --out /out/e4e
+```
+
+Output: `out/e4e/encoder.onnx`, `out/e4e/stream/part-NNN.onnx` and `stream/manifest.json`, `manifest.json` (written
+last) and `verify.json`.
 
 Or through Compose (opt-in profile; same mounts and user):
 
