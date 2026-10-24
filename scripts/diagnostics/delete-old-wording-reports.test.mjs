@@ -71,8 +71,11 @@ function makeRepo({ pushed = true, noteText = 'Aggregates only: 12 runs, 3 devic
   const root = mkdtempSync(join(tmpdir(), 'fm-xgww-git-'));
   const remote = join(root, 'remote.git');
   const work = join(root, 'work');
-  execFileSync('git', ['init', '--bare', '-b', 'main', remote], { stdio: 'ignore' });
-  execFileSync('git', ['init', '-b', 'main', work], { stdio: 'ignore' });
+  // No `git init -b`: the triton runner's git (2.25) predates it.
+  execFileSync('git', ['init', '--bare', remote], { stdio: 'ignore' });
+  execFileSync('git', ['-C', remote, 'symbolic-ref', 'HEAD', 'refs/heads/main'], { stdio: 'ignore' });
+  execFileSync('git', ['init', work], { stdio: 'ignore' });
+  execFileSync('git', ['-C', work, 'symbolic-ref', 'HEAD', 'refs/heads/main'], { stdio: 'ignore' });
   sh(work, 'config', 'user.email', 'test@invalid');
   sh(work, 'config', 'user.name', 'test');
   writeFileSync(join(work, 'README'), 'base\n');

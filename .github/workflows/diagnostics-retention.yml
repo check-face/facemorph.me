@@ -5,7 +5,12 @@ name: diagnostics-retention
 on:
   push:
     branches: [main]
-    paths: ['scripts/diagnostics/**', 'docs/findings/diagnostics-learnings-*.md', '.github/workflows/diagnostics-retention.yml']
+    paths:
+      [
+        'scripts/diagnostics/**',
+        'docs/findings/diagnostics-learnings-*.md',
+        '.github/workflows/diagnostics-retention.yml',
+      ]
   workflow_dispatch:
 concurrency:
   group: diagnostics-retention
