@@ -21,7 +21,8 @@ export function gitRepo() {
     if (r.status !== 0) throw new Error(r.stderr);
     return r.stdout.trim();
   };
-  git('init', '-q', '-b', 'main');
+  git('init', '-q');
+  git('symbolic-ref', 'HEAD', 'refs/heads/main'); // `init -b` needs Git 2.28; the triton runner is older
   git('config', 'user.email', 'inventory@test.invalid');
   git('config', 'user.name', 'inventory test');
   git('config', 'commit.gpgsign', 'false');

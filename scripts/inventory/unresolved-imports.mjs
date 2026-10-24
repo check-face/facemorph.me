@@ -39,11 +39,11 @@ const SASS = /^\s*@(?:import|use|forward)\s+(['"])([^'"]+)\1/gm;
 // An html-webpack-plugin page is a lodash template: `<% code %>`, `<%= value %>`, `<%- escaped %>`.
 // Rendering it with the build's options yields the page the build emits.
 export function renderTemplate(source, templateOptions) {
-  let body = "let __p = '';\n";
+  let body = "let __p = '';\nconst __e = (v) => String(v ?? '').replace(/[&<>\"']/g, (c) => `&#${c.charCodeAt(0)};`);\n";
   let at = 0;
   for (const m of source.matchAll(/<%([=-]?)([\s\S]+?)%>/g)) {
     body += `__p += ${JSON.stringify(source.slice(at, m.index))};\n`;
-    body += m[1] ? `__p += String((${m[2]}) ?? '');\n` : `${m[2]}\n`;
+    body += m[1] === '=' ? `__p += String((${m[2]}) ?? '');\n` : m[1] === '-' ? `__p += __e(${m[2]});\n` : `${m[2]}\n`;
     at = m.index + m[0].length;
   }
   body += `__p += ${JSON.stringify(source.slice(at))};\n__p`;
