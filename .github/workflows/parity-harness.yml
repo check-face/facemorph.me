@@ -42,6 +42,8 @@ jobs:
         with:
           node-version: '24'
       - run: npm ci --no-audit --no-fund # one lock for the workspace, at the root
+      - run: npm run format:check # the workspace gates come before any build (fm-fy2.4)
+      - run: npm run lint
       - name: build:next (the control, digest re-verified)
         env:
           GITHUB_TOKEN: ${{ github.token }}
