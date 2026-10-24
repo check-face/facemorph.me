@@ -1,0 +1,48 @@
+{
+  "schema": "facemorph.known-failing/1",
+  "note": "Tests that must fail, for the documented reason, until the named bead fixes the behaviour. A listed case that starts behaving as intended fails CI: the fixing bead removes its entry. Unlisted cases must behave as intended.",
+  "entries": [
+    {
+      "case": "ui-no-face",
+      "suite": "tests/crop/crop_confirm_loop.py",
+      "bead": "fm-f2rs",
+      "fixedBy": "fm-6ib8 (crop.fix); built UI flips in crop.ported-app",
+      "reason": "confirmed crop is re-detected; the crop dialog reopens and no e4e attempt is made"
+    },
+    {
+      "case": "ui-redetection-fails",
+      "suite": "tests/crop/crop_confirm_loop.py",
+      "bead": "fm-f2rs",
+      "fixedBy": "fm-6ib8 (crop.fix); built UI flips in crop.ported-app",
+      "reason": "confirmed crop is re-detected; the crop dialog reopens and no e4e attempt is made"
+    },
+    {
+      "case": "bridge-no-face",
+      "suite": "tests/crop/crop_confirm_loop.py",
+      "bead": "fm-f2rs",
+      "fixedBy": "fm-6ib8 (crop.fix)",
+      "reason": "encodePhoto re-detects the confirmed crop and throws 'No face was found', which product-bridge.mjs:407 turns into a crop reopen; no e4e attempt"
+    },
+    {
+      "case": "bridge-multi-face",
+      "suite": "tests/crop/crop_confirm_loop.py",
+      "bead": "fm-f2rs",
+      "fixedBy": "fm-6ib8 (crop.fix)",
+      "reason": "encodePhoto re-detects the confirmed crop and throws 'More than one face was found'; no e4e attempt"
+    },
+    {
+      "case": "bridge-redetection-fails-on-confirmed-crop",
+      "suite": "tests/crop/crop_confirm_loop.py",
+      "bead": "fm-f2rs",
+      "fixedBy": "fm-6ib8 (crop.fix)",
+      "reason": "encodePhoto re-detects the confirmed crop and throws 'No face was found'; no e4e attempt"
+    },
+    {
+      "case": "bridge-oriented",
+      "suite": "tests/crop/crop_confirm_loop.py",
+      "bead": "fm-f2rs",
+      "fixedBy": "fm-6ib8 (crop.fix)",
+      "reason": "the confirmed crop of an EXIF-rotated photo is re-detected and finds no face (observed; the crop.mjs fast path decodes with imageOrientation 'none', crop.mjs:102, so the crop is likely sideways); no e4e attempt"
+    }
+  ]
+}

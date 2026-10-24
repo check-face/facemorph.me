@@ -1,0 +1,66 @@
+name: crop-repro
+# fm-f2rs: the crop-confirm loop reproduced as expected-to-fail tests on the control artifact (tests/crop/). Every
+# case must behave as tests/known-failing.json registers it: listed cases fail for the documented reason, the rest
+# behave as intended. Also: fixture digests, and the test-only detector hook absent from the built site.
+# The browser cases need the acquired runtime (model weights under import/licences.json). CI never accepts those
+# terms itself: it uses a runtime already acquired on the runner by someone who did (verified, nothing downloaded),
+# and records the browser cases as untested when there is none.
+on:
+  push:
+    branches: [main]
+    paths: ['tests/crop/**', 'tests/known-failing.json', 'scripts/import/control_site.py', 'apps/web/src/Next/photo/**',
+            'apps/web/src/Next/browser/runtime.mjs', '.github/workflows/crop-repro.yml']
+  workflow_dispatch:
+concurrency:
+  group: crop-repro
+  cancel-in-progress: false
+jobs:
+  crop:
+    runs-on: [self-hosted, eris]
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --test tests/crop/scan-test-hook.test.mjs
+      - name: Fixtures match their recorded digests
+        run: |
+          python3 - <<'PY'
+          import hashlib, json, pathlib
+          d = pathlib.Path('tests/crop/fixtures'); m = json.loads((d / 'fixtures.json').read_text())
+          for name, rec in m.items():
+              if name.startswith('_'): continue
+              data = (d / name).read_bytes()
+              assert len(data) == rec['bytes'] and hashlib.sha256(data).hexdigest() == rec['sha256'], name
+          print(len([k for k in m if not k.startswith('_')]), 'fixtures verified')
+          PY
+      - name: build:next (control)
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: npm run build:next
+      - name: Test-only detector hook absent from the built site
+        run: node tests/crop/scan-test-hook.mjs deploy-next
+      - name: Runtime already acquired on this runner (verified; nothing downloaded)
+        id: runtime
+        run: |
+          dir="$HOME/.cache/facemorph-runtime"
+          if [ -f "$dir/manifest.json" ] && node scripts/inventory/check-build-inputs.mjs --acquired "$dir" > /dev/null; then
+            echo "dir=$dir" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::No verified runtime in $dir: the browser crop cases are untested in this run"
+          fi
+      - name: Crop-confirm loop cases on the control
+        if: steps.runtime.outputs.dir != ''
+        run: |
+          python3 -m venv "$RUNNER_TEMP/venv"
+          "$RUNNER_TEMP/venv/bin/pip" install -q browser-harness==0.1.8 playwright==1.56.0
+          "$RUNNER_TEMP/venv/bin/python" tests/crop/crop_confirm_loop.py --runtime "${{ steps.runtime.outputs.dir }}" \
+            --out crop-evidence --chrome "$(command -v chromium || command -v google-chrome)"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: crop-evidence-${{ github.run_id }}
+          path: crop-evidence/
+          retention-days: 30
+          if-no-files-found: ignore

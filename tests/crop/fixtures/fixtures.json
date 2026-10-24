@@ -1,0 +1,31 @@
+{
+  "no-face.jpg": {
+    "bytes": 15653,
+    "sha256": "13a45e881d5215ee1059ea6e6bd93d6420f8ae57ddf497dacf29d7a716985d9c"
+  },
+  "multi-face.jpg": {
+    "bytes": 142265,
+    "sha256": "945bdeb3fb9c9718bbe122caf2ac71dc38163fb5c641a99c9be11bc6703c2a41"
+  },
+  "oriented.jpg": {
+    "bytes": 65207,
+    "sha256": "838d4bcfaa21a0243fe0573354dfd4a0bbf41612ebaf9601f9462427f7bc2452"
+  },
+  "non-square.jpg": {
+    "bytes": 68779,
+    "sha256": "83a1e13f610df5fa47442b1628e1ad8fd36de764e00d7e9f35fa5ab6b9298c44"
+  },
+  "malformed.jpg": {
+    "bytes": 2048,
+    "sha256": "51a1f42f1cee3cd53f5a4bf7ce1e5fd078232bef78a1b1ff2b77702472c0b2e9"
+  },
+  "redetection-fails-on-confirmed-crop.jpg": {
+    "bytes": 68673,
+    "sha256": "fbd6899dfbabc12a6577a36dfce88a91fe91571988353291e130bf96b84e765e"
+  },
+  "_source": {
+    "face": "apps/web/src/public/preview/hello-1024.webp",
+    "faceSha256": "0fd3aacaf63a9b574960f926e4fbd48fadf853ba16189519053438e55fb9d615",
+    "note": "synthetic only: one generated face (hello) and drawn shapes; no personal photos"
+  }
+}
