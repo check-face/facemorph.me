@@ -1,8 +1,7 @@
-"""The device-lease CI wrapper (fm-wzy), with real processes and real flocks on a temporary machine lease
-directory (autoresearch/test_lease.py's Machine fixture): busy without --wait exits 75; a bounded wait acquires
-or gives up non-zero; a timeout ends the whole owned process group and fails with the journal saying so; a nested
-lease and a device other than this host are refused; the command's output reaches the job log and the run's
-folder and id reach $GITHUB_OUTPUT; two concurrent wrapped jobs serialize.
+"""The CI wrapper around run.py (fm-wzy), with real processes on a temporary machine run directory
+(autoresearch/test_lease.py's Machine fixture): a timeout ends the whole owned process group and fails with the
+journal saying so; a device other than this host is refused; the command's output reaches the job log and the run's
+folder and id reach $GITHUB_OUTPUT; two concurrent wrapped jobs run at the same time (no device lock).
 
     python3 scripts/ci/lease/test_lease_run.py
 """
@@ -46,23 +45,6 @@ class Wrapper(Machine):
         self.assertEqual(r.returncode, 3)
         self.assertEqual(self.journal()[-1]['status'], 'failed')
 
-    def test_busy_without_wait_exits_75(self):
-        self.hold_with_run_py(30)
-        r, outputs = self.wrap('--', 'true')
-        self.assertEqual(r.returncode, lease.BUSY, r.stderr)
-        self.assertIn('Device busy', r.stderr)
-        self.assertEqual(outputs, {}, 'a busy run produced a run folder')
-
-    def test_bounded_wait_acquires_or_gives_up(self):
-        self.hold_with_run_py(1.5)
-        r, _ = self.wrap('--wait', '30', '--', 'true')
-        self.assertEqual(r.returncode, 0, r.stderr)
-        self.hold_with_run_py(30)
-        t0 = time.monotonic()
-        r, _ = self.wrap('--wait', '1', '--', 'true')
-        self.assertEqual(r.returncode, lease.BUSY)
-        self.assertLess(time.monotonic() - t0, 15)
-
     def test_timeout_ends_the_owned_process_group_and_fails(self):
         pid_file = self.tmp / 'worker.pid'
         r, outputs = self.wrap('--timeout', '1', '--', 'sh', '-c',
@@ -75,15 +57,12 @@ class Wrapper(Machine):
         self.assertEqual(self.journal()[-1]['status'], 'timeout')
         self.assertEqual(outputs['status'], 'timeout')
 
-    def test_nested_lease_and_other_device_refused(self):
-        r, _ = self.wrap('--', sys.executable, str(WRAP), '--device', HOST, '--lane', 'build', '--', 'true')
-        self.assertEqual(r.returncode, 2)
-        self.assertIn('already holds the', r.stdout)
+    def test_other_device_refused(self):
         r, _ = self.wrap('--', 'true', device='not-' + HOST)
         self.assertEqual(r.returncode, 2)
         self.assertIn('neither this machine', r.stderr)
 
-    def test_two_concurrent_wrapped_jobs_serialize(self):
+    def test_two_concurrent_wrapped_jobs_run_at_the_same_time(self):
         out = self.tmp / 'order'
         cmd = lambda tag: [sys.executable, str(WRAP), '--device', HOST, '--lane', 'build', '--wait', '30', '--',
                            'sh', '-c', f'echo start-{tag} >> {out}; sleep 1; echo end-{tag} >> {out}']
@@ -91,10 +70,9 @@ class Wrapper(Machine):
         b = self.start(cmd('b'))
         self.assertEqual((a.wait(60), b.wait(60)), (0, 0))
         lines = out.read_text().split()
-        # Never interleaved: each job's end comes right after its start.
+        # No device lock (operator, 25 October 2026): both start before either ends.
         self.assertEqual(len(lines), 4)
-        self.assertTrue(lines[0].replace('start', 'end') == lines[1] and lines[2].replace('start', 'end') == lines[3],
-                        lines)
+        self.assertEqual(sorted(lines[:2]), ['start-a', 'start-b'], lines)
 
 
 if __name__ == '__main__':

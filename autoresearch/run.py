@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
-"""Bounded command execution under the machine's device lease (lease.py, ops/lease/README.md).
+"""Bounded command execution, journalled in the machine's run directory (lease.py, ops/lease/README.md).
 
   python3 autoresearch/run.py --lane <lane> --device <machine> --state-dir <absolute lease dir> \\
       --timeout <seconds, at most 3600> [--wait <seconds>] -- <driver command>
 
 Seeded from facemorph.me-classic autoresearch/run.py at b2d945a8 and compatible with it: the same
 <device>.lock, run folders and runs.jsonl journal, and exit 75 when the device is busy. Added here:
-the machine's one absolute lease directory; refusal of a nested lease and of a device this host does
-not own; cleanup of the owned process group on SIGTERM/SIGHUP as well as on timeout. Exit zero means
-the command completed, not that its result qualifies.
+the machine's one absolute run directory; refusal of a device this host does not own; cleanup of the owned
+process group on SIGTERM/SIGHUP as well as on timeout. No device lock is taken (operator, 25 October 2026), so
+--wait is accepted and ignored. Exit zero means the command completed, not that its result qualifies.
 """
 import argparse
 import datetime as dt
@@ -85,14 +85,13 @@ def execute(command, args, state, run_id, host):
     except subprocess.TimeoutExpired:
         record['status'], code = 'timeout', 124
     except Stopped as exc:
-        # Preempted by CI (lease.PREEMPT): the device was needed; this run is untested, not failed.
-        record['status'], code = ('preempted', lease.BUSY) if exc.signum == lease.PREEMPT else ('interrupted', 128 + exc.signum)
+        record['status'], code = 'interrupted', 128 + exc.signum
     except KeyboardInterrupt:
         record['status'], code = 'interrupted', 130
     except OSError as exc:
         record['status'], record['error'], code = 'failed', str(exc), 127
     finally:
-        for sig in (signal.SIGTERM, signal.SIGHUP, signal.SIGINT, lease.PREEMPT):
+        for sig in (signal.SIGTERM, signal.SIGHUP, signal.SIGINT):
             signal.signal(sig, signal.SIG_IGN)  # a second signal must not cut the cleanup short
         if child is not None:
             stop_group(child)
@@ -110,8 +109,7 @@ def main():
     parser.add_argument('--lane', required=True, choices=LANES)
     parser.add_argument('--device', required=True, help='the machine doing the work, or a device attached to it')
     parser.add_argument('--timeout', type=float, default=600, help='budget in seconds, at most 3600 (default 600)')
-    parser.add_argument('--wait', type=float, default=0,
-                        help='wait up to this many seconds for the lease (default: exit 75 at once)')
+    parser.add_argument('--wait', type=float, default=0, help='ignored: no device lock is taken any more')
     parser.add_argument('--state-dir', help="the machine's absolute lease directory "
                                             '(default: FACEMORPH_LEASE_DIR, else the lease config)')
     parser.add_argument('command', nargs=argparse.REMAINDER)
@@ -124,27 +122,16 @@ def main():
         config = lease.machine_config(os.environ)
         state = lease.resolve_state_dir(args.state_dir, os.environ, config)
         lease.check_device(args.device, host, config)
-        outer = lease.enclosing_lease(os.environ, lease.ancestry(), lease.holders(state) if state.is_dir() else [])
-        if outer:
-            raise lease.Refused(f"this process tree already holds the {outer['device']} lease; a nested lease "
-                                'would wait on itself or book a second device from inside the first')
     except lease.Refused as exc:
         parser.error(str(exc))
-    for sig in (signal.SIGTERM, signal.SIGHUP, lease.PREEMPT):
+    for sig in (signal.SIGTERM, signal.SIGHUP):
         signal.signal(sig, _stop)
-    ci = os.environ.get('GITHUB_ACTIONS') == 'true'
     run_id = dt.datetime.now(dt.timezone.utc).strftime('%Y%m%dT%H%M%SZ') + '-' + uuid.uuid4().hex[:8]
     try:
-        with lease.hold(state, args.device, args.wait, holder='run.py', run=run_id, lane=args.lane,
-                        repo=str(ROOT.parent), ci=ci,
-                        on_preempt=lambda h: print(f'CI takes {args.device}: asked the local holder to stop, {lease.describe(h)}', file=sys.stderr),
-                        on_wait=lambda h: print(f'Waiting for {args.device}, {lease.describe(h)}', file=sys.stderr)):
+        with lease.hold(state, args.device, holder='run.py', run=run_id, lane=args.lane, repo=str(ROOT.parent)):
             return execute(command, args, state, run_id, host)
-    except lease.Busy as exc:
-        print(f'Device busy; no experiment started. {exc}', file=sys.stderr)
-        return lease.BUSY
-    except Stopped as exc:  # while waiting for the lease: nothing was started
-        return lease.BUSY if exc.signum == lease.PREEMPT else 128 + exc.signum
+    except Stopped as exc:
+        return 128 + exc.signum
     except KeyboardInterrupt:
         return 130
 

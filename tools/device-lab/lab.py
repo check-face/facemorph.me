@@ -24,7 +24,7 @@ statistics are kept clean: every page gets navigator.globalPrivacyControl = true
 Results: out/<timestamp>-<label>/report.json plus screenshots.
 """
 import argparse, json, os, re, subprocess, sys, threading, time
-from contextlib import ExitStack, contextmanager
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -33,7 +33,7 @@ SERIAL = os.environ.get('ANDROID_SERIAL', 'DUM0220115002146')
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parents[1]
 sys.path.insert(0, str(REPO / 'autoresearch'))
-import lease  # noqa: E402  (the machine's device lease, shared with research runs and heavy CI)
+import lease  # noqa: E402  (host name)
 CHROMIUM = os.environ.get('CHROMIUM', '/usr/bin/chromium')
 CLASSIC = Path(os.environ.get('CLASSIC_CHECKOUT', HERE.parents[2] / 'facemorph.me-classic'))
 ORIGIN_HOST = 'next.facemorph.me'
@@ -700,23 +700,17 @@ def _terminate(signum, frame):
 
 @contextmanager
 def lab_lock(cells):
-    """One lab session at a time (lab.lock), holding the device lease (autoresearch/lease.py) of each
-    device its cells use: this machine for desktop cells, the phone for phone cells, so a lab run and a
-    leased research run never overlap. A lease an ancestor holds (the lab started under
-    autoresearch/run.py) is honoured. A gate run waits its turn behind a local session or research run
-    instead of failing: LAB_LOCK_WAIT seconds in all, default one hour."""
+    """One lab session at a time (lab.lock): the phone is one physical device two sessions cannot drive at once.
+    The machine-wide device lease is gone (operator, 25 October 2026); research and CI no longer queue here. A
+    second session waits its turn instead of failing: LAB_LOCK_WAIT seconds in all, default one hour."""
     import fcntl
     end = time.time() + float(os.environ.get('LAB_LOCK_WAIT', '3600'))
     unknown = [c for c in cells if c not in CELLS]
     if unknown:
         raise SystemExit(f"unknown cell(s) {', '.join(unknown)}; cells are {', '.join(CELLS)}")
-    try:
-        state = lease.resolve_state_dir(None, os.environ, lease.machine_config(os.environ))
-    except lease.Refused as e:
-        raise SystemExit(f'device lease: {e}')
     devices = sorted({lease.host() if CELLS[c][0] == 'desktop' else PHONE_LEASE for c in cells})
     STATE.parent.mkdir(parents=True, exist_ok=True)
-    with open(STATE.parent / 'lab.lock', 'w') as lock, ExitStack() as held:
+    with open(STATE.parent / 'lab.lock', 'w') as lock:
         while True:
             try:
                 fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
@@ -726,19 +720,6 @@ def lab_lock(cells):
                     raise SystemExit('another device-lab session still holds the devices')
                 log('waiting_for_device_lock')
                 time.sleep(30)
-        chain = lease.ancestry()
-        for device in devices:
-            if lease.held_by_ancestor(device, chain, lease.holders(state)):
-                log('device_lease_honoured', device=device)
-                continue
-            try:
-                held.enter_context(lease.hold(
-                    state, device, max(0.0, end - time.time()), poll=5, holder='device-lab', lane='lab',
-                    cells=','.join(cells), repo=str(REPO), ci=os.environ.get('GITHUB_ACTIONS') == 'true',
-                    on_wait=lambda h, d=device: log('waiting_for_device_lease', device=d, holder=lease.describe(h))))
-            except lease.Busy as e:
-                raise SystemExit(f'device lease: {e}')
-            log('device_lease_held', device=device)
         yield devices
 
 
@@ -1006,8 +987,6 @@ def run_matrix(args):
     import signal
     signal.signal(signal.SIGTERM, _terminate)
     signal.signal(signal.SIGHUP, _terminate)
-    # CI preempts a local lab session (lease.PREEMPT): end it through the same cleanup (Wi-Fi back on, camera).
-    signal.signal(lease.PREEMPT, _terminate)
     cells = args.cells.split(',') if getattr(args, 'cells', None) else [args.cell]
     with lab_lock(cells):
         out = HERE / 'out' / (datetime.now().strftime('%Y%m%d-%H%M%S') + '-' + args.label)

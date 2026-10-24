@@ -1,10 +1,10 @@
 name: device-lease
 description: >-
-  Runs one heavy command under the machine's device lease (autoresearch/run.py through
-  scripts/ci/lease/lease_run.py, fm-wzy): the same per-machine lease local agents, research and the device lab
-  take, so a CI job never shares a GPU or the phone with them. The command's output streams into the job log;
-  the run's journal folder (run.json, output.log) is uploaded. Busy exits 75 unless a bounded wait is given;
-  a timeout ends the command's whole process group and fails. Exit zero is execution, not qualification.
+  Runs one heavy command through autoresearch/run.py (scripts/ci/lease/lease_run.py, fm-wzy): bounded by its timeout,
+  its whole process group ended on timeout or cancel, and journalled in the machine's run directory. No device lock
+  is taken (operator, 25 October 2026): CI, research and agents run side by side on the machine's full CPU and GPU,
+  so `wait` is ignored. The command's output streams into the job log; the run's journal folder (run.json,
+  output.log) is uploaded. Exit zero is execution, not qualification.
 inputs:
   device:
     description: The machine doing the work (or a device attached to it), e.g. eris
