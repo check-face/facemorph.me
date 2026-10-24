@@ -1,0 +1,25 @@
+{
+  // App contracts (fm-s9n): no DOM, WebWorker or Node globals. `tsc -p src/contracts` checks them;
+  // tsconfig.test.json adds Node for the tests under test/contracts.
+  "compilerOptions": {
+    "target": "ES2024",
+    "lib": ["ES2024"],
+    "types": [],
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "customConditions": ["source"],
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "isolatedModules": true,
+    "verbatimModuleSyntax": true,
+    "erasableSyntaxOnly": true,
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+    "noEmit": true,
+    // Package declarations (the manager's DOM-typed cache among them) are not this config's to check;
+    // the contracts' own sources stay free of DOM and Node globals.
+    "skipLibCheck": true
+  },
+  "include": ["."]
+}

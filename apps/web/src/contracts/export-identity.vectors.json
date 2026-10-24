@@ -1,0 +1,494 @@
+{
+  "note": "Placeholders {U+XXXX} stand for code points. Expected values were produced by the reference implementation and are also asserted independently in export-identity.test.ts.",
+  "suffixAlphabet": "bcdfghjkmnpqrstvwxz23456789",
+  "golden": {
+    "input": {
+      "kind": "mp4",
+      "crops": [
+        "1111111111111111111111111111111111111111111111111111111111111111",
+        "3333333333333333333333333333333333333333333333333333333333333333"
+      ],
+      "orderedInputs": [
+        "emma",
+        "noah"
+      ],
+      "modelIdentity": "ffhq-1024-v1",
+      "format": "h264",
+      "encodingOptions": {},
+      "morph": {
+        "mode": "linear",
+        "settings": {
+          "frames": 60,
+          "fps": 30
+        }
+      }
+    },
+    "digest": "015fc276a5e1963999ce7b18ab7dae2c1e3bd13af19b170b6714dc17751691cd"
+  },
+  "suffixVectors": [
+    {
+      "digest": "0060f25deacafb74a3973910edfdb6f7a444f447999178f68c21fb30b3bd33b7",
+      "suffix16": "bcdfghjkmnpqrstv"
+    },
+    {
+      "digest": "0000000000000000000000000000000000000000000000000000000000000000",
+      "suffix16": "bbbbbbbbbbbbbbbb"
+    },
+    {
+      "digest": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "suffix16": "9999999999999999"
+    },
+    {
+      "digest": "b13b13b13b13b13b13ae50f1bb7a9e80d3fccf8c819169141734ad8db65afd9c",
+      "suffix16": "zzzzzzzzzzzzzzzz"
+    },
+    {
+      "digest": "8000000000000000000000000000000000000000000000000000000000000000",
+      "suffix16": "ssssssssssssssss"
+    }
+  ],
+  "sanitize": [
+    {
+      "name": "plain",
+      "input": "Emma",
+      "expected": "emma"
+    },
+    {
+      "name": "spaces and underscores",
+      "input": "  Holiday_Face  2 ",
+      "expected": "holiday-face-2"
+    },
+    {
+      "name": "source extension",
+      "input": "holiday-face2.JPG",
+      "expected": "holiday-face2"
+    },
+    {
+      "name": "path components posix",
+      "input": "/home/x/photos/Emma K.png",
+      "expected": "emma-k"
+    },
+    {
+      "name": "path components windows",
+      "input": "C:\\Users\\x\\My Pic.webp",
+      "expected": "my-pic"
+    },
+    {
+      "name": "reserved characters",
+      "input": "a<b>c:d\"e|f?g*h",
+      "expected": "a-b-c-d-e-f-g-h"
+    },
+    {
+      "name": "bidi override",
+      "input": "abc{U+202E}fdp.exe{U+2069}{U+200F}{U+061C}",
+      "expected": "abcfdp-exe"
+    },
+    {
+      "name": "c0 and c1 controls",
+      "input": "x{U+0000}y{U+0007}z{U+0085}{U+009F}w{U+007F}",
+      "expected": "xyzw"
+    },
+    {
+      "name": "reserved name CON",
+      "input": "CON",
+      "expected": ""
+    },
+    {
+      "name": "reserved name com1 with extension",
+      "input": "com1.png",
+      "expected": ""
+    },
+    {
+      "name": "reserved name lpt9 inside is fine",
+      "input": "lpt9x",
+      "expected": "lpt9x"
+    },
+    {
+      "name": "collapse and trim hyphens",
+      "input": "--a___b---c--",
+      "expected": "a-b-c"
+    },
+    {
+      "name": "only punctuation",
+      "input": "???",
+      "expected": ""
+    },
+    {
+      "name": "empty",
+      "input": "",
+      "expected": ""
+    },
+    {
+      "name": "dots become hyphens",
+      "input": "v1.2.final",
+      "expected": "v1-2-final"
+    },
+    {
+      "name": "non-latin",
+      "input": "Zoë 山田",
+      "expected": "zoë-山田"
+    }
+  ],
+  "truncation": [
+    {
+      "name": "long ascii label",
+      "label": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "digest": "35a40ae591ec954a5d7681d9b2c3d10d85b2a19ce042e14b91957a367e33273a",
+      "expected": {
+        "filename": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx-hx3kf3.webp",
+        "stem": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx-hx3kf3",
+        "suffix": "hx3kf3"
+      }
+    },
+    {
+      "name": "family emoji ends exactly at the 57-code-point cut",
+      "label": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa{U+1F468}{U+200D}{U+1F469}{U+200D}{U+1F467}{U+200D}{U+1F466}tail",
+      "digest": "1c56959a88c8d04cbb828f9a254653551158fb0fba032aa6f029843ce5be8bc2",
+      "expected": {
+        "filename": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa👨‍👩‍👧‍👦-d9z5sd.webp",
+        "stem": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa👨‍👩‍👧‍👦-d9z5sd",
+        "suffix": "d9z5sd"
+      }
+    },
+    {
+      "name": "family emoji one code point past the cut is dropped whole",
+      "label": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa{U+1F468}{U+200D}{U+1F469}{U+200D}{U+1F467}{U+200D}{U+1F466}",
+      "digest": "5699354dd80353da9e805685ed61671a43bb60a66150bb323c268715490422f0",
+      "expected": {
+        "filename": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-nfwknq.webp",
+        "stem": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-nfwknq",
+        "suffix": "nfwknq"
+      }
+    },
+    {
+      "name": "flag straddling the cut is dropped whole",
+      "label": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb{U+1F1E6}{U+1F1FA}",
+      "digest": "d2cd262c4f5a4e1ca593265a4af2e9ee5c871c5f9f0cc53cedb696e1e9a01c9a",
+      "expected": {
+        "filename": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb-5jk5kt.webp",
+        "stem": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb-5jk5kt",
+        "suffix": "5jk5kt"
+      }
+    },
+    {
+      "name": "cut leaves a trailing hyphen which is trimmed",
+      "label": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccc-dddd",
+      "digest": "d9cc58239c3604d36d0b6ca276c67d8b466b2b4dfb15d31a0395b55631e643e8",
+      "expected": {
+        "filename": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccc-59h4nj.webp",
+        "stem": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccc-59h4nj",
+        "suffix": "59h4nj"
+      }
+    }
+  ],
+  "shapes": [
+    {
+      "name": "result name emma, webp",
+      "input": {
+        "kind": "webp",
+        "crops": [
+          "1111111111111111111111111111111111111111111111111111111111111111"
+        ],
+        "orderedInputs": [
+          "emma"
+        ],
+        "modelIdentity": "ffhq-1024-v1",
+        "format": "webp-lossless",
+        "encodingOptions": {}
+      },
+      "labelSource": {
+        "origin": "result-name",
+        "text": "Emma"
+      },
+      "digest": "4917e447c8c939b501a7596d5d7ea8610bfb9f1f036402771d832b3fced0ec41",
+      "expected": {
+        "filename": "emma-k2f7rt.webp",
+        "mime": "image/webp"
+      }
+    },
+    {
+      "name": "seed 42, png",
+      "input": {
+        "kind": "png",
+        "crops": [],
+        "orderedInputs": [
+          "seed:42"
+        ],
+        "modelIdentity": "ffhq-1024-v1",
+        "format": "png",
+        "encodingOptions": {}
+      },
+      "labelSource": {
+        "origin": "seed",
+        "text": "42"
+      },
+      "digest": "7a7170b6904e0651636a1dfe4037b022b1d7b273cdb145414744005672133595",
+      "expected": {
+        "filename": "seed-42-r7zj3p.png",
+        "mime": "image/png"
+      }
+    },
+    {
+      "name": "source basename holiday-face2.jpg, webp",
+      "input": {
+        "kind": "webp",
+        "crops": [
+          "2222222222222222222222222222222222222222222222222222222222222222"
+        ],
+        "orderedInputs": [
+          "holiday"
+        ],
+        "modelIdentity": "ffhq-1024-v1",
+        "format": "webp-lossless",
+        "encodingOptions": {}
+      },
+      "labelSource": {
+        "origin": "source-basename",
+        "text": "holiday-face2.jpg"
+      },
+      "digest": "2053fafc387db49cab300ed1a3e4a2bbc209e53e7e0259373f6dede511cd6c86",
+      "expected": {
+        "filename": "holiday-face2-fqcwfw.webp",
+        "mime": "image/webp"
+      }
+    },
+    {
+      "name": "emma-noah linear, mp4",
+      "input": {
+        "kind": "mp4",
+        "crops": [
+          "1111111111111111111111111111111111111111111111111111111111111111",
+          "3333333333333333333333333333333333333333333333333333333333333333"
+        ],
+        "orderedInputs": [
+          "emma",
+          "noah"
+        ],
+        "modelIdentity": "ffhq-1024-v1",
+        "format": "h264",
+        "encodingOptions": {},
+        "morph": {
+          "mode": "linear",
+          "settings": {
+            "frames": 60,
+            "fps": 30
+          }
+        }
+      },
+      "labelSource": {
+        "origin": "entered-text",
+        "text": "Emma Noah linear"
+      },
+      "digest": "015fc276a5e1963999ce7b18ab7dae2c1e3bd13af19b170b6714dc17751691cd",
+      "expected": {
+        "filename": "emma-noah-linear-bf7xrz.mp4",
+        "mime": "video/mp4"
+      }
+    },
+    {
+      "name": "emma-noah figure8, mp4",
+      "input": {
+        "kind": "mp4",
+        "crops": [
+          "1111111111111111111111111111111111111111111111111111111111111111",
+          "3333333333333333333333333333333333333333333333333333333333333333"
+        ],
+        "orderedInputs": [
+          "emma",
+          "noah"
+        ],
+        "modelIdentity": "ffhq-1024-v1",
+        "format": "h264",
+        "encodingOptions": {},
+        "morph": {
+          "mode": "figure8",
+          "settings": {
+            "frames": 60,
+            "fps": 30
+          }
+        }
+      },
+      "labelSource": {
+        "origin": "entered-text",
+        "text": "emma_noah_figure8"
+      },
+      "digest": "8ec854509aac09da9b052611e68b559998faa6d979ada1bc37c1a27ac18e288c",
+      "expected": {
+        "filename": "emma-noah-figure8-vcwdg6.mp4",
+        "mime": "video/mp4"
+      }
+    },
+    {
+      "name": "no label, still falls back to face",
+      "input": {
+        "kind": "webp",
+        "crops": [],
+        "orderedInputs": [
+          "nolabel"
+        ],
+        "modelIdentity": "ffhq-1024-v1",
+        "format": "webp-lossless",
+        "encodingOptions": {}
+      },
+      "labelSource": null,
+      "digest": "05e7fd6594247c5c709b2b6619892060e4239b8e7f02f8fffa99ff66c8d64ada",
+      "expected": {
+        "filename": "face-bw5d8t.webp",
+        "mime": "image/webp"
+      }
+    },
+    {
+      "name": "no label, morph falls back to morph",
+      "input": {
+        "kind": "mp4",
+        "crops": [],
+        "orderedInputs": [
+          "a",
+          "b"
+        ],
+        "modelIdentity": "ffhq-1024-v1",
+        "format": "h264",
+        "encodingOptions": {},
+        "morph": {
+          "mode": "linear",
+          "settings": {}
+        }
+      },
+      "labelSource": null,
+      "digest": "cdbf9c260c9875f844a936ce7c490cfe7b4d09757755cb7787fb06c607c58781",
+      "expected": {
+        "filename": "morph-4z7m4d.mp4",
+        "mime": "video/mp4"
+      }
+    }
+  ],
+  "webpVsPng": {
+    "webp": {
+      "kind": "webp",
+      "crops": [
+        "4444444444444444444444444444444444444444444444444444444444444444"
+      ],
+      "orderedInputs": [
+        "one-result"
+      ],
+      "modelIdentity": "ffhq-1024-v1",
+      "format": "webp-lossless",
+      "encodingOptions": {}
+    },
+    "png": {
+      "kind": "png",
+      "crops": [
+        "4444444444444444444444444444444444444444444444444444444444444444"
+      ],
+      "orderedInputs": [
+        "one-result"
+      ],
+      "modelIdentity": "ffhq-1024-v1",
+      "format": "png",
+      "encodingOptions": {}
+    },
+    "labelSource": {
+      "origin": "result-name",
+      "text": "Emma"
+    },
+    "expected": {
+      "webp": "emma-qnkjz6.webp",
+      "png": "emma-x9m3tg.png"
+    }
+  },
+  "forcedCollision": {
+    "digests": [
+      "0060f25deacafb74a3973910edfdb6f7a444f447999178f68c21fb30b3bd33b7",
+      "0060f262d823ec068673f49c91ecc1ad852cd6e2cdcba24ab7698dbab3664b05"
+    ],
+    "label": "emma",
+    "kind": "webp",
+    "first": "emma-bcdfgh.webp",
+    "secondWithFirstKnown": "emma-bcdfghz.webp",
+    "secondAlone": "emma-bcdfgh.webp"
+  },
+  "realCollision": {
+    "inputA": {
+      "kind": "png",
+      "crops": [],
+      "orderedInputs": [
+        "seed:4592"
+      ],
+      "modelIdentity": "search-model",
+      "format": "png",
+      "encodingOptions": {}
+    },
+    "inputB": {
+      "kind": "png",
+      "crops": [],
+      "orderedInputs": [
+        "seed:11409"
+      ],
+      "modelIdentity": "search-model",
+      "format": "png",
+      "encodingOptions": {}
+    },
+    "tries": 11410,
+    "seedA": "4592",
+    "seedB": "11409",
+    "digestA": "5c789319fd10e33d68e497a21d586b1afea9f2bf97054364a95feb899d2cbff0",
+    "digestB": "5c78931fde75540c2544a6124ad731cd39579f3f922bf8ac0aa50103ab1de9d0",
+    "sharedPrefix6": "n3m4n7",
+    "nameA": "seed-4592-n3m4n7.png",
+    "nameBWithAKnown": "seed-11409-n3m4n7.png"
+  },
+  "exhaustion": {
+    "digest": "0060f25deacafb74a3973910edfdb6f7a444f447999178f68c21fb30b3bd33b7",
+    "label": "busy",
+    "kind": "png",
+    "known": [
+      {
+        "digest": "0060f262d823ec068673f49c91ecc1ad852cd6e2cdcba24ab7698dbab3664b05",
+        "filename": "busy-bcdfgh.png"
+      },
+      {
+        "digest": "0060f25e159dcde50c7a5f09d194d7b9ddaecd5b17640a2b2ec98c04664ba256",
+        "filename": "busy-bcdfghj.png"
+      },
+      {
+        "digest": "0060f25dec3c19d057d29692d858ff9cc7d1919185ab8678c0279f87212f773a",
+        "filename": "busy-bcdfghjk.png"
+      },
+      {
+        "digest": "0060f25dead749447eee88fba900c1ec14633dca105f24147cccd600620dcf91",
+        "filename": "busy-bcdfghjkm.png"
+      },
+      {
+        "digest": "0060f25deacb632733c43cc029e051238208d933aa1f175a8fd78a4b8e48cf7f",
+        "filename": "busy-bcdfghjkmn.png"
+      },
+      {
+        "digest": "0060f25deacafed0f1be9b8e4fee8a2f94f00b1b1a1acd80e653b788174418c4",
+        "filename": "busy-bcdfghjkmnp.png"
+      },
+      {
+        "digest": "0060f25deacafb8ff3473410d8b82752d07b25c427ceb8996a6cb3f686230219",
+        "filename": "busy-bcdfghjkmnpq.png"
+      },
+      {
+        "digest": "0060f25deacafb757b622f6e296248a848663b5681838f7869e83cf146dff2fa",
+        "filename": "busy-bcdfghjkmnpqr.png"
+      },
+      {
+        "digest": "0060f25deacafb74a9fc0d2a729865f364dda4d828f95b4a0a2ba5e8a8eda393",
+        "filename": "busy-bcdfghjkmnpqrs.png"
+      },
+      {
+        "digest": "0060f25deacafb74a3c4b0bc4e1e74b786104e84811b78238885ce2796fe8c28",
+        "filename": "busy-bcdfghjkmnpqrst.png"
+      },
+      {
+        "digest": "0060f25deacafb74a3973910edfdb6f7a444f447999178f68c21fb30b3bd33b0",
+        "filename": "busy-bcdfghjkmnpqrstv.png"
+      }
+    ],
+    "occupiedLengths": 11,
+    "expectedError": "ExportNameCollision",
+    "oneFewerKnown": "busy-bcdfghjkmnpqrstv.png"
+  }
+}

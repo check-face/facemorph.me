@@ -1,0 +1,223 @@
+{
+ "stills": "packages/stylegan-js/test/vectors/stills/ (candidate-written fixtures, fm-48bj)",
+ "cases": [
+  {
+   "name": "same identity (schema 2 PNG)",
+   "still": "recovery-v2.png",
+   "loaded": {
+    "modelSha256": "2222222222222222222222222222222222222222222222222222222222222222",
+    "noiseSha256": "3333333333333333333333333333333333333333333333333333333333333333"
+   },
+   "known": [
+    {
+     "modelSha256": "2222222222222222222222222222222222222222222222222222222222222222",
+     "noiseSha256": "3333333333333333333333333333333333333333333333333333333333333333"
+    },
+    {
+     "modelSha256": "9999999999999999999999999999999999999999999999999999999999999999",
+     "noiseSha256": "3333333333333333333333333333333333333333333333333333333333333333"
+    }
+   ],
+   "classification": "matching",
+   "actions": {
+    "view": true,
+    "saveOriginalBytes": true,
+    "installLatent": true,
+    "morph": "included",
+    "useAsPhoto": "never"
+   }
+  },
+  {
+   "name": "same identity (schema 2 WebP)",
+   "still": "recovery-v2.webp",
+   "loaded": {
+    "modelSha256": "2222222222222222222222222222222222222222222222222222222222222222",
+    "noiseSha256": "3333333333333333333333333333333333333333333333333333333333333333"
+   },
+   "known": [
+    {
+     "modelSha256": "2222222222222222222222222222222222222222222222222222222222222222",
+     "noiseSha256": "3333333333333333333333333333333333333333333333333333333333333333"
+    },
+    {
+     "modelSha256": "9999999999999999999999999999999999999999999999999999999999999999",
+     "noiseSha256": "3333333333333333333333333333333333333333333333333333333333333333"
+    }
+   ],
+   "classification": "matching",
+   "actions": {
+    "view": true,
+    "saveOriginalBytes": true,
+    "installLatent": true,
+    "morph": "included",
+    "useAsPhoto": "never"
+   }
+  },
+  {
+   "name": "same identity (schema 1 PNG)",
+   "still": "recovery-v1.png",
+   "loaded": {
+    "modelSha256": "2222222222222222222222222222222222222222222222222222222222222222",
+    "noiseSha256": "3333333333333333333333333333333333333333333333333333333333333333"
+   },
+   "known": [
+    {
+     "modelSha256": "2222222222222222222222222222222222222222222222222222222222222222",
+     "noiseSha256": "3333333333333333333333333333333333333333333333333333333333333333"
+    },
+    {
+     "modelSha256": "9999999999999999999999999999999999999999999999999999999999999999",
+     "noiseSha256": "3333333333333333333333333333333333333333333333333333333333333333"
+    }
+   ],
+   "classification": "matching",
+   "actions": {
+    "view": true,
+    "saveOriginalBytes": true,
+    "installLatent": true,
+    "morph": "included",
+    "useAsPhoto": "never"
+   }
+  },
+  {
+   "name": "different known identity",
+   "still": "model-mismatch-v2.png",
+   "loaded": {
+    "modelSha256": "2222222222222222222222222222222222222222222222222222222222222222",
+    "noiseSha256": "3333333333333333333333333333333333333333333333333333333333333333"
+   },
+   "known": [
+    {
+     "modelSha256": "2222222222222222222222222222222222222222222222222222222222222222",
+     "noiseSha256": "3333333333333333333333333333333333333333333333333333333333333333"
+    },
+    {
+     "modelSha256": "9999999999999999999999999999999999999999999999999999999999999999",
+     "noiseSha256": "3333333333333333333333333333333333333333333333333333333333333333"
+    }
+   ],
+   "classification": "incompatible-model",
+   "actions": {
+    "view": true,
+    "saveOriginalBytes": true,
+    "installLatent": false,
+    "morph": "excluded",
+    "useAsPhoto": "explicit-action"
+   }
+  },
+  {
+   "name": "unknown identity",
+   "still": "model-mismatch-v2.png",
+   "loaded": {
+    "modelSha256": "2222222222222222222222222222222222222222222222222222222222222222",
+    "noiseSha256": "3333333333333333333333333333333333333333333333333333333333333333"
+   },
+   "known": [
+    {
+     "modelSha256": "2222222222222222222222222222222222222222222222222222222222222222",
+     "noiseSha256": "3333333333333333333333333333333333333333333333333333333333333333"
+    }
+   ],
+   "classification": "unknown-model",
+   "actions": {
+    "view": true,
+    "saveOriginalBytes": true,
+    "installLatent": false,
+    "morph": "excluded",
+    "useAsPhoto": "explicit-action"
+   }
+  },
+  {
+   "name": "equal-shaped latent (18x512) from a different known checkpoint",
+   "still": "recovery-v2.png",
+   "loaded": {
+    "modelSha256": "9999999999999999999999999999999999999999999999999999999999999999",
+    "noiseSha256": "3333333333333333333333333333333333333333333333333333333333333333"
+   },
+   "known": [
+    {
+     "modelSha256": "2222222222222222222222222222222222222222222222222222222222222222",
+     "noiseSha256": "3333333333333333333333333333333333333333333333333333333333333333"
+    },
+    {
+     "modelSha256": "9999999999999999999999999999999999999999999999999999999999999999",
+     "noiseSha256": "3333333333333333333333333333333333333333333333333333333333333333"
+    }
+   ],
+   "classification": "incompatible-model",
+   "actions": {
+    "view": true,
+    "saveOriginalBytes": true,
+    "installLatent": false,
+    "morph": "excluded",
+    "useAsPhoto": "explicit-action"
+   }
+  },
+  {
+   "name": "missing",
+   "still": "../plain.png",
+   "loaded": {
+    "modelSha256": "2222222222222222222222222222222222222222222222222222222222222222",
+    "noiseSha256": "3333333333333333333333333333333333333333333333333333333333333333"
+   },
+   "known": [
+    {
+     "modelSha256": "2222222222222222222222222222222222222222222222222222222222222222",
+     "noiseSha256": "3333333333333333333333333333333333333333333333333333333333333333"
+    }
+   ],
+   "classification": "missing",
+   "actions": {
+    "view": true,
+    "saveOriginalBytes": true,
+    "installLatent": false,
+    "morph": "excluded",
+    "useAsPhoto": "explicit-action"
+   }
+  },
+  {
+   "name": "damaged (schema 1, CRC)",
+   "still": "damaged-v1.png",
+   "loaded": {
+    "modelSha256": "2222222222222222222222222222222222222222222222222222222222222222",
+    "noiseSha256": "3333333333333333333333333333333333333333333333333333333333333333"
+   },
+   "known": [
+    {
+     "modelSha256": "2222222222222222222222222222222222222222222222222222222222222222",
+     "noiseSha256": "3333333333333333333333333333333333333333333333333333333333333333"
+    }
+   ],
+   "classification": "damaged",
+   "actions": {
+    "view": true,
+    "saveOriginalBytes": true,
+    "installLatent": false,
+    "morph": "excluded",
+    "useAsPhoto": "explicit-action-if-pixels-decode"
+   }
+  },
+  {
+   "name": "incompatible schema (version 9)",
+   "synthetic": "schema-9",
+   "loaded": {
+    "modelSha256": "2222222222222222222222222222222222222222222222222222222222222222",
+    "noiseSha256": "3333333333333333333333333333333333333333333333333333333333333333"
+   },
+   "known": [
+    {
+     "modelSha256": "2222222222222222222222222222222222222222222222222222222222222222",
+     "noiseSha256": "3333333333333333333333333333333333333333333333333333333333333333"
+    }
+   ],
+   "classification": "incompatible-schema",
+   "actions": {
+    "view": true,
+    "saveOriginalBytes": true,
+    "installLatent": false,
+    "morph": "excluded",
+    "useAsPhoto": "explicit-action"
+   }
+  }
+ ]
+}

@@ -1,0 +1,37 @@
+name: app-contracts
+# App contracts (fm-s9n): apps/web/src/contracts type-checked without DOM or Node globals, the type-level
+# tests (tile action table, cache shape), batch/progress/scheduler walkthroughs, the recovery classification
+# vectors read through stylegan-js's real reader, export identity and name allocation vectors, and fixed-seed
+# fuzzing of the batch payload and words validators.
+on:
+  push:
+    branches: [main]
+    paths:
+      [
+        'apps/web/src/contracts/**',
+        'apps/web/test/contracts/**',
+        'packages/stylegan-js/**',
+        'packages/browser-model-manager/**',
+        'package-lock.json',
+        '.github/workflows/app-contracts.yml',
+      ]
+  workflow_dispatch:
+concurrency:
+  group: app-contracts
+  cancel-in-progress: false
+jobs:
+  check:
+    runs-on: [self-hosted, eris]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm ci --no-audit --no-fund
+      - run: npm run format:check # the workspace gates come before any build (fm-fy2.4)
+      - run: npm run lint
+      - name: Contracts without DOM or Node globals; then the tests' types
+        run: npx tsc -p apps/web/src/contracts && npx tsc -p apps/web/src/contracts/tsconfig.test.json
+      - name: Contract tests (workspace packages read from source)
+        working-directory: apps/web
+        run: node --conditions=source --test test/contracts/*.test.ts
