@@ -1,8 +1,9 @@
 name: cloudflare-model-host
 # cloudflare-model-host (fm-3osh): chunk -> reconstruct, staging against the manager's contract and JSON schema,
 # dry-run publication with paid-service and model-terms refusals, and the Cloudflare limits, on planted bundles
-# and on the qualified runtime the device lab keeps on eris. Then the shared package-tarball-content-scan:
-# its self-test, and the scan of the packed tarball (JSON report kept as an artifact).
+# and on the qualified runtime the device lab keeps on eris; the mirror Worker in workerd (fm-fy2.14). Then the
+# shared package-tarball-content-scan: its self-test, and the scan of the packed tarball (JSON report kept as an
+# artifact).
 on:
   push:
     branches: [main]
@@ -38,6 +39,9 @@ jobs:
         run: |
           export FACEMORPH_RUNTIME_DIR="$HOME/.cache/facemorph-device-lab/runtime-public"
           node --test test/*.test.ts
+      # workerd needs glibc 2.32+, which eris has and triton (npm test in scaffold) does not (fm-fy2.14).
+      - name: The mirror Worker in workerd, against a real local upstream
+        run: npm run test:workerd -w packages/cloudflare-model-host
       - name: package-tarball-content-scan self-test
         run: node --test scripts/packages/check-tarball-contents.test.mjs
       - name: Scan the packed cloudflare-model-host tarball

@@ -1,0 +1,33 @@
+{
+  "schema": "facemorph.import-provenance/1",
+  "bead": "fm-fy2.14",
+  "source": {
+    "repository": "check-face/facemorph.me-classic",
+    "branch": "candidate/next-delivery-20260916",
+    "commit": "a42829bb0582b5a7a55ba6b1045a05861612b8a5",
+    "read": "Git objects at the commit (git show <commit>:<path>), never a working tree"
+  },
+  "files": [
+    {
+      "source": "hosting/next-mirror/worker.mjs",
+      "sha256": "57af58dd0ae6f2730261f8e69584080e8e1baaa7ac79a7fb4151be3adde52568",
+      "bytes": 2578,
+      "destination": "packages/cloudflare-model-host/src/mirror/worker.ts",
+      "ported": "TypeScript; the upstream origin (UPSTREAM) and the mirrored prefixes (PREFIXES) are configuration instead of next.facemorph.me and the five runtime/ prefixes; the SITE service binding is optional (global fetch to UPSTREAM otherwise); a fetch that would leave the configured origin is refused; an unconfigured Worker answers 503 and fetches nothing. Status codes and headers are classic's."
+    },
+    {
+      "source": "hosting/next-mirror/worker.test.mjs",
+      "sha256": "0cf9ea568dc7041921f2f2770e0ffff0ee5aa8a77a39a969c79a3804523a2840",
+      "bytes": 2732,
+      "destination": "packages/cloudflare-model-host/test/mirror.workerd.ts",
+      "ported": "Every classic case, run in workerd through Miniflare against its local R2 bucket and a real local HTTP upstream with a fault switch instead of an in-memory bucket and a stub site; plus refused prefixes, upstream-only fetching and the unconfigured Worker."
+    },
+    {
+      "source": "hosting/next-mirror/wrangler.jsonc",
+      "sha256": "a46c993026b44783f9e18794b746389260a1f48e3678cc246d530493b8e754fa",
+      "bytes": 550,
+      "destination": null,
+      "ported": "Not imported here: FaceMorph's deploy values (Worker name, R2 bucket, service binding, custom domain) belong to the app's deploy configuration, which deploy.staging (fm-8tyu) imports; this package's deploy command takes them as arguments and uses the cf CLI, not Wrangler (operator, 24 October 2026)."
+    }
+  ]
+}
