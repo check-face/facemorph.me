@@ -21,7 +21,11 @@ Journeys: `cold-face` (site data and models cleared), `warm-face` (models kept, 
 ## How agents use it (on demand)
 
 The swarm is fungible: no tester or shipping agent. Any agent whose bead needs device evidence runs the lab itself.
-- **On eris:** run `lab.py` directly. The lab's lock is the device lease: a second session waits its turn.
+- **On eris:** run `lab.py` directly. A second lab session waits its turn, and a session holds the machine's
+  device lease ([ops/lease](../../ops/lease/README.md)) for every device its cells use: eris for the `eris-*`
+  cells, `p30pro` for the `phone-*` cells. A leased research or heavy CI run on the same device and a lab
+  session therefore never overlap: the lab waits for a run, and a run waits for the lab (`--wait`) or exits busy
+  (75). Started under `autoresearch/run.py`, the lab honours the lease that run already holds.
 - **From anywhere:** dispatch the workflow,
   `gh workflow run device-lab.yml -R check-face/facemorph.me -f artifact_run=<run id> -f artifact_name=next-site-<sha>`,
   or `-f url=...`.
@@ -62,8 +66,8 @@ job summary.
   post-deploy checks. It is not a hard gate on classic's candidate deploys. It has no `pull_request` trigger, so fork code never reaches eris.
 - The runners are systemd user services on eris: `gh-runner-facemorph` and `gh-runner-facemorph-classic` in
   `~/gh-runners/`. They have the desktop display in their environment, for headed Chromium.
-- Concurrency: one `device-lab` run at a time, newest waiting run next; the lab's own lock also waits up to
-  `LAB_LOCK_WAIT` seconds (default 3600) behind a local session.
+- Concurrency: one `device-lab` run at a time, newest waiting run next; the lab's own lock and the device
+  leases together wait up to `LAB_LOCK_WAIT` seconds (default 3600) behind a local session or a leased run.
 
 ## How it works
 

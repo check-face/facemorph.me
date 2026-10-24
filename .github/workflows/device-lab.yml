@@ -68,7 +68,11 @@ jobs:
           repository: check-face/facemorph.me
           ref: main
           path: lab
-          sparse-checkout: tools/device-lab
+          # lab.py takes the machine's device lease through autoresearch/lease.py.
+          sparse-checkout: |
+            /tools/device-lab/
+            /autoresearch/lease.py
+          sparse-checkout-cone-mode: false
       - name: Check out classic (qualification server) for an artifact run
         if: inputs.artifact_name != ''
         uses: actions/checkout@v4

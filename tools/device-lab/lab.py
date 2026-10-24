@@ -24,12 +24,16 @@ statistics are kept clean: every page gets navigator.globalPrivacyControl = true
 Results: out/<timestamp>-<label>/report.json plus screenshots.
 """
 import argparse, json, os, re, subprocess, sys, threading, time
+from contextlib import ExitStack, contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 
 ADB = os.environ.get('ADB', str(Path.home() / 'Android/Sdk/platform-tools/adb'))
 SERIAL = os.environ.get('ANDROID_SERIAL', 'DUM0220115002146')
 HERE = Path(__file__).resolve().parent
+REPO = HERE.parents[1]
+sys.path.insert(0, str(REPO / 'autoresearch'))
+import lease  # noqa: E402  (the machine's device lease, shared with research runs and heavy CI)
 CHROMIUM = os.environ.get('CHROMIUM', '/usr/bin/chromium')
 CLASSIC = Path(os.environ.get('CLASSIC_CHECKOUT', HERE.parents[2] / 'facemorph.me-classic'))
 ORIGIN_HOST = 'next.facemorph.me'
@@ -42,6 +46,7 @@ CHROME_FLAGS_FILE = '/data/local/tmp/chrome-command-line'
 PHONE_WEBGPU_FLAGS = ['--enable-unsafe-webgpu', '--ignore-gpu-blocklist']
 CELLS = {'eris-webgpu': ('desktop', True), 'eris-cpu': ('desktop', False),
          'phone-webgpu': ('phone', True), 'phone-cpu': ('phone', False)}
+PHONE_LEASE = 'p30pro'  # the phone's device lease; desktop cells take this machine's
 CHROME = 'com.android.chrome'
 WEBCAM, WATCHDOG = 'com.pas.webcam', 'dev.dilger.camera.watchdog'
 CDP_PORT = 9222
@@ -625,22 +630,48 @@ def _terminate(signum, frame):
     raise SystemExit(f'signal {signum}')
 
 
-def lab_lock():
+@contextmanager
+def lab_lock(cells):
+    """One lab session at a time (lab.lock), holding the device lease (autoresearch/lease.py) of each
+    device its cells use: this machine for desktop cells, the phone for phone cells, so a lab run and a
+    leased research run never overlap. A lease an ancestor holds (the lab started under
+    autoresearch/run.py) is honoured. A gate run waits its turn behind a local session or research run
+    instead of failing: LAB_LOCK_WAIT seconds in all, default one hour."""
     import fcntl
-    STATE.parent.mkdir(parents=True, exist_ok=True)
-    lock = open(STATE.parent / 'lab.lock', 'w')
-    # The device lease: one session at a time. A gate run waits its turn behind a local session
-    # instead of failing (LAB_LOCK_WAIT seconds, default one hour).
     end = time.time() + float(os.environ.get('LAB_LOCK_WAIT', '3600'))
-    while True:
-        try:
-            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
-            return lock
-        except BlockingIOError:
-            if time.time() > end:
-                raise SystemExit('another device-lab session still holds the devices')
-            log('waiting_for_device_lock')
-            time.sleep(30)
+    unknown = [c for c in cells if c not in CELLS]
+    if unknown:
+        raise SystemExit(f"unknown cell(s) {', '.join(unknown)}; cells are {', '.join(CELLS)}")
+    try:
+        state = lease.resolve_state_dir(None, os.environ, lease.machine_config(os.environ))
+    except lease.Refused as e:
+        raise SystemExit(f'device lease: {e}')
+    devices = sorted({lease.host() if CELLS[c][0] == 'desktop' else PHONE_LEASE for c in cells})
+    STATE.parent.mkdir(parents=True, exist_ok=True)
+    with open(STATE.parent / 'lab.lock', 'w') as lock, ExitStack() as held:
+        while True:
+            try:
+                fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                break
+            except BlockingIOError:
+                if time.time() > end:
+                    raise SystemExit('another device-lab session still holds the devices')
+                log('waiting_for_device_lock')
+                time.sleep(30)
+        chain = lease.ancestry()
+        for device in devices:
+            if lease.held_by_ancestor(device, chain, lease.holders(state)):
+                log('device_lease_honoured', device=device)
+                continue
+            try:
+                held.enter_context(lease.hold(
+                    state, device, max(0.0, end - time.time()), poll=5, holder='device-lab', lane='lab',
+                    cells=','.join(cells), repo=str(REPO),
+                    on_wait=lambda h, d=device: log('waiting_for_device_lease', device=d, holder=lease.describe(h))))
+            except lease.Busy as e:
+                raise SystemExit(f'device lease: {e}')
+            log('device_lease_held', device=device)
+        yield devices
 
 
 def run_journeys(dev, args, cell, gpu, out, report, memory=None):
@@ -892,20 +923,20 @@ def run_matrix(args):
     import signal
     signal.signal(signal.SIGTERM, _terminate)
     signal.signal(signal.SIGHUP, _terminate)
-    _lock = lab_lock()
-    out = HERE / 'out' / (datetime.now().strftime('%Y%m%d-%H%M%S') + '-' + args.label)
-    out.mkdir(parents=True, exist_ok=True)
     cells = args.cells.split(',') if getattr(args, 'cells', None) else [args.cell]
-    reports = []
-    if args.artifact:
-        args.local, args.url = True, f'https://{ORIGIN_HOST}/'
-        with LocalServer(args.artifact, args.runtime_sha, out):
+    with lab_lock(cells):
+        out = HERE / 'out' / (datetime.now().strftime('%Y%m%d-%H%M%S') + '-' + args.label)
+        out.mkdir(parents=True, exist_ok=True)
+        reports = []
+        if args.artifact:
+            args.local, args.url = True, f'https://{ORIGIN_HOST}/'
+            with LocalServer(args.artifact, args.runtime_sha, out):
+                for c in cells:
+                    reports.append(run_cell_retrying(c, args, out))
+        else:
+            args.local = False
             for c in cells:
                 reports.append(run_cell_retrying(c, args, out))
-    else:
-        args.local = False
-        for c in cells:
-            reports.append(run_cell_retrying(c, args, out))
     title = f'Device lab: {args.label} ({args.url})'
     summarise(reports, out, title)
     ok = all(r.get('ok') for r in reports)
