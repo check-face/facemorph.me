@@ -33,3 +33,4 @@ jobs:
       - run: node scripts/inventory/scan-allowlist.mjs --classic classic
       - run: node scripts/inventory/unresolved-imports.mjs --classic classic
       - run: node scripts/inventory/check-build-inputs.mjs --classic classic
+      - run: node scripts/inventory/licence-check.mjs --classic classic
