@@ -1,7 +1,19 @@
 // The model cache: acquisition, verification and storage of pinned model assets in Cache Storage and OPFS shards.
 // Moved from the candidate's src/Next/Assets/model-cache.mjs (classic a42829b) without behaviour change (fm-eulc);
-// the comments are the candidate's.
+// the comments are the candidate's. Acquisition primitives (fm-fr9s): every transfer is under an app-supplied grant
+// and inside the shared aggregate slot budget, retries alternate with configured origins, a silent connection is
+// abandoned, and the asset deadline counts silence, not size (the candidate's 942c807).
+import { chargeGrant, grantAsset, GrantRefused } from '../acquisition/grants.ts';
+import {
+  createAcquisitionSlots,
+  PRIORITY_ORDER,
+  slotCount,
+  type AcquisitionSlots,
+  type SlotLocks,
+} from '../acquisition/slots.ts';
+import { acquisitionMemoryClass } from '../contracts/budgets.ts';
 import type { ManagerError, Result } from '../contracts/errors.ts';
+import type { AcquisitionGrant, AcquisitionPriority, GrantOwnerId } from '../contracts/grant.ts';
 import type { AssetDescriptor } from '../contracts/manifest.ts';
 import { Sha256 } from './sha256.ts';
 import {
@@ -49,12 +61,27 @@ export interface ModelCacheOptions {
   readonly shards?: ShardStore | null | undefined;
   readonly fetcher?: Fetcher | undefined;
   readonly locks?: LockManagerLike | undefined;
+  /** An asset that receives nothing for this long fails (TimeoutError); every byte restarts it. */
   readonly timeoutMs?: number | undefined;
+  /** A chunk attempt that receives nothing for this long is abandoned and retried (CHUNK_STALL_MS). */
+  readonly stallMs?: number | undefined;
   readonly maxConcurrent?: number | undefined;
   readonly readAhead?: number | undefined;
   readonly retryDelaysMs?: readonly number[] | undefined;
-  readonly mirrorOf?: ((url: string) => string | undefined) | undefined;
+  /**
+   * HTTPS origins that serve the same files under the same paths. Every other retry of a chunk goes to the next
+   * one, in order. Empty by default: then no request leaves the asset's own origin.
+   */
+  readonly alternateOrigins?: readonly string[] | undefined;
+  /** The aggregate chunk budget shared by every worker; null admits every chunk at once (one-worker tests only). */
+  readonly slots?: AcquisitionSlots | null | undefined;
   readonly report?: ((event: CacheEvent) => void) | undefined;
+}
+/** Who an acquisition is for: an owner the grant names. Bytes are transferred only under the grant. */
+export interface AcquireOptions {
+  readonly grant: AcquisitionGrant;
+  readonly owner: GrantOwnerId;
+  readonly signal?: AbortSignal | undefined;
 }
 export interface AssetHandle {
   readonly sha256: string;
@@ -70,7 +97,8 @@ export interface LocalReader {
 export interface ModelCache {
   /** Verified local reads with typed misses (fm-eulc). */
   readonly local: LocalReader;
-  acquire(input: AssetInput, options?: { signal?: AbortSignal | undefined }): Promise<AssetHandle>;
+  /** Rejects with GrantRefused, before any request, when the grant does not cover the asset for this owner. */
+  acquire(input: AssetInput, options: AcquireOptions): Promise<AssetHandle>;
   readonly records: RecordAccess;
   has(input: AssetInput | string): Promise<boolean>;
   peek(input: AssetInput | string): Promise<Response | null>;
@@ -163,26 +191,43 @@ const pauseFor = (ms: number, signal: AbortSignal) =>
     signal?.addEventListener('abort', done, { once: true });
   });
 type Download = (part: Asset, signal: AbortSignal) => Promise<ReadableStream<Uint8Array> | null>;
+/** Who pays for an asset's bytes now, and at what priority: the shared fetch's current owners decide both. */
+interface Transfer {
+  payer(): AcquisitionGrant;
+  priority(): AcquisitionPriority;
+  /** Bytes arrived: restarts the asset's silence deadline. */
+  alive(): void;
+}
+/** The same path on another origin. */
+const onOrigin = (url: string, origin: string) => new URL(new URL(url).pathname, origin).href;
 async function fetchVerifiedChunk(
   part: Asset,
   download: Download,
   signal: AbortSignal,
+  transfer: Transfer,
   delays: readonly number[] = CHUNK_RETRY_DELAYS_MS,
-  mirrorOf: (url: string) => string | undefined = () => undefined,
+  alternates: readonly string[] = [],
+  stallMs: number = CHUNK_STALL_MS,
 ): Promise<Uint8Array<ArrayBuffer>> {
-  const mirror = mirrorOf(part.url);
   let first: unknown;
   for (let attempt = 0; ; attempt++) {
-    const fromMirror = Boolean(mirror) && attempt % 2 === 1;
+    const fromMirror = alternates.length > 0 && attempt % 2 === 1;
     try {
       const url = fromMirror
-        ? (mirror as string)
+        ? onOrigin(part.url, alternates[((attempt - 1) / 2) % alternates.length]!)
         : attempt
           ? Object.assign(new URL(part.url), { search: `retry=${attempt}` }).href
           : part.url;
-      return await fetchChunkOnce(attempt ? { ...part, url } : part, download, signal);
+      return await fetchChunkOnce(
+        attempt ? { ...part, url } : part,
+        download,
+        signal,
+        transfer,
+        stallMs,
+      );
     } catch (error) {
       check(signal);
+      if (error instanceof GrantRefused) throw error; // more attempts would need more than was approved
       first ??= error; // the site's own answer is the one worth reporting
       if (attempt >= delays.length || !(fromMirror || retryable(error)))
         throw fromMirror ? first : error;
@@ -190,52 +235,85 @@ async function fetchVerifiedChunk(
     }
   }
 }
-/** The mirror copy of a same-origin runtime file on a facemorph.me page; none elsewhere (local, native, tests). */
-export const RUNTIME_MIRROR = 'https://models.facemorph.me';
-export function runtimeMirror(
-  location: { hostname?: string; origin?: string } | undefined = browserGlobals.location,
-): (url: string) => string | undefined {
-  return (url) => {
-    const page = location?.hostname || '';
-    const target = new URL(url);
-    if (
-      !(page === 'facemorph.me' || page.endsWith('.facemorph.me')) ||
-      target.origin !== location?.origin ||
-      !target.pathname.startsWith('/runtime/')
-    )
-      return undefined;
-    return RUNTIME_MIRROR + target.pathname;
-  };
-}
+// 24 October (fm-vf9l, device lab): a connection that goes silent without a reset (a laptop waking from sleep, a
+// changed network, a dead NAT mapping) never fails a fetch. An encoder shard sat 106 s without a byte and nothing on
+// the page noticed; only the asset deadline would have ended it, and that fails the whole download. An attempt that
+// receives nothing for `stallMs` is abandoned and asked again like a dropped connection, so the next try opens a
+// fresh request (and every other try goes to the mirror).
+export const CHUNK_STALL_MS = 30000;
+const stalledError = () =>
+  Object.assign(
+    new Error(
+      'The model download stopped receiving data. Parts already downloaded are kept: try again in a few minutes.',
+    ),
+    { transient: true, stalled: true },
+  );
 /** One pinned chunk, fully read into a buffer of exactly its declared size and checked by the platform digest. */
 async function fetchChunkOnce(
   part: Asset,
   download: Download,
   signal: AbortSignal,
+  transfer: Transfer,
+  stallMs: number,
 ): Promise<Uint8Array<ArrayBuffer>> {
-  const body = await download(part, signal);
-  if (!body) throw new Error('Asset response has no readable body');
+  // Every byte of every attempt counts against the grant; the attempt reserves its chunk before asking.
+  const charge = chargeGrant(transfer.payer(), part.sha256, part.size);
+  const attempt = new AbortController();
+  const stall = stalledError();
+  const relay = () => attempt.abort(signal.reason || aborted());
+  if (signal.aborted) relay();
+  else signal.addEventListener('abort', relay, { once: true });
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const quiet = () => {
+    clearTimeout(timer);
+    timer = setTimeout(() => attempt.abort(stall), stallMs);
+  };
   const out = new Uint8Array(part.size);
-  const reader = body.getReader();
   let at = 0;
   try {
-    for (;;) {
-      const { value, done } = await reader.read();
-      check(signal);
-      if (done) break;
-      if (at + value.byteLength > part.size) throw new Error('Asset exceeds declared size');
-      out.set(value, at);
-      at += value.byteLength;
+    quiet();
+    const body = await download(part, attempt.signal);
+    if (!body) throw new Error('Asset response has no readable body');
+    const reader = body.getReader();
+    try {
+      for (;;) {
+        const { value, done } = await reader.read();
+        check(attempt.signal);
+        quiet();
+        if (done) break;
+        transfer.alive();
+        charge.received(value.byteLength);
+        if (at + value.byteLength > part.size) throw new Error('Asset exceeds declared size');
+        out.set(value, at);
+        at += value.byteLength;
+      }
+    } catch (error) {
+      void reader.cancel(error).catch(() => {});
+      throw error;
     }
   } catch (error) {
-    void reader.cancel(error).catch(() => {});
-    throw error;
+    check(signal); // the caller's own cancellation wins over anything below
+    throw attempt.signal.reason === stall ? stall : error;
+  } finally {
+    clearTimeout(timer);
+    signal.removeEventListener('abort', relay);
+    attempt.abort(aborted()); // released either way
+    charge.settle();
   }
   if (at !== part.size) throw new Error('Asset integrity mismatch');
   const digest = hex(await globalThis.crypto.subtle.digest('SHA-256', out));
   check(signal);
   if (digest !== part.sha256) throw new Error('Asset integrity mismatch');
   return out;
+}
+/** Validates configured alternate origins: each an HTTPS origin, exactly. */
+function validateOrigins(origins: readonly string[]): readonly string[] {
+  for (const origin of origins) {
+    const url = new URL(origin);
+    if (url.protocol !== 'https:' || url.origin !== origin)
+      throw new TypeError('alternateOrigins must be HTTPS origins (scheme, host and port only)');
+  }
+  return Object.freeze([...origins]);
 }
 // Runs with backpressure; errors before EOF prevent Cache.put from committing.
 function verifiedStream(
@@ -335,6 +413,31 @@ function counted(
   });
 }
 
+/** Counts a body's bytes against an attempt's grant charge as they pass. */
+function charged(
+  body: ReadableStream<Uint8Array> | null,
+  charge: { received(bytes: number): void },
+): ReadableStream<Uint8Array> | null {
+  if (!body) return body;
+  const reader = body.getReader();
+  return new ReadableStream<Uint8Array>({
+    async pull(controller) {
+      try {
+        const { value, done } = await reader.read();
+        if (done) return controller.close();
+        charge.received(value.byteLength);
+        controller.enqueue(value);
+      } catch (error) {
+        controller.error(error);
+        void reader.cancel(error).catch(() => {});
+      }
+    },
+    cancel(reason) {
+      return reader.cancel(reason);
+    },
+  });
+}
+
 export interface RecordAccess {
   get(key: string): Promise<Record<string, unknown> | undefined>;
   put(key: string, record: unknown): Promise<void>;
@@ -382,7 +485,12 @@ interface Pending {
   readonly asset: Asset;
   readonly controller: AbortController;
   waiters: number;
+  /** The fetch's owners in arrival order, each with its grant and how many acquire calls it has waiting. */
+  readonly owners: Map<GrantOwnerId, { readonly grant: AcquisitionGrant; count: number }>;
+  readonly transfer: Transfer;
   promise: Promise<void>;
+  /** Restarts the silence deadline; set while the work runs. */
+  alive?: (() => void) | undefined;
 }
 
 /** Store contract: get(hash) -> fresh Response|undefined; put(hash, Response)
@@ -396,16 +504,20 @@ export function createModelCache({
   fetcher = globalThis.fetch,
   locks,
   timeoutMs = 300000,
+  stallMs = CHUNK_STALL_MS,
   maxConcurrent = 2,
   readAhead = 2,
   retryDelaysMs = CHUNK_RETRY_DELAYS_MS,
-  mirrorOf = () => undefined,
+  alternateOrigins = [],
+  slots = null,
   report = () => {},
 }: ModelCacheOptions): ModelCache {
   if (
     !store ||
     !Number.isFinite(timeoutMs) ||
     timeoutMs <= 0 ||
+    !Number.isFinite(stallMs) ||
+    stallMs <= 0 ||
     !Number.isInteger(maxConcurrent) ||
     maxConcurrent < 1 ||
     !Number.isInteger(readAhead) ||
@@ -413,6 +525,22 @@ export function createModelCache({
     readAhead > 8
   )
     throw new TypeError('Invalid cache settings');
+  const alternates = validateOrigins(alternateOrigins);
+  /** Holds one aggregate slot for `run`; no slots configured admits at once. */
+  const inSlot = async <T>(
+    transfer: Transfer,
+    signal: AbortSignal,
+    run: () => Promise<T>,
+  ): Promise<T> => {
+    const release = slots ? await slots.take(transfer.priority(), signal) : () => {};
+    try {
+      return await run();
+    } finally {
+      release();
+    }
+  };
+  const chunk = (unit: Asset, signal: AbortSignal, transfer: Transfer) =>
+    fetchVerifiedChunk(unit, fetchBody, signal, transfer, retryDelaysMs, alternates, stallMs);
   const pending = new Map<string, Pending>();
   const queue: Task[] = [];
   let active = 0;
@@ -420,6 +548,7 @@ export function createModelCache({
   const stored = new Set<string>();
   const emit = (event: CacheEvent) => {
     if (event.status === 'saved' || event.status === 'retained') stored.add(event.sha256);
+    if (event.status === 'progress') pending.get(event.sha256)?.alive?.(); // the deadline counts silence, not size
     try {
       report(event);
     } catch {
@@ -543,7 +672,7 @@ export function createModelCache({
       if (!(await shards!.has(unit.sha256, unit.size))) out.push(unit);
     return out;
   }
-  async function ensureShards(asset: Asset, signal: AbortSignal) {
+  async function ensureShards(asset: Asset, signal: AbortSignal, transfer: Transfer) {
     let missing = await missingUnits(asset);
     check(signal);
     if (!missing.length) {
@@ -569,10 +698,9 @@ export function createModelCache({
     try {
       await eachUnit(missing, readAhead, async (unit) => {
         try {
-          await commitUnit(
-            asset,
-            unit,
-            await fetchVerifiedChunk(unit, fetchBody, stop.signal, retryDelaysMs, mirrorOf),
+          // The slot spans fetch, digest and write: the chunk's bytes are in memory for all three.
+          await inSlot(transfer, stop.signal, async () =>
+            commitUnit(asset, unit, await chunk(unit, stop.signal, transfer)),
           );
         } catch (error) {
           stop.abort(error);
@@ -592,7 +720,7 @@ export function createModelCache({
   // wrong is removed and fetched again on its own, under the same lock that guards its writes.
   async function readShards(
     asset: Asset,
-    { allowRepair }: { allowRepair: boolean },
+    { allowRepair, transfer }: { allowRepair: boolean; transfer?: Transfer },
   ): Promise<Uint8Array<ArrayBuffer>> {
     const units = unitsOf(asset);
     const out = units.length === 1 ? null : new Uint8Array(asset.size);
@@ -606,7 +734,7 @@ export function createModelCache({
       let bytes = await shards!.read(unit.sha256, unit.size);
       if (!bytes || (await platformHex(bytes)) !== unit.sha256) {
         emit({ status: bytes ? 'corrupt-removed' : 'missing-after-acquire', sha256: asset.sha256 });
-        if (!allowRepair)
+        if (!allowRepair || !transfer)
           throw bytes
             ? localError('Asset integrity mismatch', 'corrupt')
             : localError('Stored asset disappeared; acquire again', 'absent');
@@ -615,15 +743,13 @@ export function createModelCache({
           const again = await shards!.read(unit.sha256, unit.size); // another tab may have repaired it
           if (again && (await platformHex(again)) === unit.sha256) return again;
           await shards!.remove(unit.sha256);
-          const fresh = await fetchVerifiedChunk(
-            unit,
-            fetchBody,
-            AbortSignal.timeout(timeoutMs),
-            retryDelaysMs,
-            mirrorOf,
-          );
-          await commitUnit(asset, unit, fresh).catch(() => {}); // the verified bytes are served even if saving fails
-          return fresh;
+          // The refetch is under the grant that acquired the asset, inside the shared budget.
+          const repair = AbortSignal.timeout(timeoutMs);
+          return inSlot(transfer, repair, async () => {
+            const fresh = await chunk(unit, repair, transfer);
+            await commitUnit(asset, unit, fresh).catch(() => {}); // the verified bytes are served even if saving fails
+            return fresh;
+          });
         });
       }
       if (out) out.set(bytes, offsets[i]);
@@ -679,9 +805,9 @@ export function createModelCache({
       signal.addEventListener('abort', task.cancel, { once: true });
       pump();
     });
-  async function ensure(asset: Asset, signal: AbortSignal): Promise<void> {
+  async function ensure(asset: Asset, signal: AbortSignal, transfer: Transfer): Promise<void> {
     check(signal);
-    if (usesShards(asset)) return ensureShards(asset, signal);
+    if (usesShards(asset)) return ensureShards(asset, signal, transfer);
     let cached: Response | undefined;
     try {
       cached = await store.get(asset.sha256);
@@ -711,7 +837,14 @@ export function createModelCache({
         throw downloadRefused(response);
       return response.body;
     }
+    /** Slots held by this asset's chunks still in memory; all are let go when the asset settles. */
+    const held = new Set<() => void>();
+    const letGo = (release: () => void) => {
+      held.delete(release);
+      release();
+    };
     let body: ReadableStream<Uint8Array> | null;
+    let settlePlain: (() => void) | undefined;
     const chunks = asset.chunks;
     if (chunks && globalThis.crypto?.subtle) {
       // Read-ahead (measured on eris, 150 MiB model prefix): chunks fetched one at a time and hashed in
@@ -720,7 +853,9 @@ export function createModelCache({
       // its pinned digest by the platform's SHA-256 (8x the speed of sha256.mjs, off this thread) and
       // handed on strictly in order. Memory is bounded by readAhead chunks. The whole-asset digest
       // below is unchanged, and nothing commits until it matches at EOF.
-      const ahead: Promise<Uint8Array<ArrayBuffer>>[] = [];
+      // Each chunk also holds an aggregate slot from before its first byte until the store has taken all of it: the
+      // next pull only comes once the consumer has read every piece enqueued before it (fm-fr9s).
+      const ahead: Promise<{ bytes: Uint8Array<ArrayBuffer>; release: () => void }>[] = [];
       const stop = new AbortController();
       const relay = () => stop.abort(signal.reason || aborted());
       signal.addEventListener('abort', relay, { once: true });
@@ -729,10 +864,20 @@ export function createModelCache({
         if (reason !== undefined) stop.abort(reason);
       };
       let started = 0;
+      let handedOn: (() => void) | undefined;
       const fill = () => {
         while (ahead.length < readAhead && started < chunks.length) {
           const part = chunks[started++]!;
-          const task = fetchVerifiedChunk(part, download, stop.signal, retryDelaysMs, mirrorOf);
+          const task = (async () => {
+            const slot = slots ? await slots.take(transfer.priority(), stop.signal) : () => {};
+            held.add(slot);
+            try {
+              return { bytes: await chunk(part, stop.signal, transfer), release: slot };
+            } catch (error) {
+              letGo(slot);
+              throw error;
+            }
+          })();
           task.catch(() => {}); // surfaced where it is awaited; a later chunk must not become an unhandled rejection
           ahead.push(task);
         }
@@ -740,6 +885,8 @@ export function createModelCache({
       body = new ReadableStream<Uint8Array>({
         async pull(controller) {
           try {
+            if (handedOn) letGo(handedOn);
+            handedOn = undefined;
             check(signal);
             fill();
             if (!ahead.length) {
@@ -747,14 +894,17 @@ export function createModelCache({
               controller.close();
               return;
             }
-            const chunk = await ahead.shift()!;
+            const next = await ahead.shift()!;
+            handedOn = next.release;
+            const piece = next.bytes;
             check(signal);
             fill();
+            pending.get(asset.sha256)?.alive?.();
             // Network-sized views, not the whole 16 MiB buffer: Firefox failed the first read-ahead build with a
             // NetworkError (caught by the pre-deploy engine matrix), and the progress bar would move in 16 MiB
             // steps. Views share the buffer, so this copies nothing.
-            for (let at = 0; at < chunk.byteLength; at += PIECE_BYTES)
-              controller.enqueue(chunk.subarray(at, Math.min(at + PIECE_BYTES, chunk.byteLength)));
+            for (let at = 0; at < piece.byteLength; at += PIECE_BYTES)
+              controller.enqueue(piece.subarray(at, Math.min(at + PIECE_BYTES, piece.byteLength)));
           } catch (error) {
             release(error);
             controller.error(error);
@@ -768,6 +918,14 @@ export function createModelCache({
       // No platform digest (very old engines): one chunk at a time, hashed incrementally as before.
       let index = 0;
       let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
+      let charge: ReturnType<typeof chargeGrant> | undefined;
+      let slot: (() => void) | undefined;
+      const endChunk = () => {
+        charge?.settle();
+        charge = undefined;
+        if (slot) letGo(slot);
+        slot = undefined;
+      };
       body = new ReadableStream<Uint8Array>({
         async pull(controller) {
           try {
@@ -779,27 +937,47 @@ export function createModelCache({
                   return;
                 }
                 const part = chunks[index++]!;
+                slot = slots ? await slots.take(transfer.priority(), signal) : () => {};
+                held.add(slot);
+                charge = chargeGrant(transfer.payer(), part.sha256, part.size);
                 reader = verifiedStream(await download(part), part, signal).getReader();
               }
               const result = await reader.read();
               if (result.done) {
                 reader.releaseLock();
                 reader = undefined;
+                endChunk();
                 continue;
               }
+              charge!.received(result.value.byteLength);
               controller.enqueue(result.value);
               return;
             }
           } catch (error) {
+            endChunk();
             controller.error(error);
             await reader?.cancel(error).catch(() => {});
           }
         },
         cancel(reason) {
+          endChunk();
           return reader?.cancel(reason);
         },
       });
-    } else body = await download(asset);
+    } else {
+      // One unchunked asset streams into the store under one slot and one charge for its whole size.
+      const slot = slots ? await slots.take(transfer.priority(), signal) : () => {};
+      held.add(slot);
+      const charge = chargeGrant(transfer.payer(), asset.sha256, asset.size);
+      try {
+        body = charged(await download(asset), charge);
+      } catch (error) {
+        charge.settle();
+        letGo(slot);
+        throw error;
+      }
+      settlePlain = () => charge.settle();
+    }
     const verified = new Response(verifiedStream(counted(body!, asset, emit), asset, signal), {
       headers: {
         'Content-Type': 'application/octet-stream',
@@ -818,6 +996,9 @@ export function createModelCache({
         sha256: asset.sha256,
       });
       throw error;
+    } finally {
+      for (const release of held) letGo(release); // deleting the visited entry is safe
+      settlePlain?.();
     }
     // A cancellation at commit may leave a fully verified blob: retain it for a later request.
     emit({ status: 'saved', sha256: asset.sha256, bytes: asset.size });
@@ -857,7 +1038,7 @@ export function createModelCache({
   }
   async function openVerified(
     asset: Asset,
-    { allowRepair }: { allowRepair: boolean },
+    { allowRepair, transfer }: { allowRepair: boolean; transfer?: Transfer },
   ): Promise<Response> {
     let response: Response | undefined;
     try {
@@ -868,9 +1049,10 @@ export function createModelCache({
     }
     if (!response) {
       emit({ status: 'missing-after-acquire', sha256: asset.sha256 });
-      if (!allowRepair) throw localError('Stored asset disappeared; acquire again', 'absent');
+      if (!allowRepair || !transfer)
+        throw localError('Stored asset disappeared; acquire again', 'absent');
       emit({ status: 'repairing', sha256: asset.sha256 });
-      await ensure(asset, new AbortController().signal);
+      await ensure(asset, new AbortController().signal, transfer);
       return openVerified(asset, { allowRepair: false });
     }
     if (verifiedAssets.has(asset.sha256)) return response;
@@ -887,83 +1069,140 @@ export function createModelCache({
     await Promise.resolve(store.remove(asset.sha256)).catch(() => {});
     await records.remove(VERIFIED_MARKER + asset.sha256).catch(() => {});
     emit({ status: 'corrupt-removed', sha256: asset.sha256 });
-    if (!allowRepair) throw Object.assign(failure, { local: 'corrupt' as const });
+    if (!allowRepair || !transfer) throw Object.assign(failure, { local: 'corrupt' as const });
     emit({ status: 'repairing', sha256: asset.sha256 });
-    await ensure(asset, new AbortController().signal);
+    await ensure(asset, new AbortController().signal, transfer);
     return openVerified(asset, { allowRepair: false });
   }
   // Bytes verified earlier this session are handed back without a second digest, so a file that
   // became unreadable since is only found here: drop the identity and repair it once.
-  async function readVerified(asset: Asset): Promise<Uint8Array<ArrayBuffer>> {
+  async function readVerified(asset: Asset, transfer: Transfer): Promise<Uint8Array<ArrayBuffer>> {
     try {
-      return new Uint8Array(await (await openVerified(asset, { allowRepair: true })).arrayBuffer());
+      return new Uint8Array(
+        await (await openVerified(asset, { allowRepair: true, transfer })).arrayBuffer(),
+      );
     } catch (error) {
       if ((error as Err | null)?.name !== 'NotReadableError') throw error;
       verifiedAssets.delete(asset.sha256);
       await Promise.resolve(store.remove(asset.sha256)).catch(() => {});
       emit({ status: 'corrupt-removed', sha256: asset.sha256 });
       emit({ status: 'repairing', sha256: asset.sha256 });
-      await ensure(asset, new AbortController().signal);
+      await ensure(asset, new AbortController().signal, transfer);
       return new Uint8Array(
         await (await openVerified(asset, { allowRepair: false })).arrayBuffer(),
       );
     }
   }
-  function acquire(
-    input: AssetInput,
-    { signal }: { signal?: AbortSignal | undefined } = {},
-  ): Promise<AssetHandle> {
+  function acquire(input: AssetInput, options: AcquireOptions): Promise<AssetHandle> {
+    const { grant, owner, signal } = options ?? ({} as Partial<AcquireOptions>);
     let asset: Asset;
     try {
       asset = validateAsset(input);
+      // No grant, an owner it does not name, or a digest outside it: refused before any request.
+      grantAsset(grant, owner, asset.sha256, asset.size);
       check(signal);
     } catch (error) {
       return Promise.reject(error);
     }
+    const ownerId = owner!;
     let task = pending.get(asset.sha256);
     if (task && task.asset.size !== asset.size)
       return Promise.reject(new Error('Conflicting size for identical hash'));
     if (!task) {
       const controller = new AbortController();
-      const current: Pending = { asset, controller, waiters: 0, promise: Promise.resolve() };
+      const owners: Pending['owners'] = new Map();
+      // Bytes are charged to the first owner still attached; when it leaves, the next one carries the fetch on
+      // under its own grant (ownership transfer). Priority is the highest any owner's grant gives this asset.
+      const transfer: Transfer = {
+        payer() {
+          const first = owners.values().next();
+          if (first.done) throw new GrantRefused('no-owner', asset.sha256);
+          return first.value.grant;
+        },
+        priority() {
+          let best: AcquisitionPriority = 'speculative-warming';
+          for (const { grant: g } of owners.values()) {
+            const p: AcquisitionPriority =
+              g.assets.find((a) => a.sha256 === asset.sha256)?.priority ?? best;
+            if (PRIORITY_ORDER.indexOf(p) < PRIORITY_ORDER.indexOf(best)) best = p;
+          }
+          return best;
+        },
+        alive: () => current.alive?.(),
+      };
+      const current: Pending = {
+        asset,
+        controller,
+        waiters: 0,
+        owners,
+        transfer,
+        promise: Promise.resolve(),
+      };
       task = current;
-      const timer = setTimeout(
-        () => controller.abort(new DOMException('Asset acquisition timed out', 'TimeoutError')),
-        timeoutMs,
-      );
+      // The deadline is for an asset that has stopped arriving, not one that is big on a slow link: it starts when
+      // the work does (not while queued) and every progress tick restarts it. A wall-clock 300 s made the 158 MB
+      // WebGPU prefix unobtainable below 4.2 Mbit/s and the 124 MB CPU model below 3.3 Mbit/s (fm-vf9l).
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      current.alive = () => {
+        clearTimeout(timer);
+        timer = setTimeout(
+          () => controller.abort(new DOMException('Asset acquisition timed out', 'TimeoutError')),
+          timeoutMs,
+        );
+      };
+      const run = () => {
+        current.alive?.();
+        return ensure(asset, controller.signal, transfer);
+      };
       current.promise = schedule(
         () =>
           locks?.request
             ? locks.request(
                 `${MODEL_CACHE_NAME}:${asset.sha256}`,
                 { signal: controller.signal },
-                () => ensure(asset, controller.signal),
+                run,
               )
-            : ensure(asset, controller.signal),
+            : run(),
         controller.signal,
       ).finally(() => {
         clearTimeout(timer);
+        current.alive = undefined;
         if (pending.get(asset.sha256) === current) pending.delete(asset.sha256);
       });
       pending.set(asset.sha256, current);
     }
     const shared = task;
     shared.waiters++;
+    const mine = shared.owners.get(ownerId);
+    if (mine) mine.count++;
+    else shared.owners.set(ownerId, { grant: grant!, count: 1 });
+    // The handle repairs only under this caller's own grant: a later refetch is charged to it.
+    const own: Transfer = {
+      payer: () => grant!,
+      priority: () => grant!.assets.find((a) => a.sha256 === asset.sha256)!.priority,
+      alive: () => {},
+    };
     return new Promise<AssetHandle>((resolve, reject) => {
       let settled = false;
+      const leave = () => {
+        const entry = shared.owners.get(ownerId);
+        if (entry && --entry.count === 0) shared.owners.delete(ownerId);
+      };
       const finish = (error?: unknown) => {
         if (settled) return;
         settled = true;
         signal?.removeEventListener('abort', cancel);
         shared.waiters--;
+        leave();
         if (error) reject(error);
         else if (usesShards(asset))
           resolve(
             Object.freeze({
               sha256: asset.sha256,
               size: asset.size,
-              bytes: () => readShards(asset, { allowRepair: true }),
-              open: async () => new Response(await readShards(asset, { allowRepair: true })),
+              bytes: () => readShards(asset, { allowRepair: true, transfer: own }),
+              open: async () =>
+                new Response(await readShards(asset, { allowRepair: true, transfer: own })),
             }),
           );
         else
@@ -971,13 +1210,14 @@ export function createModelCache({
             Object.freeze({
               sha256: asset.sha256,
               size: asset.size,
-              bytes: () => readVerified(asset),
-              open: async () => openVerified(asset, { allowRepair: true }),
+              bytes: () => readVerified(asset, own),
+              open: async () => openVerified(asset, { allowRepair: true, transfer: own }),
             }),
           );
       };
       const cancel = () => {
         finish(signal!.reason || aborted());
+        // The last owner to leave stops the fetch; verified chunks already stored are kept.
         if (shared.waiters === 0) {
           shared.controller.abort(aborted());
           if (pending.get(asset.sha256) === shared) pending.delete(asset.sha256);
@@ -1096,11 +1336,16 @@ export async function createBrowserModelCache(
     options.shards !== undefined
       ? options.shards
       : await openShardStore({ readOnly: options.readOnly === true });
+  const locks = browserGlobals.navigator?.locks as (LockManagerLike & SlotLocks) | undefined;
+  // One aggregate budget for every worker and tab of this origin, sized by the device's memory class.
+  const memory = acquisitionMemoryClass(
+    (browserGlobals.navigator as { deviceMemory?: number } | undefined)?.deviceMemory,
+  );
   return createModelCache({
-    mirrorOf: runtimeMirror(),
+    slots: locks ? createAcquisitionSlots({ locks, count: slotCount(memory) }) : null,
     ...options,
     shards,
-    locks: browserGlobals.navigator?.locks as LockManagerLike | undefined,
+    locks,
     store: {
       get: (hash) => cache.match(key(hash)),
       put: (hash, response) => cache.put(key(hash), response),

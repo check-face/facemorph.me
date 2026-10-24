@@ -203,7 +203,17 @@ const acquire = (page: Page, input: object, retryDelaysMs: number[] = []) =>
       const m = await import(String('/pkg/index.js'));
       const cache = await m.createBrowserModelCache({ retryDelaysMs });
       try {
-        const handle = await cache.acquire(input);
+        // Approved by a grant for this one asset, with room for the retries (every attempt's bytes count).
+        const a = input as { sha256: string; size: number };
+        const grant = {
+          manifestSha256: 'release-consistency',
+          route: 'cpu',
+          purpose: 'generate',
+          assets: [{ sha256: a.sha256, bytes: a.size, priority: 'foreground-required' }],
+          remainingBytes: a.size * 8,
+          owners: ['face:release'],
+        };
+        const handle = await cache.acquire(input, { grant, owner: 'face:release' });
         const b = await handle.bytes();
         const d = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', b)), (x) =>
           x.toString(16).padStart(2, '0'),

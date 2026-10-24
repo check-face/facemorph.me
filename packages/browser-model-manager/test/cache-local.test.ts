@@ -254,7 +254,20 @@ const acquireIn = (page: Page, backend: Backend, assets: object[], module = '/pk
       const m = await import(module);
       const cache = await m.createBrowserModelCache(backend === 'opfs' ? {} : { shards: null });
       (window as unknown as { __cache: unknown }).__cache = cache;
-      for (const a of assets) await cache.acquire(a);
+      // The package's cache acquires only under a grant (fm-fr9s); the candidate's takes none.
+      const grant = {
+        manifestSha256: 'cache-local',
+        route: 'cpu',
+        purpose: 'generate',
+        assets: (assets as { sha256: string; size: number }[]).map((a) => ({
+          sha256: a.sha256,
+          bytes: a.size,
+          priority: 'foreground-required',
+        })),
+        remainingBytes: 1 << 30,
+        owners: ['face:setup'],
+      };
+      for (const a of assets) await cache.acquire(a, { grant, owner: 'face:setup' });
     },
     { backend, assets, module },
   );
