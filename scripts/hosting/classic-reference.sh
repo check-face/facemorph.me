@@ -17,12 +17,13 @@ cp -al "$runtime/." "$work/runtime-public/"
 python3 "$work/hosting/next-static/mirror-runtime.py" --overlay "$work/hosting/next-static/runtime-overlay" --output "$work/runtime-public"
 python3 "$work/hosting/next-static/stage.py" --runtime "$work/runtime-public" --frontend "$repo/deploy-next" \
   --catalogue "$work/hosting/next-static/catalogue.json" --output "$work/public"
+# argv[1] is a placeholder word: with -e, argv[1] would otherwise be stage.mjs and trigger its CLI on import.
 node --input-type=module -e '
-  const [{ digestTree, treeDigest }, { sha256 }, fs, path] = await Promise.all([import(process.argv[1]), import(process.argv[2]), import("node:fs"), import("node:path")]);
-  const out = process.argv[3];
-  const files = digestTree(out, [fs.realpathSync(out), fs.realpathSync(process.argv[5])]);
+  const [{ digestTree, treeDigest }, { sha256 }, fs, path] = await Promise.all([import(process.argv[2]), import(process.argv[3]), import("node:fs"), import("node:path")]);
+  const out = process.argv[4];
+  const files = digestTree(out, [fs.realpathSync(out), fs.realpathSync(process.argv[6])]);
   const fields = { files: files.length, bytes: files.reduce((s, f) => s + f.size, 0), runtimeFiles: files.filter((f) => f.path.startsWith("runtime/")).length,
     headersSha256: sha256(fs.readFileSync(path.join(out, "_headers"))), treeSha256: treeDigest(files) };
-  fs.writeFileSync(process.argv[4], JSON.stringify({ classicCommit: process.argv[6], fields, files }, null, 1) + "\n");
-  console.log(JSON.stringify({ classic: process.argv[6], ...fields }));
-' "$repo/scripts/hosting/stage.mjs" "$repo/scripts/inventory/lib.mjs" "$work/public" "$record" "$runtime" "$commit"
+  fs.writeFileSync(process.argv[5], JSON.stringify({ classicCommit: process.argv[7], fields, files }, null, 1) + "\n");
+  console.log(JSON.stringify({ classic: process.argv[7], ...fields }));
+' placeholder "$repo/scripts/hosting/stage.mjs" "$repo/scripts/inventory/lib.mjs" "$work/public" "$record" "$runtime" "$commit"
