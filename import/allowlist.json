@@ -1154,7 +1154,13 @@
       "destination": "apps/web/src/Next/Assets/model-cache.mjs",
       "sha256": "fe5326531f9f54228c5ca5e2b5ab3fe3992995baaa0590a762c2fa9096efdeb3",
       "bytes": 32888,
-      "class": "src-next"
+      "class": "src-next",
+      "ported": {
+        "sha256": "c9c84070a19dab443cc9f12dac490cb1c0a7d285449ec1ad121926e9996b4626",
+        "bytes": 277,
+        "bead": "fm-eulc",
+        "reason": "Moved to packages/browser-model-manager/src/cache (strict TS, no behaviour change); this path re-exports it so product-bridge, runtime and ort-worker stay unedited until compute extraction"
+      }
     },
     {
       "source": "src/Next/Assets/model-cache.test.mjs",
@@ -1168,14 +1174,26 @@
       "destination": "apps/web/src/Next/Assets/sha256.mjs",
       "sha256": "91b5831f39b0c22bf911c233f15b78a4f168272f026337a3ca62af6cfd8fc2c4",
       "bytes": 3015,
-      "class": "src-next"
+      "class": "src-next",
+      "ported": {
+        "sha256": "afb6b387a13acad032484b4d386e625bf48106bdc12f8b570705763928285008",
+        "bytes": 272,
+        "bead": "fm-eulc",
+        "reason": "Moved to packages/browser-model-manager/src/cache (strict TS, no behaviour change); this path re-exports it so product-bridge, runtime and ort-worker stay unedited until compute extraction"
+      }
     },
     {
       "source": "src/Next/Assets/shard-store.mjs",
       "destination": "apps/web/src/Next/Assets/shard-store.mjs",
       "sha256": "26f65f7f28319c1f09345b600368aeb43aa02bb323f78e2d06a4eedef46f221e",
       "bytes": 6230,
-      "class": "src-next"
+      "class": "src-next",
+      "ported": {
+        "sha256": "fac658a7acff874bc54b42a42ae6b1f1ab4d5f5732807ddd547c4974e192a475",
+        "bytes": 277,
+        "bead": "fm-eulc",
+        "reason": "Moved to packages/browser-model-manager/src/cache (strict TS, no behaviour change); this path re-exports it so product-bridge, runtime and ort-worker stay unedited until compute extraction"
+      }
     },
     {
       "source": "src/Next/analytics.mjs",
