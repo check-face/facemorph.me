@@ -37,9 +37,10 @@ function defaultBase(root) {
   return tryGit(root, ['rev-parse', 'HEAD~1'])?.toString().trim() ?? null;
 }
 
-/** A ref name as it exists in the classic repository (local branch, or origin's). */
+/** A ref name as it exists in the classic repository: origin's branch first (the published, canonical state; a
+ * shared local checkout can lag it), else the local branch. */
 function classicRef(classic, branch) {
-  for (const ref of [`refs/heads/${branch}`, `refs/remotes/origin/${branch}`]) if (tryGit(classic, ['rev-parse', '--verify', '--quiet', ref])) return ref;
+  for (const ref of [`refs/remotes/origin/${branch}`, `refs/heads/${branch}`]) if (tryGit(classic, ['rev-parse', '--verify', '--quiet', ref])) return ref;
   return null;
 }
 
