@@ -1,0 +1,773 @@
+{
+ "schema": "facemorph.project-json-vectors/1",
+ "bead": "fm-7s3a",
+ "source": {
+  "repository": "check-face/facemorph.me-classic",
+  "branch": "candidate/next-delivery-20260916",
+  "commit": "a42829bb0582b5a7a55ba6b1045a05861612b8a5",
+  "files": [
+   "src/Next/Contracts.fs",
+   "src/Next/ProjectJson.fs"
+  ],
+  "compiler": "Fable 3.1.12 (classic .config/dotnet-tools.json)"
+ },
+ "cases": [
+  {
+   "name": "verify-fable: linear round-trips",
+   "input": "{\"schemaVersion\":1,\"bundle\":{\"version\":\"fixture-v1\",\"manifestSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"modelSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"noiseSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"truncationPsi\":1,\"truncationCutoff\":0,\"morph\":{\"algorithmVersion\":\"geometry-fixture-v1\",\"kind\":\"linear\",\"controls\":[{\"visitId\":\"A\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[0,0]}},{\"visitId\":\"B\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[1,0]}},{\"visitId\":\"C\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[2,0]}}],\"closed\":true,\"width\":0.2,\"pinchCenter\":true,\"framesPerSegment\":4,\"framesPerSecond\":24}}",
+   "classicChecks": 3,
+   "classic": {
+    "ok": true,
+    "text": "{\"schemaVersion\":1,\"bundle\":{\"version\":\"fixture-v1\",\"manifestSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"modelSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"noiseSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"truncationPsi\":1,\"truncationCutoff\":0,\"morph\":{\"algorithmVersion\":\"geometry-fixture-v1\",\"kind\":\"linear\",\"controls\":[{\"visitId\":\"A\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[0,0]}},{\"visitId\":\"B\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[1,0]}},{\"visitId\":\"C\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[2,0]}}],\"closed\":true,\"width\":0.2,\"pinchCenter\":true,\"framesPerSegment\":4,\"framesPerSecond\":24}}"
+   }
+  },
+  {
+   "name": "verify-fable: pairwise-ellipse round-trips",
+   "input": "{\"schemaVersion\":1,\"bundle\":{\"version\":\"fixture-v1\",\"manifestSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"modelSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"noiseSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"truncationPsi\":1,\"truncationCutoff\":0,\"morph\":{\"algorithmVersion\":\"geometry-fixture-v1\",\"kind\":\"pairwise-ellipse\",\"controls\":[{\"visitId\":\"A\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[0,0]}},{\"visitId\":\"B\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[1,0]}},{\"visitId\":\"C\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[2,0]}}],\"closed\":true,\"width\":0.2,\"pinchCenter\":true,\"framesPerSegment\":4,\"framesPerSecond\":24}}",
+   "classicChecks": 3,
+   "classic": {
+    "ok": true,
+    "text": "{\"schemaVersion\":1,\"bundle\":{\"version\":\"fixture-v1\",\"manifestSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"modelSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"noiseSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"truncationPsi\":1,\"truncationCutoff\":0,\"morph\":{\"algorithmVersion\":\"geometry-fixture-v1\",\"kind\":\"pairwise-ellipse\",\"controls\":[{\"visitId\":\"A\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[0,0]}},{\"visitId\":\"B\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[1,0]}},{\"visitId\":\"C\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[2,0]}}],\"closed\":true,\"width\":0.2,\"pinchCenter\":true,\"framesPerSegment\":4,\"framesPerSecond\":24}}"
+   }
+  },
+  {
+   "name": "verify-fable: pairwise-figure8 round-trips",
+   "input": "{\"schemaVersion\":1,\"bundle\":{\"version\":\"fixture-v1\",\"manifestSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"modelSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"noiseSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"truncationPsi\":1,\"truncationCutoff\":0,\"morph\":{\"algorithmVersion\":\"geometry-fixture-v1\",\"kind\":\"pairwise-figure8\",\"controls\":[{\"visitId\":\"A\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[0,0]}},{\"visitId\":\"B\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[1,0]}},{\"visitId\":\"C\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[2,0]}}],\"closed\":true,\"width\":0.2,\"pinchCenter\":true,\"framesPerSegment\":4,\"framesPerSecond\":24}}",
+   "classicChecks": 3,
+   "classic": {
+    "ok": true,
+    "text": "{\"schemaVersion\":1,\"bundle\":{\"version\":\"fixture-v1\",\"manifestSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"modelSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"noiseSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"truncationPsi\":1,\"truncationCutoff\":0,\"morph\":{\"algorithmVersion\":\"geometry-fixture-v1\",\"kind\":\"pairwise-figure8\",\"controls\":[{\"visitId\":\"A\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[0,0]}},{\"visitId\":\"B\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[1,0]}},{\"visitId\":\"C\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[2,0]}}],\"closed\":true,\"width\":0.2,\"pinchCenter\":true,\"framesPerSegment\":4,\"framesPerSecond\":24}}"
+   }
+  },
+  {
+   "name": "verify-fable: full-smooth-ellipse round-trips",
+   "input": "{\"schemaVersion\":1,\"bundle\":{\"version\":\"fixture-v1\",\"manifestSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"modelSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"noiseSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"truncationPsi\":1,\"truncationCutoff\":0,\"morph\":{\"algorithmVersion\":\"geometry-fixture-v1\",\"kind\":\"full-smooth-ellipse\",\"controls\":[{\"visitId\":\"A\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[0,0]}},{\"visitId\":\"B\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[1,0]}},{\"visitId\":\"C\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[2,0]}}],\"closed\":true,\"width\":0.2,\"pinchCenter\":true,\"framesPerSegment\":4,\"framesPerSecond\":24}}",
+   "classicChecks": 3,
+   "classic": {
+    "ok": true,
+    "text": "{\"schemaVersion\":1,\"bundle\":{\"version\":\"fixture-v1\",\"manifestSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"modelSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"noiseSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"truncationPsi\":1,\"truncationCutoff\":0,\"morph\":{\"algorithmVersion\":\"geometry-fixture-v1\",\"kind\":\"full-smooth-ellipse\",\"controls\":[{\"visitId\":\"A\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[0,0]}},{\"visitId\":\"B\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[1,0]}},{\"visitId\":\"C\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[2,0]}}],\"closed\":true,\"width\":0.2,\"pinchCenter\":true,\"framesPerSegment\":4,\"framesPerSecond\":24}}"
+   }
+  },
+  {
+   "name": "verify-fable: full-smooth-figure8 round-trips",
+   "input": "{\"schemaVersion\":1,\"bundle\":{\"version\":\"fixture-v1\",\"manifestSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"modelSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"noiseSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"truncationPsi\":1,\"truncationCutoff\":0,\"morph\":{\"algorithmVersion\":\"geometry-fixture-v1\",\"kind\":\"full-smooth-figure8\",\"controls\":[{\"visitId\":\"A\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[0,0]}},{\"visitId\":\"B\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[1,0]}},{\"visitId\":\"C\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[2,0]}}],\"closed\":true,\"width\":0.2,\"pinchCenter\":true,\"framesPerSegment\":4,\"framesPerSecond\":24}}",
+   "classicChecks": 3,
+   "classic": {
+    "ok": true,
+    "text": "{\"schemaVersion\":1,\"bundle\":{\"version\":\"fixture-v1\",\"manifestSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"modelSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"noiseSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"truncationPsi\":1,\"truncationCutoff\":0,\"morph\":{\"algorithmVersion\":\"geometry-fixture-v1\",\"kind\":\"full-smooth-figure8\",\"controls\":[{\"visitId\":\"A\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[0,0]}},{\"visitId\":\"B\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[1,0]}},{\"visitId\":\"C\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[2,0]}}],\"closed\":true,\"width\":0.2,\"pinchCenter\":true,\"framesPerSegment\":4,\"framesPerSecond\":24}}"
+   }
+  },
+  {
+   "name": "verify-fable: escaped string and psi round-trip",
+   "input": "{\"schemaVersion\":1,\"bundle\":{\"version\":\"quote\\\" slash\\\\ newline\\n emoji 🙂\",\"manifestSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"modelSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"noiseSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"truncationPsi\":0.12345678901234566,\"truncationCutoff\":0,\"morph\":{\"algorithmVersion\":\"geometry-fixture-v1\",\"kind\":\"full-smooth-figure8\",\"controls\":[{\"visitId\":\"A\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[0,0]}},{\"visitId\":\"B\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[1,0]}},{\"visitId\":\"C\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[2,0]}}],\"closed\":true,\"width\":0.2,\"pinchCenter\":true,\"framesPerSegment\":4,\"framesPerSecond\":24}}",
+   "classicChecks": 3,
+   "classic": {
+    "ok": true,
+    "text": "{\"schemaVersion\":1,\"bundle\":{\"version\":\"quote\\\" slash\\\\ newline\\u000a emoji \\ud83d\\ude42\",\"manifestSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"modelSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"noiseSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"truncationPsi\":0.12345678901234566,\"truncationCutoff\":0,\"morph\":{\"algorithmVersion\":\"geometry-fixture-v1\",\"kind\":\"full-smooth-figure8\",\"controls\":[{\"visitId\":\"A\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[0,0]}},{\"visitId\":\"B\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[1,0]}},{\"visitId\":\"C\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[2,0]}}],\"closed\":true,\"width\":0.2,\"pinchCenter\":true,\"framesPerSegment\":4,\"framesPerSecond\":24}}"
+   }
+  },
+  {
+   "name": "verify-fable: rejects unterminated object",
+   "input": "{",
+   "classicChecks": 1,
+   "classic": {
+    "ok": false,
+    "messages": [
+     "Invalid or unsupported project JSON; check its schema, fields, values and size limits."
+    ]
+   }
+  },
+  {
+   "name": "verify-fable: rejects null",
+   "input": "null",
+   "classicChecks": 1,
+   "classic": {
+    "ok": false,
+    "messages": [
+     "Invalid or unsupported project JSON; check its schema, fields, values and size limits."
+    ]
+   }
+  },
+  {
+   "name": "verify-fable: rejects array",
+   "input": "[]",
+   "classicChecks": 1,
+   "classic": {
+    "ok": false,
+    "messages": [
+     "Invalid or unsupported project JSON; check its schema, fields, values and size limits."
+    ]
+   }
+  },
+  {
+   "name": "verify-fable: rejects duplicate field",
+   "input": "{\"schemaVersion\":1,\"schemaVersion\":1}",
+   "classicChecks": 1,
+   "classic": {
+    "ok": false,
+    "messages": [
+     "Invalid or unsupported project JSON; check its schema, fields, values and size limits."
+    ]
+   }
+  },
+  {
+   "name": "verify-fable: rejects schema version 2",
+   "input": "{\"schemaVersion\":2,\"bundle\":{\"version\":\"fixture-v1\",\"manifestSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"modelSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"noiseSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"truncationPsi\":1,\"truncationCutoff\":0,\"morph\":{\"algorithmVersion\":\"geometry-fixture-v1\",\"kind\":\"full-smooth-figure8\",\"controls\":[{\"visitId\":\"A\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[0,0]}},{\"visitId\":\"B\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[1,0]}},{\"visitId\":\"C\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[2,0]}}],\"closed\":true,\"width\":0.2,\"pinchCenter\":true,\"framesPerSegment\":4,\"framesPerSecond\":24}}",
+   "classicChecks": 1,
+   "classic": {
+    "ok": false,
+    "messages": [
+     "Invalid or unsupported project JSON; check its schema, fields, values and size limits."
+    ]
+   }
+  },
+  {
+   "name": "verify-fable: rejects unknown root field",
+   "input": "{\"schemaVersion\":1,\"bundle\":{\"version\":\"fixture-v1\",\"manifestSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"modelSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"noiseSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"truncationPsi\":1,\"truncationCutoff\":0,\"morph\":{\"algorithmVersion\":\"geometry-fixture-v1\",\"kind\":\"full-smooth-figure8\",\"controls\":[{\"visitId\":\"A\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[0,0]}},{\"visitId\":\"B\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[1,0]}},{\"visitId\":\"C\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[2,0]}}],\"closed\":true,\"width\":0.2,\"pinchCenter\":true,\"framesPerSegment\":4,\"framesPerSecond\":24},\"future\":true}",
+   "classicChecks": 1,
+   "classic": {
+    "ok": false,
+    "messages": [
+     "Invalid or unsupported project JSON; check its schema, fields, values and size limits."
+    ]
+   }
+  },
+  {
+   "name": "verify-fable: rejects unknown morph kind",
+   "input": "{\"schemaVersion\":1,\"bundle\":{\"version\":\"fixture-v1\",\"manifestSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"modelSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"noiseSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"truncationPsi\":1,\"truncationCutoff\":0,\"morph\":{\"algorithmVersion\":\"geometry-fixture-v1\",\"kind\":\"unrecognized\",\"controls\":[{\"visitId\":\"A\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[0,0]}},{\"visitId\":\"B\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[1,0]}},{\"visitId\":\"C\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[2,0]}}],\"closed\":true,\"width\":0.2,\"pinchCenter\":true,\"framesPerSegment\":4,\"framesPerSecond\":24}}",
+   "classicChecks": 1,
+   "classic": {
+    "ok": false,
+    "messages": [
+     "Invalid or unsupported project JSON; check its schema, fields, values and size limits."
+    ]
+   }
+  },
+  {
+   "name": "verify-fable: rejects closed as a string",
+   "input": "{\"schemaVersion\":1,\"bundle\":{\"version\":\"fixture-v1\",\"manifestSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"modelSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"noiseSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"truncationPsi\":1,\"truncationCutoff\":0,\"morph\":{\"algorithmVersion\":\"geometry-fixture-v1\",\"kind\":\"full-smooth-figure8\",\"controls\":[{\"visitId\":\"A\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[0,0]}},{\"visitId\":\"B\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[1,0]}},{\"visitId\":\"C\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[2,0]}}],\"closed\":\"true\",\"width\":0.2,\"pinchCenter\":true,\"framesPerSegment\":4,\"framesPerSecond\":24}}",
+   "classicChecks": 1,
+   "classic": {
+    "ok": false,
+    "messages": [
+     "Invalid or unsupported project JSON; check its schema, fields, values and size limits."
+    ]
+   }
+  },
+  {
+   "name": "verify-fable: rejects infinite width",
+   "input": "{\"schemaVersion\":1,\"bundle\":{\"version\":\"fixture-v1\",\"manifestSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"modelSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"noiseSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"truncationPsi\":1,\"truncationCutoff\":0,\"morph\":{\"algorithmVersion\":\"geometry-fixture-v1\",\"kind\":\"full-smooth-figure8\",\"controls\":[{\"visitId\":\"A\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[0,0]}},{\"visitId\":\"B\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[1,0]}},{\"visitId\":\"C\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[2,0]}}],\"closed\":true,\"width\":1e999,\"pinchCenter\":true,\"framesPerSegment\":4,\"framesPerSecond\":24}}",
+   "classicChecks": 1,
+   "classic": {
+    "ok": false,
+    "messages": [
+     "Invalid or unsupported project JSON; check its schema, fields, values and size limits."
+    ]
+   }
+  },
+  {
+   "name": "verify-fable: rejects leading-zero schema version",
+   "input": "{\"schemaVersion\":01,\"bundle\":{\"version\":\"fixture-v1\",\"manifestSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"modelSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"noiseSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"truncationPsi\":1,\"truncationCutoff\":0,\"morph\":{\"algorithmVersion\":\"geometry-fixture-v1\",\"kind\":\"full-smooth-figure8\",\"controls\":[{\"visitId\":\"A\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[0,0]}},{\"visitId\":\"B\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[1,0]}},{\"visitId\":\"C\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[2,0]}}],\"closed\":true,\"width\":0.2,\"pinchCenter\":true,\"framesPerSegment\":4,\"framesPerSecond\":24}}",
+   "classicChecks": 1,
+   "classic": {
+    "ok": false,
+    "messages": [
+     "Invalid or unsupported project JSON; check its schema, fields, values and size limits."
+    ]
+   }
+  },
+  {
+   "name": "verify-fable: rejects trailing content",
+   "input": "{\"schemaVersion\":1,\"bundle\":{\"version\":\"fixture-v1\",\"manifestSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"modelSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"noiseSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"truncationPsi\":1,\"truncationCutoff\":0,\"morph\":{\"algorithmVersion\":\"geometry-fixture-v1\",\"kind\":\"full-smooth-figure8\",\"controls\":[{\"visitId\":\"A\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[0,0]}},{\"visitId\":\"B\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[1,0]}},{\"visitId\":\"C\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[2,0]}}],\"closed\":true,\"width\":0.2,\"pinchCenter\":true,\"framesPerSegment\":4,\"framesPerSecond\":24}}null",
+   "classicChecks": 1,
+   "classic": {
+    "ok": false,
+    "messages": [
+     "Invalid or unsupported project JSON; check its schema, fields, values and size limits."
+    ]
+   }
+  },
+  {
+   "name": "verify-fable: rejects nesting 18 deep",
+   "input": "[[[[[[[[[[[[[[[[[[0]]]]]]]]]]]]]]]]]]",
+   "classicChecks": 1,
+   "classic": {
+    "ok": false,
+    "messages": [
+     "Invalid or unsupported project JSON; check its schema, fields, values and size limits."
+    ]
+   }
+  },
+  {
+   "name": "verify-fable: space z round-trips",
+   "input": "{\"schemaVersion\":1,\"bundle\":{\"version\":\"fixture-v1\",\"manifestSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"modelSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"noiseSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"truncationPsi\":1,\"truncationCutoff\":0,\"morph\":{\"algorithmVersion\":\"geometry-fixture-v1\",\"kind\":\"full-smooth-figure8\",\"controls\":[{\"visitId\":\"A\",\"latent\":{\"space\":\"z\",\"shape\":[2],\"values\":[0,0]}},{\"visitId\":\"B\",\"latent\":{\"space\":\"z\",\"shape\":[2],\"values\":[1,0]}},{\"visitId\":\"C\",\"latent\":{\"space\":\"z\",\"shape\":[2],\"values\":[2,0]}}],\"closed\":true,\"width\":0.2,\"pinchCenter\":true,\"framesPerSegment\":4,\"framesPerSecond\":24}}",
+   "classicChecks": 3,
+   "classic": {
+    "ok": true,
+    "text": "{\"schemaVersion\":1,\"bundle\":{\"version\":\"fixture-v1\",\"manifestSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"modelSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"noiseSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"truncationPsi\":1,\"truncationCutoff\":0,\"morph\":{\"algorithmVersion\":\"geometry-fixture-v1\",\"kind\":\"full-smooth-figure8\",\"controls\":[{\"visitId\":\"A\",\"latent\":{\"space\":\"z\",\"shape\":[2],\"values\":[0,0]}},{\"visitId\":\"B\",\"latent\":{\"space\":\"z\",\"shape\":[2],\"values\":[1,0]}},{\"visitId\":\"C\",\"latent\":{\"space\":\"z\",\"shape\":[2],\"values\":[2,0]}}],\"closed\":true,\"width\":0.2,\"pinchCenter\":true,\"framesPerSegment\":4,\"framesPerSecond\":24}}"
+   }
+  },
+  {
+   "name": "verify-fable: space w round-trips",
+   "input": "{\"schemaVersion\":1,\"bundle\":{\"version\":\"fixture-v1\",\"manifestSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"modelSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"noiseSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"truncationPsi\":1,\"truncationCutoff\":0,\"morph\":{\"algorithmVersion\":\"geometry-fixture-v1\",\"kind\":\"full-smooth-figure8\",\"controls\":[{\"visitId\":\"A\",\"latent\":{\"space\":\"w\",\"shape\":[2],\"values\":[0,0]}},{\"visitId\":\"B\",\"latent\":{\"space\":\"w\",\"shape\":[2],\"values\":[1,0]}},{\"visitId\":\"C\",\"latent\":{\"space\":\"w\",\"shape\":[2],\"values\":[2,0]}}],\"closed\":true,\"width\":0.2,\"pinchCenter\":true,\"framesPerSegment\":4,\"framesPerSecond\":24}}",
+   "classicChecks": 3,
+   "classic": {
+    "ok": true,
+    "text": "{\"schemaVersion\":1,\"bundle\":{\"version\":\"fixture-v1\",\"manifestSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"modelSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"noiseSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"truncationPsi\":1,\"truncationCutoff\":0,\"morph\":{\"algorithmVersion\":\"geometry-fixture-v1\",\"kind\":\"full-smooth-figure8\",\"controls\":[{\"visitId\":\"A\",\"latent\":{\"space\":\"w\",\"shape\":[2],\"values\":[0,0]}},{\"visitId\":\"B\",\"latent\":{\"space\":\"w\",\"shape\":[2],\"values\":[1,0]}},{\"visitId\":\"C\",\"latent\":{\"space\":\"w\",\"shape\":[2],\"values\":[2,0]}}],\"closed\":true,\"width\":0.2,\"pinchCenter\":true,\"framesPerSegment\":4,\"framesPerSecond\":24}}"
+   }
+  },
+  {
+   "name": "verify-fable: space w-plus round-trips",
+   "input": "{\"schemaVersion\":1,\"bundle\":{\"version\":\"fixture-v1\",\"manifestSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"modelSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"noiseSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"truncationPsi\":1,\"truncationCutoff\":0,\"morph\":{\"algorithmVersion\":\"geometry-fixture-v1\",\"kind\":\"full-smooth-figure8\",\"controls\":[{\"visitId\":\"A\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[0,0]}},{\"visitId\":\"B\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[1,0]}},{\"visitId\":\"C\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[2,0]}}],\"closed\":true,\"width\":0.2,\"pinchCenter\":true,\"framesPerSegment\":4,\"framesPerSecond\":24}}",
+   "classicChecks": 3,
+   "classic": {
+    "ok": true,
+    "text": "{\"schemaVersion\":1,\"bundle\":{\"version\":\"fixture-v1\",\"manifestSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"modelSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"noiseSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"truncationPsi\":1,\"truncationCutoff\":0,\"morph\":{\"algorithmVersion\":\"geometry-fixture-v1\",\"kind\":\"full-smooth-figure8\",\"controls\":[{\"visitId\":\"A\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[0,0]}},{\"visitId\":\"B\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[1,0]}},{\"visitId\":\"C\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[2,0]}}],\"closed\":true,\"width\":0.2,\"pinchCenter\":true,\"framesPerSegment\":4,\"framesPerSecond\":24}}"
+   }
+  },
+  {
+   "name": "verify-fable: space missing is rejected",
+   "input": "{\"schemaVersion\":1,\"bundle\":{\"version\":\"fixture-v1\",\"manifestSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"modelSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"noiseSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"truncationPsi\":1,\"truncationCutoff\":0,\"morph\":{\"algorithmVersion\":\"geometry-fixture-v1\",\"kind\":\"full-smooth-figure8\",\"controls\":[{\"visitId\":\"A\",\"latent\":{\"shape\":[2],\"values\":[0,0]}},{\"visitId\":\"B\",\"latent\":{\"shape\":[2],\"values\":[1,0]}},{\"visitId\":\"C\",\"latent\":{\"shape\":[2],\"values\":[2,0]}}],\"closed\":true,\"width\":0.2,\"pinchCenter\":true,\"framesPerSegment\":4,\"framesPerSecond\":24}}",
+   "classicChecks": 1,
+   "classic": {
+    "ok": false,
+    "messages": [
+     "Invalid or unsupported project JSON; check its schema, fields, values and size limits."
+    ]
+   }
+  },
+  {
+   "name": "verify-fable: space q is rejected",
+   "input": "{\"schemaVersion\":1,\"bundle\":{\"version\":\"fixture-v1\",\"manifestSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"modelSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"noiseSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"truncationPsi\":1,\"truncationCutoff\":0,\"morph\":{\"algorithmVersion\":\"geometry-fixture-v1\",\"kind\":\"full-smooth-figure8\",\"controls\":[{\"visitId\":\"A\",\"latent\":{\"space\":\"q\",\"shape\":[2],\"values\":[0,0]}},{\"visitId\":\"B\",\"latent\":{\"space\":\"q\",\"shape\":[2],\"values\":[1,0]}},{\"visitId\":\"C\",\"latent\":{\"space\":\"q\",\"shape\":[2],\"values\":[2,0]}}],\"closed\":true,\"width\":0.2,\"pinchCenter\":true,\"framesPerSegment\":4,\"framesPerSecond\":24}}",
+   "classicChecks": 1,
+   "classic": {
+    "ok": false,
+    "messages": [
+     "Invalid or unsupported project JSON; check its schema, fields, values and size limits."
+    ]
+   }
+  },
+  {
+   "name": "verify-fable: space d is rejected",
+   "input": "{\"schemaVersion\":1,\"bundle\":{\"version\":\"fixture-v1\",\"manifestSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"modelSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"noiseSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"truncationPsi\":1,\"truncationCutoff\":0,\"morph\":{\"algorithmVersion\":\"geometry-fixture-v1\",\"kind\":\"full-smooth-figure8\",\"controls\":[{\"visitId\":\"A\",\"latent\":{\"space\":\"d\",\"shape\":[2],\"values\":[0,0]}},{\"visitId\":\"B\",\"latent\":{\"space\":\"d\",\"shape\":[2],\"values\":[1,0]}},{\"visitId\":\"C\",\"latent\":{\"space\":\"d\",\"shape\":[2],\"values\":[2,0]}}],\"closed\":true,\"width\":0.2,\"pinchCenter\":true,\"framesPerSegment\":4,\"framesPerSecond\":24}}",
+   "classicChecks": 1,
+   "classic": {
+    "ok": false,
+    "messages": [
+     "Invalid or unsupported project JSON; check its schema, fields, values and size limits."
+    ]
+   }
+  },
+  {
+   "name": "verify-fable: space unknown is rejected",
+   "input": "{\"schemaVersion\":1,\"bundle\":{\"version\":\"fixture-v1\",\"manifestSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"modelSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"noiseSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"truncationPsi\":1,\"truncationCutoff\":0,\"morph\":{\"algorithmVersion\":\"geometry-fixture-v1\",\"kind\":\"full-smooth-figure8\",\"controls\":[{\"visitId\":\"A\",\"latent\":{\"space\":\"unknown\",\"shape\":[2],\"values\":[0,0]}},{\"visitId\":\"B\",\"latent\":{\"space\":\"unknown\",\"shape\":[2],\"values\":[1,0]}},{\"visitId\":\"C\",\"latent\":{\"space\":\"unknown\",\"shape\":[2],\"values\":[2,0]}}],\"closed\":true,\"width\":0.2,\"pinchCenter\":true,\"framesPerSegment\":4,\"framesPerSecond\":24}}",
+   "classicChecks": 1,
+   "classic": {
+    "ok": false,
+    "messages": [
+     "Invalid or unsupported project JSON; check its schema, fields, values and size limits."
+    ]
+   }
+  },
+  {
+   "name": "verify-fable: mixed spaces are rejected",
+   "input": "{\"schemaVersion\":1,\"bundle\":{\"version\":\"fixture-v1\",\"manifestSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"modelSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"noiseSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"truncationPsi\":1,\"truncationCutoff\":0,\"morph\":{\"algorithmVersion\":\"geometry-fixture-v1\",\"kind\":\"full-smooth-figure8\",\"controls\":[{\"visitId\":\"A\",\"latent\":{\"space\":\"z\",\"shape\":[2],\"values\":[0,0]}},{\"visitId\":\"B\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[1,0]}},{\"visitId\":\"C\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[2,0]}}],\"closed\":true,\"width\":0.2,\"pinchCenter\":true,\"framesPerSegment\":4,\"framesPerSecond\":24}}",
+   "classicChecks": 1,
+   "classic": {
+    "ok": false,
+    "messages": [
+     "All control latent spaces must match; implicit conversion is forbidden."
+    ]
+   }
+  },
+  {
+   "name": "golden: project-v1.fixture.json",
+   "file": "src/Next/project-v1.fixture.json",
+   "golden": "fixture",
+   "classic": {
+    "ok": true,
+    "sha256": "07534a6f93f9b047180fd49575e2b98c399d540e1cec54ef32c2965ea06f50c2",
+    "chars": 731,
+    "equalsInput": false
+   }
+  },
+  {
+   "name": "golden: project JSON embedded in a control-exported morph MP4",
+   "file": "test/fixtures/project/control-morph-mp4.project.json",
+   "golden": "control-mp4",
+   "provenance": "the 'FaceMorphProject' uuid box payload (372,372 bytes at offset 1039320) of facemorph.mp4 (sha256 8b6b1ccce9680dbb7fa2dd38eebb6a5fa3134f0b1bf05d30ce42912099c12e7e), the morph MP4 that the pinned control 551b6072 saved in classic's next-e2e-browser.py journey on eris (real-ui-cpu, lease 20261024T164732Z-a26a714c)",
+   "classic": {
+    "ok": true,
+    "sha256": "9438b3b997c48a03cf5aa014304bea0e431ed971805da7c15c97ed4f82f3908e",
+    "chars": 372372,
+    "equalsInput": true
+   }
+  },
+  {
+   "name": "schema version 0 is rejected",
+   "input": "{\"schemaVersion\":0,\"bundle\":{\"version\":\"fixture-v1\",\"manifestSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"modelSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"noiseSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"truncationPsi\":1,\"truncationCutoff\":0,\"morph\":{\"algorithmVersion\":\"geometry-fixture-v1\",\"kind\":\"full-smooth-figure8\",\"controls\":[{\"visitId\":\"A\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[0,0]}},{\"visitId\":\"B\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[1,0]}},{\"visitId\":\"C\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[2,0]}}],\"closed\":true,\"width\":0.2,\"pinchCenter\":true,\"framesPerSegment\":4,\"framesPerSecond\":24}}",
+   "classic": {
+    "ok": false,
+    "messages": [
+     "Invalid or unsupported project JSON; check its schema, fields, values and size limits."
+    ]
+   }
+  },
+  {
+   "name": "schema version \"1\" is rejected",
+   "input": "{\"schemaVersion\":\"1\",\"bundle\":{\"version\":\"fixture-v1\",\"manifestSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"modelSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"noiseSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"truncationPsi\":1,\"truncationCutoff\":0,\"morph\":{\"algorithmVersion\":\"geometry-fixture-v1\",\"kind\":\"full-smooth-figure8\",\"controls\":[{\"visitId\":\"A\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[0,0]}},{\"visitId\":\"B\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[1,0]}},{\"visitId\":\"C\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[2,0]}}],\"closed\":true,\"width\":0.2,\"pinchCenter\":true,\"framesPerSegment\":4,\"framesPerSecond\":24}}",
+   "classic": {
+    "ok": false,
+    "messages": [
+     "Invalid or unsupported project JSON; check its schema, fields, values and size limits."
+    ]
+   }
+  },
+  {
+   "name": "schema version 1.5 is rejected",
+   "input": "{\"schemaVersion\":1.5,\"bundle\":{\"version\":\"fixture-v1\",\"manifestSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"modelSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"noiseSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"truncationPsi\":1,\"truncationCutoff\":0,\"morph\":{\"algorithmVersion\":\"geometry-fixture-v1\",\"kind\":\"full-smooth-figure8\",\"controls\":[{\"visitId\":\"A\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[0,0]}},{\"visitId\":\"B\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[1,0]}},{\"visitId\":\"C\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[2,0]}}],\"closed\":true,\"width\":0.2,\"pinchCenter\":true,\"framesPerSegment\":4,\"framesPerSecond\":24}}",
+   "classic": {
+    "ok": false,
+    "messages": [
+     "Invalid or unsupported project JSON; check its schema, fields, values and size limits."
+    ]
+   }
+  },
+  {
+   "name": "schema version -1 is rejected",
+   "input": "{\"schemaVersion\":-1,\"bundle\":{\"version\":\"fixture-v1\",\"manifestSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"modelSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"noiseSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"truncationPsi\":1,\"truncationCutoff\":0,\"morph\":{\"algorithmVersion\":\"geometry-fixture-v1\",\"kind\":\"full-smooth-figure8\",\"controls\":[{\"visitId\":\"A\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[0,0]}},{\"visitId\":\"B\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[1,0]}},{\"visitId\":\"C\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[2,0]}}],\"closed\":true,\"width\":0.2,\"pinchCenter\":true,\"framesPerSegment\":4,\"framesPerSecond\":24}}",
+   "classic": {
+    "ok": false,
+    "messages": [
+     "Invalid or unsupported project JSON; check its schema, fields, values and size limits."
+    ]
+   }
+  },
+  {
+   "name": "schema version null is rejected",
+   "input": "{\"schemaVersion\":null,\"bundle\":{\"version\":\"fixture-v1\",\"manifestSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"modelSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"noiseSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"truncationPsi\":1,\"truncationCutoff\":0,\"morph\":{\"algorithmVersion\":\"geometry-fixture-v1\",\"kind\":\"full-smooth-figure8\",\"controls\":[{\"visitId\":\"A\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[0,0]}},{\"visitId\":\"B\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[1,0]}},{\"visitId\":\"C\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[2,0]}}],\"closed\":true,\"width\":0.2,\"pinchCenter\":true,\"framesPerSegment\":4,\"framesPerSecond\":24}}",
+   "classic": {
+    "ok": false,
+    "messages": [
+     "Invalid or unsupported project JSON; check its schema, fields, values and size limits."
+    ]
+   }
+  },
+  {
+   "name": "a missing root field is rejected",
+   "input": "{\"schemaVersion\":1,\"bundle\":{\"version\":\"fixture-v1\",\"manifestSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"modelSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"truncationPsi\":1,\"truncationCutoff\":0,\"morph\":{\"algorithmVersion\":\"geometry-fixture-v1\",\"kind\":\"full-smooth-figure8\",\"controls\":[{\"visitId\":\"A\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[0,0]}},{\"visitId\":\"B\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[1,0]}},{\"visitId\":\"C\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[2,0]}}],\"closed\":true,\"width\":0.2,\"pinchCenter\":true,\"framesPerSegment\":4,\"framesPerSecond\":24}}",
+   "classic": {
+    "ok": false,
+    "messages": [
+     "Invalid or unsupported project JSON; check its schema, fields, values and size limits."
+    ]
+   }
+  },
+  {
+   "name": "a missing morph field is rejected",
+   "input": "{\"schemaVersion\":1,\"bundle\":{\"version\":\"fixture-v1\",\"manifestSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"modelSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"noiseSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"truncationPsi\":1,\"truncationCutoff\":0,\"morph\":{\"algorithmVersion\":\"geometry-fixture-v1\",\"kind\":\"full-smooth-figure8\",\"controls\":[{\"visitId\":\"A\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[0,0]}},{\"visitId\":\"B\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[1,0]}},{\"visitId\":\"C\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[2,0]}}],\"closed\":true,\"width\":0.2,\"framesPerSegment\":4,\"framesPerSecond\":24}}",
+   "classic": {
+    "ok": false,
+    "messages": [
+     "Invalid or unsupported project JSON; check its schema, fields, values and size limits."
+    ]
+   }
+  },
+  {
+   "name": "truncationCutoff 1.5 is rejected",
+   "input": "{\"schemaVersion\":1,\"bundle\":{\"version\":\"fixture-v1\",\"manifestSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"modelSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"noiseSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"truncationPsi\":1,\"truncationCutoff\":1.5,\"morph\":{\"algorithmVersion\":\"geometry-fixture-v1\",\"kind\":\"full-smooth-figure8\",\"controls\":[{\"visitId\":\"A\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[0,0]}},{\"visitId\":\"B\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[1,0]}},{\"visitId\":\"C\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[2,0]}}],\"closed\":true,\"width\":0.2,\"pinchCenter\":true,\"framesPerSegment\":4,\"framesPerSecond\":24}}",
+   "classic": {
+    "ok": false,
+    "messages": [
+     "Invalid or unsupported project JSON; check its schema, fields, values and size limits."
+    ]
+   }
+  },
+  {
+   "name": "truncationCutoff above Int32 is rejected",
+   "input": "{\"schemaVersion\":1,\"bundle\":{\"version\":\"fixture-v1\",\"manifestSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"modelSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"noiseSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"truncationPsi\":1,\"truncationCutoff\":2147483648,\"morph\":{\"algorithmVersion\":\"geometry-fixture-v1\",\"kind\":\"full-smooth-figure8\",\"controls\":[{\"visitId\":\"A\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[0,0]}},{\"visitId\":\"B\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[1,0]}},{\"visitId\":\"C\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[2,0]}}],\"closed\":true,\"width\":0.2,\"pinchCenter\":true,\"framesPerSegment\":4,\"framesPerSecond\":24}}",
+   "classic": {
+    "ok": false,
+    "messages": [
+     "Invalid or unsupported project JSON; check its schema, fields, values and size limits."
+    ]
+   }
+  },
+  {
+   "name": "truncationCutoff at Int32 max is admitted",
+   "input": "{\"schemaVersion\":1,\"bundle\":{\"version\":\"fixture-v1\",\"manifestSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"modelSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"noiseSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"truncationPsi\":1,\"truncationCutoff\":2147483647,\"morph\":{\"algorithmVersion\":\"geometry-fixture-v1\",\"kind\":\"full-smooth-figure8\",\"controls\":[{\"visitId\":\"A\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[0,0]}},{\"visitId\":\"B\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[1,0]}},{\"visitId\":\"C\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[2,0]}}],\"closed\":true,\"width\":0.2,\"pinchCenter\":true,\"framesPerSegment\":4,\"framesPerSecond\":24}}",
+   "classic": {
+    "ok": true,
+    "text": "{\"schemaVersion\":1,\"bundle\":{\"version\":\"fixture-v1\",\"manifestSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"modelSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"noiseSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"truncationPsi\":1,\"truncationCutoff\":2147483647,\"morph\":{\"algorithmVersion\":\"geometry-fixture-v1\",\"kind\":\"full-smooth-figure8\",\"controls\":[{\"visitId\":\"A\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[0,0]}},{\"visitId\":\"B\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[1,0]}},{\"visitId\":\"C\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[2,0]}}],\"closed\":true,\"width\":0.2,\"pinchCenter\":true,\"framesPerSegment\":4,\"framesPerSecond\":24}}"
+   }
+  },
+  {
+   "name": "a negative shape is rejected",
+   "input": "{\"schemaVersion\":1,\"bundle\":{\"version\":\"fixture-v1\",\"manifestSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"modelSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"noiseSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"truncationPsi\":1,\"truncationCutoff\":0,\"morph\":{\"algorithmVersion\":\"geometry-fixture-v1\",\"kind\":\"full-smooth-figure8\",\"controls\":[{\"visitId\":\"A\",\"latent\":{\"space\":\"w-plus\",\"shape\":[-2],\"values\":[0,0]}},{\"visitId\":\"B\",\"latent\":{\"space\":\"w-plus\",\"shape\":[-2],\"values\":[1,0]}},{\"visitId\":\"C\",\"latent\":{\"space\":\"w-plus\",\"shape\":[-2],\"values\":[2,0]}}],\"closed\":true,\"width\":0.2,\"pinchCenter\":true,\"framesPerSegment\":4,\"framesPerSecond\":24}}",
+   "classic": {
+    "ok": false,
+    "messages": [
+     "Invalid or unsupported project JSON; check its schema, fields, values and size limits."
+    ]
+   }
+  },
+  {
+   "name": "a string latent value is rejected",
+   "input": "{\"schemaVersion\":1,\"bundle\":{\"version\":\"fixture-v1\",\"manifestSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"modelSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"noiseSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"truncationPsi\":1,\"truncationCutoff\":0,\"morph\":{\"algorithmVersion\":\"geometry-fixture-v1\",\"kind\":\"full-smooth-figure8\",\"controls\":[{\"visitId\":\"A\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[\"0\",\"1\"]}},{\"visitId\":\"B\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[\"0\",\"1\"]}},{\"visitId\":\"C\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[\"0\",\"1\"]}}],\"closed\":true,\"width\":0.2,\"pinchCenter\":true,\"framesPerSegment\":4,\"framesPerSecond\":24}}",
+   "classic": {
+    "ok": false,
+    "messages": [
+     "Invalid or unsupported project JSON; check its schema, fields, values and size limits."
+    ]
+   }
+  },
+  {
+   "name": "a numeric visit ID is rejected",
+   "input": "{\"schemaVersion\":1,\"bundle\":{\"version\":\"fixture-v1\",\"manifestSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"modelSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"noiseSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"truncationPsi\":1,\"truncationCutoff\":0,\"morph\":{\"algorithmVersion\":\"geometry-fixture-v1\",\"kind\":\"full-smooth-figure8\",\"controls\":[{\"visitId\":0,\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[0,0]}},{\"visitId\":1,\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[1,0]}},{\"visitId\":2,\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[2,0]}}],\"closed\":true,\"width\":0.2,\"pinchCenter\":true,\"framesPerSegment\":4,\"framesPerSecond\":24}}",
+   "classic": {
+    "ok": false,
+    "messages": [
+     "Invalid or unsupported project JSON; check its schema, fields, values and size limits."
+    ]
+   }
+  },
+  {
+   "name": "a blank visit ID is invalid",
+   "input": "{\"schemaVersion\":1,\"bundle\":{\"version\":\"fixture-v1\",\"manifestSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"modelSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"noiseSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"truncationPsi\":1,\"truncationCutoff\":0,\"morph\":{\"algorithmVersion\":\"geometry-fixture-v1\",\"kind\":\"full-smooth-figure8\",\"controls\":[{\"visitId\":\" \",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[0,0]}},{\"visitId\":\"B\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[1,0]}},{\"visitId\":\"C\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[2,0]}}],\"closed\":true,\"width\":0.2,\"pinchCenter\":true,\"framesPerSegment\":4,\"framesPerSecond\":24}}",
+   "classic": {
+    "ok": false,
+    "messages": [
+     "Visit IDs must be nonempty."
+    ]
+   }
+  },
+  {
+   "name": "duplicate visit IDs are invalid",
+   "input": "{\"schemaVersion\":1,\"bundle\":{\"version\":\"fixture-v1\",\"manifestSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"modelSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"noiseSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"truncationPsi\":1,\"truncationCutoff\":0,\"morph\":{\"algorithmVersion\":\"geometry-fixture-v1\",\"kind\":\"full-smooth-figure8\",\"controls\":[{\"visitId\":\"A\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[0,0]}},{\"visitId\":\"A\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[1,0]}},{\"visitId\":\"A\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[2,0]}}],\"closed\":true,\"width\":0.2,\"pinchCenter\":true,\"framesPerSegment\":4,\"framesPerSecond\":24}}",
+   "classic": {
+    "ok": false,
+    "messages": [
+     "Visit IDs must be unique; repeated latents can use distinct IDs."
+    ]
+   }
+  },
+  {
+   "name": "an uppercase manifest digest is invalid",
+   "input": "{\"schemaVersion\":1,\"bundle\":{\"version\":\"fixture-v1\",\"manifestSha256\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\"},\"modelSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"noiseSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"truncationPsi\":1,\"truncationCutoff\":0,\"morph\":{\"algorithmVersion\":\"geometry-fixture-v1\",\"kind\":\"full-smooth-figure8\",\"controls\":[{\"visitId\":\"A\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[0,0]}},{\"visitId\":\"B\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[1,0]}},{\"visitId\":\"C\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[2,0]}}],\"closed\":true,\"width\":0.2,\"pinchCenter\":true,\"framesPerSegment\":4,\"framesPerSecond\":24}}",
+   "classic": {
+    "ok": false,
+    "messages": [
+     "A versioned, checksummed runtime bundle is required."
+    ]
+   }
+  },
+  {
+   "name": "a negative psi is invalid",
+   "input": "{\"schemaVersion\":1,\"bundle\":{\"version\":\"fixture-v1\",\"manifestSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"modelSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"noiseSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"truncationPsi\":-0.5,\"truncationCutoff\":0,\"morph\":{\"algorithmVersion\":\"geometry-fixture-v1\",\"kind\":\"full-smooth-figure8\",\"controls\":[{\"visitId\":\"A\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[0,0]}},{\"visitId\":\"B\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[1,0]}},{\"visitId\":\"C\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[2,0]}}],\"closed\":true,\"width\":0.2,\"pinchCenter\":true,\"framesPerSegment\":4,\"framesPerSecond\":24}}",
+   "classic": {
+    "ok": false,
+    "messages": [
+     "Invalid truncation settings."
+    ]
+   }
+  },
+  {
+   "name": "an odd frame count is invalid",
+   "input": "{\"schemaVersion\":1,\"bundle\":{\"version\":\"fixture-v1\",\"manifestSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"modelSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"noiseSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"truncationPsi\":1,\"truncationCutoff\":0,\"morph\":{\"algorithmVersion\":\"geometry-fixture-v1\",\"kind\":\"full-smooth-figure8\",\"controls\":[{\"visitId\":\"A\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[0,0]}},{\"visitId\":\"B\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[1,0]}},{\"visitId\":\"C\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[2,0]}}],\"closed\":true,\"width\":0.2,\"pinchCenter\":true,\"framesPerSegment\":3,\"framesPerSecond\":24}}",
+   "classic": {
+    "ok": false,
+    "messages": [
+     "Use a positive even frame count per segment to include exact midpoint samples."
+    ]
+   }
+  },
+  {
+   "name": "frame rate 241 is invalid",
+   "input": "{\"schemaVersion\":1,\"bundle\":{\"version\":\"fixture-v1\",\"manifestSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"modelSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"noiseSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"truncationPsi\":1,\"truncationCutoff\":0,\"morph\":{\"algorithmVersion\":\"geometry-fixture-v1\",\"kind\":\"full-smooth-figure8\",\"controls\":[{\"visitId\":\"A\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[0,0]}},{\"visitId\":\"B\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[1,0]}},{\"visitId\":\"C\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[2,0]}}],\"closed\":true,\"width\":0.2,\"pinchCenter\":true,\"framesPerSegment\":4,\"framesPerSecond\":241}}",
+   "classic": {
+    "ok": false,
+    "messages": [
+     "Frame rate must be 1–240."
+    ]
+   }
+  },
+  {
+   "name": "an open full-smooth path is invalid",
+   "input": "{\"schemaVersion\":1,\"bundle\":{\"version\":\"fixture-v1\",\"manifestSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"modelSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"noiseSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"truncationPsi\":1,\"truncationCutoff\":0,\"morph\":{\"algorithmVersion\":\"geometry-fixture-v1\",\"kind\":\"full-smooth-figure8\",\"controls\":[{\"visitId\":\"A\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[0,0]}},{\"visitId\":\"B\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[1,0]}},{\"visitId\":\"C\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[2,0]}}],\"closed\":false,\"width\":0.2,\"pinchCenter\":true,\"framesPerSegment\":4,\"framesPerSecond\":24}}",
+   "classic": {
+    "ok": false,
+    "messages": [
+     "Full-smooth open endpoints are not qualified; use a closed path."
+    ]
+   }
+  },
+  {
+   "name": "an open linear path is admitted",
+   "input": "{\"schemaVersion\":1,\"bundle\":{\"version\":\"fixture-v1\",\"manifestSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"modelSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"noiseSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"truncationPsi\":1,\"truncationCutoff\":0,\"morph\":{\"algorithmVersion\":\"geometry-fixture-v1\",\"kind\":\"linear\",\"controls\":[{\"visitId\":\"A\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[0,0]}},{\"visitId\":\"B\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[1,0]}},{\"visitId\":\"C\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[2,0]}}],\"closed\":false,\"width\":0.2,\"pinchCenter\":true,\"framesPerSegment\":4,\"framesPerSecond\":24}}",
+   "classic": {
+    "ok": true,
+    "text": "{\"schemaVersion\":1,\"bundle\":{\"version\":\"fixture-v1\",\"manifestSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"modelSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"noiseSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"truncationPsi\":1,\"truncationCutoff\":0,\"morph\":{\"algorithmVersion\":\"geometry-fixture-v1\",\"kind\":\"linear\",\"controls\":[{\"visitId\":\"A\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[0,0]}},{\"visitId\":\"B\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[1,0]}},{\"visitId\":\"C\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[2,0]}}],\"closed\":false,\"width\":0.2,\"pinchCenter\":true,\"framesPerSegment\":4,\"framesPerSecond\":24}}"
+   }
+  },
+  {
+   "name": "adjacent identical faces are invalid",
+   "input": "{\"schemaVersion\":1,\"bundle\":{\"version\":\"fixture-v1\",\"manifestSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"modelSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"noiseSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"truncationPsi\":1,\"truncationCutoff\":0,\"morph\":{\"algorithmVersion\":\"geometry-fixture-v1\",\"kind\":\"full-smooth-figure8\",\"controls\":[{\"visitId\":\"A\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[5,5]}},{\"visitId\":\"B\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[5,5]}},{\"visitId\":\"C\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[5,5]}}],\"closed\":true,\"width\":0.2,\"pinchCenter\":true,\"framesPerSegment\":4,\"framesPerSecond\":24}}",
+   "classic": {
+    "ok": false,
+    "messages": [
+     "Adjacent identical faces create a degenerate direction; remove that visit."
+    ]
+   }
+  },
+  {
+   "name": "mismatched shapes are invalid",
+   "input": "{\"schemaVersion\":1,\"bundle\":{\"version\":\"fixture-v1\",\"manifestSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"modelSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"noiseSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"truncationPsi\":1,\"truncationCutoff\":0,\"morph\":{\"algorithmVersion\":\"geometry-fixture-v1\",\"kind\":\"full-smooth-figure8\",\"controls\":[{\"visitId\":\"A\",\"latent\":{\"space\":\"w-plus\",\"shape\":[1,2],\"values\":[0,0]}},{\"visitId\":\"B\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[1,0]}},{\"visitId\":\"C\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[2,0]}}],\"closed\":true,\"width\":0.2,\"pinchCenter\":true,\"framesPerSegment\":4,\"framesPerSecond\":24}}",
+   "classic": {
+    "ok": false,
+    "messages": [
+     "All control latent shapes must match."
+    ]
+   }
+  },
+  {
+   "name": "several errors are all named, in order",
+   "input": "{\"schemaVersion\":1,\"bundle\":{\"version\":\"fixture-v1\",\"manifestSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"modelSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"noiseSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"truncationPsi\":-1,\"truncationCutoff\":0,\"morph\":{\"algorithmVersion\":\"geometry-fixture-v1\",\"kind\":\"full-smooth-figure8\",\"controls\":[{\"visitId\":\"A\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[0,0]}},{\"visitId\":\"B\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[1,0]}},{\"visitId\":\"C\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[2,0]}}],\"closed\":true,\"width\":0.2,\"pinchCenter\":true,\"framesPerSegment\":3,\"framesPerSecond\":0}}",
+   "classic": {
+    "ok": false,
+    "messages": [
+     "Invalid truncation settings.",
+     "Use a positive even frame count per segment to include exact midpoint samples.",
+     "Frame rate must be 1–240."
+    ]
+   }
+  },
+  {
+   "name": "numeric formatting: psi 0",
+   "input": "{\"schemaVersion\":1,\"bundle\":{\"version\":\"fixture-v1\",\"manifestSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"modelSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"noiseSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"truncationPsi\":0,\"truncationCutoff\":0,\"morph\":{\"algorithmVersion\":\"geometry-fixture-v1\",\"kind\":\"full-smooth-figure8\",\"controls\":[{\"visitId\":\"A\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[0,0]}},{\"visitId\":\"B\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[1,0]}},{\"visitId\":\"C\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[2,0]}}],\"closed\":true,\"width\":0.2,\"pinchCenter\":true,\"framesPerSegment\":4,\"framesPerSecond\":24}}",
+   "classic": {
+    "ok": true,
+    "text": "{\"schemaVersion\":1,\"bundle\":{\"version\":\"fixture-v1\",\"manifestSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"modelSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"noiseSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"truncationPsi\":0,\"truncationCutoff\":0,\"morph\":{\"algorithmVersion\":\"geometry-fixture-v1\",\"kind\":\"full-smooth-figure8\",\"controls\":[{\"visitId\":\"A\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[0,0]}},{\"visitId\":\"B\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[1,0]}},{\"visitId\":\"C\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[2,0]}}],\"closed\":true,\"width\":0.2,\"pinchCenter\":true,\"framesPerSegment\":4,\"framesPerSecond\":24}}"
+   }
+  },
+  {
+   "name": "numeric formatting: psi -0",
+   "input": "{\"schemaVersion\":1,\"bundle\":{\"version\":\"fixture-v1\",\"manifestSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"modelSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"noiseSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"truncationPsi\":-0,\"truncationCutoff\":0,\"morph\":{\"algorithmVersion\":\"geometry-fixture-v1\",\"kind\":\"full-smooth-figure8\",\"controls\":[{\"visitId\":\"A\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[0,0]}},{\"visitId\":\"B\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[1,0]}},{\"visitId\":\"C\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[2,0]}}],\"closed\":true,\"width\":0.2,\"pinchCenter\":true,\"framesPerSegment\":4,\"framesPerSecond\":24}}",
+   "classic": {
+    "ok": true,
+    "text": "{\"schemaVersion\":1,\"bundle\":{\"version\":\"fixture-v1\",\"manifestSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"modelSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"noiseSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"truncationPsi\":0,\"truncationCutoff\":0,\"morph\":{\"algorithmVersion\":\"geometry-fixture-v1\",\"kind\":\"full-smooth-figure8\",\"controls\":[{\"visitId\":\"A\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[0,0]}},{\"visitId\":\"B\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[1,0]}},{\"visitId\":\"C\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[2,0]}}],\"closed\":true,\"width\":0.2,\"pinchCenter\":true,\"framesPerSegment\":4,\"framesPerSecond\":24}}"
+   }
+  },
+  {
+   "name": "numeric formatting: psi 1e-7",
+   "input": "{\"schemaVersion\":1,\"bundle\":{\"version\":\"fixture-v1\",\"manifestSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"modelSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"noiseSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"truncationPsi\":1e-7,\"truncationCutoff\":0,\"morph\":{\"algorithmVersion\":\"geometry-fixture-v1\",\"kind\":\"full-smooth-figure8\",\"controls\":[{\"visitId\":\"A\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[0,0]}},{\"visitId\":\"B\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[1,0]}},{\"visitId\":\"C\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[2,0]}}],\"closed\":true,\"width\":0.2,\"pinchCenter\":true,\"framesPerSegment\":4,\"framesPerSecond\":24}}",
+   "classic": {
+    "ok": true,
+    "text": "{\"schemaVersion\":1,\"bundle\":{\"version\":\"fixture-v1\",\"manifestSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"modelSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"noiseSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"truncationPsi\":1e-7,\"truncationCutoff\":0,\"morph\":{\"algorithmVersion\":\"geometry-fixture-v1\",\"kind\":\"full-smooth-figure8\",\"controls\":[{\"visitId\":\"A\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[0,0]}},{\"visitId\":\"B\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[1,0]}},{\"visitId\":\"C\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[2,0]}}],\"closed\":true,\"width\":0.2,\"pinchCenter\":true,\"framesPerSegment\":4,\"framesPerSecond\":24}}"
+   }
+  },
+  {
+   "name": "numeric formatting: psi 4294967295",
+   "input": "{\"schemaVersion\":1,\"bundle\":{\"version\":\"fixture-v1\",\"manifestSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"modelSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"noiseSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"truncationPsi\":4294967295,\"truncationCutoff\":0,\"morph\":{\"algorithmVersion\":\"geometry-fixture-v1\",\"kind\":\"full-smooth-figure8\",\"controls\":[{\"visitId\":\"A\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[0,0]}},{\"visitId\":\"B\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[1,0]}},{\"visitId\":\"C\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[2,0]}}],\"closed\":true,\"width\":0.2,\"pinchCenter\":true,\"framesPerSegment\":4,\"framesPerSecond\":24}}",
+   "classic": {
+    "ok": true,
+    "text": "{\"schemaVersion\":1,\"bundle\":{\"version\":\"fixture-v1\",\"manifestSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"modelSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"noiseSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"truncationPsi\":4294967295,\"truncationCutoff\":0,\"morph\":{\"algorithmVersion\":\"geometry-fixture-v1\",\"kind\":\"full-smooth-figure8\",\"controls\":[{\"visitId\":\"A\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[0,0]}},{\"visitId\":\"B\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[1,0]}},{\"visitId\":\"C\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[2,0]}}],\"closed\":true,\"width\":0.2,\"pinchCenter\":true,\"framesPerSegment\":4,\"framesPerSecond\":24}}"
+   }
+  },
+  {
+   "name": "numeric formatting: psi 1e21",
+   "input": "{\"schemaVersion\":1,\"bundle\":{\"version\":\"fixture-v1\",\"manifestSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"modelSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"noiseSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"truncationPsi\":1e21,\"truncationCutoff\":0,\"morph\":{\"algorithmVersion\":\"geometry-fixture-v1\",\"kind\":\"full-smooth-figure8\",\"controls\":[{\"visitId\":\"A\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[0,0]}},{\"visitId\":\"B\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[1,0]}},{\"visitId\":\"C\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[2,0]}}],\"closed\":true,\"width\":0.2,\"pinchCenter\":true,\"framesPerSegment\":4,\"framesPerSecond\":24}}",
+   "classic": {
+    "ok": true,
+    "text": "{\"schemaVersion\":1,\"bundle\":{\"version\":\"fixture-v1\",\"manifestSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"modelSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"noiseSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"truncationPsi\":1e+21,\"truncationCutoff\":0,\"morph\":{\"algorithmVersion\":\"geometry-fixture-v1\",\"kind\":\"full-smooth-figure8\",\"controls\":[{\"visitId\":\"A\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[0,0]}},{\"visitId\":\"B\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[1,0]}},{\"visitId\":\"C\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[2,0]}}],\"closed\":true,\"width\":0.2,\"pinchCenter\":true,\"framesPerSegment\":4,\"framesPerSecond\":24}}"
+   }
+  },
+  {
+   "name": "numeric formatting: psi 0.30000000000000004",
+   "input": "{\"schemaVersion\":1,\"bundle\":{\"version\":\"fixture-v1\",\"manifestSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"modelSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"noiseSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"truncationPsi\":0.30000000000000004,\"truncationCutoff\":0,\"morph\":{\"algorithmVersion\":\"geometry-fixture-v1\",\"kind\":\"full-smooth-figure8\",\"controls\":[{\"visitId\":\"A\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[0,0]}},{\"visitId\":\"B\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[1,0]}},{\"visitId\":\"C\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[2,0]}}],\"closed\":true,\"width\":0.2,\"pinchCenter\":true,\"framesPerSegment\":4,\"framesPerSecond\":24}}",
+   "classic": {
+    "ok": true,
+    "text": "{\"schemaVersion\":1,\"bundle\":{\"version\":\"fixture-v1\",\"manifestSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"modelSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"noiseSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"truncationPsi\":0.30000000000000004,\"truncationCutoff\":0,\"morph\":{\"algorithmVersion\":\"geometry-fixture-v1\",\"kind\":\"full-smooth-figure8\",\"controls\":[{\"visitId\":\"A\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[0,0]}},{\"visitId\":\"B\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[1,0]}},{\"visitId\":\"C\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[2,0]}}],\"closed\":true,\"width\":0.2,\"pinchCenter\":true,\"framesPerSegment\":4,\"framesPerSecond\":24}}"
+   }
+  },
+  {
+   "name": "numeric formatting: psi 5e-324",
+   "input": "{\"schemaVersion\":1,\"bundle\":{\"version\":\"fixture-v1\",\"manifestSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"modelSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"noiseSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"truncationPsi\":5e-324,\"truncationCutoff\":0,\"morph\":{\"algorithmVersion\":\"geometry-fixture-v1\",\"kind\":\"full-smooth-figure8\",\"controls\":[{\"visitId\":\"A\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[0,0]}},{\"visitId\":\"B\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[1,0]}},{\"visitId\":\"C\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[2,0]}}],\"closed\":true,\"width\":0.2,\"pinchCenter\":true,\"framesPerSegment\":4,\"framesPerSecond\":24}}",
+   "classic": {
+    "ok": true,
+    "text": "{\"schemaVersion\":1,\"bundle\":{\"version\":\"fixture-v1\",\"manifestSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"modelSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"noiseSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"truncationPsi\":5e-324,\"truncationCutoff\":0,\"morph\":{\"algorithmVersion\":\"geometry-fixture-v1\",\"kind\":\"full-smooth-figure8\",\"controls\":[{\"visitId\":\"A\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[0,0]}},{\"visitId\":\"B\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[1,0]}},{\"visitId\":\"C\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[2,0]}}],\"closed\":true,\"width\":0.2,\"pinchCenter\":true,\"framesPerSegment\":4,\"framesPerSecond\":24}}"
+   }
+  },
+  {
+   "name": "numeric formatting: psi 1.7976931348623157e308",
+   "input": "{\"schemaVersion\":1,\"bundle\":{\"version\":\"fixture-v1\",\"manifestSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"modelSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"noiseSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"truncationPsi\":1.7976931348623157e308,\"truncationCutoff\":0,\"morph\":{\"algorithmVersion\":\"geometry-fixture-v1\",\"kind\":\"full-smooth-figure8\",\"controls\":[{\"visitId\":\"A\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[0,0]}},{\"visitId\":\"B\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[1,0]}},{\"visitId\":\"C\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[2,0]}}],\"closed\":true,\"width\":0.2,\"pinchCenter\":true,\"framesPerSegment\":4,\"framesPerSecond\":24}}",
+   "classic": {
+    "ok": true,
+    "text": "{\"schemaVersion\":1,\"bundle\":{\"version\":\"fixture-v1\",\"manifestSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"modelSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"noiseSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"truncationPsi\":1.7976931348623157e+308,\"truncationCutoff\":0,\"morph\":{\"algorithmVersion\":\"geometry-fixture-v1\",\"kind\":\"full-smooth-figure8\",\"controls\":[{\"visitId\":\"A\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[0,0]}},{\"visitId\":\"B\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[1,0]}},{\"visitId\":\"C\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[2,0]}}],\"closed\":true,\"width\":0.2,\"pinchCenter\":true,\"framesPerSegment\":4,\"framesPerSecond\":24}}"
+   }
+  },
+  {
+   "name": "numeric formatting: psi 2.5E+3",
+   "input": "{\"schemaVersion\":1,\"bundle\":{\"version\":\"fixture-v1\",\"manifestSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"modelSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"noiseSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"truncationPsi\":2.5E+3,\"truncationCutoff\":0,\"morph\":{\"algorithmVersion\":\"geometry-fixture-v1\",\"kind\":\"full-smooth-figure8\",\"controls\":[{\"visitId\":\"A\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[0,0]}},{\"visitId\":\"B\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[1,0]}},{\"visitId\":\"C\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[2,0]}}],\"closed\":true,\"width\":0.2,\"pinchCenter\":true,\"framesPerSegment\":4,\"framesPerSecond\":24}}",
+   "classic": {
+    "ok": true,
+    "text": "{\"schemaVersion\":1,\"bundle\":{\"version\":\"fixture-v1\",\"manifestSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"modelSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"noiseSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"truncationPsi\":2500,\"truncationCutoff\":0,\"morph\":{\"algorithmVersion\":\"geometry-fixture-v1\",\"kind\":\"full-smooth-figure8\",\"controls\":[{\"visitId\":\"A\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[0,0]}},{\"visitId\":\"B\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[1,0]}},{\"visitId\":\"C\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[2,0]}}],\"closed\":true,\"width\":0.2,\"pinchCenter\":true,\"framesPerSegment\":4,\"framesPerSecond\":24}}"
+   }
+  },
+  {
+   "name": "numeric formatting: psi 100",
+   "input": "{\"schemaVersion\":1,\"bundle\":{\"version\":\"fixture-v1\",\"manifestSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"modelSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"noiseSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"truncationPsi\":100,\"truncationCutoff\":0,\"morph\":{\"algorithmVersion\":\"geometry-fixture-v1\",\"kind\":\"full-smooth-figure8\",\"controls\":[{\"visitId\":\"A\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[0,0]}},{\"visitId\":\"B\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[1,0]}},{\"visitId\":\"C\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[2,0]}}],\"closed\":true,\"width\":0.2,\"pinchCenter\":true,\"framesPerSegment\":4,\"framesPerSecond\":24}}",
+   "classic": {
+    "ok": true,
+    "text": "{\"schemaVersion\":1,\"bundle\":{\"version\":\"fixture-v1\",\"manifestSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"modelSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"noiseSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"truncationPsi\":100,\"truncationCutoff\":0,\"morph\":{\"algorithmVersion\":\"geometry-fixture-v1\",\"kind\":\"full-smooth-figure8\",\"controls\":[{\"visitId\":\"A\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[0,0]}},{\"visitId\":\"B\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[1,0]}},{\"visitId\":\"C\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[2,0]}}],\"closed\":true,\"width\":0.2,\"pinchCenter\":true,\"framesPerSegment\":4,\"framesPerSecond\":24}}"
+   }
+  },
+  {
+   "name": "numeric formatting: width and latent -0, 1e-7",
+   "input": "{\"schemaVersion\":1,\"bundle\":{\"version\":\"fixture-v1\",\"manifestSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"modelSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"noiseSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"truncationPsi\":1,\"truncationCutoff\":0,\"morph\":{\"algorithmVersion\":\"geometry-fixture-v1\",\"kind\":\"full-smooth-figure8\",\"controls\":[{\"visitId\":\"A\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[-0,1e-7]}},{\"visitId\":\"B\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[1,0]}},{\"visitId\":\"C\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[2,0]}}],\"closed\":true,\"width\":1e-7,\"pinchCenter\":true,\"framesPerSegment\":4,\"framesPerSecond\":24}}",
+   "classic": {
+    "ok": true,
+    "text": "{\"schemaVersion\":1,\"bundle\":{\"version\":\"fixture-v1\",\"manifestSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"modelSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"noiseSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"truncationPsi\":1,\"truncationCutoff\":0,\"morph\":{\"algorithmVersion\":\"geometry-fixture-v1\",\"kind\":\"full-smooth-figure8\",\"controls\":[{\"visitId\":\"A\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[0,1e-7]}},{\"visitId\":\"B\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[1,0]}},{\"visitId\":\"C\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[2,0]}}],\"closed\":true,\"width\":1e-7,\"pinchCenter\":true,\"framesPerSegment\":4,\"framesPerSecond\":24}}"
+   }
+  },
+  {
+   "name": "escapes: \\/ and \\u00e9 and an unpaired surrogate",
+   "input": "{\"schemaVersion\":1,\"bundle\":{\"version\":\"fixture\\/v1 \\u00e9 \\ud800\",\"manifestSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"modelSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"noiseSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"truncationPsi\":1,\"truncationCutoff\":0,\"morph\":{\"algorithmVersion\":\"geometry-fixture-v1\",\"kind\":\"full-smooth-figure8\",\"controls\":[{\"visitId\":\"A\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[0,0]}},{\"visitId\":\"B\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[1,0]}},{\"visitId\":\"C\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[2,0]}}],\"closed\":true,\"width\":0.2,\"pinchCenter\":true,\"framesPerSegment\":4,\"framesPerSecond\":24}}",
+   "classic": {
+    "ok": true,
+    "text": "{\"schemaVersion\":1,\"bundle\":{\"version\":\"fixture/v1 é \\ud800\",\"manifestSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"modelSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"noiseSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"truncationPsi\":1,\"truncationCutoff\":0,\"morph\":{\"algorithmVersion\":\"geometry-fixture-v1\",\"kind\":\"full-smooth-figure8\",\"controls\":[{\"visitId\":\"A\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[0,0]}},{\"visitId\":\"B\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[1,0]}},{\"visitId\":\"C\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[2,0]}}],\"closed\":true,\"width\":0.2,\"pinchCenter\":true,\"framesPerSegment\":4,\"framesPerSecond\":24}}"
+   }
+  },
+  {
+   "name": "escapes: control characters are written as \\u",
+   "input": "{\"schemaVersion\":1,\"bundle\":{\"version\":\"a\\u0001b\\tc\\u001f\",\"manifestSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"modelSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"noiseSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"truncationPsi\":1,\"truncationCutoff\":0,\"morph\":{\"algorithmVersion\":\"geometry-fixture-v1\",\"kind\":\"full-smooth-figure8\",\"controls\":[{\"visitId\":\"A\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[0,0]}},{\"visitId\":\"B\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[1,0]}},{\"visitId\":\"C\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[2,0]}}],\"closed\":true,\"width\":0.2,\"pinchCenter\":true,\"framesPerSegment\":4,\"framesPerSecond\":24}}",
+   "classic": {
+    "ok": true,
+    "text": "{\"schemaVersion\":1,\"bundle\":{\"version\":\"a\\u0001b\\u0009c\\u001f\",\"manifestSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"modelSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"noiseSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"truncationPsi\":1,\"truncationCutoff\":0,\"morph\":{\"algorithmVersion\":\"geometry-fixture-v1\",\"kind\":\"full-smooth-figure8\",\"controls\":[{\"visitId\":\"A\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[0,0]}},{\"visitId\":\"B\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[1,0]}},{\"visitId\":\"C\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[2,0]}}],\"closed\":true,\"width\":0.2,\"pinchCenter\":true,\"framesPerSegment\":4,\"framesPerSecond\":24}}"
+   }
+  },
+  {
+   "name": "escapes: an unescaped control character is rejected",
+   "input": "{\"schemaVersion\":1,\"bundle\":{\"version\":\"fixture\u0001v1\",\"manifestSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"modelSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"noiseSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"truncationPsi\":1,\"truncationCutoff\":0,\"morph\":{\"algorithmVersion\":\"geometry-fixture-v1\",\"kind\":\"full-smooth-figure8\",\"controls\":[{\"visitId\":\"A\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[0,0]}},{\"visitId\":\"B\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[1,0]}},{\"visitId\":\"C\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[2,0]}}],\"closed\":true,\"width\":0.2,\"pinchCenter\":true,\"framesPerSegment\":4,\"framesPerSecond\":24}}",
+   "classic": {
+    "ok": false,
+    "messages": [
+     "Invalid or unsupported project JSON; check its schema, fields, values and size limits."
+    ]
+   }
+  },
+  {
+   "name": "escapes: an invalid escape is rejected",
+   "input": "{\"schemaVersion\":1,\"bundle\":{\"version\":\"fixture\\qv1\",\"manifestSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"modelSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"noiseSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"truncationPsi\":1,\"truncationCutoff\":0,\"morph\":{\"algorithmVersion\":\"geometry-fixture-v1\",\"kind\":\"full-smooth-figure8\",\"controls\":[{\"visitId\":\"A\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[0,0]}},{\"visitId\":\"B\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[1,0]}},{\"visitId\":\"C\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[2,0]}}],\"closed\":true,\"width\":0.2,\"pinchCenter\":true,\"framesPerSegment\":4,\"framesPerSecond\":24}}",
+   "classic": {
+    "ok": false,
+    "messages": [
+     "Invalid or unsupported project JSON; check its schema, fields, values and size limits."
+    ]
+   }
+  },
+  {
+   "name": "escapes: a truncated unicode escape is rejected",
+   "input": "{\"a\":\"\\u12",
+   "classic": {
+    "ok": false,
+    "messages": [
+     "Invalid or unsupported project JSON; check its schema, fields, values and size limits."
+    ]
+   }
+  },
+  {
+   "name": "whitespace: tabs, CR and LF between tokens are accepted",
+   "input": "{\"schemaVersion\":1,\r\n\t \"bundle\":{\"version\":\"fixture-v1\",\r\n\t \"manifestSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\r\n\t \"modelSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\r\n\t \"noiseSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\r\n\t \"truncationPsi\":1,\r\n\t \"truncationCutoff\":0,\r\n\t \"morph\":{\"algorithmVersion\":\"geometry-fixture-v1\",\r\n\t \"kind\":\"full-smooth-figure8\",\r\n\t \"controls\":[{\"visitId\":\"A\",\r\n\t \"latent\":{\"space\":\"w-plus\",\r\n\t \"shape\":[2],\r\n\t \"values\":[0,\r\n\t 0]}},\r\n\t {\"visitId\":\"B\",\r\n\t \"latent\":{\"space\":\"w-plus\",\r\n\t \"shape\":[2],\r\n\t \"values\":[1,\r\n\t 0]}},\r\n\t {\"visitId\":\"C\",\r\n\t \"latent\":{\"space\":\"w-plus\",\r\n\t \"shape\":[2],\r\n\t \"values\":[2,\r\n\t 0]}}],\r\n\t \"closed\":true,\r\n\t \"width\":0.2,\r\n\t \"pinchCenter\":true,\r\n\t \"framesPerSegment\":4,\r\n\t \"framesPerSecond\":24}}",
+   "classic": {
+    "ok": true,
+    "text": "{\"schemaVersion\":1,\"bundle\":{\"version\":\"fixture-v1\",\"manifestSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"modelSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"noiseSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"truncationPsi\":1,\"truncationCutoff\":0,\"morph\":{\"algorithmVersion\":\"geometry-fixture-v1\",\"kind\":\"full-smooth-figure8\",\"controls\":[{\"visitId\":\"A\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[0,0]}},{\"visitId\":\"B\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[1,0]}},{\"visitId\":\"C\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[2,0]}}],\"closed\":true,\"width\":0.2,\"pinchCenter\":true,\"framesPerSegment\":4,\"framesPerSecond\":24}}"
+   }
+  },
+  {
+   "name": "whitespace: a leading byte-order mark is rejected",
+   "input": "﻿{\"schemaVersion\":1,\"bundle\":{\"version\":\"fixture-v1\",\"manifestSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"modelSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"noiseSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"truncationPsi\":1,\"truncationCutoff\":0,\"morph\":{\"algorithmVersion\":\"geometry-fixture-v1\",\"kind\":\"full-smooth-figure8\",\"controls\":[{\"visitId\":\"A\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[0,0]}},{\"visitId\":\"B\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[1,0]}},{\"visitId\":\"C\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[2,0]}}],\"closed\":true,\"width\":0.2,\"pinchCenter\":true,\"framesPerSegment\":4,\"framesPerSecond\":24}}",
+   "classic": {
+    "ok": false,
+    "messages": [
+     "Invalid or unsupported project JSON; check its schema, fields, values and size limits."
+    ]
+   }
+  },
+  {
+   "name": "limits: a 4096-character version is admitted",
+   "input": "{\"schemaVersion\":1,\"bundle\":{\"version\":\"vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv\",\"manifestSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"modelSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"noiseSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"truncationPsi\":1,\"truncationCutoff\":0,\"morph\":{\"algorithmVersion\":\"geometry-fixture-v1\",\"kind\":\"full-smooth-figure8\",\"controls\":[{\"visitId\":\"A\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[0,0]}},{\"visitId\":\"B\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[1,0]}},{\"visitId\":\"C\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[2,0]}}],\"closed\":true,\"width\":0.2,\"pinchCenter\":true,\"framesPerSegment\":4,\"framesPerSecond\":24}}",
+   "classic": {
+    "ok": true,
+    "text": "{\"schemaVersion\":1,\"bundle\":{\"version\":\"vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv\",\"manifestSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"modelSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"noiseSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"truncationPsi\":1,\"truncationCutoff\":0,\"morph\":{\"algorithmVersion\":\"geometry-fixture-v1\",\"kind\":\"full-smooth-figure8\",\"controls\":[{\"visitId\":\"A\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[0,0]}},{\"visitId\":\"B\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[1,0]}},{\"visitId\":\"C\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[2,0]}}],\"closed\":true,\"width\":0.2,\"pinchCenter\":true,\"framesPerSegment\":4,\"framesPerSecond\":24}}"
+   }
+  },
+  {
+   "name": "limits: a 4097-character version is rejected",
+   "input": "{\"schemaVersion\":1,\"bundle\":{\"version\":\"vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv\",\"manifestSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"modelSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"noiseSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"truncationPsi\":1,\"truncationCutoff\":0,\"morph\":{\"algorithmVersion\":\"geometry-fixture-v1\",\"kind\":\"full-smooth-figure8\",\"controls\":[{\"visitId\":\"A\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[0,0]}},{\"visitId\":\"B\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[1,0]}},{\"visitId\":\"C\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[2,0]}}],\"closed\":true,\"width\":0.2,\"pinchCenter\":true,\"framesPerSegment\":4,\"framesPerSecond\":24}}",
+   "classic": {
+    "ok": false,
+    "messages": [
+     "Invalid or unsupported project JSON; check its schema, fields, values and size limits."
+    ]
+   }
+  },
+  {
+   "name": "limits: 64 controls are admitted",
+   "input": "{\"schemaVersion\":1,\"bundle\":{\"version\":\"fixture-v1\",\"manifestSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"modelSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"noiseSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"truncationPsi\":1,\"truncationCutoff\":0,\"morph\":{\"algorithmVersion\":\"geometry-fixture-v1\",\"kind\":\"full-smooth-figure8\",\"controls\":[{\"visitId\":\"V0\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[0,0]}},{\"visitId\":\"V1\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[1,0]}},{\"visitId\":\"V2\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[2,0]}},{\"visitId\":\"V3\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[3,0]}},{\"visitId\":\"V4\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[4,0]}},{\"visitId\":\"V5\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[5,0]}},{\"visitId\":\"V6\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[6,0]}},{\"visitId\":\"V7\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[7,0]}},{\"visitId\":\"V8\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[8,0]}},{\"visitId\":\"V9\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[9,0]}},{\"visitId\":\"V10\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[10,0]}},{\"visitId\":\"V11\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[11,0]}},{\"visitId\":\"V12\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[12,0]}},{\"visitId\":\"V13\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[13,0]}},{\"visitId\":\"V14\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[14,0]}},{\"visitId\":\"V15\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[15,0]}},{\"visitId\":\"V16\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[16,0]}},{\"visitId\":\"V17\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[17,0]}},{\"visitId\":\"V18\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[18,0]}},{\"visitId\":\"V19\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[19,0]}},{\"visitId\":\"V20\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[20,0]}},{\"visitId\":\"V21\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[21,0]}},{\"visitId\":\"V22\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[22,0]}},{\"visitId\":\"V23\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[23,0]}},{\"visitId\":\"V24\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[24,0]}},{\"visitId\":\"V25\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[25,0]}},{\"visitId\":\"V26\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[26,0]}},{\"visitId\":\"V27\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[27,0]}},{\"visitId\":\"V28\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[28,0]}},{\"visitId\":\"V29\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[29,0]}},{\"visitId\":\"V30\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[30,0]}},{\"visitId\":\"V31\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[31,0]}},{\"visitId\":\"V32\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[32,0]}},{\"visitId\":\"V33\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[33,0]}},{\"visitId\":\"V34\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[34,0]}},{\"visitId\":\"V35\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[35,0]}},{\"visitId\":\"V36\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[36,0]}},{\"visitId\":\"V37\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[37,0]}},{\"visitId\":\"V38\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[38,0]}},{\"visitId\":\"V39\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[39,0]}},{\"visitId\":\"V40\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[40,0]}},{\"visitId\":\"V41\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[41,0]}},{\"visitId\":\"V42\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[42,0]}},{\"visitId\":\"V43\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[43,0]}},{\"visitId\":\"V44\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[44,0]}},{\"visitId\":\"V45\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[45,0]}},{\"visitId\":\"V46\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[46,0]}},{\"visitId\":\"V47\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[47,0]}},{\"visitId\":\"V48\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[48,0]}},{\"visitId\":\"V49\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[49,0]}},{\"visitId\":\"V50\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[50,0]}},{\"visitId\":\"V51\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[51,0]}},{\"visitId\":\"V52\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[52,0]}},{\"visitId\":\"V53\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[53,0]}},{\"visitId\":\"V54\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[54,0]}},{\"visitId\":\"V55\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[55,0]}},{\"visitId\":\"V56\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[56,0]}},{\"visitId\":\"V57\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[57,0]}},{\"visitId\":\"V58\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[58,0]}},{\"visitId\":\"V59\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[59,0]}},{\"visitId\":\"V60\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[60,0]}},{\"visitId\":\"V61\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[61,0]}},{\"visitId\":\"V62\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[62,0]}},{\"visitId\":\"V63\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[63,0]}}],\"closed\":true,\"width\":0.2,\"pinchCenter\":true,\"framesPerSegment\":4,\"framesPerSecond\":24}}",
+   "classic": {
+    "ok": true,
+    "text": "{\"schemaVersion\":1,\"bundle\":{\"version\":\"fixture-v1\",\"manifestSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"modelSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"noiseSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"truncationPsi\":1,\"truncationCutoff\":0,\"morph\":{\"algorithmVersion\":\"geometry-fixture-v1\",\"kind\":\"full-smooth-figure8\",\"controls\":[{\"visitId\":\"V0\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[0,0]}},{\"visitId\":\"V1\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[1,0]}},{\"visitId\":\"V2\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[2,0]}},{\"visitId\":\"V3\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[3,0]}},{\"visitId\":\"V4\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[4,0]}},{\"visitId\":\"V5\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[5,0]}},{\"visitId\":\"V6\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[6,0]}},{\"visitId\":\"V7\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[7,0]}},{\"visitId\":\"V8\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[8,0]}},{\"visitId\":\"V9\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[9,0]}},{\"visitId\":\"V10\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[10,0]}},{\"visitId\":\"V11\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[11,0]}},{\"visitId\":\"V12\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[12,0]}},{\"visitId\":\"V13\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[13,0]}},{\"visitId\":\"V14\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[14,0]}},{\"visitId\":\"V15\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[15,0]}},{\"visitId\":\"V16\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[16,0]}},{\"visitId\":\"V17\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[17,0]}},{\"visitId\":\"V18\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[18,0]}},{\"visitId\":\"V19\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[19,0]}},{\"visitId\":\"V20\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[20,0]}},{\"visitId\":\"V21\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[21,0]}},{\"visitId\":\"V22\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[22,0]}},{\"visitId\":\"V23\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[23,0]}},{\"visitId\":\"V24\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[24,0]}},{\"visitId\":\"V25\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[25,0]}},{\"visitId\":\"V26\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[26,0]}},{\"visitId\":\"V27\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[27,0]}},{\"visitId\":\"V28\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[28,0]}},{\"visitId\":\"V29\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[29,0]}},{\"visitId\":\"V30\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[30,0]}},{\"visitId\":\"V31\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[31,0]}},{\"visitId\":\"V32\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[32,0]}},{\"visitId\":\"V33\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[33,0]}},{\"visitId\":\"V34\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[34,0]}},{\"visitId\":\"V35\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[35,0]}},{\"visitId\":\"V36\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[36,0]}},{\"visitId\":\"V37\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[37,0]}},{\"visitId\":\"V38\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[38,0]}},{\"visitId\":\"V39\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[39,0]}},{\"visitId\":\"V40\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[40,0]}},{\"visitId\":\"V41\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[41,0]}},{\"visitId\":\"V42\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[42,0]}},{\"visitId\":\"V43\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[43,0]}},{\"visitId\":\"V44\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[44,0]}},{\"visitId\":\"V45\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[45,0]}},{\"visitId\":\"V46\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[46,0]}},{\"visitId\":\"V47\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[47,0]}},{\"visitId\":\"V48\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[48,0]}},{\"visitId\":\"V49\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[49,0]}},{\"visitId\":\"V50\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[50,0]}},{\"visitId\":\"V51\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[51,0]}},{\"visitId\":\"V52\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[52,0]}},{\"visitId\":\"V53\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[53,0]}},{\"visitId\":\"V54\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[54,0]}},{\"visitId\":\"V55\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[55,0]}},{\"visitId\":\"V56\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[56,0]}},{\"visitId\":\"V57\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[57,0]}},{\"visitId\":\"V58\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[58,0]}},{\"visitId\":\"V59\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[59,0]}},{\"visitId\":\"V60\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[60,0]}},{\"visitId\":\"V61\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[61,0]}},{\"visitId\":\"V62\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[62,0]}},{\"visitId\":\"V63\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[63,0]}}],\"closed\":true,\"width\":0.2,\"pinchCenter\":true,\"framesPerSegment\":4,\"framesPerSecond\":24}}"
+   }
+  },
+  {
+   "name": "limits: 65 controls are rejected",
+   "input": "{\"schemaVersion\":1,\"bundle\":{\"version\":\"fixture-v1\",\"manifestSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"modelSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"noiseSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"truncationPsi\":1,\"truncationCutoff\":0,\"morph\":{\"algorithmVersion\":\"geometry-fixture-v1\",\"kind\":\"full-smooth-figure8\",\"controls\":[{\"visitId\":\"V0\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[0,0]}},{\"visitId\":\"V1\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[1,0]}},{\"visitId\":\"V2\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[2,0]}},{\"visitId\":\"V3\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[3,0]}},{\"visitId\":\"V4\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[4,0]}},{\"visitId\":\"V5\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[5,0]}},{\"visitId\":\"V6\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[6,0]}},{\"visitId\":\"V7\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[7,0]}},{\"visitId\":\"V8\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[8,0]}},{\"visitId\":\"V9\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[9,0]}},{\"visitId\":\"V10\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[10,0]}},{\"visitId\":\"V11\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[11,0]}},{\"visitId\":\"V12\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[12,0]}},{\"visitId\":\"V13\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[13,0]}},{\"visitId\":\"V14\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[14,0]}},{\"visitId\":\"V15\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[15,0]}},{\"visitId\":\"V16\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[16,0]}},{\"visitId\":\"V17\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[17,0]}},{\"visitId\":\"V18\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[18,0]}},{\"visitId\":\"V19\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[19,0]}},{\"visitId\":\"V20\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[20,0]}},{\"visitId\":\"V21\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[21,0]}},{\"visitId\":\"V22\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[22,0]}},{\"visitId\":\"V23\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[23,0]}},{\"visitId\":\"V24\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[24,0]}},{\"visitId\":\"V25\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[25,0]}},{\"visitId\":\"V26\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[26,0]}},{\"visitId\":\"V27\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[27,0]}},{\"visitId\":\"V28\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[28,0]}},{\"visitId\":\"V29\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[29,0]}},{\"visitId\":\"V30\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[30,0]}},{\"visitId\":\"V31\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[31,0]}},{\"visitId\":\"V32\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[32,0]}},{\"visitId\":\"V33\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[33,0]}},{\"visitId\":\"V34\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[34,0]}},{\"visitId\":\"V35\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[35,0]}},{\"visitId\":\"V36\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[36,0]}},{\"visitId\":\"V37\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[37,0]}},{\"visitId\":\"V38\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[38,0]}},{\"visitId\":\"V39\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[39,0]}},{\"visitId\":\"V40\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[40,0]}},{\"visitId\":\"V41\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[41,0]}},{\"visitId\":\"V42\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[42,0]}},{\"visitId\":\"V43\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[43,0]}},{\"visitId\":\"V44\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[44,0]}},{\"visitId\":\"V45\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[45,0]}},{\"visitId\":\"V46\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[46,0]}},{\"visitId\":\"V47\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[47,0]}},{\"visitId\":\"V48\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[48,0]}},{\"visitId\":\"V49\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[49,0]}},{\"visitId\":\"V50\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[50,0]}},{\"visitId\":\"V51\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[51,0]}},{\"visitId\":\"V52\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[52,0]}},{\"visitId\":\"V53\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[53,0]}},{\"visitId\":\"V54\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[54,0]}},{\"visitId\":\"V55\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[55,0]}},{\"visitId\":\"V56\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[56,0]}},{\"visitId\":\"V57\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[57,0]}},{\"visitId\":\"V58\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[58,0]}},{\"visitId\":\"V59\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[59,0]}},{\"visitId\":\"V60\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[60,0]}},{\"visitId\":\"V61\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[61,0]}},{\"visitId\":\"V62\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[62,0]}},{\"visitId\":\"V63\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[63,0]}},{\"visitId\":\"V64\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[64,0]}}],\"closed\":true,\"width\":0.2,\"pinchCenter\":true,\"framesPerSegment\":4,\"framesPerSecond\":24}}",
+   "classic": {
+    "ok": false,
+    "messages": [
+     "Invalid or unsupported project JSON; check its schema, fields, values and size limits."
+    ]
+   }
+  },
+  {
+   "name": "limits: 33 fields in an object are rejected",
+   "input": "{\"schemaVersion\":1,\"bundle\":{\"version\":\"fixture-v1\",\"manifestSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"modelSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"noiseSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"truncationPsi\":1,\"truncationCutoff\":0,\"morph\":{\"algorithmVersion\":\"geometry-fixture-v1\",\"kind\":\"full-smooth-figure8\",\"controls\":[{\"visitId\":\"A\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[0,0]}},{\"visitId\":\"B\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[1,0]}},{\"visitId\":\"C\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[2,0]}}],\"closed\":true,\"width\":0.2,\"pinchCenter\":true,\"framesPerSegment\":4,\"framesPerSecond\":24,\"x0\":0,\"x1\":0,\"x2\":0,\"x3\":0,\"x4\":0,\"x5\":0,\"x6\":0,\"x7\":0,\"x8\":0,\"x9\":0,\"x10\":0,\"x11\":0,\"x12\":0,\"x13\":0,\"x14\":0,\"x15\":0,\"x16\":0,\"x17\":0,\"x18\":0,\"x19\":0,\"x20\":0,\"x21\":0,\"x22\":0,\"x23\":0,\"x24\":0}}",
+   "classic": {
+    "ok": false,
+    "messages": [
+     "Invalid or unsupported project JSON; check its schema, fields, values and size limits."
+    ]
+   }
+  },
+  {
+   "name": "limits: a 129-character number is rejected",
+   "input": "{\"schemaVersion\":1,\"bundle\":{\"version\":\"fixture-v1\",\"manifestSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"modelSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"noiseSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"truncationPsi\":1.0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000,\"truncationCutoff\":0,\"morph\":{\"algorithmVersion\":\"geometry-fixture-v1\",\"kind\":\"full-smooth-figure8\",\"controls\":[{\"visitId\":\"A\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[0,0]}},{\"visitId\":\"B\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[1,0]}},{\"visitId\":\"C\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[2,0]}}],\"closed\":true,\"width\":0.2,\"pinchCenter\":true,\"framesPerSegment\":4,\"framesPerSecond\":24}}",
+   "classic": {
+    "ok": false,
+    "messages": [
+     "Invalid or unsupported project JSON; check its schema, fields, values and size limits."
+    ]
+   }
+  },
+  {
+   "name": "limits: framesPerSegment 100002 is invalid",
+   "input": "{\"schemaVersion\":1,\"bundle\":{\"version\":\"fixture-v1\",\"manifestSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"modelSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"noiseSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"truncationPsi\":1,\"truncationCutoff\":0,\"morph\":{\"algorithmVersion\":\"geometry-fixture-v1\",\"kind\":\"full-smooth-figure8\",\"controls\":[{\"visitId\":\"A\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[0,0]}},{\"visitId\":\"B\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[1,0]}},{\"visitId\":\"C\",\"latent\":{\"space\":\"w-plus\",\"shape\":[2],\"values\":[2,0]}}],\"closed\":true,\"width\":0.2,\"pinchCenter\":true,\"framesPerSegment\":100002,\"framesPerSecond\":24}}",
+   "classic": {
+    "ok": false,
+    "messages": [
+     "Frame schedule exceeds the limit."
+    ]
+   }
+  },
+  {
+   "name": "limits: a 9-dimensional shape is invalid",
+   "input": "{\"schemaVersion\":1,\"bundle\":{\"version\":\"fixture-v1\",\"manifestSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"modelSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"noiseSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"truncationPsi\":1,\"truncationCutoff\":0,\"morph\":{\"algorithmVersion\":\"geometry-fixture-v1\",\"kind\":\"full-smooth-figure8\",\"controls\":[{\"visitId\":\"A\",\"latent\":{\"space\":\"w-plus\",\"shape\":[1,1,1,1,1,1,1,1,2],\"values\":[0,0]}},{\"visitId\":\"B\",\"latent\":{\"space\":\"w-plus\",\"shape\":[1,1,1,1,1,1,1,1,2],\"values\":[1,0]}},{\"visitId\":\"C\",\"latent\":{\"space\":\"w-plus\",\"shape\":[1,1,1,1,1,1,1,1,2],\"values\":[2,0]}}],\"closed\":true,\"width\":0.2,\"pinchCenter\":true,\"framesPerSegment\":4,\"framesPerSecond\":24}}",
+   "classic": {
+    "ok": false,
+    "messages": [
+     "Latent exceeds dimension/value limits."
+    ]
+   }
+  }
+ ]
+}

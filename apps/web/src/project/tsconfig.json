@@ -1,0 +1,26 @@
+{
+  // ProjectJson (fm-7s3a): no DOM, WebWorker or Node globals. `tsc -p src/project` checks it;
+  // tsconfig.test.json adds Node (and the tests' .mjs helpers) for test/project.
+  "compilerOptions": {
+    "target": "ES2024",
+    "lib": ["ES2024"],
+    "types": [],
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    // Workspace packages resolve to their built declarations, not their sources: the manager's sources need DOM
+    // types, which these contracts must not see. Build stylegan-js and the manager first.
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "isolatedModules": true,
+    "verbatimModuleSyntax": true,
+    "erasableSyntaxOnly": true,
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+    "noEmit": true,
+    // Package declarations (the manager's DOM-typed cache among them) are not this config's to check;
+    // the contracts' own sources stay free of DOM and Node globals.
+    "skipLibCheck": true
+  },
+  "include": ["."]
+}
