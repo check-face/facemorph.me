@@ -46,7 +46,6 @@ jobs:
       - uses: ./.github/actions/setup-playwright # browsers cached per Playwright version (fm-98po)
         with:
           browsers: chromium firefox webkit
-        working-directory: apps/web
       - run: npm run build -w packages/stylegan-js
       - run: node packages/stylegan-js/test/browser/media-browsers.mjs
       - run: node packages/stylegan-js/test/browser/webp-lossless-browsers.mjs
