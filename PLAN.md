@@ -2229,7 +2229,7 @@ presence is neither digest verification nor an already loaded session. Give acqu
 its own aggregate transfer/read-ahead/hash/write-buffer budget and digest deduplication;
 it holds no heavyweight compute permit while waiting. Foreground-required assets
 outrank optional preparation. Continue independent cache-only acquisition during
-foreground work only when measured responsiveness/memory permits; otherwise pause
+foreground work only when it causes no lockup and memory permits; otherwise pause
 lower-priority work. The old two-chunk phone read-ahead is a per-worker bound and
 does not bound multiple overlapping workers. Freeze aggregate limits in the contracts.
 
@@ -2967,7 +2967,7 @@ file, a manifest holding the constants once, and content-addressed result object
 32-byte integrity hash per name (a 162 KB floor) need not load at first paint, because it is needed only
 for the picked name and can live in prefix shards, in the result object's own validated header, or in
 a hash list fetched on first pick. Preview packaging is free in the same way: individual files, or tiled
-pages that cut request count, judged on bytes, requests and scroll smoothness, with no change to how the
+pages that cut request count, judged on bytes and requests, with no change to how the
 grid looks.
 
 **Bars the chosen shape must meet (measured in the workstream's spike, not assumed here):** first grid
@@ -3204,7 +3204,7 @@ Initial targeted campaigns for the new behavior:
 
 | Target | Fixed cases / hypothesis | Protected boundaries and source limits |
 | --- | --- | --- |
-| Consented acquisition during input selection | Empty/partial cache; Generate versus explicitly approved Generate and encode; fixed selection/crop dwell; a seed request while encoder assets transfer | Consent→first useful face and photo selection→reconstruction/file-ready totals; stage overlap, actual bytes, foreground responsiveness, Cancel and route failure. Synthesis-first ordering already exists, but current prefetch pauses for foreground work; broader overlap is new. |
+| Consented acquisition during input selection | Empty/partial cache; Generate versus explicitly approved Generate and encode; fixed selection/crop dwell; a seed request while encoder assets transfer | Consent→first useful face and photo selection→reconstruction/file-ready totals; stage overlap, actual bytes, no foreground lockup, Cancel and route failure. Synthesis-first ordering already exists, but current prefetch pauses for foreground work; broader overlap is new. |
 | Verified-cache runtime warming | Cached files/new browser versus already resident session; eager selected-generator preparation versus demand load; immediate next-face request; missing/corrupt shard and memory-constrained cases | Reload→first/nth new face, CPU/GPU mapping/load/readback, peak live reservations, foreground wait, zero speculative network and recovery without inference. Cache-only prefetch currently creates no session; eager hydration is a hypothesis to qualify. |
 | Photo preparation and e4e lifecycle | Padded/nonpadded metadata-free photos; first/next encode; constrained phone teardown versus qualified desktop reuse | Source→confirmed→reconstructed photo, per-shard verified-local read/create/run/copy/teardown, memory/bytes and cancellation. Reuse existing warm-hydration/padded-photo/streamed-e4e findings without reviving rejected precision changes. |
 
@@ -3328,7 +3328,7 @@ explicitly qualified rebuild as control and the same available cell/workload for
 migration candidate. Record actual provider/model/runtime, resolution/FPS/frame count,
 cold/retained/resident/restored state, visible-tab state and the same finish boundary.
 Protect first/nth face, confirmed-photo work, complete video, first/repeated Save,
-restore, responsiveness, acquired/output bytes, memory reservations and cancellation.
+restore, no lockups, acquired/output bytes, memory reservations and cancellation.
 Use existing relevant component and built-product screens in CI; bounded full suites /
 paired comparisons can run scheduled/manually on suitable workers. Collect comparable
 evidence across retained cells as available; unsupported/untested/inconclusive is not
@@ -3387,7 +3387,7 @@ provider and cache state, in paired alternating order (ABBA), with enough pairs 
 - confirmed-photo encode, where photo encoding is admitted on that device;
 - a complete morph: time to playable video and time per frame;
 - first and repeated Save;
-- responsiveness while working (long tasks and input delay);
+- no lockups while working (a real input gets a visible response within 1 s and the page never stops painting for more than 1 s; frame stutter itself is not measured);
 - bytes downloaded on first visit and on a return visit;
 - peak memory where the platform reports it;
 - reliability: every run that produced a face, photo or video on the control must produce it on the new build.
@@ -3645,7 +3645,7 @@ decision rules before candidates. First visit, retained-model new generation,
 continued session, restored/replayed output and first/repeated Save are separate for research claims;
 this does not require a historic service comparison before operator cutover.
 Principal useful journey remains navigation/photo selection to decoded playable and
-save-ready video, with first-face, responsiveness, scrub, recovery, bytes and memory
+save-ready video, with first-face, no lockups, scrub, recovery, bytes and memory
 beside it. Metadata-free photos must execute the actual encoder.
 
 Use the current fixed 32-frame/16 FPS/1024px workload where supported; an explicit
@@ -5200,6 +5200,7 @@ history retains their provenance.
 | 24 Oct | Weighted multi-face blend as an advanced view on the new engine (button and `#blend` deep link, established export paths); beads are shippable slices (about 100–140); receipts only where an irreversible action or the cutover decision reads them |
 | 24 Oct | Beads are the execution and scope authority and this plan is frozen reference; no fakes in tests (no mocks, stubs, doubles, fake clocks or recorded responses: pure logic takes plain values, everything with I/O runs against real dependencies, provider-neutral where possible, such as an S3-compatible store); swarm coordination through Agent Mail and NTM, with GLM panes best effort |
 | 24 Oct | The next.facemorph.me handover needs no operator decision: the release bead deploys it after full validation (every plan flow, the strictly-not-worse gate, the full hosted CI matrix, device-lab cells best effort). The operator decides only facemorph.me promotion and API retirement. next.facemorph.me stays up after go-live as the test host. The changeover statistics are temporary until the operator's "blog done" decision, then normal GA. The diagnostics collector stays a while after go-live for usage and errors, then a lasting production approach replaces or revamps it. Leaving Cloudflare (except model hosting) is deferred to a later operator decision. Beads restructured for early parallelism. |
+| 24 Oct | No frame-stutter checks anywhere (long tasks, dropped frames, input delay, scroll smoothness). The only responsiveness bar is no lockups: during work a real input gets a visible response within 1 s and the page never stops painting for more than 1 s. Generation speed is never traded for smoothness; any smoothness change must leave job times strictly not worse. |
 | 24 Oct | Names spike (fm-zg31): scroll frame-drop measurement is low value and dropped; preview packaging is chosen on bytes, requests and look |
 
 Earlier review rounds, including the 24 October round's findings, are in [`docs/plan-history.md`](docs/plan-history.md)
