@@ -1,0 +1,347 @@
+{
+  "note": "Shared vectors (fm-o8xn): the TS primitives (record.ts) and the Python ones (intercept.py) must give these verdicts, counts and bytes on these records. Records are plain values; no browser is involved.",
+  "records": {
+    "approved": {
+      "schema": "facemorph.network-record/1",
+      "helper": "vector",
+      "hostMap": 1,
+      "steps": [
+        { "name": "load", "seq": 0 },
+        { "name": "approve", "seq": 6 }
+      ],
+      "requests": [
+        {
+          "seq": 1,
+          "step": 0,
+          "url": "https://next.facemorph.me/",
+          "hostClass": "app",
+          "method": "GET",
+          "initiator": "page",
+          "status": 200,
+          "failed": false,
+          "errorText": null,
+          "bytes": 800,
+          "fromCache": false
+        },
+        {
+          "seq": 2,
+          "step": 0,
+          "url": "https://next.facemorph.me/worker-data.json",
+          "hostClass": "app",
+          "method": "GET",
+          "initiator": "worker",
+          "status": 200,
+          "failed": false,
+          "errorText": null,
+          "bytes": 28,
+          "fromCache": false
+        },
+        {
+          "seq": 3,
+          "step": 0,
+          "url": "https://next.facemorph.me/cached.json",
+          "hostClass": "app",
+          "method": "GET",
+          "initiator": "page",
+          "status": 200,
+          "failed": false,
+          "errorText": null,
+          "bytes": 15,
+          "fromCache": true
+        },
+        {
+          "seq": 4,
+          "step": 0,
+          "url": "https://next.facemorph.me/missing.json",
+          "hostClass": "app",
+          "method": "GET",
+          "initiator": "page",
+          "status": 404,
+          "failed": false,
+          "errorText": null,
+          "bytes": 9,
+          "fromCache": false
+        },
+        {
+          "seq": 7,
+          "step": 1,
+          "url": "https://models.facemorph.me/model.bin",
+          "hostClass": "model-host",
+          "method": "GET",
+          "initiator": "page",
+          "status": 200,
+          "failed": false,
+          "errorText": null,
+          "bytes": 4096,
+          "fromCache": false
+        }
+      ],
+      "console": [
+        { "seq": 5, "step": 0, "level": "error", "text": "fixture console error", "source": "page" }
+      ],
+      "unobservable": []
+    },
+    "early": {
+      "schema": "facemorph.network-record/1",
+      "helper": "vector",
+      "hostMap": 1,
+      "steps": [
+        { "name": "load", "seq": 0 },
+        { "name": "approve", "seq": 3 }
+      ],
+      "requests": [
+        {
+          "seq": 1,
+          "step": 0,
+          "url": "https://next.facemorph.me/",
+          "hostClass": "app",
+          "method": "GET",
+          "initiator": "page",
+          "status": 200,
+          "failed": false,
+          "errorText": null,
+          "bytes": 800,
+          "fromCache": false
+        },
+        {
+          "seq": 2,
+          "step": 0,
+          "url": "https://models.facemorph.me/model.bin",
+          "hostClass": "model-host",
+          "method": "GET",
+          "initiator": "page",
+          "status": 200,
+          "failed": false,
+          "errorText": null,
+          "bytes": 4096,
+          "fromCache": false
+        },
+        {
+          "seq": 4,
+          "step": 1,
+          "url": "https://models.facemorph.me/model.bin",
+          "hostClass": "model-host",
+          "method": "GET",
+          "initiator": "page",
+          "status": 200,
+          "failed": false,
+          "errorText": null,
+          "bytes": 4096,
+          "fromCache": false
+        }
+      ],
+      "console": [],
+      "unobservable": []
+    },
+    "playwright-like": {
+      "schema": "facemorph.network-record/1",
+      "helper": "vector-playwright",
+      "hostMap": 1,
+      "steps": [{ "name": "load", "seq": 0 }],
+      "requests": [
+        {
+          "seq": 1,
+          "step": 0,
+          "url": "https://next.facemorph.me/",
+          "hostClass": "app",
+          "method": "GET",
+          "initiator": "page",
+          "status": 200,
+          "failed": false,
+          "errorText": null,
+          "bytes": null,
+          "fromCache": null
+        },
+        {
+          "seq": 2,
+          "step": 0,
+          "url": "https://next.facemorph.me/x.json",
+          "hostClass": "app",
+          "method": "GET",
+          "initiator": "page",
+          "status": null,
+          "failed": true,
+          "errorText": "net::ERR_CONNECTION_REFUSED",
+          "bytes": 0,
+          "fromCache": null
+        }
+      ],
+      "console": [],
+      "unobservable": ["fromCache"]
+    }
+  },
+  "cases": [
+    {
+      "record": "approved",
+      "call": "requestsIn",
+      "args": [{ "hostClass": "app" }],
+      "verdict": "pass",
+      "count": 4,
+      "bytes": 852
+    },
+    {
+      "record": "approved",
+      "call": "requestsIn",
+      "args": [{ "fromStep": "approve" }],
+      "verdict": "pass",
+      "count": 1,
+      "bytes": 4096
+    },
+    {
+      "record": "approved",
+      "call": "requestsIn",
+      "args": [{ "hostClass": "app", "fromCache": true }],
+      "verdict": "pass",
+      "count": 1,
+      "bytes": 15
+    },
+    {
+      "record": "approved",
+      "call": "requestsIn",
+      "args": [{ "fromStep": "nope" }],
+      "verdict": "fail",
+      "count": 0,
+      "bytes": null
+    },
+    {
+      "record": "approved",
+      "call": "assertNoRequests",
+      "args": ["model-host", { "toStep": "load" }],
+      "verdict": "pass",
+      "count": 0,
+      "bytes": 0
+    },
+    {
+      "record": "approved",
+      "call": "assertNoRequests",
+      "args": ["model-host", { "fromStep": "approve" }],
+      "verdict": "fail",
+      "count": 1,
+      "bytes": 4096
+    },
+    {
+      "record": "approved",
+      "call": "assertNoRequests",
+      "args": ["model-host", { "toStep": "consent" }],
+      "verdict": "fail",
+      "count": 0,
+      "bytes": null
+    },
+    {
+      "record": "approved",
+      "call": "assertNoRequests",
+      "args": ["third-party", {}],
+      "verdict": "pass",
+      "count": 0,
+      "bytes": 0
+    },
+    {
+      "record": "approved",
+      "call": "assertOrder",
+      "args": [{ "step": "approve" }, { "hostClass": "model-host" }],
+      "verdict": "pass",
+      "count": 1,
+      "bytes": null
+    },
+    {
+      "record": "approved",
+      "call": "assertOrder",
+      "args": [
+        { "hostClass": "app", "path": "/missing.json" },
+        { "hostClass": "model-host", "path": "/model.bin" }
+      ],
+      "verdict": "pass",
+      "count": 1,
+      "bytes": null
+    },
+    {
+      "record": "approved",
+      "call": "assertOrder",
+      "args": [{ "step": "approve" }, { "hostClass": "names-host" }],
+      "verdict": "fail",
+      "count": 0,
+      "bytes": null
+    },
+    {
+      "record": "approved",
+      "call": "assertOrder",
+      "args": [{ "step": "consent" }, { "hostClass": "model-host" }],
+      "verdict": "fail",
+      "count": 1,
+      "bytes": null
+    },
+    {
+      "record": "approved",
+      "call": "bytesBy",
+      "args": ["app", {}],
+      "verdict": "pass",
+      "count": 4,
+      "bytes": 852
+    },
+    {
+      "record": "approved",
+      "call": "bytesBy",
+      "args": ["model-host", { "fromStep": "approve", "toStep": "approve" }],
+      "verdict": "pass",
+      "count": 1,
+      "bytes": 4096
+    },
+    {
+      "record": "early",
+      "call": "assertNoRequests",
+      "args": ["model-host", { "toStep": "load" }],
+      "verdict": "fail",
+      "count": 1,
+      "bytes": 4096
+    },
+    {
+      "record": "early",
+      "call": "assertOrder",
+      "args": [{ "step": "approve" }, { "hostClass": "model-host" }],
+      "verdict": "fail",
+      "count": 2,
+      "bytes": null
+    },
+    {
+      "record": "playwright-like",
+      "call": "requestsIn",
+      "args": [{ "fromCache": true }],
+      "verdict": "untested",
+      "count": 0,
+      "bytes": null
+    },
+    {
+      "record": "playwright-like",
+      "call": "bytesBy",
+      "args": ["app", {}],
+      "verdict": "untested",
+      "count": 2,
+      "bytes": null
+    },
+    {
+      "record": "playwright-like",
+      "call": "requestsIn",
+      "args": [{ "hostClass": "app" }],
+      "verdict": "pass",
+      "count": 2,
+      "bytes": null
+    }
+  ],
+  "classify": [
+    ["https://next.facemorph.me/", "app"],
+    ["https://next.facemorph.me/diagnostics/events", "collector"],
+    ["https://models.facemorph.me/runtime/chunks/abc.bin", "model-host"],
+    ["https://facemorph-name-catalogue.cdilga.workers.dev/names.txt", "names-host"],
+    ["https://www.googletagmanager.com/gtag/js?id=1", "third-party"],
+    ["data:image/png;base64,AA", "local"],
+    ["blob:https://next.facemorph.me/1-2", "local"]
+  ],
+  "template": [
+    [
+      "https://models.facemorph.me/runtime/chunks/0123456789abcdef0123/part-12.bin?x=1#y",
+      "https://models.facemorph.me/runtime/chunks/:hex/part-12.bin"
+    ],
+    ["http://127.0.0.1:8443/api/face/42/", "http://127.0.0.1:8443/api/face/:n/"],
+    ["data:text/plain,hi", "data:"]
+  ]
+}

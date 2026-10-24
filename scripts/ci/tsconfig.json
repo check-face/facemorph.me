@@ -4,5 +4,5 @@
   "compilerOptions": {
     "allowImportingTsExtensions": true
   },
-  "include": ["*.ts"]
+  "include": ["*.ts", "intercept/*.ts"]
 }

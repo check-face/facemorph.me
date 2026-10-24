@@ -1,0 +1,15 @@
+{
+  "schema": "facemorph.host-classes/1",
+  "version": 1,
+  "note": "Default host classes for network assertions (fm-o8xn). Rules apply in order; the first whose host (with port when given) and optional path prefix match wins. data: and blob: are 'local'; an unmatched host is 'third-party'. A preview or staging origin injects its own map (same shape).",
+  "rules": [
+    { "host": "next.facemorph.me", "pathPrefix": "/diagnostics/", "class": "collector" },
+    { "host": "facemorph.me", "pathPrefix": "/diagnostics/", "class": "collector" },
+    { "host": "next.facemorph.me", "class": "app" },
+    { "host": "facemorph.me", "class": "app" },
+    { "host": "models.facemorph.me", "class": "model-host" },
+    { "host": "names.facemorph.me", "class": "names-host" },
+    { "host": "facemorph-name-catalogue.cdilga.workers.dev", "class": "names-host" },
+    { "host": "facemorph-seed-gallery.cdilga.workers.dev", "class": "names-host" }
+  ]
+}
