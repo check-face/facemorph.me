@@ -36,6 +36,8 @@ jobs:
   # and touch), and every emitted worker loading. Screenshots are kept as an artifact.
   e2e:
     runs-on: ubuntu-24.04
+    # About 4 minutes when healthy; a hung browser cell held the newest-only group for 4 hours (run 40094481824).
+    timeout-minutes: 30
     defaults:
       run:
         working-directory: apps/web

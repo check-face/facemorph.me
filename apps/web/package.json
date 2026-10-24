@@ -13,7 +13,7 @@
     "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.node.json && tsc -p tsconfig.e2e.json",
     "test": "node --test test/build/*.test.ts test/contracts/*.test.ts",
     "check:inventory": "node build/check-inventory.ts",
-    "test:e2e": "node --test test/e2e/*.e2e.ts"
+    "test:e2e": "node --test --test-timeout=300000 test/e2e/*.e2e.ts"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
