@@ -1,0 +1,39 @@
+name: names-spike
+# Names data-shape measurement (fm-zg31, tools/names-spike): tests, then the full measurement against the pinned
+# candidate catalogue and its published previews (cached in the runner's home after the first run). The
+# results and summary are the run's artifact; the chosen shape and bars are in docs/names/data-shape.md.
+on:
+  push:
+    branches: [main]
+    paths: ['tools/names-spike/**', '.github/workflows/names-spike.yml']
+  workflow_dispatch:
+concurrency:
+  group: names-spike
+  cancel-in-progress: false
+jobs:
+  measure:
+    runs-on: [self-hosted, triton]
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: tools/names-spike
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci --no-audit --no-fund
+      - run: npm test
+      - run: npx playwright install chromium
+      - name: Measure
+        run: node measure.mjs --out out/ci
+      - name: Summary
+        if: always()
+        run: test -f out/ci/summary.md && cat out/ci/summary.md >> "$GITHUB_STEP_SUMMARY" || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: names-spike-${{ github.run_id }}-${{ github.run_attempt }}
+          path: tools/names-spike/out/ci/
+          retention-days: 30
+          if-no-files-found: warn

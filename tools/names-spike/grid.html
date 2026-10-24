@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Names grid measurement</title>
+<style>
+  /* The legacy names grid (facemorph-names ImageGrid/LabelledImageButton): gapless, edge to edge,
+     tiles at min(200px, 35vw) or wider, names over the face. Only the preview source differs per alternative. */
+  html, body { margin: 0; background: #000; }
+  #grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(200px, 35vw), 1fr)); }
+  .tile { position: relative; border: 0; margin: 0; padding: 0; display: block; aspect-ratio: 1; overflow: hidden; background: #222; cursor: pointer; }
+  .tile img, .tile .sprite { display: block; width: 100%; height: 100%; }
+  .tile .sprite { background-repeat: no-repeat; }
+  .tile span { position: absolute; bottom: 0; right: 10px; color: #fff; font: 2em sans-serif; text-shadow: 2px 2px #000; }
+</style>
+</head>
+<body>
+<div id="grid" role="list"></div>
+<script type="module" src="grid.mjs"></script>
+</body>
+</html>
