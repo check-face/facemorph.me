@@ -1,0 +1,1360 @@
+{
+ "step": "scrubbed-to-end",
+ "action": {
+  "kind": "touch",
+  "target": "slider end"
+ },
+ "commits": 585,
+ "model": {
+  "Inputs": [
+   {
+    "id": "face-1",
+    "mode": "text",
+    "value": "hello",
+    "file": null
+   },
+   {
+    "id": "face-2",
+    "mode": "text",
+    "value": "<today>",
+    "file": null
+   }
+  ],
+  "Faces": [
+   {
+    "id": "face-1",
+    "url": "",
+    "raw": true,
+    "label": "hello",
+    "sourceMode": "text",
+    "sourceFile": null
+   },
+   {
+    "id": "face-2",
+    "url": "",
+    "raw": true,
+    "label": "<today>",
+    "sourceMode": "text",
+    "sourceFile": null
+   }
+  ],
+  "Previews": [
+   {
+    "id": "face-1",
+    "mode": "text",
+    "value": "hello",
+    "url": "/preview/hello-1024.webp"
+   }
+  ],
+  "VideoUrl": "blob:<1>",
+  "Kind": "full-smooth-figure8",
+  "Width": 0.2,
+  "Pinch": true,
+  "Frames": 8,
+  "Fps": 16,
+  "Provider": "auto",
+  "Busy": false,
+  "JobId": 2,
+  "Stage": "done",
+  "Status": "Done — ready to save or share.",
+  "Fraction": 1,
+  "Preparing": "",
+  "Browse": null,
+  "Names": [],
+  "NameQuery": "",
+  "NameLimit": 48,
+  "Error": null,
+  "DebugStatus": "Reporting is off.",
+  "Debug": false,
+  "NextId": 3,
+  "Crop": null,
+  "CropQueue": [],
+  "Route": "cpu",
+  "Rejected": null,
+  "Invite": false,
+  "UseSlider": true,
+  "SliderFrames": [
+   "blob:<2>",
+   "blob:<3>",
+   "blob:<4>",
+   "blob:<5>",
+   "blob:<6>",
+   "blob:<7>",
+   "blob:<8>",
+   "blob:<9>",
+   "blob:<10>",
+   "blob:<11>",
+   "blob:<12>",
+   "blob:<13>",
+   "blob:<14>",
+   "blob:<15>",
+   "blob:<16>",
+   "blob:<17>"
+  ],
+  "SliderFrame": 16,
+  "Warn": null,
+  "Overflow": true,
+  "PhotoQueue": [],
+  "PendingFaces": [],
+  "PendingJobs": [],
+  "PendingMorph": false,
+  "PendingImport": null,
+  "RunInputs": "[cycle]",
+  "RunSettings": "full-smooth-figure8|0.200000|true|8|16",
+  "PreparingFaces": {
+   "fsharp": "set",
+   "entries": []
+  },
+  "Comparing": null,
+  "PhotoChoice": null,
+  "CachedFaces": {
+   "fsharp": "set",
+   "entries": []
+  },
+  "ActiveFace": null,
+  "Remaining": "",
+  "ConsentPrompt": false,
+  "Downloads": {
+   "known": true,
+   "phase": "idle",
+   "scope": "",
+   "loaded": 0,
+   "total": 0,
+   "routeReady": true,
+   "photoReady": false,
+   "photoAvailable": true,
+   "routeBytes": 0,
+   "photoBytes": 1172066282
+  },
+  "ModelToastHidden": true,
+  "DownloadConsent": {
+   "fsharp": "set",
+   "entries": [
+    "route"
+   ]
+  },
+  "Gate": null,
+  "LastRun": {
+   "union": 16,
+   "name": "Run",
+   "fields": [
+    "morph"
+   ]
+  },
+  "FailureToast": false
+ },
+ "dom": {
+  "faces": [
+   {
+    "tag": "div",
+    "classes": [
+     "next-faces-area"
+    ],
+    "attrs": {
+     "data-next-faces": "2"
+    },
+    "children": [
+     {
+      "tag": "div",
+      "classes": [
+       "n2",
+       "next-morph-content"
+      ],
+      "children": [
+       {
+        "tag": "div",
+        "classes": [
+         "next-morph-cell",
+         "next-morph-from"
+        ],
+        "children": [
+         {
+          "tag": "section",
+          "classes": [
+           "box",
+           "next-face"
+          ],
+          "attrs": {
+           "data-next-face": "face-1",
+           "data-next-state": "filled"
+          },
+          "children": [
+           {
+            "tag": "input",
+            "attrs": {
+             "aria-label": "Choose photo",
+             "type": "file",
+             "value": ""
+            }
+           },
+           {
+            "tag": "div",
+            "classes": [
+             "next-face-image"
+            ],
+            "children": [
+             {
+              "tag": "canvas",
+              "classes": [
+               "next-face-img"
+              ],
+              "attrs": {
+               "role": "img",
+               "aria-label": "Generated face from Morph from"
+              }
+             },
+             {
+              "tag": "button",
+              "classes": [
+               "next-face-close"
+              ],
+              "attrs": {
+               "aria-label": "Remove Morph from",
+               "type": "button"
+              },
+              "children": [
+               {
+                "tag": "span",
+                "children": [
+                 {
+                  "tag": "svg",
+                  "attrs": {
+                   "aria-hidden": "true"
+                  }
+                 }
+                ]
+               },
+               {
+                "tag": "span"
+               }
+              ]
+             }
+            ]
+           },
+           {
+            "tag": "div",
+            "classes": [
+             "next-input-row"
+            ],
+            "children": [
+             {
+              "tag": "div",
+              "classes": [
+               "next-field"
+              ],
+              "children": [
+               {
+                "tag": "div",
+                "classes": [
+                 "focuswithin-parent"
+                ],
+                "children": [
+                 {
+                  "tag": "label",
+                  "text": "Morph from"
+                 },
+                 {
+                  "tag": "div",
+                  "children": [
+                   {
+                    "tag": "div",
+                    "children": [
+                     {
+                      "tag": "button",
+                      "classes": [
+                       "next-adornment"
+                      ],
+                      "attrs": {
+                       "aria-label": "Change mode",
+                       "type": "button"
+                      },
+                      "children": [
+                       {
+                        "tag": "span",
+                        "children": [
+                         {
+                          "tag": "svg",
+                          "attrs": {
+                           "aria-hidden": "true"
+                          }
+                         }
+                        ]
+                       },
+                       {
+                        "tag": "span"
+                       }
+                      ]
+                     }
+                    ]
+                   },
+                   {
+                    "tag": "input",
+                    "attrs": {
+                     "type": "text",
+                     "value": "hello"
+                    }
+                   },
+                   {
+                    "tag": "div",
+                    "children": [
+                     {
+                      "tag": "button",
+                      "classes": [
+                       "next-adornment"
+                      ],
+                      "attrs": {
+                       "aria-label": "Browse names",
+                       "type": "button"
+                      },
+                      "children": [
+                       {
+                        "tag": "span",
+                        "children": [
+                         {
+                          "tag": "svg",
+                          "attrs": {
+                           "aria-hidden": "true"
+                          }
+                         }
+                        ]
+                       },
+                       {
+                        "tag": "span"
+                       }
+                      ]
+                     }
+                    ]
+                   },
+                   {
+                    "tag": "fieldset",
+                    "attrs": {
+                     "aria-hidden": "true"
+                    },
+                    "children": [
+                     {
+                      "tag": "legend",
+                      "children": [
+                       {
+                        "tag": "span",
+                        "text": "Morph from"
+                       }
+                      ]
+                     }
+                    ]
+                   }
+                  ]
+                 }
+                ]
+               }
+              ]
+             },
+             {
+              "tag": "button",
+              "classes": [
+               "next-face-generate"
+              ],
+              "attrs": {
+               "aria-label": "Generate Morph from",
+               "type": "button"
+              },
+              "children": [
+               {
+                "tag": "span",
+                "text": "Generate"
+               },
+               {
+                "tag": "span"
+               }
+              ]
+             }
+            ]
+           },
+           {
+            "tag": "select",
+            "classes": [
+             "next-sr"
+            ],
+            "attrs": {
+             "aria-label": "Face source",
+             "disabled": "true",
+             "value": "text"
+            },
+            "children": [
+             {
+              "tag": "option",
+              "attrs": {
+               "value": "text"
+              },
+              "text": "Name or words"
+             },
+             {
+              "tag": "option",
+              "attrs": {
+               "value": "seed"
+              },
+              "text": "Seed"
+             },
+             {
+              "tag": "option",
+              "attrs": {
+               "value": "photo"
+              },
+              "text": "Photo"
+             }
+            ]
+           },
+           {
+            "tag": "div",
+            "classes": [
+             "next-actions",
+             "next-face-actions"
+            ],
+            "children": [
+             {
+              "tag": "button",
+              "attrs": {
+               "type": "button"
+              },
+              "children": [
+               {
+                "tag": "span",
+                "text": "Share image"
+               },
+               {
+                "tag": "span"
+               }
+              ]
+             },
+             {
+              "tag": "button",
+              "attrs": {
+               "type": "button"
+              },
+              "children": [
+               {
+                "tag": "span",
+                "text": "Save image"
+               },
+               {
+                "tag": "span"
+               }
+              ]
+             }
+            ]
+           }
+          ]
+         }
+        ]
+       },
+       {
+        "tag": "div",
+        "classes": [
+         "next-morph-cell",
+         "next-morph-morph"
+        ],
+        "children": [
+         {
+          "tag": "div",
+          "classes": [
+           "next-morph-slot"
+          ],
+          "children": [
+           {
+            "tag": "button",
+            "classes": [
+             "next-primary-action"
+            ],
+            "attrs": {
+             "type": "button",
+             "data-next-primary": "true"
+            },
+            "children": [
+             {
+              "tag": "span",
+              "text": "Create morph"
+             },
+             {
+              "tag": "span"
+             }
+            ]
+           },
+           {
+            "tag": "div",
+            "classes": [
+             "next-actions",
+             "next-generate"
+            ],
+            "children": [
+             {
+              "tag": "button",
+              "attrs": {
+               "aria-expanded": "true",
+               "type": "button"
+              },
+              "children": [
+               {
+                "tag": "span",
+                "text": "More options"
+               },
+               {
+                "tag": "span"
+               }
+              ]
+             },
+             {
+              "tag": "button",
+              "attrs": {
+               "type": "button"
+              },
+              "children": [
+               {
+                "tag": "span",
+                "text": "Add face"
+               },
+               {
+                "tag": "span"
+               }
+              ]
+             }
+            ]
+           },
+           {
+            "tag": "p",
+            "classes": [
+             "next-route-caption"
+            ],
+            "attrs": {
+             "data-next-route": "cpu"
+            },
+            "text": "Ready · this device’s CPU."
+           },
+           {
+            "tag": "div",
+            "children": [
+             {
+              "tag": "div",
+              "classes": [
+               "next-overflow"
+              ],
+              "children": [
+               {
+                "tag": "div",
+                "classes": [
+                 "next-shape-controls"
+                ],
+                "children": [
+                 {
+                  "tag": "label",
+                  "classes": [
+                   "next-overflow-field"
+                  ],
+                  "children": [
+                   {
+                    "tag": "span",
+                    "text": "Shape"
+                   },
+                   {
+                    "tag": "select",
+                    "attrs": {
+                     "aria-label": "Morph shape",
+                     "value": "full-smooth-figure8"
+                    },
+                    "children": [
+                     {
+                      "tag": "option",
+                      "attrs": {
+                       "value": "full-smooth-figure8"
+                      },
+                      "text": "Smooth figure eight"
+                     },
+                     {
+                      "tag": "option",
+                      "attrs": {
+                       "value": "full-smooth-ellipse"
+                      },
+                      "text": "Smooth ellipse"
+                     },
+                     {
+                      "tag": "option",
+                      "attrs": {
+                       "value": "pairwise-figure8"
+                      },
+                      "text": "Figure eight"
+                     },
+                     {
+                      "tag": "option",
+                      "attrs": {
+                       "value": "pairwise-ellipse"
+                      },
+                      "text": "Ellipse"
+                     },
+                     {
+                      "tag": "option",
+                      "attrs": {
+                       "value": "linear"
+                      },
+                      "text": "Classic linear"
+                     }
+                    ]
+                   }
+                  ]
+                 },
+                 {
+                  "tag": "label",
+                  "classes": [
+                   "next-overflow-field"
+                  ],
+                  "children": [
+                   {
+                    "tag": "span",
+                    "text": "Length"
+                   },
+                   {
+                    "tag": "select",
+                    "attrs": {
+                     "aria-label": "Morph length",
+                     "value": "8"
+                    },
+                    "children": [
+                     {
+                      "tag": "option",
+                      "attrs": {
+                       "value": "8"
+                      },
+                      "text": "Length: short · 8 frames per segment"
+                     },
+                     {
+                      "tag": "option",
+                      "attrs": {
+                       "value": "16"
+                      },
+                      "text": "Length: standard · 16 frames per segment"
+                     },
+                     {
+                      "tag": "option",
+                      "attrs": {
+                       "value": "32"
+                      },
+                      "text": "Length: long · 32 frames per segment"
+                     }
+                    ]
+                   }
+                  ]
+                 },
+                 {
+                  "tag": "span",
+                  "classes": [
+                   "next-frame-count"
+                  ],
+                  "text": "16 frames total"
+                 }
+                ]
+               },
+               {
+                "tag": "label",
+                "children": [
+                 {
+                  "tag": "span",
+                  "attrs": {
+                   "aria-label": "Pinch centre"
+                  },
+                  "children": [
+                   {
+                    "tag": "span",
+                    "children": [
+                     {
+                      "tag": "input",
+                      "attrs": {
+                       "type": "checkbox",
+                       "value": ""
+                      }
+                     },
+                     {
+                      "tag": "svg",
+                      "attrs": {
+                       "aria-hidden": "true"
+                      }
+                     }
+                    ]
+                   },
+                   {
+                    "tag": "span"
+                   }
+                  ]
+                 },
+                 {
+                  "tag": "span",
+                  "text": "Pinch centre"
+                 }
+                ]
+               },
+               {
+                "tag": "details",
+                "classes": [
+                 "next-advanced"
+                ],
+                "children": [
+                 {
+                  "tag": "summary",
+                  "text": "Advanced"
+                 },
+                 {
+                  "tag": "label",
+                  "classes": [
+                   "next-overflow-field"
+                  ],
+                  "children": [
+                   {
+                    "tag": "span",
+                    "text": "Processing mode"
+                   },
+                   {
+                    "tag": "select",
+                    "attrs": {
+                     "aria-label": "Processing mode",
+                     "value": "auto"
+                    },
+                    "children": [
+                     {
+                      "tag": "option",
+                      "attrs": {
+                       "value": "auto"
+                      },
+                      "text": "Automatic processing"
+                     },
+                     {
+                      "tag": "option",
+                      "attrs": {
+                       "value": "cpu"
+                      },
+                      "text": "CPU"
+                     },
+                     {
+                      "tag": "option",
+                      "attrs": {
+                       "value": "webgpu"
+                      },
+                      "text": "WebGPU"
+                     },
+                     {
+                      "tag": "option",
+                      "attrs": {
+                       "value": "webgl"
+                      },
+                      "text": "WebGL GPU"
+                     }
+                    ]
+                   }
+                  ]
+                 },
+                 {
+                  "tag": "p",
+                  "text": "Leave processing on automatic unless you are comparing routes. Forced routes still need to pass this device’s checks."
+                 }
+                ]
+               }
+              ]
+             }
+            ]
+           },
+           {
+            "tag": "div",
+            "classes": [
+             "next-status"
+            ],
+            "attrs": {
+             "role": "status"
+            },
+            "children": [
+             {
+              "tag": "span",
+              "text": "Done — ready to save or share."
+             }
+            ]
+           }
+          ]
+         }
+        ]
+       },
+       {
+        "tag": "div",
+        "classes": [
+         "next-morph-cell",
+         "next-morph-to"
+        ],
+        "children": [
+         {
+          "tag": "section",
+          "classes": [
+           "box",
+           "next-face"
+          ],
+          "attrs": {
+           "data-next-face": "face-2",
+           "data-next-state": "filled"
+          },
+          "children": [
+           {
+            "tag": "input",
+            "attrs": {
+             "aria-label": "Choose photo",
+             "type": "file",
+             "value": ""
+            }
+           },
+           {
+            "tag": "div",
+            "classes": [
+             "next-face-image"
+            ],
+            "children": [
+             {
+              "tag": "canvas",
+              "classes": [
+               "next-face-img"
+              ],
+              "attrs": {
+               "role": "img",
+               "aria-label": "Generated face from Morph to"
+              }
+             },
+             {
+              "tag": "button",
+              "classes": [
+               "next-face-close"
+              ],
+              "attrs": {
+               "aria-label": "Remove Morph to",
+               "type": "button"
+              },
+              "children": [
+               {
+                "tag": "span",
+                "children": [
+                 {
+                  "tag": "svg",
+                  "attrs": {
+                   "aria-hidden": "true"
+                  }
+                 }
+                ]
+               },
+               {
+                "tag": "span"
+               }
+              ]
+             }
+            ]
+           },
+           {
+            "tag": "div",
+            "classes": [
+             "next-input-row"
+            ],
+            "children": [
+             {
+              "tag": "div",
+              "classes": [
+               "next-field"
+              ],
+              "children": [
+               {
+                "tag": "div",
+                "classes": [
+                 "focuswithin-parent"
+                ],
+                "children": [
+                 {
+                  "tag": "label",
+                  "text": "Morph to"
+                 },
+                 {
+                  "tag": "div",
+                  "children": [
+                   {
+                    "tag": "div",
+                    "children": [
+                     {
+                      "tag": "button",
+                      "classes": [
+                       "next-adornment"
+                      ],
+                      "attrs": {
+                       "aria-label": "Change mode",
+                       "type": "button"
+                      },
+                      "children": [
+                       {
+                        "tag": "span",
+                        "children": [
+                         {
+                          "tag": "svg",
+                          "attrs": {
+                           "aria-hidden": "true"
+                          }
+                         }
+                        ]
+                       },
+                       {
+                        "tag": "span"
+                       }
+                      ]
+                     }
+                    ]
+                   },
+                   {
+                    "tag": "input",
+                    "attrs": {
+                     "type": "text",
+                     "value": "<today>"
+                    }
+                   },
+                   {
+                    "tag": "div",
+                    "children": [
+                     {
+                      "tag": "button",
+                      "classes": [
+                       "next-adornment"
+                      ],
+                      "attrs": {
+                       "aria-label": "Browse names",
+                       "type": "button"
+                      },
+                      "children": [
+                       {
+                        "tag": "span",
+                        "children": [
+                         {
+                          "tag": "svg",
+                          "attrs": {
+                           "aria-hidden": "true"
+                          }
+                         }
+                        ]
+                       },
+                       {
+                        "tag": "span"
+                       }
+                      ]
+                     }
+                    ]
+                   },
+                   {
+                    "tag": "fieldset",
+                    "attrs": {
+                     "aria-hidden": "true"
+                    },
+                    "children": [
+                     {
+                      "tag": "legend",
+                      "children": [
+                       {
+                        "tag": "span",
+                        "text": "Morph to"
+                       }
+                      ]
+                     }
+                    ]
+                   }
+                  ]
+                 }
+                ]
+               }
+              ]
+             },
+             {
+              "tag": "button",
+              "classes": [
+               "next-face-generate"
+              ],
+              "attrs": {
+               "aria-label": "Generate Morph to",
+               "type": "button"
+              },
+              "children": [
+               {
+                "tag": "span",
+                "text": "Generate"
+               },
+               {
+                "tag": "span"
+               }
+              ]
+             }
+            ]
+           },
+           {
+            "tag": "select",
+            "classes": [
+             "next-sr"
+            ],
+            "attrs": {
+             "aria-label": "Face source",
+             "disabled": "true",
+             "value": "text"
+            },
+            "children": [
+             {
+              "tag": "option",
+              "attrs": {
+               "value": "text"
+              },
+              "text": "Name or words"
+             },
+             {
+              "tag": "option",
+              "attrs": {
+               "value": "seed"
+              },
+              "text": "Seed"
+             },
+             {
+              "tag": "option",
+              "attrs": {
+               "value": "photo"
+              },
+              "text": "Photo"
+             }
+            ]
+           },
+           {
+            "tag": "div",
+            "classes": [
+             "next-actions",
+             "next-face-actions"
+            ],
+            "children": [
+             {
+              "tag": "button",
+              "attrs": {
+               "type": "button"
+              },
+              "children": [
+               {
+                "tag": "span",
+                "text": "Share image"
+               },
+               {
+                "tag": "span"
+               }
+              ]
+             },
+             {
+              "tag": "button",
+              "attrs": {
+               "type": "button"
+              },
+              "children": [
+               {
+                "tag": "span",
+                "text": "Save image"
+               },
+               {
+                "tag": "span"
+               }
+              ]
+             }
+            ]
+           }
+          ]
+         }
+        ]
+       },
+       {
+        "tag": "div",
+        "classes": [
+         "next-morph-cell",
+         "next-morph-vid"
+        ],
+        "children": [
+         {
+          "tag": "div",
+          "classes": [
+           "next-video-slot"
+          ],
+          "children": [
+           {
+            "tag": "label",
+            "children": [
+             {
+              "tag": "span",
+              "children": [
+               {
+                "tag": "span",
+                "children": [
+                 {
+                  "tag": "input",
+                  "attrs": {
+                   "type": "checkbox",
+                   "value": ""
+                  }
+                 },
+                 {
+                  "tag": "svg",
+                  "attrs": {
+                   "aria-hidden": "true"
+                  }
+                 }
+                ]
+               },
+               {
+                "tag": "span"
+               }
+              ]
+             },
+             {
+              "tag": "span",
+              "text": "Use Slider"
+             }
+            ]
+           },
+           {
+            "tag": "div",
+            "classes": [
+             "next-slider"
+            ],
+            "children": [
+             {
+              "tag": "canvas",
+              "attrs": {
+               "role": "img",
+               "aria-label": "Morph preview, frame by frame"
+              }
+             },
+             {
+              "tag": "span",
+              "classes": [
+               "next-slider-control"
+              ],
+              "children": [
+               {
+                "tag": "span"
+               },
+               {
+                "tag": "span"
+               },
+               {
+                "tag": "input",
+                "attrs": {
+                 "type": "hidden",
+                 "value": "16"
+                }
+               },
+               {
+                "tag": "span",
+                "attrs": {
+                 "role": "slider",
+                 "aria-label": "Morph frame",
+                 "aria-valuenow": "16"
+                }
+               }
+              ]
+             }
+            ]
+           },
+           {
+            "tag": "div",
+            "classes": [
+             "next-actions"
+            ],
+            "children": [
+             {
+              "tag": "button",
+              "attrs": {
+               "type": "button"
+              },
+              "children": [
+               {
+                "tag": "span",
+                "text": "Share morph"
+               },
+               {
+                "tag": "span"
+               }
+              ]
+             },
+             {
+              "tag": "button",
+              "attrs": {
+               "type": "button"
+              },
+              "children": [
+               {
+                "tag": "span",
+                "text": "Save video"
+               },
+               {
+                "tag": "span"
+               }
+              ]
+             }
+            ]
+           }
+          ]
+         }
+        ]
+       },
+       {
+        "tag": "div",
+        "classes": [
+         "next-connector",
+         "next-connector-lead"
+        ],
+        "children": [
+         {
+          "tag": "button",
+          "classes": [
+           "next-connector-add"
+          ],
+          "attrs": {
+           "aria-label": "Add a face before Morph from",
+           "type": "button"
+          },
+          "children": [
+           {
+            "tag": "span",
+            "children": [
+             {
+              "tag": "svg",
+              "attrs": {
+               "aria-hidden": "true"
+              }
+             }
+            ]
+           },
+           {
+            "tag": "span"
+           }
+          ]
+         }
+        ]
+       },
+       {
+        "tag": "div",
+        "classes": [
+         "next-connector",
+         "next-connector-stack"
+        ],
+        "children": [
+         {
+          "tag": "button",
+          "classes": [
+           "next-connector-add"
+          ],
+          "attrs": {
+           "aria-label": "Add a face between these two",
+           "type": "button"
+          },
+          "children": [
+           {
+            "tag": "span",
+            "children": [
+             {
+              "tag": "svg",
+              "attrs": {
+               "aria-hidden": "true"
+              }
+             }
+            ]
+           },
+           {
+            "tag": "span"
+           }
+          ]
+         }
+        ]
+       },
+       {
+        "tag": "div",
+        "classes": [
+         "next-connector",
+         "next-connector-trail"
+        ],
+        "children": [
+         {
+          "tag": "button",
+          "classes": [
+           "next-connector-add"
+          ],
+          "attrs": {
+           "aria-label": "Add a face after Morph to",
+           "type": "button"
+          },
+          "children": [
+           {
+            "tag": "span",
+            "children": [
+             {
+              "tag": "svg",
+              "attrs": {
+               "aria-hidden": "true"
+              }
+             }
+            ]
+           },
+           {
+            "tag": "span"
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  ],
+  "dialogs": [],
+  "toasts": [],
+  "notes": [
+   {
+    "tag": "p",
+    "classes": [
+     "next-estimate"
+    ],
+    "attrs": {
+     "role": "note",
+     "data-next-estimate": "measured"
+    },
+    "text": "On this device a face took <ms>."
+   },
+   {
+    "tag": "div",
+    "classes": [
+     "box",
+     "next-slow-route"
+    ],
+    "attrs": {
+     "role": "note"
+    },
+    "children": [
+     {
+      "tag": "p",
+      "text": "No graphics acceleration qualified here, so it is running on the processor.",
+      "children": [
+       {
+        "tag": "strong",
+        "text": "Generating is slow on this device."
+       }
+      ]
+     },
+     {
+      "tag": "p",
+      "text": "You can keep using the page while work is queued. Try a shorter morph, or compare available processing routes under More options → Advanced. A capable desktop browser may help if you are using a phone."
+     },
+     {
+      "tag": "p",
+      "children": [
+       {
+        "tag": "a",
+        "text": "Desktop app capabilities and availability"
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ "focused": "span[Morph frame]"
+}

@@ -1,5 +1,5 @@
 // Operating a control as a person would: scroll it into view, check that the element at its visible centre is
-// the control (elementFromPoint), then press there with the real mouse or a touch tap, and report whether the
+// the control (elementFromPoint, allowing 3 s for a fading overlay to clear), then press there with the real mouse or a touch tap, and report whether the
 // press landed inside it. With `follow: false` a link's navigation is stopped after the press is recorded.
 import assert from 'node:assert/strict';
 import type { Locator, Page } from 'playwright';
@@ -21,11 +21,18 @@ export async function press(page: Page, control: Locator, { touch = false, follo
   const box = await control.boundingBox();
   assert.ok(box && box.width > 0 && box.height > 0, `${control} has no visible box`);
   const x = box.x + box.width / 2, y = box.y + box.height / 2;
-  const there = await control.evaluate((el, [px, py]) => {
+  // A fading menu or toast may still cover the control for a moment, as a person sees; one that stays (defect 1's
+  // Remove under the image) fails after the wait.
+  const probe = () => control.evaluate((el, [px, py]) => {
     (window as unknown as { __target: Element }).__target = el;
     const at = document.elementFromPoint(px as number, py as number);
     return { ok: !!at && (el === at || el.contains(at)), at: at ? at.outerHTML.slice(0, 160) : null };
   }, [x, y]);
+  let there = await probe();
+  for (const end = Date.now() + 3000; !there.ok && Date.now() < end;) {
+    await page.waitForTimeout(150);
+    there = await probe();
+  }
   assert.ok(there.ok, `${control}: elementFromPoint at its centre is not the control but ${there.at}`);
   await page.evaluate(arm, { follow });
   if (touch) await page.touchscreen.tap(x, y); else await page.mouse.click(x, y);

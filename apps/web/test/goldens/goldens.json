@@ -113,6 +113,260 @@
      ]
     }
    ]
+  },
+  "parity-spec": {
+   "control": {
+    "label": "control (classic candidate build; not built by this repository)",
+    "commit": "551b60726290b2d67a32c62477b2fd964de51f96",
+    "release_sha256": "868583788670d5651579acd88c238280523cdbf75d8b17360ea2b20e00180c01",
+    "deploy_next_sha256": "79306e90dbb948a346dd96da30c3a936cacd671dbf83e4cfd2da1623e1c52dca"
+   },
+   "recorder": {
+    "command": "python3 autoresearch/run.py --lane browser-cpu --device eris --wait 900 --timeout 3600 -- env RECORD=1 npx --prefix apps/web playwright test -c apps/web/test/parity/playwright.config.ts && node apps/web/test/parity/index-goldens.ts",
+    "spec": "apps/web/test/parity/flow-matrix.spec.ts (rows: apps/web/test/parity/rows.ts)",
+    "projects": {
+     "desktop": "1280 x 900, mouse",
+     "phone": "390 x 844, touch, mobile"
+    },
+    "browser": "Playwright Chromium (1.64.1), WebGPU switched off at launch: the CPU route",
+    "oracle": "journey-step snapshots: the Elmish model read through a React DevTools hook on every commit (elmish-probe.ts) plus the DOM a person sees (faces area, dialogs, toasts, notes) and the focused element",
+    "blind_spots": [
+     "Messages are not observable (Elmish dispatch is private): a step is the model after an input, not the message sequence.",
+     "Commits between steps are counted, not kept.",
+     "Pixels are not compared: generated images, canvases and video are reduced to their elements; raw synthesis parity belongs to the numerics checks.",
+     "Blob URLs, durations and times are normalized; their values are not compared.",
+     "Photo bytes and latents never enter the goldens (files reduced to size and type, typed arrays to length)."
+    ],
+    "privacy": "no photo bytes, latents or typed inputs beyond the synthetic fixture words and seeds (test/build/goldens.test.ts)"
+   },
+   "rows": [
+    {
+     "id": "first-visit",
+     "freeze": "parity",
+     "journey": "First app visit: usable inputs, names and defaults; no model download on arrival",
+     "plan": "PLAN.md#ui-flow-matrix-and-open-journey-contracts",
+     "variants": [
+      "cold-model",
+      "narrow",
+      "wide",
+      "mouse",
+      "touch"
+     ],
+     "files": {
+      "desktop": [
+       "control/first-visit/desktop/01-arrived.json"
+      ],
+      "phone": [
+       "control/first-visit/phone/01-arrived.json"
+      ]
+     }
+    },
+    {
+     "id": "return-retained",
+     "freeze": "parity",
+     "journey": "Return with completed retained work: display, play and save without regeneration; slider choice kept",
+     "plan": "PLAN.md#ui-flow-matrix-and-open-journey-contracts",
+     "variants": [
+      "output-cached",
+      "wide"
+     ],
+     "files": {},
+     "note": "Asserted by the spec; no journey-step golden kept (the row checks downloads, sharing or a reload)."
+    },
+    {
+     "id": "phone-cpu-route",
+     "freeze": "parity",
+     "journey": "Phone or CPU route: admitted face and morph work proceeds on the CPU",
+     "plan": "PLAN.md#ui-flow-matrix-and-open-journey-contracts",
+     "variants": [
+      "narrow",
+      "touch",
+      "unsupported-capability"
+     ],
+     "files": {},
+     "note": "Asserted by the spec; no journey-step golden kept (the row checks downloads, sharing or a reload)."
+    },
+    {
+     "id": "words.generate-cpu",
+     "freeze": "parity",
+     "journey": "Enter new words: one Generate inside the tile makes the face (CPU)",
+     "plan": "PLAN.md#ui-flow-matrix-and-open-journey-contracts",
+     "variants": [
+      "cold-model",
+      "wide",
+      "mouse"
+     ],
+     "files": {
+      "desktop": [
+       "control/words.generate-cpu/desktop/01-arrived.json",
+       "control/words.generate-cpu/desktop/02-typed.json",
+       "control/words.generate-cpu/desktop/03-generated.json"
+      ],
+      "phone": [
+       "control/words.generate-cpu/phone/01-arrived.json",
+       "control/words.generate-cpu/phone/02-typed.json",
+       "control/words.generate-cpu/phone/03-generated.json"
+      ]
+     }
+    },
+    {
+     "id": "seed.generate",
+     "freeze": "parity",
+     "journey": "Enter a numeric seed, including 0 and 4,294,967,295, and generate it",
+     "plan": "PLAN.md#ui-flow-matrix-and-open-journey-contracts",
+     "variants": [
+      "model-cached",
+      "wide",
+      "mouse"
+     ],
+     "files": {
+      "desktop": [
+       "control/seed.generate/desktop/01-seed-mode.json",
+       "control/seed.generate/desktop/02-typed-0.json",
+       "control/seed.generate/desktop/03-generated-0.json",
+       "control/seed.generate/desktop/04-typed-4294967295.json",
+       "control/seed.generate/desktop/05-generated-4294967295.json"
+      ],
+      "phone": [
+       "control/seed.generate/phone/01-seed-mode.json",
+       "control/seed.generate/phone/02-typed-0.json",
+       "control/seed.generate/phone/03-generated-0.json",
+       "control/seed.generate/phone/04-typed-4294967295.json",
+       "control/seed.generate/phone/05-generated-4294967295.json"
+      ]
+     }
+    },
+    {
+     "id": "retry-unchanged",
+     "freeze": "parity",
+     "journey": "Cancel a text or seed generation, then retry the unchanged input without typing",
+     "plan": "PLAN.md#ui-flow-matrix-and-open-journey-contracts",
+     "variants": [
+      "model-cached",
+      "wide",
+      "mouse"
+     ],
+     "files": {
+      "desktop": [
+       "control/retry-unchanged/desktop/01-running.json",
+       "control/retry-unchanged/desktop/02-cancelled.json",
+       "control/retry-unchanged/desktop/03-retried.json"
+      ],
+      "phone": [
+       "control/retry-unchanged/phone/01-running.json",
+       "control/retry-unchanged/phone/02-cancelled.json",
+       "control/retry-unchanged/phone/03-retried.json"
+      ]
+     }
+    },
+    {
+     "id": "names.exact-text",
+     "freeze": "parity",
+     "journey": "Find a known name by typing it in the text field and generating",
+     "plan": "PLAN.md#ui-flow-matrix-and-open-journey-contracts",
+     "variants": [
+      "model-cached",
+      "wide"
+     ],
+     "files": {
+      "desktop": [
+       "control/names.exact-text/desktop/01-typed.json",
+       "control/names.exact-text/desktop/02-generated.json"
+      ],
+      "phone": [
+       "control/names.exact-text/phone/01-typed.json",
+       "control/names.exact-text/phone/02-generated.json"
+      ]
+     }
+    },
+    {
+     "id": "morph.settings-start-cancel",
+     "freeze": "parity",
+     "journey": "Change morph settings, start, cancel, retry",
+     "plan": "PLAN.md#ui-flow-matrix-and-open-journey-contracts",
+     "variants": [
+      "model-cached",
+      "wide"
+     ],
+     "files": {
+      "desktop": [
+       "control/morph.settings-start-cancel/desktop/01-settings.json",
+       "control/morph.settings-start-cancel/desktop/02-started.json",
+       "control/morph.settings-start-cancel/desktop/03-cancelled.json",
+       "control/morph.settings-start-cancel/desktop/04-morphed.json"
+      ],
+      "phone": [
+       "control/morph.settings-start-cancel/phone/01-settings.json",
+       "control/morph.settings-start-cancel/phone/02-started.json",
+       "control/morph.settings-start-cancel/phone/03-cancelled.json",
+       "control/morph.settings-start-cancel/phone/04-morphed.json"
+      ]
+     }
+    },
+    {
+     "id": "morph.play-slider",
+     "freeze": "parity",
+     "journey": "Play the video and switch to the slider",
+     "plan": "PLAN.md#ui-flow-matrix-and-open-journey-contracts",
+     "variants": [
+      "model-cached",
+      "wide",
+      "narrow"
+     ],
+     "files": {
+      "desktop": [
+       "control/morph.play-slider/desktop/01-slider.json",
+       "control/morph.play-slider/desktop/02-scrubbed-to-end.json"
+      ],
+      "phone": [
+       "control/morph.play-slider/phone/01-slider.json",
+       "control/morph.play-slider/phone/02-scrubbed-to-end.json"
+      ]
+     }
+    },
+    {
+     "id": "save.face-mp4",
+     "freeze": "parity",
+     "journey": "Save a face (WebP/PNG) or the morph (MP4)",
+     "plan": "PLAN.md#ui-flow-matrix-and-open-journey-contracts",
+     "variants": [
+      "model-cached",
+      "wide"
+     ],
+     "files": {},
+     "note": "Asserted by the spec; no journey-step golden kept (the row checks downloads, sharing or a reload)."
+    },
+    {
+     "id": "share.cancel-unsupported",
+     "freeze": "parity",
+     "journey": "Share, cancel a share, or use a host without file sharing (Save stays obvious)",
+     "plan": "PLAN.md#ui-flow-matrix-and-open-journey-contracts",
+     "variants": [
+      "wide",
+      "unsupported-capability"
+     ],
+     "files": {},
+     "note": "Asserted by the spec; no journey-step golden kept (the row checks downloads, sharing or a reload)."
+    },
+    {
+     "id": "testing-bulk-generate",
+     "freeze": "parity",
+     "journey": "Tester bulk Generate faces (?testing) and the support and contact links",
+     "plan": "PLAN.md#ui-flow-matrix-and-open-journey-contracts",
+     "variants": [
+      "model-cached",
+      "wide"
+     ],
+     "files": {
+      "desktop": [
+       "control/testing-bulk-generate/desktop/01-bulk-generated.json"
+      ],
+      "phone": [
+       "control/testing-bulk-generate/phone/01-bulk-generated.json"
+      ]
+     }
+    }
+   ]
   }
  }
 }

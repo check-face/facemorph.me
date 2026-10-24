@@ -9,7 +9,7 @@ const root = new URL('../goldens/control/', import.meta.url).pathname;
 const files = (dir: string): string[] => readdirSync(dir, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? files(join(dir, e.name)) : e.name.endsWith('.json') ? [join(dir, e.name)] : []));
 // The words and seeds the recorders type, and what the control shows on a first visit (its own seeded faces: 'hello'
 // and the visit's date, normalized to <today>).
-const SYNTHETIC = new Set(['parity sample', 'hello', '<today>']);
+const SYNTHETIC = new Set(['parity sample', 'hello', '<today>', '0', '4294967295']);
 
 test('no golden holds image bytes, a data URL, a blob URL or a latent', () => {
   for (const file of files(root)) {
