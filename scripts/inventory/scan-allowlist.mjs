@@ -8,7 +8,7 @@
 //   node scripts/inventory/scan-allowlist.mjs [--classic <dir>]
 // One JSON line per finding (`info` lines do not fail), then a summary; exit 1 on any finding.
 import { fileURLToPath } from 'node:url';
-import { ALLOWLIST, blob, classicDir, globRegExp, line, options, readJson, sha256 } from './lib.mjs';
+import { ALLOWLIST, blob, classicDir, line, options, readJson, sha256 } from './lib.mjs';
 import { overlays } from './generate-allowlist.mjs';
 
 const WEIGHT_BYTES = 8 * 1024 * 1024;

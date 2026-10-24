@@ -2,10 +2,12 @@
 // Lists every module specifier in the imported closure that does not resolve inside it, and compares the
 // list with import/allowlist.json `unresolved_imports` (expected: exactly the bridge's Fable import).
 // Static imports and re-exports come from V8's own module parser (vm.SourceTextModule); dynamic
-// `import('…')`, `new Worker(new URL('…', import.meta.url))` and CommonJS `require('…')` with literal
-// specifiers are read by pattern. Relative specifiers must name a file in the closure (query and hash
-// dropped); `/…` resolves from the app root; a bare specifier resolves if it is a Node builtin or its
-// package is in the lock.
+// `import('…')`, `new Worker(new URL('…', import.meta.url))`, CommonJS `require('…')`, SCSS
+// `@import`/`@use` and HTML `<script>` with literal specifiers are read by pattern. A page listed in the
+// allowlist's `html_pages` is rendered with its build's template options and resolved from the path it
+// is served at. Relative specifiers must name a file in the closure (query and hash dropped); `/…`
+// resolves from the app root; a bare specifier resolves if it is a Node builtin or its package is in the
+// lock (`~pkg` in SCSS).
 //   node scripts/inventory/unresolved-imports.mjs [--classic <dir>]        the allowlist, from Git objects
 //   node scripts/inventory/unresolved-imports.mjs --root <dir> [--lock <package-lock.json>] [--expect-none]
 //                                                                          a tree on disk (apps/web after import)

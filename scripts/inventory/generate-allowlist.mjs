@@ -26,7 +26,6 @@ export function overlays(dir) {
     const status = records[i].slice(0, 2).trim();
     const path = records[i].slice(3);
     if (/[RC]/.test(status)) i++; // -z puts a rename's original path in the next record
-
     const entry = { path, status, disposition: 'excluded', reason: 'Uncommitted classic working-tree change owned by another session; never imported or labelled as the pinned snapshot.' };
     if (UNREAD.test(path)) entry.digest = 'not read (may hold credentials)';
     else if (path.endsWith('/')) {

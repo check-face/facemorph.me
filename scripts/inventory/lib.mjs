@@ -72,7 +72,7 @@ export function untar(buffer) {
     if (type === 'g') comment = pax(body).comment ?? comment;
     else if (type === 'x') pending = pax(body);
     else {
-      if (type === '0' || type === '\0') files.push({ path: pending?.path ?? name, bytes: Buffer.from(body) });
+      if (type === '0') files.push({ path: pending?.path ?? name, bytes: Buffer.from(body) });
       pending = null;
     }
     off += 512 + Math.ceil(size / 512) * 512;
@@ -99,7 +99,8 @@ export function globRegExp(pattern) {
 export const matches = (path, patterns) => patterns.some((p) => globRegExp(p).test(path));
 
 // The runtime files a manifest pins, as {path: {sha256, bytes, of?}} with paths relative to runtime/ —
-// the same walk as classic's hosting/next-static/mirror-runtime.py `pinned()`: a manifestUrl/workerUrl
+// the same walk as classic's hosting/next-static/mirror-runtime.py `pinned()` (which also refuses a URL
+// on another origin; here any URL under /runtime/ is taken): a manifestUrl/workerUrl
 // pair, then any node with a sha256 and an integer size (a chunked asset contributes its chunks only,
 // each marked `of` its asset with the asset's digest as `of_sha256`; `file` entries resolve against the
 // manifest's own directory).

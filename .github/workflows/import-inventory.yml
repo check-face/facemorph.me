@@ -27,7 +27,7 @@ jobs:
           node-version: '22'
       - name: The checkout is the allowlist's frozen commit
         run: test "$(node -p "require('./import/allowlist.json').source.frozen_commit")" = "$(git -C classic rev-parse HEAD)"
-      - run: git --version && node --test scripts/inventory/lib.test.mjs scripts/inventory/allowlist.test.mjs scripts/inventory/unresolved-imports.test.mjs
+      - run: git --version && node --test scripts/inventory/lib.test.mjs scripts/inventory/allowlist.test.mjs scripts/inventory/unresolved-imports.test.mjs scripts/inventory/build-inputs.test.mjs scripts/inventory/licence-check.test.mjs
       - run: node scripts/inventory/allowlist-digests.mjs --classic classic
       - run: node scripts/inventory/generate-allowlist.mjs --check --classic classic
       - run: node scripts/inventory/scan-allowlist.mjs --classic classic
