@@ -38,7 +38,7 @@ test('the bridge and media import nothing from desktop/ and have no native branc
   assert.doesNotMatch(bridge, /raw:!globalThis/);
 });
 
-test('the closure import check passes: the only unresolved specifier is the Fable output', () => {
+test('the closure import check passes: no unresolved specifier (the Fable output was swapped for project-json.ts, fm-stth)', () => {
   const r = spawnSync(
     process.execPath,
     [
@@ -47,6 +47,7 @@ test('the closure import check passes: the only unresolved specifier is the Fabl
       'apps/web',
       '--lock',
       'package-lock.json',
+      '--expect-none',
     ],
     { cwd: REPO, encoding: 'utf8' },
   );
@@ -57,7 +58,7 @@ test('the closure import check passes: the only unresolved specifier is the Fabl
     .filter((u) => !u.importer.startsWith('apps/web/dist/')); // a local Vite build output, untracked
   assert.deepEqual(
     unresolved.map((u) => u.specifier),
-    ['./ProjectJson.fs.js'],
+    [],
     r.stdout + r.stderr,
   );
 });

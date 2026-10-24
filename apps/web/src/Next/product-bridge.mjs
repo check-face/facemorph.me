@@ -5,7 +5,7 @@ import {decorateImage,downloadImage,recoverImage,decorateVideo,recoverVideoProje
 import {createPhotoAligner} from './photo/align-photo.mjs';
 import {createBrowserRuntime} from './browser/runtime.mjs';
 import {createLatentPath,GEOMETRY_VERSION} from './geometry/latent-path.mjs';
-import {decode,encode} from './ProjectJson.fs.js';
+import {decode,encode} from '../project/bridge-result.ts';
 import {saveFile,shareFile,videoWriter} from './media.mjs';
 import {diagnostics,onJobEnd} from './reporting.mjs';
 import * as analytics from './analytics.mjs';

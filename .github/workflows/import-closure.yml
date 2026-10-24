@@ -22,7 +22,7 @@ jobs:
           --allow browser-matrix.json --allow 'tsconfig*.json' --allow vite.config.ts --allow index.html --allow worker-check.html --allow render-check.html --allow .gitignore
           --allow 'build/**' --allow 'shell/**' --allow 'test/**' --allow 'src/photo/**' --allow 'src/contracts/**' --allow 'src/media/**' --allow 'src/admission/**' --allow 'src/project/**'
       - run: node scripts/import/scan-exclusions.mjs
-      - run: node scripts/inventory/unresolved-imports.mjs --root apps/web --lock package-lock.json # one root lock (fm-fy2.4)
+      - run: node scripts/inventory/unresolved-imports.mjs --root apps/web --lock package-lock.json --expect-none # one root lock (fm-fy2.4); none since the ProjectJson swap (fm-stth)
       - name: Control artifact downloads, verifies and scans clean
         env:
           GITHUB_TOKEN: ${{ github.token }}

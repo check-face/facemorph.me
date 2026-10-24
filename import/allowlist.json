@@ -589,7 +589,8 @@
       "specifier": "./ProjectJson.fs.js",
       "why": "Fable output (gitignored *.fs.js), in no Git object. product-bridge.mjs is kept byte-identical (no shim, stand-in, Fable output or bridge edit). Pre-port checks never load the bridge as an ES module: fresh-review.test.mjs and estimate.test.mjs evaluate it as text in node:vm, check-progress-copy.mjs reads text, and build:next populates deploy-next/ from the control artifact.",
       "owner": "migration.facade (fm-pia9)",
-      "swap": "The ProjectJson TS port with round-trip goldens replaces the import at the typed facade."
+      "swap": "The ProjectJson TS port with round-trip goldens replaces the import at the typed facade.",
+      "swapped": "fm-stth: the bridge imports apps/web/src/project/bridge-result.ts; this entry describes the frozen classic commit only (import-inventory), and the working tree is checked with --expect-none."
     }
   ],
   "html_pages": {

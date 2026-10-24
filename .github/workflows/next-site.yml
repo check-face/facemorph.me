@@ -93,8 +93,8 @@ jobs:
         run: npm run build:next && npm run build:next -- --check
       - name: Historic hello preview is included byte for byte
         run: cmp apps/web/src/public/preview/hello-1024.webp deploy-next/preview/hello-1024.webp
-      - name: Exercise compiled project import and export
-        run: echo "- verify-fable.mjs ProjectJson.fs.js - not-applicable until the port (replaced by project-json.test.ts)" | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Exercise compiled project import and export (project-json.test.ts, in place of verify-fable.mjs, fm-stth)
+        run: node --test apps/web/test/project/project-json.test.ts
       - name: No third-party runtime dependencies
         run: node apps/web/scripts/check-no-third-party.mjs deploy-next
       - name: The site lane's own checks are tested (retired-host scan fixtures, runtime refusal, inference verdict)

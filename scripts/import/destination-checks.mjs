@@ -113,6 +113,8 @@ export function checks({ rows }) {
       existsSync(join(REPO, 'apps/web/package-lock.json'))
         ? 'apps/web/package-lock.json'
         : 'package-lock.json',
+      // The bridge's Fable import was the one allowed entry until the ProjectJson TS port replaced it (fm-stth).
+      '--expect-none',
     ],
     REPO,
   );
@@ -127,11 +129,7 @@ export function checks({ rows }) {
     count: us.files,
     specifiers: us.specifiers,
     unresolved: only.map((f) => `${f.importer} -> ${f.specifier}`),
-    ok:
-      u.status === 0 &&
-      us.files > 0 &&
-      only.length === 1 &&
-      only[0].specifier === './ProjectJson.fs.js',
+    ok: u.status === 0 && us.files > 0 && only.length === 0,
   });
 
   const p = run(process.execPath, ['scripts/check-progress-copy.mjs'], WEB);
@@ -181,10 +179,11 @@ export function checks({ rows }) {
 
   add({
     step: 'Exercise compiled project import and export',
-    command: 'node src/Next/verify-fable.mjs src/Next/ProjectJson.fs.js',
-    status: NOT_APPLICABLE,
-    successor: 'migration.facade (fm-pia9) ProjectJson goldens',
-    ok: true,
+    command: 'node --test test/project/project-json.test.ts (replaces verify-fable.mjs, fm-stth)',
+    ...(() => {
+      const pj = run(process.execPath, ['--test', 'test/project/project-json.test.ts'], WEB);
+      return { ...nodeTestCounts(pj.stdout + pj.stderr), ok: pj.status === 0 };
+    })(),
   });
 
   const n = run(
