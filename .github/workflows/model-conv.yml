@@ -1,0 +1,25 @@
+name: model-conv
+# packages/model-conv (fm-uh14): unit tests, then the real acceptance run (build, convert and verify the FFHQ
+# checkpoint against the upstream reference, perturbed chunk, killed run, ownership, image scan) on eris.
+# The checkpoint is cached in the runner's home after its first download.
+on:
+  push:
+    branches: [main]
+    paths: ['packages/model-conv/**', '.github/workflows/model-conv.yml']
+  workflow_dispatch:
+concurrency:
+  group: model-conv
+  cancel-in-progress: false
+jobs:
+  acceptance:
+    runs-on: [self-hosted, eris]
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: packages/model-conv
+    steps:
+      - uses: actions/checkout@v4
+      - name: Unit tests
+        run: python3 -m unittest discover -s tests -t . -v
+      - name: Acceptance (real checkpoint, real container)
+        run: tests/acceptance.sh

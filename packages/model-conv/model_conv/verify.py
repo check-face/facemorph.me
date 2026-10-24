@@ -12,7 +12,7 @@ import numpy as np
 
 from . import manifest as mf
 from .models import ModelDeclaration, declaration
-from .upstream import load_generator
+from .upstream import UPSTREAM, UPSTREAM_REVISION, file_sha256, load_generator
 
 
 def to_uint8(raw):
@@ -50,7 +50,9 @@ def verify(checkpoint: Path, out: Path, seeds=(0, 1, 42), log=print) -> dict:
     manifest = json.loads((out / 'manifest.json').read_text())
     decl = declaration(manifest['model']['key'])
     problems, synthesis_bytes = check_files(out, manifest, decl)
-    report = {'model': decl.key, 'tolerance': manifest['tolerance'], 'files': problems or 'all digests match', 'samples': []}
+    report = {'model': decl.key, 'tolerance': manifest['tolerance'], 'files': problems or 'all digests match', 'samples': [],
+              'reference': {'implementation': f'NVlabs/stylegan2-ada-pytorch@{UPSTREAM_REVISION}', 'module': str(UPSTREAM / 'legacy.py'),
+                            'checkpoint': checkpoint.name, 'checkpointSha256': file_sha256(checkpoint)}}
     if problems:
         report['passed'] = False
         return report

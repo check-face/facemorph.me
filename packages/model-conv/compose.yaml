@@ -5,7 +5,7 @@ services:
     profiles: [conversion]
     build: .
     image: facemorph/model-conv
-    user: "${UID:-1000}:${GID:-1000}"
+    user: "${MODEL_CONV_UID:?set MODEL_CONV_UID=$(id -u)}:${MODEL_CONV_GID:?set MODEL_CONV_GID=$(id -g)}"
     environment:
       MODEL_CONV_IMAGE: facemorph/model-conv
     volumes:
