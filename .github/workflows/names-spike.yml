@@ -12,7 +12,8 @@ concurrency:
   cancel-in-progress: false
 jobs:
   measure:
-    runs-on: [self-hosted, triton]
+    # eris: triton's Ubuntu 20.04 is below Playwright's supported floor.
+    runs-on: [self-hosted, eris]
     timeout-minutes: 60
     defaults:
       run:

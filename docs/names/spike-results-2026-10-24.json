@@ -1,0 +1,679 @@
+{
+ "bead": "fm-zg31",
+ "at": "2026-10-24T08:51:14.877Z",
+ "host": "eris",
+ "node": "v26.8.2",
+ "options": {
+  "out": "out/eris-bytes",
+  "catalogue": "https://next.facemorph.me/catalogue.json",
+  "any-catalogue": false,
+  "cache": "/home/cdilga/.cache/facemorph-names-spike",
+  "alternatives": "files,pack-12,pack-24,pack-48,atlas-24",
+  "viewports": "",
+  "network": "4g",
+  "repeats": "3",
+  "browser": "chromium",
+  "shards": "16,32,64,128,256",
+  "speeds": "2400,6000",
+  "duration": "6000",
+  "atlas-quality": "0.85",
+  "result-sample": "12",
+  "skip-browser": false
+ },
+ "catalogue": {
+  "sha256": "4a9e1c199e2a629f11cc5d016128b36efbcde301928ae2735c42e5025c13c341",
+  "source": "https://next.facemorph.me/catalogue.json",
+  "names": 5055,
+  "identity": {
+   "modelSha256": "adf127ea7bb8a7788c8bdeda3c9937f7310b669b09ecf799ca53a631ff46948d",
+   "generationSha256": "9ff79a9f84398a43aa3f545ab40a17d9ee8ad9af45acacae5e204e73aadcdf6a",
+   "latentIdentity": "pinned-mapping-numpy-z-truncation-0.7-8-v1"
+  },
+  "candidate": {
+   "raw": 3405692,
+   "gzip": 583014,
+   "br": 562977,
+   "live": [
+    {
+     "encoding": "br",
+     "bytes": 569887,
+     "status": 200
+    },
+    {
+     "encoding": "gzip",
+     "bytes": 618944,
+     "status": 200
+    }
+   ]
+  }
+ },
+ "namesFormats": {
+  "text": {
+   "raw": 35404,
+   "gzip": 17525,
+   "br": 17224
+  },
+  "json": {
+   "raw": 45515,
+   "gzip": 18319,
+   "br": 18313
+  }
+ },
+ "resultObject": {
+  "sample": 12,
+  "webpQuality": 0.8,
+  "webp": [
+   65054,
+   70426,
+   84922,
+   71496,
+   58866,
+   53952,
+   74594,
+   78300,
+   77002,
+   71486,
+   72896,
+   70442
+  ],
+  "envelope": [
+   50046,
+   50046,
+   50046,
+   50046,
+   50046,
+   50046,
+   50046,
+   50046,
+   50046,
+   50046,
+   50046,
+   50046
+  ],
+  "totals": [
+   115100,
+   120472,
+   134968,
+   121542,
+   108912,
+   103998,
+   124640,
+   128346,
+   127048,
+   121532,
+   122942,
+   120488
+  ],
+  "median": 121537,
+  "max": 134968
+ },
+ "shapes": [
+  {
+   "key": "header",
+   "names": {
+    "raw": 35404,
+    "gzip": 17525,
+    "br": 17224
+   },
+   "manifest": {
+    "raw": 740,
+    "gzip": 461,
+    "br": 407
+   },
+   "firstPaint": {
+    "requests": 2,
+    "bytes": 17631
+   },
+   "firstPick": {
+    "requests": 1,
+    "bytes": 121537,
+    "integrityBytes": 0
+   },
+   "laterPick": {
+    "requests": 1,
+    "bytes": 121537
+   },
+   "perNameFloor": 0,
+   "assets": {
+    "previewsSeparate": {
+     "steady": 5057,
+     "transition": 10113,
+     "limit": 20000,
+     "fits": true
+    },
+    "files": {
+     "steady": 10112,
+     "transition": 15168,
+     "limit": 20000,
+     "fits": true
+    },
+    "pack-12": {
+     "steady": 5479,
+     "transition": 10535,
+     "limit": 20000,
+     "fits": true
+    },
+    "pack-24": {
+     "steady": 5268,
+     "transition": 10324,
+     "limit": 20000,
+     "fits": true
+    },
+    "pack-48": {
+     "steady": 5163,
+     "transition": 10219,
+     "limit": 20000,
+     "fits": true
+    },
+    "atlas-24": {
+     "steady": 5268,
+     "transition": 10324,
+     "limit": 20000,
+     "fits": true
+    }
+   }
+  },
+  {
+   "key": "list",
+   "names": {
+    "raw": 35404,
+    "gzip": 17525,
+    "br": 17224
+   },
+   "manifest": {
+    "raw": 845,
+    "gzip": 516,
+    "br": 466
+   },
+   "firstPaint": {
+    "requests": 2,
+    "bytes": 17690
+   },
+   "firstPick": {
+    "requests": 2,
+    "bytes": 283297,
+    "integrityBytes": 161760
+   },
+   "laterPick": {
+    "requests": 1,
+    "bytes": 121537
+   },
+   "perNameFloor": 161760,
+   "assets": {
+    "previewsSeparate": {
+     "steady": 5058,
+     "transition": 10115,
+     "limit": 20000,
+     "fits": true
+    },
+    "files": {
+     "steady": 10113,
+     "transition": 15170,
+     "limit": 20000,
+     "fits": true
+    },
+    "pack-12": {
+     "steady": 5480,
+     "transition": 10537,
+     "limit": 20000,
+     "fits": true
+    },
+    "pack-24": {
+     "steady": 5269,
+     "transition": 10326,
+     "limit": 20000,
+     "fits": true
+    },
+    "pack-48": {
+     "steady": 5164,
+     "transition": 10221,
+     "limit": 20000,
+     "fits": true
+    },
+    "atlas-24": {
+     "steady": 5269,
+     "transition": 10326,
+     "limit": 20000,
+     "fits": true
+    }
+   }
+  },
+  {
+   "key": "shards-16",
+   "names": {
+    "raw": 35404,
+    "gzip": 17525,
+    "br": 17224
+   },
+   "manifest": {
+    "raw": 1864,
+    "gzip": 1109,
+    "br": 1034
+   },
+   "firstPaint": {
+    "requests": 2,
+    "bytes": 18258
+   },
+   "firstPick": {
+    "requests": 2,
+    "bytes": 131649,
+    "integrityBytes": 10112
+   },
+   "laterPick": {
+    "requests": 2,
+    "bytes": 131649,
+    "note": "same-shard picks reuse the cached shard"
+   },
+   "perNameFloor": 161760,
+   "assets": {
+    "previewsSeparate": {
+     "steady": 5073,
+     "transition": 10145,
+     "limit": 20000,
+     "fits": true
+    },
+    "files": {
+     "steady": 10128,
+     "transition": 15200,
+     "limit": 20000,
+     "fits": true
+    },
+    "pack-12": {
+     "steady": 5495,
+     "transition": 10567,
+     "limit": 20000,
+     "fits": true
+    },
+    "pack-24": {
+     "steady": 5284,
+     "transition": 10356,
+     "limit": 20000,
+     "fits": true
+    },
+    "pack-48": {
+     "steady": 5179,
+     "transition": 10251,
+     "limit": 20000,
+     "fits": true
+    },
+    "atlas-24": {
+     "steady": 5284,
+     "transition": 10356,
+     "limit": 20000,
+     "fits": true
+    }
+   }
+  },
+  {
+   "key": "shards-32",
+   "names": {
+    "raw": 35404,
+    "gzip": 17525,
+    "br": 17224
+   },
+   "manifest": {
+    "raw": 2936,
+    "gzip": 1685,
+    "br": 1627
+   },
+   "firstPaint": {
+    "requests": 2,
+    "bytes": 18851
+   },
+   "firstPick": {
+    "requests": 2,
+    "bytes": 126593,
+    "integrityBytes": 5056
+   },
+   "laterPick": {
+    "requests": 2,
+    "bytes": 126593,
+    "note": "same-shard picks reuse the cached shard"
+   },
+   "perNameFloor": 161760,
+   "assets": {
+    "previewsSeparate": {
+     "steady": 5089,
+     "transition": 10177,
+     "limit": 20000,
+     "fits": true
+    },
+    "files": {
+     "steady": 10144,
+     "transition": 15232,
+     "limit": 20000,
+     "fits": true
+    },
+    "pack-12": {
+     "steady": 5511,
+     "transition": 10599,
+     "limit": 20000,
+     "fits": true
+    },
+    "pack-24": {
+     "steady": 5300,
+     "transition": 10388,
+     "limit": 20000,
+     "fits": true
+    },
+    "pack-48": {
+     "steady": 5195,
+     "transition": 10283,
+     "limit": 20000,
+     "fits": true
+    },
+    "atlas-24": {
+     "steady": 5300,
+     "transition": 10388,
+     "limit": 20000,
+     "fits": true
+    }
+   }
+  },
+  {
+   "key": "shards-64",
+   "names": {
+    "raw": 35404,
+    "gzip": 17525,
+    "br": 17224
+   },
+   "manifest": {
+    "raw": 5079,
+    "gzip": 2821,
+    "br": 2764
+   },
+   "firstPaint": {
+    "requests": 2,
+    "bytes": 19988
+   },
+   "firstPick": {
+    "requests": 2,
+    "bytes": 124065,
+    "integrityBytes": 2528
+   },
+   "laterPick": {
+    "requests": 2,
+    "bytes": 124065,
+    "note": "same-shard picks reuse the cached shard"
+   },
+   "perNameFloor": 161760,
+   "assets": {
+    "previewsSeparate": {
+     "steady": 5121,
+     "transition": 10241,
+     "limit": 20000,
+     "fits": true
+    },
+    "files": {
+     "steady": 10176,
+     "transition": 15296,
+     "limit": 20000,
+     "fits": true
+    },
+    "pack-12": {
+     "steady": 5543,
+     "transition": 10663,
+     "limit": 20000,
+     "fits": true
+    },
+    "pack-24": {
+     "steady": 5332,
+     "transition": 10452,
+     "limit": 20000,
+     "fits": true
+    },
+    "pack-48": {
+     "steady": 5227,
+     "transition": 10347,
+     "limit": 20000,
+     "fits": true
+    },
+    "atlas-24": {
+     "steady": 5332,
+     "transition": 10452,
+     "limit": 20000,
+     "fits": true
+    }
+   }
+  },
+  {
+   "key": "shards-128",
+   "names": {
+    "raw": 35404,
+    "gzip": 17525,
+    "br": 17224
+   },
+   "manifest": {
+    "raw": 9300,
+    "gzip": 5066,
+    "br": 5015
+   },
+   "firstPaint": {
+    "requests": 2,
+    "bytes": 22239
+   },
+   "firstPick": {
+    "requests": 2,
+    "bytes": 122817,
+    "integrityBytes": 1280
+   },
+   "laterPick": {
+    "requests": 2,
+    "bytes": 122817,
+    "note": "same-shard picks reuse the cached shard"
+   },
+   "perNameFloor": 161760,
+   "assets": {
+    "previewsSeparate": {
+     "steady": 5184,
+     "transition": 10367,
+     "limit": 20000,
+     "fits": true
+    },
+    "files": {
+     "steady": 10239,
+     "transition": 15422,
+     "limit": 20000,
+     "fits": true
+    },
+    "pack-12": {
+     "steady": 5606,
+     "transition": 10789,
+     "limit": 20000,
+     "fits": true
+    },
+    "pack-24": {
+     "steady": 5395,
+     "transition": 10578,
+     "limit": 20000,
+     "fits": true
+    },
+    "pack-48": {
+     "steady": 5290,
+     "transition": 10473,
+     "limit": 20000,
+     "fits": true
+    },
+    "atlas-24": {
+     "steady": 5395,
+     "transition": 10578,
+     "limit": 20000,
+     "fits": true
+    }
+   }
+  },
+  {
+   "key": "shards-256",
+   "names": {
+    "raw": 35404,
+    "gzip": 17525,
+    "br": 17224
+   },
+   "manifest": {
+    "raw": 17742,
+    "gzip": 9626,
+    "br": 9565
+   },
+   "firstPaint": {
+    "requests": 2,
+    "bytes": 26789
+   },
+   "firstPick": {
+    "requests": 2,
+    "bytes": 122177,
+    "integrityBytes": 640
+   },
+   "laterPick": {
+    "requests": 2,
+    "bytes": 122177,
+    "note": "same-shard picks reuse the cached shard"
+   },
+   "perNameFloor": 161760,
+   "assets": {
+    "previewsSeparate": {
+     "steady": 5310,
+     "transition": 10619,
+     "limit": 20000,
+     "fits": true
+    },
+    "files": {
+     "steady": 10365,
+     "transition": 15674,
+     "limit": 20000,
+     "fits": true
+    },
+    "pack-12": {
+     "steady": 5732,
+     "transition": 11041,
+     "limit": 20000,
+     "fits": true
+    },
+    "pack-24": {
+     "steady": 5521,
+     "transition": 10830,
+     "limit": 20000,
+     "fits": true
+    },
+    "pack-48": {
+     "steady": 5416,
+     "transition": 10725,
+     "limit": 20000,
+     "fits": true
+    },
+    "atlas-24": {
+     "steady": 5521,
+     "transition": 10830,
+     "limit": 20000,
+     "fits": true
+    }
+   }
+  },
+  {
+   "key": "inline",
+   "names": {
+    "raw": 363979,
+    "gzip": 204935,
+    "br": 208567
+   },
+   "manifest": {
+    "raw": 737,
+    "gzip": 462,
+    "br": 411
+   },
+   "firstPaint": {
+    "requests": 2,
+    "bytes": 208978
+   },
+   "firstPick": {
+    "requests": 1,
+    "bytes": 121537,
+    "integrityBytes": 0
+   },
+   "laterPick": {
+    "requests": 1,
+    "bytes": 121537
+   },
+   "perNameFloor": 161760,
+   "assets": {
+    "previewsSeparate": {
+     "steady": 5057,
+     "transition": 10113,
+     "limit": 20000,
+     "fits": true
+    },
+    "files": {
+     "steady": 10112,
+     "transition": 15168,
+     "limit": 20000,
+     "fits": true
+    },
+    "pack-12": {
+     "steady": 5479,
+     "transition": 10535,
+     "limit": 20000,
+     "fits": true
+    },
+    "pack-24": {
+     "steady": 5268,
+     "transition": 10324,
+     "limit": 20000,
+     "fits": true
+    },
+    "pack-48": {
+     "steady": 5163,
+     "transition": 10219,
+     "limit": 20000,
+     "fits": true
+    },
+    "atlas-24": {
+     "steady": 5268,
+     "transition": 10324,
+     "limit": 20000,
+     "fits": true
+    }
+   }
+  }
+ ],
+ "previews": {
+  "count": 5055,
+  "bytes": 36540566,
+  "median": 7152,
+  "max": 12327,
+  "packs": {
+   "pack-12": {
+    "files": 422,
+    "bytes": 36564162,
+    "headerOverhead": 23596
+   },
+   "pack-24": {
+    "files": 211,
+    "bytes": 36562474,
+    "headerOverhead": 21908
+   },
+   "pack-48": {
+    "files": 106,
+    "bytes": 36561634,
+    "headerOverhead": 21068
+   }
+  },
+  "atlases": {
+   "atlas-24": {
+    "quality": 0.85,
+    "cols": 6,
+    "rows": 4,
+    "files": 211,
+    "bytes": 38186666,
+    "meanAbsDiff": 1.394227522255193,
+    "maxAbsDiff": 93,
+    "psnr": 41.056450083070004
+   }
+  }
+ },
+ "browser": {
+  "name": "chromium",
+  "version": "156.0.8078.4",
+  "executable": "playwright"
+ },
+ "scroll": [],
+ "scrollSummary": []
+}

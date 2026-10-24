@@ -9,7 +9,7 @@
 // historic faces and W+ latents, fetched once into a cache. Nothing calls the hosted API.
 //
 //   node measure.mjs [--catalogue URL|PATH] [--cache DIR] [--out DIR] [--alternatives files,pack-24,...]
-//                    [--viewports desktop,phone] [--speeds 2400,6000] [--network 4g|none] [--repeats 3]
+//                    [--viewports desktop,phone (opt-in scroll runs)] [--speeds 2400,6000] [--network 4g|none] [--repeats 3]
 //                    [--browser chromium|firefox|webkit] [--executable PATH] [--skip-browser] [--preview-limit N]
 // Firefox and WebKit have no network/CPU emulation or long-task entries here; those cells read "n/a".
 import { parseArgs } from 'node:util';
@@ -48,7 +48,7 @@ const OPTIONS = {
   cache: { type: 'string', default: join(homedir(), '.cache', 'facemorph-names-spike') },
   out: { type: 'string', default: join(here, 'out', new Date().toISOString().replace(/[:.]/g, '-')) },
   alternatives: { type: 'string', default: 'files,pack-12,pack-24,pack-48,atlas-24' },
-  viewports: { type: 'string', default: 'desktop,phone' },
+  viewports: { type: 'string', default: '' }, // scroll runs are opt-in: --viewports desktop,phone
   network: { type: 'string', default: '4g' },
   repeats: { type: 'string', default: '3' },
   browser: { type: 'string', default: 'chromium' },
@@ -287,7 +287,7 @@ async function main() {
 
     // Scroll runs. Each is a fresh context: empty memory and disk cache.
     const speeds = opt.speeds.split(',').map(Number);
-    for (const vp of opt.viewports.split(',')) for (const speed of speeds) for (const alt of alternatives) for (let rep = 0; rep < repeats; rep++) {
+    for (const vp of opt.viewports.split(',').filter(Boolean)) for (const speed of speeds) for (const alt of alternatives) for (let rep = 0; rep < repeats; rep++) {
       const run = `${vp}-${speed}-${alt}-${rep}`.toLowerCase();
       const ctxOptions = { ...VIEWPORTS[vp].context, ignoreHTTPSErrors: true };
       if (opt.browser === 'firefox') delete ctxOptions.isMobile;
