@@ -1,0 +1,6 @@
+{
+  // The not-worse workload (fm-0q4h): Node tooling, strict.
+  "extends": "../../../tsconfig.node.json",
+  "compilerOptions": { "allowImportingTsExtensions": true },
+  "include": ["."]
+}

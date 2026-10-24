@@ -1,0 +1,108 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Not-worse workload run (fm-0q4h)",
+  "type": "object",
+  "required": ["schema", "cell", "digests", "runs"],
+  "additionalProperties": false,
+  "properties": {
+    "schema": { "const": "facemorph.not-worse-run/1" },
+    "cell": {
+      "type": "object",
+      "required": ["device", "os", "browser", "browserVersion", "provider", "cacheState"],
+      "additionalProperties": false,
+      "properties": {
+        "device": { "type": "string", "minLength": 1 },
+        "os": { "type": "string", "minLength": 1 },
+        "browser": { "type": "string", "minLength": 1 },
+        "browserVersion": { "type": "string", "minLength": 1 },
+        "provider": { "enum": ["cpu", "webgpu", "auto"] },
+        "cacheState": { "enum": ["cold", "warm"] }
+      }
+    },
+    "digests": {
+      "type": "object",
+      "required": ["control", "build"],
+      "additionalProperties": false,
+      "properties": {
+        "control": { "$ref": "#/$defs/sha256" },
+        "build": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "runs": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["index", "side", "pair", "order", "measures", "reliability"],
+        "additionalProperties": false,
+        "properties": {
+          "index": { "type": "integer", "minimum": 0 },
+          "side": { "enum": ["control", "build"] },
+          "pair": { "type": ["integer", "null"], "minimum": 0 },
+          "order": { "enum": ["AB", "BA", "warmup"] },
+          "measures": {
+            "type": "object",
+            "required": ["values", "lockups", "bytes", "peakMemory"],
+            "additionalProperties": false,
+            "properties": {
+              "values": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "usablePageMs",
+                  "coldFaceMs",
+                  "warmFaceMs",
+                  "nextFaceMs",
+                  "photoEncodeMs",
+                  "morphPlayableMs",
+                  "morphPerFrameMs",
+                  "firstSaveMs",
+                  "repeatSaveMs"
+                ],
+                "patternProperties": { "Ms$": { "type": ["number", "null"], "minimum": 0 } }
+              },
+              "lockups": { "type": "integer", "minimum": 0 },
+              "bytes": {
+                "type": "object",
+                "required": ["first", "return"],
+                "additionalProperties": false,
+                "properties": {
+                  "first": { "type": ["integer", "null"], "minimum": 0 },
+                  "return": { "type": ["integer", "null"], "minimum": 0 }
+                }
+              },
+              "peakMemory": {
+                "oneOf": [{ "type": "integer", "minimum": 0 }, { "const": "unreported" }]
+              }
+            }
+          },
+          "reliability": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "faceProduced",
+              "photoFaceProduced",
+              "videoProduced",
+              "crash",
+              "reloads",
+              "outOfMemory",
+              "fallback",
+              "uncaughtErrors"
+            ],
+            "properties": {
+              "faceProduced": { "type": "boolean" },
+              "photoFaceProduced": { "type": "boolean" },
+              "videoProduced": { "type": "boolean" },
+              "crash": { "type": "boolean" },
+              "reloads": { "type": "integer", "minimum": 0 },
+              "outOfMemory": { "type": "boolean" },
+              "fallback": { "type": "boolean" },
+              "uncaughtErrors": { "type": "integer", "minimum": 0 }
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": { "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" } }
+}
