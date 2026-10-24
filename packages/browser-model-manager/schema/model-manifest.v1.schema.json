@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/check-face/facemorph.me/blob/main/packages/browser-model-manager/schema/model-manifest.v1.schema.json",
   "title": "FaceMorph model manifest, major 1",
-  "description": "Producer-facing schema owned by @facemorph/browser-model-manager. cloudflare-model-host and model-conv validate the manifests they emit against it. Fields beyond those listed are allowed within major 1; a newer major is rejected.",
+  "description": "Producer-facing schema owned by @facemorph/browser-model-manager. cloudflare-model-host and model-conv validate the manifests they emit against it. An asset is either hosted (an https url) or unpublished (a relative file path, as model-conv writes it before hosting adds URLs). Fields beyond those listed are allowed within major 1; a newer major is rejected.",
   "type": "object",
   "required": [
     "schemaVersion",
@@ -14,79 +14,202 @@
     "noise"
   ],
   "properties": {
-    "schemaVersion": { "const": 1 },
-    "bundleVersion": { "type": "string", "minLength": 1 },
-    "releaseQualified": { "type": "boolean" },
-    "modelSourceSha256": { "$ref": "#/$defs/sha256" },
-    "noiseSha256": { "$ref": "#/$defs/sha256" },
-    "mapping": { "$ref": "#/$defs/asset" },
-    "synthesis": { "$ref": "#/$defs/asset" },
-    "average": { "$ref": "#/$defs/asset" },
-    "sampleIndices": { "$ref": "#/$defs/asset" },
+    "schemaVersion": {
+      "const": 1
+    },
+    "bundleVersion": {
+      "type": "string",
+      "minLength": 1
+    },
+    "releaseQualified": {
+      "type": "boolean"
+    },
+    "modelSourceSha256": {
+      "$ref": "#/$defs/sha256"
+    },
+    "noiseSha256": {
+      "$ref": "#/$defs/sha256"
+    },
+    "mapping": {
+      "$ref": "#/$defs/asset"
+    },
+    "synthesis": {
+      "$ref": "#/$defs/asset"
+    },
+    "average": {
+      "$ref": "#/$defs/asset"
+    },
+    "sampleIndices": {
+      "$ref": "#/$defs/asset"
+    },
     "noise": {
       "type": "array",
       "minItems": 1,
       "items": {
         "type": "object",
-        "allOf": [{ "$ref": "#/$defs/asset" }],
+        "allOf": [
+          {
+            "$ref": "#/$defs/asset"
+          }
+        ],
         "required": ["name", "shape"],
         "properties": {
-          "name": { "type": "string", "minLength": 1 },
-          "shape": { "type": "array", "items": { "type": "integer", "minimum": 1 } }
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "shape": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
         }
       }
     },
-    "encoder": { "$ref": "#/$defs/asset" },
+    "encoder": {
+      "$ref": "#/$defs/asset"
+    },
     "encoderStream": {
       "type": "object",
-      "allOf": [{ "$ref": "#/$defs/asset" }],
+      "allOf": [
+        {
+          "$ref": "#/$defs/asset"
+        }
+      ],
       "required": ["sourceEncoderSha256", "preprocessingSha256", "phoneAdmitted", "maxWasmBytes"],
       "properties": {
-        "sourceEncoderSha256": { "$ref": "#/$defs/sha256" },
-        "preprocessingSha256": { "$ref": "#/$defs/sha256" },
-        "phoneAdmitted": { "type": "boolean" },
-        "maxWasmBytes": { "type": "integer", "minimum": 1, "maximum": 268435456 },
-        "releaseQualified": { "type": "boolean" }
+        "sourceEncoderSha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "preprocessingSha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "phoneAdmitted": {
+          "type": "boolean"
+        },
+        "maxWasmBytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 268435456
+        },
+        "releaseQualified": {
+          "type": "boolean"
+        }
       }
     },
-    "landmarks": { "$ref": "#/$defs/asset" },
-    "alignmentSha256": { "$ref": "#/$defs/sha256" },
+    "landmarks": {
+      "$ref": "#/$defs/asset"
+    },
+    "alignmentSha256": {
+      "$ref": "#/$defs/sha256"
+    },
     "kernel": {
       "type": "object",
       "required": ["candidateId", "sourceHash", "sha256"],
       "properties": {
-        "candidateId": { "type": "string", "minLength": 1 },
-        "sourceHash": { "$ref": "#/$defs/sha256" },
-        "sha256": { "$ref": "#/$defs/sha256" },
-        "file": { "type": "string" },
-        "url": { "$ref": "#/$defs/httpsUrl" }
+        "candidateId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sourceHash": {
+          "$ref": "#/$defs/sha256"
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "file": {
+          "type": "string"
+        },
+        "url": {
+          "$ref": "#/$defs/httpsUrl"
+        }
       }
     }
   },
   "$defs": {
-    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
-    "httpsUrl": { "type": "string", "pattern": "^https://[^/@\\s]+/\\S*$" },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "httpsUrl": {
+      "type": "string",
+      "pattern": "^https://[^/@\\s]+/\\S*$"
+    },
     "asset": {
       "type": "object",
-      "required": ["url", "sha256", "size"],
+      "required": ["sha256", "size"],
       "properties": {
-        "url": { "$ref": "#/$defs/httpsUrl" },
-        "sha256": { "$ref": "#/$defs/sha256" },
-        "size": { "type": "integer", "minimum": 0 },
+        "url": {
+          "$ref": "#/$defs/httpsUrl"
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "size": {
+          "type": "integer",
+          "minimum": 0
+        },
         "chunks": {
           "type": "array",
           "minItems": 1,
           "items": {
             "type": "object",
-            "required": ["url", "sha256", "size"],
+            "required": ["sha256", "size"],
             "properties": {
-              "url": { "$ref": "#/$defs/httpsUrl" },
-              "sha256": { "$ref": "#/$defs/sha256" },
-              "size": { "type": "integer", "minimum": 1 }
-            }
+              "url": {
+                "$ref": "#/$defs/httpsUrl"
+              },
+              "sha256": {
+                "$ref": "#/$defs/sha256"
+              },
+              "size": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "file": {
+                "$ref": "#/$defs/relativeFile"
+              }
+            },
+            "oneOf": [
+              {
+                "required": ["url"],
+                "not": {
+                  "required": ["file"]
+                }
+              },
+              {
+                "required": ["file"],
+                "not": {
+                  "required": ["url"]
+                }
+              }
+            ]
+          }
+        },
+        "file": {
+          "$ref": "#/$defs/relativeFile"
+        }
+      },
+      "oneOf": [
+        {
+          "required": ["url"],
+          "not": {
+            "required": ["file"]
+          }
+        },
+        {
+          "required": ["file"],
+          "not": {
+            "required": ["url"]
           }
         }
-      }
+      ]
+    },
+    "relativeFile": {
+      "type": "string",
+      "pattern": "^(?![/\\\\])(?!.*(^|/)\\.\\.(/|$))(?![a-zA-Z][a-zA-Z0-9+.-]*:)[^\\s\\\\]+$"
     }
   }
 }

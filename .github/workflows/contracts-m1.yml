@@ -42,5 +42,6 @@ jobs:
           f=packages/browser-model-manager/test/fixtures
           npx --yes ajv-cli@5.0.0 validate --spec=draft2020 -s "$s" -d "$f/candidate-runtime-manifest.json"
           if npx --yes ajv-cli@5.0.0 validate --spec=draft2020 -s "$s" -d "$f/newer-major-manifest.json"; then echo 'newer major accepted'; exit 1; fi
+          npx --yes ajv-cli@5.0.0 validate --spec=draft2020 -s "$s" -d "$f/model-conv-build-manifest.json"
       - name: External consumer against the packed declarations
         run: node tests/external-consumer/run.mjs

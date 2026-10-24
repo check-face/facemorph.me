@@ -1,0 +1,202 @@
+{
+  "schemaVersion": 1,
+  "bundleVersion": "model-conv-stylegan2-ffhq-config-f",
+  "modelSourceSha256": "adf127ea7bb8a7788c8bdeda3c9937f7310b669b09ecf799ca53a631ff46948d",
+  "schema": "facemorph-model-conv-v1",
+  "model": {
+    "key": "stylegan2-ffhq-config-f",
+    "architecture": "stylegan2",
+    "conditional": false,
+    "resolution": 1024,
+    "channels": 3,
+    "zDim": 512,
+    "wDim": 512,
+    "numWs": 18,
+    "truncationPsi": 0.7,
+    "truncationCutoff": 8,
+    "opset": 17,
+    "sourceSha256": "adf127ea7bb8a7788c8bdeda3c9937f7310b669b09ecf799ca53a631ff46948d",
+    "licence": "NVIDIA Source Code License-NC (StyleGAN2); FFHQ dataset CC BY-NC-SA 4.0"
+  },
+  "mapping": {
+    "file": "mapping.onnx",
+    "sha256": "60be9861750facbfad8758254a2f76c0cfe78d54459a3bc187d49b1401fcd8e8",
+    "size": 3,
+    "inputs": {
+      "z": [1, 512]
+    },
+    "outputs": {
+      "w": [1, 18, 512]
+    }
+  },
+  "synthesis": {
+    "file": "synthesis.onnx",
+    "sha256": "2432dbb70926df292595fa1c2dee4933cf81130572a2e29a27256d3bdb8e07e5",
+    "size": 40,
+    "chunks": [
+      {
+        "file": "chunks/2432dbb70926df292595fa1c2dee4933cf81130572a2e29a27256d3bdb8e07e5.bin",
+        "sha256": "2432dbb70926df292595fa1c2dee4933cf81130572a2e29a27256d3bdb8e07e5",
+        "size": 40
+      }
+    ],
+    "inputs": {
+      "w": [1, 18, 512],
+      "noise_0": [4, 4],
+      "noise_1": [8, 8],
+      "noise_2": [8, 8],
+      "noise_3": [16, 16],
+      "noise_4": [16, 16],
+      "noise_5": [32, 32],
+      "noise_6": [32, 32],
+      "noise_7": [64, 64],
+      "noise_8": [64, 64],
+      "noise_9": [128, 128],
+      "noise_10": [128, 128],
+      "noise_11": [256, 256],
+      "noise_12": [256, 256],
+      "noise_13": [512, 512],
+      "noise_14": [512, 512],
+      "noise_15": [1024, 1024],
+      "noise_16": [1024, 1024]
+    },
+    "outputs": {
+      "image": [1, 3, 1024, 1024]
+    }
+  },
+  "average": {
+    "file": "average.f32",
+    "sha256": "e5a00aa9991ac8a5ee3109844d84a55583bd20572ad3ffcd42792f3c36b183ad",
+    "size": 2048,
+    "shape": [512]
+  },
+  "noise": [
+    {
+      "name": "noise_0",
+      "file": "noise_0.f32",
+      "sha256": "f5a5fd42d16a20302798ef6ed309979b43003d2320d9f0e8ea9831a92759fb4b",
+      "size": 64,
+      "shape": [4, 4]
+    },
+    {
+      "name": "noise_1",
+      "file": "noise_1.f32",
+      "sha256": "5341e6b2646979a70e57653007a1f310169421ec9bdd9f1a5648f75ade005af1",
+      "size": 256,
+      "shape": [8, 8]
+    },
+    {
+      "name": "noise_2",
+      "file": "noise_2.f32",
+      "sha256": "5341e6b2646979a70e57653007a1f310169421ec9bdd9f1a5648f75ade005af1",
+      "size": 256,
+      "shape": [8, 8]
+    },
+    {
+      "name": "noise_3",
+      "file": "noise_3.f32",
+      "sha256": "5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef",
+      "size": 1024,
+      "shape": [16, 16]
+    },
+    {
+      "name": "noise_4",
+      "file": "noise_4.f32",
+      "sha256": "5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef",
+      "size": 1024,
+      "shape": [16, 16]
+    },
+    {
+      "name": "noise_5",
+      "file": "noise_5.f32",
+      "sha256": "ad7facb2586fc6e966c004d7d1d16b024f5805ff7cb47c7a85dabd8b48892ca7",
+      "size": 4096,
+      "shape": [32, 32]
+    },
+    {
+      "name": "noise_6",
+      "file": "noise_6.f32",
+      "sha256": "ad7facb2586fc6e966c004d7d1d16b024f5805ff7cb47c7a85dabd8b48892ca7",
+      "size": 4096,
+      "shape": [32, 32]
+    },
+    {
+      "name": "noise_7",
+      "file": "noise_7.f32",
+      "sha256": "4fe7b59af6de3b665b67788cc2f99892ab827efae3a467342b3bb4e3bc8e5bfe",
+      "size": 16384,
+      "shape": [64, 64]
+    },
+    {
+      "name": "noise_8",
+      "file": "noise_8.f32",
+      "sha256": "4fe7b59af6de3b665b67788cc2f99892ab827efae3a467342b3bb4e3bc8e5bfe",
+      "size": 16384,
+      "shape": [64, 64]
+    },
+    {
+      "name": "noise_9",
+      "file": "noise_9.f32",
+      "sha256": "de2f256064a0af797747c2b97505dc0b9f3df0de4f489eac731c23ae9ca9cc31",
+      "size": 65536,
+      "shape": [128, 128]
+    },
+    {
+      "name": "noise_10",
+      "file": "noise_10.f32",
+      "sha256": "de2f256064a0af797747c2b97505dc0b9f3df0de4f489eac731c23ae9ca9cc31",
+      "size": 65536,
+      "shape": [128, 128]
+    },
+    {
+      "name": "noise_11",
+      "file": "noise_11.f32",
+      "sha256": "8a39d2abd3999ab73c34db2476849cddf303ce389b35826850f9a700589b4a90",
+      "size": 262144,
+      "shape": [256, 256]
+    },
+    {
+      "name": "noise_12",
+      "file": "noise_12.f32",
+      "sha256": "8a39d2abd3999ab73c34db2476849cddf303ce389b35826850f9a700589b4a90",
+      "size": 262144,
+      "shape": [256, 256]
+    },
+    {
+      "name": "noise_13",
+      "file": "noise_13.f32",
+      "sha256": "30e14955ebf1352266dc2ff8067e68104607e750abb9d3b36582b8af909fcb58",
+      "size": 1048576,
+      "shape": [512, 512]
+    },
+    {
+      "name": "noise_14",
+      "file": "noise_14.f32",
+      "sha256": "30e14955ebf1352266dc2ff8067e68104607e750abb9d3b36582b8af909fcb58",
+      "size": 1048576,
+      "shape": [512, 512]
+    },
+    {
+      "name": "noise_15",
+      "file": "noise_15.f32",
+      "sha256": "bb9f8df61474d25e71fa00722318cd387396ca1736605e1248821cc0de3d3af8",
+      "size": 4194304,
+      "shape": [1024, 1024]
+    },
+    {
+      "name": "noise_16",
+      "file": "noise_16.f32",
+      "sha256": "bb9f8df61474d25e71fa00722318cd387396ca1736605e1248821cc0de3d3af8",
+      "size": 4194304,
+      "shape": [1024, 1024]
+    }
+  ],
+  "noiseSha256": "2df79567475d55e057dd8919db87240558e66da5b95b6e174bfa554e349ca4ab",
+  "tolerance": {
+    "rawFloat": 0.002,
+    "rgb": 1
+  },
+  "provenance": {
+    "image": "x"
+  }
+}

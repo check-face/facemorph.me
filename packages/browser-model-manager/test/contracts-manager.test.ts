@@ -286,6 +286,25 @@ test("the candidate's runtime manifest validates; a newer major is rejected with
   assert.deepEqual(newer.ok ? null : newer.error.code, 'newer-major');
 });
 
+test('a converter manifest (unpublished file assets) validates only when unpublished assets are allowed', () => {
+  const conv = fixture('model-conv-build-manifest.json');
+  assert.equal(api.parseModelManifest(conv, { unpublished: true }).ok, true);
+  const hosted = api.parseModelManifest(conv);
+  assert.equal(hosted.ok ? 'accepted' : hosted.error.code, 'invalid-asset');
+  for (const file of ['../mapping.onnx', '/abs/mapping.onnx', 'https://x/y', 'a/../../b', 'a b']) {
+    const r = api.parseModelManifest(
+      { ...conv, mapping: { ...conv.mapping, file } },
+      { unpublished: true },
+    );
+    assert.equal(r.ok ? 'accepted' : r.error.code, 'invalid-asset', file);
+  }
+  const both = api.parseModelManifest(
+    { ...conv, mapping: { ...conv.mapping, url: 'https://h/m' } },
+    { unpublished: true },
+  );
+  assert.equal(both.ok ? 'accepted' : both.error.code, 'invalid-asset');
+});
+
 test('invalid manifests are typed rejections', () => {
   const base = fixture('candidate-runtime-manifest.json');
   const cases: [unknown, string][] = [

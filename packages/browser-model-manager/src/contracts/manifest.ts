@@ -17,30 +17,33 @@ export const MANIFEST_SCHEMA_MAJOR = 1;
 /** The bounded e4e stream's WASM heap limit (encoderStream.maxWasmBytes in the candidate). */
 export const E4E_MAX_WASM_BYTES = 268435456;
 
+/**
+ * Where an asset lives: hosted at an https `url`, or unpublished at a relative `file` path, the form
+ * model-conv writes before hosting adds URLs. The manager loads hosted manifests only.
+ */
+export type AssetLocation =
+  | { readonly url: string; readonly file?: never }
+  | { readonly file: string; readonly url?: never };
+
 /** One downloadable file, addressed by content; large files arrive as verified chunks. */
-export interface AssetDescriptor {
-  readonly url: string;
+export type AssetDescriptor = AssetLocation & {
   readonly sha256: string;
   readonly size: number;
-  readonly chunks?: readonly {
-    readonly url: string;
-    readonly sha256: string;
-    readonly size: number;
-  }[];
-}
+  readonly chunks?: readonly (AssetLocation & { readonly sha256: string; readonly size: number })[];
+};
 
-export interface NoiseAsset extends AssetDescriptor {
+export type NoiseAsset = AssetDescriptor & {
   readonly name: string;
   readonly shape: readonly number[];
-}
+};
 
-export interface EncoderStreamDescriptor extends AssetDescriptor {
+export type EncoderStreamDescriptor = AssetDescriptor & {
   readonly sourceEncoderSha256: string;
   readonly preprocessingSha256: string;
   /** Admitted on phones (by its measured memory), never a blanket phone rule. */
   readonly phoneAdmitted: boolean;
   readonly maxWasmBytes: number;
-}
+};
 
 /** Which kernel candidate produced the shipped kernel, and from what source. */
 export interface KernelProvenance {
@@ -113,14 +116,29 @@ const field = (path: string, message: string): never => {
   throw new Reject('invalid-field', path, message);
 };
 
-function httpsUrl(v: unknown, path: string): void {
-  if (typeof v !== 'string' || !/^https:\/\/[^/@\s]+\/\S*$/.test(v))
-    throw new Reject('invalid-asset', path, 'an https URL without credentials');
+const RELATIVE_FILE = /^(?![/\\])(?!.*(^|\/)\.\.(\/|$))(?![a-zA-Z][a-zA-Z0-9+.-]*:)[^\s\\]+$/;
+
+/** Exactly one of an https url without credentials, or (when allowed) a relative file path. */
+function location(v: Record<string, unknown>, path: string, unpublished: boolean): void {
+  if ('url' in v === 'file' in v)
+    throw new Reject('invalid-asset', path, 'exactly one of url and file');
+  if ('file' in v) {
+    if (!unpublished)
+      throw new Reject(
+        'invalid-asset',
+        `${path}.file`,
+        'an unpublished asset where a hosted url is required',
+      );
+    if (typeof v.file !== 'string' || !RELATIVE_FILE.test(v.file))
+      throw new Reject('invalid-asset', `${path}.file`, 'a relative path inside the output');
+  } else if (typeof v.url !== 'string' || !/^https:\/\/[^/@\s]+\/\S*$/.test(v.url)) {
+    throw new Reject('invalid-asset', `${path}.url`, 'an https URL without credentials');
+  }
 }
 
-function asset(v: unknown, path: string): AssetDescriptor {
+function asset(v: unknown, path: string, unpublished: boolean): AssetDescriptor {
   if (!isRecord(v)) throw new Reject('invalid-asset', path, 'an asset descriptor');
-  httpsUrl(v.url, `${path}.url`);
+  location(v, path, unpublished);
   if (typeof v.sha256 !== 'string' || !HEX64.test(v.sha256))
     throw new Reject('invalid-asset', `${path}.sha256`, 'lowercase hex SHA-256');
   if (!Number.isSafeInteger(v.size) || (v.size as number) < 0)
@@ -132,7 +150,7 @@ function asset(v: unknown, path: string): AssetDescriptor {
     v.chunks.forEach((c: unknown, i: number) => {
       const p = `${path}.chunks[${i}]`;
       if (!isRecord(c)) throw new Reject('invalid-asset', p, 'a chunk');
-      httpsUrl(c.url, `${p}.url`);
+      location(c, p, unpublished);
       if (typeof c.sha256 !== 'string' || !HEX64.test(c.sha256))
         throw new Reject('invalid-asset', `${p}.sha256`, 'lowercase hex SHA-256');
       if (!Number.isSafeInteger(c.size) || (c.size as number) <= 0)
@@ -149,23 +167,23 @@ function asset(v: unknown, path: string): AssetDescriptor {
   return v as unknown as AssetDescriptor;
 }
 
-/** Every nested asset descriptor (anything with url, sha256 and size), as the candidate's collectAssets walks them. */
-function eachAsset(v: unknown, path: string, depth = 0): void {
+/** Every nested asset descriptor (sha256, size and a url or file), as the candidate's collectAssets walks them. */
+function eachAsset(v: unknown, path: string, unpublished: boolean, depth = 0): void {
   if (!isRecord(v) && !Array.isArray(v)) return;
-  if (isRecord(v) && 'sha256' in v && 'size' in v && 'url' in v) {
-    asset(v, path);
+  if (isRecord(v) && 'sha256' in v && 'size' in v && ('url' in v || 'file' in v)) {
+    asset(v, path, unpublished);
     return;
   }
   if (depth >= 4) return;
   for (const [k, item] of Object.entries(v))
-    eachAsset(item, Array.isArray(v) ? `${path}[${k}]` : `${path}.${k}`, depth + 1);
+    eachAsset(item, Array.isArray(v) ? `${path}[${k}]` : `${path}.${k}`, unpublished, depth + 1);
 }
 
 const hex = (v: unknown, path: string) => {
   if (typeof v !== 'string' || !HEX64.test(v)) field(path, 'lowercase hex SHA-256');
 };
 
-function manifest(v: unknown): ModelManifestV1 {
+function manifest(v: unknown, unpublished: boolean): ModelManifestV1 {
   if (!isRecord(v)) throw new Reject('not-an-object', '$', 'a manifest is a JSON object');
   const major = v.schemaVersion;
   if (!Number.isSafeInteger(major)) field('$.schemaVersion', 'an integer major version');
@@ -185,11 +203,11 @@ function manifest(v: unknown): ModelManifestV1 {
     field('$.bundleVersion', 'a non-empty string');
   hex(v.modelSourceSha256, '$.modelSourceSha256');
   hex(v.noiseSha256, '$.noiseSha256');
-  asset(v.mapping, '$.mapping');
-  asset(v.synthesis, '$.synthesis');
+  asset(v.mapping, '$.mapping', unpublished);
+  asset(v.synthesis, '$.synthesis', unpublished);
   if (!Array.isArray(v.noise) || v.noise.length === 0) field('$.noise', 'a non-empty list');
   (v.noise as unknown[]).forEach((n, i) => {
-    asset(n, `$.noise[${i}]`);
+    asset(n, `$.noise[${i}]`, unpublished);
     const r = n as Record<string, unknown>;
     if (
       typeof r.name !== 'string' ||
@@ -203,7 +221,7 @@ function manifest(v: unknown): ModelManifestV1 {
   if (v.alignmentSha256 !== undefined) hex(v.alignmentSha256, '$.alignmentSha256');
   const s = v.encoderStream;
   if (s !== undefined) {
-    asset(s, '$.encoderStream');
+    asset(s, '$.encoderStream', unpublished);
     const e = s as Record<string, unknown>;
     hex(e.sourceEncoderSha256, '$.encoderStream.sourceEncoderSha256');
     hex(e.preprocessingSha256, '$.encoderStream.preprocessingSha256');
@@ -222,14 +240,21 @@ function manifest(v: unknown): ModelManifestV1 {
     hex((k as Record<string, unknown>).sourceHash, '$.kernel.sourceHash');
     hex((k as Record<string, unknown>).sha256, '$.kernel.sha256');
   }
-  eachAsset(v, '$');
+  eachAsset(v, '$', unpublished);
   return v as unknown as ModelManifestV1;
 }
 
-/** Validates a manifest from the network or a producer. An unknown or newer major is rejected. */
-export function parseModelManifest(value: unknown): Result<ModelManifestV1, ManifestError> {
+/**
+ * Validates a manifest from the network or a producer. An unknown or newer major is rejected.
+ * Hosted assets (url) are required unless `unpublished` is set, as a producer checking its own
+ * output before hosting would.
+ */
+export function parseModelManifest(
+  value: unknown,
+  options: { readonly unpublished?: boolean } = {},
+): Result<ModelManifestV1, ManifestError> {
   try {
-    return { ok: true, value: manifest(value) };
+    return { ok: true, value: manifest(value, options.unpublished === true) };
   } catch (e) {
     if (e instanceof Reject) return { ok: false, error: e.error };
     throw e;
