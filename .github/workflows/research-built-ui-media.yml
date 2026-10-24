@@ -1,0 +1,70 @@
+name: research-built-ui-media
+# fm-qqh: re-homed from classic's research-built-ui-media-v1.yml onto the maintained built-UI paired driver
+# (autoresearch/drivers/built-ui-paired.mjs). Experimental: bounded, separate from product checks, never a required
+# status. A push touching the app, the packages, the maintained research code or scripts runs a leased smoke against
+# the pinned control artifact on eris; workflow_dispatch can run the full paired screen. Outputs land in eris's
+# durable research directory (named in autoresearch/workers/eris/README.md); the uploaded artifact is only a copy.
+on:
+  push:
+    branches: [main]
+    paths:
+      [
+        'apps/web/**',
+        'packages/**',
+        'autoresearch/drivers/**',
+        'autoresearch/workers/**',
+        'autoresearch/run.py',
+        'autoresearch/lease.py',
+        'scripts/**',
+        '.github/workflows/research-built-ui-media.yml',
+      ]
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: smoke (one sample per side) or paired (warmup + ABBA x3; refuses load above 4)
+        type: choice
+        options: [smoke, paired]
+        default: smoke
+permissions:
+  contents: read
+concurrency:
+  group: research-built-ui-media
+  cancel-in-progress: false
+jobs:
+  smoke:
+    runs-on: [self-hosted, eris]
+    timeout-minutes: 75
+    env:
+      LABEL: ci-built-ui-${{ github.run_id }}-${{ github.run_attempt }}
+      OUT: /home/cdilga/Work/runs/facemorph-research
+      RUNTIME: /home/cdilga/.cache/facemorph-runtime
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm ci --no-audit --no-fund
+      - name: Driver tests
+        run: node --test autoresearch/drivers/drivers.test.mjs
+      - name: build:next (the pinned control, digest re-verified)
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: npm run build:next && npm run build:next -- --check
+      - name: Worker readiness
+        run: node autoresearch/workers/check.mjs --lane browser-cpu --smoke --runtime "$RUNTIME"
+      - name: Leased built-UI run against the control artifact
+        run: |
+          python3 autoresearch/run.py --lane browser-cpu --device eris --wait 1800 --timeout 3600 -- \
+            node autoresearch/drivers/built-ui-paired.mjs --label "$LABEL" --mode "${{ inputs.mode || 'smoke' }}" \
+            --route cpu --control deploy-next --control-digest "$(node -p 'require("./autoresearch/drivers/control.json").treeSha256')" \
+            --runtime "$RUNTIME" --out-root "$OUT"
+      - name: Durable location
+        if: always()
+        run: echo "Outputs on eris at $OUT/$LABEL (the record; this run's upload is a copy)" | tee -a "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: research-built-ui-media-${{ github.run_id }}
+          path: ${{ env.OUT }}/${{ env.LABEL }}/
+          retention-days: 14
+          if-no-files-found: warn

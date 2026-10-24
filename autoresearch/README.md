@@ -19,19 +19,23 @@ python3 autoresearch/run.py --lane <browser-cpu|browser-gpu|native-cpu|native-gp
   --state-dir "<absolute per-machine lease dir>" --timeout <seconds, at most 3600> -- <driver command with quoted arguments>
 ```
 
-Worked example on eris, replacing classic's relative-state recipe:
+Worked example on eris (a maintained driver against the pinned control artifact; see the
+[eris recipe](workers/eris/README.md) for the candidate arguments and the durable output directory):
 
 ```sh
 python3 autoresearch/run.py --lane browser-gpu --device eris --state-dir "/home/cdilga/.local/state/facemorph/lease" \
-  --timeout 1800 -- autoresearch/devices/eris/gpu-bench.sh "UNIQUE_RUN_LABEL" "QUALIFIED_ORIGIN" 6
+  --timeout 1800 -- node autoresearch/drivers/morph-frame-product.mjs --label "UNIQUE_RUN_LABEL" --route webgpu \
+  --control deploy-next --control-digest ecc4c357d536b5d9ae0f98ce6dea1f2cbe72537f3e124b28108db1449f14a0fe \
+  --runtime /home/cdilga/.cache/facemorph-runtime
 ```
 
 - The lease is one per physical machine, shared with classic, the device lab and heavy CI. Its directory, machine
   config and refusals are in [ops/lease](../ops/lease/README.md); `--state-dir` may be left out where the machine config
   names it. Busy exits 75; `--wait` is a bounded wait, not a queue.
 - That GPU screen is a route benchmark. It is **not** the chooser-overlap benchmark, and the evaluator and its adapters
-  do not exist just because the wrapper does. The eris drivers still call classic's `scripts/next-gpu-benchmark.py`;
-  research stage 2 (fm-qqh) re-homes the drivers onto this app.
+  do not exist just because the wrapper does. The frozen eris scripts still call classic's paths and run only from
+  classic; for this app use the [maintained drivers](drivers/README.md), which measure an artifact by digest, and the
+  worker recipes ([eris](workers/eris/README.md), [TrueNAS](workers/truenas/README.md), blocked on fm-ip6g).
 - The runner journals every command to `<lease dir>/runs.jsonl` (one journal per machine, shared with classic). Exit
   zero means the command finished, never that it qualified.
 
@@ -52,7 +56,9 @@ python3 autoresearch/run.py --lane build --device "$(hostname -s)" --timeout 600
 | Canonical evaluation ledger (append-only, 11 columns) | [results.tsv](results.tsv) |
 | New rounds, each with its README, experiments and append-only log | `rounds/<date>-<slug>/`, from [the templates](rounds/templates/round.md) |
 | Research handover from classic | [rounds/2026-10-24-handover](rounds/2026-10-24-handover/README.md) |
-| Device recipes and drivers | [devices/eris](devices/eris/README.md) |
+| Maintained drivers (artifact by digest) | [drivers](drivers/README.md) |
+| Worker recipes and readiness | [workers/eris](workers/eris/README.md), [workers/truenas](workers/truenas/README.md), `node workers/check.mjs` |
+| Frozen device recipes and drivers (classic paths) | [devices/eris](devices/eris/README.md) |
 | Frozen candidates and their reports | `candidates/` |
 | Frozen historical rounds and history | [reviews](reviews/README.md), [history](history/performance-through-2026-10-09/README.md), [benchmark campaign v2](benchmark-campaign-v2/README.md) |
 | Proposed automation, not implemented | [loop-v3 proposal](loop-v3-proposal.md) |
