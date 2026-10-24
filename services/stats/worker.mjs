@@ -21,6 +21,8 @@ export const VOCAB = {
   cache: ['cold', 'warm'],
   kind: ['image', 'video'],
   method: ['save', 'share'],
+  // How the models became ready: fetched over the network, or restored from the browser's own cache.
+  phase: ['download', 'cache'],
 };
 // Histogram buckets in seconds, chosen to span a warm WebGPU face (~0.1 s) to a phone CPU morph (minutes).
 export const BUCKETS = [0.1, 0.25, 0.5, 1, 2, 5, 10, 20, 30, 60, 120, 300];
@@ -59,6 +61,20 @@ export function increments(beacon, host = 'next') {
     } else if (e.t === 'ttfr') {
       const cache = pick('cache', e.cache), ms = num(e.ms, MAX_MS);
       if (cache && ms !== null) observe('fm_web_time_to_first_result_seconds', `${site},cache="${cache}",platform="${platform}"`, ms / 1000);
+    } else if (e.t === 'job_warm') {
+      // Request to visible result with the models already loaded: the analogue of the old server's
+      // request time. A separate kind, because fm_web_job_duration_seconds keeps the candidate's meaning.
+      const action = pick('action', e.action), route = pick('route', e.route) || 'unknown', ms = num(e.ms, MAX_MS);
+      if (action && ms !== null) observe('fm_web_job_warm_seconds', `${site},action="${action}",route="${route}",platform="${platform}"`, ms / 1000);
+    } else if (e.t === 'compute') {
+      // Model compute for one image with the models already loaded: the analogue of the old server's
+      // GPU time per generated image.
+      const action = pick('action', e.action), route = pick('route', e.route) || 'unknown', ms = num(e.ms, MAX_MS);
+      if (action && ms !== null) observe('fm_web_compute_seconds', `${site},action="${action}",route="${route}",platform="${platform}"`, ms / 1000);
+    } else if (e.t === 'model') {
+      // Getting the models ready. The old server has no counterpart, so this is never compared.
+      const phase = pick('phase', e.phase), ms = num(e.ms, MAX_MS);
+      if (phase && ms !== null) observe('fm_web_model_ready_seconds', `${site},phase="${phase}",platform="${platform}"`, ms / 1000);
     } else if (e.t === 'frames') {
       const n = num(e.n, 100000);
       if (n !== null) add(`fm_web_morph_frames_total{${site},platform="${platform}"}`, Math.round(n));
@@ -79,6 +95,9 @@ export function exposition(rows) {
     fm_web_visits_total: ['counter', 'Visits to the new in-browser app, by platform class and first or returning visit.'],
     fm_web_jobs_total: ['counter', 'Jobs run in the browser, by action, route, platform class and outcome.'],
     fm_web_job_duration_seconds: ['histogram', 'Duration of completed browser jobs.'],
+    fm_web_job_warm_seconds: ['histogram', 'Completed browser jobs from request to visible result, with the models already loaded.'],
+    fm_web_compute_seconds: ['histogram', 'Model compute per image in the browser with the models already loaded.'],
+    fm_web_model_ready_seconds: ['histogram', 'Time to get the models ready, by download or restore from the browser cache.'],
     fm_web_time_to_first_result_seconds: ['histogram', 'Time from page load to the first visible result.'],
     fm_web_morph_frames_total: ['counter', 'Morph frames produced in the browser.'],
     fm_web_exports_total: ['counter', 'Saved or shared files, by kind and method.'],

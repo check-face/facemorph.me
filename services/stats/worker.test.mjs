@@ -108,3 +108,23 @@ test('app and host labels separate candidate, monorepo and the two hosts', () =>
   const odd = increments({ v: 1, app: 'evil"}', events: [{ t: 'visit', platform: 'ios', visit: 'first' }] });
   assert.ok(odd.has('fm_web_visits_total{app="candidate",host="next",platform="ios",visit="first"}'));
 });
+
+test('compute and model-ready timings become their own histograms', () => {
+  const inc = increments({ v: 1, events: [
+    { t: 'compute', action: 'face', route: 'webgpu', platform: 'desktop', ms: 80 },
+    { t: 'model', phase: 'cache', platform: 'android', ms: 4000 },
+    { t: 'model', phase: 'download', platform: 'ios', ms: 45000 },
+    { t: 'model', phase: 'compile', platform: 'ios', ms: 10 },
+    { t: 'compute', action: 'face', route: 'webgpu', ms: -1 },
+    { t: 'job_warm', action: 'names', route: 'cpu', platform: 'android', ms: 2500 },
+  ] });
+  assert.equal(inc.get('fm_web_job_warm_seconds_bucket{app="candidate",host="next",action="names",route="cpu",platform="android",le="5"}'), 1);
+  assert.equal(inc.get('fm_web_compute_seconds_bucket{app="candidate",host="next",action="face",route="webgpu",platform="desktop",le="0.1"}'), 1);
+  assert.equal(inc.get('fm_web_model_ready_seconds_count{app="candidate",host="next",phase="cache",platform="android"}'), 1);
+  assert.equal(inc.get('fm_web_model_ready_seconds_sum{app="candidate",host="next",phase="download",platform="ios"}'), 45);
+  assert.ok(![...inc.keys()].some((k) => k.includes('compile')), 'unknown phase dropped');
+  assert.equal([...inc.keys()].filter((k) => k.startsWith('fm_web_compute_seconds_count')).length, 1, 'negative duration dropped');
+  const text = exposition([...inc].map(([key, value]) => ({ key, value })));
+  assert.match(text, /# TYPE fm_web_compute_seconds histogram/);
+  assert.match(text, /# TYPE fm_web_model_ready_seconds histogram/);
+});

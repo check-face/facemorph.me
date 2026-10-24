@@ -747,6 +747,14 @@ server's counts beside their new equivalents, with an annotation at each cutover
 - Time to first result, cold or warm.
 - Morph frames, exports by kind and method, and first-visit model megabytes.
 
+**Like for like (operator, 24 October 2026).** Before/after panels compare only measures that mean the same thing on
+both sides: faces served (old face-endpoint requests, cache hits included, against completed face jobs), images the
+model drew (old GPU images against faces plus morph frames), photos encoded, morph videos, model compute per face
+(old GPU time per image against browser compute with the models loaded), and time to serve a face without network or
+model loading (old server request time against `job_warm`). Getting the models ready (download or restore from the
+browser cache) is recorded but stands alone: the old site had no equivalent. Old encode and end-to-end video times
+were never recorded, so those show the new site only.
+
 These are the analogues of the old counters (encodes, generated faces, request and generation time), and they also
 feed the after-release half of the [strictly-not-worse gate](#strictly-not-worse-than-the-candidate-operator-24-october-2026).
 

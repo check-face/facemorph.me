@@ -9,7 +9,7 @@
   "description": "Old hosted-API facemorph.me beside the new in-browser app. Old: server Prometheus counters (job triton_checkface). New: anonymous aggregate counts from the page (job facemorph_web, metrics fm_web_*). Approximate by design. Source: facemorph.me repo ops/grafana.",
   "timezone": "browser",
   "schemaVersion": 38,
-  "version": 3,
+  "version": 4,
   "editable": true,
   "time": {
     "from": "now-90d",
@@ -53,7 +53,7 @@
     {
       "id": 200,
       "type": "row",
-      "title": "Before and after: one picture per question (screenshot these)",
+      "title": "Before and after, like for like (screenshot these)",
       "collapsed": false,
       "gridPos": {
         "x": 0,
@@ -66,8 +66,8 @@
     {
       "id": 201,
       "type": "timeseries",
-      "title": "Faces made per day",
-      "description": "Faces generated on the old GPU server against faces made in visitors' browsers by the new app (random faces, names, blends). The red line marks the changeover.",
+      "title": "Faces served per day",
+      "description": "Every face picture a visitor asked for: random, from a name or a blend. Old: requests to the face endpoint, including ones answered from the server's image cache. New: completed face jobs.",
       "datasource": {
         "type": "prometheus",
         "uid": "FAM3SZFGk"
@@ -82,7 +82,6 @@
       "fieldConfig": {
         "defaults": {
           "unit": "short",
-          "min": 0,
           "color": {
             "mode": "fixed"
           },
@@ -93,11 +92,113 @@
             "showPoints": "never",
             "spanNulls": true,
             "lineInterpolation": "linear",
-            "axisSoftMin": 0,
             "stacking": {
               "mode": "none"
             }
+          },
+          "min": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "A"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#5794F2"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "B"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#FF9830"
+                }
+              }
+            ]
           }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "FAM3SZFGk"
+          },
+          "expr": "sum(increase(request_processing_seconds_count[1d]))",
+          "legendFormat": "Old site (GPU server)",
+          "interval": "1d"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "FAM3SZFGk"
+          },
+          "expr": "sum(increase(fm_web_jobs_total{action=~\"face|names|blend\",outcome=\"completed\"}[1d]))",
+          "legendFormat": "New site (your browser)",
+          "interval": "1d"
+        }
+      ]
+    },
+    {
+      "id": 202,
+      "type": "timeseries",
+      "title": "Images drawn by the model per day",
+      "description": "Every image the face model produced, including the in-between frames of morphs. Old: images the server GPU generated (cache misses only). New: faces plus morph frames made in browsers.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "FAM3SZFGk"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 11,
+        "w": 24,
+        "h": 10
+      },
+      "interval": "1d",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "fixed"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 3,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "spanNulls": true,
+            "lineInterpolation": "linear",
+            "stacking": {
+              "mode": "none"
+            }
+          },
+          "min": 0
         },
         "overrides": [
           {
@@ -160,24 +261,24 @@
             "type": "prometheus",
             "uid": "FAM3SZFGk"
           },
-          "expr": "sum(increase(fm_web_jobs_total{action=~\"face|names|blend\",outcome=\"completed\"}[1d]))",
+          "expr": "sum(increase(fm_web_jobs_total{action=~\"face|names|blend\",outcome=\"completed\"}[1d])) + sum(increase(fm_web_morph_frames_total[1d]))",
           "legendFormat": "New site (your browser)",
           "interval": "1d"
         }
       ]
     },
     {
-      "id": 202,
+      "id": 203,
       "type": "timeseries",
       "title": "Photos turned into faces per day",
-      "description": "Photo encodes on the old server against photo encodes in visitors' browsers.",
+      "description": "Old: photos the server encoded (a photo sent again was answered from its cache and not counted). New: completed photo jobs.",
       "datasource": {
         "type": "prometheus",
         "uid": "FAM3SZFGk"
       },
       "gridPos": {
         "x": 0,
-        "y": 11,
+        "y": 21,
         "w": 24,
         "h": 10
       },
@@ -185,7 +286,6 @@
       "fieldConfig": {
         "defaults": {
           "unit": "short",
-          "min": 0,
           "color": {
             "mode": "fixed"
           },
@@ -196,11 +296,11 @@
             "showPoints": "never",
             "spanNulls": true,
             "lineInterpolation": "linear",
-            "axisSoftMin": 0,
             "stacking": {
               "mode": "none"
             }
-          }
+          },
+          "min": 0
         },
         "overrides": [
           {
@@ -270,17 +370,17 @@
       ]
     },
     {
-      "id": 203,
+      "id": 204,
       "type": "timeseries",
       "title": "Morph videos per day",
-      "description": "Video renders on the old server against morph videos made in visitors' browsers.",
+      "description": "Old: videos the server rendered (replays from its cache not counted). New: completed morph videos.",
       "datasource": {
         "type": "prometheus",
         "uid": "FAM3SZFGk"
       },
       "gridPos": {
         "x": 0,
-        "y": 21,
+        "y": 31,
         "w": 24,
         "h": 10
       },
@@ -288,7 +388,6 @@
       "fieldConfig": {
         "defaults": {
           "unit": "short",
-          "min": 0,
           "color": {
             "mode": "fixed"
           },
@@ -299,11 +398,11 @@
             "showPoints": "never",
             "spanNulls": true,
             "lineInterpolation": "linear",
-            "axisSoftMin": 0,
             "stacking": {
               "mode": "none"
             }
-          }
+          },
+          "min": 0
         },
         "overrides": [
           {
@@ -373,17 +472,17 @@
       ]
     },
     {
-      "id": 204,
+      "id": 205,
       "type": "timeseries",
-      "title": "Average time to make one face",
-      "description": "Old: server GPU time per generated face (excludes network). New: average time per face in the visitor's browser, all devices and routes. Daily averages. Logarithmic axis, so a server's milliseconds and a phone's seconds both stay readable.",
+      "title": "Model compute per face",
+      "description": "Time the model spends drawing one face once it is loaded. Old: server GPU time per generated image (batched, averaged per image). New: browser compute per face, all devices. Neither includes the network or model loading. Daily averages, log axis.",
       "datasource": {
         "type": "prometheus",
         "uid": "FAM3SZFGk"
       },
       "gridPos": {
         "x": 0,
-        "y": 31,
+        "y": 41,
         "w": 24,
         "h": 10
       },
@@ -471,101 +570,195 @@
             "type": "prometheus",
             "uid": "FAM3SZFGk"
           },
-          "expr": "sum(increase(fm_web_job_duration_seconds_sum{action=\"face\"}[1d])) / sum(increase(fm_web_job_duration_seconds_count{action=\"face\"}[1d]))",
+          "expr": "sum(increase(fm_web_compute_seconds_sum{action=~\"face|names|blend\"}[1d])) / sum(increase(fm_web_compute_seconds_count{action=~\"face|names|blend\"}[1d]))",
           "legendFormat": "New site (your browser)",
           "interval": "1d"
         }
       ]
     },
     {
-      "id": 1,
+      "id": 206,
+      "type": "timeseries",
+      "title": "Time to serve a face (no network, no model loading)",
+      "description": "Old: server time for a face request from arrival to response, including queueing and cache hits, excluding the visitor's network. New: browser time from asking for a face to seeing it, with the models already loaded. Daily averages, log axis.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "FAM3SZFGk"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 51,
+        "w": 24,
+        "h": 10
+      },
+      "interval": "1d",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "color": {
+            "mode": "fixed"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 3,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "spanNulls": true,
+            "lineInterpolation": "linear",
+            "stacking": {
+              "mode": "none"
+            },
+            "scaleDistribution": {
+              "type": "log",
+              "log": 10
+            }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "A"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#5794F2"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "B"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#FF9830"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "FAM3SZFGk"
+          },
+          "expr": "sum(increase(request_processing_seconds_sum[1d])) / sum(increase(request_processing_seconds_count[1d]))",
+          "legendFormat": "Old site (GPU server)",
+          "interval": "1d"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "FAM3SZFGk"
+          },
+          "expr": "sum(increase(fm_web_job_warm_seconds_sum{action=~\"face|names|blend\"}[1d])) / sum(increase(fm_web_job_warm_seconds_count{action=~\"face|names|blend\"}[1d]))",
+          "legendFormat": "New site (your browser)",
+          "interval": "1d"
+        }
+      ]
+    },
+    {
+      "id": 300,
       "type": "row",
-      "title": "Totals over the selected time range",
+      "title": "New site only (no counterpart on the old site)",
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 41,
+        "y": 61,
         "w": 24,
         "h": 1
       },
       "panels": []
     },
     {
-      "id": 2,
-      "type": "stat",
-      "title": "Photos encoded: old API",
-      "description": "Server-side encodes counted by the retired API.",
+      "id": 301,
+      "type": "timeseries",
+      "title": "Getting the models ready, median",
+      "description": "Download on a first visit, or restore from the browser's own cache on a return visit, by platform. The old site had no equivalent: its model stayed loaded on the server.",
       "datasource": {
         "type": "prometheus",
         "uid": "FAM3SZFGk"
       },
       "gridPos": {
         "x": 0,
-        "y": 42,
-        "w": 6,
-        "h": 4
+        "y": 62,
+        "w": 12,
+        "h": 9
+      },
+      "interval": "1d",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 3,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "spanNulls": true,
+            "lineInterpolation": "linear",
+            "stacking": {
+              "mode": "none"
+            }
+          },
+          "min": 0
+        },
+        "overrides": []
       },
       "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ]
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
         },
-        "colorMode": "none",
-        "graphMode": "none"
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
       },
       "targets": [
         {
+          "refId": "A",
           "datasource": {
             "type": "prometheus",
             "uid": "FAM3SZFGk"
           },
-          "refId": "A",
-          "expr": "sum(increase(image_encoding_total[$__range]))",
-          "instant": true
+          "expr": "histogram_quantile(0.5, sum by (le, phase, platform) (rate(fm_web_model_ready_seconds_bucket[1d])))",
+          "legendFormat": "{{phase}} on {{platform}}",
+          "interval": "1d"
         }
       ]
     },
     {
-      "id": 3,
-      "type": "stat",
-      "title": "Photos encoded: new app",
-      "description": "Encodes completed in visitors' browsers (anonymous counts).",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "FAM3SZFGk"
-      },
-      "gridPos": {
-        "x": 6,
-        "y": 42,
-        "w": 6,
-        "h": 4
-      },
-      "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ]
-        },
-        "colorMode": "none",
-        "graphMode": "none"
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "FAM3SZFGk"
-          },
-          "refId": "A",
-          "expr": "sum(increase(fm_web_jobs_total{action=\"photo\",outcome=\"completed\"}[$__range]))",
-          "instant": true
-        }
-      ]
-    },
-    {
-      "id": 4,
-      "type": "stat",
-      "title": "Faces generated: old API",
+      "id": 302,
+      "type": "timeseries",
+      "title": "Model megabytes downloaded per day",
       "description": "",
       "datasource": {
         "type": "prometheus",
@@ -573,257 +766,53 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 42,
-        "w": 6,
-        "h": 4
-      },
-      "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ]
-        },
-        "colorMode": "none",
-        "graphMode": "none"
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "FAM3SZFGk"
-          },
-          "refId": "A",
-          "expr": "sum(increase(image_generating_total[$__range]))",
-          "instant": true
-        }
-      ]
-    },
-    {
-      "id": 5,
-      "type": "stat",
-      "title": "Faces generated: new app",
-      "description": "",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "FAM3SZFGk"
-      },
-      "gridPos": {
-        "x": 18,
-        "y": 42,
-        "w": 6,
-        "h": 4
-      },
-      "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ]
-        },
-        "colorMode": "none",
-        "graphMode": "none"
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "FAM3SZFGk"
-          },
-          "refId": "A",
-          "expr": "sum(increase(fm_web_jobs_total{action=~\"face|names|blend\",outcome=\"completed\"}[$__range]))",
-          "instant": true
-        }
-      ]
-    },
-    {
-      "id": 6,
-      "type": "row",
-      "title": "Volume per day: old server beside new app",
-      "collapsed": false,
-      "gridPos": {
-        "x": 0,
-        "y": 46,
-        "w": 24,
-        "h": 1
-      },
-      "panels": []
-    },
-    {
-      "id": 7,
-      "type": "timeseries",
-      "title": "Photos encoded per day",
-      "description": "",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "FAM3SZFGk"
-      },
-      "gridPos": {
-        "x": 0,
-        "y": 47,
+        "y": 62,
         "w": 12,
-        "h": 8
+        "h": 9
       },
+      "interval": "1d",
       "fieldConfig": {
         "defaults": {
-          "unit": "short",
+          "unit": "decmbytes",
+          "color": {
+            "mode": "palette-classic"
+          },
           "custom": {
-            "drawStyle": "bars",
-            "fillOpacity": 40,
-            "lineWidth": 2,
+            "drawStyle": "line",
+            "lineWidth": 3,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "spanNulls": true,
+            "lineInterpolation": "linear",
             "stacking": {
               "mode": "none"
             }
-          }
+          },
+          "min": 0
         },
         "overrides": []
       },
       "options": {
         "legend": {
           "displayMode": "list",
-          "placement": "bottom"
+          "placement": "bottom",
+          "showLegend": true
         },
         "tooltip": {
-          "mode": "multi"
+          "mode": "multi",
+          "sort": "none"
         }
       },
-      "interval": "1d",
       "targets": [
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "FAM3SZFGk"
-          },
           "refId": "A",
-          "expr": "sum(increase(image_encoding_total[1d]))",
-          "legendFormat": "Old API (server)"
-        },
-        {
           "datasource": {
             "type": "prometheus",
             "uid": "FAM3SZFGk"
           },
-          "refId": "B",
-          "expr": "sum(increase(fm_web_jobs_total{action=\"photo\",outcome=\"completed\"}[1d]))",
-          "legendFormat": "New app (browser)"
-        }
-      ]
-    },
-    {
-      "id": 8,
-      "type": "timeseries",
-      "title": "Faces generated per day",
-      "description": "",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "FAM3SZFGk"
-      },
-      "gridPos": {
-        "x": 12,
-        "y": 47,
-        "w": 12,
-        "h": 8
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "custom": {
-            "drawStyle": "bars",
-            "fillOpacity": 40,
-            "lineWidth": 2,
-            "stacking": {
-              "mode": "none"
-            }
-          }
-        },
-        "overrides": []
-      },
-      "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom"
-        },
-        "tooltip": {
-          "mode": "multi"
-        }
-      },
-      "interval": "1d",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "FAM3SZFGk"
-          },
-          "refId": "A",
-          "expr": "sum(increase(image_generating_total[1d]))",
-          "legendFormat": "Old API (server)"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "FAM3SZFGk"
-          },
-          "refId": "B",
-          "expr": "sum(increase(fm_web_jobs_total{action=~\"face|names|blend\",outcome=\"completed\"}[1d]))",
-          "legendFormat": "New app (browser)"
-        }
-      ]
-    },
-    {
-      "id": 9,
-      "type": "timeseries",
-      "title": "Morph videos per day",
-      "description": "",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "FAM3SZFGk"
-      },
-      "gridPos": {
-        "x": 0,
-        "y": 55,
-        "w": 12,
-        "h": 8
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "custom": {
-            "drawStyle": "bars",
-            "fillOpacity": 40,
-            "lineWidth": 2,
-            "stacking": {
-              "mode": "none"
-            }
-          }
-        },
-        "overrides": []
-      },
-      "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom"
-        },
-        "tooltip": {
-          "mode": "multi"
-        }
-      },
-      "interval": "1d",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "FAM3SZFGk"
-          },
-          "refId": "A",
-          "expr": "sum(increase(ffmpeg_processing_seconds_count[1d]))",
-          "legendFormat": "Old API (server video renders)"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "FAM3SZFGk"
-          },
-          "refId": "B",
-          "expr": "sum(increase(fm_web_jobs_total{action=\"morph\",outcome=\"completed\"}[1d]))",
-          "legendFormat": "New app (browser)"
+          "expr": "sum by (platform) (increase(fm_web_model_megabytes_total[1d]))",
+          "legendFormat": "{{platform}}",
+          "interval": "1d"
         }
       ]
     },
@@ -837,10 +826,10 @@
         "uid": "FAM3SZFGk"
       },
       "gridPos": {
-        "x": 12,
-        "y": 55,
+        "x": 0,
+        "y": 71,
         "w": 12,
-        "h": 8
+        "h": 9
       },
       "fieldConfig": {
         "defaults": {
@@ -879,32 +868,18 @@
       ]
     },
     {
-      "id": 11,
-      "type": "row",
-      "title": "Speed: old server beside new app",
-      "collapsed": false,
-      "gridPos": {
-        "x": 0,
-        "y": 63,
-        "w": 24,
-        "h": 1
-      },
-      "panels": []
-    },
-    {
       "id": 12,
       "type": "timeseries",
-      "title": "Typical time per generated face",
-      "description": "Old: server GPU seconds per image (excludes network and queue). New: median whole-job time in the browser.",
+      "title": "Face time by route and platform, median (new app)",
       "datasource": {
         "type": "prometheus",
         "uid": "FAM3SZFGk"
       },
       "gridPos": {
-        "x": 0,
-        "y": 64,
+        "x": 12,
+        "y": 71,
         "w": 12,
-        "h": 8
+        "h": 9
       },
       "fieldConfig": {
         "defaults": {
@@ -931,15 +906,6 @@
       },
       "interval": "1h",
       "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "FAM3SZFGk"
-          },
-          "refId": "A",
-          "expr": "rate(generator_network_seconds_sum[1h]) / rate(image_generating_total[1h])",
-          "legendFormat": "Old API: GPU time per image"
-        },
         {
           "datasource": {
             "type": "prometheus",
@@ -947,66 +913,6 @@
           },
           "refId": "B",
           "expr": "histogram_quantile(0.5, sum by (le, route, platform) (rate(fm_web_job_duration_seconds_bucket{action=\"face\"}[6h])))",
-          "legendFormat": "New app median: {{route}} on {{platform}}"
-        }
-      ]
-    },
-    {
-      "id": 13,
-      "type": "timeseries",
-      "title": "Typical photo encode time",
-      "description": "",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "FAM3SZFGk"
-      },
-      "gridPos": {
-        "x": 12,
-        "y": 64,
-        "w": 12,
-        "h": 8
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "s",
-          "custom": {
-            "drawStyle": "line",
-            "fillOpacity": 10,
-            "lineWidth": 2,
-            "stacking": {
-              "mode": "none"
-            }
-          }
-        },
-        "overrides": []
-      },
-      "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom"
-        },
-        "tooltip": {
-          "mode": "multi"
-        }
-      },
-      "interval": "1h",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "FAM3SZFGk"
-          },
-          "refId": "A",
-          "expr": "rate(request_processing_seconds_sum[1h]) / rate(request_processing_seconds_count[1h])",
-          "legendFormat": "Old API: mean request time (all requests)"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "FAM3SZFGk"
-          },
-          "refId": "B",
-          "expr": "histogram_quantile(0.5, sum by (le, route, platform) (rate(fm_web_job_duration_seconds_bucket{action=\"photo\"}[6h])))",
           "legendFormat": "New app median: {{route}} on {{platform}}"
         }
       ]
@@ -1022,9 +928,9 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 72,
+        "y": 80,
         "w": 12,
-        "h": 8
+        "h": 9
       },
       "fieldConfig": {
         "defaults": {
@@ -1073,9 +979,9 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 72,
+        "y": 80,
         "w": 12,
-        "h": 8
+        "h": 9
       },
       "fieldConfig": {
         "defaults": {
@@ -1114,6 +1020,56 @@
       ]
     },
     {
+      "id": 13,
+      "type": "timeseries",
+      "title": "Photo encode time, median (new app)",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "FAM3SZFGk"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 89,
+        "w": 12,
+        "h": 9
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineWidth": 2,
+            "stacking": {
+              "mode": "none"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "interval": "1h",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "FAM3SZFGk"
+          },
+          "refId": "B",
+          "expr": "histogram_quantile(0.5, sum by (le, route, platform) (rate(fm_web_job_duration_seconds_bucket{action=\"photo\"}[6h])))",
+          "legendFormat": "New app median: {{route}} on {{platform}}"
+        }
+      ]
+    },
+    {
       "id": 16,
       "type": "timeseries",
       "title": "WebGPU and CPU share of completed jobs (new app)",
@@ -1123,10 +1079,10 @@
         "uid": "FAM3SZFGk"
       },
       "gridPos": {
-        "x": 0,
-        "y": 80,
+        "x": 12,
+        "y": 89,
         "w": 12,
-        "h": 8
+        "h": 9
       },
       "fieldConfig": {
         "defaults": {
@@ -1174,10 +1130,10 @@
         "uid": "FAM3SZFGk"
       },
       "gridPos": {
-        "x": 12,
-        "y": 80,
+        "x": 0,
+        "y": 98,
         "w": 12,
-        "h": 8
+        "h": 9
       },
       "fieldConfig": {
         "defaults": {
