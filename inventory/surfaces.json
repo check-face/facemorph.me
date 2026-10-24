@@ -1,0 +1,227 @@
+{
+  "bead": "fm-p7v",
+  "description": "Release surfaces of the FaceMorph candidate and their owners, inputs and consumers. Source paths refer to the sibling classic checkout; this inventory reads it without changing it.",
+  "source": {
+    "repo": "check-face/facemorph.me-classic (id 295956585)",
+    "branch": "candidate/next-delivery-20260916",
+    "frozen_revision": "6107f80fbc5acc6019c1d22d90523cca3b02001b",
+    "read_revision": "a42829bb0582b5a7a55ba6b1045a05861612b8a5 (working tree head, 2026-10-24)",
+    "read_note": "Facts were read from the classic working tree at a42829b. That tree is identical to 6107f80 for every file cited here except .github/workflows/next-site.yml, whose only later change (551b607) adds src/Next/usage-stats.test.mjs to a test-list line; the stats sink is therefore recorded as surface added by 551b607 per the bead rule. Commits 91b7778 and a42829b touched only next-site.yml workflow steps (device-lab deploy gate added then removed) and are recorded in the hosting inventory.",
+    "live_receipts": "next.facemorph.me build identity is re-read from live bytes per capture in inventory/visual-references.json; fm-a4b (identity map) owns the standing per-host identity reader."
+  },
+  "surfaces": [
+    {
+      "id": "candidate-app",
+      "name": "Candidate app src/Next/",
+      "owner": "ws-migration",
+      "revision": "6107f80 (surface present since before b2d945a)",
+      "moving_paths": [
+        "src/Next/** (imported wholesale into apps/web under the same structure)",
+        "runtime/manifests and the immutable prefixes runtime/{assets,chunks,manifests,photo,encoder-stream}/ fetched from https://next.facemorph.me/runtime/... (hosting/next-mirror/worker.mjs:7)"
+      ],
+      "inputs": "Retained source in classic at the frozen revision; rebuilt by scripts/build-next.cjs (hashes src/Next tree + desktop/runtime.mjs into FACEMORPH_BUILD_ID 'next-'+sha256[:16], scripts/build-next.cjs:8-18) and webpack (entry ./src/Index.fs.js, webpack.config.js:23).",
+      "consumers": [
+        "scripts/build-next.cjs (build id, deploy-next/ output)",
+        ".github/workflows/next-site.yml (build, test list ~:32, path filters :5-7, deploy)",
+        "scripts/check-next-artifact.sh + the compiled-ui Chromium lane",
+        "autoresearch candidate patches (autoresearch/candidates/direct-rgba-media-v1/{ort-worker,runtime}.mjs.patch, prepare-source.py)",
+        "desktop/scripts/stage-frontend.mjs (stages deploy-next/ for the desktop shell)"
+      ],
+      "build_worker_urls": ["https://next.facemorph.me/ (Worker facemorph-next, deployed by next-site.yml)"],
+      "persistent_identities": "See the identity table in this file (bottom).",
+      "live_receipt": "https://next.facemorph.me 200 (Cloudflare); html digest 81da899bb904d8829cc4... at capture 2026-10-24 (inventory/visual-references.json).",
+      "uncertainties": []
+    },
+    {
+      "id": "runtime-overlay",
+      "name": "Hosted runtime overlay hosting/next-static/runtime-overlay/manifest.json",
+      "owner": "ws-hosting",
+      "revision": "6107f80",
+      "moving_paths": [
+        "hosting/next-static/runtime-overlay/manifest.json (schemaVersion 1, bundleVersion next-browser-cpu-v1, releaseQualified false; every asset URL https://next.facemorph.me/runtime/assets/<sha256>/<file> with sha256 and size)",
+        "hosting/next-static/runtime-overlay/assets/<sha256>/* (small reviewable overlay assets: split-segment.json 2d71c033..., fused-resample-v1.mjs 6ee1eb7a...)"
+      ],
+      "inputs": "The production-weight pin file: the only in-repo record of which browser weight bytes are live. Large segments live in the git-external sibling ../review-artifacts/ (restage-runtime.py:28, stage-assets.py:11).",
+      "consumers": [
+        "hosting/next-static/mirror-runtime.py:130 (primary input; rebuilds .runtime-public from the pins)",
+        "hosting/next-static/stage.py",
+        "hosting/next-static/webgpu_contract.py",
+        "hosting/gallery/materialize.py (cache key, name-catalogue.yml:29)",
+        "src/Next/browser/stage-assets.py:24-37 (generates a manifest of the same shape)",
+        "CI cache keys: next-site.yml:166, next-e2e.yml:51, research-built-ui-media-v1.yml:55"
+      ],
+      "build_worker_urls": ["Published content served under https://next.facemorph.me/runtime/..."],
+      "persistent_identities": ["Manifest digest = sha256 of exact served manifest bytes (src/Next/browser/runtime.mjs:28); cache keys digest(JSON.stringify({generationSha256,...})) (runtime.mjs:238,249)"],
+      "live_receipt": "Served copy verified at capture: https://next.facemorph.me/runtime/manifest.json (digest recorded per capture in inventory/visual-references.json notes).",
+      "uncertainties": []
+    },
+    {
+      "id": "models-origin",
+      "name": "Second runtime origin models.facemorph.me (classic hosting/next-mirror/, added 6107f80)",
+      "owner": "ws-hosting",
+      "revision": "6107f80",
+      "moving_paths": ["hosting/next-mirror/{worker.mjs,worker.test.mjs,wrangler.jsonc}"],
+      "inputs": "Copies immutable prefixes runtime/{assets,chunks,manifests,photo,encoder-stream}/ from https://next.facemorph.me/ via service binding SITE on first request into R2 bucket facemorph-runtime-mirror (worker.mjs:6-7, wrangler.jsonc). Content-addressed paths: a path no longer served by next is fillable only if already held.",
+      "consumers": [
+        "src/Next/Assets/model-cache.mjs (alternates chunk retries to models.facemorph.me, bacd6e5+6107f80)",
+        "next-site.yml deploy step 'Deploy the runtime mirror' (:210-214) and 'Warm the runtime mirror' (:215-218)",
+        "deploy/warm owner: ws-deploy"
+      ],
+      "build_worker_urls": ["https://models.facemorph.me (Worker facemorph-models over R2 facemorph-runtime-mirror; / returns 404 by design)"],
+      "persistent_identities": ["Content-addressed asset paths (sha256 directory names) shared with the runtime-overlay pins"],
+      "live_receipt": "https://models.facemorph.me/ 404 at 2026-10-24 (expected: no index); warm prefixes per next-site.yml:215-218.",
+      "uncertainties": ["Custom-domain attachment is console/API-only (wrangler.jsonc:7 comment); repo attests the comment only"]
+    },
+    {
+      "id": "site-worker",
+      "name": "Site Worker facemorph-next (model chunks + static site origin)",
+      "owner": "ws-hosting",
+      "revision": "6107f80",
+      "moving_paths": ["hosting/next-static/{worker.mjs,wrangler.jsonc}", "public/ assets built by stage.py (model chunks are static assets under runtime/...)"],
+      "inputs": "deploy-next/ frontend + .runtime-public rebuilt from the overlay pins + catalogue.json (next-site.yml:170-176).",
+      "consumers": ["Browsers fetch model chunks and manifests same-origin from next.facemorph.me; third-party origins are rejected (prepare-runtime.py reject_local)", "Diagnostics events POST https://next.facemorph.me/diagnostics/events (routed by run_worker_first /diagnostics/* to hosting/next-cloudflare/worker.mjs)"],
+      "build_worker_urls": ["https://next.facemorph.me"],
+      "persistent_identities": [],
+      "live_receipt": "200 at 2026-10-24, server cloudflare.",
+      "uncertainties": []
+    },
+    {
+      "id": "diagnostics-collector",
+      "name": "Diagnostics collector hosting/next-cloudflare/",
+      "owner": "ws-diag",
+      "revision": "6107f80",
+      "moving_paths": ["hosting/next-cloudflare/{worker.mjs,worker.test.mjs,validation.mjs,delete-run.mjs,wrangler.toml}"],
+      "inputs": "POST /diagnostics/events with consent header x-facemorph-diagnostics-consent: session-v1; origin allowlist [next.facemorph.me, facemorph.me, labs.facemorph.me, tauri://localhost, http(s)://tauri.localhost] (worker.mjs:12).",
+      "consumers": ["src/Next/reporting.mjs (client sender)", "R2 bucket facemorph-diagnostics (keys runs/<run>/<uuid>) with KV 3a71e4ec58354345be24a1e02a3edb82 fallback; retention 30 days"],
+      "build_worker_urls": ["Worker facemorph-next-diagnostics, route next.facemorph.me/diagnostics/* (wrangler.toml); also mounted in the monorepo import as hosting/next-cloudflare/validation.mjs imported by src/Next/reporting.test.mjs"],
+      "persistent_identities": ["Diagnostics consent header session-v1; run ids in R2 keys"],
+      "live_receipt": "Route live (covered by next.facemorph.me 200).",
+      "uncertainties": []
+    },
+    {
+      "id": "names-catalogue",
+      "name": "Names catalogue and seed-gallery Workers",
+      "owner": "ws-names",
+      "revision": "6107f80",
+      "moving_paths": ["hosting/gallery/{materialize.py,names-wrangler.jsonc,wrangler.jsonc,public/,names-public/}"],
+      "inputs": "catalogue.json (names/seed index, staged into the site by stage.py --catalogue and copied into deploy-next/ by scripts/build-next.cjs:28) materialized by hosting/gallery/materialize.py and published byte-verified by name-catalogue.yml.",
+      "consumers": [
+        "src/Next/public-previews.mjs:20,47 (fetch /catalogue.json; previews/latents from https://facemorph-name-catalogue.cdilga.workers.dev)",
+        "https://facemorph-seed-gallery.cdilga.workers.dev (seed images; desktop/catalogue-source.json:5 imageOrigins)",
+        "desktop/catalogue-source.json:2-4 pins the live catalogue url+sha256+size (31058003e8..., 995907 B at 6107f80)",
+        "next-site.yml:175 and promote.py:84-86 gate catalogue byte-equality",
+        "check-no-third-party.mjs:70-74 (gallery-origin scan)"
+      ],
+      "build_worker_urls": ["https://facemorph-name-catalogue.cdilga.workers.dev (Worker facemorph-name-catalogue, assets names-public/)", "https://facemorph-seed-gallery.cdilga.workers.dev (Worker facemorph-seed-gallery, assets public/)"],
+      "persistent_identities": ["Catalogue entry keys {id,name,value,full,latent}; publication is immutable-assets-first"],
+      "live_receipt": "Published by name-catalogue.yml (last publish attested in that workflow's runs; not re-probed here).",
+      "uncertainties": []
+    },
+    {
+      "id": "legacy-production",
+      "name": "Legacy production https://facemorph.me (Vercel from classic master)",
+      "owner": "ws-classic",
+      "revision": "classic master branch (deploy.yml:5-8); deployed revision NOT attested in-repo",
+      "moving_paths": ["classic root src/ (F# Elmish UI), vercel.json, vercel.package.json, Server/Index.fs.js (Node target built to deploy/api, webpack.config.js:100-168)"],
+      "inputs": "Rebuildable from classic master by .github/workflows/deploy.yml (vercel --prod on push to master; VERCEL_ORG_ID/VERCEL_PROJECT_ID/VERCEL_TOKEN).",
+      "consumers": ["facemorph-names calls https://api.facemorph.me/api/face/ (facemorph-names/src/checkface.js:1)", "Embedded names picker: per-input Browse Names over catalogue.json (visual reference captured 2026-10-24)"],
+      "build_worker_urls": ["https://facemorph.me (Vercel; x-vercel-id observed 2026-10-24)"],
+      "persistent_identities": ["Legacy UI has no recovery envelopes; personal photos stay local (outside Git)"],
+      "live_receipt": "200 (Vercel cache HIT) 2026-10-24; retirement notice + two-input UI captured in inventory/visual-references.json.",
+      "uncertainties": ["Exact deployed source revision is unknown by design: nothing in-repo attests it (no deploy record); fm-a4b attests Vercel deployment id and master head at check time"]
+    },
+    {
+      "id": "names-site",
+      "name": "Names site https://names.facemorph.me (separate repo facemorph-names, id 348379171)",
+      "owner": "ws-names",
+      "revision": "facemorph-names default branch (not frozen by this inventory; classic does not contain it)",
+      "moving_paths": ["../facemorph-names/ (Svelte 3 + Rollup; no wrangler config, no .github/ in that repo)"],
+      "inputs": "Rebuildable from the facemorph-names repo; publisher NOT attested in either repo.",
+      "consumers": ["Links into facemorph.me/?from_value=... (src/checkface.js:1-2)", "Calls legacy api.facemorph.me"],
+      "build_worker_urls": ["https://names.facemorph.me (Vercel: CNAME cname.vercel-dns.com, x-vercel-id observed 2026-10-24)"],
+      "persistent_identities": [],
+      "live_receipt": "200 (Vercel) 2026-10-24; gapless labelled grid captured.",
+      "uncertainties": ["Deploy connection for names.facemorph.me is console-only (no repo workflow); needs-inspection for the domain handover plan (fm-5u9)"]
+    },
+    {
+      "id": "self-host",
+      "name": "Self-host Compose distribution self-host/",
+      "owner": "ws-classic",
+      "revision": "6107f80 with frontend pin 0abb215f27b16e17e3919cf78b616b6ae4998a5d",
+      "moving_paths": ["self-host/** (compose.yml, compose.gpu.yml, Dockerfile, api.py, legacy_checkface.py, encoder.py, prepare_model.py, frontend-overlay/source.json)", "models docker volume (stylegan2-ffhq-config-f.pkl sha256 adf127ea..., 381673535 B, downloaded at setup from nvlabs-fi-cdn, self-host/prepare_model.py:5-51)"],
+      "inputs": "Frontend pinned: Dockerfile:5-6 clones classic at FRONTEND_REV 0abb215... and overlays self-host/frontend-overlay/source/ (11 files, per-file sha256 in frontend-overlay/source.json:3); verified by frontend-overlay/verify-config.mjs and verify-overlay.py.",
+      "consumers": [".github/workflows/self-host-build.yml (amd64+arm64: compose build, setup --accept-research-license, full smoke suite, saves tested image tar.gz + SHA256SUMS + source-revision.txt :62-70; never publishes)", "Operator: docker compose up (acceptance bead fm-fy2.16 re-runs the README clean-clone acceptance)"],
+      "build_worker_urls": ["Local only (api service ports 8080 /healthz)"],
+      "persistent_identities": ["Legacy API contract tests (test_legacy_contract.py); MongoDB original cache"],
+      "live_receipt": "n/a (local distribution)",
+      "uncertainties": []
+    },
+    {
+      "id": "research-tree",
+      "name": "Research tree autoresearch/",
+      "owner": "ws-research",
+      "revision": "6107f80",
+      "moving_paths": ["autoresearch/ (program.md protocol, results.tsv ledger, run.py device lease, candidates/<id>/ experiments)"],
+      "inputs": "Runs against built deploy-next/ artifacts and the device lab; append-only experiment history (read-only reference for the new repo until autoresearch re-homing lands).",
+      "consumers": [".github/workflows/research-built-ui-media-v1.yml, research-rgba-screen-v1.yml (workflow_dispatch only; both retired after single runs)", "build wrappers consumed: serve.py, prepare-source.py, run-*.mjs screen drivers (candidates/direct-rgba-media-v1/)"],
+      "build_worker_urls": [],
+      "persistent_identities": ["results.tsv append-only ledger; kernel keep-row read by promote.py"],
+      "live_receipt": "n/a",
+      "uncertainties": []
+    },
+    {
+      "id": "desktop-native",
+      "name": "Desktop/native leftovers desktop/",
+      "owner": "ws-inventory",
+      "revision": "6107f80",
+      "moving_paths": ["desktop/** — full retirement inventory and dispositions in inventory/native-retirement.json"],
+      "inputs": "Shared browser dependencies to retain/re-home: desktop/runtime.mjs (imported by src/Next/product-bridge.mjs:6, hashed into the build id by scripts/build-next.cjs:8) and desktop/scripts/verify-web-artifact.py (browser/E2E workflows).",
+      "consumers": ["src/Next/product-bridge.mjs:6 (createDesktopRuntime when globalThis.__TAURI__)", "scripts/build-next.cjs:8", "desktop-candidates.yml, desktop-product.yml, desktop-native-inference.yml (all artifact-only, no releases)", "next-e2e.yml (verify-web-artifact.py provenance check)"],
+      "build_worker_urls": [],
+      "persistent_identities": [],
+      "live_receipt": "No native release ever published: both classic and monorepo repos have zero releases and the updater endpoint https://github.com/check-face/facemorph.me/releases/latest/download/latest.json returns 404 (verified 2026-10-24).",
+      "uncertainties": ["Number of installed desktop clients in the wild is unknowable from the repo; no update feed exists, so none can be redirected (fm-p7v disposition: clients never redirected)"]
+    },
+    {
+      "id": "stats-sink",
+      "name": "Anonymous changeover statistics sink (added by 551b607, live 2026-10-24)",
+      "owner": "ws-diag",
+      "revision": "551b607 (surface added after the frozen revision; recorded per the bead rule)",
+      "moving_paths": ["src/Next/usage-stats.mjs (+ .test.mjs), src/Next/analytics.mjs, src/Next/product-bridge.mjs wiring (:13,16)", "monorepo services/stats/ (Worker facemorph-stats, Durable Object StatsCounters, routes next.facemorph.me/stats/* and facemorph.me/stats/*)"],
+      "inputs": "Client batches (<=150 events / 60 s / 3800 B) via navigator.sendBeacon to same-origin /stats/v1; production host next.facemorph.me only; opt-out localStorage facemorph-usage-stats='off' (usage-stats.mjs:11-14) layered on the analytics gate (GPC/DNT/Save-Data/automation, analytics.mjs:69-84).",
+      "consumers": [".github/workflows/stats-worker.yml (deploy + SCRAPE_TOKEN secret + 401/bearer smoke)", "Prometheus scrape GET /stats/metrics bearer SCRAPE_TOKEN; Grafana dashboard ops/grafana/dashboards/facemorph-changeover.json in the monorepo"],
+      "build_worker_urls": ["https://next.facemorph.me/stats/v1 (Worker facemorph-stats)"],
+      "persistent_identities": ["Aggregate counters only; no per-visitor records"],
+      "live_receipt": "Deploy smoke in stats-worker.yml (401 unauthenticated, bearer 200).",
+      "uncertainties": []
+    }
+  ],
+  "fable_webpack_wrappers": {
+    "products": {
+      "deploy-next/": "FACEMORPH_NEXT=1 webpack output consumed by next-site.yml, stage.py, check-next-artifact.sh, desktop stage-frontend.mjs",
+      "deploy-self-host/": "FACEMORPH_SELF_HOST=1 (npm run build:self-host -> scripts/build-self-host.cjs) consumed by the self-host Docker build",
+      "deploy/ + deploy/api/server.js": "legacy Vercel artifact (npm run build = dotnet fable ./Server && webpack) consumed by deploy.yml",
+      "research rebuilt artifacts": "autoresearch candidates patch ort-worker/runtime and re-run the webpack product against built UI (ci-built-ui.json, built-ui-paired.mjs)"
+    },
+    "gate": "src/Next/verify-fable.mjs + scripts/check-bridge-imports.mjs gate the Fable->JS bridge surface in next-site.yml",
+    "remaining_consumers_to_map_at_import": ["experiment/hf/scripts/build_frontend.py (skips vercel.json)", "docs/plans/engine-and-research-2026-10-11.md built-UI lanes"]
+  },
+  "browser_persistent_identities": [
+    {"identity": "Cache Storage", "value": "MODEL_CACHE_NAME 'checkface-model-blobs-v1'", "cite": "src/Next/Assets/model-cache.mjs:4,554"},
+    {"identity": "Web Locks", "value": "lock keys ${MODEL_CACHE_NAME}:${sha256} / :${name}", "cite": "src/Next/Assets/model-cache.mjs:211,506"},
+    {"identity": "OPFS directory", "value": "SHARD_DIRECTORY 'checkface-model-shards-v1'; shard magic CFSHARD1, 48 B trailer", "cite": "src/Next/Assets/shard-store.mjs:15-17,91"},
+    {"identity": "IndexedDB", "value": "db 'checkface-originals-v1' v1, store 'originals'; alias records kind 'canonical-original-alias-v1'", "cite": "src/Next/browser/originals.mjs:9,19-20"},
+    {"identity": "IDB/session records", "value": "kinds 'last-generated-result-v1' (last-result.mjs:2), session 'last-generated-session-v2' (last-result.test.mjs:22)", "cite": "src/Next/last-result.mjs"},
+    {"identity": "sessionStorage", "value": "'checkface-runtime-interrupted-v1', 'checkface-runtime-active-v1'", "cite": "src/Next/browser/runtime.mjs:13,16"},
+    {"identity": "localStorage keys", "value": "'facemorph-encoder-qualified-v1' (runtime.mjs:143), 'facemorph-route-speed-v2' scope 'warm-synthesis-v1' (runtime.mjs:152-154), 'facemorph-first-result-v1', 'facemorph-visit-v1' (analytics.mjs), 'facemorph-debug-consent-v1', 'facemorph-debug-device-v1', 'checkface-diagnostics-pending-v1' (reporting.mjs:12), 'facemorph-usage-stats' (usage-stats.mjs:11)", "cite": "as listed"},
+    {"identity": "Recovery envelope schema-1 PNG", "value": "PNG tEXt chunk key 'FaceMorph', record {schema:1, kind:'facemorph-image-v1'}", "cite": "src/Next/recovery-metadata.mjs:5,12,25"},
+    {"identity": "Recovery envelope schema-2 PNG/WebP", "value": "PNG key 'FaceMorph' / WebP 'FMRP', record {schema:2, kind:'facemorph-image-v2', latent.encoding 'float32-le-base64'}; legacy schema-1 reads back with legacy:true", "cite": "src/Next/image-envelope.mjs:4,72-74,96-97"},
+    {"identity": "MP4 project metadata", "value": "uuid box, PROJECT_KEY encode('FaceMorphProject'), <=16 MiB", "cite": "src/Next/recovery-metadata.mjs:32-35,48"},
+    {"identity": "Runtime manifest digest", "value": "manifestHash = sha256 of exact manifest response bytes; generation identity digest(JSON.stringify(generationIdentity(manifest,kind)))", "cite": "src/Next/browser/runtime.mjs:28,238,249,359"},
+    {"identity": "Canary qualification key", "value": "'canary-qualification:'+digestJson(identity); digestJson = sha256 of newline-joined asset sha256s (transport-URL-independent)", "cite": "src/Next/browser/canary-qualification.mjs:5-20,49"},
+    {"identity": "Runtime manifest shape", "value": "schemaVersion 1, bundleVersion, >=2 canaries required", "cite": "src/Next/browser/runtime.mjs:29"},
+    {"identity": "Catalogue entry", "value": "keys {id,name,value,full,latent}", "cite": "hosting/next-static/catalogue.json names[0]"},
+    {"identity": "GA4", "value": "MEASUREMENT_ID 'G-F5F6JBLJ54', host next.facemorph.me, linker ['facemorph.me','next.facemorph.me']", "cite": "src/Next/analytics.mjs:19-21"},
+    {"identity": "Diagnostics consent", "value": "header x-facemorph-diagnostics-consent: session-v1", "cite": "hosting/next-cloudflare/worker.mjs:34"}
+  ]
+}

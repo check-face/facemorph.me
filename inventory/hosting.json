@@ -1,0 +1,229 @@
+{
+  "bead": "fm-p7v",
+  "description": "Hosting inventory: per hostname the DNS record, platform/bindings, publisher and owner account; per credential the name, scope, consumer and classification (never values); per publisher the workflow/job, target, trigger and credentials; and the API-only / shared / app classification of every resource.",
+  "observed_at": "2026-10-24",
+  "observation_methods": {
+    "dns": "resolvectl query from eris (read-only resolution)",
+    "headers": "curl -sI of each hostname root (read-only)",
+    "repo": "classic working tree at a42829b (identical to frozen 6107f80 for every cited file except next-site.yml test list, see inventory/surfaces.json source.read_note)",
+    "needs_inspection": "Cloudflare console-only facts (custom-domain attachment details, zone settings, Vercel project settings, GitHub Pages repo mapping for checkface.facemorph.me) are marked needs-inspection, not asserted"
+  },
+  "hostnames": [
+    {
+      "hostname": "facemorph.me",
+      "dns": "A 76.76.21.21 (Vercel anycast); no www record observed",
+      "platform": "Vercel project (legacy production, classic master via deploy.yml)",
+      "bindings": [],
+      "publisher": ".github/workflows/deploy.yml (classic): vercel --prod on push to master; preview on PRs",
+      "credentials": ["VERCEL_ORG_ID", "VERCEL_PROJECT_ID", "VERCEL_TOKEN"],
+      "origin": "Vercel serverless/static from classic master build (deploy/ + deploy/api/server.js)",
+      "owner_account": "Vercel account behind VERCEL_ORG_ID (needs-inspection for project id/slugs)",
+      "classification": "app-legacy",
+      "notes": "Observed 200, server Vercel, x-vercel-id syd1::... 2026-10-24. Retired at production promotion (operator gate.cutover), not at API retirement."
+    },
+    {
+      "hostname": "api.facemorph.me",
+      "dns": "A 172.67.164.73 (Cloudflare proxied)",
+      "platform": "Cloudflare proxy -> Caddy origin on triton (GTX 1080) running the TF StyleGAN2 + custom CUDA ops API",
+      "bindings": [],
+      "publisher": "Operator-managed processes on triton; no repo workflow publishes it (docs/local-device-lab.md:1,14, src/Config.fs:54)",
+      "credentials": ["Cloudflare zone facemorph.me credentials used by configure-tunnel.py/attach-domain.py (operator env; names not in repo)"],
+      "origin": "triton host processes (no systemd unit in repo; needs-inspection)",
+      "owner_account": "Cloudflare account 8f550a622a484c03d9267efd45573583 (zone facemorph.me, zone id 893772fe... in configure-tunnel.py)",
+      "classification": "api-only",
+      "notes": "Observed 200, server cloudflare, via 1.0 Caddy 2026-10-24. Retired at API retirement (fm-9dz writes the receipt)."
+    },
+    {
+      "hostname": "checkface.facemorph.me",
+      "dns": "AAAA 2606:50c0:8003::153 (GitHub Pages range; server: GitHub.com, x-github-request-id observed)",
+      "platform": "GitHub Pages",
+      "bindings": [],
+      "publisher": "needs-inspection: no publish workflow for it found in classic or monorepo; Pages mapping (which repo/branch) unknown from repos",
+      "credentials": [],
+      "origin": "GitHub Pages (needs-inspection: what is served today)",
+      "owner_account": "GitHub org check-face",
+      "classification": "api-only",
+      "notes": "Grouped with the API hostnames by the bead (api.facemorph.me and checkface.facemorph.me DNS/proxies); retired at API retirement. Content unidentified: needs-inspection."
+    },
+    {
+      "hostname": "next.facemorph.me",
+      "dns": "A 104.21.82.223, AAAA 2606:4700:...::/ Cloudflare proxied",
+      "platform": "Cloudflare Worker facemorph-next with Workers Assets (hosting/next-static/wrangler.jsonc: assets ./public, binding ASSETS, run_worker_first /diagnostics/*; R2 DIAGNOSTICS_R2 -> facemorph-diagnostics; KV DIAGNOSTICS 3a71e4ec58354345be24a1e02a3edb82; var FREE_PLAN_CONFIRMED=true; custom domain attached via API, wrangler.jsonc comment)",
+      "bindings": ["ASSETS (Workers Assets)", "DIAGNOSTICS_R2 (R2 facemorph-diagnostics)", "DIAGNOSTICS (KV 3a71e4ec58354345be24a1e02a3edb82)"],
+      "publisher": ".github/workflows/next-site.yml (classic): build -> qualify (next-e2e workflow_call) -> compiled-ui -> wrangler@4.149.0 deploy --config hosting/next-static/wrangler.jsonc --assets public; on push to candidate/next-delivery-20260916; concurrency group next-deploy",
+      "credentials": ["CLOUDFLARE_API_TOKEN", "CLOUDFLARE_ACCOUNT_ID"],
+      "origin": "Deployed static assets (public/) + worker.mjs",
+      "owner_account": "Cloudflare account 8f550a622a484c03d9267efd45573583",
+      "classification": "app",
+      "notes": "Observed 200 cf-cache-status HIT 2026-10-24. This is the surface the new monorepo promotes into (handover then production)."
+    },
+    {
+      "hostname": "models.facemorph.me",
+      "dns": "AAAA 2606:4700:3030::... (Cloudflare proxied)",
+      "platform": "Cloudflare Worker facemorph-models over R2 bucket facemorph-runtime-mirror (hosting/next-mirror/wrangler.jsonc; service binding SITE -> facemorph-next; origin hard-coded https://next.facemorph.me/ in worker.mjs)",
+      "bindings": ["MIRROR (R2 facemorph-runtime-mirror)", "SITE (service -> facemorph-next)"],
+      "publisher": "next-site.yml 'Deploy the runtime mirror' (:210-214) + 'Warm the runtime mirror' (:215-218, HEAD-warms runtime/{assets,chunks,manifests,photo,encoder-stream}/)",
+      "credentials": ["CLOUDFLARE_API_TOKEN", "CLOUDFLARE_ACCOUNT_ID"],
+      "origin": "R2 mirror; copies immutable prefixes from next.facemorph.me on first request (content-addressed: a path no longer served is fillable only if already held)",
+      "owner_account": "Cloudflare account 8f550a622a484c03d9267efd45573583",
+      "classification": "shared",
+      "notes": "Observed 404 on / 2026-10-24 (by design). Kept at API retirement together with its bucket, binding and deploy credentials."
+    },
+    {
+      "hostname": "names.facemorph.me",
+      "dns": "CNAME cname.vercel-dns.com, A 66.33.60.66 (Vercel, not proxied)",
+      "platform": "Vercel project (facemorph-names repo, id 348379171)",
+      "bindings": [],
+      "publisher": "needs-inspection: no workflow in facemorph-names or classic publishes it (console-connected Vercel project presumed)",
+      "credentials": [],
+      "origin": "Vercel build of facemorph-names (Svelte 3 + Rollup)",
+      "owner_account": "Vercel account (needs-inspection for project id)",
+      "classification": "shared",
+      "notes": "Observed 200 server Vercel 2026-10-24. Independent of the legacy API; fm-5u9 owns the names-host plan."
+    },
+    {
+      "hostname": "metrics.facemorph.me",
+      "dns": "AAAA 2606:4700:3035::... (Cloudflare proxied)",
+      "platform": "Cloudflare proxy -> Caddy -> Grafana (302 /login observed)",
+      "bindings": [],
+      "publisher": "Operator-managed on triton; dashboards/provisioning are NOT in classic (only the monorepo ops/grafana/ dashboard JSON + prometheus-job.yml)",
+      "credentials": ["Grafana login (needs-inspection)", "Prometheus SCRAPE_TOKEN (bearer for /stats/metrics, set by stats-worker.yml)"],
+      "origin": "triton: Grafana + Prometheus scraping the old API counters (5-year retention claimed by the plan; no retention config in any repo: needs-inspection)",
+      "owner_account": "Cloudflare account 8f550a622a484c03d9267efd45573583",
+      "classification": "shared",
+      "notes": "Holds the old API counters through retirement; the changeover dashboard reads both eras."
+    },
+    {
+      "hostname": "facemorph-name-catalogue.cdilga.workers.dev",
+      "dns": "workers.dev subdomain (Cloudflare)",
+      "platform": "Worker facemorph-name-catalogue, assets-only (hosting/gallery/names-wrangler.jsonc, names-public/)",
+      "bindings": [],
+      "publisher": ".github/workflows/name-catalogue.yml (classic): materialize.py then wrangler deploy + byte-verify, workflow_dispatch or push to gallery paths",
+      "credentials": ["CLOUDFLARE_API_TOKEN", "CLOUDFLARE_ACCOUNT_ID"],
+      "origin": "Deployed assets",
+      "owner_account": "Cloudflare account 8f550a622a484c03d9267efd45573583 (cdilga workers.dev)",
+      "classification": "shared",
+      "notes": "Serves catalogue.json + previews/latents consumed by src/Next/public-previews.mjs:47."
+    },
+    {
+      "hostname": "facemorph-seed-gallery.cdilga.workers.dev",
+      "dns": "workers.dev subdomain (Cloudflare)",
+      "platform": "Worker facemorph-seed-gallery, assets-only (hosting/gallery/wrangler.jsonc, public/)",
+      "bindings": [],
+      "publisher": "Not attested in any repo workflow (deployed ad hoc; needs-inspection)",
+      "credentials": [],
+      "origin": "Deployed assets",
+      "owner_account": "Cloudflare account 8f550a622a484c03d9267efd45573583",
+      "classification": "shared",
+      "notes": "Seed images for the catalogue (desktop/catalogue-source.json:5 imageOrigins)."
+    },
+    {
+      "hostname": "labs.facemorph.me",
+      "dns": "not resolved from this network during the 2026-10-24 pass (tunnel ingress per configure-tunnel.py maps labs.facemorph.me:8147; may be offline)",
+      "platform": "Cloudflare tunnel facemorph-preview -> truenas preview stack (hosting/next/compose.yml tunnel service, token TUNNEL_TOKEN in truenas ~/facemorph-preview/.env)",
+      "bindings": [],
+      "publisher": "Operator (hosting/next/configure-tunnel.py; --publish-dns creates proxied CNAMEs <tunnel-id>.cfargotunnel.com)",
+      "credentials": ["TUNNEL_TOKEN (truenas .env, not in Git)"],
+      "origin": "truenas local preview origin (ports 8148/8147)",
+      "owner_account": "Cloudflare account 8f550a622a484c03d9267efd45573583, zone 893772fe...",
+      "classification": "app-legacy",
+      "notes": "hosting/next-static/README.md:8: the temporary tunnel must not be referenced by the final site. Historical preview stack."
+    },
+    {
+      "hostname": "facemorph-preview tunnel (hosts next/labs.facemorph.me -> truenas)",
+      "dns": "see labs.facemorph.me",
+      "platform": "cloudflared tunnel (pinned image cloudflare/cloudflared@sha256:404528... in hosting/next/compose.yml:19)",
+      "bindings": [],
+      "publisher": "Operator only",
+      "credentials": ["TUNNEL_TOKEN"],
+      "origin": "127.0.0.1:8148->8080 (server.py preview) and 8147",
+      "owner_account": "Cloudflare zone 893772fe...",
+      "classification": "app-legacy",
+      "notes": "Historical preview/tunnel pieces of hosting/next/ (server.py, compose.yml, configure-tunnel.py): historical or classic-only per the bead."
+    },
+    {
+      "hostname": "beads.dilger.dev",
+      "dns": "Cloudflare (behind Cloudflare Access)",
+      "platform": "Cloudflare Pages project beads-dilger-dev",
+      "bindings": [],
+      "publisher": "monorepo .github/workflows/beads-site.yml: wrangler@4 pages deploy on every push to main touching .beads/",
+      "credentials": ["BEADS_PAGES_TOKEN", "CLOUDFLARE_ACCOUNT_ID (vars)"],
+      "origin": "bv --export-pages static output",
+      "owner_account": "Cloudflare account 8f550a622a484c03d9267efd45573583 (dilger.dev zone)",
+      "classification": "shared",
+      "notes": "Bead tracker publication; unrelated to the app surfaces but a standing publisher of this repo."
+    },
+    {
+      "hostname": "github.com/check-face/facemorph.me (releases)",
+      "dns": "n/a",
+      "platform": "GitHub Releases (updater feed target)",
+      "bindings": [],
+      "publisher": "None: zero releases exist on check-face/facemorph.me and check-face/facemorph.me-classic (API 2026-10-24); desktop/scripts/prepare-release.mjs writes endpoint https://github.com/check-face/facemorph.me/releases/latest/download/latest.json which 404s",
+      "credentials": ["CHECKFACE_UPDATER_PUBLIC_KEY (packaging env, never committed)"],
+      "origin": "n/a",
+      "owner_account": "GitHub org check-face",
+      "classification": "app-legacy",
+      "notes": "Native retirement (inventory/native-retirement.json): no release feed exists, so no installed client can be redirected; release text marking and any future evidence releases are the wind-down publisher stage's job."
+    }
+  ],
+  "publishers": [
+    {"workflow": "classic .github/workflows/deploy.yml", "job_step": "deploy (vercel --prod)", "target": "Vercel project (legacy facemorph.me)", "trigger": "push to master (preview: PRs)", "credentials": ["VERCEL_ORG_ID", "VERCEL_PROJECT_ID", "VERCEL_TOKEN"]},
+    {"workflow": "classic .github/workflows/next-site.yml", "job_step": "deploy: Deploy", "target": "Worker facemorph-next -> next.facemorph.me", "trigger": "push to candidate/next-delivery-20260916 (paths) + dispatch; needs artifact+qualify+compiled-ui", "credentials": ["CLOUDFLARE_API_TOKEN", "CLOUDFLARE_ACCOUNT_ID"]},
+    {"workflow": "classic .github/workflows/next-site.yml", "job_step": "deploy: Deploy the runtime mirror + Warm", "target": "Worker facemorph-models -> models.facemorph.me (R2 facemorph-runtime-mirror)", "trigger": "same deploy job, after live checks", "credentials": ["CLOUDFLARE_API_TOKEN", "CLOUDFLARE_ACCOUNT_ID"]},
+    {"workflow": "classic .github/workflows/next-site.yml", "job_step": "artifact uploads", "target": "GitHub Actions artifacts next-site-<sha>, next-artifact-ui-evidence (14d)", "trigger": "build job", "credentials": []},
+    {"workflow": "classic .github/workflows/name-catalogue.yml", "job_step": "publish: wrangler deploy --config hosting/gallery/names-wrangler.jsonc", "target": "Worker facemorph-name-catalogue (workers.dev)", "trigger": "dispatch + push to gallery/workflow paths", "credentials": ["CLOUDFLARE_API_TOKEN", "CLOUDFLARE_ACCOUNT_ID"]},
+    {"workflow": "classic .github/workflows/self-host-build.yml", "job_step": "build + test matrix, upload tested image tar.gz", "target": "GitHub artifact tested-self-host-api-<arch> (never publishes)", "trigger": "push/PR self-host/** + dispatch", "credentials": []},
+    {"workflow": "classic .github/workflows/desktop-product.yml", "job_step": "native-artifact matrix (6 targets)", "target": "GitHub artifacts desktop-product-package-<target> etc. (14d, no releases)", "trigger": "workflow_dispatch", "credentials": []},
+    {"workflow": "classic .github/workflows/desktop-candidates.yml", "job_step": "installed-mac", "target": "GitHub artifacts desktop-development-macos-arm64, desktop-skeleton-evidence (no releases)", "trigger": "workflow_dispatch", "credentials": []},
+    {"workflow": "classic .github/workflows/desktop-native-inference.yml", "job_step": "native-cpu matrix", "target": "GitHub artifact native-cpu-evidence-<os> (no releases)", "trigger": "workflow_dispatch", "credentials": []},
+    {"workflow": "classic .github/workflows/mobile-browser.yml", "job_step": "android/ios component jobs", "target": "GitHub artifacts (no publish)", "trigger": "dispatch + push/PR test paths", "credentials": []},
+    {"workflow": "classic .github/workflows/next-e2e.yml", "job_step": "qualification only (workflow_call)", "target": "GitHub artifact next-e2e-<run_id>", "trigger": "workflow_call from next-site.yml:71 + dispatch", "credentials": ["GITHUB_TOKEN (provenance check)"]},
+    {"workflow": "classic .github/workflows/next-matrix.yml", "job_step": "browser matrix vs deployed origin", "target": "GitHub artifacts next-matrix-*", "trigger": "workflow_dispatch", "credentials": []},
+    {"workflow": "classic .github/workflows/next-gpu-lane.yml", "job_step": "GPU benchmark vs https://next.facemorph.me/", "target": "GitHub artifact next-gpu-benchmark-*", "trigger": "push paths + dispatch + cron 0 16 * * *", "credentials": []},
+    {"workflow": "classic .github/workflows/research-built-ui-media-v1.yml + research-rgba-screen-v1.yml", "job_step": "research runs", "target": "GitHub artifacts (auto triggers retired after single runs)", "trigger": "workflow_dispatch", "credentials": ["GITHUB_TOKEN"]},
+    {"workflow": "monorepo .github/workflows/stats-worker.yml", "job_step": "test-and-deploy: wrangler deploy + secret put SCRAPE_TOKEN + 401/bearer smoke", "target": "Worker facemorph-stats, routes next.facemorph.me/stats/* and facemorph.me/stats/*", "trigger": "push to main (services/stats/**) + dispatch", "credentials": ["CLOUDFLARE_API_TOKEN", "STATS_SCRAPE_TOKEN"]},
+    {"workflow": "monorepo .github/workflows/beads-site.yml", "job_step": "wrangler@4 pages deploy --project-name beads-dilger-dev", "target": "Cloudflare Pages beads-dilger-dev (beads.dilger.dev)", "trigger": "push to main touching .beads/", "credentials": ["BEADS_PAGES_TOKEN", "CLOUDFLARE_ACCOUNT_ID (vars)"]},
+    {"workflow": "monorepo .github/workflows/device-lab.yml", "job_step": "device lab runs (lab.py)", "target": "no publish; evidence artifacts", "trigger": "workflow_dispatch/beads", "credentials": []}
+  ],
+  "credentials": [
+    {"name": "CLOUDFLARE_API_TOKEN", "scope": "Cloudflare account 8f550a622a484c03d9267efd45573583: Workers deploys (facemorph-next, facemorph-models, facemorph-name-catalogue), Pages (beads-dilger-dev), stats Worker", "consumer": "classic next-site.yml + name-catalogue.yml; monorepo stats-worker.yml, beads-site.yml", "classification": "shared", "note": "kept at API retirement (deploys the kept origins)"},
+    {"name": "CLOUDFLARE_ACCOUNT_ID", "scope": "account id as repo variable/secret", "consumer": "same workflows as CLOUDFLARE_API_TOKEN", "classification": "shared", "note": "identifier, not secret"},
+    {"name": "VERCEL_ORG_ID / VERCEL_PROJECT_ID / VERCEL_TOKEN", "scope": "Vercel legacy production project", "consumer": "classic deploy.yml", "classification": "api-only", "note": "retired with the legacy Vercel project at promotion"},
+    {"name": "BEADS_PAGES_TOKEN", "scope": "Cloudflare Pages beads-dilger-dev", "consumer": "monorepo beads-site.yml", "classification": "shared"},
+    {"name": "STATS_SCRAPE_TOKEN", "scope": "Prometheus -> /stats/metrics bearer", "consumer": "monorepo stats-worker.yml + Prometheus on triton", "classification": "shared"},
+    {"name": "SCRAPE_TOKEN", "scope": "Worker secret of facemorph-stats (set by stats-worker.yml)", "consumer": "stats Worker", "classification": "shared"},
+    {"name": "TUNNEL_TOKEN", "scope": "cloudflared tunnel facemorph-preview", "consumer": "truenas ~/facemorph-preview/.env (compose.yml tunnel service)", "classification": "app-legacy", "note": "historical preview stack; not in Git"},
+    {"name": "CHECKFACE_UPDATER_PUBLIC_KEY", "scope": "Tauri updater pubkey injected at packaging", "consumer": "desktop/scripts/prepare-release.mjs (rejects empty/PRIVATE/non-base64)", "classification": "api-only", "note": "native retirement: packaging retires; key material never committed"},
+    {"name": "GITHUB_TOKEN", "scope": "built-in workflow token (actions:read, contents:read)", "consumer": "artifact downloads (desktop-candidates.yml), provenance check (next-e2e.yml)", "classification": "app"},
+    {"name": "MEASUREMENT_ID G-F5F6JBLJ54", "scope": "public GA4 measurement id", "consumer": "src/Next/analytics.mjs:19-21", "classification": "app", "note": "public identifier, listed for completeness, not a secret"},
+    {"name": "facemorph-preview Cloudflare API credentials (operator env)", "scope": "zone 893772fe... DNS/tunnel administration", "consumer": "hosting/next/configure-tunnel.py", "classification": "app-legacy", "note": "names not in repo; needs-inspection"}
+  ],
+  "resource_classification": {
+    "api-only (removed at API retirement)": [
+      "api.facemorph.me proxy + Caddy + Triton/encoder/API processes on triton",
+      "checkface.facemorph.me (GitHub Pages; content needs-inspection)",
+      "legacy Vercel project credentials (VERCEL_*)",
+      "Tauri updater packaging (CHECKFACE_UPDATER_PUBLIC_KEY, prepare-release.mjs endpoint)",
+      "hosting/next/ server+tunnel pieces (historical preview stack)"
+    ],
+    "shared (kept at API retirement)": [
+      "models.facemorph.me Worker + R2 facemorph-runtime-mirror + SITE service binding + its deploy credentials",
+      "model chunks / runtime origins (facemorph-next runtime/* static assets and the mirror)",
+      "names catalogue + seed gallery Workers (facemorph-name-catalogue, facemorph-seed-gallery)",
+      "names site names.facemorph.me (Vercel)",
+      "diagnostics collector (facemorph-next-diagnostics route + R2 facemorph-diagnostics + KV)",
+      "statistics Worker facemorph-stats + SCRAPE_TOKEN + Prometheus scrape",
+      "Grafana metrics.facemorph.me and the triton Prometheus (old API counters, 5-year retention)",
+      "the triton machine as a development worker",
+      "beads tracker Pages (beads-dilger-dev)"
+    ],
+    "app (lives and dies with the app surfaces)": [
+      "next.facemorph.me Worker facemorph-next + its assets",
+      "legacy production facemorph.me (Vercel) — retired at production promotion, not API retirement",
+      "labs.facemorph.me / facemorph-preview tunnel (historical preview)",
+      "desktop/native packaging workflows (retiring with native packages)",
+      "GA4 measurement (candidate analytics)"
+    ]
+  },
+  "secret_scan": "No credential values are recorded in this inventory or in the committed repos it read: workflows reference secret NAMES only; wrangler configs carry ids, not tokens; classic contains no .dev.vars/.env values for these hosts (checked the files cited above)."
+}

@@ -1,0 +1,163 @@
+{
+  "description": "Dated visual references of the live release surfaces (bead fm-p7v). PNGs are stored outside Git; the durable copy is release assets of this repository (same store as the control artifact).",
+  "browser": "system Chromium via Playwright (/usr/bin/chromium)",
+  "captures": [
+    {
+      "name": "legacy-production",
+      "url": "https://facemorph.me/",
+      "viewport": {
+        "width": "390",
+        "height": 844
+      },
+      "captured_at": "2026-10-24T08:35:43+00:00",
+      "http_status": 200,
+      "png": "inventory/visual-references/legacy-production-390.png",
+      "png_sha256": "9a4c39ce7faa2bb880bf166936d643c48561859d84247c7aca6715c8919dd05f",
+      "png_bytes": 489078,
+      "served": {
+        "kind": "html-digest",
+        "value": "72e52dc343595aa1d6e27ef70beb3a1445f9fe496fab3995f57c18ae50737769"
+      },
+      "note": null,
+      "asset_url": "https://github.com/check-face/facemorph.me/releases/download/visual-references-2026-10-24/legacy-production-390.png"
+    },
+    {
+      "name": "legacy-production",
+      "url": "https://facemorph.me/",
+      "viewport": {
+        "width": "1280",
+        "height": 800
+      },
+      "captured_at": "2026-10-24T08:35:47+00:00",
+      "http_status": 200,
+      "png": "inventory/visual-references/legacy-production-1280.png",
+      "png_sha256": "a7d12c94311e6b636c4b85bf8b4dc88b18a78e1cb2624229372d01c56cccc218",
+      "png_bytes": 550717,
+      "served": {
+        "kind": "html-digest",
+        "value": "72e52dc343595aa1d6e27ef70beb3a1445f9fe496fab3995f57c18ae50737769"
+      },
+      "note": null,
+      "asset_url": "https://github.com/check-face/facemorph.me/releases/download/visual-references-2026-10-24/legacy-production-1280.png"
+    },
+    {
+      "name": "legacy-production-picker",
+      "url": "https://facemorph.me/",
+      "viewport": {
+        "width": "390",
+        "height": 844
+      },
+      "captured_at": "2026-10-24T08:35:52+00:00",
+      "http_status": 200,
+      "png": "inventory/visual-references/legacy-production-picker-390.png",
+      "png_sha256": "69c575b50102816cccee19ea72952630c723e7921581b7e17ba5fdeedf6d5408",
+      "png_bytes": 655575,
+      "served": {
+        "kind": "html-digest",
+        "value": "72e52dc343595aa1d6e27ef70beb3a1445f9fe496fab3995f57c18ae50737769"
+      },
+      "note": "picker open",
+      "asset_url": "https://github.com/check-face/facemorph.me/releases/download/visual-references-2026-10-24/legacy-production-picker-390.png"
+    },
+    {
+      "name": "legacy-production-picker",
+      "url": "https://facemorph.me/",
+      "viewport": {
+        "width": "1280",
+        "height": 800
+      },
+      "captured_at": "2026-10-24T08:35:57+00:00",
+      "http_status": 200,
+      "png": "inventory/visual-references/legacy-production-picker-1280.png",
+      "png_sha256": "bf2b9a3010f137c21f91a9cada050b4cc3b7fe54eddb867e207d901c5fb252f9",
+      "png_bytes": 1460564,
+      "served": {
+        "kind": "html-digest",
+        "value": "72e52dc343595aa1d6e27ef70beb3a1445f9fe496fab3995f57c18ae50737769"
+      },
+      "note": "picker open",
+      "asset_url": "https://github.com/check-face/facemorph.me/releases/download/visual-references-2026-10-24/legacy-production-picker-1280.png"
+    },
+    {
+      "name": "names-site",
+      "url": "https://names.facemorph.me/",
+      "viewport": {
+        "width": "390",
+        "height": 844
+      },
+      "captured_at": "2026-10-24T08:35:59+00:00",
+      "http_status": 200,
+      "png": "inventory/visual-references/names-site-390.png",
+      "png_sha256": "0147ae141b24815065f2e8bc3422914816b786301c8c74d6f7d7e56df528ad04",
+      "png_bytes": 481827,
+      "served": {
+        "kind": "html-digest",
+        "value": "de7a9518b946d4512e55783bd2413cae51516f25862508f08fb8aee6e8fb1c15"
+      },
+      "note": null,
+      "asset_url": "https://github.com/check-face/facemorph.me/releases/download/visual-references-2026-10-24/names-site-390.png"
+    },
+    {
+      "name": "names-site",
+      "url": "https://names.facemorph.me/",
+      "viewport": {
+        "width": "1280",
+        "height": 800
+      },
+      "captured_at": "2026-10-24T08:36:02+00:00",
+      "http_status": 200,
+      "png": "inventory/visual-references/names-site-1280.png",
+      "png_sha256": "d098d6fa89605ecd7c818b8b980619e8cb6c6604a8d7a52a517f463340fcd0f0",
+      "png_bytes": 1433677,
+      "served": {
+        "kind": "html-digest",
+        "value": "de7a9518b946d4512e55783bd2413cae51516f25862508f08fb8aee6e8fb1c15"
+      },
+      "note": null,
+      "asset_url": "https://github.com/check-face/facemorph.me/releases/download/visual-references-2026-10-24/names-site-1280.png"
+    },
+    {
+      "name": "next-site",
+      "url": "https://next.facemorph.me/",
+      "viewport": {
+        "width": "390",
+        "height": 844
+      },
+      "captured_at": "2026-10-24T08:36:05+00:00",
+      "http_status": 200,
+      "png": "inventory/visual-references/next-site-390.png",
+      "png_sha256": "a05ca121e5a4749d4c5e6af0771ab1db559b1cb6dddcc666bfa8816dd06daadc",
+      "png_bytes": 302316,
+      "served": {
+        "kind": "html-digest",
+        "value": "81da899bb904d8829cc4a04e487de67d857ac5341822d50ae27fd3c281f1c4dd"
+      },
+      "note": null,
+      "asset_url": "https://github.com/check-face/facemorph.me/releases/download/visual-references-2026-10-24/next-site-390.png"
+    },
+    {
+      "name": "next-site",
+      "url": "https://next.facemorph.me/",
+      "viewport": {
+        "width": "1280",
+        "height": 800
+      },
+      "captured_at": "2026-10-24T08:36:08+00:00",
+      "http_status": 200,
+      "png": "inventory/visual-references/next-site-1280.png",
+      "png_sha256": "7aecedc1c6a89245d411975163cf1d0bb1fe6df93592c13885425bf9f4f95621",
+      "png_bytes": 465982,
+      "served": {
+        "kind": "html-digest",
+        "value": "81da899bb904d8829cc4a04e487de67d857ac5341822d50ae27fd3c281f1c4dd"
+      },
+      "note": null,
+      "asset_url": "https://github.com/check-face/facemorph.me/releases/download/visual-references-2026-10-24/next-site-1280.png"
+    }
+  ],
+  "store": {
+    "kind": "github-release-assets",
+    "release": "https://github.com/check-face/facemorph.me/releases/tag/visual-references-2026-10-24",
+    "note": "PNGs are stored outside Git as release assets of this repository (same store as the control artifact, PLAN.md Control custody). Local working copies live in inventory/visual-references/ (gitignored)."
+  }
+}

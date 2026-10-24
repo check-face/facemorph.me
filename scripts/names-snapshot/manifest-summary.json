@@ -1,0 +1,56 @@
+{
+  "bead": "fm-old",
+  "plannedAt": "2026-10-24T08:48:04.010Z",
+  "manifest": {
+    "file": "manifest.tsv",
+    "sha256": "040d8793f6185c4ce03b2d35d083bac158511f9785cbb26c6277b4f3a7a38b3f",
+    "columns": [
+      "source_url",
+      "name",
+      "bytes",
+      "sha256"
+    ]
+  },
+  "inventories": [
+    {
+      "worker": "facemorph-seed-gallery",
+      "url": "https://facemorph-seed-gallery.cdilga.workers.dev/manifest.json",
+      "sha256": "fd8702fb72ce1dc5307e5bbe2f828422ff77a66dfa36ad2c5b5147d20d031163"
+    },
+    {
+      "worker": "facemorph-name-catalogue",
+      "url": "https://facemorph-name-catalogue.cdilga.workers.dev/ledger.json",
+      "sha256": "d943c013b83958118e31b0ca2b5fcdc13c4f617925456c514526809a61c7595c"
+    }
+  ],
+  "objects": 16168,
+  "bytes": 782431495,
+  "sources": [
+    {
+      "origin": "https://facemorph-seed-gallery.cdilga.workers.dev",
+      "objects": 8967,
+      "bytes": 366885161
+    },
+    {
+      "origin": "https://facemorph-name-catalogue.cdilga.workers.dev",
+      "objects": 7201,
+      "bytes": 415546334
+    }
+  ],
+  "coverage": {
+    "names": 5055,
+    "preview200": 5055,
+    "full1024": 5055,
+    "latent": 5055,
+    "seeds": 1000
+  },
+  "defects": [
+    {
+      "url": "https://facemorph-seed-gallery.cdilga.workers.dev/outputImages/hash-b1/65/hash-b165ce37fcc70613c87f94322fa955583c7b4723f4a8f4366572b7031e38dc2a_1024.webp",
+      "name": "arvie",
+      "defect": "empty object (published with 0 bytes)"
+    }
+  ],
+  "store": null,
+  "restoreCheck": null
+}

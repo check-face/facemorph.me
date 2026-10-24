@@ -1,0 +1,9 @@
+{
+  "name": "facemorph-names-snapshot",
+  "private": true,
+  "type": "module",
+  "description": "Snapshot of the public name previews and latents from the two static Workers, with a restore path that never calls the hosted API (bead fm-old). Not a workspace package.",
+  "engines": { "node": ">=22" },
+  "scripts": { "test": "node --test" },
+  "dependencies": { "@aws-sdk/client-s3": "3.1152.0" }
+}
