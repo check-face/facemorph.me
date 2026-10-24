@@ -31,6 +31,11 @@ const VALUES = [
   'E4E_MAX_WASM_BYTES',
   'parseModelManifest',
   'assetIdentity',
+  'ACQUISITION_CHUNK_MAX_BYTES',
+  'ACQUISITION_BUDGETS',
+  'acquisitionMemoryClass',
+  'acquisitionBudget',
+  'LIVE_RESIDENCY_LIMIT',
 ] as const satisfies readonly (keyof typeof api)[];
 
 /** Every citable manager type export; tsc fails on a missing or renamed one. */
@@ -393,4 +398,37 @@ test('manifest fuzz (seed 20261024, 3000 cases): every mutation is accepted or a
     'the fuzz reaches field validation',
   );
   console.log(`manifest fuzz: ${cases} cases`, counts);
+});
+
+test('acquisition budgets: aggregate figures per memory class; transfer is the grant, never a constant', () => {
+  assert.equal(api.acquisitionMemoryClass(undefined), 'constrained-or-unknown');
+  assert.equal(api.acquisitionMemoryClass(7.9), 'constrained-or-unknown');
+  assert.equal(api.acquisitionMemoryClass(8), 'ample');
+  const phone = api.acquisitionBudget('constrained-or-unknown', 5);
+  assert.deepEqual(phone, {
+    transferBytes: 5,
+    readAheadBytes: 33554432,
+    hashBytes: 16777280,
+    writeBufferBytes: 16777216,
+  });
+  assert.equal(api.acquisitionBudget('ample', 0).readAheadBytes, 67108864);
+  for (const bad of [-1, 1.5, Number.NaN, Number.MAX_SAFE_INTEGER + 1])
+    assert.throws(() => api.acquisitionBudget('ample', bad), RangeError);
+  // Every chunk of the candidate's manifest fits one read-ahead slot and one write buffer.
+  const m = fixture('candidate-runtime-manifest.json');
+  const chunks = [m.synthesis, m.encoder].flatMap((a: { chunks: { size: number }[] }) => a.chunks);
+  assert.ok(chunks.length > 0);
+  for (const c of chunks) assert.ok(c.size <= api.ACQUISITION_CHUNK_MAX_BYTES, String(c.size));
+});
+
+test("live residency covers the candidate's generator bundle and its streamed encoder heap", () => {
+  const m = fixture('candidate-runtime-manifest.json');
+  const generator =
+    m.mapping.size +
+    m.synthesis.size +
+    m.average.size +
+    m.noise.reduce((n: number, a: { size: number }) => n + a.size, 0);
+  assert.ok(generator <= api.LIVE_RESIDENCY_LIMIT.maxResidentBytes, String(generator));
+  assert.equal(m.encoderStream.maxWasmBytes, api.LIVE_RESIDENCY_LIMIT.maxResidentBytes);
+  assert.equal(api.LIVE_RESIDENCY_LIMIT.maxLiveSessions, 2);
 });

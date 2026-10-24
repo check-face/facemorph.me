@@ -1,0 +1,788 @@
+{
+ "contract": "fm-2o8q ceilings v1: inclusive limits; at boundary admitted, one over refused with its action",
+ "classicCommit": "a42829bb0582b5a7a55ba6b1045a05861612b8a5",
+ "ceilings": [
+  {
+   "name": "DECODE_TRANSIENT_BYTES",
+   "scope": "decode-route:eris-chromium:preview-decode",
+   "unit": "bytes",
+   "value": 134217728,
+   "atBoundary": {
+    "requested": 134217728,
+    "ok": true,
+    "remaining": 0
+   },
+   "oneOver": {
+    "requested": 134217729,
+    "ok": false,
+    "action": "choose-smaller-photo"
+   }
+  },
+  {
+   "name": "DECODE_TRANSIENT_BYTES",
+   "scope": "decode-route:eris-chromium:preview-display",
+   "unit": "bytes",
+   "value": 178722028,
+   "atBoundary": {
+    "requested": 178722028,
+    "ok": true,
+    "remaining": 0
+   },
+   "oneOver": {
+    "requested": 178722029,
+    "ok": false,
+    "action": "choose-smaller-photo"
+   }
+  },
+  {
+   "name": "DECODE_TRANSIENT_BYTES",
+   "scope": "decode-route:eris-chromium:crop-decode",
+   "unit": "bytes",
+   "value": 74398475,
+   "atBoundary": {
+    "requested": 74398475,
+    "ok": true,
+    "remaining": 0
+   },
+   "oneOver": {
+    "requested": 74398476,
+    "ok": false,
+    "action": "choose-smaller-photo"
+   }
+  },
+  {
+   "name": "DECODE_TRANSIENT_BYTES",
+   "scope": "decode-route:eris-chromium:frame-decode-512",
+   "unit": "bytes",
+   "value": 68157440,
+   "atBoundary": {
+    "requested": 68157440,
+    "ok": true,
+    "remaining": 0
+   },
+   "oneOver": {
+    "requested": 68157441,
+    "ok": false,
+    "action": "choose-smaller-photo"
+   }
+  },
+  {
+   "name": "DECODE_TRANSIENT_BYTES",
+   "scope": "decode-route:eris-chromium:frame-decode-1024",
+   "unit": "bytes",
+   "value": 71303168,
+   "atBoundary": {
+    "requested": 71303168,
+    "ok": true,
+    "remaining": 0
+   },
+   "oneOver": {
+    "requested": 71303169,
+    "ok": false,
+    "action": "choose-smaller-photo"
+   }
+  },
+  {
+   "name": "DECODE_TRANSIENT_BYTES",
+   "scope": "decode-route:eris-firefox:preview-decode",
+   "unit": "bytes",
+   "value": 134217728,
+   "atBoundary": {
+    "requested": 134217728,
+    "ok": true,
+    "remaining": 0
+   },
+   "oneOver": {
+    "requested": 134217729,
+    "ok": false,
+    "action": "choose-smaller-photo"
+   }
+  },
+  {
+   "name": "DECODE_TRANSIENT_BYTES",
+   "scope": "decode-route:eris-firefox:preview-display",
+   "unit": "bytes",
+   "value": 180250438,
+   "atBoundary": {
+    "requested": 180250438,
+    "ok": true,
+    "remaining": 0
+   },
+   "oneOver": {
+    "requested": 180250439,
+    "ok": false,
+    "action": "choose-smaller-photo"
+   }
+  },
+  {
+   "name": "DECODE_TRANSIENT_BYTES",
+   "scope": "decode-route:eris-firefox:crop-decode",
+   "unit": "bytes",
+   "value": 74056371,
+   "atBoundary": {
+    "requested": 74056371,
+    "ok": true,
+    "remaining": 0
+   },
+   "oneOver": {
+    "requested": 74056372,
+    "ok": false,
+    "action": "choose-smaller-photo"
+   }
+  },
+  {
+   "name": "DECODE_TRANSIENT_BYTES",
+   "scope": "decode-route:eris-firefox:frame-decode-512",
+   "unit": "bytes",
+   "value": 68157440,
+   "atBoundary": {
+    "requested": 68157440,
+    "ok": true,
+    "remaining": 0
+   },
+   "oneOver": {
+    "requested": 68157441,
+    "ok": false,
+    "action": "choose-smaller-photo"
+   }
+  },
+  {
+   "name": "DECODE_TRANSIENT_BYTES",
+   "scope": "decode-route:eris-firefox:frame-decode-1024",
+   "unit": "bytes",
+   "value": 71303168,
+   "atBoundary": {
+    "requested": 71303168,
+    "ok": true,
+    "remaining": 0
+   },
+   "oneOver": {
+    "requested": 71303169,
+    "ok": false,
+    "action": "choose-smaller-photo"
+   }
+  },
+  {
+   "name": "DECODE_TRANSIENT_BYTES",
+   "scope": "decode-route:eris-webkit:preview-decode",
+   "unit": "bytes",
+   "value": 134217728,
+   "atBoundary": {
+    "requested": 134217728,
+    "ok": true,
+    "remaining": 0
+   },
+   "oneOver": {
+    "requested": 134217729,
+    "ok": false,
+    "action": "choose-smaller-photo"
+   }
+  },
+  {
+   "name": "DECODE_TRANSIENT_BYTES",
+   "scope": "decode-route:eris-webkit:preview-display",
+   "unit": "bytes",
+   "value": 149501112,
+   "atBoundary": {
+    "requested": 149501112,
+    "ok": true,
+    "remaining": 0
+   },
+   "oneOver": {
+    "requested": 149501113,
+    "ok": false,
+    "action": "choose-smaller-photo"
+   }
+  },
+  {
+   "name": "DECODE_TRANSIENT_BYTES",
+   "scope": "decode-route:eris-webkit:crop-decode",
+   "unit": "bytes",
+   "value": 74405269,
+   "atBoundary": {
+    "requested": 74405269,
+    "ok": true,
+    "remaining": 0
+   },
+   "oneOver": {
+    "requested": 74405270,
+    "ok": false,
+    "action": "choose-smaller-photo"
+   }
+  },
+  {
+   "name": "DECODE_TRANSIENT_BYTES",
+   "scope": "decode-route:eris-webkit:frame-decode-512",
+   "unit": "bytes",
+   "value": 68157440,
+   "atBoundary": {
+    "requested": 68157440,
+    "ok": true,
+    "remaining": 0
+   },
+   "oneOver": {
+    "requested": 68157441,
+    "ok": false,
+    "action": "choose-smaller-photo"
+   }
+  },
+  {
+   "name": "DECODE_TRANSIENT_BYTES",
+   "scope": "decode-route:eris-webkit:frame-decode-1024",
+   "unit": "bytes",
+   "value": 71303168,
+   "atBoundary": {
+    "requested": 71303168,
+    "ok": true,
+    "remaining": 0
+   },
+   "oneOver": {
+    "requested": 71303169,
+    "ok": false,
+    "action": "choose-smaller-photo"
+   }
+  },
+  {
+   "name": "RETAINED_SOURCE_BYTES",
+   "scope": "all-routes",
+   "unit": "bytes",
+   "value": 67108864,
+   "atBoundary": {
+    "requested": 67108864,
+    "ok": true,
+    "remaining": 0
+   },
+   "oneOver": {
+    "requested": 67108865,
+    "ok": false,
+    "action": "choose-smaller-photo"
+   }
+  },
+  {
+   "name": "CROP_BUFFER_BYTES",
+   "scope": "all-routes",
+   "unit": "bytes",
+   "value": 4194304,
+   "atBoundary": {
+    "requested": 4194304,
+    "ok": true,
+    "remaining": 0
+   },
+   "oneOver": {
+    "requested": 4194305,
+    "ok": false,
+    "action": "remove-retry-input"
+   }
+  },
+  {
+   "name": "BATCH_RETAINED_INPUT_BYTES",
+   "scope": "all-routes",
+   "unit": "bytes",
+   "value": 134217728,
+   "atBoundary": {
+    "requested": 134217728,
+    "ok": true,
+    "remaining": 0
+   },
+   "oneOver": {
+    "requested": 134217729,
+    "ok": false,
+    "action": "reduce-selection"
+   }
+  },
+  {
+   "name": "MORPH_FRAME_BUDGET",
+   "scope": "all-routes",
+   "unit": "frames",
+   "value": 4096,
+   "atBoundary": {
+    "requested": 4096,
+    "ok": true,
+    "remaining": 0
+   },
+   "oneOver": {
+    "requested": 4097,
+    "ok": false,
+    "action": "shorten-morph"
+   }
+  },
+  {
+   "name": "STORED_SESSION_BYTES",
+   "scope": "all-routes",
+   "unit": "bytes",
+   "value": 33554432,
+   "atBoundary": {
+    "requested": 33554432,
+    "ok": true,
+    "remaining": 0
+   },
+   "oneOver": {
+    "requested": 33554433,
+    "ok": false,
+    "action": "reduce-selection"
+   }
+  },
+  {
+   "name": "PROJECT_FILE_PARSE_BYTES",
+   "scope": "all-routes",
+   "unit": "bytes",
+   "value": 67108864,
+   "atBoundary": {
+    "requested": 67108864,
+    "ok": true,
+    "remaining": 0
+   },
+   "oneOver": {
+    "requested": 67108865,
+    "ok": false,
+    "action": "refuse-file"
+   }
+  },
+  {
+   "name": "SESSION_FILE_PARSE_BYTES",
+   "scope": "all-routes",
+   "unit": "bytes",
+   "value": 33554432,
+   "atBoundary": {
+    "requested": 33554432,
+    "ok": true,
+    "remaining": 0
+   },
+   "oneOver": {
+    "requested": 33554433,
+    "ok": false,
+    "action": "refuse-file"
+   }
+  },
+  {
+   "name": "IMAGE_PREPARATION_BYTES",
+   "scope": "all-routes",
+   "unit": "bytes",
+   "value": 8388608,
+   "atBoundary": {
+    "requested": 8388608,
+    "ok": true,
+    "remaining": 0
+   },
+   "oneOver": {
+    "requested": 8388609,
+    "ok": false,
+    "action": "wait"
+   }
+  },
+  {
+   "name": "FILE_ENCODE_BYTES",
+   "scope": "all-routes",
+   "unit": "bytes",
+   "value": 50331648,
+   "atBoundary": {
+    "requested": 50331648,
+    "ok": true,
+    "remaining": 0
+   },
+   "oneOver": {
+    "requested": 50331649,
+    "ok": false,
+    "action": "shorten-morph"
+   }
+  },
+  {
+   "name": "PREPARED_FILE_CACHE_MAX_BYTES",
+   "scope": "all-routes",
+   "unit": "bytes",
+   "value": 67108864,
+   "atBoundary": {
+    "requested": 67108864,
+    "ok": true,
+    "remaining": 0
+   },
+   "oneOver": {
+    "requested": 67108865,
+    "ok": false,
+    "action": "not-retained"
+   }
+  },
+  {
+   "name": "ACQUISITION_READ_AHEAD_BYTES",
+   "scope": "memory-class:constrained-or-unknown",
+   "unit": "bytes",
+   "value": 33554432,
+   "atBoundary": {
+    "requested": 33554432,
+    "ok": true,
+    "remaining": 0
+   },
+   "oneOver": {
+    "requested": 33554433,
+    "ok": false,
+    "action": "wait"
+   }
+  },
+  {
+   "name": "ACQUISITION_HASH_BYTES",
+   "scope": "memory-class:constrained-or-unknown",
+   "unit": "bytes",
+   "value": 16777280,
+   "atBoundary": {
+    "requested": 16777280,
+    "ok": true,
+    "remaining": 0
+   },
+   "oneOver": {
+    "requested": 16777281,
+    "ok": false,
+    "action": "wait"
+   }
+  },
+  {
+   "name": "ACQUISITION_WRITE_BUFFER_BYTES",
+   "scope": "memory-class:constrained-or-unknown",
+   "unit": "bytes",
+   "value": 16777216,
+   "atBoundary": {
+    "requested": 16777216,
+    "ok": true,
+    "remaining": 0
+   },
+   "oneOver": {
+    "requested": 16777217,
+    "ok": false,
+    "action": "wait"
+   }
+  },
+  {
+   "name": "ACQUISITION_READ_AHEAD_BYTES",
+   "scope": "memory-class:ample",
+   "unit": "bytes",
+   "value": 67108864,
+   "atBoundary": {
+    "requested": 67108864,
+    "ok": true,
+    "remaining": 0
+   },
+   "oneOver": {
+    "requested": 67108865,
+    "ok": false,
+    "action": "wait"
+   }
+  },
+  {
+   "name": "ACQUISITION_HASH_BYTES",
+   "scope": "memory-class:ample",
+   "unit": "bytes",
+   "value": 16777280,
+   "atBoundary": {
+    "requested": 16777280,
+    "ok": true,
+    "remaining": 0
+   },
+   "oneOver": {
+    "requested": 16777281,
+    "ok": false,
+    "action": "wait"
+   }
+  },
+  {
+   "name": "ACQUISITION_WRITE_BUFFER_BYTES",
+   "scope": "memory-class:ample",
+   "unit": "bytes",
+   "value": 16777216,
+   "atBoundary": {
+    "requested": 16777216,
+    "ok": true,
+    "remaining": 0
+   },
+   "oneOver": {
+    "requested": 16777217,
+    "ok": false,
+    "action": "wait"
+   }
+  },
+  {
+   "name": "LIVE_RESIDENT_BYTES",
+   "scope": "all-routes",
+   "unit": "bytes",
+   "value": 268435456,
+   "atBoundary": {
+    "requested": 268435456,
+    "ok": true,
+    "remaining": 0
+   },
+   "oneOver": {
+    "requested": 268435457,
+    "ok": false,
+    "action": "wait"
+   }
+  },
+  {
+   "name": "LIVE_SESSIONS",
+   "scope": "all-routes",
+   "unit": "sessions",
+   "value": 2,
+   "atBoundary": {
+    "requested": 2,
+    "ok": true,
+    "remaining": 0
+   },
+   "oneOver": {
+    "requested": 3,
+    "ok": false,
+    "action": "wait"
+   }
+  },
+  {
+   "name": "ENGINE_LIVE_ENCODER_SESSIONS",
+   "scope": "all-routes",
+   "unit": "sessions",
+   "value": 1,
+   "atBoundary": {
+    "requested": 1,
+    "ok": true,
+    "remaining": 0
+   },
+   "oneOver": {
+    "requested": 2,
+    "ok": false,
+    "action": "wait"
+   }
+  },
+  {
+   "name": "ENGINE_WASM_HEAP_BYTES",
+   "scope": "compute-route:cpu",
+   "unit": "bytes",
+   "value": 268435456,
+   "atBoundary": {
+    "requested": 268435456,
+    "ok": true,
+    "remaining": 0
+   },
+   "oneOver": {
+    "requested": 268435457,
+    "ok": false,
+    "action": "wait"
+   }
+  },
+  {
+   "name": "ENGINE_RETAINED_FRAMES",
+   "scope": "all-routes",
+   "unit": "frames",
+   "value": 4096,
+   "atBoundary": {
+    "requested": 4096,
+    "ok": true,
+    "remaining": 0
+   },
+   "oneOver": {
+    "requested": 4097,
+    "ok": false,
+    "action": "wait"
+   }
+  },
+  {
+   "name": "ENGINE_RETAINED_FRAME_BYTES",
+   "scope": "all-routes",
+   "unit": "bytes",
+   "value": 134217728,
+   "atBoundary": {
+    "requested": 134217728,
+    "ok": true,
+    "remaining": 0
+   },
+   "oneOver": {
+    "requested": 134217729,
+    "ok": false,
+    "action": "wait"
+   }
+  },
+  {
+   "name": "ENGINE_CODEC_QUEUE_FRAMES",
+   "scope": "all-routes",
+   "unit": "frames",
+   "value": 8,
+   "atBoundary": {
+    "requested": 8,
+    "ok": true,
+    "remaining": 0
+   },
+   "oneOver": {
+    "requested": 9,
+    "ok": false,
+    "action": "wait"
+   }
+  },
+  {
+   "name": "ENGINE_GPU_BUFFER_BYTES",
+   "scope": "compute-route:webgpu",
+   "unit": "bytes",
+   "value": 134480000,
+   "atBoundary": {
+    "requested": 134480000,
+    "ok": true,
+    "remaining": 0
+   },
+   "oneOver": {
+    "requested": 134480001,
+    "ok": false,
+    "action": "wait"
+   }
+  },
+  {
+   "name": "PREFLIGHT_SAMPLING_MS",
+   "scope": "all-routes",
+   "unit": "ms",
+   "value": 2000,
+   "atBoundary": {
+    "requested": 2000,
+    "ok": true,
+    "remaining": 0
+   },
+   "oneOver": {
+    "requested": 2001,
+    "ok": false,
+    "action": "wait"
+   }
+  },
+  {
+   "name": "PREFLIGHT_UI_DEADLINE_MS",
+   "scope": "all-routes",
+   "unit": "ms",
+   "value": 5000,
+   "atBoundary": {
+    "requested": 5000,
+    "ok": true,
+    "remaining": 0
+   },
+   "oneOver": {
+    "requested": 5001,
+    "ok": false,
+    "action": "wait"
+   }
+  },
+  {
+   "name": "PREFLIGHT_SCRATCH_BYTES",
+   "scope": "all-routes",
+   "unit": "bytes",
+   "value": 16777216,
+   "atBoundary": {
+    "requested": 16777216,
+    "ok": true,
+    "remaining": 0
+   },
+   "oneOver": {
+    "requested": 16777217,
+    "ok": false,
+    "action": "wait"
+   }
+  },
+  {
+   "name": "PREFLIGHT_CHECKER_CODE_BYTES",
+   "scope": "all-routes",
+   "unit": "bytes",
+   "value": 102400,
+   "atBoundary": {
+    "requested": 102400,
+    "ok": true,
+    "remaining": 0
+   },
+   "oneOver": {
+    "requested": 102401,
+    "ok": false,
+    "action": "wait"
+   }
+  }
+ ],
+ "notAdmitted": [
+  {
+   "name": "DECODE_TRANSIENT_BYTES",
+   "scope": "decode-route:eris-chromium:imagebitmap-full"
+  },
+  {
+   "name": "DECODE_TRANSIENT_BYTES",
+   "scope": "decode-route:eris-firefox:imagebitmap-full"
+  },
+  {
+   "name": "DECODE_TRANSIENT_BYTES",
+   "scope": "decode-route:eris-webkit:imagebitmap-full"
+  },
+  {
+   "name": "DECODE_TRANSIENT_BYTES",
+   "scope": "decode-route:android-emulator:preview-decode"
+  },
+  {
+   "name": "DECODE_TRANSIENT_BYTES",
+   "scope": "decode-route:android-emulator:preview-display"
+  },
+  {
+   "name": "DECODE_TRANSIENT_BYTES",
+   "scope": "decode-route:android-emulator:crop-decode"
+  },
+  {
+   "name": "DECODE_TRANSIENT_BYTES",
+   "scope": "decode-route:android-emulator:frame-decode-512"
+  },
+  {
+   "name": "DECODE_TRANSIENT_BYTES",
+   "scope": "decode-route:android-emulator:frame-decode-1024"
+  },
+  {
+   "name": "DECODE_TRANSIENT_BYTES",
+   "scope": "decode-route:ios-simulator:preview-decode"
+  },
+  {
+   "name": "DECODE_TRANSIENT_BYTES",
+   "scope": "decode-route:ios-simulator:preview-display"
+  },
+  {
+   "name": "DECODE_TRANSIENT_BYTES",
+   "scope": "decode-route:ios-simulator:crop-decode"
+  },
+  {
+   "name": "DECODE_TRANSIENT_BYTES",
+   "scope": "decode-route:ios-simulator:frame-decode-512"
+  },
+  {
+   "name": "DECODE_TRANSIENT_BYTES",
+   "scope": "decode-route:ios-simulator:frame-decode-1024"
+  },
+  {
+   "name": "DECODE_TRANSIENT_BYTES",
+   "scope": "decode-route:physical-phone:preview-decode"
+  },
+  {
+   "name": "DECODE_TRANSIENT_BYTES",
+   "scope": "decode-route:physical-phone:preview-display"
+  },
+  {
+   "name": "DECODE_TRANSIENT_BYTES",
+   "scope": "decode-route:physical-phone:crop-decode"
+  },
+  {
+   "name": "DECODE_TRANSIENT_BYTES",
+   "scope": "decode-route:physical-phone:frame-decode-512"
+  },
+  {
+   "name": "DECODE_TRANSIENT_BYTES",
+   "scope": "decode-route:physical-phone:frame-decode-1024"
+  },
+  {
+   "name": "DECODE_TRANSIENT_BYTES",
+   "scope": "decode-route:macos-desktop:preview-decode"
+  },
+  {
+   "name": "DECODE_TRANSIENT_BYTES",
+   "scope": "decode-route:macos-desktop:preview-display"
+  },
+  {
+   "name": "DECODE_TRANSIENT_BYTES",
+   "scope": "decode-route:macos-desktop:crop-decode"
+  },
+  {
+   "name": "DECODE_TRANSIENT_BYTES",
+   "scope": "decode-route:macos-desktop:frame-decode-512"
+  },
+  {
+   "name": "DECODE_TRANSIENT_BYTES",
+   "scope": "decode-route:macos-desktop:frame-decode-1024"
+  }
+ ]
+}

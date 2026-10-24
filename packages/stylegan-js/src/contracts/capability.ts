@@ -116,7 +116,7 @@ export interface ResidencyTransition {
   readonly releasedBeforeAcquire: true;
 }
 
-/** Named memory bounds; numeric values arrive with contracts milestone 2's ceilings file. */
+/** Named memory bounds; the values are MEMORY_BOUNDS, cited by the app's ceilings file (fm-2o8q). */
 export type MemoryBoundName =
   | 'maxLiveEncoderSessions'
   | 'maxWasmHeapBytes'
@@ -124,6 +124,25 @@ export type MemoryBoundName =
   | 'maxRetainedFrameBytes'
   | 'maxCodecQueueFrames'
   | 'maxGpuBufferBytes';
+
+/**
+ * The engine's memory bounds, carried from the candidate (classic a42829b) until a measurement revises
+ * them. Each value is the candidate constant named beside it; revising one is a contract revision.
+ */
+export const MEMORY_BOUNDS: { readonly [N in MemoryBoundName]: number } = Object.freeze({
+  /** browser/ort-worker.mjs encodeStream: the 108 encoder sessions are created and released one at a time. */
+  maxLiveEncoderSessions: 1,
+  /** The qualified streamed encoder's and the alignment worker's unshared heap (maxWasmBytes, 256 MiB). */
+  maxWasmHeapBytes: 268_435_456,
+  /** Frames in one morph (MAX_MORPH_FRAMES; video-worker.mjs and last-result.mjs 4,096). */
+  maxRetainedFrames: 4096,
+  /** morph-frames.mjs DEFAULT_MAX_BYTES: retained morph frames across stored morphs (128 MiB). */
+  maxRetainedFrameBytes: 134_217_728,
+  /** video-worker.mjs: a frame is submitted only while at most 8 wait in the encoder queue. */
+  maxCodecQueueFrames: 8,
+  /** browser/webgpu-direct.mjs DIRECT_LIMITS.maxBufferSize (1025 x 1025 x 32 x 4 bytes); WebGPU route only. */
+  maxGpuBufferBytes: 134_480_000,
+});
 
 /**
  * A loaded photo encoder. `encode` owns bounded sequential session creation, execution and release

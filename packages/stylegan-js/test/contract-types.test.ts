@@ -57,6 +57,7 @@ const VALUES = [
   'validateWorkerResponse',
   'assertCloneSafe',
   'WorkerMessageError',
+  'MEMORY_BOUNDS',
 ] as const satisfies readonly (keyof typeof api)[];
 
 /** Every citable engine type export; tsc fails on a missing or renamed one. */
@@ -108,6 +109,14 @@ export type CitableTypes = [
 
 test('every citable value is exported from the package entry point', () => {
   for (const name of VALUES) assert.ok(name in api, name);
+});
+
+test('every named memory bound has a positive integer value; frames agree with MAX_MORPH_FRAMES', () => {
+  is<Equal<keyof typeof api.MEMORY_BOUNDS, api.MemoryBoundName>>();
+  for (const [name, value] of Object.entries(api.MEMORY_BOUNDS))
+    assert.ok(Number.isSafeInteger(value) && value > 0, name);
+  assert.equal(api.MEMORY_BOUNDS.maxRetainedFrames, api.MAX_MORPH_FRAMES);
+  assert.ok(Object.isFrozen(api.MEMORY_BOUNDS));
 });
 
 // ---- Exhaustiveness: adding a variant without handling it fails compilation.
