@@ -121,13 +121,22 @@ before(async () => {
   catUrl = await catOrigin.listen();
   rows = plant();
   if (!docker) return;
-  container = execFileSync('docker', ['run', '-d', '--rm', '-p', '127.0.0.1::8333', IMAGE, 'server', '-s3', '-dir=/data', '-ip.bind=0.0.0.0'], { encoding: 'utf8' }).trim();
+  // Data on a sized tmpfs: SeaweedFS refuses volume writes when the host disk reports no free space, and
+  // the volume count and size are explicit so tmpfs free space cannot shrink them to nothing.
+  container = execFileSync('docker', ['run', '-d', '--rm', '-p', '127.0.0.1::8333', '--tmpfs', '/data:size=512m', IMAGE,
+    'server', '-s3', '-dir=/data', '-ip.bind=0.0.0.0', '-volume.max=200', '-master.volumeSizeLimitMB=64'], { encoding: 'utf8' }).trim();
   const port = execFileSync('docker', ['port', container, '8333/tcp'], { encoding: 'utf8' }).trim().split('\n')[0].split(':').pop();
   endpoint = `http://127.0.0.1:${port}`;
-  for (let i = 0; i < 60; i++) {
-    try { await client().send(new CreateBucketCommand({ Bucket: 'probe' })); return; } catch { await sleep(1000); }
+  // Ready means an object can be written and read back, not just that a bucket can be created.
+  for (let i = 0; i < 120; i++) {
+    try {
+      await client().send(new CreateBucketCommand({ Bucket: 'probe' })).catch((e) => { if (!/BucketAlready/.test(e.name)) throw e; });
+      await client().send(new PutObjectCommand({ Bucket: 'probe', Key: 'ready', Body: 'ready' }));
+      if (String(await readObject(client(), 'probe', 'ready')) === 'ready') return;
+    } catch { /* not ready yet */ }
+    await sleep(1000);
   }
-  throw new Error('SeaweedFS did not start');
+  throw new Error('SeaweedFS did not become writable');
 });
 after(() => {
   seedOrigin.server.close();
