@@ -1,0 +1,176 @@
+{
+  "$comment": "Classification rules for scan-org-links.mjs (fm-a4b). Re-used by the organization rename (fm-rur) as its edit list and post-rename check. First matching rule wins; a hit naming a third-party owner is classed `external` before these rules. `target` is a regex on `<owner>/<name>` (owner empty when templated), `line` a regex on the source line, `paths` globs on the repository path. `to` / `correctName` give the post-rename target for active-link and repo-name-correction hits.",
+  "targets": [
+    { "repo": "facemorph.me", "id": 1413979666, "dir": "facemorph.me", "revs": ["HEAD"] },
+    { "repo": "facemorph.me-classic", "id": 295956585, "dir": "facemorph.me-classic", "revs": ["candidate/next-delivery-20260916", "master"] },
+    { "repo": "facemorph-names", "id": 348379171, "dir": "facemorph-names", "revs": ["master"] },
+    { "repo": "checkface", "id": 185985766, "dir": "checkface", "revs": ["master"] },
+    { "repo": "encoder4editing", "id": 368806700, "dir": "encoder4editing", "revs": ["main"] }
+  ],
+  "rules": [
+    {
+      "id": "origin-remote",
+      "paths": [".git/config"],
+      "class": "active-link",
+      "disposition": "update the checkout's origin to the renamed URL, keeping each repository's identity (never point classic back at the monorepo name)"
+    },
+
+    {
+      "id": "archived-backend",
+      "repo": "checkface",
+      "class": "archived",
+      "disposition": "leave: archived backend content stays as-is; GitHub redirects the old owner while the name is not reclaimed"
+    },
+
+    {
+      "id": "monorepo-identity-tooling",
+      "repo": "facemorph.me",
+      "paths": ["scripts/identity/**"],
+      "class": "frozen-evidence",
+      "disposition": "leave: identity tooling names pre-rename owners on purpose (recorded observations, classification rules and test inputs); the rename re-runs it rather than editing it"
+    },
+    {
+      "id": "monorepo-frozen-plan",
+      "repo": "facemorph.me",
+      "paths": ["PLAN.md", "docs/plan-history.md", "docs/findings/**", "docs/receipts/**"],
+      "class": "frozen-evidence",
+      "disposition": "leave: frozen plan and dated findings/receipts; links at pinned commits resolve through the rename redirect and the repository-ID mapping"
+    },
+    {
+      "id": "monorepo-tracker",
+      "repo": "facemorph.me",
+      "paths": [".beads/**"],
+      "class": "frozen-evidence",
+      "disposition": "leave: tracker records describe pre-rename identities; change bead text only with `br update` on the bead concerned"
+    },
+    {
+      "id": "monorepo-active",
+      "repo": "facemorph.me",
+      "paths": ["AGENTS.md", "README.md", "tools/**", ".github/workflows/**", "ops/**", "services/**", "scripts/**"],
+      "class": "active-link",
+      "disposition": "update the owner to facemorph-me (repository name unchanged)"
+    },
+
+    {
+      "id": "runtime-repository",
+      "paths": [".github/workflows/**"],
+      "line": "\\$GITHUB_REPOSITORY|\\$\\{\\{ *github\\.repository *\\}\\}",
+      "target": "^/",
+      "class": "active-link",
+      "to": "(the running repository, resolved at run time)",
+      "disposition": "no edit: the workflow resolves its own repository when it runs"
+    },
+
+    {
+      "id": "classic-native-updater",
+      "repo": "facemorph.me-classic",
+      "paths": ["desktop/**", ".github/workflows/desktop-*.yml"],
+      "class": "native-updater",
+      "disposition": "retire with native packaging: no updater/source migration; keep historical artifacts and provenance; installed-client feed references are inventoried separately so retirement does not point clients at the monorepo"
+    },
+    {
+      "id": "classic-candidate-source",
+      "repo": "facemorph.me-classic",
+      "paths": ["src/Next/**"],
+      "class": "candidate-source",
+      "disposition": "edited by the candidate edit set: ISSUE_REPO and source links name the candidate's actual repository (classic, 295956585) until new-app handover; desktop and API-FAQ links get web-requirements Help and retirement copy"
+    },
+    {
+      "id": "classic-promote-remote",
+      "repo": "facemorph.me-classic",
+      "paths": ["hosting/next-static/promote.py"],
+      "target": "^check-face/facemorph\\.me$",
+      "class": "repo-name-correction",
+      "correctName": "facemorph.me-classic",
+      "disposition": "REMOTE names the wrong repository since the earlier rename: retained-candidate promotion uses facemorph-me/facemorph.me-classic; monorepo promotion uses its own repository ID and source"
+    },
+    {
+      "id": "classic-research-run-lookup",
+      "repo": "facemorph.me-classic",
+      "paths": [".github/workflows/research-*.yml"],
+      "target": "^check-face/facemorph\\.me$",
+      "class": "repo-name-correction",
+      "to": "repositories/295956585",
+      "disposition": "retained-run artifact lookup names the wrong repository: if still runnable, resolve the run in classic by repository ID (`gh api repositories/295956585/actions/runs/<id>/artifacts`)"
+    },
+    {
+      "id": "classic-config-source-link",
+      "repo": "facemorph.me-classic",
+      "paths": ["src/Config.fs", "self-host/frontend-overlay/source/src/Config.fs"],
+      "target": "^check-face/facemorph\\.me$",
+      "class": "repo-name-correction",
+      "correctName": "facemorph.me-classic",
+      "disposition": "classic builds link to classic: `githubRepo` becomes facemorph-me/facemorph.me-classic"
+    },
+    {
+      "id": "classic-config-source-template",
+      "repo": "facemorph.me-classic",
+      "paths": ["src/App.fs", "self-host/frontend-overlay/source/src/App.fs"],
+      "line": "githubRepo",
+      "class": "active-link",
+      "to": "(follows githubRepo in Config.fs)",
+      "disposition": "URL built from `githubRepo`; it changes with the Config.fs correction, no edit here"
+    },
+    {
+      "id": "classic-self-host-provenance",
+      "repo": "facemorph.me-classic",
+      "paths": ["self-host/frontend-overlay/source.json", "self-host/frontend-overlay/README.md", "self-host/REPOSITORY-PROVENANCE.md"],
+      "class": "immutable-provenance",
+      "disposition": "keep the original repository URL and pinned commit 0abb215f27b16e17e3919cf78b616b6ae4998a5d; add a current-resolution mapping (that commit lives in classic, repository ID 295956585) beside it"
+    },
+    {
+      "id": "classic-self-host-clone",
+      "repo": "facemorph.me-classic",
+      "paths": ["self-host/Dockerfile", "self-host/README.md", ".github/workflows/self-host*.yml"],
+      "target": "^check-face/facemorph\\.me-classic$",
+      "class": "active-link",
+      "disposition": "update clone/Actions URLs to facemorph-me/facemorph.me-classic; the user-facing README names no branch; check a fresh clone still resolves the pinned frontend commit"
+    },
+    {
+      "id": "classic-explain-source-links",
+      "repo": "facemorph.me-classic",
+      "paths": ["src/explain.md"],
+      "class": "active-link",
+      "disposition": "update the archived backend's source link to facemorph-me/checkface; API FAQ retirement copy is delivery work, not part of the rename"
+    },
+    {
+      "id": "classic-maintained-run-link",
+      "repo": "facemorph.me-classic",
+      "paths": ["hosting/**/README.md"],
+      "target": "^check-face/facemorph\\.me$",
+      "class": "repo-name-correction",
+      "correctName": "facemorph.me-classic",
+      "disposition": "maintained doc links a classic run under the monorepo's name (broken since the earlier rename): point it at facemorph-me/facemorph.me-classic"
+    },
+    {
+      "id": "classic-legacy-readme",
+      "repo": "facemorph.me-classic",
+      "paths": ["README.md"],
+      "target": "^check-face/facemorph\\.me$",
+      "class": "repo-name-correction",
+      "correctName": "facemorph.me-classic",
+      "disposition": "legacy production's README (master) links the monorepo's name: point it at facemorph-me/facemorph.me-classic"
+    },
+    {
+      "id": "classic-device-lab-doc",
+      "repo": "facemorph.me-classic",
+      "paths": ["docs/local-device-lab.md"],
+      "class": "frozen-evidence",
+      "disposition": "leave: dated device-lab record (\"LIVE 19 September\") naming where a runner was registered at the time; runner registration is inventoried as an integration"
+    },
+    {
+      "id": "classic-research-history",
+      "repo": "facemorph.me-classic",
+      "paths": ["autoresearch/**", "experiment/**"],
+      "class": "frozen-evidence",
+      "disposition": "leave: append-only research history and retired experiments; check-face/facemorph.me run/commit links there belong to classic (repository ID 295956585) and resolve through the lookup mapping, not by rewriting"
+    },
+    {
+      "id": "classic-dated-docs",
+      "repo": "facemorph.me-classic",
+      "paths": ["docs/review/**", "docs/plans/**", "docs/round-*.md", "docs/*-20??-??-??.md", "docs/current-delivery-scope.md", "docs/side-by-side-trial.md"],
+      "class": "frozen-evidence",
+      "disposition": "leave: dated reviews, plans and receipts; check-face/facemorph.me links there name classic before its rename and resolve through the repository-ID mapping"
+    }
+  ]
+}
