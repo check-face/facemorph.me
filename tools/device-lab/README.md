@@ -1,57 +1,92 @@
-# Physical Android device lab
+# Device lab
 
-A human-free, repeatable test loop on a real phone: the Huawei P30 Pro (VOG-L29, Android 10 / EMUI 11,
-Kirin 980, 8 GB) connected to eris over USB. It is a cell of the strictly-not-worse gate (PLAN.md
-"Strictly not worse than the candidate") and of any check that needs a physical Android phone.
+The same end-to-end journeys on four cells, with no human in the loop. Agents run it on demand whenever their work
+needs it, including on candidate builds before anything reaches next.facemorph.me. It also gates every deploy there
+(PLAN.md "Device lab, deploy gates and CI policy"). There is no schedule.
 
-The same phone is the `p30pro` Frigate camera (IP Webcam on port 8080, kept alive by the
-`dev.dilger.camera.watchdog` app and its accessibility service). Every session pauses the camera
-and restores it, including after a failure or a kill.
+| Cell | Device | Route it must take |
+| --- | --- | --- |
+| `eris-webgpu` | Chromium on eris (RTX 2080 SUPER), headed: headless Chromium gets no adapter there | WebGPU |
+| `eris-cpu` | the same Chromium, headless, WebGPU switched off | CPU |
+| `phone-webgpu` | Chrome on the USB Huawei P30 Pro, with `--enable-unsafe-webgpu --ignore-gpu-blocklist` | WebGPU |
+| `phone-cpu` | Chrome on the same phone without flags: what a real visitor on this phone gets | CPU |
+
+Chrome blocklists the phone's Android 10 Mali-G76 driver, so real visitors on it get CPU. The flagged cell
+shows what works on devices that do have WebGPU enabled. Forcing Vulkan compositing as well
+(`--enable-features=Vulkan`) left pages white and untouchable, so only the two flags above are used.
+
+Journeys: `cold-face` (site data and models cleared), `warm-face` (models kept, session cleared), and
+`morph` (two faces to a playable video). Each cell fails if the route shown differs from the one it must take.
+
+## How agents use it (on demand)
+
+The swarm is fungible: no tester or shipping agent. Any agent whose bead needs device evidence runs the lab itself.
+- **On eris:** run `lab.py` directly. The lab's lock is the device lease: a second session waits its turn.
+- **From anywhere:** dispatch the workflow,
+  `gh workflow run device-lab.yml -R check-face/facemorph.me -f artifact_run=<run id> -f artifact_name=next-site-<sha>`,
+  or `-f url=...`.
+- **A candidate before it deploys:** `lab.py qualify --run <CI run id>` fetches that build's artifact and runs all
+  four cells against it, served locally under the production origin. A local build directory works with
+  `matrix --artifact DIR`.
+- **Scheduling:** through beads, not cron. When a candidate needs checking, create or pick up a bead for it, and
+  close it with the run's `summary.md`.
 
 ## Use
 
 ```sh
-cd tools/device-lab/android
-uv run --with playwright python lab.py preflight            # device, battery, temperature, Chrome, camera
-uv run --with playwright python lab.py run --url https://next.facemorph.me/ \
-    --journey cold-face,warm-face,morph --repeat 5 --label candidate
-uv run --with playwright python lab.py camera status|pause|resume
-uv run --with playwright python lab.py recover               # undo whatever a killed session left behind
+cd tools/device-lab
+uv run --with playwright python lab.py preflight
+uv run --with playwright python lab.py matrix                                   # all cells, production
+uv run --with playwright python lab.py matrix --cells phone-webgpu --journey cold-face,warm-face
+uv run --with playwright python lab.py matrix --artifact DIR --runtime-sha SHA  # an exact candidate build
+uv run --with playwright python lab.py camera status|pause|resume|off|on
+uv run --with playwright python lab.py recover
 ```
 
-Each run writes `out/<timestamp>-<label>/report.json` (device facts, per-iteration timings, route,
-`typedExactly`, peak Chrome memory, battery temperature, camera state before and after) and
-screenshots on failure.
+`--artifact` serves a candidate's `next-site-<sha>` artifact (a `deploy-next/` directory) under the production
+origin with classic's qualification server (`CLASSIC_CHECKOUT`, default `../../../facemorph.me-classic`).
+eris Chromium reaches it through host-resolver rules, and the phone reaches it through `adb reverse`. The runtime
+tree is cached in `~/.cache/facemorph-device-lab/` (2.8 GB on first build). Local-mode cold faces skip the internet
+download, so compare their times only with other local runs.
+
+Each run writes `out/<timestamp>-<label>/`: `summary.md` and `summary.json`, one JSON per cell (device facts,
+per-iteration timings, route, `typedExactly`, peak Chrome memory on the phone, temperatures), a screen recording
+(phone) or Playwright trace (eris) of each failed iteration, and screenshots. In CI the summary also goes to the
+job summary.
+
+## CI
+
+- `.github/workflows/device-lab.yml` runs on the self-hosted runner `eris-device-lab` (label `device-lab`): on
+  demand (dispatch, with an optional candidate artifact) and as the reusable deploy gate that classic's
+  `next-site.yml` calls with the artifact it is about to ship. It has no `pull_request` trigger, so fork code never reaches eris.
+- The runners are systemd user services on eris: `gh-runner-facemorph` and `gh-runner-facemorph-classic` in
+  `~/gh-runners/`. They have the desktop display in their environment, for headed Chromium.
+- Concurrency: one `device-lab` run at a time, newest waiting run next; the lab's own lock also waits up to
+  `LAB_LOCK_WAIT` seconds (default 3600) behind a local session.
 
 ## How it works
 
-- **Control:** adb from `~/Android/Sdk/platform-tools/adb` (override with `ADB`, `ANDROID_SERIAL`).
-  USB debugging is authorized permanently for eris's key (one-time "Always allow" on the phone).
-- **Browser:** the phone's own Chrome over the DevTools protocol (`adb forward tcp:9222
-  localabstract:chrome_devtools_remote`), driven by Playwright `connect_over_cdp`. Each session uses a
-  fresh tab brought to the front.
-- **Operated input:** taps are real OS taps (`adb shell input tap`) at the element's visible centre,
-  mapped from CSS to screen pixels by a calibration tap. Before every tap, `elementFromPoint` must be
-  the intended element, or the step fails. Text goes in through the phone's real keyboard
-  (`input text`), and the run records whether the field holds exactly what was typed.
-- **Clean data:** each page gets `navigator.globalPrivacyControl = true` before load, so Google
-  Analytics and the changeover statistics ignore lab runs. Cold runs clear the origin's site data and
-  Chrome's cache.
-- **Session:** screen kept on and rotation locked to portrait during the run; the previous settings are
-  saved to `~/.cache/facemorph-device-lab/session.json` and restored at the end, on SIGTERM/SIGHUP/Ctrl-C,
-  or by the next run (`recover`). A lock file stops two sessions driving the phone at once.
-- **Camera pause:** force-stop the watchdog, then IP Webcam. Huawei then drops the watchdog's
-  accessibility service from the enabled list, so its settings are saved first.
-- **Camera restore:** restore the accessibility settings, launch the watchdog, open IP Webcam and pick
-  overflow menu > Start server (by keyboard, because uiautomator dumps omit popup windows while the
-  watchdog's accessibility service is bound). Done when port 8080 listens and the recovery service is
-  bound; measured at 16–17 s per cycle. Reachability from the server VLAN (where Frigate is) can be
-  checked with `ssh triton 'curl -s -o /dev/null -w %{http_code} http://192.168.20.7:8080/'` (401 means
-  serving, login required).
+- **Real input:** taps on the phone are OS taps (`adb shell input tap`) and clicks on eris are mouse clicks, both
+  at the control's visible centre. Before each action, `elementFromPoint` must be the intended control; afterwards,
+  the real pointer's target must be inside it. A tap Chrome dropped before the first paint is retried, and one that
+  hit the wrong element fails. Text goes in through the real keyboard; the run records whether the field holds
+  exactly what was typed.
+- **Clean data:** every page gets `navigator.globalPrivacyControl = true`, so Google Analytics and the changeover
+  statistics ignore lab runs.
+- **Phone session:** Chrome cold-starts (clearing leftover dialogs), the screen stays on, rotation is locked to
+  portrait, pop-up notifications are off, and Chrome's debug flags are set for the cell. Everything is restored
+  afterwards, on SIGTERM/SIGHUP, or by the next run (`recover`). Each iteration waits for the battery to cool to
+  40 °C, because heat throttles the CPU.
+- **Frigate camera:** currently **held off** at the operator's request (24 October 2026) until they ask for it back
+  (`camera on`). The phone is also the `p30pro` camera IP Webcam on :8080 with the
+  `dev.dilger.camera.watchdog` app): sessions pause and restore it (about 17 s) unless it is held off
+  (`camera off`; `camera on` resumes). Pausing makes Huawei drop the watchdog's accessibility service, so its
+  settings are saved and restored. With that service bound, uiautomator dumps omit popups, so the restore taps
+  IP Webcam's ⋮ > Start server by offset. Stream check from the server VLAN: `ssh triton 'curl -s -o /dev/null -w
+  %{http_code} http://192.168.20.7:8080/'` (401 means serving).
 
 ## Known limits
 
-- Android 10 is this phone's last OS (EMUI 12 is still Android 10 underneath; the bootloader cannot be
-  unlocked). Chrome updates independently and is what the app runs in.
-- The phone reports battery temperature only; runs refuse to start above 42 °C and record it per
-  iteration.
+- Android 10 is this phone's last OS and the bootloader is locked; Chrome updates independently. Google Play
+  services are deliberately disabled on the phone.
+- The phone reports battery temperature only.

@@ -6,6 +6,7 @@ name: device-lab
 # - On demand: agents (or the operator) dispatch it when a run is useful; no schedule.
 # - Deploy gate: classic's next-site.yml calls this with the exact candidate artifact; its deploy
 #   job needs this to pass on all four cells (operator rule, 24 October 2026).
+# - After deploy: classic calls it again against the live site (url mode) to confirm what shipped.
 # Triggers are push-free on purpose: no pull_request, so fork code never reaches eris.
 on:
   workflow_dispatch:
@@ -19,17 +20,32 @@ on:
       journey:
         description: Journeys
         default: cold-face,warm-face,morph
+      artifact_run:
+        description: Optional - a candidate build's run id in facemorph.me-classic, to test that exact build before it deploys
+        default: ''
+      artifact_name:
+        description: Optional - its next-site-<sha> artifact name
+        default: ''
+      runtime_sha:
+        description: Runtime manifest SHA256 for an artifact run
+        default: d9e37e50a436e9fb7c0c7f973e70adee353c808f48c6a51fa5a9186f1c650a5c
   workflow_call:
     inputs:
       artifact_run:
         type: string
-        required: true
+        default: ''
       artifact_name:
         type: string
-        required: true
+        default: ''
       runtime_sha:
         type: string
-        required: true
+        default: d9e37e50a436e9fb7c0c7f973e70adee353c808f48c6a51fa5a9186f1c650a5c
+      url:
+        type: string
+        default: https://next.facemorph.me/
+      label:
+        type: string
+        default: ''
       cells:
         type: string
         default: eris-webgpu,eris-cpu,phone-webgpu,phone-cpu
@@ -77,7 +93,7 @@ jobs:
         working-directory: lab/tools/device-lab
         env:
           CLASSIC_CHECKOUT: ${{ github.workspace }}/classic
-          LABEL: ${{ inputs.artifact_name != '' && format('gate-{0}', inputs.artifact_name) || 'continuous' }}
+          LABEL: ${{ inputs.label || (inputs.artifact_name != '' && format('gate-{0}', inputs.artifact_name)) || 'on-demand' }}
           URL: ${{ inputs.url || 'https://next.facemorph.me/' }}
           CELLS: ${{ inputs.cells || 'eris-webgpu,eris-cpu,phone-webgpu,phone-cpu' }}
           JOURNEY: ${{ inputs.journey || 'cold-face,warm-face,morph' }}

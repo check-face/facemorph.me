@@ -35,9 +35,11 @@ CLASSIC = Path(os.environ.get('CLASSIC_CHECKOUT', HERE.parents[2] / 'facemorph.m
 ORIGIN_HOST = 'next.facemorph.me'
 LOCAL_PORT = 8443
 CHROME_FLAGS_FILE = '/data/local/tmp/chrome-command-line'
-# Chrome's WebGPU on this Android 10 / Mali-G76 phone needs Vulkan, which Chrome blocks for its
-# driver; these debug flags unlock it (real visitors on this phone get the CPU route).
-PHONE_WEBGPU_FLAGS = ['--enable-unsafe-webgpu', '--enable-features=Vulkan', '--ignore-gpu-blocklist', '--use-vulkan=native']
+# Chrome blocklists this Android 10 / Mali-G76 driver, so real visitors on this phone get the CPU
+# route. These two debug flags give pages a WebGPU adapter while Chrome keeps its normal GL
+# compositing; also forcing Vulkan compositing (--enable-features=Vulkan) left pages painted white
+# and untouchable after navigation (24 Oct 2026).
+PHONE_WEBGPU_FLAGS = ['--enable-unsafe-webgpu', '--ignore-gpu-blocklist']
 CELLS = {'eris-webgpu': ('desktop', True), 'eris-cpu': ('desktop', False),
          'phone-webgpu': ('phone', True), 'phone-cpu': ('phone', False)}
 CHROME = 'com.android.chrome'
@@ -180,7 +182,11 @@ def phone_chrome_reset():
 def session_begin():
     """Screen on and portrait for the session; remembers the settings it changes."""
     save_state(rotation=sh('settings get system accelerometer_rotation', check=False),
-               user_rotation=sh('settings get system user_rotation', check=False))
+               user_rotation=sh('settings get system user_rotation', check=False),
+               headsUp=sh('settings get global heads_up_notifications_enabled', check=False))
+    # Pop-up notifications (Chrome nags about the disabled Play services) cover the top of the
+    # screen and can swallow taps; off for the session, restored at the end.
+    sh('settings put global heads_up_notifications_enabled 0', check=False)
     sh('svc power stayon true')
     wake()
     sh('input keyevent KEYCODE_HOME', check=False)  # clear leftovers such as an open system photo picker
@@ -189,6 +195,8 @@ def session_begin():
 
 def session_end():
     phone_chrome_reset()
+    if SAVED.get('headsUp') not in (None, '', 'null'):
+        sh(f"settings put global heads_up_notifications_enabled {SAVED['headsUp']}", check=False)
     if 'rotation' in SAVED:
         sh(f"settings put system accelerometer_rotation {SAVED['rotation']}; settings put system user_rotation {SAVED['user_rotation']}", check=False)
     sh('svc power stayon false', check=False)
@@ -373,10 +381,19 @@ class Phone:
             time.sleep(0.4)
         if not info or not info['ok']:
             raise RuntimeError(f'{selector}[{index}] is not hittable at its centre (covered by {info and info["hit"]})')
-        sx, sy = self.screen_point(info['x'], info['y'])
-        sh(f'input tap {sx} {sy}')
-        time.sleep(0.4)
-        landed = self.js('window.__labHit')
+        # Chrome drops touches until a page has presented its first frame (the DOM can be ready
+        # earlier, notably on the WebGPU path after a heavy run). A tap that reached nothing changed
+        # nothing, so it is retried; a tap that reached the wrong element fails at once.
+        for attempt in range(5):
+            sx, sy = self.screen_point(info['x'], info['y'])
+            sh(f'input tap {sx} {sy}')
+            time.sleep(0.4)
+            landed = self.js('window.__labHit')
+            if landed:
+                break
+            log('tap_not_delivered', selector=selector, attempt=attempt + 1)
+            time.sleep(1.5)
+            info = self.js(probe, [selector, index]) or info  # re-arm the listener
         if not landed or not landed['inside']:
             raise RuntimeError(f'tap on {selector}[{index}] landed on {landed and landed["what"]}')
 
@@ -431,6 +448,8 @@ class Desktop:
         self.page = self.ctx.pages[0] if self.ctx.pages else self.ctx.new_page()
         self.page.add_init_script(GUARD)
         self.cdp = self.ctx.new_cdp_session(self.page)
+        self.crashed = False
+        self.page.on('crash', lambda *_: setattr(self, 'crashed', True))
 
     js = Phone.js
     clear_origin = Phone.clear_origin
@@ -479,6 +498,29 @@ def chrome_pss_mb():
         if m:
             total += int(m.group(1).replace(',', ''))
     return round(total / 1024)
+
+
+class ScreenBuffer(threading.Thread):
+    """The phone's last N screenshots (one every ~2 s), kept in memory and written out on failure."""
+
+    def __init__(self, keep=20):
+        super().__init__(daemon=True)
+        self.frames, self.keep, self.stop = [], keep, threading.Event()
+
+    def run(self):
+        while not self.stop.is_set():
+            try:
+                png = subprocess.run([ADB, '-s', SERIAL, 'exec-out', 'screencap', '-p'], capture_output=True, timeout=10).stdout
+                self.frames = (self.frames + [(time.time(), png)])[-self.keep:]
+            except Exception:
+                pass
+            self.stop.wait(2)
+
+    def dump(self, folder):
+        folder.mkdir(parents=True, exist_ok=True)
+        for t, png in self.frames:
+            (folder / f"{datetime.fromtimestamp(t).strftime('%H%M%S')}.png").write_bytes(png)
+        return str(folder)
 
 
 class MemorySampler(threading.Thread):
@@ -587,11 +629,18 @@ def lab_lock():
     import fcntl
     STATE.parent.mkdir(parents=True, exist_ok=True)
     lock = open(STATE.parent / 'lab.lock', 'w')
-    try:
-        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)  # the device lease: one session at a time
-    except BlockingIOError:
-        raise SystemExit('another device-lab session holds the devices')
-    return lock
+    # The device lease: one session at a time. A gate run waits its turn behind a local session
+    # instead of failing (LAB_LOCK_WAIT seconds, default one hour).
+    end = time.time() + float(os.environ.get('LAB_LOCK_WAIT', '3600'))
+    while True:
+        try:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            return lock
+        except BlockingIOError:
+            if time.time() > end:
+                raise SystemExit('another device-lab session still holds the devices')
+            log('waiting_for_device_lock')
+            time.sleep(30)
 
 
 def run_journeys(dev, args, cell, gpu, out, report, memory=None):
@@ -602,6 +651,14 @@ def run_journeys(dev, args, cell, gpu, out, report, memory=None):
         mem = MemorySampler() if memory else None
         if mem:
             mem.start()
+        rec_proc = None
+        if CELLS[cell][0] == 'phone':
+            # This phone has no screenrecord (Huawei removed it): keep a rolling buffer of the last
+            # screenshots instead, written out only if the iteration fails.
+            rec_proc = ScreenBuffer()
+            rec_proc.start()
+        elif hasattr(dev, 'ctx'):
+            dev.ctx.tracing.start(screenshots=True, snapshots=True)
         try:
             for j in args.journey.split(','):
                 if j == 'cold-face':
@@ -614,11 +671,24 @@ def run_journeys(dev, args, cell, gpu, out, report, memory=None):
             rec['ok'] = True
         except Exception as e:
             rec['ok'], rec['error'] = False, f'{type(e).__name__}: {e}'[:400]
+            if getattr(dev, 'crashed', False):
+                rec['error'] = 'PageCrashed: the page process died (often memory pressure) - ' + rec['error']
+                rec['crashed'] = True
             dev.screenshot(out / f'{cell}-fail-{i + 1}.png')
             if CELLS[cell][0] == 'phone':
                 chrome_front()
             log('journey_failed', cell=cell, iteration=i + 1, error=rec['error'])
         finally:
+            if rec_proc:
+                rec_proc.stop.set()
+                rec_proc.join(10)
+                if not rec.get('ok'):
+                    rec['frames'] = rec_proc.dump(out / f'{cell}-fail-{i + 1}-frames')
+            elif hasattr(dev, 'ctx'):
+                try:
+                    dev.ctx.tracing.stop(path=str(out / f'{cell}-trace-{i + 1}.zip') if not rec.get('ok') else None)
+                except Exception:
+                    pass
             if mem:
                 mem.stop.set()
                 mem.join(5)
@@ -680,6 +750,17 @@ def run_cell(cell, args, out):
     return report
 
 
+def run_cell_retrying(cell, args, out):
+    """A page crash gets one more full attempt, recorded in the report; any other failure stands."""
+    rep = run_cell(cell, args, out)
+    if not rep['ok'] and any(r.get('crashed') for r in rep['runs']):
+        log('cell_retry_after_crash', cell=cell)
+        first = rep
+        rep = run_cell(cell, args, out)
+        rep['retriedAfterCrash'] = first['runs']
+    return rep
+
+
 class LocalServer:
     """Serves an exact candidate artifact under the production origin (classic's qualification server),
     reached by eris Chromium through host-resolver rules and by the phone through adb reverse."""
@@ -725,7 +806,8 @@ def summarise(reports, out, title):
             return '/'.join(f'{t:.0f}s' for t in v) if v else '–'
         route = next((x[j]['route'] for x in r['runs'] for j in ('warm', 'cold') if x.get(j)), '–')
         err = next((x['error'] for x in r['runs'] if x.get('error')), '')
-        return f"| {r['cell']} | {'pass' if r.get('ok') else 'FAIL'} | {fmt('cold', 'faceS')} | {fmt('warm', 'faceS')} | {fmt('morph', 'videoS')} | {route} | {err[:120]} |"
+        res = ('pass' if r.get('ok') else 'FAIL') + (' (after a crash retry)' if r.get('retriedAfterCrash') else '')
+        return f"| {r['cell']} | {res} | {fmt('cold', 'faceS')} | {fmt('warm', 'faceS')} | {fmt('morph', 'videoS')} | {route} | {err[:120]} |"
     md = [f'## {title}', '', '| Cell | Result | Cold face | Warm face | Morph video | Route | Error |', '|---|---|---|---|---|---|---|']
     md += [cellrow(r) for r in reports]
     text = '\n'.join(md) + '\n'
@@ -735,6 +817,43 @@ def summarise(reports, out, title):
         with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as f:
             f.write(text)
     print(text)
+
+
+BEADS_REPO = HERE.parents[1]
+BEAD_ID = re.compile(r'\bfm-[a-z0-9]{2,}(?:\.[0-9]+)*\b')
+
+
+def br(*a):
+    return subprocess.run(['br', *a, '--lock-timeout', '60000'], cwd=BEADS_REPO, capture_output=True, text=True)
+
+
+def passback(beads, ok, out, title):
+    """Device evidence goes to the beads it concerns. A failure hands each bead back to its implementer:
+    reopened if closed, labelled device-lab-failed, with the evidence as a comment (assignee unchanged).
+    A pass records the evidence and clears an earlier failure label."""
+    if not beads:
+        return
+    summary = (out / 'summary.md').read_text()
+    where = os.environ.get('GITHUB_SERVER_URL', '') and f"{os.environ['GITHUB_SERVER_URL']}/{os.environ['GITHUB_REPOSITORY']}/actions/runs/{os.environ['GITHUB_RUN_ID']}"
+    evidence = (f"Device lab {'passed' if ok else 'FAILED'}: {title}\n\n{summary}\n"
+                f"Evidence: {where or out} (summary.json, per-cell JSON, failure frames/traces)\n")
+    for b in beads:
+        info = br('show', b, '--json')
+        if info.returncode:
+            log('passback_unknown_bead', bead=b)
+            continue
+        d = json.loads(info.stdout)
+        d = d[0] if isinstance(d, list) else d
+        if ok:
+            br('comments', 'add', b, evidence)
+            br('update', b, '--remove-label', 'device-lab-failed')
+        else:
+            if d.get('status') == 'closed':
+                br('reopen', b, '--reason', f'device lab failed: {title}')
+            br('update', b, '--add-label', 'device-lab-failed')
+            br('comments', 'add', b, evidence)
+        log('passback', bead=b, ok=ok, status=d.get('status'), assignee=d.get('assignee'))
+    br('sync', '--flush-only')
 
 
 def run_matrix(args):
@@ -750,13 +869,23 @@ def run_matrix(args):
         args.local, args.url = True, f'https://{ORIGIN_HOST}/'
         with LocalServer(args.artifact, args.runtime_sha, out):
             for c in cells:
-                reports.append(run_cell(c, args, out))
+                reports.append(run_cell_retrying(c, args, out))
     else:
         args.local = False
         for c in cells:
-            reports.append(run_cell(c, args, out))
-    summarise(reports, out, f'Device lab: {args.label} ({args.url})')
-    return all(r.get('ok') for r in reports)
+            reports.append(run_cell_retrying(c, args, out))
+    title = f'Device lab: {args.label} ({args.url})'
+    summarise(reports, out, title)
+    ok = all(r.get('ok') for r in reports)
+    beads = sorted(set(getattr(args, 'bead', None) or []))
+    if os.environ.get('GITHUB_ACTIONS'):
+        if beads and os.environ.get('GITHUB_STEP_SUMMARY'):
+            with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as f:
+                f.write(f"\nBeads in the tested commit: {', '.join(beads)}. "
+                        + ('' if ok else f"Pass them back with: `lab.py qualify --run <this build's run id> --bead {' --bead '.join(beads)}`\n"))
+    else:
+        passback(beads, ok, out, title)
+    return ok
 
 
 def main():
@@ -774,9 +903,19 @@ def main():
         p.add_argument('--repeat', type=int, default=1)
         p.add_argument('--label', default='run')
         p.add_argument('--keep-camera', action='store_true', help='do not pause the Frigate camera')
+        p.add_argument('--bead', action='append', help='bead(s) this run is evidence for: a failure passes them back')
     r = sub.add_parser('run', help='one cell')
     r.add_argument('--cell', choices=list(CELLS), default='phone-cpu')
     common(r, 'cold-face,warm-face')
+    q = sub.add_parser('qualify', help='fetch a candidate build by CI run id and run the matrix on it (any agent, any time, before deploying)')
+    q.add_argument('--run', required=True, help='GitHub Actions run id of the build (classic: New site artifact)')
+    q.add_argument('--repo', default='check-face/facemorph.me-classic')
+    q.add_argument('--runtime-sha', default='d9e37e50a436e9fb7c0c7f973e70adee353c808f48c6a51fa5a9186f1c650a5c')
+    q.add_argument('--cells', default=','.join(CELLS))
+    q.add_argument('--journey', default='cold-face,warm-face,morph')
+    q.add_argument('--repeat', type=int, default=1)
+    q.add_argument('--keep-camera', action='store_true')
+    q.add_argument('--bead', action='append', help='beads to pass back; the tested commit message is also scanned for fm-... ids')
     m = sub.add_parser('matrix', help='several cells, one summary (the deploy gate)')
     m.add_argument('--cells', default=','.join(CELLS))
     common(m, 'cold-face,warm-face,morph')
@@ -792,6 +931,25 @@ def main():
         fn = {'status': camera_status, 'pause': camera_pause, 'resume': camera_resume, 'off': camera_off, 'on': camera_on}[a.action]
         print(json.dumps((fn() or camera_status()) | {'heldOff': HOLD.exists()}, indent=2))
         return
+    if a.cmd == 'qualify':
+        name = subprocess.run(['gh', 'api', f'repos/{a.repo}/actions/runs/{a.run}/artifacts', '-q',
+                               '.artifacts[] | select(.name|startswith("next-site-")) | .name'],
+                              capture_output=True, text=True, check=True).stdout.split()[0]
+        dest = Path.home() / '.cache/facemorph-device-lab/artifacts' / name
+        if not (dest / 'deploy-next').exists():
+            dest.mkdir(parents=True, exist_ok=True)
+            subprocess.run(['gh', 'run', 'download', a.run, '-R', a.repo, '-n', name, '-D', str(dest)], check=True)
+        mirror = Path.home() / '.cache/facemorph-device-lab/runtime-mirror'
+        mirror.mkdir(parents=True, exist_ok=True)
+        if not (dest / '.runtime-mirror').exists():
+            (dest / '.runtime-mirror').symlink_to(mirror)
+        os.environ.setdefault('RUNTIME_FILES', str(Path.home() / '.cache/facemorph-device-lab/runtime-public'))
+        a.artifact, a.url, a.label = str(dest), f'https://{ORIGIN_HOST}/', f'qualify-{name}'
+        sha = name.removeprefix('next-site-')
+        msg = subprocess.run(['gh', 'api', f'repos/{a.repo}/commits/{sha}', '-q', '.commit.message'],
+                             capture_output=True, text=True).stdout
+        a.bead = sorted(set((a.bead or []) + BEAD_ID.findall(msg)))
+        sys.exit(0 if run_matrix(a) else 1)
     if a.artifact and not a.runtime_sha:
         raise SystemExit('--artifact needs --runtime-sha')
     sys.exit(0 if run_matrix(a) else 1)

@@ -1,11 +1,13 @@
 # FaceMorph monorepo agent guide
 
-Read [PLAN.md](PLAN.md), the single active `repo-cleanup-and-architecture-refactor`
-plan, and inspect `git status` before choosing work. Use Cass for relevant feedback
+Work comes from the Beads graph (`.beads/issues.jsonl`); start with `br show fm-fy2`, the entry
+bead. [PLAN.md](PLAN.md), the `repo-cleanup-and-architecture-refactor` plan, is frozen background
+since 24 October: where a bead and the plan differ, the bead wins. Inspect `git status` before
+choosing work. Use Cass for relevant feedback
 (`cass search ... --robot`). Preserve concurrent changes; no worktrees/reset/clean.
 
-This is a fresh repository bootstrap, not a working app. Start with the plan’s
-source/repository identity and application inventory; organization rename may be
+This is a fresh repository bootstrap, not a working app. Start with the
+source/repository identity and application inventory beads; organization rename may be
 the first execution change, independently of application migration. Source paths in the plan refer to sibling
 `../facemorph.me-classic/` until explicitly imported with provenance. Run legacy
 build/research commands there; do not assume they exist here.
@@ -53,18 +55,49 @@ shippable slices per PLAN.md "Bead size and ceremony"): the 22 earlier `fm-fy2*`
 Each bead's `external_ref` is `plan:<key>`; its workstream is a `ws-<name>` label. There are no
 workstream or milestone join beads; never use `parent-child` links, which block in `br` and
 deadlock the graph. Once implementation starts, pick work with `br ready --exclude-label gate`
-or `bv --robot-next` (never bare `bv`). Keep specification in `PLAN.md` (still the scope
-authority) and execution state in Beads. Evidence for a bead is its merged commit and CI run;
-no per-bead receipt files.
+or `bv --robot-next` (never bare `bv`). Beads are self-contained and are the execution and
+scope authority; change scope with `br update` on the affected beads, never only in `PLAN.md`.
+Record an operator decision once in the plan's dated decisions table as well. Evidence for a
+bead is its merged commit and CI run; no per-bead receipt files. The tracker is published to
+https://beads.dilger.dev (behind Cloudflare Access) by `beads-site.yml` on every push to `main`
+that changes `.beads/`.
+
+No fakes in tests (operator, 24 October 2026): no mocks, stubs, test doubles, fake clocks or
+timers, mocked browser APIs, or recorded responses replayed as proof. Pure decision logic takes
+time, capabilities and digests as plain values and is tested by calling it; anything with I/O
+runs against the real thing (real app, worker, browsers and devices; temporary Git repositories;
+a local S3-compatible store, since storage scripts speak the S3 API rather than one provider's;
+Prometheus/Grafana containers; local servers with a fault switch). Planted input files are
+inputs, not fakes. A case nothing real can produce is reported untested.
+
+Swarm: implementers are fungible and all pick from Beads (`ops/swarm/implementer.md`). One
+session at a time wears the release-manager duty (`ops/swarm/release-manager.md`): it runs the
+batched device-lab verification of `lab-pending` beads, reopens false closes, runs the deploy
+gates and the release summary, and implements nothing it verifies. Its state lives in Beads, so any session can take it over. Coordinate through MCP Agent Mail
+(`agent-mail.service`, a systemd user unit on eris at `http://127.0.0.1:8780/mcp/`; `am` CLI):
+register, reserve files before editing (`am file_reservations reserve`), put the bead ID in
+the thread, release when done. Launch with NTM from any directory:
+`ntm spawn facemorph --cc=N [--omp=1]` (`~/ntm_Dev/facemorph` links to this checkout; session
+names cannot contain dots). Claude panes start with Remote Control on, so each appears in
+claude.ai and the phone app. `omp` panes run GLM (`glm-5.3-flash`, `:glm` for `glm-5.3`) as
+best effort: when GLM credit runs out those panes stop and the rest of the swarm carries on.
 
 The original plan and supplied crop screenshots are locked local references linked
 from `PLAN.md`. Preserve their bytes and follow the original crop design plus explicit
 operator revisions.
 
 Device lab and deploys (24 October 2026): `tools/device-lab/` runs the end-to-end journeys on eris
-(WebGPU, CPU) and the USB P30 Pro (WebGPU via debug flags, CPU). Deploys to next.facemorph.me are
+(WebGPU, CPU) and the USB P30 Pro (WebGPU via debug flags, CPU). Run it on demand when your bead needs
+device evidence (no schedule; `lab.py qualify --run <id>` tests a candidate build before it deploys).
+The phone's Frigate camera stays held off until the operator asks for it back. Deploys to next.facemorph.me are
 automatic only after all four cells pass on that exact build; the first monorepo deploy there also
-needs every plan flow. Build, test and validate locally as you go; CI is required to close a bead,
-not to start the next. CI is newest-only (concurrency groups, `cancel-in-progress: false`).
+needs every plan flow. Build, test and validate locally as you go (eris, triton, the phone via the
+lab). Closure loop (`fm-fy2` step 8): test locally in the Linux browsers on eris (system Chromium
+with and without WebGPU; Playwright Chromium, Firefox, WebKit) and on the phone when relevant; a
+bead closes on its merge commit's green CI across the supported browser matrix (`browser-matrix.json`:
+Ubuntu Chrome/Chromium/Firefox/WebKit, macOS WebKit/Firefox, Android emulator, iOS Simulator, GPU
+lane), never on the author's word. User-visible or speed-affecting beads also get `lab-pending`;
+the release manager verifies those in batches on `main` with the four lab cells and reopens any
+that fail, so the single phone gates deploys, not the bead graph. CI is newest-only (concurrency groups, `cancel-in-progress: false`).
 Prefer the self-hosted runners (eris `device-lab`, triton on the `tank` pool) over hosted minutes.
 

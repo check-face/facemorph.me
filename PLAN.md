@@ -1,8 +1,8 @@
 # LATEST PLAN — repo-cleanup-and-architecture-refactor
 
-> **LATEST / ACTIVE PLAN.** This root `PLAN.md` is the single release plan. Scope, technology, visuals, implementation approach, source notes and reviews live here.
+> **FROZEN REFERENCE (24 October 2026).** This plan was converted to the Beads graph in `.beads/issues.jsonl` (entry bead `fm-fy2`). The beads are self-contained and are the execution and scope authority: where a bead and this file differ, the bead wins. This file keeps the background, rationale, locked references and the dated operator decisions; scope changes are made in the beads, and a new operator decision is added once to the [dated table](#operator-decisions-dated).
 
-Updated: 18 October 2026 (operator rulings on the port, retention, WebGL, the update lane and package scope on 17 October; the candidate-edit, tracker, classic end state, no-human-approval and old-report deletion answers on 18 October; see the review record). Status: **active release planning draft**.
+Updated: 18 October 2026 (operator rulings on the port, retention, WebGL, the update lane and package scope on 17 October; the candidate-edit, tracker, classic end state, no-human-approval and old-report deletion answers on 18 October; see the review record). Status: **frozen reference since 24 October; execution state and scope are in Beads**.
 Initiative ID: `repo-cleanup-and-architecture-refactor`. Repository bootstrap complete; application implementation remains unstarted.
 
 Read this file in order, or jump to:
@@ -3409,7 +3409,8 @@ the paired lanes, and autoresearch re-homing supplies the existing paired ABBA h
 playable video) on four cells and asserts the route each one actually used. A silent fallback is a failure.
 - `eris-webgpu`: desktop Chromium on eris (RTX 2080 SUPER), headed, because headless Chromium gets no adapter there.
 - `eris-cpu`: the same browser with WebGPU switched off, so the app's own fallback takes the CPU route.
-- `phone-webgpu`: Chrome on the USB-connected Huawei P30 Pro, with debug flags that unlock its Vulkan/WebGPU path.
+- `phone-webgpu`: Chrome on the USB-connected Huawei P30 Pro with two debug flags (`--enable-unsafe-webgpu
+  --ignore-gpu-blocklist`) that give pages a WebGPU adapter; forcing Vulkan compositing as well broke painting.
   Chrome blocks Vulkan for this Android 10 Mali-G76 driver, so real visitors on this phone get CPU. The cell still
   shows what works on devices that do have WebGPU enabled.
 - `phone-cpu`: Chrome on the same phone without flags, exactly what a real visitor on it gets.
@@ -3428,7 +3429,18 @@ origin to all four cells. The phone's Frigate camera role is paused during sessi
   [integrated verification](#integrated-verification)'s app flows and platform checks, and the
   [strictly-not-worse gate](#strictly-not-worse-than-the-candidate-operator-24-october-2026), unless the operator says
   otherwise. Later monorepo deploys need the four-cell journeys plus whatever the release summary marks as changed.
+- After each deploy, the same four cells run again against the live next.facemorph.me (`device-lab-live`). It
+  cannot block a deploy that already happened, but a failure passes beads back and is reported.
+- The self-hosted cells are in addition to hosted CI, not instead of it. Hosted lanes add the iOS Simulator and the
+  Android emulator (every push today), macOS (WebKit, Firefox and Chrome) and Windows (Chrome and Edge). Today's
+  desktop matrix runs only on dispatch and has no Windows lane. In the monorepo pipeline, all of these lanes are part
+  of the next.facemorph.me gate.
 - Promotion to facemorph.me and API retirement remain the operator's cutover decision.
+
+**On demand, scheduled through beads.** There is no timed run. Any agent whose bead needs device evidence runs the
+lab (on eris directly, or by dispatching the workflow), including on candidate builds before they reach
+next.facemorph.me (`lab.py qualify --run <id>`). The swarm stays fungible: there is no tester or shipping agent;
+when a candidate needs checking, that is a bead any agent can take.
 
 **Local first; CI closes beads.** Agents build, test and validate locally as they work: on eris, on triton, and on the
 phone through the lab. CI is required to close a bead (the merged commit and its CI run are the evidence), not to
@@ -3637,7 +3649,7 @@ receipts distinguish measured, implemented and deployed state.
 This section explains how the architecture can be delivered while preserving the
 working product. It is not an issue list or Markdown execution tracker. Dependencies
 are described to explain the design and avoid circular implementation assumptions;
-issue decomposition, IDs, assignment, status and Beads conversion are deferred.
+issue decomposition, IDs, assignment and status live in the Beads graph (converted 24 October).
 
 Start with repository/source identity so organization rename can be the first
 external change. Deeper application inventory informs package contracts and the
@@ -4558,7 +4570,7 @@ reading of the plan or the source cannot see what is covered, clipped or off scr
 
 Added 16 October from the cross-model review and a fresh-context structural review; both
 reported "ready after listed fixes", and the fixes are in the sections above. Execution
-decomposition itself is still a separate requested step and has not started.
+decomposition was done on 24 October (tracker state below).
 
 **Bead size and ceremony (operator, 24 October 2026).** The first conversion produced 373 beads, which the
 operator judged too fine-grained: per-item receipts, join nodes and bookkeeping items cost more than they
@@ -5080,7 +5092,7 @@ close that claim. Publication precedes this final review, avoiding a circular ga
 Performance claims still follow autoresearch evidence rules; those rules do not
 keep the API running or require the operator to continue this project indefinitely.
 Only the explicitly requested deferred published-package acceptance item is added
-in this planning pass; the historical execution graph is not otherwise synchronized.
+in this planning pass; the execution graph was later rebuilt from this plan as Beads on 24 October.
 
 ### Settled product direction and remaining execution choices
 
@@ -5164,6 +5176,7 @@ history retains their provenance.
 | 24 Oct | Device lab gates every next.facemorph.me deploy (eris and phone, WebGPU and CPU); the first monorepo deploy also needs all plan flows; local-first development with CI closing beads; newest-only CI; use every machine's compute; P30 Pro WebGPU optimisation without Samsung regression; qualified device round after the first new deploy |
 | 24 Oct | Only the live cutover pushes need the operator; package publication and planner proposals go ahead; no fixed count caps (only real resource limits, degrading nicely); strictly-not-worse gate against the candidate, iPhone included; changeover statistics in Grafana |
 | 24 Oct | Weighted multi-face blend as an advanced view on the new engine (button and `#blend` deep link, established export paths); beads are shippable slices (about 100–140); receipts only where an irreversible action or the cutover decision reads them |
+| 24 Oct | Beads are the execution and scope authority and this plan is frozen reference; no fakes in tests (no mocks, stubs, doubles, fake clocks or recorded responses: pure logic takes plain values, everything with I/O runs against real dependencies, provider-neutral where possible, such as an S3-compatible store); swarm coordination through Agent Mail and NTM, with GLM panes best effort |
 
 Earlier review rounds, including the 24 October round's findings, are in [`docs/plan-history.md`](docs/plan-history.md)
 and Git history; they do not define the current plan.
