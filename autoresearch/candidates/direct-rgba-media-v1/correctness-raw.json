@@ -1,0 +1,6716 @@
+{
+  "at": "2026-10-10T06:23:09.567Z",
+  "mode": "correctness",
+  "scope": "Frozen source runtime/worker raw-frame screening, not compiled UI, fixed full31 reference or physical phone qualification",
+  "loadBefore": 0.58,
+  "sourceSnapshot": {
+    "source": "b322a26858275f0e361127836d0fd1854e868ef9",
+    "scope": "Runtime/worker transient raw-frame screening; not compiled UI qualification; unchanged kernels and cache policy",
+    "snapshots": "/home/cdilga/Work/dev/checkface/facemorph.me/autoresearch/state/direct-rgba-source-v1",
+    "files": {
+      "control": {
+        "src/Next/Assets/ModelAssets.fs": "4195cb29fa2d34e5e826f5946a3ae7e87dc5a22899731f0cd226153816a2d83f",
+        "src/Next/Assets/model-cache.mjs": "711c1304cee0ee32588eec794321fca812bd99bc27078ed1edf6115c4d474e28",
+        "src/Next/Assets/model-cache.test.mjs": "86c90a7328c85abf287d357dcd84474cebb5ab5e2f1f6811c480e5245c61bdc0",
+        "src/Next/Assets/sha256.mjs": "91b5831f39b0c22bf911c233f15b78a4f168272f026337a3ca62af6cfd8fc2c4",
+        "src/Next/Assets/shard-store.mjs": "450c42f75108148bff0791abc28b9f7b488747006a6f710f56a8ad219e038bd9",
+        "src/Next/browser/README.md": "54416b87f0494d63f1ce612cb23817a6d9c30584ec36298501d75a7c288181c1",
+        "src/Next/browser/acquisition-budget.mjs": "4288b0c73c564aa61153638027e1f62e7c089a15882ce337eb590b188d17f4cd",
+        "src/Next/browser/acquisition-budget.test.mjs": "55db04f326109edb6d03b66020a8ae54d86205c7d90cd75a1157cae55d9b09da",
+        "src/Next/browser/canary-qualification.mjs": "b1bce9fcc36fb5159347be9ba6a775eb1fbc02688635d32a4911003517df58f4",
+        "src/Next/browser/canary-qualification.test.mjs": "1bf109c5413b5e0c28773aee9c0742cb375077ae909c3604ae85396d0fd79819",
+        "src/Next/browser/encoder-preflight.mjs": "6e529664435307fa366ea8b58f20e7a89b70f2f7f2e8e088f2be46848eb4f339",
+        "src/Next/browser/encoder-preflight.test.mjs": "9713117bdae45bc3041290a027a47a9432c92cc0273f107cc4490785eff71ecd",
+        "src/Next/browser/evidence/cpu-smoke.json": "d7fc3e6ab1893bf0adbc3927e258d883f295757b7979124cfaca78b2e85453bd",
+        "src/Next/browser/evidence/smoke-provenance.json": "361d7e0202454f56bf1274cbc5689190ebc36b34cecdbc28fa3f5ae72bbb40f2",
+        "src/Next/browser/evidence/webgl-smoke.json": "59ec209e449a62ae5f0e385a77d98c4375ccdecb2339bc10ca4fe8303accbb1c",
+        "src/Next/browser/evidence/webgpu-full31-smoke.json": "643e19a189e02bd0e80159862bffb85cf1574cb73fa5feb41fb30be89bb1767a",
+        "src/Next/browser/evidence/webgpu-provenance.json": "4c6af07abc9a918ec536a7ed8ba2f44ecc5c9f3635b5aa668eb9a4988725a4a2",
+        "src/Next/browser/fused-resample-v1.mjs": "6ee1eb7a0a894488e450242d72cb27b10a22b0b82b9aee9b4127c58efffb52f2",
+        "src/Next/browser/fused-resample.test.mjs": "9796b3eaae1946d1c5662e1a5f70dadac0bc3c3091fa2dcc0cb8ad4fe434c42b",
+        "src/Next/browser/identity-fixtures.json": "271deb2ddecc2d8e38b55e257ae3ea380841e2fc596bd987027791f8fdbb00f0",
+        "src/Next/browser/identity.mjs": "a74e217e91f660b554b3ed9c477881023bb4e90af93752e6c98b668cd9fe8b67",
+        "src/Next/browser/mobile-runtime.test.mjs": "f05a430292c6c112f0b62a739f8c1edb48f981190111d170804c913157f41df5",
+        "src/Next/browser/originals.mjs": "957ec81f83240d19cc23424f14e9fe145d549587c2ddf6c113d46b823f380c4c",
+        "src/Next/browser/originals.test.mjs": "66facc4ff03adbb2448aa9ac328581d36230d6c3b61e720d3b0da98f4dbd880d",
+        "src/Next/browser/ort-worker.mjs": "732eab789e1c244863bae9d45c3f70116d00f816a2fa2beaaebe5a164220bd41",
+        "src/Next/browser/png.mjs": "694cc2e83f76a674330d28f3ba125510930351e2aab7c132225cb9d870435785",
+        "src/Next/browser/route-priors.mjs": "b3c083429a2b5510ea031c4c810a0e3a4afddea0b047ee30c9341f2ab26c6989",
+        "src/Next/browser/route-priors.test.mjs": "3059d23b801cd50c6c2f7679fca08eb825499b18a1be10330452963224fed896",
+        "src/Next/browser/route-selection.mjs": "a2b1dd947cdf0471cd7927c4669b48258d58e6ee245f6d276139b3d04c12eaa3",
+        "src/Next/browser/runtime-test.html": "1dc203ad36a9ee770f3e61025012de088c258f55c49fa46b87558462809069a2",
+        "src/Next/browser/runtime.mjs": "79550f001282dad4da1e607a104b8bee0661f3532b46fad52186c88c1934a57c",
+        "src/Next/browser/runtime.test.mjs": "6b5ebb7ae97babe9d3d33131ca7ff9b8c5c277befbd5d5f0e21946b5074bcda4",
+        "src/Next/browser/serve-local.py": "57f1ea24dc732f19dfe71fed844dee2daf8d5031a4d18fef8f6c694d718abb75",
+        "src/Next/browser/stage-assets.py": "a0394f9bfa1b5d0096772f782bc70081af6372e6ca9416ca3b39fc8f77916b9a",
+        "src/Next/browser/webgl-vector-v1.mjs": "6c680636e8559338164cbe9f9cdaf9d286b2c4ccff7aaa309949b6496b403609",
+        "src/Next/browser/webgpu-direct.mjs": "333a7247a5ced8ec9ffaab0e017fa53bc98e20b3b9582053bba0e11b403b1502",
+        "src/Next/browser/webgpu-engine.mjs": "8950300238155a616fb78ec3e9df364428240e6a49b3bf9d7ad480b3509c4732",
+        "src/Next/browser/webgpu-engine.test.mjs": "4ed251c82fa8a1bde6aabcb81ffc508f542988702775c55fd2bd31f383e7f316"
+      },
+      "candidate": {
+        "src/Next/Assets/ModelAssets.fs": "4195cb29fa2d34e5e826f5946a3ae7e87dc5a22899731f0cd226153816a2d83f",
+        "src/Next/Assets/model-cache.mjs": "711c1304cee0ee32588eec794321fca812bd99bc27078ed1edf6115c4d474e28",
+        "src/Next/Assets/model-cache.test.mjs": "86c90a7328c85abf287d357dcd84474cebb5ab5e2f1f6811c480e5245c61bdc0",
+        "src/Next/Assets/sha256.mjs": "91b5831f39b0c22bf911c233f15b78a4f168272f026337a3ca62af6cfd8fc2c4",
+        "src/Next/Assets/shard-store.mjs": "450c42f75108148bff0791abc28b9f7b488747006a6f710f56a8ad219e038bd9",
+        "src/Next/browser/README.md": "54416b87f0494d63f1ce612cb23817a6d9c30584ec36298501d75a7c288181c1",
+        "src/Next/browser/acquisition-budget.mjs": "4288b0c73c564aa61153638027e1f62e7c089a15882ce337eb590b188d17f4cd",
+        "src/Next/browser/acquisition-budget.test.mjs": "55db04f326109edb6d03b66020a8ae54d86205c7d90cd75a1157cae55d9b09da",
+        "src/Next/browser/canary-qualification.mjs": "b1bce9fcc36fb5159347be9ba6a775eb1fbc02688635d32a4911003517df58f4",
+        "src/Next/browser/canary-qualification.test.mjs": "1bf109c5413b5e0c28773aee9c0742cb375077ae909c3604ae85396d0fd79819",
+        "src/Next/browser/encoder-preflight.mjs": "6e529664435307fa366ea8b58f20e7a89b70f2f7f2e8e088f2be46848eb4f339",
+        "src/Next/browser/encoder-preflight.test.mjs": "9713117bdae45bc3041290a027a47a9432c92cc0273f107cc4490785eff71ecd",
+        "src/Next/browser/evidence/cpu-smoke.json": "d7fc3e6ab1893bf0adbc3927e258d883f295757b7979124cfaca78b2e85453bd",
+        "src/Next/browser/evidence/smoke-provenance.json": "361d7e0202454f56bf1274cbc5689190ebc36b34cecdbc28fa3f5ae72bbb40f2",
+        "src/Next/browser/evidence/webgl-smoke.json": "59ec209e449a62ae5f0e385a77d98c4375ccdecb2339bc10ca4fe8303accbb1c",
+        "src/Next/browser/evidence/webgpu-full31-smoke.json": "643e19a189e02bd0e80159862bffb85cf1574cb73fa5feb41fb30be89bb1767a",
+        "src/Next/browser/evidence/webgpu-provenance.json": "4c6af07abc9a918ec536a7ed8ba2f44ecc5c9f3635b5aa668eb9a4988725a4a2",
+        "src/Next/browser/fused-resample-v1.mjs": "6ee1eb7a0a894488e450242d72cb27b10a22b0b82b9aee9b4127c58efffb52f2",
+        "src/Next/browser/fused-resample.test.mjs": "9796b3eaae1946d1c5662e1a5f70dadac0bc3c3091fa2dcc0cb8ad4fe434c42b",
+        "src/Next/browser/identity-fixtures.json": "271deb2ddecc2d8e38b55e257ae3ea380841e2fc596bd987027791f8fdbb00f0",
+        "src/Next/browser/identity.mjs": "a74e217e91f660b554b3ed9c477881023bb4e90af93752e6c98b668cd9fe8b67",
+        "src/Next/browser/mobile-runtime.test.mjs": "f05a430292c6c112f0b62a739f8c1edb48f981190111d170804c913157f41df5",
+        "src/Next/browser/originals.mjs": "957ec81f83240d19cc23424f14e9fe145d549587c2ddf6c113d46b823f380c4c",
+        "src/Next/browser/originals.test.mjs": "66facc4ff03adbb2448aa9ac328581d36230d6c3b61e720d3b0da98f4dbd880d",
+        "src/Next/browser/ort-worker.mjs": "baacc626a8cc805f6bfb4ccd3a622ab4f7e3943db33a181e0aad733d58d06684",
+        "src/Next/browser/png.mjs": "694cc2e83f76a674330d28f3ba125510930351e2aab7c132225cb9d870435785",
+        "src/Next/browser/route-priors.mjs": "b3c083429a2b5510ea031c4c810a0e3a4afddea0b047ee30c9341f2ab26c6989",
+        "src/Next/browser/route-priors.test.mjs": "3059d23b801cd50c6c2f7679fca08eb825499b18a1be10330452963224fed896",
+        "src/Next/browser/route-selection.mjs": "a2b1dd947cdf0471cd7927c4669b48258d58e6ee245f6d276139b3d04c12eaa3",
+        "src/Next/browser/runtime-test.html": "1dc203ad36a9ee770f3e61025012de088c258f55c49fa46b87558462809069a2",
+        "src/Next/browser/runtime.mjs": "a9c3ba0bdd07e9f9db71b353a16b6c152ac01527dd4d626be8ec95dbb910a05d",
+        "src/Next/browser/runtime.test.mjs": "6b5ebb7ae97babe9d3d33131ca7ff9b8c5c277befbd5d5f0e21946b5074bcda4",
+        "src/Next/browser/serve-local.py": "57f1ea24dc732f19dfe71fed844dee2daf8d5031a4d18fef8f6c694d718abb75",
+        "src/Next/browser/stage-assets.py": "a0394f9bfa1b5d0096772f782bc70081af6372e6ca9416ca3b39fc8f77916b9a",
+        "src/Next/browser/webgl-vector-v1.mjs": "6c680636e8559338164cbe9f9cdaf9d286b2c4ccff7aaa309949b6496b403609",
+        "src/Next/browser/webgpu-direct.mjs": "333a7247a5ced8ec9ffaab0e017fa53bc98e20b3b9582053bba0e11b403b1502",
+        "src/Next/browser/webgpu-engine.mjs": "8950300238155a616fb78ec3e9df364428240e6a49b3bf9d7ad480b3509c4732",
+        "src/Next/browser/webgpu-engine.test.mjs": "4ed251c82fa8a1bde6aabcb81ffc508f542988702775c55fd2bd31f383e7f316"
+      }
+    }
+  },
+  "runs": [
+    {
+      "variant": "blob",
+      "qualification": {
+        "qualificationMs": 8256.304999947548,
+        "deviceValidated": true,
+        "checks": [
+          {
+            "name": "frame-00",
+            "maxRgb": 1,
+            "maxFloat": 0.000007331371307373047,
+            "passed": true
+          },
+          {
+            "name": "frame-25",
+            "maxRgb": 1,
+            "maxFloat": 0.000007748603820800781,
+            "passed": true
+          },
+          {
+            "name": "encoded-synthetic-photo",
+            "maxRgb": 1,
+            "maxFloat": 0.000026434659957885742,
+            "passed": true
+          },
+          {
+            "name": "zero-noise",
+            "maxRgb": 1,
+            "maxFloat": 0.000007450580596923828,
+            "passed": true
+          },
+          {
+            "name": "alternate-noise",
+            "maxRgb": 1,
+            "maxFloat": 0.000009447336196899414,
+            "passed": true
+          },
+          {
+            "name": "trunc-psi-0",
+            "maxRgb": 1,
+            "maxFloat": 0.000009417533874511719,
+            "passed": true
+          },
+          {
+            "name": "trunc-psi-1",
+            "maxRgb": 1,
+            "maxFloat": 0.000006735324859619141,
+            "passed": true
+          }
+        ],
+        "events": [
+          {
+            "at": 471.20499992370605,
+            "stage": "canary"
+          },
+          {
+            "at": 471.74000000953674,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 472.90499997138977,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 472.9299999475479,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 526.2250000238419,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 526.2799999713898,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 527.6699999570847,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 527.704999923706,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 534.1949999332428,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 534.5049999952316,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 534.5449999570847,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 578.1000000238419,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 578.1299999952316,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 579.204999923706,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 579.2300000190735,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 579.2400000095367,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 579.5699999332428,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 579.5849999189377,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 609.3600000143051,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 609.4099999666214,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 610.8600000143051,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 610.9049999713898,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 610.9249999523163,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 612.0049999952316,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 612.0299999713898,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 671,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 671.039999961853,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 672.1849999427795,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 672.2099999189377,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 672.2250000238419,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 672.5649999380112,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 672.579999923706,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 694.1599999666214,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 694.1999999284744,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 695.1000000238419,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 695.1200000047684,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 695.125,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 695.3899999856949,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 695.3999999761581,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 712.5649999380112,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 712.6000000238419,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 713.5199999809265,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 713.5449999570847,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 713.5499999523163,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 713.8700000047684,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 713.8799999952316,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 745.2250000238419,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 745.25,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 746.1399999856949,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 746.1549999713898,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 746.1699999570847,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 747.204999923706,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 747.2250000238419,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 772.1599999666214,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 772.1949999332428,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 773.164999961853,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 773.1799999475479,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 773.1949999332428,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 773.5549999475479,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 773.5649999380112,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 800.9599999189377,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 800.9900000095367,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 801.9599999189377,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 801.9750000238419,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 801.9850000143051,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 802.2799999713898,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 802.289999961853,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 833.9399999380112,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 833.9700000286102,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 834.9649999141693,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 834.9900000095367,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 834.9950000047684,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 835.2949999570847,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 835.3099999427795,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 877.6150000095367,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 877.6599999666214,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 878.8099999427795,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 878.8450000286102,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 878.8600000143051,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 879.0499999523163,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 879.0649999380112,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 936.2849999666214,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 936.3450000286102,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 937.8249999284744,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 937.8500000238419,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 937.8650000095367,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 938.1849999427795,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 938.1949999332428,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 1056.4850000143051,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 1056.5149999856949,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 1057.929999947548,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 1057.9399999380112,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 1057.9649999141693,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 1058.2699999809265,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 1058.2799999713898,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 1140.0249999761581,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 1140.054999947548,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 1141.4850000143051,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 1141.5249999761581,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 1141.5349999666214,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 1141.8500000238419,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 1141.8700000047684,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 1311.8799999952316,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 1311.914999961853,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 1314.9099999666214,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 1314.9599999189377,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 1314.9750000238419,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 1315.8999999761581,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 1315.929999947548,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 1439.6549999713898,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 1439.6949999332428,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 1442.4900000095367,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 1442.5299999713898,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 1442.5449999570847,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 1442.789999961853,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 1442.7999999523163,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 1742.2400000095367,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 1742.2999999523163,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 1750.179999947548,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 1750.2250000238419,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 1750.2400000095367,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 1750.7699999809265,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 1750.789999961853,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 1966.25,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 1966.2799999713898,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 1973.1499999761581,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 1973.179999947548,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 1973.1949999332428,
+            "stage": "model-loading"
+          },
+          {
+            "at": 1974.1399999856949,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 1975.8799999952316,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 1975.8849999904633,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 1993.6599999666214,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 1993.6899999380112,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 1994.679999947548,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 1994.6999999284744,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 1995.0899999141693,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 1995.3600000143051,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 1995.3650000095367,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 2014.6699999570847,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 2014.704999923706,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 2015.8199999332428,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 2015.8450000286102,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 2016.079999923706,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 2016.3650000095367,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 2016.375,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 2056.829999923706,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 2057.3249999284744,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 2057.350000023842,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 2087.9049999713898,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 2087.929999947548,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 2089.2999999523163,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 2089.314999938011,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 2092.444999933243,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 2092.8099999427795,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 2092.819999933243,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 2114.179999947548,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 2114.2149999141693,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 2115.6449999809265,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 2115.6749999523163,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 2116.194999933243,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 2116.414999961853,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 2116.4249999523163,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 2254.069999933243,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 2254.1150000095367,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 2270.5049999952316,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 2270.5599999427795,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 2281.939999938011,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 2284.3799999952316,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 2284.4049999713898,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 2306.1150000095367,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 2306.1449999809265,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 2307.3399999141693,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 2307.3650000095367,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 2307.375,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 2307.694999933243,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 2307.7099999189377,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 2718.014999985695,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 2718.0599999427795,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 2758.2699999809265,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 2758.3249999284744,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 2777.225000023842,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 2782.929999947548,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 2782.9700000286102,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 2783.8799999952316,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 2783.944999933243,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 2797.3450000286102,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 2797.3849999904633,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 3408.7799999713898,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 3408.8249999284744,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 3440.3949999809265,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 3440.4349999427795,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 3482.3799999952316,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 3487.5199999809265,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 3487.554999947548,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 4338.610000014305,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 4338.6449999809265,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 4370.554999947548,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 4370.59500002861,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 4399,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 4406.569999933243,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 4406.6050000190735,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 5011.909999966621,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 5012.004999995232,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 5046.819999933243,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 5046.879999995232,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 5080.914999961853,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 5088.674999952316,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 5088.709999918938,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 5774.004999995232,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 5774.554999947548,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 5811.819999933243,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 5811.879999995232,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 5836.289999961853,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 5843.159999966621,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 5843.194999933243,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6115.240000009537,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6115.284999966621,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6129.294999957085,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6129.334999918938,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6139.745000004768,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6140.235000014305,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6140.254999995232,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6243.814999938011,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6243.860000014305,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6250.865000009537,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6250.90499997139,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6252.919999957085,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6253.929999947548,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6253.954999923706,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6298.174999952316,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6298.214999914169,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6301.490000009537,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6301.52999997139,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6302.204999923706,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6302.679999947548,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6302.714999914169,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6332.97000002861,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6333.004999995232,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6334.639999985695,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6334.664999961853,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6335.125,
+            "stage": "gpu-direct-ready"
+          },
+          {
+            "at": 6335.174999952316,
+            "stage": "model-loaded",
+            "elapsedMs": 4361.9800000190735
+          },
+          {
+            "at": 6335.3099999427795,
+            "stage": "synthesis"
+          },
+          {
+            "at": 6713.27999997139,
+            "stage": "synthesis-complete",
+            "elapsedMs": 377.7649999856949
+          },
+          {
+            "at": 6713.334999918938,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6714.449999928474,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6714.459999918938,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6736.850000023842,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6736.889999985695,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6738.074999928474,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6738.100000023842,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6738.125,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6738.409999966621,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6738.424999952316,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6757.3949999809265,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6757.4349999427795,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6758.360000014305,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6758.384999990463,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6758.3949999809265,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6758.664999961853,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6758.674999952316,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6823.049999952316,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6823.084999918938,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6827.475000023842,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6827.514999985695,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6921.839999914169,
+            "stage": "canary"
+          },
+          {
+            "at": 6921.870000004768,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6922.350000023842,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6922.384999990463,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6942.235000014305,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6942.264999985695,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6943.424999952316,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6943.439999938011,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6943.569999933243,
+            "stage": "synthesis"
+          },
+          {
+            "at": 6995.745000004768,
+            "stage": "synthesis-complete",
+            "elapsedMs": 51.97500002384186
+          },
+          {
+            "at": 6995.789999961853,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6998.924999952316,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7000.204999923706,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7000.214999914169,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7000.2300000190735,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7000.574999928474,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7000.584999918938,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7020.34500002861,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7020.389999985695,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7021.544999957085,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7021.5599999427795,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7021.564999938011,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7021.985000014305,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7021.995000004768,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7080.384999990463,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7080.429999947548,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7084.2300000190735,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7084.259999990463,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7175.659999966621,
+            "stage": "canary"
+          },
+          {
+            "at": 7175.689999938011,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7176.414999961853,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7176.449999928474,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7199.615000009537,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7199.649999976158,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7200.814999938011,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7200.84500002861,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7200.879999995232,
+            "stage": "synthesis"
+          },
+          {
+            "at": 7246.47000002861,
+            "stage": "synthesis-complete",
+            "elapsedMs": 45.480000019073486
+          },
+          {
+            "at": 7246.524999976158,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7247.774999976158,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7248.985000014305,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7249.014999985695,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7249.034999966621,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7249.360000014305,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7249.375,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7268.0599999427795,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7268.084999918938,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7269.235000014305,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7269.25,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7269.259999990463,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7269.610000014305,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7269.625,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7343.254999995232,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7343.284999966621,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7347.284999966621,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7347.314999938011,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7445.40499997139,
+            "stage": "canary"
+          },
+          {
+            "at": 7445.429999947548,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7446.370000004768,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7447.59500002861,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7447.610000014305,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7447.7300000190735,
+            "stage": "synthesis"
+          },
+          {
+            "at": 7505.069999933243,
+            "stage": "synthesis-complete",
+            "elapsedMs": 57.24499988555908
+          },
+          {
+            "at": 7505.1050000190735,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7506.324999928474,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7508.889999985695,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7508.914999961853,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7508.924999952316,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7509.259999990463,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7509.274999976158,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7534.049999952316,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7534.084999918938,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7535.259999990463,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7535.284999966621,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7535.3099999427795,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7535.6050000190735,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7535.620000004768,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7571.115000009537,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7571.15499997139,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7573.414999961853,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7573.449999928474,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7695.954999923706,
+            "stage": "canary"
+          },
+          {
+            "at": 7695.9800000190735,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7696.485000014305,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7697.794999957085,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7697.819999933243,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7945.4800000190735,
+            "stage": "synthesis"
+          },
+          {
+            "at": 8000.329999923706,
+            "stage": "synthesis-complete",
+            "elapsedMs": 54.825000047683716
+          },
+          {
+            "at": 8000.360000014305,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8000.97000002861,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8002.3949999809265,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8002.4349999427795,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8002.444999933243,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8002.75,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8002.764999985695,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8024.299999952316,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8024.324999928474,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8025.284999966621,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8025.294999957085,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8025.304999947548,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8025.554999947548,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8025.569999933243,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8073.350000023842,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8073.3949999809265,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8077.014999985695,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8077.039999961853,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8149.495000004768,
+            "stage": "canary"
+          },
+          {
+            "at": 8150.054999947548,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8151.694999933243,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8151.72000002861,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8176.189999938011,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8176.2300000190735,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8177.725000023842,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8177.759999990463,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8177.789999961853,
+            "stage": "synthesis"
+          },
+          {
+            "at": 8232.870000004768,
+            "stage": "synthesis-complete",
+            "elapsedMs": 54.980000019073486
+          },
+          {
+            "at": 8232.909999966621,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8233.409999966621,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8234.549999952316,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8234.584999918938,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8234.59500002861,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8234.879999995232,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8234.894999980927,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8254.134999990463,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8254.174999952316,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8257.59500002861,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8257.620000004768,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8257.629999995232,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8257.954999923706,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8257.959999918938,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8320.054999947548,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8320.120000004768,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8325.694999933243,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8325.740000009537,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8396.524999976158,
+            "stage": "canary"
+          },
+          {
+            "at": 8396.55999994278,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8396.879999995232,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8396.894999980927,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8417.459999918938,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8417.495000004768,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8419.740000009537,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8419.769999980927,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8419.824999928474,
+            "stage": "synthesis"
+          },
+          {
+            "at": 8468.074999928474,
+            "stage": "synthesis-complete",
+            "elapsedMs": 48.144999980926514
+          },
+          {
+            "at": 8468.110000014305,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8468.694999933243,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8469.694999933243,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8469.730000019073,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8469.740000009537,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8469.985000014305,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8470.004999995232,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8492.360000014305,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8492.399999976158,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8493.299999952316,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8493.329999923706,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8493.34500002861,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8493.554999947548,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8493.574999928474,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8546.855000019073,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8546.889999985695,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8550.579999923706,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8550.610000014305,
+            "stage": "asset-acquisition"
+          }
+        ]
+      },
+      "warmup": {
+        "firstDrawMs": 174.35000002384186,
+        "fileReadyMs": 174.3550000190735,
+        "rawSha256": "34566a3da12a32ecb6f1b5b859ea4bc1e4427d4960e739e434a758b14afce490",
+        "imageBytes": 4195716
+      },
+      "single": {
+        "firstDrawMs": 146.61500000953674,
+        "fileReadyMs": 146.61500000953674,
+        "rawSha256": "54db02b699c52cd5746f30bbdfee8908da1225287da8f3782cc749c9c1118ef8",
+        "imageBytes": 4195716
+      },
+      "frames": {
+        "n": 31,
+        "firstDrawMs": 103.23000001907349,
+        "deliveredMs": 1277.4750000238419,
+        "fileReadyMs": 1496.7599999904633,
+        "peakReservedRawBytes": 0,
+        "outputs": [
+          {
+            "rawSha256": "9af3d49c5a5f9a36f0080d148a4515269a03029a01e157c372a9d00b95a56df6",
+            "imageBytes": 4195716
+          },
+          {
+            "rawSha256": "690a34d8bcb37f7a25928aae963e6c451170dd7f57553efc8cd13548c619602d",
+            "imageBytes": 4195716
+          },
+          {
+            "rawSha256": "cea088e6bec4cffe6836e6853610a4fecec0ca46332ed283cfe5abade9b314f2",
+            "imageBytes": 4195716
+          },
+          {
+            "rawSha256": "c0e67c46a611934127dff1e5bfaed82e2738157235bcdcf209a3b4607758de72",
+            "imageBytes": 4195716
+          },
+          {
+            "rawSha256": "35c1e72e97c30fa210e46d9628ca1ef99f20b0789c980b8492b1f11b439c7c7b",
+            "imageBytes": 4195716
+          },
+          {
+            "rawSha256": "d64f3c6abe8020ee5a86b250be635109ad18a9bab5c6021d100e14b03b31d273",
+            "imageBytes": 4195716
+          },
+          {
+            "rawSha256": "3544b1a7b062a0c1eb712a4785f25b9c64792550ea8d53ce505f5adac425bf2a",
+            "imageBytes": 4195716
+          },
+          {
+            "rawSha256": "2d4866767304860bad206fefb8dc247a5db8bc0ae54613451b379fa8293e1e00",
+            "imageBytes": 4195716
+          },
+          {
+            "rawSha256": "be0419abe483865ee419a9ff0a77753b16efd3b95a128880ed6cc154ed5d96a3",
+            "imageBytes": 4195716
+          },
+          {
+            "rawSha256": "60b041f9041d12eb6c7ee6cc4d3f503e7a5dbad2f3d5701081f5c9fa39dc3444",
+            "imageBytes": 4195716
+          },
+          {
+            "rawSha256": "6a6b47a0e4f639ea10b7806c743209aa6cba25ca4e2e512265ecdd1c35eb367f",
+            "imageBytes": 4195716
+          },
+          {
+            "rawSha256": "59fa89d4bfd31b11ac35b6952253adb9bb4dbd70afada09a12f7651a9b3bc815",
+            "imageBytes": 4195716
+          },
+          {
+            "rawSha256": "99bd43adb265f3a9f3039cc7bfb44c00b9fc74495d9fe405fd37f7194c934574",
+            "imageBytes": 4195716
+          },
+          {
+            "rawSha256": "9de4921baa0fa6a3b36174b92ed9ae29e09f7e5d104600913ca999fa9b8112c7",
+            "imageBytes": 4195716
+          },
+          {
+            "rawSha256": "122d5f209ad9761651fe8c6f78602b308c604641dc9425299c3d8de53a4224e7",
+            "imageBytes": 4195716
+          },
+          {
+            "rawSha256": "0c1157f0163f3605066ba9e3b0586a1465c09e5b21d4fac243e9087a27e88a61",
+            "imageBytes": 4195716
+          },
+          {
+            "rawSha256": "ebf4e9f1af468adb9d6f1ac1d5d3346e630c96498a68bd204fcbd99d7b3900f4",
+            "imageBytes": 4195716
+          },
+          {
+            "rawSha256": "54db02b699c52cd5746f30bbdfee8908da1225287da8f3782cc749c9c1118ef8",
+            "imageBytes": 4195716
+          },
+          {
+            "rawSha256": "bf365c630f14fa1aa31676c58fd7ca76fb365b52523c9725fdb6468e49005499",
+            "imageBytes": 4195716
+          },
+          {
+            "rawSha256": "e32efc3dc595ad5aa5e293462a6735dbfc04ecc9625cbe8f874c293a92967866",
+            "imageBytes": 4195716
+          },
+          {
+            "rawSha256": "6edee0b394e958f413918619a06955323003d99b632661da13d75b755bfb780b",
+            "imageBytes": 4195716
+          },
+          {
+            "rawSha256": "a4d1534817c48d71a9a32033678c83a927dfb0718d81677cb7cc60687e3ebfa4",
+            "imageBytes": 4195716
+          },
+          {
+            "rawSha256": "693715379b82c0d8ca880cc2f5e9fde197f6d899e57e9a7262be59efe0c07580",
+            "imageBytes": 4195716
+          },
+          {
+            "rawSha256": "8675e17f0eccb5dccfe4379e6d8a7f45f09a1b29e06a341ed4a1faf2f3a65269",
+            "imageBytes": 4195716
+          },
+          {
+            "rawSha256": "fa51e59c7e1b6d9514753411dc9b2f17e7be2737c31bf95d9e22d5848f852576",
+            "imageBytes": 4195716
+          },
+          {
+            "rawSha256": "1afd1ffc6e969ac4cd49b61539a2581aa847dcd6c19eac9646804bdb3d13eba6",
+            "imageBytes": 4195716
+          },
+          {
+            "rawSha256": "2dfe942bd1a65c9b17a6f315793e848d38afbcd56575f4a4b91e3dc3ed0b41f7",
+            "imageBytes": 4195716
+          },
+          {
+            "rawSha256": "02b509e25b534632c4f3e6f95a376379f47d59a9e511f6553f9f9eb9014c2c1d",
+            "imageBytes": 4195716
+          },
+          {
+            "rawSha256": "10b7fd2989d39ecf472b906b5cd4855d4cdad5c9cf3fd8c670fe8fec2ee9b0fc",
+            "imageBytes": 4195716
+          },
+          {
+            "rawSha256": "5631d78208522560af9639e0106c1e6210abfe78f5a5c752541d5234df8d5275",
+            "imageBytes": 4195716
+          },
+          {
+            "rawSha256": "14aa92f98b5c3c6f50db98839226956f43d066ddd19b0dbe49db5e5d2e473409",
+            "imageBytes": 4195716
+          }
+        ],
+        "events": [
+          {
+            "at": 471.20499992370605,
+            "stage": "canary"
+          },
+          {
+            "at": 471.74000000953674,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 472.90499997138977,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 472.9299999475479,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 526.2250000238419,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 526.2799999713898,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 527.6699999570847,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 527.704999923706,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 534.1949999332428,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 534.5049999952316,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 534.5449999570847,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 578.1000000238419,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 578.1299999952316,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 579.204999923706,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 579.2300000190735,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 579.2400000095367,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 579.5699999332428,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 579.5849999189377,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 609.3600000143051,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 609.4099999666214,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 610.8600000143051,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 610.9049999713898,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 610.9249999523163,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 612.0049999952316,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 612.0299999713898,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 671,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 671.039999961853,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 672.1849999427795,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 672.2099999189377,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 672.2250000238419,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 672.5649999380112,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 672.579999923706,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 694.1599999666214,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 694.1999999284744,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 695.1000000238419,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 695.1200000047684,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 695.125,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 695.3899999856949,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 695.3999999761581,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 712.5649999380112,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 712.6000000238419,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 713.5199999809265,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 713.5449999570847,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 713.5499999523163,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 713.8700000047684,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 713.8799999952316,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 745.2250000238419,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 745.25,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 746.1399999856949,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 746.1549999713898,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 746.1699999570847,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 747.204999923706,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 747.2250000238419,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 772.1599999666214,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 772.1949999332428,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 773.164999961853,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 773.1799999475479,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 773.1949999332428,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 773.5549999475479,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 773.5649999380112,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 800.9599999189377,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 800.9900000095367,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 801.9599999189377,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 801.9750000238419,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 801.9850000143051,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 802.2799999713898,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 802.289999961853,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 833.9399999380112,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 833.9700000286102,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 834.9649999141693,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 834.9900000095367,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 834.9950000047684,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 835.2949999570847,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 835.3099999427795,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 877.6150000095367,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 877.6599999666214,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 878.8099999427795,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 878.8450000286102,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 878.8600000143051,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 879.0499999523163,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 879.0649999380112,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 936.2849999666214,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 936.3450000286102,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 937.8249999284744,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 937.8500000238419,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 937.8650000095367,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 938.1849999427795,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 938.1949999332428,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 1056.4850000143051,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 1056.5149999856949,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 1057.929999947548,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 1057.9399999380112,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 1057.9649999141693,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 1058.2699999809265,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 1058.2799999713898,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 1140.0249999761581,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 1140.054999947548,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 1141.4850000143051,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 1141.5249999761581,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 1141.5349999666214,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 1141.8500000238419,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 1141.8700000047684,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 1311.8799999952316,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 1311.914999961853,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 1314.9099999666214,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 1314.9599999189377,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 1314.9750000238419,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 1315.8999999761581,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 1315.929999947548,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 1439.6549999713898,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 1439.6949999332428,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 1442.4900000095367,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 1442.5299999713898,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 1442.5449999570847,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 1442.789999961853,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 1442.7999999523163,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 1742.2400000095367,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 1742.2999999523163,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 1750.179999947548,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 1750.2250000238419,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 1750.2400000095367,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 1750.7699999809265,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 1750.789999961853,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 1966.25,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 1966.2799999713898,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 1973.1499999761581,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 1973.179999947548,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 1973.1949999332428,
+            "stage": "model-loading"
+          },
+          {
+            "at": 1974.1399999856949,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 1975.8799999952316,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 1975.8849999904633,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 1993.6599999666214,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 1993.6899999380112,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 1994.679999947548,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 1994.6999999284744,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 1995.0899999141693,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 1995.3600000143051,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 1995.3650000095367,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 2014.6699999570847,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 2014.704999923706,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 2015.8199999332428,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 2015.8450000286102,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 2016.079999923706,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 2016.3650000095367,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 2016.375,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 2056.829999923706,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 2057.3249999284744,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 2057.350000023842,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 2087.9049999713898,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 2087.929999947548,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 2089.2999999523163,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 2089.314999938011,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 2092.444999933243,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 2092.8099999427795,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 2092.819999933243,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 2114.179999947548,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 2114.2149999141693,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 2115.6449999809265,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 2115.6749999523163,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 2116.194999933243,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 2116.414999961853,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 2116.4249999523163,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 2254.069999933243,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 2254.1150000095367,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 2270.5049999952316,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 2270.5599999427795,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 2281.939999938011,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 2284.3799999952316,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 2284.4049999713898,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 2306.1150000095367,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 2306.1449999809265,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 2307.3399999141693,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 2307.3650000095367,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 2307.375,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 2307.694999933243,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 2307.7099999189377,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 2718.014999985695,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 2718.0599999427795,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 2758.2699999809265,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 2758.3249999284744,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 2777.225000023842,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 2782.929999947548,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 2782.9700000286102,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 2783.8799999952316,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 2783.944999933243,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 2797.3450000286102,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 2797.3849999904633,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 3408.7799999713898,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 3408.8249999284744,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 3440.3949999809265,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 3440.4349999427795,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 3482.3799999952316,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 3487.5199999809265,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 3487.554999947548,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 4338.610000014305,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 4338.6449999809265,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 4370.554999947548,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 4370.59500002861,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 4399,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 4406.569999933243,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 4406.6050000190735,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 5011.909999966621,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 5012.004999995232,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 5046.819999933243,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 5046.879999995232,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 5080.914999961853,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 5088.674999952316,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 5088.709999918938,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 5774.004999995232,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 5774.554999947548,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 5811.819999933243,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 5811.879999995232,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 5836.289999961853,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 5843.159999966621,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 5843.194999933243,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6115.240000009537,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6115.284999966621,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6129.294999957085,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6129.334999918938,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6139.745000004768,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6140.235000014305,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6140.254999995232,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6243.814999938011,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6243.860000014305,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6250.865000009537,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6250.90499997139,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6252.919999957085,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6253.929999947548,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6253.954999923706,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6298.174999952316,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6298.214999914169,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6301.490000009537,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6301.52999997139,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6302.204999923706,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6302.679999947548,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6302.714999914169,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6332.97000002861,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6333.004999995232,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6334.639999985695,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6334.664999961853,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6335.125,
+            "stage": "gpu-direct-ready"
+          },
+          {
+            "at": 6335.174999952316,
+            "stage": "model-loaded",
+            "elapsedMs": 4361.9800000190735
+          },
+          {
+            "at": 6335.3099999427795,
+            "stage": "synthesis"
+          },
+          {
+            "at": 6713.27999997139,
+            "stage": "synthesis-complete",
+            "elapsedMs": 377.7649999856949
+          },
+          {
+            "at": 6713.334999918938,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6714.449999928474,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6714.459999918938,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6736.850000023842,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6736.889999985695,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6738.074999928474,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6738.100000023842,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6738.125,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6738.409999966621,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6738.424999952316,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6757.3949999809265,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6757.4349999427795,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6758.360000014305,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6758.384999990463,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6758.3949999809265,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6758.664999961853,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6758.674999952316,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6823.049999952316,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6823.084999918938,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6827.475000023842,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6827.514999985695,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6921.839999914169,
+            "stage": "canary"
+          },
+          {
+            "at": 6921.870000004768,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6922.350000023842,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6922.384999990463,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6942.235000014305,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6942.264999985695,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6943.424999952316,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6943.439999938011,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6943.569999933243,
+            "stage": "synthesis"
+          },
+          {
+            "at": 6995.745000004768,
+            "stage": "synthesis-complete",
+            "elapsedMs": 51.97500002384186
+          },
+          {
+            "at": 6995.789999961853,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 6998.924999952316,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7000.204999923706,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7000.214999914169,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7000.2300000190735,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7000.574999928474,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7000.584999918938,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7020.34500002861,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7020.389999985695,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7021.544999957085,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7021.5599999427795,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7021.564999938011,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7021.985000014305,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7021.995000004768,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7080.384999990463,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7080.429999947548,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7084.2300000190735,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7084.259999990463,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7175.659999966621,
+            "stage": "canary"
+          },
+          {
+            "at": 7175.689999938011,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7176.414999961853,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7176.449999928474,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7199.615000009537,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7199.649999976158,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7200.814999938011,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7200.84500002861,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7200.879999995232,
+            "stage": "synthesis"
+          },
+          {
+            "at": 7246.47000002861,
+            "stage": "synthesis-complete",
+            "elapsedMs": 45.480000019073486
+          },
+          {
+            "at": 7246.524999976158,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7247.774999976158,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7248.985000014305,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7249.014999985695,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7249.034999966621,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7249.360000014305,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7249.375,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7268.0599999427795,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7268.084999918938,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7269.235000014305,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7269.25,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7269.259999990463,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7269.610000014305,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7269.625,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7343.254999995232,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7343.284999966621,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7347.284999966621,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7347.314999938011,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7445.40499997139,
+            "stage": "canary"
+          },
+          {
+            "at": 7445.429999947548,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7446.370000004768,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7447.59500002861,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7447.610000014305,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7447.7300000190735,
+            "stage": "synthesis"
+          },
+          {
+            "at": 7505.069999933243,
+            "stage": "synthesis-complete",
+            "elapsedMs": 57.24499988555908
+          },
+          {
+            "at": 7505.1050000190735,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7506.324999928474,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7508.889999985695,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7508.914999961853,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7508.924999952316,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7509.259999990463,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7509.274999976158,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7534.049999952316,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7534.084999918938,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7535.259999990463,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7535.284999966621,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7535.3099999427795,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7535.6050000190735,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7535.620000004768,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7571.115000009537,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7571.15499997139,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7573.414999961853,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7573.449999928474,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7695.954999923706,
+            "stage": "canary"
+          },
+          {
+            "at": 7695.9800000190735,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7696.485000014305,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7697.794999957085,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7697.819999933243,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 7945.4800000190735,
+            "stage": "synthesis"
+          },
+          {
+            "at": 8000.329999923706,
+            "stage": "synthesis-complete",
+            "elapsedMs": 54.825000047683716
+          },
+          {
+            "at": 8000.360000014305,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8000.97000002861,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8002.3949999809265,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8002.4349999427795,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8002.444999933243,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8002.75,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8002.764999985695,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8024.299999952316,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8024.324999928474,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8025.284999966621,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8025.294999957085,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8025.304999947548,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8025.554999947548,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8025.569999933243,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8073.350000023842,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8073.3949999809265,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8077.014999985695,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8077.039999961853,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8149.495000004768,
+            "stage": "canary"
+          },
+          {
+            "at": 8150.054999947548,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8151.694999933243,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8151.72000002861,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8176.189999938011,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8176.2300000190735,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8177.725000023842,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8177.759999990463,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8177.789999961853,
+            "stage": "synthesis"
+          },
+          {
+            "at": 8232.870000004768,
+            "stage": "synthesis-complete",
+            "elapsedMs": 54.980000019073486
+          },
+          {
+            "at": 8232.909999966621,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8233.409999966621,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8234.549999952316,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8234.584999918938,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8234.59500002861,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8234.879999995232,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8234.894999980927,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8254.134999990463,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8254.174999952316,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8257.59500002861,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8257.620000004768,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8257.629999995232,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8257.954999923706,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8257.959999918938,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8320.054999947548,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8320.120000004768,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8325.694999933243,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8325.740000009537,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8396.524999976158,
+            "stage": "canary"
+          },
+          {
+            "at": 8396.55999994278,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8396.879999995232,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8396.894999980927,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8417.459999918938,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8417.495000004768,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8419.740000009537,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8419.769999980927,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8419.824999928474,
+            "stage": "synthesis"
+          },
+          {
+            "at": 8468.074999928474,
+            "stage": "synthesis-complete",
+            "elapsedMs": 48.144999980926514
+          },
+          {
+            "at": 8468.110000014305,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8468.694999933243,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8469.694999933243,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8469.730000019073,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8469.740000009537,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8469.985000014305,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8470.004999995232,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8492.360000014305,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8492.399999976158,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8493.299999952316,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8493.329999923706,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8493.34500002861,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8493.554999947548,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8493.574999928474,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8546.855000019073,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8546.889999985695,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8550.579999923706,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8550.610000014305,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 8665.919999957085,
+            "stage": "synthesis"
+          },
+          {
+            "at": 8739.225000023842,
+            "stage": "synthesis-complete",
+            "elapsedMs": 73.22000002861023
+          },
+          {
+            "at": 8764.740000009537,
+            "stage": "transient-frame"
+          },
+          {
+            "at": 8824.245000004768,
+            "stage": "synthesis"
+          },
+          {
+            "at": 8888.879999995232,
+            "stage": "synthesis-complete",
+            "elapsedMs": 64.55499994754791
+          },
+          {
+            "at": 8912.829999923706,
+            "stage": "transient-frame"
+          },
+          {
+            "at": 8998.65499997139,
+            "stage": "synthesis"
+          },
+          {
+            "at": 9069.804999947548,
+            "stage": "synthesis-complete",
+            "elapsedMs": 71.0349999666214
+          },
+          {
+            "at": 9070.019999980927,
+            "stage": "transient-frame"
+          },
+          {
+            "at": 9126.83999991417,
+            "stage": "synthesis-complete",
+            "elapsedMs": 57.0699999332428
+          },
+          {
+            "at": 9126.889999985695,
+            "stage": "transient-frame"
+          },
+          {
+            "at": 9182.504999995232,
+            "stage": "synthesis-complete",
+            "elapsedMs": 47.62999999523163
+          },
+          {
+            "at": 9182.549999952316,
+            "stage": "transient-frame"
+          },
+          {
+            "at": 9238.294999957085,
+            "stage": "synthesis-complete",
+            "elapsedMs": 50.32000005245209
+          },
+          {
+            "at": 9238.34500002861,
+            "stage": "transient-frame"
+          },
+          {
+            "at": 9298.990000009537,
+            "stage": "synthesis-complete",
+            "elapsedMs": 53.894999980926514
+          },
+          {
+            "at": 9299.024999976158,
+            "stage": "transient-frame"
+          },
+          {
+            "at": 9320.65499997139,
+            "stage": "synthesis-complete",
+            "elapsedMs": 41.99500000476837
+          },
+          {
+            "at": 9320.694999933243,
+            "stage": "transient-frame"
+          },
+          {
+            "at": 9348.22000002861,
+            "stage": "synthesis-complete",
+            "elapsedMs": 27.52999997138977
+          },
+          {
+            "at": 9348.274999976158,
+            "stage": "transient-frame"
+          },
+          {
+            "at": 9404.370000004768,
+            "stage": "synthesis-complete",
+            "elapsedMs": 40.22500002384186
+          },
+          {
+            "at": 9404.409999966621,
+            "stage": "transient-frame"
+          },
+          {
+            "at": 9422.679999947548,
+            "stage": "synthesis-complete",
+            "elapsedMs": 32.61500000953674
+          },
+          {
+            "at": 9422.709999918938,
+            "stage": "transient-frame"
+          },
+          {
+            "at": 9481.47000002861,
+            "stage": "synthesis-complete",
+            "elapsedMs": 36.62999999523163
+          },
+          {
+            "at": 9481.514999985695,
+            "stage": "transient-frame"
+          },
+          {
+            "at": 9499.689999938011,
+            "stage": "synthesis-complete",
+            "elapsedMs": 35.480000019073486
+          },
+          {
+            "at": 9499.71499991417,
+            "stage": "transient-frame"
+          },
+          {
+            "at": 9536.15499997139,
+            "stage": "synthesis-complete",
+            "elapsedMs": 36.455000042915344
+          },
+          {
+            "at": 9536.179999947548,
+            "stage": "transient-frame"
+          },
+          {
+            "at": 9578.194999933243,
+            "stage": "synthesis-complete",
+            "elapsedMs": 34.64999997615814
+          },
+          {
+            "at": 9578.22000002861,
+            "stage": "transient-frame"
+          },
+          {
+            "at": 9615.389999985695,
+            "stage": "synthesis-complete",
+            "elapsedMs": 41.16499996185303
+          },
+          {
+            "at": 9615.419999957085,
+            "stage": "transient-frame"
+          },
+          {
+            "at": 9648.33999991417,
+            "stage": "synthesis-complete",
+            "elapsedMs": 37.87999999523163
+          },
+          {
+            "at": 9648.379999995232,
+            "stage": "transient-frame"
+          },
+          {
+            "at": 9689.324999928474,
+            "stage": "synthesis-complete",
+            "elapsedMs": 37.04000008106232
+          },
+          {
+            "at": 9689.360000014305,
+            "stage": "transient-frame"
+          },
+          {
+            "at": 9722.40499997139,
+            "stage": "synthesis-complete",
+            "elapsedMs": 36.544999957084656
+          },
+          {
+            "at": 9722.429999947548,
+            "stage": "transient-frame"
+          },
+          {
+            "at": 9795.90499997139,
+            "stage": "synthesis-complete",
+            "elapsedMs": 35.93999993801117
+          },
+          {
+            "at": 9795.93499994278,
+            "stage": "transient-frame"
+          },
+          {
+            "at": 9796.110000014305,
+            "stage": "synthesis-complete",
+            "elapsedMs": 34.81000006198883
+          },
+          {
+            "at": 9796.125,
+            "stage": "transient-frame"
+          },
+          {
+            "at": 9847.134999990463,
+            "stage": "synthesis-complete",
+            "elapsedMs": 36.27499997615814
+          },
+          {
+            "at": 9847.204999923706,
+            "stage": "transient-frame"
+          },
+          {
+            "at": 9858.84500002861,
+            "stage": "synthesis-complete",
+            "elapsedMs": 33.85000002384186
+          },
+          {
+            "at": 9858.90499997139,
+            "stage": "transient-frame"
+          },
+          {
+            "at": 9911.414999961853,
+            "stage": "synthesis-complete",
+            "elapsedMs": 31.55999994277954
+          },
+          {
+            "at": 9911.480000019073,
+            "stage": "transient-frame"
+          },
+          {
+            "at": 9971.93499994278,
+            "stage": "synthesis-complete",
+            "elapsedMs": 41.16000008583069
+          },
+          {
+            "at": 9971.975000023842,
+            "stage": "transient-frame"
+          },
+          {
+            "at": 9975.324999928474,
+            "stage": "synthesis-complete",
+            "elapsedMs": 31.490000009536743
+          },
+          {
+            "at": 9975.365000009537,
+            "stage": "transient-frame"
+          },
+          {
+            "at": 10012.870000004768,
+            "stage": "synthesis-complete",
+            "elapsedMs": 39.90499997138977
+          },
+          {
+            "at": 10013.014999985695,
+            "stage": "transient-frame"
+          },
+          {
+            "at": 10053.629999995232,
+            "stage": "synthesis-complete",
+            "elapsedMs": 32.4099999666214
+          },
+          {
+            "at": 10053.659999966621,
+            "stage": "transient-frame"
+          },
+          {
+            "at": 10089.05999994278,
+            "stage": "synthesis-complete",
+            "elapsedMs": 39.02999997138977
+          },
+          {
+            "at": 10089.259999990463,
+            "stage": "transient-frame"
+          },
+          {
+            "at": 10180.909999966621,
+            "stage": "synthesis-complete",
+            "elapsedMs": 72.44500005245209
+          },
+          {
+            "at": 10180.949999928474,
+            "stage": "transient-frame"
+          },
+          {
+            "at": 10203.865000009537,
+            "stage": "synthesis-complete",
+            "elapsedMs": 17.980000019073486
+          },
+          {
+            "at": 10203.889999985695,
+            "stage": "transient-frame"
+          },
+          {
+            "at": 10207.189999938011,
+            "stage": "synthesis-complete",
+            "elapsedMs": 37.97500002384186
+          },
+          {
+            "at": 10207.22000002861,
+            "stage": "transient-frame"
+          },
+          {
+            "at": 10252.18499994278,
+            "stage": "synthesis-complete",
+            "elapsedMs": 35.109999895095825
+          },
+          {
+            "at": 10252.22000002861,
+            "stage": "transient-frame"
+          }
+        ]
+      }
+    },
+    {
+      "variant": "raw",
+      "qualification": {
+        "qualificationMs": 2049.860000014305,
+        "deviceValidated": true,
+        "checks": [
+          {
+            "name": "frame-00",
+            "maxRgb": 1,
+            "maxFloat": 0.000007331371307373047,
+            "passed": true
+          },
+          {
+            "name": "frame-25",
+            "maxRgb": 1,
+            "maxFloat": 0.000007748603820800781,
+            "passed": true
+          },
+          {
+            "name": "encoded-synthetic-photo",
+            "maxRgb": 1,
+            "maxFloat": 0.000026434659957885742,
+            "passed": true
+          },
+          {
+            "name": "zero-noise",
+            "maxRgb": 1,
+            "maxFloat": 0.000007450580596923828,
+            "passed": true
+          },
+          {
+            "name": "alternate-noise",
+            "maxRgb": 1,
+            "maxFloat": 0.000009447336196899414,
+            "passed": true
+          },
+          {
+            "name": "trunc-psi-0",
+            "maxRgb": 1,
+            "maxFloat": 0.000009417533874511719,
+            "passed": true
+          },
+          {
+            "name": "trunc-psi-1",
+            "maxRgb": 1,
+            "maxFloat": 0.000006735324859619141,
+            "passed": true
+          }
+        ],
+        "events": [
+          {
+            "at": 10538.394999980927,
+            "stage": "canary"
+          },
+          {
+            "at": 10538.929999947548,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10540.164999961853,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10541.649999976158,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10541.659999966621,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10551.43499994278,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10551.745000004768,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10552.745000004768,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10552.764999985695,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10552.784999966621,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10553.504999995232,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10556.52999997139,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10556.544999957085,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10556.554999947548,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10556.894999980927,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10557.689999938011,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10557.704999923706,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10557.71499991417,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10558.05999994278,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10559.245000004768,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10559.274999976158,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10559.284999966621,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10559.5,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10560.490000009537,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10560.509999990463,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10560.519999980927,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10560.97000002861,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10562.919999957085,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10562.944999933243,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10562.954999923706,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10563.269999980927,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10564.164999961853,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10564.179999947548,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10564.189999938011,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10564.55999994278,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10570.09500002861,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10570.115000009537,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10570.125,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10570.519999980927,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10571.554999947548,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10571.579999923706,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10571.59500002861,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10571.84500002861,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10573.46499991417,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10573.475000023842,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10573.480000019073,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10574.329999923706,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10575.414999961853,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10575.424999952316,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10575.43499994278,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10575.68499994278,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10577.444999933243,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10577.46499991417,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10577.47000002861,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10578.179999947548,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10579.929999947548,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10579.939999938011,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10579.959999918938,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10580.97000002861,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10585.68499994278,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10585.704999923706,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10585.709999918938,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10586.59500002861,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10595.074999928474,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10595.105000019073,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10595.115000009537,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10595.605000019073,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10605.480000019073,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10605.514999985695,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10605.519999980927,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10606.024999976158,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10615.074999928474,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10615.115000009537,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10615.129999995232,
+            "stage": "model-loading"
+          },
+          {
+            "at": 10616,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10619.25,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10622.30999994278,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10622.34500002861,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10622.759999990463,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10623.09500002861,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10624.199999928474,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10624.209999918938,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10624.424999952316,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10624.704999923706,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10644.314999938011,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10644.350000023842,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10653.58999991417,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10661.074999928474,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10662.389999985695,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10662.40499997139,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10662.414999961853,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10662.75,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10675.034999966621,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10675.069999933243,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10721.194999933243,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10763.629999995232,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10766.659999966621,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10766.699999928474,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10768.174999952316,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10770.83999991417,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10774.504999995232,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10774.52999997139,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10774.96499991417,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10775.375,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10794.134999990463,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10794.179999947548,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10814.855000019073,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10815.454999923706,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10849.329999923706,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10849.375,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10885.884999990463,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10887.975000023842,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10921.384999990463,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10921.419999957085,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10949.995000004768,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10951.22000002861,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10985.55999994278,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10985.615000009537,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11007.889999985695,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11013.689999938011,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11047.954999923706,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11047.995000004768,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11070.240000009537,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11070.769999980927,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11086.870000004768,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11086.909999966621,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11095.164999961853,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11095.834999918938,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11102.174999952316,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11102.194999933243,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11104.304999947548,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11104.764999985695,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11107.490000009537,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11107.509999990463,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11108.235000014305,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11108.58999991417,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11110.22000002861,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11110.235000014305,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11110.730000019073,
+            "stage": "gpu-direct-ready"
+          },
+          {
+            "at": 11110.759999990463,
+            "stage": "model-loaded",
+            "elapsedMs": 495.67000007629395
+          },
+          {
+            "at": 11110.875,
+            "stage": "synthesis"
+          },
+          {
+            "at": 11206.620000004768,
+            "stage": "synthesis-complete",
+            "elapsedMs": 95.66499996185303
+          },
+          {
+            "at": 11206.65499997139,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11207.209999918938,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11208.294999957085,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11208.30999994278,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11208.314999938011,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11208.59500002861,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11209.47000002861,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11209.480000019073,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11209.485000014305,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11209.740000009537,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11214.30999994278,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11214.334999918938,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11310.199999928474,
+            "stage": "canary"
+          },
+          {
+            "at": 11310.225000023842,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11310.694999933243,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11312.485000014305,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11312.514999985695,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11312.569999933243,
+            "stage": "synthesis"
+          },
+          {
+            "at": 11359.90499997139,
+            "stage": "synthesis-complete",
+            "elapsedMs": 47.235000014305115
+          },
+          {
+            "at": 11359.944999933243,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11361.629999995232,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11364.699999928474,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11364.71499991417,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11364.725000023842,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11365.079999923706,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11366.199999928474,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11366.21499991417,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11366.225000023842,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11366.600000023842,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11371.259999990463,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11371.27999997139,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11472.509999990463,
+            "stage": "canary"
+          },
+          {
+            "at": 11472.544999957085,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11473.519999980927,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11474.829999923706,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11474.84500002861,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11474.914999961853,
+            "stage": "synthesis"
+          },
+          {
+            "at": 11518.554999947548,
+            "stage": "synthesis-complete",
+            "elapsedMs": 43.514999985694885
+          },
+          {
+            "at": 11518.600000023842,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11519.394999980927,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11521.834999918938,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11521.870000004768,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11521.879999995232,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11522.115000009537,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11522.990000009537,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11523.004999995232,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11523.009999990463,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11523.34500002861,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11528.84500002861,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11528.870000004768,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11611.014999985695,
+            "stage": "canary"
+          },
+          {
+            "at": 11611.039999961853,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11611.439999938011,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11612.704999923706,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11612.725000023842,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11612.985000014305,
+            "stage": "synthesis"
+          },
+          {
+            "at": 11663.25,
+            "stage": "synthesis-complete",
+            "elapsedMs": 50.19000005722046
+          },
+          {
+            "at": 11663.294999957085,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11664.264999985695,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11665.519999980927,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11665.534999966621,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11665.539999961853,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11665.914999961853,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11667.399999976158,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11667.419999957085,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11667.424999952316,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11667.704999923706,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11670.83999991417,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11670.855000019073,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11784.174999952316,
+            "stage": "canary"
+          },
+          {
+            "at": 11784.194999933243,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11784.615000009537,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11785.769999980927,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11785.799999952316,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 12106.639999985695,
+            "stage": "synthesis"
+          },
+          {
+            "at": 12161.544999957085,
+            "stage": "synthesis-complete",
+            "elapsedMs": 54.88499999046326
+          },
+          {
+            "at": 12161.584999918938,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 12162.47000002861,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 12164.409999966621,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 12164.424999952316,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 12164.429999947548,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 12164.794999957085,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 12165.679999947548,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 12165.689999938011,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 12165.699999928474,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 12165.96499991417,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 12170.605000019073,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 12170.629999995232,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 12260.044999957085,
+            "stage": "canary"
+          },
+          {
+            "at": 12260.079999923706,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 12260.475000023842,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 12261.72000002861,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 12261.75,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 12261.819999933243,
+            "stage": "synthesis"
+          },
+          {
+            "at": 12316.725000023842,
+            "stage": "synthesis-complete",
+            "elapsedMs": 54.81000006198883
+          },
+          {
+            "at": 12316.759999990463,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 12317.294999957085,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 12318.230000019073,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 12318.245000004768,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 12318.254999995232,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 12318.519999980927,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 12320.009999990463,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 12320.019999980927,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 12320.02999997139,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 12320.365000009537,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 12325.125,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 12325.139999985695,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 12403.549999952316,
+            "stage": "canary"
+          },
+          {
+            "at": 12403.579999923706,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 12404.034999966621,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 12405.574999928474,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 12405.58999991417,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 12405.644999980927,
+            "stage": "synthesis"
+          },
+          {
+            "at": 12458.044999957085,
+            "stage": "synthesis-complete",
+            "elapsedMs": 52.28999996185303
+          },
+          {
+            "at": 12458.079999923706,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 12461.370000004768,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 12463.509999990463,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 12463.534999966621,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 12463.554999947548,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 12463.824999928474,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 12464.83999991417,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 12464.84500002861,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 12464.855000019073,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 12465.129999995232,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 12476.860000014305,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 12476.889999985695,
+            "stage": "asset-acquisition"
+          }
+        ]
+      },
+      "warmup": {
+        "firstDrawMs": 47.60000002384186,
+        "fileReadyMs": 68.6800000667572,
+        "rawSha256": "34566a3da12a32ecb6f1b5b859ea4bc1e4427d4960e739e434a758b14afce490",
+        "imageBytes": 4195716
+      },
+      "single": {
+        "firstDrawMs": 43.81000006198883,
+        "fileReadyMs": 67.03500008583069,
+        "rawSha256": "54db02b699c52cd5746f30bbdfee8908da1225287da8f3782cc749c9c1118ef8",
+        "imageBytes": 4195716
+      },
+      "frames": {
+        "n": 31,
+        "firstDrawMs": 66.94000005722046,
+        "deliveredMs": 1169.8899999856949,
+        "fileReadyMs": 1183.4800000190735,
+        "peakReservedRawBytes": 4194304,
+        "outputs": [
+          {
+            "rawSha256": "9af3d49c5a5f9a36f0080d148a4515269a03029a01e157c372a9d00b95a56df6",
+            "imageBytes": 4195716
+          },
+          {
+            "rawSha256": "690a34d8bcb37f7a25928aae963e6c451170dd7f57553efc8cd13548c619602d",
+            "imageBytes": 4195716
+          },
+          {
+            "rawSha256": "cea088e6bec4cffe6836e6853610a4fecec0ca46332ed283cfe5abade9b314f2",
+            "imageBytes": 4195716
+          },
+          {
+            "rawSha256": "c0e67c46a611934127dff1e5bfaed82e2738157235bcdcf209a3b4607758de72",
+            "imageBytes": 4195716
+          },
+          {
+            "rawSha256": "35c1e72e97c30fa210e46d9628ca1ef99f20b0789c980b8492b1f11b439c7c7b",
+            "imageBytes": 4195716
+          },
+          {
+            "rawSha256": "d64f3c6abe8020ee5a86b250be635109ad18a9bab5c6021d100e14b03b31d273",
+            "imageBytes": 4195716
+          },
+          {
+            "rawSha256": "3544b1a7b062a0c1eb712a4785f25b9c64792550ea8d53ce505f5adac425bf2a",
+            "imageBytes": 4195716
+          },
+          {
+            "rawSha256": "2d4866767304860bad206fefb8dc247a5db8bc0ae54613451b379fa8293e1e00",
+            "imageBytes": 4195716
+          },
+          {
+            "rawSha256": "be0419abe483865ee419a9ff0a77753b16efd3b95a128880ed6cc154ed5d96a3",
+            "imageBytes": 4195716
+          },
+          {
+            "rawSha256": "60b041f9041d12eb6c7ee6cc4d3f503e7a5dbad2f3d5701081f5c9fa39dc3444",
+            "imageBytes": 4195716
+          },
+          {
+            "rawSha256": "6a6b47a0e4f639ea10b7806c743209aa6cba25ca4e2e512265ecdd1c35eb367f",
+            "imageBytes": 4195716
+          },
+          {
+            "rawSha256": "59fa89d4bfd31b11ac35b6952253adb9bb4dbd70afada09a12f7651a9b3bc815",
+            "imageBytes": 4195716
+          },
+          {
+            "rawSha256": "99bd43adb265f3a9f3039cc7bfb44c00b9fc74495d9fe405fd37f7194c934574",
+            "imageBytes": 4195716
+          },
+          {
+            "rawSha256": "9de4921baa0fa6a3b36174b92ed9ae29e09f7e5d104600913ca999fa9b8112c7",
+            "imageBytes": 4195716
+          },
+          {
+            "rawSha256": "122d5f209ad9761651fe8c6f78602b308c604641dc9425299c3d8de53a4224e7",
+            "imageBytes": 4195716
+          },
+          {
+            "rawSha256": "0c1157f0163f3605066ba9e3b0586a1465c09e5b21d4fac243e9087a27e88a61",
+            "imageBytes": 4195716
+          },
+          {
+            "rawSha256": "ebf4e9f1af468adb9d6f1ac1d5d3346e630c96498a68bd204fcbd99d7b3900f4",
+            "imageBytes": 4195716
+          },
+          {
+            "rawSha256": "54db02b699c52cd5746f30bbdfee8908da1225287da8f3782cc749c9c1118ef8",
+            "imageBytes": 4195716
+          },
+          {
+            "rawSha256": "bf365c630f14fa1aa31676c58fd7ca76fb365b52523c9725fdb6468e49005499",
+            "imageBytes": 4195716
+          },
+          {
+            "rawSha256": "e32efc3dc595ad5aa5e293462a6735dbfc04ecc9625cbe8f874c293a92967866",
+            "imageBytes": 4195716
+          },
+          {
+            "rawSha256": "6edee0b394e958f413918619a06955323003d99b632661da13d75b755bfb780b",
+            "imageBytes": 4195716
+          },
+          {
+            "rawSha256": "a4d1534817c48d71a9a32033678c83a927dfb0718d81677cb7cc60687e3ebfa4",
+            "imageBytes": 4195716
+          },
+          {
+            "rawSha256": "693715379b82c0d8ca880cc2f5e9fde197f6d899e57e9a7262be59efe0c07580",
+            "imageBytes": 4195716
+          },
+          {
+            "rawSha256": "8675e17f0eccb5dccfe4379e6d8a7f45f09a1b29e06a341ed4a1faf2f3a65269",
+            "imageBytes": 4195716
+          },
+          {
+            "rawSha256": "fa51e59c7e1b6d9514753411dc9b2f17e7be2737c31bf95d9e22d5848f852576",
+            "imageBytes": 4195716
+          },
+          {
+            "rawSha256": "1afd1ffc6e969ac4cd49b61539a2581aa847dcd6c19eac9646804bdb3d13eba6",
+            "imageBytes": 4195716
+          },
+          {
+            "rawSha256": "2dfe942bd1a65c9b17a6f315793e848d38afbcd56575f4a4b91e3dc3ed0b41f7",
+            "imageBytes": 4195716
+          },
+          {
+            "rawSha256": "02b509e25b534632c4f3e6f95a376379f47d59a9e511f6553f9f9eb9014c2c1d",
+            "imageBytes": 4195716
+          },
+          {
+            "rawSha256": "10b7fd2989d39ecf472b906b5cd4855d4cdad5c9cf3fd8c670fe8fec2ee9b0fc",
+            "imageBytes": 4195716
+          },
+          {
+            "rawSha256": "5631d78208522560af9639e0106c1e6210abfe78f5a5c752541d5234df8d5275",
+            "imageBytes": 4195716
+          },
+          {
+            "rawSha256": "14aa92f98b5c3c6f50db98839226956f43d066ddd19b0dbe49db5e5d2e473409",
+            "imageBytes": 4195716
+          }
+        ],
+        "events": [
+          {
+            "at": 10538.394999980927,
+            "stage": "canary"
+          },
+          {
+            "at": 10538.929999947548,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10540.164999961853,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10541.649999976158,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10541.659999966621,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10551.43499994278,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10551.745000004768,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10552.745000004768,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10552.764999985695,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10552.784999966621,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10553.504999995232,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10556.52999997139,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10556.544999957085,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10556.554999947548,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10556.894999980927,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10557.689999938011,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10557.704999923706,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10557.71499991417,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10558.05999994278,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10559.245000004768,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10559.274999976158,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10559.284999966621,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10559.5,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10560.490000009537,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10560.509999990463,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10560.519999980927,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10560.97000002861,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10562.919999957085,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10562.944999933243,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10562.954999923706,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10563.269999980927,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10564.164999961853,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10564.179999947548,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10564.189999938011,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10564.55999994278,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10570.09500002861,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10570.115000009537,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10570.125,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10570.519999980927,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10571.554999947548,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10571.579999923706,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10571.59500002861,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10571.84500002861,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10573.46499991417,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10573.475000023842,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10573.480000019073,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10574.329999923706,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10575.414999961853,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10575.424999952316,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10575.43499994278,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10575.68499994278,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10577.444999933243,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10577.46499991417,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10577.47000002861,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10578.179999947548,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10579.929999947548,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10579.939999938011,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10579.959999918938,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10580.97000002861,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10585.68499994278,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10585.704999923706,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10585.709999918938,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10586.59500002861,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10595.074999928474,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10595.105000019073,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10595.115000009537,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10595.605000019073,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10605.480000019073,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10605.514999985695,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10605.519999980927,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10606.024999976158,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10615.074999928474,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10615.115000009537,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10615.129999995232,
+            "stage": "model-loading"
+          },
+          {
+            "at": 10616,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10619.25,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10622.30999994278,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10622.34500002861,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10622.759999990463,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10623.09500002861,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10624.199999928474,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10624.209999918938,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10624.424999952316,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10624.704999923706,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10644.314999938011,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10644.350000023842,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10653.58999991417,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10661.074999928474,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10662.389999985695,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10662.40499997139,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10662.414999961853,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10662.75,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10675.034999966621,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10675.069999933243,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10721.194999933243,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10763.629999995232,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10766.659999966621,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10766.699999928474,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10768.174999952316,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10770.83999991417,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10774.504999995232,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10774.52999997139,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10774.96499991417,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10775.375,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10794.134999990463,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10794.179999947548,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10814.855000019073,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10815.454999923706,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10849.329999923706,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10849.375,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10885.884999990463,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10887.975000023842,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10921.384999990463,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10921.419999957085,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10949.995000004768,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10951.22000002861,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10985.55999994278,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 10985.615000009537,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11007.889999985695,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11013.689999938011,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11047.954999923706,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11047.995000004768,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11070.240000009537,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11070.769999980927,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11086.870000004768,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11086.909999966621,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11095.164999961853,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11095.834999918938,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11102.174999952316,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11102.194999933243,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11104.304999947548,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11104.764999985695,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11107.490000009537,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11107.509999990463,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11108.235000014305,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11108.58999991417,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11110.22000002861,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11110.235000014305,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11110.730000019073,
+            "stage": "gpu-direct-ready"
+          },
+          {
+            "at": 11110.759999990463,
+            "stage": "model-loaded",
+            "elapsedMs": 495.67000007629395
+          },
+          {
+            "at": 11110.875,
+            "stage": "synthesis"
+          },
+          {
+            "at": 11206.620000004768,
+            "stage": "synthesis-complete",
+            "elapsedMs": 95.66499996185303
+          },
+          {
+            "at": 11206.65499997139,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11207.209999918938,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11208.294999957085,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11208.30999994278,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11208.314999938011,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11208.59500002861,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11209.47000002861,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11209.480000019073,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11209.485000014305,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11209.740000009537,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11214.30999994278,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11214.334999918938,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11310.199999928474,
+            "stage": "canary"
+          },
+          {
+            "at": 11310.225000023842,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11310.694999933243,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11312.485000014305,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11312.514999985695,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11312.569999933243,
+            "stage": "synthesis"
+          },
+          {
+            "at": 11359.90499997139,
+            "stage": "synthesis-complete",
+            "elapsedMs": 47.235000014305115
+          },
+          {
+            "at": 11359.944999933243,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11361.629999995232,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11364.699999928474,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11364.71499991417,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11364.725000023842,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11365.079999923706,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11366.199999928474,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11366.21499991417,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11366.225000023842,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11366.600000023842,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11371.259999990463,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11371.27999997139,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11472.509999990463,
+            "stage": "canary"
+          },
+          {
+            "at": 11472.544999957085,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11473.519999980927,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11474.829999923706,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11474.84500002861,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11474.914999961853,
+            "stage": "synthesis"
+          },
+          {
+            "at": 11518.554999947548,
+            "stage": "synthesis-complete",
+            "elapsedMs": 43.514999985694885
+          },
+          {
+            "at": 11518.600000023842,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11519.394999980927,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11521.834999918938,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11521.870000004768,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11521.879999995232,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11522.115000009537,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11522.990000009537,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11523.004999995232,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11523.009999990463,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11523.34500002861,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11528.84500002861,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11528.870000004768,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11611.014999985695,
+            "stage": "canary"
+          },
+          {
+            "at": 11611.039999961853,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11611.439999938011,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11612.704999923706,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11612.725000023842,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11612.985000014305,
+            "stage": "synthesis"
+          },
+          {
+            "at": 11663.25,
+            "stage": "synthesis-complete",
+            "elapsedMs": 50.19000005722046
+          },
+          {
+            "at": 11663.294999957085,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11664.264999985695,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11665.519999980927,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11665.534999966621,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11665.539999961853,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11665.914999961853,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11667.399999976158,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11667.419999957085,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11667.424999952316,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11667.704999923706,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11670.83999991417,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11670.855000019073,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11784.174999952316,
+            "stage": "canary"
+          },
+          {
+            "at": 11784.194999933243,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11784.615000009537,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11785.769999980927,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 11785.799999952316,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 12106.639999985695,
+            "stage": "synthesis"
+          },
+          {
+            "at": 12161.544999957085,
+            "stage": "synthesis-complete",
+            "elapsedMs": 54.88499999046326
+          },
+          {
+            "at": 12161.584999918938,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 12162.47000002861,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 12164.409999966621,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 12164.424999952316,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 12164.429999947548,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 12164.794999957085,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 12165.679999947548,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 12165.689999938011,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 12165.699999928474,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 12165.96499991417,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 12170.605000019073,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 12170.629999995232,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 12260.044999957085,
+            "stage": "canary"
+          },
+          {
+            "at": 12260.079999923706,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 12260.475000023842,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 12261.72000002861,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 12261.75,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 12261.819999933243,
+            "stage": "synthesis"
+          },
+          {
+            "at": 12316.725000023842,
+            "stage": "synthesis-complete",
+            "elapsedMs": 54.81000006198883
+          },
+          {
+            "at": 12316.759999990463,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 12317.294999957085,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 12318.230000019073,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 12318.245000004768,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 12318.254999995232,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 12318.519999980927,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 12320.009999990463,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 12320.019999980927,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 12320.02999997139,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 12320.365000009537,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 12325.125,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 12325.139999985695,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 12403.549999952316,
+            "stage": "canary"
+          },
+          {
+            "at": 12403.579999923706,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 12404.034999966621,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 12405.574999928474,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 12405.58999991417,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 12405.644999980927,
+            "stage": "synthesis"
+          },
+          {
+            "at": 12458.044999957085,
+            "stage": "synthesis-complete",
+            "elapsedMs": 52.28999996185303
+          },
+          {
+            "at": 12458.079999923706,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 12461.370000004768,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 12463.509999990463,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 12463.534999966621,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 12463.554999947548,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 12463.824999928474,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 12464.83999991417,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 12464.84500002861,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 12464.855000019073,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 12465.129999995232,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 12476.860000014305,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 12476.889999985695,
+            "stage": "asset-acquisition"
+          },
+          {
+            "at": 12557.324999928474,
+            "stage": "synthesis"
+          },
+          {
+            "at": 12603.21499991417,
+            "stage": "synthesis-complete",
+            "elapsedMs": 45.83999991416931
+          },
+          {
+            "at": 12631.21499991417,
+            "stage": "synthesis"
+          },
+          {
+            "at": 12673.865000009537,
+            "stage": "synthesis-complete",
+            "elapsedMs": 42.580000042915344
+          },
+          {
+            "at": 12726.409999966621,
+            "stage": "synthesis"
+          },
+          {
+            "at": 12769.194999933243,
+            "stage": "synthesis-complete",
+            "elapsedMs": 42.70999991893768
+          },
+          {
+            "at": 12769.365000009537,
+            "stage": "transient-frame"
+          },
+          {
+            "at": 12810.639999985695,
+            "stage": "synthesis-complete",
+            "elapsedMs": 41.47000002861023
+          },
+          {
+            "at": 12810.689999938011,
+            "stage": "transient-frame"
+          },
+          {
+            "at": 12848.649999976158,
+            "stage": "synthesis-complete",
+            "elapsedMs": 37.97500002384186
+          },
+          {
+            "at": 12848.68499994278,
+            "stage": "transient-frame"
+          },
+          {
+            "at": 12888.789999961853,
+            "stage": "synthesis-complete",
+            "elapsedMs": 40.1599999666214
+          },
+          {
+            "at": 12888.850000023842,
+            "stage": "transient-frame"
+          },
+          {
+            "at": 12925.764999985695,
+            "stage": "synthesis-complete",
+            "elapsedMs": 36.980000019073486
+          },
+          {
+            "at": 12925.819999933243,
+            "stage": "transient-frame"
+          },
+          {
+            "at": 12961.694999933243,
+            "stage": "synthesis-complete",
+            "elapsedMs": 35.950000047683716
+          },
+          {
+            "at": 12961.730000019073,
+            "stage": "transient-frame"
+          },
+          {
+            "at": 12997.495000004768,
+            "stage": "synthesis-complete",
+            "elapsedMs": 35.794999957084656
+          },
+          {
+            "at": 12997.534999966621,
+            "stage": "transient-frame"
+          },
+          {
+            "at": 13033.09500002861,
+            "stage": "synthesis-complete",
+            "elapsedMs": 35.605000019073486
+          },
+          {
+            "at": 13033.134999990463,
+            "stage": "transient-frame"
+          },
+          {
+            "at": 13069.799999952316,
+            "stage": "synthesis-complete",
+            "elapsedMs": 36.6599999666214
+          },
+          {
+            "at": 13069.865000009537,
+            "stage": "transient-frame"
+          },
+          {
+            "at": 13105.179999947548,
+            "stage": "synthesis-complete",
+            "elapsedMs": 35.424999952316284
+          },
+          {
+            "at": 13105.235000014305,
+            "stage": "transient-frame"
+          },
+          {
+            "at": 13141.634999990463,
+            "stage": "synthesis-complete",
+            "elapsedMs": 36.450000047683716
+          },
+          {
+            "at": 13141.68499994278,
+            "stage": "transient-frame"
+          },
+          {
+            "at": 13178.30999994278,
+            "stage": "synthesis-complete",
+            "elapsedMs": 36.674999952316284
+          },
+          {
+            "at": 13178.350000023842,
+            "stage": "transient-frame"
+          },
+          {
+            "at": 13213.799999952316,
+            "stage": "synthesis-complete",
+            "elapsedMs": 35.485000014305115
+          },
+          {
+            "at": 13213.84500002861,
+            "stage": "transient-frame"
+          },
+          {
+            "at": 13250.424999952316,
+            "stage": "synthesis-complete",
+            "elapsedMs": 36.62000000476837
+          },
+          {
+            "at": 13250.46499991417,
+            "stage": "transient-frame"
+          },
+          {
+            "at": 13285.924999952316,
+            "stage": "synthesis-complete",
+            "elapsedMs": 35.50999999046326
+          },
+          {
+            "at": 13285.97000002861,
+            "stage": "transient-frame"
+          },
+          {
+            "at": 13323.454999923706,
+            "stage": "synthesis-complete",
+            "elapsedMs": 37.52500009536743
+          },
+          {
+            "at": 13323.504999995232,
+            "stage": "transient-frame"
+          },
+          {
+            "at": 13358.115000009537,
+            "stage": "synthesis-complete",
+            "elapsedMs": 34.66499996185303
+          },
+          {
+            "at": 13358.149999976158,
+            "stage": "transient-frame"
+          },
+          {
+            "at": 13394.769999980927,
+            "stage": "synthesis-complete",
+            "elapsedMs": 36.6599999666214
+          },
+          {
+            "at": 13394.819999933243,
+            "stage": "transient-frame"
+          },
+          {
+            "at": 13430.21499991417,
+            "stage": "synthesis-complete",
+            "elapsedMs": 35.44000005722046
+          },
+          {
+            "at": 13430.264999985695,
+            "stage": "transient-frame"
+          },
+          {
+            "at": 13466.75,
+            "stage": "synthesis-complete",
+            "elapsedMs": 36.52999997138977
+          },
+          {
+            "at": 13466.799999952316,
+            "stage": "transient-frame"
+          },
+          {
+            "at": 13503.064999938011,
+            "stage": "synthesis-complete",
+            "elapsedMs": 36.330000042915344
+          },
+          {
+            "at": 13503.100000023842,
+            "stage": "transient-frame"
+          },
+          {
+            "at": 13538.725000023842,
+            "stage": "synthesis-complete",
+            "elapsedMs": 35.644999980926514
+          },
+          {
+            "at": 13538.774999976158,
+            "stage": "transient-frame"
+          },
+          {
+            "at": 13575.149999976158,
+            "stage": "synthesis-complete",
+            "elapsedMs": 36.41499996185303
+          },
+          {
+            "at": 13575.199999928474,
+            "stage": "transient-frame"
+          },
+          {
+            "at": 13611.96499991417,
+            "stage": "synthesis-complete",
+            "elapsedMs": 36.84500002861023
+          },
+          {
+            "at": 13612,
+            "stage": "transient-frame"
+          },
+          {
+            "at": 13648.014999985695,
+            "stage": "synthesis-complete",
+            "elapsedMs": 36.0349999666214
+          },
+          {
+            "at": 13648.054999947548,
+            "stage": "transient-frame"
+          },
+          {
+            "at": 13684.814999938011,
+            "stage": "synthesis-complete",
+            "elapsedMs": 36.75999999046326
+          },
+          {
+            "at": 13684.855000019073,
+            "stage": "transient-frame"
+          },
+          {
+            "at": 13721.129999995232,
+            "stage": "synthesis-complete",
+            "elapsedMs": 36.34500002861023
+          },
+          {
+            "at": 13721.174999952316,
+            "stage": "transient-frame"
+          },
+          {
+            "at": 13756.799999952316,
+            "stage": "synthesis-complete",
+            "elapsedMs": 35.669999957084656
+          },
+          {
+            "at": 13756.84500002861,
+            "stage": "transient-frame"
+          },
+          {
+            "at": 13793.33999991417,
+            "stage": "synthesis-complete",
+            "elapsedMs": 36.550000071525574
+          },
+          {
+            "at": 13793.384999990463,
+            "stage": "transient-frame"
+          },
+          {
+            "at": 13830.889999985695,
+            "stage": "synthesis-complete",
+            "elapsedMs": 37.53999996185303
+          },
+          {
+            "at": 13830.93499994278,
+            "stage": "transient-frame"
+          },
+          {
+            "at": 13868.245000004768,
+            "stage": "synthesis-complete",
+            "elapsedMs": 37.36500000953674
+          },
+          {
+            "at": 13868.409999966621,
+            "stage": "transient-frame"
+          }
+        ]
+      }
+    }
+  ],
+  "errors": [],
+  "browser": {
+    "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/152.0.0.0 Safari/537.36",
+    "webdriver": true,
+    "isolation": true,
+    "visibility": "visible",
+    "adapter": {
+      "vendor": "nvidia",
+      "architecture": "turing",
+      "device": "",
+      "limits": {
+        "binding": 2147483644
+      }
+    }
+  },
+  "manifestSha256": "d9e37e50a436e9fb7c0c7f973e70adee353c808f48c6a51fa5a9186f1c650a5c",
+  "passed": true,
+  "loadAfter": 0.96,
+  "timingQualified": false
+}

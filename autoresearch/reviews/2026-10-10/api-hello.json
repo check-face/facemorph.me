@@ -1,0 +1,24 @@
+{
+  "date": "2026-10-10",
+  "scope": "Three read-only HTTP GETs for the known historic hello image from eris; cache-serving/network observation, not uncached generation or a paired server/browser benchmark",
+  "requests": [
+    {
+      "ms": 107.4,
+      "status": 200,
+      "bytes": 92624,
+      "sha256": "0fd3aacaf63a9b574960f926e4fbd48fadf853ba16189519053438e55fb9d615"
+    },
+    {
+      "ms": 61.1,
+      "status": 200,
+      "bytes": 92624,
+      "sha256": "0fd3aacaf63a9b574960f926e4fbd48fadf853ba16189519053438e55fb9d615"
+    },
+    {
+      "ms": 78.2,
+      "status": 200,
+      "bytes": 92624,
+      "sha256": "0fd3aacaf63a9b574960f926e4fbd48fadf853ba16189519053438e55fb9d615"
+    }
+  ]
+}

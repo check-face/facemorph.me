@@ -1,0 +1,76 @@
+{
+  "at": "2026-10-10T07:23:12.036410+00:00",
+  "passed": true,
+  "source": "bce320418a694bc48f25a609217bb81861ee6e47",
+  "qualifiedRun": 38033695234,
+  "origin": "https://next.facemorph.me",
+  "indexMatchesForCurlClient": false,
+  "applicationIndexMatchesAfterPlatformBeacon": true,
+  "platformBeaconCount": 1,
+  "servedIndexSha256": "20962ff3b45d789b9f5829ac5dad29e228163aa9aea3dcb0cacd771e580e4784",
+  "diagnosticBuild": "next-995b477854d97c7a",
+  "runtimeManifestSha256": "d9e37e50a436e9fb7c0c7f973e70adee353c808f48c6a51fa5a9186f1c650a5c",
+  "assets": [
+    {
+      "path": "230.25b21e2904ae5841d01e.js",
+      "sha256": "a33c863ef8d363c5c61b3509ef848886755919d7e97f07378d199d7164c49d08",
+      "bytes": 8594
+    },
+    {
+      "path": "465.25b21e2904ae5841d01e.js",
+      "sha256": "a7e6a4fd40cc4449942c7537765baa9c5957c2c7e9261ab78a3e2f43426ea877",
+      "bytes": 11550
+    },
+    {
+      "path": "516.25b21e2904ae5841d01e.js",
+      "sha256": "f87ee87e29665408f4fa1a0032285cf780d2d92f29029f557a44d8ed52bd50ec",
+      "bytes": 46329
+    },
+    {
+      "path": "590.25b21e2904ae5841d01e.js",
+      "sha256": "aef3cca741db7e47efd40d8d80e49cf1f0c550c813c37818b9f8e31b88cc2c6a",
+      "bytes": 7933
+    },
+    {
+      "path": "744.25b21e2904ae5841d01e.js",
+      "sha256": "7bafd572c73b78deee61513d9662e9eb4d4e337ea164e6595a836b0bde58407d",
+      "bytes": 17267
+    },
+    {
+      "path": "825.25b21e2904ae5841d01e.js",
+      "sha256": "f426dafefe9673e42e1d95085a0d59d2cb9e6a761ccb4dc3756c3c6c2418bdc3",
+      "bytes": 17845
+    },
+    {
+      "path": "app.25b21e2904ae5841d01e.js",
+      "sha256": "29d97048303cad2849acddb95435a9d049b8655703dfe676226ca316971d59e2",
+      "bytes": 439813
+    },
+    {
+      "path": "catalogue.json",
+      "sha256": "4a9e1c199e2a629f11cc5d016128b36efbcde301928ae2735c42e5025c13c341",
+      "bytes": 3405692
+    },
+    {
+      "path": "preview/hello-1024.webp",
+      "sha256": "0fd3aacaf63a9b574960f926e4fbd48fadf853ba16189519053438e55fb9d615",
+      "bytes": 92624
+    },
+    {
+      "path": "runtime.25b21e2904ae5841d01e.js",
+      "sha256": "89b52e26628dc88d93b3d7d8e2518e516ff4ab7e667708c72f5a77b774b4faea",
+      "bytes": 3523
+    },
+    {
+      "path": "style.25b21e2904ae5841d01e.css",
+      "sha256": "97e2810132727d15adf00f8fd94c85e6abbe4bedb2b55218a6b10a00a2838e79",
+      "bytes": 410347
+    },
+    {
+      "path": "vendors.25b21e2904ae5841d01e.js",
+      "sha256": "7f89d6f45da648207ca391f34e24ba0095e5aef301891ffd9ea7c32c06c7593c",
+      "bytes": 453495
+    }
+  ],
+  "scope": "Qualified artifact UI/worker/style/catalogue/hello bytes and pinned live runtime manifest. Model payloads not redownloaded; manifest pins identify them. One known platform Cloudflare beacon is separated from exact application HTML; no arbitrary script changes ignored."
+}

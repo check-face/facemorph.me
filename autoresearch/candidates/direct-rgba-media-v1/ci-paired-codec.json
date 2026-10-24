@@ -1,0 +1,1190 @@
+{
+  "at": "2026-10-10T06:35:41.247Z",
+  "scope": "Component image/video codec screen; no model or compiled product UI; not full31 or physical phone qualification",
+  "mode": "benchmark",
+  "loadBefore": 0.27,
+  "fixtures": [
+    {
+      "path": "/src/public/preview/hello-1024.webp",
+      "sha256": "0fd3aacaf63a9b574960f926e4fbd48fadf853ba16189519053438e55fb9d615",
+      "bytes": 92624,
+      "mime": "image/webp",
+      "scope": "decoded fixed synthetic/public image for codec screening; no model execution"
+    }
+  ],
+  "images": [
+    {
+      "fixture": "/src/public/preview/hello-1024.webp",
+      "pair": 0,
+      "mode": "blob",
+      "format": "png",
+      "workerLifecycle": "new image worker per sample; startup included; persistent-worker throughput not measured",
+      "displayDrawAndRafMs": 77.46000000002095,
+      "fileReadyMs": 63.195000000006985,
+      "imageBytes": 4195716,
+      "metadataBytes": 49815,
+      "encodeMs": 25.164999999979045,
+      "totalMs": 49.375,
+      "totalBytes": 4245531,
+      "returnedMime": "image/png",
+      "decoded": true,
+      "recovered": true,
+      "encoderStatus": {
+        "rawBytes": 0,
+        "pending": 0,
+        "waiting": 0,
+        "closed": false
+      }
+    },
+    {
+      "fixture": "/src/public/preview/hello-1024.webp",
+      "pair": 0,
+      "mode": "direct",
+      "format": "png",
+      "workerLifecycle": "new image worker per sample; startup included; persistent-worker throughput not measured",
+      "displayDrawAndRafMs": 6.129999999975553,
+      "fileReadyMs": 53.69499999997788,
+      "imageBytes": 4195716,
+      "metadataBytes": 49815,
+      "encodeMs": 21.25,
+      "totalMs": 41.375,
+      "totalBytes": 4245531,
+      "returnedMime": "image/png",
+      "decoded": true,
+      "recovered": true,
+      "encoderStatus": {
+        "rawBytes": 0,
+        "pending": 0,
+        "waiting": 0,
+        "closed": false
+      }
+    },
+    {
+      "fixture": "/src/public/preview/hello-1024.webp",
+      "pair": 0,
+      "mode": "direct",
+      "format": "png",
+      "workerLifecycle": "new image worker per sample; startup included; persistent-worker throughput not measured",
+      "displayDrawAndRafMs": 11.584999999991851,
+      "fileReadyMs": 55.22500000000582,
+      "imageBytes": 4195716,
+      "metadataBytes": 49815,
+      "encodeMs": 22.224999999976717,
+      "totalMs": 42.31500000000233,
+      "totalBytes": 4245531,
+      "returnedMime": "image/png",
+      "decoded": true,
+      "recovered": true,
+      "encoderStatus": {
+        "rawBytes": 0,
+        "pending": 0,
+        "waiting": 0,
+        "closed": false
+      }
+    },
+    {
+      "fixture": "/src/public/preview/hello-1024.webp",
+      "pair": 0,
+      "mode": "blob",
+      "format": "png",
+      "workerLifecycle": "new image worker per sample; startup included; persistent-worker throughput not measured",
+      "displayDrawAndRafMs": 65.13999999998487,
+      "fileReadyMs": 53.904999999998836,
+      "imageBytes": 4195716,
+      "metadataBytes": 49815,
+      "encodeMs": 23.304999999993015,
+      "totalMs": 42.36999999999534,
+      "totalBytes": 4245531,
+      "returnedMime": "image/png",
+      "decoded": true,
+      "recovered": true,
+      "encoderStatus": {
+        "rawBytes": 0,
+        "pending": 0,
+        "waiting": 0,
+        "closed": false
+      }
+    },
+    {
+      "fixture": "/src/public/preview/hello-1024.webp",
+      "pair": 1,
+      "mode": "blob",
+      "format": "png",
+      "workerLifecycle": "new image worker per sample; startup included; persistent-worker throughput not measured",
+      "displayDrawAndRafMs": 65.36999999999534,
+      "fileReadyMs": 53.48999999999069,
+      "imageBytes": 4195716,
+      "metadataBytes": 49815,
+      "encodeMs": 21.295000000012806,
+      "totalMs": 41.64000000001397,
+      "totalBytes": 4245531,
+      "returnedMime": "image/png",
+      "decoded": true,
+      "recovered": true,
+      "encoderStatus": {
+        "rawBytes": 0,
+        "pending": 0,
+        "waiting": 0,
+        "closed": false
+      }
+    },
+    {
+      "fixture": "/src/public/preview/hello-1024.webp",
+      "pair": 1,
+      "mode": "direct",
+      "format": "png",
+      "workerLifecycle": "new image worker per sample; startup included; persistent-worker throughput not measured",
+      "displayDrawAndRafMs": 3.9149999999790452,
+      "fileReadyMs": 54.139999999984866,
+      "imageBytes": 4195716,
+      "metadataBytes": 49815,
+      "encodeMs": 21.855000000010477,
+      "totalMs": 42.14500000001863,
+      "totalBytes": 4245531,
+      "returnedMime": "image/png",
+      "decoded": true,
+      "recovered": true,
+      "encoderStatus": {
+        "rawBytes": 0,
+        "pending": 0,
+        "waiting": 0,
+        "closed": false
+      }
+    },
+    {
+      "fixture": "/src/public/preview/hello-1024.webp",
+      "pair": 1,
+      "mode": "direct",
+      "format": "png",
+      "workerLifecycle": "new image worker per sample; startup included; persistent-worker throughput not measured",
+      "displayDrawAndRafMs": 2.3800000000046566,
+      "fileReadyMs": 56.695000000006985,
+      "imageBytes": 4195716,
+      "metadataBytes": 49815,
+      "encodeMs": 23.170000000012806,
+      "totalMs": 44.595000000001164,
+      "totalBytes": 4245531,
+      "returnedMime": "image/png",
+      "decoded": true,
+      "recovered": true,
+      "encoderStatus": {
+        "rawBytes": 0,
+        "pending": 0,
+        "waiting": 0,
+        "closed": false
+      }
+    },
+    {
+      "fixture": "/src/public/preview/hello-1024.webp",
+      "pair": 1,
+      "mode": "blob",
+      "format": "png",
+      "workerLifecycle": "new image worker per sample; startup included; persistent-worker throughput not measured",
+      "displayDrawAndRafMs": 64.66500000000815,
+      "fileReadyMs": 53.82500000001164,
+      "imageBytes": 4195716,
+      "metadataBytes": 49815,
+      "encodeMs": 21.235000000015134,
+      "totalMs": 42.110000000015134,
+      "totalBytes": 4245531,
+      "returnedMime": "image/png",
+      "decoded": true,
+      "recovered": true,
+      "encoderStatus": {
+        "rawBytes": 0,
+        "pending": 0,
+        "waiting": 0,
+        "closed": false
+      }
+    },
+    {
+      "fixture": "/src/public/preview/hello-1024.webp",
+      "pair": 2,
+      "mode": "blob",
+      "format": "png",
+      "workerLifecycle": "new image worker per sample; startup included; persistent-worker throughput not measured",
+      "displayDrawAndRafMs": 65.24499999999534,
+      "fileReadyMs": 53.779999999998836,
+      "imageBytes": 4195716,
+      "metadataBytes": 49815,
+      "encodeMs": 21.529999999998836,
+      "totalMs": 42.20999999999185,
+      "totalBytes": 4245531,
+      "returnedMime": "image/png",
+      "decoded": true,
+      "recovered": true,
+      "encoderStatus": {
+        "rawBytes": 0,
+        "pending": 0,
+        "waiting": 0,
+        "closed": false
+      }
+    },
+    {
+      "fixture": "/src/public/preview/hello-1024.webp",
+      "pair": 2,
+      "mode": "direct",
+      "format": "png",
+      "workerLifecycle": "new image worker per sample; startup included; persistent-worker throughput not measured",
+      "displayDrawAndRafMs": 14.494999999995343,
+      "fileReadyMs": 55,
+      "imageBytes": 4195716,
+      "metadataBytes": 49815,
+      "encodeMs": 23.595000000001164,
+      "totalMs": 42.789999999979045,
+      "totalBytes": 4245531,
+      "returnedMime": "image/png",
+      "decoded": true,
+      "recovered": true,
+      "encoderStatus": {
+        "rawBytes": 0,
+        "pending": 0,
+        "waiting": 0,
+        "closed": false
+      }
+    },
+    {
+      "fixture": "/src/public/preview/hello-1024.webp",
+      "pair": 2,
+      "mode": "direct",
+      "format": "png",
+      "workerLifecycle": "new image worker per sample; startup included; persistent-worker throughput not measured",
+      "displayDrawAndRafMs": 2.154999999998836,
+      "fileReadyMs": 56.55999999999767,
+      "imageBytes": 4195716,
+      "metadataBytes": 49815,
+      "encodeMs": 23.044999999983702,
+      "totalMs": 44.33999999999651,
+      "totalBytes": 4245531,
+      "returnedMime": "image/png",
+      "decoded": true,
+      "recovered": true,
+      "encoderStatus": {
+        "rawBytes": 0,
+        "pending": 0,
+        "waiting": 0,
+        "closed": false
+      }
+    },
+    {
+      "fixture": "/src/public/preview/hello-1024.webp",
+      "pair": 2,
+      "mode": "blob",
+      "format": "png",
+      "workerLifecycle": "new image worker per sample; startup included; persistent-worker throughput not measured",
+      "displayDrawAndRafMs": 66.43499999999767,
+      "fileReadyMs": 55.45999999999185,
+      "imageBytes": 4195716,
+      "metadataBytes": 49815,
+      "encodeMs": 23.43499999999767,
+      "totalMs": 44.03499999997439,
+      "totalBytes": 4245531,
+      "returnedMime": "image/png",
+      "decoded": true,
+      "recovered": true,
+      "encoderStatus": {
+        "rawBytes": 0,
+        "pending": 0,
+        "waiting": 0,
+        "closed": false
+      }
+    },
+    {
+      "fixture": "/src/public/preview/hello-1024.webp",
+      "pair": 0,
+      "mode": "direct",
+      "format": "png",
+      "workerLifecycle": "new image worker per sample; startup included; persistent-worker throughput not measured",
+      "displayDrawAndRafMs": 9.925000000017462,
+      "fileReadyMs": 56.61999999999534,
+      "imageBytes": 4195716,
+      "metadataBytes": 49815,
+      "encodeMs": 22.614999999990687,
+      "totalMs": 43.154999999998836,
+      "totalBytes": 4245531,
+      "returnedMime": "image/png",
+      "decoded": true,
+      "recovered": true,
+      "encoderStatus": {
+        "rawBytes": 0,
+        "pending": 0,
+        "waiting": 0,
+        "closed": false
+      }
+    },
+    {
+      "fixture": "/src/public/preview/hello-1024.webp",
+      "pair": 0,
+      "mode": "direct",
+      "format": "webp",
+      "workerLifecycle": "new image worker per sample; startup included; persistent-worker throughput not measured",
+      "displayDrawAndRafMs": 2.1600000000034925,
+      "fileReadyMs": 113.48000000001048,
+      "imageBytes": 80130,
+      "metadataBytes": 49802,
+      "encodeMs": 95.77999999999884,
+      "totalMs": 102.01999999998952,
+      "totalBytes": 129932,
+      "returnedMime": "image/webp",
+      "decoded": true,
+      "recovered": true,
+      "encoderStatus": {
+        "rawBytes": 0,
+        "pending": 0,
+        "waiting": 0,
+        "closed": false
+      }
+    },
+    {
+      "fixture": "/src/public/preview/hello-1024.webp",
+      "pair": 0,
+      "mode": "direct",
+      "format": "webp",
+      "workerLifecycle": "new image worker per sample; startup included; persistent-worker throughput not measured",
+      "displayDrawAndRafMs": 15.355000000010477,
+      "fileReadyMs": 112.85000000000582,
+      "imageBytes": 80130,
+      "metadataBytes": 49802,
+      "encodeMs": 94.94000000000233,
+      "totalMs": 101.13500000000931,
+      "totalBytes": 129932,
+      "returnedMime": "image/webp",
+      "decoded": true,
+      "recovered": true,
+      "encoderStatus": {
+        "rawBytes": 0,
+        "pending": 0,
+        "waiting": 0,
+        "closed": false
+      }
+    },
+    {
+      "fixture": "/src/public/preview/hello-1024.webp",
+      "pair": 0,
+      "mode": "direct",
+      "format": "png",
+      "workerLifecycle": "new image worker per sample; startup included; persistent-worker throughput not measured",
+      "displayDrawAndRafMs": 14.010000000009313,
+      "fileReadyMs": 55.80999999999767,
+      "imageBytes": 4195716,
+      "metadataBytes": 49815,
+      "encodeMs": 23.95000000001164,
+      "totalMs": 43.85500000001048,
+      "totalBytes": 4245531,
+      "returnedMime": "image/png",
+      "decoded": true,
+      "recovered": true,
+      "encoderStatus": {
+        "rawBytes": 0,
+        "pending": 0,
+        "waiting": 0,
+        "closed": false
+      }
+    },
+    {
+      "fixture": "/src/public/preview/hello-1024.webp",
+      "pair": 1,
+      "mode": "direct",
+      "format": "png",
+      "workerLifecycle": "new image worker per sample; startup included; persistent-worker throughput not measured",
+      "displayDrawAndRafMs": 11.76500000001397,
+      "fileReadyMs": 52.935000000026776,
+      "imageBytes": 4195716,
+      "metadataBytes": 49815,
+      "encodeMs": 22.44000000000233,
+      "totalMs": 41.7050000000163,
+      "totalBytes": 4245531,
+      "returnedMime": "image/png",
+      "decoded": true,
+      "recovered": true,
+      "encoderStatus": {
+        "rawBytes": 0,
+        "pending": 0,
+        "waiting": 0,
+        "closed": false
+      }
+    },
+    {
+      "fixture": "/src/public/preview/hello-1024.webp",
+      "pair": 1,
+      "mode": "direct",
+      "format": "webp",
+      "workerLifecycle": "new image worker per sample; startup included; persistent-worker throughput not measured",
+      "displayDrawAndRafMs": 4.125,
+      "fileReadyMs": 112.52499999999418,
+      "imageBytes": 80130,
+      "metadataBytes": 49802,
+      "encodeMs": 94.54000000000815,
+      "totalMs": 100.77999999999884,
+      "totalBytes": 129932,
+      "returnedMime": "image/webp",
+      "decoded": true,
+      "recovered": true,
+      "encoderStatus": {
+        "rawBytes": 0,
+        "pending": 0,
+        "waiting": 0,
+        "closed": false
+      }
+    },
+    {
+      "fixture": "/src/public/preview/hello-1024.webp",
+      "pair": 1,
+      "mode": "direct",
+      "format": "webp",
+      "workerLifecycle": "new image worker per sample; startup included; persistent-worker throughput not measured",
+      "displayDrawAndRafMs": 23.110000000015134,
+      "fileReadyMs": 133.7850000000035,
+      "imageBytes": 80130,
+      "metadataBytes": 49802,
+      "encodeMs": 94.31500000000233,
+      "totalMs": 99.83499999999185,
+      "totalBytes": 129932,
+      "returnedMime": "image/webp",
+      "decoded": true,
+      "recovered": true,
+      "encoderStatus": {
+        "rawBytes": 0,
+        "pending": 0,
+        "waiting": 0,
+        "closed": false
+      }
+    },
+    {
+      "fixture": "/src/public/preview/hello-1024.webp",
+      "pair": 1,
+      "mode": "direct",
+      "format": "png",
+      "workerLifecycle": "new image worker per sample; startup included; persistent-worker throughput not measured",
+      "displayDrawAndRafMs": 14.13499999998021,
+      "fileReadyMs": 56.14999999999418,
+      "imageBytes": 4195716,
+      "metadataBytes": 49815,
+      "encodeMs": 23.83499999999185,
+      "totalMs": 44.375,
+      "totalBytes": 4245531,
+      "returnedMime": "image/png",
+      "decoded": true,
+      "recovered": true,
+      "encoderStatus": {
+        "rawBytes": 0,
+        "pending": 0,
+        "waiting": 0,
+        "closed": false
+      }
+    },
+    {
+      "fixture": "/src/public/preview/hello-1024.webp",
+      "pair": 2,
+      "mode": "direct",
+      "format": "png",
+      "workerLifecycle": "new image worker per sample; startup included; persistent-worker throughput not measured",
+      "displayDrawAndRafMs": 2.8949999999895226,
+      "fileReadyMs": 54.90999999997439,
+      "imageBytes": 4195716,
+      "metadataBytes": 49815,
+      "encodeMs": 22.089999999996508,
+      "totalMs": 42.460000000020955,
+      "totalBytes": 4245531,
+      "returnedMime": "image/png",
+      "decoded": true,
+      "recovered": true,
+      "encoderStatus": {
+        "rawBytes": 0,
+        "pending": 0,
+        "waiting": 0,
+        "closed": false
+      }
+    },
+    {
+      "fixture": "/src/public/preview/hello-1024.webp",
+      "pair": 2,
+      "mode": "direct",
+      "format": "webp",
+      "workerLifecycle": "new image worker per sample; startup included; persistent-worker throughput not measured",
+      "displayDrawAndRafMs": 17.49000000001979,
+      "fileReadyMs": 119.99000000001979,
+      "imageBytes": 80130,
+      "metadataBytes": 49802,
+      "encodeMs": 94.375,
+      "totalMs": 100.51500000001397,
+      "totalBytes": 129932,
+      "returnedMime": "image/webp",
+      "decoded": true,
+      "recovered": true,
+      "encoderStatus": {
+        "rawBytes": 0,
+        "pending": 0,
+        "waiting": 0,
+        "closed": false
+      }
+    },
+    {
+      "fixture": "/src/public/preview/hello-1024.webp",
+      "pair": 2,
+      "mode": "direct",
+      "format": "webp",
+      "workerLifecycle": "new image worker per sample; startup included; persistent-worker throughput not measured",
+      "displayDrawAndRafMs": 2.0350000000034925,
+      "fileReadyMs": 111.02499999999418,
+      "imageBytes": 80130,
+      "metadataBytes": 49802,
+      "encodeMs": 94.22500000000582,
+      "totalMs": 99.78500000000349,
+      "totalBytes": 129932,
+      "returnedMime": "image/webp",
+      "decoded": true,
+      "recovered": true,
+      "encoderStatus": {
+        "rawBytes": 0,
+        "pending": 0,
+        "waiting": 0,
+        "closed": false
+      }
+    },
+    {
+      "fixture": "/src/public/preview/hello-1024.webp",
+      "pair": 2,
+      "mode": "direct",
+      "format": "png",
+      "workerLifecycle": "new image worker per sample; startup included; persistent-worker throughput not measured",
+      "displayDrawAndRafMs": 2.48499999998603,
+      "fileReadyMs": 53.970000000001164,
+      "imageBytes": 4195716,
+      "metadataBytes": 49815,
+      "encodeMs": 22.144999999989523,
+      "totalMs": 42.72500000000582,
+      "totalBytes": 4245531,
+      "returnedMime": "image/png",
+      "decoded": true,
+      "recovered": true,
+      "encoderStatus": {
+        "rawBytes": 0,
+        "pending": 0,
+        "waiting": 0,
+        "closed": false
+      }
+    }
+  ],
+  "videos": [
+    {
+      "pair": 0,
+      "mode": "quality",
+      "input": "png",
+      "frames": 32,
+      "config": {
+        "codec": "avc1.42002A",
+        "width": 1024,
+        "height": 1024,
+        "bitrate": 4194000,
+        "framerate": 16,
+        "avc": {
+          "format": "avc"
+        }
+      },
+      "initializedMs": 25.29000000000815,
+      "processingMs": 1196.079999999929,
+      "flushMuxMs": 5.239999999990687,
+      "finishMs": 1269.6749999999884,
+      "decodedPlayableMs": 1282.5899999999965,
+      "bytes": 105862,
+      "decodedWidth": 1024,
+      "decodedHeight": 1024,
+      "duration": 2
+    },
+    {
+      "pair": 0,
+      "mode": "quality",
+      "input": "raw",
+      "frames": 32,
+      "config": {
+        "codec": "avc1.42002A",
+        "width": 1024,
+        "height": 1024,
+        "bitrate": 4194000,
+        "framerate": 16,
+        "avc": {
+          "format": "avc"
+        }
+      },
+      "initializedMs": 20.85999999998603,
+      "processingMs": 47.69000000003143,
+      "flushMuxMs": 26.43499999999767,
+      "finishMs": 173.6699999999837,
+      "decodedPlayableMs": 186.84999999997672,
+      "bytes": 105865,
+      "decodedWidth": 1024,
+      "decodedHeight": 1024,
+      "duration": 2
+    },
+    {
+      "pair": 0,
+      "mode": "quality",
+      "input": "raw",
+      "frames": 32,
+      "config": {
+        "codec": "avc1.42002A",
+        "width": 1024,
+        "height": 1024,
+        "bitrate": 4194000,
+        "framerate": 16,
+        "avc": {
+          "format": "avc"
+        }
+      },
+      "initializedMs": 19.320000000006985,
+      "processingMs": 47.199999999953434,
+      "flushMuxMs": 33.375,
+      "finishMs": 175.31500000000233,
+      "decodedPlayableMs": 183.85500000001048,
+      "bytes": 105881,
+      "decodedWidth": 1024,
+      "decodedHeight": 1024,
+      "duration": 2
+    },
+    {
+      "pair": 0,
+      "mode": "quality",
+      "input": "png",
+      "frames": 32,
+      "config": {
+        "codec": "avc1.42002A",
+        "width": 1024,
+        "height": 1024,
+        "bitrate": 4194000,
+        "framerate": 16,
+        "avc": {
+          "format": "avc"
+        }
+      },
+      "initializedMs": 18.27499999999418,
+      "processingMs": 1233.0349999999453,
+      "flushMuxMs": 5.875,
+      "finishMs": 1304.9750000000058,
+      "decodedPlayableMs": 1316.9049999999988,
+      "bytes": 105821,
+      "decodedWidth": 1024,
+      "decodedHeight": 1024,
+      "duration": 2
+    },
+    {
+      "pair": 1,
+      "mode": "quality",
+      "input": "png",
+      "frames": 32,
+      "config": {
+        "codec": "avc1.42002A",
+        "width": 1024,
+        "height": 1024,
+        "bitrate": 4194000,
+        "framerate": 16,
+        "avc": {
+          "format": "avc"
+        }
+      },
+      "initializedMs": 23.43000000002212,
+      "processingMs": 1248.4949999999371,
+      "flushMuxMs": 5.600000000005821,
+      "finishMs": 1328.1700000000128,
+      "decodedPlayableMs": 1340.960000000021,
+      "bytes": 105870,
+      "decodedWidth": 1024,
+      "decodedHeight": 1024,
+      "duration": 2
+    },
+    {
+      "pair": 1,
+      "mode": "quality",
+      "input": "raw",
+      "frames": 32,
+      "config": {
+        "codec": "avc1.42002A",
+        "width": 1024,
+        "height": 1024,
+        "bitrate": 4194000,
+        "framerate": 16,
+        "avc": {
+          "format": "avc"
+        }
+      },
+      "initializedMs": 21.14000000001397,
+      "processingMs": 55.105000000068685,
+      "flushMuxMs": 27.760000000009313,
+      "finishMs": 170.75,
+      "decodedPlayableMs": 183.77499999999418,
+      "bytes": 105796,
+      "decodedWidth": 1024,
+      "decodedHeight": 1024,
+      "duration": 2
+    },
+    {
+      "pair": 1,
+      "mode": "quality",
+      "input": "raw",
+      "frames": 32,
+      "config": {
+        "codec": "avc1.42002A",
+        "width": 1024,
+        "height": 1024,
+        "bitrate": 4194000,
+        "framerate": 16,
+        "avc": {
+          "format": "avc"
+        }
+      },
+      "initializedMs": 26.69000000000233,
+      "processingMs": 48.615000000078,
+      "flushMuxMs": 32.66000000000349,
+      "finishMs": 181.56500000000233,
+      "decodedPlayableMs": 196.57500000001164,
+      "bytes": 105817,
+      "decodedWidth": 1024,
+      "decodedHeight": 1024,
+      "duration": 2
+    },
+    {
+      "pair": 1,
+      "mode": "quality",
+      "input": "png",
+      "frames": 32,
+      "config": {
+        "codec": "avc1.42002A",
+        "width": 1024,
+        "height": 1024,
+        "bitrate": 4194000,
+        "framerate": 16,
+        "avc": {
+          "format": "avc"
+        }
+      },
+      "initializedMs": 22.804999999993015,
+      "processingMs": 1216.990000000107,
+      "flushMuxMs": 5.7700000000186265,
+      "finishMs": 1290.015000000014,
+      "decodedPlayableMs": 1300.5100000000093,
+      "bytes": 105827,
+      "decodedWidth": 1024,
+      "decodedHeight": 1024,
+      "duration": 2
+    },
+    {
+      "pair": 2,
+      "mode": "quality",
+      "input": "png",
+      "frames": 32,
+      "config": {
+        "codec": "avc1.42002A",
+        "width": 1024,
+        "height": 1024,
+        "bitrate": 4194000,
+        "framerate": 16,
+        "avc": {
+          "format": "avc"
+        }
+      },
+      "initializedMs": 25.570000000006985,
+      "processingMs": 1227.9100000000617,
+      "flushMuxMs": 6.1749999999883585,
+      "finishMs": 1305.5350000000035,
+      "decodedPlayableMs": 1315.570000000007,
+      "bytes": 105873,
+      "decodedWidth": 1024,
+      "decodedHeight": 1024,
+      "duration": 2
+    },
+    {
+      "pair": 2,
+      "mode": "quality",
+      "input": "raw",
+      "frames": 32,
+      "config": {
+        "codec": "avc1.42002A",
+        "width": 1024,
+        "height": 1024,
+        "bitrate": 4194000,
+        "framerate": 16,
+        "avc": {
+          "format": "avc"
+        }
+      },
+      "initializedMs": 23.529999999998836,
+      "processingMs": 46.87499999991269,
+      "flushMuxMs": 26.629999999975553,
+      "finishMs": 170.80999999999767,
+      "decodedPlayableMs": 185.2850000000035,
+      "bytes": 105872,
+      "decodedWidth": 1024,
+      "decodedHeight": 1024,
+      "duration": 2
+    },
+    {
+      "pair": 2,
+      "mode": "quality",
+      "input": "raw",
+      "frames": 32,
+      "config": {
+        "codec": "avc1.42002A",
+        "width": 1024,
+        "height": 1024,
+        "bitrate": 4194000,
+        "framerate": 16,
+        "avc": {
+          "format": "avc"
+        }
+      },
+      "initializedMs": 22.17499999998836,
+      "processingMs": 52.12500000008731,
+      "flushMuxMs": 31.119999999995343,
+      "finishMs": 177.18499999999767,
+      "decodedPlayableMs": 187.26499999998487,
+      "bytes": 105800,
+      "decodedWidth": 1024,
+      "decodedHeight": 1024,
+      "duration": 2
+    },
+    {
+      "pair": 2,
+      "mode": "quality",
+      "input": "png",
+      "frames": 32,
+      "config": {
+        "codec": "avc1.42002A",
+        "width": 1024,
+        "height": 1024,
+        "bitrate": 4194000,
+        "framerate": 16,
+        "avc": {
+          "format": "avc"
+        }
+      },
+      "initializedMs": 22.504999999975553,
+      "processingMs": 1225.5800000000454,
+      "flushMuxMs": 5.504999999975553,
+      "finishMs": 1308.0649999999732,
+      "decodedPlayableMs": 1320.539999999979,
+      "bytes": 105921,
+      "decodedWidth": 1024,
+      "decodedHeight": 1024,
+      "duration": 2
+    },
+    {
+      "pair": 0,
+      "mode": "quality",
+      "input": "raw",
+      "frames": 32,
+      "config": {
+        "codec": "avc1.42002A",
+        "width": 1024,
+        "height": 1024,
+        "bitrate": 4194000,
+        "framerate": 16,
+        "avc": {
+          "format": "avc"
+        }
+      },
+      "initializedMs": 19.375,
+      "processingMs": 50.920000000012806,
+      "flushMuxMs": 33.26999999998952,
+      "finishMs": 186.39000000001397,
+      "decodedPlayableMs": 193.60500000001048,
+      "bytes": 105968,
+      "decodedWidth": 1024,
+      "decodedHeight": 1024,
+      "duration": 2
+    },
+    {
+      "pair": 0,
+      "mode": "realtime",
+      "input": "raw",
+      "frames": 32,
+      "config": {
+        "codec": "avc1.42002A",
+        "width": 1024,
+        "height": 1024,
+        "bitrate": 4194000,
+        "framerate": 16,
+        "avc": {
+          "format": "avc"
+        }
+      },
+      "initializedMs": 21.994999999995343,
+      "processingMs": 46.80000000007567,
+      "flushMuxMs": 18.195000000006985,
+      "finishMs": 179.65499999999884,
+      "decodedPlayableMs": 186.75,
+      "bytes": 105857,
+      "decodedWidth": 1024,
+      "decodedHeight": 1024,
+      "duration": 2
+    },
+    {
+      "pair": 0,
+      "mode": "realtime",
+      "input": "raw",
+      "frames": 32,
+      "config": {
+        "codec": "avc1.42002A",
+        "width": 1024,
+        "height": 1024,
+        "bitrate": 4194000,
+        "framerate": 16,
+        "avc": {
+          "format": "avc"
+        }
+      },
+      "initializedMs": 14.679999999993015,
+      "processingMs": 43.889999999897555,
+      "flushMuxMs": 13.129999999975553,
+      "finishMs": 132.91499999997905,
+      "decodedPlayableMs": 143.9549999999872,
+      "bytes": 105837,
+      "decodedWidth": 1024,
+      "decodedHeight": 1024,
+      "duration": 2
+    },
+    {
+      "pair": 0,
+      "mode": "quality",
+      "input": "raw",
+      "frames": 32,
+      "config": {
+        "codec": "avc1.42002A",
+        "width": 1024,
+        "height": 1024,
+        "bitrate": 4194000,
+        "framerate": 16,
+        "avc": {
+          "format": "avc"
+        }
+      },
+      "initializedMs": 17.089999999996508,
+      "processingMs": 46.664999999891734,
+      "flushMuxMs": 22.925000000017462,
+      "finishMs": 142.6150000000198,
+      "decodedPlayableMs": 150.68499999999767,
+      "bytes": 105882,
+      "decodedWidth": 1024,
+      "decodedHeight": 1024,
+      "duration": 2
+    },
+    {
+      "pair": 1,
+      "mode": "quality",
+      "input": "raw",
+      "frames": 32,
+      "config": {
+        "codec": "avc1.42002A",
+        "width": 1024,
+        "height": 1024,
+        "bitrate": 4194000,
+        "framerate": 16,
+        "avc": {
+          "format": "avc"
+        }
+      },
+      "initializedMs": 16.494999999995343,
+      "processingMs": 45.56499999994412,
+      "flushMuxMs": 22.954999999987194,
+      "finishMs": 136.89499999998952,
+      "decodedPlayableMs": 146.44999999998254,
+      "bytes": 105896,
+      "decodedWidth": 1024,
+      "decodedHeight": 1024,
+      "duration": 2
+    },
+    {
+      "pair": 1,
+      "mode": "realtime",
+      "input": "raw",
+      "frames": 32,
+      "config": {
+        "codec": "avc1.42002A",
+        "width": 1024,
+        "height": 1024,
+        "bitrate": 4194000,
+        "framerate": 16,
+        "avc": {
+          "format": "avc"
+        }
+      },
+      "initializedMs": 16.14999999999418,
+      "processingMs": 51.27500000002328,
+      "flushMuxMs": 16.45000000001164,
+      "finishMs": 161.73000000001048,
+      "decodedPlayableMs": 167.97000000000116,
+      "bytes": 105825,
+      "decodedWidth": 1024,
+      "decodedHeight": 1024,
+      "duration": 2
+    },
+    {
+      "pair": 1,
+      "mode": "realtime",
+      "input": "raw",
+      "frames": 32,
+      "config": {
+        "codec": "avc1.42002A",
+        "width": 1024,
+        "height": 1024,
+        "bitrate": 4194000,
+        "framerate": 16,
+        "avc": {
+          "format": "avc"
+        }
+      },
+      "initializedMs": 20.72500000000582,
+      "processingMs": 45.72500000009313,
+      "flushMuxMs": 12.589999999996508,
+      "finishMs": 147.90000000002328,
+      "decodedPlayableMs": 157.01500000001397,
+      "bytes": 105897,
+      "decodedWidth": 1024,
+      "decodedHeight": 1024,
+      "duration": 2
+    },
+    {
+      "pair": 1,
+      "mode": "quality",
+      "input": "raw",
+      "frames": 32,
+      "config": {
+        "codec": "avc1.42002A",
+        "width": 1024,
+        "height": 1024,
+        "bitrate": 4194000,
+        "framerate": 16,
+        "avc": {
+          "format": "avc"
+        }
+      },
+      "initializedMs": 17.429999999993015,
+      "processingMs": 49.58499999996275,
+      "flushMuxMs": 22.619999999995343,
+      "finishMs": 143.01499999998487,
+      "decodedPlayableMs": 151.44499999997788,
+      "bytes": 105863,
+      "decodedWidth": 1024,
+      "decodedHeight": 1024,
+      "duration": 2
+    },
+    {
+      "pair": 2,
+      "mode": "quality",
+      "input": "raw",
+      "frames": 32,
+      "config": {
+        "codec": "avc1.42002A",
+        "width": 1024,
+        "height": 1024,
+        "bitrate": 4194000,
+        "framerate": 16,
+        "avc": {
+          "format": "avc"
+        }
+      },
+      "initializedMs": 22.879999999975553,
+      "processingMs": 46.07500000009895,
+      "flushMuxMs": 26.24000000001979,
+      "finishMs": 147.01999999998952,
+      "decodedPlayableMs": 155.27499999999418,
+      "bytes": 105903,
+      "decodedWidth": 1024,
+      "decodedHeight": 1024,
+      "duration": 2
+    },
+    {
+      "pair": 2,
+      "mode": "realtime",
+      "input": "raw",
+      "frames": 32,
+      "config": {
+        "codec": "avc1.42002A",
+        "width": 1024,
+        "height": 1024,
+        "bitrate": 4194000,
+        "framerate": 16,
+        "avc": {
+          "format": "avc"
+        }
+      },
+      "initializedMs": 19.880000000004657,
+      "processingMs": 48.864999999903375,
+      "flushMuxMs": 12.595000000001164,
+      "finishMs": 148.30500000002212,
+      "decodedPlayableMs": 159.41500000000815,
+      "bytes": 105818,
+      "decodedWidth": 1024,
+      "decodedHeight": 1024,
+      "duration": 2
+    },
+    {
+      "pair": 2,
+      "mode": "realtime",
+      "input": "raw",
+      "frames": 32,
+      "config": {
+        "codec": "avc1.42002A",
+        "width": 1024,
+        "height": 1024,
+        "bitrate": 4194000,
+        "framerate": 16,
+        "avc": {
+          "format": "avc"
+        }
+      },
+      "initializedMs": 19.06500000000233,
+      "processingMs": 48.30000000001746,
+      "flushMuxMs": 14.10000000000582,
+      "finishMs": 149.2600000000093,
+      "decodedPlayableMs": 155.5450000000128,
+      "bytes": 105821,
+      "decodedWidth": 1024,
+      "decodedHeight": 1024,
+      "duration": 2
+    },
+    {
+      "pair": 2,
+      "mode": "quality",
+      "input": "raw",
+      "frames": 32,
+      "config": {
+        "codec": "avc1.42002A",
+        "width": 1024,
+        "height": 1024,
+        "bitrate": 4194000,
+        "framerate": 16,
+        "avc": {
+          "format": "avc"
+        }
+      },
+      "initializedMs": 17.929999999993015,
+      "processingMs": 52.205000000074506,
+      "flushMuxMs": 24.239999999990687,
+      "finishMs": 150.85999999998603,
+      "decodedPlayableMs": 157.2850000000035,
+      "bytes": 105850,
+      "decodedWidth": 1024,
+      "decodedHeight": 1024,
+      "duration": 2
+    }
+  ],
+  "errors": [],
+  "sourceHashes": {
+    "control-png.mjs": "694cc2e83f76a674330d28f3ba125510930351e2aab7c132225cb9d870435785",
+    "control-video-worker.mjs": "56162a9e9af7c8789880a8631553d3de5cc87c776a26db48fc918ec644533921",
+    "realtime-video-worker.mjs": "0eac2134e98f8f3fac9199a3d07633d73864b01760e20e45a8bf3c95aca7c43a",
+    "encode-worker.mjs": "19dbb958a86f677d6bab7f49509fb6710afedc88e68b93bf1a105830a579c66b",
+    "encode-client.mjs": "f6529014893a0d2b113f5b17f8ad410849eb298f8acc320bb5dd28e22ef89a94",
+    "recovery.mjs": "19724fb44d4a6bed111ea948d8fd74f5d4a068e54fcce2d5f851e65a3628b4d9",
+    "screen.mjs": "05590b63ba332edb4eccd7765e507bd725d6834e5ba39b19c82a0d570ccd49f5"
+  },
+  "browser": {
+    "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/155.0.0.0 Safari/537.36",
+    "isolation": true,
+    "visibility": "visible",
+    "webdriver": true
+  },
+  "passed": true,
+  "loadAfter": 0.58,
+  "timingQualified": true
+}

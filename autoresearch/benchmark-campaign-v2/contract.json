@@ -1,0 +1,401 @@
+{
+  "version": "benchmark-campaign-v2",
+  "created": "2026-09-16",
+  "scope": "All research lanes and candidate integration; no release attestation",
+  "targets": [
+    {
+      "id": "iphone-11-safari",
+      "environment": "physical",
+      "lanes": [
+        "browser-cpu",
+        "browser-gpu"
+      ],
+      "status": "planned-requires-exact-runtime-and-hardware",
+      "note": "Record actual providers independently; target listing is not support evidence"
+    },
+    {
+      "id": "iphone-current-safari",
+      "environment": "physical",
+      "lanes": [
+        "browser-cpu",
+        "browser-gpu"
+      ],
+      "status": "planned-requires-exact-runtime-and-hardware",
+      "note": "Record actual providers independently; target listing is not support evidence"
+    },
+    {
+      "id": "iphone-current-chrome-ios",
+      "environment": "physical",
+      "lanes": [
+        "browser-cpu",
+        "browser-gpu"
+      ],
+      "status": "planned-requires-exact-runtime-and-hardware",
+      "note": "Record actual providers independently; target listing is not support evidence"
+    },
+    {
+      "id": "ipad-safari",
+      "environment": "physical",
+      "lanes": [
+        "browser-cpu",
+        "browser-gpu"
+      ],
+      "status": "planned-requires-exact-runtime-and-hardware",
+      "note": "Record actual providers independently; target listing is not support evidence"
+    },
+    {
+      "id": "s24-ultra-chrome",
+      "environment": "physical",
+      "lanes": [
+        "browser-cpu",
+        "browser-gpu"
+      ],
+      "status": "planned-requires-exact-runtime-and-hardware",
+      "note": "Record actual providers independently; target listing is not support evidence"
+    },
+    {
+      "id": "s24-ultra-samsung-internet",
+      "environment": "physical",
+      "lanes": [
+        "browser-cpu",
+        "browser-gpu"
+      ],
+      "status": "planned-requires-exact-runtime-and-hardware",
+      "note": "Record actual providers independently; target listing is not support evidence"
+    },
+    {
+      "id": "s21-chrome",
+      "environment": "physical",
+      "lanes": [
+        "browser-cpu",
+        "browser-gpu"
+      ],
+      "status": "planned-requires-exact-runtime-and-hardware",
+      "note": "Record actual providers independently; target listing is not support evidence"
+    },
+    {
+      "id": "s21-samsung-internet",
+      "environment": "physical",
+      "lanes": [
+        "browser-cpu",
+        "browser-gpu"
+      ],
+      "status": "planned-requires-exact-runtime-and-hardware",
+      "note": "Record actual providers independently; target listing is not support evidence"
+    },
+    {
+      "id": "mac-arm64-safari",
+      "environment": "physical",
+      "lanes": [
+        "browser-cpu",
+        "browser-gpu"
+      ],
+      "status": "planned-requires-exact-runtime-and-hardware",
+      "note": "Record actual providers independently; target listing is not support evidence"
+    },
+    {
+      "id": "mac-arm64-chromium",
+      "environment": "physical",
+      "lanes": [
+        "browser-cpu",
+        "browser-gpu"
+      ],
+      "status": "planned-requires-exact-runtime-and-hardware",
+      "note": "Record actual providers independently; target listing is not support evidence"
+    },
+    {
+      "id": "mac-intel-browser",
+      "environment": "physical",
+      "lanes": [
+        "browser-cpu",
+        "browser-gpu"
+      ],
+      "status": "planned-requires-exact-runtime-and-hardware",
+      "note": "Record actual providers independently; target listing is not support evidence"
+    },
+    {
+      "id": "windows-x64-browser",
+      "environment": "physical",
+      "lanes": [
+        "browser-cpu",
+        "browser-gpu"
+      ],
+      "status": "planned-requires-exact-runtime-and-hardware",
+      "note": "Record actual providers independently; target listing is not support evidence"
+    },
+    {
+      "id": "linux-x64-browser",
+      "environment": "physical",
+      "lanes": [
+        "browser-cpu",
+        "browser-gpu"
+      ],
+      "status": "planned-requires-exact-runtime-and-hardware",
+      "note": "Record actual providers independently; target listing is not support evidence"
+    },
+    {
+      "id": "ios-simulator",
+      "environment": "ios-simulator",
+      "lanes": [
+        "browser-cpu",
+        "browser-gpu"
+      ],
+      "status": "planned-requires-exact-runtime-and-hardware",
+      "note": "Simulator WebGPU unavailable in recorded configuration; proposed tests must skip unsupported APIs explicitly"
+    },
+    {
+      "id": "mac-arm64-native",
+      "environment": "physical",
+      "lanes": [
+        "native-cpu",
+        "native-gpu"
+      ],
+      "status": "planned-requires-exact-runtime-and-hardware",
+      "note": "Record actual providers independently; target listing is not support evidence"
+    },
+    {
+      "id": "mac-intel-native",
+      "environment": "physical",
+      "lanes": [
+        "native-cpu",
+        "native-gpu"
+      ],
+      "status": "planned-requires-exact-runtime-and-hardware",
+      "note": "Record actual providers independently; target listing is not support evidence"
+    },
+    {
+      "id": "windows-x64-native",
+      "environment": "physical",
+      "lanes": [
+        "native-cpu",
+        "native-gpu"
+      ],
+      "status": "planned-requires-exact-runtime-and-hardware",
+      "note": "Record actual providers independently; target listing is not support evidence"
+    },
+    {
+      "id": "windows-arm64-native",
+      "environment": "physical",
+      "lanes": [
+        "native-cpu",
+        "native-gpu"
+      ],
+      "status": "planned-requires-exact-runtime-and-hardware",
+      "note": "Record actual providers independently; target listing is not support evidence"
+    },
+    {
+      "id": "linux-x64-native",
+      "environment": "physical",
+      "lanes": [
+        "native-cpu",
+        "native-gpu"
+      ],
+      "status": "planned-requires-exact-runtime-and-hardware",
+      "note": "Record actual providers independently; target listing is not support evidence"
+    },
+    {
+      "id": "linux-arm64-native",
+      "environment": "physical",
+      "lanes": [
+        "native-cpu",
+        "native-gpu"
+      ],
+      "status": "planned-requires-exact-runtime-and-hardware",
+      "note": "Record actual providers independently; target listing is not support evidence"
+    },
+    {
+      "id": "linux-amd64-self-host",
+      "environment": "container",
+      "lanes": [
+        "native-cpu",
+        "native-gpu"
+      ],
+      "status": "planned-requires-exact-runtime-and-hardware",
+      "note": "Native candidates require a separate container adapter and self-host workflow validation; native app results do not qualify the container."
+    },
+    {
+      "id": "linux-arm64-self-host",
+      "environment": "container",
+      "lanes": [
+        "native-cpu",
+        "native-gpu"
+      ],
+      "status": "planned-requires-exact-runtime-and-hardware",
+      "note": "Native candidates require a separate container adapter and self-host workflow validation; native app results do not qualify the container."
+    },
+    {
+      "id": "s24-ultra-brave",
+      "environment": "physical",
+      "lanes": [
+        "browser-cpu",
+        "browser-gpu"
+      ],
+      "status": "planned-requires-exact-runtime-and-hardware",
+      "note": "Explicit runtime/provider capability checks required; target listing is not support evidence"
+    },
+    {
+      "id": "android-lower-memory-browser",
+      "environment": "physical",
+      "lanes": [
+        "browser-cpu",
+        "browser-gpu"
+      ],
+      "status": "planned-requires-exact-runtime-and-hardware",
+      "note": "Explicit runtime/provider capability checks required; target listing is not support evidence"
+    },
+    {
+      "id": "desktop-firefox",
+      "environment": "physical",
+      "lanes": [
+        "browser-cpu",
+        "browser-gpu"
+      ],
+      "status": "planned-requires-exact-runtime-and-hardware",
+      "note": "Explicit runtime/provider capability checks required; target listing is not support evidence"
+    }
+  ],
+  "workloads": [
+    {
+      "id": "synthesis-fixed31",
+      "description": "Unchanged full1024 fixed31; finiteness, all-pixel RGBmax1, sampled float max0.002; preserve noise/truncation fixtures",
+      "kind": "correctness"
+    },
+    {
+      "id": "seed-text-mapping",
+      "description": "Actual seed/text/Unicode to latent to full1024 output with mapping hash and identity regression; fixed W+ alone does not execute mapping",
+      "kind": "workflow"
+    },
+    {
+      "id": "single-face",
+      "description": "First validated face and at least3 warm repeats, separate initialization/readback, fixed full1024 output",
+      "kind": "performance"
+    },
+    {
+      "id": "ordinary-morph-26",
+      "description": "26 useful frames, total generation/preview/export time, bounded frame queue; no style-prefix reuse claim for ordinary morph",
+      "kind": "performance"
+    },
+    {
+      "id": "custom-morphs",
+      "description": "Classic linear, pairwise ellipse/figure8, full-smooth ellipse/figure8; N2/3/5 and declared maximum, endpoints/midpoints/seam and actual rendered outputs",
+      "kind": "workflow"
+    },
+    {
+      "id": "photo-fixed",
+      "description": "Two fixed synthetic aligned and unaligned photos, no-face and malformed input; actual decode/alignment/e4e and W+ reference tolerance0.0001",
+      "kind": "correctness"
+    },
+    {
+      "id": "photo-roundtrip",
+      "description": "Alignment\u2192actual encoder\u2192full1024 synthesis\u2192original cache, repeat photo, paired-photo morph/video; record actual encoder and synthesis providers separately",
+      "kind": "workflow"
+    },
+    {
+      "id": "cache-download",
+      "description": "Empty local model cache versus retained assets; actual transfer provenance, interruption/resume, cross-version reuse, quota/denial; image cache hit performs zero inference/model initialization",
+      "kind": "reliability"
+    },
+    {
+      "id": "recovery-soak",
+      "description": "Declared repeated-job workload/duration, memory growth/peak, tab watchdog, worker/context loss, cancellation, background/foreground and bounded CPU retry",
+      "kind": "reliability"
+    },
+    {
+      "id": "memory-performance-frontier",
+      "description": "Control plus concrete larger-residency/tile/queue candidates;384MiB is not a ceiling. Account extra bytes, measure paired latency/throughput and complete-pipeline reliability",
+      "kind": "performance"
+    }
+  ],
+  "workloadSets": {
+    "synthesis": [
+      "synthesis-fixed31",
+      "seed-text-mapping",
+      "single-face",
+      "ordinary-morph-26",
+      "custom-morphs",
+      "cache-download",
+      "recovery-soak",
+      "memory-performance-frontier"
+    ],
+    "e4e": [
+      "photo-fixed",
+      "photo-roundtrip",
+      "cache-download",
+      "recovery-soak",
+      "memory-performance-frontier"
+    ]
+  },
+  "metrics": {
+    "requiredIdentity": [
+      "runId",
+      "candidateId",
+      "controlId",
+      "targetId",
+      "hardware",
+      "osVersion",
+      "browserVersion",
+      "runtimeVersion",
+      "modelSha256",
+      "kernelSha256",
+      "fixtureSha256",
+      "configSha256",
+      "executionEnvironment",
+      "actualEncoderProvider",
+      "actualSynthesisProvider"
+    ],
+    "stages": [
+      "assetAcquisition",
+      "runtimeInitialization",
+      "modelInitialization",
+      "decodeAlignment",
+      "encoder",
+      "mapping",
+      "synthesis",
+      "readback",
+      "originalCache",
+      "videoEncode",
+      "videoDecodePlayback",
+      "wholeWorkflow"
+    ],
+    "stageFormat": "status=measured/not-measured/not-applicable; samplesMs only for measured stages, scope and overlap explicit. Unknown is null, never0.",
+    "memory": [
+      "accounted live/pending GPU",
+      "JS/model/staging bytes",
+      "WASM capacity",
+      "observed process footprint where available",
+      "reserve",
+      "complete-workflow overlap",
+      "per-job growth"
+    ],
+    "timingRules": [
+      "Record clock/synchronisation and whether host readback is included",
+      "Avoid summing overlapping stage timings",
+      "Measure cold download separately from process-first initialization; identify cache provenance",
+      "At least3 repeats and reversed control/candidate ordering on same physical device for promotion",
+      "Simulator cannot establish physical-phone speed or memory survival",
+      "S24 Ultra comparison is a cross-device target; optimisation gains require same-device control"
+    ],
+    "missingMetrics": "Explicitly unmeasured; legacy reports retain their original scope and cannot be retroactively v2 complete"
+  },
+  "qualification": {
+    "synthesis": "Fixed research31 separate from nativeCI31; require exact fixture identities",
+    "e4e": "Actual encoder executed plus per-photo W+ checks; synthesis of encoded-photo fixture does not count",
+    "precision": "FP32 mainline; FP16/quantization separate experimental policy, no inherited quality pass",
+    "runtime": "Requested provider differs from demonstrated executed provider; record fallbacks",
+    "release": "Use release-tests catalogue for integrated release gates; benchmark plan/results alone do not qualify a release"
+  },
+  "handoff": {
+    "ownerSplit": "Research owns versioned candidate runners/manifests; operator owns separate packaging/site deployment",
+    "immutableBundle": [
+      "model/runtime/kernel/preprocessing/fixture/config hashes",
+      "actual tested OS/browser/provider matrix",
+      "exact correctness policy",
+      "stage/memory/workflow reports",
+      "known failures and unmeasured metrics",
+      "supported adapter inputs/outputs and cancellation behavior"
+    ],
+    "promotion": "Explicitly select and pin immutable bundle in candidate site; never import mutable research directories or silently swap models",
+    "trial": "Separate site deployment is not automatically the28-day public comparison start"
+  },
+  "matrixScope": "Research scheduling matrix, not an exhaustive support declaration. Preserve release-tests target catalogue and explicitly register additional runtime/architecture combinations."
+}

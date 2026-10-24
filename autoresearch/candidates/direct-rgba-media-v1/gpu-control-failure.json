@@ -1,0 +1,33 @@
+{
+  "run": 38033339860,
+  "triggeringSource": "e590de2823508d718195a6c3228cc62736c0ae64",
+  "servedSource": "e0b2192c26f6b921b9fb5e24c94be358c508c052",
+  "hardware": "NVIDIA GeForce GTX1050 2GB driver550.142",
+  "browser": "Chrome141.0.7390.54",
+  "selectedRoute": "webgpu",
+  "result": "failed_before_first_face",
+  "error": "GPU validation: Invalid CommandBuffer on Queue.Submit",
+  "stages": [
+    {
+      "ms": 604,
+      "line": "Downloading model files"
+    },
+    {
+      "ms": 20923,
+      "line": "Model ready"
+    },
+    {
+      "ms": 20933,
+      "line": "Generating\u2026"
+    },
+    {
+      "ms": 38742,
+      "line": "Loading the graphics model (1 of 2)\u2026"
+    },
+    {
+      "ms": 40316,
+      "line": "Loading the graphics model (2 of 2)\u2026"
+    }
+  ],
+  "scope": "Explicit WebGPU live control attempt, automated canaries. Not a raw-media candidate speed or qualification result; adapter passed, no successful generated face. Older earlier attempts failed obsolete selector before processing."
+}

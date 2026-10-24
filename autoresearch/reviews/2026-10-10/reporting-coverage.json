@@ -1,0 +1,401 @@
+{
+  "queried_at_utc": "2026-10-10T05:31:09.058528+00:00",
+  "source": "Private consented diagnostics R2",
+  "live_build": "next-2ff6791800ad7dbf",
+  "receipt_window_start": "2026-10-08T00:00:00Z",
+  "receipt_window_end": "2026-10-09T05:07:53.393Z",
+  "listed_objects": 303,
+  "selected_objects": 78,
+  "run_ids": 48,
+  "run_ids_without_start_in_window": 3,
+  "expired_events_excluded": 0,
+  "limitations": [
+    "R2 only; excludes KV fallback and GA4. Receipt time can differ from execution time.",
+    "Stage events can include canaries, endpoints and loading; they are not warm frame throughput.",
+    "No exact GPU/physical device, workload settings or cache-state inference from platform alone.",
+    "Completed job timer is not a decoded-image or playable-video timestamp.",
+    "Multiple terminal events are not independent requests; no outcome rate is computed.",
+    "Raw events, run/device/session IDs and storage object keys are never written to output."
+  ],
+  "cohorts": [
+    {
+      "build": "next-2ff6791800ad7dbf",
+      "platform": "macos",
+      "browser": "chromium",
+      "browser_major": 151,
+      "action": "morph",
+      "matches_live_build": true,
+      "run_ids": 1,
+      "terminal_events": {
+        "completed": 1
+      },
+      "run_ids_with_multiple_terminal_events": 0,
+      "run_ids_with_original_cache_hit": 1,
+      "run_ids_with_model_loaded": 1,
+      "completed_job_ms": {
+        "n": 1,
+        "min": 13168,
+        "median": 13168,
+        "max": 13168
+      },
+      "reported_stage_ms": {
+        "model-loaded": {
+          "n": 2,
+          "min": 465,
+          "median": 644.5,
+          "max": 824
+        },
+        "synthesis-complete": {
+          "n": 32,
+          "min": 298,
+          "median": 318.5,
+          "max": 381
+        }
+      }
+    },
+    {
+      "build": "next-686bf8145648d399",
+      "platform": "macos",
+      "browser": "chromium",
+      "browser_major": 151,
+      "action": "faces",
+      "matches_live_build": false,
+      "run_ids": 1,
+      "terminal_events": {
+        "completed": 1
+      },
+      "run_ids_with_multiple_terminal_events": 0,
+      "run_ids_with_original_cache_hit": 0,
+      "run_ids_with_model_loaded": 1,
+      "completed_job_ms": {
+        "n": 1,
+        "min": 11572,
+        "median": 11572,
+        "max": 11572
+      },
+      "reported_stage_ms": {
+        "alignment-complete": {
+          "n": 1,
+          "min": 5857,
+          "median": 5857,
+          "max": 5857
+        },
+        "encoder-loaded": {
+          "n": 1,
+          "min": 545,
+          "median": 545,
+          "max": 545
+        },
+        "encoding-complete": {
+          "n": 1,
+          "min": 3876,
+          "median": 3876,
+          "max": 3876
+        },
+        "model-loaded": {
+          "n": 1,
+          "min": 469,
+          "median": 469,
+          "max": 469
+        },
+        "synthesis-complete": {
+          "n": 1,
+          "min": 521,
+          "median": 521,
+          "max": 521
+        }
+      }
+    },
+    {
+      "build": "next-686bf8145648d399",
+      "platform": "macos",
+      "browser": "chromium",
+      "browser_major": 151,
+      "action": "morph",
+      "matches_live_build": false,
+      "run_ids": 2,
+      "terminal_events": {
+        "completed": 2
+      },
+      "run_ids_with_multiple_terminal_events": 0,
+      "run_ids_with_original_cache_hit": 2,
+      "run_ids_with_model_loaded": 0,
+      "completed_job_ms": {
+        "n": 2,
+        "min": 11824,
+        "median": 18024.5,
+        "max": 24225
+      },
+      "reported_stage_ms": {
+        "synthesis-complete": {
+          "n": 92,
+          "min": 307,
+          "median": 333.0,
+          "max": 721
+        }
+      }
+    },
+    {
+      "build": "next-686bf8145648d399",
+      "platform": "macos",
+      "browser": "chromium",
+      "browser_major": 154,
+      "action": "faces",
+      "matches_live_build": false,
+      "run_ids": 4,
+      "terminal_events": {
+        "completed": 4
+      },
+      "run_ids_with_multiple_terminal_events": 0,
+      "run_ids_with_original_cache_hit": 0,
+      "run_ids_with_model_loaded": 1,
+      "completed_job_ms": {
+        "n": 4,
+        "min": 243,
+        "median": 246.0,
+        "max": 21628
+      },
+      "reported_stage_ms": {
+        "model-loaded": {
+          "n": 2,
+          "min": 7993,
+          "median": 8599.0,
+          "max": 9205
+        },
+        "synthesis-complete": {
+          "n": 6,
+          "min": 179,
+          "median": 189.0,
+          "max": 927
+        }
+      }
+    },
+    {
+      "build": "next-686bf8145648d399",
+      "platform": "macos",
+      "browser": "chromium",
+      "browser_major": 154,
+      "action": "morph",
+      "matches_live_build": false,
+      "run_ids": 3,
+      "terminal_events": {
+        "completed": 3
+      },
+      "run_ids_with_multiple_terminal_events": 0,
+      "run_ids_with_original_cache_hit": 3,
+      "run_ids_with_model_loaded": 0,
+      "completed_job_ms": {
+        "n": 3,
+        "min": 5349,
+        "median": 5402,
+        "max": 5750
+      },
+      "reported_stage_ms": {
+        "synthesis-complete": {
+          "n": 90,
+          "min": 160,
+          "median": 168.0,
+          "max": 229
+        }
+      }
+    },
+    {
+      "build": "next-fad1b1654c654b35",
+      "platform": "android",
+      "browser": "chromium",
+      "browser_major": 154,
+      "action": "faces",
+      "matches_live_build": false,
+      "run_ids": 3,
+      "terminal_events": {
+        "completed": 2,
+        "failed": 1
+      },
+      "run_ids_with_multiple_terminal_events": 0,
+      "run_ids_with_original_cache_hit": 0,
+      "run_ids_with_model_loaded": 2,
+      "completed_job_ms": {
+        "n": 2,
+        "min": 25624,
+        "median": 29633.5,
+        "max": 33643
+      },
+      "reported_stage_ms": {
+        "model-loaded": {
+          "n": 2,
+          "min": 3222,
+          "median": 3729.0,
+          "max": 4236
+        },
+        "synthesis-complete": {
+          "n": 2,
+          "min": 1147,
+          "median": 1350.0,
+          "max": 1553
+        },
+        "alignment-complete": {
+          "n": 2,
+          "min": 3817,
+          "median": 5259.0,
+          "max": 6701
+        },
+        "encoder-loaded": {
+          "n": 2,
+          "min": 836,
+          "median": 939.0,
+          "max": 1042
+        },
+        "encoding-complete": {
+          "n": 2,
+          "min": 5217,
+          "median": 5586.0,
+          "max": 5955
+        }
+      }
+    },
+    {
+      "build": "next-fad1b1654c654b35",
+      "platform": "android",
+      "browser": "chromium",
+      "browser_major": 154,
+      "action": "morph",
+      "matches_live_build": false,
+      "run_ids": 27,
+      "terminal_events": {
+        "failed": 25,
+        "completed": 2,
+        "interrupted": 1
+      },
+      "run_ids_with_multiple_terminal_events": 1,
+      "run_ids_with_original_cache_hit": 27,
+      "run_ids_with_model_loaded": 1,
+      "completed_job_ms": {
+        "n": 2,
+        "min": 24073,
+        "median": 27934.5,
+        "max": 31796
+      },
+      "reported_stage_ms": {
+        "synthesis-complete": {
+          "n": 61,
+          "min": 635,
+          "median": 686,
+          "max": 1592
+        },
+        "model-loaded": {
+          "n": 1,
+          "min": 3653,
+          "median": 3653,
+          "max": 3653
+        }
+      }
+    },
+    {
+      "build": "next-fad1b1654c654b35",
+      "platform": "windows",
+      "browser": "chromium",
+      "browser_major": 154,
+      "action": "faces",
+      "matches_live_build": false,
+      "run_ids": 4,
+      "terminal_events": {
+        "completed": 3,
+        "interrupted": 2
+      },
+      "run_ids_with_multiple_terminal_events": 1,
+      "run_ids_with_original_cache_hit": 1,
+      "run_ids_with_model_loaded": 3,
+      "completed_job_ms": {
+        "n": 3,
+        "min": 238,
+        "median": 20826,
+        "max": 250032
+      },
+      "reported_stage_ms": {
+        "model-loaded": {
+          "n": 3,
+          "min": 1295,
+          "median": 5144,
+          "max": 28720
+        },
+        "synthesis-complete": {
+          "n": 5,
+          "min": 1306,
+          "median": 3241,
+          "max": 5412
+        },
+        "alignment-complete": {
+          "n": 2,
+          "min": 22439,
+          "median": 22692.5,
+          "max": 22946
+        },
+        "encoder-loaded": {
+          "n": 1,
+          "min": 1150,
+          "median": 1150,
+          "max": 1150
+        },
+        "encoding-complete": {
+          "n": 1,
+          "min": 9390,
+          "median": 9390,
+          "max": 9390
+        }
+      }
+    },
+    {
+      "build": null,
+      "platform": null,
+      "browser": null,
+      "browser_major": null,
+      "action": null,
+      "matches_live_build": false,
+      "run_ids": 3,
+      "terminal_events": {
+        "completed": 3
+      },
+      "run_ids_with_multiple_terminal_events": 0,
+      "run_ids_with_original_cache_hit": 0,
+      "run_ids_with_model_loaded": 3,
+      "completed_job_ms": {
+        "n": 3,
+        "min": 7292,
+        "median": 18813,
+        "max": 46450
+      },
+      "reported_stage_ms": {
+        "encoder-loaded": {
+          "n": 2,
+          "min": 588,
+          "median": 756.5,
+          "max": 925
+        },
+        "encoding-complete": {
+          "n": 2,
+          "min": 3927,
+          "median": 4773.5,
+          "max": 5620
+        },
+        "model-loaded": {
+          "n": 4,
+          "min": 1905,
+          "median": 3927.5,
+          "max": 30064
+        },
+        "synthesis-complete": {
+          "n": 4,
+          "min": 664,
+          "median": 1708.5,
+          "max": 2324
+        },
+        "alignment-complete": {
+          "n": 1,
+          "min": 5326,
+          "median": 5326,
+          "max": 5326
+        }
+      }
+    }
+  ]
+}

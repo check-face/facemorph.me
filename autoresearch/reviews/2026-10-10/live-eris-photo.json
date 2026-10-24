@@ -1,0 +1,26 @@
+{
+  "deployedSourceSha": "b322a26858275f0e361127836d0fd1854e868ef9",
+  "date": "2026-10-10T04:20:02.237Z",
+  "scope": "Single unpaired headless live-UI observation on eris; not full31 or physical-phone qualification",
+  "host": "NVIDIA GeForce RTX 2080 SUPER, 610.57.04, 3255 MiB, 0 %",
+  "loadBefore": "14:20:02 up 6 days,  7:31, 10 users,  load average: 2.17, 1.83, 1.27",
+  "url": "https://next.facemorph.me/",
+  "steps": [],
+  "errors": [],
+  "startup": {
+    "controllerToUiMs": 303.675438,
+    "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/152.0.0.0 Safari/537.36",
+    "webdriver": true,
+    "isolation": true,
+    "adapter": null,
+    "scripts": [
+      "https://next.facemorph.me/runtime.6f67e921bae679214856.js",
+      "https://next.facemorph.me/vendors.6f67e921bae679214856.js",
+      "https://next.facemorph.me/app.6f67e921bae679214856.js",
+      "https://static.cloudflareinsights.com/beacon.min.js/v4bc70e2c01a94c73b74392e4234840661791215815920"
+    ],
+    "facesShown": 0
+  },
+  "completed": false,
+  "failure": "No verified hardware adapter"
+}
