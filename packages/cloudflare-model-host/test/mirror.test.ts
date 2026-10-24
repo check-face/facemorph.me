@@ -1,11 +1,24 @@
 // The mirror Worker's import and configuration (fm-fy2.14), on plain values: its provenance names the frozen classic
 // revision and every source file at the digest import/allowlist.json records for it, each destination exists, the
 // package source names no FaceMorph host, and the prefix rules. The Worker itself runs in workerd in
-// mirror.workerd.ts.
+// mirror.workerd.ts. warm runs through the CLI against a real local test mirror with a fault switch.
 import assert from 'node:assert/strict';
-import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
-import { join } from 'node:path';
-import { test } from 'node:test';
+import { spawn } from 'node:child_process';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs';
+import { createServer, type Server } from 'node:http';
+import type { AddressInfo } from 'node:net';
+import { tmpdir } from 'node:os';
+import { dirname, join } from 'node:path';
+import { after, before, test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { mirrored, prefixes } from '../src/mirror/worker.ts';
 
@@ -63,4 +76,126 @@ test('prefixes come from configuration only; a path is mirrored under one, never
   assert.equal(mirrored('runtime/chunks//a', allowed), false);
   assert.equal(mirrored('runtime/chunks/', allowed), false);
   assert.equal(mirrored('runtime/chunks/a', []), false);
+});
+
+// A real local test mirror with a fault switch: HEAD answers 200 for every path except those `missing` names, and
+// `flaky` paths answer 503 the given number of times first.
+const mirrorSite = {
+  missing: new Set<string>(),
+  flaky: new Map<string, number>(),
+  asked: [] as string[],
+};
+let mirrorServer: Server;
+let mirrorOrigin: string;
+before(async () => {
+  mirrorServer = createServer((req, res) => {
+    const path = decodeURIComponent((req.url ?? '/').slice(1));
+    mirrorSite.asked.push(`${req.method} ${path}`);
+    const left = mirrorSite.flaky.get(path) ?? 0;
+    if (left > 0) {
+      mirrorSite.flaky.set(path, left - 1);
+      return res.writeHead(503).end();
+    }
+    res.writeHead(mirrorSite.missing.has(path) ? 404 : 200).end();
+  });
+  await new Promise<void>((r) => mirrorServer.listen(0, '127.0.0.1', r));
+  mirrorOrigin = `http://127.0.0.1:${(mirrorServer.address() as AddressInfo).port}/`;
+});
+after(() => mirrorServer?.close());
+
+/** A planted staged root: immutable files under the prefixes, and a mutable manifest outside them. */
+function stagedRoot(): { root: string; immutable: string[] } {
+  const root = mkdtempSync(join(tmpdir(), 'mirror-warm-'));
+  const immutable = [
+    'runtime/chunks/aa/part-001.bin',
+    'runtime/chunks/aa/part-002.bin',
+    'runtime/assets/bb.onnx',
+    'runtime/encoder-stream/cc/part 003.onnx',
+  ];
+  for (const path of [...immutable, 'runtime/manifest.json', 'index.html']) {
+    mkdirSync(dirname(join(root, path)), { recursive: true });
+    writeFileSync(join(root, path), path);
+  }
+  return { root, immutable };
+}
+const WARM_PREFIXES = 'runtime/assets/,runtime/chunks/,runtime/encoder-stream/';
+const CLI = join(PACKAGE, 'src/cli.ts');
+const cli = (args: string[]) =>
+  new Promise<{ status: number | null; stdout: string }>((resolve) => {
+    const child = spawn(process.execPath, [CLI, ...args]);
+    let stdout = '';
+    child.stdout.on('data', (d: Buffer) => (stdout += d));
+    child.on('close', (status) => resolve({ status, stdout }));
+  });
+
+test('warm without --publish requests nothing and counts the immutable paths', async () => {
+  const { root, immutable } = stagedRoot();
+  mirrorSite.asked = [];
+  const r = await cli([
+    'warm',
+    '--root',
+    root,
+    '--origin',
+    mirrorOrigin,
+    '--prefixes',
+    WARM_PREFIXES,
+  ]);
+  assert.equal(r.status, 0);
+  const report = JSON.parse(r.stdout);
+  assert.deepEqual(
+    [report.published, report.paths, report.held, report.requests],
+    [false, immutable.length, 0, 0],
+  );
+  assert.deepEqual(mirrorSite.asked, [], 'no request without --publish');
+  rmSync(root, { recursive: true, force: true });
+});
+
+test('warm --publish: complete exits 0 holding every immutable path; a missing one exits non-zero naming it', async () => {
+  const { root, immutable } = stagedRoot();
+  mirrorSite.asked = [];
+  mirrorSite.missing.clear();
+  mirrorSite.flaky.set('runtime/chunks/aa/part-002.bin', 2);
+  const ok = await cli([
+    'warm',
+    '--root',
+    root,
+    '--origin',
+    mirrorOrigin,
+    '--prefixes',
+    WARM_PREFIXES,
+    '--publish',
+  ]);
+  assert.equal(ok.status, 0);
+  const report = JSON.parse(ok.stdout);
+  assert.equal(report.held, immutable.length, 'held count equals the immutable path count');
+  assert.deepEqual(report.failed, []);
+  assert.equal(report.requests, immutable.length + 2, 'two transient 503s retried');
+  assert.ok(mirrorSite.asked.every((a) => a.startsWith('HEAD ')));
+  assert.deepEqual(
+    [...new Set(mirrorSite.asked.map((a) => a.slice(5)))].sort(),
+    [...immutable].sort(),
+    'only the immutable paths, never the manifest or the page',
+  );
+
+  mirrorSite.missing.add('runtime/assets/bb.onnx');
+  mirrorSite.flaky.set('runtime/chunks/aa/part-001.bin', 9);
+  const bad = await cli([
+    'warm',
+    '--root',
+    root,
+    '--origin',
+    mirrorOrigin,
+    '--prefixes',
+    WARM_PREFIXES,
+    '--publish',
+  ]);
+  assert.equal(bad.status, 1);
+  const failed = JSON.parse(bad.stdout).failed;
+  assert.deepEqual(failed, [
+    { path: 'runtime/assets/bb.onnx', status: 404 },
+    { path: 'runtime/chunks/aa/part-001.bin', status: 503 },
+  ]);
+  mirrorSite.missing.clear();
+  mirrorSite.flaky.clear();
+  rmSync(root, { recursive: true, force: true });
 });

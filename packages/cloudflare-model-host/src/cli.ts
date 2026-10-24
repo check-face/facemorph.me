@@ -3,18 +3,21 @@
 //   facemorph-model-host stage   --source <dir> --out <dir> --base <https url> [--from-base <url>] [--manifest <name>] [--dry-run]
 //   facemorph-model-host verify  --root <dir> --base <https url> [--manifest <name>] [--plan workers-free|workers-paid]
 //   facemorph-model-host publish --root <dir> --target <target.json> [--publish]
-// publish is a dry run unless --publish is given. Exit 0 ok, 1 refused or findings, 2 usage error.
+//   facemorph-model-host warm    --root <dir> --origin <mirror url> --prefixes <list> [--publish]
+// publish and warm write nothing unless --publish is given (warm's HEAD makes the mirror copy a file).
+// Exit 0 ok, 1 refused, findings or failures, 2 usage error.
 import { readFileSync } from 'node:fs';
 import { parseArgs } from 'node:util';
 import type { Plan } from './limits.ts';
+import { warm } from './mirror/warm.ts';
 import { publishRoot, type Target } from './publish.ts';
 import { stage, StageError } from './stage.ts';
 import { verifyRoot } from './verify.ts';
 
 const USAGE =
-  'usage: facemorph-model-host <stage|verify|publish> [options] (see the package README)';
+  'usage: facemorph-model-host <stage|verify|publish|warm> [options] (see the package README)';
 
-export function main(argv: readonly string[]): number {
+export async function main(argv: readonly string[]): Promise<number> {
   const [command, ...rest] = argv;
   let values: Record<string, string | boolean | undefined>;
   try {
@@ -31,6 +34,8 @@ export function main(argv: readonly string[]): number {
         plan: { type: 'string' },
         target: { type: 'string' },
         publish: { type: 'boolean' },
+        origin: { type: 'string' },
+        prefixes: { type: 'string' },
       },
       strict: true,
     }));
@@ -90,6 +95,17 @@ export function main(argv: readonly string[]): number {
       print({ ...r, writes: r.writes.length });
       return r.refused ? 1 : 0;
     }
+    if (command === 'warm') {
+      if (!need('root', 'origin', 'prefixes')) return 2;
+      const r = await warm({
+        root: str('root')!,
+        origin: str('origin')!,
+        prefixes: str('prefixes')!,
+        publish: values.publish === true,
+      });
+      print(r);
+      return r.failed.length ? 1 : 0;
+    }
   } catch (e) {
     if (e instanceof StageError) {
       print({ error: e.code, message: e.message });
@@ -101,4 +117,4 @@ export function main(argv: readonly string[]): number {
   return 2;
 }
 
-if (import.meta.main) process.exitCode = main(process.argv.slice(2));
+if (import.meta.main) process.exitCode = await main(process.argv.slice(2));
