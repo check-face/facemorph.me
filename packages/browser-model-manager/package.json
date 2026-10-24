@@ -6,7 +6,6 @@
   "description": "Consented acquisition, verification, storage and eviction of browser model assets. Contracts so far (fm-hwh): lifecycle, leases, grants, budgets and the model manifest schema.",
   "exports": {
     ".": {
-      "source": "./src/index.ts",
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     }

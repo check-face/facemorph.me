@@ -10,6 +10,8 @@ Two traps on eris it guards against: 127.0.0.1:9222 is the device lab's adb forw
 debugging port is never fixed and the endpoint must be the websocket this Chrome logged; and browser-harness keeps
 a daemon per BU_NAME that outlives a run, so each site gets its own name and stops it at exit.
 """
+from __future__ import annotations  # `dict | None` annotations on triton's Python 3.8
+
 import hashlib, json, os, re, shutil, socket, ssl, subprocess, sys, tempfile, time, urllib.request
 from contextlib import contextmanager
 from dataclasses import dataclass, field
