@@ -1,0 +1,78 @@
+#!/usr/bin/env python3
+"""Collects the per-engine matrix reports into one table.
+
+A row that produced no report is reported as missing, not as a pass. A stage an engine cannot
+support is reported as unsupported with its reason, which is a real limitation of that row.
+"""
+import json
+import sys
+from pathlib import Path
+
+STAGES = ['nameSeed', 'repeatOriginal', 'photoE4e', 'localCrop', 'projectSaveReopen', 'morphExport', 'morphPlayback']
+REQUIRED = STAGES
+
+
+def cell(stage):
+    if stage is None:
+        return 'not run'
+    if stage.get('buildLimitation'):
+        # The test browser build could not check this; the shipping browser is not described.
+        return 'not checkable here'
+    if stage.get('notShipped'):
+        # The control is not in this artifact, so no engine can check it. It is not the row's
+        # failure and not its pass, and it does not hold the row incomplete.
+        return 'not in artifact'
+    if stage.get('passed'):
+        return 'pass'
+    return 'FAIL'
+
+
+def main(root):
+    reports = sorted(Path(root).rglob('next-matrix-*.json'))
+    rows, complete = [], True
+    for path in reports:
+        try:
+            report = json.loads(path.read_text())
+        except (OSError, ValueError):
+            rows.append((path.name, 'unreadable', ['not run'] * len(STAGES), ''))
+            complete = False
+            continue
+        cells = [cell(report.get('stages', {}).get(name)) for name in STAGES]
+        # A build-limited stage is not a pass here either; the row stays incomplete.
+        required_ok = all(report.get('stages', {}).get(name, {}).get('passed')
+                          and not report.get('stages', {}).get(name, {}).get('buildLimitation')
+                          for name in REQUIRED
+                          if not report.get('stages', {}).get(name, {}).get('notShipped'))
+        if not required_ok:
+            complete = False
+        rows.append((path.stem.replace('next-matrix-', ''), report.get('agent', '')[:80],
+                     cells, report.get('error', '')))
+
+    lines = ['# New site browser matrix', '',
+             '| Row | ' + ' | '.join(STAGES) + ' | Notes |',
+             '|---|' + '---|' * (len(STAGES) + 1)]
+    for name, agent, cells, error in rows:
+        note = error or agent
+        lines.append(f'| `{name}` | ' + ' | '.join(cells) + f' | {note} |')
+    if not rows:
+        lines.append('| _no reports were produced_ | ' + ' | '.join(['not run'] * len(STAGES)) + ' | nothing ran |')
+        complete = False
+    lines += ['',
+              'A row is evidence for that engine and operating system only. WebKit on Linux is the '
+              'WebKit engine, not Safari on macOS or iOS. Physical-device rows are attached '
+              'separately; a missing row stays missing.',
+              '',
+              '"not checkable here" means the automation browser build could not exercise that '
+              'stage — Playwright ships Chromium and WebKit without proprietary codecs, so H.264 '
+              'playback cannot be tested in them. It says nothing about the shipping browser, and '
+              'it is not a pass: the row is incomplete until real-browser evidence covers it.',
+              '',
+              f'**Required stages across every row: {"pass" if complete else "INCOMPLETE"}**']
+    output = '\n'.join(lines) + '\n'
+    Path('next-matrix-summary.md').write_text(output)
+    print(output)
+    return 0 if complete else 1
+
+
+if __name__ == '__main__':
+    sys.exit(main(sys.argv[1] if len(sys.argv) > 1 else '.'))

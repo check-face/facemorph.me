@@ -45,13 +45,15 @@ test('the pinned record names classic as the source and a release asset of this 
 });
 
 test('every golden, parity or freeze script calls fetch-control first', () => {
+  // Classic's own files imported byte-identical (apps/web, import/allowlist.json) are its history, not ours.
+  const imported = new Set(JSON.parse(readFileSync(join(REPO, 'import/allowlist.json'), 'utf8')).files.map((f) => join(REPO, f.destination)));
   const scripts = [];
   const walk = (dir) => {
     for (const entry of readdirSync(dir, { withFileTypes: true })) {
       if (entry.name === 'node_modules' || entry.name.startsWith('.')) continue;
       const path = join(dir, entry.name);
       if (entry.isDirectory()) walk(path);
-      else if (/(golden|parity|freeze)[^/]*\.(mjs|js|ts|py)$/.test(entry.name) && !/\.test\./.test(entry.name)) scripts.push(path);
+      else if (/(golden|parity|freeze)[^/]*\.(mjs|js|ts|py)$/.test(entry.name) && !/\.test\./.test(entry.name) && !imported.has(path)) scripts.push(path);
     }
   };
   for (const root of ['scripts', 'apps', 'packages', 'tools']) {

@@ -1,0 +1,308 @@
+// Integrated next experience: existing fonts, palette and controls.
+// The design being implemented is docs/candidate-visual-alignment.md; every visual gate from
+// the round-1 work order maps to a class or hook noted beside the rule that satisfies it.
+// Bulma keeps page scaffolding only — `.box` — while MUI owns anything a user clicks (D-01).
+
+.next-product { max-width: 1100px; margin: auto; padding: 1.25rem; }
+.next-topline,.next-actions { display:flex; align-items:center; flex-wrap:wrap; gap:.65rem; }
+.next-topline { justify-content:space-between; margin-bottom:1.5rem; }
+.next-topline>span { font-size:.9rem; opacity:.7; }
+
+// Visually hidden but present: the accessible progress element and per-face source mirror.
+.next-sr { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
+
+// --- Faces: size is a floor, never divided by face count (D-04) -----------------------------
+// Gate hooks:
+//  - `.next-face-image` computed width >= 300px at a 390px viewport.
+//  - face width non-decreasing as faces are added, measured at N=2 and N=4: N=2 uses the
+//    classic grid whose face columns cap at 400px; N>=3 rows use fixed 400px tiles.
+.next-face { margin:0!important; display:flex; flex-direction:column; gap:.75rem; min-width:0; width:100%; max-width:440px; padding:.75rem; }
+.next-face-image { aspect-ratio:1; width:100%; overflow:hidden; border-radius:6px; background:rgba(128,128,128,.08); }
+.next-face-image img,.next-face-image canvas { width:100%; height:100%; object-fit:contain; display:block; }
+.next-face-preview-label { position:absolute; top:.4rem; left:.4rem; padding:.2rem .45rem; border-radius:4px; color:#fff; background:rgba(23,24,28,.72); font-size:.75rem; line-height:1.25; pointer-events:none; }
+.next-face-empty { height:100%; width:100%; border:2px dashed rgba(128,128,128,.45); border-radius:6px; background:transparent; color:inherit; cursor:pointer; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:.5rem; opacity:.75; font:inherit; }
+.next-face-empty:focus-visible { outline:3px solid #ce621d; outline-offset:-4px; opacity:1; }
+.next-face-empty:disabled { cursor:default; }
+.next-face.next-photo-over { outline:3px solid #ce621d; outline-offset:3px; }
+.next-face .next-actions .MuiButton-root { font-size:.8rem; }
+.next-adornment { opacity:1; transition:opacity .2s ease-out; }
+.focuswithin-parent .focuswithin-child { opacity:1; }
+.next-face:focus-within .next-adornment, .next-face:hover .next-adornment { opacity:1; }
+.next-face-generate { align-self:center; }
+
+// A-3: the close control sits on the image it closes, visible at rest. It is deliberately not
+// an `.next-adornment` — that class fades to 25% until hover or focus, which on a touch device
+// means "invisible until you have already tapped something". Sized and inset so it clears the
+// tile edge at 320px and never overlaps the per-face progress bar along the bottom.
+.next-face-close {
+    position:absolute; top:.35rem; right:.35rem; z-index:2;
+    width:2rem; height:2rem; padding:0;
+    color:#f3f3f3; background:rgba(23,24,28,.62);
+    border:1px solid rgba(240,240,240,.35); border-radius:50%;
+    transition:background .15s ease-out, transform .15s ease-out;
+}
+.next-face-close:hover,.next-face-close:focus-visible { background:rgba(23,24,28,.88); transform:scale(1.08); }
+.next-face-close:focus-visible { outline:2px solid #ce621d; outline-offset:2px; }
+.next-face-close:disabled { opacity:.4; }
+.next-face-close .MuiSvgIcon-root { font-size:1.15rem; }
+
+// Per-face progress: a thin gradient bar across the bottom edge of the image, transform-only.
+.next-face-progress { position:absolute; left:0; right:0; bottom:0; height:4px; overflow:hidden; background:rgba(128,128,128,.18); }
+.next-face-image { position:relative; }
+.next-face-progress-fill { height:100%; width:100%; background:linear-gradient(-45deg,#FFA63D,#FF3D77,#338AFF,#3CF0C5); background-size:800%; animation:next-sweep 1.6s ease-in-out infinite; will-change:transform; }
+@keyframes next-sweep { 0% { transform:translateX(-100%); } 100% { transform:translateX(100%); } }
+
+// --- The morph path layout -------------------------------------------------------------------
+// Base (D-03): a vertical stack at every width. N=2 at >=1000px reproduces classic's grid
+// exactly (D-05); N>=3 scrolls horizontally at full size rather than shrinking (D-06).
+.next-morph-content { display:flex; flex-direction:column; gap:1.25rem; }
+.next-faces-row { display:flex; flex-direction:column; align-items:center; gap:0; min-width:0; }
+
+// Gate hook: the video's horizontal centre lies between the two face tiles at N=2 >=1000px,
+// because the middle grid column sits strictly between the from/to columns.
+.next-morph-content.n2 { display:flex; flex-direction:column; gap:1rem; }
+.next-morph-content.n2 .next-connector-lead { order:0; }
+.next-morph-content.n2 .next-morph-from { order:1; }
+.next-morph-content.n2 .next-connector-stack { order:2; }
+.next-morph-content.n2 .next-morph-to { order:3; }
+.next-morph-content.n2 .next-connector-trail { order:4; }
+.next-morph-content.n2 .next-morph-morph { order:5; }
+.next-morph-content.n2 .next-morph-vid { order:6; }
+.next-morph-cell { min-width:0; }
+
+// Insertion connectors (D-08): the only plus on the surface. Appending, inserting between
+// faces, and closing the loop are all the same affordance in different positions.
+.next-connector { display:flex; align-items:center; gap:.5rem; opacity:.75; width:100%; max-width:440px; padding:.1rem 0; }
+.next-connector::before,.next-connector::after { content:""; flex:1; border-top:1px dashed rgba(128,128,128,.4); }
+.next-connector-add { border:1px solid rgba(128,128,128,.4); border-radius:50%; background:transparent; transition:transform .15s ease-out; }
+.next-connector-add:hover,.next-connector-add:focus-visible { transform:scale(1.25); outline:2px solid #ce621d; outline-offset:2px; }
+
+// --- Progress, transforms only ---------------------------------------------------------------
+// Gate hook: stage-event updates change nothing but `transform` on `.next-progress-fill`
+// (batched through requestAnimationFrame), so no layout property ever changes.
+.next-progress { position:relative; height:5px; overflow:hidden; border-radius:3px; background:rgba(128,128,128,.18); margin:.4rem auto .2rem; max-width:420px; }
+.next-progress-fill { position:absolute; top:0; right:0; bottom:0; left:0; transform:scaleX(0); transform-origin:0 50%; background:linear-gradient(-45deg,#FFA63D,#FF3D77,#338AFF,#3CF0C5); background-size:800%; transition:transform .25s linear; will-change:transform; }
+.next-progress-indeterminate { animation:next-sweep 1.6s ease-in-out infinite; transition:none; }
+.next-remaining { display:block; opacity:.85; font-size:.9rem; }
+
+// --- Actions and slots ------------------------------------------------------------------------
+.next-controls,.next-generate { justify-content:center; margin:.35rem 0; }
+.next-primary-action { font-weight:600; letter-spacing:.04em; } // FancyButton supplies the animated gradient (gate: computed background-image is not none)
+.next-morph-slot { display:flex; flex-direction:column; align-items:center; gap:.6rem; width:100%; }
+.next-morph-slot .next-status { width:100%; }
+.next-morph-reason { opacity:.8; margin:.2rem 0; text-align:center; }
+.next-status { min-height:2rem; text-align:center; max-width:650px; margin:.5rem auto; }
+.next-overflow { display:flex; flex-wrap:wrap; gap:1rem; align-items:center; justify-content:center; max-width:650px; }
+.next-overflow-field { display:flex; align-items:center; gap:.65rem; }
+.next-overflow-field select { font:inherit; padding:.35rem .5rem; border-radius:6px; border:1px solid rgba(128,128,128,.45); background:transparent; color:inherit; }
+.next-overflow-field select:focus-visible { outline:2px solid #ce621d; outline-offset:2px; }
+.next-overflow-reason { flex-basis:100%; text-align:center; margin:0; opacity:.8; }
+.next-slow-warning { max-width:650px; margin:.6rem auto; line-height:1.55; }
+.next-slow-warning p { margin:.5rem 0; }
+
+// --- Results ----------------------------------------------------------------------------------
+.next-video-slot { display:flex; flex-direction:column; align-items:center; gap:.6rem; width:100%; }
+.next-video { display:block; width:100%; max-width:512px; border-radius:8px; background:#111; }
+.next-slider { display:block; width:100%; max-width:512px; }
+.next-slider-control { display:block; max-width:100%; margin:.5rem auto 0; }
+.next-slider-empty { opacity:.8; text-align:center; max-width:512px; }
+.next-result { max-width:600px; margin:1.5rem auto; }
+.next-result .next-actions { justify-content:center; margin:1rem 0; }
+.next-project { justify-content:center; margin:1rem 0; }
+.next-file { display:flex; flex-direction:column; gap:.5rem; align-items:center; }
+.next-file-input { position:absolute; width:1px; height:1px; opacity:0; }
+.next-project label { cursor:pointer; }
+.next-project label:focus-within { outline:2px solid #ce621d; outline-offset:3px; }
+.next-text-input { font:inherit; padding:.5rem .65rem; border-radius:6px; border:1px solid rgba(128,128,128,.45); background:transparent; color:inherit; width:100%; }
+.next-text-input:focus-visible { outline:2px solid #ce621d; outline-offset:2px; }
+.next-estimate { max-width:650px; margin:.5rem auto; text-align:center; opacity:.85; }
+.next-slow-route { max-width:650px; margin:1rem auto; line-height:1.55; }
+.next-slow-route p { margin:.5rem 0; }
+.next-error { max-width:700px; margin:1rem auto; padding:.75rem 1rem; }
+.next-error .next-actions { margin-top:.75rem; }
+
+// --- Explainer, testing, dialogs (page scaffolding) --------------------------------------------
+.next-invite { max-width:700px; margin:1rem auto; line-height:1.55; }
+.next-invite h2 { font-size:1.15rem; margin:0 0 .5rem; }
+.next-invite p { margin:.5rem 0; }
+.next-invite-note { opacity:.8; font-size:.92rem; }
+.next-explain { max-width:700px; margin:2rem auto 1rem; line-height:1.6; }
+.next-explain h2 { font-size:1.4rem; font-family:'Nunito','Segoe UI',sans-serif; }
+.next-explain h3 { margin-top:1rem; font-weight:600; }
+.next-explain p { margin:.65rem 0; }
+.next-debug { max-width:700px; margin:1rem auto 2rem; line-height:1.6; }
+.next-debug h2 { font-size:1.1rem; margin:.25rem 0 .5rem; }
+.next-debug p { margin:.5rem 0; }
+.next-debug select { font:inherit; padding:.35rem .5rem; border-radius:6px; border:1px solid rgba(128,128,128,.45); background:transparent; color:inherit; }
+.next-debug select:focus-visible { outline:2px solid #ce621d; outline-offset:2px; }
+.next-debug-report { display:flex; align-items:center; gap:.5rem; margin:.6rem 0; }
+.next-faq { border-top:1px solid rgba(128,128,128,.35); padding:.5rem 0; }
+.next-faq summary { cursor:pointer; font-weight:600; padding:.25rem 0; }
+.next-faq p { margin:.5rem 0 .5rem 1rem; }
+
+.next-crop-dialog { position:fixed; inset:0; z-index:1300; background:#0009; display:grid; place-items:center; padding:1rem; }
+.next-crop-panel { max-width:420px; width:100%; max-height:90vh; overflow:auto; }
+.next-crop-view { position:relative; width:320px; aspect-ratio:1; max-width:100%; margin:0 auto; overflow:hidden; border-radius:6px; background:#222; touch-action:none; cursor:grab; }
+.next-crop-view:active { cursor:grabbing; }
+.next-crop-image { position:absolute; max-width:none; user-select:none; -webkit-user-drag:none; }
+.next-crop-zoom { display:flex; align-items:center; gap:.75rem; margin:1rem 0; }
+.next-crop-zoom input { flex:1; }
+.next-name-dialog { position:fixed; inset:0; z-index:1300; background:#0009; display:grid; place-items:center; padding:1rem; }
+.next-name-panel { max-width:1100px; width:100%; max-height:90vh; overflow:auto; }
+// Faces at 100px were unreadable — classic showed names at 200px and you could actually tell the
+// faces apart, which is the entire point of browsing them. The floor rises with the viewport.
+.next-name-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:.75rem; margin:1rem 0; }
+@media (min-width: 700px) { .next-name-grid { grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); } }
+.next-name-choice { padding:0; overflow:hidden; border-radius:6px; }
+/* MUI's button label is an inline flex row, which shrank the face to its 200px intrinsic size
+   inside wider cells; stack it and let the image take the whole cell. */
+.next-name-choice > .MuiButton-label { display:flex; flex-direction:column; align-items:stretch; width:100%; }
+.next-name-choice img { width:100%; height:auto; aspect-ratio:1; object-fit:cover; display:block; }
+.next-name-choice span { display:block; padding:.35rem; }
+
+// --- Wide screens --------------------------------------------------------------------------------
+// N=2, >=1000px: classic's grid verbatim (D-05). Faces cap at 400px so N>=3's fixed 400px
+// tiles never measure narrower than a face in the N=2 grid (the non-decreasing floor gate).
+// The insertion connector between the two faces is a stacked-layout affordance only.
+@media (min-width: 1000px) {
+    // Operator, 22 September: the middle column had become a seven-control stack — create,
+    // generate, more options, add face, shape, length, pinch — which pushed the two faces to
+    // opposite edges of the screen and buried the insertion plus underneath all of it. The
+    // faces come back together with nothing between them but the plus that inserts a face
+    // there, and every control moves below the pair where there is room to lay it out.
+    .next-morph-content.n2 {
+        display:grid;
+        gap:1em;
+        justify-content:center;
+        align-items:start;
+        grid-template-areas:
+            "lead from tween to    trail"
+            "morph morph morph morph morph"
+            "vid   vid   vid   vid  vid";
+        grid-template-columns: auto minmax(340px,400px) auto minmax(340px,400px) auto;
+    }
+    .next-morph-content.n2 .next-morph-from { grid-area:from; }
+    .next-morph-content.n2 .next-morph-to { grid-area:to; }
+    .next-morph-content.n2 .next-morph-morph { grid-area:morph; justify-self:center; width:100%; }
+    .next-morph-content.n2 .next-morph-vid { grid-area:vid; justify-self:center; width:100%; }
+    // A-1: all three insertion points exist at this width too. The stacked layout's single
+    // between-faces plus used to be the only one, and it was hidden above 1000px, so a desktop
+    // visitor had no plus on the surface at all.
+    .next-morph-content.n2 .next-connector-lead { grid-area:lead; }
+    .next-morph-content.n2 .next-connector-trail { grid-area:trail; }
+    .next-morph-content.n2 .next-connector-stack { grid-area:tween; }
+    // All three read as one affordance: a bare plus beside the tile it inserts next to, with no
+    // dashed rule to draw a line across a row that has no line in it.
+    .next-morph-content.n2 .next-connector-lead,
+    .next-morph-content.n2 .next-connector-stack,
+    .next-morph-content.n2 .next-connector-trail {
+        width:auto; max-width:none; flex-direction:column; align-self:center; padding:0 .35rem;
+    }
+    .next-morph-content.n2 .next-connector-lead::before,.next-morph-content.n2 .next-connector-lead::after,
+    .next-morph-content.n2 .next-connector-stack::before,.next-morph-content.n2 .next-connector-stack::after,
+    .next-morph-content.n2 .next-connector-trail::before,.next-morph-content.n2 .next-connector-trail::after { display:none; }
+
+    // N>=3, wide: faces keep their size and the row scrolls (D-06).
+    .next-morph-content.n3 .next-faces-row {
+        flex-direction:row;
+        align-items:stretch;
+        overflow-x:auto;
+        scroll-snap-type:x proximity;
+        padding-bottom:.5rem;
+    }
+    .next-morph-content.n3 .next-face { flex:0 0 400px; max-width:400px; scroll-snap-align:center; }
+    .next-morph-content.n3 .next-connector { flex:0 0 auto; width:auto; padding:0 .35rem; max-width:none; }
+    .next-morph-content.n3 .next-connector::before,.next-morph-content.n3 .next-connector::after { display:none; }
+}
+
+@media(prefers-reduced-motion:reduce){ .next-product *{animation:none!important;transition:none!important} }
+
+// R2-15: the failure-to-report tie. A quiet note line, never louder than the message above it.
+.next-error-reference { opacity:.8; font-size:.9rem; margin:.4rem 0 0; }
+
+// --- Footer: classic's own arrangement, rule for rule -----------------------------------------
+// style.scss `.app-footer > div > div` inside a `container.maxWidth.md`: the text block takes the
+// room (flex-grow:100), the logo keeps a share of its own and centres in it, 3em between them.
+// The candidate had inherited a stray `text-align:center` that ragged the three lines down the
+// middle, and pushed the logo to the far edge of a wider box than classic ever used.
+.next-footer { margin-top:2.5rem; padding:1.5rem 1rem 2.5rem; border-top:1px solid rgba(128,128,128,.25); font-size:.9rem; }
+.next-footer-inner { max-width:960px; margin:0 auto; display:flex; flex-wrap:wrap; justify-content:space-between; gap:3em; }
+.next-footer-text { flex-grow:100; text-align:left; }
+.next-footer-text p { margin:.25rem 0; }
+.next-footer-text a { white-space:nowrap; }
+.next-footer-logo { flex-grow:1; text-align:center; }
+@media (max-width: 640px) {
+    .next-footer-inner { flex-direction:column; align-items:center; gap:1.5rem; }
+    .next-footer-text { text-align:center; }
+}
+
+// The photo warm-up speaks while nothing is running, so it is quieter than a job's status
+// line and never competes with one.
+.next-preparing { display:block; opacity:.8; font-size:.9rem; margin-top:.2rem; }
+
+// First-visit reporting question (trial phase). MUI's own Snackbar, in the classic dark canvas,
+// without the accent borders R2-8 bans; it sits above the page, never over the action row for long.
+.next-consent-toast { background:#17181c!important; color:#fff!important; border:1px solid rgba(255,255,255,.14); max-width:40rem; }
+.next-consent-message { line-height:1.45; }
+.next-consent-message strong { font-family:'Nunito','Segoe UI',sans-serif; color:inherit!important; }
+
+.next-preview-strip { display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:.35rem 1rem; margin:-1.25rem -1.25rem 1rem; padding:.55rem 1rem; background:#17181c; color:#fff; font-size:.85rem; line-height:1.4; text-align:center; box-shadow:0 0 0 100vmax #17181c; clip-path:inset(0 -100vmax); }
+@media (max-width: 600px) { .next-preview-strip { font-size:.8rem; padding:.45rem .75rem; gap:.15rem .9rem; } .next-preview-strip a { padding:.3rem 0; } }
+.next-preview-strip strong { font-family:'Nunito','Segoe UI',sans-serif; color:inherit; }
+.next-preview-strip-links { display:inline-flex; flex-wrap:wrap; justify-content:center; gap:.25rem 1rem; }
+.next-preview-strip a { color:#fff; text-decoration:underline; text-underline-offset:2px; padding:.35rem 0; display:inline-block; }
+.next-preview-strip a:focus-visible { outline:2px solid #3CF0C5; outline-offset:2px; }
+.next-footer-version { opacity:.7; font-size:.85rem; }
+.next-model-progress { margin-top:.5rem; border-radius:2px; }
+.next-model-toast .MuiSnackbarContent-action { flex-wrap:wrap; justify-content:flex-end; }
+
+// Candidate UI revision: clean tiles, visible choices and responsive per-face actions.
+.next-product .box { background:transparent; box-shadow:none; border-radius:0; }
+.next-input-row { display:flex; align-items:center; flex-wrap:wrap; gap:.6rem; }
+.next-input-row .next-field { flex:1 1 180px; min-width:0; }
+.next-input-row .MuiTextField-root { width:100%; }
+.next-face-generate { flex:0 0 auto; min-height:56px; }
+.next-shape-controls { display:flex; flex-wrap:wrap; justify-content:center; align-items:center; gap:.7rem; }
+.next-shape-selector { display:flex; flex-wrap:wrap; justify-content:center; gap:.25rem; }
+.next-shape-choice { position:relative; cursor:pointer; }
+.next-shape-choice input { position:absolute; opacity:0; }
+.next-shape-choice span { display:block; padding:.5rem .7rem; border:1px solid #8887; border-radius:4px; }
+.next-shape-choice input:checked + span { border-color:#ce621d; background:#ce621d22; }
+.next-shape-choice input:focus-visible + span { outline:2px solid #ce621d; outline-offset:2px; }
+.next-shape-choice input:disabled + span { opacity:.6; cursor:default; }
+.next-frame-count { font-size:.85rem; opacity:.8; }
+.next-advanced summary { cursor:pointer; padding:.5rem; }
+.next-tagline { text-align:center; margin:-1rem auto 1rem; line-height:1.6; }
+.next-tagline a,.next-tagline button { font:inherit; color:inherit; text-decoration:underline; background:none; border:0; padding:0; cursor:pointer; }
+.next-face-progress { height:8px; }
+.next-face-progress-determinate { animation:none; transform-origin:left; transition:transform .2s; }
+.next-tile-status { display:flex; align-items:center; justify-content:space-between; font-size:.85rem; min-height:1.5rem; }
+.next-name-dialog { padding:0; background:#17181c; }
+.next-name-panel { max-width:none; width:100%; height:100%; max-height:100vh; border:0; }
+.next-name-grid { gap:0; }
+.next-name-choice { border-radius:0; }
+
+.next-face-picker { width:min(90vw,650px); max-height:90vh; overflow:auto; background:#17181c; color:white; padding:1rem; }
+.next-face-picker-image { position:relative; }
+.next-face-picker-image img { display:block; width:100%; }
+.next-face-picker-image button { position:absolute; background:transparent; border:3px solid #3cf0c5; cursor:pointer; }
+.next-face-picker-image button:focus-visible { outline:4px solid #ffa63d; }
+.next-compare { font:inherit; color:inherit; background:none; border:1px solid #8887; padding:.5rem; border-radius:4px; touch-action:none; }
+// Native selects size themselves from their longest option. Bound and wrap their fields so
+// the phone viewport is not silently widened by length or Advanced processing controls.
+.next-shape-controls, .next-shape-selector, .next-advanced { min-width:0; max-width:100%; }
+.next-overflow-field { flex-wrap:wrap; max-width:100%; justify-content:center; }
+.next-overflow-field select { min-width:0; max-width:100%; }
+
+// Ordinary settings are one column; Advanced has its own clearly bounded section.
+#next-overflow { width:100%; max-width:440px; }
+.next-overflow { flex-direction:column; align-items:stretch; padding:1rem; gap:1rem; border:1px solid #8885; border-radius:8px; }
+.next-shape-controls { flex-direction:column; align-items:stretch; width:100%; }
+.next-overflow .next-overflow-field { flex-direction:column; align-items:stretch; gap:.4rem; text-align:left; }
+.next-overflow-field select { width:100%; min-height:44px; }
+.next-overflow-field option { background:#232429; color:#eee; }
+.next-advanced { width:100%; border:1px solid #8886; border-radius:6px; padding:.5rem .75rem; }
+.next-advanced summary { font-weight:600; padding:.4rem 0; }
+.next-advanced p { margin-top:.75rem; font-size:.9rem; line-height:1.5; opacity:.85; }
+
+.next-face-generate:disabled { background:#8883!important; background-image:none!important; color:#888!important; box-shadow:none; }

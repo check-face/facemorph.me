@@ -1,0 +1,35 @@
+{
+  "reference": "NumPy legacy RandomState, float32 output; SHA256 text interpreted little-endian uint32",
+  "cases": [
+    {
+      "mode": "seed",
+      "value": "0",
+      "sha256": "3281a32dd82b5a6b8bf5a1fe36604b9cfc06a3799b5228e2e2cd2a87fff1e32a"
+    },
+    {
+      "mode": "seed",
+      "value": "1",
+      "sha256": "27a28409b4c3fb901902ba7120066fad31662d0570b155593180944d5217353e"
+    },
+    {
+      "mode": "seed",
+      "value": "4294967295",
+      "sha256": "0555a388407f661d62ec6aeb6533f5efa8f0fc6a068f8a35d0ee0ea8ff2b108e"
+    },
+    {
+      "mode": "text",
+      "value": "Alice",
+      "sha256": "1b9436514be34c392125f1f78b3b282d8dff03706db8ee75accd3ac6799fe559"
+    },
+    {
+      "mode": "text",
+      "value": "alice",
+      "sha256": "856a2e2a8ae25539f85881a1ac8199c244e6a948bc74dd14c7c677dccab1afbe"
+    },
+    {
+      "mode": "text",
+      "value": "\ud83d\ude00",
+      "sha256": "2b5f0b0f347aeb7cbf4bfedf26052ab18777650de0c6b9bdcb5b268dfacdc4b3"
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "scope": "Visible Chrome152 on local Mac; new runtime modules, not final compiled product UI",
+  "lease": "20260916T050928Z-c0111cec",
+  "serverExit": "Server intentionally interrupted after completed reports to release lease; wrapper exit-2 is not inference failure",
+  "cpu": "Seven numerical canaries, real seed0 generation, persistent1024PNG/W+ cache reopening without initializing model",
+  "webgl": "Seven numerical canaries using rawPNG reference samples; requested seed0 then hit previously admitted CPUoriginal. Not a fresh WebGL mapped seed timing.",
+  "timing": "Diagnostic only; asset staging/hash work overlapped part of WebGL run. No paired speed claim.",
+  "releaseQualified": false,
+  "sourceSha256": {
+    "png.mjs": "1821a8d2f1fa29320d63f40813804295f0c60be1ff50f1ed8951aa7285bacb6f",
+    "identity.mjs": "51937d963fc665dac4b2c13168e96233970d895424dd76692e6a4fa4c8d14460",
+    "runtime.test.mjs": "074bdce4e6af8347ff9aace916200318d85f0bc03a03d1f243329b61d9768f7e",
+    "originals.mjs": "716e702bad7782486590fc860f3d21e3899822e2b16c95777dea20ee2ecf3134",
+    "ort-worker.mjs": "23aaa35b3f62e92313cd4e97bcbc898bd042d78c36603b005bbe71f8ef376c77",
+    "runtime.mjs": "6d873ad002663a7073dd8812c05b4517c5a1cc67b7f41d6336368c93c23d8059",
+    "webgl-vector-v1.mjs": "905abe6c2f39051083379c9648efbde2908175391c364b8c29ebab564431df12"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "name": "@facemorph/web",
+  "private": true,
+  "description": "The candidate's imported JS closure (fm-gpx). Only the packages the closure imports are listed, at classic's locked versions (frozen commit a42829b): the three style.scss imports.",
+  "dependencies": {
+    "bulma": "0.9.3",
+    "bulma-prefers-dark": "0.1.0-beta.0",
+    "react-advanced-cropper": "0.6.1"
+  }
+}

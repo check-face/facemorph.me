@@ -1,0 +1,93 @@
+{
+  "generatedFrom": "https://fonts.googleapis.com/css2",
+  "families": [
+    "Nunito:wght@600",
+    "Roboto:wght@300;400;500;700"
+  ],
+  "files": [
+    {
+      "source": "https://fonts.gstatic.com/s/nunito/v32/XRXI3I6Li01BKofiOc5wtlZ2di8HDGUmdTA3j6zbXWjgevT5.woff2",
+      "file": "fonts/nunito-c54d656747.woff2",
+      "sha256": "c54d6567473728e65baa95e2729b1719625601595a4a33ce0f2bb3e392f862f5",
+      "bytes": 8556
+    },
+    {
+      "source": "https://fonts.gstatic.com/s/nunito/v32/XRXI3I6Li01BKofiOc5wtlZ2di8HDGUmdTQ3j6zbXWjgeg.woff2",
+      "file": "fonts/nunito-42e1ff5021.woff2",
+      "sha256": "42e1ff5021da0127487c838d2f712b905447101ae108f51efe15b8cd5907c28a",
+      "bytes": 16572
+    },
+    {
+      "source": "https://fonts.gstatic.com/s/nunito/v32/XRXI3I6Li01BKofiOc5wtlZ2di8HDGUmdTk3j6zbXWjgevT5.woff2",
+      "file": "fonts/nunito-5ac503807c.woff2",
+      "sha256": "5ac503807c1b99435f247a4e7f97bd440036fe2fedf36252a8d9f54f61578123",
+      "bytes": 11212
+    },
+    {
+      "source": "https://fonts.gstatic.com/s/nunito/v32/XRXI3I6Li01BKofiOc5wtlZ2di8HDGUmdTo3j6zbXWjgevT5.woff2",
+      "file": "fonts/nunito-3c2f6e4752.woff2",
+      "sha256": "3c2f6e4752294913f818a47cb12270ae8d5ae7a39fe22df37b7127ab0a82282f",
+      "bytes": 16184
+    },
+    {
+      "source": "https://fonts.gstatic.com/s/nunito/v32/XRXI3I6Li01BKofiOc5wtlZ2di8HDGUmdTs3j6zbXWjgevT5.woff2",
+      "file": "fonts/nunito-7a3225c1c5.woff2",
+      "sha256": "7a3225c1c52326d1ff65dc7d1d7fd157f72261b3210476b7cca3e666e79b7b53",
+      "bytes": 6160
+    },
+    {
+      "source": "https://fonts.gstatic.com/s/roboto/v51/KFO7CnqEu92Fr1ME7kSn66aGLdTylUAMa3-UBHMdazTgWw.woff2",
+      "file": "fonts/roboto-4813e3dfbb.woff2",
+      "sha256": "4813e3dfbbb23708c817ef7fd3fd9c82cd0d33c778def0897f0447f1c364ce64",
+      "bytes": 13984
+    },
+    {
+      "source": "https://fonts.gstatic.com/s/roboto/v51/KFO7CnqEu92Fr1ME7kSn66aGLdTylUAMa3CUBHMdazTgWw.woff2",
+      "file": "fonts/roboto-5fdfeaf926.woff2",
+      "sha256": "5fdfeaf926cac990770dfa66011bdb87d6b69f43c42aa759dcdcf0a7a197c19a",
+      "bytes": 1632
+    },
+    {
+      "source": "https://fonts.gstatic.com/s/roboto/v51/KFO7CnqEu92Fr1ME7kSn66aGLdTylUAMa3GUBHMdazTgWw.woff2",
+      "file": "fonts/roboto-e44224eb71.woff2",
+      "sha256": "e44224eb71a96cb33bd046ded16a4e22bb441b170bdfbcba0268a754141b97c8",
+      "bytes": 31472
+    },
+    {
+      "source": "https://fonts.gstatic.com/s/roboto/v51/KFO7CnqEu92Fr1ME7kSn66aGLdTylUAMa3KUBHMdazTgWw.woff2",
+      "file": "fonts/roboto-cdd53dc557.woff2",
+      "sha256": "cdd53dc5576a79f35cf280dfbd9c1cb2a5dd2f0ede30afba9b9ccdc7fe12e7d0",
+      "bytes": 24444
+    },
+    {
+      "source": "https://fonts.gstatic.com/s/roboto/v51/KFO7CnqEu92Fr1ME7kSn66aGLdTylUAMa3OUBHMdazTgWw.woff2",
+      "file": "fonts/roboto-2071148c26.woff2",
+      "sha256": "2071148c26bd0430cad316373c26db399e0cf8f6275b9e1a2c1b831f05ee7dc3",
+      "bytes": 10572
+    },
+    {
+      "source": "https://fonts.gstatic.com/s/roboto/v51/KFO7CnqEu92Fr1ME7kSn66aGLdTylUAMa3iUBHMdazTgWw.woff2",
+      "file": "fonts/roboto-32886c5ec6.woff2",
+      "sha256": "32886c5ec61a0d06e5677a98c5ed78a5f1c788c18c5e8d7dcd931c4b6dc19830",
+      "bytes": 19624
+    },
+    {
+      "source": "https://fonts.gstatic.com/s/roboto/v51/KFO7CnqEu92Fr1ME7kSn66aGLdTylUAMa3yUBHMdazQ.woff2",
+      "file": "fonts/roboto-0a44e0bb6b.woff2",
+      "sha256": "0a44e0bb6ba5c8537e8814c148ef7755f1bce12112361231f595ecc584a18d7a",
+      "bytes": 37520
+    },
+    {
+      "source": "https://fonts.gstatic.com/s/roboto/v51/KFO7CnqEu92Fr1ME7kSn66aGLdTylUAMawCUBHMdazTgWw.woff2",
+      "file": "fonts/roboto-297193369e.woff2",
+      "sha256": "297193369eea600161f4b5219bd7b08850180fcfe0752f1a2eaa436575cd03b7",
+      "bytes": 36292
+    },
+    {
+      "source": "https://fonts.gstatic.com/s/roboto/v51/KFO7CnqEu92Fr1ME7kSn66aGLdTylUAMaxKUBHMdazTgWw.woff2",
+      "file": "fonts/roboto-fab8a0056d.woff2",
+      "sha256": "fab8a0056d92fdd8d64fed4b049744144e1d24d08762c513bff78265299ed7a3",
+      "bytes": 16692
+    }
+  ]
+}

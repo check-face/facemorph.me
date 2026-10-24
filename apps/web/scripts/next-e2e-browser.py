@@ -1,0 +1,450 @@
+# Executed by browser-harness, which supplies js/cdp/new_tab/click_at_xy helpers.
+#
+# Qualifies the exact served artifact bytes in a real browser through the real user flow.
+# What the gate protects, in order: (1) provenance - the browser demonstrably reached the
+# pinned artifact origin; (2) determinism - repeat requests reuse the identical prepared file, project
+# export survives reopen with identical latents; (3) honest degradation - a refused route is
+# NAMED next to the route in use; (4) cache/worker hygiene - repeats stay cache hits with zero
+# new inference workers; (5) real flows - crop, photo e4e, morph, playable MP4 download.
+#
+# Structure: S (locator contract) -> helpers -> stage functions -> driver. A UI change should
+# only ever require editing S. Every stage records its evidence before anything raises, and
+# failures name their stage. Set E2E_UNTIL=<stage name> to run the state-building prefix
+# through one stage for fast local iteration; CI leaves it unset and runs everything.
+# Partial runs never set passed:true.
+import hashlib,json,os,time
+from pathlib import Path
+out=Path('next-e2e-evidence');downloads=(out/'downloads').resolve()
+UNTIL=os.environ.get('E2E_UNTIL','')
+result={'passed':False,'checks':{},'runtimeSha256':os.environ.get('RUNTIME_SHA',''),'scope':'Exact compiled UI CPU qualification; synthetic inputs only; not physical-phone evidence. The agent string below states which engine actually ran this; one engine is not evidence for another.'}
+CTX={}  # stage-to-stage artifacts: seedPng, seedSha, workerBaseline, projectFile
+
+# --- Locator contract: the single place a UI rename may break this harness. ---------------
+# Buttons are matched by accessible name via the AX tree; fields by aria-label; containers by
+# the app's stable next-* classes. Text content of the seeded faces, not selectors, is data.
+S={
+ 'error':'.next-error',
+ 'status':'.next-status',
+ 'busy':'.next-status progress',
+ 'routeCaption':'.next-route-caption',
+ 'faceImage':'.next-face-image img:not([data-public-preview]), .next-face-image canvas[data-face-drawn="true"]',
+ 'faceTextInputs':'.next-face input',
+ 'processingMode':'select[aria-label="Processing mode"]',
+ 'faceSource':'select[aria-label="Face source"]',
+ 'choosePhoto':'input[aria-label="Choose photo"]',
+ 'openProject':'input[aria-label="Open project"]',
+ 'cropView':'.next-crop-view',
+ 'cropZoom':'.next-crop-zoom input',
+ 'fileName':'.next-file span',
+ 'video':'.next-video-slot video',
+ 'product':'.next-product',
+ 'advanced':'.next-advanced',
+ 'buttons':{'generate':'Generate faces','saveImage':'Save image','exportProject':'Export project',
+            'createMorph':'Create morph','saveVideo':'Save video','crop':'Crop photo',
+            'rotate':'Rotate','useCrop':'Use this crop'},
+}
+def logs_tail():
+ try:return ' | '.join(js('[...window.__ciLogs].slice(-8)') or [])
+ except Exception:return ''
+def alive():
+ # A dead renderer makes every js() read return null, which used to surface as bizarre stage
+ # failures minutes later. Probe the context directly so the failure names the real cause.
+ v=js('1+1')
+ if v!=2:raise RuntimeError('renderer unresponsive (eval returned %r)'%(v,))
+def ensure_instrumented():
+ js("if(!window.__ciGate){window.__ciGate=0;setInterval(()=>{const b=document.querySelector('.next-download-dialog .next-download-accept');if(b){window.__ciGate++;b.click();}},250);}")
+ # The Worker counters re-install on every document; the busy observer and the console tap do
+ # not. Re-arm them so a mid-suite reload degrades to zero-counted transitions instead of
+ # null comparisons, and late failures still carry the runtime's last words.
+ js("if(!window.__ciLogs){window.__ciLogs=[];['log','warn','error','info'].forEach(k=>{const o=console[k].bind(console);console[k]=(...a)=>{try{window.__ciLogs.push(k+': '+a.map(x=>typeof x==='string'?x:JSON.stringify(x)).join(' ').slice(0,300));if(window.__ciLogs.length>40)window.__ciLogs.shift();}catch(e){}};});}")
+ # React replaces the status node on re-render, and an observer left watching the detached one
+ # counts nothing forever: every later click then looks like a click that did nothing. Re-arm
+ # whenever the node being watched is no longer the one in the document — a reload is not the
+ # only way instrumentation goes stale.
+ js("window.__ciBusyChanges=window.__ciBusyChanges||0;if(!window.__ciBusyObserver||!window.__ciBusyNode||!document.contains(window.__ciBusyNode)){if(window.__ciBusyObserver)window.__ciBusyObserver.disconnect();window.__ciBusyNode=document.querySelector('.next-status');window.__ciBusyObserver=new MutationObserver(()=>{window.__ciBusyChanges++;});window.__ciBusyObserver.observe(window.__ciBusyNode,{subtree:true,attributes:true,childList:true,characterData:true});window.__ciBusyChanges++;}")
+def q(expr):return json.loads(js('JSON.stringify('+expr+')'))
+def text(sel):return js("(document.querySelector('%s')?.innerText||'')"%sel)
+def wait(predicate,seconds=600):
+ deadline=time.monotonic()+seconds
+ while time.monotonic()<deadline:
+  error=text(S['error'])
+  if error:raise RuntimeError(error)
+  value=predicate()
+  if value:return value
+  time.sleep(.5)
+ raise TimeoutError('UI stage deadline exceeded')
+def click(name,expect=None):
+ if name==S['buttons']['generate']:name=q("[...document.querySelectorAll('.next-face-generate')].map(b=>b.getAttribute('aria-label'))")[-1]
+ # A click must be verified: a stale React node or a re-render can swallow it silently, which
+ # used to surface minutes later as an unrelated stage timeout. The DOM route clicks the exact
+ # button; `expect` (when given) re-queries up to three times, re-clicking if the UI did not
+ # react, before falling back to the coordinate route.
+ for attempt in range(3):
+  if js("(()=>{const b=[...document.querySelectorAll('button')].find(x=>x.textContent.trim()===%s||x.getAttribute('aria-label')===%s);if(!b)return false;b.click();return true;})()"%(json.dumps(name),json.dumps(name))):
+   if expect is None:
+    time.sleep(1)
+    if js("(()=>{const b=[...document.querySelectorAll('button')].find(x=>x.textContent.trim()===%s||x.getAttribute('aria-label')===%s);return !!b;})()"%(json.dumps(name),json.dumps(name))) or True:
+     return
+   else:
+    deadline=time.monotonic()+8
+    while time.monotonic()<deadline:
+     try:
+      if expect():return
+     except Exception:pass
+     time.sleep(.5)
+  time.sleep(1)
+ # Route 2 (fallback): re-resolve through the accessibility tree each attempt: a re-render
+ # between reading the box model and dispatching the click otherwise sends a real click at a
+ # stale point, which silently does nothing. The click stays a genuine coordinate click on
+ # the accessible button.
+ for attempt in range(5):
+  nodes=cdp('Accessibility.getFullAXTree')['nodes'];name_lower=name.lower()
+  n=next((n for n in nodes if n.get('role',{}).get('value')=='button' and n.get('name',{}).get('value','').lower()==name_lower),None)
+  ident=n['backendDOMNodeId'];cdp('DOM.scrollIntoViewIfNeeded',backendNodeId=ident)
+  box=cdp('DOM.getBoxModel',backendNodeId=ident)['model']['content'];x,y=sum(box[0::2])/4,sum(box[1::2])/4
+  if js("(()=>{const e=document.elementFromPoint(%f,%f),b=e&&e.closest('button');return !!(b&&(b.textContent.trim()===%s||b.getAttribute('aria-label')===%s));})()"%(x,y,json.dumps(name),json.dumps(name))):
+   click_at_xy(x,y);return
+  time.sleep(.5)
+ # Name what the page was actually showing: whether the button was there at all, whether it was
+ # disabled, and what the status line said. "Could not place a click" on its own sent the last
+ # failure looking for a missing button that was present and enabled the whole time.
+ seen=js("(()=>{const b=[...document.querySelectorAll('button')].find(x=>x.textContent.trim()===%s);return JSON.stringify({present:!!b,disabled:b?b.disabled:null,status:(document.querySelector('.next-status')?.innerText||'').slice(0,120)});})()"%json.dumps(name))
+ raise RuntimeError('Could not place a click on %s; page showed %s'%(name,seen))
+def idle():return js("document.querySelector('.next-product')?.getAttribute('data-next-busy')==='false'")
+
+def run(name,predicate=None):
+ if name==S['buttons']['generate']:
+  labels=q("[...document.querySelectorAll('.next-face-generate')].map(b=>b.getAttribute('aria-label'))")
+  for label in labels:run(label)
+  if predicate:wait(predicate,60)
+  return
+ # A warm cache can complete a run synchronously - the button's disabled state never flips -
+ # so a busy transition cannot be required. Accept either the transition or the stage's own
+ # completion evidence, then wait for idle. Outcome assertions stay with the callers. A stage
+ # may have reloaded the page since the driver last armed the observers, so re-arm here.
+ ensure_instrumented()
+ before=js('window.__ciBusyChanges')
+ # Three independent signals that the click landed, because each one alone has a blind spot: the
+ # busy counter misses a job whose status has not changed yet, the stage predicate can be minutes
+ # away on the CPU route, and the button's own disabled state says nothing once the job finishes.
+ # Every one of these buttons disables while a job runs, so that flip is the earliest honest
+ # evidence available and it does not depend on any instrumentation surviving a re-render.
+ started=lambda: js('window.__ciBusyChanges')>before or js("(()=>{const b=[...document.querySelectorAll('button')].find(x=>x.textContent.trim()===%s||x.getAttribute('aria-label')===%s);return !!b&&b.disabled;})()"%(json.dumps(name),json.dumps(name))) or (predicate() if predicate else False)
+ click(name,expect=started)
+ wait(started,30);wait(idle)
+def faces():
+ return q("[...document.querySelectorAll('%s')].map(i=>{const r=i.getBoundingClientRect(),t=i.closest('.next-face-image').getBoundingClientRect();return {width:i.naturalWidth||i.width,height:i.naturalHeight||i.height,url:i.src||'canvas:rgba',renderedWidth:r.width,renderedHeight:r.height,fitsTile:r.width>0&&r.height>0&&Math.abs(r.width-t.width)<=1&&Math.abs(r.height-t.height)<=1&&Math.abs(r.left-t.left)<=1&&Math.abs(r.top-t.top)<=1};})"%S['faceImage'])
+def select_mode(value):
+ if not js("!!document.querySelector('select[aria-label=\"Processing mode\"]')"):click('More options')
+ js("document.querySelector('.next-advanced').open=true")
+ js("(()=>{const s=document.querySelector('%s');Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype,'value').set.call(s,'%s');s.dispatchEvent(new Event('change',{bubbles:true}));})()"%(S['processingMode'],value))
+ deadline=time.monotonic()+10
+ while time.monotonic()<deadline:
+  if js("document.querySelector('%s').value"%S['processingMode'])==value:return
+  time.sleep(.5)
+ raise AssertionError('Processing mode did not become '+value)
+def set_last_text_input():
+ # The last text input is targeted because a face whose mode sits on 'Numeric seed' renders a
+ # digits-only input instead of a words input, and a words input accepts anything. A fresh
+ # value every call: a repeated value is a cache hit with zero inference.
+ js("(()=>{const ins=[...document.querySelectorAll('%s')].filter(x=>x.type==='text');const i=ins[ins.length-1];if(!i)return;const d=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value');d.set.call(i,%s);i.dispatchEvent(new Event('input',{bubbles:true}));})()"%(S['faceTextInputs'],json.dumps('rejection-check '+str(time.time_ns()))))
+def download(name):
+ folder=downloads/str(time.time_ns());folder.mkdir();cdp('Browser.setDownloadBehavior',behavior='allow',downloadPath=str(folder));click(name)
+ return wait(lambda:next((p for p in folder.iterdir() if p.suffix!='.crdownload' and p.stat().st_size>0),None),60)
+def upload(selector,path):
+ root=cdp('DOM.getDocument')['root']['nodeId'];node=cdp('DOM.querySelector',nodeId=root,selector=selector)['nodeId'];assert node,'File input missing';cdp('DOM.setFileInputFiles',nodeId=node,files=[str(path.resolve())])
+def save_check(name,data):result['checks'][name]=data;(out/'report.json').write_text(json.dumps(result,indent=2));print(json.dumps({'check':name,**data}),flush=True)
+
+# --- Stages ------------------------------------------------------------------------------
+def stage_preflight():
+ # Seconds-fast tripwire for the failure class that actually burned us: UI drift. No
+ # synthesis, no downloads - only presence of the controls the later stages depend on, plus
+ # the provenance assertions (isolation headers, exact artifact origin, engine identity).
+ cdp('Page.enable')
+ cdp('Page.addScriptToEvaluateOnNewDocument',source="window.__ciWorkers=0;window.__ciWorkerRequests=0;const OriginalWorker=window.Worker;window.Worker=class extends OriginalWorker{constructor(...args){super(...args);window.__ciWorkers++;}postMessage(...args){window.__ciWorkerRequests++;return super.postMessage(...args);}};")
+ cdp('Browser.setDownloadBehavior',behavior='allow',downloadPath=str(downloads))
+ new_tab('https://next.facemorph.me/');wait_for_load()
+ # Register on the actual tab too: the initial registration may belong to the prior tab.
+ js("if(window.__ciWorkers===undefined){window.__ciWorkers=0;window.__ciWorkerRequests=0;const W=window.Worker;window.Worker=class extends W{constructor(...a){super(...a);window.__ciWorkers++;}postMessage(...args){window.__ciWorkerRequests++;return super.postMessage(...args);}};}")
+ wait(idle,60);assert js('crossOriginIsolated'), 'Production isolation headers missing'
+ # The trial-phase reporting question appears on every fresh profile. "Ask me later" closes it
+ # without answering, so the harness neither consents nor declines on anyone's behalf, and the
+ # toast cannot sit over a control a later coordinate click aims at.
+ js("if(!window.__ciGate){window.__ciGate=0;setInterval(()=>{const b=document.querySelector('.next-download-dialog .next-download-accept');if(b){window.__ciGate++;b.click();}},250);}")
+ result['consentToastShown']=bool(js('(()=>{const b=document.querySelector(\'.next-consent-toast button[aria-label="Ask me later"]\');if(b)b.click();return !!b;})()'))
+ result['agent']=q('navigator.userAgent');result['engine']=q("(/Firefox|FxiOS/.test(navigator.userAgent)?'gecko':/Chrome|Chromium|CriOS|Edg/.test(navigator.userAgent)?'blink':/Safari/.test(navigator.userAgent)?'webkit':'other')")
+ js("window.__ciOrigin=null;fetch('/').then(r=>window.__ciOrigin=r.headers.get('X-Next-Artifact-Source')).catch(e=>window.__ciOrigin='error')")
+ wait(lambda:js('window.__ciOrigin!==null'),60);assert js('window.__ciOrigin')==Path('next-site-source.txt').read_text().strip(), 'Chrome did not reach exact local artifact origin'
+ js("window.__ciLogs=[];['log','warn','error','info'].forEach(k=>{const o=console[k].bind(console);console[k]=(...a)=>{try{window.__ciLogs.push(k+': '+a.map(x=>typeof x==='string'?x:JSON.stringify(x)).join(' ').slice(0,300));if(window.__ciLogs.length>40)window.__ciLogs.shift();}catch(e){}};});")
+ js("window.__ciBusyChanges=0;window.__ciBusyObserver=new MutationObserver(()=>{window.__ciBusyChanges++;});window.__ciBusyObserver.observe(document.querySelector('.next-status'),{subtree:true,attributes:true,childList:true,characterData:true});window.__ciBusyChanges++;")
+ click('More options')
+ js("document.querySelector('.next-advanced').open=true")
+ state=q("({tiles:document.querySelectorAll('.next-face').length,photos:document.querySelectorAll('%s').length,words:!!document.querySelector('%s'),generate:[...document.querySelectorAll('button')].some(b=>b.classList.contains('next-face-generate')&&b.textContent==='Generate'),modeOptions:[...document.querySelectorAll('%s option')].map(o=>o.value),error:(document.querySelector('%s')?.innerText||'')})"%(S['choosePhoto'],S['faceTextInputs'],S['processingMode'],S['error']))
+ assert state['tiles']==2 and state['photos']==2 and state['words'] and state['generate'],state
+ assert set(['auto','cpu','webgpu','webgl'])<=set(state['modeOptions']),state
+ assert not state['error'],state['error']
+ save_check('preflight',{'passed':True,'modeOptions':state['modeOptions'],'engine':result['engine']})
+def stage_seedGeneration():
+ # U-09 moved the processing-mode control into the always-rendered debug area; opening a
+ # collapsed advanced section is no longer part of reaching it.
+ js("document.querySelector('%s')&&(document.querySelector('%s').open=true)"%(S['advanced'],S['advanced']))
+ root=cdp('DOM.getDocument')['root']['nodeId']
+ # Explicit CPU selection, independent of GPU availability. Keyboard interaction is the
+ # preferred path and is what Linux Chromium exercises; macOS/WebKit/Gecko drive the native
+ # popup differently, so the fallback sets the value through the real setter and change event.
+ # The method used is recorded: a keyboard pass is stronger evidence than a scripted one.
+ node=cdp('DOM.querySelector',nodeId=root,selector=S['processingMode'])['nodeId'];cdp('DOM.focus',nodeId=node)
+ for key,code in [('Home',36),('ArrowDown',40),('Enter',13),('Escape',27)]:
+  cdp('Input.dispatchKeyEvent',type='keyDown',key=key,windowsVirtualKeyCode=code);cdp('Input.dispatchKeyEvent',type='keyUp',key=key,windowsVirtualKeyCode=code)
+ # A native select popup left open (headless quirk) swallows every later click silently;
+ # a real click on neutral space closes it. Blur then guard with Escape.
+ js("document.activeElement instanceof HTMLElement&&document.activeElement.blur()")
+ spot=q("(()=>{const e=document.querySelector('.next-explain h2')||document.querySelector('h1');e.scrollIntoView({block:'center'});const r=e.getBoundingClientRect();return {x:r.left+4,y:r.top+r.height/2};})()")
+ click_at_xy(spot['x'],spot['y']);time.sleep(.5)
+ mode=js("document.querySelector('%s').value"%S['processingMode'])
+ selection='keyboard' if mode=='cpu' else 'scripted'
+ if mode!='cpu':select_mode('cpu')
+ result['processingSelection']=selection
+ # Keep the arbitrary-name mapping path and independently qualify the published
+ # public-name W+ pathway. Record message kinds only, never inputs or latents.
+ labels=q("[...document.querySelectorAll('.next-face-generate')].map(b=>b.getAttribute('aria-label'))")
+ run(labels[0])
+ js("window.__ciNameMessages=[];const post=Worker.prototype.postMessage;Worker.prototype.postMessage=function(m,...a){if(m&&['generate','synthesize'].includes(m.type))window.__ciNameMessages.push(m.type);return post.call(this,m,...a);};")
+ js("(()=>{const ins=[...document.querySelectorAll('.next-face input')].filter(x=>x.type==='text');const i=ins.at(-1);Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(i,'charlotte');i.dispatchEvent(new Event('input',{bubbles:true}));})()")
+ run(labels[-1]);images=wait(lambda:faces() if len(faces())==2 and all(i['width']==1024 and i['height']==1024 for i in faces()) else None,60)
+ assert all(i['fitsTile'] for i in images), 'Generated face is clipped or does not fill its tile: '+str(images)
+ messages=q('window.__ciNameMessages')
+ assert 'synthesize' in messages and 'generate' not in messages, 'Published name silently fell back to mapping: '+str(messages)
+ save_check('nameSeed',{'passed':True,'dimensions':[[i['width'],i['height']] for i in images],'processingSelection':selection,'publishedLatentSynthesis':True})
+ first=download(S['buttons']['saveImage'])
+ assert first.suffix=='.webp' and first.read_bytes()[8:12]==b'WEBP', 'Chrome deferred download did not use the supported WebP encoder'
+ CTX['seedDownload']=first
+ CTX['seedSha']=hashlib.sha256(first.read_bytes()).hexdigest()
+ # The photo-face upload needs its own cache identity: same pixels as the seed PNG (decoders
+ # ignore bytes after IEND) but different bytes, so the e4e encode really runs instead of
+ # replaying a cached entry on the warm profiles this harness accumulates.
+ uniq=first.with_name(first.stem+'-e4e'+first.suffix)
+ data=first.read_bytes()
+ if data[:4]==b'RIFF' and data[8:12]==b'WEBP':
+  clean=bytearray(data[:12]);at=12
+  while at+8<=len(data):
+   size=int.from_bytes(data[at+4:at+8],'little');end=at+8+size+(size&1)
+   if data[at:at+4]!=b'FMRP':clean.extend(data[at:end])
+   at=end
+  nonce=str(time.time_ns()).encode();clean.extend(b'CIUN'+len(nonce).to_bytes(4,'little')+nonce+(b'\0' if len(nonce)&1 else b''));clean[4:8]=(len(clean)-8).to_bytes(4,'little')
+ else:
+  clean=bytearray(data[:8]);at=8
+  while at+12<=len(data):
+   size=int.from_bytes(data[at:at+4],'big');end=at+12+size
+   if not(data[at+4:at+8]==b'tEXt' and data[at+8:at+8+9]==b'FaceMorph'):
+    clean.extend(data[at:end])
+   at=end
+ assert b'FaceMorph\0' not in clean and b'facemorph-image-v2' not in clean, 'e4e fixture still contains recovery metadata'
+ uniq.write_bytes(clean)
+ CTX['seedPng']=uniq
+def stage_routeRejection():
+ # C-02: force the canary comparison to fail on a second route and assert the interface names
+ # both the route that was refused and the route now in use, instead of silently falling back.
+ # The forcing hook lives in the canary comparison only; tolerances are untouched. An explicit
+ # route has no fallback, so the run fails - the assertion is that the caption NAMES the route
+ # that failed and the route still in use, next to the error that says why.
+ js("window.__FACEMORPH_FORCE_CANARY_FAIL__=true")
+ # The face must actually synthesize or admission never runs (a repeated input is a cache
+ # hit with zero inference), so change the second face's text first.
+ set_last_text_input()
+ select_mode('webgpu')
+ before=js('window.__ciBusyChanges');click(S['buttons']['generate'])
+ # The refusal can land before the busy flag ever registers (a warm cache makes admission
+ # near-instant, so the session's device check fails inside the first poll window), so accept
+ # either the busy transition or the expected error itself; wait() would treat the error as
+ # fatal even though failing is exactly what this stage forces.
+ deadline=time.monotonic()+30
+ while time.monotonic()<deadline:
+  if js('window.__ciBusyChanges')>before or text(S['error']):break
+  time.sleep(.5)
+ else:raise TimeoutError('forced route neither started nor failed')
+ # The run is expected to fail on the explicitly selected webgpu route; wait() cannot be used
+ # here because it treats any visible error as fatal. Poll for the failure to settle instead.
+ deadline=time.monotonic()+60
+ while time.monotonic()<deadline:
+  if not js("!!document.querySelector('%s')"%S['busy']):break
+  time.sleep(.5)
+ caption=''
+ deadline=time.monotonic()+120
+ while time.monotonic()<deadline:
+  caption=text(S['routeCaption'])
+  named=caption.lower()
+  if 'webgpu' in named and 'cpu' in named and 'failed' in named:break
+  time.sleep(.5)
+ else:raise AssertionError('route caption never named the refused and current routes: '+caption)
+ save_check('routeRejectionNamed',{'passed':True,'caption':caption,'error':text(S['error'])})
+ # Back to CPU for the remaining checks; the cpu qualification is already cached (C-03). The
+ # expected error above stays on screen until the next run starts, so this polls the select
+ # directly instead of wait(), which treats any visible error as fatal.
+ select_mode('cpu')
+ js("window.__FACEMORPH_FORCE_CANARY_FAIL__=false")
+def stage_repeatOriginal():
+ # Rebuild the cpu runtime once after the forced rejection (stop() disposed it), so the
+ # repeat-original zero-worker baselines are measured against a warm, healthy runtime.
+ run(S['buttons']['generate'],predicate=lambda:len(faces())==2)
+ # Baselines for the repeat-original zero-worker assertions are taken AFTER the forced
+ # rejection, which legitimately allocated a worker for the failed webgpu attempt.
+ workers=js('window.__ciWorkers');requests=js('window.__ciWorkerRequests')
+ run(S['buttons']['generate'],predicate=lambda:len(faces())==2);second=download(S['buttons']['saveImage']);assert hashlib.sha256(second.read_bytes()).hexdigest()==CTX['seedSha'];assert js('window.__ciWorkers')==workers,'Repeat created an inference worker';assert js('window.__ciWorkerRequests')==requests,'Repeat invoked the inference worker'
+ save_check('repeatOriginal',{'passed':True,'sha256':CTX['seedSha'],'newWorkers':0,'newWorkerRequests':0})
+ CTX['workerBaseline']=workers
+def stage_recoveredDownload():
+ workers=js('window.__ciWorkers');requests=js('window.__ciWorkerRequests')
+ upload(S['choosePhoto'],CTX['seedDownload'])
+ wait(lambda:js("document.querySelector('%s').value==='project'"%S['faceSource']) and len(faces())==2 and idle(),60)
+ assert js('window.__ciWorkers')==workers,'Recovery created a processing worker'
+ assert js('window.__ciWorkerRequests')==requests,'Recovery invoked a processing worker'
+ save_check('recoveredDownload',{'passed':True,'format':'webp','newWorkers':0,'newWorkerRequests':0,'dimensions':[[i['width'],i['height']] for i in faces()]})
+def stage_syntheticPhotoE4e():
+ upload(S['choosePhoto'],CTX['seedPng'])
+ wait(lambda:js("document.querySelector('%s').value==='photo'"%S['faceSource']),60)
+ # R2-3 eager e4e: choosing the photo IS the instruction to encode it — the face encodes
+ # with no Generate press at all. The photo face is the second tile; face one came from the
+ # seed stage. Wait for the eager result, then confirm a full pass still leaves both whole.
+ wait(lambda:len(faces())==2 and all(i['width']==1024 and i['height']==1024 for i in faces()) and idle(),240);assert js('window.__ciWorkers')>CTX['workerBaseline']
+ run(S['buttons']['generate'],predicate=lambda:len(faces())==2)
+ wait(lambda:len(faces())==2 and all(i['width']==1024 and i['height']==1024 for i in faces()),60)
+ save_check('syntheticPhotoE4e',{'passed':True,'newWorkers':js('window.__ciWorkers')-CTX['workerBaseline'],'widths':[i['width'] for i in faces()]})
+def stage_localCrop():
+ # Crop the chosen photo locally and generate from the crop, so an arbitrary original never
+ # has to be aligned whole. The crop is what reaches alignment.
+ click(S['buttons']['crop'],expect=lambda:js("!!document.querySelector('%s img')"%S['cropView']))
+ wait(lambda:js("!!document.querySelector('%s img')"%S['cropView']),60)
+ # The whole square is kept: alignment rightly refuses a crop that cuts the face in half or
+ # turns it on its side, so this proves the crop pipeline feeds alignment, not the detector.
+ js("(()=>{const s=document.querySelector('%s');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(s,'1');s.dispatchEvent(new Event('change',{bubbles:true}));})()"%S['cropZoom'])
+ for _ in range(4):click(S['buttons']['rotate'])  # Four right angles exercise the control and end upright.
+ # The square must also be movable from the keyboard: pan right and back, and confirm Escape is
+ # wired by checking the dialog survives an unrelated key.
+ js("document.querySelector('%s').focus()"%S['cropView'])
+ before=q("(()=>{const i=document.querySelector('%s');return {zoom:i.value,focused:document.activeElement===document.querySelector('%s')};})()"%(S['cropZoom'],S['cropView']))
+ assert before['focused'],'Crop area did not take focus'
+ for key,code in [('ArrowRight',39),('ArrowLeft',37)]:
+  cdp('Input.dispatchKeyEvent',type='keyDown',key=key,windowsVirtualKeyCode=code);cdp('Input.dispatchKeyEvent',type='keyUp',key=key,windowsVirtualKeyCode=code)
+ assert js("!!document.querySelector('%s')"%S['cropView']),'Arrow keys closed the crop dialog'
+ click(S['buttons']['useCrop'],expect=lambda:js("!document.querySelector('%s')"%S['cropView']))
+ wait(lambda:js("!document.querySelector('%s')"%S['cropView']),60)
+ deadline=time.monotonic()+300
+ while time.monotonic()<deadline:
+  # Local crop preparation keeps the UI responsive and does not own the heavy-job busy
+  # flag. Wait for publication of the cropped input as well as the eager encode settling.
+  if text(S['fileName'])=='cropped.png' and idle():break
+  time.sleep(1)
+ else:
+  raise RuntimeError('crop accept never settled: status=%r error=%r workers=%r logs=%s'%(text(S['status']),text(S['error']),js('window.__ciWorkers'),logs_tail()))
+ cropped=text(S['fileName'])
+ assert cropped=='cropped.png',cropped
+ run(S['buttons']['generate'],predicate=lambda:len(faces())==2)
+ wait(lambda:len(faces())==2 and all(i['width']==1024 and i['height']==1024 for i in faces()),60)
+ save_check('localCrop',{'passed':True,'file':cropped})
+def project_files_shipped():
+ # Product.fs keeps project export and open behind `projectFilesVisible`, off since
+ # 21 September (operator). The harness asks the artifact in front of it rather than assuming,
+ # so the day the flag comes back the stage qualifies it again with no edit here.
+ return bool(js("(()=>{const b=[...document.querySelectorAll('button')].find(x=>x.textContent.trim()===%s);return !!b&&!!document.querySelector('%s');})()"%(json.dumps(S['buttons']['exportProject']),S['openProject'])))
+def stage_projectSaveReopen():
+ if not project_files_shipped():
+  # Neither a pass nor a silent skip. A control that is not on the surface cannot be qualified
+  # through the surface, and recording passed:true for it would be exactly the false
+  # confirmation this gate exists to prevent. The serialisation itself stays covered:
+  # src/Next/verify-fable.mjs round-trips every path kind and latent space against actual Fable
+  # output in the artifact job. promote.py reads shipped:false and stops demanding UI evidence
+  # for a feature this artifact does not offer.
+  save_check('projectSaveReopen',{'passed':None,'shipped':False,'reason':'Project export and open are not enabled at the moment — we are not sure what we need them for yet (operator, 22 September). Product.fs projectFilesVisible=false; the ProjectJson round trip stays covered by src/Next/verify-fable.mjs'})
+  return
+ project=download(S['buttons']['exportProject']);parsed=json.loads(project.read_text());assert len(parsed['morph']['controls'])==2 and all(len(c['latent']['values'])==9216 for c in parsed['morph']['controls'])
+ upload(S['openProject'],project);time.sleep(.5);wait(idle)
+ CTX['project']=project
+ assert js("[...document.querySelectorAll('%s')].every(s=>s.value==='project')"%S['faceSource'])
+ save_check('projectSaveReopen',{'passed':True,'shipped':True,'sha256':hashlib.sha256(project.read_bytes()).hexdigest()})
+def stage_morphVideo():
+ # The morph used to be made from a reloaded, reopened project, which proved the restore and
+ # supplied the faces in one move. With project files off the surface there is nothing to
+ # reopen, so the morph is made from the faces the earlier stages actually built — the reload
+ # is dropped rather than faked, since reloading with no project to restore would only ever
+ # test the empty start.
+ if CTX.get('project'):
+  js('location.reload()');wait_for_load();wait(idle,60)
+  upload(S['openProject'],CTX['project']);time.sleep(.5);wait(idle)
+  # The reopen is asynchronous: the morph button exists the moment the app renders (disabled
+  # until both faces return), so wait for the restored inputs themselves.
+  wait(lambda:js("[...document.querySelectorAll('%s')].length===2 && [...document.querySelectorAll('%s')].every(s=>s.value==='project')"%(S['faceSource'],S['faceSource'])),60)
+ else:
+  wait(lambda:len(faces())==2,60)
+ # Reopening a photo-mode project kicks its own re-encode; the morph button is disabled until
+ # that settles. Click only when the button can actually receive it.
+ wait(lambda:js("(()=>{const b=[...document.querySelectorAll('button')].find(x=>x.textContent.trim()==='Create morph');return b&&!b.disabled;})()"),300)
+ run(S['buttons']['createMorph'],predicate=lambda:js("!!document.querySelector('%s')"%S['video']))
+ try:wait(lambda:js("!!document.querySelector('%s')"%S['video']),90)
+ except TimeoutError:
+  raise AssertionError('morph video absent; status=%r; workers=%r; workerRequests=%r'%(text(S['status']),js('window.__ciWorkers'),js('window.__ciWorkerRequests')))
+ # Fire-and-poll: the evaluate must return immediately (the helper's awaitPromise window is
+ # shorter than any real playback wait), the probe self-limits to 9s and records its result.
+ js("window.__ciPlayback={done:false};(async()=>{const deadline=new Promise((_,j)=>setTimeout(()=>j(Error('playback probe exceeded 9s')),9000));try{const v=document.querySelector('.next-video-slot video');v.muted=true;await Promise.race([v.play(),deadline]);await Promise.race([new Promise(r=>{v.requestVideoFrameCallback(()=>r());}),deadline]);window.__ciPlayback={done:true,width:v.videoWidth,height:v.videoHeight,duration:v.duration,time:v.currentTime};v.pause();}catch(e){const v=document.querySelector('.next-video-slot video');window.__ciPlayback={done:true,error:String(e),src:(v&&v.src||'').slice(0,60),readyState:v?v.readyState:null,networkState:v?v.networkState:null,mediaError:v&&v.error?v.error.code+':'+(v.error.message||''):null,duration:v?v.duration:null};}})();0")
+ wait(lambda:js('window.__ciPlayback.done'),45);playback=q('window.__ciPlayback');assert not playback.get('error') and playback['width'] in (512,1024) and playback['duration']>0,playback
+ video=download(S['buttons']['saveVideo']);assert video.stat().st_size>1000 and b'ftyp' in video.read_bytes()[:32]
+ save_check('morphPlayableMp4',{'passed':True,**playback,'bytes':video.stat().st_size,'sha256':hashlib.sha256(video.read_bytes()).hexdigest()})
+
+def stage_sessionRestore():
+ # Wait for the best-effort retained session to commit before navigating away.
+ js("window.__ciSavedSession=null;(async()=>{const db=await new Promise((r,j)=>{const q=indexedDB.open('checkface-originals-v1',1);q.onsuccess=()=>r(q.result);q.onerror=()=>j(q.error);});try{const value=await new Promise((r,j)=>{const q=db.transaction('originals').objectStore('originals').get('last-generated-session-v2');q.onsuccess=()=>r(q.result);q.onerror=()=>j(q.error);});window.__ciSavedSession={faces:value?.faces?.length||0,video:!!value?.video,compressed:value?.faces?.every(f=>f.result.blob.type==='image/webp')};}finally{db.close();}})();0")
+ deadline=time.monotonic()+60
+ while not js('window.__ciSavedSession?.video'):
+  if time.monotonic()>=deadline:
+   result['retentionProbe']=q('window.__ciSavedSession');js('window.__ciStorage=null;navigator.storage.estimate().then(v=>window.__ciStorage=v);0');time.sleep(.5);result['storageProbe']=q('window.__ciStorage');raise AssertionError('Complete session/video was not persisted')
+  time.sleep(.5)
+  js("(async()=>{const q=indexedDB.open('checkface-originals-v1',1);q.onsuccess=()=>{const db=q.result,r=db.transaction('originals').objectStore('originals').get('last-generated-session-v2');r.onsuccess=()=>{const v=r.result;window.__ciSavedSession={faces:v?.faces?.length||0,video:!!v?.video,compressed:v?.faces?.every(f=>f.result.blob.type==='image/webp')};db.close();};};})();0")
+ saved=q('window.__ciSavedSession');assert saved['faces']==2 and saved['compressed'], saved
+ js("[...document.querySelectorAll('label')].find(l=>l.textContent.includes('Use Slider')).querySelector('input').click()")
+ wait(lambda:js("!!document.querySelector('.next-slider-control')"),60)
+ js("document.querySelector('.next-slider-control [role=slider]').focus()")
+ cdp('Input.dispatchKeyEvent',type='keyDown',key='ArrowRight',code='ArrowRight',windowsVirtualKeyCode=39)
+ cdp('Input.dispatchKeyEvent',type='keyUp',key='ArrowRight',code='ArrowRight',windowsVirtualKeyCode=39)
+ preference=q("JSON.parse(localStorage.getItem('facemorph-slider-v1'))")
+ assert preference['enabled'] and preference['frame']>1,preference
+ js('location.reload()');wait_for_load();ensure_instrumented()
+ wait(lambda:len(faces())==2 and all(i['fitsTile'] for i in faces()),60)
+ wait(lambda:js("!!document.querySelector('.next-slider-control')"),60)
+ assert q("JSON.parse(localStorage.getItem('facemorph-slider-v1'))")==preference
+ assert js("[...document.querySelectorAll('.next-face')].length===2&&[...document.querySelectorAll('.next-face')].every(s=>s.dataset.nextState==='project')")
+ assert js('window.__ciWorkerRequests')==0, 'Restore performed inference'
+ js("[...document.querySelectorAll('label')].find(l=>l.textContent.includes('Use Slider')).querySelector('input').click()")
+ wait(lambda:js("document.querySelector('.next-video-slot video')?.readyState>=2"),30)
+ js("document.querySelectorAll('button[aria-label=\"Change mode\"]')[1].click()")
+ js("[...document.querySelectorAll('[role=menuitem]')].find(e=>getComputedStyle(e).visibility==='visible'&&e.getBoundingClientRect().width>0&&e.textContent.trim()==='Name or words').click()")
+ wait(lambda:js("[...document.querySelectorAll('.next-face input[type=text]')].at(-1)?.value===''"),10)
+ assert js("[...document.querySelectorAll('.next-face-generate')].at(-1).disabled"), 'Empty restored-mode edit must disable Generate'
+ save_check('completeSessionRestore',{'passed':True,'faces':2,'compressed':True,'video':True,'sliderFrame':preference['frame'],'newWorkerRequests':0})
+
+# --- Driver ------------------------------------------------------------------------------
+STAGES=[('preflight',stage_preflight),('seedGeneration',stage_seedGeneration),('routeRejection',stage_routeRejection),
+        ('repeatOriginal',stage_repeatOriginal),('recoveredDownload',stage_recoveredDownload),('syntheticPhotoE4e',stage_syntheticPhotoE4e),('localCrop',stage_localCrop),
+        ('projectSaveReopen',stage_projectSaveReopen),('morphVideo',stage_morphVideo),('sessionRestore',stage_sessionRestore)]
+SKIP=set(filter(None,os.environ.get('E2E_SKIP','').split(',')))
+try:
+ for name,fn in STAGES:
+  if name in SKIP:result.setdefault('skipped',[]).append(name);continue
+  result['stage']=name
+  try:
+   if name!='preflight':
+    alive();ensure_instrumented()
+   fn()
+  except Exception as error:
+   result['stageError']=name+': '+str(error)+' logs='+logs_tail()
+   raise
+  if UNTIL==name:
+   result['partial']=True
+   print(json.dumps({'partialUntil':name}),flush=True);break
+ else:result['passed']=not result.get('skipped')
+except Exception as error:
+ result['error']=str(error)
+ raise
+finally:
+ try:result['downloadGateAccepted']=js('window.__ciGate||0')
+ except Exception:pass
+ result['finishedAt']=time.time();(out/'report.json').write_text(json.dumps(result,indent=2));print(json.dumps(result))

@@ -1,0 +1,11 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FaceMorph mobile component CI</title>
+<h1>Mobile component tests</h1><pre id="status">Starting…</pre>
+<script type="module">
+import('./suite.mjs').catch(async error => {
+  document.querySelector('#status').textContent = String(error.stack || error);
+  await fetch('/report', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({runId:new URLSearchParams(location.search).get('run'),completed:false,error:String(error.stack || error)})});
+});
+</script>
