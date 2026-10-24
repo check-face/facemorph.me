@@ -302,6 +302,7 @@ IOS_JOURNEYS = r"""
 <script>
 (async () => {
   const STAGE = sessionStorage.getItem('__laneStage') || 'cold';
+  let doing = STAGE;  // the journey under way, named in a failure report
   const post = (body) => fetch('/__lane', {method: 'POST', headers: {'content-type': 'application/json'}, body: JSON.stringify(body)}).catch(() => {});
   const sleep = (ms) => new Promise(r => setTimeout(r, ms));
   const FACES = (sel) => [...document.querySelectorAll(sel)].filter(i => (i.naturalWidth || i.width) === 1024).length;
@@ -359,6 +360,7 @@ IOS_JOURNEYS = r"""
       sessionStorage.setItem('__laneStage', 'done');
       const warm = await face('lab0warm');
       await post({stage: 'warm', ok: true, result: warm});
+      doing = 'morph';
       const t0 = performance.now();
       const btn = [...document.querySelectorAll('button')].find(b => b.textContent.trim() === 'Create morph');
       if (!btn) throw Error('no Create morph button');
@@ -367,7 +369,7 @@ IOS_JOURNEYS = r"""
       await post({stage: 'morph', ok: true, result: {videoS: +((performance.now() - t0) / 1000).toFixed(2)}, done: true});
     }
   } catch (e) {
-    await post({stage: STAGE, ok: false, error: String(e && e.message || e).slice(0, 400), done: true});
+    await post({stage: doing, ok: false, error: String(e && e.message || e).slice(0, 400), done: true});
   }
 })();
 </script>
