@@ -10,3 +10,8 @@ dist/
 /inventory/visual-references/*.png
 # fm-gpx: runtime bytes acquired by scripts/runtime/acquire.mjs (model weights never enter Git).
 /.cache/
+# build:next output (scripts/import/build-next.mjs)
+/deploy-next/
+/next-site-SHA256SUMS
+/next-site-source.txt
+/next-site-identity.json

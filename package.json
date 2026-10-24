@@ -1,0 +1,8 @@
+{
+  "name": "facemorph-me",
+  "private": true,
+  "description": "FaceMorph monorepo root. build:next writes deploy-next/ (see docs/dev/build-next.md).",
+  "scripts": {
+    "build:next": "node scripts/import/build-next.mjs"
+  }
+}
