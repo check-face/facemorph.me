@@ -1,0 +1,7 @@
+{
+  "name": "facemorph-name-catalogue",
+  "account_id": "8f550a622a484c03d9267efd45573583",
+  "compatibility_date": "2026-10-10",
+  "workers_dev": true,
+  "assets": { "directory": "./names-public", "not_found_handling": "none" }
+}

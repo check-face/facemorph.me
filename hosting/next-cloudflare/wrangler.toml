@@ -1,0 +1,23 @@
+name = "facemorph-next-diagnostics"
+account_id = "8f550a622a484c03d9267efd45573583"
+main = "worker.mjs"
+compatibility_date = "2026-09-16"
+workers_dev = false
+preview_urls = false
+routes = [{ pattern = "next.facemorph.me/diagnostics/*", zone_name = "facemorph.me" }]
+
+[vars]
+FREE_PLAN_CONFIRMED = "true"
+
+[observability]
+enabled = false
+
+[observability.logs]
+enabled = false
+invocation_logs = false
+
+
+# Operator confirmed Workers Free on16 September2026.
+[[kv_namespaces]]
+binding = "DIAGNOSTICS"
+id = "3a71e4ec58354345be24a1e02a3edb82"

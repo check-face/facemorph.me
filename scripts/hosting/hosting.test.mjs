@@ -1,0 +1,62 @@
+// The hosting import plan and the hosting scan (fm-8tyu), with plain values.
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import { plan, SIZE_LIMIT } from './import-hosting.mjs';
+import { scanFiles } from './scan-hosting.mjs';
+
+const rows = [
+  { path: 'hosting/next-static/stage.py', destination: 'hosting/' },
+  { path: 'hosting/next-static/catalogue.json', destination: 'hosting/' },
+  { path: 'hosting/next-static/huge.json', destination: 'hosting/' },
+  { path: 'hosting/next-cloudflare/.wrangler/state/v3/kv/x.sqlite', destination: 'hosting/' },
+  { path: 'hosting/next-mirror/worker.mjs', destination: 'packages/cloudflare-model-host' },
+];
+const entry = (path, size = 100) => ({ path, mode: '100644', type: 'blob', sha1: 'x', size });
+
+test('only hosting/ rows import; .wrangler state and oversized files are refused even when the table says hosting/', () => {
+  const { imports, refused } = plan(rows, [
+    entry('hosting/next-static/stage.py'),
+    entry('hosting/next-static/catalogue.json', 3_405_692),
+    entry('hosting/next-static/huge.json', SIZE_LIMIT + 1),
+    entry('hosting/next-cloudflare/.wrangler/state/v3/kv/x.sqlite'),
+    entry('hosting/next-mirror/worker.mjs'),
+  ]);
+  assert.deepEqual(
+    imports.map((e) => e.path),
+    ['hosting/next-static/stage.py', 'hosting/next-static/catalogue.json'],
+  );
+  assert.deepEqual(refused.map((r) => r.path).sort(), [
+    'hosting/next-cloudflare/.wrangler/state/v3/kv/x.sqlite',
+    'hosting/next-static/huge.json',
+  ]);
+  assert.match(refused.find((r) => r.path.includes('.wrangler')).problem, /wrangler/);
+});
+
+test('a table row missing from the frozen tree is reported', () => {
+  const { refused } = plan([{ path: 'hosting/gone.py', destination: 'hosting/' }], []);
+  assert.deepEqual(refused, [
+    { path: 'hosting/gone.py', problem: 'in the boundary table but not in the frozen tree' },
+  ]);
+});
+
+test('the scan finds planted wrangler state, weights, oversized files and credential values, not secret names', () => {
+  const f = (path, text, size) => ({ path, bytes: size ? Buffer.alloc(size) : Buffer.from(text) });
+  const findings = scanFiles([
+    f('hosting/next-cloudflare/.wrangler/state/v3/kv/x.sqlite', 'x'),
+    f('hosting/next/model.onnx', 'x'),
+    f('hosting/next-static/big.txt', '', SIZE_LIMIT + 1),
+    f(
+      'hosting/next-static/deploy.py',
+      'headers = {"Authorization": "Bearer abcdefghijklmnopqrstuvwxyz0123456789"}',
+    ),
+    f('hosting/next-static/wrangler.jsonc', '{ "vars": { "TOKEN_NAME": "CLOUDFLARE_API_TOKEN" } }'),
+  ]);
+  const by = (p) => findings.filter((x) => x.path === p).map((x) => x.problem);
+  assert.deepEqual(by('hosting/next-cloudflare/.wrangler/state/v3/kv/x.sqlite'), [
+    'wrangler state',
+  ]);
+  assert.deepEqual(by('hosting/next/model.onnx'), ['weight or binary file']);
+  assert.deepEqual(by('hosting/next-static/big.txt'), ['over the size limit']);
+  assert.deepEqual(by('hosting/next-static/deploy.py'), ['credential-looking value (bearer)']);
+  assert.deepEqual(by('hosting/next-static/wrangler.jsonc'), []);
+});

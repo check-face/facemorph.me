@@ -1,0 +1,61 @@
+name: hosting-staging
+# fm-8tyu: classic's app-side hosting/ tree is imported byte-identical (hosting/PROVENANCE.json) and staging is
+# reproducible from a clean clone: the imported stage.py on this clone's deploy-next/ (the control) and the verified
+# runtime acquisition must give exactly classic's staged tree (classic's own mirror-runtime.py and stage.py, from its Git
+# objects at the frozen revision, on the same artifact). Uses a runtime already acquired on the runner (verified;
+# nothing downloaded; CI never accepts the model terms itself).
+on:
+  push:
+    branches: [main]
+    paths:
+      [
+        'hosting/**',
+        'scripts/hosting/**',
+        'import/allowlist.json',
+        '.github/workflows/hosting-staging.yml',
+      ]
+  workflow_dispatch:
+concurrency:
+  group: hosting-staging
+  cancel-in-progress: false
+jobs:
+  staging:
+    runs-on: [self-hosted, eris]
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Classic, read from Git objects only
+        uses: actions/checkout@v4
+        with:
+          repository: check-face/facemorph.me-classic
+          path: .cache/classic
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --test scripts/hosting/hosting.test.mjs
+      - name: Imported files equal the frozen revision
+        run: node scripts/hosting/import-hosting.mjs --check --classic .cache/classic
+      - name: No .wrangler state, secrets or weights in hosting/
+        run: node scripts/hosting/scan-hosting.mjs
+      - name: build:next (the control)
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: npm run build:next
+      - name: Runtime already acquired on this runner (verified; nothing downloaded)
+        id: runtime
+        run: |
+          dir="$HOME/.cache/facemorph-runtime"
+          check='const [{acquiredFindings},{readJson,BUILD_INPUTS}]=await Promise.all([import("./scripts/inventory/check-build-inputs.mjs"),import("./scripts/inventory/lib.mjs")]);
+            const {out,files}=acquiredFindings(process.argv[1],readJson(BUILD_INPUTS).runtime.assets);console.log(JSON.stringify({files,findings:out.length}));process.exit(out.length||!files?1:0);'
+          if [ -f "$dir/manifest.json" ] && node --input-type=module -e "$check" "$dir"; then
+            echo "dir=$dir" >> "$GITHUB_OUTPUT"
+          else
+            echo "::error::No verified runtime in $dir: staging cannot be reproduced on this runner"; exit 1
+          fi
+      - name: Classic's staging on the same artifact
+        run: scripts/hosting/classic-reference.sh .cache/classic "${{ steps.runtime.outputs.dir }}" .cache/classic-staging.json
+      - name: Clean-clone staging, compared with classic's file by file
+        run: |
+          node scripts/hosting/stage.mjs --runtime "${{ steps.runtime.outputs.dir }}" --out .cache/staging \
+            --record .cache/staging.json --compare .cache/classic-staging.json | tee -a "$GITHUB_STEP_SUMMARY"

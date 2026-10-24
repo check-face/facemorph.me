@@ -34,6 +34,7 @@
     "autoresearch/history/**",
     "autoresearch/reviews/**",
     "autoresearch/templates/**",
+    "hosting/**",
     "import/**",
     "inventory/**",
     "docs/**",

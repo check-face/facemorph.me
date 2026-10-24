@@ -1,0 +1,45 @@
+{
+  "name": "facemorph-next",
+  "account_id": "8f550a622a484c03d9267efd45573583",
+  "compatibility_date": "2026-09-16",
+  "workers_dev": true,
+  "assets": {
+    "directory": "./public",
+    "not_found_handling": "none",
+    "binding": "ASSETS",
+    "run_worker_first": [
+      "/diagnostics/*"
+    ]
+  },
+  "main": "worker.mjs",
+  // Diagnostics land in R2, not KV. The Free plan allows 1,000 KV writes a day per namespace and
+  // 21 September spent 1,430 — the collector began refusing exactly when the reports mattered
+  // most. R2's free tier is a million writes a month. KV stays bound as a fallback so a run is
+  // never lost to one sink being unavailable.
+  "r2_buckets": [
+    {
+      "binding": "DIAGNOSTICS_R2",
+      "bucket_name": "facemorph-diagnostics"
+    }
+  ],
+  "kv_namespaces": [
+    {
+      "binding": "DIAGNOSTICS",
+      "id": "3a71e4ec58354345be24a1e02a3edb82"
+    }
+  ],
+  // Page-view counts (analytics.mjs). NOT ENABLED YET: Workers Analytics Engine's Free-plan
+  // availability has not been confirmed, and the rule here is no plan assumptions. Enable in one
+  // change, together:
+  //   1. add  "analytics_engine_datasets": [{"binding": "PAGEVIEWS", "dataset": "facemorph_next_pageviews"}],
+  //   2. extend assets.run_worker_first to  ["/diagnostics/*", "/", "/names", "/names/"]
+  // Step 2 must stay an explicit allowlist: run_worker_first=true would put every model chunk
+  // through the Worker and spend the Free plan's 100,000 requests/day. Static asset requests are
+  // free only while the Worker is not invoked. Without step 1 the code is a no-op.
+  "vars": {
+    "FREE_PLAN_CONFIRMED": "true"
+  },
+  "observability": {
+    "enabled": false
+  }
+}

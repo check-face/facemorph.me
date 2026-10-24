@@ -1,0 +1,7 @@
+{
+  "name": "facemorph-seed-gallery",
+  "account_id": "8f550a622a484c03d9267efd45573583",
+  "compatibility_date": "2026-09-16",
+  "workers_dev": true,
+  "assets": { "directory": "./public", "not_found_handling": "none" }
+}

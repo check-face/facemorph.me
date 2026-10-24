@@ -1,0 +1,23 @@
+{
+  "source": "Original Torch e4e independent synthetic reference controls; not user photos",
+  "seed0Reconstruction": {
+    "url": "https://localhost:8443/runtime/assets/9ad43638caa5741dfc7d1fd8f40515edbecc833a2dcbb812e6d4a2c83e159795/torch-reconstructed.png",
+    "sha256": "9ad43638caa5741dfc7d1fd8f40515edbecc833a2dcbb812e6d4a2c83e159795",
+    "size": 1369702
+  },
+  "seed1": {
+    "image": {
+      "url": "https://localhost:8443/runtime/assets/0d3cff97366f99c180b2ff7a6cc56fce4753d0f2b51236c1615ef3d3bac9ce0e/seed-1.png",
+      "sha256": "0d3cff97366f99c180b2ff7a6cc56fce4753d0f2b51236c1615ef3d3bac9ce0e",
+      "size": 394623
+    },
+    "w": {
+      "url": "https://localhost:8443/runtime/assets/bf4fd36a75235a1d5bc55e54dedb0862d1dd78883be4db95fb627a23ba3d336b/seed-1-aligned.w.f32",
+      "sha256": "bf4fd36a75235a1d5bc55e54dedb0862d1dd78883be4db95fb627a23ba3d336b",
+      "size": 36864
+    },
+    "maxAbs": 0.0001,
+    "aligned": true,
+    "preprocessing": "dlib-ffhq-pillow-bilinear-v1"
+  }
+}
