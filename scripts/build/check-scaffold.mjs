@@ -202,6 +202,30 @@ export function checkInstalls(files) {
   return violations;
 }
 
+// No exact versions (operator, 24 October 2026): every dependency in every package.json is a range, a caret range at
+// the latest release when it is added or upgraded. A bare x.y.z specifier is a pin. PIN_EXEMPT names the only ones
+// left, each with the bead that removes it.
+export const PIN_EXEMPT = {
+  'services/stats/package.json devDependencies wrangler':
+    'fm-oop0 removes Wrangler (Cloudflare work uses the cf CLI)',
+};
+const SECTIONS = ['dependencies', 'devDependencies', 'optionalDependencies', 'peerDependencies'];
+export function checkNoPins(manifests, exempt = PIN_EXEMPT) {
+  const violations = [];
+  for (const [path, pkg] of manifests)
+    for (const section of SECTIONS)
+      for (const [name, spec] of Object.entries(pkg[section] ?? {}))
+        if (
+          /^=?v?\d+\.\d+\.\d+(?:[-+][\w.-]+)?$/.test(String(spec)) &&
+          !exempt[`${path} ${section} ${name}`]
+        )
+          violations.push({
+            rule: 'pinned-version',
+            detail: `${path} ${section} ${name} is pinned at ${spec}: use a caret range at latest`,
+          });
+  return violations;
+}
+
 function main() {
   const args = process.argv.slice(2);
   const root = args.includes('--root')
@@ -239,6 +263,16 @@ function main() {
     .filter((f) => /\.ya?ml$/.test(f))
     .map((f) => [`.github/workflows/${f}`, readFileSync(`${root}/.github/workflows/${f}`, 'utf8')]);
   violations.push(...checkInstalls(workflows));
+  const manifests = execFileSync('git', ['-C', root, 'ls-files', '*package.json'], {
+    encoding: 'utf8',
+  })
+    .split('\n')
+    .filter(
+      (f) =>
+        f.endsWith('package.json') && !f.includes('node_modules/') && existsSync(`${root}/${f}`),
+    )
+    .map((f) => [f, read(f)]);
+  violations.push(...checkNoPins(manifests));
 
   for (const v of violations) console.log(JSON.stringify(v));
   if (violations.length > 0) {

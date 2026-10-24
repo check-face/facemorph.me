@@ -13,6 +13,7 @@ import {
   checkScope,
   checkInstalls,
   checkRoots,
+  checkNoPins,
   WORKSPACES,
   OXC_SCRIPTS,
 } from './check-scaffold.mjs';
@@ -287,4 +288,28 @@ test('a path whose digest moved, appeared or went is changed', () => {
   ]);
   assert.deepEqual(changed(before, after), ['b', 'c', 'd']);
   assert.deepEqual(changed(before, before), []);
+});
+
+test('a bare x.y.z dependency is a pin; ranges, workspace and exempt entries pass', () => {
+  const manifests = [
+    [
+      'a/package.json',
+      { dependencies: { x: '^1.2.3', y: '1.2.3' }, devDependencies: { z: '~2.0.0' } },
+    ],
+    [
+      'b/package.json',
+      { devDependencies: { p: '0.1.0-beta.1', q: '>=1.0.0', r: '*', s: 'file:../s' } },
+    ],
+    ['c/package.json', { peerDependencies: { t: '=4.5.6' }, devDependencies: { w: '4.40.0' } }],
+  ];
+  assert.deepEqual(
+    checkNoPins(manifests, { 'c/package.json devDependencies w': 'removed by a bead' }).map(
+      (v) => v.detail.split(' is ')[0],
+    ),
+    [
+      'a/package.json dependencies y',
+      'b/package.json devDependencies p',
+      'c/package.json peerDependencies t',
+    ],
+  );
 });
