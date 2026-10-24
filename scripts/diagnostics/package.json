@@ -1,0 +1,9 @@
+{
+  "name": "facemorph-diagnostics-scripts",
+  "private": true,
+  "type": "module",
+  "description": "Standalone diagnostics retention scripts (old-wording report deletion, learnings-note scan). Not a workspace package.",
+  "engines": { "node": ">=22" },
+  "scripts": { "test": "node --test" },
+  "dependencies": { "@aws-sdk/client-s3": "3.1152.0" }
+}

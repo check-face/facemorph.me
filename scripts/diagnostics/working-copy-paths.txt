@@ -1,0 +1,4 @@
+# Extra roots searched for raw-report working copies (one per line; ~ expands to $HOME).
+# The 17 and 18 October mining sessions worked in Claude Code scratch directories under /tmp/claude-1000,
+# which the default /tmp root already covers.
+~/Downloads
