@@ -7,7 +7,15 @@ name: ci-shared
 on:
   push:
     branches: [main]
-    paths: ['scripts/ci/**', '.github/actions/fetch-artifact/**', '.github/workflows/ci-shared.yml']
+    paths:
+      [
+        'scripts/ci/**',
+        'autoresearch/run.py',
+        'autoresearch/lease.py',
+        '.github/actions/fetch-artifact/**',
+        '.github/actions/device-lease/**',
+        '.github/workflows/ci-shared.yml',
+      ]
   workflow_dispatch:
 permissions:
   contents: read
@@ -36,6 +44,20 @@ jobs:
         env:
           BROWSER_HARNESS: /home/cdilga/Work/runs/venv-bh/bin/browser-harness
         run: python3 scripts/ci/intercept/test_intercept.py
+      - name: The device-lease wrapper (real processes and flocks on a temporary lease directory)
+        run: python3 scripts/ci/lease/test_lease_run.py
+      - name: The wrapper on this machine's own lease journals its run
+        id: leased
+        uses: ./.github/actions/device-lease
+        with:
+          device: eris
+          lane: build
+          timeout: '120'
+          wait: '1800'
+          command: echo "leased on $(hostname -s) as $FACEMORPH_LEASE_RUN"
+      - name: The journal has that run
+        run: |
+          grep -q "\"id\": \"${{ steps.leased.outputs.run_id }}\"" "$HOME/.local/state/facemorph/lease/runs.jsonl"
       - name: Path filters of this tree
         run: node scripts/ci/path-filters.ts
       - uses: actions/upload-artifact@v4

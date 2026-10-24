@@ -14,7 +14,7 @@ jobs:
   measure:
     # eris: triton's Ubuntu 20.04 is below Playwright's supported floor.
     runs-on: [self-hosted, eris]
-    timeout-minutes: 60
+    timeout-minutes: 120
     defaults:
       run:
         working-directory: tools/names-spike
@@ -26,8 +26,14 @@ jobs:
       - run: npm ci --no-audit --no-fund
       - run: npm test
       - run: npx playwright install chromium
-      - name: Measure
-        run: node measure.mjs --out out/ci
+      - name: Measure (under the eris device lease)
+        uses: ./.github/actions/device-lease
+        with:
+          device: eris
+          lane: browser-cpu
+          timeout: '2400'
+          wait: '1800'
+          command: cd tools/names-spike && node measure.mjs --out out/ci
       - name: Summary
         if: always()
         run: test -f out/ci/summary.md && cat out/ci/summary.md >> "$GITHUB_STEP_SUMMARY" || true

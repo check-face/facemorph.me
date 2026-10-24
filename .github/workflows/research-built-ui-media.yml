@@ -54,11 +54,16 @@ jobs:
       - name: Worker readiness
         run: node autoresearch/workers/check.mjs --lane browser-cpu --smoke --runtime "$RUNTIME"
       - name: Leased built-UI run against the control artifact
-        run: |
-          python3 autoresearch/run.py --lane browser-cpu --device eris --wait 1800 --timeout 3600 -- \
-            node autoresearch/drivers/built-ui-paired.mjs --label "$LABEL" --mode "${{ inputs.mode || 'smoke' }}" \
-            --route cpu --control deploy-next --control-digest "$(node -p 'require("./autoresearch/drivers/control.json").treeSha256')" \
-            --runtime "$RUNTIME" --out-root "$OUT"
+        uses: ./.github/actions/device-lease
+        with:
+          device: eris
+          lane: browser-cpu
+          timeout: '3600'
+          wait: '1800'
+          command: >-
+            node autoresearch/drivers/built-ui-paired.mjs --label "$LABEL" --mode "${{ inputs.mode || 'smoke' }}"
+            --route cpu --control deploy-next --control-digest "$(node -p
+            'require("./autoresearch/drivers/control.json").treeSha256')" --runtime "$RUNTIME" --out-root "$OUT"
       - name: Durable location
         if: always()
         run: |

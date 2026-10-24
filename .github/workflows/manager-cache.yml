@@ -27,7 +27,7 @@ concurrency:
 jobs:
   cache:
     runs-on: [self-hosted, eris]
-    timeout-minutes: 20
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -36,8 +36,14 @@ jobs:
       - run: npm ci --no-audit --no-fund
       - run: npm run build -w packages/stylegan-js -w packages/browser-model-manager
       - run: npm run typecheck -w packages/browser-model-manager
-      - name: Package tests (browser cases in real Chromium)
-        run: npm test -w packages/browser-model-manager
+      - name: Package tests (browser cases in real Chromium), under the eris device lease
+        uses: ./.github/actions/device-lease
+        with:
+          device: eris
+          lane: browser-cpu
+          timeout: '900'
+          wait: '1800'
+          command: npm test -w packages/browser-model-manager
       - name: The candidate's model-cache.test.mjs through the shim, expectations unchanged
         working-directory: apps/web
         run: node --test src/Next/Assets/model-cache.test.mjs

@@ -24,7 +24,7 @@ concurrency:
 jobs:
   crop:
     runs-on: [self-hosted, eris]
-    timeout-minutes: 60
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -63,12 +63,21 @@ jobs:
           else
             echo "::warning::No verified runtime in $dir: the browser crop cases are untested in this run"
           fi
-      - name: Crop-confirm loop cases on the control
+      - name: Browser controller for the crop cases
         if: steps.runtime.outputs.dir != ''
         run: |
           python3 -m venv "$RUNNER_TEMP/venv"
           "$RUNNER_TEMP/venv/bin/pip" install -q browser-harness==0.1.8 playwright==1.56.0
-          "$RUNNER_TEMP/venv/bin/python" tests/crop/crop_confirm_loop.py --runtime "${{ steps.runtime.outputs.dir }}" \
+      - name: Crop-confirm loop cases on the control (under the eris device lease)
+        if: steps.runtime.outputs.dir != ''
+        uses: ./.github/actions/device-lease
+        with:
+          device: eris
+          lane: browser-cpu
+          timeout: '2400'
+          wait: '1800'
+          command: >-
+            "$RUNNER_TEMP/venv/bin/python" tests/crop/crop_confirm_loop.py --runtime "${{ steps.runtime.outputs.dir }}"
             --out crop-evidence --chrome "$(command -v chromium || command -v google-chrome)"
       - uses: actions/upload-artifact@v4
         if: always()

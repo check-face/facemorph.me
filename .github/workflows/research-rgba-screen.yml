@@ -55,15 +55,25 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
         run: npm run build:next && npm run build:next -- --check
       - name: Worker readiness, with a hardware WebGPU adapter (leased; the probe uses the GPU)
-        run: |
-          python3 autoresearch/run.py --lane browser-gpu --device eris --wait 1800 --timeout 300 -- \
+        uses: ./.github/actions/device-lease
+        with:
+          device: eris
+          lane: browser-gpu
+          timeout: '300'
+          wait: '1800'
+          command: >-
             node autoresearch/workers/check.mjs --lane browser-gpu --smoke --runtime "$RUNTIME"
       - name: Leased morph-frame run against the control artifact
-        run: |
-          python3 autoresearch/run.py --lane browser-gpu --device eris --wait 1800 --timeout 3600 -- \
-            node autoresearch/drivers/morph-frame-product.mjs --label "$LABEL" --mode "${{ inputs.mode || 'smoke' }}" \
-            --route webgpu --control deploy-next --control-digest "$(node -p 'require("./autoresearch/drivers/control.json").treeSha256')" \
-            --runtime "$RUNTIME" --out-root "$OUT"
+        uses: ./.github/actions/device-lease
+        with:
+          device: eris
+          lane: browser-gpu
+          timeout: '3600'
+          wait: '1800'
+          command: >-
+            node autoresearch/drivers/morph-frame-product.mjs --label "$LABEL" --mode "${{ inputs.mode || 'smoke' }}"
+            --route webgpu --control deploy-next --control-digest "$(node -p
+            'require("./autoresearch/drivers/control.json").treeSha256')" --runtime "$RUNTIME" --out-root "$OUT"
       - name: Durable location
         if: always()
         run: |
