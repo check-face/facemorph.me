@@ -14,12 +14,14 @@
 //   node scripts/build/identity.mjs --changed <file>...  the roots and checks those changes select
 //   node scripts/build/identity.mjs --workers <dist> --hosted <runtime dir>   worker graph findings
 //   node scripts/build/identity.mjs --artifact <dir>     artifact identity for a deploy-next/ layout
+//   node scripts/build/identity.mjs --coverage           every mapped path is selected by the shared path filters
 // Exit 0 ok, 1 findings, 2 usage error.
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, matchesGlob, posix } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { treeDigest } from '../ci/fetch-artifact.ts';
 import { WORKSPACES } from './check-scaffold.mjs';
 
 export const ROOT = fileURLToPath(new URL('../..', import.meta.url));
@@ -204,6 +206,26 @@ export function selectChecks(identities, changed) {
   };
 }
 
+/**
+ * Paths the identity maps that no push filter would select: each must match the shared path-filter list
+ * (scripts/ci/path-filters.json), so a change that alters an identity always triggers the lanes that check it.
+ */
+export function uncoveredPaths(root, identities, shared) {
+  const mapped = [
+    ...SHARED_CONFIGS,
+    'package-lock.json',
+    ...Object.keys(identities.roots).flatMap((w) => trackedFiles(root, w)),
+  ];
+  // GitHub's path filters let ** match dot-files (apps/web/.gitignore); Node's matchesGlob does not, so a path is
+  // also tried with its leading dots masked.
+  const dotless = (f) => f.replace(/(^|\/)\./g, '$1_');
+  return mapped.filter(
+    (f) =>
+      existsSync(join(root, f)) &&
+      !shared.some((g) => matchesGlob(f, g) || matchesGlob(dotless(f), g)),
+  );
+}
+
 // ---- Worker graphs.
 const RELATIVE_IMPORT =
   /(?:\b(?:import|export)\s*(?:[\w*${}\s,]+\s*from\s*)?|\bimport\s*\(\s*|new\s+URL\s*\(\s*)["'](\.{1,2}\/[^"']+)["']/g;
@@ -321,6 +343,10 @@ export function artifactIdentity(dir, { env = process.env, build = null } = {}) 
     workflow: env.GITHUB_WORKFLOW ?? null,
     runId: env.GITHUB_RUN_ID ? Number(env.GITHUB_RUN_ID) : null,
   };
+  // The same tree digest the shared fetch-artifact action reports (scripts/ci/fetch-artifact.ts), so the two agree.
+  const artifactDigest = existsSync(join(dir, 'deploy-next'))
+    ? treeDigest(join(dir, 'deploy-next'))
+    : null;
   if (site.kind === 'control')
     return {
       kind: 'control',
@@ -333,6 +359,7 @@ export function artifactIdentity(dir, { env = process.env, build = null } = {}) 
         runId: site.deploySource.run ?? site.deploySource.runId ?? null,
       },
       buildIdentity: site.deploySource.buildId ?? null,
+      artifactDigest,
       assembledBy: {
         repositoryId: REPOSITORY_ID,
         commit: site.assembledBy?.commit ?? null,
@@ -347,6 +374,7 @@ export function artifactIdentity(dir, { env = process.env, build = null } = {}) 
     commit: site.deploySource?.commit ?? null,
     workflowRun: run,
     buildIdentity: build ?? site.buildIdentity ?? null,
+    artifactDigest,
   };
 }
 
@@ -386,6 +414,12 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     process.exit(0);
   }
   const identities = rootIdentities();
+  if (argv.includes('--coverage')) {
+    const shared = readJson(join(ROOT, 'scripts/ci/path-filters.json')).shared;
+    const missing = uncoveredPaths(ROOT, identities, shared);
+    console.log(JSON.stringify({ mapped: 'roots and shared configs', uncovered: missing }));
+    process.exit(missing.length ? 1 : 0);
+  }
   if (argv.includes('--changed')) {
     const changed = argv.slice(argv.indexOf('--changed') + 1).filter((a) => !a.startsWith('--'));
     console.log(JSON.stringify(selectChecks(identities, changed)));

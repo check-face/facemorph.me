@@ -7,12 +7,14 @@ import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
+import { treeDigest } from '../ci/fetch-artifact.ts';
 import { WORKSPACES } from './check-scaffold.mjs';
 import {
   artifactIdentity,
   lockClosure,
   rootIdentities,
   selectChecks,
+  uncoveredPaths,
   workerFindings,
 } from './identity.mjs';
 
@@ -273,5 +275,51 @@ test("artifact identity: the control keeps classic's identity and label; a desti
     commit: 'd'.repeat(40),
     workflowRun: { workflow: 'import-checks', runId: 77 },
     buildIdentity: 'b'.repeat(64),
+    artifactDigest: null,
   });
+});
+
+test('every path an identity maps is selected by the shared path filters; a root outside them is reported', () => {
+  const dir = workspace();
+  const ids = rootIdentities(dir);
+  const shared = [
+    'apps/web/**',
+    'packages/**',
+    'package.json',
+    'package-lock.json',
+    'tsconfig*.json',
+  ];
+  assert.deepEqual(uncoveredPaths(dir, ids, shared), []);
+  plant(dir, { 'packages/stylegan-js/.gitignore': 'dist/\n' });
+  spawnSync('git', ['add', '-A'], { cwd: dir });
+  assert.deepEqual(
+    uncoveredPaths(dir, rootIdentities(dir), shared),
+    [],
+    'dot-files under ** are selected, as on GitHub',
+  );
+  assert.deepEqual(
+    uncoveredPaths(dir, ids, [
+      'apps/web/**',
+      'package.json',
+      'package-lock.json',
+      'tsconfig*.json',
+    ]).filter((f) => f.startsWith('packages/')).length > 0,
+    true,
+  );
+});
+
+test("the artifact identity's digest is the shared fetch-artifact tree digest", () => {
+  const dir = mkdtempSync(join(tmpdir(), 'identity-digest-'));
+  plant(dir, {
+    'deploy-next/index.html': '<!doctype html>',
+    'deploy-next/app/a.js': 'x',
+    'next-site-identity.json': JSON.stringify({
+      kind: 'monorepo',
+      deploySource: { repository: 'r', commit: 'e'.repeat(40) },
+    }),
+  });
+  assert.equal(
+    artifactIdentity(dir, { env: {} }).artifactDigest,
+    treeDigest(join(dir, 'deploy-next')),
+  );
 });

@@ -45,6 +45,8 @@ jobs:
           base="$BEFORE"
           if [ -z "$base" ] || ! git cat-file -e "$base^{commit}" 2>/dev/null; then base=HEAD~1; fi
           git diff --name-only "$base" HEAD | xargs node scripts/build/identity.mjs --changed
+      - name: Every path an identity maps is selected by the shared path filters
+        run: node scripts/build/identity.mjs --coverage
       - run: npm run build
       - name: Worker graphs against their pins and the qualified runtime
         run: node scripts/build/identity.mjs --workers apps/web/dist --hosted "$HOME/.cache/facemorph-device-lab/runtime-public"
