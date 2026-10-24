@@ -59,6 +59,24 @@ per-iteration timings, route, `typedExactly`, peak Chrome memory on the phone, t
 (phone) or Playwright trace (eris) of each failed iteration, and screenshots. In CI the summary also goes to the
 job summary.
 
+## Cold full-package downloads
+
+`download.py` (fm-vf9l) runs the download a first visitor starts from the model toast ("Plus photo encoder",
+about 1.3 GB) from an empty origin on `eris-cpu`, `eris-webgpu` and `phone-cpu`. It records bytes reached over
+time, every runtime request with the origin that answered it, each retried chunk and who finally served it, the
+terminal event and its stage, the served app bundle, and on eris the host's own network changes (Chromium aborts
+in-flight requests on any of them). Interruptions are real: Wi-Fi off and on through adb on the phone (it has
+no SIM), and on eris a local CONNECT proxy with a throttle and a fault switch that either resets open tunnels
+(`--cut drop`) or silences them for good (`--cut blackhole`). It takes the same lock and device lease as
+`lab.py`, and the Frigate camera must be held off for the phone cell.
+
+```sh
+uv run --with playwright python download.py --cells eris-cpu,eris-webgpu,phone-cpu --repeat 3
+uv run --with playwright python download.py --cells phone-cpu --interrupt 0.35:30
+uv run --with playwright python download.py --cells eris-cpu --interrupt 0.35:30 --cut blackhole
+uv run --with playwright python download.py --cells eris-cpu --throttle-kbps 3000
+```
+
 ## CI
 
 - `.github/workflows/device-lab.yml` runs on the self-hosted runner `eris-device-lab` (label `device-lab`): on
