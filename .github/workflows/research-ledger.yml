@@ -4,7 +4,14 @@ name: research-ledger
 on:
   push:
     branches: [main]
-    paths: ['autoresearch/**', 'scripts/check-research-ledger.mjs', 'scripts/research-ledger/**', 'ops/lease/**', '.github/workflows/research-ledger.yml']
+    paths:
+      [
+        'autoresearch/**',
+        'scripts/check-research-ledger.mjs',
+        'scripts/research-ledger/**',
+        'ops/lease/**',
+        '.github/workflows/research-ledger.yml',
+      ]
   workflow_dispatch:
 concurrency:
   group: research-ledger

@@ -15,25 +15,37 @@ import { treeFiles, buildDigestList, importFiles } from './lib.mjs';
 const here = dirname(fileURLToPath(import.meta.url));
 export const ROOT = resolve(here, '../..');
 export const DIGEST_LIST = join(ROOT, 'docs/research-import/digest-list.json');
-export const SNAPSHOT = { repository: 'check-face/facemorph.me-classic', branch: 'candidate/next-delivery-20260916', commit: 'b2d945a8c7f0ff9f382fbfefaecc2651943077a3' };
+export const SNAPSHOT = {
+  repository: 'check-face/facemorph.me-classic',
+  branch: 'candidate/next-delivery-20260916',
+  commit: 'b2d945a8c7f0ff9f382fbfefaecc2651943077a3',
+};
 
 // Paths another bead re-homed before this import: recorded, never overwritten.
 export const OVERRIDES = {
   'autoresearch/run.py': {
-    disposition: 're-homed', owner: 'fm-htbc',
-    reason: 'research lease bead re-homed run.py with the lease state (24 October parallelism pass); the snapshot copy is listed by digest only',
+    disposition: 're-homed',
+    owner: 'fm-htbc',
+    reason:
+      'research lease bead re-homed run.py with the lease state (24 October parallelism pass); the snapshot copy is listed by digest only',
   },
   'autoresearch/README.md': {
-    disposition: 're-homed', owner: 'fm-zxj',
-    reason: 'research stage 1 rewrote the guide for this repository (the lease guide is ops/lease/README.md); the snapshot copy is listed by digest only',
+    disposition: 're-homed',
+    owner: 'fm-zxj',
+    reason:
+      'research stage 1 rewrote the guide for this repository (the lease guide is ops/lease/README.md); the snapshot copy is listed by digest only',
   },
   'autoresearch/program.md': {
-    disposition: 're-homed', owner: 'fm-zxj',
-    reason: 'research stage 1 rewrote the protocol for this repository; the snapshot copy is listed by digest only',
+    disposition: 're-homed',
+    owner: 'fm-zxj',
+    reason:
+      'research stage 1 rewrote the protocol for this repository; the snapshot copy is listed by digest only',
   },
   'autoresearch/records.md': {
-    disposition: 're-homed', owner: 'fm-zxj',
-    reason: 'research stage 1 rewrote the record standards for this repository; the snapshot copy is listed by digest only',
+    disposition: 're-homed',
+    owner: 'fm-zxj',
+    reason:
+      'research stage 1 rewrote the record standards for this repository; the snapshot copy is listed by digest only',
   },
 };
 
@@ -41,19 +53,35 @@ export const OVERRIDES = {
 // The research ledger grows after the import; its snapshot bytes must stay its prefix.
 export const APPEND_ONLY = ['autoresearch/results.tsv'];
 
-const git = (repo, args) => execFileSync('git', ['--no-optional-locks', '-C', repo, ...args], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
+const git = (repo, args) =>
+  execFileSync('git', ['--no-optional-locks', '-C', repo, ...args], {
+    encoding: 'utf8',
+    maxBuffer: 64 * 1024 * 1024,
+  });
 
 // Classic files outside the tree that name a tree path, with the referenced paths and those that do not
 // exist at the snapshot (neither a file nor a directory prefix of one).
 export function consumers(repo, commit, files) {
   let out = '';
   try {
-    out = git(repo, ['grep', '-I', '-o', '-z', '-E', 'autoresearch/[A-Za-z0-9_./-]*[A-Za-z0-9_/-]', commit, '--', '.', ':!autoresearch']);
+    out = git(repo, [
+      'grep',
+      '-I',
+      '-o',
+      '-z',
+      '-E',
+      'autoresearch/[A-Za-z0-9_./-]*[A-Za-z0-9_/-]',
+      commit,
+      '--',
+      '.',
+      ':!autoresearch',
+    ]);
   } catch (e) {
     if (e.status !== 1) throw e; // 1: no matches
   }
   const paths = files.map((f) => f.path);
-  const exists = (ref) => paths.includes(ref) || paths.some((p) => p.startsWith(ref.endsWith('/') ? ref : `${ref}/`));
+  const exists = (ref) =>
+    paths.includes(ref) || paths.some((p) => p.startsWith(ref.endsWith('/') ? ref : `${ref}/`));
   const byFile = new Map();
   for (const rec of out.split('\n').filter(Boolean)) {
     // <commit>:<path>\0<match>
@@ -62,16 +90,21 @@ export function consumers(repo, commit, files) {
     if (!byFile.has(path)) byFile.set(path, new Set());
     byFile.get(path).add(ref.replace(/\.$/, ''));
   }
-  return [...byFile].sort(([a], [b]) => a.localeCompare(b)).map(([path, refs]) => {
-    const references = [...refs].sort();
-    return { path, references, missingAtSnapshot: references.filter((r) => !exists(r)) };
-  });
+  return [...byFile]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([path, refs]) => {
+      const references = [...refs].sort();
+      return { path, references, missingAtSnapshot: references.filter((r) => !exists(r)) };
+    });
 }
 
 // Classic's working-copy autoresearch/ files that differ from HEAD or are untracked (read only).
 export function uncommitted(repo) {
-  return git(repo, ['status', '--porcelain', '-z', '--untracked-files=all', '--', 'autoresearch/']).split('\0').filter(Boolean)
-    .map((l) => l.slice(3)).filter((p) => existsSync(join(repo, p)))
+  return git(repo, ['status', '--porcelain', '-z', '--untracked-files=all', '--', 'autoresearch/'])
+    .split('\0')
+    .filter(Boolean)
+    .map((l) => l.slice(3))
+    .filter((p) => existsSync(join(repo, p)))
     .map((path) => ({ path, bytes: readFileSync(join(repo, path)) }));
 }
 
@@ -81,10 +114,22 @@ export function census(classic, commit) {
   const head = git(classic, ['rev-parse', 'HEAD']).trim();
   const tree = git(classic, ['rev-parse', `${full}:autoresearch`]).trim();
   const snapshot = {
-    ...SNAPSHOT, commit: full, tree,
-    sameTreeAt: { commit: head, identical: git(classic, ['rev-parse', `${head}:autoresearch`]).trim() === tree },
+    ...SNAPSHOT,
+    commit: full,
+    tree,
+    sameTreeAt: {
+      commit: head,
+      identical: git(classic, ['rev-parse', `${head}:autoresearch`]).trim() === tree,
+    },
   };
-  return buildDigestList({ snapshot, files, overrides: OVERRIDES, uncommitted: uncommitted(classic), consumers: consumers(classic, full, files), appendOnly: APPEND_ONLY });
+  return buildDigestList({
+    snapshot,
+    files,
+    overrides: OVERRIDES,
+    uncommitted: uncommitted(classic),
+    consumers: consumers(classic, full, files),
+    appendOnly: APPEND_ONLY,
+  });
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
@@ -97,11 +142,27 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     writeFileSync(DIGEST_LIST, `${JSON.stringify(list, null, 1)}\n`);
     const counts = {};
     for (const f of list.files) counts[f.disposition] = (counts[f.disposition] ?? 0) + 1;
-    console.log(JSON.stringify({ event: 'census', ...list.census, dispositions: counts, exclusions: list.exclusions.length, consumers: list.consumers.length, frozenDirectories: list.frozenDirectories }));
+    console.log(
+      JSON.stringify({
+        event: 'census',
+        ...list.census,
+        dispositions: counts,
+        exclusions: list.exclusions.length,
+        consumers: list.consumers.length,
+        frozenDirectories: list.frozenDirectories,
+      }),
+    );
   } else if (cmd === 'import') {
     const list = JSON.parse(readFileSync(DIGEST_LIST, 'utf8'));
     const r = importFiles(list, { repo: classic, commit: list.snapshot.commit, root: ROOT });
-    console.log(JSON.stringify({ event: 'import', written: r.written.length, present: r.present, conflicts: r.conflicts }));
+    console.log(
+      JSON.stringify({
+        event: 'import',
+        written: r.written.length,
+        present: r.present,
+        conflicts: r.conflicts,
+      }),
+    );
     process.exitCode = r.conflicts.length ? 1 : 0;
   } else {
     console.error('usage: import.mjs census|import [--classic=<path>] [--commit=<sha>]');

@@ -4,7 +4,14 @@ name: parity-harness
 on:
   push:
     branches: [main]
-    paths: ['scripts/verify/**', 'apps/web/test/harness/**', 'apps/web/test/goldens/**', 'apps/web/test/parity/rows.ts', '.github/workflows/parity-harness.yml']
+    paths:
+      [
+        'scripts/verify/**',
+        'apps/web/test/harness/**',
+        'apps/web/test/goldens/**',
+        'apps/web/test/parity/rows.ts',
+        '.github/workflows/parity-harness.yml',
+      ]
   workflow_dispatch:
 concurrency:
   group: parity-harness
