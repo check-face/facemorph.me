@@ -23,6 +23,10 @@ jobs:
           node-version: '24'
       - run: npm ci --no-audit --no-fund # one lock for the workspace, at the root (fm-fy2.4)
         working-directory: .
+      - run: npm run format:check # the workspace gates come before any build (fm-fy2.4)
+        working-directory: .
+      - run: npm run lint
+        working-directory: .
       - run: npm run typecheck
       - run: npm test
       - run: npm run build

@@ -1,0 +1,42 @@
+name: scaffold
+# fm-fy2.4: the workspace's read-only gates on every push to main, ahead of building anything. format:check
+# (oxfmt), lint (oxlint --deny-warnings) and typecheck (every workspace), then the scaffold and interop checks,
+# the declaration builds, the tests and a pack of each package. seeded-gates.mjs proves each gate fails on a planted
+# violation and the clean tree passes, and `git diff --exit-code` proves the gates wrote nothing.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+concurrency:
+  group: scaffold
+  cancel-in-progress: false
+jobs:
+  gates:
+    runs-on: [self-hosted, triton]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm ci --no-audit --no-fund
+      - run: node scripts/build/check-scaffold.mjs
+      - name: Every TypeScript-API tool resolves the one root TypeScript (the caret range at latest)
+        run: |
+          versions=$(npm ls typescript --all --parseable | xargs -I{} node -p "require('{}/package.json').version" | sort -u)
+          echo "typescript: $versions"
+          test "$versions" = "$(node -p "require('typescript/package.json').version")"
+      - run: node scripts/build/interop-check.mjs --base HEAD~1
+      - run: npm run format:check
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run build
+      - run: node scripts/build/check-tests-listed.mjs
+      - run: npm test
+      - name: Every package packs
+        run: for w in packages/stylegan-js packages/browser-model-manager packages/cloudflare-model-host packages/model-conv; do npm pack -w "$w" --dry-run >/dev/null || exit 1; done
+      - run: node scripts/build/seeded-gates.mjs
+      - run: node scripts/build/format-stable.mjs
+      - name: The gates wrote nothing
+        run: git diff --exit-code
