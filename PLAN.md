@@ -3421,20 +3421,25 @@ and always leaves the devices in their resting state. It can serve an exact cand
 origin to all four cells. The phone's Frigate camera role is paused during sessions, or held off entirely on request
 (`lab.py camera off|on`).
 
-**Deploy gates for next.facemorph.me.**
-- Any new version may deploy to next.facemorph.me automatically, but only after the end-to-end journeys pass on all
-  four cells against that exact build, in addition to the existing qualification and compiled-UI checks. Classic's
-  deploy job enforces this by calling the reusable `device-lab` workflow with the artifact it is about to ship.
-- The **first** deploy of the new monorepo app to next.facemorph.me also needs every flow in this plan passing:
-  [integrated verification](#integrated-verification)'s app flows and platform checks, and the
-  [strictly-not-worse gate](#strictly-not-worse-than-the-candidate-operator-24-october-2026), unless the operator says
-  otherwise. Later monorepo deploys need the four-cell journeys plus whatever the release summary marks as changed.
-- After each deploy, the same four cells run again against the live next.facemorph.me (`device-lab-live`). It
-  cannot block a deploy that already happened, but a failure passes beads back and is reported.
+**Releases to next.facemorph.me (operator, 24 October 2026, revised the same day).** The new app does not deploy to
+next.facemorph.me for a while. Work is validated locally as beads land; the release happens once the full set of
+release beads is ready.
+- **The release is a bead.** It becomes ready when the rest of the release's beads are done. Whichever agent picks
+  it up wears the release-manager hat (the swarm stays fungible): it runs the full local validation and then
+  deploys. Full validation means every flow in this plan ([integrated verification](#integrated-verification) and
+  the [strictly-not-worse gate](#strictly-not-worse-than-the-candidate-operator-24-october-2026)), the four device-lab
+  cells and the hosted lanes, unless the operator says otherwise.
+- **Best effort, never blocking.** A real test failure stops the release and passes the affected beads back to
+  their implementers. An unavailable device or runner (eris off or logged out, the phone unplugged, a runner offline)
+  never blocks anything: the run waits in the queue and goes when the device is back, or the cell is recorded as
+  untested in the release summary. Nothing here ever stops an agent from picking up the next ready bead.
+- **After each deploy,** the same cells run against the live site, and a failure passes beads back. The operator's
+  qualified device round follows the first new deploy.
+- The device lab is not wired into classic's candidate deploy job. It is available on demand for candidate builds
+  (`lab.py qualify --run <id>`).
 - The self-hosted cells are in addition to hosted CI, not instead of it. Hosted lanes add the iOS Simulator and the
   Android emulator (every push today), macOS (WebKit, Firefox and Chrome) and Windows (Chrome and Edge). Today's
-  desktop matrix runs only on dispatch and has no Windows lane. In the monorepo pipeline, all of these lanes are part
-  of the next.facemorph.me gate.
+  desktop matrix runs only on dispatch and has no Windows lane. All of them are part of the release validation.
 - Promotion to facemorph.me and API retirement remain the operator's cutover decision.
 
 **On demand, scheduled through beads.** There is no timed run. Any agent whose bead needs device evidence runs the
@@ -5173,7 +5178,7 @@ history retains their provenance.
 | 16 Oct | D1: direct TS port, no .NET here; dependencies on latest stable; frozen classic self-host guarantee; D4–D7 settled |
 | 17 Oct | No port checkpoint or fallback; reports carry no deletion promise; automated update lane; package scope settled; WebGL removed |
 | 18 Oct | Candidate edits are ordinary work; tracker rewritten from the plan; classic ends as distribution plus history, wound down automatically; old-wording reports deleted once mined |
-| 24 Oct | Device lab gates every next.facemorph.me deploy (eris and phone, WebGPU and CPU); the first monorepo deploy also needs all plan flows; local-first development with CI closing beads; newest-only CI; use every machine's compute; P30 Pro WebGPU optimisation without Samsung regression; qualified device round after the first new deploy |
+| 24 Oct | Device lab is best effort and on demand, never blocking deploys or new work; the new app deploys to next.facemorph.me only when the full release bead set is ready, after full local validation by whichever agent takes the release bead; local-first development with CI closing beads; newest-only CI; use every machine's compute; P30 Pro WebGPU optimisation without Samsung regression; qualified device round after the first new deploy |
 | 24 Oct | Only the live cutover pushes need the operator; package publication and planner proposals go ahead; no fixed count caps (only real resource limits, degrading nicely); strictly-not-worse gate against the candidate, iPhone included; changeover statistics in Grafana |
 | 24 Oct | Weighted multi-face blend as an advanced view on the new engine (button and `#blend` deep link, established export paths); beads are shippable slices (about 100–140); receipts only where an irreversible action or the cutover decision reads them |
 | 24 Oct | Beads are the execution and scope authority and this plan is frozen reference; no fakes in tests (no mocks, stubs, doubles, fake clocks or recorded responses: pure logic takes plain values, everything with I/O runs against real dependencies, provider-neutral where possible, such as an S3-compatible store); swarm coordination through Agent Mail and NTM, with GLM panes best effort |

@@ -86,18 +86,21 @@ The original plan and supplied crop screenshots are locked local references link
 from `PLAN.md`. Preserve their bytes and follow the original crop design plus explicit
 operator revisions.
 
-Device lab and deploys (24 October 2026): `tools/device-lab/` runs the end-to-end journeys on eris
-(WebGPU, CPU) and the USB P30 Pro (WebGPU via debug flags, CPU). Run it on demand when your bead needs
-device evidence (no schedule; `lab.py qualify --run <id>` tests a candidate build before it deploys).
-The phone's Frigate camera stays held off until the operator asks for it back. Deploys to next.facemorph.me are
-automatic only after all four cells pass on that exact build; the first monorepo deploy there also
-needs every plan flow. Build, test and validate locally as you go (eris, triton, the phone via the
-lab). Closure loop (`fm-fy2` step 8): test locally in the Linux browsers on eris (system Chromium
-with and without WebGPU; Playwright Chromium, Firefox, WebKit) and on the phone when relevant; a
-bead closes on its merge commit's green CI across the supported browser matrix (`browser-matrix.json`:
+Device lab and releases (24 October 2026): `tools/device-lab/` runs the end-to-end journeys on eris
+(WebGPU, CPU) and the USB P30 Pro (WebGPU via debug flags, CPU), on demand when a bead needs device
+evidence (`lab.py qualify --run <id>` for a candidate build). It is best effort: an unavailable
+device or runner never blocks anything; runs queue, and missing cells are recorded as untested. A real
+failure passes beads back. The new app deploys to next.facemorph.me only when the full release bead set
+is ready: the agent taking the release bead validates everything locally, then deploys. Nothing here
+ever stops new work being picked up. Build, test and validate locally as you go (eris, triton, the
+phone via the lab). Closure loop (`fm-fy2` step 8): test locally in the Linux browsers on eris (system
+Chromium with and without WebGPU; Playwright Chromium, Firefox, WebKit) and on the phone when relevant;
+a bead closes on its merge commit's green CI across the supported browser matrix (`browser-matrix.json`:
 Ubuntu Chrome/Chromium/Firefox/WebKit, macOS WebKit/Firefox, Android emulator, iOS Simulator, GPU
-lane), never on the author's word. User-visible or speed-affecting beads also get `lab-pending`;
-the release manager verifies those in batches on `main` with the four lab cells and reopens any
-that fail, so the single phone gates deploys, not the bead graph. CI is newest-only (concurrency groups, `cancel-in-progress: false`).
+lane), never on the author's word. CI closes beads; it does not gate starting the next. User-visible
+or speed-affecting beads also get `lab-pending`; the release manager verifies those in batches on
+`main` with the lab cells available and reopens any that fail, so the single phone never blocks the
+bead graph. CI is newest-only (concurrency groups, `cancel-in-progress: false`).
 Prefer the self-hosted runners (eris `device-lab`, triton on the `tank` pool) over hosted minutes.
+The phone's Frigate camera stays held off until the operator asks for it back.
 

@@ -1,8 +1,8 @@
 # Device lab
 
 The same end-to-end journeys on four cells, with no human in the loop. Agents run it on demand whenever their work
-needs it, including on candidate builds before anything reaches next.facemorph.me. It also gates every deploy there
-(PLAN.md "Device lab, deploy gates and CI policy"). There is no schedule.
+needs it, including on candidate builds before anything reaches next.facemorph.me. It is best effort: an unavailable
+device never blocks a deploy or new work (PLAN.md "Device lab, deploy gates and CI policy"). There is no schedule.
 
 | Cell | Device | Route it must take |
 | --- | --- | --- |
@@ -57,8 +57,8 @@ job summary.
 ## CI
 
 - `.github/workflows/device-lab.yml` runs on the self-hosted runner `eris-device-lab` (label `device-lab`): on
-  demand (dispatch, with an optional candidate artifact) and as the reusable deploy gate that classic's
-  `next-site.yml` calls with the artifact it is about to ship. It has no `pull_request` trigger, so fork code never reaches eris.
+  demand (dispatch, with an optional candidate artifact) and as a reusable workflow for release validation and
+  post-deploy checks. It is not a hard gate on classic's candidate deploys. It has no `pull_request` trigger, so fork code never reaches eris.
 - The runners are systemd user services on eris: `gh-runner-facemorph` and `gh-runner-facemorph-classic` in
   `~/gh-runners/`. They have the desktop display in their environment, for headed Chromium.
 - Concurrency: one `device-lab` run at a time, newest waiting run next; the lab's own lock also waits up to

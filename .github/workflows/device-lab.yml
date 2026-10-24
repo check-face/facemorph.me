@@ -4,9 +4,8 @@ name: device-lab
 # USB-connected Huawei P30 Pro). Runs on the self-hosted runner `eris-device-lab` only.
 #
 # - On demand: agents (or the operator) dispatch it when a run is useful; no schedule.
-# - Deploy gate: classic's next-site.yml calls this with the exact candidate artifact; its deploy
-#   job needs this to pass on all four cells (operator rule, 24 October 2026).
-# - After deploy: classic calls it again against the live site (url mode) to confirm what shipped.
+# - Best effort: release validation and post-deploy checks may call it (workflow_call); it never gates
+#   a deploy or new work on device availability (operator, 24 October 2026).
 # Triggers are push-free on purpose: no pull_request, so fork code never reaches eris.
 on:
   workflow_dispatch:
