@@ -42,6 +42,9 @@ test('manifest: header and rows round trip; a later row for an id replaces the e
   assert.equal(m.header.resultSet, SET.digest);
   assert.equal(m.rows.size, 2);
   assert.equal(m.rows.get('a').fileSha256, H('fa'));
+  const cut = parseManifest(text + rowLine(good('c')).slice(0, 30));
+  assert.equal(cut.rows.size, 2);
+  assert.throws(() => parseManifest(headerLine(SET) + '{"kind":"ro\n' + rowLine(good('a'))));
 });
 
 test('resume plan: only rows with this result set, passing checks and an intact file are reused', () => {

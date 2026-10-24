@@ -42,8 +42,12 @@ export const resultPath = (set, id) => `results/${set}/${id}.webp`;
 
 // manifest.jsonl: one header line, then one line per completed row (a later line for an id replaces an
 // earlier one, so a regenerated row simply appends).
+// A run killed mid-append can leave a truncated last line: it is dropped (its row is simply redone).
 export function parseManifest(text) {
-  const lines = text.split('\n').filter(Boolean).map((l) => JSON.parse(l));
+  const raw = text.split('\n').filter(Boolean);
+  const lines = raw.flatMap((l, i) => {
+    try { return [JSON.parse(l)]; } catch (e) { if (i === raw.length - 1) return []; throw e; }
+  });
   const header = lines.find((l) => l.kind === 'header') ?? null;
   const rows = new Map();
   for (const l of lines) if (l.kind === 'row') rows.set(l.id, l);
