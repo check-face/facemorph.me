@@ -10,10 +10,18 @@
 // One JSON line per command and per mirror path, then a summary; exit 1 on any failure.
 import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
+import { delimiter } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+// cf is a root devDependency: npm ci provides it whatever the runner's PATH holds.
+const PATH = `${fileURLToPath(new URL('../../node_modules/.bin', import.meta.url))}${delimiter}${process.env.PATH}`;
 const run = (cmd, args, timeout = 60_000) => {
-  const r = spawnSync(cmd, args, { encoding: 'utf8', timeout, maxBuffer: 1 << 26 });
+  const r = spawnSync(cmd, args, {
+    encoding: 'utf8',
+    timeout,
+    maxBuffer: 1 << 26,
+    env: { ...process.env, PATH },
+  });
   return {
     status: r.status ?? 1,
     stdout: r.stdout ?? '',
