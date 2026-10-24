@@ -46,6 +46,7 @@ jobs:
           path: |
             packages/model-conv/out/*/manifest.json
             packages/model-conv/out/*/verify.json
+            packages/model-conv/out/*/canaries.json
           if-no-files-found: warn
           retention-days: 90
       - name: Acceptance (real checkpoint, real container)
