@@ -282,7 +282,8 @@ def journey_download(dev, ctx, url, cut, interrupt, stall_s, cap_s, out, name):
     if host:
         host.start()
     dev.tap(f'{TOAST} button', index)
-    rec = {'offer': offer, 'plannedMb': round(planned), 'usableS': round(t0 - t_load, 1), 'timeline': []}
+    build = dev.js("[...document.scripts].map(s=>s.src).find(s=>/\\/app\\.[0-9a-f]+\\.js$/.test(s))||null")
+    rec = {'offer': offer, 'plannedMb': round(planned), 'usableS': round(t0 - t_load, 1), 'build': build, 'timeline': []}
     probe = f"document.querySelector({TOAST!r})?.innerText.replace(/\\s+/g,' ').trim()||''"
     last, last_change, cut_at, terminal = None, t0, None, None
     while terminal is None:
