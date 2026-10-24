@@ -31,7 +31,8 @@ interface PwRequest {
   url(): string;
   method(): string;
   headers(): Record<string, string>;
-  serviceWorker?(): unknown;
+  serviceWorker?(): { url(): string } | null;
+  frame?(): { url(): string } | null;
   failure(): { errorText: string } | null;
   sizes(): Promise<{ responseBodySize: number }>;
 }
@@ -94,7 +95,20 @@ export function attachPlaywright(target: PwTarget, map: HostMap = DEFAULT_HOST_M
         ? 'worker'
         : 'page';
 
+  // A browser extension's own traffic (its resources, and what its pages or workers fetch) is not the page's:
+  // eris's browsers carry a policy-installed password manager. Such requests are left out of the record.
+  const fromExtension = (r: PwRequest): boolean => {
+    const ext = (u: string | undefined) => Boolean(u?.startsWith('chrome-extension:'));
+    if (ext(r.url())) return true;
+    if (ext(r.serviceWorker?.()?.url())) return true;
+    try {
+      return ext(r.frame?.()?.url());
+    } catch {
+      return false; // a service-worker request has no frame
+    }
+  };
   target.on('request', (r) => {
+    if (fromExtension(r)) return;
     open.set(
       r,
       addRequest(rec, map, { url: r.url(), method: r.method(), initiator: initiator(r) }),

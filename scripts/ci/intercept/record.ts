@@ -9,7 +9,16 @@
 // window naming a step that was never recorded has no data, and a claim on it fails, never passing by absence.
 // Each primitive returns a verdict and logs one JSON line.
 
-export type HostClass = 'app' | 'model-host' | 'names-host' | 'collector' | 'third-party' | 'local';
+// 'analytics' is never in the default map: a lane that serves the product on its production origin declares the one
+// operator-approved analytics URL itself (see scripts/ci/site/real-ui-cpu.mjs).
+export type HostClass =
+  | 'app'
+  | 'model-host'
+  | 'names-host'
+  | 'collector'
+  | 'analytics'
+  | 'third-party'
+  | 'local';
 export type Initiator = 'page' | 'worker' | 'service-worker' | 'unknown';
 
 export interface HostRule {

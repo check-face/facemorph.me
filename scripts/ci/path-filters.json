@@ -63,6 +63,25 @@
       "workflow": ".github/workflows/delivery-dry-run.yml",
       "shared": ["scripts/**"],
       "extra": []
+    },
+    "next-site": {
+      "workflow": ".github/workflows/next-site.yml",
+      "shared": [
+        "apps/web/**",
+        "packages/**",
+        "scripts/**",
+        "hosting/**",
+        "services/**",
+        "tests/**",
+        "package.json",
+        "package-lock.json",
+        "tsconfig*.json",
+        ".oxlintrc.json",
+        ".oxfmtrc.json",
+        ".nvmrc",
+        ".github/actions/**"
+      ],
+      "extra": [".github/workflows/next-e2e.yml"]
     }
   }
 }
