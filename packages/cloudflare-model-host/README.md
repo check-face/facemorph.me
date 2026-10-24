@@ -2,8 +2,9 @@
 
 Stages, verifies and publishes verified model bytes for static hosting on Cloudflare (bead fm-3osh). It was
 extracted from classic `hosting/next/prepare-runtime.py` (chunking and manifest rewriting) and
-`src/Next/browser/stage-assets.py` (content-addressed staging). Application policy stays in the app's `hosting/`:
-phone admission, promotion, the photo sub-bundle, frontend staging, serving headers and the mirror Worker.
+`src/Next/browser/stage-assets.py` (content-addressed staging), and the mirror Worker from classic
+`hosting/next-mirror/` (fm-fy2.14, provenance in `mirror/provenance.json`). Application policy stays in the app's
+`hosting/`: phone admission, promotion, the photo sub-bundle, frontend staging, and the deploy values it serves with.
 
 ## What it does
 
@@ -26,7 +27,19 @@ phone admission, promotion, the photo sub-bundle, frontend staging, serving head
   product is refused unless the target also names it in `"paidServiceApproved"`. An existing destination file that
   differs is refused, never overwritten.
 
-Exit codes are 0 for ok, 1 for a refusal or findings, and 2 for a usage error. Each command prints one JSON report.
+- **Mirror Worker:** `src/mirror/worker.ts`, a second origin for the immutable runtime files, held in R2. A file it
+  does not hold is copied from the configured upstream on first request, only under the configured prefixes, and
+  served with CORS, `Cross-Origin-Resource-Policy: cross-origin` and immutable caching. Configuration: `UPSTREAM`
+  (the origin copied from), `PREFIXES` (comma-separated immutable prefixes), the `MIRROR` R2 binding and an optional
+  `SITE` service binding to the upstream Worker. Nothing about FaceMorph is built in. Its tests run in workerd
+  (`npm run test:workerd`, which needs glibc 2.32 or newer).
+- **Warm:** `facemorph-model-host warm --root <dir> --origin <mirror url> --prefixes <list> [--publish]`. HEAD on every
+  immutable path of a staged root, 8 at a time, each retried up to 3 times on a network error or 408/429/5xx. Any
+  final non-200 fails the run, naming the path; the report gives the held count. A mirror copies a file on HEAD, so
+  without `--publish` nothing is requested.
+
+Exit codes are 0 for ok, 1 for a refusal, findings or failures, and 2 for a usage error. Each command prints one JSON
+report.
 
 ## Cloudflare limits and cost
 
@@ -48,6 +61,33 @@ repository's `import/licences.json`. One row must cover the manifest's `modelSou
 `redistribution` is not `"permitted"`, the target must acknowledge the row by id (`"terms": {"record": ...,
 "acknowledged": "<row id>"}`). For the qualified runtime, row `nvidia-stylegan2-ffhq-config-f-derived` is
 `unresolved` today, so publishing it needs that explicit acknowledgement.
+
+## Retention policy (fm-fy2.14)
+
+An open tab keeps the one manifest it loaded for as long as it runs, so a new release must not take away the
+immutable files an older release still names. Retention is by reference, never by age alone:
+
+- **Retained manifests.** The live release's manifest, every declared rollback target's manifest (the delivery
+  runbook's rollback targets), and every manifest published within the **retention window** before the live one.
+  The window is a deploy parameter; the default is **30 days and at least the 2 previous releases**, whichever
+  covers more. An operator decision replaces the default; until one is recorded, the default is the policy.
+- **Retained files.** Every immutable path (content-addressed asset, chunk and manifest under the mirrored
+  prefixes) that any retained manifest names. Mutable paths (the unversioned manifest pointer, pages) are never
+  retained; they always point at the live release.
+- **Primary host (Workers Static Assets).** A deployment serves only the files uploaded with it, so each release's
+  staged root carries forward every retained file as well as its own. Staging adds them before the app that uses
+  them is published: files first, app second.
+- **Mirror (R2).** The mirror holds every retained file. Before a rollback is claimed, the rollback target's paths
+  are confirmed held there (`facemorph-model-host warm --publish` against the mirror, or the delivery dry run's
+  read-only listing).
+- **Garbage collection.** Only a file no retained manifest names may be deleted, and only from the mirror bucket
+  (the primary host drops it by not carrying it forward). Nothing is collected without listing the retained
+  manifests and the deletions first; the same `--publish` rule as every other write applies.
+- **Never user data.** Retention and model-cache eviction act only on model-cache keys and hosted model files.
+  Completed user exports and application recovery records are outside both, always.
+- **Cost.** Static assets have no storage charge, and a retained set costs only files per version: one qualified
+  set is 301 files of the 20,000 Workers Free allows. On the mirror, one set is 2.77 GB, so three retained sets fit
+  R2's free 10 GB-month; beyond that it is $0.015 per GB-month (figures as in the table above).
 
 Publishing the real runtime is the delivery step, and this package's tests do not run it. The directory target is
 tested with real writes. The `cf deploy` path is untested here.
