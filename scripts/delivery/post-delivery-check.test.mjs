@@ -17,9 +17,11 @@ import {
   judgeRedirect,
   judgeRetiredProbe,
   judgeStats,
+  judgeThirdParty,
   pageCheck,
   parseArgs,
   parseIdentity,
+  PLATFORM_BEACON,
   redirectCheck,
   retiredCheck,
   statsProbe,
@@ -56,6 +58,34 @@ before(async () => {
   origin = `http://127.0.0.1:${server.address().port}`;
 });
 after(() => server?.close());
+
+test('third-party: one platform beacon is its own part; any other request or a second beacon fails', () => {
+  const beacon = `${PLATFORM_BEACON}/vce701823e78c4301a35b7e07294d87301792088814092`;
+  const byPart = (parts) => Object.fromEntries(parts.map((p) => [p.part, p.verdict]));
+  assert.deepEqual(byPart(judgeThirdParty([])), {
+    'third-party': 'pass',
+    'platform-beacon': 'not_applicable',
+  });
+  assert.deepEqual(byPart(judgeThirdParty([beacon])), {
+    'third-party': 'pass',
+    'platform-beacon': 'pass',
+  });
+  assert.deepEqual(byPart(judgeThirdParty([beacon, 'https://www.googletagmanager.com/gtag/js'])), {
+    'third-party': 'fail',
+    'platform-beacon': 'pass',
+  });
+  assert.deepEqual(byPart(judgeThirdParty([beacon, `${PLATFORM_BEACON}/v2`])), {
+    'third-party': 'pass',
+    'platform-beacon': 'fail',
+  });
+  // Lookalikes are ordinary third-party requests: another path or host on the beacon's origin.
+  for (const u of [
+    'https://static.cloudflareinsights.com/other.js',
+    'https://static.cloudflareinsights.com/beacon.min.jsx',
+    'https://cloudflareinsights.example.com/beacon.min.js',
+  ])
+    assert.equal(byPart(judgeThirdParty([u]))['third-party'], 'fail', u);
+});
 
 test('identity: a wrong digest fails, a missing file fails, no expectation is not_applicable', () => {
   assert.equal(

@@ -2,7 +2,8 @@
 // Post-delivery check (fm-tayo, domain.actions.check): run after every delivery action (scripts/delivery/runbook.json
 // names each invocation). Read-only apart from one test diagnostics report.
 //
-//   --mode app        HTTP 200 with no console error and no third-party request (interception helper); the served
+//   --mode app        HTTP 200 with no console error and no third-party request (interception helper) beyond at
+//                     most one Cloudflare zone analytics beacon, its own part (PLATFORM_BEACON); the served
 //                     artifact is the expected one (every deploy-next/ file listed by the identity file fetched from
 //                     the host and re-digested, equal to --expect-digest); the runtime manifest parses; one model
 //                     chunk verifies against its pin from the host and from models.facemorph.me; the names catalogue
@@ -120,6 +121,42 @@ export function judgeChunk({ pin, site, mirror }) {
   return bad.length
     ? part('model-chunk', 'fail', `chunk ${pin}: ${bad.join('; ')}`)
     : part('model-chunk', 'pass', `chunk ${pin} verified from the host and the mirror`);
+}
+
+/** Cloudflare's zone Web Analytics beacon, injected into served HTML at the edge, outside the built artifact
+ * (classic docs/analytics.md, 'Platform operations'). PLAN.md's runtime privacy boundaries keep this narrowly
+ * approved platform beacon as its own policy, separate from the no-third-party gate; whether the zone stops
+ * injecting it on next.facemorph.me is the operator's open choice. */
+export const PLATFORM_BEACON = 'https://static.cloudflareinsights.com/beacon.min.js';
+
+/** Third-party requests of a page load: at most one platform beacon script is reported as its own part; any other
+ * third-party request, or a second beacon, fails. */
+export function judgeThirdParty(urls) {
+  const beacons = urls.filter((u) => u === PLATFORM_BEACON || u.startsWith(`${PLATFORM_BEACON}/`));
+  const others = urls.filter((u) => !beacons.includes(u));
+  const parts = [
+    others.length
+      ? part(
+          'third-party',
+          'fail',
+          `${others.length} third-party request(s): ${others.slice(0, 5).join(', ')}`,
+        )
+      : part('third-party', 'pass', 'no third-party request besides the platform beacon'),
+  ];
+  if (beacons.length > 1)
+    parts.push(
+      part('platform-beacon', 'fail', `${beacons.length} platform beacons: ${beacons.join(', ')}`),
+    );
+  else if (beacons.length === 1)
+    parts.push(
+      part(
+        'platform-beacon',
+        'pass',
+        `Cloudflare zone Web Analytics beacon injected at the edge, outside the artifact: ${beacons[0]}`,
+      ),
+    );
+  else parts.push(part('platform-beacon', 'not_applicable', 'no platform beacon loaded'));
+  return parts;
 }
 
 /** A retired host's probe: no answer at all, or an error status without an API body. Any 2xx or 3xx fails. */
@@ -269,7 +306,7 @@ async function appMode({ host, expectDigest, identity: identityPath }, out) {
   const parts = [];
   const { chromium } = createRequire(join(REPO, 'apps/web/package.json'))('playwright');
   const { attachPlaywright, DEFAULT_HOST_MAP } = await import('../ci/intercept/playwright.ts');
-  const { assertNoRequests, bindOrigins, step } = await import('../ci/intercept/record.ts');
+  const { bindOrigins, step } = await import('../ci/intercept/record.ts');
   const browser = await chromium.launch();
   try {
     const context = await browser.newContext();
@@ -292,8 +329,11 @@ async function appMode({ host, expectDigest, identity: identityPath }, out) {
         ? part('console', 'fail', errors.slice(0, 3).join(' | '))
         : part('console', 'pass', 'no console error'),
     );
-    const third = assertNoRequests(net.rec, 'third-party', { fromStep: 'load' }, () => {});
-    parts.push(part('third-party', third.verdict === 'pass' ? 'pass' : 'fail', third.reason));
+    parts.push(
+      ...judgeThirdParty(
+        net.rec.requests.filter((r) => r.hostClass === 'third-party').map((r) => r.url),
+      ),
+    );
     if (parts.some((p) => p.verdict === 'fail')) {
       await page.screenshot({ path: `${out}-failure.png`, fullPage: true }).catch(() => {});
       await context.tracing.stop({ path: `${out}-trace.zip` });
