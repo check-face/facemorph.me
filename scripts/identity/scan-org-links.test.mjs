@@ -58,7 +58,8 @@ test('classification: third-party owners are external; ours need a rule; first m
 function gitRepo(dir, files, origin) {
   mkdirSync(dir, { recursive: true });
   const git = (...a) => execFileSync('git', ['-C', dir, ...a], { stdio: 'pipe' });
-  git('init', '-q', '-b', 'main');
+  git('init', '-q');
+  git('symbolic-ref', 'HEAD', 'refs/heads/main'); // `init -b` needs Git 2.28; the CI runner's Git is older
   git('config', 'user.email', 'fixture@example.invalid');
   git('config', 'user.name', 'fixture');
   for (const [path, text] of Object.entries(files)) {
