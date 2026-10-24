@@ -132,35 +132,52 @@ async function journey(early: boolean, logDir: string) {
 }
 
 const logDir = process.env['INTERCEPT_LOG_DIR'] ?? mkdtempSync(join(tmpdir(), 'intercept-log-'));
+// A host where Playwright's Chromium cannot start (triton's Ubuntu 20.04) reports these cases untested; ci-shared
+// runs them on eris.
+const NO_BROWSER = await chromium.launch({ executablePath: process.env['CHROMIUM_PATH'] }).then(
+  (b) => b.close().then(() => false),
+  (e: Error) => `untested: Chromium does not start here (${e.message.split('\n')[0]})`,
+);
 
-test('Playwright helper on the fixture page: attribution, failures, console and the approved model', async () => {
-  const { rec, verdicts } = await journey(false, logDir);
-  const at = (path: string) => rec.requests.filter((r) => new URL(r.url).pathname === path);
-  assert.equal(at('/worker-data.json')[0]?.initiator, 'worker');
-  assert.equal(at('/sw-asset.json')[0]?.initiator, 'service-worker');
-  assert.equal(at('/app.json')[0]?.initiator, 'page');
-  assert.equal(at('/cached.json').length, 2);
-  assert.deepEqual([at('/missing.json')[0]?.status, at('/missing.json')[0]?.failed], [404, false]);
-  const unreachable = at('/unreachable.json')[0];
-  assert.equal(unreachable?.failed, true);
-  assert.match(unreachable?.errorText ?? '', /ERR_CONNECTION_REFUSED/);
-  assert.ok(rec.console.some((c) => c.text === 'fixture console error' && c.source === 'page'));
-  const model = rec.requests.filter((r) => r.hostClass === 'model-host');
-  assert.deepEqual(
-    model.map((r) => [rec.steps[r.step]?.name, r.status, r.bytes]),
-    [['approve', 200, 4096]],
-  );
-  assert.deepEqual(
-    verdicts.map((v) => v.verdict),
-    ['pass', 'pass', 'pass', 'untested', 'fail'], // fromCache is unobservable; 'consent' has no data
-  );
-  assert.ok(existsSync(join(logDir, 'playwright-approved.jsonl')));
-});
+test(
+  'Playwright helper on the fixture page: attribution, failures, console and the approved model',
+  { skip: NO_BROWSER },
+  async () => {
+    const { rec, verdicts } = await journey(false, logDir);
+    const at = (path: string) => rec.requests.filter((r) => new URL(r.url).pathname === path);
+    assert.equal(at('/worker-data.json')[0]?.initiator, 'worker');
+    assert.equal(at('/sw-asset.json')[0]?.initiator, 'service-worker');
+    assert.equal(at('/app.json')[0]?.initiator, 'page');
+    assert.equal(at('/cached.json').length, 2);
+    assert.deepEqual(
+      [at('/missing.json')[0]?.status, at('/missing.json')[0]?.failed],
+      [404, false],
+    );
+    const unreachable = at('/unreachable.json')[0];
+    assert.equal(unreachable?.failed, true);
+    assert.match(unreachable?.errorText ?? '', /ERR_CONNECTION_REFUSED/);
+    assert.ok(rec.console.some((c) => c.text === 'fixture console error' && c.source === 'page'));
+    const model = rec.requests.filter((r) => r.hostClass === 'model-host');
+    assert.deepEqual(
+      model.map((r) => [rec.steps[r.step]?.name, r.status, r.bytes]),
+      [['approve', 200, 4096]],
+    );
+    assert.deepEqual(
+      verdicts.map((v) => v.verdict),
+      ['pass', 'pass', 'pass', 'untested', 'fail'], // fromCache is unobservable; 'consent' has no data
+    );
+    assert.ok(existsSync(join(logDir, 'playwright-approved.jsonl')));
+  },
+);
 
-test('Playwright helper: the model requested before approval fails, and the failure keeps a screenshot', async () => {
-  const { verdicts, shot } = await journey(true, logDir);
-  assert.equal(verdicts[0]?.verdict, 'fail');
-  assert.equal(verdicts[0]?.count, 1);
-  assert.equal(verdicts[1]?.verdict, 'fail');
-  assert.ok(shot && existsSync(shot));
-});
+test(
+  'Playwright helper: the model requested before approval fails, and the failure keeps a screenshot',
+  { skip: NO_BROWSER },
+  async () => {
+    const { verdicts, shot } = await journey(true, logDir);
+    assert.equal(verdicts[0]?.verdict, 'fail');
+    assert.equal(verdicts[0]?.count, 1);
+    assert.equal(verdicts[1]?.verdict, 'fail');
+    assert.ok(shot && existsSync(shot));
+  },
+);
