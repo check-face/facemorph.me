@@ -30,14 +30,14 @@ jobs:
       - run: node --test tools/decode-measure/fixtures.test.mjs
       - name: Measure under the device lease
         run: >
-          classic/autoresearch/run.py --lane browser-cpu --device triton --timeout 1800 --wait 300 --
+          python3 autoresearch/run.py --lane browser-cpu --device triton --timeout 1800 --wait 300 --
           mise x uv@0.12.21 -- uv run --with playwright python
           tools/decode-measure/measure.py --browser "${{ inputs.browser }}"
       - uses: actions/upload-artifact@v4
         with:
           name: decode-measurements-${{ inputs.browser }}
           path: |
-            tools/decode-measure/measurements/
-            tools/decode-measure/measurements/artifacts/
+            packages/stylegan-js/src/contracts/decode-measurements/
+            packages/stylegan-js/src/contracts/decode-measurements/artifacts/
           if-no-files-found: error
           retention-days: 90

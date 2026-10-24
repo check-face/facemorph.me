@@ -20,7 +20,8 @@ python3 autoresearch/run.py --lane <browser-cpu|browser-gpu|native-cpu|native-gp
 - Busy: exit 75 at once, or with `--wait <s>` wait up to that bound and then exit 75.
 - `--device` is the machine doing the work, or a device attached to it (eris's phone is `p30pro`); a lease for
   another machine is refused.
-- A nested lease is refused: the command runs with `FACEMORPH_LEASE_HELD` and `FACEMORPH_LEASE_DIR` set, and
+- The command runs with `FACEMORPH_LEASE_RUN` (its run id), `FACEMORPH_LEASE_HELD` and `FACEMORPH_LEASE_DIR` set.
+- A nested lease is refused: those variables mark the leased process tree, and
   holder records are matched against the process's ancestry, so an environment-clearing wrapper is caught too.
 - On timeout (default 600 s; exit 124), SIGTERM or SIGHUP, the command's own process group gets SIGTERM, then
   SIGKILL after 5 s. Workers left behind by a command that exited are ended the same way.

@@ -1,5 +1,5 @@
 {
- "measured_at": "2026-10-24T09:31:04+00:00",
+ "measured_at": "2026-10-24T11:11:20+00:00",
  "max_compressed_actual_bytes": 65613080,
  "machine": "eris",
  "browser": "chromium",
@@ -10,7 +10,7 @@
   "src/Next/photo/image-header.mjs": "98bb97323c6732e21b40394c5c5144949b6a28a58ee09ac8c7aad52ad05fa4da",
   "src/Next/media.mjs": "2f0e09e25ec40db2caef02b15f6e10eda35b9112304a41ddaeec1bc83b69c40a"
  },
- "lease_run_id": "20261024T092950Z-c436e6d5",
+ "lease_run_id": "20261024T111010Z-69b94ff3",
  "limits": {
   "CROP_MAX_BYTES": 67108864,
   "CROP_MAX_PIXELS": 125829120,
@@ -23,8 +23,8 @@
    "representation": "compressed",
    "peak_bytes": 5979430,
    "ok": true,
-   "ms": 117,
-   "heap_delta_bytes": 3744
+   "ms": 83,
+   "heap_delta_bytes": 3756
   },
   {
    "route": "imagebitmap-full",
@@ -32,8 +32,8 @@
    "representation": "decoded",
    "peak_bytes": 48771072,
    "ok": true,
-   "ms": 117,
-   "heap_delta_bytes": 3744
+   "ms": 83,
+   "heap_delta_bytes": 3756
   },
   {
    "route": "preview-decode",
@@ -41,7 +41,7 @@
    "representation": "compressed",
    "peak_bytes": 5979430,
    "ok": true,
-   "ms": 145,
+   "ms": 83,
    "heap_delta_bytes": 5998438
   },
   {
@@ -50,7 +50,7 @@
    "representation": "decoded",
    "peak_bytes": 48771072,
    "ok": true,
-   "ms": 145,
+   "ms": 83,
    "heap_delta_bytes": 5998438
   },
   {
@@ -59,8 +59,8 @@
    "representation": "compressed",
    "peak_bytes": 5979430,
    "ok": true,
-   "ms": 683,
-   "heap_delta_bytes": 5481520
+   "ms": 495,
+   "heap_delta_bytes": 5481532
   },
   {
    "route": "preview-display",
@@ -68,8 +68,8 @@
    "representation": "decoded",
    "peak_bytes": 48771072,
    "ok": true,
-   "ms": 683,
-   "heap_delta_bytes": 5481520
+   "ms": 495,
+   "heap_delta_bytes": 5481532
   },
   {
    "route": "preview-display",
@@ -77,8 +77,8 @@
    "representation": "reencoded",
    "peak_bytes": 35262879,
    "ok": true,
-   "ms": 683,
-   "heap_delta_bytes": 5481520
+   "ms": 495,
+   "heap_delta_bytes": 5481532
   },
   {
    "route": "crop-decode",
@@ -86,8 +86,8 @@
    "representation": "compressed",
    "peak_bytes": 5979430,
    "ok": true,
-   "ms": 1091,
-   "heap_delta_bytes": -2861885
+   "ms": 653,
+   "heap_delta_bytes": 3124797
   },
   {
    "route": "crop-decode",
@@ -95,8 +95,8 @@
    "representation": "cropped",
    "peak_bytes": 3095307,
    "ok": true,
-   "ms": 1091,
-   "heap_delta_bytes": -2861885
+   "ms": 653,
+   "heap_delta_bytes": 3124797
   },
   {
    "route": "crop-decode",
@@ -104,8 +104,8 @@
    "representation": "cropped_canvas",
    "peak_bytes": 4194304,
    "ok": true,
-   "ms": 1091,
-   "heap_delta_bytes": -2861885
+   "ms": 653,
+   "heap_delta_bytes": 3124797
   },
   {
    "route": "frame-decode-512",
@@ -113,8 +113,8 @@
    "representation": "compressed",
    "peak_bytes": 5979430,
    "ok": true,
-   "ms": 130,
-   "heap_delta_bytes": 1065688
+   "ms": 83,
+   "heap_delta_bytes": 1065548
   },
   {
    "route": "frame-decode-512",
@@ -122,8 +122,8 @@
    "representation": "decoded",
    "peak_bytes": 1048576,
    "ok": true,
-   "ms": 130,
-   "heap_delta_bytes": 1065688
+   "ms": 83,
+   "heap_delta_bytes": 1065548
   },
   {
    "route": "frame-decode-1024",
@@ -131,8 +131,8 @@
    "representation": "compressed",
    "peak_bytes": 5979430,
    "ok": true,
-   "ms": 115,
-   "heap_delta_bytes": 4261640
+   "ms": 91,
+   "heap_delta_bytes": -10811655
   },
   {
    "route": "frame-decode-1024",
@@ -140,8 +140,8 @@
    "representation": "decoded",
    "peak_bytes": 4194304,
    "ok": true,
-   "ms": 115,
-   "heap_delta_bytes": 4261640
+   "ms": 91,
+   "heap_delta_bytes": -10811655
   },
   {
    "route": "imagebitmap-full",
@@ -149,7 +149,7 @@
    "representation": "compressed",
    "peak_bytes": 65613080,
    "ok": true,
-   "ms": 932,
+   "ms": 910,
    "heap_delta_bytes": -503283572
   },
   {
@@ -158,7 +158,7 @@
    "representation": "decoded",
    "peak_bytes": 503284356,
    "ok": true,
-   "ms": 932,
+   "ms": 910,
    "heap_delta_bytes": -503283572
   },
   {
@@ -167,7 +167,7 @@
    "representation": "compressed",
    "peak_bytes": 65613080,
    "ok": true,
-   "ms": 5451,
+   "ms": 1336,
    "heap_delta_bytes": 65615916
   },
   {
@@ -176,7 +176,7 @@
    "representation": "decoded",
    "peak_bytes": 67108864,
    "ok": true,
-   "ms": 5451,
+   "ms": 1336,
    "heap_delta_bytes": 65615916
   },
   {
@@ -185,8 +185,8 @@
    "representation": "compressed",
    "peak_bytes": 65613080,
    "ok": true,
-   "ms": 2639,
-   "heap_delta_bytes": 328
+   "ms": 2207,
+   "heap_delta_bytes": 352
   },
   {
    "route": "preview-display",
@@ -194,8 +194,8 @@
    "representation": "decoded",
    "peak_bytes": 67108864,
    "ok": true,
-   "ms": 2639,
-   "heap_delta_bytes": 328
+   "ms": 2207,
+   "heap_delta_bytes": 352
   },
   {
    "route": "preview-display",
@@ -203,8 +203,8 @@
    "representation": "reencoded",
    "peak_bytes": 44504300,
    "ok": true,
-   "ms": 2639,
-   "heap_delta_bytes": 328
+   "ms": 2207,
+   "heap_delta_bytes": 352
   },
   {
    "route": "crop-decode",
@@ -212,8 +212,8 @@
    "representation": "compressed",
    "peak_bytes": 65613080,
    "ok": true,
-   "ms": 3746,
-   "heap_delta_bytes": 2319474
+   "ms": 3263,
+   "heap_delta_bytes": 2319402
   },
   {
    "route": "crop-decode",
@@ -221,8 +221,8 @@
    "representation": "cropped",
    "peak_bytes": 2313506,
    "ok": true,
-   "ms": 3746,
-   "heap_delta_bytes": 2319474
+   "ms": 3263,
+   "heap_delta_bytes": 2319402
   },
   {
    "route": "crop-decode",
@@ -230,8 +230,8 @@
    "representation": "cropped_canvas",
    "peak_bytes": 4194304,
    "ok": true,
-   "ms": 3746,
-   "heap_delta_bytes": 2319474
+   "ms": 3263,
+   "heap_delta_bytes": 2319402
   },
   {
    "route": "frame-decode-512",
@@ -239,8 +239,8 @@
    "representation": "compressed",
    "peak_bytes": 65613080,
    "ok": true,
-   "ms": 854,
-   "heap_delta_bytes": 1050936
+   "ms": 917,
+   "heap_delta_bytes": 1051008
   },
   {
    "route": "frame-decode-512",
@@ -248,8 +248,8 @@
    "representation": "decoded",
    "peak_bytes": 1048576,
    "ok": true,
-   "ms": 854,
-   "heap_delta_bytes": 1050936
+   "ms": 917,
+   "heap_delta_bytes": 1051008
   },
   {
    "route": "imagebitmap-full",
@@ -257,8 +257,8 @@
    "representation": "compressed",
    "peak_bytes": 750192,
    "ok": true,
-   "ms": 187,
-   "heap_delta_bytes": -67913585
+   "ms": 297,
+   "heap_delta_bytes": -67913545
   },
   {
    "route": "imagebitmap-full",
@@ -266,8 +266,8 @@
    "representation": "decoded",
    "peak_bytes": 503284356,
    "ok": true,
-   "ms": 187,
-   "heap_delta_bytes": -67913585
+   "ms": 297,
+   "heap_delta_bytes": -67913545
   },
   {
    "route": "preview-decode",
@@ -275,8 +275,8 @@
    "representation": "compressed",
    "peak_bytes": 750192,
    "ok": true,
-   "ms": 927,
-   "heap_delta_bytes": -318849
+   "ms": 565,
+   "heap_delta_bytes": -318913
   },
   {
    "route": "preview-decode",
@@ -284,8 +284,8 @@
    "representation": "decoded",
    "peak_bytes": 67108864,
    "ok": true,
-   "ms": 927,
-   "heap_delta_bytes": -318849
+   "ms": 565,
+   "heap_delta_bytes": -318913
   },
   {
    "route": "preview-display",
@@ -293,7 +293,7 @@
    "representation": "compressed",
    "peak_bytes": 750192,
    "ok": true,
-   "ms": 1831,
+   "ms": 615,
    "heap_delta_bytes": -36
   },
   {
@@ -302,7 +302,7 @@
    "representation": "decoded",
    "peak_bytes": 67108864,
    "ok": true,
-   "ms": 1831,
+   "ms": 615,
    "heap_delta_bytes": -36
   },
   {
@@ -311,7 +311,7 @@
    "representation": "reencoded",
    "peak_bytes": 868195,
    "ok": true,
-   "ms": 1831,
+   "ms": 615,
    "heap_delta_bytes": -36
   },
   {
@@ -320,7 +320,7 @@
    "representation": "compressed",
    "peak_bytes": 750192,
    "ok": true,
-   "ms": 962,
+   "ms": 1228,
    "heap_delta_bytes": 168982
   },
   {
@@ -329,7 +329,7 @@
    "representation": "cropped",
    "peak_bytes": 147418,
    "ok": true,
-   "ms": 962,
+   "ms": 1228,
    "heap_delta_bytes": 168982
   },
   {
@@ -338,7 +338,7 @@
    "representation": "cropped_canvas",
    "peak_bytes": 4194304,
    "ok": true,
-   "ms": 962,
+   "ms": 1228,
    "heap_delta_bytes": 168982
   },
   {
@@ -347,7 +347,7 @@
    "representation": "compressed",
    "peak_bytes": 750192,
    "ok": true,
-   "ms": 196,
+   "ms": 241,
    "heap_delta_bytes": 1050900
   },
   {
@@ -356,7 +356,7 @@
    "representation": "decoded",
    "peak_bytes": 1048576,
    "ok": true,
-   "ms": 196,
+   "ms": 241,
    "heap_delta_bytes": 1050900
   },
   {
@@ -365,8 +365,8 @@
    "representation": "compressed",
    "peak_bytes": 35497140,
    "ok": true,
-   "ms": 375,
-   "heap_delta_bytes": -884952
+   "ms": 445,
+   "heap_delta_bytes": -885016
   },
   {
    "route": "imagebitmap-full",
@@ -374,8 +374,8 @@
    "representation": "decoded",
    "peak_bytes": 503200000,
    "ok": true,
-   "ms": 375,
-   "heap_delta_bytes": -884952
+   "ms": 445,
+   "heap_delta_bytes": -885016
   },
   {
    "route": "preview-decode",
@@ -383,8 +383,8 @@
    "representation": "compressed",
    "peak_bytes": 35497140,
    "ok": true,
-   "ms": 578,
-   "heap_delta_bytes": 34427504
+   "ms": 1997,
+   "heap_delta_bytes": 34427568
   },
   {
    "route": "preview-decode",
@@ -392,8 +392,8 @@
    "representation": "decoded",
    "peak_bytes": 21102592,
    "ok": true,
-   "ms": 578,
-   "heap_delta_bytes": 34427504
+   "ms": 1997,
+   "heap_delta_bytes": 34427568
   },
   {
    "route": "crop-decode",
@@ -401,7 +401,7 @@
    "representation": "compressed",
    "peak_bytes": 35497140,
    "ok": true,
-   "ms": 991,
+   "ms": 1033,
    "heap_delta_bytes": 369306
   },
   {
@@ -410,7 +410,7 @@
    "representation": "cropped",
    "peak_bytes": 363606,
    "ok": true,
-   "ms": 991,
+   "ms": 1033,
    "heap_delta_bytes": 369306
   },
   {
@@ -419,7 +419,7 @@
    "representation": "cropped_canvas",
    "peak_bytes": 4194304,
    "ok": true,
-   "ms": 991,
+   "ms": 1033,
    "heap_delta_bytes": 369306
   },
   {
@@ -428,7 +428,7 @@
    "representation": "compressed",
    "peak_bytes": 35497140,
    "ok": true,
-   "ms": 392,
+   "ms": 401,
    "heap_delta_bytes": 1057032
   },
   {
@@ -437,7 +437,7 @@
    "representation": "decoded",
    "peak_bytes": 1048576,
    "ok": true,
-   "ms": 392,
+   "ms": 401,
    "heap_delta_bytes": 1057032
   }
  ],

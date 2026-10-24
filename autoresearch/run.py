@@ -74,7 +74,7 @@ def execute(command, args, state, run_id, host):
     metadata = folder / 'run.json'
     metadata.write_text(json.dumps(record, indent=2) + '\n')
     # The command and its tools see the lease they run inside (the lab honours it).
-    env = dict(os.environ, **{lease.HELD_ENV: args.device, lease.STATE_DIR_ENV: str(state)})
+    env = dict(os.environ, **{lease.HELD_ENV: args.device, lease.STATE_DIR_ENV: str(state), lease.RUN_ENV: run_id})
     start = time.monotonic()
     child, code = None, 1
     try:

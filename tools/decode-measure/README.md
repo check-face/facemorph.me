@@ -8,14 +8,15 @@ these rows to set numeric ceilings; a route with no row is not admitted.
 
 ## One command (from a clean checkout)
 
-Heavy steps run under the shared device lease (classic `autoresearch/run.py`):
+Heavy steps run under the machine's device lease ([ops/lease](../../ops/lease/README.md)), from the
+repository root (the candidate code is read from the sibling classic checkout, `--classic`):
 
 ```sh
-cd ../facemorph.me-classic/autoresearch && python3 run.py --lane browser-cpu \
-  --device eris --timeout 1800 --wait 120 -- \
-  mise x uv@0.12.21 -- uv run --with playwright python \
-  "$PWD/../../facemorph.me/tools/decode-measure/measure.py" --browser chromium
+python3 autoresearch/run.py --lane browser-cpu --device eris --timeout 1800 --wait 120 -- \
+  mise x uv@0.12.21 -- uv run --with playwright python tools/decode-measure/measure.py --browser chromium
 ```
+
+The lease run id is recorded from `FACEMORPH_LEASE_RUN`, which `run.py` sets for its command.
 
 Repeat with `--browser firefox` and `--browser webkit` (the Linux CI matrix browsers).
 The fixtures must exist first: `mise x uv@0.12.21 -- uv run --with playwright python
@@ -46,12 +47,13 @@ metadata-free by construction, re-checked by `fixtures.test.mjs`.
 
 ## Output and status
 
-`measurements/<machine>-<browser>.json` - raw rows + machine, browser version, classic
+[`packages/stylegan-js/src/contracts/decode-measurements/<machine>-<browser>.json`](../../packages/stylegan-js/src/contracts/decode-measurements/),
+beside the frozen limits constants (`crop-policy.ts`) that the milestone-2 ceilings row reads - raw rows + machine, browser version, classic
 commit, module sha256 digests, lease run id, and an explicit `not_measured` list: the
 Android emulator, iOS Simulator and physical-phone lanes are not available on eris, so
 those cells are **not measured and therefore not admitted** until a lane measures them.
 Failed route steps are recorded as failed rows and screenshotted under
-`measurements/artifacts/`.
+`decode-measurements/artifacts/` (kept as CI artifacts, not committed).
 
 Measured so far (eris, 2026-10-24, classic `a42829b`): Chromium, Firefox, WebKit - all
 routes x all fixtures, 0 failed steps. Headline: the bounded preview decode peaks at

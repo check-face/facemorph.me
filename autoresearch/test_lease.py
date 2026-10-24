@@ -144,11 +144,11 @@ class Machine(unittest.TestCase):
 
 class Runner(Machine):
     def test_runs_and_journals_like_classic(self):
-        r = self.run_py('--', sys.executable, '-c', 'import os; print(os.environ["FACEMORPH_LEASE_HELD"], os.environ["FACEMORPH_LEASE_DIR"])')
+        r = self.run_py('--', sys.executable, '-c', 'import os; print(os.environ["FACEMORPH_LEASE_HELD"], os.environ["FACEMORPH_LEASE_DIR"], os.environ["FACEMORPH_LEASE_RUN"])')
         self.assertEqual(r.returncode, 0, r.stderr)
         out = json.loads(r.stdout)
         self.assertEqual(out['status'], 'completed')
-        self.assertEqual((Path(out['run']) / 'output.log').read_text().split(), [HOST, str(self.state)])
+        self.assertEqual((Path(out['run']) / 'output.log').read_text().split(), [HOST, str(self.state), Path(out['run']).name])
         [record] = self.journal()
         self.assertEqual((record['status'], record['exit_code'], record['device'], record['host']), ('completed', 0, HOST, HOST))
         self.assertEqual(record['qualification'], 'not_evaluated')

@@ -187,7 +187,7 @@ def main() -> int:
     parser.add_argument("--browser", choices=["chromium", "firefox", "webkit"], default="chromium")
     parser.add_argument("--fixtures", default=str(ROOT / "tools/decode-measure"))
     parser.add_argument("--classic", default=str(ROOT.parent / "facemorph.me-classic"))
-    parser.add_argument("--out", default=str(ROOT / "tools/decode-measure/measurements"))
+    parser.add_argument("--out", default=str(ROOT / "packages/stylegan-js/src/contracts/decode-measurements"))
     parser.add_argument("--lease-state", default=str(Path(args_classic_default()) / "autoresearch/state"))
     args = parser.parse_args()
     classic = Path(args.classic)
@@ -195,7 +195,8 @@ def main() -> int:
     out.mkdir(parents=True, exist_ok=True)
     manifest = json.loads((Path(args.fixtures) / "fixtures.json").read_text())
     limits = manifest["limits"]
-    run_id = lease_run_id(Path(args.lease_state)) or "no-lease-record"
+    # autoresearch/run.py names the run; older classic runners are found by their run folders.
+    run_id = os.environ.get("FACEMORPH_LEASE_RUN") or lease_run_id(Path(args.lease_state)) or "no-lease-record"
 
     with tempfile.TemporaryDirectory() as temp:
         served = Path(temp)

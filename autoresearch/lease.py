@@ -23,6 +23,7 @@ DEVICE_NAME = re.compile(r'[a-zA-Z0-9_-]+')
 STATE_DIR_ENV = 'FACEMORPH_LEASE_DIR'
 CONFIG_ENV = 'FACEMORPH_LEASE_CONFIG'
 HELD_ENV = 'FACEMORPH_LEASE_HELD'  # set for a leased command: the device(s) its process tree holds
+RUN_ENV = 'FACEMORPH_LEASE_RUN'  # set for a leased command: its run id (the folder under the lease directory)
 # /etc serves a machine shared by several accounts; a machine whose agents and runners all run as
 # one account may use that account's file instead.
 CONFIG_FILES = (Path('/etc/facemorph/lease.json'), Path.home() / '.config' / 'facemorph' / 'lease.json')
