@@ -21,30 +21,89 @@ import type {
   SynthesisResult,
 } from '../src/index.ts';
 
-type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends (<T>() => T extends B ? 1 : 2) ? true : false;
+type Equal<A, B> =
+  (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2 ? true : false;
 const is = <T extends true>(): T => true as T;
 
 /** Every citable engine value export. A missing or renamed one fails here (and in tsc). */
 const VALUES = [
-  'CROP_MAX_BYTES', 'CROP_MAX_PIXELS', 'CROP_MAX_EDGE', 'CROP_OUTPUT', 'PREVIEW_MAX_EDGE', 'SINGLE_INPUT_LIMITS',
-  'CROP_PREPROCESSING_POLICY_V1', 'CONFIRMED_CROP_FIELDS', 'CROP_POLICY_PROPERTIES', 'createConfirmedCrop',
-  'validateConfirmedCrop', 'confirmedCropIdentity', 'deriveEncoderInput', 'CropDerivationError', 'CropValidationError',
-  'PRODUCT_CANARY_TOLERANCE', 'E4E_LATENT_TOLERANCE', 'EXPORT_QUALITY_RULES', 'checkSynthesis', 'checkE4eLatent',
-  'parseRecoveryMetadata', 'MAX_MORPH_FRAMES', 'MORPH_PATH_MODES', 'MEDIA_BRANCHES', 'RAW_SEGMENT_FRAMES', 'acceptsResult',
-  'validateWorkerRequest', 'validateWorkerResponse', 'assertCloneSafe', 'WorkerMessageError',
+  'CROP_MAX_BYTES',
+  'CROP_MAX_PIXELS',
+  'CROP_MAX_EDGE',
+  'CROP_OUTPUT',
+  'PREVIEW_MAX_EDGE',
+  'SINGLE_INPUT_LIMITS',
+  'CROP_PREPROCESSING_POLICY_V1',
+  'CONFIRMED_CROP_FIELDS',
+  'CROP_POLICY_PROPERTIES',
+  'createConfirmedCrop',
+  'validateConfirmedCrop',
+  'confirmedCropIdentity',
+  'deriveEncoderInput',
+  'CropDerivationError',
+  'CropValidationError',
+  'PRODUCT_CANARY_TOLERANCE',
+  'E4E_LATENT_TOLERANCE',
+  'EXPORT_QUALITY_RULES',
+  'checkSynthesis',
+  'checkE4eLatent',
+  'parseRecoveryMetadata',
+  'MAX_MORPH_FRAMES',
+  'MORPH_PATH_MODES',
+  'MEDIA_BRANCHES',
+  'RAW_SEGMENT_FRAMES',
+  'acceptsResult',
+  'validateWorkerRequest',
+  'validateWorkerResponse',
+  'assertCloneSafe',
+  'WorkerMessageError',
 ] as const satisfies readonly (keyof typeof api)[];
 
 /** Every citable engine type export; tsc fails on a missing or renamed one. */
 export type CitableTypes = [
-  api.ModelIdentity, api.LatentSchema, api.ImageSchema, api.LoadedModelCapability, api.LoadedEncoderCapability,
-  api.ProviderState, api.UnsupportedCapability, api.ResidencyTransition, api.MemoryBoundName, api.CancellationSignal,
-  api.StageTimingEvent, api.StageCompletionBoundary, api.E4eTimings, api.StageTimingHook,
-  api.OperationIds, api.MappingRequest, api.MappingResult, api.SynthesisRequest, api.SynthesisResult,
-  api.EncodeRequest, api.EncodeResult, api.ExtractMetadataRequest, api.ExtractMetadataResult, api.RawImageEncodeRequest,
-  api.RecoveryMetadata, api.RenderMorphRequest, api.RenderMorphResult, api.MorphSettings, api.MorphPathMode,
-  api.ResultMilestone, api.OperationSettlement<unknown>, api.ResultReadiness, api.EngineOperations, api.MediaBranch,
-  api.EngineWorkerRequest, api.EngineWorkerResponse, api.RecoveryReadResult, api.RecoveryMetadataV1,
-  api.ConfirmedCrop, api.CropPreprocessingPolicyV1, api.EncoderInput, api.NumericalCheckResult, api.ExportQualityRule,
+  api.ModelIdentity,
+  api.LatentSchema,
+  api.ImageSchema,
+  api.LoadedModelCapability,
+  api.LoadedEncoderCapability,
+  api.ProviderState,
+  api.UnsupportedCapability,
+  api.ResidencyTransition,
+  api.MemoryBoundName,
+  api.CancellationSignal,
+  api.StageTimingEvent,
+  api.StageCompletionBoundary,
+  api.E4eTimings,
+  api.StageTimingHook,
+  api.OperationIds,
+  api.MappingRequest,
+  api.MappingResult,
+  api.SynthesisRequest,
+  api.SynthesisResult,
+  api.EncodeRequest,
+  api.EncodeResult,
+  api.ExtractMetadataRequest,
+  api.ExtractMetadataResult,
+  api.RawImageEncodeRequest,
+  api.RecoveryMetadata,
+  api.RenderMorphRequest,
+  api.RenderMorphResult,
+  api.MorphSettings,
+  api.MorphPathMode,
+  api.ResultMilestone,
+  api.OperationSettlement<unknown>,
+  api.ResultReadiness,
+  api.EngineOperations,
+  api.MediaBranch,
+  api.EngineWorkerRequest,
+  api.EngineWorkerResponse,
+  api.RecoveryReadResult,
+  api.RecoveryMetadataV1,
+  api.ConfirmedCrop,
+  api.CropPreprocessingPolicyV1,
+  api.EncoderInput,
+  api.NumericalCheckResult,
+  api.ExportQualityRule,
 ];
 
 test('every citable value is exported from the package entry point', () => {
@@ -57,46 +116,75 @@ const never = (x: never): never => {
 };
 export function requestKind(m: EngineWorkerRequest): string {
   switch (m.type) {
-    case 'map': case 'synthesize': case 'encode': case 'extract-metadata': case 'encode-raw-image': case 'render-morph':
+    case 'map':
+    case 'synthesize':
+    case 'encode':
+    case 'extract-metadata':
+    case 'encode-raw-image':
+    case 'render-morph':
       return m.request.ids.requestId;
-    case 'raw-frame-ack': return String(m.index);
-    case 'status': case 'cancel': case 'dispose': return m.id;
-    default: return never(m);
+    case 'raw-frame-ack':
+      return String(m.index);
+    case 'status':
+    case 'cancel':
+    case 'dispose':
+      return m.id;
+    default:
+      return never(m);
   }
 }
 export function responseKind(m: EngineWorkerResponse): string {
   switch (m.type) {
-    case 'progress': return m.stage;
-    case 'stage-timing': return m.event.stage;
-    case 'frame': return String(m.index);
-    case 'settled': return m.settlement.status;
-    case 'status': return m.provider.actual;
-    default: return never(m);
+    case 'progress':
+      return m.stage;
+    case 'stage-timing':
+      return m.event.stage;
+    case 'frame':
+      return String(m.index);
+    case 'settled':
+      return m.settlement.status;
+    case 'status':
+      return m.provider.actual;
+    default:
+      return never(m);
   }
 }
 export function settlementKind<R>(s: OperationSettlement<R>): string {
   switch (s.status) {
-    case 'completed': return String(s.result);
-    case 'cancelled': return s.ids.requestId;
-    case 'superseded': return s.by.requestId;
-    case 'failed': return s.error.code;
-    default: return never(s);
+    case 'completed':
+      return String(s.result);
+    case 'cancelled':
+      return s.ids.requestId;
+    case 'superseded':
+      return s.by.requestId;
+    case 'failed':
+      return s.error.code;
+    default:
+      return never(s);
   }
 }
 export function recoveryKind(r: RecoveryReadResult): string {
   switch (r.kind) {
-    case 'missing': return 'missing';
-    case 'damaged': return r.reason;
-    case 'incompatible-schema': return String(r.schemaVersion);
-    case 'parsed': return r.metadata.mime;
-    default: return never(r);
+    case 'missing':
+      return 'missing';
+    case 'damaged':
+      return r.reason;
+    case 'incompatible-schema':
+      return String(r.schemaVersion);
+    case 'parsed':
+      return r.metadata.mime;
+    default:
+      return never(r);
   }
 }
 export function milestoneKind(m: ResultMilestone): boolean | 'not-applicable' {
   switch (m.milestone) {
-    case 'compute-ready': return m.readiness.pixelsAvailable;
-    case 'file-complete': return m.readiness.fileReady;
-    default: return never(m);
+    case 'compute-ready':
+      return m.readiness.pixelsAvailable;
+    case 'file-complete':
+      return m.readiness.fileReady;
+    default:
+      return never(m);
   }
 }
 
@@ -110,8 +198,9 @@ export const noBy: OperationSettlement<number> = { status: 'superseded', ids };
 export const noMetadata: RecoveryReadResult = { kind: 'parsed' };
 // @ts-expect-error damaged results give a known reason
 export const badReason: RecoveryReadResult = { kind: 'damaged', reason: 'cosmic-rays', detail: '' };
+const twelveFrames = { kind: 'linear', width: 1, pinch: false, frames: 12, fps: 24 } as const;
 // @ts-expect-error morph settings take only the candidate frame counts
-export const badFrames: api.MorphSettings = { kind: 'linear', width: 1, pinch: false, frames: 12, fps: 24 };
+export const badFrames: api.MorphSettings = twelveFrames;
 // @ts-expect-error WebGL is no longer a compute route
 export const webgl: api.ComputeRoute = 'webgl';
 
@@ -139,7 +228,15 @@ is<Equal<keyof LoadedEncoderCapability, 'encode' | 'abort' | 'dispose'>>();
 export const callback: EngineWorkerRequest = { type: 'status', id: 'x', onDone: () => {} };
 
 // ---- No engine contract reaches a URL, OPFS handle or acquireBytes callback.
-type Forbidden = 'url' | 'urls' | 'manifestUrl' | 'acquireBytes' | 'opfs' | 'directoryHandle' | 'fileHandle' | 'fetch';
+type Forbidden =
+  | 'url'
+  | 'urls'
+  | 'manifestUrl'
+  | 'acquireBytes'
+  | 'opfs'
+  | 'directoryHandle'
+  | 'fileHandle'
+  | 'fetch';
 type DeepKeys<T, Depth extends unknown[] = []> = Depth['length'] extends 6
   ? never
   : T extends ArrayBufferView | ArrayBuffer | string | number | boolean | null | undefined

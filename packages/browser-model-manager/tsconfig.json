@@ -1,4 +1,6 @@
 {
   "extends": "../../tsconfig.dom.json",
+  // Workspace packages resolve to their TS sources through the "source" export condition.
+  "compilerOptions": { "allowImportingTsExtensions": true, "customConditions": ["source"] },
   "include": ["src"]
 }

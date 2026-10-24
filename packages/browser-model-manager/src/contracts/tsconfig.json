@@ -15,6 +15,7 @@
     "erasableSyntaxOnly": true,
     "allowImportingTsExtensions": true,
     "resolveJsonModule": true,
+    "customConditions": ["source"],
     "noEmit": true
   },
   "include": ["."]

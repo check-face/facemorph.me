@@ -1,0 +1,46 @@
+name: contracts-m1
+# Contracts milestone 1 (fm-hwh): both packages' contracts type-checked without DOM/Node globals,
+# the type-level and unit tests, validator fuzzing (manifest here; recovery metadata and worker
+# payloads in stylegan-js's suite, same job), the manifest JSON schema against the candidate's
+# recorded runtime manifest, and an external consumer compiling the packed packages' declarations.
+on:
+  push:
+    branches: [main]
+    paths:
+      [
+        'packages/stylegan-js/**',
+        'packages/browser-model-manager/**',
+        'tests/external-consumer/**',
+        'package.json',
+        'package-lock.json',
+        '.github/workflows/contracts-m1.yml',
+      ]
+  workflow_dispatch:
+concurrency:
+  group: contracts-m1
+  cancel-in-progress: false
+jobs:
+  check:
+    runs-on: [self-hosted, triton]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm ci --no-audit --no-fund
+      - run: npx tsc -p packages/stylegan-js/tsconfig.json && npx tsc -p packages/stylegan-js/tsconfig.test.json
+      - run: npx tsc -p packages/browser-model-manager/src/contracts/tsconfig.test.json
+      - name: Engine contract tests (incl. recovery-metadata and worker-payload fuzz)
+        run: npm test -w packages/stylegan-js
+      - name: Manager contract tests (incl. manifest fuzz)
+        working-directory: packages/browser-model-manager
+        run: node --test test/contracts-*.test.ts
+      - name: Manifest schema against the recorded candidate manifest; a newer major is rejected
+        run: |
+          set -euo pipefail
+          s=packages/browser-model-manager/schema/model-manifest.v1.schema.json
+          f=packages/browser-model-manager/test/fixtures
+          npx --yes ajv-cli@5.0.0 validate --spec=draft2020 -s "$s" -d "$f/candidate-runtime-manifest.json"
+          if npx --yes ajv-cli@5.0.0 validate --spec=draft2020 -s "$s" -d "$f/newer-major-manifest.json"; then echo 'newer major accepted'; exit 1; fi
+      - name: External consumer against the packed declarations
+        run: node tests/external-consumer/run.mjs

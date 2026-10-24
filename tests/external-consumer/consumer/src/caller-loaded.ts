@@ -12,13 +12,21 @@ import {
 
 export function minimalCapability(): LoadedModelCapability {
   return {
-    identity: { modelSha256: 'a'.repeat(64), noiseSha256: 'b'.repeat(64), manifestSha256: 'c'.repeat(64) },
+    identity: {
+      modelSha256: 'a'.repeat(64),
+      noiseSha256: 'b'.repeat(64),
+      manifestSha256: 'c'.repeat(64),
+    },
     latent: { zLength: 4, layers: 2, width: 4 },
     image: { width: 2, height: 2 },
     provider: { requested: 'auto', actual: 'cpu', admission: 'admitted', validation: 'validated' },
     unsupported: [],
     async map(request): Promise<MappingResult> {
-      return { ids: request.ids, wPlus: { space: 'w-plus', shape: [2, 4], values: new Float32Array(8) }, provider: 'cpu' };
+      return {
+        ids: request.ids,
+        wPlus: { space: 'w-plus', shape: [2, 4], values: new Float32Array(8) },
+        provider: 'cpu',
+      };
     },
     async synthesize(request): Promise<SynthesisResult> {
       return {
@@ -27,7 +35,13 @@ export function minimalCapability(): LoadedModelCapability {
         height: 2,
         rgba: new Uint8ClampedArray(16),
         provider: 'cpu',
-        readiness: { pixelsAvailable: true, fileReady: false, persisted: false, displayDecoded: false, videoPlayable: 'not-applicable' },
+        readiness: {
+          pixelsAvailable: true,
+          fileReady: false,
+          persisted: false,
+          displayDecoded: false,
+          videoPlayable: 'not-applicable',
+        },
       };
     },
     async dispose() {},
@@ -37,7 +51,11 @@ export function minimalCapability(): LoadedModelCapability {
 export async function seedToImage(): Promise<number> {
   const model = minimalCapability();
   const ids = { requestId: 'r', inputRevision: 1, attemptId: 0 };
-  const mapped = await model.map({ ids, z: new Float32Array(4), truncation: { psi: 0.7, cutoff: 8 } });
+  const mapped = await model.map({
+    ids,
+    z: new Float32Array(4),
+    truncation: { psi: 0.7, cutoff: 8 },
+  });
   const image = await model.synthesize({ ids, wPlus: mapped.wPlus, output: 'rgba' });
   return image.rgba.length;
 }

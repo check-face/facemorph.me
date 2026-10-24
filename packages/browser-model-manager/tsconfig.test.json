@@ -1,7 +1,5 @@
 {
   "extends": "../../tsconfig.node.json",
-  "compilerOptions": {
-    "allowImportingTsExtensions": true
-  },
+  "compilerOptions": { "allowImportingTsExtensions": true, "customConditions": ["source"] },
   "include": ["test"]
 }

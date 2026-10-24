@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Consented acquisition, verification, storage and eviction of browser model assets. Placeholder until its extraction bead (fm-fy2.4): it builds, emits declarations and packs, and exports nothing else.",
+  "description": "Consented acquisition, verification, storage and eviction of browser model assets. Contracts so far (fm-hwh): lifecycle, leases, grants, budgets and the model manifest schema.",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -11,7 +11,8 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "schema"
   ],
   "engines": {
     "node": ">=24"

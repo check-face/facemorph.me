@@ -1,3 +1,4 @@
-// @facemorph/browser-model-manager: placeholder until its extraction bead. It builds, emits declarations and packs, so the
-// workspace wiring is real from the start; it exports only its own name.
+// @facemorph/browser-model-manager: the manager contracts (fm-hwh); the implementation follows in its
+// extraction bead.
 export const PACKAGE = '@facemorph/browser-model-manager' as const;
+export * from './contracts/index.ts';

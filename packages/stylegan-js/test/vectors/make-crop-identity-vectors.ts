@@ -32,4 +32,7 @@ const vectors = {
   records: variants.map(([changed, record]) => ({ changed, record, confirmedCropId: id(record) })),
   reordered: { record: reordered, confirmedCropId: id(base) },
 };
-writeFileSync(new URL('./confirmed-crop-identity.json', import.meta.url), JSON.stringify(vectors, null, 2) + '\n');
+writeFileSync(
+  new URL('./confirmed-crop-identity.json', import.meta.url),
+  JSON.stringify(vectors, null, 2) + '\n',
+);

@@ -1,8 +1,11 @@
 {
+  // Declarations and JS for packing: workspace dependencies resolve to their built dist/ (no "source" condition).
   "extends": "../../tsconfig.dom.json",
   "compilerOptions": {
     "noEmit": false,
     "declaration": true,
+    "allowImportingTsExtensions": true,
+    "rewriteRelativeImportExtensions": true,
     "rootDir": "src",
     "outDir": "dist"
   },

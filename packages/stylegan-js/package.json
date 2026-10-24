@@ -6,8 +6,9 @@
   "type": "module",
   "exports": {
     ".": {
-      "types": "./src/index.ts",
-      "default": "./src/index.ts"
+      "source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
     }
   },
   "engines": {
@@ -23,7 +24,6 @@
     "typescript": "7.0.2"
   },
   "files": [
-    "src",
     "dist"
   ]
 }

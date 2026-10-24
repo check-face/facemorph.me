@@ -5,7 +5,8 @@ import { test } from 'node:test';
 import { parseRecoveryMetadata, type RecoveryReadResult } from '../src/index.ts';
 import { mulberry32 } from './fuzz.ts';
 
-const fixture = (name: string) => new Uint8Array(readFileSync(new URL(`./vectors/${name}`, import.meta.url)));
+const fixture = (name: string) =>
+  new Uint8Array(readFileSync(new URL(`./vectors/${name}`, import.meta.url)));
 const latent = new Float32Array(fixture('recovery-latent.f32').buffer);
 
 function crc32(bytes: Uint8Array): number {
@@ -39,14 +40,17 @@ function embeddedRecord(): Record<string, unknown> {
 
 const kind = (r: RecoveryReadResult) => (r.kind === 'damaged' ? `damaged:${r.reason}` : r.kind);
 
-test('parsed: the candidate writer\'s PNG and WebP envelopes', () => {
+test("parsed: the candidate writer's PNG and WebP envelopes", () => {
   for (const ext of ['png', 'webp']) {
     const r = parseRecoveryMetadata(fixture(`recovery.${ext}`));
     assert.equal(r.kind, 'parsed', ext);
     if (r.kind !== 'parsed') continue;
     const m = r.metadata;
     assert.equal(m.mime, `image/${ext}`);
-    assert.deepEqual([m.width, m.height, m.schemaVersion, m.generationKind, m.seed], [1024, 1024, 2, 'seed', 42]);
+    assert.deepEqual(
+      [m.width, m.height, m.schemaVersion, m.generationKind, m.seed],
+      [1024, 1024, 2, 'seed', 42],
+    );
     assert.deepEqual(m.latent.shape, [18, 512]);
     assert.deepEqual(m.latent.values, latent);
     assert.equal(m.provenance.modelSha256, '2'.repeat(64));
@@ -56,14 +60,25 @@ test('parsed: the candidate writer\'s PNG and WebP envelopes', () => {
 });
 
 test('missing: images without an envelope, and formats that cannot carry one', () => {
-  for (const bytes of [fixture('plain.png'), fixture('plain.webp'), new Uint8Array(0), new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3])]) {
+  for (const bytes of [
+    fixture('plain.png'),
+    fixture('plain.webp'),
+    new Uint8Array(0),
+    new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3]),
+  ]) {
     assert.deepEqual(parseRecoveryMetadata(bytes), { kind: 'missing' });
   }
 });
 
 test('incompatible-schema: legacy schema 1 and future schemas', () => {
-  assert.deepEqual(parseRecoveryMetadata(pngWith('{"schema":1,"latent":[]}')), { kind: 'incompatible-schema', schemaVersion: 1 });
-  assert.deepEqual(parseRecoveryMetadata(pngWith(JSON.stringify({ ...embeddedRecord(), schema: 3 }))), { kind: 'incompatible-schema', schemaVersion: 3 });
+  assert.deepEqual(parseRecoveryMetadata(pngWith('{"schema":1,"latent":[]}')), {
+    kind: 'incompatible-schema',
+    schemaVersion: 1,
+  });
+  assert.deepEqual(
+    parseRecoveryMetadata(pngWith(JSON.stringify({ ...embeddedRecord(), schema: 3 }))),
+    { kind: 'incompatible-schema', schemaVersion: 3 },
+  );
 });
 
 test('damaged: each failure has its reason', () => {
@@ -82,11 +97,37 @@ test('damaged: each failure has its reason', () => {
     [pngWith('{not json'), 'damaged:unreadable-json'],
     [pngWith('[1,2]'), 'damaged:unreadable-json'],
     [pngWith(JSON.stringify(latentFlip)), 'damaged:integrity'],
-    [pngWith(JSON.stringify({ ...embeddedRecord(), imageSha256: '0'.repeat(64) })), 'damaged:integrity'],
+    [
+      pngWith(JSON.stringify({ ...embeddedRecord(), imageSha256: '0'.repeat(64) })),
+      'damaged:integrity',
+    ],
     [pngWith(JSON.stringify({ ...embeddedRecord(), width: 512 })), 'damaged:dimensions'],
-    [pngWith(JSON.stringify({ ...embeddedRecord(), mime: 'image/webp' })), 'damaged:invalid-fields'],
-    [pngWith(JSON.stringify({ ...embeddedRecord(), latent: { ...(embeddedRecord().latent as object), shape: [18, 256] } })), 'damaged:invalid-fields'],
-    [pngWith(JSON.stringify({ ...embeddedRecord(), provenance: { modelSha256: '2'.repeat(64), noiseSha256: '3'.repeat(64), sourcePhoto: 'x' } })), 'damaged:invalid-fields'],
+    [
+      pngWith(JSON.stringify({ ...embeddedRecord(), mime: 'image/webp' })),
+      'damaged:invalid-fields',
+    ],
+    [
+      pngWith(
+        JSON.stringify({
+          ...embeddedRecord(),
+          latent: { ...(embeddedRecord().latent as object), shape: [18, 256] },
+        }),
+      ),
+      'damaged:invalid-fields',
+    ],
+    [
+      pngWith(
+        JSON.stringify({
+          ...embeddedRecord(),
+          provenance: {
+            modelSha256: '2'.repeat(64),
+            noiseSha256: '3'.repeat(64),
+            sourcePhoto: 'x',
+          },
+        }),
+      ),
+      'damaged:invalid-fields',
+    ],
     [pngWith('{"schema":2,"pad":"' + 'x'.repeat(130 * 1024) + '"}'), 'damaged:metadata-too-large'],
   ];
   for (const [bytes, expected] of cases) assert.equal(kind(parseRecoveryMetadata(bytes)), expected);
@@ -97,7 +138,12 @@ test('the reader takes the latent shape from the record (no hard-coded 18x512)',
   const record = embeddedRecord();
   const values = new Float32Array(4 * 8).map((_, i) => i / 8);
   const raw = Buffer.from(values.buffer);
-  record.latent = { space: 'w-plus', shape: [4, 8], encoding: 'float32-le-base64', data: raw.toString('base64') };
+  record.latent = {
+    space: 'w-plus',
+    shape: [4, 8],
+    encoding: 'float32-le-base64',
+    data: raw.toString('base64'),
+  };
   record.latentSha256 = createHash('sha256').update(raw).digest('hex');
   const r = parseRecoveryMetadata(pngWith(JSON.stringify(record)));
   assert.equal(r.kind, 'parsed');
@@ -115,23 +161,65 @@ test('fuzz (seed 20261024, 3000 cases): every mutation is a typed result, never 
   for (let i = 0; i < cases; i++) {
     const bytes = sources[i % 2]!.slice();
     const op = Math.floor(random() * 3);
-    if (op === 0) for (let k = 0; k < 1 + Math.floor(random() * 8); k++) bytes[Math.floor(random() * bytes.length)]! ^= 1 << Math.floor(random() * 8);
-    const mutated = op === 1 ? bytes.subarray(0, Math.floor(random() * bytes.length)) : op === 2 ? bytes.subarray(Math.floor(random() * 64)) : bytes;
+    if (op === 0)
+      for (let k = 0; k < 1 + Math.floor(random() * 8); k++)
+        bytes[Math.floor(random() * bytes.length)]! ^= 1 << Math.floor(random() * 8);
+    const mutated =
+      op === 1
+        ? bytes.subarray(0, Math.floor(random() * bytes.length))
+        : op === 2
+          ? bytes.subarray(Math.floor(random() * 64))
+          : bytes;
     const result = parseRecoveryMetadata(mutated);
     seen.set(kind(result), (seen.get(kind(result)) ?? 0) + 1);
   }
-  assert.equal([...seen.values()].reduce((a, b) => a + b), cases);
-  for (const k of seen.keys()) assert.match(k, /^(missing|parsed|incompatible-schema|damaged:[a-z-]+)$/);
+  assert.equal(
+    [...seen.values()].reduce((a, b) => a + b),
+    cases,
+  );
+  for (const k of seen.keys())
+    assert.match(k, /^(missing|parsed|incompatible-schema|damaged:[a-z-]+)$/);
   console.log(`recovery-metadata fuzz: ${cases} cases`, Object.fromEntries(seen));
 });
 
 test('record fuzz (seed 7, 2000 cases): mutated fields inside a valid container are typed results', () => {
   const random = mulberry32(7);
   const record = embeddedRecord();
-  const odd: unknown[] = [null, -1, 1.5, '', 'x', [], {}, true, 2 ** 53, '0'.repeat(64), [18, 512], [0, 512], [100000, 512]];
-  const paths: string[][] = [['schema'], ['kind'], ['mime'], ['width'], ['height'], ['generationKind'], ['generationSha256'], ['seed'],
-    ['imageSha256'], ['latentSha256'], ['provenance'], ['provenance', 'modelSha256'], ['provenance', 'route'], ['latent'],
-    ['latent', 'space'], ['latent', 'shape'], ['latent', 'encoding'], ['latent', 'data']];
+  const odd: unknown[] = [
+    null,
+    -1,
+    1.5,
+    '',
+    'x',
+    [],
+    {},
+    true,
+    2 ** 53,
+    '0'.repeat(64),
+    [18, 512],
+    [0, 512],
+    [100000, 512],
+  ];
+  const paths: string[][] = [
+    ['schema'],
+    ['kind'],
+    ['mime'],
+    ['width'],
+    ['height'],
+    ['generationKind'],
+    ['generationSha256'],
+    ['seed'],
+    ['imageSha256'],
+    ['latentSha256'],
+    ['provenance'],
+    ['provenance', 'modelSha256'],
+    ['provenance', 'route'],
+    ['latent'],
+    ['latent', 'space'],
+    ['latent', 'shape'],
+    ['latent', 'encoding'],
+    ['latent', 'data'],
+  ];
   const seen = new Map<string, number>();
   const cases = 2000;
   for (let i = 0; i < cases; i++) {
@@ -139,7 +227,10 @@ test('record fuzz (seed 7, 2000 cases): mutated fields inside a valid container 
     for (let k = 0; k < 1 + Math.floor(random() * 3); k++) {
       const path = paths[Math.floor(random() * paths.length)]!;
       let target = copy as Record<string, unknown>;
-      for (const key of path.slice(0, -1)) target = (target[key] && typeof target[key] === 'object' ? target[key] : (target[key] = {})) as Record<string, unknown>;
+      for (const key of path.slice(0, -1))
+        target = (
+          target[key] && typeof target[key] === 'object' ? target[key] : (target[key] = {})
+        ) as Record<string, unknown>;
       const last = path.at(-1)!;
       if (random() < 0.2) delete target[last];
       else target[last] = odd[Math.floor(random() * odd.length)];
@@ -148,8 +239,15 @@ test('record fuzz (seed 7, 2000 cases): mutated fields inside a valid container 
     seen.set(kind(result), (seen.get(kind(result)) ?? 0) + 1);
     // Optional fields (seed, route) may legitimately change and still parse.
     assert.match(kind(result), /^(parsed|incompatible-schema|damaged:[a-z-]+)$/);
-    if (result.kind === 'parsed') assert.equal(result.metadata.latent.values.length, result.metadata.latent.shape[0] * result.metadata.latent.shape[1]);
+    if (result.kind === 'parsed')
+      assert.equal(
+        result.metadata.latent.values.length,
+        result.metadata.latent.shape[0] * result.metadata.latent.shape[1],
+      );
   }
-  assert.ok((seen.get('damaged:invalid-fields') ?? 0) > cases / 2, 'the fuzz reaches field validation');
+  assert.ok(
+    (seen.get('damaged:invalid-fields') ?? 0) > cases / 2,
+    'the fuzz reaches field validation',
+  );
   console.log(`recovery record fuzz: ${cases} cases`, Object.fromEntries(seen));
 });

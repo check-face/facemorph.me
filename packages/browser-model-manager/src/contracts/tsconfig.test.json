@@ -1,0 +1,7 @@
+{
+  // The manager contract tests (test/contracts-*.test.ts), type-checked with Node's types on top of the
+  // contracts' DOM-free settings: `tsc -p src/contracts/tsconfig.test.json`.
+  "extends": "./tsconfig.json",
+  "compilerOptions": { "types": ["node"] },
+  "include": [".", "../../test/contracts-*.test.ts"]
+}
