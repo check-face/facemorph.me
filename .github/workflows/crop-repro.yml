@@ -45,7 +45,10 @@ jobs:
         id: runtime
         run: |
           dir="$HOME/.cache/facemorph-runtime"
-          if [ -f "$dir/manifest.json" ] && node scripts/inventory/check-build-inputs.mjs --acquired "$dir" > /dev/null; then
+          # The acquired tree must be exactly import/build-inputs.json runtime.assets (acquiredFindings needs no classic checkout).
+          check='const [{acquiredFindings},{readJson,BUILD_INPUTS}]=await Promise.all([import("./scripts/inventory/check-build-inputs.mjs"),import("./scripts/inventory/lib.mjs")]);
+            const {out,files}=acquiredFindings(process.argv[1],readJson(BUILD_INPUTS).runtime.assets);console.log(JSON.stringify({files,findings:out.length,first:out.slice(0,3)}));process.exit(out.length||!files?1:0);'
+          if [ -f "$dir/manifest.json" ] && node --input-type=module -e "$check" "$dir"; then
             echo "dir=$dir" >> "$GITHUB_OUTPUT"
           else
             echo "::warning::No verified runtime in $dir: the browser crop cases are untested in this run"
