@@ -1,6 +1,10 @@
 name: parity-harness
-# fm-q007: the parity harness. Unit tests of the shared strictly-not-worse rule (scripts/verify/not-worse.mjs) run
-# on every change; the harness self-test and the control/port smoke subset join this lane as they land.
+# fm-q007: the parity harness.
+# - unit: the shared strictly-not-worse rule, the DOM-contract grading and its self-test on the committed control goldens,
+#   and the per-cell performance/retained-lane table (printed to the job summary; cells without paired runs read untested).
+# - served: the harness self-test in real Chromium on eris under the device lease: the verified control served as the
+#   subject passes the smoke row, and a copy with one planted label change fails it. The control digest is re-checked
+#   before serving. Uses a runtime already acquired on the runner (verified; CI never accepts the model terms itself).
 on:
   push:
     branches: [main]
@@ -9,7 +13,7 @@ on:
         'scripts/verify/**',
         'apps/web/test/harness/**',
         'apps/web/test/goldens/**',
-        'apps/web/test/parity/rows.ts',
+        'apps/web/test/parity/**',
         '.github/workflows/parity-harness.yml',
       ]
   workflow_dispatch:
@@ -24,6 +28,46 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: node --test scripts/verify/not-worse.test.mjs scripts/verify/dom-contract.test.mjs
+      - run: node --test scripts/verify/not-worse.test.mjs scripts/verify/dom-contract.test.mjs scripts/verify/cells.test.mjs
       - name: Harness self-test on the committed control goldens
         run: node --experimental-strip-types --test scripts/verify/parity-grade.test.mjs
+      - name: Per-cell performance and retained-lane table
+        run: node scripts/verify/cells.mjs --markdown | tee -a "$GITHUB_STEP_SUMMARY"
+  served:
+    runs-on: [self-hosted, eris]
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm ci --no-audit --no-fund # one lock for the workspace, at the root
+      - name: build:next (the control, digest re-verified)
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: npm run build:next && npm run build:next -- --check
+      - name: Runtime already acquired on this runner (verified; nothing downloaded)
+        id: runtime
+        run: |
+          dir="$HOME/.cache/facemorph-runtime"
+          check='const [{acquiredFindings},{readJson,BUILD_INPUTS}]=await Promise.all([import("./scripts/inventory/check-build-inputs.mjs"),import("./scripts/inventory/lib.mjs")]);
+            const {out,files}=acquiredFindings(process.argv[1],readJson(BUILD_INPUTS).runtime.assets);console.log(JSON.stringify({files,findings:out.length}));process.exit(out.length||!files?1:0);'
+          if [ -f "$dir/manifest.json" ] && node --input-type=module -e "$check" "$dir"; then
+            echo "dir=$dir" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::No verified runtime in $dir: the served self-test is untested in this run"
+          fi
+      - name: Served self-test (control as subject passes; planted change fails)
+        if: steps.runtime.outputs.dir != ''
+        env:
+          PARITY_RUNTIME: ${{ steps.runtime.outputs.dir }}
+        run: |
+          python3 autoresearch/run.py --lane browser-cpu --device eris --wait 1800 --timeout 3600 -- \
+            node --experimental-strip-types apps/web/test/harness/run.ts --self-test --out test-results/parity-harness
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: parity-harness-${{ github.run_id }}
+          path: test-results/parity-harness/
+          retention-days: 30
+          if-no-files-found: ignore
