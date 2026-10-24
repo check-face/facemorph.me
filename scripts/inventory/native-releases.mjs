@@ -7,7 +7,9 @@
 // Output: one JSON document {scanned_at, repos: [{repo, releases: [...], native_releases: n}]}.
 
 const DEFAULT_REPOS = ['check-face/facemorph.me-classic', 'check-face/facemorph.me'];
-const NATIVE_ASSET = /(\.(dmg|msi|exe|appimage|deb|app\.tar\.gz|sig|zip)$|^latest\.json$|^SHA256SUMS$)/i;
+// Installers and updater feed assets. A bare .zip is deliberately NOT native: the
+// repository's evidence releases (control artifact, visual references) are zips.
+const NATIVE_ASSET = /(\.(dmg|msi|exe|appimage|deb|app\.tar\.gz|sig)$|^latest\.json$|^SHA256SUMS$)/i;
 
 export function nativeAssets(assets) {
   return (assets ?? []).filter((a) => NATIVE_ASSET.test(a.name ?? '')).map((a) => ({ name: a.name, size: a.size }));

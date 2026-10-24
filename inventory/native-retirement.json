@@ -11,9 +11,9 @@
     "method": "scripts/inventory/native-releases.mjs (GitHub REST API; rerun in CI with JSON output attached)",
     "repos": [
       {"repo": "check-face/facemorph.me-classic", "releases": 0, "native_releases": 0},
-      {"repo": "check-face/facemorph.me", "releases": 0, "native_releases": 0}
+      {"repo": "check-face/facemorph.me", "releases": 2, "native_releases": 0, "note": "control-551b60726290 (the pinned control artifact, fm-gpx custody) and visual-references-2026-10-24 (fm-p7v evidence); neither carries an installer or updater feed asset"}
     ],
-    "updater_endpoint": "https://github.com/check-face/facemorph.me/releases/latest/download/latest.json returns 404 (verified 2026-10-24)",
+    "updater_endpoint": "https://github.com/check-face/facemorph.me/releases/latest/download/latest.json still 404s (verified 2026-10-24; the releases that now exist are evidence assets, not an updater feed)",
     "consequence": "No release assets exist to preserve; no release text exists to mark historical; no installed client can be redirected because no update feed was ever served."
   },
   "shared_browser_dependencies": [
