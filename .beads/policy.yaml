@@ -1,0 +1,9 @@
+# Closure policy (operator, 24 October 2026): beads enforce their own acceptance.
+# `br close` refuses while any acceptance-criteria item is unchecked; tick items as you verify them
+# (`br update <id> --check-acceptance <n|text>`). Items named `close-after fm-X:` are start-early,
+# close-late checks: CI (`scripts/beads/check-close-after.mjs`) fails if one is ticked on a closed
+# bead whose fm-X is not closed at or before it. No bypass: change this file if the operator decides otherwise.
+allow_bypass: false
+close_policy:
+  require_acceptance_criteria_satisfied:
+    enabled: true

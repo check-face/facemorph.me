@@ -100,6 +100,11 @@ WebKit/Firefox, Android emulator, iOS Simulator, GPU lane), never on the author'
 newest-only (concurrency groups, `cancel-in-progress: false`), so a waiting run can be replaced by a
 newer push and a later green run covers it; a red run covering several beads is bisected locally on
 eris and only the culprit stays open. CI closes beads; it does not gate starting the next.
+Beads enforce this (`.beads/policy.yaml`, no bypass): `br close` refuses while any acceptance item is
+unchecked, so tick each one as you verify it (`br update <id> --check-acceptance <n|text>`). A
+`close-after fm-X:` item means start now but close only after fm-X has closed and its check ran on the
+merged result; `beads-check.yml` fails on a closed bead whose fm-X closed later or is still open, on any
+unchecked item on a closed bead, and on a bead closed past an open blocker.
 User-visible or speed-affecting beads are also put through the lab by their implementer once CI is
 green (`lab.py qualify --run <CI run id> --bead <id>`: a pass records the evidence, a real failure
 reopens the bead with `device-lab-failed`). If a cell is unavailable the bead keeps `lab-pending`
