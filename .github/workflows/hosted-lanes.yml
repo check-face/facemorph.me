@@ -1,0 +1,185 @@
+name: hosted-lanes
+# fm-5klw: the device lab's journeys (cold face, warm face, morph to a playable video) on hosted
+# platforms, against one exact artifact, each lane reporting the route it used
+# (tools/device-lab/hosted.py): macOS WebKit/Firefox/Chrome, Windows Chrome/Edge, Chrome in the
+# Android emulator and Safari in the iOS Simulator. Part of release validation with the device-lab
+# cells (release-gate.yml); `summary` fails when any lane fails or never reports.
+on:
+  workflow_dispatch:
+    inputs:
+      artifact_repository:
+        description: Repository holding the build run
+        default: check-face/facemorph.me-classic
+      artifact_run:
+        description: Build run id
+        default: '40056009101'
+      artifact_name:
+        description: Its site artifact (contains deploy-next/)
+        default: next-site-551b60726290b2d67a32c62477b2fd964de51f96
+      runtime_sha:
+        description: Runtime manifest SHA256 the artifact was qualified with
+        default: d9e37e50a436e9fb7c0c7f973e70adee353c808f48c6a51fa5a9186f1c650a5c
+  workflow_call:
+    inputs:
+      artifact_repository:
+        type: string
+        default: check-face/facemorph.me-classic
+      artifact_run:
+        type: string
+        required: true
+      artifact_name:
+        type: string
+        required: true
+      runtime_sha:
+        type: string
+        required: true
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: hosted-lanes-${{ inputs.artifact_name }}
+  cancel-in-progress: false
+env:
+  LANES: macos-webkit,macos-firefox,macos-chrome,windows-chrome,windows-msedge,android-emulator-chrome,ios-simulator-safari
+jobs:
+  desktop:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: macos-15, browser: webkit, lane: macos-webkit, install: webkit }
+          - { os: macos-15, browser: firefox, lane: macos-firefox, install: firefox }
+          - { os: macos-15, browser: chrome, lane: macos-chrome, install: '' }
+          - { os: windows-latest, browser: chrome, lane: windows-chrome, install: '' }
+          - { os: windows-latest, browser: msedge, lane: windows-msedge, install: '' }
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            tools/device-lab
+            autoresearch
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.artifact_name }}
+          run-id: ${{ inputs.artifact_run }}
+          repository: ${{ inputs.artifact_repository }}
+          github-token: ${{ github.token }}
+          path: artifact
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --quiet playwright==1.55.0
+      - if: matrix.install != ''
+        run: python -m playwright install --with-deps ${{ matrix.install }}
+      - name: Journeys on ${{ matrix.lane }}
+        working-directory: tools/device-lab
+        run: python hosted.py browser --lane ${{ matrix.lane }} --browser ${{ matrix.browser }} --artifact ../../artifact/deploy-next --runtime-sha ${{ inputs.runtime_sha }} --out ../../lane
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lane-${{ matrix.lane }}
+          path: |
+            lane/*.json
+            lane/*.png
+            lane/*.zip
+          if-no-files-found: warn
+          retention-days: 30
+  android:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            tools/device-lab
+            autoresearch
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.artifact_name }}
+          run-id: ${{ inputs.artifact_run }}
+          repository: ${{ inputs.artifact_repository }}
+          github-token: ${{ github.token }}
+          path: artifact
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --quiet playwright==1.55.0
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Journeys in Chrome on the Android emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          ram-size: 8192M
+          disk-size: 8G
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back none
+          disable-animations: true
+          working-directory: tools/device-lab
+          script: python hosted.py android --lane android-emulator-chrome --artifact ../../artifact/deploy-next --runtime-sha ${{ inputs.runtime_sha }} --out ../../lane
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lane-android-emulator-chrome
+          path: |
+            lane/*.json
+            lane/*.png
+          if-no-files-found: warn
+          retention-days: 30
+  ios:
+    runs-on: macos-15
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            tools/device-lab
+            autoresearch
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.artifact_name }}
+          run-id: ${{ inputs.artifact_run }}
+          repository: ${{ inputs.artifact_repository }}
+          github-token: ${{ github.token }}
+          path: artifact
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Journeys in Safari on the iOS Simulator
+        working-directory: tools/device-lab
+        run: python hosted.py ios --lane ios-simulator-safari --device 'iPhone 16 Pro' --artifact ../../artifact/deploy-next --runtime-sha ${{ inputs.runtime_sha }} --out ../../lane
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lane-ios-simulator-safari
+          path: |
+            lane/*.json
+            lane/*.png
+          if-no-files-found: warn
+          retention-days: 30
+  summary:
+    needs: [desktop, android, ios]
+    if: always()
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            tools/device-lab
+            autoresearch
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: lane-*
+          path: lanes
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: One row per lane; a failed or missing lane fails this job
+        run: python tools/device-lab/hosted.py summary lanes --expect "$LANES" | tee -a "$GITHUB_STEP_SUMMARY"
