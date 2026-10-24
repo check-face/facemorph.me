@@ -1,0 +1,56 @@
+<!doctype html>
+<!-- The operated-input fixture (fm-48bj): the defect-1 regression page plus the cases the operated click must get
+     right. Defect 1 (two faces at 1,280 px): Remove, 32 x 32 at (201, 611), sat under the image's mode-menu button,
+     so a real click there opened "Change mode" and removed nothing. Each control records its own press in
+     #pressed. -->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Operated input fixture</title>
+    <style>
+      body { margin: 0; font: 16px system-ui, sans-serif; }
+      .face { position: relative; width: 376px; height: 376px; margin: 24px; background: #8ab; }
+      .face button { position: absolute; width: 32px; height: 32px; padding: 0; }
+      /* Defect 1: Remove at the image's top right, and the mode-menu button laid over it. */
+      #remove-covered, #mode-menu { top: 8px; right: 8px; }
+      #mode-menu { width: 48px; height: 48px; top: 0; right: 0; z-index: 1; opacity: 0.9; }
+      #remove-visible { top: 8px; right: 8px; }
+      .clip { width: 120px; height: 40px; overflow: hidden; position: relative; margin: 24px; }
+      #clipped { position: absolute; left: 160px; top: 0; width: 80px; height: 32px; }
+      #off-screen { position: fixed; left: -9999px; top: 20px; width: 80px; height: 32px; }
+      .spacer { height: 2400px; }
+      .turned { transform: translateX(200px) rotate(8deg) scale(1.25); transform-origin: 0 0; margin: 24px; width: 160px; }
+      #transformed, #nested, #small, #scrolled { width: 120px; height: 48px; }
+      #small { width: 24px; height: 24px; }
+    </style>
+  </head>
+  <body>
+    <output id="pressed"></output>
+    <div class="face" id="face-covered" role="img" aria-label="Face 1">
+      <button id="remove-covered" aria-label="Remove face 1">×</button>
+      <button id="mode-menu" aria-label="Change mode">⋯</button>
+    </div>
+    <div class="face" id="face-visible" role="img" aria-label="Face 2">
+      <button id="remove-visible" aria-label="Remove face 2">×</button>
+    </div>
+    <div class="clip"><button id="clipped">Clipped</button></div>
+    <button id="off-screen">Off screen</button>
+    <div class="turned"><button id="transformed">Turned</button></div>
+    <button id="nested"><span class="icon"><b>Nested</b></span></button>
+    <button id="small" aria-label="Small">s</button>
+    <div class="spacer"></div>
+    <button id="scrolled">Scrolled</button>
+    <script>
+      const out = document.getElementById('pressed');
+      for (const b of document.querySelectorAll('button'))
+        b.addEventListener('click', () => {
+          out.value = b.id;
+          if (b.id === 'mode-menu') out.value = 'mode-menu: Change mode opened';
+        });
+      // ?late=1 adds a request a moment after any press, so a step counts what its press caused.
+      if (new URLSearchParams(location.search).has('late'))
+        document.addEventListener('click', () => fetch('/fixtures/verify/operated.html?after-press'));
+    </script>
+  </body>
+</html>
