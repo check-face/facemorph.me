@@ -43,7 +43,12 @@ Keep model-free names/completed-file use where computation is unavailable. The
 plan's requirements drift ledger, strict TypeScript and package boundaries govern
 implementation. Distinguish planned, experimental, implemented
 and deployed results. No weights or secrets in Git. Cloudflare work uses the installed `cf` CLI
-(`cf cli search "<task>"`, then `<command> --help`), never Wrangler (operator, 24 October 2026). Do not infer performance or
+(`cf cli search "<task>"`, then `<command> --help`), never Wrangler (operator, 24 October 2026).
+Dependencies are not pinned (operator, 24 October 2026): add or upgrade with `npm install <pkg>@latest`
+(caret range at the latest release), no exact versions and no hold-backs; a latest release that fails a
+check is a bug to fix, not a reason to stay behind. Lockfiles still record what resolved and CI installs
+with `npm ci`. Integrity hashes for model weights, containers and measured results are not version pins
+and stay. Classic's frozen self-host distribution is exempt. Do not infer performance or
 completion from repository setup.
 
 The portable Beads graph is `.beads/issues.jsonl`; preserve IDs and dependencies.
