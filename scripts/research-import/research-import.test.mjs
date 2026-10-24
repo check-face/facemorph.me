@@ -15,7 +15,8 @@ const put = (root, path, data) => { mkdirSync(dirname(join(root, path)), { recur
 
 function repo() {
   const root = mkdtempSync(join(tmpdir(), 'fm-86u-'));
-  execFileSync('git', ['init', '-q', '-b', 'main', root]);
+  execFileSync('git', ['init', '-q', root]); // no -b: the triton runner's Git predates it
+  sh(root, 'symbolic-ref', 'HEAD', 'refs/heads/main');
   sh(root, 'config', 'user.email', 'test@invalid');
   sh(root, 'config', 'user.name', 'test');
   return root;
