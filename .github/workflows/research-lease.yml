@@ -20,7 +20,8 @@ jobs:
           repository: check-face/facemorph.me-classic
           ref: b2d945a8c7f0ff9f382fbfefaecc2651943077a3
           path: classic
-          sparse-checkout: autoresearch
+          # No sparse checkout: triton's git (2.25) is too old for it, and the action then
+          # downloads the tree without .git, so the revision could not be verified.
       - run: python3 autoresearch/test_lease.py
         env:
           CLASSIC_CHECKOUT: ${{ github.workspace }}/classic
