@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // fm-fy2.4 scaffold checks: package-manager monogamy, exact workspaces, strictness that
-// nothing overrides, pinned versions and the Oxc script contract.
+// nothing overrides, the Oxc tools as caret ranges and the Oxc script contract.
 //   node scripts/build/check-scaffold.mjs [--root .]
 // Prints one JSON line per violation; exit 1 if any. The judge functions are exported for
 // unit tests; the file reads are the only I/O.
@@ -74,14 +74,10 @@ export function checkScripts(pkg) {
         detail: `scripts.${name} must be exactly "${expected}"`,
       });
   }
-  for (const [name, version] of Object.entries(pkg.devDependencies ?? {})) {
-    if (name === 'oxlint' || name === 'oxfmt') {
-      if (!/^\d+\./.test(version))
-        violations.push({
-          rule: 'oxc-pinned',
-          detail: `${name} must be an exact version, got "${version}"`,
-        });
-    }
+  // Latest releases as caret ranges, never an exact pin or a held-back version (operator, 24 October 2026).
+  for (const name of ['oxlint', 'oxfmt']) {
+    const version = pkg.devDependencies?.[name];
+    if (!/^\^\d+\.\d+\.\d+/.test(version ?? '')) violations.push({ rule: 'oxc-caret', detail: `${name} must be a caret range at its latest release, got "${version}"` });
   }
   return violations;
 }

@@ -25,26 +25,15 @@ test('workspaces must be exactly apps/web plus the four packages', () => {
   assert.equal(nearMiss[0].rule, 'workspaces-exact');
 });
 
-test('the four oxc scripts are exact and versions pinned', () => {
-  assert.deepEqual(
-    checkScripts({
-      scripts: { ...OXC_SCRIPTS },
-      devDependencies: { oxlint: '1.88.0', oxfmt: '0.73.0' },
-    }),
-    [],
-  );
-  const missing = checkScripts({ scripts: {} });
+test('the four oxc scripts are exact, and oxlint and oxfmt are caret ranges', () => {
+  assert.deepEqual(checkScripts({ scripts: { ...OXC_SCRIPTS }, devDependencies: { oxlint: '^1.89.0', oxfmt: '^0.74.0' } }), []);
+  const missing = checkScripts({ scripts: {}, devDependencies: { oxlint: '^1.89.0', oxfmt: '^0.74.0' } });
   assert.equal(missing.length, 4);
   assert.ok(missing.every((v) => v.rule === 'oxc-script'));
-  const floaty = checkScripts({
-    scripts: { ...OXC_SCRIPTS },
-    devDependencies: { oxlint: '^1.88.0', oxfmt: '0.73.0' },
-  });
-  assert.deepEqual(
-    floaty.map((v) => v.rule),
-    ['oxc-pinned'],
-  );
-  assert.match(floaty[0].detail, /oxlint/);
+  const pinned = checkScripts({ scripts: { ...OXC_SCRIPTS }, devDependencies: { oxlint: '1.89.0', oxfmt: '~0.74.0' } });
+  assert.deepEqual(pinned.map((v) => v.rule), ['oxc-caret', 'oxc-caret']);
+  assert.match(pinned[0].detail, /oxlint/);
+  assert.equal(checkScripts({ scripts: { ...OXC_SCRIPTS }, devDependencies: {} }).length, 2, 'both tools must be declared');
 });
 
 test('base strictness is required and package lowering is a violation', () => {
