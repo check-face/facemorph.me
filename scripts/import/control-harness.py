@@ -20,81 +20,12 @@ classic's next-e2e-evidence/, a screenshot and trace on failure).
 Needs: openssl, Chromium/Chrome, and Python with browser-harness==0.1.8 and playwright (Python package; it
 attaches to the running Chrome, so no Playwright browser download). Exit 1 if any check fails.
 """
-import argparse, asyncio, hashlib, json, os, shutil, subprocess, sys, tempfile, time
+import argparse, asyncio, json, os, shutil, subprocess, sys, time
 from pathlib import Path
 from urllib.parse import urlsplit
 
-REPO = Path(__file__).resolve().parents[2]
-ORIGIN_HOST = 'next.facemorph.me'
-MIRROR_HOST = 'models.facemorph.me'
-# The candidate's own public catalogue Workers (name latents, previews): project hosts the control reads, so the
-# harness lets them through; blocking them makes the control silently fall back to mapping.
-PROJECT_HOSTS = ('facemorph-name-catalogue.cdilga.workers.dev', 'facemorph-seed-gallery.cdilga.workers.dev')
-PORT = 8443  # fixed by classic's next-e2e-server.py
-
-
-def sha256_file(path):
-    h = hashlib.sha256()
-    with open(path, 'rb') as f:
-        for block in iter(lambda: f.read(1 << 20), b''):
-            h.update(block)
-    return h.hexdigest()
-
-
-def host_class(url):
-    parts = urlsplit(url)
-    if parts.scheme in ('data', 'blob', 'about', 'chrome', 'chrome-extension', 'devtools'):
-        return 'local-scheme'
-    if parts.hostname == ORIGIN_HOST:
-        return 'artifact-origin'
-    if parts.hostname == MIRROR_HOST:
-        return 'runtime-mirror (models.facemorph.me)'
-    if parts.hostname in PROJECT_HOSTS:
-        return 'project catalogue hosts'
-    return 'other'
-
-
-def free_port():
-    import socket
-    with socket.socket() as s:
-        s.bind(('127.0.0.1', 0))
-        return s.getsockname()[1]
-
-
-def port_in_use(port):
-    import socket
-    with socket.socket() as s:
-        return s.connect_ex(('127.0.0.1', port)) == 0
-
-
-def stop_harness_daemons(name):
-    """browser-harness keeps a daemon per BU_NAME that outlives the run; a stale one would reattach to whatever
-    browser it first found. Stop this run's daemon so the next run starts clean."""
-    for proc in Path('/proc').iterdir():
-        if not proc.name.isdigit():
-            continue
-        try:
-            if f'BU_NAME={name}'.encode() in (proc / 'environ').read_bytes().split(b'\0'):
-                os.kill(int(proc.name), 15)
-        except (OSError, PermissionError):
-            continue
-
-
-def seed_mirror(runtime: Path, mirror: Path):
-    """Hard-link (or copy) every acquired file into the server's mirror under its own SHA-256."""
-    mirror.mkdir(parents=True, exist_ok=True)
-    count = 0
-    for f in runtime.rglob('*'):
-        if not f.is_file() or f.suffix == '.part':
-            continue
-        target = mirror / sha256_file(f)
-        if not target.exists():
-            try:
-                os.link(f, target)
-            except OSError:
-                shutil.copyfile(f, target)
-        count += 1
-    return count
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from control_site import ORIGIN_HOST, REPO, host_class, served_control  # noqa: E402
 
 
 async def network_and_extra_checks(evidence: Path, harness_cmd, harness_env, work: Path, report: dict, cdp_port: int):
@@ -202,82 +133,19 @@ def main():
     ap.add_argument('--until', default='', help="classic harness E2E_UNTIL stage (a partial run never passes)")
     a = ap.parse_args()
     evidence = a.out.resolve()
-    evidence.mkdir(parents=True, exist_ok=True)
     report = {'bead': 'fm-5ey', 'scope': 'control artifact (classic candidate build) on the CPU route in headless Chromium on this machine'}
-
-    check = subprocess.run(['node', str(REPO / 'scripts/import/build-next.mjs'), '--check'], capture_output=True, text=True)
-    identity = json.loads(check.stdout.strip().splitlines()[-1])['summary']
-    report['artifact'] = identity
-    if check.returncode != 0:
-        report['passed'] = False
-        (evidence / 'report.json').write_text(json.dumps(report, indent=2) + '\n')
-        sys.exit('deploy-next/ does not verify against its identity; run npm run build:next')
-
-    if port_in_use(PORT):
-        sys.exit(f'127.0.0.1:{PORT} is in use; the qualification server needs it')
-    # Never a fixed debugging port: 9222 on eris is the device lab's adb forward to the phone's Chrome.
-    cdp_port = free_port()
-    daemon_name = f'control-harness-{os.getpid()}'
-    manifest = a.runtime.resolve() / 'manifest.json'
-    manifest_sha = sha256_file(manifest)
-    work = Path(tempfile.mkdtemp(prefix='control-harness-'))
-    procs = []
     try:
-        shutil.copytree(REPO / 'deploy-next', work / 'deploy-next')
-        for name in ['next-site-source.txt', 'next-site-SHA256SUMS']:
-            shutil.copyfile(REPO / name, work / name)
-        (work / 'overlay').mkdir()
-        shutil.copyfile(manifest, work / 'overlay/manifest.json')
-        seeded = seed_mirror(a.runtime.resolve(), work / '.runtime-mirror')
-        bundle = json.loads(manifest.read_text()).get('bundleVersion')
-        report['runtime'] = {'manifestSha256': manifest_sha, 'bundleVersion': bundle, 'acquiredFiles': seeded, 'source': str(a.runtime)}
-        (work / 'next-e2e-evidence/downloads').mkdir(parents=True)
-        subprocess.run(['openssl', 'req', '-x509', '-newkey', 'rsa:2048', '-nodes', '-keyout', str(work / 'next.key'), '-out', str(work / 'next.crt'),
-                        '-days', '1', '-subj', f'/CN={ORIGIN_HOST}'], check=True, capture_output=True)
-        server = subprocess.Popen([sys.executable, str(REPO / 'apps/web/scripts/next-e2e-server.py'), '--manifest-sha', manifest_sha, '--runtime-overlay', str(work / 'overlay'),
-                                   '--runtime-files', str(a.runtime.resolve()), '--cert', str(work / 'next.crt'), '--key', str(work / 'next.key')],
-                                  cwd=work, stdout=open(evidence / 'server.log', 'wb'), stderr=subprocess.STDOUT)
-        procs.append(server)
-        chrome = subprocess.Popen([a.chrome, '--headless=new', '--no-sandbox', '--ignore-certificate-errors', '--no-proxy-server',
-                                   # The artifact origin maps to the local server; every other host fails to resolve, so a
-                                   # test run attempts (and records) but never delivers third-party or analytics requests.
-                                   f'--host-resolver-rules=MAP {ORIGIN_HOST}:443 127.0.0.1:{PORT},MAP * ~NOTFOUND,EXCLUDE 127.0.0.1,'
-                                   + ','.join(f'EXCLUDE {h}' for h in PROJECT_HOSTS),
-                                   f'--remote-debugging-port={cdp_port}',
-                                   f'--user-data-dir={work / "chrome"}', 'about:blank'], stdout=open(evidence / 'chrome.log', 'wb'), stderr=subprocess.STDOUT)
-        procs.append(chrome)
-        import urllib.request, ssl
-        insecure = ssl._create_unverified_context()
-        for _ in range(60):
-            try:
-                urllib.request.urlopen(f'https://127.0.0.1:{PORT}/runtime/manifest.json', context=insecure, timeout=2)
-                version = json.loads(urllib.request.urlopen(f'http://127.0.0.1:{cdp_port}/json/version', timeout=2).read())
-                # The endpoint must be this Chrome: its browser websocket is the one this process logged.
-                logged = (evidence / 'chrome.log').read_text(errors='replace')
-                if chrome.poll() is not None or f'DevTools listening on {version.get("webSocketDebuggerUrl")}' not in logged:
-                    raise RuntimeError(f'the debugging endpoint on {cdp_port} is not the Chrome this harness started: {version.get("Browser")}')
-                report['browser'] = version.get('Browser')
-                break
-            except RuntimeError:
-                raise
-            except Exception:
-                if server.poll() is not None or chrome.poll() is not None:
-                    raise RuntimeError('server or Chrome exited at startup; see server.log and chrome.log')
-                time.sleep(1)
-        env = {**os.environ, 'BU_NAME': daemon_name, 'BU_CDP_URL': f'http://127.0.0.1:{cdp_port}', 'RUNTIME_SHA': manifest_sha, **({'E2E_UNTIL': a.until} if a.until else {})}
-        asyncio.run(network_and_extra_checks(evidence, [a.harness], env, work, report, cdp_port))
-        if (work / 'next-e2e-evidence').exists():
-            shutil.copytree(work / 'next-e2e-evidence', evidence / 'next-e2e-evidence', dirs_exist_ok=True)
-    finally:
-        stop_harness_daemons(daemon_name)
-        for p in procs:
-            p.terminate()
-        for p in procs:
-            try:
-                p.wait(10)
-            except subprocess.TimeoutExpired:
-                p.kill()
-        shutil.rmtree(work, ignore_errors=True)
+        with served_control(a.runtime, evidence, a.chrome) as site:
+            report.update(artifact=site.artifact, runtime=site.runtime, browser=site.browser)
+            env = {**os.environ, 'BU_NAME': site.daemon_name, 'BU_CDP_URL': site.cdp_url, 'RUNTIME_SHA': site.runtime['manifestSha256'],
+                   **({'E2E_UNTIL': a.until} if a.until else {})}
+            asyncio.run(network_and_extra_checks(evidence, [a.harness], env, site.work, report, site.cdp_port))
+            if (site.work / 'next-e2e-evidence').exists():
+                shutil.copytree(site.work / 'next-e2e-evidence', evidence / 'next-e2e-evidence', dirs_exist_ok=True)
+    except RuntimeError as error:
+        report.update(passed=False, error=str(error))
+        (evidence / 'report.json').write_text(json.dumps(report, indent=2) + '\n')
+        sys.exit(str(error))
     # Known candidate defects (PLAN.md "Known candidate defects", 18 October) are reported against their numbers and
     # are not import regressions.
     known = []
@@ -288,7 +156,7 @@ def main():
     report['knownDefects'] = known
     report['passed'] = bool(report.get('functional', {}).get('passed') and report.get('cancellation', {}).get('passed') and report.get('network', {}).get('passed'))
     (evidence / 'report.json').write_text(json.dumps(report, indent=2) + '\n')
-    print(json.dumps({k: report.get(k) for k in ['passed', 'artifact', 'runtime', 'functional', 'cancellation', 'resource', 'network']}, indent=1))
+    print(json.dumps({k: report.get(k) for k in ['passed', 'artifact', 'runtime', 'functional', 'cancellation', 'resource', 'network', 'knownDefects']}, indent=1))
     sys.exit(0 if report['passed'] else 1)
 
 
