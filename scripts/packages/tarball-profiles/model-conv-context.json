@@ -1,0 +1,139 @@
+{
+  "profile": "model-conv-context",
+  "kind": "build-context",
+  "description": "model-conv Docker build context. No checkpoints, converted outputs, .env or credentials; .dockerignore must exist and exclude them.",
+  "provenanceScope": "none",
+  "requireExportTargets": false,
+  "exportsIgnoreConditions": [],
+  "repositoryPathAllow": ["^tests/e4e-qualification/"],
+  "required": [
+    {
+      "name": "Dockerfile",
+      "anyOf": ["^Dockerfile$"]
+    },
+    {
+      "name": ".dockerignore",
+      "anyOf": ["^\\.dockerignore$"]
+    },
+    {
+      "name": "NOTICE",
+      "anyOf": ["^(?:NOTICE|THIRD_PARTY_NOTICES)(?:\\.\\w+)?$"]
+    },
+    {
+      "name": "PROVENANCE.json",
+      "anyOf": ["^PROVENANCE\\.json$"]
+    }
+  ],
+  "contentRules": [],
+  "pathRules": [
+    {
+      "id": "checkpoint",
+      "pattern": "\\.(?:pkl|pt|pth|ckpt)$",
+      "detail": "checkpoint in build context"
+    },
+    {
+      "id": "converted-output",
+      "pattern": "\\.(?:onnx|f32)$",
+      "detail": "converted output in build context"
+    },
+    {
+      "id": "env-file",
+      "pattern": "(?:^|/)\\.env(?:\\..*)?$",
+      "detail": ".env in build context"
+    },
+    {
+      "id": "credentials",
+      "pattern": "(?:^|/)(?:credentials(?:\\.json)?|\\.aws/.*|id_rsa|id_ed25519|[^/]*\\.pem|service-account[^/]*\\.json)$",
+      "detail": "credentials file in build context"
+    }
+  ],
+  "dockerignore": {
+    "mustExclude": [
+      "weights.pkl",
+      "weights.pt",
+      "weights.pth",
+      "weights.ckpt",
+      "model.onnx",
+      "out.f32",
+      ".env"
+    ]
+  },
+  "shared": {
+    "weightExtensions": [
+      ".onnx",
+      ".ort",
+      ".bin",
+      ".pt",
+      ".pth",
+      ".pkl",
+      ".safetensors",
+      ".npy",
+      ".npz",
+      ".h5",
+      ".tflite"
+    ],
+    "maxFileBytes": 5242880,
+    "oversizeAllowlist": ["\\.wasm$"],
+    "repositoryPaths": [
+      "^apps/",
+      "^autoresearch/",
+      "^docs/receipts/",
+      "^docs/plans/",
+      "^\\.beads/",
+      "^deploy-next/",
+      "^experiment/",
+      "(?:^|/)(?:__fixtures__|fixtures|__tests__|test|tests)/",
+      "\\.(?:test|spec)\\.[cm]?[jt]s$"
+    ],
+    "codeFiles": "\\.(?:[cm]?js|d\\.[cm]?ts|json)$",
+    "docFiles": "\\.(?:md|markdown|txt)$",
+    "absolutePathPatterns": [
+      {
+        "id": "home-dir",
+        "pattern": "(?<![A-Za-z0-9_.:-])/(?:home|Users|root)/"
+      },
+      {
+        "id": "windows-user-dir",
+        "pattern": "[A-Za-z]:\\\\+Users\\\\"
+      },
+      {
+        "id": "sibling-classic",
+        "pattern": "\\.\\./facemorph\\.me-classic"
+      },
+      {
+        "id": "sibling-checkout",
+        "pattern": "\\.\\./(?:checkface|facemorph[\\w.-]*|encoder4editing|fm-control|fm-direct)/"
+      },
+      {
+        "id": "file-url",
+        "pattern": "file://"
+      }
+    ],
+    "secretPatterns": [
+      {
+        "rule": "secret-npm-token",
+        "pattern": "\\bnpm_[A-Za-z0-9]{36}\\b"
+      },
+      {
+        "rule": "secret-cloudflare-token",
+        "pattern": "\\bcf(?:ut|at)_[A-Za-z0-9]{30,}|(?:CLOUDFLARE|CF)_API_(?:TOKEN|KEY)\\s*[=:]\\s*[\"']?[A-Za-z0-9_-]{37,}"
+      },
+      {
+        "rule": "secret-private-key",
+        "pattern": "-----BEGIN [A-Z ]*PRIVATE KEY"
+      },
+      {
+        "rule": "secret-aws-key",
+        "pattern": "\\b(?:AKIA|ASIA)[0-9A-Z]{16}\\b|aws_secret_access_key\\s*[=:]\\s*[\"']?[A-Za-z0-9/+=]{40}"
+      }
+    ],
+    "npmrcAuthPattern": "_authToken|_auth\\s*=|_password\\s*=",
+    "productionHostnames": [
+      "(?:[a-z0-9-]+\\.)*facemorph\\.me\\b",
+      "[a-z0-9-]+\\.cdilga\\.workers\\.dev\\b",
+      "\\bcheckface\\b"
+    ],
+    "r2BucketNames": ["facemorph-diagnostics"],
+    "r2BucketPatterns": ["bucket[_\\s-]*(?:name)?[\"'\\s:=]+facemorph-[a-z0-9-]+"]
+  }
+}

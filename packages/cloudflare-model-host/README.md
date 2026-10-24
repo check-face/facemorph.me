@@ -1,22 +1,56 @@
-# @facemorph/cloudflare-model-host (skeleton)
+# @facemorph/cloudflare-model-host
 
-Status: **not implemented** (bead fm-3osh builds it; this README is fm-p7v's hosting-boundary
-assignment table, which `scripts/inventory/check-hosting-boundary.mjs` enforces against
-`git ls-tree hosting/` in `check-face/facemorph.me-classic` at the frozen revision
-`a42829bb0582b5a7a55ba6b1045a05861612b8a5`, the frozen import revision pinned by
-`import/allowlist.json`; `hosting/` is byte-identical there back to `6107f80`).
+Stages, verifies and publishes verified model bytes for static hosting on Cloudflare (bead fm-3osh). It was
+extracted from classic `hosting/next/prepare-runtime.py` (chunking and manifest rewriting) and
+`src/Next/browser/stage-assets.py` (content-addressed staging). Application policy stays in the app's `hosting/`:
+phone admission, promotion, the photo sub-bundle, frontend staging, serving headers and the mirror Worker.
 
-## Purpose (from the plan; nothing built yet)
+## What it does
 
-The package owns the model-hosting machinery that is independent of the FaceMorph app:
-runtime **chunking** (>25 MiB inputs -> 16 MiB verified chunks, `hosting/next/prepare-runtime.py`),
-**manifest generation** (content-addressed `manifest.json` + `manifests/<sha>.json` pins),
-**digest-consistent publication** (content-addressed paths, publication receipts),
-the **header contract** (`_headers` for `/runtime/*`: immutable caching, CORS) and
-**mirror serving** (the `hosting/next-mirror/` Worker over R2 that copies immutable
-`runtime/{assets,chunks,manifests,photo,encoder-stream}/` prefixes from the site origin on first
-request). Application-side machinery stays in the app's `hosting/`: frontend staging, promotion,
-the diagnostics collector, the catalogue pipeline, domain attach and analytics.
+- **Stage:** `facemorph-model-host stage --source <dir> --out <dir> --base <https url> [--from-base <url>] [--dry-run]`.
+  Every asset the manifest names is checked against its declared SHA-256 and size and copied to the same relative
+  path. An asset over the 25 MiB file limit is published only as 16 MiB chunks, `chunks/<sha256>.bin`; a chunk is
+  written once and never changed. The manifest is rewritten to hosted URLs under `--base`. The source can be an
+  unpublished bundle (assets named by `file`, as model-conv writes them) or an already hosted tree being restaged
+  (`--from-base` maps its URLs back to paths). The manifest must pass `@facemorph/browser-model-manager`'s contract
+  before and after staging: a newer or unknown major is refused. Local paths, `file://` URLs, sibling checkouts and
+  private inventories (`sources.private.json`) never reach the staged manifest.
+- **Verify:** `facemorph-model-host verify --root <dir> --base <https url> [--plan workers-free|workers-paid]`. Each
+  asset is read back by its URL path, a chunked one through its chunks, and must reproduce its digest and size.
+  Every file must fit the per-file limit and the plan's file count.
+- **Publish:** `facemorph-model-host publish --root <dir> --target <target.json> [--publish]`. This is a dry run unless
+  `--publish` is given: it reads only, then reports each file it would write. The model terms are checked first
+  (below). A target is
+  `{"kind": "directory", "path": ...}` (a static root, or a local mirror) or
+  `{"kind": "cloudflare", "project": <dir>, "product": ...}`, which runs `cf deploy` in that project directory. A paid
+  product is refused unless the target also names it in `"paidServiceApproved"`. An existing destination file that
+  differs is refused, never overwritten.
+
+Exit codes are 0 for ok, 1 for a refusal or findings, and 2 for a usage error. Each command prints one JSON report.
+
+## Cloudflare limits and cost
+
+Read from developers.cloudflare.com on **24 October 2026**: Workers platform limits (static assets), Workers pricing,
+Pages limits and R2 pricing. `src/limits.ts` holds the same figures; change both together.
+
+| | |
+| --- | --- |
+| Chosen product and tier | Workers Static Assets on **Workers Free**. Pages has the same 25 MiB file limit and 20,000-file Free limit. |
+| Per-file limit | 25 MiB on every plan. Larger inputs are published as 16 MiB chunks. |
+| Files per version | 20,000 (Free), 100,000 (Paid) |
+| Request routing | A request matching a static asset is served without invoking Worker code. Static asset requests are free and unlimited on both plans. The 100,000 requests/day Free limit applies only to Worker invocations. |
+| Storage, request and bandwidth allowances | No separate storage charge for static assets; static asset requests free and unlimited; no egress charge. Enabling Workers Caching bills static asset requests at the Worker request rate, so it is not used here. |
+| Paid alternatives (refused unless named) | Workers Paid: $5.00 per month subscription. R2 (Standard): $0.015 per GB-month, $4.50 per million Class A and $0.36 per million Class B operations beyond the free 10 GB-month, 1M Class A and 10M Class B per month; egress free. |
+| Measured staged set | The qualified runtime the candidate serves (manifest `d9e37e50…`) as acquired on eris: **301 files, 2,766,791,005 bytes**, 81 assets of which 5 are chunked into 90 chunks. The largest file is 24,135,856 bytes (`b16-coefficients.bin`), under 25 MiB. 301 files fit Workers Free. `test/host.test.ts` checks this on every run where the runtime is present. |
+
+**Model terms.** Before anything is written, the target must name a terms record with rows shaped like the
+repository's `import/licences.json`. One row must cover the manifest's `modelSourceSha256`. If that row's
+`redistribution` is not `"permitted"`, the target must acknowledge the row by id (`"terms": {"record": ...,
+"acknowledged": "<row id>"}`). For the qualified runtime, row `nvidia-stylegan2-ffhq-config-f-derived` is
+`unresolved` today, so publishing it needs that explicit acknowledgement.
+
+Publishing the real runtime is the delivery step, and this package's tests do not run it. The directory target is
+tested with real writes. The `cf deploy` path is untested here.
 
 ## Boundary assignment table
 

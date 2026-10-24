@@ -1,4 +1,7 @@
 {
-  "extends": "../../tsconfig.worker.json",
+  // Node tooling (staging, verification, publication). Workspace packages resolve to their TS sources through
+  // the "source" export condition where one exists; the manager's declarations come from its dist/.
+  "extends": "../../tsconfig.node.json",
+  "compilerOptions": { "allowImportingTsExtensions": true, "customConditions": ["source"] },
   "include": ["src"]
 }

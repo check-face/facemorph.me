@@ -1,0 +1,61 @@
+name: cloudflare-model-host
+# cloudflare-model-host (fm-3osh): chunk -> reconstruct, staging against the manager's contract and JSON schema,
+# dry-run publication with paid-service and model-terms refusals, and the Cloudflare limits, on planted bundles
+# and on the qualified runtime the device lab keeps on eris. Then the shared package-tarball-content-scan:
+# its self-test, and the scan of the packed tarball (JSON report kept as an artifact).
+on:
+  push:
+    branches: [main]
+    paths:
+      [
+        'packages/cloudflare-model-host/**',
+        'packages/browser-model-manager/**',
+        'scripts/packages/**',
+        'package-lock.json',
+        '.github/workflows/cloudflare-model-host.yml',
+      ]
+  workflow_dispatch:
+concurrency:
+  group: cloudflare-model-host
+  cancel-in-progress: false
+jobs:
+  check:
+    runs-on: [self-hosted, eris]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm ci --no-audit --no-fund
+      - run: npm run format:check # the workspace gates come before any build (fm-fy2.4)
+      - run: npm run lint
+      - run: npm run build -w packages/browser-model-manager -w packages/cloudflare-model-host
+      - run: npm run typecheck -w packages/cloudflare-model-host
+      - name: Host tests, with the qualified runtime as the real staged set
+        working-directory: packages/cloudflare-model-host
+        env:
+          FACEMORPH_REQUIRE_RUNTIME: '1'
+        run: |
+          export FACEMORPH_RUNTIME_DIR="$HOME/.cache/facemorph-device-lab/runtime-public"
+          node --test test/*.test.ts
+      - name: package-tarball-content-scan self-test
+        run: node --test scripts/packages/check-tarball-contents.test.mjs
+      - name: Scan the packed cloudflare-model-host tarball
+        run: |
+          set -euo pipefail
+          mkdir -p scan
+          npm pack -w packages/cloudflare-model-host --pack-destination scan
+          node scripts/packages/check-tarball-contents.mjs --profile cloudflare-model-host \
+            --input scan/facemorph-cloudflare-model-host-0.0.0.tgz --report scan/cloudflare-model-host.json || true
+          # Every rule must be clean except the LICENSE file, which waits on the licence decision (fm-oagi).
+          node -e '
+            const r = JSON.parse(require("fs").readFileSync("scan/cloudflare-model-host.json", "utf8"));
+            const other = r.findings.filter((f) => !(f.rule === "required-file" && f.path === "LICENSE"));
+            console.log(JSON.stringify({ outcome: r.outcome, files: r.files.length, requiredMissing: r.requiredMissing, other }));
+            if (other.length || r.files.length === 0) process.exit(1);
+          '
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cloudflare-model-host-scan-${{ github.run_id }}
+          path: scan/cloudflare-model-host.json

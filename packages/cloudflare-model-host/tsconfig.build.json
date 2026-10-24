@@ -1,8 +1,10 @@
 {
-  "extends": "../../tsconfig.worker.json",
+  "extends": "../../tsconfig.node.json",
   "compilerOptions": {
     "noEmit": false,
     "declaration": true,
+    "allowImportingTsExtensions": true,
+    "rewriteRelativeImportExtensions": true,
     "rootDir": "src",
     "outDir": "dist"
   },
