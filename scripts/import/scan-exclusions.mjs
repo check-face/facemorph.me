@@ -21,10 +21,11 @@ const PROVENANCE = [
 // Addresses the product itself publishes (the support contact shown in the app and FAQ).
 const PUBLIC_ADDRESSES = new Set(['checkfaceml@gmail.com']);
 
-// A local install (node_modules/, ignored by Git) is skipped; CI scans a checkout that has none, so a committed
-// node_modules/ is still caught there.
+// A local install and build output (node_modules/, dist/, both ignored by Git) are skipped; CI scans a
+// checkout that has neither, so a committed one is still caught there.
+const LOCAL_ONLY = ['node_modules/', 'dist/'];
 export function scanTree(dir, { provenance = false } = {}) {
-  const files = digestTree(dir).filter((f) => !f.path.startsWith('node_modules/'));
+  const files = digestTree(dir).filter((f) => !LOCAL_ONLY.some((p) => f.path.startsWith(p)));
   const content = new Map();
   for (const f of files) {
     const bytes = readFileSync(join(dir, f.path));

@@ -16,6 +16,7 @@
   "dependencies": {
     "@emotion/react": "11.14.0",
     "@emotion/styled": "11.14.1",
+    "@mui/icons-material": "9.5.0",
     "@mui/material": "9.5.0",
     "bulma": "0.9.3",
     "bulma-prefers-dark": "0.1.0-beta.0",
@@ -30,6 +31,16 @@
     "@vitejs/plugin-react": "6.1.2",
     "sass": "1.106.1",
     "typescript": "7.0.2",
-    "vite": "8.3.5"
+    "vite": "8.3.5",
+    "vite-plugin-svgr": "5.2.0"
+  },
+  "overrides": {
+    "react-advanced-cropper": {
+      "react": "$react",
+      "react-dom": "$react-dom"
+    }
+  },
+  "allowScripts": {
+    "@parcel/watcher": false
   }
 }
