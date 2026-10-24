@@ -73,7 +73,9 @@ function makeRepo({ pushed = true, noteText = 'Aggregates only: 12 runs, 3 devic
   const work = join(root, 'work');
   // No `git init -b`: the triton runner's git (2.25) predates it.
   execFileSync('git', ['init', '--bare', remote], { stdio: 'ignore' });
-  execFileSync('git', ['-C', remote, 'symbolic-ref', 'HEAD', 'refs/heads/main'], { stdio: 'ignore' });
+  execFileSync('git', ['-C', remote, 'symbolic-ref', 'HEAD', 'refs/heads/main'], {
+    stdio: 'ignore',
+  });
   execFileSync('git', ['init', work], { stdio: 'ignore' });
   execFileSync('git', ['-C', work, 'symbolic-ref', 'HEAD', 'refs/heads/main'], { stdio: 'ignore' });
   sh(work, 'config', 'user.email', 'test@invalid');
