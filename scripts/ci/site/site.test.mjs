@@ -63,7 +63,20 @@ test('a build containing api.facemorph.me fails; the control reports its hits an
     'app.js': 'm="https://models.facemorph.me/runtime/manifest.json"',
   });
   assert.equal(run(shared).status, 0);
-  for (const d of [build, control, shared]) rmSync(d, { recursive: true });
+  const branch = artifact('build', {
+    'app.js.map': '{"sources":["candidate/next-delivery-20260916/src"]}',
+  });
+  const b = run(branch);
+  assert.equal(b.status, 1);
+  assert.match(b.stdout, /candidate\/next-delivery-20260916/);
+  const clean = artifact('build', {
+    'index.html': '<script src="/app.js"></script>',
+    'app.js': 'x=1',
+  });
+  const k = run(clean);
+  assert.equal(k.status, 0);
+  assert.match(k.stdout, /"hits":0/);
+  for (const d of [build, control, shared, branch, clean]) rmSync(d, { recursive: true });
 });
 
 test('real-ui-cpu refuses a runtime whose manifest is not the pinned runtime_sha, before anything starts', () => {

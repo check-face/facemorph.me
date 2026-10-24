@@ -99,6 +99,8 @@ jobs:
         run: echo "- verify-fable.mjs ProjectJson.fs.js - not-applicable until the port (replaced by project-json.test.ts)" | tee -a "$GITHUB_STEP_SUMMARY"
       - name: No third-party runtime dependencies
         run: node apps/web/scripts/check-no-third-party.mjs deploy-next
+      - name: The site lane's own checks are tested (retired-host scan fixtures, runtime refusal, inference verdict)
+        run: node --test scripts/ci/site/site.test.mjs
       - name: Retired hosts (report-only on the control, blocking for a monorepo build)
         run: node scripts/ci/site/retired-hosts.mjs deploy-next --summary "$GITHUB_STEP_SUMMARY"
       - name: Record exact bytes for promotion
