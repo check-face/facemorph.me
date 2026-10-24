@@ -5,7 +5,8 @@
 //   facemorph-model-host publish --root <dir> --target <target.json> [--publish]
 //   facemorph-model-host warm    --root <dir> --origin <mirror url> --prefixes <list> [--publish]
 //   facemorph-model-host mirror-deploy --worker <name> --bucket <r2 bucket> --upstream <url> --prefixes <list>
-//                                      [--site <worker>] [--domain <host>] [--compatibility-date <date>] [--publish]
+//                                      [--site <worker>] [--domain <host>] [--workers-dev] [--compatibility-date <date>]
+//                                      [--publish]
 //   facemorph-model-host origin-deploy --root <dir> --worker <name> --base-path <path> --immutable <list>
 //                                      --mutable <list> [--workers-dev] [--domain <host>] [--terms <record>]
 //                                      [--acknowledge <terms row>] [--publish]
@@ -168,6 +169,7 @@ export async function main(argv: readonly string[]): Promise<number> {
           ...(site ? { site } : {}),
           ...(domain ? { domain } : {}),
           ...(date ? { compatibilityDate: date } : {}),
+          workersDev: values['workers-dev'] === true,
         },
         { publish: values.publish === true },
       );

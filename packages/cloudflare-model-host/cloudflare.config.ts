@@ -28,7 +28,7 @@ export default defineConfig(({ mode }) =>
           name: need('MIRROR_WORKER'),
           compatibilityDate: need('MIRROR_COMPATIBILITY_DATE'),
           entrypoint: './src/mirror/worker.ts',
-          workersDev: false,
+          workersDev: process.env['MIRROR_WORKERS_DEV'] === '1',
           ...(optional('MIRROR_DOMAIN') ? { domains: [need('MIRROR_DOMAIN')] } : {}),
           observability: { enabled: false },
           env: {

@@ -21,6 +21,8 @@ export interface MirrorTarget {
   readonly site?: string;
   /** Custom domain the Worker serves. */
   readonly domain?: string;
+  /** Also serve on <worker>.<account subdomain>.workers.dev (a test mirror). */
+  readonly workersDev?: boolean;
   readonly compatibilityDate?: string;
 }
 
@@ -39,6 +41,7 @@ export function deployEnv(target: MirrorTarget): Record<string, string> {
     MIRROR_COMPATIBILITY_DATE: target.compatibilityDate ?? DEFAULT_COMPATIBILITY_DATE,
     ...(target.site ? { MIRROR_SITE_WORKER: target.site } : {}),
     ...(target.domain ? { MIRROR_DOMAIN: target.domain } : {}),
+    ...(target.workersDev ? { MIRROR_WORKERS_DEV: '1' } : {}),
   };
 }
 
