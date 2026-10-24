@@ -54,6 +54,14 @@ export const SCOPE = {
     ['autoresearch/**', 'append-only research history'],
     ['hosting/**', 'imported byte-identical classic hosting'],
     ['**/node_modules/**', 'third-party code'],
+    [
+      'scripts/build/check-no-disabled-tests.test.mjs',
+      "this check's own planted fixtures (disabled tests on purpose)",
+    ],
+    [
+      'scripts/build/check-image-hash-asserts.test.mjs',
+      "the hash check's own planted fixtures (hash assertions on purpose)",
+    ],
   ],
 };
 
