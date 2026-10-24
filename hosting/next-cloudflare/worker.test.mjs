@@ -52,7 +52,7 @@ test('A batch is one KV write and every event in it is checked',async()=>{
 // every one with a 400, which is why four rounds of reports carried no storage record at all.
 test('the collector accepts every stage the product actually sends',async()=>{
  const {readFile}=await import('node:fs/promises');
- const source=await readFile(new URL('../../src/Next/reporting.mjs',import.meta.url),'utf8');
+ const source=await readFile(new URL('../../apps/web/src/Next/reporting.mjs',import.meta.url),'utf8');
  const sent=[...source.match(/const allowedStages=new Set\(\[([^\]]*)\]\)/)[1].matchAll(/'([^']+)'/g)].map(m=>m[1]);
  const {puts,env}=store();
  for(const stage of sent){
@@ -90,7 +90,7 @@ test('R2 takes the write, and KV catches it when R2 cannot', async () => {
 // drift: a basis the collector does not know would 400 a whole batch, the same failure that hid
 // storage records for four rounds.
 test('the collector accepts every consent basis the product records, and nothing else',async()=>{
- const {CONSENT_BASES}=await import('../../src/Next/reporting.mjs');
+ const {CONSENT_BASES}=await import('../../apps/web/src/Next/reporting.mjs');
  const {puts,env}=store();
  for(const consent of CONSENT_BASES)
   assert.equal((await worker.fetch(request({...event(),consent}),env)).status,204,`rejected consent basis ${consent}`);

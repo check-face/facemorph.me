@@ -77,7 +77,13 @@
    "path": "hosting/next-cloudflare/worker.test.mjs",
    "mode": "100644",
    "size": 10357,
-   "sha256": "7d1b103852237c52bd956ee60c4ca1c7d992839bc9f88e9b45f3c093473f22ec"
+   "sha256": "7d1b103852237c52bd956ee60c4ca1c7d992839bc9f88e9b45f3c093473f22ec",
+   "ported": {
+    "sha256": "9702428cc3f3aebfbd2b0b61e0480755d8923d31943f2e4ff9aa36fef87aed76",
+    "bytes": 10375,
+    "bead": "fm-aa8",
+    "reason": "the collector's stage and consent tests read reporting.mjs at its destination apps/web/src/Next/ (classic: src/Next/)"
+   }
   },
   {
    "path": "hosting/next-cloudflare/wrangler.toml",
