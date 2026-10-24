@@ -1470,8 +1470,8 @@
       "bytes": 37783,
       "class": "src-next",
       "ported": {
-        "sha256": "a0825d614954aa1e8548b4c66f416d15c3e3a812321d7be5de3140b743a1b01c",
-        "bytes": 40800,
+        "sha256": "37dbe9d7736736c7c83b19335a489c317a6eea276c11ee7e05873ed86d44956f",
+        "bytes": 40916,
         "bead": "fm-lt2p",
         "reason": "WebGL execution removed (fm-x6h5); per-operation admission through admission/route-admission.ts before any worker or model request, photo encoding admitted by capability instead of user-agent labels (fm-lt2p)"
       }

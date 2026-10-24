@@ -219,7 +219,8 @@ export function createBrowserRuntime({manifest: suppliedManifest, manifestSha256
   if(interruptions[route]){delete interruptions[route];saveInterruptions();}
  }
  async function admit(progress,signal){
-  if(capabilities().webgpu)await probeGpu();
+  // Explicit CPU never probes the adapter (fm-x6h5): nothing it decides depends on WebGPU.
+  if(preferredRoute!=='cpu'&&capabilities().webgpu)await probeGpu();
   // `failedRoutes` only ever grew within a page load, so a device could reach a state where every
   // route had failed once — for a device loss during a photo encode, a stopped worker, an
   // interruption — and the product dead-ended on "No local processing route remains available",

@@ -86,7 +86,9 @@ before(async () => {
     [...assetsOf(manifest.webgpu), ...assetsOf(manifest.webgl)].map((a) => [a.path, a.sha256]),
   );
   cpuAssets = new Map(
-    [...assetsOf(manifest.synthesis), ...assetsOf(manifest.mapping)].map((a) => [a.path, a.sha256]),
+    // The mapping network runs on the CPU for every route (WebGPU warms it beside the GPU load), so only the CPU
+    // synthesis bundle is a CPU-route asset.
+    assetsOf(manifest.synthesis).map((a) => [a.path, a.sha256]),
   );
   for (const path of gpuAssets.keys())
     assert.ok(!cpuAssets.has(path), `${path} is in both bundles`);
