@@ -3,6 +3,7 @@
 // local HTTP server with a fault switch. Live hosts are checked by the delivery-dry-run lane.
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
+import { promises as dns } from 'node:dns';
 import { createServer } from 'node:http';
 import { readFileSync } from 'node:fs';
 import test, { after, before } from 'node:test';
@@ -193,11 +194,22 @@ test('redirect, retired, page and unchanged against a real local server with a f
     (await retiredCheck([host], 'http')).every((p) => p.verdict === 'fail'),
     'an API body fails',
   );
-  assert.deepEqual(
-    (await retiredCheck(['retired-check.invalid'])).map((p) => p.detail),
-    ['NXDOMAIN'],
+  // A known-absent host passes. Most resolvers answer .invalid with NXDOMAIN; some (systemd-resolved on triton)
+  // refuse to look it up at all (EAI_AGAIN), and then the HTTP probes find nothing listening.
+  const absent = await retiredCheck(['retired-check.invalid']);
+  assert.ok(
+    absent.length && absent.every((p) => p.verdict === 'pass'),
     'a known-absent host passes',
   );
+  const answer = await dns.lookup('retired-check.invalid').then(
+    () => 'resolves',
+    (e) => e.code,
+  );
+  if (answer === 'ENOTFOUND')
+    assert.deepEqual(
+      absent.map((p) => p.detail),
+      ['NXDOMAIN'],
+    );
 
   site.mode = 'ok';
   const page = await pageCheck(origin, 'index');
