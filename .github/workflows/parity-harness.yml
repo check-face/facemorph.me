@@ -4,7 +4,7 @@ name: parity-harness
 on:
   push:
     branches: [main]
-    paths: ['scripts/verify/**', 'apps/web/test/harness/**', '.github/workflows/parity-harness.yml']
+    paths: ['scripts/verify/**', 'apps/web/test/harness/**', 'apps/web/test/goldens/**', 'apps/web/test/parity/rows.ts', '.github/workflows/parity-harness.yml']
   workflow_dispatch:
 concurrency:
   group: parity-harness
@@ -17,4 +17,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: node --test scripts/verify/not-worse.test.mjs
+      - run: node --test scripts/verify/not-worse.test.mjs scripts/verify/dom-contract.test.mjs
+      - name: Harness self-test on the committed control goldens
+        run: node --experimental-strip-types --test scripts/verify/parity-grade.test.mjs
