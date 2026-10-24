@@ -20,7 +20,8 @@ docker build -t facemorph/model-conv .
 
 # Acquire the checkpoint yourself, under NVIDIA's terms, and check it:
 mkdir -p ~/.cache/facemorph-model-conv/checkpoints
-curl -fL -o ~/.cache/facemorph-model-conv/checkpoints/stylegan2-ffhq-config-f.pkl \
+[ -f ~/.cache/facemorph-model-conv/checkpoints/stylegan2-ffhq-config-f.pkl ] || curl -fL \
+  -o ~/.cache/facemorph-model-conv/checkpoints/stylegan2-ffhq-config-f.pkl \
   https://nvlabs-fi-cdn.nvidia.com/stylegan2/networks/stylegan2-ffhq-config-f.pkl
 echo "adf127ea7bb8a7788c8bdeda3c9937f7310b669b09ecf799ca53a631ff46948d  $HOME/.cache/facemorph-model-conv/checkpoints/stylegan2-ffhq-config-f.pkl" | sha256sum -c -
 
@@ -57,6 +58,7 @@ CHECKPOINTS=~/.cache/facemorph-model-conv/checkpoints OUTPUT="$PWD/out" MODEL_CO
 
 ## Acceptance
 
+CI runs the first command block above verbatim from the repository root (`tests/doc_commands.py`), and
 `tests/acceptance.sh` runs all of the above with the real checkpoint and container, plus a perturbed chunk
 (must fail), a wrong checkpoint (refused), a killed conversion, ownership and an image/package scan for
 weights. CI runs it on eris (`.github/workflows/model-conv.yml`). Unit tests: `python3 -m unittest discover -s tests -t .`.

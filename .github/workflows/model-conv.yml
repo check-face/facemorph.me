@@ -21,5 +21,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Unit tests
         run: python3 -m unittest discover -s tests -t . -v
+      - name: Documented commands, verbatim (docs/usage.md)
+        working-directory: .
+        run: python3 packages/model-conv/tests/doc_commands.py
       - name: Acceptance (real checkpoint, real container)
         run: tests/acceptance.sh
