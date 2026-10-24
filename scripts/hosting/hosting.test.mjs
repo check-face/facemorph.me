@@ -1,7 +1,7 @@
 // The hosting import plan and the hosting scan (fm-8tyu), with plain values.
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { plan, SIZE_LIMIT } from './import-hosting.mjs';
+import { plan, portedRecords, SIZE_LIMIT } from './import-hosting.mjs';
 import { scanFiles } from './scan-hosting.mjs';
 
 const rows = [
@@ -59,4 +59,35 @@ test('the scan finds planted wrangler state, weights, oversized files and creden
   assert.deepEqual(by('hosting/next-static/big.txt'), ['over the size limit']);
   assert.deepEqual(by('hosting/next-static/deploy.py'), ['credential-looking value (bearer)']);
   assert.deepEqual(by('hosting/next-static/wrangler.jsonc'), []);
+});
+
+test('the two split rows the site lane needs import; other split rows do not', () => {
+  const rows = [
+    { path: 'hosting/next-static/webgpu_contract.py', destination: 'split' },
+    { path: 'hosting/next-static/webgpu_contract_test.py', destination: 'split' },
+    { path: 'hosting/next-static/restage-runtime.py', destination: 'split' },
+  ];
+  const entries = rows.map((r) => ({ path: r.path, mode: '100644', size: 10, sha1: 'x' }));
+  assert.deepEqual(
+    plan(rows, entries).imports.map((e) => e.path),
+    ['hosting/next-static/webgpu_contract.py', 'hosting/next-static/webgpu_contract_test.py'],
+  );
+});
+
+test('a ported record needs its digest, bead and reason', () => {
+  const good = {
+    sha256: 'a'.repeat(64),
+    bytes: 1,
+    bead: 'fm-be10',
+    reason: 'calls the re-homed verifier',
+  };
+  const { ported, problems } = portedRecords([
+    { path: 'hosting/a.py', ported: good },
+    { path: 'hosting/b.py', ported: { sha256: 'b'.repeat(64), bytes: 1 } },
+    { path: 'hosting/c.py' },
+  ]);
+  assert.deepEqual([...ported.keys()], ['hosting/a.py', 'hosting/b.py']);
+  assert.deepEqual(problems, [
+    { path: 'hosting/b.py', problem: 'ported without its digest, bead and reason' },
+  ]);
 });

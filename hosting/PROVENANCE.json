@@ -7,7 +7,7 @@
   "tree": "hosting/"
  },
  "boundary": "packages/cloudflare-model-host/README.md",
- "rule": "every boundary-table path with destination hosting/, at the same path; .wrangler/ never; files over 1 MiB only if size-allowlisted",
+ "rule": "every boundary-table path with destination hosting/, at the same path, and the split rows in SPLIT_IMPORTED (fm-aa8); .wrangler/ never; files over 1 MiB only if size-allowlisted",
  "sizeAllowlist": [
   "hosting/next-static/catalogue.json"
  ],
@@ -125,13 +125,31 @@
    "path": "hosting/next-static/promote.py",
    "mode": "100644",
    "size": 6833,
-   "sha256": "4f9d9247d06045763ddd09f90cf5e2503a83bce71418e490ff3985c51c988e47"
+   "sha256": "4f9d9247d06045763ddd09f90cf5e2503a83bce71418e490ff3985c51c988e47",
+   "ported": {
+    "sha256": "13684cfb4a9ad63b9b27302c0eeb8794e1e97183cfb94eb722d4eea3608a6af9",
+    "bytes": 6834,
+    "bead": "fm-be10",
+    "reason": "promote.py calls the web-artifact verifier at its re-homed path apps/web/scripts/verify-web-artifact.py (native dispatch retired; f876ddd)"
+   }
   },
   {
    "path": "hosting/next-static/stage.py",
    "mode": "100644",
    "size": 2768,
    "sha256": "6eb443c393f4accaecfff18a81cbb7b4c13ad005c7b4a145509a77fd4649891a"
+  },
+  {
+   "path": "hosting/next-static/webgpu_contract.py",
+   "mode": "100644",
+   "size": 7204,
+   "sha256": "3534fe409c10e161bc9e18461dff44487972f24e314155f68c146ab395524af7"
+  },
+  {
+   "path": "hosting/next-static/webgpu_contract_test.py",
+   "mode": "100644",
+   "size": 4903,
+   "sha256": "5ab663e16fbcc07d59a58a041e5899a586139f4704269494e6a9fe077957ff1d"
   },
   {
    "path": "hosting/next-static/worker.mjs",

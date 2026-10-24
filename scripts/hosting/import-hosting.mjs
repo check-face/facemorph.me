@@ -30,9 +30,23 @@ export const SIZE_ALLOWLIST = new Set(['hosting/next-static/catalogue.json']);
 export const PROVENANCE = 'hosting/PROVENANCE.json';
 const BOUNDARY = 'packages/cloudflare-model-host/README.md';
 
+// Split rows imported now, at their hosting/ path: next-site.yml's compiled-ui job runs the WebGPU bundle contract
+// gate (fm-aa8). The model-hosting extraction later moves the check functions to packages/cloudflare-model-host.
+export const SPLIT_IMPORTED = new Set([
+  'hosting/next-static/webgpu_contract.py',
+  'hosting/next-static/webgpu_contract_test.py',
+]);
+
 /** Which tree entries to import. Pure: rows from the boundary table, entries {path, mode, size, sha1} from the tree. */
 export function plan(rows, entries) {
-  const wanted = new Set(rows.filter((r) => r.destination === 'hosting/').map((r) => r.path));
+  const wanted = new Set(
+    rows
+      .filter(
+        (r) =>
+          r.destination === 'hosting/' || (r.destination === 'split' && SPLIT_IMPORTED.has(r.path)),
+      )
+      .map((r) => r.path),
+  );
   const imports = [];
   const refused = [];
   for (const e of entries) {
@@ -51,6 +65,15 @@ export function plan(rows, entries) {
     if (!entries.some((e) => e.path === path))
       refused.push({ path, problem: 'in the boundary table but not in the frozen tree' });
   return { imports, refused };
+}
+
+/** The provenance's ported records by path, and a problem for each lacking its digest, bead or reason. Pure. */
+export function portedRecords(files) {
+  const ported = new Map(files.filter((f) => f.ported).map((f) => [f.path, f.ported]));
+  const problems = [...ported]
+    .filter(([, p]) => !(p.sha256 && p.bead && p.reason))
+    .map(([path]) => ({ path, problem: 'ported without its digest, bead and reason' }));
+  return { ported, problems };
 }
 
 /** `git ls-tree -r -l` at a revision: {path, mode, size, sha1} for every blob under hosting/. */
@@ -74,14 +97,30 @@ export function importHosting({ classic, root = REPO, check = false, log = () =>
     .filter((r) => r.problem !== 'wrangler state is never imported')
     .map((r) => ({ ...r }));
   const files = [];
+  // A file a later bead changed on purpose keeps its classic digest (provenance) and carries
+  // `ported: {sha256, bytes, bead, reason}` in the provenance; it is checked against those bytes and never
+  // overwritten. A ported record without its digest, bead and reason is itself a problem (as verify-closure).
+  const recordedFiles = existsSync(join(root, PROVENANCE))
+    ? JSON.parse(readFileSync(join(root, PROVENANCE), 'utf8')).files
+    : [];
+  const { ported, problems: portedProblems } = portedRecords(recordedFiles);
+  problems.push(...portedProblems);
   for (const e of imports) {
     const bytes = blob(classic, commit, e.path);
     const digest = sha256(bytes);
     const dest = join(root, e.path);
+    const port = ported.get(e.path);
+    const expected = port?.sha256 ?? digest;
     if (check) {
       if (!existsSync(dest)) problems.push({ path: e.path, problem: 'missing' });
-      else if (sha256(readFileSync(dest)) !== digest)
-        problems.push({ path: e.path, problem: 'differs from the frozen revision' });
+      else if (sha256(readFileSync(dest)) !== expected)
+        problems.push({
+          path: e.path,
+          problem: port ? 'differs from its ported bytes' : 'differs from the frozen revision',
+        });
+    } else if (port) {
+      if (!existsSync(dest) || sha256(readFileSync(dest)) !== port.sha256)
+        problems.push({ path: e.path, problem: 'differs from its ported bytes; not overwritten' });
     } else {
       if (existsSync(dest) && sha256(readFileSync(dest)) !== digest) {
         problems.push({
@@ -93,7 +132,13 @@ export function importHosting({ classic, root = REPO, check = false, log = () =>
       mkdirSync(dirname(dest), { recursive: true });
       writeFileSync(dest, bytes, { mode: e.mode === '100755' ? 0o755 : 0o644 });
     }
-    files.push({ path: e.path, mode: e.mode, size: bytes.length, sha256: digest });
+    files.push({
+      path: e.path,
+      mode: e.mode,
+      size: bytes.length,
+      sha256: digest,
+      ...(port ? { ported: port } : {}),
+    });
     log({ file: e.path, sha256: digest, size: bytes.length });
   }
   const provenance = {
@@ -101,7 +146,7 @@ export function importHosting({ classic, root = REPO, check = false, log = () =>
     bead: 'fm-8tyu',
     source: { repository: 'check-face/facemorph.me-classic', commit, tree: 'hosting/' },
     boundary: BOUNDARY,
-    rule: 'every boundary-table path with destination hosting/, at the same path; .wrangler/ never; files over 1 MiB only if size-allowlisted',
+    rule: 'every boundary-table path with destination hosting/, at the same path, and the split rows in SPLIT_IMPORTED (fm-aa8); .wrangler/ never; files over 1 MiB only if size-allowlisted',
     sizeAllowlist: [...SIZE_ALLOWLIST],
     notImported: refused.map(({ path, problem }) => ({ path, reason: problem })),
     files,
