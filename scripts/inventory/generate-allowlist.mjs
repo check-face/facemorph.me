@@ -3,7 +3,7 @@
 // commit: `files` (every imported path with destination, sha256 and bytes), `delta` (every commit after
 // the planning reference with each changed path's disposition), `listed_with_digests` and
 // `working_tree_overlays`. The reviewed sections (source, rules, checks, unresolved_imports,
-// delta_notes) are read, never written. Every tracked path must match a rule (first match wins).
+// delta_notes, and each file's `ported` record) are read, never written. Every tracked path must match a rule (first match wins).
 //   node scripts/inventory/generate-allowlist.mjs [--classic <dir>]          rewrite the generated sections
 //   node scripts/inventory/generate-allowlist.mjs --check [--classic <dir>]  exit 1 if they differ
 // --check ignores working_tree_overlays: other sessions keep editing classic's working tree.
@@ -65,6 +65,11 @@ export function generate(allowlist, dir) {
   const { frozen_commit: commit, planning_reference: reference } = allowlist.source;
   const unclassified = [];
   const files = [];
+  // A file the port changed on purpose keeps its reviewed `ported` record (scripts/import/verify-closure.mjs)
+  // across regeneration: it is an annotation on the generated row, like delta_notes on a delta commit.
+  const ported = new Map(
+    (allowlist.files ?? []).filter((f) => f.ported).map((f) => [f.destination, f.ported]),
+  );
   const listed = [];
   for (const path of trackedFiles(dir, commit)) {
     const rule = classify(path, allowlist.rules);
@@ -75,14 +80,16 @@ export function generate(allowlist, dir) {
     if (rule.disposition === 'imported' || rule.digests) {
       const bytes = blob(dir, commit, path);
       const row = { source: path, sha256: sha256(bytes), bytes: bytes.length, class: rule.class };
-      if (rule.disposition === 'imported')
+      if (rule.disposition === 'imported') {
+        const destination = `${allowlist.destination_root}/${path}`;
         files.push({
           source: path,
-          destination: `${allowlist.destination_root}/${path}`,
+          destination,
           ...row,
           ...(rule.temporary ? { temporary: true } : {}),
+          ...(ported.has(destination) ? { ported: ported.get(destination) } : {}),
         });
-      else listed.push({ ...row, disposition: rule.disposition, owner: rule.owner });
+      } else listed.push({ ...row, disposition: rule.disposition, owner: rule.owner });
     }
   }
   const commits = delta(dir, reference, commit).map((c) => ({

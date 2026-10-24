@@ -72,6 +72,32 @@ test('generate: imported rows from Git objects, unclassified paths, and every de
   ]);
 });
 
+test('generate keeps a reviewed ported record on its regenerated row, and adds none', () => {
+  const repo = gitRepo();
+  const frozen = repo.commit({ 'src/Next/a.mjs': 'a\n', 'src/Next/b.mjs': 'b\n' }, 'frozen');
+  const record = {
+    sha256: sha256('shim\n'),
+    bytes: 5,
+    bead: 'fm-eulc',
+    reason: 'moved; re-exported here',
+  };
+  const allowlist = {
+    source: { frozen_commit: frozen, planning_reference: frozen },
+    destination_root: 'apps/web',
+    rules: RULES,
+    delta_notes: {},
+    files: [{ destination: 'apps/web/src/Next/a.mjs', ported: record }],
+  };
+  const { files } = generate(allowlist, repo.dir);
+  assert.deepEqual(
+    files.map((f) => [f.source, f.sha256, f.ported ?? null]),
+    [
+      ['src/Next/a.mjs', sha256('a\n'), record],
+      ['src/Next/b.mjs', sha256('b\n'), null],
+    ],
+  );
+});
+
 function digestFixture() {
   const repo = gitRepo();
   const content = { 'src/Next/a.mjs': 'a\n', 'src/Next/deep/b.json': '{"b":1}\n' };
