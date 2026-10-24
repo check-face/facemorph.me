@@ -96,11 +96,11 @@ export function checks({ rows }) {
 
   add({
     step: 'Compiled UI imports resolve against the hand-written bridges',
-    command: 'node scripts/check-bridge-imports.mjs',
-    status: NOT_APPLICABLE,
-    successor:
-      'migration.facade (fm-pia9) strict TS; scripts/inventory/unresolved-imports.mjs runs in its place',
-    ok: true,
+    command: 'node scripts/check-bridge-imports.mjs (the TypeScript UI and typed facade, fm-pia9)',
+    ...(() => {
+      const b = run(process.execPath, ['scripts/check-bridge-imports.mjs'], WEB);
+      return { result: lastJson(b.stdout) ?? {}, ok: b.status === 0 };
+    })(),
   });
   const u = run(
     process.execPath,

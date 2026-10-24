@@ -79,8 +79,8 @@ jobs:
           node --test hosting/next-static/analytics.test.mjs hosting/next-cloudflare/worker.test.mjs
           if [ -f packages/cloudflare-model-host/test/next-mirror-worker.test.mjs ]; then node --test packages/cloudflare-model-host/test/next-mirror-worker.test.mjs
           else echo "- hosting/next-mirror/worker.test.mjs: moves with the mirror Worker to packages/cloudflare-model-host (model-hosting extraction); not run here until it lands" | tee -a "$GITHUB_STEP_SUMMARY"; fi
-      - name: Compiled UI imports resolve against the hand-written bridges
-        run: echo "- check-bridge-imports.mjs - not-applicable until the port (Fable output is not in Git; replaced by strict TS at the typed facade)" | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Compiled UI imports resolve against the hand-written bridges (the TypeScript UI and typed facade, fm-pia9)
+        run: node apps/web/scripts/check-bridge-imports.mjs
       - name: Morph progress line is a counter, not a flicker
         working-directory: apps/web
         run: node scripts/check-progress-copy.mjs

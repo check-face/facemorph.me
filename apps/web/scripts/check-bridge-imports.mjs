@@ -17,11 +17,15 @@ import { dirname, join, relative, resolve } from 'node:path';
 
 const root = resolve(dirname(new URL(import.meta.url).pathname), '..');
 
+// fm-pia9: the UI is TypeScript now (shell/), and the typed facade imports the bridge as a namespace. The check
+// walks every .ts/.tsx under shell/ and checks both named imports and `ns.name` uses of `import * as ns` against
+// what the hand-written .mjs module really exports. tsc's own resolution makes the same mistake a compile error;
+// this stays because the modules are declared, not typed, so a wrong declaration would hide it.
 function sources(folder, found = []) {
   for (const entry of readdirSync(folder, { withFileTypes: true })) {
     const path = join(folder, entry.name);
     if (entry.isDirectory()) sources(path, found);
-    else if (entry.name.endsWith('.fs.js')) found.push(path);
+    else if (/\.tsx?$/.test(entry.name) && !entry.name.endsWith('.d.ts')) found.push(path);
   }
   return found;
 }
@@ -47,34 +51,46 @@ function exportsOf(file) {
   return names;
 }
 
-const problems = [];
-for (const file of sources(join(root, 'src'))) {
-  const text = readFileSync(file, 'utf8');
-  for (const [, group, specifier] of text.matchAll(/import\s*\{([^}]*)\}\s*from\s*["'](\.[^"']+)["']/g)) {
+/** Every name `file` takes from a hand-written .mjs module, with what that module exports. Pure over the files. */
+export function bridgeImportProblems(files) {
+  const problems = [];
+  const check = (file, specifier, wanted) => {
     const target = resolve(dirname(file), specifier);
-    // Only hand-written modules are checked; Fable's own output is generated together.
-    if (!/\.mjs$/.test(target) || !existsSync(target)) continue;
+    if (!/\.mjs$/.test(target) || !existsSync(target)) return;
     const available = exportsOf(target);
-    for (const part of group.split(',')) {
-      const piece = part.trim();
-      if (!piece) continue;
-      const wanted = piece.split(/\s+as\s+/)[0].trim();
-      if (!available.has(wanted))
-        problems.push({
-          from: relative(root, file), specifier, wanted,
-          near: [...available].filter(name => name.toLowerCase().includes(wanted.toLowerCase())
-            || wanted.toLowerCase().includes(name.toLowerCase())).slice(0, 4)
-        });
+    if (!available.has(wanted))
+      problems.push({
+        from: relative(root, file), specifier, wanted,
+        near: [...available].filter(name => name.toLowerCase().includes(wanted.toLowerCase())
+          || wanted.toLowerCase().includes(name.toLowerCase())).slice(0, 4),
+      });
+  };
+  for (const file of files) {
+    const text = readFileSync(file, 'utf8');
+    for (const [, group, specifier] of text.matchAll(/import\s*(?:type\s*)?\{([^}]*)\}\s*from\s*["'](\.[^"']+)["']/g))
+      for (const part of group.split(',')) {
+        const piece = part.trim().replace(/^type\s+/, '');
+        if (piece) check(file, specifier, piece.split(/\s+as\s+/)[0].trim());
+      }
+    for (const [, ns, specifier] of text.matchAll(/import\s*\*\s*as\s+([A-Za-z_$][\w$]*)\s*from\s*["'](\.[^"']+)["']/g)) {
+      const used = new Set([...text.matchAll(new RegExp(`(?<![\\w$./-])${ns}\\.([A-Za-z_$][\\w$]*)`, 'g'))].map((m) => m[1]));
+      for (const name of used) check(file, specifier, name);
     }
   }
+  return problems;
 }
 
+const isMain = process.argv[1] && resolve(process.argv[1]) === resolve(new URL(import.meta.url).pathname);
+if (isMain) {
+const files = sources(join(root, 'shell'));
+const problems = bridgeImportProblems(files);
 if (problems.length) {
-  console.error('Compiled UI imports names the module does not export:\n');
+  console.error('The UI imports names the module does not export:\n');
   for (const problem of problems)
     console.error(`  ${problem.from}\n    imports { ${problem.wanted} } from '${problem.specifier}'`
       + (problem.near.length ? `\n    did you mean: ${problem.near.join(', ')}` : '')
       + '\n    This bundles as undefined and throws at the first call.\n');
   process.exit(1);
 }
-console.log(JSON.stringify({ bridgeImportsResolved: true, files: sources(join(root, 'src')).length }));
+console.log(JSON.stringify({ bridgeImportsResolved: true, files: files.length }));
+}

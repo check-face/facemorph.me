@@ -23,6 +23,8 @@ jobs:
         working-directory: .
       - run: npm run build
       - run: npm run check:inventory
+      - name: Every name the UI and the typed facade take from a bridge module is exported there (fm-pia9)
+        run: node scripts/check-bridge-imports.mjs
   # The built shell in the Ubuntu 24.04 browser cells of apps/web/browser-matrix.json (Playwright Chromium,
   # Firefox and WebKit): control goldens at the shell rows, operated links at desktop and phone width (mouse
   # and touch), and every emitted worker loading. Screenshots are kept as an artifact.

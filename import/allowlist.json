@@ -1034,7 +1034,13 @@
       "sha256": "98a34126e7d30ed0ee4c884a087e6ce9fb7f1399503c657b90d381b4bedff1a4",
       "bytes": 4025,
       "class": "temporary-root",
-      "temporary": true
+      "temporary": true,
+      "ported": {
+        "sha256": "9a218a71f6ac28033475b90939a07ef2b069689c7c412364ebbe25ea8930f3ec",
+        "bytes": 5150,
+        "bead": "fm-pia9",
+        "reason": "successor: walks the TypeScript UI under shell/ (not Fable .fs.js output) and checks named imports and namespace member uses against the .mjs exports"
+      }
     },
     {
       "source": "scripts/check-next-artifact.sh",
