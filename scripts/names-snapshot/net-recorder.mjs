@@ -50,6 +50,6 @@ if (file) {
     return connect.apply(this, args);
   };
   process.on('exit', () => {
-    for (const s of [...open]) write(s);
+    for (const s of Array.from(open)) write(s); // a copy: write() deletes from the set
   });
 }

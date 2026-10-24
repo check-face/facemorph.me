@@ -68,7 +68,7 @@ export function lineHits(line, { workflow = false } = {}) {
       hits.push({ kind, start, end, hit: m[0].trim().slice(0, 200), ...target });
     }
   }
-  return hits.sort((a, b) => a.start - b.start).map(({ start, end, ...h }) => h);
+  return hits.sort((a, b) => a.start - b.start).map(({ start: _start, end: _end, ...h }) => h);
 }
 
 export function globToRegExp(glob) {
@@ -169,7 +169,7 @@ export function scan(targets, rules) {
       const commit = resolveRev(t.path, rev);
       scanned.push({ repo: t.repo, rev, commit });
       for (const h of scanRepo({ repo: t.repo, path: t.path, rev, commit })) {
-        const { text, ...hit } = h;
+        const { text: _text, ...hit } = h;
         results.push({ ...hit, ...classify(h, compiled) });
       }
     }

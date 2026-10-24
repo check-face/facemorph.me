@@ -135,7 +135,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const pinned = [...modules.values()];
   const findings = [...derived.findings];
   if (opts.write) {
-    inputs.runtime = { ...inputs.runtime, manifest: derived.manifest, nested_manifests: derived.nested.map(({ followed, ...n }) => n), assets: derived.rows };
+    inputs.runtime = { ...inputs.runtime, manifest: derived.manifest, nested_manifests: derived.nested.map(({ followed: _followed, ...n }) => n), assets: derived.rows };
     inputs.worker_graphs = { ...inputs.worker_graphs, pinned };
     writeFileSync(BUILD_INPUTS, JSON.stringify(inputs, null, 2) + '\n');
   } else {

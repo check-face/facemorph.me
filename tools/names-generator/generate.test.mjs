@@ -20,7 +20,6 @@ const CATALOGUE = 'https://facemorph-name-catalogue.cdilga.workers.dev';
 const NAMES = ['charlotte', 'saanvi'];
 const skip = (!existsSync(join(CLASSIC, '.git')) && 'classic checkout unavailable') || (!existsSync(CHROMIUM) && 'chromium unavailable');
 
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const rowLines = (path) => (existsSync(path) ? readFileSync(path, 'utf8').split('\n').filter((l) => l.includes('"kind":"row"')).map((l) => JSON.parse(l)) : []);
 
 // Run the generator; resolves with its exit and log lines. onTick may kill it.

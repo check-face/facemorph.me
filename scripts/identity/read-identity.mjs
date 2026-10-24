@@ -172,7 +172,7 @@ async function readSelfHost(spec, out) {
 
 function parseHead(buf) {
   const text = buf.toString('utf8');
-  const blocks = text.split(/\r?\n\r?\n/).filter((b) => /^HTTP\//.test(b));
+  const blocks = text.split(/\r?\n\r?\n/).filter((b) => b.startsWith('HTTP/'));
   const last = blocks.at(-1) ?? '';
   const status = Number(last.match(/^HTTP\/[\d.]+ (\d{3})/)?.[1] ?? 0);
   const header = (name) => last.match(new RegExp(`^${name}:\\s*(.+?)\\s*$`, 'im'))?.[1] ?? null;

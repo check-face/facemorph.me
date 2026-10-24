@@ -14,7 +14,7 @@ import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
 import TextField from '@mui/material/TextField';
 import Tooltip from '@mui/material/Tooltip';
-import { useRef, useState, type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import type { FaceMode, Input } from './types.ts';
 
 export interface FaceFieldProps {
@@ -30,7 +30,7 @@ export interface FaceFieldProps {
 }
 
 export function FaceField({ item, label, disabled, onEdit, onMode, onBrowse, onPick, onWarmPhotoTools }: FaceFieldProps) {
-  const anchor = useRef<HTMLDivElement | null>(null);
+  const [anchor, setAnchor] = useState<HTMLDivElement | null>(null); // the start adornment the menu opens from
   const [open, setOpen] = useState(false);
   // Choosing "Upload image" opens the picker in the same gesture: a mode change alone left an empty field.
   const entry = (kind: FaceMode, icon: ReactNode, text: string) => (
@@ -46,7 +46,7 @@ export function FaceField({ item, label, disabled, onEdit, onMode, onBrowse, onP
   const placeholder = item.mode === 'project' ? '' : 'Just type anything'; // defect 20 (face controls): carried, not asserted
   return (
     <>
-      <Menu anchorEl={anchor.current} keepMounted open={open} onClose={() => setOpen(false)}>
+      <Menu anchorEl={anchor} keepMounted open={open} onClose={() => setOpen(false)}>
         {entry('text', <TextFieldsIcon />, 'Name or words')}
         {entry('seed', <DialpadIcon />, 'Numeric seed')}
         {entry('photo', <PhotoCameraIcon />, 'Upload image')}
@@ -66,7 +66,7 @@ export function FaceField({ item, label, disabled, onEdit, onMode, onBrowse, onP
             htmlInput: { style: { textAlign: 'center' }, ...(item.mode === 'seed' ? { min: 0, max: 4294967295 } : {}) },
             input: {
               startAdornment: (
-                <InputAdornment position="start" ref={anchor}>
+                <InputAdornment position="start" ref={setAnchor}>
                   <Tooltip title="Change mode"><IconButton className="next-adornment" tabIndex={-1} aria-label="Change mode" edge="start" onClick={() => setOpen(true)}><MenuIcon /></IconButton></Tooltip>
                 </InputAdornment>
               ),

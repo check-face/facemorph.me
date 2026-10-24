@@ -128,7 +128,7 @@ test('every integration is verified (with evidence) or needs-inspection (with wh
     } else assert.ok(i.missing, `${i.id}: needs-inspection without what is missing`);
     assert.ok(i.scope?.length && i.binding?.type && i.target && i.trigger !== undefined, `${i.id}: incomplete binding`);
     assert.ok(Array.isArray(i.credentials), `${i.id}: credentials`);
-    if (/publisher$/.test(i.kind) && i.kind !== 'manual-publisher' && i.kind !== 'github-app-publisher') {
+    if (i.kind.endsWith('publisher') && i.kind !== 'manual-publisher' && i.kind !== 'github-app-publisher') {
       assert.ok(i.credentials.length && i.credentials.every((c) => NAME.test(c)), `${i.id}: credential names`);
       assert.ok(i.check?.workflow, `${i.id}: Actions publisher without a workflow check`);
     }

@@ -8,7 +8,7 @@ import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { ALLOWLIST, REPO, line, matches, readJson } from '../inventory/lib.mjs';
-import { digestTree, storeFindings } from './control.mjs';
+import { storeFindings } from './control.mjs';
 
 export function closureFindings({ root = REPO, allowlist = readJson(ALLOWLIST), allow = [] }) {
   const base = allowlist.destination_root;

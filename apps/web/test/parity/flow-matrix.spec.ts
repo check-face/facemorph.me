@@ -229,6 +229,7 @@ test.describe.serial('one morph', () => {
   });
   test.afterAll(async () => { await page?.context().close(); });
 
+  // oxlint-disable-next-line no-empty-pattern -- Playwright requires a destructured fixtures argument
   test('morph.settings-start-cancel', async ({}, info) => {
     annotate(info, row('morph.settings-start-cancel'));
     const t = touch(info);
@@ -259,6 +260,7 @@ test.describe.serial('one morph', () => {
     rec.done();
   });
 
+  // oxlint-disable-next-line no-empty-pattern -- Playwright requires a destructured fixtures argument
   test('morph.play-slider', async ({}, info) => {
     annotate(info, row('morph.play-slider'));
     const t = touch(info);
@@ -286,6 +288,7 @@ test.describe.serial('one morph', () => {
     rec.done();
   });
 
+  // oxlint-disable-next-line no-empty-pattern -- Playwright requires a destructured fixtures argument
   test('save.face-mp4', async ({}, info) => {
     annotate(info, row('save.face-mp4'));
     const t = touch(info);
@@ -297,6 +300,7 @@ test.describe.serial('one morph', () => {
     expect((await video).suggestedFilename()).toMatch(/\.mp4$/);
   });
 
+  // oxlint-disable-next-line no-empty-pattern -- Playwright requires a destructured fixtures argument
   test('share.cancel-unsupported', async ({}, info) => {
     annotate(info, row('share.cancel-unsupported'));
     const canShare = await page.evaluate(() => typeof navigator.share === 'function');
@@ -306,6 +310,7 @@ test.describe.serial('one morph', () => {
     await shot(page, info, 'share');
   });
 
+  // oxlint-disable-next-line no-empty-pattern -- Playwright requires a destructured fixtures argument
   test('return-retained', async ({}, info) => {
     annotate(info, row('return-retained'));
     await page.reload();
@@ -319,6 +324,7 @@ test.describe.serial('one morph', () => {
 // ---------------------------------------------------------------- changed and new rows
 
 for (const r of ROWS.filter((x) => x.tag !== 'parity')) {
+  // oxlint-disable-next-line no-empty-pattern -- Playwright requires a destructured fixtures argument
   test(r.rowId, async ({}, info) => {
     annotate(info, r);
     test.skip(true, r.unexercisable

@@ -108,7 +108,7 @@ function wholeJpeg(bytes, url) {
 }
 
 async function pool(items, width, fn) {
-  const out = new Array(items.length);
+  const out = Array.from({ length: items.length });
   let next = 0, done = 0;
   await Promise.all(Array.from({ length: width }, async () => {
     while (next < items.length) {
