@@ -23,7 +23,7 @@
     },
     {
       "hostname": "api.facemorph.me",
-      "dns": "A 172.67.164.73 (Cloudflare proxied)",
+      "dns": "CNAME triton.dilger.dev proxied, resolves to Cloudflare edge (172.67.164.73 observed; CNAME target per fm-a4b integrations.json)",
       "platform": "Cloudflare proxy -> Caddy origin on triton (GTX 1080) running the TF StyleGAN2 + custom CUDA ops API",
       "bindings": [],
       "publisher": "Operator-managed processes on triton; no repo workflow publishes it (docs/local-device-lab.md:1,14, src/Config.fs:54)",
@@ -38,12 +38,12 @@
       "dns": "AAAA 2606:50c0:8003::153 (GitHub Pages range; server: GitHub.com, x-github-request-id observed)",
       "platform": "GitHub Pages",
       "bindings": [],
-      "publisher": "needs-inspection: no publish workflow for it found in classic or monorepo; Pages mapping (which repo/branch) unknown from repos",
+      "publisher": "GitHub Pages legacy build from master /docs of the archived checkface repository (verified by fm-a4b scripts/identity/integrations.json, readAt 2026-10-24); no publish workflow in classic or the monorepo",
       "credentials": [],
-      "origin": "GitHub Pages (needs-inspection: what is served today)",
+      "origin": "GitHub Pages serving the legacy API documentation pages",
       "owner_account": "GitHub org check-face",
       "classification": "api-only",
-      "notes": "Grouped with the API hostnames by the bead (api.facemorph.me and checkface.facemorph.me DNS/proxies); retired at API retirement. Content unidentified: needs-inspection."
+      "notes": "Grouped with the API hostnames by the bead (api.facemorph.me and checkface.facemorph.me DNS/proxies); retired at API retirement. Content identified by fm-a4b: legacy API documentation pages from the archived repo's /docs."
     },
     {
       "hostname": "next.facemorph.me",
@@ -74,7 +74,7 @@
       "dns": "CNAME cname.vercel-dns.com, A 66.33.60.66 (Vercel, not proxied)",
       "platform": "Vercel project (facemorph-names repo, id 348379171)",
       "bindings": [],
-      "publisher": "needs-inspection: no workflow in facemorph-names or classic publishes it (console-connected Vercel project presumed)",
+      "publisher": "Vercel for GitHub: deployments created by vercel[bot] (Production and Preview) on the facemorph-names repository connection (verified by fm-a4b integrations.json)",
       "credentials": [],
       "origin": "Vercel build of facemorph-names (Svelte 3 + Rollup)",
       "owner_account": "Vercel account (needs-inspection for project id)",
@@ -82,8 +82,20 @@
       "notes": "Observed 200 server Vercel 2026-10-24. Independent of the legacy API; fm-5u9 owns the names-host plan."
     },
     {
+      "hostname": "e4e.facemorph.me",
+      "dns": "CNAME triton.dilger.dev, proxied (per fm-a4b integrations.json DNS read, 2026-10-24; not re-resolved independently)",
+      "platform": "Cloudflare proxy -> triton origin (encoder process)",
+      "bindings": [],
+      "publisher": "Operator-managed process on triton; nothing in any repo publishes it",
+      "credentials": [],
+      "origin": "triton (encoder API alongside api.facemorph.me)",
+      "owner_account": "Cloudflare account 8f550a622a484c03d9267efd45573583",
+      "classification": "api-only",
+      "notes": "Added from fm-a4b's verified DNS rows (my 2026-10-24 resolvectl pass did not query this hostname): the encoder-side hostname of the legacy hosted API; retired at API retirement."
+    },
+    {
       "hostname": "metrics.facemorph.me",
-      "dns": "AAAA 2606:4700:3035::... (Cloudflare proxied)",
+      "dns": "CNAME triton.dilger.dev proxied, resolves to Cloudflare edge (2606:4700:3035::... observed; CNAME target per fm-a4b integrations.json)",
       "platform": "Cloudflare proxy -> Caddy -> Grafana (302 /login observed)",
       "bindings": [],
       "publisher": "Operator-managed on triton; dashboards/provisioning are NOT in classic (only the monorepo ops/grafana/ dashboard JSON + prometheus-job.yml)",
@@ -110,7 +122,7 @@
       "dns": "workers.dev subdomain (Cloudflare)",
       "platform": "Worker facemorph-seed-gallery, assets-only (hosting/gallery/wrangler.jsonc, public/)",
       "bindings": [],
-      "publisher": "Not attested in any repo workflow (deployed ad hoc; needs-inspection)",
+      "publisher": "Operator machine: `wrangler deploy --config hosting/gallery/wrangler.jsonc` after reconstructing the verified selection (no workflow; verified by fm-a4b integrations.json)",
       "credentials": [],
       "origin": "Deployed assets",
       "owner_account": "Cloudflare account 8f550a622a484c03d9267efd45573583",
@@ -200,8 +212,9 @@
   ],
   "resource_classification": {
     "api-only (removed at API retirement)": [
-      "api.facemorph.me proxy + Caddy + Triton/encoder/API processes on triton",
-      "checkface.facemorph.me (GitHub Pages; content needs-inspection)",
+      "api.facemorph.me proxy + Caddy + Triton/encoder/API processes on triton (api/e4e CNAMEs to triton.dilger.dev per fm-a4b)",
+      "e4e.facemorph.me (encoder hostname, fm-a4b)",
+      "checkface.facemorph.me (GitHub Pages: archived repo's /docs API documentation, fm-a4b)",
       "legacy Vercel project credentials (VERCEL_*)",
       "Tauri updater packaging (CHECKFACE_UPDATER_PUBLIC_KEY, prepare-release.mjs endpoint)",
       "hosting/next/ server+tunnel pieces (historical preview stack)"
@@ -225,5 +238,10 @@
       "GA4 measurement (candidate analytics)"
     ]
   },
-  "secret_scan": "No credential values are recorded in this inventory or in the committed repos it read: workflows reference secret NAMES only; wrangler configs carry ids, not tokens; classic contains no .dev.vars/.env values for these hosts (checked the files cited above)."
+  "secret_scan": "No credential values are recorded in this inventory or in the committed repos it read: workflows reference secret NAMES only; wrangler configs carry ids, not tokens; classic contains no .dev.vars/.env values for these hosts (checked the files cited above).",
+  "fm_a4b_crosscheck": {
+    "date": "2026-10-24",
+    "source": "scripts/identity/integrations.json (fm-a4b, Cloudflare-API-verified publisher/target bindings)",
+    "result": "holds - every publisher, binding and classification row in this file is consistent with fm-a4b's verified list. Refinements adopted: checkface.facemorph.me = archived repo /docs on GitHub Pages; names site publisher = Vercel-for-GitHub (vercel[bot]); seed gallery published by operator CLI (no workflow); diagnostics Worker deployed manually (no workflow, last modified 2026-09-16); api/e4e/metrics are proxied CNAMEs to triton.dilger.dev and e4e.facemorph.me added as its own hostname row."
+  }
 }

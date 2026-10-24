@@ -93,7 +93,7 @@
       "moving_paths": ["hosting/next-cloudflare/{worker.mjs,worker.test.mjs,validation.mjs,delete-run.mjs,wrangler.toml}"],
       "inputs": "POST /diagnostics/events with consent header x-facemorph-diagnostics-consent: session-v1; origin allowlist [next.facemorph.me, facemorph.me, labs.facemorph.me, tauri://localhost, http(s)://tauri.localhost] (worker.mjs:12).",
       "consumers": ["src/Next/reporting.mjs (client sender)", "R2 bucket facemorph-diagnostics (keys runs/<run>/<uuid>) with KV 3a71e4ec58354345be24a1e02a3edb82 fallback; retention 30 days"],
-      "build_worker_urls": ["Worker facemorph-next-diagnostics, route next.facemorph.me/diagnostics/* (wrangler.toml); also mounted in the monorepo import as hosting/next-cloudflare/validation.mjs imported by src/Next/reporting.test.mjs"],
+      "build_worker_urls": ["Worker facemorph-next-diagnostics, route next.facemorph.me/diagnostics/* (wrangler.toml); deployed manually from the operator machine (no workflow; fm-a4b integrations.json: last modified 2026-09-16); also mounted in the monorepo import as hosting/next-cloudflare/validation.mjs imported by src/Next/reporting.test.mjs"],
       "persistent_identities": ["Diagnostics consent header session-v1; run ids in R2 keys"],
       "live_receipt": "Route live (covered by next.facemorph.me 200).",
       "uncertainties": []
