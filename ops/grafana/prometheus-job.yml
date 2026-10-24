@@ -1,0 +1,10 @@
+  # FaceMorph changeover statistics (facemorph.me repo services/stats). Token lives only on this host.
+  - job_name: 'facemorph_web'
+    scrape_interval: 60s
+    scheme: https
+    metrics_path: /stats/metrics
+    authorization:
+      type: Bearer
+      credentials: __SCRAPE_TOKEN__
+    static_configs:
+    - targets: ['next.facemorph.me']

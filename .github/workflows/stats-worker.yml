@@ -35,4 +35,9 @@ jobs:
         run: |
           code=$(curl -s -o /dev/null -w '%{http_code}' https://next.facemorph.me/stats/metrics)
           test "$code" = 401
-          curl -sf -H "Authorization: Bearer $STATS_SCRAPE_TOKEN" https://next.facemorph.me/stats/metrics > /dev/null
+          # A newly set secret takes a few seconds to reach the edge.
+          for i in 1 2 3 4 5 6; do
+            curl -sf -H "Authorization: Bearer $STATS_SCRAPE_TOKEN" https://next.facemorph.me/stats/metrics > /dev/null && exit 0
+            sleep 10
+          done
+          exit 1
