@@ -1,0 +1,16 @@
+// The dark scheme for the candidate's stylesheet (fm-bxwv). Bulma 0.9 needed the bulma-prefers-dark add-on; Bulma 1
+// follows prefers-color-scheme itself, so src/style.scss's `@import "~bulma-prefers-dark/bulma-prefers-dark"`
+// resolves here (vite.config.ts) and keeps only what classic set on top: the dark link colour ($link-dark).
+// What bulma-prefers-dark set that Bulma 1's dark theme does not: titles, subtitles and strong text in Bulma 0.9's
+// greys ($grey-lighter 86 %, $grey-light 71 %), and links in classic's $link-dark.
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bulma-title-color: hsl(0, 0%, 86%);
+    --bulma-subtitle-color: hsl(0, 0%, 71%);
+    --bulma-subtitle-strong-color: hsl(0, 0%, 86%);
+    --bulma-text-strong: hsl(0, 0%, 86%);
+  }
+  a {
+    color: $link-dark;
+  }
+}

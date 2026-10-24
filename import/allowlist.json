@@ -1063,7 +1063,13 @@
       "sha256": "4f5dec384ccf6da63656cb3c276a364b07a56079e42ac06e82d5f35713667cf5",
       "bytes": 1763,
       "class": "temporary-root",
-      "temporary": true
+      "temporary": true,
+      "ported": {
+        "sha256": "0b4e97b2f659228fa3744e2ad65a2e967c7086cf48046dc26c0470195a19a647",
+        "bytes": 1220,
+        "bead": "fm-bxwv",
+        "reason": "Dependencies are not pinned (operator, 24 October 2026): playwright 1.49.1 -> ^1.64.1 with npm install playwright@latest"
+      }
     },
     {
       "source": "scripts/matrix-tools/package.json",
@@ -1071,7 +1077,13 @@
       "sha256": "c118216d9fd04e40bdf8986d5257eb513ab49adf87b8929266a34bc50cdfc82d",
       "bytes": 334,
       "class": "temporary-root",
-      "temporary": true
+      "temporary": true,
+      "ported": {
+        "sha256": "352e40642fa3d29840c65e3b11b0a83f861cb061f9280856458b7b67f452be3e",
+        "bytes": 335,
+        "bead": "fm-bxwv",
+        "reason": "Dependencies are not pinned (operator, 24 October 2026): playwright 1.49.1 -> ^1.64.1 with npm install playwright@latest"
+      }
     },
     {
       "source": "scripts/next-e2e-browser.py",

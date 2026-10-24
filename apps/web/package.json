@@ -16,26 +16,26 @@
     "test:e2e": "node --test test/e2e/*.e2e.ts"
   },
   "dependencies": {
-    "@emotion/react": "11.14.0",
-    "@emotion/styled": "11.14.1",
-    "@mui/icons-material": "9.5.0",
-    "@mui/material": "9.5.0",
-    "bulma": "0.9.3",
-    "bulma-prefers-dark": "0.1.0-beta.0",
-    "react": "19.3.1",
-    "react-advanced-cropper": "0.6.1",
-    "react-dom": "19.3.1"
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
+    "@mui/icons-material": "^9.5.0",
+    "@mui/material": "^9.5.0",
+    "bulma": "^1.0.4",
+    "bulma-prefers-dark": "^0.1.0-beta.1",
+    "react": "^19.3.1",
+    "react-advanced-cropper": "^0.20.1",
+    "react-dom": "^19.3.1"
   },
   "devDependencies": {
-    "@playwright/test": "1.64.1",
-    "@types/node": "24.19.2",
-    "@types/react": "19.3.0",
-    "@types/react-dom": "19.3.0",
-    "@vitejs/plugin-react": "6.1.2",
-    "playwright": "1.64.1",
-    "sass": "1.106.1",
-    "typescript": "7.0.2",
-    "vite": "8.3.5",
-    "vite-plugin-svgr": "5.2.0"
+    "@playwright/test": "^1.64.1",
+    "@types/node": "^26.6.5",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.2",
+    "playwright": "^1.64.1",
+    "sass": "^1.106.1",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.5",
+    "vite-plugin-svgr": "^5.2.0"
   }
 }

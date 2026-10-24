@@ -23,8 +23,16 @@ const require = createRequire(import.meta.url);
 
 // `@import "~bulma/bulma"` (webpack sass-loader style) resolves to bulma/bulma(.sass|.scss|.css) wherever Node finds
 // the package (hoisted to the workspace root's node_modules).
+// Bulma 1 (fm-bxwv): classic's Bulma 0.9 imports resolve to the port's shims in shell/style/, so src/style.scss
+// keeps its bytes. bulma-prefers-dark was a Bulma 0.9 add-on; Bulma 1 has the dark scheme built in.
+const SHIMS: Record<string, string> = {
+  '~bulma/bulma': 'shell/style/bulma.scss',
+  '~bulma-prefers-dark/bulma-prefers-dark': 'shell/style/bulma-prefers-dark.scss',
+};
 const tildeImporter = {
   findFileUrl(url: string): URL | null {
+    const shim = SHIMS[url];
+    if (shim) return new URL(shim, import.meta.url);
     if (!url.startsWith('~')) return null;
     const [scopeOrName = '', ...rest] = url.slice(1).split('/');
     const name = scopeOrName.startsWith('@') ? `${scopeOrName}/${rest.shift() ?? ''}` : scopeOrName;
@@ -90,7 +98,6 @@ export default defineConfig({
           'global-builtin',
           'color-functions',
           'slash-div',
-          'mixed-decls',
           'if-function',
         ],
       },

@@ -1,0 +1,15 @@
+// Bulma 1 for the candidate's stylesheet (fm-bxwv). src/style.scss (classic bytes) sets Bulma 0.9 globals and then
+// does `@import "~bulma/bulma"`; vite.config.ts resolves that import here. An @imported file sees the importer's
+// globals, so the same values configure Bulma 1's modules: fonts, title family, link colour and footer background.
+@use 'bulma/sass/utilities' with (
+  $family-sans-serif: $family-sans-serif,
+  $family-secondary: $family-secondary,
+  $link: $link
+);
+@use 'bulma/sass/elements/title' with (
+  $title-family: $title-family
+);
+@use 'bulma/sass/layout/footer' with (
+  $footer-background-color: $footer-background-color
+);
+@use 'bulma/sass';

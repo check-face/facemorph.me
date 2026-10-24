@@ -28,12 +28,6 @@
     "oxlint": "^1.89.0",
     "typescript": "^7.0.2"
   },
-  "overrides": {
-    "react-advanced-cropper": {
-      "react": "$react",
-      "react-dom": "$react-dom"
-    }
-  },
   "allowScripts": {
     "@parcel/watcher": false
   }

@@ -37,6 +37,11 @@ export function exportClosure({
       });
       continue;
     }
+    if (f.ported) {
+      // The port changed this file on purpose (f.ported names the bead); classic's bytes would undo it.
+      log({ kept: f.destination, ported: f.ported.sha256, bead: f.ported.bead });
+      continue;
+    }
     const path = join(root, f.destination);
     mkdirSync(dirname(path), { recursive: true });
     writeFileSync(path, bytes);

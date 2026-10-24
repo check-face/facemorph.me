@@ -61,6 +61,42 @@ test('a missing file is detected', () => {
   );
 });
 
+test('a ported file is checked against its new bytes, and a ported record must name its bead and reason', () => {
+  const ported = 'export const a = 3;\n';
+  const portedList = {
+    ...allowlist,
+    files: allowlist.files.map((f) =>
+      f.destination.endsWith('a.mjs')
+        ? {
+            ...f,
+            ported: { sha256: sha256(Buffer.from(ported)), bytes: 20, bead: 'fm-x', reason: 'r' },
+          }
+        : f,
+    ),
+  };
+  assert.deepEqual(
+    closureFindings({ root: tree({ 'src/Next/a.mjs': ported }), allowlist: portedList }),
+    [],
+  );
+  assert.deepEqual(
+    closureFindings({ root: tree(), allowlist: portedList }).map((f) => [f.path, f.problem]),
+    [['apps/web/src/Next/a.mjs', 'mismatch']],
+    "classic's bytes no longer pass for a ported file",
+  );
+  const unnamed = {
+    ...allowlist,
+    files: portedList.files.map((f) =>
+      f.ported ? { ...f, ported: { sha256: f.ported.sha256 } } : f,
+    ),
+  };
+  assert.deepEqual(
+    closureFindings({ root: tree({ 'src/Next/a.mjs': ported }), allowlist: unnamed }).map(
+      (f) => f.problem,
+    ),
+    ['ported without its digest, bead and reason'],
+  );
+});
+
 test('a planted Foo.fs.js and a planted .wrangler/ each fail the exclusion scan; a clean tree passes', () => {
   assert.deepEqual(scanTree(join(tree(), 'apps/web')).findings, []);
   assert.deepEqual(

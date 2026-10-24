@@ -5,6 +5,6 @@
   "description": "Cross-engine browser matrix runner. Kept out of the site's dependency tree so the shipped artifact's resolution never changes to accommodate a test tool.",
   "type": "module",
   "devDependencies": {
-    "playwright": "1.49.1"
+    "playwright": "^1.64.1"
   }
 }

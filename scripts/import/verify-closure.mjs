@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 // Checks the imported closure on disk against import/allowlist.json: every allowlisted file present at its
 // destination with its sha256, and no other file under the destination root. A later bead that adds files
-// beside the closure names them with --allow (a glob relative to the destination root, repeatable).
+// beside the closure names them with --allow (a glob relative to the destination root, repeatable). A file the port
+// changes on purpose keeps its classic sha256 (provenance) and carries `ported: { sha256, bytes, bead, reason }`; it is
+// checked against those new bytes, and a `ported` record without its bead and reason is itself a finding.
 //   node scripts/import/verify-closure.mjs [--root <repo>] [--allow <glob>]...
 // One JSON line per finding, then a summary {files, mismatches, missing, extra}; exit 1 on any finding.
 import { existsSync } from 'node:fs';
@@ -16,14 +18,23 @@ export function closureFindings({ root = REPO, allowlist = readJson(ALLOWLIST), 
   const dir = join(root, base);
   const files = allowlist.files.map((f) => ({
     path: f.destination.slice(prefix.length),
-    sha256: f.sha256,
-    bytes: f.bytes,
+    sha256: f.ported?.sha256 ?? f.sha256,
+    bytes: f.ported?.bytes ?? f.bytes,
   }));
+  const records = allowlist.files
+    .filter((f) => f.ported && !(f.ported.sha256 && f.ported.bead && f.ported.reason))
+    .map((f) => ({ path: f.destination, problem: 'ported without its digest, bead and reason' }));
   if (!existsSync(dir))
-    return files.map((f) => ({ path: f.path, problem: 'missing', expected: f.sha256 }));
-  return storeFindings(dir, files)
-    .filter((f) => !(f.problem === 'extra' && matches(f.path, allow)))
-    .map((f) => ({ ...f, path: prefix + f.path }));
+    return [
+      ...records,
+      ...files.map((f) => ({ path: prefix + f.path, problem: 'missing', expected: f.sha256 })),
+    ];
+  return [
+    ...records,
+    ...storeFindings(dir, files)
+      .filter((f) => !(f.problem === 'extra' && matches(f.path, allow)))
+      .map((f) => ({ ...f, path: prefix + f.path })),
+  ];
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
