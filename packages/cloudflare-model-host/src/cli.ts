@@ -4,18 +4,21 @@
 //   facemorph-model-host verify  --root <dir> --base <https url> [--manifest <name>] [--plan workers-free|workers-paid]
 //   facemorph-model-host publish --root <dir> --target <target.json> [--publish]
 //   facemorph-model-host warm    --root <dir> --origin <mirror url> --prefixes <list> [--publish]
-// publish and warm write nothing unless --publish is given (warm's HEAD makes the mirror copy a file).
-// Exit 0 ok, 1 refused, findings or failures, 2 usage error.
+//   facemorph-model-host mirror-deploy --worker <name> --bucket <r2 bucket> --upstream <url> --prefixes <list>
+//                                      [--site <worker>] [--domain <host>] [--compatibility-date <date>] [--publish]
+// publish, warm and mirror-deploy write nothing unless --publish is given (warm's HEAD makes the mirror copy a file;
+// mirror-deploy runs cf deploy --dry-run). Exit 0 ok, 1 refused, findings or failures, 2 usage error.
 import { readFileSync } from 'node:fs';
 import { parseArgs } from 'node:util';
 import type { Plan } from './limits.ts';
+import { deployMirror } from './mirror/deploy.ts';
 import { warm } from './mirror/warm.ts';
 import { publishRoot, type Target } from './publish.ts';
 import { stage, StageError } from './stage.ts';
 import { verifyRoot } from './verify.ts';
 
 const USAGE =
-  'usage: facemorph-model-host <stage|verify|publish|warm> [options] (see the package README)';
+  'usage: facemorph-model-host <stage|verify|publish|warm|mirror-deploy> [options] (see the package README)';
 
 export async function main(argv: readonly string[]): Promise<number> {
   const [command, ...rest] = argv;
@@ -36,6 +39,12 @@ export async function main(argv: readonly string[]): Promise<number> {
         publish: { type: 'boolean' },
         origin: { type: 'string' },
         prefixes: { type: 'string' },
+        worker: { type: 'string' },
+        bucket: { type: 'string' },
+        upstream: { type: 'string' },
+        site: { type: 'string' },
+        domain: { type: 'string' },
+        'compatibility-date': { type: 'string' },
       },
       strict: true,
     }));
@@ -105,6 +114,27 @@ export async function main(argv: readonly string[]): Promise<number> {
       });
       print(r);
       return r.failed.length ? 1 : 0;
+    }
+    if (command === 'mirror-deploy') {
+      if (!need('worker', 'bucket', 'upstream', 'prefixes')) return 2;
+      const site = str('site');
+      const domain = str('domain');
+      const date = str('compatibility-date');
+      const r = deployMirror(
+        {
+          worker: str('worker')!,
+          bucket: str('bucket')!,
+          upstream: str('upstream')!,
+          prefixes: str('prefixes')!,
+          ...(site ? { site } : {}),
+          ...(domain ? { domain } : {}),
+          ...(date ? { compatibilityDate: date } : {}),
+        },
+        { publish: values.publish === true },
+      );
+      console.error(r.output);
+      print({ published: r.published, status: r.status });
+      return r.status === 0 ? 0 : 1;
     }
   } catch (e) {
     if (e instanceof StageError) {

@@ -17,7 +17,10 @@
     "dist",
     "README.md",
     "THIRD_PARTY_NOTICES",
-    "PROVENANCE.json"
+    "PROVENANCE.json",
+    "cloudflare.config.ts",
+    "vite.config.ts",
+    "src/mirror/worker.ts"
   ],
   "engines": {
     "node": ">=24"
@@ -29,7 +32,10 @@
     "test:workerd": "node --test test/*.workerd.ts"
   },
   "dependencies": {
-    "@facemorph/browser-model-manager": "^0.0.0"
+    "@cloudflare/vite-plugin": "^2.0.0-beta.v.4",
+    "@facemorph/browser-model-manager": "^0.0.0",
+    "cf": "^1.0.0-beta.21",
+    "vite": "^8.3.5"
   },
   "devDependencies": {
     "@types/node": "^26.6.5",

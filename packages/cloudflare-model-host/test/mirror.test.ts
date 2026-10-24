@@ -1,9 +1,10 @@
 // The mirror Worker's import and configuration (fm-fy2.14), on plain values: its provenance names the frozen classic
 // revision and every source file at the digest import/allowlist.json records for it, each destination exists, the
 // package source names no FaceMorph host, and the prefix rules. The Worker itself runs in workerd in
-// mirror.workerd.ts. warm runs through the CLI against a real local test mirror with a fault switch.
+// mirror.workerd.ts. warm runs through the CLI against a real local test mirror with a fault switch; mirror-deploy
+// runs cf deploy --dry-run for real, without credentials.
 import assert from 'node:assert/strict';
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import {
   existsSync,
   mkdirSync,
@@ -20,6 +21,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { after, before, test } from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { DEFAULT_COMPATIBILITY_DATE, deployEnv } from '../src/mirror/deploy.ts';
 import { mirrored, prefixes } from '../src/mirror/worker.ts';
 
 const REPO = fileURLToPath(new URL('../../../', import.meta.url));
@@ -198,4 +200,66 @@ test('warm --publish: complete exits 0 holding every immutable path; a missing o
   mirrorSite.missing.clear();
   mirrorSite.flaky.clear();
   rmSync(root, { recursive: true, force: true });
+});
+
+test('a mirror target needs every deploy value; none is built in', () => {
+  const target = {
+    worker: 'w',
+    bucket: 'b',
+    upstream: 'https://upstream.invalid/',
+    prefixes: 'runtime/chunks/',
+  };
+  assert.deepEqual(deployEnv(target), {
+    MIRROR_WORKER: 'w',
+    MIRROR_BUCKET: 'b',
+    MIRROR_UPSTREAM: 'https://upstream.invalid/',
+    MIRROR_PREFIXES: 'runtime/chunks/',
+    MIRROR_COMPATIBILITY_DATE: DEFAULT_COMPATIBILITY_DATE,
+  });
+  for (const key of ['worker', 'bucket', 'upstream', 'prefixes'] as const)
+    assert.throws(() => deployEnv({ ...target, [key]: ' ' }), new RegExp(key));
+  assert.throws(() => deployEnv({ ...target, upstream: 'not a url' }));
+});
+
+test('mirror-deploy without --publish is cf deploy --dry-run: it builds the Worker with the given bindings and needs no credentials', () => {
+  // No Cloudflare credentials and an empty home: a request to the API could not authenticate.
+  const home = mkdtempSync(join(tmpdir(), 'mirror-deploy-'));
+  const env = Object.fromEntries(
+    Object.entries(process.env).filter(([k]) => !/^CLOUDFLARE_|^CF_/.test(k)),
+  );
+  const r = spawnSync(
+    process.execPath,
+    [
+      CLI,
+      'mirror-deploy',
+      '--worker',
+      'mirror-dry-run-probe',
+      '--bucket',
+      'probe-bucket',
+      '--upstream',
+      'https://upstream.invalid/',
+      '--prefixes',
+      'runtime/chunks/,runtime/assets/',
+      '--site',
+      'probe-site',
+    ],
+    { encoding: 'utf8', env: { ...env, HOME: home, XDG_CONFIG_HOME: join(home, '.config') } },
+  );
+  assert.equal(r.status, 0, r.stderr);
+  assert.deepEqual(JSON.parse(r.stdout.trim().split('\n').pop()!), { published: false, status: 0 });
+  for (const binding of [
+    /env\.MIRROR \(probe-bucket\)\s+R2 Bucket/,
+    /env\.SITE \(probe-site\)\s+Worker/,
+    /env\.UPSTREAM \("https:\/\/upstream\.invalid\/"\)/,
+    /env\.PREFIXES \("runtime\/chunks\/,runtime\/assets\/"\)/,
+    /--dry-run: exiting now/,
+  ])
+    assert.match(r.stderr, binding);
+  const bundle = readFileSync(
+    join(PACKAGE, '.cloudflare/output/v0/workers/default/bundle/index.js'),
+    'utf8',
+  );
+  assert.match(bundle, /PREFIXES/, 'the bundle is the mirror Worker');
+  assert.doesNotMatch(bundle, /facemorph\.me/);
+  rmSync(home, { recursive: true, force: true });
 });

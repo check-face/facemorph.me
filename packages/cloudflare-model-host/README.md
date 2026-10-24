@@ -38,6 +38,13 @@ extracted from classic `hosting/next/prepare-runtime.py` (chunking and manifest 
   final non-200 fails the run, naming the path; the report gives the held count. A mirror copies a file on HEAD, so
   without `--publish` nothing is requested.
 
+- **Mirror deploy:** `facemorph-model-host mirror-deploy --worker <name> --bucket <r2 bucket> --upstream <url>
+  --prefixes <list> [--site <worker>] [--domain <host>] [--compatibility-date <date>] [--publish]`. Deploys the mirror
+  Worker with the Cloudflare CLI `cf`, never Wrangler: the package root is the cf project (`cloudflare.config.ts`
+  reads every value from the arguments, `vite.config.ts` builds through the Cloudflare Vite plugin). Without
+  `--publish` it runs `cf deploy --dry-run`, which builds the Worker, lists its bindings and sends no API request. The
+  plugin is the 2.0 beta because its latest stable release (1.65.0) depends on Wrangler.
+
 Exit codes are 0 for ok, 1 for a refusal, findings or failures, and 2 for a usage error. Each command prints one JSON
 report.
 
