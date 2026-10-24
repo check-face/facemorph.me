@@ -21,6 +21,7 @@ await navigator.serviceWorker.ready;
 await fetch('/cached.json');
 await fetch('/cached.json');
 await fetch('/missing.json');
+await (await fetch('/streamed.json')).text();
 await fetch(closed + '/unreachable.json').catch(() => {});
 console.error('fixture console error');
 if (q.get('early')) await fetch(model + '/model.bin');
@@ -63,6 +64,13 @@ export async function startFixture(): Promise<Fixture> {
     if (path === '/') return send('text/html', PAGE);
     if (path === '/worker.js') return send('text/javascript', WORKER);
     if (path === '/sw.js') return send('text/javascript', SW);
+    // Streamed in two writes with no Content-Length: its bytes are known only when the request finishes.
+    if (path === '/streamed.json') {
+      res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store' });
+      res.write('{"part":1,');
+      setTimeout(() => res.end('"streamed":true}'), 200);
+      return;
+    }
     if (path === '/cached.json')
       return send('application/json', '{"cached":true}', { 'cache-control': 'max-age=600' });
     if (['/app.json', '/worker-data.json', '/sw-asset.json'].includes(path))

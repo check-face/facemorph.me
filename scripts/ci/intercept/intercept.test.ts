@@ -161,6 +161,9 @@ test(
     assert.equal(at('/sw-asset.json')[0]?.initiator, 'service-worker');
     assert.equal(at('/app.json')[0]?.initiator, 'page');
     assert.equal(at('/cached.json').length, 2);
+    // No Content-Length: settled() waits until the browser has counted its bytes (the transfer size, chunk
+    // framing included, so at least the 26-byte body).
+    assert.ok((at('/streamed.json')[0]?.bytes ?? 0) >= 26, JSON.stringify(at('/streamed.json')));
     assert.deepEqual(
       [at('/missing.json')[0]?.status, at('/missing.json')[0]?.failed],
       [404, false],

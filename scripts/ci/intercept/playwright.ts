@@ -57,7 +57,8 @@ interface PwTarget {
 
 export interface Attached {
   readonly rec: NetworkRecord;
-  /** Waits until every recorded request has settled (finished or failed). */
+  /** Waits until every recorded request has failed, or has its status and its bytes (bounded: a request
+   * Playwright never reports finished keeps bytes null after the timeout, and a claim on it reads 'untested'). */
   settled(timeoutMs?: number): Promise<void>;
 }
 
@@ -135,7 +136,9 @@ export function attachPlaywright(target: PwTarget, map: HostMap = DEFAULT_HOST_M
       const end = Date.now() + timeoutMs;
       while (Date.now() < end) {
         await Promise.all(pending);
-        if ([...open.values()].every((q) => q.failed || q.status !== null)) return;
+        // Bytes can arrive after the status (no Content-Length: from sizes() when the request finishes).
+        if ([...open.values()].every((q) => q.failed || (q.status !== null && q.bytes !== null)))
+          return;
         await new Promise((r) => setTimeout(r, 50));
       }
     },
