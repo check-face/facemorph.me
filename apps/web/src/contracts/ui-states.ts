@@ -5,6 +5,7 @@
 // operated checks, not here. Existing candidate states were read by operating the pinned control
 // (apps/web/test/contracts/control-states.json); its known defects are typed as defects, never as behaviour.
 import type { BatchSelection, CandidateId } from './batch.ts';
+import type { CeilingName } from './ceilings.ts';
 import type { AppGrantState } from './consent-state.ts';
 import type { ExportIdentity, ExportKind } from './export-identity.ts';
 import type { ConsentCostRow } from './preflight.ts';
@@ -42,8 +43,9 @@ export type ContractType =
   | 'RecoveryClassification'
   | 'none';
 
-/** Where a state names a ceiling, it names it; the values live in contracts.m2.ceilings (fm-2o8q). */
-export type CeilingName = 'BATCH_SELECTED_FACES_MAX' | 'BATCH_KEYPOINT_BYTES_MAX' | 'RETRY_PIXELS_BYTES_MAX';
+/** Where a state names a ceiling, it names it; the values live in ceilings.ts (contracts.m2.ceilings, fm-2o8q). There is no
+ * face-count ceiling (operator, 24 October): frames, retained inputs and the stored session are what bind. */
+export type MultiFaceCeiling = Extract<CeilingName, 'BATCH_RETAINED_INPUT_BYTES' | 'MORPH_FRAME_BUDGET' | 'STORED_SESSION_BYTES'>;
 
 // ---- The ten unions.
 export type FaceCount = 'empty' | 'one' | 'two-or-more' | 'many';
@@ -116,7 +118,10 @@ export type MultiFaceSelectionState =
       readonly detected: number;
       /** Visible global click order across files: deselect removes, reselect appends. */
       readonly selection: BatchSelection;
-      readonly overCeiling: null | { readonly ceiling: CeilingName; readonly action: 'reduce-selection' | 'remove-retry-input' };
+      readonly overCeiling:
+        | null
+        | { readonly ceiling: MultiFaceCeiling; readonly action: 'reduce-selection' }
+        | { readonly ceiling: 'BATCH_RETAINED_INPUT_BYTES'; readonly action: 'remove-retry-input' };
     }
   /** Committed atomically, in click order. */
   | { readonly modal: 'multi-face'; readonly phase: 'committed'; readonly inserted: readonly CandidateId[] };
