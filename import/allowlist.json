@@ -1,0 +1,2120 @@
+{
+  "schema": "facemorph.import-allowlist/1",
+  "bead": "fm-fy2.1",
+  "generated_by": "node scripts/inventory/generate-allowlist.mjs (rules, source, checks, unresolved_imports and delta_notes are reviewed by hand; files, delta, listed_with_digests and working_tree_overlays are generated from classic's Git objects)",
+  "source": {
+    "repository": "check-face/facemorph.me-classic",
+    "repository_id": 295956585,
+    "branch": "candidate/next-delivery-20260916",
+    "frozen_commit": "a42829bb0582b5a7a55ba6b1045a05861612b8a5",
+    "frozen_on": "2026-10-24",
+    "frozen_why": "The committed head of the candidate branch on 24 October 2026 (origin agreed, ls-remote), never a dirty tree. It is three commits past 6107f80: 551b607 (the anonymous changeover statistics sink, deployed and live) and two workflow-only commits (91b7778 adds a device-lab deploy gate, a42829b removes it again).",
+    "planning_reference": "b2d945a8c7f0ff9f382fbfefaecc2651943077a3",
+    "live_control_commit": "551b60726290b2d67a32c62477b2fd964de51f96",
+    "live_control_vs_frozen": "551b607 is the parent of 91b7778; 91b7778 and a42829b change only .github/workflows/next-site.yml, so the live control and the frozen revision have the same closure (no imported path differs). Identity details are in import/build-inputs.json control_artifact."
+  },
+  "destination_root": "apps/web",
+  "path_map": "A classic path P is imported at apps/web/P, so the src/Next structure and every relative import stay intact. Paths outside src/ are temporary root paths: each names its consumer and the bead that moves it out once that consumer migrates.",
+  "protected_destinations": [
+    "PLAN.md",
+    "AGENTS.md",
+    "README.md",
+    ".beads/",
+    ".github/",
+    ".gitignore",
+    "import/",
+    "scripts/",
+    "docs/",
+    "ops/",
+    "services/",
+    "tools/"
+  ],
+  "dispositions": {
+    "imported": "Copied byte-identical from the frozen commit's Git objects to its destination.",
+    "fsharp-specification": "F# source the port reads in classic at the frozen commit as its specification (the control artifact is the oracle); never imported or built here.",
+    "workflow-listed": "Classic CI workflow; not imported. Listed for the bead that re-homes or retires what it does.",
+    "hosting-listed": "Classic hosting/serving file; not part of the apps/web closure. Listed for the bead that imports or retires it, from this same frozen revision.",
+    "reference": "Read at the frozen commit and not copied: only the entries the closure needs are merged into the destination.",
+    "excluded": "Not imported, for the stated reason."
+  },
+  "rules": [
+    {
+      "patterns": [
+        "src/Next/Product.fs",
+        "src/Next/ProjectJson.fs",
+        "src/Next/Contracts.fs",
+        "src/Next/Runtime.fs",
+        "src/Next/Assets/ModelAssets.fs",
+        "src/Config.fs",
+        "src/FancyButton.fs",
+        "src/Logos.fs",
+        "src/App.fs",
+        "src/Index.fs"
+      ],
+      "disposition": "fsharp-specification",
+      "class": "fsharp-source",
+      "reason": "The candidate's F# product, ProjectJson codec, contracts, runtime and model-asset sources, plus the small shared pieces the Next view uses (Config, FancyButton, Logos, and App.fs for ThemedApp and header; Index.fs mounts the app). Read in classic as the port's specification; generated Fable output is never imported.",
+      "owner": "migration.facade (fm-pia9) for ProjectJson; the controller and rendering ports (fm-v80g, fm-zz2i) for the rest"
+    },
+    {
+      "patterns": [
+        "src/Next/verify.fsx",
+        "src/**/*.fs",
+        "src/**/*.fsproj",
+        "src/**/*.fs.js",
+        "src/**/*.fs.js.map"
+      ],
+      "disposition": "excluded",
+      "class": "fsharp-source",
+      "reason": "Legacy Elmish UI of classic production and F# project/script files: not part of the Next closure. verify.fsx is the F# twin of verify-fable.mjs; its ProjectJson assertions seed migration.facade's acceptance. Retirement.fs copy is inventoried by domain.copy (fm-8lq).",
+      "owner": null
+    },
+    {
+      "patterns": [
+        "src/Next/"
+      ],
+      "disposition": "imported",
+      "class": "src-next",
+      "reason": "The candidate's runnable JS closure: bridge, browser, photo, geometry and assets modules, their tests, fixtures, evidence and helpers."
+    },
+    {
+      "patterns": [
+        "src/index.html",
+        "src/style.scss"
+      ],
+      "disposition": "imported",
+      "class": "app-shell",
+      "reason": "HTML template and the stylesheet entry (it imports product-ux.scss, Bulma, bulma-prefers-dark and the react-advanced-cropper stylesheet)."
+    },
+    {
+      "patterns": [
+        "src/public/"
+      ],
+      "disposition": "imported",
+      "class": "public-assets",
+      "reason": "Static public assets copied into deploy-next: icons, self-hosted fonts with their receipt, the historic hello preview, og-next.png, robots and manifest."
+    },
+    {
+      "patterns": [
+        "desktop/runtime.mjs"
+      ],
+      "disposition": "imported",
+      "class": "temporary-root",
+      "temporary": true,
+      "consumer": "src/Next/product-bridge.mjs line 6 imports '../../desktop/runtime.mjs'; classic scripts/build-next.cjs hashes it into the build id.",
+      "owner": "provider.native (fm-be10) removes native dispatch and this path",
+      "reason": "Native-dispatch runtime the bridge statically imports; retained for the first checks only."
+    },
+    {
+      "patterns": [
+        "desktop/scripts/verify-web-artifact.py"
+      ],
+      "disposition": "imported",
+      "class": "temporary-root",
+      "temporary": true,
+      "consumer": "Classic next-e2e.yml and research-built-ui-media-v1.yml verify the exact web artifact with it; hosting/next-static/promote.py calls it.",
+      "owner": "provider.native (fm-be10) re-homes the general artifact verifier",
+      "reason": "Browser artifact verifier that happens to live under desktop/; imported without the native packaging around it."
+    },
+    {
+      "patterns": [
+        "scripts/check-bridge-imports.mjs"
+      ],
+      "disposition": "imported",
+      "class": "temporary-root",
+      "temporary": true,
+      "consumer": "Classic next-site.yml step and scripts/build-next.cjs (the effective run, between Fable and webpack). Not applicable until the port: see checks.",
+      "owner": "migration.facade (fm-pia9): strict TypeScript at the typed facade replaces it",
+      "reason": "Imported as a file so the check is visible; never reported passed here."
+    },
+    {
+      "patterns": [
+        "scripts/check-progress-copy.mjs",
+        "scripts/check-tests-listed.mjs",
+        "scripts/check-no-third-party.mjs",
+        "scripts/check-next-artifact.sh",
+        "scripts/build-next.cjs"
+      ],
+      "disposition": "imported",
+      "class": "temporary-root",
+      "temporary": true,
+      "consumer": "Classic next-site.yml artifact and compiled-ui jobs. check-progress-copy reads the bridge as text; check-tests-listed lists every test file; check-no-third-party scans deploy-next; check-next-artifact.sh drives the built artifact in Chromium; build-next.cjs defines the build id (sha256 over src/Next *.fs|*.mjs|*.scss plus desktop/runtime.mjs) and copies the catalogue into deploy-next. build-next.cjs is a reference for the build:next wrapper and the identity contract: it runs dotnet, Fable and webpack and is never run here.",
+      "owner": "import.checks (fm-5ey) runs these in the destination; build.ci-site (fm-aa8) carries the site lane",
+      "reason": "Build and check scripts that survive (hashing and verification)."
+    },
+    {
+      "patterns": [
+        "scripts/next-e2e-server.py",
+        "scripts/next-e2e-browser.py",
+        "scripts/next-e2e.md",
+        "scripts/next-parity-browser.py",
+        "scripts/gpu-probe.py"
+      ],
+      "disposition": "imported",
+      "class": "temporary-root",
+      "temporary": true,
+      "consumer": "Exact-artifact CPU UI qualification (classic next-e2e.yml; next-site.yml path filter). next-parity-browser.py is the C-08 raw-synthesis parity harness and gpu-probe.py the GPU-lane probe, both executed by browser-harness beside next-e2e-browser.py.",
+      "owner": "import.checks (fm-5ey) runs the local exact-artifact harness; build.ci-site (fm-aa8) carries the real-UI CPU e2e lane; migration.parity-harness (fm-q007)",
+      "reason": "Exact-artifact harness the destination runs against the pinned control."
+    },
+    {
+      "patterns": [
+        "scripts/next-matrix.mjs",
+        "scripts/next-matrix-summary.py",
+        "scripts/matrix-tools/package.json",
+        "scripts/matrix-tools/package-lock.json"
+      ],
+      "disposition": "imported",
+      "class": "temporary-root",
+      "temporary": true,
+      "consumer": "Classic next-matrix.yml: Playwright Chromium, Firefox and WebKit rows over the same product workflow; matrix-tools pins Playwright.",
+      "owner": "build.m1 (fm-7ge) desktop matrix; build.vite-shell (fm-svg) browser matrix",
+      "reason": "Desktop browser-matrix harness."
+    },
+    {
+      "patterns": [
+        "scripts/next-gpu-benchmark.py"
+      ],
+      "disposition": "imported",
+      "class": "temporary-root",
+      "temporary": true,
+      "consumer": "Classic next-gpu-lane.yml (WebGPU route on a real GPU through the product interface).",
+      "owner": "build.workers-lease (fm-wzy) carries the GPU lane",
+      "reason": "GPU-lane harness."
+    },
+    {
+      "patterns": [
+        "scripts/next-ios-sim.py",
+        "tests/mobile/"
+      ],
+      "disposition": "imported",
+      "class": "temporary-root",
+      "temporary": true,
+      "consumer": "Classic mobile-browser.yml: Android Chrome in an API35 emulator and Safari in an iOS Simulator; tests/mobile imports /src/Next modules from the app root.",
+      "owner": "build.ci-mobile (fm-hlv); build.hosted-gate-lanes (fm-5klw)",
+      "reason": "Mobile browser lanes; phones are first-class targets."
+    },
+    {
+      "patterns": [
+        "hosting/next-cloudflare/validation.mjs"
+      ],
+      "disposition": "imported",
+      "class": "temporary-root",
+      "temporary": true,
+      "consumer": "src/Next/logging.test.mjs, src/Next/reporting.test.mjs and src/Next/route-report.test.mjs import '../../hosting/next-cloudflare/validation.mjs'.",
+      "owner": "deploy.collector (fm-a0c1) re-homes the collector Worker with it",
+      "reason": "Collector event validation shared by closure tests."
+    },
+    {
+      "patterns": [
+        "hosting/next-static/catalogue.json"
+      ],
+      "disposition": "imported",
+      "class": "temporary-root",
+      "temporary": true,
+      "consumer": "Classic build-next.cjs copies it to deploy-next/catalogue.json and the deploy compares them; the names picker reads it at runtime.",
+      "owner": "names.publish (fm-e6yj) and deploy.collector (fm-a0c1) replace the catalogue pipeline",
+      "reason": "Catalogue input of the artifact (names and seed gallery index)."
+    },
+    {
+      "patterns": [
+        "photo-runtime/photo-worker.mjs",
+        "photo-runtime/align-photo.mjs",
+        "photo-runtime/image-header.mjs",
+        "photo-runtime/sha256.mjs",
+        "photo-runtime/THIRD_PARTY_NOTICES.txt",
+        "photo-runtime/encoder-stream/execute.mjs"
+      ],
+      "disposition": "imported",
+      "class": "temporary-root",
+      "temporary": true,
+      "consumer": "src/Next/stage-labels.test.mjs reads photo-runtime/photo-worker.mjs and photo-runtime/encoder-stream/execute.mjs; photo-worker.mjs imports image-header.mjs and sha256.mjs. The runtime photo manifest pins the five top-level files by sha256 and hosting/next-static/mirror-runtime.py publishes them beside the photo worker.",
+      "owner": "compute.photo-descriptor (fm-dmlz); hosting.chunks (fm-3osh) for staging",
+      "reason": "Needed photo-runtime inputs: manifest-pinned photo worker siblings and notices."
+    },
+    {
+      "patterns": [
+        "experiment/device-lab/fused-resample-boundary-v2.js"
+      ],
+      "disposition": "imported",
+      "class": "temporary-root",
+      "temporary": true,
+      "consumer": "src/Next/browser/fused-resample.test.mjs asserts the shipped fused-resample-v1.mjs is byte-identical to this lab kernel via '../../../experiment/device-lab/fused-resample-boundary-v2.js'.",
+      "owner": "research.tree (fm-86u) re-points the test when the research tree lands",
+      "reason": "One 2.4 KB research kernel a closure test reads; the rest of experiment/ is excluded."
+    },
+    {
+      "patterns": [
+        "package.json",
+        "package-lock.json"
+      ],
+      "disposition": "reference",
+      "class": "dependency-manifest",
+      "reason": "Classic's root manifest builds the historical app (dotnet, Fable, webpack). Only the entries the closure needs are merged into the destination workspace; the bare specifiers the closure imports must resolve from this lock (scripts/inventory/unresolved-imports.mjs).",
+      "owner": "import.closure (fm-gpx)"
+    },
+    {
+      "patterns": [
+        ".github/workflows/next-site.yml"
+      ],
+      "disposition": "workflow-listed",
+      "class": "workflow",
+      "reason": "Artifact job (tests, build:next, checks, SHA256SUMS), compiled-ui job, deploy job (mirror-runtime, stage, wrangler deploy, live checks) and, since 6107f80, the models.facemorph.me mirror deploy-and-warm steps. Its artifact-job check list is in import/build-inputs.json.",
+      "owner": "build.ci-site (fm-aa8) for the artifact and compiled-ui jobs; deploy.promotion (fm-6fx6) for the deploy job; deploy.staging (fm-8tyu) for the runtime mirror deploy-and-warm steps"
+    },
+    {
+      "patterns": [
+        ".github/workflows/next-e2e.yml"
+      ],
+      "disposition": "workflow-listed",
+      "class": "workflow",
+      "reason": "Exact-artifact real-UI CPU qualification lane.",
+      "owner": "build.ci-site (fm-aa8)"
+    },
+    {
+      "patterns": [
+        ".github/workflows/mobile-browser.yml"
+      ],
+      "disposition": "workflow-listed",
+      "class": "workflow",
+      "reason": "Android emulator and iOS Simulator lanes.",
+      "owner": "build.ci-mobile (fm-hlv)"
+    },
+    {
+      "patterns": [
+        ".github/workflows/next-matrix.yml"
+      ],
+      "disposition": "workflow-listed",
+      "class": "workflow",
+      "reason": "Playwright Chromium, Firefox and WebKit matrix.",
+      "owner": "build.m1 (fm-7ge)"
+    },
+    {
+      "patterns": [
+        ".github/workflows/next-gpu-lane.yml"
+      ],
+      "disposition": "workflow-listed",
+      "class": "workflow",
+      "reason": "GPU lane.",
+      "owner": "build.workers-lease (fm-wzy)"
+    },
+    {
+      "patterns": [
+        ".github/workflows/name-catalogue.yml"
+      ],
+      "disposition": "workflow-listed",
+      "class": "workflow",
+      "reason": "Names catalogue build and publish.",
+      "owner": "names.publish (fm-e6yj)"
+    },
+    {
+      "patterns": [
+        ".github/workflows/research-built-ui-media-v1.yml",
+        ".github/workflows/research-rgba-screen-v1.yml"
+      ],
+      "disposition": "workflow-listed",
+      "class": "workflow",
+      "reason": "Research workflows.",
+      "owner": "research.s2 (fm-qqh)"
+    },
+    {
+      "patterns": [
+        ".github/workflows/self-host-build.yml"
+      ],
+      "disposition": "workflow-listed",
+      "class": "workflow",
+      "reason": "Classic self-host distribution build; stays in classic.",
+      "owner": "classic.inputs (fm-15j)"
+    },
+    {
+      "patterns": [
+        ".github/workflows/desktop-candidates.yml",
+        ".github/workflows/desktop-native-inference.yml",
+        ".github/workflows/desktop-product.yml"
+      ],
+      "disposition": "workflow-listed",
+      "class": "workflow",
+      "reason": "Native desktop packaging, retired for this web-only release; inventoried for retirement, not migration.",
+      "owner": "inventory.surfaces (fm-p7v); provider.native (fm-be10)"
+    },
+    {
+      "patterns": [
+        ".github/workflows/deploy.yml"
+      ],
+      "disposition": "workflow-listed",
+      "class": "workflow",
+      "reason": "Legacy production deploy of classic.",
+      "owner": "inventory.surfaces (fm-p7v); winddown.publishers (fm-y9m)"
+    },
+    {
+      "patterns": [
+        ".github/ISSUE_TEMPLATE/"
+      ],
+      "disposition": "workflow-listed",
+      "class": "workflow",
+      "reason": "Tester feedback issue form for next.facemorph.me (a GitHub surface).",
+      "owner": "inventory.surfaces (fm-p7v); rename.repair (fm-fy2.20)"
+    },
+    {
+      "patterns": [
+        "hosting/next-mirror/"
+      ],
+      "disposition": "hosting-listed",
+      "class": "hosting",
+      "digests": true,
+      "reason": "Second runtime origin models.facemorph.me (6107f80): a Worker over R2 bucket facemorph-runtime-mirror with a service binding to the site, copying only immutable runtime/{assets,chunks,manifests,photo,encoder-stream}/. No closure test imports it, so it is not in the apps/web closure; listed with digests so hosting and deploy take it from this same frozen revision.",
+      "owner": "hosting.serving (fm-fy2.14) for serving; deploy.staging (fm-8tyu) imports it and owns the deploy-and-warm step"
+    },
+    {
+      "patterns": [
+        "hosting/next-cloudflare/.wrangler/"
+      ],
+      "disposition": "excluded",
+      "class": "wrangler-state",
+      "reason": "Local Miniflare/Wrangler state committed in classic; never imported."
+    },
+    {
+      "patterns": [
+        "hosting/next-cloudflare/"
+      ],
+      "disposition": "hosting-listed",
+      "class": "hosting",
+      "reason": "Diagnostics collector Worker and its tests (worker.test.mjs runs in classic next-site.yml); validation.mjs alone is imported for closure tests.",
+      "owner": "deploy.collector (fm-a0c1)"
+    },
+    {
+      "patterns": [
+        "hosting/next-static/"
+      ],
+      "disposition": "hosting-listed",
+      "class": "hosting",
+      "reason": "Static site staging, runtime overlay and manifest, mirror/restage/promote scripts, entry Worker, analytics module and its test (run in classic next-site.yml). The runtime overlay and manifest are acquisition inputs read from Git objects at the frozen commit (import/build-inputs.json).",
+      "owner": "deploy.staging (fm-8tyu); deploy.promotion (fm-6fx6) for promote.py"
+    },
+    {
+      "patterns": [
+        "hosting/next/"
+      ],
+      "disposition": "hosting-listed",
+      "class": "hosting",
+      "reason": "Triton-tunnel hosting of next (compose, tunnel, server, runtime preparation) plus the model/runtime notices mirror-runtime.py publishes under runtime/notices/.",
+      "owner": "inventory.surfaces (fm-p7v) sets the hosting boundary; deploy.staging (fm-8tyu); pkgdocs.release (fm-oagi) for notices"
+    },
+    {
+      "patterns": [
+        "hosting/gallery/"
+      ],
+      "disposition": "hosting-listed",
+      "class": "hosting",
+      "reason": "Names and seed gallery publishing (R2).",
+      "owner": "names.publish (fm-e6yj); domain.snapshot (fm-old)"
+    },
+    {
+      "patterns": [
+        "photo-runtime/"
+      ],
+      "disposition": "excluded",
+      "class": "full-rebuild-input",
+      "reason": "Photo runtime full-rebuild inputs (dlib/Pillow/libjpeg WASM build, encoder-stream export and staging, fixtures, qualification pages and evidence). The built bytes are reused through the runtime manifest; rebuilding is not part of the import.",
+      "owner": "compute.photo-descriptor (fm-dmlz); conversion.container (fm-uh14)"
+    },
+    {
+      "patterns": [
+        "experiment/",
+        "autoresearch/"
+      ],
+      "disposition": "excluded",
+      "class": "research-tree",
+      "reason": "Research tree and its append-only history.",
+      "owner": "research.tree (fm-86u)"
+    },
+    {
+      "patterns": [
+        "desktop/"
+      ],
+      "disposition": "excluded",
+      "class": "native-packaging",
+      "reason": "Native desktop packages, updater and release automation: retired for the web-only release (only runtime.mjs and verify-web-artifact.py are imported).",
+      "owner": "inventory.surfaces (fm-p7v)"
+    },
+    {
+      "patterns": [
+        "self-host/",
+        "scripts/build-self-host.cjs"
+      ],
+      "disposition": "excluded",
+      "class": "classic-distribution",
+      "reason": "Frozen classic self-host distribution; stays in classic.",
+      "owner": "classic.inputs (fm-15j)"
+    },
+    {
+      "patterns": [
+        "Server/"
+      ],
+      "disposition": "excluded",
+      "class": "legacy-server-api",
+      "reason": "Legacy HTTP server/API; never imported or recreated."
+    },
+    {
+      "patterns": [
+        "global.json",
+        ".config/",
+        "Nuget.Config"
+      ],
+      "disposition": "excluded",
+      "class": "dotnet-fable-pins",
+      "reason": "D1: no .NET in the monorepo; Fable and SDK pins stay in classic."
+    },
+    {
+      "patterns": [
+        "webpack.config.js"
+      ],
+      "disposition": "excluded",
+      "class": "webpack-config",
+      "reason": "The Vite build replaces it; not imported."
+    },
+    {
+      "patterns": [
+        "vercel.json",
+        "vercel.package.json"
+      ],
+      "disposition": "excluded",
+      "class": "legacy-deploy",
+      "reason": "Legacy production deploy configuration.",
+      "owner": "inventory.surfaces (fm-p7v)"
+    },
+    {
+      "patterns": [
+        "HF_TRIAL.md",
+        "tests/hf-trial.test.cjs",
+        "src/hfTrial.js",
+        "src/trial-explain.md"
+      ],
+      "disposition": "excluded",
+      "class": "legacy-trial",
+      "reason": "Legacy Hugging Face trial path."
+    },
+    {
+      "patterns": [
+        "src/shareFile.js",
+        "src/explain.md",
+        "src/retirement.md"
+      ],
+      "disposition": "excluded",
+      "class": "legacy-ui",
+      "reason": "Legacy Elmish UI assets (the Next bridge has its own share/save in media.mjs). retirement.md is inventoried by domain.copy (fm-8lq).",
+      "owner": null
+    },
+    {
+      "patterns": [
+        "scripts/build-catalogue.py"
+      ],
+      "disposition": "excluded",
+      "class": "catalogue-pipeline",
+      "reason": "Builds hosting/next-static/catalogue.json from the hosted gallery (name-catalogue.yml).",
+      "owner": "deploy.collector (fm-a0c1) API-free catalogue pipeline"
+    },
+    {
+      "patterns": [
+        "scripts/analytics-report.py",
+        "scripts/test_analytics_report.py"
+      ],
+      "disposition": "excluded",
+      "class": "analytics-report",
+      "reason": "Offline GA4 BigQuery export report; changeover statistics live in services/stats and the app's anonymous sink.",
+      "owner": "ops.prod-analytics (fm-72iv)"
+    },
+    {
+      "patterns": [
+        "scripts/local-encoder.py",
+        "scripts/local-review.py"
+      ],
+      "disposition": "excluded",
+      "class": "classic-dev-tool",
+      "reason": "Classic developer tools that build the historical app or read ignored experiment/ files.",
+      "owner": "research.tree (fm-86u)"
+    },
+    {
+      "patterns": [
+        "scripts/next-tunnel-server.py"
+      ],
+      "disposition": "excluded",
+      "class": "hosting",
+      "reason": "Triton-tunnel variant of next-e2e-server.py; no workflow uses it.",
+      "owner": "inventory.surfaces (fm-p7v)"
+    },
+    {
+      "patterns": [
+        "docs/"
+      ],
+      "disposition": "excluded",
+      "class": "classic-docs",
+      "reason": "Classic documentation stays as read-only reference; requirements are carried by PLAN.md and the beads."
+    },
+    {
+      "patterns": [
+        "README.md",
+        "AGENTS.md",
+        ".gitignore",
+        ".gitpod.yml",
+        ".vscode/"
+      ],
+      "disposition": "excluded",
+      "class": "classic-entry",
+      "reason": "Classic entry guides and editor/dev-environment files; the destination keeps its own."
+    }
+  ],
+  "checks": [
+    {
+      "source": "scripts/check-bridge-imports.mjs",
+      "status": "not applicable until the port",
+      "reason": "It checks Fable output (compiled src/**/*.fs.js) against the hand-written bridges; no Fable output exists here by rule. Classic CI's separate step runs before build:next and scans zero files (vacuous); the effective run is inside scripts/build-next.cjs.",
+      "successors": [
+        "scripts/inventory/unresolved-imports.mjs runs in its place with only the ProjectJson entry allowed",
+        "strict TypeScript at the typed facade, migration.facade (fm-pia9)"
+      ]
+    },
+    {
+      "source": "src/Next/verify-fable.mjs",
+      "status": "not applicable until the port",
+      "reason": "It exercises compiled ProjectJson (src/Next/ProjectJson.fs.js), which never exists here.",
+      "successors": [
+        "its assertions seed the ProjectJson TS round-trip goldens in migration.facade (fm-pia9)"
+      ]
+    }
+  ],
+  "unresolved_imports": [
+    {
+      "importer": "apps/web/src/Next/product-bridge.mjs",
+      "specifier": "./ProjectJson.fs.js",
+      "why": "Fable output (gitignored *.fs.js), in no Git object. product-bridge.mjs is kept byte-identical (no shim, stand-in, Fable output or bridge edit). Pre-port checks never load the bridge as an ES module: fresh-review.test.mjs and estimate.test.mjs evaluate it as text in node:vm, check-progress-copy.mjs reads text, and build:next populates deploy-next/ from the control artifact.",
+      "owner": "migration.facade (fm-pia9)",
+      "swap": "The ProjectJson TS port with round-trip goldens replaces the import at the typed facade."
+    }
+  ],
+  "html_pages": {
+    "src/index.html": {
+      "served_at": "index.html",
+      "template_options": { "selfHost": true, "next": true },
+      "why": "html-webpack-plugin (lodash) template. webpack.config.js passes selfHost: isSelfHost || isNext and next: isNext, so a FACEMORPH_NEXT=1 build renders it with both true; its `!selfHost` block (the legacy Universal Analytics gtag) is never emitted, and the control's deploy-next/index.html has no Google tag."
+    },
+    "src/Next/browser/runtime-test.html": {
+      "served_at": "runtime-test.html",
+      "why": "src/Next/browser/serve-local.py serves it at /runtime-test.html beside /src/Next/ and /runtime/, so its './src/Next/browser/runtime.mjs' import resolves from the app root."
+    }
+  },
+  "delta_notes": {
+    "dce7f27": "16 Oct: social preview image and meta description. Imported.",
+    "40c63a9": "18 Oct: retention wording, four strings in src/Next/Product.fs, live 2026-10-17 20:28:59 UTC. F# specification, not imported.",
+    "bacd6e5": "21 Oct: chunk retries in src/Next/Assets/model-cache.mjs and its test. Imported.",
+    "6107f80": "21 Oct: second runtime origin models.facemorph.me. hosting/next-mirror/ (Worker over R2 facemorph-runtime-mirror, service binding to the site, copies only immutable runtime/{assets,chunks,manifests,photo,encoder-stream}/) is hosting-listed with digests; model-cache.mjs alternates retries between origins (runtimeMirror() only on facemorph.me pages); reporting.mjs classifies download failures as network. src/Next/** imported; the next-site.yml deploy-and-warm step is not imported and is listed for deploy.staging (fm-8tyu).",
+    "551b607": "24 Oct: anonymous changeover statistics to the first-party stats endpoint (usage-stats.mjs, analytics.mjs and product-bridge.mjs). Imported; this is the live control commit. The next-site.yml change is listed for build.ci-site (fm-aa8). diag.usage-stats (fm-5yqq) adds the Usage statistics switch.",
+    "91b7778": "24 Oct: next-site.yml deploy gated on the four-cell device lab with a live re-test. Workflow only; listed for deploy.promotion (fm-6fx6). Superseded by a42829b.",
+    "a42829b": "24 Oct: device-lab deploy gate removed again ([skip ci]). Workflow only; listed for deploy.promotion (fm-6fx6). The frozen commit."
+  },
+  "delta": [
+    {
+      "commit": "dce7f271cc3396e6298febf3e0e9200fefb3f391",
+      "date": "2026-10-16T06:36:36+10:00",
+      "subject": "Add social preview image and meta description for next.facemorph.me",
+      "note": "16 Oct: social preview image and meta description. Imported.",
+      "paths": [
+        {
+          "path": "src/index.html",
+          "status": "M",
+          "disposition": "imported"
+        },
+        {
+          "path": "src/public/og-next.png",
+          "status": "A",
+          "disposition": "imported"
+        }
+      ]
+    },
+    {
+      "commit": "40c63a9eb3722839de58d1137a29733908eb40a6",
+      "date": "2026-10-18T06:22:14+10:00",
+      "subject": "Say the true thing about debug-report retention",
+      "note": "18 Oct: retention wording, four strings in src/Next/Product.fs, live 2026-10-17 20:28:59 UTC. F# specification, not imported.",
+      "paths": [
+        {
+          "path": "src/Next/Product.fs",
+          "status": "M",
+          "disposition": "fsharp-specification",
+          "owner": "migration.facade (fm-pia9) for ProjectJson; the controller and rendering ports (fm-v80g, fm-zz2i) for the rest"
+        }
+      ]
+    },
+    {
+      "commit": "bacd6e596bda1e7ab2c5d21c0a05c6d1c2f48375",
+      "date": "2026-10-21T08:21:11+10:00",
+      "subject": "Retry model chunks that a server fault or dropped connection refused",
+      "note": "21 Oct: chunk retries in src/Next/Assets/model-cache.mjs and its test. Imported.",
+      "paths": [
+        {
+          "path": "src/Next/Assets/model-cache.mjs",
+          "status": "M",
+          "disposition": "imported"
+        },
+        {
+          "path": "src/Next/Assets/model-cache.test.mjs",
+          "status": "M",
+          "disposition": "imported"
+        }
+      ]
+    },
+    {
+      "commit": "6107f80fbc5acc6019c1d22d90523cca3b02001b",
+      "date": "2026-10-21T08:44:20+10:00",
+      "subject": "Fall back to a second copy of the runtime on models.facemorph.me",
+      "note": "21 Oct: second runtime origin models.facemorph.me. hosting/next-mirror/ (Worker over R2 facemorph-runtime-mirror, service binding to the site, copies only immutable runtime/{assets,chunks,manifests,photo,encoder-stream}/) is hosting-listed with digests; model-cache.mjs alternates retries between origins (runtimeMirror() only on facemorph.me pages); reporting.mjs classifies download failures as network. src/Next/** imported; the next-site.yml deploy-and-warm step is not imported and is listed for deploy.staging (fm-8tyu).",
+      "paths": [
+        {
+          "path": ".github/workflows/next-site.yml",
+          "status": "M",
+          "disposition": "workflow-listed",
+          "owner": "build.ci-site (fm-aa8) for the artifact and compiled-ui jobs; deploy.promotion (fm-6fx6) for the deploy job; deploy.staging (fm-8tyu) for the runtime mirror deploy-and-warm steps"
+        },
+        {
+          "path": "hosting/next-mirror/worker.mjs",
+          "status": "A",
+          "disposition": "hosting-listed",
+          "owner": "hosting.serving (fm-fy2.14) for serving; deploy.staging (fm-8tyu) imports it and owns the deploy-and-warm step"
+        },
+        {
+          "path": "hosting/next-mirror/worker.test.mjs",
+          "status": "A",
+          "disposition": "hosting-listed",
+          "owner": "hosting.serving (fm-fy2.14) for serving; deploy.staging (fm-8tyu) imports it and owns the deploy-and-warm step"
+        },
+        {
+          "path": "hosting/next-mirror/wrangler.jsonc",
+          "status": "A",
+          "disposition": "hosting-listed",
+          "owner": "hosting.serving (fm-fy2.14) for serving; deploy.staging (fm-8tyu) imports it and owns the deploy-and-warm step"
+        },
+        {
+          "path": "src/Next/Assets/model-cache.mjs",
+          "status": "M",
+          "disposition": "imported"
+        },
+        {
+          "path": "src/Next/Assets/model-cache.test.mjs",
+          "status": "M",
+          "disposition": "imported"
+        },
+        {
+          "path": "src/Next/reporting.mjs",
+          "status": "M",
+          "disposition": "imported"
+        }
+      ]
+    },
+    {
+      "commit": "551b60726290b2d67a32c62477b2fd964de51f96",
+      "date": "2026-10-24T12:52:49+10:00",
+      "subject": "Send anonymous changeover statistics to the first-party stats endpoint",
+      "note": "24 Oct: anonymous changeover statistics to the first-party stats endpoint (usage-stats.mjs, analytics.mjs and product-bridge.mjs). Imported; this is the live control commit. The next-site.yml change is listed for build.ci-site (fm-aa8). diag.usage-stats (fm-5yqq) adds the Usage statistics switch.",
+      "paths": [
+        {
+          "path": ".github/workflows/next-site.yml",
+          "status": "M",
+          "disposition": "workflow-listed",
+          "owner": "build.ci-site (fm-aa8) for the artifact and compiled-ui jobs; deploy.promotion (fm-6fx6) for the deploy job; deploy.staging (fm-8tyu) for the runtime mirror deploy-and-warm steps"
+        },
+        {
+          "path": "src/Next/analytics.mjs",
+          "status": "M",
+          "disposition": "imported"
+        },
+        {
+          "path": "src/Next/product-bridge.mjs",
+          "status": "M",
+          "disposition": "imported"
+        },
+        {
+          "path": "src/Next/usage-stats.mjs",
+          "status": "A",
+          "disposition": "imported"
+        },
+        {
+          "path": "src/Next/usage-stats.test.mjs",
+          "status": "A",
+          "disposition": "imported"
+        }
+      ]
+    },
+    {
+      "commit": "91b777880c79ff3011c5eff969ce9ad0d28c15a8",
+      "date": "2026-10-24T17:33:23+10:00",
+      "subject": "Gate next.facemorph.me deploys on the four-cell device lab, then re-test the live site",
+      "note": "24 Oct: next-site.yml deploy gated on the four-cell device lab with a live re-test. Workflow only; listed for deploy.promotion (fm-6fx6). Superseded by a42829b.",
+      "paths": [
+        {
+          "path": ".github/workflows/next-site.yml",
+          "status": "M",
+          "disposition": "workflow-listed",
+          "owner": "build.ci-site (fm-aa8) for the artifact and compiled-ui jobs; deploy.promotion (fm-6fx6) for the deploy job; deploy.staging (fm-8tyu) for the runtime mirror deploy-and-warm steps"
+        }
+      ]
+    },
+    {
+      "commit": "a42829bb0582b5a7a55ba6b1045a05861612b8a5",
+      "date": "2026-10-24T17:44:02+10:00",
+      "subject": "Remove the device-lab deploy gate again [skip ci]",
+      "note": "24 Oct: device-lab deploy gate removed again ([skip ci]). Workflow only; listed for deploy.promotion (fm-6fx6). The frozen commit.",
+      "paths": [
+        {
+          "path": ".github/workflows/next-site.yml",
+          "status": "M",
+          "disposition": "workflow-listed",
+          "owner": "build.ci-site (fm-aa8) for the artifact and compiled-ui jobs; deploy.promotion (fm-6fx6) for the deploy job; deploy.staging (fm-8tyu) for the runtime mirror deploy-and-warm steps"
+        }
+      ]
+    }
+  ],
+  "listed_with_digests": [
+    {
+      "source": "hosting/next-mirror/worker.mjs",
+      "sha256": "57af58dd0ae6f2730261f8e69584080e8e1baaa7ac79a7fb4151be3adde52568",
+      "bytes": 2578,
+      "class": "hosting",
+      "disposition": "hosting-listed",
+      "owner": "hosting.serving (fm-fy2.14) for serving; deploy.staging (fm-8tyu) imports it and owns the deploy-and-warm step"
+    },
+    {
+      "source": "hosting/next-mirror/worker.test.mjs",
+      "sha256": "0cf9ea568dc7041921f2f2770e0ffff0ee5aa8a77a39a969c79a3804523a2840",
+      "bytes": 2732,
+      "class": "hosting",
+      "disposition": "hosting-listed",
+      "owner": "hosting.serving (fm-fy2.14) for serving; deploy.staging (fm-8tyu) imports it and owns the deploy-and-warm step"
+    },
+    {
+      "source": "hosting/next-mirror/wrangler.jsonc",
+      "sha256": "a46c993026b44783f9e18794b746389260a1f48e3678cc246d530493b8e754fa",
+      "bytes": 550,
+      "class": "hosting",
+      "disposition": "hosting-listed",
+      "owner": "hosting.serving (fm-fy2.14) for serving; deploy.staging (fm-8tyu) imports it and owns the deploy-and-warm step"
+    }
+  ],
+  "working_tree_overlays": {
+    "recorded_on": "2026-10-24",
+    "classic_head": "a42829bb0582b5a7a55ba6b1045a05861612b8a5",
+    "entries": [
+      {
+        "path": ".gitignore",
+        "status": "M",
+        "disposition": "excluded",
+        "reason": "Uncommitted classic working-tree change owned by another session; never imported or labelled as the pinned snapshot.",
+        "sha256": "ffc7469bbbbe9a25c3de8767440c9fea7aa28ff4a51ff266661966b31349d875"
+      },
+      {
+        "path": "AGENTS.md",
+        "status": "M",
+        "disposition": "excluded",
+        "reason": "Uncommitted classic working-tree change owned by another session; never imported or labelled as the pinned snapshot.",
+        "sha256": "d1bf147d940e2f049f3df4ca135ba612c76dc99f93d97538f9a75e37de22a8e8"
+      },
+      {
+        "path": "README.md",
+        "status": "M",
+        "disposition": "excluded",
+        "reason": "Uncommitted classic working-tree change owned by another session; never imported or labelled as the pinned snapshot.",
+        "sha256": "830375d187420d2be99f03457385bd0b52700221d6b9e656437d2ddb727e75a7"
+      },
+      {
+        "path": "autoresearch/README.md",
+        "status": "M",
+        "disposition": "excluded",
+        "reason": "Uncommitted classic working-tree change owned by another session; never imported or labelled as the pinned snapshot.",
+        "sha256": "7283b5b7c719e8b88da6afcab803c87ff9f0fb9a0bdb144a4ca39dd28f769808"
+      },
+      {
+        "path": "autoresearch/loop-v3-proposal.md",
+        "status": "M",
+        "disposition": "excluded",
+        "reason": "Uncommitted classic working-tree change owned by another session; never imported or labelled as the pinned snapshot.",
+        "sha256": "c8f2dbb2103f96b72edd86d397253d0afe4b63e94b2d81c8c4d3fc19d57caf29"
+      },
+      {
+        "path": "autoresearch/reviews/2026-10-10/next-directions.md",
+        "status": "M",
+        "disposition": "excluded",
+        "reason": "Uncommitted classic working-tree change owned by another session; never imported or labelled as the pinned snapshot.",
+        "sha256": "c9e0331490ce6c6287e5a0320f7e4575d3373abee159d2bdbee04d7f53766dec"
+      },
+      {
+        "path": "autoresearch/reviews/README.md",
+        "status": "M",
+        "disposition": "excluded",
+        "reason": "Uncommitted classic working-tree change owned by another session; never imported or labelled as the pinned snapshot.",
+        "sha256": "e88148e6144ec8cdbb2a6f1f4647047ab7b471fde8dd9d40d702ce0dca9fe8af"
+      },
+      {
+        "path": "desktop/README.md",
+        "status": "M",
+        "disposition": "excluded",
+        "reason": "Uncommitted classic working-tree change owned by another session; never imported or labelled as the pinned snapshot.",
+        "sha256": "92204d2fe9f1c560c2e08ddd57dd3d1851cce0dad05014341c344581427abbfc"
+      },
+      {
+        "path": "docs/README.md",
+        "status": "M",
+        "disposition": "excluded",
+        "reason": "Uncommitted classic working-tree change owned by another session; never imported or labelled as the pinned snapshot.",
+        "sha256": "cbb3e40670008ee1bf1a3322003ff9f8e3ce4be165b7bdb4db22ce63f8d1f621"
+      },
+      {
+        "path": "docs/plans/README.md",
+        "status": "M",
+        "disposition": "excluded",
+        "reason": "Uncommitted classic working-tree change owned by another session; never imported or labelled as the pinned snapshot.",
+        "sha256": "8f9099679ac95b9154630dab885bc3593583fb96cc290576ef20ace118e3f3cd"
+      },
+      {
+        "path": ".beads/",
+        "status": "??",
+        "disposition": "excluded",
+        "reason": "Uncommitted classic working-tree change owned by another session; never imported or labelled as the pinned snapshot.",
+        "files": 5,
+        "sha256_of_listing": "9b869a380867b0965eae7f607d4681752d2e59a33135f8b23dd8f5833595cbcd"
+      },
+      {
+        "path": ".cloudflare/",
+        "status": "??",
+        "disposition": "excluded",
+        "reason": "Uncommitted classic working-tree change owned by another session; never imported or labelled as the pinned snapshot.",
+        "digest": "not read (may hold credentials)"
+      },
+      {
+        "path": "PLAN.md",
+        "status": "??",
+        "disposition": "excluded",
+        "reason": "Uncommitted classic working-tree change owned by another session; never imported or labelled as the pinned snapshot.",
+        "sha256": "0411c215168e183d393c7b465b2b3db5237c93226383922eccc289ee192ea976"
+      },
+      {
+        "path": "docs/plans/engine-and-research-2026-10-11.md",
+        "status": "??",
+        "disposition": "excluded",
+        "reason": "Uncommitted classic working-tree change owned by another session; never imported or labelled as the pinned snapshot.",
+        "sha256": "bc6167aa573ae6207a8493f5495b2362fc16d7fbcd207a94a958182313f095fb"
+      },
+      {
+        "path": "docs/plans/engine-research/",
+        "status": "??",
+        "disposition": "excluded",
+        "reason": "Uncommitted classic working-tree change owned by another session; never imported or labelled as the pinned snapshot.",
+        "files": 3,
+        "sha256_of_listing": "c0de5d64a501bbb4f23753634189b1104a6746b742bcf6a4cf301d035549d81a"
+      }
+    ]
+  },
+  "files": [
+    {
+      "source": "desktop/runtime.mjs",
+      "destination": "apps/web/desktop/runtime.mjs",
+      "sha256": "f64904cd2a36c62000ffc86ec7d62f3d3caffafa8b6f5ebca2cfc0a6d743f376",
+      "bytes": 4790,
+      "class": "temporary-root",
+      "temporary": true
+    },
+    {
+      "source": "desktop/scripts/verify-web-artifact.py",
+      "destination": "apps/web/desktop/scripts/verify-web-artifact.py",
+      "sha256": "087d3a9cec32611bba27c0a3ae8762bc3854684716fc1e74dfc23da3d948069b",
+      "bytes": 1811,
+      "class": "temporary-root",
+      "temporary": true
+    },
+    {
+      "source": "experiment/device-lab/fused-resample-boundary-v2.js",
+      "destination": "apps/web/experiment/device-lab/fused-resample-boundary-v2.js",
+      "sha256": "6ee1eb7a0a894488e450242d72cb27b10a22b0b82b9aee9b4127c58efffb52f2",
+      "bytes": 2392,
+      "class": "temporary-root",
+      "temporary": true
+    },
+    {
+      "source": "hosting/next-cloudflare/validation.mjs",
+      "destination": "apps/web/hosting/next-cloudflare/validation.mjs",
+      "sha256": "f81fb5b47ec537f42d088f724529ea21e132798cf1f9b94ed6ad92a62dfb1f23",
+      "bytes": 4952,
+      "class": "temporary-root",
+      "temporary": true
+    },
+    {
+      "source": "hosting/next-static/catalogue.json",
+      "destination": "apps/web/hosting/next-static/catalogue.json",
+      "sha256": "4a9e1c199e2a629f11cc5d016128b36efbcde301928ae2735c42e5025c13c341",
+      "bytes": 3405692,
+      "class": "temporary-root",
+      "temporary": true
+    },
+    {
+      "source": "photo-runtime/THIRD_PARTY_NOTICES.txt",
+      "destination": "apps/web/photo-runtime/THIRD_PARTY_NOTICES.txt",
+      "sha256": "ec4e3ad5d057d4a167f7ae6b9dc6971957f71f755a2944d98bd223250a96b773",
+      "bytes": 48187,
+      "class": "temporary-root",
+      "temporary": true
+    },
+    {
+      "source": "photo-runtime/align-photo.mjs",
+      "destination": "apps/web/photo-runtime/align-photo.mjs",
+      "sha256": "ae3f39ded78594ec4d231af6a923e284af377f234842e800b6132c0cdf60fa13",
+      "bytes": 2461,
+      "class": "temporary-root",
+      "temporary": true
+    },
+    {
+      "source": "photo-runtime/encoder-stream/execute.mjs",
+      "destination": "apps/web/photo-runtime/encoder-stream/execute.mjs",
+      "sha256": "6e7fcc0b259c91d0e64fa8369279d981c50abe0e78efb6dd85227fc33314e4a0",
+      "bytes": 5714,
+      "class": "temporary-root",
+      "temporary": true
+    },
+    {
+      "source": "photo-runtime/image-header.mjs",
+      "destination": "apps/web/photo-runtime/image-header.mjs",
+      "sha256": "86ff9a1795d765ed5cb22300e07dff5586435e62994e252ca80d8a9b5f3f023d",
+      "bytes": 2408,
+      "class": "temporary-root",
+      "temporary": true
+    },
+    {
+      "source": "photo-runtime/photo-worker.mjs",
+      "destination": "apps/web/photo-runtime/photo-worker.mjs",
+      "sha256": "f095e8d80babcfe8662773f85b748b66f71bb32f4eb3e0ad763114d181798760",
+      "bytes": 9001,
+      "class": "temporary-root",
+      "temporary": true
+    },
+    {
+      "source": "photo-runtime/sha256.mjs",
+      "destination": "apps/web/photo-runtime/sha256.mjs",
+      "sha256": "91b5831f39b0c22bf911c233f15b78a4f168272f026337a3ca62af6cfd8fc2c4",
+      "bytes": 3015,
+      "class": "temporary-root",
+      "temporary": true
+    },
+    {
+      "source": "scripts/build-next.cjs",
+      "destination": "apps/web/scripts/build-next.cjs",
+      "sha256": "a796141ee487fc029783185c1d3e321ecdec9607cd36729e927f0ef215282237",
+      "bytes": 2695,
+      "class": "temporary-root",
+      "temporary": true
+    },
+    {
+      "source": "scripts/check-bridge-imports.mjs",
+      "destination": "apps/web/scripts/check-bridge-imports.mjs",
+      "sha256": "98a34126e7d30ed0ee4c884a087e6ce9fb7f1399503c657b90d381b4bedff1a4",
+      "bytes": 4025,
+      "class": "temporary-root",
+      "temporary": true
+    },
+    {
+      "source": "scripts/check-next-artifact.sh",
+      "destination": "apps/web/scripts/check-next-artifact.sh",
+      "sha256": "2fe64365a3149ca6adb71914514bb0fb8f4badf54eb0042ab43b8516b628c3fa",
+      "bytes": 7084,
+      "class": "temporary-root",
+      "temporary": true
+    },
+    {
+      "source": "scripts/check-no-third-party.mjs",
+      "destination": "apps/web/scripts/check-no-third-party.mjs",
+      "sha256": "683fb832371e32144e9488f697789468207e513ede2fb3938d5f4554116f15bc",
+      "bytes": 5326,
+      "class": "temporary-root",
+      "temporary": true
+    },
+    {
+      "source": "scripts/check-progress-copy.mjs",
+      "destination": "apps/web/scripts/check-progress-copy.mjs",
+      "sha256": "8f443b792d01d80a11fa0c0c462be4e2b3dda0b9b47bed87dc8016dab748c79f",
+      "bytes": 3391,
+      "class": "temporary-root",
+      "temporary": true
+    },
+    {
+      "source": "scripts/check-tests-listed.mjs",
+      "destination": "apps/web/scripts/check-tests-listed.mjs",
+      "sha256": "30ce1b64c05f1aae1224b5b476e8bdb0f03c56e250122452c182d8fc3b3883a4",
+      "bytes": 1463,
+      "class": "temporary-root",
+      "temporary": true
+    },
+    {
+      "source": "scripts/gpu-probe.py",
+      "destination": "apps/web/scripts/gpu-probe.py",
+      "sha256": "d635e94867a5476b90ecf3bfbfd3028fb0df1c90980dc16e21163a27abbe7020",
+      "bytes": 1829,
+      "class": "temporary-root",
+      "temporary": true
+    },
+    {
+      "source": "scripts/matrix-tools/package-lock.json",
+      "destination": "apps/web/scripts/matrix-tools/package-lock.json",
+      "sha256": "4f5dec384ccf6da63656cb3c276a364b07a56079e42ac06e82d5f35713667cf5",
+      "bytes": 1763,
+      "class": "temporary-root",
+      "temporary": true
+    },
+    {
+      "source": "scripts/matrix-tools/package.json",
+      "destination": "apps/web/scripts/matrix-tools/package.json",
+      "sha256": "c118216d9fd04e40bdf8986d5257eb513ab49adf87b8929266a34bc50cdfc82d",
+      "bytes": 334,
+      "class": "temporary-root",
+      "temporary": true
+    },
+    {
+      "source": "scripts/next-e2e-browser.py",
+      "destination": "apps/web/scripts/next-e2e-browser.py",
+      "sha256": "61a29eccd74af5b1c3985a49c70ca3e7bfa3aec816328e18ca89daa5b5d5f330",
+      "bytes": 37776,
+      "class": "temporary-root",
+      "temporary": true
+    },
+    {
+      "source": "scripts/next-e2e-server.py",
+      "destination": "apps/web/scripts/next-e2e-server.py",
+      "sha256": "35fea6bc37ccb0c8306aa433a1cfd2336d8f2a7a784f756f7fd62493c279fba3",
+      "bytes": 7456,
+      "class": "temporary-root",
+      "temporary": true
+    },
+    {
+      "source": "scripts/next-e2e.md",
+      "destination": "apps/web/scripts/next-e2e.md",
+      "sha256": "9a12b875fa2deeccd2f32acc9563c173f612df7578d67a667648d6c4f1e543a2",
+      "bytes": 2695,
+      "class": "temporary-root",
+      "temporary": true
+    },
+    {
+      "source": "scripts/next-gpu-benchmark.py",
+      "destination": "apps/web/scripts/next-gpu-benchmark.py",
+      "sha256": "5bd540e2535416fdf6721a0e818cc05e65cd0ea46dc17296f3f1176e2ba5f62c",
+      "bytes": 11176,
+      "class": "temporary-root",
+      "temporary": true
+    },
+    {
+      "source": "scripts/next-ios-sim.py",
+      "destination": "apps/web/scripts/next-ios-sim.py",
+      "sha256": "22250796391c15f049a3b78dc52c6ee5936d5e240a1de22aa3899f98102a7096",
+      "bytes": 15421,
+      "class": "temporary-root",
+      "temporary": true
+    },
+    {
+      "source": "scripts/next-matrix-summary.py",
+      "destination": "apps/web/scripts/next-matrix-summary.py",
+      "sha256": "f8e1ed6c641a1f83e0086e279178b025bfda1524d0cce64e510de653d265c5ce",
+      "bytes": 3533,
+      "class": "temporary-root",
+      "temporary": true
+    },
+    {
+      "source": "scripts/next-matrix.mjs",
+      "destination": "apps/web/scripts/next-matrix.mjs",
+      "sha256": "0fdd4341aa82751c289a64ea0a55e37f654a7e8ae6509a2d38874ac51095495a",
+      "bytes": 14224,
+      "class": "temporary-root",
+      "temporary": true
+    },
+    {
+      "source": "scripts/next-parity-browser.py",
+      "destination": "apps/web/scripts/next-parity-browser.py",
+      "sha256": "3b3eeb7dfba08687f6c1ac25d687d1af7410decaf5bb761dfef39e2897f5327c",
+      "bytes": 21970,
+      "class": "temporary-root",
+      "temporary": true
+    },
+    {
+      "source": "src/Next/Assets/model-cache.mjs",
+      "destination": "apps/web/src/Next/Assets/model-cache.mjs",
+      "sha256": "fe5326531f9f54228c5ca5e2b5ab3fe3992995baaa0590a762c2fa9096efdeb3",
+      "bytes": 32888,
+      "class": "src-next"
+    },
+    {
+      "source": "src/Next/Assets/model-cache.test.mjs",
+      "destination": "apps/web/src/Next/Assets/model-cache.test.mjs",
+      "sha256": "0e37041e5992326ac5b310203d7be3cfc4e9809cd7e0dc7f9bbfd968e3e58913",
+      "bytes": 37543,
+      "class": "src-next"
+    },
+    {
+      "source": "src/Next/Assets/sha256.mjs",
+      "destination": "apps/web/src/Next/Assets/sha256.mjs",
+      "sha256": "91b5831f39b0c22bf911c233f15b78a4f168272f026337a3ca62af6cfd8fc2c4",
+      "bytes": 3015,
+      "class": "src-next"
+    },
+    {
+      "source": "src/Next/Assets/shard-store.mjs",
+      "destination": "apps/web/src/Next/Assets/shard-store.mjs",
+      "sha256": "26f65f7f28319c1f09345b600368aeb43aa02bb323f78e2d06a4eedef46f221e",
+      "bytes": 6230,
+      "class": "src-next"
+    },
+    {
+      "source": "src/Next/analytics.mjs",
+      "destination": "apps/web/src/Next/analytics.mjs",
+      "sha256": "a6f314b7b5806c12428840050a619fb9baee6f432b7bf2767df823fe9a20157a",
+      "bytes": 14707,
+      "class": "src-next"
+    },
+    {
+      "source": "src/Next/analytics.test.mjs",
+      "destination": "apps/web/src/Next/analytics.test.mjs",
+      "sha256": "799a1e209dbc1225ffc4218a07ddd505f283d5ce4cfa9966a888a9b3604d1020",
+      "bytes": 4530,
+      "class": "src-next"
+    },
+    {
+      "source": "src/Next/browser/README.md",
+      "destination": "apps/web/src/Next/browser/README.md",
+      "sha256": "54416b87f0494d63f1ce612cb23817a6d9c30584ec36298501d75a7c288181c1",
+      "bytes": 8736,
+      "class": "src-next"
+    },
+    {
+      "source": "src/Next/browser/acquisition-budget.mjs",
+      "destination": "apps/web/src/Next/browser/acquisition-budget.mjs",
+      "sha256": "4288b0c73c564aa61153638027e1f62e7c089a15882ce337eb590b188d17f4cd",
+      "bytes": 4578,
+      "class": "src-next"
+    },
+    {
+      "source": "src/Next/browser/acquisition-budget.test.mjs",
+      "destination": "apps/web/src/Next/browser/acquisition-budget.test.mjs",
+      "sha256": "55db04f326109edb6d03b66020a8ae54d86205c7d90cd75a1157cae55d9b09da",
+      "bytes": 6136,
+      "class": "src-next"
+    },
+    {
+      "source": "src/Next/browser/canary-qualification.mjs",
+      "destination": "apps/web/src/Next/browser/canary-qualification.mjs",
+      "sha256": "b1bce9fcc36fb5159347be9ba6a775eb1fbc02688635d32a4911003517df58f4",
+      "bytes": 5683,
+      "class": "src-next"
+    },
+    {
+      "source": "src/Next/browser/canary-qualification.test.mjs",
+      "destination": "apps/web/src/Next/browser/canary-qualification.test.mjs",
+      "sha256": "1bf109c5413b5e0c28773aee9c0742cb375077ae909c3604ae85396d0fd79819",
+      "bytes": 7482,
+      "class": "src-next"
+    },
+    {
+      "source": "src/Next/browser/encoder-preflight.mjs",
+      "destination": "apps/web/src/Next/browser/encoder-preflight.mjs",
+      "sha256": "6e529664435307fa366ea8b58f20e7a89b70f2f7f2e8e088f2be46848eb4f339",
+      "bytes": 1856,
+      "class": "src-next"
+    },
+    {
+      "source": "src/Next/browser/encoder-preflight.test.mjs",
+      "destination": "apps/web/src/Next/browser/encoder-preflight.test.mjs",
+      "sha256": "9713117bdae45bc3041290a027a47a9432c92cc0273f107cc4490785eff71ecd",
+      "bytes": 1518,
+      "class": "src-next"
+    },
+    {
+      "source": "src/Next/browser/evidence/cpu-smoke.json",
+      "destination": "apps/web/src/Next/browser/evidence/cpu-smoke.json",
+      "sha256": "d7fc3e6ab1893bf0adbc3927e258d883f295757b7979124cfaca78b2e85453bd",
+      "bytes": 8578,
+      "class": "src-next"
+    },
+    {
+      "source": "src/Next/browser/evidence/smoke-provenance.json",
+      "destination": "apps/web/src/Next/browser/evidence/smoke-provenance.json",
+      "sha256": "361d7e0202454f56bf1274cbc5689190ebc36b34cecdbc28fa3f5ae72bbb40f2",
+      "bytes": 1352,
+      "class": "src-next"
+    },
+    {
+      "source": "src/Next/browser/evidence/webgl-smoke.json",
+      "destination": "apps/web/src/Next/browser/evidence/webgl-smoke.json",
+      "sha256": "59ec209e449a62ae5f0e385a77d98c4375ccdecb2339bc10ca4fe8303accbb1c",
+      "bytes": 24593,
+      "class": "src-next"
+    },
+    {
+      "source": "src/Next/browser/evidence/webgpu-full31-smoke.json",
+      "destination": "apps/web/src/Next/browser/evidence/webgpu-full31-smoke.json",
+      "sha256": "643e19a189e02bd0e80159862bffb85cf1574cb73fa5feb41fb30be89bb1767a",
+      "bytes": 20430,
+      "class": "src-next"
+    },
+    {
+      "source": "src/Next/browser/evidence/webgpu-provenance.json",
+      "destination": "apps/web/src/Next/browser/evidence/webgpu-provenance.json",
+      "sha256": "4c6af07abc9a918ec536a7ed8ba2f44ecc5c9f3635b5aa668eb9a4988725a4a2",
+      "bytes": 3858,
+      "class": "src-next"
+    },
+    {
+      "source": "src/Next/browser/fused-resample-v1.mjs",
+      "destination": "apps/web/src/Next/browser/fused-resample-v1.mjs",
+      "sha256": "6ee1eb7a0a894488e450242d72cb27b10a22b0b82b9aee9b4127c58efffb52f2",
+      "bytes": 2392,
+      "class": "src-next"
+    },
+    {
+      "source": "src/Next/browser/fused-resample.test.mjs",
+      "destination": "apps/web/src/Next/browser/fused-resample.test.mjs",
+      "sha256": "9796b3eaae1946d1c5662e1a5f70dadac0bc3c3091fa2dcc0cb8ad4fe434c42b",
+      "bytes": 3158,
+      "class": "src-next"
+    },
+    {
+      "source": "src/Next/browser/identity-fixtures.json",
+      "destination": "apps/web/src/Next/browser/identity-fixtures.json",
+      "sha256": "271deb2ddecc2d8e38b55e257ae3ea380841e2fc596bd987027791f8fdbb00f0",
+      "bytes": 981,
+      "class": "src-next"
+    },
+    {
+      "source": "src/Next/browser/identity.mjs",
+      "destination": "apps/web/src/Next/browser/identity.mjs",
+      "sha256": "a74e217e91f660b554b3ed9c477881023bb4e90af93752e6c98b668cd9fe8b67",
+      "bytes": 3951,
+      "class": "src-next"
+    },
+    {
+      "source": "src/Next/browser/mobile-runtime.test.mjs",
+      "destination": "apps/web/src/Next/browser/mobile-runtime.test.mjs",
+      "sha256": "f460497ecc303f6405beada0c44f4cd99ba326f714162414073e54b9a18c0c9a",
+      "bytes": 23849,
+      "class": "src-next"
+    },
+    {
+      "source": "src/Next/browser/originals.mjs",
+      "destination": "apps/web/src/Next/browser/originals.mjs",
+      "sha256": "e659fe4f143e4be4ca708dc0485d87e03538876eee8f98e91edec772a3dbc795",
+      "bytes": 3204,
+      "class": "src-next"
+    },
+    {
+      "source": "src/Next/browser/originals.test.mjs",
+      "destination": "apps/web/src/Next/browser/originals.test.mjs",
+      "sha256": "66facc4ff03adbb2448aa9ac328581d36230d6c3b61e720d3b0da98f4dbd880d",
+      "bytes": 2695,
+      "class": "src-next"
+    },
+    {
+      "source": "src/Next/browser/ort-worker.mjs",
+      "destination": "apps/web/src/Next/browser/ort-worker.mjs",
+      "sha256": "af51532c1bac18db595325aef4a3e4bb32de281eb617eec2b8b713163b241296",
+      "bytes": 33331,
+      "class": "src-next"
+    },
+    {
+      "source": "src/Next/browser/png.mjs",
+      "destination": "apps/web/src/Next/browser/png.mjs",
+      "sha256": "694cc2e83f76a674330d28f3ba125510930351e2aab7c132225cb9d870435785",
+      "bytes": 7798,
+      "class": "src-next"
+    },
+    {
+      "source": "src/Next/browser/route-priors.mjs",
+      "destination": "apps/web/src/Next/browser/route-priors.mjs",
+      "sha256": "95243921416cb4dd317b002bb05d7e36885436009094f14d41a90a928181eef4",
+      "bytes": 5291,
+      "class": "src-next"
+    },
+    {
+      "source": "src/Next/browser/route-priors.test.mjs",
+      "destination": "apps/web/src/Next/browser/route-priors.test.mjs",
+      "sha256": "8d7711f7c012b44adecfabf9679c6a9358e363997564b2f62b05a7930b7447ce",
+      "bytes": 3590,
+      "class": "src-next"
+    },
+    {
+      "source": "src/Next/browser/route-selection.mjs",
+      "destination": "apps/web/src/Next/browser/route-selection.mjs",
+      "sha256": "b145fe233f87ee046c037a7923605efb057645b6a2136f8f3ce9a8ccff713dd5",
+      "bytes": 388,
+      "class": "src-next"
+    },
+    {
+      "source": "src/Next/browser/runtime-test.html",
+      "destination": "apps/web/src/Next/browser/runtime-test.html",
+      "sha256": "1dc203ad36a9ee770f3e61025012de088c258f55c49fa46b87558462809069a2",
+      "bytes": 2629,
+      "class": "src-next"
+    },
+    {
+      "source": "src/Next/browser/runtime.mjs",
+      "destination": "apps/web/src/Next/browser/runtime.mjs",
+      "sha256": "283363af087e930f4f7f7f916c616618201f4fa91f7b9d04e0dbe16839d5d34c",
+      "bytes": 37783,
+      "class": "src-next"
+    },
+    {
+      "source": "src/Next/browser/runtime.test.mjs",
+      "destination": "apps/web/src/Next/browser/runtime.test.mjs",
+      "sha256": "22db1beaf9c3441c4fc1d59d987f5250b7b281f6304644d461de3e51daf7cd64",
+      "bytes": 20752,
+      "class": "src-next"
+    },
+    {
+      "source": "src/Next/browser/serve-local.py",
+      "destination": "apps/web/src/Next/browser/serve-local.py",
+      "sha256": "57f1ea24dc732f19dfe71fed844dee2daf8d5031a4d18fef8f6c694d718abb75",
+      "bytes": 1988,
+      "class": "src-next"
+    },
+    {
+      "source": "src/Next/browser/stage-assets.py",
+      "destination": "apps/web/src/Next/browser/stage-assets.py",
+      "sha256": "a0394f9bfa1b5d0096772f782bc70081af6372e6ca9416ca3b39fc8f77916b9a",
+      "bytes": 7203,
+      "class": "src-next"
+    },
+    {
+      "source": "src/Next/browser/webgl-vector-v1.mjs",
+      "destination": "apps/web/src/Next/browser/webgl-vector-v1.mjs",
+      "sha256": "6c680636e8559338164cbe9f9cdaf9d286b2c4ccff7aaa309949b6496b403609",
+      "bytes": 33517,
+      "class": "src-next"
+    },
+    {
+      "source": "src/Next/browser/webgpu-direct.mjs",
+      "destination": "apps/web/src/Next/browser/webgpu-direct.mjs",
+      "sha256": "333a7247a5ced8ec9ffaab0e017fa53bc98e20b3b9582053bba0e11b403b1502",
+      "bytes": 19087,
+      "class": "src-next"
+    },
+    {
+      "source": "src/Next/browser/webgpu-engine.mjs",
+      "destination": "apps/web/src/Next/browser/webgpu-engine.mjs",
+      "sha256": "8950300238155a616fb78ec3e9df364428240e6a49b3bf9d7ad480b3509c4732",
+      "bytes": 7522,
+      "class": "src-next"
+    },
+    {
+      "source": "src/Next/browser/webgpu-engine.test.mjs",
+      "destination": "apps/web/src/Next/browser/webgpu-engine.test.mjs",
+      "sha256": "4ed251c82fa8a1bde6aabcb81ffc508f542988702775c55fd2bd31f383e7f316",
+      "bytes": 9804,
+      "class": "src-next"
+    },
+    {
+      "source": "src/Next/crop-queue.test.mjs",
+      "destination": "apps/web/src/Next/crop-queue.test.mjs",
+      "sha256": "0b3dca9ab3fc4687a25679d65d296af376d45a73e77d495adaecf15ef97e878e",
+      "bytes": 1904,
+      "class": "src-next"
+    },
+    {
+      "source": "src/Next/estimate.mjs",
+      "destination": "apps/web/src/Next/estimate.mjs",
+      "sha256": "89fae44e5c33f2e6f65a41fbd64fc3c35c62466f8838e112feac108a739324da",
+      "bytes": 4300,
+      "class": "src-next"
+    },
+    {
+      "source": "src/Next/estimate.test.mjs",
+      "destination": "apps/web/src/Next/estimate.test.mjs",
+      "sha256": "c34139851e06fb91e498753cceb6e21e9b9816ed22c08a397b38b51777decb16",
+      "bytes": 6296,
+      "class": "src-next"
+    },
+    {
+      "source": "src/Next/fresh-review.test.mjs",
+      "destination": "apps/web/src/Next/fresh-review.test.mjs",
+      "sha256": "a963ac3e00e9ea27eace3246a269c2254ad10b5641093267d9a9f13c31ffbdd4",
+      "bytes": 23533,
+      "class": "src-next"
+    },
+    {
+      "source": "src/Next/geometry/README.md",
+      "destination": "apps/web/src/Next/geometry/README.md",
+      "sha256": "fa31ad201234a8035b6d37cd630c5c474f120229c6b1355c262fa33449dad67c",
+      "bytes": 5007,
+      "class": "src-next"
+    },
+    {
+      "source": "src/Next/geometry/latent-path.mjs",
+      "destination": "apps/web/src/Next/geometry/latent-path.mjs",
+      "sha256": "ebe480c62a5f5bdd12cea75bf2d00a2876b4dd0f83290dcbbca7718abb5e4dd8",
+      "bytes": 9689,
+      "class": "src-next"
+    },
+    {
+      "source": "src/Next/geometry/reference/shape-explorer.html",
+      "destination": "apps/web/src/Next/geometry/reference/shape-explorer.html",
+      "sha256": "f957ad84cad9b3dae77740d43553502288122d5ede59f7f45e89ae81df32e071",
+      "bytes": 17413,
+      "class": "src-next"
+    },
+    {
+      "source": "src/Next/geometry/verify.mjs",
+      "destination": "apps/web/src/Next/geometry/verify.mjs",
+      "sha256": "d921bf04722d9bc3b9a47841c5f9372a090fddf85741fe534eb051beebd0057f",
+      "bytes": 8649,
+      "class": "src-next"
+    },
+    {
+      "source": "src/Next/image-encoder-worker.mjs",
+      "destination": "apps/web/src/Next/image-encoder-worker.mjs",
+      "sha256": "a39bf5fce0ff1423f13ca57ff2927a7c7098fe72ac047ba6c4e840ed95e30abb",
+      "bytes": 2482,
+      "class": "src-next"
+    },
+    {
+      "source": "src/Next/image-encoder.mjs",
+      "destination": "apps/web/src/Next/image-encoder.mjs",
+      "sha256": "c6efbe89ebe501424b6150d572f604d2cd1fceb6897a8e27cffecef468a8c8e9",
+      "bytes": 5712,
+      "class": "src-next"
+    },
+    {
+      "source": "src/Next/image-encoder.test.mjs",
+      "destination": "apps/web/src/Next/image-encoder.test.mjs",
+      "sha256": "dbeb801b2c403d23a09d36fd35be3187a6bdfba85e6d9ec9efd7c3204dda9371",
+      "bytes": 6317,
+      "class": "src-next"
+    },
+    {
+      "source": "src/Next/image-envelope.mjs",
+      "destination": "apps/web/src/Next/image-envelope.mjs",
+      "sha256": "cb24e02f00637987c125efbef592904f3dab1d249d5e2ee6132d858fd8ad8ee2",
+      "bytes": 8726,
+      "class": "src-next"
+    },
+    {
+      "source": "src/Next/infill.mjs",
+      "destination": "apps/web/src/Next/infill.mjs",
+      "sha256": "0e6170aa3a6405ce8c0987ae25bab288f190943fdb12e761cd8ec247cd4a7365",
+      "bytes": 1040,
+      "class": "src-next"
+    },
+    {
+      "source": "src/Next/infill.test.mjs",
+      "destination": "apps/web/src/Next/infill.test.mjs",
+      "sha256": "674b18fafae056f61e2ebc47e14bb8fcffc051bcb8a9ce194029f25eac0a2042",
+      "bytes": 554,
+      "class": "src-next"
+    },
+    {
+      "source": "src/Next/last-result.mjs",
+      "destination": "apps/web/src/Next/last-result.mjs",
+      "sha256": "225797879173701e53e7a90a7435092847ea5792c1a681dccd74f1d536b69be5",
+      "bytes": 7269,
+      "class": "src-next"
+    },
+    {
+      "source": "src/Next/last-result.test.mjs",
+      "destination": "apps/web/src/Next/last-result.test.mjs",
+      "sha256": "c4b2af5fd0e68e812da9ef64bf11435037f46740200a426d8110ff1ef766c093",
+      "bytes": 5657,
+      "class": "src-next"
+    },
+    {
+      "source": "src/Next/logging.test.mjs",
+      "destination": "apps/web/src/Next/logging.test.mjs",
+      "sha256": "b15d79b49dcf822b81ca6446f95badc6d07f39eaf0eed908f21960b0f52c7870",
+      "bytes": 6150,
+      "class": "src-next"
+    },
+    {
+      "source": "src/Next/media.mjs",
+      "destination": "apps/web/src/Next/media.mjs",
+      "sha256": "2f0e09e25ec40db2caef02b15f6e10eda35b9112304a41ddaeec1bc83b69c40a",
+      "bytes": 13197,
+      "class": "src-next"
+    },
+    {
+      "source": "src/Next/media.test.mjs",
+      "destination": "apps/web/src/Next/media.test.mjs",
+      "sha256": "f64c2adb97bc71b452c89adcfdca0e076aa2dd668bd5369bdc37e736c48e03ee",
+      "bytes": 18327,
+      "class": "src-next"
+    },
+    {
+      "source": "src/Next/model-inventory.mjs",
+      "destination": "apps/web/src/Next/model-inventory.mjs",
+      "sha256": "92a63e360dd1334e642cdcdd5c95d5edd697f3825f04cb6cbf6dfa3753134e17",
+      "bytes": 1815,
+      "class": "src-next"
+    },
+    {
+      "source": "src/Next/model-inventory.test.mjs",
+      "destination": "apps/web/src/Next/model-inventory.test.mjs",
+      "sha256": "b0823fdd92728b27e560ef6a6680db3f72aedd17fcd434c8f6269fcb6f8afcb3",
+      "bytes": 2516,
+      "class": "src-next"
+    },
+    {
+      "source": "src/Next/morph-frames.mjs",
+      "destination": "apps/web/src/Next/morph-frames.mjs",
+      "sha256": "fdf70ea5561a50b6750054d8819a9e41079a6b0c1043ee10a73fd6855d300d51",
+      "bytes": 15602,
+      "class": "src-next"
+    },
+    {
+      "source": "src/Next/morph-frames.test.mjs",
+      "destination": "apps/web/src/Next/morph-frames.test.mjs",
+      "sha256": "eb7f76ebbe336e2d4d61d7fac21889b54e432f055c80e0fc431acab3b48cd25a",
+      "bytes": 8776,
+      "class": "src-next"
+    },
+    {
+      "source": "src/Next/photo-selection.mjs",
+      "destination": "apps/web/src/Next/photo-selection.mjs",
+      "sha256": "cad8234d8549eebd61c8920bd8e10bab79e956b6b2b51fce82d7bbbcafadb7a0",
+      "bytes": 5545,
+      "class": "src-next"
+    },
+    {
+      "source": "src/Next/photo-selection.test.mjs",
+      "destination": "apps/web/src/Next/photo-selection.test.mjs",
+      "sha256": "bcb2c733d7e4e11fe8c2362c6620ea1b6ab17d94f3bc137473041477bbcf8d8d",
+      "bytes": 6149,
+      "class": "src-next"
+    },
+    {
+      "source": "src/Next/photo/align-photo.mjs",
+      "destination": "apps/web/src/Next/photo/align-photo.mjs",
+      "sha256": "2910ee47d00053c3c6eb40c292568d4572e1f15eaba706d588d1250b89aa1c37",
+      "bytes": 2760,
+      "class": "src-next"
+    },
+    {
+      "source": "src/Next/photo/crop-view.mjs",
+      "destination": "apps/web/src/Next/photo/crop-view.mjs",
+      "sha256": "0280d165909de6f3d2f269463ba66c792120f68bdff460dbeb77a12b5e16929e",
+      "bytes": 3097,
+      "class": "src-next"
+    },
+    {
+      "source": "src/Next/photo/crop-view.test.mjs",
+      "destination": "apps/web/src/Next/photo/crop-view.test.mjs",
+      "sha256": "759d47a1c4da88dd994bec645e84cf275e16f78104f24330c7bba9da9e5ec87c",
+      "bytes": 5980,
+      "class": "src-next"
+    },
+    {
+      "source": "src/Next/photo/crop.mjs",
+      "destination": "apps/web/src/Next/photo/crop.mjs",
+      "sha256": "7bfcd39a78f125e1504d845e2c8f9cf196db96782a38e459bd1de1a23d4a4052",
+      "bytes": 8018,
+      "class": "src-next"
+    },
+    {
+      "source": "src/Next/photo/image-header.mjs",
+      "destination": "apps/web/src/Next/photo/image-header.mjs",
+      "sha256": "98bb97323c6732e21b40394c5c5144949b6a28a58ee09ac8c7aad52ad05fa4da",
+      "bytes": 2527,
+      "class": "src-next"
+    },
+    {
+      "source": "src/Next/photo/selection-worker.mjs",
+      "destination": "apps/web/src/Next/photo/selection-worker.mjs",
+      "sha256": "6247e78617d29efe2cdd01928a8064b49854613b088f44cbe9e9d25bb344b680",
+      "bytes": 9832,
+      "class": "src-next"
+    },
+    {
+      "source": "src/Next/product-bridge.mjs",
+      "destination": "apps/web/src/Next/product-bridge.mjs",
+      "sha256": "5aba03354e531d10b177a6b5dae98b41431da418b8a1313e1f5bdb8794cc399c",
+      "bytes": 54317,
+      "class": "src-next"
+    },
+    {
+      "source": "src/Next/product-ux.scss",
+      "destination": "apps/web/src/Next/product-ux.scss",
+      "sha256": "8384ffbabb2362574703cc7a2cd0ebec0ba35fc640ac481e16bd348f79cbc899",
+      "bytes": 23028,
+      "class": "src-next"
+    },
+    {
+      "source": "src/Next/project-v1.fixture.json",
+      "destination": "apps/web/src/Next/project-v1.fixture.json",
+      "sha256": "26a14556b4e49e6d63433558323d079bbb84fd02f2f68d03edccb89490b744fe",
+      "bytes": 1252,
+      "class": "src-next"
+    },
+    {
+      "source": "src/Next/public-previews.mjs",
+      "destination": "apps/web/src/Next/public-previews.mjs",
+      "sha256": "67072c28f6607c80966d05c01363636e72036b0b8ce737c8f928ce6c6d4cdac5",
+      "bytes": 5225,
+      "class": "src-next"
+    },
+    {
+      "source": "src/Next/public-previews.test.mjs",
+      "destination": "apps/web/src/Next/public-previews.test.mjs",
+      "sha256": "9e7b3786a86a13399bd88c171e50e61e05a433ac57e18b66db98fa98cdb7f20c",
+      "bytes": 3587,
+      "class": "src-next"
+    },
+    {
+      "source": "src/Next/recovery-metadata.mjs",
+      "destination": "apps/web/src/Next/recovery-metadata.mjs",
+      "sha256": "ce28bac58563a68f69234b83712ec4a3c6048e6b7e77d4bd18c5ea3170d88a5a",
+      "bytes": 6309,
+      "class": "src-next"
+    },
+    {
+      "source": "src/Next/recovery-metadata.test.mjs",
+      "destination": "apps/web/src/Next/recovery-metadata.test.mjs",
+      "sha256": "15b6808c274fed1ae7aa7e08c8ef7c3455e59381bf7d3ffb6eb7a91045b05772",
+      "bytes": 3915,
+      "class": "src-next"
+    },
+    {
+      "source": "src/Next/reporting.mjs",
+      "destination": "apps/web/src/Next/reporting.mjs",
+      "sha256": "b9a2d088f4d5a7f8291875111a56e8905ea22bb6294b3c0f229767c3cf78162f",
+      "bytes": 21782,
+      "class": "src-next"
+    },
+    {
+      "source": "src/Next/reporting.test.mjs",
+      "destination": "apps/web/src/Next/reporting.test.mjs",
+      "sha256": "b5df3154d93295fe43b118ae46ebb01323675abdd37b051d847fa33a87c4293f",
+      "bytes": 21784,
+      "class": "src-next"
+    },
+    {
+      "source": "src/Next/route-choice.test.mjs",
+      "destination": "apps/web/src/Next/route-choice.test.mjs",
+      "sha256": "1f787065b8c113da3f7d18572d527d87dedfe94e0876ae31058935dfab510cf6",
+      "bytes": 1811,
+      "class": "src-next"
+    },
+    {
+      "source": "src/Next/route-report.test.mjs",
+      "destination": "apps/web/src/Next/route-report.test.mjs",
+      "sha256": "7b862764bd75df5d105273664b18067788345f941b2567a669979b3d270bf0e1",
+      "bytes": 2608,
+      "class": "src-next"
+    },
+    {
+      "source": "src/Next/scheduler.mjs",
+      "destination": "apps/web/src/Next/scheduler.mjs",
+      "sha256": "a48e6744a2e115ef8ef78bade42f91ecb1af6891d89a230b433160b798233b9c",
+      "bytes": 622,
+      "class": "src-next"
+    },
+    {
+      "source": "src/Next/scheduler.test.mjs",
+      "destination": "apps/web/src/Next/scheduler.test.mjs",
+      "sha256": "097179d558194ffe70c37b45fdc55c8dc213ff8d1e0167141557449d54e7b31d",
+      "bytes": 911,
+      "class": "src-next"
+    },
+    {
+      "source": "src/Next/stage-labels.mjs",
+      "destination": "apps/web/src/Next/stage-labels.mjs",
+      "sha256": "0671e7af7607078a41da12937427d685b41724f369fd59a888ffd8fa957266e3",
+      "bytes": 11122,
+      "class": "src-next"
+    },
+    {
+      "source": "src/Next/stage-labels.test.mjs",
+      "destination": "apps/web/src/Next/stage-labels.test.mjs",
+      "sha256": "912884df96a1aa92357a1f83563469f3b69a41332fe6f1387fad75834a8ef6c6",
+      "bytes": 8253,
+      "class": "src-next"
+    },
+    {
+      "source": "src/Next/storage-request.mjs",
+      "destination": "apps/web/src/Next/storage-request.mjs",
+      "sha256": "267265ed916fe64adc15bb11266ebb612d38a885fa396d5faba95d530520d11e",
+      "bytes": 355,
+      "class": "src-next"
+    },
+    {
+      "source": "src/Next/storage-request.test.mjs",
+      "destination": "apps/web/src/Next/storage-request.test.mjs",
+      "sha256": "870d67438f5664ca6a5822a31c39c540137a7ebaaf71303acf6f64d024d80f95",
+      "bytes": 1614,
+      "class": "src-next"
+    },
+    {
+      "source": "src/Next/testing-link.test.mjs",
+      "destination": "apps/web/src/Next/testing-link.test.mjs",
+      "sha256": "46813e5dab070058e2dc5ac76b0c77c28317cebbd2960ec78a5c69a56d34f766",
+      "bytes": 1968,
+      "class": "src-next"
+    },
+    {
+      "source": "src/Next/usage-stats.mjs",
+      "destination": "apps/web/src/Next/usage-stats.mjs",
+      "sha256": "9efc54eb9f0a895bcfa9de0ab597430849fc948cc58bdbae6990d707a0ab5646",
+      "bytes": 4614,
+      "class": "src-next"
+    },
+    {
+      "source": "src/Next/usage-stats.test.mjs",
+      "destination": "apps/web/src/Next/usage-stats.test.mjs",
+      "sha256": "d569af35d64ef86ffc6b60555d3266d8c66ef29affd149f976d406643a37d37c",
+      "bytes": 3550,
+      "class": "src-next"
+    },
+    {
+      "source": "src/Next/verify-fable.mjs",
+      "destination": "apps/web/src/Next/verify-fable.mjs",
+      "sha256": "308e42b4a3b7df4d6ecb80bdf258c1fa37813987f43a3bf50fa58dd641500b2d",
+      "bytes": 2521,
+      "class": "src-next"
+    },
+    {
+      "source": "src/Next/video-worker.mjs",
+      "destination": "apps/web/src/Next/video-worker.mjs",
+      "sha256": "bec91cdc08c64f1da9259cbc1fb75d7ba5aaec7cf905d90aa11f93a352d71614",
+      "bytes": 10432,
+      "class": "src-next"
+    },
+    {
+      "source": "src/Next/video-worker.test.mjs",
+      "destination": "apps/web/src/Next/video-worker.test.mjs",
+      "sha256": "4b63eecbf5ac15809a404af0804b05091dbcfb3a1b1b7f38c8a8424b4b0c5203",
+      "bytes": 2093,
+      "class": "src-next"
+    },
+    {
+      "source": "src/index.html",
+      "destination": "apps/web/src/index.html",
+      "sha256": "17d265c3ff45c858d3fd5ce208a973b2453661718a161189a8faf97ab561607a",
+      "bytes": 3712,
+      "class": "app-shell"
+    },
+    {
+      "source": "src/public/README.md",
+      "destination": "apps/web/src/public/README.md",
+      "sha256": "4fefffa64bd1609a5235ae1dd17570acf73bdb2883d732d622f2408f4df2350b",
+      "bytes": 1063,
+      "class": "public-assets"
+    },
+    {
+      "source": "src/public/android-chrome-192x192.png",
+      "destination": "apps/web/src/public/android-chrome-192x192.png",
+      "sha256": "3f72c9084ea1999bee60007f1cdb2388113e278cef723a9396c788ba72267e17",
+      "bytes": 3666,
+      "class": "public-assets"
+    },
+    {
+      "source": "src/public/android-chrome-512x512.png",
+      "destination": "apps/web/src/public/android-chrome-512x512.png",
+      "sha256": "a8a83baf7c337fc92c4450a6a80ae11725bbc3776a6990421c91fe609ee0eb61",
+      "bytes": 10377,
+      "class": "public-assets"
+    },
+    {
+      "source": "src/public/apple-touch-icon.png",
+      "destination": "apps/web/src/public/apple-touch-icon.png",
+      "sha256": "e9ede9794648e56ef5f4ec1c9e5d44e006308e813324c99a89f615a6e9c345ea",
+      "bytes": 8956,
+      "class": "public-assets"
+    },
+    {
+      "source": "src/public/browserconfig.xml",
+      "destination": "apps/web/src/public/browserconfig.xml",
+      "sha256": "02a58d43084ba9759cadf94f4cbeff22a854e0a70810a5542d96ae83ac501ec8",
+      "bytes": 246,
+      "class": "public-assets"
+    },
+    {
+      "source": "src/public/cropper-stencil.svg",
+      "destination": "apps/web/src/public/cropper-stencil.svg",
+      "sha256": "efbea292163f37ec78cdf89f9158078c04c8a7c101cbd9db8e321b3f3e4863c1",
+      "bytes": 466,
+      "class": "public-assets"
+    },
+    {
+      "source": "src/public/favicon-16x16.png",
+      "destination": "apps/web/src/public/favicon-16x16.png",
+      "sha256": "4060bf9e4f3cb7eca8f3c513640d7cd119571ebfac18d01d3bd0f59054c043d9",
+      "bytes": 680,
+      "class": "public-assets"
+    },
+    {
+      "source": "src/public/favicon-32x32.png",
+      "destination": "apps/web/src/public/favicon-32x32.png",
+      "sha256": "a72ed385ab728f61dd20704edfb30030ff637bfb6bc490380f88ec72ec3011bf",
+      "bytes": 1112,
+      "class": "public-assets"
+    },
+    {
+      "source": "src/public/favicon.ico",
+      "destination": "apps/web/src/public/favicon.ico",
+      "sha256": "a59dbcd5e1932386b57f5e9e430b372bf0a78f3b736b4342a8f66b9fc0219342",
+      "bytes": 15086,
+      "class": "public-assets"
+    },
+    {
+      "source": "src/public/favicon.svg",
+      "destination": "apps/web/src/public/favicon.svg",
+      "sha256": "c5e29b4935fe76743a7efd81705d9f05490c6ec6acaf03f085d8401164b1ff61",
+      "bytes": 576,
+      "class": "public-assets"
+    },
+    {
+      "source": "src/public/fonts/RECEIPT.json",
+      "destination": "apps/web/src/public/fonts/RECEIPT.json",
+      "sha256": "9cef3f7021877ee26ab54347106278f161dfd4b2b65badae20312c3bc2d18559",
+      "bytes": 4020,
+      "class": "public-assets"
+    },
+    {
+      "source": "src/public/fonts/fonts.css",
+      "destination": "apps/web/src/public/fonts/fonts.css",
+      "sha256": "844e5fe4c31dc0014af73971a7518af66b375b57f778f75a2b07c78bdaa995c4",
+      "bytes": 22361,
+      "class": "public-assets"
+    },
+    {
+      "source": "src/public/fonts/nunito-3c2f6e4752.woff2",
+      "destination": "apps/web/src/public/fonts/nunito-3c2f6e4752.woff2",
+      "sha256": "3c2f6e4752294913f818a47cb12270ae8d5ae7a39fe22df37b7127ab0a82282f",
+      "bytes": 16184,
+      "class": "public-assets"
+    },
+    {
+      "source": "src/public/fonts/nunito-42e1ff5021.woff2",
+      "destination": "apps/web/src/public/fonts/nunito-42e1ff5021.woff2",
+      "sha256": "42e1ff5021da0127487c838d2f712b905447101ae108f51efe15b8cd5907c28a",
+      "bytes": 16572,
+      "class": "public-assets"
+    },
+    {
+      "source": "src/public/fonts/nunito-5ac503807c.woff2",
+      "destination": "apps/web/src/public/fonts/nunito-5ac503807c.woff2",
+      "sha256": "5ac503807c1b99435f247a4e7f97bd440036fe2fedf36252a8d9f54f61578123",
+      "bytes": 11212,
+      "class": "public-assets"
+    },
+    {
+      "source": "src/public/fonts/nunito-7a3225c1c5.woff2",
+      "destination": "apps/web/src/public/fonts/nunito-7a3225c1c5.woff2",
+      "sha256": "7a3225c1c52326d1ff65dc7d1d7fd157f72261b3210476b7cca3e666e79b7b53",
+      "bytes": 6160,
+      "class": "public-assets"
+    },
+    {
+      "source": "src/public/fonts/nunito-c54d656747.woff2",
+      "destination": "apps/web/src/public/fonts/nunito-c54d656747.woff2",
+      "sha256": "c54d6567473728e65baa95e2729b1719625601595a4a33ce0f2bb3e392f862f5",
+      "bytes": 8556,
+      "class": "public-assets"
+    },
+    {
+      "source": "src/public/fonts/roboto-0a44e0bb6b.woff2",
+      "destination": "apps/web/src/public/fonts/roboto-0a44e0bb6b.woff2",
+      "sha256": "0a44e0bb6ba5c8537e8814c148ef7755f1bce12112361231f595ecc584a18d7a",
+      "bytes": 37520,
+      "class": "public-assets"
+    },
+    {
+      "source": "src/public/fonts/roboto-2071148c26.woff2",
+      "destination": "apps/web/src/public/fonts/roboto-2071148c26.woff2",
+      "sha256": "2071148c26bd0430cad316373c26db399e0cf8f6275b9e1a2c1b831f05ee7dc3",
+      "bytes": 10572,
+      "class": "public-assets"
+    },
+    {
+      "source": "src/public/fonts/roboto-297193369e.woff2",
+      "destination": "apps/web/src/public/fonts/roboto-297193369e.woff2",
+      "sha256": "297193369eea600161f4b5219bd7b08850180fcfe0752f1a2eaa436575cd03b7",
+      "bytes": 36292,
+      "class": "public-assets"
+    },
+    {
+      "source": "src/public/fonts/roboto-32886c5ec6.woff2",
+      "destination": "apps/web/src/public/fonts/roboto-32886c5ec6.woff2",
+      "sha256": "32886c5ec61a0d06e5677a98c5ed78a5f1c788c18c5e8d7dcd931c4b6dc19830",
+      "bytes": 19624,
+      "class": "public-assets"
+    },
+    {
+      "source": "src/public/fonts/roboto-4813e3dfbb.woff2",
+      "destination": "apps/web/src/public/fonts/roboto-4813e3dfbb.woff2",
+      "sha256": "4813e3dfbbb23708c817ef7fd3fd9c82cd0d33c778def0897f0447f1c364ce64",
+      "bytes": 13984,
+      "class": "public-assets"
+    },
+    {
+      "source": "src/public/fonts/roboto-5fdfeaf926.woff2",
+      "destination": "apps/web/src/public/fonts/roboto-5fdfeaf926.woff2",
+      "sha256": "5fdfeaf926cac990770dfa66011bdb87d6b69f43c42aa759dcdcf0a7a197c19a",
+      "bytes": 1632,
+      "class": "public-assets"
+    },
+    {
+      "source": "src/public/fonts/roboto-cdd53dc557.woff2",
+      "destination": "apps/web/src/public/fonts/roboto-cdd53dc557.woff2",
+      "sha256": "cdd53dc5576a79f35cf280dfbd9c1cb2a5dd2f0ede30afba9b9ccdc7fe12e7d0",
+      "bytes": 24444,
+      "class": "public-assets"
+    },
+    {
+      "source": "src/public/fonts/roboto-e44224eb71.woff2",
+      "destination": "apps/web/src/public/fonts/roboto-e44224eb71.woff2",
+      "sha256": "e44224eb71a96cb33bd046ded16a4e22bb441b170bdfbcba0268a754141b97c8",
+      "bytes": 31472,
+      "class": "public-assets"
+    },
+    {
+      "source": "src/public/fonts/roboto-fab8a0056d.woff2",
+      "destination": "apps/web/src/public/fonts/roboto-fab8a0056d.woff2",
+      "sha256": "fab8a0056d92fdd8d64fed4b049744144e1d24d08762c513bff78265299ed7a3",
+      "bytes": 16692,
+      "class": "public-assets"
+    },
+    {
+      "source": "src/public/logo-animated.svg",
+      "destination": "apps/web/src/public/logo-animated.svg",
+      "sha256": "da046863dce8a13ec197b0e24bced45605c5921eead53b25efba89bf018158d3",
+      "bytes": 1178,
+      "class": "public-assets"
+    },
+    {
+      "source": "src/public/logo.svg",
+      "destination": "apps/web/src/public/logo.svg",
+      "sha256": "e61e303b90a8c5c3a7832acf4be19d814de5027ee7a6093da8d923885451d57f",
+      "bytes": 488,
+      "class": "public-assets"
+    },
+    {
+      "source": "src/public/mstile-144x144.png",
+      "destination": "apps/web/src/public/mstile-144x144.png",
+      "sha256": "8776f1dac99defd6e4c1b564766d0fce8e700713c30013911911ea5e328729ca",
+      "bytes": 3458,
+      "class": "public-assets"
+    },
+    {
+      "source": "src/public/mstile-150x150.png",
+      "destination": "apps/web/src/public/mstile-150x150.png",
+      "sha256": "c5b7e8d769a4862299a083da886699ea2fc18fd80299c8207b472bbe8eaf1ee5",
+      "bytes": 3399,
+      "class": "public-assets"
+    },
+    {
+      "source": "src/public/mstile-310x150.png",
+      "destination": "apps/web/src/public/mstile-310x150.png",
+      "sha256": "245b80d88ce34b3d4fbf41ea69d3892794bd2b280631bc5f3f0cd5fe937528b3",
+      "bytes": 3661,
+      "class": "public-assets"
+    },
+    {
+      "source": "src/public/mstile-310x310.png",
+      "destination": "apps/web/src/public/mstile-310x310.png",
+      "sha256": "1ee17338ba9311943abb71c999a478c16765e747e9d03a1e8f1ac41bdd003865",
+      "bytes": 7241,
+      "class": "public-assets"
+    },
+    {
+      "source": "src/public/mstile-70x70.png",
+      "destination": "apps/web/src/public/mstile-70x70.png",
+      "sha256": "d9b89ab33df87717788c8fb718b869bc61fb26196e21925da37de53a1307a593",
+      "bytes": 2436,
+      "class": "public-assets"
+    },
+    {
+      "source": "src/public/og-next.png",
+      "destination": "apps/web/src/public/og-next.png",
+      "sha256": "4896c6cebccfbbe77e7e7ecee93f06860482e5b31b21bac592f3244e2fe6c4cc",
+      "bytes": 480238,
+      "class": "public-assets"
+    },
+    {
+      "source": "src/public/preview/hello-1024.webp",
+      "destination": "apps/web/src/public/preview/hello-1024.webp",
+      "sha256": "0fd3aacaf63a9b574960f926e4fbd48fadf853ba16189519053438e55fb9d615",
+      "bytes": 92624,
+      "class": "public-assets"
+    },
+    {
+      "source": "src/public/robots.txt",
+      "destination": "apps/web/src/public/robots.txt",
+      "sha256": "44f3f8eafdf064cf69acb05f23ee4dfc9ab5b3d67d81c64246bc29f7e438789a",
+      "bytes": 22,
+      "class": "public-assets"
+    },
+    {
+      "source": "src/public/safari-pinned-tab.svg",
+      "destination": "apps/web/src/public/safari-pinned-tab.svg",
+      "sha256": "5137e23ec8b91f59efdf28211cbe5cbdc9f2b0b4891bfb42640d607b4b0834bb",
+      "bytes": 2913,
+      "class": "public-assets"
+    },
+    {
+      "source": "src/public/site.webmanifest",
+      "destination": "apps/web/src/public/site.webmanifest",
+      "sha256": "e74f0398c8305132141d29de5583da6b9b2825cd993af9b1ccc4816e9686f554",
+      "bytes": 449,
+      "class": "public-assets"
+    },
+    {
+      "source": "src/style.scss",
+      "destination": "apps/web/src/style.scss",
+      "sha256": "e4bf32f3b99dc27bf04b16fd039bda4c440346d6fe40da142aa5a2958de6c17c",
+      "bytes": 6710,
+      "class": "app-shell"
+    },
+    {
+      "source": "tests/mobile/README.md",
+      "destination": "apps/web/tests/mobile/README.md",
+      "sha256": "5bd69afb38bbfc3154a14124d3fde96e5eda58f9ae4cc03d64a6d3e5605e8053",
+      "bytes": 3935,
+      "class": "temporary-root",
+      "temporary": true
+    },
+    {
+      "source": "tests/mobile/hash-worker.mjs",
+      "destination": "apps/web/tests/mobile/hash-worker.mjs",
+      "sha256": "6ba792d263cad5d747b85ba24d4e3f467b7353df93263ec445dc2ed5020f0f7c",
+      "bytes": 244,
+      "class": "temporary-root",
+      "temporary": true
+    },
+    {
+      "source": "tests/mobile/index.html",
+      "destination": "apps/web/tests/mobile/index.html",
+      "sha256": "c41fadfacd542c68f5d491cbed688a786512a351e70eafb8e1f26e64a238de2d",
+      "bytes": 595,
+      "class": "temporary-root",
+      "temporary": true
+    },
+    {
+      "source": "tests/mobile/run.py",
+      "destination": "apps/web/tests/mobile/run.py",
+      "sha256": "e17fb2e20a1dac2add0281fd1ea1fcdbc322542359de729db21f2bfa3ea0b151",
+      "bytes": 10107,
+      "class": "temporary-root",
+      "temporary": true
+    },
+    {
+      "source": "tests/mobile/suite.mjs",
+      "destination": "apps/web/tests/mobile/suite.mjs",
+      "sha256": "4d050b4a573a7836e82a836d79bb5a0af54bc79316ed97a0ab0570a96f42ac32",
+      "bytes": 8341,
+      "class": "temporary-root",
+      "temporary": true
+    },
+    {
+      "source": "tests/mobile/test_runner.py",
+      "destination": "apps/web/tests/mobile/test_runner.py",
+      "sha256": "8075e6d96f83a93cb7ca4c35125d3c891d32f16945b03db225539a6009c9f243",
+      "bytes": 1921,
+      "class": "temporary-root",
+      "temporary": true
+    }
+  ]
+}
