@@ -1,0 +1,63 @@
+name: release-gate
+# fm-5klw: everything a deploy of one exact artifact needs. The hosted lanes (hosted-lanes.yml:
+# macOS, Windows, Android emulator, iOS Simulator) and the four device-lab cells (device-lab.yml:
+# eris-webgpu, eris-cpu, phone-webgpu, phone-cpu) run the same journeys against that artifact; the
+# `gate` job passes only when both succeed. The deploy job (fm-6fx6) calls this workflow and
+# `needs` its gate, so a failure in any lane or cell blocks the deploy. The device lab queues for
+# its runner and lock like any other run; the release manager records an unavailable cell as
+# untested (PLAN.md, device lab, deploy gates and CI policy).
+on:
+  workflow_dispatch:
+    inputs:
+      artifact_run:
+        description: Build run id in facemorph.me-classic
+        default: '40056009101'
+      artifact_name:
+        description: Its site artifact
+        default: next-site-551b60726290b2d67a32c62477b2fd964de51f96
+      runtime_sha:
+        description: Runtime manifest SHA256 the artifact was qualified with
+        default: d9e37e50a436e9fb7c0c7f973e70adee353c808f48c6a51fa5a9186f1c650a5c
+  workflow_call:
+    inputs:
+      artifact_run:
+        type: string
+        required: true
+      artifact_name:
+        type: string
+        required: true
+      runtime_sha:
+        type: string
+        required: true
+permissions:
+  contents: read
+  actions: read
+jobs:
+  hosted:
+    uses: ./.github/workflows/hosted-lanes.yml
+    with:
+      artifact_repository: check-face/facemorph.me-classic
+      artifact_run: ${{ inputs.artifact_run }}
+      artifact_name: ${{ inputs.artifact_name }}
+      runtime_sha: ${{ inputs.runtime_sha }}
+  device-lab:
+    uses: ./.github/workflows/device-lab.yml
+    with:
+      artifact_run: ${{ inputs.artifact_run }}
+      artifact_name: ${{ inputs.artifact_name }}
+      runtime_sha: ${{ inputs.runtime_sha }}
+      cells: eris-webgpu,eris-cpu,phone-webgpu,phone-cpu
+      journey: cold-face,warm-face,morph
+      label: gate-${{ inputs.artifact_name }}
+  gate:
+    needs: [hosted, device-lab]
+    if: always()
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Every hosted lane and device-lab cell passed
+        env:
+          HOSTED: ${{ needs.hosted.result }}
+          LAB: ${{ needs.device-lab.result }}
+        run: |
+          echo "hosted lanes: $HOSTED; device-lab cells: $LAB" | tee -a "$GITHUB_STEP_SUMMARY"
+          test "$HOSTED" = success && test "$LAB" = success
