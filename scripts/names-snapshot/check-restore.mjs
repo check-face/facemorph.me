@@ -55,7 +55,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   }
   const store = a['mint-r2'] ? `${a['mint-r2']}.r2.cloudflarestorage.com` : new URL(process.env.S3_ENDPOINT).host;
   const r = await checkRestore({ args: passthrough, store });
-  console.log(JSON.stringify({ event: 'check-restore', pass: r.pass, exitCode: r.exitCode, ...r.result, connectionsByHostClass: r.byClass }));
+  console.log(JSON.stringify({ ...r.result, event: 'check-restore', pass: r.pass, exitCode: r.exitCode, connectionsByHostClass: r.byClass }));
   if (!r.pass && r.stderr) console.error(r.stderr);
   if (a['record-summary'] && r.pass) {
     const text = readFileSync(a.manifest ? resolve(a.manifest) : MANIFEST_PATH, 'utf8');

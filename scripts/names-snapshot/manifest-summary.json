@@ -51,6 +51,39 @@
       "defect": "empty object (published with 0 bytes)"
     }
   ],
-  "store": null,
-  "restoreCheck": null
+  "store": {
+    "bucket": "facemorph-names-snapshot",
+    "endpointClass": "r2",
+    "keyScheme": "source URL without scheme",
+    "verifiedAt": "2026-10-24T09:14:02.851Z",
+    "mode": "run",
+    "verifiedObjects": 16168,
+    "verifiedBytes": 782431495,
+    "fetchedThisRun": 3085
+  },
+  "restoreCheck": {
+    "at": "2026-10-24T09:15:30.097Z",
+    "bucket": "facemorph-names-snapshot",
+    "selected": 200,
+    "restoredWithMatchingHashes": 200,
+    "bytes": 12528461,
+    "connectionsByHostClass": {
+      "store": {
+        "connections": 8,
+        "bytes": 12807909
+      },
+      "retired-api": {
+        "connections": 0,
+        "bytes": 0
+      },
+      "source-worker": {
+        "connections": 0,
+        "bytes": 0
+      },
+      "other": {
+        "connections": 0,
+        "bytes": 0
+      }
+    }
+  }
 }
