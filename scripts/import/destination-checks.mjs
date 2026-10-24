@@ -109,7 +109,8 @@ export function checks({ rows }) {
       '--root',
       'apps/web',
       '--lock',
-      'apps/web/package-lock.json',
+      // The app's own lockfile until the workspace scaffold (fm-fy2.4) moved it to the root one.
+      existsSync(join(REPO, 'apps/web/package-lock.json')) ? 'apps/web/package-lock.json' : 'package-lock.json',
     ],
     REPO,
   );
