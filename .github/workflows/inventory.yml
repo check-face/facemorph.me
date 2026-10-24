@@ -3,19 +3,8 @@ name: inventory-checks
 # against classic hosting/ at the frozen revision, and the native release scan whose JSON is
 # attached as a workflow artifact.
 on:
-  push:
-    branches: [main]
-    paths:
-      [
-        'inventory/**',
-        'scripts/inventory/**',
-        'packages/cloudflare-model-host/README.md',
-        '.github/workflows/inventory.yml',
-      ]
+  workflow_call:
   workflow_dispatch:
-concurrency:
-  group: inventory-checks
-  cancel-in-progress: false
 jobs:
   checks:
     runs-on: [self-hosted, triton]

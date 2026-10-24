@@ -5,20 +5,12 @@ name: research-built-ui-media
 # the pinned control artifact on eris; workflow_dispatch can run the full paired screen. Outputs land in eris's
 # durable research directory (named in autoresearch/workers/eris/README.md); the uploaded artifact is only a copy.
 on:
-  push:
-    branches: [main]
-    paths:
-      [
-        'apps/web/**',
-        'packages/**',
-        'autoresearch/drivers/**',
-        'autoresearch/workers/**',
-        'autoresearch/run.py',
-        'autoresearch/lease.py',
-        'scripts/**',
-        '.github/workflows/research-built-ui-media.yml',
-        '.github/actions/**',
-      ]
+  workflow_call:
+    inputs:
+      mode:
+        type: string
+        required: false
+        description: 'smoke (one sample per side) or paired (warmup + ABBA x3; refuses load above 4)'
   workflow_dispatch:
     inputs:
       mode:
@@ -28,9 +20,6 @@ on:
         default: smoke
 permissions:
   contents: read
-concurrency:
-  group: research-built-ui-media-${{ github.ref }}
-  cancel-in-progress: false
 jobs:
   smoke:
     runs-on: [self-hosted, eris]

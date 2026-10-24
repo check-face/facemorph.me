@@ -6,20 +6,8 @@ name: parity-harness
 #   subject passes the smoke row, and a copy with one planted label change fails it. The control digest is re-checked
 #   before serving. Uses a runtime already acquired on the runner (verified; CI never accepts the model terms itself).
 on:
-  push:
-    branches: [main]
-    paths:
-      [
-        'scripts/verify/**',
-        'apps/web/test/harness/**',
-        'apps/web/test/goldens/**',
-        'apps/web/test/parity/**',
-        '.github/workflows/parity-harness.yml',
-      ]
+  workflow_call:
   workflow_dispatch:
-concurrency:
-  group: parity-harness
-  cancel-in-progress: false
 jobs:
   unit:
     runs-on: [self-hosted, triton]

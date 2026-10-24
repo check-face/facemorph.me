@@ -3,18 +3,8 @@ name: model-conv
 # checkpoint against the upstream reference, perturbed chunk, killed run, ownership, image scan) on eris.
 # The checkpoint is cached in the runner's home after its first download.
 on:
-  push:
-    branches: [main]
-    paths:
-      [
-        'packages/model-conv/**',
-        'packages/browser-model-manager/schema/**',
-        '.github/workflows/model-conv.yml',
-      ]
+  workflow_call:
   workflow_dispatch:
-concurrency:
-  group: model-conv
-  cancel-in-progress: false
 jobs:
   acceptance:
     runs-on: [self-hosted, eris]

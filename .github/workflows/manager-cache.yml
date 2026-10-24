@@ -5,25 +5,10 @@ name: manager-cache
 # candidate's own cache wrote read without a download), the tarball check, and the candidate's carried
 # model-cache.test.mjs through the shim at its old path. On triton (scaffold) the browser cases report untested.
 on:
-  push:
-    branches: [main]
-    paths:
-      [
-        'packages/**',
-        'scripts/**',
-        'package.json',
-        'package-lock.json',
-        'tsconfig*.json',
-        'apps/web/src/Next/Assets/**',
-        '.github/workflows/manager-cache.yml',
-        '.github/actions/**',
-      ]
+  workflow_call:
   workflow_dispatch:
 permissions:
   contents: read
-concurrency:
-  group: manager-cache-${{ github.ref }}
-  cancel-in-progress: false
 jobs:
   cache:
     runs-on: [self-hosted, eris]

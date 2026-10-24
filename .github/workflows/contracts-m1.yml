@@ -4,21 +4,8 @@ name: contracts-m1
 # payloads in stylegan-js's suite, same job), the manifest JSON schema against the candidate's
 # recorded runtime manifest, and an external consumer compiling the packed packages' declarations.
 on:
-  push:
-    branches: [main]
-    paths:
-      [
-        'packages/stylegan-js/**',
-        'packages/browser-model-manager/**',
-        'tests/external-consumer/**',
-        'package.json',
-        'package-lock.json',
-        '.github/workflows/contracts-m1.yml',
-      ]
+  workflow_call:
   workflow_dispatch:
-concurrency:
-  group: contracts-m1
-  cancel-in-progress: false
 jobs:
   check:
     runs-on: [self-hosted, triton]

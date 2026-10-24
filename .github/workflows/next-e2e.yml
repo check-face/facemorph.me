@@ -61,17 +61,19 @@ jobs:
           import json, os
           r = json.load(open('source-run.json'))
           same_run = os.environ['RUN_ID'] == os.environ.get('THIS_RUN', '')
-          assert r['path'] == '.github/workflows/next-site.yml', r['path']
+          # next-site.yml builds the artifact; on main it runs inside the one pipeline, main.yml (fm-98po).
+          workflow = r['path'].split('@')[0]
+          assert workflow in ('.github/workflows/next-site.yml', '.github/workflows/main.yml'), r['path']
           assert r['conclusion'] == 'success' or same_run, 'Qualify a finished artifact build, or the one calling this workflow'
           assert r['event'] in ('push', 'workflow_dispatch'), 'Use a branch build; PR merge artifact provenance needs a separate merge-SHA receipt'
           assert os.environ['ARTIFACT'] == 'next-site-' + r['head_sha']
-          open(os.environ['GITHUB_OUTPUT'], 'a').write('commit=' + r['head_sha'] + '\n')
+          open(os.environ['GITHUB_OUTPUT'], 'a').write('commit=' + r['head_sha'] + '\nworkflow=' + workflow + '\n')
           PY
       - name: Fetch the exact artifact by explicit provenance
         uses: ./.github/actions/fetch-artifact
         with:
           source_repo_id: ${{ github.repository_id }}
-          workflow: .github/workflows/next-site.yml
+          workflow: ${{ steps.source.outputs.workflow }}
           run_id: ${{ inputs.artifact_run }}
           commit: ${{ steps.source.outputs.commit }}
           artifact_name: ${{ inputs.artifact_name }}

@@ -3,24 +3,18 @@ name: rename-check
 # check itself. On push it runs the pre-rename assertions under check-face. Dispatch it with org=facemorph-me
 # immediately after the rename to run the post-rename assertions.
 on:
-  push:
-    branches: [main]
-    paths:
-      [
-        'scripts/identity/check-rename*.mjs',
-        'scripts/identity/rename-expected.json',
-        'scripts/identity/read-identity.mjs',
-        '.github/workflows/rename-check.yml',
-      ]
+  workflow_call:
+    inputs:
+      org:
+        type: string
+        required: false
+        description: 'Organization the repositories should be under now'
   workflow_dispatch:
     inputs:
       org:
         description: Organization the repositories should be under now
         default: check-face
         type: string
-concurrency:
-  group: rename-check
-  cancel-in-progress: false
 jobs:
   check:
     runs-on: [self-hosted, eris]

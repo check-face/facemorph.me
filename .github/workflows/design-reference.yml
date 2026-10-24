@@ -3,19 +3,8 @@ name: design-reference
 # reproduction of docs/design/*.json runs where the locked reference bundle exists on the runner (eris), since the
 # locked images contain face photographs and never enter Git.
 on:
-  push:
-    branches: [main]
-    paths:
-      [
-        'scripts/design/**',
-        'docs/design/**',
-        'apps/web/src/photo/**',
-        '.github/workflows/design-reference.yml',
-      ]
+  workflow_call:
   workflow_dispatch:
-concurrency:
-  group: design-reference
-  cancel-in-progress: false
 jobs:
   measure:
     runs-on: [self-hosted, eris]

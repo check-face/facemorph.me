@@ -4,19 +4,20 @@ name: scaffold
 # the declaration builds, the tests and a pack of each package. seeded-gates.mjs proves each gate fails on a planted
 # violation and the clean tree passes, and `git diff --exit-code` proves the gates wrote nothing.
 on:
-  push:
-    branches: [main]
+  workflow_call:
+    inputs:
+      base:
+        type: string
+        required: false
+        description: The last green main.yml head (scripts/ci/changes.ts); empty without one
   workflow_dispatch:
-concurrency:
-  group: scaffold
-  cancel-in-progress: false
 jobs:
   gates:
     runs-on: [self-hosted, triton]
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 2
+          fetch-depth: 0 # the interop rename check diffs from the last green main.yml head
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
@@ -27,7 +28,9 @@ jobs:
           versions=$(npm ls typescript --all --parseable | xargs -I{} node -p "require('{}/package.json').version" | sort -u)
           echo "typescript: $versions"
           test "$versions" = "$(node -p "require('typescript/package.json').version")"
-      - run: node scripts/build/interop-check.mjs --base HEAD~1
+      - run: node scripts/build/interop-check.mjs --base "${BASE:-HEAD~1}"
+        env:
+          BASE: ${{ inputs.base }}
       - run: npm run format:check
       - run: npm run lint
       - run: npm run typecheck

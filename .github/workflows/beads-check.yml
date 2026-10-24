@@ -3,13 +3,8 @@ name: beads-check
 # on a closed bead, no closed bead with an open blocker. A red run names the bead; reopen it or
 # close the open blocker first.
 on:
-  push:
-    branches: [main]
-    paths: ['.beads/**', 'scripts/beads/**', '.github/workflows/beads-check.yml']
+  workflow_call:
   workflow_dispatch:
-concurrency:
-  group: beads-check
-  cancel-in-progress: false
 jobs:
   check:
     runs-on: [self-hosted, triton]

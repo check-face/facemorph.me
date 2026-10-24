@@ -5,15 +5,10 @@ name: delivery-dry-run
 # Every runtime file of the live and rollback artifacts is checked against a read-only listing of the mirror's R2
 # bucket. One JSON line per command. Changes nothing. On eris, whose runner user has cf, gh and ssh-to-triton access.
 on:
-  push:
-    branches: [main]
-    paths: ['scripts/**', '.github/workflows/delivery-dry-run.yml', '.github/actions/**']
+  workflow_call:
   workflow_dispatch:
 permissions:
   contents: read
-concurrency:
-  group: delivery-dry-run-${{ github.ref }}
-  cancel-in-progress: false
 jobs:
   dry-run:
     runs-on: [self-hosted, eris]

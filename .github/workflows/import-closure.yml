@@ -4,21 +4,8 @@ name: import-closure
 # control artifact still downloads from its release asset and verifies file by file, with no weights,
 # credentials or private provenance in it, and its emitted worker chunks match their pins.
 on:
-  push:
-    branches: [main]
-    paths:
-      [
-        'apps/web/**',
-        'import/**',
-        'scripts/import/**',
-        'scripts/runtime/**',
-        'scripts/inventory/**',
-        '.github/workflows/import-closure.yml',
-      ]
+  workflow_call:
   workflow_dispatch:
-concurrency:
-  group: import-closure
-  cancel-in-progress: false
 jobs:
   checks:
     runs-on: [self-hosted, triton]

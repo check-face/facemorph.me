@@ -3,13 +3,8 @@ name: import-inventory
 # (import/allowlist.json source.frozen_commit): digests regenerated from git archive, rule classification
 # and reviewed delta, the exclusion scan, unresolved imports, build inputs and licence coverage.
 on:
-  push:
-    branches: [main]
-    paths: ['import/**', 'scripts/inventory/**', '.github/workflows/import-inventory.yml']
+  workflow_call:
   workflow_dispatch:
-concurrency:
-  group: import-inventory
-  cancel-in-progress: false
 jobs:
   checks:
     runs-on: [self-hosted, triton]

@@ -101,12 +101,15 @@ is ready: the agent taking the release bead validates everything locally, then d
 ever stops new work being picked up. Build, test and validate locally as you go (eris, triton, the
 phone via the lab). Closure loop (`fm-fy2` step 8): test locally in the Linux browsers on eris (system
 Chromium with and without WebGPU; Playwright Chromium, Firefox, WebKit) and on the phone when relevant;
-a bead closes on the first green CI run on a `main` commit that contains its merge commit, across the
-supported browser matrix (`browser-matrix.json`: Ubuntu Chrome/Chromium/Firefox/WebKit, macOS
-WebKit/Firefox, Android emulator, iOS Simulator, GPU lane), never on the author's word. CI is
-newest-only (concurrency groups, `cancel-in-progress: false`), so a waiting run can be replaced by a
-newer push and a later green run covers it; a red run covering several beads is bisected locally on
-eris and only the culprit stays open. CI closes beads; it does not gate starting the next.
+a bead closes on the first green `main.yml` run that contains its commits, across the supported
+browser matrix (`browser-matrix.json`: Ubuntu Chrome/Chromium/Firefox/WebKit, macOS WebKit/Firefox,
+Android emulator, iOS Simulator, GPU lane), never on the author's word. Main has one CI pipeline, a
+merge queue (operator, 25 October 2026; fm-98po): `.github/workflows/main.yml` runs one run at a time
+and never cancels it; pushes made while it runs wait, and the next run takes every change pushed
+since, stacked, diffs from the last green run's head and calls only the lanes those paths select
+(`scripts/ci/path-filters.json`). Area workflows are reusable (`workflow_call`), never push-triggered.
+A red run covering several beads is bisected locally on eris and only the culprit stays open. CI
+closes beads; it does not gate starting the next.
 Beads enforce this (`.beads/policy.yaml`, no bypass): `br close` refuses while any acceptance item is
 unchecked, so tick each one as you verify it (`br update <id> --check-acceptance <n|text>`). There
 are no close-after waits (operator, 24 October 2026): a check that spans two beads belongs to whichever
@@ -121,11 +124,11 @@ green (`lab.py qualify --run <CI run id> --bead <id>`: a pass records the eviden
 reopens the bead with `device-lab-failed`). If a cell is unavailable the bead keeps `lab-pending`
 until a later lab run covering it, or the release bead's full validation, settles it.
 
-One checkout, no merge queue: every agent works in this one tree (no worktrees) and pushes straight
+One checkout, no branch merge queue: every agent works in this one tree (no worktrees) and pushes straight
 to `main`. Commit only the paths you changed (`git add <paths>`, `git commit -- <paths>`), never
 `git add -A` or `git commit -a`, because other agents' uncommitted work lives in the same tree. Agent
 Mail reservations and the ordering edges serialize edits, the lab lock serializes the devices, and
-newest-only CI verifies `main`.
+the one `main.yml` pipeline verifies `main`.
 Prefer the self-hosted runners (eris `device-lab`, triton on the `tank` pool) over hosted minutes.
 The phone's Frigate camera stays held off until the operator asks for it back.
 

@@ -5,19 +5,8 @@ name: hosting-staging
 # objects at the frozen revision, on the same artifact). Uses a runtime already acquired on the runner (verified;
 # nothing downloaded; CI never accepts the model terms itself).
 on:
-  push:
-    branches: [main]
-    paths:
-      [
-        'hosting/**',
-        'scripts/hosting/**',
-        'import/allowlist.json',
-        '.github/workflows/hosting-staging.yml',
-      ]
+  workflow_call:
   workflow_dispatch:
-concurrency:
-  group: hosting-staging
-  cancel-in-progress: false
 jobs:
   staging:
     runs-on: [self-hosted, eris]

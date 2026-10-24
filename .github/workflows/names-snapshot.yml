@@ -2,13 +2,8 @@ name: names-snapshot
 # Tests for the names snapshot (bead fm-old, scripts/names-snapshot/): pure manifest logic, plus the snapshot
 # and restore against a real S3-compatible server (SeaweedFS in Docker) and real local origins.
 on:
-  push:
-    branches: [main]
-    paths: ['scripts/names-snapshot/**', '.github/workflows/names-snapshot.yml']
+  workflow_call:
   workflow_dispatch:
-concurrency:
-  group: names-snapshot
-  cancel-in-progress: false
 jobs:
   test:
     runs-on: [self-hosted, triton]

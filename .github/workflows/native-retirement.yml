@@ -4,22 +4,8 @@ name: native-retirement
 # control-labelled deploy-next/ that build:next lays out), and no reference to the verifier's old path outside
 # history notes. The same test file also runs in root `npm test`, where the control case reports untested.
 on:
-  push:
-    branches: [main]
-    paths:
-      [
-        'apps/web/src/Next/**',
-        'apps/web/scripts/**',
-        'apps/web/test/build/native-retirement.test.ts',
-        'hosting/next-static/promote.py',
-        'scripts/import/**',
-        'scripts/inventory/unresolved-imports.mjs',
-        '.github/workflows/native-retirement.yml',
-      ]
+  workflow_call:
   workflow_dispatch:
-concurrency:
-  group: native-retirement
-  cancel-in-progress: false
 jobs:
   check:
     runs-on: [self-hosted, eris]

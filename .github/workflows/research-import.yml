@@ -3,20 +3,8 @@ name: research-import
 # its SHA-256 and mode, results.tsv's snapshot bytes kept as its prefix, and no unlisted file in a frozen
 # directory. Plus the import tooling's tests against real temporary Git repositories.
 on:
-  push:
-    branches: [main]
-    paths:
-      [
-        'autoresearch/**',
-        'docs/research-import/**',
-        'scripts/research-import/**',
-        'scripts/check-research-import.mjs',
-        '.github/workflows/research-import.yml',
-      ]
+  workflow_call:
   workflow_dispatch:
-concurrency:
-  group: research-import
-  cancel-in-progress: false
 jobs:
   check:
     runs-on: [self-hosted, triton]

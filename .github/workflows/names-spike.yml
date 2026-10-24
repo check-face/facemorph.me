@@ -3,13 +3,8 @@ name: names-spike
 # candidate catalogue and its published previews (cached in the runner's home after the first run). The
 # results and summary are the run's artifact; the chosen shape and bars are in docs/names/data-shape.md.
 on:
-  push:
-    branches: [main]
-    paths: ['tools/names-spike/**', '.github/workflows/names-spike.yml']
+  workflow_call:
   workflow_dispatch:
-concurrency:
-  group: names-spike
-  cancel-in-progress: false
 jobs:
   measure:
     # eris: triton's Ubuntu 20.04 is below Playwright's supported floor.

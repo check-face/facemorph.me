@@ -1,8 +1,6 @@
 name: stats-worker
 on:
-  push:
-    branches: [main]
-    paths: ['services/stats/**', '.github/workflows/stats-worker.yml']
+  workflow_call:
   workflow_dispatch:
 concurrency:
   group: stats-worker-deploy

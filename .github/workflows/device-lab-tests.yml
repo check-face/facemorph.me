@@ -3,14 +3,8 @@ name: device-lab-tests
 # against this repository's main commits (fm-xwpw), the hosted-lane summary and artifact server, and the cold
 # download's accounting. No device is touched; the device matrix stays on demand in device-lab.yml.
 on:
-  push:
-    branches: [main]
-    paths:
-      ['tools/device-lab/**', 'autoresearch/lease.py', '.github/workflows/device-lab-tests.yml']
+  workflow_call:
   workflow_dispatch:
-concurrency:
-  group: device-lab-tests-${{ github.ref }}
-  cancel-in-progress: false
 permissions:
   contents: read
 jobs:

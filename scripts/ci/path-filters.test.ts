@@ -10,7 +10,8 @@ import {
   check,
   codeRoots,
   laneProblems,
-  pushPaths,
+  mainProblems,
+  pushesMain,
   type Filters,
   type Lane,
 } from './path-filters.ts';
@@ -60,13 +61,12 @@ test('code roots come from code files below the top level only', () => {
   assert.deepEqual(codeRoots(['package.json', 'a/b.py', 'c/d.md', 'e/f/g.yml']), ['a', 'e']);
 });
 
-test('push paths read from flow and block lists', () => {
-  const flow =
-    'on:\n  push:\n    branches: [main]\n    paths:\n      [\n        \'apps/web/**\',\n        "packages/**",\n      ]\n  workflow_dispatch:\n';
-  const block = "on:\n  push:\n    paths:\n      - 'apps/web/**'\n      - packages/**\njobs:\n";
-  assert.deepEqual(pushPaths(flow), ['apps/web/**', 'packages/**']);
-  assert.deepEqual(pushPaths(block), ['apps/web/**', 'packages/**']);
-  assert.equal(pushPaths('on:\n  workflow_dispatch:\n'), null);
+test('push branches: a push trigger on main is found in flow and block lists; other branches are not main', () => {
+  assert.equal(pushesMain('on:\n  push:\n    branches: [main]\n  workflow_dispatch:\n'), true);
+  assert.equal(pushesMain('on:\n  push:\n    branches:\n      - main\n'), true);
+  assert.equal(pushesMain('on:\n  push:\n    paths: [x/**]\n'), true);
+  assert.equal(pushesMain("on:\n  push:\n    branches: ['candidate/*']\n"), false);
+  assert.equal(pushesMain('on:\n  workflow_call:\n  workflow_dispatch:\n'), false);
 });
 
 const lane: Lane = {
@@ -75,28 +75,64 @@ const lane: Lane = {
   extra: ['x/**'],
 };
 const good = (
-  group = 'l-${{ github.ref }}',
-  cancel = 'false',
+  trigger = '  workflow_call:\n',
+  concurrency = '',
   key = "deps-${{ hashFiles('package-lock.json') }}",
 ) =>
-  `on:\n  push:\n    paths: ['apps/web/**', 'x/**', '.github/workflows/l.yml', '.github/actions/**']\nconcurrency:\n  group: ${group}\n  cancel-in-progress: ${cancel}\njobs:\n  a:\n    steps:\n      - uses: actions/cache@v4\n        with:\n          key: ${key}\n`;
+  `on:\n${trigger}  workflow_dispatch:\n${concurrency}jobs:\n  a:\n    steps:\n      - uses: actions/cache@v4\n        with:\n          key: ${key}\n`;
+const MAIN_YML =
+  "on:\n  push:\n    branches: [main]\nconcurrency:\n  group: main\n  cancel-in-progress: false\njobs:\n  l:\n    needs: changes\n    if: contains(fromJSON(needs.changes.outputs.lanes), 'l')\n    uses: ./.github/workflows/l.yml\n    secrets: inherit\n";
 
-test('a conforming lane has no problems', () => {
-  assert.deepEqual(laneProblems('l', lane, FILTERS, good()), []);
+test('a conforming lane and main.yml have no problems', () => {
+  assert.deepEqual(laneProblems('l', lane, FILTERS, good(), MAIN_YML), []);
+  assert.deepEqual(mainProblems(MAIN_YML), []);
 });
 
-test('lane rules: undeclared or missing paths, narrowing outside the shared list, concurrency, cache keys', () => {
-  const rules = (yaml: string, l: Lane = lane) =>
-    laneProblems('l', l, FILTERS, yaml).map((p) => p.rule);
-  assert.deepEqual(rules(good().replace("'x/**', ", '')), ['paths']);
-  assert.deepEqual(rules(good().replace("'x/**'", "'x/**', 'docs/**'")), ['paths']);
-  assert.deepEqual(rules(good(), { ...lane, shared: ['apps/web/**', 'docs/**'] }), [
-    'narrowing',
-    'paths',
-  ]);
-  assert.deepEqual(rules(good('l')), ['concurrency']);
-  assert.deepEqual(rules(good(undefined, 'true')), ['concurrency']);
+test('lane rules: push on main, not reusable, not called by main.yml, narrowing, concurrency, cache keys', () => {
+  const rules = (yaml: string, l: Lane = lane, main = MAIN_YML) =>
+    laneProblems('l', l, FILTERS, yaml, main).map((p) => p.rule);
+  assert.deepEqual(rules(good('  workflow_call:\n  push:\n    branches: [main]\n')), ['queue']);
+  assert.deepEqual(rules(good('  push:\n    branches: [main]\n')), ['queue', 'queue']);
+  assert.deepEqual(rules(good(), lane, MAIN_YML.replace("'l')", "'m')")), ['queue']);
+  assert.deepEqual(rules(good(), lane, MAIN_YML.replace('l.yml', 'm.yml')), ['queue']);
+  assert.deepEqual(rules(good(), { ...lane, shared: ['apps/web/**', 'docs/**'] }), ['narrowing']);
+  assert.deepEqual(rules(good(), { ...lane, shared: [], extra: [] }), ['paths']);
+  assert.deepEqual(rules(good(), { ...lane, always: true }), ['paths']);
+  assert.deepEqual(rules(good(), { ...lane, shared: [], extra: [], always: true }), []);
+  assert.deepEqual(
+    rules(good(undefined, 'concurrency:\n  group: x\n  cancel-in-progress: true\n')),
+    ['concurrency'],
+  );
+  assert.deepEqual(
+    rules(good(undefined, 'concurrency:\n  group: x\n  cancel-in-progress: false\n')),
+    [],
+  );
   assert.deepEqual(rules(good(undefined, undefined, 'deps-${{ github.ref }}')), ['cache']);
   assert.deepEqual(rules(good(undefined, undefined, 'runtime-${{ github.run_id }}')), ['cache']);
   assert.deepEqual(rules(good(undefined, undefined, 'runtime-d9e37e50-sha256')), []);
+});
+
+test('main.yml rules: on push to main, group main, never cancelling', () => {
+  const rules = (y: string) => mainProblems(y).map((p) => p.detail);
+  assert.equal(rules(MAIN_YML.replace('group: main', 'group: other')).length, 1);
+  assert.equal(
+    rules(MAIN_YML.replace('cancel-in-progress: false', 'cancel-in-progress: true')).length,
+    1,
+  );
+  assert.equal(rules(MAIN_YML.replace('branches: [main]', "branches: ['x']")).length, 1);
+});
+
+test('a fixture tree where a second workflow runs on push to main fails', () => {
+  const root = tree({
+    'apps/web/src/a.ts': 'export {}',
+    '.github/workflows/main.yml': MAIN_YML,
+    '.github/workflows/l.yml': good(),
+    '.github/workflows/rogue.yml': 'on:\n  push:\n    branches: [main]\n',
+  });
+  const r = check(root, { ...FILTERS, lanes: { l: lane } });
+  assert.deepEqual(
+    r.problems.map((p) => p.detail),
+    ['.github/workflows/rogue.yml runs on push to main outside main.yml'],
+  );
+  rmSync(root, { recursive: true });
 });

@@ -2,19 +2,8 @@ name: research-lease
 # The per-machine device lease (autoresearch/lease.py, run.py; ops/lease/README.md) against real
 # processes, classic's run.py at its pinned revision and the device lab's lab_lock.
 on:
-  push:
-    branches: [main]
-    paths:
-      [
-        'autoresearch/**',
-        'tools/device-lab/lab.py',
-        'ops/lease/**',
-        '.github/workflows/research-lease.yml',
-      ]
+  workflow_call:
   workflow_dispatch:
-concurrency:
-  group: research-lease
-  cancel-in-progress: false
 jobs:
   test:
     runs-on: [self-hosted, triton]

@@ -4,13 +4,8 @@ name: identity-check
 # `git ls-remote` and `curl` reads; the scan reads fresh shallow clones of the four sibling
 # repositories at the revisions named in scripts/identity/org-link-rules.json, plus this checkout.
 on:
-  push:
-    branches: [main]
-    paths: ['scripts/identity/**', '.github/workflows/identity-check.yml']
+  workflow_call:
   workflow_dispatch:
-concurrency:
-  group: identity-check
-  cancel-in-progress: false
 permissions:
   contents: read
   actions: read

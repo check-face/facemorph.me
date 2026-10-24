@@ -4,29 +4,8 @@ name: app-contracts
 # vectors read through stylegan-js's real reader, export identity and name allocation vectors, and fixed-seed
 # fuzzing of the batch payload and words validators.
 on:
-  push:
-    branches: [main]
-    paths:
-      [
-        'apps/web/src/contracts/**',
-        'apps/web/test/contracts/**',
-        'apps/web/src/media/**',
-        'apps/web/test/media/**',
-        'apps/web/src/admission/**',
-        'apps/web/test/admission/**',
-        'apps/web/hosting/next-cloudflare/validation.mjs',
-        'apps/web/src/Next/media.mjs',
-        'apps/web/src/Next/recovery-metadata.mjs',
-        'apps/web/src/Next/image-encoder-worker.mjs',
-        'packages/stylegan-js/**',
-        'packages/browser-model-manager/**',
-        'package-lock.json',
-        '.github/workflows/app-contracts.yml',
-      ]
+  workflow_call:
   workflow_dispatch:
-concurrency:
-  group: app-contracts
-  cancel-in-progress: false
 jobs:
   check:
     runs-on: [self-hosted, eris]

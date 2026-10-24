@@ -2,20 +2,8 @@ name: research-ledger
 # fm-zxj: the research ledger and logs stay append-only, the handover prefix holds, the maintained research docs and
 # classic's forward pointer have no dead links, and no new round has started in classic since the handover.
 on:
-  push:
-    branches: [main]
-    paths:
-      [
-        'autoresearch/**',
-        'scripts/check-research-ledger.mjs',
-        'scripts/research-ledger/**',
-        'ops/lease/**',
-        '.github/workflows/research-ledger.yml',
-      ]
+  workflow_call:
   workflow_dispatch:
-concurrency:
-  group: research-ledger
-  cancel-in-progress: false
 jobs:
   check:
     runs-on: [self-hosted, triton]

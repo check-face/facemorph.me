@@ -8,21 +8,16 @@ name: GPU lane benchmark
 # raw float <= 0.002) before any timing; a software adapter is the named failure "software adapter" with no
 # timings. Per-face timings are evidence about this machine. Not a promotion gate, not a required status.
 on:
-  push:
-    branches: [main]
-    paths:
-      [
-        'packages/stylegan-js/**',
-        'apps/web/src/Next/browser/webgpu-engine.mjs',
-        'apps/web/src/Next/browser/fused-resample-v1.mjs',
-        'apps/web/src/Next/browser/route-priors.mjs',
-        'apps/web/src/Next/browser/route-selection.mjs',
-        'apps/web/src/Next/browser/runtime.mjs',
-        'apps/web/scripts/next-gpu-benchmark.py',
-        'scripts/ci/gpu-lane/**',
-        '.github/workflows/next-gpu-lane.yml',
-        '.github/actions/device-lease/**',
-      ]
+  workflow_call:
+    inputs:
+      url:
+        type: string
+        required: false
+        description: 'Origin to benchmark (empty = the verified control served locally; never assumed production)'
+      faces:
+        type: string
+        required: false
+        description: 'Faces to generate (the first is cold and reported separately)'
   workflow_dispatch:
     inputs:
       url:
@@ -37,9 +32,6 @@ on:
     - cron: '0 16 * * *'
 permissions:
   contents: read
-concurrency:
-  group: next-gpu-lane-${{ github.ref }}
-  cancel-in-progress: false
 jobs:
   webgpu-benchmark:
     runs-on: [self-hosted, eris]

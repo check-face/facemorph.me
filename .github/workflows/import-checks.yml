@@ -3,21 +3,8 @@ name: import-checks
 # the destination against apps/web: every check shows a non-zero count; the Fable checks report "not applicable
 # until the port".
 on:
-  push:
-    branches: [main]
-    paths:
-      [
-        'package.json',
-        'apps/web/**',
-        'import/**',
-        'scripts/import/**',
-        'scripts/inventory/**',
-        '.github/workflows/import-checks.yml',
-      ]
+  workflow_call:
   workflow_dispatch:
-concurrency:
-  group: import-checks
-  cancel-in-progress: false
 jobs:
   checks:
     runs-on: [self-hosted, triton]

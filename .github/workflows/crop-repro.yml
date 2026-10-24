@@ -6,24 +6,8 @@ name: crop-repro
 # terms itself: it uses a runtime already acquired on the runner by someone who did (verified, nothing downloaded),
 # and records the browser cases as untested when there is none.
 on:
-  push:
-    branches: [main]
-    paths:
-      [
-        'tests/crop/**',
-        'tests/known-failing.json',
-        'scripts/import/control_site.py',
-        'apps/web/src/Next/photo/**',
-        'apps/web/src/Next/browser/runtime.mjs',
-        'apps/web/src/Next/Assets/**',
-        'packages/browser-model-manager/src/**',
-        '.github/actions/device-lease/**',
-        '.github/workflows/crop-repro.yml',
-      ]
+  workflow_call:
   workflow_dispatch:
-concurrency:
-  group: crop-repro
-  cancel-in-progress: false
 jobs:
   crop:
     runs-on: [self-hosted, eris]

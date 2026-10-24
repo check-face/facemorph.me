@@ -4,13 +4,13 @@ name: build-identity
 # test removed or renamed without a tests/retired.txt entry, no disabled test without reason/owner/removal
 # condition, and no encoded-image hash assertion without its replacement.
 on:
-  push:
-    branches: [main]
-    paths-ignore: ['.beads/**']
+  workflow_call:
+    inputs:
+      base:
+        type: string
+        required: false
+        description: The last green main.yml head (scripts/ci/changes.ts); empty without one
   workflow_dispatch:
-concurrency:
-  group: build-identity
-  cancel-in-progress: false
 jobs:
   check:
     runs-on: [self-hosted, eris]
@@ -31,8 +31,9 @@ jobs:
       - name: No test removed or renamed without a tests/retired.txt entry
         env:
           BEFORE: ${{ github.event.before }}
+          BASE: ${{ inputs.base }}
         run: |
-          base="$BEFORE"
+          base="${BASE:-$BEFORE}" # a stacked main.yml run covers every commit since the last green one
           if [ -z "$base" ] || ! git cat-file -e "$base^{commit}" 2>/dev/null; then base=HEAD~1; fi
           node scripts/build/check-tests-listed.mjs --base "$base"
       - run: node scripts/build/check-no-disabled-tests.mjs
@@ -40,9 +41,10 @@ jobs:
       - name: Root identities and the checks this push selects
         env:
           BEFORE: ${{ github.event.before }}
+          BASE: ${{ inputs.base }}
         run: |
           node scripts/build/identity.mjs > identity.json
-          base="$BEFORE"
+          base="${BASE:-$BEFORE}"
           if [ -z "$base" ] || ! git cat-file -e "$base^{commit}" 2>/dev/null; then base=HEAD~1; fi
           git diff --name-only "$base" HEAD | xargs node scripts/build/identity.mjs --changed
       - name: Every path an identity maps is selected by the shared path filters

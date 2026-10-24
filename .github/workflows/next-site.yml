@@ -5,8 +5,9 @@ name: New site artifact
 # monorepo's Vite build replaces it. Self-hosted on eris (triton's disk is full: docs/dev/workers.md).
 # This repository never publishes next.facemorph.me before the source handover (no deploy job here).
 on:
+  workflow_call:
   push:
-    branches: [main, 'candidate/*']
+    branches: ['candidate/*'] # main runs it through main.yml (fm-98po)
     paths:
       [
         'apps/web/**',

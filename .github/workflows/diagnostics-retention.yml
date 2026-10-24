@@ -3,18 +3,8 @@ name: diagnostics-retention
 # precondition stop, the repeat path, post-checks and the working-copy scan against a real S3-compatible
 # store (SeaweedFS in Docker, data on tmpfs) and real temporary Git repositories with a bare remote.
 on:
-  push:
-    branches: [main]
-    paths:
-      [
-        'scripts/diagnostics/**',
-        'docs/findings/diagnostics-learnings-*.md',
-        '.github/workflows/diagnostics-retention.yml',
-      ]
+  workflow_call:
   workflow_dispatch:
-concurrency:
-  group: diagnostics-retention
-  cancel-in-progress: false
 jobs:
   test:
     runs-on: [self-hosted, triton]

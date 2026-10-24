@@ -3,13 +3,8 @@ name: web-shell
 # unit tests, and the Vite production build of the app shell. Folds into the workspace gates once the
 # scaffold (fm-fy2.4) lands.
 on:
-  push:
-    branches: [main]
-    paths: ['apps/web/**', 'package.json', 'package-lock.json', '.github/workflows/web-shell.yml']
+  workflow_call:
   workflow_dispatch:
-concurrency:
-  group: web-shell
-  cancel-in-progress: false
 jobs:
   check:
     runs-on: [self-hosted, triton]
@@ -28,6 +23,9 @@ jobs:
       - run: npm run lint
         working-directory: .
       - run: npm run typecheck
+      # apps/web's tests import the workspace packages through their built dist/ exports, as app-contracts does.
+      - run: npm run build -w packages/stylegan-js -w packages/browser-model-manager
+        working-directory: .
       - run: npm test
       - run: npm run build
       - run: npm run check:inventory

@@ -1,0 +1,250 @@
+name: main
+# The one CI pipeline for main (fm-98po, the operator's merge-queue rule, 25 October 2026). Exactly one run is in
+# progress at a time and it is never cancelled. Pushes that land while it runs do not start their own runs: GitHub
+# keeps one pending run, a newer push replaces it, and when the running one finishes that pending run takes every
+# change pushed since, stacked. The `changes` job diffs from the head of the last successful main.yml run (not the
+# previous commit), so a change that a failed or stacked run did not cover is still covered, and selects the lanes
+# whose paths it touches (scripts/ci/path-filters.json, scripts/ci/changes.ts). Each lane is a reusable workflow
+# called below; a lane that is not selected is skipped. A bead closes on the first green main.yml run containing its
+# commits.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+concurrency:
+  group: main
+  cancel-in-progress: false
+jobs:
+  changes:
+    runs-on: [self-hosted, linux-x64]
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      lanes: ${{ steps.select.outputs.lanes }}
+      base: ${{ steps.select.outputs.base }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Lanes for the changes since the last green main.yml run (every lane on a dispatch or with no green run)
+        id: select
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          base=''
+          if [ "${{ github.event_name }}" = push ]; then
+            base=$(curl -fsS -H "Authorization: Bearer $GH_TOKEN" -H 'Accept: application/vnd.github+json' \
+              "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/actions/workflows/main.yml/runs?branch=main&status=success&per_page=1" \
+              | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s).workflow_runs[0]?.head_sha??""))')
+          fi
+          node scripts/ci/changes.ts --base "$base" --head "$GITHUB_SHA"
+  app-contracts:
+    needs: changes
+    if: contains(fromJSON(needs.changes.outputs.lanes), 'app-contracts')
+    uses: ./.github/workflows/app-contracts.yml
+    secrets: inherit
+  beads-check:
+    needs: changes
+    if: contains(fromJSON(needs.changes.outputs.lanes), 'beads-check')
+    uses: ./.github/workflows/beads-check.yml
+    secrets: inherit
+  beads-site:
+    needs: changes
+    if: contains(fromJSON(needs.changes.outputs.lanes), 'beads-site')
+    uses: ./.github/workflows/beads-site.yml
+    secrets: inherit
+  build-identity:
+    needs: changes
+    if: contains(fromJSON(needs.changes.outputs.lanes), 'build-identity')
+    uses: ./.github/workflows/build-identity.yml
+    with:
+      base: ${{ needs.changes.outputs.base }}
+    secrets: inherit
+  ci-shared:
+    needs: changes
+    if: contains(fromJSON(needs.changes.outputs.lanes), 'ci-shared')
+    uses: ./.github/workflows/ci-shared.yml
+    permissions:
+      contents: read
+      actions: read
+    secrets: inherit
+  cloudflare-model-host:
+    needs: changes
+    if: contains(fromJSON(needs.changes.outputs.lanes), 'cloudflare-model-host')
+    uses: ./.github/workflows/cloudflare-model-host.yml
+    secrets: inherit
+  contracts-m1:
+    needs: changes
+    if: contains(fromJSON(needs.changes.outputs.lanes), 'contracts-m1')
+    uses: ./.github/workflows/contracts-m1.yml
+    secrets: inherit
+  crop-repro:
+    needs: changes
+    if: contains(fromJSON(needs.changes.outputs.lanes), 'crop-repro')
+    uses: ./.github/workflows/crop-repro.yml
+    secrets: inherit
+  delivery-dry-run:
+    needs: changes
+    if: contains(fromJSON(needs.changes.outputs.lanes), 'delivery-dry-run')
+    uses: ./.github/workflows/delivery-dry-run.yml
+    permissions:
+      contents: read
+    secrets: inherit
+  design-reference:
+    needs: changes
+    if: contains(fromJSON(needs.changes.outputs.lanes), 'design-reference')
+    uses: ./.github/workflows/design-reference.yml
+    secrets: inherit
+  device-lab-tests:
+    needs: changes
+    if: contains(fromJSON(needs.changes.outputs.lanes), 'device-lab-tests')
+    uses: ./.github/workflows/device-lab-tests.yml
+    permissions:
+      contents: read
+    secrets: inherit
+  diagnostics-retention:
+    needs: changes
+    if: contains(fromJSON(needs.changes.outputs.lanes), 'diagnostics-retention')
+    uses: ./.github/workflows/diagnostics-retention.yml
+    secrets: inherit
+  hosting-staging:
+    needs: changes
+    if: contains(fromJSON(needs.changes.outputs.lanes), 'hosting-staging')
+    uses: ./.github/workflows/hosting-staging.yml
+    secrets: inherit
+  identity-check:
+    needs: changes
+    if: contains(fromJSON(needs.changes.outputs.lanes), 'identity-check')
+    uses: ./.github/workflows/identity-check.yml
+    permissions:
+      contents: read
+      actions: read
+    secrets: inherit
+  import-checks:
+    needs: changes
+    if: contains(fromJSON(needs.changes.outputs.lanes), 'import-checks')
+    uses: ./.github/workflows/import-checks.yml
+    secrets: inherit
+  import-closure:
+    needs: changes
+    if: contains(fromJSON(needs.changes.outputs.lanes), 'import-closure')
+    uses: ./.github/workflows/import-closure.yml
+    secrets: inherit
+  import-inventory:
+    needs: changes
+    if: contains(fromJSON(needs.changes.outputs.lanes), 'import-inventory')
+    uses: ./.github/workflows/import-inventory.yml
+    secrets: inherit
+  inventory:
+    needs: changes
+    if: contains(fromJSON(needs.changes.outputs.lanes), 'inventory')
+    uses: ./.github/workflows/inventory.yml
+    secrets: inherit
+  manager-cache:
+    needs: changes
+    if: contains(fromJSON(needs.changes.outputs.lanes), 'manager-cache')
+    uses: ./.github/workflows/manager-cache.yml
+    permissions:
+      contents: read
+    secrets: inherit
+  model-conv:
+    needs: changes
+    if: contains(fromJSON(needs.changes.outputs.lanes), 'model-conv')
+    uses: ./.github/workflows/model-conv.yml
+    secrets: inherit
+  names-generator:
+    needs: changes
+    if: contains(fromJSON(needs.changes.outputs.lanes), 'names-generator')
+    uses: ./.github/workflows/names-generator.yml
+    secrets: inherit
+  names-snapshot:
+    needs: changes
+    if: contains(fromJSON(needs.changes.outputs.lanes), 'names-snapshot')
+    uses: ./.github/workflows/names-snapshot.yml
+    secrets: inherit
+  names-spike:
+    needs: changes
+    if: contains(fromJSON(needs.changes.outputs.lanes), 'names-spike')
+    uses: ./.github/workflows/names-spike.yml
+    secrets: inherit
+  native-retirement:
+    needs: changes
+    if: contains(fromJSON(needs.changes.outputs.lanes), 'native-retirement')
+    uses: ./.github/workflows/native-retirement.yml
+    secrets: inherit
+  next-gpu-lane:
+    needs: changes
+    if: contains(fromJSON(needs.changes.outputs.lanes), 'next-gpu-lane')
+    uses: ./.github/workflows/next-gpu-lane.yml
+    permissions:
+      contents: read
+    secrets: inherit
+  next-site:
+    needs: changes
+    if: contains(fromJSON(needs.changes.outputs.lanes), 'next-site')
+    uses: ./.github/workflows/next-site.yml
+    permissions:
+      contents: read
+      actions: read
+    secrets: inherit
+  parity-harness:
+    needs: changes
+    if: contains(fromJSON(needs.changes.outputs.lanes), 'parity-harness')
+    uses: ./.github/workflows/parity-harness.yml
+    secrets: inherit
+  rename-check:
+    needs: changes
+    if: contains(fromJSON(needs.changes.outputs.lanes), 'rename-check')
+    uses: ./.github/workflows/rename-check.yml
+    secrets: inherit
+  research-built-ui-media:
+    needs: changes
+    if: contains(fromJSON(needs.changes.outputs.lanes), 'research-built-ui-media')
+    uses: ./.github/workflows/research-built-ui-media.yml
+    permissions:
+      contents: read
+    secrets: inherit
+  research-import:
+    needs: changes
+    if: contains(fromJSON(needs.changes.outputs.lanes), 'research-import')
+    uses: ./.github/workflows/research-import.yml
+    secrets: inherit
+  research-lease:
+    needs: changes
+    if: contains(fromJSON(needs.changes.outputs.lanes), 'research-lease')
+    uses: ./.github/workflows/research-lease.yml
+    secrets: inherit
+  research-ledger:
+    needs: changes
+    if: contains(fromJSON(needs.changes.outputs.lanes), 'research-ledger')
+    uses: ./.github/workflows/research-ledger.yml
+    secrets: inherit
+  research-rgba-screen:
+    needs: changes
+    if: contains(fromJSON(needs.changes.outputs.lanes), 'research-rgba-screen')
+    uses: ./.github/workflows/research-rgba-screen.yml
+    permissions:
+      contents: read
+    secrets: inherit
+  scaffold:
+    needs: changes
+    if: contains(fromJSON(needs.changes.outputs.lanes), 'scaffold')
+    uses: ./.github/workflows/scaffold.yml
+    with:
+      base: ${{ needs.changes.outputs.base }}
+    secrets: inherit
+  stats-worker:
+    needs: changes
+    if: contains(fromJSON(needs.changes.outputs.lanes), 'stats-worker')
+    uses: ./.github/workflows/stats-worker.yml
+    secrets: inherit
+  web-shell:
+    needs: changes
+    if: contains(fromJSON(needs.changes.outputs.lanes), 'web-shell')
+    uses: ./.github/workflows/web-shell.yml
+    secrets: inherit

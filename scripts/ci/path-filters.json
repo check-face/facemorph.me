@@ -28,25 +28,133 @@
     ".github": "workflows are added per lane (its own file) and the shared actions are in the shared list"
   },
   "lanes": {
-    "research-built-ui-media": {
-      "workflow": ".github/workflows/research-built-ui-media.yml",
-      "shared": ["apps/web/**", "packages/**", "scripts/**"],
+    "app-contracts": {
+      "workflow": ".github/workflows/app-contracts.yml",
+      "shared": ["package-lock.json"],
       "extra": [
-        "autoresearch/drivers/**",
-        "autoresearch/workers/**",
-        "autoresearch/run.py",
-        "autoresearch/lease.py"
+        "apps/web/src/contracts/**",
+        "apps/web/test/contracts/**",
+        "apps/web/src/media/**",
+        "apps/web/test/media/**",
+        "apps/web/src/admission/**",
+        "apps/web/test/admission/**",
+        "apps/web/hosting/next-cloudflare/validation.mjs",
+        "apps/web/src/Next/media.mjs",
+        "apps/web/src/Next/recovery-metadata.mjs",
+        "apps/web/src/Next/image-encoder-worker.mjs",
+        "packages/stylegan-js/**",
+        "packages/browser-model-manager/**"
       ]
     },
-    "research-rgba-screen": {
-      "workflow": ".github/workflows/research-rgba-screen.yml",
-      "shared": ["apps/web/**", "packages/**", "scripts/**"],
+    "beads-check": {
+      "workflow": ".github/workflows/beads-check.yml",
+      "shared": [],
+      "extra": [".beads/**", "scripts/beads/**"]
+    },
+    "beads-site": {
+      "workflow": ".github/workflows/beads-site.yml",
+      "shared": [],
+      "extra": [".beads/**"]
+    },
+    "build-identity": {
+      "workflow": ".github/workflows/build-identity.yml",
+      "shared": [],
+      "extra": [],
+      "always": true,
+      "ignore": [".beads/**"]
+    },
+    "ci-shared": {
+      "workflow": ".github/workflows/ci-shared.yml",
+      "shared": [],
       "extra": [
-        "autoresearch/drivers/**",
-        "autoresearch/workers/**",
+        "scripts/ci/**",
         "autoresearch/run.py",
-        "autoresearch/lease.py"
+        "autoresearch/lease.py",
+        ".github/actions/fetch-artifact/**",
+        ".github/actions/device-lease/**"
       ]
+    },
+    "cloudflare-model-host": {
+      "workflow": ".github/workflows/cloudflare-model-host.yml",
+      "shared": ["package-lock.json"],
+      "extra": [
+        "packages/cloudflare-model-host/**",
+        "packages/browser-model-manager/**",
+        "scripts/packages/**"
+      ]
+    },
+    "contracts-m1": {
+      "workflow": ".github/workflows/contracts-m1.yml",
+      "shared": ["package.json", "package-lock.json"],
+      "extra": [
+        "packages/stylegan-js/**",
+        "packages/browser-model-manager/**",
+        "tests/external-consumer/**"
+      ]
+    },
+    "crop-repro": {
+      "workflow": ".github/workflows/crop-repro.yml",
+      "shared": [],
+      "extra": [
+        "tests/crop/**",
+        "tests/known-failing.json",
+        "scripts/import/control_site.py",
+        "apps/web/src/Next/photo/**",
+        "apps/web/src/Next/browser/runtime.mjs",
+        "apps/web/src/Next/Assets/**",
+        "packages/browser-model-manager/src/**",
+        ".github/actions/device-lease/**"
+      ]
+    },
+    "delivery-dry-run": {
+      "workflow": ".github/workflows/delivery-dry-run.yml",
+      "shared": ["scripts/**"],
+      "extra": []
+    },
+    "design-reference": {
+      "workflow": ".github/workflows/design-reference.yml",
+      "shared": [],
+      "extra": ["scripts/design/**", "docs/design/**", "apps/web/src/photo/**"]
+    },
+    "device-lab-tests": {
+      "workflow": ".github/workflows/device-lab-tests.yml",
+      "shared": [],
+      "extra": ["tools/device-lab/**", "autoresearch/lease.py"]
+    },
+    "diagnostics-retention": {
+      "workflow": ".github/workflows/diagnostics-retention.yml",
+      "shared": [],
+      "extra": ["scripts/diagnostics/**", "docs/findings/diagnostics-learnings-*.md"]
+    },
+    "hosting-staging": {
+      "workflow": ".github/workflows/hosting-staging.yml",
+      "shared": ["hosting/**"],
+      "extra": ["scripts/hosting/**", "import/allowlist.json"]
+    },
+    "identity-check": {
+      "workflow": ".github/workflows/identity-check.yml",
+      "shared": [],
+      "extra": ["scripts/identity/**"]
+    },
+    "import-checks": {
+      "workflow": ".github/workflows/import-checks.yml",
+      "shared": ["package.json", "apps/web/**"],
+      "extra": ["import/**", "scripts/import/**", "scripts/inventory/**"]
+    },
+    "import-closure": {
+      "workflow": ".github/workflows/import-closure.yml",
+      "shared": ["apps/web/**"],
+      "extra": ["import/**", "scripts/import/**", "scripts/runtime/**", "scripts/inventory/**"]
+    },
+    "import-inventory": {
+      "workflow": ".github/workflows/import-inventory.yml",
+      "shared": [],
+      "extra": ["import/**", "scripts/inventory/**"]
+    },
+    "inventory": {
+      "workflow": ".github/workflows/inventory.yml",
+      "shared": [],
+      "extra": ["inventory/**", "scripts/inventory/**", "packages/cloudflare-model-host/README.md"]
     },
     "manager-cache": {
       "workflow": ".github/workflows/manager-cache.yml",
@@ -59,10 +167,52 @@
       ],
       "extra": ["apps/web/src/Next/Assets/**"]
     },
-    "delivery-dry-run": {
-      "workflow": ".github/workflows/delivery-dry-run.yml",
-      "shared": ["scripts/**"],
-      "extra": []
+    "model-conv": {
+      "workflow": ".github/workflows/model-conv.yml",
+      "shared": [],
+      "extra": ["packages/model-conv/**", "packages/browser-model-manager/schema/**"]
+    },
+    "names-generator": {
+      "workflow": ".github/workflows/names-generator.yml",
+      "shared": [],
+      "extra": ["tools/names-generator/**"]
+    },
+    "names-snapshot": {
+      "workflow": ".github/workflows/names-snapshot.yml",
+      "shared": [],
+      "extra": ["scripts/names-snapshot/**"]
+    },
+    "names-spike": {
+      "workflow": ".github/workflows/names-spike.yml",
+      "shared": [],
+      "extra": ["tools/names-spike/**"]
+    },
+    "native-retirement": {
+      "workflow": ".github/workflows/native-retirement.yml",
+      "shared": [],
+      "extra": [
+        "apps/web/src/Next/**",
+        "apps/web/scripts/**",
+        "apps/web/test/build/native-retirement.test.ts",
+        "hosting/next-static/promote.py",
+        "scripts/import/**",
+        "scripts/inventory/unresolved-imports.mjs"
+      ]
+    },
+    "next-gpu-lane": {
+      "workflow": ".github/workflows/next-gpu-lane.yml",
+      "shared": [],
+      "extra": [
+        "packages/stylegan-js/**",
+        "apps/web/src/Next/browser/webgpu-engine.mjs",
+        "apps/web/src/Next/browser/fused-resample-v1.mjs",
+        "apps/web/src/Next/browser/route-priors.mjs",
+        "apps/web/src/Next/browser/route-selection.mjs",
+        "apps/web/src/Next/browser/runtime.mjs",
+        "apps/web/scripts/next-gpu-benchmark.py",
+        "scripts/ci/gpu-lane/**",
+        ".github/actions/device-lease/**"
+      ]
     },
     "next-site": {
       "workflow": ".github/workflows/next-site.yml",
@@ -82,6 +232,87 @@
         ".github/actions/**"
       ],
       "extra": [".github/workflows/next-e2e.yml"]
+    },
+    "parity-harness": {
+      "workflow": ".github/workflows/parity-harness.yml",
+      "shared": [],
+      "extra": [
+        "scripts/verify/**",
+        "apps/web/test/harness/**",
+        "apps/web/test/goldens/**",
+        "apps/web/test/parity/**"
+      ]
+    },
+    "rename-check": {
+      "workflow": ".github/workflows/rename-check.yml",
+      "shared": [],
+      "extra": [
+        "scripts/identity/check-rename*.mjs",
+        "scripts/identity/rename-expected.json",
+        "scripts/identity/read-identity.mjs"
+      ]
+    },
+    "research-built-ui-media": {
+      "workflow": ".github/workflows/research-built-ui-media.yml",
+      "shared": ["apps/web/**", "packages/**", "scripts/**"],
+      "extra": [
+        "autoresearch/drivers/**",
+        "autoresearch/workers/**",
+        "autoresearch/run.py",
+        "autoresearch/lease.py"
+      ]
+    },
+    "research-import": {
+      "workflow": ".github/workflows/research-import.yml",
+      "shared": [],
+      "extra": [
+        "autoresearch/**",
+        "docs/research-import/**",
+        "scripts/research-import/**",
+        "scripts/check-research-import.mjs"
+      ]
+    },
+    "research-lease": {
+      "workflow": ".github/workflows/research-lease.yml",
+      "shared": [],
+      "extra": ["autoresearch/**", "tools/device-lab/lab.py", "ops/lease/**"]
+    },
+    "research-ledger": {
+      "workflow": ".github/workflows/research-ledger.yml",
+      "shared": [],
+      "extra": [
+        "autoresearch/**",
+        "scripts/check-research-ledger.mjs",
+        "scripts/research-ledger/**",
+        "ops/lease/**"
+      ]
+    },
+    "research-rgba-screen": {
+      "workflow": ".github/workflows/research-rgba-screen.yml",
+      "shared": ["apps/web/**", "packages/**", "scripts/**"],
+      "extra": [
+        "autoresearch/drivers/**",
+        "autoresearch/workers/**",
+        "autoresearch/run.py",
+        "autoresearch/lease.py"
+      ]
+    },
+    "scaffold": {
+      "workflow": ".github/workflows/scaffold.yml",
+      "shared": [],
+      "extra": [],
+      "always": true,
+      "ignore": []
+    },
+    "stats-worker": {
+      "workflow": ".github/workflows/stats-worker.yml",
+      "shared": [],
+      "extra": ["services/stats/**"]
+    },
+    "web-shell": {
+      "workflow": ".github/workflows/web-shell.yml",
+      "shared": ["apps/web/**", "package.json", "package-lock.json"],
+      "extra": []
     }
   }
 }

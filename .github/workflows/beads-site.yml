@@ -4,9 +4,7 @@ name: beads-site
 # Cloudflare Pages project `beads-dilger-dev`; the BEADS_PAGES_TOKEN secret can only edit Pages.
 # The custom hostname is protected by the existing Cloudflare Access app for beads.dilger.dev.
 on:
-  push:
-    branches: [main]
-    paths: ['.beads/**', '.github/workflows/beads-site.yml']
+  workflow_call:
   workflow_dispatch:
 concurrency:
   group: beads-site-deploy

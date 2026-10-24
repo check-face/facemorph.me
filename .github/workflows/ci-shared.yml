@@ -5,24 +5,11 @@ name: ci-shared
 # per-assertion JSON logs are uploaded, the same format the lanes and e2e tests emit. Then the lookup action fetches
 # the pinned control's classic next-site artifact by explicit inputs and verifies it, and refuses an owner/name.
 on:
-  push:
-    branches: [main]
-    paths:
-      [
-        'scripts/ci/**',
-        'autoresearch/run.py',
-        'autoresearch/lease.py',
-        '.github/actions/fetch-artifact/**',
-        '.github/actions/device-lease/**',
-        '.github/workflows/ci-shared.yml',
-      ]
+  workflow_call:
   workflow_dispatch:
 permissions:
   contents: read
   actions: read
-concurrency:
-  group: ci-shared-${{ github.ref }}
-  cancel-in-progress: false
 jobs:
   helpers:
     runs-on: [self-hosted, eris]
@@ -39,7 +26,7 @@ jobs:
       - name: Typecheck (strict)
         run: npx tsc -p scripts/ci
       - name: Lookup, path filters and the Playwright helper
-        run: node --test scripts/ci/fetch-artifact.test.ts scripts/ci/path-filters.test.ts scripts/ci/intercept/intercept.test.ts
+        run: node --test scripts/ci/fetch-artifact.test.ts scripts/ci/path-filters.test.ts scripts/ci/changes.test.ts scripts/ci/intercept/intercept.test.ts
       - name: The CDP helper (browser-harness)
         env:
           BROWSER_HARNESS: /home/cdilga/Work/runs/venv-bh/bin/browser-harness

@@ -5,20 +5,8 @@ name: cloudflare-model-host
 # shared package-tarball-content-scan: its self-test, and the scan of the packed tarball (JSON report kept as an
 # artifact).
 on:
-  push:
-    branches: [main]
-    paths:
-      [
-        'packages/cloudflare-model-host/**',
-        'packages/browser-model-manager/**',
-        'scripts/packages/**',
-        'package-lock.json',
-        '.github/workflows/cloudflare-model-host.yml',
-      ]
+  workflow_call:
   workflow_dispatch:
-concurrency:
-  group: cloudflare-model-host
-  cancel-in-progress: false
 jobs:
   check:
     runs-on: [self-hosted, eris]
