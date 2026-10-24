@@ -17,3 +17,8 @@ dist/
 /next-site-identity.json
 /control-harness-evidence/
 /crop-evidence/
+
+# Python bytecode and Playwright output: build by-products, never committed
+__pycache__/
+*.pyc
+test-results/
