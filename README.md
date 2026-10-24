@@ -1,7 +1,8 @@
 # FaceMorph.me
 
 Fresh monorepo for the **[repo-cleanup-and-architecture-refactor plan](PLAN.md)**.
-`PLAN.md` is the single active plan. Start there; implementation has not begun.
+The plan was converted to an execution graph of beads on 24 October 2026; start from the entry
+bead `fm-fy2` (`br show fm-fy2`). `PLAN.md` is frozen background. Implementation has not begun.
 
 The retained application and Docker/PyTorch work live in
 [facemorph.me-classic](https://github.com/check-face/facemorph.me-classic)
@@ -38,8 +39,7 @@ model conversion and classic API. Planned packages: `stylegan-js`,
 `browser-model-manager`, `cloudflare-model-host` and `model-conv`. Oxfmt/Oxlint and
 a conversion Docker environment are specified in the plan, not installed here.
 
-Portable execution records are in `.beads/issues.jsonl`; the historical 20 tasks and
-epic remain deferred and unsynchronized. The operator requested one additional
-deferred independent acceptance item `fm-fy2.21` for actual published npm packages and docs.
-The plan is the scope authority; broader execution setup is
-a separate later step. No model weights, credentials or legacy runtime are bundled.
+Execution records are in `.beads/issues.jsonl` (about 140 beads, all deferred until
+implementation starts) and are browsable at https://beads.dilger.dev. The beads are
+self-contained and are the scope authority; where a bead and `PLAN.md` differ, the bead
+wins. No model weights, credentials or legacy runtime are bundled.

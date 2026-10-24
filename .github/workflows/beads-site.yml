@@ -1,0 +1,47 @@
+name: beads-site
+# Publishes the bead tracker (bv's static site over .beads/issues.jsonl, with Git history for
+# time travel) to https://beads.dilger.dev on every push that changes the beads.
+# Cloudflare Pages project `beads-dilger-dev`; the BEADS_PAGES_TOKEN secret can only edit Pages.
+# The custom hostname is protected by the existing Cloudflare Access app for beads.dilger.dev.
+on:
+  push:
+    branches: [main]
+    paths: ['.beads/**', '.github/workflows/beads-site.yml']
+  workflow_dispatch:
+concurrency:
+  group: beads-site-deploy
+  cancel-in-progress: false
+env:
+  BV_VERSION: 0.25.2
+  BV_SHA256: 4c269087af7a0ddef6825609cb4cdf7db0163624d26d7b02030c38c260b1e199
+jobs:
+  publish:
+    runs-on: [self-hosted, triton]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install bv (pinned release, checksum verified)
+        run: |
+          curl -fsSLo bv.tar.gz "https://github.com/Dicklesworthstone/beads_viewer/releases/download/v${BV_VERSION}/bv_${BV_VERSION}_linux_amd64.tar.gz"
+          echo "${BV_SHA256}  bv.tar.gz" | sha256sum -c -
+          mkdir -p "$RUNNER_TEMP/bv" && tar -xzf bv.tar.gz -C "$RUNNER_TEMP/bv" bv && rm bv.tar.gz
+          echo "$RUNNER_TEMP/bv" >> "$GITHUB_PATH"
+      - name: Export the static site
+        run: bv --export-pages "$RUNNER_TEMP/site" --pages-title "FaceMorph beads" --no-hooks
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.BEADS_PAGES_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx --yes wrangler@4 pages deploy "$RUNNER_TEMP/site" --project-name beads-dilger-dev --branch main --commit-hash "$GITHUB_SHA"
+      # beads.dilger.dev sits behind Cloudflare Access, so check the project's own hostname.
+      - name: Smoke check
+        run: |
+          for i in 1 2 3 4 5 6; do
+            curl -sf https://beads-dilger-dev.pages.dev/ | grep -q 'FaceMorph beads' && exit 0
+            sleep 10
+          done
+          exit 1

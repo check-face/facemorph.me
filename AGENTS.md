@@ -70,10 +70,9 @@ a local S3-compatible store, since storage scripts speak the S3 API rather than 
 Prometheus/Grafana containers; local servers with a fault switch). Planted input files are
 inputs, not fakes. A case nothing real can produce is reported untested.
 
-Swarm: implementers are fungible and all pick from Beads (`ops/swarm/implementer.md`). One
-session at a time wears the release-manager duty (`ops/swarm/release-manager.md`): it runs the
-batched device-lab verification of `lab-pending` beads, reopens false closes, runs the deploy
-gates and the release summary, and implements nothing it verifies. Its state lives in Beads, so any session can take it over. Coordinate through MCP Agent Mail
+Swarm: every agent is fungible and picks from Beads (`ops/swarm/implementer.md`). There is no
+standing release-manager agent; the release manager is the hat worn by whoever takes the release
+bead (`delivery.handover`, fm-s3o). Coordinate through MCP Agent Mail
 (`agent-mail.service`, a systemd user unit on eris at `http://127.0.0.1:8780/mcp/`; `am` CLI):
 register, reserve files before editing (`am file_reservations reserve`), put the bead ID in
 the thread, release when done. Launch with NTM from any directory:
@@ -95,12 +94,22 @@ is ready: the agent taking the release bead validates everything locally, then d
 ever stops new work being picked up. Build, test and validate locally as you go (eris, triton, the
 phone via the lab). Closure loop (`fm-fy2` step 8): test locally in the Linux browsers on eris (system
 Chromium with and without WebGPU; Playwright Chromium, Firefox, WebKit) and on the phone when relevant;
-a bead closes on its merge commit's green CI across the supported browser matrix (`browser-matrix.json`:
-Ubuntu Chrome/Chromium/Firefox/WebKit, macOS WebKit/Firefox, Android emulator, iOS Simulator, GPU
-lane), never on the author's word. CI closes beads; it does not gate starting the next. User-visible
-or speed-affecting beads also get `lab-pending`; the release manager verifies those in batches on
-`main` with the lab cells available and reopens any that fail, so the single phone never blocks the
-bead graph. CI is newest-only (concurrency groups, `cancel-in-progress: false`).
+a bead closes on the first green CI run on a `main` commit that contains its merge commit, across the
+supported browser matrix (`browser-matrix.json`: Ubuntu Chrome/Chromium/Firefox/WebKit, macOS
+WebKit/Firefox, Android emulator, iOS Simulator, GPU lane), never on the author's word. CI is
+newest-only (concurrency groups, `cancel-in-progress: false`), so a waiting run can be replaced by a
+newer push and a later green run covers it; a red run covering several beads is bisected locally on
+eris and only the culprit stays open. CI closes beads; it does not gate starting the next.
+User-visible or speed-affecting beads are also put through the lab by their implementer once CI is
+green (`lab.py qualify --run <CI run id> --bead <id>`: a pass records the evidence, a real failure
+reopens the bead with `device-lab-failed`). If a cell is unavailable the bead keeps `lab-pending`
+until a later lab run covering it, or the release bead's full validation, settles it.
+
+One checkout, no merge queue: every agent works in this one tree (no worktrees) and pushes straight
+to `main`. Commit only the paths you changed (`git add <paths>`, `git commit -- <paths>`), never
+`git add -A` or `git commit -a`, because other agents' uncommitted work lives in the same tree. Agent
+Mail reservations and the ordering edges serialize edits, the lab lock serializes the devices, and
+newest-only CI verifies `main`.
 Prefer the self-hosted runners (eris `device-lab`, triton on the `tank` pool) over hosted minutes.
 The phone's Frigate camera stays held off until the operator asks for it back.
 

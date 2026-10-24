@@ -1,46 +1,27 @@
-# Planning tasks
+# Beads
 
-The active specification is
-[repo-cleanup-and-architecture-refactor](../PLAN.md).
-The single plan is the root `PLAN.md`. The former engine initiative is historical;
-its first twelve task IDs were retained and broadened. Epic `fm-fy2` contains twenty tasks, with thirty-five blocking dependencies plus
-parent links. All are **deferred** after repository bootstrap. No implementation,
-experiment or deployment is implied by these records.
+The execution graph for the `repo-cleanup-and-architecture-refactor` initiative: about 140
+beads converted from [PLAN.md](../PLAN.md) on 24 October 2026 and consolidated to shippable
+slices. Start from the entry bead `fm-fy2` (`br show fm-fy2`); it explains how to pick, claim,
+order and close work. The beads are self-contained and are the scope authority; `PLAN.md` is
+frozen background, and where the two differ the bead wins.
 
-`issues.jsonl` is the portable task/status export. Local SQLite files, locks and
-engine sidecars are ignored by this directory's `.gitignore`. Keep the export,
-configuration and metadata; do not commit local database files.
-
-With Beads Rust (`br`) available:
+`issues.jsonl` is the portable export and the only file that matters in Git. Local SQLite
+files, locks and engine sidecars are ignored by this directory's `.gitignore`. `br` and `bv`
+are on the workstation's PATH (`~/.local/bin`).
 
 ```sh
-br list --label repo-cleanup-and-architecture-refactor --status deferred --json
-br show fm-fy2.9 --json
-br ready --json
+br show fm-fy2                      # entry bead
+br ready --exclude-label gate       # work that can start now (empty while all beads are deferred)
+bv --robot-next                     # single best pick; never run bare `bv`
+br dep cycles                       # must be empty
+br sync --flush-only                # after edits: DB -> issues.jsonl, then commit it with the work
 ```
 
-`ready` is intentionally empty while tasks are deferred. When implementation is
-explicitly started, change the planned task states to open while preserving all
-blocking edges. Execution status belongs here; architectural/scope changes update
-the specification and affected task descriptions together, retaining task IDs.
+Every bead stays `deferred` until the operator starts implementation. Workstreams are `ws-*`
+labels; there are no parent, workstream or milestone beads, and `parent-child` links are never
+used. Each bead's `external_ref` is `plan:<key>`. A browsable copy is published to
+https://beads.dilger.dev on every push to `main` that changes this directory.
 
-This pass used `br 0.7.4` from an existing local executable; `br` is not currently
-on this workstation's PATH. It did not install a global tool. Local invocation:
-
-```sh
-BR_TOOL=/home/cdilga/Work/dev/morayfield-house-3d/reconstruction/experiments/2026-10-11-review-resolution-r1/tools/br
-"$BR_TOOL" list --label repo-cleanup-and-architecture-refactor --status deferred --json
-```
-
-Descriptions include task rationale, acceptance, context, applicable contracts,
-stop rules and prerequisites rather than relying on the original conversation.
-Markdown links inside descriptions use repository-relative paths.
-
-The 11 October revamp clarification is reflected in these descriptions: idiomatic
-TypeScript and the React/Vite recommendation, supplied crop references, ordered
-multi-selection/keypoints, per-slot cancellation/retry and hold-to-compare removal.
-The browser/desktop alignment ruling remains part of applicable task context.
-
-This fresh repository owns ongoing task execution. The retained classic checkout
-contains the historical local task DB/export; do not run two independent task
-queues for this initiative. All source migrations must record classic provenance.
+The retained classic checkout keeps the historical task DB and export; do not run a second
+task queue for this initiative there. Source migrations record classic provenance.
