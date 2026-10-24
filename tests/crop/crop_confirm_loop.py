@@ -38,7 +38,7 @@ such hook, so the cases above use real fixtures instead.
   python3 tests/crop/crop_confirm_loop.py [--runtime .cache/runtime] [--out crop-evidence] [--case ui-no-face ...]
 Writes <out>/results.json; exit 0 when every case matches tests/known-failing.json, 1 otherwise.
 """
-import argparse, asyncio, json, shutil, sys, time
+import argparse, asyncio, json, re, shutil, sys, time
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -65,10 +65,11 @@ Worker.prototype.postMessage=function(m,...rest){const t=m&&m.type;if(t){window.
  if(t==='align')window.__cropProbe.align++;if(t==='encode-aligned')window.__cropProbe.encode++;}return post.call(this,m,...rest);};
 """
 REDETECTION = r'No face was found|More than one face was found|Choose a clear photo containing exactly one face'
+# product-bridge.mjs:407: the messages that turn a failed run into a crop reopen.
+BRIDGE_REOPENS = r'No face was found|More than one face was found'
 
 
 def classify(encode_attempts, reopened, error=''):
-    import re
     if encode_attempts >= 1 and not reopened:
         return 'intended'
     if encode_attempts == 0 and (reopened or re.search(REDETECTION, error or '')):
@@ -181,7 +182,7 @@ async def bridge_case(context, fixture, evidence):
             return {'case': name, 'outcome': outcome, 'fixture': fixture, 'refusedAtCrop': r['error']}
         outcome = classify(r.get('encode', 0), False, r.get('error', ''))
         return {'case': name, 'outcome': outcome, 'fixture': fixture, 'e4eAttempts': r.get('encode', 0), 'detectionPasses': r.get('align', 0),
-                'error': r.get('error', ''), 'bridgeWouldReopenCrop': bool(__import__('re').search(r'No face was found|More than one face was found', r.get('error', '')))}
+                'error': r.get('error', ''), 'bridgeWouldReopenCrop': bool(re.search(BRIDGE_REOPENS, r.get('error', '')))}
     except Exception as exc:
         return {'case': name, 'outcome': 'other', 'fixture': fixture, 'error': f'{type(exc).__name__}: {exc}'}
     finally:
