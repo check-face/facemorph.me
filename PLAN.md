@@ -780,6 +780,14 @@ feed the after-release half of the [strictly-not-worse gate](#strictly-not-worse
 The dashboard and the scrape job are kept as code in this repository and provisioned onto triton, not edited by
 hand. Existing dashboards are untouched.
 
+**Lifetime.** Temporary (operator, 24 October 2026). The statistics stay until the operator records that the changeover
+blog post is done (`gate.blog-done`); `ops.stats-retirement` then exports a final snapshot and removes the Worker, the
+page sink, the scrape job and the Grafana folder. Ongoing usage numbers then come from normal Google Analytics, and a
+lasting production approach to usage and errors is chosen after go-live (`ops.prod-analytics`).
+
+**Screenshot section.** The dashboard opens with full-width panels, one question each, with two fixed colours: blue for
+the old GPU server, orange for the new in-browser app, and the changeover annotations as vertical lines.
+
 **Where it lands first.** The endpoint, the scrape job and the dashboard are set up now. The page-side sink is added
 to the candidate as ordinary candidate work (operator, 18 October), so data exists before the cutover, and the port
 carries it over. No operator decision is needed (operator, 24 October); only the live cutover pushes need one.
@@ -3440,7 +3448,8 @@ release beads is ready.
 - The self-hosted cells are in addition to hosted CI, not instead of it. Hosted lanes add the iOS Simulator and the
   Android emulator (every push today), macOS (WebKit, Firefox and Chrome) and Windows (Chrome and Edge). Today's
   desktop matrix runs only on dispatch and has no Windows lane. All of them are part of the release validation.
-- Promotion to facemorph.me and API retirement remain the operator's cutover decision.
+- Promotion to facemorph.me and API retirement remain the operator's cutover decision; the next.facemorph.me handover
+  does not need it. next.facemorph.me stays up after go-live as the test host.
 
 **On demand, scheduled through beads.** There is no timed run. Any agent whose bead needs device evidence runs the
 lab (on eris directly, or by dispatching the workflow), including on candidate builds before they reach
@@ -5182,6 +5191,7 @@ history retains their provenance.
 | 24 Oct | Only the live cutover pushes need the operator; package publication and planner proposals go ahead; no fixed count caps (only real resource limits, degrading nicely); strictly-not-worse gate against the candidate, iPhone included; changeover statistics in Grafana |
 | 24 Oct | Weighted multi-face blend as an advanced view on the new engine (button and `#blend` deep link, established export paths); beads are shippable slices (about 100–140); receipts only where an irreversible action or the cutover decision reads them |
 | 24 Oct | Beads are the execution and scope authority and this plan is frozen reference; no fakes in tests (no mocks, stubs, doubles, fake clocks or recorded responses: pure logic takes plain values, everything with I/O runs against real dependencies, provider-neutral where possible, such as an S3-compatible store); swarm coordination through Agent Mail and NTM, with GLM panes best effort |
+| 24 Oct | The next.facemorph.me handover needs no operator decision: the release bead deploys it after full validation (every plan flow, the strictly-not-worse gate, the full hosted CI matrix, device-lab cells best effort). The operator decides only facemorph.me promotion and API retirement. next.facemorph.me stays up after go-live as the test host. The changeover statistics are temporary until the operator's "blog done" decision, then normal GA. The diagnostics collector stays a while after go-live for usage and errors, then a lasting production approach replaces or revamps it. Leaving Cloudflare (except model hosting) is deferred to a later operator decision. Beads restructured for early parallelism. |
 
 Earlier review rounds, including the 24 October round's findings, are in [`docs/plan-history.md`](docs/plan-history.md)
 and Git history; they do not define the current plan.
