@@ -1,0 +1,20 @@
+name: parity-harness
+# fm-q007: the parity harness. Unit tests of the shared strictly-not-worse rule (scripts/verify/not-worse.mjs) run
+# on every change; the harness self-test and the control/port smoke subset join this lane as they land.
+on:
+  push:
+    branches: [main]
+    paths: ['scripts/verify/**', 'apps/web/test/harness/**', '.github/workflows/parity-harness.yml']
+  workflow_dispatch:
+concurrency:
+  group: parity-harness
+  cancel-in-progress: false
+jobs:
+  unit:
+    runs-on: [self-hosted, triton]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --test scripts/verify/not-worse.test.mjs
