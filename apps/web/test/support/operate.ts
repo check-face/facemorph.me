@@ -38,15 +38,16 @@ export async function press(
   control: Locator,
   { touch = false, follow = true } = {},
 ): Promise<Landed> {
-  await control.scrollIntoViewIfNeeded();
-  const box = await control.boundingBox();
-  assert.ok(box && box.width > 0 && box.height > 0, `${control} has no visible box`);
-  const x = box.x + box.width / 2,
-    y = box.y + box.height / 2;
   // A fading menu or toast may still cover the control for a moment, as a person sees; one that stays (defect 1's
-  // Remove under the image) fails after the wait.
-  const probe = () =>
-    control.evaluate(
+  // Remove under the image) fails after the wait. Each try measures the control again: one that moves while the
+  // page settles (a video growing to its size once its metadata loads) is pressed where it now is.
+  const probe = async () => {
+    await control.scrollIntoViewIfNeeded();
+    const box = await control.boundingBox();
+    assert.ok(box && box.width > 0 && box.height > 0, `${control} has no visible box`);
+    const x = box.x + box.width / 2,
+      y = box.y + box.height / 2;
+    const hit = await control.evaluate(
       (el, [px, py]) => {
         (window as unknown as { __target: Element }).__target = el;
         const at = document.elementFromPoint(px as number, py as number);
@@ -57,6 +58,8 @@ export async function press(
       },
       [x, y],
     );
+    return { ...hit, x, y };
+  };
   let there = await probe();
   for (const end = Date.now() + 3000; !there.ok && Date.now() < end;) {
     await page.waitForTimeout(150);
@@ -67,6 +70,7 @@ export async function press(
     `${control}: elementFromPoint at its centre is not the control but ${there.at}`,
   );
   await page.evaluate(arm, { follow });
+  const { x, y } = there;
   if (touch) await page.touchscreen.tap(x, y);
   else await page.mouse.click(x, y);
   await page.waitForFunction('window.__landed', null, { timeout: 5000 });
