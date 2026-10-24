@@ -44,11 +44,41 @@
       "disposition": "leave: tracker records describe pre-rename identities; change bead text only with `br update` on the bead concerned"
     },
     {
+      "id": "monorepo-import-provenance",
+      "repo": "facemorph.me",
+      "paths": ["import/**"],
+      "class": "immutable-provenance",
+      "disposition": "keep: import provenance names classic at pinned commits and runs; it resolves by repository ID 295956585 after the rename"
+    },
+    {
+      "id": "monorepo-native-updater-record",
+      "repo": "facemorph.me",
+      "line": "releases/latest/download/latest\\.json",
+      "class": "native-updater",
+      "disposition": "record of the retired native updater feed: retirement disposition, not migration; never point it at the monorepo"
+    },
+    {
+      "id": "monorepo-generated-inventory",
+      "repo": "facemorph.me",
+      "paths": ["inventory/**"],
+      "class": "active-link",
+      "disposition": "generated inventory: re-run its scripts/inventory generator after the rename rather than editing by hand"
+    },
+    {
+      "id": "monorepo-native-release-scan",
+      "repo": "facemorph.me",
+      "paths": ["scripts/inventory/native-releases.mjs"],
+      "line": "\\$\\{repo\\}",
+      "class": "active-link",
+      "to": "(follows the script's DEFAULT_REPOS / repo arguments, which carry their own hits)",
+      "disposition": "URL built from the repo argument; it changes with DEFAULT_REPOS, no edit here"
+    },
+    {
       "id": "monorepo-active",
       "repo": "facemorph.me",
-      "paths": ["AGENTS.md", "README.md", "tools/**", ".github/workflows/**", "ops/**", "services/**", "scripts/**"],
+      "target": "^check-face/",
       "class": "active-link",
-      "disposition": "update the owner to facemorph-me (repository name unchanged)"
+      "disposition": "maintained monorepo file: update the owner to facemorph-me (repository name unchanged)"
     },
 
     {

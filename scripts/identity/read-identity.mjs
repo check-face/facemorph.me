@@ -4,7 +4,8 @@
 // served artifact and GitHub-side integration named in identities.json and integrations.json, and
 // writes one JSON line per value: identity, field, value, command, ISO timestamp, exit code.
 // A served artifact's source commit is recorded only when a deploy record attests it; otherwise
-// `unknown`. Secret and variable values are never read into the output, only their names.
+// `unknown` (or unverified when this credential cannot read the record). Secret and variable values
+// are never read into the output, only their names.
 //
 //   node read-identity.mjs              read, diff against identity-values.jsonl, print the drift
 //   node read-identity.mjs --write      read and replace identity-values.jsonl (deliberate refresh)
@@ -99,7 +100,7 @@ async function ghJson(rec, field, argv, pick = (x) => x) {
   return undefined;
 }
 
-async function readRepository(spec, out, context) {
+async function readRepository(spec, out) {
   const rec = recorder(spec.identity, out);
   const argv = ['gh', 'api', `repositories/${spec.id}`, '--jq', '{id,full_name,html_url,default_branch,archived,visibility,homepage}'];
   const r = await run(argv);
@@ -110,7 +111,6 @@ async function readRepository(spec, out, context) {
   }
   const repo = JSON.parse(r.stdout.toString('utf8'));
   for (const k of ['id', 'full_name', 'html_url', 'default_branch', 'archived', 'visibility', 'homepage']) rec(`repo.${k}`, repo[k] ?? null, r, command);
-  context.repos[spec.id] = repo;
   for (const b of spec.branches) {
     const lsArgv = ['git', 'ls-remote', `${repo.html_url}.git`, `refs/heads/${b}`];
     const ls = await run(lsArgv);
@@ -179,18 +179,22 @@ function parseHead(buf) {
   return { status, server: header('server'), location: header('location') };
 }
 
+// The CNAME when there is one (its target is the identity; providers such as Vercel rotate the
+// addresses behind it), otherwise the A records.
 async function readDns(rec, host) {
-  for (const type of ['CNAME', 'A']) {
+  const query = async (type) => {
     const argv = ['curl', '-sS', '-m', '20', '-H', 'accept: application/dns-json', `https://cloudflare-dns.com/dns-query?name=${host}&type=${type}`];
     const r = await run(argv);
-    let value = null;
-    if (r.exit === 0) {
-      const answers = (JSON.parse(r.stdout.toString('utf8')).Answer ?? []).filter((a) => a.type === (type === 'A' ? 1 : 5));
-      value = answers.map((a) => a.data.replace(/\.$/, '')).sort();
-      if (type === 'CNAME') value = value[0] ?? 'none';
-    }
-    rec(`dns.${type.toLowerCase()}`, value, r, shell(argv), { host });
-  }
+    const want = type === 'A' ? 1 : 5;
+    const answers = r.exit === 0 ? (JSON.parse(r.stdout.toString('utf8')).Answer ?? []).filter((a) => a.type === want).map((a) => a.data.replace(/\.$/, '')).sort() : null;
+    return { r, command: shell(argv), answers };
+  };
+  const c = await query('CNAME');
+  const cname = c.answers ? (c.answers[0] ?? 'none') : null;
+  rec('dns.cname', cname, c.r, c.command, { host });
+  if (cname !== 'none') return;
+  const a = await query('A');
+  rec('dns.a', a.answers, a.r, a.command, { host });
 }
 
 // Same-origin scripts and stylesheets named by the page, fetched and hashed.
@@ -220,10 +224,12 @@ async function fetchArtifact(base) {
 async function latestRun(rec, repoId, workflow, branch) {
   const argv = ['gh', 'api', `repositories/${repoId}/actions/workflows/${workflow}/runs?branch=${q(branch)}&event=push&status=success&per_page=1`, '--jq', '.workflow_runs[0]|{id,head_sha,created_at}'];
   const run0 = await ghJson(rec, 'deploy.record.run', argv);
-  if (!run0) return undefined;
+  if (!run0?.id) return undefined;
   const jobsArgv = ['gh', 'api', `repositories/${repoId}/actions/runs/${run0.id}/jobs`, '--jq', '[.jobs[]|{id,name,conclusion}]'];
   const r = await run(jobsArgv);
-  return { ...run0, jobs: r.exit === 0 ? JSON.parse(r.stdout.toString('utf8')) : [], jobsRun: r, jobsCommand: shell(jobsArgv) };
+  const jobs = r.exit === 0 ? JSON.parse(r.stdout.toString('utf8')) : null;
+  rec('deploy.record.jobs', jobs && jobs.map(({ name, conclusion }) => ({ name, conclusion })), r, shell(jobsArgv));
+  return { ...run0, jobs: jobs ?? [], jobsRun: r, jobsCommand: shell(jobsArgv) };
 }
 
 // Compare a deployment URL's bytes with the live page: same HTML and same same-origin assets.
@@ -312,9 +318,7 @@ async function readHost(spec, out) {
   if (d.kind === 'wrangler-workflow') {
     const rr = await latestRun(rec, d.repoId, d.workflow, d.branch);
     if (rr) {
-      rec('deploy.record.sha', rr.head_sha, rr.jobsRun, rr.jobsCommand);
       const job = rr.jobs.find((j) => j.name === d.job);
-      rec('deploy.record.deployJob', job ? job.conclusion : 'absent', rr.jobsRun, rr.jobsCommand);
       if (job?.conclusion === 'success' && embeddedSource === rr.head_sha) {
         source = rr.head_sha;
         attestation = `${d.workflow} run ${rr.id} deployed ${rr.head_sha} (its deploy job checks the live site serves the built app bundle) and the live bundle embeds that commit`;
@@ -334,7 +338,6 @@ async function readHost(spec, out) {
         log = await run(logArgv);
       }
       const url = log.exit === 0 ? log.stdout.toString('utf8').match(new RegExp(d.logPattern))?.[1] : null;
-      rec('deploy.record.sha', rr.head_sha, rr.jobsRun, rr.jobsCommand);
       rec('deploy.record.deploymentUrl', url ?? null, log, `${shell(logArgv)} | grep 'Production deployment:'`);
       if (url) {
         const cmp = await sameBytes(live, url);
@@ -397,9 +400,8 @@ export async function readAll({ only = [] } = {}) {
   const integrations = JSON.parse(readFileSync(resolve(here, 'integrations.json'), 'utf8')).integrations;
   const want = (id) => !only.length || only.some((p) => id.startsWith(p));
   const out = [];
-  const context = { repos: {} };
   const jobs = [
-    ...spec.repositories.filter((s) => want(s.identity)).map((s) => () => readRepository(s, out, context)),
+    ...spec.repositories.filter((s) => want(s.identity)).map((s) => () => readRepository(s, out)),
     ...spec.organizations.filter((s) => want(s.identity)).map((s) => () => readOrganization(s, out)),
     ...(want(spec.selfHost.identity) ? [() => readSelfHost(spec.selfHost, out)] : []),
     ...spec.hosts.filter((s) => want(s.identity)).map((s) => () => readHost(s, out)),

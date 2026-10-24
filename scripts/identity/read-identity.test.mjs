@@ -96,7 +96,7 @@ test('served artifacts: source commit is attested by a named record or marked un
     const source = get('source.commit');
     assert.ok(source === 'unknown' || HEX40.test(source), `${h.identity}: ${source}`);
     if (source !== 'unknown') {
-      assert.equal(get('deploy.record.sha') ?? get('deploy.record.deployment')?.sha, source, `${h.identity}: record and source disagree`);
+      assert.equal(get('deploy.record.run')?.head_sha ?? get('deploy.record.deployment')?.sha, source, `${h.identity}: record and source disagree`);
       assert.match(get('source.attestation'), new RegExp(source), h.identity);
     }
   }
