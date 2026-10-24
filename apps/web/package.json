@@ -11,13 +11,15 @@
     "build": "vite build",
     "preview": "vite preview",
     "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.node.json && tsc -p tsconfig.e2e.json",
-    "test": "node --test test/build/*.test.ts",
+    "test": "node --test test/build/*.test.ts test/contracts/*.test.ts",
     "check:inventory": "node build/check-inventory.ts",
     "test:e2e": "node --test test/e2e/*.e2e.ts"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
+    "@facemorph/browser-model-manager": "^0.0.0",
+    "@facemorph/stylegan-js": "^0.0.0",
     "@mui/icons-material": "^9.5.0",
     "@mui/material": "^9.5.0",
     "bulma": "^1.0.4",
