@@ -33,7 +33,7 @@ Per-row checks, all recorded in the manifest:
   float bits (2.8e-6 measured).
 - **synthesisCheck**: the reference route's RGBA8 for the same W+ is within a max channel difference of 1
   of the producer's lossless output. By default the producer is the CPU route and the reference is
-  WebGPU (direct WGSL; headed Chromium on eris). Sampled raw-float error is covered by each route's
+  WebGPU (direct WGSL; headless Chromium with Vulkan via ANGLE on eris, after waiting for a hardware adapter). Sampled raw-float error is covered by each route's
   canary qualification at start-up, which the candidate does not expose per face.
 
 Tests: `npm test`. These are the pure logic, plus a real kill-and-resume run on two names. That run

@@ -156,13 +156,22 @@ function recordRequests(context, hosts) {
 
 async function openHarness(pw, { origin, route, chromium, profile, hosts }) {
   const gpu = route === 'webgpu';
-  // eris: headless Chromium gets no WebGPU adapter, so the GPU producer is headed (as in the device lab).
+  // Headless on every route: no window on the shared desktop. On eris WebGPU reaches the NVIDIA card through
+  // Vulkan via ANGLE (autoresearch/devices/eris/launch-chromium.sh); the adapter only appears once the GPU
+  // process has started, so the GPU route waits for it below before the runtime qualifies its route.
   const args = gpu
-    ? ['--enable-unsafe-webgpu', '--ignore-gpu-blocklist']
+    ? [
+        '--enable-unsafe-webgpu',
+        '--ignore-gpu-blocklist',
+        '--enable-features=Vulkan',
+        '--use-angle=vulkan',
+        '--use-gl=angle',
+        '--disable-vulkan-surface',
+      ]
     : ['--disable-features=WebGPU'];
   const context = await pw.chromium.launchPersistentContext(profile, {
     executablePath: chromium,
-    headless: !gpu,
+    headless: true,
     args,
     viewport: { width: 640, height: 480 },
   });
@@ -171,6 +180,30 @@ async function openHarness(pw, { origin, route, chromium, profile, hosts }) {
   page.setDefaultTimeout(0);
   await page.goto(`${origin}/names-generator.html`);
   await page.waitForFunction(() => window.harnessReady === true);
+  if (gpu) {
+    const adapter = await page.evaluate(async () => {
+      for (const end = performance.now() + 15000; ;) {
+        const a = await navigator.gpu?.requestAdapter();
+        if (a)
+          return {
+            vendor: a.info?.vendor,
+            architecture: a.info?.architecture,
+            fallback: Boolean(a.info?.isFallbackAdapter),
+          };
+        if (!navigator.gpu || performance.now() > end) return null;
+        await new Promise((r) => setTimeout(r, 250));
+      }
+    });
+    // A software rasteriser is not a GPU reference.
+    if (
+      !adapter ||
+      adapter.fallback ||
+      /swiftshader|llvmpipe|lavapipe/i.test(`${adapter.vendor} ${adapter.architecture}`)
+    )
+      throw new Error(
+        `no hardware WebGPU adapter for the ${route} route: ${JSON.stringify(adapter)}`,
+      );
+  }
   const setup = await page.evaluate((r) => window.setup(r), route);
   return { context, page, setup };
 }
