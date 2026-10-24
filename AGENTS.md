@@ -42,7 +42,8 @@ classic with its append-only experiment history; start no new rounds there.
 Keep model-free names/completed-file use where computation is unavailable. The
 plan's requirements drift ledger, strict TypeScript and package boundaries govern
 implementation. Distinguish planned, experimental, implemented
-and deployed results. No weights or secrets in Git. Do not infer performance or
+and deployed results. No weights or secrets in Git. Cloudflare work uses the installed `cf` CLI
+(`cf cli search "<task>"`, then `<command> --help`), never Wrangler (operator, 24 October 2026). Do not infer performance or
 completion from repository setup.
 
 The portable Beads graph is `.beads/issues.jsonl`; preserve IDs and dependencies.
