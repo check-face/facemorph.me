@@ -14,9 +14,11 @@ Requirements: Docker on Linux x86-64. CPU only; no GPU is used or needed.
 
 ## Commands (from a clean clone)
 
+<!-- ci: verbatim -->
 ```sh
 cd packages/model-conv
 docker build -t facemorph/model-conv .
+IMAGE="facemorph/model-conv@$(docker image inspect --format '{{.Id}}' facemorph/model-conv)"
 
 # Acquire the checkpoint yourself, under NVIDIA's terms, and check it:
 mkdir -p ~/.cache/facemorph-model-conv/checkpoints
@@ -26,13 +28,45 @@ mkdir -p ~/.cache/facemorph-model-conv/checkpoints
 echo "adf127ea7bb8a7788c8bdeda3c9937f7310b669b09ecf799ca53a631ff46948d  $HOME/.cache/facemorph-model-conv/checkpoints/stylegan2-ffhq-config-f.pkl" | sha256sum -c -
 
 mkdir -p out
-docker run --rm --user "$(id -u):$(id -g)" \
+docker run --rm --user "$(id -u):$(id -g)" -e MODEL_CONV_IMAGE="$IMAGE" \
   -v ~/.cache/facemorph-model-conv/checkpoints:/checkpoints:ro -v "$PWD/out":/out \
   facemorph/model-conv convert --checkpoint /checkpoints/stylegan2-ffhq-config-f.pkl --out /out/ffhq
-docker run --rm --user "$(id -u):$(id -g)" \
+docker run --rm --user "$(id -u):$(id -g)" -e MODEL_CONV_IMAGE="$IMAGE" \
   -v ~/.cache/facemorph-model-conv/checkpoints:/checkpoints:ro -v "$PWD/out":/out \
   facemorph/model-conv verify --checkpoint /checkpoints/stylegan2-ffhq-config-f.pkl --out /out/ffhq
 ```
+
+### A non-face model: AFHQ cat, 512 px
+
+The non-face fixture is NVIDIA's stylegan2-ada-pytorch AFHQ cat generator, a PyTorch pickle, under the
+NVIDIA Source Code License-NC; the AFHQ dataset is CC BY-NC 4.0. Acquire it yourself under those terms; it is
+never bundled. Its tolerance (raw 1e-3, RGB 1) is its own, declared in `model_conv/models.py` from its
+reference before its first conversion; it does not inherit FFHQ's.
+
+<!-- ci: verbatim -->
+```sh
+cd packages/model-conv
+docker build -t facemorph/model-conv .
+IMAGE="facemorph/model-conv@$(docker image inspect --format '{{.Id}}' facemorph/model-conv)"
+
+mkdir -p ~/.cache/facemorph-model-conv/checkpoints
+[ -f ~/.cache/facemorph-model-conv/checkpoints/afhqcat.pkl ] || curl -fL \
+  -o ~/.cache/facemorph-model-conv/checkpoints/afhqcat.pkl \
+  https://nvlabs-fi-cdn.nvidia.com/stylegan2-ada-pytorch/pretrained/afhqcat.pkl
+echo "f62fd750c51f649147ba355844833c0f2a37081f7c032194f52fd74a016c3a29  $HOME/.cache/facemorph-model-conv/checkpoints/afhqcat.pkl" | sha256sum -c -
+
+mkdir -p out
+docker run --rm --user "$(id -u):$(id -g)" -e MODEL_CONV_IMAGE="$IMAGE" \
+  -v ~/.cache/facemorph-model-conv/checkpoints:/checkpoints:ro -v "$PWD/out":/out \
+  facemorph/model-conv convert --model stylegan2-ada-afhqcat --checkpoint /checkpoints/afhqcat.pkl --out /out/afhqcat
+docker run --rm --user "$(id -u):$(id -g)" -e MODEL_CONV_IMAGE="$IMAGE" \
+  -v ~/.cache/facemorph-model-conv/checkpoints:/checkpoints:ro -v "$PWD/out":/out \
+  facemorph/model-conv verify --checkpoint /checkpoints/afhqcat.pkl --out /out/afhqcat
+```
+
+Its output is a 512 px model: 16 W+ layers of 512, 15 constant noise planes (4 px to 512 px), synthesis
+output `[1, 3, 512, 512]`. Generation and morphs for it never load a face detector or the FFHQ e4e encoder:
+FFHQ e4e is not an encoder for this generator.
 
 Or through Compose (opt-in profile; same mounts and user):
 
@@ -58,7 +92,7 @@ CHECKPOINTS=~/.cache/facemorph-model-conv/checkpoints OUTPUT="$PWD/out" MODEL_CO
 
 ## Acceptance
 
-CI runs the first command block above verbatim from the repository root (`tests/doc_commands.py`), and
+CI runs every block marked `<!-- ci: verbatim -->` above verbatim from the repository root (`tests/doc_commands.py`), and
 `tests/acceptance.sh` runs all of the above with the real checkpoint and container, plus a perturbed chunk
 (must fail), a wrong checkpoint (refused), a killed conversion, ownership and an image/package scan for
 weights. CI runs it on eris (`.github/workflows/model-conv.yml`). Unit tests: `python3 -m unittest discover -s tests -t .`.

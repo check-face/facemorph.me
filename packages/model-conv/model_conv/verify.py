@@ -6,6 +6,7 @@ under ONNX Runtime CPU the way the product does: mapping, truncation against ave
 with the noise files. Judged against the declaration's tolerance, fixed before the run.
 """
 import json
+import os
 from pathlib import Path
 
 import numpy as np
@@ -50,7 +51,12 @@ def verify(checkpoint: Path, out: Path, seeds=(0, 1, 42), log=print) -> dict:
     manifest = json.loads((out / 'manifest.json').read_text())
     decl = declaration(manifest['model']['key'])
     problems, synthesis_bytes = check_files(out, manifest, decl)
-    report = {'model': decl.key, 'tolerance': manifest['tolerance'], 'files': problems or 'all digests match', 'samples': [],
+    from .convert import versions
+    report = {'model': decl.key, 'descriptor': manifest['model'], 'manifestSha256': mf.sha256((out / 'manifest.json').read_bytes()),
+              'tolerance': manifest['tolerance'], 'files': problems or 'all digests match', 'samples': [],
+              'container': {'image': os.environ.get('MODEL_CONV_IMAGE', 'unrecorded (not run from the container)'),
+                            'baseImage': os.environ.get('MODEL_CONV_BASE_IMAGE', 'unrecorded')},
+              'versions': versions(), 'conversionFlags': manifest.get('provenance', {}).get('flags'),
               'reference': {'implementation': f'NVlabs/stylegan2-ada-pytorch@{UPSTREAM_REVISION}', 'module': str(UPSTREAM / 'legacy.py'),
                             'checkpoint': checkpoint.name, 'checkpointSha256': file_sha256(checkpoint)}}
     if problems:

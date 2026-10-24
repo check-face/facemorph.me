@@ -77,7 +77,31 @@ FFHQ_CONFIG_F = ModelDeclaration(
     tolerance=Tolerance(raw_float=0.002, rgb=1),
 )
 
-MODELS = {m.key: m for m in [FFHQ_CONFIG_F]}
+# Non-face fixture (fm-fy2.15): NVlabs stylegan2-ada-pytorch AFHQ cat, 512 px, a PyTorch pickle.
+# Its tolerance is its own, fixed before its first conversion from its reference: run in the container on
+# seeds 0, 1 and 42 (lease run 20261024T115539Z-f8afd10a), the upstream reference against itself with the
+# modulated convolution fused versus unfused (two equivalent FP32 orderings) differs by at most 2.5e-5 raw
+# and 1 on 0-255. The converted graph adds an ORT kernel order and the FP64-precomputed demodulation, so the
+# raw limit is 40x that spread, 1e-3; RGB stays at 1, which equivalent reference orderings already reach.
+AFHQ_CAT = ModelDeclaration(
+    key='stylegan2-ada-afhqcat',
+    architecture='stylegan2',
+    conditional=False,
+    resolution=512,
+    channels=3,
+    z_dim=512,
+    w_dim=512,
+    source_format='pytorch-pickle',
+    source_sha256='f62fd750c51f649147ba355844833c0f2a37081f7c032194f52fd74a016c3a29',
+    source_url='https://nvlabs-fi-cdn.nvidia.com/stylegan2-ada-pytorch/pretrained/afhqcat.pkl',
+    licence='NVIDIA Source Code License-NC (stylegan2-ada-pytorch); AFHQ dataset CC BY-NC 4.0',
+    truncation_psi=0.7,
+    truncation_cutoff=8,
+    opset=17,
+    tolerance=Tolerance(raw_float=1e-3, rgb=1),
+)
+
+MODELS = {m.key: m for m in [FFHQ_CONFIG_F, AFHQ_CAT]}
 
 
 def declaration(key: str) -> ModelDeclaration:

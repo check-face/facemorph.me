@@ -31,6 +31,18 @@ class Declarations(unittest.TestCase):
         self.assertEqual(small.num_ws, 14)
         self.assertEqual(len(small.noise_shapes()), 13)
 
+    def test_afhq_cat_declaration_matches_the_checkpoint(self):
+        # Values read from the real checkpoint in the container (lease run 20261024T115539Z-f8afd10a).
+        from model_conv.models import AFHQ_CAT
+        self.assertEqual((AFHQ_CAT.resolution, AFHQ_CAT.num_ws, AFHQ_CAT.z_dim, AFHQ_CAT.w_dim), (512, 16, 512, 512))
+        self.assertEqual(len(AFHQ_CAT.noise_shapes()), 15)
+        self.assertEqual(AFHQ_CAT.noise_shapes()[-1], [512, 512])
+        self.assertEqual(AFHQ_CAT.io_shapes()['synthesis']['outputs'], {'image': [1, 3, 512, 512]})
+        self.assertEqual((AFHQ_CAT.tolerance.raw_float, AFHQ_CAT.tolerance.rgb), (1e-3, 1))
+        self.assertIs(declaration('stylegan2-ada-afhqcat'), AFHQ_CAT)
+        m = built(AFHQ_CAT, chunk_bytes=AFHQ_CAT.chunk_bytes)
+        self.assertEqual(mf.problems(m, AFHQ_CAT), [])
+
     def test_undeclared_models_are_refused(self):
         self.assertIs(declaration('stylegan2-ffhq-config-f'), FFHQ_CONFIG_F)
         with self.assertRaises(KeyError):
