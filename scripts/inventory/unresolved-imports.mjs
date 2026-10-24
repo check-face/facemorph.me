@@ -15,7 +15,7 @@
 // reads, not imports, and do not affect the exit code). One JSON line per finding, then a summary; exit 1
 // when the unresolved list differs from the expected one or a module does not parse.
 import { spawnSync } from 'node:child_process';
-import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { isBuiltin } from 'node:module';
 import { join, posix, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -110,8 +110,16 @@ const sassCandidates = (path) => {
   ];
 };
 
-// null when the specifier resolves, otherwise the reason it does not.
-export function resolveSpecifier(importer, specifier, files, packages, kind = 'static') {
+// null when the specifier resolves, otherwise the reason it does not. A relative path that leaves the root (a
+// shim re-exporting a workspace package's source, fm-eulc) resolves when `outside(path)` finds the file.
+export function resolveSpecifier(
+  importer,
+  specifier,
+  files,
+  packages,
+  kind = 'static',
+  outside = () => false,
+) {
   const target = specifier.replace(/[?#].*$/, '');
   const bare = (spec) => {
     const name = spec.startsWith('@') ? spec.split('/').slice(0, 2).join('/') : spec.split('/')[0];
@@ -130,14 +138,14 @@ export function resolveSpecifier(importer, specifier, files, packages, kind = 's
     const path = target.startsWith('/')
       ? posix.normalize(target.slice(1))
       : posix.join(posix.dirname(importer), target);
-    return files.has(path) ? null : 'missing-file';
+    return files.has(path) || (path.startsWith('../') && outside(path)) ? null : 'missing-file';
   }
   return bare(target);
 }
 
 // files: Map of app-root-relative path → source text; pages: {path: {served_at?, template_options?}} for
 // HTML pages served from somewhere other than their file location or rendered as templates.
-export function unresolvedImports(files, packages, pages = {}) {
+export function unresolvedImports(files, packages, pages = {}, outside = () => false) {
   const unresolved = [];
   const fileRefs = [];
   const parseErrors = [];
@@ -155,7 +163,14 @@ export function unresolvedImports(files, packages, pages = {}) {
     }
     for (const { specifier, kind } of found) {
       count++;
-      const reason = resolveSpecifier(page.served_at ?? path, specifier, known, packages, kind);
+      const reason = resolveSpecifier(
+        page.served_at ?? path,
+        specifier,
+        known,
+        packages,
+        kind,
+        outside,
+      );
       if (!reason) continue;
       (kind === 'file-ref' ? fileRefs : unresolved).push({
         importer: path,
@@ -214,7 +229,9 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     );
     lock = JSON.parse(blob(dir, commit, 'package-lock.json').toString('utf8'));
   }
-  const result = unresolvedImports(files, lockPackages(lock), allowlist.html_pages);
+  // On a working tree, files beside the root (the workspace packages) exist; the frozen commit has none.
+  const outside = opts.root ? (p) => existsSync(join(opts.root, p)) : undefined;
+  const result = unresolvedImports(files, lockPackages(lock), allowlist.html_pages, outside);
   const withPrefix = (r) => ({ ...r, importer: `${prefix}/${r.importer}` });
   const expected = new Set(opts['expect-none'] ? [] : allowlist.unresolved_imports.map(key));
   const found = result.unresolved.map(withPrefix);

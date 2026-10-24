@@ -34,6 +34,7 @@ jobs:
           node scripts/import/verify-closure.mjs --allow package.json --allow package-lock.json
           --allow browser-matrix.json --allow 'tsconfig*.json' --allow vite.config.ts --allow index.html --allow worker-check.html --allow render-check.html --allow .gitignore
           --allow 'build/**' --allow 'shell/**' --allow 'test/**' --allow 'src/photo/**'
+          --allow src/Next/Assets/model-cache.mjs --allow src/Next/Assets/shard-store.mjs --allow src/Next/Assets/sha256.mjs
       - run: node scripts/import/scan-exclusions.mjs
       - run: node scripts/inventory/unresolved-imports.mjs --root apps/web --lock package-lock.json # one root lock (fm-fy2.4)
       - name: Control artifact downloads, verifies and scans clean

@@ -166,3 +166,28 @@ test('sass resolution: partials, extensions and ~packages', () => {
   );
   assert.deepEqual([...packages].sort(), ['@scope/pkg', 'bulma', 'nested']);
 });
+
+test('a relative import that leaves the root resolves only when the file beside it exists (fm-eulc shims)', () => {
+  const files = new Set(['src/Next/Assets/model-cache.mjs']);
+  const shim = '../../../../../packages/browser-model-manager/src/cache/model-cache.ts';
+  const beside = new Set(['../../packages/browser-model-manager/src/cache/model-cache.ts']);
+  const outside = (p) => beside.has(p);
+  assert.equal(
+    resolveSpecifier('src/Next/Assets/model-cache.mjs', shim, files, new Set()),
+    'missing-file',
+  );
+  assert.equal(
+    resolveSpecifier('src/Next/Assets/model-cache.mjs', shim, files, new Set(), 'static', outside),
+    null,
+  );
+  const gone = shim.replace('model-cache.ts', 'nothing.ts');
+  assert.equal(
+    resolveSpecifier('src/Next/Assets/model-cache.mjs', gone, files, new Set(), 'static', outside),
+    'missing-file',
+  );
+  // Inside the root, the root's own file list still decides: outside() is never asked.
+  assert.equal(
+    resolveSpecifier('src/a.mjs', './b.mjs', files, new Set(), 'static', () => true),
+    'missing-file',
+  );
+});
