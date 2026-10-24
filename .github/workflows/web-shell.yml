@@ -1,0 +1,26 @@
+name: web-shell
+# apps/web (fm-svg): the declared browser matrix and the Vite targets derived from it, strict typecheck,
+# unit tests, and the Vite production build of the app shell. Folds into the workspace gates once the
+# scaffold (fm-fy2.4) lands.
+on:
+  push:
+    branches: [main]
+    paths: ['apps/web/**', '.github/workflows/web-shell.yml']
+  workflow_dispatch:
+concurrency:
+  group: web-shell
+  cancel-in-progress: false
+jobs:
+  check:
+    runs-on: [self-hosted, triton]
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm ci --no-audit --no-fund
+      - run: npm run typecheck
+      - run: npm test

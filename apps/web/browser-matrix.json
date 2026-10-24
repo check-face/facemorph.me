@@ -1,0 +1,21 @@
+{
+  "schema": "facemorph.browser-matrix/1",
+  "note": "The declared support matrix (fm-svg): one cell per browser, OS and device class the release is built for, with the CI lane or lab cell that exercises it. `version` is the oldest version of that browser the cell runs or must keep working on; the Vite app and worker targets are the minimum per engine (apps/web/build/targets.ts). No outcomes here: integrated verification reports them in the release summary.",
+  "cells": [
+    { "id": "ubuntu-chrome", "browser": "Google Chrome", "engine": "chromium", "version": "124", "os": "Ubuntu 24.04", "deviceClass": "desktop", "provider": "cpu", "evidence": "desktop", "lane": "real-ui-cpu" },
+    { "id": "ubuntu-chromium", "browser": "Chromium (Playwright 1.49.1)", "engine": "chromium", "version": "131", "os": "Ubuntu 24.04", "deviceClass": "desktop", "provider": "cpu", "evidence": "desktop", "lane": "next-matrix ubuntu-24.04 chromium" },
+    { "id": "ubuntu-firefox", "browser": "Firefox (Playwright 1.49.1)", "engine": "firefox", "version": "132", "os": "Ubuntu 24.04", "deviceClass": "desktop", "provider": "cpu", "evidence": "desktop", "lane": "next-matrix ubuntu-24.04 firefox" },
+    { "id": "ubuntu-webkit", "browser": "WebKit (Playwright 1.49.1; not iOS)", "engine": "webkit", "version": "18.2", "os": "Ubuntu 24.04", "deviceClass": "desktop", "provider": "cpu", "evidence": "desktop", "lane": "next-matrix ubuntu-24.04 webkit" },
+    { "id": "macos-webkit", "browser": "WebKit (Playwright 1.49.1; not Safari)", "engine": "webkit", "version": "18.2", "os": "macOS 14", "deviceClass": "desktop", "provider": "cpu", "evidence": "desktop", "lane": "next-matrix macos-14 webkit" },
+    { "id": "macos-firefox", "browser": "Firefox (Playwright 1.49.1)", "engine": "firefox", "version": "132", "os": "macOS 14", "deviceClass": "desktop", "provider": "cpu", "evidence": "desktop", "lane": "next-matrix macos-14 firefox" },
+    { "id": "android-emulator-chrome", "browser": "Chrome", "engine": "chromium", "version": "124", "os": "Android 15 (API 35, Pixel 6 emulator)", "deviceClass": "phone", "provider": "components", "evidence": "emulator", "lane": "mobile-browser android (components, no inference)" },
+    { "id": "ios-simulator-safari", "browser": "Safari", "engine": "webkit", "platform": "ios", "version": "18", "os": "iOS 18 Simulator (macOS 15)", "deviceClass": "phone", "provider": "components", "evidence": "simulator", "lane": "mobile-browser ios (components)" },
+    { "id": "iphone-16-pro-simulator", "browser": "Safari", "engine": "webkit", "platform": "ios", "version": "18", "os": "iOS 18 Simulator, iPhone 16 Pro (macOS 15)", "deviceClass": "phone", "provider": "cpu", "evidence": "simulator", "lane": "ios-product-simulator (product CPU)" },
+    { "id": "gpu-gtx1050", "browser": "Chrome for Testing", "engine": "chromium", "version": "141.0.7390.54", "os": "Linux (self-hosted, GTX 1050)", "deviceClass": "desktop", "provider": "webgpu", "evidence": "desktop", "lane": "next-gpu-lane" },
+    { "id": "eris-webgpu", "browser": "Chromium", "engine": "chromium", "version": "152.0.7977.82", "os": "Arch Linux (eris, RTX 2080 SUPER)", "deviceClass": "desktop", "provider": "webgpu", "evidence": "desktop", "lane": "device-lab eris-webgpu" },
+    { "id": "eris-cpu", "browser": "Chromium", "engine": "chromium", "version": "152.0.7977.82", "os": "Arch Linux (eris)", "deviceClass": "desktop", "provider": "cpu", "evidence": "desktop", "lane": "device-lab eris-cpu" },
+    { "id": "phone-webgpu", "browser": "Chrome (WebGPU debug flags)", "engine": "chromium", "version": "150.0.7871.128", "os": "Android 10 (Huawei P30 Pro)", "deviceClass": "phone", "provider": "webgpu", "evidence": "physical", "lane": "device-lab phone-webgpu" },
+    { "id": "phone-cpu", "browser": "Chrome", "engine": "chromium", "version": "150.0.7871.128", "os": "Android 10 (Huawei P30 Pro)", "deviceClass": "phone", "provider": "cpu", "evidence": "physical", "lane": "device-lab phone-cpu" },
+    { "id": "iphone-physical", "browser": "Safari", "engine": "webkit", "platform": "ios", "version": "16.4", "os": "iOS 16.4 or later (physical iPhone)", "deviceClass": "phone", "provider": "cpu", "evidence": "physical", "lane": null, "laneNote": "No lane until the Mac runner exists; reported untested." }
+  ]
+}
