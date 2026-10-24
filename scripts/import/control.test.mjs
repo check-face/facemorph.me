@@ -57,7 +57,8 @@ test('the pinned record names classic as the source and a release asset of this 
   assert.ok(record.files.some((f) => f.path === 'deploy-next/index.html'));
 });
 
-test('every golden, parity or freeze script calls fetch-control first', () => {
+test('every golden, parity or freeze script that reads the control calls fetch-control first', () => {
+  // A grader that reads only recorded goldens (scripts/verify/parity-grade.mjs) never touches the control.
   // Classic's own files imported byte-identical (apps/web, import/allowlist.json) are its history, not ours.
   const imported = new Set(
     JSON.parse(readFileSync(join(REPO, 'import/allowlist.json'), 'utf8')).files.map((f) =>
@@ -85,7 +86,8 @@ test('every golden, parity or freeze script calls fetch-control first', () => {
       if (e.code !== 'ENOENT') throw e;
     }
   }
-  for (const path of scripts)
+  const readsControl = /control-artifact\.json|deploy-next|startControl\(/;
+  for (const path of scripts.filter((p) => readsControl.test(readFileSync(p, 'utf8'))))
     assert.match(
       readFileSync(path, 'utf8'),
       /fetch-control/,

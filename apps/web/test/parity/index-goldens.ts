@@ -1,7 +1,9 @@
 // Indexes the goldens the parity spec wrote with RECORD=1 (test/goldens/control/<rowId>/<project>/) in
 // test/goldens/goldens.json, section parity-spec: per parity row its tag, plan and files per project, plus the
 // control, recorder command, oracle and blind spots. Run after a recording run:
+// fetch-control runs first and fails closed: the index names only a control that verifies.
 //   node apps/web/test/parity/index-goldens.ts
+import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { readIndex, writeIndex } from '../goldens/index-file.ts';
@@ -9,6 +11,11 @@ import { REPO } from './control-server.ts';
 import { ROWS } from './rows.ts';
 
 const control = new URL('../goldens/control/', import.meta.url);
+const fetched = execFileSync(process.execPath, [`${REPO}/scripts/import/fetch-control.mjs`], {
+  encoding: 'utf8',
+});
+if (!JSON.parse(fetched.trim().split('\n').at(-1) ?? '{}').summary?.ok)
+  throw new Error(`fetch-control refused the control: ${fetched}`);
 const record = JSON.parse(readFileSync(`${REPO}/import/control-artifact.json`, 'utf8'));
 const deployNext = record.files
   .filter((f: { path: string }) => f.path.startsWith('deploy-next/'))
