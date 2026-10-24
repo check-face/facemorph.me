@@ -59,6 +59,29 @@ per-iteration timings, route, `typedExactly`, peak Chrome memory on the phone, t
 (phone) or Playwright trace (eris) of each failed iteration, and screenshots. In CI the summary also goes to the
 job summary.
 
+### The operated-input contract (`--journey operated`, fm-48bj)
+
+`lab.py run --cell <cell> --journey operated` runs the verification harness's operated-input contract on real input.
+It uses the defect-1 regression page (`apps/web/test/fixtures/verify/operated.html`), served from this checkout,
+and reaches the phone through `adb reverse`. A real OS tap (phone) or mouse click (eris) must press:
+- the visible Remove;
+- a transformed control;
+- a nested control;
+- a control far down the page.
+
+Three controls must be refused before any input is sent:
+- the Remove covered by the mode-menu button (defect 1);
+- a control its container clips;
+- an off-screen control.
+
+The TS harness (`apps/web/test/verify/operated.ts`) applies the same rules in Playwright:
+- scroll only as a person can (never inside an `overflow: hidden` container);
+- the centre must be inside the viewport;
+- `elementFromPoint` there must be the control;
+- after the press, the pointer must land inside it.
+
+Every tap in every journey follows these rules. Each step is recorded in the cell's JSON under `operated.steps`.
+
 ## Cold full-package downloads
 
 `download.py` (fm-vf9l) runs the download a first visitor starts from the model toast ("Plus photo encoder",

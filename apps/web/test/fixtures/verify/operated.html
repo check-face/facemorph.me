@@ -10,7 +10,7 @@
     <title>Operated input fixture</title>
     <style>
       body { margin: 0; font: 16px system-ui, sans-serif; }
-      .face { position: relative; width: 376px; height: 376px; margin: 24px; background: #8ab; }
+      .face { position: relative; width: min(376px, calc(100vw - 48px)); aspect-ratio: 1; margin: 24px; background: #8ab; }
       .face button { position: absolute; width: 32px; height: 32px; padding: 0; }
       /* Defect 1: Remove at the image's top right, and the mode-menu button laid over it. */
       #remove-covered, #mode-menu { top: 8px; right: 8px; }
@@ -20,7 +20,7 @@
       #clipped { position: absolute; left: 160px; top: 0; width: 80px; height: 32px; }
       #off-screen { position: fixed; left: -9999px; top: 20px; width: 80px; height: 32px; }
       .spacer { height: 2400px; }
-      .turned { transform: translateX(200px) rotate(8deg) scale(1.25); transform-origin: 0 0; margin: 24px; width: 160px; }
+      .turned { transform: translateX(40px) rotate(8deg) scale(1.25); transform-origin: 0 0; margin: 24px; width: 160px; }
       #transformed, #nested, #small, #scrolled { width: 120px; height: 48px; }
       #small { width: 24px; height: 24px; }
     </style>

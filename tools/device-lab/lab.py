@@ -318,6 +318,21 @@ def chrome_front(tries=5):
     return False
 
 
+# Scrolls as a person can: the page and user-scrollable containers (overflow auto/scroll), never an
+# overflow-hidden one, so a control its container clips stays clipped and fails the hit check (the same rule as
+# apps/web/test/verify/operated.ts, fm-48bj). scrollIntoView would scroll the clipping container and tap a control
+# no person can reach.
+SCROLL_AS_PERSON = """([sel,i])=>{const el=document.querySelectorAll(sel)[i];if(!el)return null;
+  const centre=r=>({x:r.left+r.width/2,y:r.top+r.height/2});
+  for(let a=el.parentElement;a&&a!==document.body;a=a.parentElement){const s=getComputedStyle(a);
+    const sx=/auto|scroll/.test(s.overflowX)&&a.scrollWidth>a.clientWidth,sy=/auto|scroll/.test(s.overflowY)&&a.scrollHeight>a.clientHeight;
+    if(!sx&&!sy)continue;const c=centre(el.getBoundingClientRect()),b=a.getBoundingClientRect();
+    if(sx)a.scrollLeft+=c.x-(b.left+a.clientWidth/2);if(sy)a.scrollTop+=c.y-(b.top+a.clientHeight/2);}
+  const r=el.getBoundingClientRect();
+  if(r.top<0||r.bottom>innerHeight||r.left<0||r.right>innerWidth){const c=centre(r);scrollBy({left:c.x-innerWidth/2,top:c.y-innerHeight/2,behavior:'instant'});}
+  return true}"""
+
+
 class Phone:
     """Real Chrome on the phone over CDP, acting with OS-level taps."""
 
@@ -325,10 +340,11 @@ class Phone:
     # then arms a one-shot listener recording where the real pointer actually landed.
     PROBE = """([sel,i])=>{const e=document.querySelectorAll(sel)[i];if(!e)return null;const r=e.getBoundingClientRect();
           const x=r.left+r.width/2,y=r.top+r.height/2,hit=document.elementFromPoint(x,y);
-          const ok=r.width>0&&r.height>0&&!!hit&&(hit===e||e.contains(hit));
+          const inView=x>=0&&y>=0&&x<=innerWidth&&y<=innerHeight;
+          const ok=inView&&r.width>0&&r.height>0&&!!hit&&(hit===e||e.contains(hit));
           if(ok){window.__labHit=null;addEventListener('pointerdown',ev=>{window.__labHit={inside:e.contains(ev.target),
             what:ev.target.outerHTML.slice(0,80)}},{capture:true,once:true});}
-          return {x,y,ok,hit:hit?hit.outerHTML.slice(0,80):null}}"""
+          return {x,y,ok,inView,hit:hit?hit.outerHTML.slice(0,80):null}}"""
 
     def __init__(self, pw):
         # A cold Chrome start each session: clears dialogs left by earlier runs (Chrome's own photo
@@ -372,8 +388,7 @@ class Phone:
     def tap(self, selector, index=0):
         """Real OS tap at the element's visible centre. Before: elementFromPoint must be the element.
         After: the real touch's pointerdown target must be inside the element, or the step fails."""
-        info = self.js("""([sel,i])=>{const e=document.querySelectorAll(sel)[i];if(!e)return null;
-          e.scrollIntoView({block:'center',inline:'center',behavior:'instant'});return true}""", [selector, index])
+        info = self.js(SCROLL_AS_PERSON, [selector, index])
         if not info:
             raise RuntimeError(f'no element {selector}[{index}]')
         time.sleep(0.6)  # let the toolbar settle after the scroll
@@ -385,7 +400,8 @@ class Phone:
                 break
             time.sleep(0.4)
         if not info or not info['ok']:
-            raise RuntimeError(f'{selector}[{index}] is not hittable at its centre (covered by {info and info["hit"]})')
+            raise RuntimeError(f'{selector}[{index}] is not hittable at its centre ('
+                               + ('outside the viewport' if info and not info.get('inView') else f'covered by {info and info["hit"]}') + ')')
         # Chrome drops touches until a page has presented its first frame (the DOM can be ready
         # earlier, notably on the WebGPU path after a heavy run). A tap that reached nothing changed
         # nothing, so it is retried; a tap that reached the wrong element fails at once.
@@ -400,7 +416,8 @@ class Phone:
             time.sleep(1.5)
             info = self.js(probe, [selector, index]) or info  # re-arm the listener
         if not landed or not landed['inside']:
-            raise RuntimeError(f'tap on {selector}[{index}] landed on {landed and landed["what"]}')
+            raise RuntimeError(f'tap on {selector}[{index}] at CSS ({info["x"]:.0f}, {info["y"]:.0f}), screen ({sx}, {sy}) '
+                               f'landed on {landed and landed["what"]}')
 
     def type_into(self, selector, text, index=0):
         """Types like a person: tap the field, delete its text with real key presses, type on the
@@ -462,7 +479,7 @@ class Desktop:
 
     def tap(self, selector, index=0):
         """A real mouse click at the element's visible centre, with the same before/after checks as the phone."""
-        self.js("""([sel,i])=>{const e=document.querySelectorAll(sel)[i];e&&e.scrollIntoView({block:'center',behavior:'instant'})}""", [selector, index])
+        self.js(SCROLL_AS_PERSON, [selector, index])
         time.sleep(0.3)
         end = time.time() + 8
         while True:
@@ -471,7 +488,8 @@ class Desktop:
                 break
             time.sleep(0.4)
         if not info or not info['ok']:
-            raise RuntimeError(f'{selector}[{index}] is not hittable at its centre (covered by {info and info["hit"]})')
+            raise RuntimeError(f'{selector}[{index}] is not hittable at its centre ('
+                               + ('outside the viewport' if info and not info.get('inView') else f'covered by {info and info["hit"]}') + ')')
         self.page.mouse.click(info['x'], info['y'])
         time.sleep(0.3)
         landed = self.js('window.__labHit')
@@ -610,6 +628,56 @@ def journey_morph(phone):
     return {'videoS': round(time.time() - t0, 2)}
 
 
+OPERATED_PORT = 8461  # the operated-input fixture page, reached by the phone through adb reverse
+
+
+def journey_operated(dev, cell):
+    """The verification harness's operated-input contract on real input (fm-48bj): the defect-1 regression page
+    (apps/web/test/fixtures/verify/operated.html) served from this checkout. A real OS tap (phone) or mouse click
+    (eris) must press the visible Remove and the transformed, nested and scrolled controls; the Remove covered by
+    the mode-menu button, the control its container clips and the off-screen one must be refused before any input
+    is sent, naming the element actually hit. One record per step, as the TS harness's step log."""
+    import functools, http.server
+    root = REPO / 'apps/web/test/fixtures'
+    handler = functools.partial(http.server.SimpleHTTPRequestHandler, directory=str(root))
+    handler.log_message = lambda *a, **k: None
+    server = http.server.ThreadingHTTPServer(('127.0.0.1', OPERATED_PORT), handler)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    phone = CELLS[cell][0] == 'phone'
+    if phone:
+        adb('reverse', f'tcp:{OPERATED_PORT}', f'tcp:{OPERATED_PORT}')
+    steps = []
+    try:
+        url = f'http://127.0.0.1:{OPERATED_PORT}/verify/operated.html'
+        dev.clear_origin(url)  # the phone's Chrome keeps an earlier copy of the page otherwise
+        dev.page.goto(f'{url}?run={int(time.time())}', wait_until='load')
+        layout = dev.js('({w: document.documentElement.scrollWidth, iw: innerWidth, scale: visualViewport.scale})')
+        if layout['w'] > layout['iw'] or layout['scale'] != 1:
+            raise RuntimeError(f'the fixture page does not fit this viewport: {layout}')
+        pressed = lambda: dev.js("document.querySelector('#pressed').value")
+        for sel in ['#remove-visible', '#transformed', '#nested', '#scrolled']:
+            dev.tap(sel)
+            got = pressed()
+            steps.append({'step': f'verify.harness/lab/{sel[1:]}', 'expect': 'pressed', 'ok': got == sel[1:], 'pressed': got})
+        for sel, hit in [('#remove-covered', 'mode-menu'), ('#clipped', None), ('#off-screen', None)]:
+            before = pressed()
+            try:
+                dev.tap(sel)
+                steps.append({'step': f'verify.harness/lab/{sel[1:]}', 'expect': 'refused', 'ok': False,
+                              'detail': 'was pressed', 'pressed': pressed()})
+            except RuntimeError as e:
+                ok = pressed() == before and (hit is None or hit in str(e))
+                steps.append({'step': f'verify.harness/lab/{sel[1:]}', 'expect': 'refused', 'ok': ok, 'detail': str(e)[:200]})
+    finally:
+        server.shutdown()
+        if phone:
+            adb('reverse', '--remove', f'tcp:{OPERATED_PORT}', check=False)
+    failed = [s for s in steps if not s['ok']]
+    if failed:
+        raise RuntimeError(f'operated contract failed on {cell}: {json.dumps(failed)[:400]}')
+    return {'steps': steps}
+
+
 def cool_down(limit_c=40.0, max_wait_s=900):
     """Heat throttles the CPU and would skew paired comparisons: wait (screen dimmed) until the
     battery temperature is at or below the limit, up to max_wait_s, and return the start temperature."""
@@ -698,6 +766,8 @@ def run_journeys(dev, args, cell, gpu, out, report, memory=None):
                     rec['warm'] = journey_face(dev, args.url, False, f'lab{i}warm', gpu)
                 elif j == 'morph':
                     rec['morph'] = journey_morph(dev)
+                elif j == 'operated':
+                    rec['operated'] = journey_operated(dev, cell)
                 log('journey_done', cell=cell, iteration=i + 1, journey=j)
             rec['ok'] = True
         except Exception as e:
