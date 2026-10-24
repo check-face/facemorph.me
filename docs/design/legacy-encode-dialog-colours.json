@@ -1,0 +1,367 @@
+{
+  "legacy": {
+    "adjust_crop_text": "#FFFFFF",
+    "cancel": {
+      "fill": "#E0E0E0",
+      "text": "#1D1D1D"
+    },
+    "copy_text": {
+      "bold": "#FFFFFF",
+      "regular": "#FFFFFF"
+    },
+    "crop_button": {
+      "fill": "#F50057",
+      "text": "#FFFFFF"
+    },
+    "eye_markers": {
+      "alpha_if_black": 0.52,
+      "observed_rgb_median": "#675B57"
+    },
+    "failure_line_text": "#F44336",
+    "guidance_text": "#FFFFFF",
+    "handle_fill": "#FFFFFF",
+    "logo_stroke": "#FFFFFF",
+    "modal_background": "#353535",
+    "ok": {
+      "fill": "#3F51B5",
+      "text": "#FFFFFF"
+    },
+    "oval_guide": {
+      "alpha_if_black_dim_outside": {
+        "median": 0.51,
+        "p25": 0.5,
+        "p75": 0.52
+      },
+      "alpha_if_white_overlay_inside": {
+        "median": 0.54,
+        "p25": 0.49,
+        "p75": 0.65
+      },
+      "note": "inside/outside differ by one translucent layer; white-inside and black-outside fit equally and cannot be told apart from the screenshot alone",
+      "samples": 177
+    },
+    "page_dim": {
+      "median": "#322C28",
+      "mode": "#0A0A0C",
+      "samples": 19522
+    },
+    "rotate_icon_stroke": "#FFFFFF",
+    "rotate_readout_text": "#F9F9F9",
+    "slider": {
+      "thumb": "#3F51B5",
+      "track_active": "#3F51B5",
+      "track_inactive": "#394066"
+    },
+    "stencil_outline": {
+      "alpha_if_white": 0.25,
+      "assumed_colour": "#FFFFFF"
+    },
+    "title_text": "#FFFFFF",
+    "use_crop": {
+      "fill": "#3F51B5",
+      "text": "#FFFFFF"
+    }
+  },
+  "legacy_contrast_non_text": {
+    "handle_on_modal": {
+      "bg": "#353535",
+      "fg": "#FFFFFF",
+      "meets_3_1": true,
+      "ratio": 12.27
+    },
+    "logo_on_modal": {
+      "bg": "#353535",
+      "fg": "#FFFFFF",
+      "meets_3_1": true,
+      "ratio": 12.27
+    },
+    "slider_active_track_on_modal": {
+      "bg": "#353535",
+      "fg": "#3F51B5",
+      "meets_3_1": false,
+      "ratio": 1.78
+    },
+    "slider_inactive_track_on_modal": {
+      "bg": "#353535",
+      "fg": "#394066",
+      "meets_3_1": false,
+      "ratio": 1.23
+    },
+    "slider_thumb_on_modal": {
+      "bg": "#353535",
+      "fg": "#3F51B5",
+      "meets_3_1": false,
+      "ratio": 1.78
+    }
+  },
+  "legacy_contrast_text": {
+    "adjust_crop_on_modal": {
+      "aa_text_4_5": true,
+      "bg": "#353535",
+      "fg": "#FFFFFF",
+      "ratio": 12.27
+    },
+    "cancel_text_on_cancel_fill": {
+      "aa_text_4_5": true,
+      "bg": "#E0E0E0",
+      "fg": "#1D1D1D",
+      "ratio": 12.77
+    },
+    "copy_bold_on_modal": {
+      "aa_text_4_5": true,
+      "bg": "#353535",
+      "fg": "#FFFFFF",
+      "ratio": 12.27
+    },
+    "copy_regular_on_modal": {
+      "aa_text_4_5": true,
+      "bg": "#353535",
+      "fg": "#FFFFFF",
+      "ratio": 12.27
+    },
+    "crop_text_on_crop_fill": {
+      "aa_text_4_5": false,
+      "bg": "#F50057",
+      "fg": "#FFFFFF",
+      "ratio": 4.18
+    },
+    "failure_line_on_modal": {
+      "aa_text_4_5": false,
+      "bg": "#353535",
+      "fg": "#F44336",
+      "ratio": 3.33
+    },
+    "guidance_on_modal": {
+      "aa_text_4_5": true,
+      "bg": "#353535",
+      "fg": "#FFFFFF",
+      "ratio": 12.27
+    },
+    "ok_text_on_ok_fill": {
+      "aa_text_4_5": true,
+      "bg": "#3F51B5",
+      "fg": "#FFFFFF",
+      "ratio": 6.87
+    },
+    "rotate_readout_on_modal": {
+      "aa_text_4_5": true,
+      "bg": "#353535",
+      "fg": "#F9F9F9",
+      "ratio": 11.65
+    },
+    "title_on_modal": {
+      "aa_text_4_5": true,
+      "bg": "#353535",
+      "fg": "#FFFFFF",
+      "ratio": 12.27
+    },
+    "use_crop_text_on_fill": {
+      "aa_text_4_5": true,
+      "bg": "#3F51B5",
+      "fg": "#FFFFFF",
+      "ratio": 6.87
+    }
+  },
+  "light_theme": {
+    "cancel_fill": "#E0E0E0",
+    "danger_fill": "#EB0054",
+    "danger_text": "#D93C30",
+    "eye_marker": {
+      "fill": "rgba(0,0,0,0.5)",
+      "note": "overlay over the photo, no text"
+    },
+    "handle_edge": "#212121",
+    "handle_fill": "#FFFFFF",
+    "on_cancel": "#212121",
+    "on_danger_fill": "#FFFFFF",
+    "on_primary": "#FFFFFF",
+    "on_surface": "#212121",
+    "on_surface_muted": "#595959",
+    "oval_guide": {
+      "fill": "rgba(255,255,255,0.5)",
+      "note": "overlay over the photo, no text; opacity from the legacy estimate"
+    },
+    "primary": "#3F51B5",
+    "scrim": "rgba(0,0,0,0.5)",
+    "slider_inactive_track": "#C5CBE9",
+    "stencil_outline": {
+      "dark_companion": "#212121",
+      "light": "#FFFFFF",
+      "note": "draw both 1px rings so the stencil reads on any photo"
+    },
+    "surface": "#FFFFFF"
+  },
+  "light_theme_contrast_non_text": {
+    "handle_edge_on_handle_fill": {
+      "bg": "#FFFFFF",
+      "fg": "#212121",
+      "ratio": 16.1
+    },
+    "slider_active_track_on_surface": {
+      "bg": "#FFFFFF",
+      "fg": "#3F51B5",
+      "ratio": 6.87
+    },
+    "slider_thumb_on_surface": {
+      "bg": "#FFFFFF",
+      "fg": "#3F51B5",
+      "ratio": 6.87
+    },
+    "stencil_outline_pair_dark_on_white": {
+      "bg": "#FFFFFF",
+      "fg": "#212121",
+      "ratio": 16.1
+    }
+  },
+  "light_theme_contrast_text": {
+    "adjust_crop_on_surface": {
+      "bg": "#FFFFFF",
+      "fg": "#3F51B5",
+      "ratio": 6.87
+    },
+    "body_on_surface": {
+      "bg": "#FFFFFF",
+      "fg": "#212121",
+      "ratio": 16.1
+    },
+    "cancel_text_on_cancel_fill": {
+      "bg": "#E0E0E0",
+      "fg": "#212121",
+      "ratio": 12.2
+    },
+    "copy_on_surface": {
+      "bg": "#FFFFFF",
+      "fg": "#595959",
+      "ratio": 7.0
+    },
+    "crop_text_on_danger_fill": {
+      "bg": "#EB0054",
+      "fg": "#FFFFFF",
+      "ratio": 4.51
+    },
+    "failure_line_on_surface": {
+      "bg": "#FFFFFF",
+      "fg": "#D93C30",
+      "ratio": 4.53
+    },
+    "ok_text_on_primary": {
+      "bg": "#3F51B5",
+      "fg": "#FFFFFF",
+      "ratio": 6.87
+    },
+    "readout_on_surface": {
+      "bg": "#FFFFFF",
+      "fg": "#595959",
+      "ratio": 7.0
+    },
+    "title_on_surface": {
+      "bg": "#FFFFFF",
+      "fg": "#212121",
+      "ratio": 16.1
+    },
+    "use_crop_text_on_primary": {
+      "bg": "#3F51B5",
+      "fg": "#FFFFFF",
+      "ratio": 6.87
+    }
+  },
+  "light_theme_states": {
+    "confirmation": {
+      "adjust_crop_on_surface": {
+        "bg": "#FFFFFF",
+        "fg": "#3F51B5",
+        "ratio": 6.87
+      },
+      "cancel_text_on_cancel_fill": {
+        "bg": "#E0E0E0",
+        "fg": "#212121",
+        "ratio": 12.2
+      },
+      "ok_text_on_primary": {
+        "bg": "#3F51B5",
+        "fg": "#FFFFFF",
+        "ratio": 6.87
+      },
+      "title_on_surface": {
+        "bg": "#FFFFFF",
+        "fg": "#212121",
+        "ratio": 16.1
+      }
+    },
+    "editor": {
+      "cancel_text_on_cancel_fill": {
+        "bg": "#E0E0E0",
+        "fg": "#212121",
+        "ratio": 12.2
+      },
+      "copy_on_surface": {
+        "bg": "#FFFFFF",
+        "fg": "#595959",
+        "ratio": 7.0
+      },
+      "readout_on_surface": {
+        "bg": "#FFFFFF",
+        "fg": "#595959",
+        "ratio": 7.0
+      },
+      "title_on_surface": {
+        "bg": "#FFFFFF",
+        "fg": "#212121",
+        "ratio": 16.1
+      },
+      "use_crop_text_on_primary": {
+        "bg": "#3F51B5",
+        "fg": "#FFFFFF",
+        "ratio": 6.87
+      }
+    },
+    "failure": {
+      "body_on_surface": {
+        "bg": "#FFFFFF",
+        "fg": "#212121",
+        "ratio": 16.1
+      },
+      "cancel_text_on_cancel_fill": {
+        "bg": "#E0E0E0",
+        "fg": "#212121",
+        "ratio": 12.2
+      },
+      "crop_text_on_danger_fill": {
+        "bg": "#EB0054",
+        "fg": "#FFFFFF",
+        "ratio": 4.51
+      },
+      "failure_line_on_surface": {
+        "bg": "#FFFFFF",
+        "fg": "#D93C30",
+        "ratio": 4.53
+      },
+      "ok_text_on_primary": {
+        "bg": "#3F51B5",
+        "fg": "#FFFFFF",
+        "ratio": 6.87
+      },
+      "title_on_surface": {
+        "bg": "#FFFFFF",
+        "fg": "#212121",
+        "ratio": 16.1
+      }
+    }
+  },
+  "note": "Colours are medians/modes of the element's own pixels (hex, 8-bit sRGB); contrast is WCAG 2.x relative luminance. Legacy pairs are reported as measured and may fail AA; the light theme is a proposal whose text pairs the script asserts at >= 4.5:1 and non-text at >= 3:1.",
+  "schema": 1,
+  "source": {
+    "confirmation": {
+      "file": "images/crop image.png",
+      "sha256": "dc2b07087ca3b488b354f08a74eae95b9e9876cd3bf70013a1372a61dd98a280"
+    },
+    "editor": {
+      "file": "images/crop 2.png",
+      "sha256": "753f4ad693874253085b60791d83e630765acb50e7f6d74c7363432f3c16b6c1"
+    },
+    "failure": {
+      "file": "images/failed to align.png",
+      "sha256": "074096a95337fe9b78cd1b5e4cc6069fc6fab05bbbe3fc1cb407d6d4bf30255b"
+    }
+  }
+}

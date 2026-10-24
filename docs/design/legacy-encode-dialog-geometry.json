@@ -1,0 +1,435 @@
+{
+  "dialogs": {
+    "confirmation": {
+      "adjust_crop_text": {
+        "h": 0.0296,
+        "w": 0.2473,
+        "x": 0.3763,
+        "y": 1.0806
+      },
+      "cancel": {
+        "h": 0.0968,
+        "w": 0.2285,
+        "x": 0.0968,
+        "y": 1.1801
+      },
+      "cancel_text": {
+        "h": 0.0296,
+        "w": 0.1398,
+        "x": 0.1425,
+        "y": 1.2124
+      },
+      "image_px": {
+        "height": 520,
+        "width": 395
+      },
+      "logo": {
+        "h": 0.0806,
+        "w": 0.0565,
+        "x": 0.8683,
+        "y": 0.043
+      },
+      "modal": {
+        "aspect_h_over_w": 1.3306,
+        "height_px": 495,
+        "width_px": 372
+      },
+      "modal_offset_in_image_px": {
+        "x": 9,
+        "y": 8
+      },
+      "ok": {
+        "h": 0.0968,
+        "w": 0.172,
+        "x": 0.7312,
+        "y": 1.1801
+      },
+      "ok_text": {
+        "h": 0.0296,
+        "w": 0.0484,
+        "x": 0.793,
+        "y": 1.2124
+      },
+      "padding": {
+        "bottom": 0.0537,
+        "footer_left": 0.0968,
+        "left": 0.0672,
+        "preview_left": 0.0968,
+        "preview_right": 0.0968,
+        "right": 0.0753,
+        "top": 0.0645
+      },
+      "preview": {
+        "h": 0.8065,
+        "w": 0.8065,
+        "x": 0.0968,
+        "y": 0.2258
+      },
+      "title": {
+        "h": 0.0511,
+        "w": 0.4086,
+        "x": 0.0672,
+        "y": 0.0645
+      },
+      "title_baseline_y": 0.1048
+    },
+    "editor": {
+      "black_band": {
+        "h": 0.025,
+        "w": 0.88,
+        "x": 0.06,
+        "y": 0.14
+      },
+      "cancel": {
+        "h": 0.06,
+        "w": 0.1417,
+        "x": 0.06,
+        "y": 1.3583
+      },
+      "cancel_text": {
+        "h": 0.0183,
+        "w": 0.0867,
+        "x": 0.0883,
+        "y": 1.3783
+      },
+      "copy_block": {
+        "box": {
+          "h": 0.145,
+          "w": 0.7367,
+          "x": 0.08,
+          "y": 1.1867
+        },
+        "lines": [
+          {
+            "h": 0.025,
+            "w": 0.7367,
+            "x": 0.08,
+            "y": 1.1867
+          },
+          {
+            "h": 0.0233,
+            "w": 0.335,
+            "x": 0.08,
+            "y": 1.2267
+          },
+          {
+            "h": 0.0333,
+            "w": 0.735,
+            "x": 0.08,
+            "y": 1.2583
+          },
+          {
+            "h": 0.025,
+            "w": 0.435,
+            "x": 0.0817,
+            "y": 1.3067
+          }
+        ]
+      },
+      "eye_markers": {
+        "centres": [
+          {
+            "x": 0.4125,
+            "y": 0.5542
+          },
+          {
+            "x": 0.5875,
+            "y": 0.5558
+          }
+        ],
+        "diameter": 0.0312,
+        "diameter_px": 18.7,
+        "line_y_in_oval": 0.4629,
+        "mid_x_offset_from_oval_centre": 0.0021,
+        "spacing": 0.175
+      },
+      "handles": {
+        "centres": {
+          "bottom": {
+            "x": 0.5,
+            "y": 0.9325
+          },
+          "bottom_left": {
+            "x": 0.1475,
+            "y": 0.9325
+          },
+          "bottom_right": {
+            "x": 0.8525,
+            "y": 0.9325
+          },
+          "left": {
+            "x": 0.1475,
+            "y": 0.58
+          },
+          "right": {
+            "x": 0.8525,
+            "y": 0.58
+          },
+          "top": {
+            "x": 0.5,
+            "y": 0.2275
+          },
+          "top_left": {
+            "x": 0.1475,
+            "y": 0.2275
+          },
+          "top_right": {
+            "x": 0.8525,
+            "y": 0.2275
+          }
+        },
+        "size": 0.015,
+        "size_px": 9.0
+      },
+      "image_px": {
+        "height": 885,
+        "width": 623
+      },
+      "logo": {
+        "h": 0.05,
+        "w": 0.035,
+        "x": 0.9183,
+        "y": 0.0267
+      },
+      "modal": {
+        "aspect_h_over_w": 1.4533,
+        "height_px": 872,
+        "width_px": 600
+      },
+      "modal_offset_in_image_px": {
+        "x": 9,
+        "y": 6
+      },
+      "oval_guide": {
+        "centre_offset_from_stencil_centre": {
+          "x": -0.003,
+          "y": -0.0012
+        },
+        "h": 0.6747,
+        "in_stencil": {
+          "h": 0.957,
+          "w": 0.6967,
+          "x": 0.1487,
+          "y": 0.0203
+        },
+        "w": 0.4912,
+        "x": 0.2523,
+        "y": 0.2418
+      },
+      "padding": {
+        "bottom": 0.035,
+        "footer_left": 0.06,
+        "left": 0.0417,
+        "preview_left": 0.06,
+        "preview_right": 0.06,
+        "right": 0.0467,
+        "top": 0.04
+      },
+      "photo_content": {
+        "h": 0.855,
+        "w": 0.88,
+        "x": 0.06,
+        "y": 0.165
+      },
+      "photo_frame": {
+        "h": 0.88,
+        "w": 0.88,
+        "x": 0.06,
+        "y": 0.14
+      },
+      "rotate_icon": {
+        "h": 0.04,
+        "w": 0.04,
+        "x": 0.4683,
+        "y": 1.04
+      },
+      "rotate_pair_centre_offset_from_photo_centre": 0.01,
+      "rotate_readout": {
+        "h": 0.02,
+        "w": 0.0233,
+        "x": 0.5283,
+        "y": 1.0483
+      },
+      "slider_thumb": {
+        "centre": {
+          "x": 0.5,
+          "y": 1.1233
+        },
+        "centre_along_track": 0.5,
+        "diameter": 0.0167,
+        "diameter_px": 10
+      },
+      "slider_track": {
+        "span_of_modal_width": 0.88,
+        "thickness": 0.0033,
+        "thickness_px": 2,
+        "x0": 0.06,
+        "x1": 0.94,
+        "y": 1.1233
+      },
+      "stencil": {
+        "h": 0.705,
+        "w": 0.705,
+        "x": 0.1475,
+        "y": 0.2275
+      },
+      "stencil_outline": {
+        "width_px": 1.3
+      },
+      "title": {
+        "h": 0.0317,
+        "w": 0.2433,
+        "x": 0.0417,
+        "y": 0.04
+      },
+      "title_baseline_y": 0.065,
+      "use_crop": {
+        "h": 0.06,
+        "w": 0.1633,
+        "x": 0.7767,
+        "y": 1.3583
+      },
+      "use_crop_text": {
+        "h": 0.0183,
+        "w": 0.1083,
+        "x": 0.805,
+        "y": 1.3783
+      }
+    },
+    "failure": {
+      "cancel": {
+        "h": 0.06,
+        "w": 0.1417,
+        "x": 0.06,
+        "y": 1.185
+      },
+      "cancel_text": {
+        "h": 0.0183,
+        "w": 0.0867,
+        "x": 0.0883,
+        "y": 1.205
+      },
+      "crop_button": {
+        "h": 0.0617,
+        "w": 0.1133,
+        "x": 0.4433,
+        "y": 0.8833
+      },
+      "crop_button_text": {
+        "h": 0.0183,
+        "w": 0.06,
+        "x": 0.47,
+        "y": 0.9033
+      },
+      "failure_line": {
+        "h": 0.0267,
+        "w": 0.2967,
+        "x": 0.0617,
+        "y": 0.9917
+      },
+      "guidance": {
+        "box": {
+          "h": 0.1067,
+          "w": 0.8283,
+          "x": 0.06,
+          "y": 1.0317
+        },
+        "lines": [
+          {
+            "h": 0.0267,
+            "w": 0.8283,
+            "x": 0.06,
+            "y": 1.0317
+          },
+          {
+            "h": 0.0267,
+            "w": 0.7917,
+            "x": 0.0617,
+            "y": 1.0717
+          },
+          {
+            "h": 0.025,
+            "w": 0.3183,
+            "x": 0.0617,
+            "y": 1.1133
+          }
+        ]
+      },
+      "image_px": {
+        "height": 784,
+        "width": 615
+      },
+      "logo": {
+        "h": 0.05,
+        "w": 0.035,
+        "x": 0.9183,
+        "y": 0.0267
+      },
+      "modal": {
+        "aspect_h_over_w": 1.2783,
+        "height_px": 767,
+        "width_px": 600
+      },
+      "modal_offset_in_image_px": {
+        "x": 8,
+        "y": 6
+      },
+      "ok": {
+        "h": 0.06,
+        "w": 0.1067,
+        "x": 0.8333,
+        "y": 1.185
+      },
+      "ok_text": {
+        "h": 0.0183,
+        "w": 0.03,
+        "x": 0.8717,
+        "y": 1.205
+      },
+      "padding": {
+        "bottom": 0.0333,
+        "footer_left": 0.06,
+        "left": 0.0417,
+        "preview_left": 0.06,
+        "preview_right": 0.06,
+        "right": 0.0467,
+        "top": 0.04
+      },
+      "preview": {
+        "h": 0.7333,
+        "w": 0.88,
+        "x": 0.06,
+        "y": 0.14
+      },
+      "title": {
+        "h": 0.0317,
+        "w": 0.2483,
+        "x": 0.0417,
+        "y": 0.04
+      },
+      "title_baseline_y": 0.065
+    }
+  },
+  "notes": [
+    "Boxes are the exact-colour fill extent for buttons and the ink extent for text; anti-aliased edge pixels may add up to one pixel of error (about 0.002 of modal width).",
+    "The title baseline is the bottom edge of the last row whose ink count is at least 40 percent of the densest row (descenders excluded).",
+    "A mouse-pointer arrow is present in all three screenshots and is excluded by search-region choice.",
+    "The screenshots are cropped to the modal plus a thin strip of dimmed page; the viewport size they came from is unknown."
+  ],
+  "schema": 1,
+  "source": {
+    "confirmation": {
+      "file": "images/crop image.png",
+      "sha256": "dc2b07087ca3b488b354f08a74eae95b9e9876cd3bf70013a1372a61dd98a280"
+    },
+    "editor": {
+      "file": "images/crop 2.png",
+      "sha256": "753f4ad693874253085b60791d83e630765acb50e7f6d74c7363432f3c16b6c1"
+    },
+    "failure": {
+      "file": "images/failed to align.png",
+      "sha256": "074096a95337fe9b78cd1b5e4cc6069fc6fab05bbbe3fc1cb407d6d4bf30255b"
+    }
+  },
+  "units": "Every x/y/w/h is a fraction of the modal width (both axes) from the modal's top-left, rounded to 4 decimals; *_px keys are pixels in the locked screenshot. Fractions are comparable at any viewport (e.g. 390 or 1280 px wide) by multiplying by the modal width."
+}

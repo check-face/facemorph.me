@@ -1,0 +1,29 @@
+name: design-reference
+# fm-bbhu: the legacy encode-dialog measurements. Unit tests of the measuring helpers always run; the byte-for-byte
+# reproduction of docs/design/*.json runs where the locked reference bundle exists on the runner (eris), since the
+# locked images contain face photographs and never enter Git.
+on:
+  push:
+    branches: [main]
+    paths: ['scripts/design/**', 'docs/design/**', '.github/workflows/design-reference.yml']
+  workflow_dispatch:
+concurrency:
+  group: design-reference
+  cancel-in-progress: false
+jobs:
+  measure:
+    runs-on: [self-hosted, eris]
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python3 -m venv "$RUNNER_TEMP/venv"
+          "$RUNNER_TEMP/venv/bin/pip" install -q numpy==2.2.6 pillow==12.2.0 scipy==1.15.3
+      - run: '"$RUNNER_TEMP/venv/bin/python" -m unittest scripts/design/measure_legacy_dialog_test.py -v'
+      - name: Locked PNGs verify and reproduce the committed geometry and colours byte for byte
+        run: |
+          bundle="$HOME/Work/dev/checkface/reference-locks/2026-10-11-original-plan-and-images"
+          if [ -f "$bundle/SHA256SUMS" ]; then
+            "$RUNNER_TEMP/venv/bin/python" scripts/design/measure-legacy-dialog.py --bundle "$bundle" --check
+          else
+            echo "::warning::locked bundle not on this runner: reproduction untested in this run"
+          fi
