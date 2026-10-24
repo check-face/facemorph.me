@@ -197,10 +197,11 @@ async function pool(items, n, fn) {
 // Make the bucket match the manifest rows. verifyOnly reads the bucket and fetches nothing.
 export async function run({ rows, client, bucket = DEFAULTS.bucket, concurrency = DEFAULTS.concurrency, attempts = DEFAULTS.attempts, verifyOnly = false, log = () => {} }) {
   const counts = { verified: 0, fetched: 0, refetchedCorrupt: 0 };
-  const problems = { absent: [], corrupt: [], missing: [], 'source-failed': [], 'source-mismatch': [], 'store-mismatch': [] };
+  const problems = { absent: [], corrupt: [], missing: [], 'source-failed': [], 'source-mismatch': [], 'store-mismatch': [], 'store-error': [] };
   let done = 0;
   await pool(rows, concurrency, async (row) => {
-    const r = await syncRow(row, { client, bucket, verifyOnly, attempts });
+    // A store error (after the SDK's own retries) is reported for its row; a re-run picks it up.
+    const r = await syncRow(row, { client, bucket, verifyOnly, attempts }).catch(() => ({ outcome: 'store-error' }));
     if (r.outcome === 'verified') counts.verified++;
     else if (r.outcome === 'fetched') {
       counts.fetched++;
@@ -254,7 +255,7 @@ export async function clientFromArgs(a, bucket, write) {
 export const parseArgs = (argv) => Object.fromEntries(argv.map((x) => x.replace(/^--/, '').split(/=(.*)/s).slice(0, 2)).map(([k, v]) => [k, v ?? true]));
 
 async function plan(a) {
-  const [seedSrc, catSrc] = a.origins ? a.origins.split(',').map((origin, i) => ({ ...SOURCES[i], origin })) : SOURCES;
+  const [seedSrc, catSrc] = SOURCES;
   const get = async (url) => {
     const r = await fetchSource(url);
     if (r.status !== 'ok') throw new Error(`could not fetch ${url}: ${r.status}`);
@@ -310,13 +311,16 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       const summaryPath = a.summary ? resolve(a.summary) : SUMMARY_PATH;
       const summary = JSON.parse(readFileSync(summaryPath, 'utf8'));
       if (summary.manifest.sha256 !== sha256(text)) throw new Error('summary describes a different manifest');
-      summary.store = { bucket, endpointClass, keyScheme: 'source URL without scheme', verifiedAt: new Date().toISOString(), verifiedObjects: report.total, verifiedBytes: report.bytes };
+      summary.store = {
+        bucket, endpointClass, keyScheme: 'source URL without scheme', verifiedAt: new Date().toISOString(), mode: cmd,
+        verifiedObjects: report.total, verifiedBytes: report.bytes, fetchedThisRun: report.fetched,
+      };
       writeFileSync(summaryPath, `${JSON.stringify(summary, null, 2)}\n`);
     }
     for (const [k, v] of Object.entries(report.problems)) for (const url of v.slice(0, 20)) log({ event: 'problem', kind: k, url });
     process.exitCode = report.complete ? EXIT.complete : EXIT.incomplete;
   } else {
-    console.error('usage: snapshot.mjs plan [--origins=<seed>,<catalogue>] | run|verify [--bucket=] [--mint-r2=<account id>] [--record-summary] [--concurrency=]');
+    console.error('usage: snapshot.mjs plan | run|verify [--bucket=] [--mint-r2=<account id>] [--record-summary] [--concurrency=]');
     process.exitCode = EXIT.usage;
   }
 }

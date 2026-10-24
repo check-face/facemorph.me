@@ -12,7 +12,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync, existsSync } from 'no
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { MANIFEST_PATH, SUMMARY_PATH, parseArgs, sha256 } from './snapshot.mjs';
+import { DEFAULTS, MANIFEST_PATH, SUMMARY_PATH, parseArgs, sha256 } from './snapshot.mjs';
 import { classify, tally } from './net-recorder.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -63,7 +63,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     const summary = JSON.parse(readFileSync(summaryPath, 'utf8'));
     if (summary.manifest.sha256 !== sha256(text)) throw new Error('summary describes a different manifest');
     summary.restoreCheck = {
-      at: new Date().toISOString(), bucket: a.bucket ?? summary.store?.bucket, selected: r.result.selected, restoredWithMatchingHashes: r.result.restored,
+      at: new Date().toISOString(), bucket: a.bucket ?? DEFAULTS.bucket, selected: r.result.selected, restoredWithMatchingHashes: r.result.restored,
       bytes: r.result.bytes, connectionsByHostClass: r.byClass,
     };
     writeFileSync(summaryPath, `${JSON.stringify(summary, null, 2)}\n`);

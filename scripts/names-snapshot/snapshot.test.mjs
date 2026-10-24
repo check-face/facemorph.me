@@ -207,6 +207,28 @@ test('source faults: a transient 500 and a truncated body are retried; persisten
   assert.equal(hitsFor(cut.url), 2);
 });
 
+test('a write that does not land is caught by the read-back; nothing is counted stored', { skip }, async () => {
+  reset();
+  // SeaweedFS accepts a PutObject to a bucket that does not exist, but the object is never readable.
+  const r = await run({ rows, client: client(), bucket: 'no-such-bucket-fm-old' });
+  assert.equal(r.complete, false);
+  assert.equal(r.problems['store-mismatch'].length, rows.length);
+  assert.equal(r.fetched, 0);
+});
+
+test('an unreachable store reports each row as a store error without aborting the run', async () => {
+  const closed = createServer();
+  await new Promise((r) => closed.listen(0, '127.0.0.1', r));
+  const port = closed.address().port;
+  await new Promise((r) => closed.close(r)); // nothing listens on this port now
+  reset();
+  const dead = s3Client({ endpoint: `http://127.0.0.1:${port}`, accessKeyId: 'test', secretAccessKey: 'test' });
+  const r = await run({ rows: rows.slice(0, 3), client: dead, bucket: 'any' });
+  assert.equal(r.complete, false);
+  assert.equal(r.problems['store-error'].length, 3);
+  assert.equal(originHits(), 0);
+});
+
 test('restore rebuilds a sample from the snapshot with matching hashes; a corrupted object is refused', { skip }, async () => {
   const b = await storedBucket();
   const out = mkdtempSync(join(tmpdir(), 'fm-old-restore-test-'));
