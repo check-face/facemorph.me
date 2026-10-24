@@ -39,7 +39,9 @@ jobs:
         with:
           node-version: '24'
       - uses: ./.github/actions/setup-workspace # node_modules for the lockfile, shared on the runner (fm-98po)
-      - run: npx playwright install --with-deps chromium firefox webkit
+      - uses: ./.github/actions/setup-playwright # browsers cached per Playwright version (fm-98po)
+        with:
+          browsers: chromium firefox webkit
       - run: npm run build
       - name: build:next (the pinned control, served by the verification harness's artifact fixture, fm-48bj)
         run: npm run build:next

@@ -1,0 +1,28 @@
+name: setup-playwright
+description: >-
+  Playwright's browsers for the installed Playwright version (fm-98po). Self-hosted runners share one browser cache
+  (PLAYWRIGHT_BROWSERS_PATH, or the user's cache), where `playwright install` is a no-op when the version is already
+  there. Hosted runners restore the browsers from the Actions cache keyed by the lockfile (which pins the Playwright
+  version) and then install only the system packages they need; a miss downloads them. Run after setup-workspace.
+inputs:
+  browsers:
+    description: Space-separated browsers to install
+    default: chromium
+runs:
+  using: composite
+  steps:
+    - if: runner.environment != 'github-hosted'
+      shell: bash
+      run: npx playwright install ${{ inputs.browsers }}
+    - if: runner.environment == 'github-hosted'
+      id: hosted
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/ms-playwright
+        key: playwright-${{ runner.os }}-${{ runner.arch }}-${{ inputs.browsers }}-${{ hashFiles('package-lock.json') }}
+    - if: runner.environment == 'github-hosted' && steps.hosted.outputs.cache-hit == 'true'
+      shell: bash
+      run: npx playwright install-deps ${{ inputs.browsers }}
+    - if: runner.environment == 'github-hosted' && steps.hosted.outputs.cache-hit != 'true'
+      shell: bash
+      run: npx playwright install --with-deps ${{ inputs.browsers }}
