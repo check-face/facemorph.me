@@ -12,6 +12,13 @@ each retried chunk and the origin that finally served it, and the terminal event
   uv run --with playwright python download.py --cells eris-cpu --interrupt 0.35:30      # every tunnel cut for 30 s
   uv run --with playwright python download.py --cells eris-cpu --interrupt 0.35:30 --cut blackhole  # silent dead link
   uv run --with playwright python download.py --cells eris-cpu --throttle-kbps 4000     # a 4 Mbit/s link
+  uv run --with playwright python download.py --client package --cells eris-cpu,phone-cpu --interrupt 0.35:30
+
+`--client package` runs the same cold download through @facemorph/browser-model-manager instead of the deployed app
+(fm-fr9s): this checkout's package, built fresh, is served into a page of the real origin (the runtime manifest's own
+document, so no app code runs beside it), and acquires the runtime manifest's face model and photo encoder from the
+real origins under one grant, with the app's alternate-origin configuration. Its progress comes from the package's
+own whole-acquisition counter; the summary adds every verified chunk fetched more than once (there must be none).
 
 Interruptions are real. On the phone, Wi-Fi is switched off through adb and back on (the phone has no SIM, so it is
 offline in between). On eris, Chromium goes through a local CONNECT proxy with a fault switch, which refuses new
@@ -33,6 +40,9 @@ import lab
 from lab import CELLS, log, sh
 
 TOAST = '.next-model-toast'
+ROOT = Path(__file__).resolve().parents[2]
+# The full package a first visitor's "Plus photo encoder" takes: the CPU face model and the photo encoder.
+PACKAGE_PARTS = ('runtime', 'mapping', 'synthesis', 'average', 'noise', 'encoder', 'landmarks')
 HOSTS = ('next.facemorph.me', 'models.facemorph.me')
 # The toast's own words for each phase (src/Next/Product.fs, model toast). Sizes are binary megabytes.
 PHASES = (('Downloading the face model', 'route'), ('Downloading the photo encoder', 'photo'),
@@ -76,6 +86,15 @@ def retried_chunks(requests):
         out.append({'path': path, 'servedBy': served,
                     'attempts': [{k: a.get(k) for k in ('t', 'host', 'query', 'status', 'failure', 'endT')} for a in attempts]})
     return out
+
+
+def verified_refetches(requests):
+    """Runtime files served whole (HTTP 200, finished) more than once: a verified chunk fetched again."""
+    served = {}
+    for r in requests:
+        if r['path'].startswith('/runtime/') and r.get('status') == 200 and r.get('finished'):
+            served[r['path']] = served.get(r['path'], 0) + 1
+    return sorted(path for path, n in served.items() if n > 1)
 
 
 def by_host(requests):
@@ -337,10 +356,114 @@ def journey_download(dev, ctx, url, cut, interrupt, stall_s, cap_s, out, name):
     return rec
 
 
+def build_package(out):
+    """This checkout's browser-model-manager as browsers load it (its build output), and the app's alternate-origin
+    configuration with its types stripped, into out/manager/."""
+    target = out / 'manager'
+    subprocess.run(['node', str(ROOT / 'node_modules/typescript/bin/tsc'), '-p',
+                    str(ROOT / 'packages/browser-model-manager/tsconfig.build.json'), '--outDir', str(target)], check=True)
+    strip = ("const m=require('node:module'),fs=require('node:fs');"
+             "process.stdout.write(m.stripTypeScriptTypes(fs.readFileSync(process.argv[1],'utf8')))")
+    config = subprocess.run(['node', '-e', strip, str(ROOT / 'apps/web/src/contracts/model-origins.ts')],
+                            capture_output=True, text=True, check=True).stdout
+    (target / 'config').mkdir(exist_ok=True)
+    (target / 'config' / 'model-origins.js').write_text(config)
+    return target
+
+
+# In the page: start the acquisition and return what is planned; window.__mgr carries its progress.
+START_PACKAGE = """async (parts) => {
+  const m = await import('/__manager/index.js');
+  const { modelAlternateOrigins } = await import('/__manager/config/model-origins.js');
+  const manifest = await (await fetch('/runtime/manifest.json', { cache: 'no-store' })).json();
+  const parsed = m.parseModelManifest(manifest);
+  const assets = [...new Map(parts.flatMap((p) => m.collectAssets(manifest[p])).map((a) => [a.sha256, a])).values()];
+  const total = assets.reduce((n, a) => n + a.size, 0);
+  const grant = { manifestSha256: 'device-lab', route: 'cpu', purpose: 'generate-and-encode',
+    assets: assets.map((a) => ({ sha256: a.sha256, bytes: a.size, priority: 'foreground-required' })),
+    remainingBytes: Math.ceil(total * 1.5), owners: ['face:lab'] };
+  const st = (window.__mgr = { total, loaded: 0, fetched: 0, done: false, error: null, spent: null });
+  const progress = m.createAcquisitionBudget();
+  progress.planAsset(assets);
+  progress.attach((t) => { st.loaded = t.loaded; st.fetched = t.fetched; });
+  const alternateOrigins = modelAlternateOrigins(location.hostname);
+  const cache = await m.createBrowserModelCache({ alternateOrigins, report: (e) => progress.cacheEvent(e) });
+  const settle = () => (st.spent = grant.remainingBytes - m.grantRemaining(grant));
+  Promise.all(assets.map((a) => cache.acquire(a, { grant, owner: 'face:lab' }))).then(
+    () => { settle(); st.done = true; },
+    (e) => { settle(); st.error = String((e && e.message) || e); });
+  return { total, assets: assets.length, manifestOk: parsed.ok, alternateOrigins };
+}"""
+
+
+def journey_package(dev, ctx, url, cut, interrupt, stall_s, cap_s, out, name, package):
+    origin = re.match(r'https?://[^/]+', url).group(0)
+    dev.clear_origin(url)
+    ctx.route(f'{origin}/__manager/**', lambda route: route.fulfill(
+        path=str(package / urlsplit(route.request.url).path[len('/__manager/'):]),
+        headers={'content-type': 'text/javascript', 'cache-control': 'no-store'}))
+    t_load = time.time()
+    dev.page.goto(f'{origin}/runtime/manifest.json', wait_until='load')  # the origin's document, no app code
+    t0 = time.time()
+    net = NetLog(ctx, t0)
+    host = HostNetwork(t0) if cut.kind == 'desktop' else None
+    if host:
+        host.start()
+    plan = dev.js(START_PACKAGE, list(PACKAGE_PARTS))
+    planned = plan['total'] / MIB
+    rec = {'client': 'package', 'plannedMb': round(planned), 'assets': plan['assets'], 'manifestOk': plan['manifestOk'],
+           'alternateOrigins': plan['alternateOrigins'], 'usableS': round(t0 - t_load, 1), 'timeline': []}
+    last, last_change, cut_at, terminal = None, t0, None, None
+    while terminal is None:
+        now = time.time()
+        if getattr(dev, 'crashed', False):
+            terminal = 'crashed'
+            break
+        st = dev.js('window.__mgr')
+        key = (round(st['loaded'] / MIB), round(net.finished_mib()))
+        if key != last:
+            last, last_change = key, now
+            rec['timeline'].append({'t': round(now - t0, 1), 'loadedMb': key[0], 'networkMb': key[1]})
+        if st['done']:
+            terminal = 'done'
+        elif st['error']:
+            terminal, rec['packageError'] = 'failed', st['error'][:300]
+        elif interrupt and cut_at is None and net.finished_mib() >= interrupt[0] * planned:
+            cut.set(True)
+            cut_at = now
+            rec['interrupt'] = {'atS': round(now - t0, 1), 'atMb': round(net.finished_mib()), 'forS': interrupt[1]}
+            log('interrupt_on', at_mb=rec['interrupt']['atMb'])
+        elif cut_at and 'backS' not in rec.get('interrupt', {}) and now - cut_at >= interrupt[1]:
+            cut.set(False)
+            rec['interrupt']['backS'] = round(now - t0, 1)
+            last_change = now
+            log('interrupt_off')
+        elif now - last_change > stall_s and not (cut_at and 'backS' not in rec['interrupt']):
+            terminal = 'stalled'
+        elif now - t0 > cap_s:
+            terminal = 'cap'
+        time.sleep(1)
+    if cut_at and 'backS' not in rec['interrupt']:
+        cut.set(False)
+    if host:
+        rec['hostNetworkChanges'] = host.stop()
+    st = dev.js('window.__mgr')
+    with open(out / f'{name}.requests.jsonl', 'w') as f:
+        for row in net.rows:
+            f.write(json.dumps(row) + '\n')
+    rec.update(terminal=terminal, stage='package', elapsedS=round(time.time() - t0, 1), appLoadedMb=round(st['loaded'] / MIB),
+               grantSpentMb=st['spent'] and round(st['spent'] / MIB), networkMb=round(net.finished_mib()),
+               requests=len(net.rows), byHost=by_host(net.rows), retried=retried_chunks(net.rows),
+               verifiedRefetched=verified_refetches(net.rows),
+               failures=[r for r in net.rows if r.get('failure') or (r.get('status') or 200) != 200][:200],
+               stillOpen=len(net.open))
+    return rec
+
+
 def run_cell(cell, args, out):
     from playwright.sync_api import sync_playwright
     kind, gpu = CELLS[cell]
-    report = {'cell': cell, 'label': args.label, 'url': args.url, 'throttleKbps': args.throttle_kbps,
+    report = {'cell': cell, 'label': args.label, 'url': args.url, 'client': args.client, 'throttleKbps': args.throttle_kbps,
               'interrupt': args.interrupt, 'cut': (args.cut if kind == 'desktop' else 'wifi') if args.interrupt else None,
               'runs': []}
     proxy = None
@@ -359,8 +482,13 @@ def run_cell(cell, args, out):
                 rec['startTempC'] = lab.cool_down()
                 mem.start()
             try:
-                rec |= journey_download(dev, ctx, args.url, cut, args.interrupt, args.stall_s, args.cap_s, out, name)
-                rec['ok'] = rec['terminal'] == 'done'
+                if args.client == 'package':
+                    rec |= journey_package(dev, ctx, args.url, cut, args.interrupt, args.stall_s, args.cap_s, out, name,
+                                           args.package)
+                    rec['ok'] = rec['terminal'] == 'done' and not rec['verifiedRefetched']
+                else:
+                    rec |= journey_download(dev, ctx, args.url, cut, args.interrupt, args.stall_s, args.cap_s, out, name)
+                    rec['ok'] = rec['terminal'] == 'done'
             except Exception as e:
                 rec['ok'], rec['error'] = False, f'{type(e).__name__}: {e}'[:400]
             finally:
@@ -424,7 +552,10 @@ def summarise(reports, out, title):
             cut = r.get('interrupt')
             cut = '%.0f s at %s MB' % (cut['forS'], cut['atMb']) if cut else '–'
             hosts = ', '.join('%s: %d' % kv for kv in served.items()) or '–'
-            md.append(f"| {rep['cell']} | {r['iteration']} | {r.get('terminal') or 'ERROR'} | {r.get('stage') or '–'} | "
+            terminal = r.get('terminal') or 'ERROR'
+            if 'verifiedRefetched' in r:
+                terminal += f" ({len(r['verifiedRefetched'])} verified refetched)"
+            md.append(f"| {rep['cell']} | {r['iteration']} | {terminal} | {r.get('stage') or '–'} | "
                       f"{r.get('elapsedS', '–')} s | {r.get('appLoadedMb') or '–'} / {r.get('networkMb', '–')} MB | "
                       f"{r.get('plannedMb', '–')} MB | {cut} | {len(r.get('retried', []))} ({hosts}) | "
                       f"{(r.get('error') or first)[:90]} |")
@@ -461,6 +592,8 @@ def main():
     ap.add_argument('--stall-s', type=float, default=180, help='no progress for this long ends the run as stalled')
     ap.add_argument('--cap-s', type=float, default=3600, help='longest a run may take')
     ap.add_argument('--label', default='run')
+    ap.add_argument('--client', choices=['app', 'package'], default='app',
+                    help="who downloads: the deployed app (its model toast) or this checkout's browser-model-manager")
     args = ap.parse_args()
     cells = args.cells.split(',')
     signal.signal(signal.SIGTERM, lab._terminate)
@@ -468,10 +601,12 @@ def main():
     with devices_held(cells):
         out = lab.HERE / 'out' / (datetime.now().strftime('%Y%m%d-%H%M%S') + '-download-' + args.label)
         out.mkdir(parents=True, exist_ok=True)
+        args.package = build_package(out) if args.client == 'package' else None
         reports = [run_cell(c, args, out) for c in cells]
     extra = ', '.join(x for x in (args.throttle_kbps and f'{args.throttle_kbps} kbit/s',
                                   args.interrupt and f'{args.cut} interrupt {args.interrupt[1]:.0f} s at {args.interrupt[0]:.0%}') if x)
-    summarise(reports, out, f"Cold full-package download: {args.label} ({args.url}{', ' + extra if extra else ''})")
+    who = ', browser-model-manager' if args.client == 'package' else ''
+    summarise(reports, out, f"Cold full-package download: {args.label} ({args.url}{who}{', ' + extra if extra else ''})")
     raise SystemExit(0 if all(r['ok'] for r in reports) else 1)
 
 

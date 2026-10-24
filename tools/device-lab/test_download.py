@@ -1,7 +1,7 @@
 """download.py's decision logic, called with plain values (python3 -m unittest test_download, from this folder)."""
 import argparse, unittest
 
-from download import by_host, parse_interrupt, read_toast, retried_chunks
+from download import by_host, parse_interrupt, read_toast, retried_chunks, verified_refetches
 
 
 class ReadToast(unittest.TestCase):
@@ -62,3 +62,16 @@ class Requests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class VerifiedRefetches(unittest.TestCase):
+    def test_a_chunk_served_whole_twice_is_a_refetch(self):
+        rows = Requests.rows + [{'t': 9.5, 'host': 'models.facemorph.me', 'path': '/runtime/assets/aa', 'query': '',
+                                 'status': 200, 'finished': True}]
+        self.assertEqual(verified_refetches(rows), ['/runtime/assets/aa'])
+
+    def test_failed_attempts_before_one_whole_serve_are_not(self):
+        self.assertEqual(verified_refetches(Requests.rows), [])  # the cut chunk was served whole once
+
+    def test_only_runtime_files_count(self):
+        self.assertEqual(verified_refetches([r for r in Requests.rows if r['path'] == '/516.js']), [])
