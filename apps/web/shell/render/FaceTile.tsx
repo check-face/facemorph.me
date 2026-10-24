@@ -2,6 +2,7 @@
 // public preview, or an empty photo drop target), the tile progress, the Remove control on the image, the
 // status line with Cancel, the field and Generate, the hidden source mirror, the photo row, Hold to compare and
 // the finished face's Share/Save actions. The `.next-*` DOM contract is the control's.
+// Buttons classic left uncoloured get color="inherit": MUI 4's default Button colour was the text colour, MUI 5+ made it primary.
 import CloseIcon from '@mui/icons-material/Close';
 import PhotoIcon from '@mui/icons-material/Photo';
 import Button from '@mui/material/Button';
@@ -92,7 +93,7 @@ export function FaceTile(p: FaceTileProps) {
       {(active || queued || preparing) && (
         <div className="next-tile-status" role="status">
           <span>{active ? p.status : preparing ? 'Preparing photo…' : 'Queued'}</span>
-          <Button size="small" onClick={p.onCancel}>Cancel</Button>
+          <Button color="inherit" size="small" onClick={p.onCancel}>Cancel</Button>
         </div>
       )}
       <div className="next-input-row">
@@ -106,7 +107,7 @@ export function FaceTile(p: FaceTileProps) {
       {item.mode === 'photo' && (
         <div className="next-file">
           <span>{item.value}</span>
-          <Button variant="text" size="small" disabled={active || !item.file} onClick={p.onRequestCrop}>Crop photo</Button>
+          <Button color="inherit" variant="text" size="small" disabled={active || !item.file} onClick={p.onRequestCrop}>Crop photo</Button>
         </div>
       )}
       {face && p.sourcePhotoUrl !== '' && (
@@ -115,7 +116,7 @@ export function FaceTile(p: FaceTileProps) {
           onBlur={() => p.onCompare(false)} onKeyDown={(e) => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); p.onCompare(true); } }} onKeyUp={() => p.onCompare(false)}>Hold to compare</button>
       )}
       <div className="next-actions next-face-actions">
-        {face && <><Button variant="text" onClick={p.onShare}>Share image</Button><Button variant="text" onClick={p.onSave}>Save image</Button></>}
+        {face && <><Button color="inherit" variant="text" onClick={p.onShare}>Share image</Button><Button color="inherit" variant="text" onClick={p.onSave}>Save image</Button></>}
       </div>
     </section>
   );

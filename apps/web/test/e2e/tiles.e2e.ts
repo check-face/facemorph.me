@@ -110,13 +110,18 @@ for (const [engine, type] of Object.entries(ENGINES).filter(([e]) => !only || on
         await page.waitForFunction(() => document.querySelectorAll('section.next-face').length === 1);
         assert.equal(await page.locator('.next-face-close').count(), 0, 'the last face is never removable');
 
-        // A running tile: its progress and the morph slot's bar fill by transform only.
+        // A running tile: its fill carries only a transform.
         await page.goto(`${site.origin}/render-check.html?faces=2&active=0&fraction=0.4`);
-        await page.waitForSelector('.next-face-progress-determinate');
+        const tileFill = page.locator('.next-face-progress-determinate');
+        await tileFill.waitFor();
+        assert.match(await tileFill.getAttribute('style') ?? '', /^transform: scaleX\(0\.4\);?$/, `${engine} ${width}: the tile fill`);
+        await shot(page, `${engine}-${width}-running`);
+        // A running morph: the slot's bar is filled in an animation frame, and every write is a transform.
+        await page.goto(`${site.origin}/render-check.html?faces=2&busy=1&fraction=0.4`);
         await page.waitForFunction(() => (window as unknown as { __fillStyles: string[] }).__fillStyles.length > 0);
         const styles = await page.evaluate(() => (window as unknown as { __fillStyles: (string | null)[] }).__fillStyles);
         for (const s of styles) assert.match(s ?? '', /^transform: scaleX\(0\.4\);?$/, `${engine} ${width}: a progress fill wrote ${s}`);
-        await shot(page, `${engine}-${width}-running`);
+        await shot(page, `${engine}-${width}-morph-running`);
 
         assert.deepEqual(errors, [], `${engine} ${width}: page errors`);
         await context.close();

@@ -12,13 +12,17 @@ const TYPES: Record<string, string> = {
 
 export interface Served { readonly origin: string; readonly requests: string[]; close(): Promise<void> }
 
-export async function serve(dir: string): Promise<Served> {
+/** `mounts` serves further directories under URL prefixes, e.g. { '/fixtures/': dir }. */
+export async function serve(dir: string, mounts: Record<string, string> = {}): Promise<Served> {
   const requests: string[] = [];
   const server: Server = createServer((req, res) => {
     const path = decodeURIComponent(new URL(req.url ?? '/', 'http://x').pathname);
     requests.push(path);
-    const file = normalize(join(dir, path.endsWith('/') ? `${path}index.html` : path));
-    if (path.startsWith('/runtime/') || !file.startsWith(normalize(dir)) || !existsSync(file) || !statSync(file).isFile()) { res.writeHead(404).end(); return; }
+    const mount = Object.keys(mounts).find((prefix) => path.startsWith(prefix));
+    const base = mount ? mounts[mount] as string : dir;
+    const rel = mount ? path.slice(mount.length) : path;
+    const file = normalize(join(base, rel.endsWith('/') || rel === '' ? `${rel}index.html` : rel));
+    if (path.startsWith('/runtime/') || !file.startsWith(normalize(base)) || !existsSync(file) || !statSync(file).isFile()) { res.writeHead(404).end(); return; }
     res.writeHead(200, { 'content-type': TYPES[extname(file)] ?? 'application/octet-stream' });
     createReadStream(file).pipe(res);
   });
