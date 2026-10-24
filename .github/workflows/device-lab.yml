@@ -1,0 +1,115 @@
+name: device-lab
+# Four cells of the same end-to-end journeys (tools/device-lab/lab.py): eris-webgpu, eris-cpu
+# (desktop Chromium on eris, RTX 2080 SUPER) and phone-webgpu, phone-cpu (Chrome on the
+# USB-connected Huawei P30 Pro). Runs on the self-hosted runner `eris-device-lab` only.
+#
+# - Continuous: every 4 hours and on demand, against what next.facemorph.me serves now.
+# - Deploy gate: classic's next-site.yml calls this with the exact candidate artifact; its deploy
+#   job needs this to pass on all four cells (operator rule, 24 October 2026).
+# Triggers are push-free on purpose: no pull_request, so fork code never reaches eris.
+on:
+  schedule:
+    - cron: '17 */4 * * *'
+  workflow_dispatch:
+    inputs:
+      url:
+        description: Site to test (ignored when an artifact is given)
+        default: https://next.facemorph.me/
+      cells:
+        description: Comma-separated cells
+        default: eris-webgpu,eris-cpu,phone-webgpu,phone-cpu
+      journey:
+        description: Journeys
+        default: cold-face,warm-face,morph
+  workflow_call:
+    inputs:
+      artifact_run:
+        type: string
+        required: true
+      artifact_name:
+        type: string
+        required: true
+      runtime_sha:
+        type: string
+        required: true
+      cells:
+        type: string
+        default: eris-webgpu,eris-cpu,phone-webgpu,phone-cpu
+      journey:
+        type: string
+        default: cold-face,warm-face,morph
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: device-lab
+  cancel-in-progress: false
+jobs:
+  matrix:
+    runs-on: [self-hosted, device-lab]
+    timeout-minutes: 120
+    steps:
+      - name: Check out the device lab
+        uses: actions/checkout@v4
+        with:
+          repository: check-face/facemorph.me
+          ref: main
+          path: lab
+          sparse-checkout: tools/device-lab
+      - name: Check out classic (qualification server) for an artifact run
+        if: inputs.artifact_name != ''
+        uses: actions/checkout@v4
+        with:
+          repository: check-face/facemorph.me-classic
+          ref: ${{ github.repository == 'check-face/facemorph.me-classic' && github.sha || 'candidate/next-delivery-20260916' }}
+          path: classic
+      - name: Download the exact candidate artifact
+        if: inputs.artifact_name != ''
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.artifact_name }}
+          run-id: ${{ inputs.artifact_run }}
+          repository: check-face/facemorph.me-classic
+          github-token: ${{ github.token }}
+          path: artifact
+      - name: Preflight
+        working-directory: lab/tools/device-lab
+        run: uv run --quiet --with playwright python lab.py preflight
+      - name: Run the matrix
+        working-directory: lab/tools/device-lab
+        env:
+          CLASSIC_CHECKOUT: ${{ github.workspace }}/classic
+          LABEL: ${{ inputs.artifact_name != '' && format('gate-{0}', inputs.artifact_name) || 'continuous' }}
+          URL: ${{ inputs.url || 'https://next.facemorph.me/' }}
+          CELLS: ${{ inputs.cells || 'eris-webgpu,eris-cpu,phone-webgpu,phone-cpu' }}
+          JOURNEY: ${{ inputs.journey || 'cold-face,warm-face,morph' }}
+          ARTIFACT_NAME: ${{ inputs.artifact_name }}
+          RUNTIME_SHA: ${{ inputs.runtime_sha }}
+        run: |
+          set -euo pipefail
+          export RUNTIME_FILES="$HOME/.cache/facemorph-device-lab/runtime-public"
+          if [ -n "$ARTIFACT_NAME" ]; then
+            # Keep the runtime mirror between runs; the server keys it by each asset's sha256.
+            mkdir -p "$HOME/.cache/facemorph-device-lab/runtime-mirror"
+            ln -sfn "$HOME/.cache/facemorph-device-lab/runtime-mirror" "$GITHUB_WORKSPACE/artifact/.runtime-mirror"
+            uv run --quiet --with playwright python lab.py matrix --artifact "$GITHUB_WORKSPACE/artifact" \
+              --runtime-sha "$RUNTIME_SHA" --cells "$CELLS" --journey "$JOURNEY" --label "$LABEL"
+          else
+            uv run --quiet --with playwright python lab.py matrix --url "$URL" --cells "$CELLS" --journey "$JOURNEY" --label "$LABEL"
+          fi
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: device-lab-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            lab/tools/device-lab/out/*/summary.*
+            lab/tools/device-lab/out/*/*.json
+            lab/tools/device-lab/out/*/*.png
+            lab/tools/device-lab/out/*/server.log
+          retention-days: 30
+          if-no-files-found: warn
+      - name: Leave the devices in their resting state
+        if: always()
+        working-directory: lab/tools/device-lab
+        run: uv run --quiet --with playwright python lab.py recover || true

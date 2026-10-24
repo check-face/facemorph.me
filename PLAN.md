@@ -3403,6 +3403,64 @@ clean.
 **Owners.** Integrated verification runs the gate and writes it into the release summary. Workspace build carries
 the paired lanes, and autoresearch re-homing supplies the existing paired ABBA harness and the device lease.
 
+### Device lab, deploy gates and CI policy (operator, 24 October 2026)
+
+**Four test cells.** `tools/device-lab/lab.py` runs the same end-to-end journeys (cold face, warm face, morph to a
+playable video) on four cells and asserts the route each one actually used. A silent fallback is a failure.
+- `eris-webgpu`: desktop Chromium on eris (RTX 2080 SUPER), headed, because headless Chromium gets no adapter there.
+- `eris-cpu`: the same browser with WebGPU switched off, so the app's own fallback takes the CPU route.
+- `phone-webgpu`: Chrome on the USB-connected Huawei P30 Pro, with debug flags that unlock its Vulkan/WebGPU path.
+  Chrome blocks Vulkan for this Android 10 Mali-G76 driver, so real visitors on this phone get CPU. The cell still
+  shows what works on devices that do have WebGPU enabled.
+- `phone-cpu`: Chrome on the same phone without flags, exactly what a real visitor on it gets.
+
+The lab drives real input (OS taps on the phone, mouse clicks on eris) and checks before and after each action that
+the intended control was hit. It keeps Google Analytics and the changeover statistics clean (Global Privacy Control),
+and always leaves the devices in their resting state. It can serve an exact candidate artifact under the production
+origin to all four cells. The phone's Frigate camera role is paused during sessions, or held off entirely on request
+(`lab.py camera off|on`).
+
+**Deploy gates for next.facemorph.me.**
+- Any new version may deploy to next.facemorph.me automatically, but only after the end-to-end journeys pass on all
+  four cells against that exact build, in addition to the existing qualification and compiled-UI checks. Classic's
+  deploy job enforces this by calling the reusable `device-lab` workflow with the artifact it is about to ship.
+- The **first** deploy of the new monorepo app to next.facemorph.me also needs every flow in this plan passing:
+  [integrated verification](#integrated-verification)'s app flows and platform checks, and the
+  [strictly-not-worse gate](#strictly-not-worse-than-the-candidate-operator-24-october-2026), unless the operator says
+  otherwise. Later monorepo deploys need the four-cell journeys plus whatever the release summary marks as changed.
+- Promotion to facemorph.me and API retirement remain the operator's cutover decision.
+
+**Local first; CI closes beads.** Agents build, test and validate locally as they work: on eris, on triton, and on the
+phone through the lab. CI is required to close a bead (the merged commit and its CI run are the evidence), not to
+start the next one. A bead whose CI is still running may be followed by the next ready bead.
+
+**Newest-only CI.** Every workflow uses a concurrency group with `cancel-in-progress: false`. The running build
+finishes, and only the newest waiting build runs next; a newer push replaces an older one still waiting, so the
+builds in between are skipped. Deploys use the same rule. A GitHub merge queue is not needed while changes are pushed
+directly. If work moves to pull requests into a protected branch, the merge queue sits on top of this rule.
+
+**Use all the compute.** Self-hosted runners, preferred over hosted minutes wherever the job fits:
+
+| Machine | Repositories | Labels | Use |
+| --- | --- | --- | --- |
+| eris | both | `device-lab, eris, android-p30pro, gpu-rtx2080s` | the four-cell device lab (it drives the phone and the desktop display), local development |
+| triton | both | `triton, linux-x64, gpu-gtx1080, cpu-20` | builds, unit and package tests, CPU end-to-end, GTX 1080 GPU work; work dirs and caches on the `tank` pool (`/mnt/unit/gh-runners`) |
+| TrueNAS | classic today; the monorepo to be added | `truenas, gpu-gtx1050` / `gpu-vulkan` | classic's GPU lanes; to take monorepo jobs once registered |
+
+Hosted runners remain for jobs that need a clean public image (the macOS and iOS lanes, release packing).
+
+**Optimisation target (operator, 24 October).** The candidate's WebGPU path is faster than CPU on the operator's
+Samsung (S24 Ultra), but slower than CPU on the P30 Pro's forced WebGPU path: cold face 94 s against 72 s, warm face
+22 s against 17 s, peak Chrome memory 6.5 GB against 4.7 GB. Optimisation work should make the P30 Pro faster on WebGPU
+without giving up the Samsung's gains. Each change is measured on `phone-webgpu` and must not regress the Samsung,
+which the operator checks in the qualified device round below until a Samsung cell exists.
+
+**Qualified device round (after the first new deploy to next.facemorph.me).** The operator tests a range of physical
+devices, iPhones included, and gives feedback. Each report is recorded with the device, OS and browser version, the
+route the app chose, the journeys tried, timings where seen, and any defect. Defects get beads, and devices that keep
+mattering become lab cells where practical. This round is evidence from real hardware the lab does not have. It is
+not an approval step: the deploy that precedes it is governed by the gates above.
+
 ### Development workers and GitHub-minute use
 
 Use available capable workers for iteration, builds, component/numerical/media checks
@@ -5103,6 +5161,7 @@ history retains their provenance.
 | 16 Oct | D1: direct TS port, no .NET here; dependencies on latest stable; frozen classic self-host guarantee; D4–D7 settled |
 | 17 Oct | No port checkpoint or fallback; reports carry no deletion promise; automated update lane; package scope settled; WebGL removed |
 | 18 Oct | Candidate edits are ordinary work; tracker rewritten from the plan; classic ends as distribution plus history, wound down automatically; old-wording reports deleted once mined |
+| 24 Oct | Device lab gates every next.facemorph.me deploy (eris and phone, WebGPU and CPU); the first monorepo deploy also needs all plan flows; local-first development with CI closing beads; newest-only CI; use every machine's compute; P30 Pro WebGPU optimisation without Samsung regression; qualified device round after the first new deploy |
 | 24 Oct | Only the live cutover pushes need the operator; package publication and planner proposals go ahead; no fixed count caps (only real resource limits, degrading nicely); strictly-not-worse gate against the candidate, iPhone included; changeover statistics in Grafana |
 | 24 Oct | Weighted multi-face blend as an advanced view on the new engine (button and `#blend` deep link, established export paths); beads are shippable slices (about 100–140); receipts only where an irreversible action or the cutover decision reads them |
 

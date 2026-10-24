@@ -60,3 +60,11 @@ no per-bead receipt files.
 The original plan and supplied crop screenshots are locked local references linked
 from `PLAN.md`. Preserve their bytes and follow the original crop design plus explicit
 operator revisions.
+
+Device lab and deploys (24 October 2026): `tools/device-lab/` runs the end-to-end journeys on eris
+(WebGPU, CPU) and the USB P30 Pro (WebGPU via debug flags, CPU). Deploys to next.facemorph.me are
+automatic only after all four cells pass on that exact build; the first monorepo deploy there also
+needs every plan flow. Build, test and validate locally as you go; CI is required to close a bead,
+not to start the next. CI is newest-only (concurrency groups, `cancel-in-progress: false`).
+Prefer the self-hosted runners (eris `device-lab`, triton on the `tank` pool) over hosted minutes.
+

@@ -1,5 +1,13 @@
 #!/usr/bin/env python3
-"""Physical Android device lab: a human-free, repeatable loop on the Huawei P30 Pro (VOG-L29).
+"""FaceMorph device lab: the same end-to-end journeys on four cells, human-free.
+
+Cells: eris-webgpu, eris-cpu (desktop Chromium on eris, RTX 2080 SUPER), phone-webgpu, phone-cpu
+(Chrome on the USB-connected Huawei P30 Pro, VOG-L29). Every cell asserts the route that actually ran.
+
+  uv run --with playwright python lab.py matrix [--url URL | --artifact DIR --runtime-sha SHA] [--cells ...]
+  uv run --with playwright python lab.py run --cell phone-cpu --journey cold-face,warm-face,morph --repeat 3
+
+The rest of this docstring describes the phone side.
 
 The phone doubles as the `p30pro` Frigate camera (IP Webcam + the dev.dilger.camera.watchdog app).
 Every session pauses the camera, runs, and restores it, even on failure, then proves the stream is
@@ -22,6 +30,16 @@ from pathlib import Path
 ADB = os.environ.get('ADB', str(Path.home() / 'Android/Sdk/platform-tools/adb'))
 SERIAL = os.environ.get('ANDROID_SERIAL', 'DUM0220115002146')
 HERE = Path(__file__).resolve().parent
+CHROMIUM = os.environ.get('CHROMIUM', '/usr/bin/chromium')
+CLASSIC = Path(os.environ.get('CLASSIC_CHECKOUT', HERE.parents[2] / 'facemorph.me-classic'))
+ORIGIN_HOST = 'next.facemorph.me'
+LOCAL_PORT = 8443
+CHROME_FLAGS_FILE = '/data/local/tmp/chrome-command-line'
+# Chrome's WebGPU on this Android 10 / Mali-G76 phone needs Vulkan, which Chrome blocks for its
+# driver; these debug flags unlock it (real visitors on this phone get the CPU route).
+PHONE_WEBGPU_FLAGS = ['--enable-unsafe-webgpu', '--enable-features=Vulkan', '--ignore-gpu-blocklist', '--use-vulkan=native']
+CELLS = {'eris-webgpu': ('desktop', True), 'eris-cpu': ('desktop', False),
+         'phone-webgpu': ('phone', True), 'phone-cpu': ('phone', False)}
 CHROME = 'com.android.chrome'
 WEBCAM, WATCHDOG = 'com.pas.webcam', 'dev.dilger.camera.watchdog'
 CDP_PORT = 9222
@@ -97,6 +115,23 @@ STATE = Path(os.environ.get('LAB_STATE', Path.home() / '.cache/facemorph-device-
 SAVED = {}
 
 
+HOLD = STATE.parent / 'camera-hold'  # present: the operator wants the camera off; sessions leave it off
+
+
+def camera_off():
+    HOLD.parent.mkdir(parents=True, exist_ok=True)
+    HOLD.write_text(datetime.now(timezone.utc).isoformat())
+    if camera_status()['streaming'] or camera_status()['watchdogPid']:
+        camera_pause()
+    log('camera_held_off')
+    return camera_status()
+
+
+def camera_on():
+    HOLD.unlink(missing_ok=True)
+    return camera_resume()
+
+
 def save_state(**kw):
     SAVED.update(kw)
     STATE.parent.mkdir(parents=True, exist_ok=True)
@@ -106,15 +141,40 @@ def save_state(**kw):
 def recover():
     """Undoes whatever a previous session left behind (killed runs skip their own cleanup)."""
     if not STATE.exists():
+        phone_chrome_reset()
         return False
     SAVED.update(json.loads(STATE.read_text()))
     log('recovering_stale_session', **SAVED)
     session_end()
-    if SAVED.get('cameraPaused'):
+    if SAVED.get('cameraPaused') and not HOLD.exists():
         camera_resume()
     STATE.unlink(missing_ok=True)
     SAVED.clear()
     return True
+
+
+def local_flags():
+    return [f'--host-resolver-rules=MAP {ORIGIN_HOST}:443 127.0.0.1:{LOCAL_PORT}', '--ignore-certificate-errors']
+
+
+def phone_chrome_flags(gpu, local):
+    """Chrome reads its debug command line at start (Chrome is the persistent debug app)."""
+    flags = (PHONE_WEBGPU_FLAGS if gpu else []) + (local_flags() if local else [])
+    if flags:
+        sh('am set-debug-app --persistent com.android.chrome', check=False)
+        line = '_ ' + ' '.join(f"'{f}'" if ' ' in f else f for f in flags)
+        sh(f'echo "{line}" > {CHROME_FLAGS_FILE}')
+    else:
+        sh(f'rm -f {CHROME_FLAGS_FILE}', check=False)
+    save_state(chromeFlags=flags)
+    if local:
+        adb('reverse', f'tcp:{LOCAL_PORT}', f'tcp:{LOCAL_PORT}')
+
+
+def phone_chrome_reset():
+    """Resting state: no debug flags, no reverse port, like a real visitor's phone."""
+    sh(f'rm -f {CHROME_FLAGS_FILE}', check=False)
+    adb('reverse', '--remove', f'tcp:{LOCAL_PORT}', check=False)
 
 
 def session_begin():
@@ -128,6 +188,7 @@ def session_begin():
 
 
 def session_end():
+    phone_chrome_reset()
     if 'rotation' in SAVED:
         sh(f"settings put system accelerometer_rotation {SAVED['rotation']}; settings put system user_rotation {SAVED['user_rotation']}", check=False)
     sh('svc power stayon false', check=False)
@@ -247,6 +308,15 @@ def chrome_front(tries=5):
 class Phone:
     """Real Chrome on the phone over CDP, acting with OS-level taps."""
 
+    # Before a tap: the element must be visible, sized and the topmost element at its centre; it
+    # then arms a one-shot listener recording where the real pointer actually landed.
+    PROBE = """([sel,i])=>{const e=document.querySelectorAll(sel)[i];if(!e)return null;const r=e.getBoundingClientRect();
+          const x=r.left+r.width/2,y=r.top+r.height/2,hit=document.elementFromPoint(x,y);
+          const ok=r.width>0&&r.height>0&&!!hit&&(hit===e||e.contains(hit));
+          if(ok){window.__labHit=null;addEventListener('pointerdown',ev=>{window.__labHit={inside:e.contains(ev.target),
+            what:ev.target.outerHTML.slice(0,80)}},{capture:true,once:true});}
+          return {x,y,ok,hit:hit?hit.outerHTML.slice(0,80):null}}"""
+
     def __init__(self, pw):
         # A cold Chrome start each session: clears dialogs left by earlier runs (Chrome's own photo
         # picker sits inside Chrome's activity, so focus checks cannot see it).
@@ -294,20 +364,15 @@ class Phone:
         if not info:
             raise RuntimeError(f'no element {selector}[{index}]')
         time.sleep(0.6)  # let the toolbar settle after the scroll
-        probe = """([sel,i])=>{const e=document.querySelectorAll(sel)[i];const r=e.getBoundingClientRect();
-          const x=r.left+r.width/2,y=r.top+r.height/2,hit=document.elementFromPoint(x,y);
-          const ok=r.width>0&&r.height>0&&!!hit&&(hit===e||e.contains(hit));
-          if(ok){window.__labHit=null;addEventListener('pointerdown',ev=>{window.__labHit={inside:e.contains(ev.target),
-            what:ev.target.outerHTML.slice(0,80)}},{capture:true,once:true});}
-          return {x,y,ok,hit:hit?hit.outerHTML.slice(0,80):null}}"""
+        probe = self.PROBE
         end = time.time() + 8  # a control may appear or move as state settles; it must become hittable
         while True:
             info = self.js(probe, [selector, index])
-            if info['ok'] or time.time() > end:
+            if (info and info['ok']) or time.time() > end:
                 break
             time.sleep(0.4)
-        if not info['ok']:
-            raise RuntimeError(f'{selector}[{index}] is not hittable at its centre (covered by {info["hit"]})')
+        if not info or not info['ok']:
+            raise RuntimeError(f'{selector}[{index}] is not hittable at its centre (covered by {info and info["hit"]})')
         sx, sy = self.screen_point(info['x'], info['y'])
         sh(f'input tap {sx} {sy}')
         time.sleep(0.4)
@@ -342,9 +407,68 @@ class Phone:
             time.sleep(0.5)
         raise TimeoutError(f'timed out after {timeout_s}s waiting for {expr[:80]}')
 
+    def close(self):
+        try:
+            self.page.close()
+        except Exception:
+            pass
+
     def screenshot(self, path):
         with open(path, 'wb') as f:
             f.write(subprocess.run([ADB, '-s', SERIAL, 'exec-out', 'screencap', '-p'], capture_output=True).stdout)
+
+
+class Desktop:
+    """Chromium on eris. WebGPU cell: headed (headless Chromium gets no adapter on eris). CPU cell:
+    headless with WebGPU switched off, so the app's own fallback picks the CPU route."""
+
+    def __init__(self, pw, gpu, local, profile):
+        args = ['--enable-unsafe-webgpu', '--ignore-gpu-blocklist'] if gpu else ['--disable-features=WebGPU']
+        if local:
+            args += local_flags()
+        self.ctx = pw.chromium.launch_persistent_context(str(profile), executable_path=CHROMIUM, headless=not gpu,
+                                                          args=args, viewport={'width': 1280, 'height': 900})
+        self.page = self.ctx.pages[0] if self.ctx.pages else self.ctx.new_page()
+        self.page.add_init_script(GUARD)
+        self.cdp = self.ctx.new_cdp_session(self.page)
+
+    js = Phone.js
+    clear_origin = Phone.clear_origin
+    wait = Phone.wait
+
+    def tap(self, selector, index=0):
+        """A real mouse click at the element's visible centre, with the same before/after checks as the phone."""
+        self.js("""([sel,i])=>{const e=document.querySelectorAll(sel)[i];e&&e.scrollIntoView({block:'center',behavior:'instant'})}""", [selector, index])
+        time.sleep(0.3)
+        end = time.time() + 8
+        while True:
+            info = self.js(Phone.PROBE, [selector, index])
+            if (info and info['ok']) or time.time() > end:
+                break
+            time.sleep(0.4)
+        if not info or not info['ok']:
+            raise RuntimeError(f'{selector}[{index}] is not hittable at its centre (covered by {info and info["hit"]})')
+        self.page.mouse.click(info['x'], info['y'])
+        time.sleep(0.3)
+        landed = self.js('window.__labHit')
+        if not landed or not landed['inside']:
+            raise RuntimeError(f'click on {selector}[{index}] landed on {landed and landed["what"]}')
+
+    def type_into(self, selector, text, index=0):
+        self.tap(selector, index)
+        n = len(self.js("([s,i])=>document.querySelectorAll(s)[i].value", [selector, index]) or '')
+        self.page.keyboard.press('End')
+        for _ in range(n + 2):
+            self.page.keyboard.press('Backspace')
+        self.page.keyboard.type(text, delay=30)
+        time.sleep(0.5)
+        return self.js("([s,i])=>document.querySelectorAll(s)[i].value", [selector, index])
+
+    def screenshot(self, path):
+        self.page.screenshot(path=str(path))
+
+    def close(self):
+        self.ctx.close()
 
 
 def chrome_pss_mb():
@@ -375,7 +499,15 @@ class MemorySampler(threading.Thread):
 FACES = "(sel)=>[...document.querySelectorAll(sel)].filter(i=>(i.naturalWidth||i.width)===1024).length"
 
 
-def journey_face(phone, url, cold, word):
+def check_route(route, gpu):
+    r = route.lower()
+    if gpu and 'webgpu' not in r:
+        raise RuntimeError(f'expected the WebGPU route, got {route!r}')
+    if not gpu and 'cpu' not in r:
+        raise RuntimeError(f'expected the CPU route, got {route!r}')
+
+
+def journey_face(phone, url, cold, word, gpu=None):
     if cold:
         phone.clear_origin(url)  # everything, including downloaded models
     else:
@@ -414,7 +546,9 @@ def journey_face(phone, url, cold, word):
             log('generate_tap_retry')
     phone.page.wait_for_function(f"([sel,n])=>({FACES})(sel)>n", arg=[S['faceImage'], before], timeout=900_000, polling=500)
     face = time.time() - t1
-    route = phone.js(f"document.querySelector('{S['route']}')?.innerText||''")
+    route = phone.js(f"document.querySelector('{S['route']}')?.innerText||''").strip()
+    if gpu is not None:
+        check_route(route, gpu)
     return {'usableS': round(usable, 2), 'faceS': round(face, 2), 'route': route.strip()[:80],
             'typed': word, 'fieldValue': typed, 'typedExactly': typed == word}
 
@@ -449,74 +583,180 @@ def _terminate(signum, frame):
     raise SystemExit(f'signal {signum}')
 
 
-def run_session(args):
-    import signal
-    from playwright.sync_api import sync_playwright
+def lab_lock():
     import fcntl
-    signal.signal(signal.SIGTERM, _terminate)
-    signal.signal(signal.SIGHUP, _terminate)
     STATE.parent.mkdir(parents=True, exist_ok=True)
     lock = open(STATE.parent / 'lab.lock', 'w')
     try:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)  # the device lease: one session at a time
     except BlockingIOError:
-        raise SystemExit('another device-lab session holds the phone')
-    recover()
+        raise SystemExit('another device-lab session holds the devices')
+    return lock
+
+
+def run_journeys(dev, args, cell, gpu, out, report, memory=None):
+    for i in range(args.repeat):
+        rec = {'iteration': i + 1}
+        if CELLS[cell][0] == 'phone':
+            rec['startTempC'] = cool_down()
+        mem = MemorySampler() if memory else None
+        if mem:
+            mem.start()
+        try:
+            for j in args.journey.split(','):
+                if j == 'cold-face':
+                    rec['cold'] = journey_face(dev, args.url, True, f'lab{i}cold', gpu)
+                elif j == 'warm-face':
+                    rec['warm'] = journey_face(dev, args.url, False, f'lab{i}warm', gpu)
+                elif j == 'morph':
+                    rec['morph'] = journey_morph(dev)
+                log('journey_done', cell=cell, iteration=i + 1, journey=j)
+            rec['ok'] = True
+        except Exception as e:
+            rec['ok'], rec['error'] = False, f'{type(e).__name__}: {e}'[:400]
+            dev.screenshot(out / f'{cell}-fail-{i + 1}.png')
+            if CELLS[cell][0] == 'phone':
+                chrome_front()
+            log('journey_failed', cell=cell, iteration=i + 1, error=rec['error'])
+        finally:
+            if mem:
+                mem.stop.set()
+                mem.join(5)
+                rec['peakChromePssMb'] = mem.peak
+            if CELLS[cell][0] == 'phone':
+                rec['batteryTempC'] = device_facts()['batteryTempC']
+        report['runs'].append(rec)
+        (out / f'{cell}.json').write_text(json.dumps(report, indent=2))
+
+
+def run_cell(cell, args, out):
+    """One cell, start to finish, always leaving the devices in their resting state."""
+    from playwright.sync_api import sync_playwright
+    kind, gpu = CELLS[cell]
+    local = bool(getattr(args, 'local', False))
+    report = {'cell': cell, 'label': args.label, 'url': args.url, 'local': local, 'runs': []}
+    log('cell_start', cell=cell, url=args.url, local=local)
+    if kind == 'desktop':
+        report['browser'] = 'chromium ' + subprocess.run([CHROMIUM, '--version'], capture_output=True, text=True).stdout.strip()
+        with sync_playwright() as pw:
+            dev = Desktop(pw, gpu, local, out / f'profile-{cell}')
+            try:
+                run_journeys(dev, args, cell, gpu, out, report)
+                dev.screenshot(out / f'{cell}-last.png')
+            finally:
+                dev.close()
+    else:
+        recover()
+        report['device'] = device_facts()
+        report['cameraBefore'] = camera_status()
+        paused = False
+        try:
+            if HOLD.exists():
+                if camera_status()['streaming'] or camera_status()['watchdogPid']:
+                    sh(f'am force-stop {WATCHDOG}; am force-stop {WEBCAM}', check=False)
+                log('camera_held_off')
+            elif not args.keep_camera:
+                camera_pause()
+                paused = True
+            session_begin()
+            phone_chrome_flags(gpu, local)
+            report['startTempC'] = cool_down()  # the camera role warms the phone; start cool
+            with sync_playwright() as pw:
+                dev = Phone(pw)
+                try:
+                    run_journeys(dev, args, cell, gpu, out, report, memory=True)
+                    dev.screenshot(out / f'{cell}-last.png')
+                finally:
+                    dev.close()
+        finally:
+            sh(f'am force-stop {CHROME}', check=False)
+            session_end()
+            if paused:
+                report['cameraAfter'] = camera_resume()
+            STATE.unlink(missing_ok=True)
+    report['ok'] = bool(report['runs']) and all(r.get('ok') for r in report['runs'])
+    (out / f'{cell}.json').write_text(json.dumps(report, indent=2))
+    log('cell_end', cell=cell, ok=report['ok'])
+    return report
+
+
+class LocalServer:
+    """Serves an exact candidate artifact under the production origin (classic's qualification server),
+    reached by eris Chromium through host-resolver rules and by the phone through adb reverse."""
+
+    def __init__(self, artifact, runtime_sha, out):
+        self.artifact, self.runtime_sha, self.out = Path(artifact).resolve(), runtime_sha, out
+
+    def __enter__(self):
+        key, crt = self.out / 'next.key', self.out / 'next.crt'
+        subprocess.run(['openssl', 'req', '-x509', '-newkey', 'rsa:2048', '-nodes', '-keyout', key, '-out', crt,
+                        '-days', '1', '-subj', f'/CN={ORIGIN_HOST}'], check=True, capture_output=True)
+        runtime = Path(os.environ.get('RUNTIME_FILES', self.artifact / '.runtime-public'))
+        if not runtime.exists():
+            subprocess.run([sys.executable, CLASSIC / 'hosting/next-static/mirror-runtime.py', '--output', runtime],
+                           check=True, cwd=CLASSIC)
+        cmd = [sys.executable, CLASSIC / 'scripts/next-e2e-server.py', '--manifest-sha', self.runtime_sha,
+               '--runtime-overlay', CLASSIC / 'hosting/next-static/runtime-overlay', '--runtime-files', runtime,
+               '--cert', crt, '--key', key]
+        self.log = open(self.out / 'server.log', 'w')
+        self.proc = subprocess.Popen([str(c) for c in cmd], cwd=self.artifact, stdout=self.log, stderr=subprocess.STDOUT)
+        for _ in range(60):
+            if self.proc.poll() is not None:
+                raise RuntimeError('local server exited; see server.log')
+            if subprocess.run(['curl', '-kfsS', '--max-time', '2', f'https://127.0.0.1:{LOCAL_PORT}/runtime/manifest.json'],
+                              capture_output=True).returncode == 0:
+                log('local_server_ready', artifact=str(self.artifact))
+                return self
+            time.sleep(1)
+        raise RuntimeError('local server did not become ready')
+
+    def __exit__(self, *exc):
+        self.proc.terminate()
+        try:
+            self.proc.wait(10)
+        except Exception:
+            self.proc.kill()
+
+
+def summarise(reports, out, title):
+    def cellrow(r):
+        def fmt(j, k):
+            v = [x.get(j, {}).get(k) for x in r['runs'] if x.get(j)]
+            return '/'.join(f'{t:.0f}s' for t in v) if v else '–'
+        route = next((x[j]['route'] for x in r['runs'] for j in ('warm', 'cold') if x.get(j)), '–')
+        err = next((x['error'] for x in r['runs'] if x.get('error')), '')
+        return f"| {r['cell']} | {'pass' if r.get('ok') else 'FAIL'} | {fmt('cold', 'faceS')} | {fmt('warm', 'faceS')} | {fmt('morph', 'videoS')} | {route} | {err[:120]} |"
+    md = [f'## {title}', '', '| Cell | Result | Cold face | Warm face | Morph video | Route | Error |', '|---|---|---|---|---|---|---|']
+    md += [cellrow(r) for r in reports]
+    text = '\n'.join(md) + '\n'
+    (out / 'summary.md').write_text(text)
+    (out / 'summary.json').write_text(json.dumps({'title': title, 'ok': all(r.get('ok') for r in reports), 'cells': reports}, indent=2))
+    if os.environ.get('GITHUB_STEP_SUMMARY'):
+        with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as f:
+            f.write(text)
+    print(text)
+
+
+def run_matrix(args):
+    import signal
+    signal.signal(signal.SIGTERM, _terminate)
+    signal.signal(signal.SIGHUP, _terminate)
+    _lock = lab_lock()
     out = HERE / 'out' / (datetime.now().strftime('%Y%m%d-%H%M%S') + '-' + args.label)
     out.mkdir(parents=True, exist_ok=True)
-    report = {'label': args.label, 'url': args.url, 'device': device_facts(), 'runs': [], 'cameraBefore': camera_status()}
-    log('session_start', **report['device'])
-    if report['device']['batteryTempC'] > 42:
-        raise SystemExit('phone too hot; refusing to start')
-    paused = False
-    try:
-        if not args.keep_camera:
-            camera_pause()
-            paused = True
-        session_begin()
-        with sync_playwright() as pw:
-            phone = Phone(pw)
-            journeys = args.journey.split(',')
-            for i in range(args.repeat):
-                rec = {'iteration': i + 1, 'startTempC': cool_down()}
-                mem = MemorySampler()
-                mem.start()
-                try:
-                    for j in journeys:
-                        if j == 'cold-face':
-                            rec['cold'] = journey_face(phone, args.url, True, f'lab{i}cold')
-                        elif j == 'warm-face':
-                            rec['warm'] = journey_face(phone, args.url, False, f'lab{i}warm')
-                        elif j == 'morph':
-                            rec['morph'] = journey_morph(phone)
-                        log('journey_done', iteration=i + 1, journey=j)
-                    rec['ok'] = True
-                except Exception as e:
-                    rec['ok'], rec['error'] = False, f'{type(e).__name__}: {e}'[:400]
-                    phone.screenshot(out / f'fail-{i + 1}.png')
-                    chrome_front()
-                    log('journey_failed', iteration=i + 1, error=rec['error'])
-                finally:
-                    mem.stop.set()
-                    mem.join(5)
-                    rec['peakChromePssMb'] = mem.peak
-                    rec['batteryTempC'] = device_facts()['batteryTempC']
-                report['runs'].append(rec)
-                (out / 'report.json').write_text(json.dumps(report, indent=2))
-            phone.screenshot(out / 'last.png')
-            try:
-                phone.page.close()
-            except Exception:
-                pass
-    finally:
-        sh(f'am force-stop {CHROME}', check=False)
-        session_end()
-        if paused:
-            report['cameraAfter'] = camera_resume()
-        STATE.unlink(missing_ok=True)
-        (out / 'report.json').write_text(json.dumps(report, indent=2))
-        log('session_end', report=str(out / 'report.json'), ok=all(r.get('ok') for r in report['runs']))
-    return report
+    cells = args.cells.split(',') if getattr(args, 'cells', None) else [args.cell]
+    reports = []
+    if args.artifact:
+        args.local, args.url = True, f'https://{ORIGIN_HOST}/'
+        with LocalServer(args.artifact, args.runtime_sha, out):
+            for c in cells:
+                reports.append(run_cell(c, args, out))
+    else:
+        args.local = False
+        for c in cells:
+            reports.append(run_cell(c, args, out))
+    summarise(reports, out, f'Device lab: {args.label} ({args.url})')
+    return all(r.get('ok') for r in reports)
 
 
 def main():
@@ -525,13 +765,21 @@ def main():
     sub.add_parser('preflight')
     sub.add_parser('recover', help='undo whatever a killed session left behind')
     cam = sub.add_parser('camera')
-    cam.add_argument('action', choices=['status', 'pause', 'resume'])
-    r = sub.add_parser('run')
-    r.add_argument('--url', default='https://next.facemorph.me/')
-    r.add_argument('--journey', default='cold-face,warm-face')
-    r.add_argument('--repeat', type=int, default=1)
-    r.add_argument('--label', default='run')
-    r.add_argument('--keep-camera', action='store_true', help='do not pause the Frigate camera')
+    cam.add_argument('action', choices=['status', 'pause', 'resume', 'off', 'on'])
+    def common(p, default_journey):
+        p.add_argument('--url', default='https://next.facemorph.me/')
+        p.add_argument('--artifact', help='serve this exact candidate artifact locally under the production origin')
+        p.add_argument('--runtime-sha', help='runtime manifest SHA256 for --artifact (fails closed if it differs)')
+        p.add_argument('--journey', default=default_journey)
+        p.add_argument('--repeat', type=int, default=1)
+        p.add_argument('--label', default='run')
+        p.add_argument('--keep-camera', action='store_true', help='do not pause the Frigate camera')
+    r = sub.add_parser('run', help='one cell')
+    r.add_argument('--cell', choices=list(CELLS), default='phone-cpu')
+    common(r, 'cold-face,warm-face')
+    m = sub.add_parser('matrix', help='several cells, one summary (the deploy gate)')
+    m.add_argument('--cells', default=','.join(CELLS))
+    common(m, 'cold-face,warm-face,morph')
     a = ap.parse_args()
     if a.cmd == 'preflight':
         state = adb('get-state', check=False)
@@ -541,10 +789,12 @@ def main():
         print(json.dumps({'recovered': recover(), 'camera': camera_status()}, indent=2))
         return
     if a.cmd == 'camera':
-        print(json.dumps({'status': camera_status, 'pause': camera_pause, 'resume': camera_resume}[a.action]() or camera_status(), indent=2))
+        fn = {'status': camera_status, 'pause': camera_pause, 'resume': camera_resume, 'off': camera_off, 'on': camera_on}[a.action]
+        print(json.dumps((fn() or camera_status()) | {'heldOff': HOLD.exists()}, indent=2))
         return
-    report = run_session(a)
-    sys.exit(0 if all(x.get('ok') for x in report['runs']) else 1)
+    if a.artifact and not a.runtime_sha:
+        raise SystemExit('--artifact needs --runtime-sha')
+    sys.exit(0 if run_matrix(a) else 1)
 
 
 if __name__ == '__main__':
