@@ -1,0 +1,2 @@
+# Planted qualification tensors are raw float32 bytes.
+*.f32 binary

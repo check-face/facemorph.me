@@ -86,7 +86,12 @@ found=$(docker run --rm --entrypoint sh facemorph/model-conv -c \
   "find / -xdev \( -name '*.pkl' -o -name '*.pt' -o -name '*.pth' -o -name '*.onnx' -o -name '*.ckpt' -o -name '*.safetensors' -o -name '.env' \) 2>/dev/null" \
   | grep -v '/site-packages/' || true)
 [ -z "$found" ] || fail "weight-like files in the image: $found"
-tree=$(git ls-files --others --cached --exclude-standard . | grep -E '\.(pkl|pt|pth|onnx|ckpt|safetensors|f32|bin)$|(^|/)\.env' || true)
+# The planted e4e qualification tensors (256 px inputs and recorded W+, tests/e4e-qualification/) are allowed only
+# by digest: each must be listed with its SHA-256 in that directory's report.json.
+planted=$(python3 -c "import json; r=json.load(open('tests/e4e-qualification/report.json')); print('\n'.join(f'{c[k]}  tests/e4e-qualification/{c[f]}' for c in r['cases'] for k, f in (('inputSha256', 'inputFile'), ('referenceSha256', 'referenceFile'))))")
+echo "$planted" | sha256sum -c --quiet - || fail "a planted e4e qualification tensor does not match report.json"
+tree=$(git ls-files --others --cached --exclude-standard . | grep -E '\.(pkl|pt|pth|onnx|ckpt|safetensors|f32|bin)$|(^|/)\.env' \
+  | grep -vxF -f <(echo "$planted" | awk '{print $2}') || true)
 [ -z "$tree" ] || fail "weight-like files in the package tree: $tree"
 
 echo
