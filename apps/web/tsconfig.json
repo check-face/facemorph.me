@@ -14,7 +14,10 @@
     "verbatimModuleSyntax": true,
     "allowImportingTsExtensions": true,
     "noEmit": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "allowJs": true,
+    "checkJs": false,
+    "maxNodeModuleJsDepth": 0
   },
   "include": ["shell"]
 }

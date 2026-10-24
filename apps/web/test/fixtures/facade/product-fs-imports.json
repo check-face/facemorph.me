@@ -1,0 +1,277 @@
+{
+  "source": "facemorph.me-classic b2d945a8c7f0ff9f382fbfefaecc2651943077a3:src/Next/Product.fs lines 29-213 ([<Import(name, module)>] attributes)",
+  "imports": [
+    {
+      "module": "./product-bridge.mjs",
+      "name": "loadNames"
+    },
+    {
+      "module": "./product-bridge.mjs",
+      "name": "publicPreview"
+    },
+    {
+      "module": "./product-bridge.mjs",
+      "name": "drawFace"
+    },
+    {
+      "module": "./product-bridge.mjs",
+      "name": "execute"
+    },
+    {
+      "module": "./product-bridge.mjs",
+      "name": "subscribe"
+    },
+    {
+      "module": "./product-bridge.mjs",
+      "name": "cancel"
+    },
+    {
+      "module": "./product-bridge.mjs",
+      "name": "saveMedia"
+    },
+    {
+      "module": "./product-bridge.mjs",
+      "name": "shareMedia"
+    },
+    {
+      "module": "./product-bridge.mjs",
+      "name": "exportProject"
+    },
+    {
+      "module": "./product-bridge.mjs",
+      "name": "importProject"
+    },
+    {
+      "module": "./product-bridge.mjs",
+      "name": "measuredFaceMs"
+    },
+    {
+      "module": "./product-bridge.mjs",
+      "name": "measuredFrameMs"
+    },
+    {
+      "module": "./product-bridge.mjs",
+      "name": "measuredVideoMs"
+    },
+    {
+      "module": "./product-bridge.mjs",
+      "name": "jobProgress"
+    },
+    {
+      "module": "./product-bridge.mjs",
+      "name": "sliderFrames"
+    },
+    {
+      "module": "./last-result.mjs",
+      "name": "sliderPreference"
+    },
+    {
+      "module": "./last-result.mjs",
+      "name": "sliderPosition"
+    },
+    {
+      "module": "./last-result.mjs",
+      "name": "rememberSlider"
+    },
+    {
+      "module": "./product-bridge.mjs",
+      "name": "rememberView"
+    },
+    {
+      "module": "./product-bridge.mjs",
+      "name": "plannedFrames"
+    },
+    {
+      "module": "./product-bridge.mjs",
+      "name": "stagedReportCount"
+    },
+    {
+      "module": "./product-bridge.mjs",
+      "name": "reportReference"
+    },
+    {
+      "module": "./product-bridge.mjs",
+      "name": "cancelPhotoRun"
+    },
+    {
+      "module": "./product-bridge.mjs",
+      "name": "setDebug"
+    },
+    {
+      "module": "./product-bridge.mjs",
+      "name": "sendReportOnce"
+    },
+    {
+      "module": "./product-bridge.mjs",
+      "name": "consentAnswered"
+    },
+    {
+      "module": "./product-bridge.mjs",
+      "name": "subscribeDownloads"
+    },
+    {
+      "module": "./product-bridge.mjs",
+      "name": "downloadModels"
+    },
+    {
+      "module": "./product-bridge.mjs",
+      "name": "consentToDownload"
+    },
+    {
+      "module": "./product-bridge.mjs",
+      "name": "sourceVersion"
+    },
+    {
+      "module": "./product-bridge.mjs",
+      "name": "issueUrl"
+    },
+    {
+      "module": "./product-bridge.mjs",
+      "name": "restoreLastResult"
+    },
+    {
+      "module": "./product-bridge.mjs",
+      "name": "rememberSourcePhoto"
+    },
+    {
+      "module": "./product-bridge.mjs",
+      "name": "sourcePhotoUrl"
+    },
+    {
+      "module": "./product-bridge.mjs",
+      "name": "queueFace"
+    },
+    {
+      "module": "./product-bridge.mjs",
+      "name": "cancelQueuedFace"
+    },
+    {
+      "module": "./product-bridge.mjs",
+      "name": "chooseDetectedFace"
+    },
+    {
+      "module": "./product-bridge.mjs",
+      "name": "invalidateArrivalRestore"
+    },
+    {
+      "module": "./scheduler.mjs",
+      "name": "nextScheduled"
+    },
+    {
+      "module": "./product-bridge.mjs",
+      "name": "photoRevision"
+    },
+    {
+      "module": "./product-bridge.mjs",
+      "name": "invalidateFace"
+    },
+    {
+      "module": "./product-bridge.mjs",
+      "name": "invalidateMorph"
+    },
+    {
+      "module": "./product-bridge.mjs",
+      "name": "checkCachedFace"
+    },
+    {
+      "module": "./product-bridge.mjs",
+      "name": "displayMilestone"
+    },
+    {
+      "module": "./estimate.mjs",
+      "name": "createEstimator"
+    },
+    {
+      "module": "./estimate.mjs",
+      "name": "describeMs"
+    },
+    {
+      "module": "./estimate.mjs",
+      "name": "describeMeasuredMs"
+    },
+    {
+      "module": "./estimate.mjs",
+      "name": "isSlowJob"
+    },
+    {
+      "module": "./product-bridge.mjs",
+      "name": "previewPhotoReported"
+    },
+    {
+      "module": "./product-bridge.mjs",
+      "name": "cropPhotoReported"
+    },
+    {
+      "module": "./photo/crop-view.mjs",
+      "name": "createCrop"
+    },
+    {
+      "module": "./photo/crop-view.mjs",
+      "name": "pan"
+    },
+    {
+      "module": "./photo/crop-view.mjs",
+      "name": "zoomTo"
+    },
+    {
+      "module": "./photo/crop-view.mjs",
+      "name": "rotate"
+    },
+    {
+      "module": "./photo/crop-view.mjs",
+      "name": "rect"
+    },
+    {
+      "module": "./photo/crop-view.mjs",
+      "name": "frame"
+    },
+    {
+      "module": "./photo/crop-view.mjs",
+      "name": "resizeViewport"
+    },
+    {
+      "module": "./product-bridge.mjs",
+      "name": "warmPhotoTools"
+    },
+    {
+      "module": "./photo/align-photo.mjs",
+      "name": "MULTIPLE_FACES_MESSAGE"
+    },
+    {
+      "module": "./photo-selection.mjs",
+      "name": "photoFiles"
+    },
+    {
+      "module": "./product-bridge.mjs",
+      "name": "selectPhotoReported"
+    },
+    {
+      "module": "./photo-selection.mjs",
+      "name": "openPhotoPicker"
+    },
+    {
+      "module": "./photo-selection.mjs",
+      "name": "dragPhoto"
+    },
+    {
+      "module": "./photo-selection.mjs",
+      "name": "invalidatePhotoSelections"
+    },
+    {
+      "module": "./photo-selection.mjs",
+      "name": "focusCropArea"
+    },
+    {
+      "module": "./photo-selection.mjs",
+      "name": "openNamesFocus"
+    },
+    {
+      "module": "./photo-selection.mjs",
+      "name": "closeNamesFocus"
+    },
+    {
+      "module": "./photo-selection.mjs",
+      "name": "namesKey"
+    }
+  ]
+}

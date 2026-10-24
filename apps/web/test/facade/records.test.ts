@@ -64,3 +64,40 @@ test('photo selection results are told apart by kind', () => {
   );
   assert.throws(() => readPhotoSelection({ something: 1 }), FacadeError);
 });
+
+// Type-level: each union admits exactly its members (checked by tsc -p tsconfig.node.json).
+import type {
+  Action,
+  InputMode,
+  MorphKind,
+  PhotoSelection,
+  RequestedProvider,
+} from '../../shell/facade/records.ts';
+export const typeChecks = (selection: PhotoSelection): string => {
+  const kinds: [InputMode, MorphKind, Action, RequestedProvider] = [
+    'photo',
+    'linear',
+    'morph',
+    'webgpu',
+  ];
+  // @ts-expect-error 'webgl' is not a requested provider any more
+  const removed: RequestedProvider = 'webgl';
+  // @ts-expect-error a morph kind outside the five is not a MorphKind
+  const spiral: MorphKind = 'spiral';
+  switch (selection.kind) {
+    case 'superseded':
+      return kinds.join() + removed + spiral;
+    case 'project':
+      return String(selection.projectFile.size);
+    case 'recovered':
+      return selection.output.message;
+    case 'photo':
+      return String(selection.file.size);
+    case 'crop':
+      return selection.offer.url;
+    default: {
+      const never: never = selection;
+      return never;
+    }
+  }
+};

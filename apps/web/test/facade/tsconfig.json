@@ -1,0 +1,6 @@
+{
+  // The facade's tests (fm-pia9): the shell's settings (DOM, allowJs over the candidate .mjs) plus Node's types.
+  "extends": "../../tsconfig.json",
+  "compilerOptions": { "types": ["node", "vite/client", "vite-plugin-svgr/client"] },
+  "include": [".", "../e2e/facade"]
+}

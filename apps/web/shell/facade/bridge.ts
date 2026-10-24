@@ -1,7 +1,8 @@
 // The typed facade over the retained candidate bridge (fm-pia9): every bridge export the classic UI imported
 // (Product.fs lines 29-213), with typed arguments and every result read from `unknown` by facade/records.ts. The
 // bridge's behaviour is unchanged; a result that is not the promised record throws a FacadeError naming the field,
-// instead of reaching the interface as `undefined`. scripts/check-bridge-imports.mjs checks that every name
+// instead of reaching the interface as `undefined`. tsc reads the real .mjs modules (allowJs, no checkJs), so a name
+// they do not export is a compile error here, and scripts/check-bridge-imports.mjs checks the same; every name
 // imported here is exported by its module.
 import * as bridge from '../../src/Next/product-bridge.mjs';
 import {
@@ -51,7 +52,7 @@ export function subscribe(
   callback: (progress: Progress) => void,
   onInvalid: (error: FacadeError) => void = report,
 ): void {
-  bridge.subscribe((value) => {
+  bridge.subscribe((value: unknown) => {
     let progress: Progress;
     try {
       progress = readProgress(value);
@@ -199,7 +200,7 @@ export function subscribeDownloads(
   callback: (downloads: Downloads) => void,
   onInvalid: (error: FacadeError) => void = report,
 ): void {
-  bridge.subscribeDownloads((value) => {
+  bridge.subscribeDownloads((value: unknown) => {
     let downloads: Downloads;
     try {
       downloads = readDownloads(value);
@@ -248,9 +249,14 @@ export function nextScheduled(
     readonly blockMorph?: boolean;
   },
 ): number {
-  return readInteger(nextScheduledJs(jobs, options), 'nextScheduled');
+  // The module's defaults make tsc infer `blockedFaces: never[]`; it takes any ids.
+  return readInteger(
+    (nextScheduledJs as (jobs: unknown, options: unknown) => unknown)(jobs, options),
+    'nextScheduled',
+  );
 }
 
 function report(error: FacadeError): void {
   console.error('[facemorph-facade]', error.message);
 }
+export * from './helpers.ts';
