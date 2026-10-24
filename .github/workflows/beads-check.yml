@@ -1,7 +1,7 @@
 name: beads-check
-# Closure rules br cannot enforce alone (scripts/beads/check-close-after.mjs): close-after order,
-# no unchecked acceptance on a closed bead, no closed bead with an open blocker. A red run names the
-# bead; reopen it or close the missing prerequisite first.
+# Closure rules br cannot enforce alone (scripts/beads/check-closure.mjs): no unchecked acceptance
+# on a closed bead, no closed bead with an open blocker. A red run names the bead; reopen it or
+# close the open blocker first.
 on:
   push:
     branches: [main]
@@ -19,4 +19,4 @@ jobs:
         with:
           node-version: '22'
       - run: node --test scripts/beads/*.test.mjs
-      - run: node scripts/beads/check-close-after.mjs
+      - run: node scripts/beads/check-closure.mjs

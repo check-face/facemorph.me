@@ -102,10 +102,10 @@ newest-only (concurrency groups, `cancel-in-progress: false`), so a waiting run 
 newer push and a later green run covers it; a red run covering several beads is bisected locally on
 eris and only the culprit stays open. CI closes beads; it does not gate starting the next.
 Beads enforce this (`.beads/policy.yaml`, no bypass): `br close` refuses while any acceptance item is
-unchecked, so tick each one as you verify it (`br update <id> --check-acceptance <n|text>`). A
-`close-after fm-X:` item means start now but close only after fm-X has closed and its check ran on the
-merged result; `beads-check.yml` fails on a closed bead whose fm-X closed later or is still open, on any
-unchecked item on a closed bead, and on a bead closed past an open blocker.
+unchecked, so tick each one as you verify it (`br update <id> --check-acceptance <n|text>`). There
+are no close-after waits (operator, 24 October 2026): a check that spans two beads belongs to whichever
+lands second, so if the other has not landed, add the check to it and close. `beads-check.yml` fails on
+any unchecked item on a closed bead and on a bead closed past an open blocker.
 Failures come back as work: a failed lab run (`lab.py` passback), a red CI run bisected to a bead, or a
 failed release check reopens the bead with the `reopened` label, the evidence as a comment, and a new
 unchecked acceptance item, so it cannot be closed again until that check passes. Agents take open
