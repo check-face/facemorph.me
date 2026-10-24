@@ -12,6 +12,11 @@ import { sha256Hex } from './sha256.ts';
 
 export const RECOVERY_MAX_FILE_BYTES = 64 * 1024 * 1024;
 export const RECOVERY_MAX_METADATA_BYTES = 128 * 1024;
+/**
+ * Bound on any envelope before its schema is known: the candidate's schema-1 PNG limit (recovery-metadata.mjs
+ * MAX). Applying the schema-2 limit first rejected realistic schema-1 stills (a W+ of N(0,1) values is ~181 KiB).
+ */
+export const RECOVERY_MAX_ANY_METADATA_BYTES = 512 * 1024;
 export const RECOVERY_MAX_CHUNKS = 4096;
 /** Largest latent the reader accepts (values), well above W+ 18x512 and inside the metadata bound. */
 export const RECOVERY_MAX_LATENT_VALUES = 24 * 1024;
@@ -343,13 +348,48 @@ function fields(
   };
 }
 
-function read(bytes: Uint8Array): RecoveryReadResult {
+/** A still's container and pixel size (PNG or WebP), or null for a format that cannot carry recovery metadata. */
+export function stillContainer(
+  bytes: Uint8Array,
+): {
+  readonly mime: RecoveryImageMime;
+  readonly width: number;
+  readonly height: number;
+  readonly hasEnvelope: boolean;
+} | null {
+  try {
+    const parsed = structure(bytes);
+    return (
+      parsed && {
+        mime: parsed.mime,
+        width: parsed.width,
+        height: parsed.height,
+        hasEnvelope: parsed.parts.some((p) => p.own),
+      }
+    );
+  } catch (error) {
+    if (error instanceof Damaged) throw new Error(`malformed ${error.message}`);
+    throw error;
+  }
+}
+
+/** A located, parsed envelope: the record and the image bytes without it (what imageSha256 covers). */
+export interface RecoveryChunk {
+  readonly mime: RecoveryImageMime;
+  readonly width: number;
+  readonly height: number;
+  readonly baseImage: Uint8Array;
+  readonly payloadBytes: number;
+  readonly record: Readonly<Record<string, unknown>>;
+}
+
+function locate(bytes: Uint8Array): RecoveryChunk | null {
   if (bytes.byteLength > RECOVERY_MAX_FILE_BYTES)
     throw new Damaged('file-too-large', 'file exceeds 64 MiB');
   const parsed = structure(bytes);
-  if (!parsed) return { kind: 'missing' };
+  if (!parsed) return null;
   const own = parsed.parts.filter((p) => p.own);
-  if (own.length === 0) return { kind: 'missing' };
+  if (own.length === 0) return null;
   if (own.length > 1) throw new Damaged('duplicate-metadata', 'more than one recovery chunk');
   const part = own[0]!;
   const base = new Uint8Array(bytes.length - (part.end - part.at));
@@ -357,8 +397,8 @@ function read(bytes: Uint8Array): RecoveryReadResult {
   base.set(bytes.subarray(part.end), part.at);
   if (parsed.mime === 'image/webp') new DataView(base.buffer).setUint32(4, base.length - 8, true);
   const payload = parsed.mime === 'image/png' ? part.data.subarray(PNG_KEY.length + 1) : part.data;
-  if (payload.length > RECOVERY_MAX_METADATA_BYTES)
-    throw new Damaged('metadata-too-large', 'metadata exceeds 128 KiB');
+  if (payload.length > RECOVERY_MAX_ANY_METADATA_BYTES)
+    throw new Damaged('metadata-too-large', 'metadata exceeds 512 KiB');
   const text = utf8Text(payload);
   let record: unknown;
   try {
@@ -367,9 +407,46 @@ function read(bytes: Uint8Array): RecoveryReadResult {
     record = undefined;
   }
   if (!isRecord(record)) throw new Damaged('unreadable-json', 'metadata is not a JSON object');
+  return {
+    mime: parsed.mime,
+    width: parsed.width,
+    height: parsed.height,
+    baseImage: base,
+    payloadBytes: payload.length,
+    record,
+  };
+}
+
+/**
+ * The envelope of a still, located and parsed as JSON but not yet validated against a schema: for readers of
+ * other schema versions (the media layer's schema-1 reader). Never throws.
+ */
+export function locateRecoveryChunk(
+  bytes: Uint8Array,
+):
+  | { readonly kind: 'missing' }
+  | { readonly kind: 'damaged'; readonly reason: RecoveryDamage; readonly detail: string }
+  | { readonly kind: 'located'; readonly chunk: RecoveryChunk } {
+  try {
+    const chunk = locate(bytes);
+    return chunk ? { kind: 'located', chunk } : { kind: 'missing' };
+  } catch (error) {
+    if (error instanceof Damaged)
+      return { kind: 'damaged', reason: error.reason, detail: error.message };
+    throw error;
+  }
+}
+
+function read(bytes: Uint8Array): RecoveryReadResult {
+  const chunk = locate(bytes);
+  if (!chunk) return { kind: 'missing' };
+  const { record, mime: parsedMime, baseImage: base } = chunk;
+  const parsed = { mime: parsedMime, width: chunk.width, height: chunk.height };
   if (record.schema !== RECOVERY_SCHEMA_VERSION)
     return { kind: 'incompatible-schema', schemaVersion: record.schema };
-  const f = fields(record, parsed.mime);
+  if (chunk.payloadBytes > RECOVERY_MAX_METADATA_BYTES)
+    throw new Damaged('metadata-too-large', 'metadata exceeds 128 KiB');
+  const f = fields(record as Record<string, unknown>, parsed.mime);
   if (parsed.width !== f.width || parsed.height !== f.height)
     throw new Damaged('dimensions', 'recorded size differs from the image');
   const raw = base64Bytes(f.latentData);

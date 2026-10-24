@@ -11,3 +11,6 @@ export {
   CanonicalJsonError,
   type CanonicalValue,
 } from './contracts/canonical-json.ts';
+export * from './media/envelope.ts';
+export * from './media/inspect-still.ts';
+export { encodeVp8lWebp, WEBP_LOSSLESS_MAX_EDGE } from './media/webp-lossless.ts';
