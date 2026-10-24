@@ -62,6 +62,7 @@ test('no usable base, or a change to the pipeline itself, selects every lane', (
     '.github/workflows/main.yml',
     'scripts/ci/path-filters.json',
     'scripts/ci/changes.ts',
+    'scripts/ci/workspace-cache.sh',
   ])
     assert.deepEqual(selectLanes([f], FILTERS), ALL, f);
   assert.deepEqual(selectLanes([], FILTERS), []);
