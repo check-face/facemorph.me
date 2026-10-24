@@ -1,0 +1,513 @@
+{
+  "schema": "facemorph.retirement-copy/1",
+  "bead": "fm-8lq",
+  "generatedBy": "scripts/delivery/copy-inventory.mjs from scripts/delivery/copy-strings.json",
+  "revisions": {
+    "classicFrozen": "a42829bb0582b5a7a55ba6b1045a05861612b8a5",
+    "classicHead": "985d52157abab947150cc3712f70039309dfde98",
+    "branch": "candidate/next-delivery-20260916"
+  },
+  "rules": "The candidate's preview-chrome and retirement strings that change before production, each with its replacement or removal and the bead that makes the edit. scripts/delivery/copy-inventory.mjs locates every one by file and line in classic's Git objects (the frozen import revision and the candidate branch head) and in this repository's shell, and writes inventory/retirement-copy.json, which the candidate edit set (fm-ww4) and the monorepo copy beads read. Draft wording rules: old GUIDs, results and links are not preserved; no new share URLs exist; the operator controls timing, so no fixed date unless the operator sets one; operation limits and CPU/WebGPU/mobile guidance match the chosen artifact; classic self-host Compose is described in Help only, never as a primary recovery link.",
+  "entries": [
+    {
+      "id": "preview-strip",
+      "kind": "preview chrome",
+      "find": "Experimental preview",
+      "action": "remove",
+      "replacement": null,
+      "note": "Production is not a preview: the strip goes, with its Classic and retirement links (below). 'Report an issue' stays in the footer.",
+      "locations": [
+        {
+          "source": "classic",
+          "revision": "frozen",
+          "file": "src/Next/Product.fs",
+          "line": 1204,
+          "text": "Html.span [prop.className \"next-preview-strip-lead\";prop.children [Html.strong \"Experimental preview\";Html.text \" of the next facemorph.me. Everything runs on your device.\"]]",
+          "owner": "fm-ww4"
+        },
+        {
+          "source": "classic",
+          "revision": "head",
+          "file": "src/Next/Product.fs",
+          "line": 1204,
+          "text": "Html.span [prop.className \"next-preview-strip-lead\";prop.children [Html.strong \"Experimental preview\";Html.text \" of the next facemorph.me. Everything runs on your device.\"]]",
+          "owner": "fm-ww4"
+        },
+        {
+          "source": "monorepo",
+          "revision": "HEAD",
+          "file": "apps/web/shell/Shell.tsx",
+          "line": 60,
+          "text": "<strong>Experimental preview</strong> of the next facemorph.me. Everything runs on your",
+          "owner": "fm-gbdt"
+        }
+      ]
+    },
+    {
+      "id": "preview-strip-classic-link",
+      "kind": "classic fallback link",
+      "find": "Classic facemorph.me",
+      "action": "remove",
+      "replacement": null,
+      "note": "There is no classic site to fall back to once facemorph.me serves this app.",
+      "locations": [
+        {
+          "source": "classic",
+          "revision": "frozen",
+          "file": "src/Next/Product.fs",
+          "line": 1206,
+          "text": "Html.a [prop.href \"https://facemorph.me\";prop.text \"Classic facemorph.me\"]",
+          "owner": "fm-ww4"
+        },
+        {
+          "source": "classic",
+          "revision": "head",
+          "file": "src/Next/Product.fs",
+          "line": 1206,
+          "text": "Html.a [prop.href \"https://facemorph.me\";prop.text \"Classic facemorph.me\"]",
+          "owner": "fm-ww4"
+        },
+        {
+          "source": "monorepo",
+          "revision": "HEAD",
+          "file": "apps/web/shell/Shell.tsx",
+          "line": 64,
+          "text": "<a href=\"https://facemorph.me\">Classic facemorph.me</a>",
+          "owner": "fm-gbdt"
+        }
+      ]
+    },
+    {
+      "id": "preview-strip-retirement-link",
+      "kind": "retirement link",
+      "find": "Its server is retiring",
+      "action": "remove",
+      "replacement": null,
+      "note": "The retirement explanation moves into Help (FAQ 'What happened to the old API?').",
+      "locations": [
+        {
+          "source": "classic",
+          "revision": "frozen",
+          "file": "src/Next/Product.fs",
+          "line": 1207,
+          "text": "Html.a [prop.href \"https://facemorph.me/retirement\";prop.text \"Its server is retiring\"]",
+          "owner": "fm-ww4"
+        },
+        {
+          "source": "classic",
+          "revision": "head",
+          "file": "src/Next/Product.fs",
+          "line": 1207,
+          "text": "Html.a [prop.href \"https://facemorph.me/retirement\";prop.text \"Its server is retiring\"]",
+          "owner": "fm-ww4"
+        },
+        {
+          "source": "monorepo",
+          "revision": "HEAD",
+          "file": "apps/web/shell/Shell.tsx",
+          "line": 65,
+          "text": "<a href=\"https://facemorph.me/retirement\">Its server is retiring</a>",
+          "owner": "fm-gbdt"
+        }
+      ]
+    },
+    {
+      "id": "tester-invite",
+      "kind": "tester invite",
+      "find": "Thanks for testing FaceMorph",
+      "action": "replace",
+      "replacement": "Help improve FaceMorph",
+      "note": "Kept for ?testing links after launch; the body text stays (it describes the report contents exactly), the heading stops calling everyone a tester.",
+      "locations": [
+        {
+          "source": "classic",
+          "revision": "frozen",
+          "file": "src/Next/Product.fs",
+          "line": 1229,
+          "text": "Html.h2 \"Thanks for testing FaceMorph\"",
+          "owner": "fm-ww4"
+        },
+        {
+          "source": "classic",
+          "revision": "head",
+          "file": "src/Next/Product.fs",
+          "line": 1229,
+          "text": "Html.h2 \"Thanks for testing FaceMorph\"",
+          "owner": "fm-ww4"
+        }
+      ]
+    },
+    {
+      "id": "error-classic-link",
+      "kind": "classic fallback link",
+      "find": "Use classic FaceMorph",
+      "action": "replace",
+      "replacement": "Report this problem",
+      "note": "The error panel links to the prefilled GitHub issue (issueUrl) instead of a classic site that no longer exists.",
+      "locations": [
+        {
+          "source": "classic",
+          "revision": "frozen",
+          "file": "src/Next/Product.fs",
+          "line": 1306,
+          "text": "Html.a [prop.href \"https://facemorph.me\";prop.text \"Use classic FaceMorph\"]",
+          "owner": "fm-ww4"
+        },
+        {
+          "source": "classic",
+          "revision": "head",
+          "file": "src/Next/Product.fs",
+          "line": 1306,
+          "text": "Html.a [prop.href \"https://facemorph.me\";prop.text \"Use classic FaceMorph\"]",
+          "owner": "fm-ww4"
+        }
+      ]
+    },
+    {
+      "id": "desktop-readme-link",
+      "kind": "native desktop recommendation",
+      "find": "Desktop app capabilities and availability",
+      "action": "remove",
+      "replacement": null,
+      "note": "Native desktop packages are retired; the slow-device guidance keeps its route and browser advice only.",
+      "locations": [
+        {
+          "source": "classic",
+          "revision": "frozen",
+          "file": "src/Next/Product.fs",
+          "line": 1287,
+          "text": "Html.p [Html.a [prop.href \"https://github.com/check-face/facemorph.me/blob/candidate/next-delivery-20260916/desktop/README.md\";prop.text \"Desktop app capabilities and availability\"]]]]",
+          "owner": "fm-ww4"
+        },
+        {
+          "source": "classic",
+          "revision": "head",
+          "file": "src/Next/Product.fs",
+          "line": 1287,
+          "text": "Html.p [Html.a [prop.href \"https://github.com/check-face/facemorph.me/blob/candidate/next-delivery-20260916/desktop/README.md\";prop.text \"Desktop app capabilities and availability\"]]]]",
+          "owner": "fm-ww4"
+        }
+      ]
+    },
+    {
+      "id": "footer-preview-version",
+      "kind": "preview chrome",
+      "find": "Preview version",
+      "action": "replace",
+      "replacement": "Version",
+      "note": "The footer still shows the source version; only 'Preview' goes.",
+      "locations": [
+        {
+          "source": "classic",
+          "revision": "frozen",
+          "file": "src/Next/Product.fs",
+          "line": 1464,
+          "text": "Html.p [prop.className \"next-footer-version\";prop.text (\"Preview version \" + sourceVersion())]]]",
+          "owner": "fm-ww4"
+        },
+        {
+          "source": "classic",
+          "revision": "head",
+          "file": "src/Next/Product.fs",
+          "line": 1464,
+          "text": "Html.p [prop.className \"next-footer-version\";prop.text (\"Preview version \" + sourceVersion())]]]",
+          "owner": "fm-ww4"
+        },
+        {
+          "source": "monorepo",
+          "revision": "HEAD",
+          "file": "apps/web/shell/Shell.tsx",
+          "line": 99,
+          "text": "<p className=\"next-footer-version\">Preview version {sourceVersion()}</p>",
+          "owner": "fm-gbdt"
+        }
+      ]
+    },
+    {
+      "id": "faq-what-is-next",
+      "kind": "FAQ",
+      "find": "faq \"What is next.facemorph.me?\"",
+      "action": "replace",
+      "replacement": "faq \"How does facemorph.me work now?\" — Everything happens here on your device: no server makes your faces. The old server and its API have been retired; links and results from the old site no longer open, and there are no share links for new results (save the image or video instead).",
+      "note": "No fixed date and no 'while we test' promise; the operator controls timing.",
+      "locations": [
+        {
+          "source": "classic",
+          "revision": "frozen",
+          "file": "src/Next/Product.fs",
+          "line": 1157,
+          "text": "faq \"What is next.facemorph.me?\" [",
+          "owner": "fm-ww4"
+        },
+        {
+          "source": "classic",
+          "revision": "head",
+          "file": "src/Next/Product.fs",
+          "line": 1157,
+          "text": "faq \"What is next.facemorph.me?\" [",
+          "owner": "fm-ww4"
+        }
+      ]
+    },
+    {
+      "id": "faq-self-host-api",
+      "kind": "FAQ (documents a retired host)",
+      "find": "faq \"Is there an API I can self-host?\"",
+      "action": "replace",
+      "replacement": "faq \"What happened to the old API?\" — It has been retired. Its source stays at github.com/check-face/checkface for anyone who wants to run it themselves; Help describes the classic self-host setup. Bugs in this app belong in a GitHub issue.",
+      "note": "The checkface.facemorph.me/api link goes: that host is retired.",
+      "locations": [
+        {
+          "source": "classic",
+          "revision": "frozen",
+          "file": "src/Next/Product.fs",
+          "line": 1175,
+          "text": "faq \"Is there an API I can self-host?\" [",
+          "owner": "fm-ww4"
+        },
+        {
+          "source": "classic",
+          "revision": "head",
+          "file": "src/Next/Product.fs",
+          "line": 1175,
+          "text": "faq \"Is there an API I can self-host?\" [",
+          "owner": "fm-ww4"
+        }
+      ]
+    },
+    {
+      "id": "faq-api-docs-link",
+      "kind": "obsolete API FAQ link",
+      "find": "checkface.facemorph.me/api",
+      "action": "remove",
+      "replacement": null,
+      "note": "Retired host (scripts/ci/site/retired-hosts.mjs reports it).",
+      "locations": [
+        {
+          "source": "classic",
+          "revision": "frozen",
+          "file": "src/Next/Product.fs",
+          "line": 1176,
+          "text": "Html.p [Html.text \"Yes. The server source is at \";Html.a [prop.href \"https://github.com/check-face/checkface\";prop.text \"github.com/check-face/checkface\"];Html.text \" and is documented at \";Html.a [prop.href \"https://checkface.facemorph.me/api\";prop.text \"checkface.facemorph.me/api\"];Html.text \".\"]",
+          "owner": "fm-ww4"
+        },
+        {
+          "source": "classic",
+          "revision": "head",
+          "file": "src/Next/Product.fs",
+          "line": 1176,
+          "text": "Html.p [Html.text \"Yes. The server source is at \";Html.a [prop.href \"https://github.com/check-face/checkface\";prop.text \"github.com/check-face/checkface\"];Html.text \" and is documented at \";Html.a [prop.href \"https://checkface.facemorph.me/api\";prop.text \"checkface.facemorph.me/api\"];Html.text \".\"]",
+          "owner": "fm-ww4"
+        }
+      ]
+    },
+    {
+      "id": "faq-upload-image",
+      "kind": "FAQ (operation)",
+      "find": "and choose Upload image",
+      "action": "keep",
+      "replacement": null,
+      "note": "Keep only if the chosen artifact's photo path works on the device classes it admits; otherwise state the per-operation limit (admission is per operation, never a blanket phone refusal).",
+      "locations": [
+        {
+          "source": "classic",
+          "revision": "frozen",
+          "file": "src/Next/Product.fs",
+          "line": 1156,
+          "text": "Html.p \"Yes. Drop a photo onto a face, tap an empty face, or open a face's mode menu and choose Upload image. Photos are processed on your device and never uploaded.\"]",
+          "owner": "fm-ww4"
+        },
+        {
+          "source": "classic",
+          "revision": "head",
+          "file": "src/Next/Product.fs",
+          "line": 1156,
+          "text": "Html.p \"Yes. Drop a photo onto a face, tap an empty face, or open a face's mode menu and choose Upload image. Photos are processed on your device and never uploaded.\"]",
+          "owner": "fm-ww4"
+        }
+      ]
+    },
+    {
+      "id": "faq-model-sizes",
+      "kind": "FAQ (model sizes)",
+      "find": "about 200 MB, plus about 1 GB more",
+      "action": "replace",
+      "replacement": "The first visit downloads the face models, about {generatorMb} MB, plus about {photoGb} GB more the first time you use a photo.",
+      "note": "Sizes come from the chosen artifact's runtime manifest (generator and photo bundles), not from a hand-written number.",
+      "locations": [
+        {
+          "source": "classic",
+          "revision": "frozen",
+          "file": "src/Next/Product.fs",
+          "line": 1161,
+          "text": "Html.p \"No. Your photos, the words you type and the faces you make stay here. The first visit downloads the face models, about 200 MB, plus about 1 GB more the first time you use a photo. They're saved on this device, so later visits don't download them again.\"",
+          "owner": "fm-ww4"
+        },
+        {
+          "source": "classic",
+          "revision": "head",
+          "file": "src/Next/Product.fs",
+          "line": 1161,
+          "text": "Html.p \"No. Your photos, the words you type and the faces you make stay here. The first visit downloads the face models, about 200 MB, plus about 1 GB more the first time you use a photo. They're saved on this device, so later visits don't download them again.\"",
+          "owner": "fm-ww4"
+        }
+      ]
+    },
+    {
+      "id": "faq-support-address",
+      "kind": "FAQ (support address)",
+      "find": "mailto:checkfaceml@gmail.com\";prop.text \"Email us\"",
+      "action": "keep",
+      "replacement": null,
+      "note": "The address stays the operator's choice; the transition wording around it goes with faq-self-host-api.",
+      "locations": [
+        {
+          "source": "classic",
+          "revision": "frozen",
+          "file": "src/Next/Product.fs",
+          "line": 1190,
+          "text": "Html.p [Html.a [prop.href \"mailto:checkfaceml@gmail.com\";prop.text \"Email us\"]]",
+          "owner": "fm-ww4"
+        },
+        {
+          "source": "classic",
+          "revision": "head",
+          "file": "src/Next/Product.fs",
+          "line": 1190,
+          "text": "Html.p [Html.a [prop.href \"mailto:checkfaceml@gmail.com\";prop.text \"Email us\"]]",
+          "owner": "fm-ww4"
+        }
+      ]
+    },
+    {
+      "id": "faq-retirement-paragraph",
+      "kind": "retirement link",
+      "find": "The classic site's server and API are being retired.",
+      "action": "replace",
+      "replacement": "The old server and its API have been retired.",
+      "note": "Past tense at production; the facemorph.me/retirement page link goes with the legacy site.",
+      "locations": [
+        {
+          "source": "classic",
+          "revision": "frozen",
+          "file": "src/Next/Product.fs",
+          "line": 1159,
+          "text": "Html.p [Html.text \"The classic site's server and API are being retired. \";Html.a [prop.href \"https://facemorph.me/retirement\";prop.text \"Here's why, and what's changing\"];Html.text \".\"]]",
+          "owner": "fm-ww4"
+        },
+        {
+          "source": "classic",
+          "revision": "head",
+          "file": "src/Next/Product.fs",
+          "line": 1159,
+          "text": "Html.p [Html.text \"The classic site's server and API are being retired. \";Html.a [prop.href \"https://facemorph.me/retirement\";prop.text \"Here's why, and what's changing\"];Html.text \".\"]]",
+          "owner": "fm-ww4"
+        }
+      ]
+    },
+    {
+      "id": "explain-api-docs",
+      "kind": "obsolete API link (explain.md)",
+      "find": "checkface.facemorph.me/api",
+      "action": "remove",
+      "replacement": null,
+      "note": "Retired host.",
+      "locations": [
+        {
+          "source": "classic",
+          "revision": "frozen",
+          "file": "src/explain.md",
+          "line": 94,
+          "text": "It is documented at [checkface.facemorph.me/api](https://checkface.facemorph.me/api)",
+          "owner": "fm-ww4"
+        },
+        {
+          "source": "classic",
+          "revision": "head",
+          "file": "src/explain.md",
+          "line": 94,
+          "text": "It is documented at [checkface.facemorph.me/api](https://checkface.facemorph.me/api)",
+          "owner": "fm-ww4"
+        }
+      ]
+    },
+    {
+      "id": "retirement-fixed-date",
+      "kind": "fixed-date assurance",
+      "find": "October 25, 2026 (AEST)",
+      "action": "replace",
+      "replacement": "The operator decides when the old API retires; there is no fixed date.",
+      "note": "Legacy production still announces October 25; no date unless the operator sets one.",
+      "locations": [
+        {
+          "source": "classic",
+          "revision": "frozen",
+          "file": "src/retirement.md",
+          "line": 15,
+          "text": "The current API retirement target is **October 25, 2026 (AEST)**. It is subject to preservation and trial readiness. If the work needs more time, we will revise the target rather than shorten the comparison period or switch the service off automatically.",
+          "owner": "fm-ww4"
+        },
+        {
+          "source": "classic",
+          "revision": "head",
+          "file": "src/retirement.md",
+          "line": 15,
+          "text": "The current API retirement target is **October 25, 2026 (AEST)**. It is subject to preservation and trial readiness. If the work needs more time, we will revise the target rather than shorten the comparison period or switch the service off automatically.",
+          "owner": "fm-ww4"
+        }
+      ]
+    },
+    {
+      "id": "config-fixed-date",
+      "kind": "fixed-date assurance",
+      "find": "apiTransitionDateLabel = \"October 25, 2026 (AEST)\"",
+      "action": "remove",
+      "replacement": null,
+      "note": "The label feeds the legacy banner; no date unless the operator sets one.",
+      "locations": [
+        {
+          "source": "classic",
+          "revision": "frozen",
+          "file": "src/Config.fs",
+          "line": 49,
+          "text": "let apiTransitionDateLabel = \"October 25, 2026 (AEST)\"",
+          "owner": "fm-ww4"
+        },
+        {
+          "source": "classic",
+          "revision": "head",
+          "file": "src/Config.fs",
+          "line": 49,
+          "text": "let apiTransitionDateLabel = \"October 25, 2026 (AEST)\"",
+          "owner": "fm-ww4"
+        }
+      ]
+    },
+    {
+      "id": "retirement-link-promise",
+      "kind": "GUID/link-preservation promise",
+      "find": "Will the API and old links work exactly as before?",
+      "action": "replace",
+      "replacement": "Do old links still work? No. Old GUIDs, results and links are not preserved, and the new site has no share links; save the image or video you want to keep.",
+      "note": "Replaces an open-ended answer with the decided behaviour.",
+      "locations": [
+        {
+          "source": "classic",
+          "revision": "frozen",
+          "file": "src/retirement.md",
+          "line": 47,
+          "text": "#### Will the API and old links work exactly as before?",
+          "owner": "fm-ww4"
+        },
+        {
+          "source": "classic",
+          "revision": "head",
+          "file": "src/retirement.md",
+          "line": 47,
+          "text": "#### Will the API and old links work exactly as before?",
+          "owner": "fm-ww4"
+        }
+      ]
+    }
+  ]
+}
