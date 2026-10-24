@@ -1,81 +1,57 @@
 # Research record standards
 
-Use these standards for **new records from 10 October 2026 onward**. Historical
-rows and evidence retain their original bytes and semantics. This is a prospective
-documentation contract, not an implemented v3 decision engine or ledger migration.
+Revision of 24 October 2026 (fm-zxj) for this repository. Historical rows and evidence keep their original bytes and
+meaning; these standards apply to new records. The imported version is in classic's Git history.
 
-## Separate the records
+## The records
 
 | Record | Purpose | Update rule |
 | --- | --- | --- |
-| [Guide](README.md) / [protocol](program.md) | Current workflow and acceptance rules | Edit to keep coherent; link to dated decisions |
-| [Round registry](reviews/README.md) | Find the active review and closed rounds | Update status with a supporting round-log entry |
-| `reviews/<date>/README.md` | One round's evidence, decisions and remaining gates | Edit the summary; no historical benchmark narrative or imported current claims |
-| `reviews/<date>/experiments.md` | Proposed hypotheses, controls and gates | Edit proposals; log material goal/decision changes |
-| `reviews/<date>/log.md` | Human-readable event/decision journal | Append new uniquely identified entries; never rewrite prior entries |
-| `candidates/<id>/` | Experiment source, recipe and durable reports | Freeze measured inputs; a changed candidate gets a new identity/report |
-| [results.tsv](results.tsv) | Canonical evaluated experiment outcomes | Append rows only; corrections are new rows referencing the earlier ID |
-| `state/runs.jsonl` | Ignored command execution journal from [run.py](run.py) | Runner appends under its file lock; exit zero is still `not_evaluated` |
-| `history/` | Dated setup/protocol/performance archive | Historical facts only; corrections identify date/evidence without claiming a current control |
+| [Guide](README.md) / [protocol](program.md) | Current workflow and acceptance rules | Edit to keep coherent; PLAN.md and the beads win |
+| `rounds/<date>-<slug>/README.md` | One round: journey, bottleneck, exclusions, decisions, remaining gates | Edit the summary |
+| `rounds/<date>-<slug>/experiments.md` | Candidates: one falsifiable mechanism each, control, budget, gates | Edit proposals; log material changes |
+| `rounds/<date>-<slug>/log.md` | The round's event and decision journal | Append uniquely identified entries at EOF; never rewrite one |
+| `candidates/<id>/` | Experiment source, recipe and durable reports | Freeze measured inputs; a changed candidate gets a new identity |
+| [results.tsv](results.tsv) | Canonical evaluated outcomes | Append rows only; corrections are new rows citing the earlier ID |
+| `<lease dir>/runs.jsonl` | The machine's command journal written by `run.py` | Runner appends under its file lock; exit zero is still `not_evaluated` |
+| `reviews/`, `history/`, `benchmark-campaign-v2/` | Frozen history imported from classic | Never edited |
 
-Do not reorder, normalize or fill missing cells in old ledger rows. The existing
-TSV has 11 columns and some legacy cells contain prose, sample lists or non-hash
-descriptions. It is a parseable evaluation ledger, not a uniform numeric timing
-dataset. The execution journal and round log do not replace it. Do not add a
-benchmark outcome merely for a documentation cleanup or an unrun proposal.
+Do not reorder, normalise or fill cells in old ledger rows: the 11-column file holds legacy prose and sample lists, and
+it is a parseable evaluation ledger, not a numeric dataset. The journal and round logs do not replace it. A
+documentation change or an unrun proposal adds no ledger row. `scripts/check-research-ledger.mjs` enforces these rules
+in CI.
 
 ## New ledger rows
 
-Preserve the existing 11-column header/order. Use unique experiment/result IDs and
-one scoped outcome per row. Tabs/newlines are delimiters, never embedded in a cell.
+Keep the 11-column header and order. One scoped outcome per row, a unique `experiment_id`, and no tab or newline inside
+a cell.
 
-| Column | New-entry convention |
+| Column | Convention |
 | --- | --- |
-| `experiment_id` | Unique ID, consistent with the candidate/report; corrections get a new ID and cite the superseded ID in the hypothesis/conclusion |
-| `lane` | `browser-cpu`, `browser-gpu`, `native-cpu`, or `native-gpu`; keep actual route/provider in context |
-| `device_provider` | Device/hardware, OS, browser/engine version, route/provider; unknown fields explicitly unknown |
-| `workload` | Inputs, resolution/frame count, cache state, timer boundary, warmup/order/sample count and load; full context linked in evidence |
-| `source_hash` | Exact control/candidate source SHA-256 or Git revisions with labels; use `not_measured` if unavailable, not a path in place of a hash |
-| `control_ms`, `candidate_ms` | Scoped ms values with sample statistic and boundary; `not_measured`/`not_applicable` when appropriate; `unpaired` for an observation without a comparable side. Full samples in the report. Do not substitute zero. |
-| `correctness` | Applied gates/results and missing gates, including export/recovery where relevant |
-| `status` | `keep`, `discard`, `crash`, `inconclusive`, or `blocked`, qualified by the protocol; legacy values remain unchanged |
-| `evidence` | Durable source/report links; state if a cited raw artifact is local-only or unavailable |
-| `hypothesis` | Mechanism, scoped conclusion, resource/failure costs, correction reference and next gate |
+| `experiment_id` | Unique; a correction gets a new ID and cites the superseded one in `hypothesis` |
+| `lane` | `browser-cpu`, `browser-gpu`, `native-cpu` or `native-gpu`; the actual route goes in context |
+| `device_provider` | Device, OS, browser and engine version, route; unknown fields written as unknown |
+| `workload` | Inputs, resolution and frames, cache cohort, finish boundary, warmup, order, pairs and load |
+| `source_hash` | Control and candidate source SHA-256 or Git revisions with labels; `not_measured` if unavailable |
+| `control_ms`, `candidate_ms` | Scoped values with statistic and boundary; `not_measured`, `not_applicable` or `unpaired`; never zero for missing |
+| `correctness` | The gates applied and their results, and the gates missing |
+| `status` | `keep`, `discard`, `crash`, `inconclusive` or `blocked`; legacy values stay as they are |
+| `evidence` | Durable report links; say when a raw artifact is local-only or gone |
+| `hypothesis` | Mechanism, scoped conclusion, costs, correction reference and next gate |
 
-Do not average incompatible workloads or report paired speedups across different
-devices, builds, routes, frame schedules or timer boundaries. Reports retain raw
-samples/distributions, artifact/model/fixture identities, resource/failure data and
-correctness. A ledger `keep`, integration commit and deployed validation are three
-distinct facts.
+The first evaluated row after the handover cites the [handover](rounds/2026-10-24-handover/README.md) (ledger prefix
+hash and last journal IDs) in its `evidence` cell.
 
-## Round journal format
+## Round logs
 
-Start from [the round template](templates/round.md) and append entries using the
-[entry template](templates/log-entry.md). Use an ISO timestamp with timezone and
-a unique event ID. Phases are `proposed`, `observed`, `implemented`, `deployed`;
-phase describes this event, not automatic qualification. A proposal has no samples.
-Implementation cites source; deployment cites receipt and verified live bytes.
+Start a round from [the round template](rounds/templates/round.md) and append entries from
+[the entry template](rounds/templates/log-entry.md). Each entry heading carries a unique event ID and an ISO timestamp
+with a timezone. Phases are `proposed`, `observed`, `implemented` and `deployed`, and describe the event, not a
+qualification: a proposal has no samples; implementation cites source; deployment cites the verified live bytes.
+Corrections append a superseding entry naming the earlier ID; the original stays. Never insert a backdated entry.
 
-Each entry identifies its hypothesis/decision, exact known source/build/assets,
-device/engine, workload/cache/network/order/load, start/finish boundary, samples,
-correctness, resources/failures, evidence and next action. Use `not_measured`,
-`not_applicable` or `unknown` explicitly. Corrections append a superseding entry
-with the earlier event/result ID and reason; retain the original. Append at EOF,
-never insert a backdated entry among earlier entries. Coordinate log/ledger writes
-in the shared checkout so concurrent writers do not lose each other's records.
+## Reporting claims
 
-## Current reporting claims
-
-Require recent actual analytics or consented debug reporting, matched to release,
-device/browser, actual route, workload and cache state. Record query time, execution
-and receipt windows, coverage/expiry limits, sample count and observable finish.
-Receipt time may differ from execution time. Join start context across batches;
-deduplicate request lifecycle outcomes before rates. Job completion, image decode,
-paint, playable media and share-sheet handoff are different boundaries. Automated
-observations remain diagnostic controls, not ordinary-user analytics. Missing
-context means unknown, not a performance claim.
-
-Publish only non-identifying aggregates and approved synthetic benchmark evidence;
-leave private reports and their expiry in the existing diagnostics system. Do not
-overwrite frozen raw evidence with a rerun. Link current rounds to history without
-copying historical timings into the active control or queue.
+Current claims need recent real-visitor statistics or consented diagnostics matched to release, device, route,
+workload and cache state, with the query window, coverage and sample count. Publish non-identifying aggregates only;
+private reports stay in the diagnostics system with their expiry.

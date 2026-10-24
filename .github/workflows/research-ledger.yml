@@ -1,0 +1,29 @@
+name: research-ledger
+# fm-zxj: the research ledger and logs stay append-only, the handover prefix holds, the maintained research docs and
+# classic's forward pointer have no dead links, and no new round has started in classic since the handover.
+on:
+  push:
+    branches: [main]
+    paths: ['autoresearch/**', 'scripts/check-research-ledger.mjs', 'scripts/research-ledger/**', 'ops/lease/**', '.github/workflows/research-ledger.yml']
+  workflow_dispatch:
+concurrency:
+  group: research-ledger
+  cancel-in-progress: false
+jobs:
+  check:
+    runs-on: [self-hosted, triton]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # the checker compares the ledger with the previous revision byte for byte
+      - name: Classic, for the forward pointer and fork detection
+        uses: actions/checkout@v4
+        with:
+          repository: check-face/facemorph.me-classic
+          path: classic
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --test scripts/research-ledger/research-ledger.test.mjs
+      - run: node scripts/check-research-ledger.mjs --classic classic

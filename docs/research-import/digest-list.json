@@ -97,9 +97,9 @@
    "mode": "100644",
    "size": 9024,
    "sha256": "cf9d300d4ca3f5d41f9f600c56e16ea50dc790a25a84652e727ee34847d0d6a3",
-   "disposition": "held",
-   "owner": "fm-htbc",
-   "reason": "destination reserved by fm-htbc for the lease guide; imported byte-identically or listed by digest only once fm-htbc settles the path"
+   "disposition": "re-homed",
+   "owner": "fm-zxj",
+   "reason": "research stage 1 rewrote the guide for this repository (the lease guide is ops/lease/README.md); the snapshot copy is listed by digest only"
   },
   {
    "source": "autoresearch/benchmark-campaign-v2/README.md",
@@ -979,7 +979,9 @@
    "mode": "100644",
    "size": 8565,
    "sha256": "61357d36476b98810fcf06cfb9f454ed3ea08ffa64dd576ee4c925aebf623b9d",
-   "disposition": "import"
+   "disposition": "re-homed",
+   "owner": "fm-zxj",
+   "reason": "research stage 1 rewrote the protocol for this repository; the snapshot copy is listed by digest only"
   },
   {
    "source": "autoresearch/records.md",
@@ -987,7 +989,9 @@
    "mode": "100644",
    "size": 5968,
    "sha256": "f8c891fd64d9e6c94eff97db47b0a26fa809941449450c38e935e21519e4ac76",
-   "disposition": "import"
+   "disposition": "re-homed",
+   "owner": "fm-zxj",
+   "reason": "research stage 1 rewrote the record standards for this repository; the snapshot copy is listed by digest only"
   },
   {
    "source": "autoresearch/results.tsv",

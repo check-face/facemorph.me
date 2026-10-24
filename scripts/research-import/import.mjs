@@ -24,8 +24,16 @@ export const OVERRIDES = {
     reason: 'research lease bead re-homed run.py with the lease state (24 October parallelism pass); the snapshot copy is listed by digest only',
   },
   'autoresearch/README.md': {
-    disposition: 'held', owner: 'fm-htbc',
-    reason: 'destination reserved by fm-htbc for the lease guide; imported byte-identically or listed by digest only once fm-htbc settles the path',
+    disposition: 're-homed', owner: 'fm-zxj',
+    reason: 'research stage 1 rewrote the guide for this repository (the lease guide is ops/lease/README.md); the snapshot copy is listed by digest only',
+  },
+  'autoresearch/program.md': {
+    disposition: 're-homed', owner: 'fm-zxj',
+    reason: 'research stage 1 rewrote the protocol for this repository; the snapshot copy is listed by digest only',
+  },
+  'autoresearch/records.md': {
+    disposition: 're-homed', owner: 'fm-zxj',
+    reason: 'research stage 1 rewrote the record standards for this repository; the snapshot copy is listed by digest only',
   },
 };
 
