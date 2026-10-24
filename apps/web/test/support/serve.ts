@@ -61,6 +61,12 @@ export async function serve(dir: string, mounts: Record<string, string> = {}): P
   return {
     origin: `http://127.0.0.1:${address.port}`,
     requests,
-    close: () => new Promise((resolve) => server.close(() => resolve())),
+    // A page still holding a connection open (keep-alive, a request in flight) would hold close() until it times
+    // out; the run is over, so drop them.
+    close: () =>
+      new Promise((resolve) => {
+        server.close(() => resolve());
+        server.closeAllConnections();
+      }),
   };
 }

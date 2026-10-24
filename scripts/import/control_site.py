@@ -101,25 +101,54 @@ class Site:
     info: dict = field(default_factory=dict)
 
 
-SHIM = re.compile(r"""^export \* from '((?:\.\./)+packages/[^']+\.ts)';$""", re.M)
 STRIP = "const m=require('node:module'),fs=require('node:fs');process.stdout.write(m.stripTypeScriptTypes(fs.readFileSync(process.argv[1],'utf8')))"
+TS_SPECIFIER = re.compile(r"""((?:\bfrom|\bimport)\s*\(?\s*)(['"])(\.{1,2}/[^'"]+)\.ts\2""")
 
 
 def browser_source(src: Path, into: Path) -> Path:
     """A copy of the imported source a browser can load module by module.
 
-    fm-eulc moved src/Next/Assets/{model-cache,shard-store,sha256}.mjs into packages/browser-model-manager as TS and
-    left re-export shims at the old paths; Node and Vite load the TS, a browser served raw source cannot. In the copy,
-    each such shim is replaced by its target with the types stripped (Node's own stripTypeScriptTypes), and sibling
-    `./x.ts` imports become `./x.mjs` (the siblings are shims replaced the same way). Nothing else changes."""
+    Node and Vite load TS; a browser served raw source cannot. fm-eulc moved src/Next/Assets/{model-cache,shard-store,
+    sha256}.mjs into packages/browser-model-manager as TS behind re-export shims, and the app now imports TS of its own
+    (src/contracts) and of the packages. In the copy, every TS module reachable by a relative import is written as
+    `.mjs` with its types stripped (Node's own stripTypeScriptTypes) and every such import points at that `.mjs`. A
+    module inside `src` keeps its place; one outside it (a package) goes under `into/_repo/` at its repository path,
+    so its own relative imports still resolve. Nothing else changes."""
+    src = src.resolve()
+    repo = next(p for p in src.parents if (p / 'packages').is_dir())
     shutil.copytree(src, into, symlinks=True)
-    for shim in into.rglob('*.mjs'):
-        m = SHIM.search(shim.read_text())
-        if not m:
-            continue
-        target = (src / shim.relative_to(into)).parent / m.group(1)
-        js = subprocess.run(['node', '-e', STRIP, str(target.resolve())], check=True, capture_output=True, text=True).stdout
-        shim.write_text(re.sub(r"from '(\./[\w-]+)\.ts'", r"from '\1.mjs'", js))
+
+    def dest(source: Path) -> Path:
+        try:  # Path.is_relative_to is Python 3.9
+            rel = source.relative_to(src)
+        except ValueError:
+            rel = Path('_repo') / source.relative_to(repo)
+        return into / rel.with_suffix('.mjs')
+
+    pending, done = [], set()
+
+    def rewrite(text: str, source: Path, out: Path) -> str:
+        def one(m):
+            target = (source.parent / (m.group(3) + '.ts')).resolve()
+            if target not in done:
+                done.add(target)
+                pending.append(target)
+            rel = os.path.relpath(dest(target), out.parent)
+            return f"{m.group(1)}{m.group(2)}{rel if rel.startswith('.') else './' + rel}{m.group(2)}"
+        return TS_SPECIFIER.sub(one, text)
+
+    for copy in into.rglob('*.mjs'):
+        source = src / copy.relative_to(into)
+        text = copy.read_text()
+        out = rewrite(text, source, copy)
+        if out != text:
+            copy.write_text(out)
+    while pending:
+        source = pending.pop()
+        js = subprocess.run(['node', '-e', STRIP, str(source)], check=True, capture_output=True, text=True).stdout
+        out = dest(source)
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(rewrite(js, source, out))
     return into
 
 

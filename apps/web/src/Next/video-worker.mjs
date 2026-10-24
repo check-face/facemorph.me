@@ -12,6 +12,7 @@
 //    arrives in the initialize message instead of being hardcoded here.
 // Frames arrive as raw RGBA at the resolution the probe chose; nothing re-encodes a PNG here.
 import {createBrowserModelCache} from './Assets/model-cache.mjs';
+import {bridgeGrant,BRIDGE_OWNER} from './browser/bridge-grant.mjs';
 let core,stream,count=0,segmentFrames=0,segments=[],fps=16,width=512,height=512,compressedBytes=0,MAX_COMPRESSED=48*1024*1024;
 let enc=null,encError=null,description=null,chunks=[],chunkBytes=0,currentId=0,encodedCount=0;
 const u16=n=>{const a=new Uint8Array(2);new DataView(a.buffer).setUint16(0,n);return a;};
@@ -55,7 +56,7 @@ export function muxMp4(samples,avcC,trackWidth,trackHeight,trackFps){
  return concat(ftyp,moov,mdat);
 }
 const ftyp=box('ftyp',type('isom'),u32(512),type('isom'),type('iso2'),type('avc1'),type('mp41'));
-async function bytes(asset,cache){const h=await cache.acquire(asset);return h.bytes();}
+async function bytes(asset,cache,grant){const h=await cache.acquire(asset,{grant,owner:BRIDGE_OWNER});return h.bytes();}
 function begin(){stream=core.FS.open('frames.rgba','w+');segmentFrames=0;}
 function flush(){
  if(!segmentFrames)return;core.FS.close(stream);stream=null;
@@ -86,7 +87,7 @@ self.onmessage=async({data})=>{currentId=data.id;try{
    if(!Number.isInteger(fps)||fps<1||fps>60||!data.codec)throw Error('Invalid video configuration.');
    dims(data);
    const cache=await createBrowserModelCache({timeoutMs:180000,maxConcurrent:1,report:e=>postMessage({progress:{stage:'codec-loading',loaded:e.bytes}})});
-   const wasm=await bytes(data.codec.wasm,cache),moduleBytes=await bytes(data.codec.module,cache);
+   const grant=bridgeGrant(data.codec,{purpose:'generate'}),wasm=await bytes(data.codec.wasm,cache,grant),moduleBytes=await bytes(data.codec.module,cache,grant);
    const moduleUrl=URL.createObjectURL(new Blob([moduleBytes],{type:'text/javascript'}));
    try{const {default:create}=await import(/* webpackIgnore: true */ moduleUrl);core=await create({wasmBinary:wasm,locateFile:()=>data.codec.wasm.url});}
    finally{URL.revokeObjectURL(moduleUrl);}

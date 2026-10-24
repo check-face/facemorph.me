@@ -2,7 +2,19 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash, randomBytes } from 'node:crypto';
 import { Sha256 } from './sha256.mjs';
-import { createModelCache, createBrowserModelCache, storageStatus, runtimeMirror } from './model-cache.mjs';
+import { createModelCache as createManagerCache, createBrowserModelCache as createManagerBrowserCache, storageStatus } from './model-cache.mjs';
+
+// The candidate called acquire(asset, { signal }); since fm-fr9s the manager transfers only under an app-supplied
+// grant (its own tests cover refusal, scope and budget). These carried cases test everything else unchanged, so
+// each acquire carries a grant for exactly the asset it names, with room for every retry the case provokes.
+import { modelAlternateOrigins } from '../../contracts/model-origins.ts';
+const OWNER = 'face:carried-test';
+const granted = cache => ({ ...cache, acquire: (input, options = {}) => cache.acquire(input, {
+  grant: { manifestSha256: '', route: 'cpu', purpose: 'generate', owners: [OWNER], remainingBytes: Number.MAX_SAFE_INTEGER,
+    assets: [{ sha256: input?.sha256, bytes: input?.size, priority: 'foreground-required' }] },
+  owner: OWNER, ...options }) });
+const createModelCache = options => granted(createManagerCache(options));
+const createBrowserModelCache = async options => granted(await createManagerBrowserCache(options));
 
 const bytes = new TextEncoder().encode('synthetic model fixture');
 const digest = value => createHash('sha256').update(value).digest('hex');
@@ -526,31 +538,27 @@ test('cancelling during a retry pause stops at once', async () => {
   assert.equal(f.calls.length <= 2, true);
 });
 test('with a mirror, the second try goes to it; a failing mirror only moves on to the site again', async () => {
-  const mirrorOf = url => url.replace('https://models.example/', 'https://mirror.example/');
+  const alternateOrigins = ['https://mirror.example'];
   const dir = fakeDirectory(), shards = createShardStore(dir), seen = [];
   const f = fixture(async url => { seen.push(url); const unit = unitOf(url);
     if (unit !== 1) return new Response(unitPieces[unit]);
     if (url.startsWith('https://mirror.example/')) return new Response('', { status: 404 });
     return url.endsWith('retry=2') ? new Response(unitPieces[1]) : new Response('', { status: 500 }); });
-  const cache = createModelCache({ ...f.options, shards, retryDelaysMs: [0, 0, 0], mirrorOf });
+  const cache = createModelCache({ ...f.options, shards, retryDelaysMs: [0, 0, 0], alternateOrigins });
   assert.deepEqual(Buffer.from(await (await cache.acquire(chunked())).bytes()), Buffer.from(shardModel));
   assert.deepEqual(seen.filter(url => unitOf(url) === 1), ['https://models.example/model.1', 'https://mirror.example/model.1', 'https://models.example/model.1?retry=2']);
   const rescued = createModelCache({ ...fixture(async url => url.startsWith('https://mirror.example/') ? new Response(unitPieces[unitOf(url)]) : new Response('', { status: 503 })).options,
-    shards: createShardStore(fakeDirectory()), retryDelaysMs: [0], mirrorOf });
+    shards: createShardStore(fakeDirectory()), retryDelaysMs: [0], alternateOrigins });
   assert.deepEqual(Buffer.from(await (await rescued.acquire(chunked())).bytes()), Buffer.from(shardModel), 'the mirror alone can complete the model');
 });
 test('a site fault reported through a mirror failure still names the site status', async () => {
   const f = fixture(async url => new Response('', { status: url.startsWith('https://mirror.example/') ? 404 : 500 }));
-  const cache = createModelCache({ ...f.options, shards: createShardStore(fakeDirectory()), retryDelaysMs: [0], mirrorOf: url => url.replace('models.example', 'mirror.example') });
+  const cache = createModelCache({ ...f.options, shards: createShardStore(fakeDirectory()), retryDelaysMs: [0], alternateOrigins: ['https://mirror.example'] });
   await assert.rejects(cache.acquire(chunked()), /HTTP 500/);
 });
-test('the runtime mirror applies only to same-origin runtime files on a facemorph.me page', () => {
-  const page = origin => ({ origin, hostname: new URL(origin).hostname });
-  const next = runtimeMirror(page('https://next.facemorph.me'));
-  assert.equal(next('https://next.facemorph.me/runtime/encoder-stream/abc/part-091.onnx'), 'https://models.facemorph.me/runtime/encoder-stream/abc/part-091.onnx');
-  assert.equal(next('https://next.facemorph.me/app.js'), undefined);
-  assert.equal(next('https://elsewhere.example/runtime/x'), undefined);
-  assert.equal(runtimeMirror(page('http://localhost:8080'))('http://localhost:8080/runtime/x'), undefined);
-  assert.equal(runtimeMirror(page('https://facemorph.me.evil.example'))('https://facemorph.me.evil.example/runtime/x'), undefined);
-  assert.equal(runtimeMirror(undefined)('https://next.facemorph.me/runtime/x'), undefined);
+// runtimeMirror() became app configuration (fm-fr9s): the same page-host scoping, as the manager's alternateOrigins.
+test('the runtime mirror applies only to a facemorph.me page', () => {
+  assert.deepEqual(modelAlternateOrigins('next.facemorph.me'), ['https://models.facemorph.me']);
+  assert.deepEqual(modelAlternateOrigins('localhost'), []);
+  assert.deepEqual(modelAlternateOrigins('facemorph.me.evil.example'), []);
 });

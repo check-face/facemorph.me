@@ -2,7 +2,10 @@
   // Tests run under Node (node --test strips the types), so they alone see Node's globals.
   "extends": "./tsconfig.engine.json",
   "compilerOptions": {
-    "types": ["node"]
+    "types": ["node"],
+    // Sibling package sources (the manager's handles in the engine tests) import this package by name: read its
+    // sources, not a dist/ that a fresh checkout has not built.
+    "customConditions": ["source"]
   },
   "include": ["src", "test"]
 }

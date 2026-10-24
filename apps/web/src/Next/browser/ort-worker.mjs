@@ -6,6 +6,8 @@ import {inputLatent,truncate,requireLatent,rgba1024} from './identity.mjs';
 import {qualifyEncoderReference} from './encoder-preflight.mjs';
 import {createAcquisitionBudget,collectAssets} from './acquisition-budget.mjs';
 import {createCanaryQualification} from './canary-qualification.mjs';
+import {bridgeGrant,widenGrant,BRIDGE_OWNER} from './bridge-grant.mjs';
+import {modelAlternateOrigins} from '../../contracts/model-origins.ts';
 // Chunks of a model download in flight at once (16 MiB each). Eight gigabytes stated by the device earns four;
 // everything else, including iOS where deviceMemory is undefined, gets two, a 32 MiB window.
 const readAhead=(globalThis.navigator?.deviceMemory||0)>=8?4:2;
@@ -108,7 +110,7 @@ async function photoAssets(){
  const descriptor=manifest.encoderStream;
  if(descriptor){
   add(descriptor);
-  try{add(JSON.parse(new TextDecoder().decode(await bytes(descriptor,currentId))));}
+  try{add(admitDescriptor(JSON.parse(new TextDecoder().decode(await bytes(descriptor,currentId)))));}
   catch{/* the descriptor is unreadable offline; the real run will report it properly */}
  }
  return ordered;
@@ -160,9 +162,9 @@ async function bytes(asset,id,retainable=false){
   }
   if(held)residency.held-=held.byteLength,residency.bytes.delete(asset.sha256);
  }
- cache ||= await createBrowserModelCache({report:cacheReport,readAhead});
+ cache ||= await createBrowserModelCache({report:cacheReport,readAhead,alternateOrigins:modelAlternateOrigins(self.location.hostname)});
  planAsset(asset);await probePlanned();budget.progress(false);
- const handle=await cache.acquire(asset);const out=await handle.bytes();
+ const handle=await cache.acquire(asset,acquireOptions());const out=await handle.bytes();
  budget.cacheEvent({status:'saved',sha256:asset.sha256,bytes:asset.size});
  budget.progress(false);
  if(retainable){
@@ -173,6 +175,14 @@ async function bytes(asset,id,retainable=false){
  }
  return out;}
 
+// One grant per manifest this worker was given (bridge-grant.mjs): the candidate's consented scope.
+let grant=null,grantManifest=null;
+function acquireOptions(){
+ if(grantManifest!==manifest){grant=bridgeGrant(manifest,{manifestSha256,route:provider==='webgpu'?'webgpu':'cpu'});grantManifest=manifest;}
+ return {grant,owner:BRIDGE_OWNER};
+}
+// The streamed encoder's descriptor (pinned by the manifest's digest, read verified) names its shards.
+function admitDescriptor(config){acquireOptions();grant=widenGrant(grant,config);return config;}
 async function floats(asset,id){const b=await bytes(asset,id);return new Float32Array(b.buffer,b.byteOffset,b.byteLength/4);}
 /**
  * Warm the device's model cache for the route this device would choose, before anything is asked
@@ -185,14 +195,14 @@ async function floats(asset,id){const b=await bytes(asset,id);return new Float32
  * acquisition problem in the user's words and drops the route on the evidence.
  */
 async function prefetchRoute(id,scope='route'){
- cache ||= await createBrowserModelCache({report:cacheReport,readAhead});
+ cache ||= await createBrowserModelCache({report:cacheReport,readAhead,alternateOrigins:modelAlternateOrigins(self.location.hostname)});
  const list=scope==='photo'?await photoAssets():routeAssets();
  if(scope==='photo')planAsset(list);else planRoute();
  await probePlanned();budget.progress(false);
  let assets=0,acquired=0;
  for(const asset of list){
   assets++;
-  try{await cache.acquire(asset);acquired++;budget.progress(false);}
+  try{await cache.acquire(asset,acquireOptions());acquired++;budget.progress(false);}
   catch{break;} // offline, evicted mid-run, or out of quota: the real run will say so properly
  }
  return {provider,scope,assets,acquired,...budget.totals()};
@@ -220,7 +230,7 @@ function cpuThreads(){
 }
 
 async function encodeStream(tensor,id,qualifiedEncoderSha256){
- const started=performance.now();const descriptor=manifest.encoderStream,config=JSON.parse(new TextDecoder().decode(await bytes(descriptor,id)));
+ const started=performance.now();const descriptor=manifest.encoderStream,config=admitDescriptor(JSON.parse(new TextDecoder().decode(await bytes(descriptor,id))));
  planAsset(config);await probePlanned(); // 108 shards, known the moment the descriptor is verified: budget for all of them.
  if(config.sourceEncoderSha256!==descriptor.sourceEncoderSha256||config.sourceEncoderSha256!==manifest.encoder?.sha256||config.preprocessingSha256!==manifest.alignmentSha256||config.preprocessingSha256!==descriptor.preprocessingSha256||config.runtime?.unshared!==true||config.runtime.maxWasmBytes!==268435456)throw Error('Streamed encoder identity mismatch.');
  // The runtime is the small half: three modules and a wasm binary, none of which are weights.
@@ -264,7 +274,7 @@ async function load(id){if(synthesis||webgpu)return;
  // which is the cost the holding exists to avoid. A device is only told to hold when it has the
  // room for both.
  if(residency.mode!=='on')await releaseEncoder();
- cache ||= await createBrowserModelCache({report:cacheReport,readAhead});planRoute();await probePlanned();noise={};for(const item of manifest.noise)noise[item.name]=await floats(item,id);
+ cache ||= await createBrowserModelCache({report:cacheReport,readAhead,alternateOrigins:modelAlternateOrigins(self.location.hostname)});planRoute();await probePlanned();noise={};for(const item of manifest.noise)noise[item.name]=await floats(item,id);
  report(id,'model-loading');const started=performance.now();
  if(provider==='webgpu'&&gpuEngine==='direct'){if(!manifest.webgl)throw Error('WebGPU direct bundle unavailable');warmMapping();webgpu=await createDirectWebGpuSession({config:manifest.webgl,noiseManifest:manifest.noise,bytes:asset=>bytes(asset,currentId),progress:stage=>report(currentId,stage)});}
  else if(provider==='webgpu'){if(!manifest.webgpu)throw Error('WebGPU bundle unavailable');warmMapping();webgpu=await createWebGpuSession({config:manifest.webgpu,noiseManifest:manifest.noise,bytes:asset=>bytes(asset,currentId),progress:stage=>report(currentId,stage)});}
@@ -343,7 +353,7 @@ async function mappingFor(z,id){await load(id);if(mappingReady)await mappingRead
 let fullQualify=false,forceCanaryFail=false;
 async function ensureQualification(id){
  if(qualification)return qualification;
- cache ||= await createBrowserModelCache({report:cacheReport,readAhead});
+ cache ||= await createBrowserModelCache({report:cacheReport,readAhead,alternateOrigins:modelAlternateOrigins(self.location.hostname)});
  qualification=createCanaryQualification({manifest,manifestSha256,provider,bundle:provider==='webgpu'?gpuBundle():manifest.synthesis,records:cache.records,acquireBytes:asset=>bytes(asset,id),runSynthesis:(values,noiseMode)=>run(values,id,noiseMode),full:fullQualify,forceFail:forceCanaryFail});
  await qualification.adopt();
  return qualification;
@@ -402,7 +412,7 @@ self.onmessage=({data})=>{
  if(residency.mode==='off')shedShards();
  // Sequential residency, unchanged in its peak: synthesis goes before the encoder is acquired.
  await synthesis?.release();synthesis=null;await webgpu?.dispose();webgpu=null;await mapping?.release();mapping=null;mappingReady=null;noise=null;
- cache ||= await createBrowserModelCache({report:cacheReport,readAhead});
+ cache ||= await createBrowserModelCache({report:cacheReport,readAhead,alternateOrigins:modelAlternateOrigins(self.location.hostname)});
  // The encoder is the largest thing this device will fetch. Budget for it before the first
  // byte arrives, so the bar measures the wait the user is actually in for.
  planAsset(manifest.encoderStream||manifest.encoder);await probePlanned();
