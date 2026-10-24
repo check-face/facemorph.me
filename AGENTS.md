@@ -124,11 +124,20 @@ green (`lab.py qualify --run <CI run id> --bead <id>`: a pass records the eviden
 reopens the bead with `device-lab-failed`). If a cell is unavailable the bead keeps `lab-pending`
 until a later lab run covering it, or the release bead's full validation, settles it.
 
-One checkout, no branch merge queue: every agent works in this one tree (no worktrees) and pushes straight
-to `main`. Commit only the paths you changed (`git add <paths>`, `git commit -- <paths>`), never
-`git add -A` or `git commit -a`, because other agents' uncommitted work lives in the same tree. Agent
-Mail reservations and the ordering edges serialize edits, the lab lock serializes the devices, and
-the one `main.yml` pipeline verifies `main`.
+Commit method: Jeffrey Emanuel's swarm method (operator, 25 October 2026; enforced by fm-1pt6). Every
+agent works on `main` in this one tree (no worktrees, no side branches, no PR queue) and pushes straight
+to `main`. Breakage is stopped before the push; `main.yml` is the backstop, not the first check.
+- Reserve files in Agent Mail before editing them. The Agent Mail pre-commit and pre-push guards run in
+  block mode and are never bypassed (`--no-verify`, `AGENT_MAIL_BYPASS`); if Agent Mail is unreachable,
+  restore it before committing.
+- Commit only the paths you changed (`git add <paths>`, `git commit -- <paths>`), never `git add -A` or
+  `git commit -a`, because other agents' uncommitted work lives in the same tree.
+- Before each commit, format and lint the files you changed.
+- Before each push, land the plane: run the gates for every lane your commits touch (format, lint,
+  typecheck, unit tests, and the build or import checks those paths select, the same mapping `main.yml`
+  uses) and push only when they pass. The versioned hooks (`npm run hooks:install`) do this for you.
+- A push that turns `main` red is its pusher's first job to fix, before new work.
+The ordering edges serialize shared-file edits and the lab lock serializes the devices.
 Prefer the self-hosted runners (eris `device-lab`, triton on the `tank` pool) over hosted minutes.
 The phone's Frigate camera stays held off until the operator asks for it back.
 

@@ -5203,6 +5203,7 @@ history retains their provenance.
 | 24 Oct | No frame-stutter checks anywhere (long tasks, dropped frames, input delay, scroll smoothness). The only responsiveness bar is no lockups: during work a real input gets a visible response within 1 s and the page never stops painting for more than 1 s. Generation speed is never traded for smoothness; any smoothness change must leave job times strictly not worse. |
 | 24 Oct | Names spike (fm-zg31): scroll frame-drop measurement is low value and dropped; preview packaging is chosen on bytes, requests and look |
 | 25 Oct | Cloudflare Web Analytics' edge-injected beacon on next.facemorph.me is an allowed platform-beacon exception (fm-tayo); the cutover (fm-4gw7) is deferred a week, with classic's published API retirement date moved to November 1, 2026 (AEST); dependencies unpinned at latest with no hold-backs; Cloudflare work uses the `cf` CLI, never Wrangler; CI is one main pipeline (one run at a time, stacked changes) |
+| 25 Oct | Commit method is Jeffrey Emanuel's swarm method: one tree on `main`, Agent Mail reservations and guards never bypassed, format/lint before each commit and the touched lanes' gates before each push; `main.yml` is the backstop (fm-1pt6, AGENTS.md) |
 
 Earlier review rounds, including the 24 October round's findings, are in [`docs/plan-history.md`](docs/plan-history.md)
 and Git history; they do not define the current plan.
