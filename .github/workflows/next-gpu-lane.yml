@@ -1,0 +1,93 @@
+name: GPU lane benchmark
+# fm-wzy: classic's next-gpu-lane.yml ("GPU lane benchmark", job webgpu-benchmark) carried over. The operator's
+# compute direction (24 October): eris and triton carry every self-hosted lane and nothing waits on TrueNAS, so it
+# runs on eris's RTX 2080 SUPER (triton's GTX 1080 is on Ubuntu 20.04, below current Chromium, and its disk is
+# full: docs/dev/workers.md). Classic's driver (apps/web/scripts/next-gpu-benchmark.py) runs unedited under
+# browser-harness 0.1.8 in pinned Chrome for Testing, wrapped by scripts/ci/gpu-lane/lane.mjs and the eris
+# device lease. The report gives nvidia-smi, the in-page adapter and the product's webgpu canaries (RGB <= 1,
+# raw float <= 0.002) before any timing; a software adapter is the named failure "software adapter" with no
+# timings. Per-face timings are evidence about this machine. Not a promotion gate, not a required status.
+on:
+  push:
+    branches: [main]
+    paths:
+      [
+        'packages/stylegan-js/**',
+        'apps/web/src/Next/browser/webgpu-engine.mjs',
+        'apps/web/src/Next/browser/fused-resample-v1.mjs',
+        'apps/web/src/Next/browser/route-priors.mjs',
+        'apps/web/src/Next/browser/route-selection.mjs',
+        'apps/web/src/Next/browser/runtime.mjs',
+        'apps/web/scripts/next-gpu-benchmark.py',
+        'scripts/ci/gpu-lane/**',
+        '.github/workflows/next-gpu-lane.yml',
+        '.github/actions/device-lease/**',
+      ]
+  workflow_dispatch:
+    inputs:
+      url:
+        description: Origin to benchmark (empty = the verified control served locally; never assumed production)
+        required: false
+        default: ''
+      faces:
+        description: Faces to generate (the first is cold and reported separately)
+        required: false
+        default: '6'
+  schedule:
+    - cron: '0 16 * * *'
+permissions:
+  contents: read
+concurrency:
+  group: next-gpu-lane-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  webgpu-benchmark:
+    runs-on: [self-hosted, eris]
+    timeout-minutes: 120
+    env:
+      CHROME_VERSION: '141.0.7390.54'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm ci --no-audit --no-fund
+      - name: build:next (the pinned control, digest re-verified)
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: npm run build:next && npm run build:next -- --check
+      - name: Pinned Chrome for Testing (cached on the runner)
+        id: chrome
+        run: |
+          set -euo pipefail
+          root="$RUNNER_TOOL_CACHE/chrome-for-testing/$CHROME_VERSION"
+          binary="$root/chrome-linux64/chrome"
+          if [ ! -x "$binary" ]; then
+            mkdir -p "$root"
+            curl -fsSL -o "$root/chrome.zip" "https://storage.googleapis.com/chrome-for-testing-public/$CHROME_VERSION/linux64/chrome-linux64.zip"
+            unzip -q -o "$root/chrome.zip" -d "$root"
+            rm -f "$root/chrome.zip"
+          fi
+          "$binary" --version
+          echo "binary=$binary" >> "$GITHUB_OUTPUT"
+      - name: Benchmark the WebGPU route through the product UI (eris device lease)
+        uses: ./.github/actions/device-lease
+        with:
+          device: eris
+          lane: browser-gpu
+          timeout: '2700'
+          wait: '3000'
+          command: >-
+            BROWSER_HARNESS=/home/cdilga/Work/runs/venv-bh/bin/browser-harness node scripts/ci/gpu-lane/lane.mjs
+            --chrome "${{ steps.chrome.outputs.binary }}" --faces "${{ inputs.faces || '6' }}" --out next-gpu-evidence
+            ${{ inputs.url && format('--url "{0}"', inputs.url) || '' }} --runtime /home/cdilga/.cache/facemorph-runtime
+      - name: Report
+        if: always()
+        run: test -f next-gpu-evidence/lane.json && cat next-gpu-evidence/lane.json | tee -a "$GITHUB_STEP_SUMMARY" || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: next-gpu-benchmark-${{ github.run_id }}
+          path: next-gpu-evidence/
+          retention-days: 30
+          if-no-files-found: warn
