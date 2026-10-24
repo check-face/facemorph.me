@@ -1,0 +1,33 @@
+{
+  "recovery-v1.png": {
+    "sha256": "450598ddc48c4aa4969647d419925000c02dd4c7868e8787107793171303491c",
+    "bytes": 191385,
+    "what": "schema 1 PNG (decorateImage), seed 42",
+    "candidateRecoverImage": "throws: Recovery metadata exceeds limit."
+  },
+  "recovery-v2.png": {
+    "sha256": "5f508cf4f0972714b4ac5fc90e06d00469dada6d35fd571aa5c95d819f706006",
+    "bytes": 59768,
+    "what": "schema 2 PNG (embedRecovery), seed 42"
+  },
+  "recovery-v2.webp": {
+    "sha256": "8e936835367560c7526f574fec87d512d067254ec640e9f8ed57c1c91863f424",
+    "bytes": 50750,
+    "what": "schema 2 lossless WebP (embedRecovery), seed 42"
+  },
+  "model-mismatch-v2.png": {
+    "sha256": "1b5a22f0d7d2245b2603f8a732eac76336d93001e1a2c3900455cece7a75d8ec",
+    "bytes": 59768,
+    "what": "schema 2 PNG for a model this bundle is not (modelSha256 9...9)"
+  },
+  "damaged-v1.png": {
+    "sha256": "8cf9bf60b4f64c6c4d4795b4a9854e1ffbd3b44cd7b51c80cee2aed6c250280f",
+    "bytes": 191385,
+    "what": "schema 1 PNG with one metadata byte flipped (CRC mismatch)"
+  },
+  "project.mp4": {
+    "sha256": "916a2b6e1384bd7066688ceb2f9546e6e11c03d1205751059e862d79e4888cdd",
+    "bytes": 40593,
+    "what": "saved project MP4 (decorateVideo over the fixture morph, project-v1.fixture.json)"
+  }
+}
