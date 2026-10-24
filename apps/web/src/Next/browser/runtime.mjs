@@ -4,6 +4,7 @@ import {capabilities} from './route-priors.mjs';
 import {rankedRoutes} from './route-selection.mjs';
 import {inputLatent,requireLatent,generationIdentity} from './identity.mjs';
 import {directSupported} from './webgpu-direct.mjs';
+import {adapterFacts,capabilityRecord,admissionEvidence,logAdmission,AdmissionRefused,decide,reasonFromError} from './admission.mjs';
 /** WebGL execution was removed (fm-x6h5): asking for it is a typed refusal, never a silent fallback. */
 export class RemovedRouteError extends Error{constructor(route='webgl'){super('WebGL processing was removed; use Automatic, CPU or WebGPU.');this.name='RemovedRouteError';this.code='route-removed';this.route=route;}}
 const abortError=()=>new DOMException('Generation cancelled','AbortError');
@@ -125,7 +126,7 @@ export function createBrowserRuntime({manifest: suppliedManifest, manifestSha256
   if(globalThis.navigator?.gpu&&manifest.webgpu)return 'webgpu';
   return 'none';
  }
- function announce(progress,outcome='admitted'){emit({stage:'route-admitted',provider:route,gpu:gpuOffer(),routeOutcome:outcome},progress);}
+ function announce(progress,outcome='admitted',admission){emit({stage:'route-admitted',provider:route,gpu:gpuOffer(),routeOutcome:outcome,...(admission?{admission}:{})},progress);}
  /** A route that was tried and refused is reported, so a silent fallback stops being silent. */
  function refused(progress,attempted,outcome){emit({stage:'route-admitted',provider:attempted,gpu:gpuOffer(),routeOutcome:outcome},progress);}
  // v1 recorded download/cache-write/session-creation/canary wall time, not per-face speed.
@@ -165,7 +166,7 @@ export function createBrowserRuntime({manifest: suppliedManifest, manifestSha256
  // So the adapter is probed once, for real, and the answer is remembered. Until it resolves the
  // route is treated as offered, because the probe is fast and the priors are still the best guess
  // available; once it answers, a shell GPU stops being a candidate at all.
- let gpuAdapter,gpuLimits,directFailed=false,engine='ort';
+ let gpuAdapter,gpuLimits,gpuAdapterObject=null,directFailed=false,engine='ort',deviceLost=null;
  /**
   * Which engine runs the WebGPU route. The direct engine (webgpu-direct.mjs: WGSL kernels, no ORT) is
   * ~1.7x faster on desktop GPUs but is tuned for them: its largest binding exceeds the 128 MiB phones
@@ -177,11 +178,34 @@ export function createBrowserRuntime({manifest: suppliedManifest, manifestSha256
   return target==='webgpu'&&!directFailed&&!mobile&&manifest?.webgl&&directSupported(gpuLimits)?'direct':'ort';
  }
  // A failed direct engine costs the engine, not the route: the next attempt uses ORT on WebGPU.
+ // A WebGPU route that failed in execution is named for the next admission: device loss by its stage (the declared
+ // GPU-to-CPU transition), anything else as the failed route. The error's own text never becomes the reason.
+ function noteGpuFailure(error){if(failedRoutes.has('webgpu')&&reasonFromError(error).reasonKey==='webgpu-device-lost')deviceLost={stage:String(error?.failedOperation||'synthesis')};}
  function failRoute(name){if(name==='webgpu'&&engine==='direct'&&!directFailed){directFailed=true;return;}failedRoutes.add(name);}
  async function probeGpu(){
   if(gpuAdapter!==undefined)return gpuAdapter;
-  try{const adapter=await globalThis.navigator?.gpu?.requestAdapter();gpuAdapter=Boolean(adapter);gpuLimits=adapter?.limits;}catch{gpuAdapter=false;}
+  try{const adapter=await globalThis.navigator?.gpu?.requestAdapter();gpuAdapter=Boolean(adapter);gpuLimits=adapter?.limits;gpuAdapterObject=adapter||null;}catch{gpuAdapter=false;}
   return gpuAdapter;
+ }
+ /**
+  * Per-operation admission (fm-lt2p): the pure policy (admission/route-admission.ts) on this browser's values.
+  * WebGPU is probed for real first when the bundle offers it; a bundle without a WebGPU route is 'absent' here.
+  * An explicit route is a deliberate retry, so this session's failures only count against Automatic.
+  */
+ // Explicit CPU never probes the adapter (the policy does not read WebGPU for it), so it is logged as not probed.
+ async function webgpuFacts(requested){
+  if(!globalThis.navigator?.gpu||!manifest?.webgpu)return 'absent';
+  if(requested==='cpu')return 'not-probed';
+  await probeGpu();return adapterFacts(globalThis.navigator.gpu,gpuAdapterObject);
+ }
+ async function admissionFor(operation,requested=preferredRoute,progress){
+  await config();
+  const facts=await webgpuFacts(requested),webgpu=facts==='not-probed'?'absent':facts,caps=await capabilityRecord(operation,webgpu);
+  const ev=admissionEvidence({manifest,manifestSha256:manifestHash,failedRoutes:requested==='auto'?failedRoutes:new Set(),deviceLost:requested==='auto'?deviceLost:null});
+  const decision=decide(operation,requested,caps,ev);
+  logAdmission(decision,facts);
+  if(decision.status==='refused')emit({stage:'route-admitted',provider:requested==='auto'?undefined:requested,gpu:gpuOffer(),routeOutcome:'unsupported',admission:decision.event},progress);
+  return {decision,caps,ev};
  }
  function capability(){const base=capabilities();return {...base,webgpu:base.webgpu&&gpuAdapter!==false&&Boolean(manifest.webgpu)};}
  // WebGL execution is gone (fm-x6h5, 17 October decision); manifest.webgl stays: it is the direct WebGPU engine's coefficient bundle.
@@ -209,7 +233,10 @@ export function createBrowserRuntime({manifest: suppliedManifest, manifestSha256
    failedRoutes.clear();interruptedRoute=undefined;
    emit({stage:'routes-retried'},progress);
   }
-  const candidates=preferredRoute==='auto'?orderedRoutes():[preferredRoute];
+  const {decision,caps,ev}=await admissionFor('face',preferredRoute,progress);
+  if(decision.status==='refused')throw new AdmissionRefused(decision);
+  // Automatic keeps the candidate's ordering, filtered to the routes the policy admits here.
+  const candidates=preferredRoute==='auto'?orderedRoutes().filter(r=>decide('face',r,caps,ev).status==='admitted'):[preferredRoute];
   let lastError;
   for(let i=0;i<candidates.length;i++){
    const next=candidates[i];
@@ -218,7 +245,7 @@ export function createBrowserRuntime({manifest: suppliedManifest, manifestSha256
    try{
     emit({stage:'route-attempt',provider:route},progress);
     await start(progress);acceptQualification(await send('qualify',{},progress,ACQUIRE_STALL));
-    announce(progress);return;
+    announce(progress,'admitted',{...decision.event,provider:route});return;
    }catch(error){
     if(signal.aborted)throw signal.reason;
     lastError=error;
@@ -244,8 +271,8 @@ export function createBrowserRuntime({manifest: suppliedManifest, manifestSha256
    try{requireLatent(saved.values);if(saved.imageSha256===await digest(await saved.blob.arrayBuffer())&&saved.latentSha256===await digest(saved.values)){if(signal.aborted)throw signal.reason;emit({stage:'original-cache-hit'},progress);return {...saved,cached:true,cacheKey:key,generationKind:keyData.kind};}}
    catch(error){if(signal.aborted)throw error;emit({stage:'original-cache-invalid'},progress);}
   }
-  beforeAdmission();if(!validated)await admit(progress,signal);if(signal.aborted)throw signal.reason;
-  let result;try{result=await produce();}catch(error){if(signal.aborted)throw signal.reason;if(route==='cpu'||preferredRoute!=='auto'||!['generate','synthesize'].includes(error.failedOperation))throw error;failRoute(route);stop();if(chooseRoute()==='cpu')emit({stage:'fallback-cpu'},progress);await admit(progress,signal);result=await produce();}
+  await beforeAdmission();if(!validated)await admit(progress,signal);if(signal.aborted)throw signal.reason;
+  let result;try{result=await produce();}catch(error){if(signal.aborted)throw signal.reason;if(route==='cpu'||preferredRoute!=='auto'||!['generate','synthesize'].includes(error.failedOperation))throw error;failRoute(route);noteGpuFailure(error);stop();if(chooseRoute()==='cpu')emit({stage:'fallback-cpu'},progress);await admit(progress,signal);result=await produce();}
   if(signal.aborted)throw signal.reason;
   const rgba=result.rgba;delete result.rgba;
   const value={...result,cacheKey:key,generationKind:keyData.kind,generationSha256,latentSha256:await digest(result.values),latent:{space:result.space,shape:[18,512],values:result.values},width:1024,height:1024,cached:false,provenance:{bundleVersion:manifest.bundleVersion,manifestSha256:manifestHash,modelSha256:manifest.modelSourceSha256,noiseSha256:manifest.noiseSha256,provider:route==='webgpu'?'webgpu':'wasm',mappingProvider:keyData.kind==='seed'?'wasm':null,route,truncationPsi:keyData.kind==='seed'?.7:null,truncationCutoff:keyData.kind==='seed'?8:null,createdAt:new Date().toISOString()}};
@@ -342,8 +369,11 @@ export function createBrowserRuntime({manifest: suppliedManifest, manifestSha256
  }
  function photoAvailable(){
   if(!alignPhoto||(!manifest?.encoder&&!manifest?.encoderStream))return false;
-  const nav=globalThis.navigator,mobile=nav?.userAgentData?.mobile||/Android|iPhone|iPad|iPod/.test(nav?.userAgent||'')||(nav?.platform==='MacIntel'&&nav?.maxTouchPoints>1);
-  return !(mobile&&manifest.encoderStream&&manifest.encoderStream.phoneAdmitted!==true);
+  // The photo-encode policy on what is known without allocating: the encoder's memory is measured when an encode is
+  // actually admitted (admissionFor), so here it is taken as available.
+  const caps={webgpu:'absent',wasm:{simd:true,threads:false,maxMemoryBytes:Number.MAX_SAFE_INTEGER},crossOriginIsolated:globalThis.crossOriginIsolated===true,
+   deviceMemoryGiB:Number.isFinite(globalThis.navigator?.deviceMemory)?globalThis.navigator.deviceMemory:null,videoEncoder:'absent'};
+  return decide('photo-encode','auto',caps,admissionEvidence({manifest,manifestSha256:manifestHash,failedRoutes:new Set(),deviceLost:null})).status==='admitted';
  }
  async function plan(){
   if(disposed)return null;
@@ -366,6 +396,8 @@ export function createBrowserRuntime({manifest: suppliedManifest, manifestSha256
  },
  prefetch,
  plan,
+ /** The policy's answer for one operation on this browser, with its typed event (fm-lt2p); fetches no model. */
+ admission:(operation,requested=preferredRoute)=>admissionFor(operation,requested).then(r=>r.decision),
  setPreferredRoute:(requested)=>{if(active)throw Error('Cannot change processing mode during generation.');if(requested==='webgl')throw new RemovedRouteError();if(!['auto','cpu','webgpu'].includes(requested))throw Error('Invalid preferred inference route');if(preferredRoute!==requested){stop();preferredRoute=requested;}},
  qualify:(requestedRoute='cpu',options={})=>afterDelivery(operation(async progress=>{if(requestedRoute==='webgl')throw new RemovedRouteError();if(!['cpu','webgpu'].includes(requestedRoute))throw Error('Choose CPU or WebGPU.');if(route!==requestedRoute)stop();route=requestedRoute;await start(progress);const result=await send('qualify',{},progress);acceptQualification(result);return result;},options)),
  generate:(request,options={})=>afterDelivery(operation(async(progress,signal)=>{const {identity}=await inputLatent(request.mode,request.value);return cachedGenerate({kind:'seed',identity},async()=>{await start(progress);return send('generate',{mode:request.mode,value:request.value,raw:options.raw===true},progress,ACQUIRE_STALL);},progress,signal);},{...request,...options})),
@@ -388,11 +420,13 @@ export function createBrowserRuntime({manifest: suppliedManifest, manifestSha256
   const produce=async()=>{await start(progress);const offset=delivered;
    await send('synthesize-frames',{frames:list.slice(offset),raw:options.raw===true},progress,stallMs,(index,blob,rgba)=>{const at=offset+index;if(at!==delivered||signal.aborted)return;delivered++;emit({stage:'transient-frame'},progress);return options.onFrame?.(at,{blob,rgba,width:1024,height:1024,values:list[at],space:'w-plus',shape:[1,18,512]});});};
   try{await produce();}
-  catch(error){if(signal.aborted)throw signal.reason;if(route==='cpu'||preferredRoute!=='auto'||error.failedOperation!=='synthesize-frames')throw error;failRoute(route);stop();if(chooseRoute()==='cpu')emit({stage:'fallback-cpu'},progress);await admit(progress,signal);await produce();}
+  catch(error){if(signal.aborted)throw signal.reason;if(route==='cpu'||preferredRoute!=='auto'||error.failedOperation!=='synthesize-frames')throw error;failRoute(route);noteGpuFailure(error);stop();if(chooseRoute()==='cpu')emit({stage:'fallback-cpu'},progress);await admit(progress,signal);await produce();}
   if(signal.aborted)throw signal.reason;
   return {frames:delivered};
  },options)),
- encodePhoto:(blob,options={})=>afterDelivery(operation(async(progress,signal)=>{if(!(blob instanceof Blob)||blob.size>25*1024*1024)throw Error('Choose an image smaller than 25 MB.');const tryAlign=options.tryAlign??true;if(typeof tryAlign!=='boolean')throw Error('Alignment selection must be a boolean.');return cachedGenerate({kind:'photo',sha256:await digest(await blob.arrayBuffer()),tryAlign,facePolicy:'exactly-one-face-v1'},async()=>{if(!alignPhoto)throw Error('Browser face alignment is not installed in this bundle.');const acquireStall=ACQUIRE_STALL;const hold=holdEncoder();if(!hold){const admitted=validated;stop();validated=admitted;}emit({stage:'alignment'},progress);const alignmentStarted=performance.now();const prepared=await alignPhoto(blob,{signal,onProgress:event=>emit(event,progress),tryAlign,requireSingleFace:true});emit({stage:'alignment-complete',elapsedMs:performance.now()-alignmentStarted,scope:'Photo preprocessing wall time including verified alignment assets'},progress);if(prepared.provenance?.preprocessingSha256!==manifest.alignmentSha256||prepared.alignmentWorkerTerminated!==true||prepared.faceCount!==1||prepared.provenance?.facePolicy!=='exactly-one-face-v1'||(tryAlign&&prepared.didAlign!==true))throw Error('Photo preprocessing identity or worker lifetime mismatch.');if(signal.aborted)throw signal.reason;await start(progress);const encoded=await send('encode-aligned',{tensor:prepared.tensor,qualifiedEncoderSha256:encoderValidatedSha256??qualifiedEncoder(),retain:hold},progress);if(manifest.encoderStream){if(encoded.encoderQualification?.passed!==true||encoded.encoderQualification.manifestSha256!==manifest.encoderStream.sha256){stop();throw Error('The photo encoder did not pass its pinned device correctness check.');}encoderValidatedSha256=manifest.encoderStream.sha256;rememberEncoder(encoderValidatedSha256);}if(!hold){const stillAdmitted=validated;stop();validated=stillAdmitted;}if(signal.aborted)throw signal.reason;await start(progress);const face=await send('synthesize',{values:encoded.values,raw:options.raw===true},progress);return {...face,encoderProvider:encoded.encoderProvider,encoderStats:encoded.encoderStats,encoderQualification:encoded.encoderQualification,preprocessing:prepared.provenance,faceCount:prepared.faceCount,didAlign:prepared.didAlign};},progress,signal,true,()=>{if(!alignPhoto)throw Error('Browser face alignment is not installed in this bundle.');const acquireStall=ACQUIRE_STALL;if(!manifest.encoder&&!manifest.encoderStream)throw Error('The photo encoder bundle is unavailable.');const nav=globalThis.navigator,mobile=nav?.userAgentData?.mobile||/Android|iPhone|iPad|iPod/.test(nav?.userAgent||'')||(nav?.platform==='MacIntel'&&nav?.maxTouchPoints>1);if(mobile&&manifest.encoderStream&&manifest.encoderStream.phoneAdmitted!==true)throw Error('The bounded photo encoder is still being qualified for phones. Your photo stays on this device.');if(mobile&&!manifest.encoderStream&&manifest.encoder?.size>512*1024*1024)throw Error('This photo encoder is too large for the verified phone path. Your photo stays on this device; try a desktop or laptop while the bounded encoder is being qualified.');});},options)),
+ encodePhoto:(blob,options={})=>afterDelivery(operation(async(progress,signal)=>{if(!(blob instanceof Blob)||blob.size>25*1024*1024)throw Error('Choose an image smaller than 25 MB.');const tryAlign=options.tryAlign??true;if(typeof tryAlign!=='boolean')throw Error('Alignment selection must be a boolean.');return cachedGenerate({kind:'photo',sha256:await digest(await blob.arrayBuffer()),tryAlign,facePolicy:'exactly-one-face-v1'},async()=>{if(!alignPhoto)throw Error('Browser face alignment is not installed in this bundle.');const acquireStall=ACQUIRE_STALL;const hold=holdEncoder();if(!hold){const admitted=validated;stop();validated=admitted;}emit({stage:'alignment'},progress);const alignmentStarted=performance.now();const prepared=await alignPhoto(blob,{signal,onProgress:event=>emit(event,progress),tryAlign,requireSingleFace:true});emit({stage:'alignment-complete',elapsedMs:performance.now()-alignmentStarted,scope:'Photo preprocessing wall time including verified alignment assets'},progress);if(prepared.provenance?.preprocessingSha256!==manifest.alignmentSha256||prepared.alignmentWorkerTerminated!==true||prepared.faceCount!==1||prepared.provenance?.facePolicy!=='exactly-one-face-v1'||(tryAlign&&prepared.didAlign!==true))throw Error('Photo preprocessing identity or worker lifetime mismatch.');if(signal.aborted)throw signal.reason;await start(progress);const encoded=await send('encode-aligned',{tensor:prepared.tensor,qualifiedEncoderSha256:encoderValidatedSha256??qualifiedEncoder(),retain:hold},progress);if(manifest.encoderStream){if(encoded.encoderQualification?.passed!==true||encoded.encoderQualification.manifestSha256!==manifest.encoderStream.sha256){stop();throw Error('The photo encoder did not pass its pinned device correctness check.');}encoderValidatedSha256=manifest.encoderStream.sha256;rememberEncoder(encoderValidatedSha256);}if(!hold){const stillAdmitted=validated;stop();validated=stillAdmitted;}if(signal.aborted)throw signal.reason;await start(progress);const face=await send('synthesize',{values:encoded.values,raw:options.raw===true},progress);return {...face,encoderProvider:encoded.encoderProvider,encoderStats:encoded.encoderStats,encoderQualification:encoded.encoderQualification,preprocessing:prepared.provenance,faceCount:prepared.faceCount,didAlign:prepared.didAlign};},progress,signal,true,async()=>{if(!alignPhoto)throw Error('Browser face alignment is not installed in this bundle.');if(!manifest.encoder&&!manifest.encoderStream)throw Error('The photo encoder bundle is unavailable.');
+  // Admitted by capability before any detector or model request (fm-lt2p), never by a phone label.
+  const {decision}=await admissionFor('photo-encode',preferredRoute,progress);if(decision.status==='refused')throw new AdmissionRefused(decision);});},options)),
  cancel:()=>{active?.abort(abortError());stop();},
  dispose:()=>{disposed=true;encoderValidatedSha256=undefined;active?.abort(abortError());stopPrefetch();stop();imageEncoder?.dispose();originals?.close();},
  status:()=>({route,deviceValidated:validated,encoderDeviceValidated:Boolean(manifest?.encoderStream&&(encoderValidatedSha256??qualifiedEncoder())===manifest.encoderStream.sha256),busy:!!active,disposed,interruptedRoute})

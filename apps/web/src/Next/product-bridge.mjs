@@ -4,6 +4,7 @@ import {digest} from './browser/originals.mjs';
 import {decorateImage,downloadImage,recoverImage,decorateVideo,recoverVideoProject} from './recovery-metadata.mjs';
 import {createPhotoAligner} from './photo/align-photo.mjs';
 import {createBrowserRuntime} from './browser/runtime.mjs';
+import {AdmissionRefused} from './browser/admission.mjs';
 import {createLatentPath,GEOMETRY_VERSION} from './geometry/latent-path.mjs';
 import {decode,encode} from '../project/bridge-result.ts';
 import {saveFile,shareFile,videoWriter} from './media.mjs';
@@ -302,6 +303,8 @@ export async function execute(request){
  analytics.jobStarted({action:request.action,provider:request.provider||'auto',warm:downloads.routeReady,target:request.target||'morph'});
  try{
   await admission(request.provider);
+  // Morph is admitted on its own (fm-lt2p): faces being admitted says nothing about the video codec.
+  if(request.action==='morph'){const decision=await (await engine()).admission?.('morph',request.provider);if(decision?.status==='refused')throw new AdmissionRefused(decision);}
   // Per-face generate (U-03): work only the one face asked for, so no other face emits a
   // synthesis. Cached hits stay cheap and are not treated as measurements.
   if(request.action==='face'){
@@ -402,7 +405,7 @@ export async function execute(request){
   }
   rememberView(request);retainSession();
   diagnostics.finish('completed');return snapshot();
- }catch(error){diagnostics.finish(error?.name==='AbortError'?'cancelled':'failed',error,{stage:lastStage});if(error?.name==='AbortError')return snapshot('Cancelled. Your completed faces are still available.');if(error.alignmentStats)analytics.operationResult?.('selection',error.alignmentStats.faceCount>1?'shown':'failed',undefined,{face_count:error.alignmentStats.faceCount===0?'zero':error.alignmentStats.faceCount===1?'one':error.alignmentStats.faceCount>1?'multiple':undefined});const choice=error.alignmentStats?.faceBoxes?.length>1&&revisionOf(request.target)===revisions.get(request.target)?await prepareFaceChoices(request.target,error.alignmentStats.faceBoxes,request.inputs.find(item=>item.id===request.target)?.file):null;return {...snapshot(''),errorMessage:choice?'':String(error?.message||'Generation failed. Your completed results are still available.'),photoChoices:choice,cropFace:!choice&&request.target&&sourceFiles.has(request.target)&&/No face was found|More than one face was found/.test(error.message)?request.target:null};}
+ }catch(error){diagnostics.finish(error?.name==='AbortError'?'cancelled':'failed',error,{stage:lastStage});if(error?.name==='AbortError')return snapshot('Cancelled. Your completed faces are still available.');if(error.alignmentStats)analytics.operationResult?.('selection',error.alignmentStats.faceCount>1?'shown':'failed',undefined,{face_count:error.alignmentStats.faceCount===0?'zero':error.alignmentStats.faceCount===1?'one':error.alignmentStats.faceCount>1?'multiple':undefined});const choice=error.alignmentStats?.faceBoxes?.length>1&&revisionOf(request.target)===revisions.get(request.target)?await prepareFaceChoices(request.target,error.alignmentStats.faceBoxes,request.inputs.find(item=>item.id===request.target)?.file):null;return {...snapshot(''),errorMessage:choice?'':String(error?.message||'Generation failed. Your completed results are still available.'),refusal:error?.name==='AdmissionRefused'?{reasonKey:error.reasonKey,text:error.message,helpAnchor:error.helpAnchor}:undefined,photoChoices:choice,cropFace:!choice&&request.target&&sourceFiles.has(request.target)&&/No face was found|More than one face was found/.test(error.message)?request.target:null};}
  finally{writer?.dispose();writer=null;active=null;if(wanted.size)void pumpDownloads();else if(!downloads.routeReady||!downloads.photoReady)void refreshInventory();}
 }
 export function cancel(){active?.abort();writer?.dispose();runtime?.cancel();}

@@ -1,12 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createBrowserRuntime} from './runtime.mjs';
+// An adapter reports at least the WebGPU defaults (256 MiB buffers, 128 MiB storage bindings); route admission
+// (fm-lt2p) reads them, so a stand-in adapter states them instead of reporting none.
+const SPEC_DEFAULT_LIMITS={maxBufferSize:268435456,maxStorageBufferBindingSize:134217728};
 
 const hash='0'.repeat(64);
 const manifest=()=>({schemaVersion:1,bundleVersion:'controller-test',modelSourceSha256:'model',noiseSha256:'noise',canaries:[{},{}],synthesis:{sha256:'s'},mapping:{sha256:'m'},average:{sha256:'a'},noise:[],webgpu:{},webgl:{}});
 const storage=()=>{const values=new Map();return {getItem:key=>values.get(key)??null,setItem:(key,value)=>values.set(key,String(value)),removeItem:key=>values.delete(key)};};
 function environment(t,agent='Android',gpu=true){
- for(const [key,value] of Object.entries({navigator:{userAgent:agent,...(gpu?{gpu:{requestAdapter:async()=>({limits:{}})}}:{}),hardwareConcurrency:8},OffscreenCanvas:class {},localStorage:storage(),sessionStorage:storage()})){
+ for(const [key,value] of Object.entries({navigator:{userAgent:agent,...(gpu?{gpu:{requestAdapter:async()=>({limits:SPEC_DEFAULT_LIMITS})}}:{}),hardwareConcurrency:8},OffscreenCanvas:class {},localStorage:storage(),sessionStorage:storage()})){
   const old=Object.getOwnPropertyDescriptor(globalThis,key);
   Object.defineProperty(globalThis,key,{configurable:true,writable:true,value});
   t.after(()=>{if(old)Object.defineProperty(globalThis,key,old);else delete globalThis[key];});
