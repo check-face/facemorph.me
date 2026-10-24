@@ -29,7 +29,8 @@
     "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.test.json",
     "build": "tsc -p tsconfig.build.json && node scripts/write-provenance.mjs",
     "test": "node --test test/*.test.ts",
-    "test:workerd": "node --test test/*.workerd.ts"
+    "test:workerd": "node --test test/*.workerd.ts",
+    "test:staging": "node --test test/*.e2e.ts"
   },
   "dependencies": {
     "@cloudflare/vite-plugin": "^2.0.0-beta.v.4",
