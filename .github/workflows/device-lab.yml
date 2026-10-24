@@ -3,13 +3,11 @@ name: device-lab
 # (desktop Chromium on eris, RTX 2080 SUPER) and phone-webgpu, phone-cpu (Chrome on the
 # USB-connected Huawei P30 Pro). Runs on the self-hosted runner `eris-device-lab` only.
 #
-# - Continuous: every 4 hours and on demand, against what next.facemorph.me serves now.
+# - On demand: agents (or the operator) dispatch it when a run is useful; no schedule.
 # - Deploy gate: classic's next-site.yml calls this with the exact candidate artifact; its deploy
 #   job needs this to pass on all four cells (operator rule, 24 October 2026).
 # Triggers are push-free on purpose: no pull_request, so fork code never reaches eris.
 on:
-  schedule:
-    - cron: '17 */4 * * *'
   workflow_dispatch:
     inputs:
       url:
