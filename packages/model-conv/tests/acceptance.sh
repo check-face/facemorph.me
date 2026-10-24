@@ -34,6 +34,10 @@ run convert --checkpoint /checkpoints/$CKPT --out /out/ffhq
 [ -f "$WORK/ffhq/manifest.json" ] || fail "no manifest after convert"
 grep -q "\"image\": \"facemorph/model-conv@$IMAGE\"" "$WORK/ffhq/manifest.json" || fail "manifest does not record the image"
 
+step "manifest validates against the producer-facing model manifest schema (@facemorph/browser-model-manager)"
+npx --yes ajv-cli@5.0.0 validate --spec=draft2020 -s ../browser-model-manager/schema/model-manifest.v1.schema.json \
+  -d "$WORK/ffhq/manifest.json" --errors=text || fail "manifest does not validate against model-manifest.v1.schema.json"
+
 step "outputs are owned by the invoking UID:GID"
 bad=$(find "$WORK/ffhq" \( ! -uid "$(id -u)" -o ! -gid "$(id -g)" \) | head -1)
 [ -z "$bad" ] || fail "$bad is not owned by $(id -u):$(id -g)"

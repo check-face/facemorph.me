@@ -10,6 +10,9 @@ import re
 from .models import ModelDeclaration
 
 SCHEMA = 'facemorph-model-conv-v1'
+# The producer-facing model manifest major (@facemorph/browser-model-manager
+# schema/model-manifest.v1.schema.json), which every manifest written here validates against.
+MANIFEST_SCHEMA_MAJOR = 1
 HEX64 = re.compile(r'^[0-9a-f]{64}$')
 
 
@@ -43,6 +46,9 @@ def noise_sha256(noise: list[dict]) -> str:
 def build(decl: ModelDeclaration, *, mapping: dict, synthesis: dict, synthesis_chunks: list[dict], average: dict, noise: list[dict], provenance: dict) -> dict:
     shapes = decl.io_shapes()
     return {
+        'schemaVersion': MANIFEST_SCHEMA_MAJOR,
+        'bundleVersion': f'model-conv-{decl.key}',
+        'modelSourceSha256': decl.source_sha256,
         'schema': SCHEMA,
         'model': {
             'key': decl.key, 'architecture': decl.architecture, 'conditional': decl.conditional,
@@ -65,6 +71,8 @@ def problems(manifest: dict, decl: ModelDeclaration) -> list[str]:
     out = []
     if manifest.get('schema') != SCHEMA:
         out.append(f'schema is not {SCHEMA}')
+    if manifest.get('schemaVersion') != MANIFEST_SCHEMA_MAJOR or manifest.get('modelSourceSha256') != decl.source_sha256:
+        out.append(f'model manifest identity (schemaVersion {MANIFEST_SCHEMA_MAJOR}, modelSourceSha256) is missing or wrong')
     if manifest.get('model', {}).get('key') != decl.key:
         out.append('model key does not match the declaration')
     for part in ['mapping', 'synthesis', 'average']:

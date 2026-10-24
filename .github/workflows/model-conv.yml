@@ -5,7 +5,7 @@ name: model-conv
 on:
   push:
     branches: [main]
-    paths: ['packages/model-conv/**', '.github/workflows/model-conv.yml']
+    paths: ['packages/model-conv/**', 'packages/browser-model-manager/schema/**', '.github/workflows/model-conv.yml']
   workflow_dispatch:
 concurrency:
   group: model-conv
@@ -21,6 +21,14 @@ jobs:
       - uses: actions/checkout@v4
       - name: Unit tests
         run: python3 -m unittest discover -s tests -t . -v
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: build() output validates against the producer-facing model manifest schema
+        run: |
+          set -euo pipefail
+          python3 -c "import json,sys; sys.path.insert(0,'.'); from tests.test_manifest import built; from model_conv.models import FFHQ_CONFIG_F; json.dump(built(chunk_bytes=FFHQ_CONFIG_F.chunk_bytes), sys.stdout)" > "$RUNNER_TEMP/build-manifest.json"
+          npx --yes ajv-cli@5.0.0 validate --spec=draft2020 -s ../browser-model-manager/schema/model-manifest.v1.schema.json -d "$RUNNER_TEMP/build-manifest.json" --errors=text
       - name: Documented commands, verbatim (docs/usage.md)
         working-directory: .
         run: python3 packages/model-conv/tests/doc_commands.py

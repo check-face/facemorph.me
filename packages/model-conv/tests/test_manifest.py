@@ -5,7 +5,7 @@ from model_conv.models import FFHQ_CONFIG_F, declaration
 
 
 def built(decl=FFHQ_CONFIG_F, synth=b'\x01' * 40, chunk_bytes=16):
-    noise = [mf.asset(f'noise_{i}.f32', bytes(4 * s[0] * s[1]), s) for i, s in enumerate(decl.noise_shapes())]
+    noise = [{'name': f'noise_{i}', **mf.asset(f'noise_{i}.f32', bytes(4 * s[0] * s[1]), s)} for i, s in enumerate(decl.noise_shapes())]
     plan = mf.chunks(synth, chunk_bytes)
     return mf.build(decl, mapping=mf.asset('mapping.onnx', b'map'), synthesis=mf.asset('synthesis.onnx', synth), synthesis_chunks=plan,
                     average=mf.asset('average.f32', bytes(4 * decl.w_dim)), noise=noise, provenance={'image': 'x'})
@@ -68,6 +68,14 @@ class Manifest(unittest.TestCase):
         self.assertEqual(mf.problems(m, FFHQ_CONFIG_F), [])
         self.assertEqual(m['model']['numWs'], 18)
         self.assertEqual(m['tolerance'], {'rawFloat': 0.002, 'rgb': 1})
+
+    def test_manifest_carries_the_model_manifest_identity(self):
+        # The fields @facemorph/browser-model-manager's producer-facing schema requires of every producer.
+        m = built(chunk_bytes=FFHQ_CONFIG_F.chunk_bytes)
+        self.assertEqual((m['schemaVersion'], m['modelSourceSha256']), (1, FFHQ_CONFIG_F.source_sha256))
+        self.assertEqual(m['bundleVersion'], 'model-conv-stylegan2-ffhq-config-f')
+        m['schemaVersion'] = 2
+        self.assertTrue(any('model manifest identity' in p for p in mf.problems(m, FFHQ_CONFIG_F)))
 
     def test_problems_name_each_inconsistency(self):
         m = built(chunk_bytes=FFHQ_CONFIG_F.chunk_bytes)
