@@ -1,7 +1,9 @@
 {
   "extends": "../../tsconfig.node.json",
   "compilerOptions": {
-    "allowImportingTsExtensions": true
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "allowImportingTsExtensions": true,
+    "customConditions": ["source"]
   },
   "include": ["test"]
 }

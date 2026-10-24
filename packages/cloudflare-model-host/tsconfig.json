@@ -1,7 +1,12 @@
 {
   // Node tooling (staging, verification, publication). Workspace packages resolve to their TS sources through
-  // the "source" export condition where one exists; the manager's declarations come from its dist/.
+  // the "source" export condition, so typechecking needs no prior build.
   "extends": "../../tsconfig.node.json",
-  "compilerOptions": { "allowImportingTsExtensions": true, "customConditions": ["source"] },
+  // DOM types too: the manager it imports for the manifest contract is browser package code.
+  "compilerOptions": {
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "allowImportingTsExtensions": true,
+    "customConditions": ["source"]
+  },
   "include": ["src"]
 }

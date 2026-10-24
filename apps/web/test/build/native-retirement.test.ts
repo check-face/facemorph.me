@@ -81,8 +81,8 @@ test('the build id hashes src/Next only, path then bytes, and not desktop/runtim
   assert.match(build.buildId(), /^next-[0-9a-f]{16}$/);
 });
 
-// ---- The verifier, against planted artifacts. One case per classic check (classic a42829b
-// desktop/scripts/verify-web-artifact.py); none is retired, so there is no tests/retired.txt entry.
+// ---- The verifier, against planted artifacts. One case per check of classic a42829b's verifier (under desktop/,
+// scripts/); none is retired, so there is no tests/retired.txt entry.
 const REV = 'a'.repeat(40);
 const sha = (b: string) => createHash('sha256').update(b).digest('hex');
 function artifact(

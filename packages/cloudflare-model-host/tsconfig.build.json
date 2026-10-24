@@ -1,6 +1,8 @@
 {
   "extends": "../../tsconfig.node.json",
+  // DOM types too: the manager it imports for the manifest contract is browser package code.
   "compilerOptions": {
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
     "noEmit": false,
     "declaration": true,
     "allowImportingTsExtensions": true,

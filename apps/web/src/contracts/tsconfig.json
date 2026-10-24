@@ -7,7 +7,8 @@
     "types": [],
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
-    "customConditions": ["source"],
+    // Workspace packages resolve to their built declarations, not their sources: the manager's sources need DOM
+    // types, which these contracts must not see. Build stylegan-js and the manager first.
     "strict": true,
     "noUncheckedIndexedAccess": true,
     "exactOptionalPropertyTypes": true,
