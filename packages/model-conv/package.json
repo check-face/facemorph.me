@@ -1,0 +1,16 @@
+{
+  "name": "@facemorph/model-conv",
+  "version": "0.0.0",
+  "private": true,
+  "description": "The model conversion container (Dockerfile + Python, compose.yaml). A workspace member so it packs and versions with the rest; it has no JavaScript.",
+  "files": [
+    "Dockerfile",
+    "compose.yaml",
+    "requirements.in",
+    "requirements.lock",
+    "model_conv",
+    "docs",
+    "NOTICE.md",
+    "PROVENANCE.json"
+  ]
+}

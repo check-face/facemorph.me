@@ -1,0 +1,10 @@
+{
+  // Node tooling: scripts, builders, CI checks. Node globals, no DOM.
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2023"],
+    "types": ["node"],
+    "module": "NodeNext",
+    "moduleResolution": "nodenext"
+  }
+}

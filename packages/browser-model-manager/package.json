@@ -1,0 +1,24 @@
+{
+  "name": "@facemorph/browser-model-manager",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Consented acquisition, verification, storage and eviction of browser model assets. Placeholder until its extraction bead (fm-fy2.4): it builds, emits declarations and packs, and exports nothing else.",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.test.json",
+    "build": "tsc -p tsconfig.build.json",
+    "test": "node --test test/*.test.ts"
+  }
+}

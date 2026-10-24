@@ -1,0 +1,17 @@
+{
+  // fm-fy2.4: the strictness every package inherits. Packages extend this file and may
+  // narrow scope (lib/types/include) but never lower these flags (checked by
+  // scripts/build/check-scaffold.mjs).
+  "compilerOptions": {
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "isolatedModules": true,
+    "verbatimModuleSyntax": true,
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "target": "ES2022",
+    "skipLibCheck": true,
+    "noEmit": true
+  }
+}

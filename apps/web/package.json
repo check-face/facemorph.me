@@ -37,14 +37,5 @@
     "typescript": "7.0.2",
     "vite": "8.3.5",
     "vite-plugin-svgr": "5.2.0"
-  },
-  "overrides": {
-    "react-advanced-cropper": {
-      "react": "$react",
-      "react-dom": "$react-dom"
-    }
-  },
-  "allowScripts": {
-    "@parcel/watcher": false
   }
 }

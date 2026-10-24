@@ -1,8 +1,40 @@
 {
   "name": "facemorph-me",
   "private": true,
-  "description": "FaceMorph monorepo root. build:next writes deploy-next/ (see docs/dev/build-next.md).",
+  "description": "FaceMorph monorepo root (fm-fy2.4): npm workspaces for the app and the four packages, strict TypeScript and the Oxc gates. build:next writes deploy-next/ (docs/dev/build-next.md).",
+  "engines": {
+    "node": ">=24"
+  },
+  "workspaces": [
+    "apps/web",
+    "packages/stylegan-js",
+    "packages/browser-model-manager",
+    "packages/cloudflare-model-host",
+    "packages/model-conv"
+  ],
   "scripts": {
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "build": "npm run build -w packages/stylegan-js -w packages/browser-model-manager -w packages/cloudflare-model-host --if-present && npm run build -w apps/web",
+    "test": "npm test --workspaces --if-present && node --test scripts/build/scaffold.test.mjs",
+    "lint": "oxlint --deny-warnings",
+    "lint:fix": "oxlint --fix",
+    "format": "oxfmt",
+    "format:check": "oxfmt --check",
     "build:next": "node scripts/import/build-next.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.2",
+    "oxfmt": "0.74.0",
+    "oxlint": "1.89.0",
+    "typescript": "7.0.2"
+  },
+  "overrides": {
+    "react-advanced-cropper": {
+      "react": "$react",
+      "react-dom": "$react-dom"
+    }
+  },
+  "allowScripts": {
+    "@parcel/watcher": false
   }
 }

@@ -1,0 +1,90 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": [
+    "typescript",
+    "react",
+    "unicorn",
+    "oxc"
+  ],
+  "categories": {
+    "correctness": "error"
+  },
+  "env": {
+    "builtin": true,
+    "es2024": true
+  },
+  "ignorePatterns": [
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/deploy-next/**",
+    "**/test-results/**",
+    "**/.cache/**",
+    "**/package-lock.json",
+    "**/*.md",
+    ".beads/**",
+    "apps/web/src/**",
+    "apps/web/desktop/**",
+    "apps/web/photo-runtime/**",
+    "apps/web/scripts/**",
+    "apps/web/experiment/**",
+    "apps/web/hosting/**",
+    "apps/web/tests/**",
+    "apps/web/test/goldens/**",
+    "apps/web/test/fixtures/**",
+    "autoresearch/benchmark-campaign-v2/**",
+    "autoresearch/candidates/**",
+    "autoresearch/devices/**",
+    "autoresearch/history/**",
+    "autoresearch/reviews/**",
+    "autoresearch/templates/**",
+    "import/**",
+    "inventory/**",
+    "docs/**",
+    "scripts/names-snapshot/manifest.tsv",
+    "packages/model-conv/**"
+  ],
+  "rules": {
+    "react-hooks/rules-of-hooks": "error",
+    "react-hooks/exhaustive-deps": "warn",
+    "react/jsx-key": "error"
+  },
+  "overrides": [
+    {
+      "files": [
+        "apps/web/shell/**",
+        "packages/browser-model-manager/src/**",
+        "packages/stylegan-js/src/**"
+      ],
+      "env": {
+        "browser": true
+      }
+    },
+    {
+      "files": [
+        "**/*worker*.ts",
+        "**/*worker*.mjs",
+        "packages/cloudflare-model-host/src/**"
+      ],
+      "env": {
+        "worker": true,
+        "serviceworker": true
+      }
+    },
+    {
+      "files": [
+        "scripts/**",
+        "tools/**",
+        "ops/**",
+        "services/**",
+        "autoresearch/**",
+        "**/test/**",
+        "**/*.test.*",
+        "**/vite.config.ts",
+        "apps/web/build/**"
+      ],
+      "env": {
+        "node": true
+      }
+    }
+  ]
+}

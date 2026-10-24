@@ -1,0 +1,7 @@
+{
+  // Shared contracts and browser-side package code: DOM types available, no Node globals.
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2022", "DOM", "DOM.Iterable"]
+  }
+}

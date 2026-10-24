@@ -5,7 +5,7 @@ name: web-shell
 on:
   push:
     branches: [main]
-    paths: ['apps/web/**', '.github/workflows/web-shell.yml']
+    paths: ['apps/web/**', 'package.json', 'package-lock.json', '.github/workflows/web-shell.yml']
   workflow_dispatch:
 concurrency:
   group: web-shell
@@ -21,7 +21,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - run: npm ci --no-audit --no-fund
+      - run: npm ci --no-audit --no-fund  # one lock for the workspace, at the root (fm-fy2.4)
+        working-directory: .
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
@@ -39,7 +40,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - run: npm ci --no-audit --no-fund
+      - run: npm ci --no-audit --no-fund  # one lock for the workspace, at the root (fm-fy2.4)
+        working-directory: .
       - run: npx playwright install --with-deps chromium firefox webkit
       - run: npm run build
       - run: npm run test:e2e

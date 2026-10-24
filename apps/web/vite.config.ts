@@ -3,6 +3,8 @@
 // what it needs from a bundler is supplied here: SVGs as React components (svgr, as classic's @svgr/webpack),
 // Sass `~package` imports (sass-loader's convention) and classic's public directory.
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
+import { dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import react from '@vitejs/plugin-react';
 import { defineConfig, type Plugin } from 'vite';
@@ -12,13 +14,16 @@ import { deriveTargets } from './build/targets.ts';
 import { emittedFromBundle, hostedWorkers, workerInventory, type EmittedWorker } from './build/worker-inventory.ts';
 
 const targets = deriveTargets(loadMatrix());
-const modules = new URL('./node_modules/', import.meta.url);
+const require = createRequire(import.meta.url);
 
-// `@import "~bulma/bulma"` (webpack sass-loader style) resolves to node_modules/bulma/bulma(.sass|.scss|.css).
+// `@import "~bulma/bulma"` (webpack sass-loader style) resolves to bulma/bulma(.sass|.scss|.css) wherever Node finds
+// the package (hoisted to the workspace root's node_modules).
 const tildeImporter = {
   findFileUrl(url: string): URL | null {
     if (!url.startsWith('~')) return null;
-    const base = new URL(url.slice(1), modules);
+    const [scopeOrName = '', ...rest] = url.slice(1).split('/');
+    const name = scopeOrName.startsWith('@') ? `${scopeOrName}/${rest.shift() ?? ''}` : scopeOrName;
+    const base = new URL(rest.join('/'), pathToFileURL(dirname(require.resolve(`${name}/package.json`)) + '/'));
     for (const candidate of ['', '.scss', '.sass', '.css']) {
       const path = fileURLToPath(base) + candidate;
       if (existsSync(path) && !path.endsWith('/')) return pathToFileURL(path);

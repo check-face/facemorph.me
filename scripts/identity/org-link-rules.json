@@ -74,6 +74,20 @@
       "disposition": "URL built from the repo argument; it changes with DEFAULT_REPOS, no edit here"
     },
     {
+      "id": "monorepo-url-from-constant",
+      "repo": "facemorph.me",
+      "paths": ["apps/web/shell/Shell.tsx", "scripts/import/pin-control.mjs"],
+      "class": "active-link",
+      "disposition": "URL built from a constant (GITHUB_REPO in apps/web/shell/links.ts, RELEASE_REPO in scripts/import/pin-control.mjs); it changes with that constant, no edit here"
+    },
+    {
+      "id": "monorepo-github-host-check",
+      "repo": "facemorph.me",
+      "paths": ["apps/web/test/goldens/snapshot.ts"],
+      "class": "active-link",
+      "disposition": "compares a link's hostname with github.com and names no owner; no edit on rename"
+    },
+    {
       "id": "monorepo-active",
       "repo": "facemorph.me",
       "target": "^check-face/",

@@ -1,0 +1,17 @@
+{
+  "note": "fm-fy2.4: dependencies deliberately held back from the currency policy's latest stable version, each with its reason and the trigger that re-checks it. A tool using the TypeScript compiler API that cannot run under the pinned TypeScript 7.x gets an entry here instead of a silent older TypeScript.",
+  "typescript": "7.0.2",
+  "entries": [
+    {
+      "package": "onnxruntime-web",
+      "pin": "1.24.3 (WASM route) and 1.22.0 (WebGPU/JSEP route), pinned by sha256 in the runtime manifest (import/build-inputs.json), not by npm",
+      "reason": "measured runtimes under evaluation, JSEP removal pending",
+      "recheck": "the next updater run that passes the gates, or the upstream ORT Web release that removes JSEP from its default bundle; the ORT bump bead replaces this entry"
+    }
+  ],
+  "typescriptApiTools": {
+    "checked": ["tsc (typescript 7.0.2) for typecheck and declarations"],
+    "notUsingTheCompilerApi": ["oxlint and oxfmt (native)", "vite 8 (oxc transform)", "@vitejs/plugin-react", "vite-plugin-svgr", "playwright"],
+    "holdBacks": []
+  }
+}
