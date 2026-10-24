@@ -4,9 +4,11 @@
 //
 // A slot is one Web Lock (`<name>:slot-<i>`); holding it admits one chunk (at most ACQUISITION_CHUNK_MAX_BYTES)
 // from the first byte fetched until it is committed to storage. Priority: inside one manager instance waiters are
-// served highest priority first. Across workers, required work queues on the locks, and optional work only ever
-// takes a slot that is free at that moment: a released lock goes to a queued request before any later
-// `ifAvailable` attempt can see it, so optional preparation never gets ahead of foreground work anywhere.
+// served highest priority first. Across workers and tabs, required work queues on every slot's lock at once and
+// keeps the first it is granted, and optional work takes only a slot that is free at that moment, and none while
+// any slot request is queued anywhere (`locks.query()`). A released lock goes to a queued request before a later
+// `ifAvailable` attempt can see it, so optional preparation does not get ahead of waiting foreground work in any
+// worker. Between the required tiers, order holds within an instance; across instances they queue first come.
 
 import {
   ACQUISITION_BUDGETS,
@@ -34,6 +36,7 @@ export interface SlotLocks {
     options: { readonly ifAvailable?: boolean; readonly signal?: AbortSignal },
     run: (lock: unknown) => Promise<void> | void,
   ): Promise<unknown>;
+  query?(): Promise<{ readonly pending?: readonly { readonly name?: string }[] }>;
 }
 
 export interface AcquisitionSlots {
@@ -93,24 +96,58 @@ export function createAcquisitionSlots({
   /** The waiter whose attempt is in flight; its own signal ends that attempt. */
   let current: Waiter | null = null;
 
+  /** Queues on every slot at once; keeps the first granted and lets any other grant go at once. */
+  function queueOnAll(w: Waiter): Promise<() => void> {
+    const race = new AbortController();
+    const relay = () => race.abort(w.signal.reason ?? aborted());
+    w.signal.addEventListener('abort', relay, { once: true });
+    return new Promise((resolve, reject) => {
+      let won = false;
+      let failed = 0;
+      for (let i = 0; i < count; i++)
+        hold(locks, slot(i), { signal: race.signal }).then(
+          (release) => {
+            if (!release) return;
+            if (won) return release();
+            won = true;
+            w.signal.removeEventListener('abort', relay);
+            race.abort(aborted()); // the other queued requests leave
+            resolve(release);
+          },
+          (error) => {
+            if (++failed === count && !won) {
+              w.signal.removeEventListener('abort', relay);
+              reject(w.signal.reason ?? error);
+            }
+          },
+        );
+    });
+  }
+
+  /** Whether a slot request is queued anywhere on this origin (unknown when the platform cannot say). */
+  async function othersWaiting(): Promise<boolean> {
+    if (!locks.query) return false;
+    const { pending = [] } = await locks.query();
+    return pending.some((p) => p.name?.startsWith(`${name}:slot-`) === true);
+  }
+
   /**
-   * One attempt for the head waiter: any free slot, else (required work) the queue of one of them. Optional work
-   * that finds none pauses and returns null, so a higher-priority waiter that arrived meanwhile goes first.
+   * One attempt for the head waiter: any free slot, else (required work) the queues of all of them. Optional work
+   * that finds none free, or finds required work queued anywhere, pauses and returns null, so a higher-priority
+   * waiter that arrived meanwhile goes first.
    */
   async function grantHead(w: Waiter): Promise<(() => void) | null> {
     if (w.signal.aborted) throw w.signal.reason ?? aborted();
-    for (let k = 0; k < count; k++) {
-      const release = await hold(locks, slot((next + k) % count), { ifAvailable: true });
-      if (release) {
-        next = (next + k + 1) % count;
-        return release;
+    const required = queuesOnLocks(w.priority);
+    if (required || !(await othersWaiting()))
+      for (let k = 0; k < count; k++) {
+        const release = await hold(locks, slot((next + k) % count), { ifAvailable: true });
+        if (release) {
+          next = (next + k + 1) % count;
+          return release;
+        }
       }
-    }
-    if (queuesOnLocks(w.priority)) {
-      const i = next;
-      next = (next + 1) % count;
-      return hold(locks, slot(i), { signal: w.signal });
-    }
+    if (required) return queueOnAll(w);
     await new Promise<void>((resolve, reject) => {
       const timer = setTimeout(() => {
         w.signal.removeEventListener('abort', stop);

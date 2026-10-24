@@ -836,6 +836,74 @@ test(
   },
 );
 
+test(
+  'across workers, optional work takes no slot while foreground work waits in another worker',
+  { skip: NO_BROWSER, timeout: 60_000 },
+  async () => {
+    // The page holds both slots: SA1 for about 1.2 s, SA2 for about 0.6 s. Worker C asks for foreground F and worker
+    // B for optional O while both are held. The slot SA2 frees must go to F, whichever slot F queued behind.
+    const SA1 = asset('hold-long', 0, 20);
+    const SA2 = asset('hold-short', 0, 21);
+    const F = asset('cross-fg', 0, 22);
+    const O = asset('cross-opt', 0, 23);
+    faults.set(`primary:${SA1.parts[0]}`, { pieceDelayMs: 150 });
+    faults.set(`primary:${SA2.parts[0]}`, { pieceDelayMs: 75 });
+    const s = await session();
+    try {
+      const from = log.length;
+      const results = await s.page.evaluate(
+        async ({ held, gHeld, f, gf, o, go }) => {
+          const m = await import(String('/pkg/index.js'));
+          const cache = await m.createBrowserModelCache({
+            retryDelaysMs: [],
+            slots: m.createAcquisitionSlots({ locks: navigator.locks, count: 2 }),
+          });
+          const pause = (ms: number) => new Promise((r) => setTimeout(r, ms));
+          const inWorker = (assets: object[], grant: object, owner: string) =>
+            new Promise<{ ok: boolean; message?: string }>((resolve) => {
+              const worker = new Worker('/worker.js', { type: 'module' });
+              worker.onmessage = ({ data }) => {
+                worker.terminate();
+                resolve(data);
+              };
+              worker.postMessage({ assets, grant, owner, slots: 2, readAhead: 1 });
+            });
+          const page = Promise.all(
+            held.map((a: object) => cache.acquire(a, { grant: gHeld, owner: 'face:held' })),
+          );
+          await pause(200);
+          const fg = inWorker([f], gf, 'face:f');
+          await pause(150);
+          const opt = inWorker([o], go, 'warming:o');
+          await page;
+          return Promise.all([fg, opt]);
+        },
+        {
+          held: [descriptor(SA1), descriptor(SA2)],
+          gHeld: grant(['face:held'], [SA1, SA2], SA1.size + SA2.size),
+          f: descriptor(F),
+          gf: grant(['face:f'], [F], F.size),
+          o: descriptor(O),
+          go: grant(['warming:o'], [O], O.size, 'optional'),
+        },
+      );
+      assert.deepEqual(results, [{ ok: true }, { ok: true }]);
+      const at = (a: { parts: string[] }) => requestsFor(a.parts, from)[0]!;
+      assert.ok(
+        at(F).start < at(O).start,
+        `foreground at ${at(F).start - at(SA1).start} ms, optional at ${at(O).start - at(SA1).start} ms`,
+      );
+      assert.ok(
+        at(O).start >= at(SA1).end - 50 || at(O).start >= at(F).end - 50,
+        'optional waited for a slot no one else wanted',
+      );
+    } finally {
+      faults.clear();
+      await s.context.close();
+    }
+  },
+);
+
 // ---------------------------------------------------------------- output cache first
 
 test(

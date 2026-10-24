@@ -4,6 +4,10 @@
 // refetch), so what the person approved is a bound on what crosses the network. A grant's remaining bytes only
 // go down: nothing the manager does (retry, repair, revalidation) adds to them. More scope is a new grant object,
 // which only the app can make, after a revised decision.
+//
+// A grant's ledger lives in the JS realm that spends it (a window or one worker): a grant posted to two workers
+// arrives as two copies, each with the full remaining bytes. The app therefore gives each worker its own grant for
+// the share it may spend, so the grants it hands out never add up to more than the person approved.
 
 import type { AcquisitionGrant, GrantAsset, GrantOwnerId } from '../contracts/grant.ts';
 

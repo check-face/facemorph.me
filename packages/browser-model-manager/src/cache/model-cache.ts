@@ -1173,9 +1173,11 @@ export function createModelCache({
     }
     const shared = task;
     shared.waiters++;
-    const mine = shared.owners.get(ownerId);
-    if (mine) mine.count++;
-    else shared.owners.set(ownerId, { grant: grant!, count: 1 });
+    // A revised grant from the same owner (a new decision) pays from now on; the owner keeps its place in line.
+    shared.owners.set(ownerId, {
+      grant: grant!,
+      count: (shared.owners.get(ownerId)?.count ?? 0) + 1,
+    });
     // The handle repairs only under this caller's own grant: a later refetch is charged to it.
     const own: Transfer = {
       payer: () => grant!,
