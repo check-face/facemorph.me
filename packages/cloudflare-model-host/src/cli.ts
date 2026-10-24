@@ -6,19 +6,23 @@
 //   facemorph-model-host warm    --root <dir> --origin <mirror url> --prefixes <list> [--publish]
 //   facemorph-model-host mirror-deploy --worker <name> --bucket <r2 bucket> --upstream <url> --prefixes <list>
 //                                      [--site <worker>] [--domain <host>] [--compatibility-date <date>] [--publish]
+//   facemorph-model-host origin-deploy --root <dir> --worker <name> --base-path <path> --immutable <list>
+//                                      --mutable <list> [--workers-dev] [--domain <host>] [--terms <record>]
+//                                      [--acknowledge <terms row>] [--publish]
 // publish, warm and mirror-deploy write nothing unless --publish is given (warm's HEAD makes the mirror copy a file;
 // mirror-deploy runs cf deploy --dry-run). Exit 0 ok, 1 refused, findings or failures, 2 usage error.
 import { readFileSync } from 'node:fs';
 import { parseArgs } from 'node:util';
 import type { Plan } from './limits.ts';
 import { deployMirror } from './mirror/deploy.ts';
+import { deployModelOrigin } from './origin-deploy.ts';
 import { warm } from './mirror/warm.ts';
 import { publishRoot, type Target } from './publish.ts';
 import { stage, StageError } from './stage.ts';
 import { verifyRoot } from './verify.ts';
 
 const USAGE =
-  'usage: facemorph-model-host <stage|verify|publish|warm|mirror-deploy> [options] (see the package README)';
+  'usage: facemorph-model-host <stage|verify|publish|warm|mirror-deploy|origin-deploy> [options] (see the package README)';
 
 export async function main(argv: readonly string[]): Promise<number> {
   const [command, ...rest] = argv;
@@ -45,6 +49,12 @@ export async function main(argv: readonly string[]): Promise<number> {
         site: { type: 'string' },
         domain: { type: 'string' },
         'compatibility-date': { type: 'string' },
+        'base-path': { type: 'string' },
+        immutable: { type: 'string' },
+        mutable: { type: 'string' },
+        'workers-dev': { type: 'boolean' },
+        terms: { type: 'string' },
+        acknowledge: { type: 'string' },
       },
       strict: true,
     }));
@@ -114,6 +124,35 @@ export async function main(argv: readonly string[]): Promise<number> {
       });
       print(r);
       return r.failed.length ? 1 : 0;
+    }
+    if (command === 'origin-deploy') {
+      if (!need('root', 'worker', 'base-path', 'immutable', 'mutable')) return 2;
+      const list = (n: string) =>
+        str(n)!
+          .split(',')
+          .map((x) => x.trim())
+          .filter(Boolean);
+      const domain = str('domain');
+      const date = str('compatibility-date');
+      const terms = str('terms');
+      const acknowledged = str('acknowledge');
+      const r = deployModelOrigin(
+        str('root')!,
+        {
+          worker: str('worker')!,
+          basePath: str('base-path')!,
+          immutable: list('immutable'),
+          mutable: list('mutable'),
+          workersDev: values['workers-dev'] === true,
+          ...(domain ? { domain } : {}),
+          ...(date ? { compatibilityDate: date } : {}),
+          ...(terms ? { terms: { record: terms, ...(acknowledged ? { acknowledged } : {}) } } : {}),
+        },
+        { publish: values.publish === true },
+      );
+      console.error(r.output);
+      print({ published: r.published, status: r.status, refused: r.refused });
+      return r.status === 0 && !r.refused ? 0 : 1;
     }
     if (command === 'mirror-deploy') {
       if (!need('worker', 'bucket', 'upstream', 'prefixes')) return 2;

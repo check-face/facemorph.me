@@ -45,6 +45,15 @@ extracted from classic `hosting/next/prepare-runtime.py` (chunking and manifest 
   `--publish` it runs `cf deploy --dry-run`, which builds the Worker, lists its bindings and sends no API request. The
   plugin is the 2.0 beta because its latest stable release (1.65.0) depends on Wrangler.
 
+- **Model origin:** `facemorph-model-host origin-deploy --root <dir> --worker <name> --base-path /runtime/ --immutable
+  <list> --mutable <list> [--workers-dev] [--domain <host>] [--terms <record> [--acknowledge <row>]] [--publish]`. A
+  staged root as its own origin on Workers Static Assets, through `cf` in the project's `model-origin` mode: the root
+  is served under the base path with `_headers` rules (`src/headers.ts`), and the Worker has no script, so a model
+  request never runs Worker code. The rules are CORS, `Cross-Origin-Resource-Policy: cross-origin` and `nosniff`
+  on the root, a year's immutable caching on the immutable prefixes, `no-cache` on the mutable files, and
+  `application/octet-stream` for extensions the asset upload leaves untyped (`.f32`, `.i32` and `.onnx` had no
+  Content-Type at all before the rule). Model terms are checked before anything is published.
+
 Exit codes are 0 for ok, 1 for a refusal, findings or failures, and 2 for a usage error. Each command prints one JSON
 report.
 

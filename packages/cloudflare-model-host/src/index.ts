@@ -9,5 +9,7 @@ export * from './stage.ts';
 export * from './verify.ts';
 export * from './publish.ts';
 export * from './mirror/deploy.ts';
+export * from './headers.ts';
+export * from './origin-deploy.ts';
 export * from './mirror/warm.ts';
 export { mirrored, prefixes, type MirrorBucket, type MirrorEnv } from './mirror/worker.ts';

@@ -50,24 +50,33 @@ export interface DeployResult {
 
 const PACKAGE_ROOT = fileURLToPath(new URL('../..', import.meta.url));
 
+/** Runs the package's own `cf` with `args` in the package root, with `env` added. */
+export function runCf(args: readonly string[], env: Record<string, string>, base = process.env) {
+  const require = createRequire(join(PACKAGE_ROOT, 'package.json'));
+  const pkg = require.resolve('cf/package.json');
+  const bin = (require(pkg) as { bin: string | Record<string, string> }).bin;
+  const cf = join(dirname(pkg), typeof bin === 'string' ? bin : bin['cf']!);
+  const r = spawnSync(process.execPath, [cf, ...args], {
+    cwd: PACKAGE_ROOT,
+    env: { ...base, ...env, CI: '1' },
+    encoding: 'utf8',
+    maxBuffer: 1 << 26,
+  });
+  return {
+    status: r.status,
+    output: `${r.stdout ?? ''}${r.stderr ?? ''}${r.error ? String(r.error) : ''}`,
+  };
+}
+
 /** Runs `cf deploy` in the package root for `target`; a dry run unless `publish`. */
 export function deployMirror(
   target: MirrorTarget,
   options: { readonly publish?: boolean; readonly env?: NodeJS.ProcessEnv } = {},
 ): DeployResult {
-  const require = createRequire(join(PACKAGE_ROOT, 'package.json'));
-  const pkg = require.resolve('cf/package.json');
-  const bin = (require(pkg) as { bin: string | Record<string, string> }).bin;
-  const cf = join(dirname(pkg), typeof bin === 'string' ? bin : bin['cf']!);
-  const r = spawnSync(process.execPath, [cf, 'deploy', ...(options.publish ? [] : ['--dry-run'])], {
-    cwd: PACKAGE_ROOT,
-    env: { ...(options.env ?? process.env), ...deployEnv(target), CI: '1' },
-    encoding: 'utf8',
-    maxBuffer: 1 << 26,
-  });
-  return {
-    published: options.publish === true && r.status === 0,
-    status: r.status,
-    output: `${r.stdout ?? ''}${r.stderr ?? ''}${r.error ? String(r.error) : ''}`,
-  };
+  const r = runCf(
+    ['deploy', ...(options.publish ? [] : ['--dry-run'])],
+    deployEnv(target),
+    options.env,
+  );
+  return { published: options.publish === true && r.status === 0, ...r };
 }
