@@ -2,11 +2,11 @@ name: import-closure
 # fm-gpx: the candidate's JS closure in apps/web is exactly the allowlist's frozen-commit bytes (nothing
 # missing, changed or extra; nothing excluded; only the bridge's Fable import unresolved), and the pinned
 # control artifact still downloads from its release asset and verifies file by file, with no weights,
-# credentials or private provenance in it.
+# credentials or private provenance in it, and its emitted worker chunks match their pins.
 on:
   push:
     branches: [main]
-    paths: ['apps/web/**', 'import/**', 'scripts/import/**', 'scripts/inventory/**', '.github/workflows/import-closure.yml']
+    paths: ['apps/web/**', 'import/**', 'scripts/import/**', 'scripts/runtime/**', 'scripts/inventory/**', '.github/workflows/import-closure.yml']
   workflow_dispatch:
 concurrency:
   group: import-closure
@@ -19,7 +19,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: node --test scripts/import/control.test.mjs scripts/import/closure.test.mjs
+      - run: node --test scripts/import/control.test.mjs scripts/import/closure.test.mjs scripts/runtime/runtime.test.mjs
       - run: node scripts/import/verify-closure.mjs --allow package.json --allow package-lock.json
       - run: node scripts/import/scan-exclusions.mjs
       - run: node scripts/inventory/unresolved-imports.mjs --root apps/web
@@ -29,3 +29,4 @@ jobs:
         run: |
           dir=$(node scripts/import/fetch-control.mjs | tail -1 | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const r=JSON.parse(s).summary;if(!r.ok)process.exit(1);console.log(r.dir)})')
           node scripts/import/scan-exclusions.mjs --dir "$dir/deploy-next" --provenance
+          node scripts/runtime/check-pins.mjs --emitted "$dir/deploy-next"

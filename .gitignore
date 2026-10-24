@@ -8,3 +8,5 @@ dist/
 .cloudflare/
 # fm-p7v visual references: PNGs live outside Git (release assets); only the manifest commits.
 /inventory/visual-references/*.png
+# fm-gpx: runtime bytes acquired by scripts/runtime/acquire.mjs (model weights never enter Git).
+/.cache/
