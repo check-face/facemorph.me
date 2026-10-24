@@ -106,7 +106,8 @@ jobs:
       - name: Record exact bytes for promotion
         run: |
           set -euo pipefail
-          find deploy-next -type f -print0 | sort -z | xargs -0 sha256sum > next-site-SHA256SUMS
+          # Byte order (LC_ALL=C), as treeDigest sorts: the runner's en_US collation orders README.md and fonts/ apart.
+          find deploy-next -type f -print0 | LC_ALL=C sort -z | xargs -0 sha256sum > next-site-SHA256SUMS
           printf '%s\n' '${{ github.sha }}' > next-site-source.txt
           node -e 'console.log(JSON.stringify({sourceRepoId: Number(process.argv[1]), repository: process.argv[2], workflow: ".github/workflows/next-site.yml", runId: Number(process.argv[3]), commit: process.argv[4]}))' \
             '${{ github.repository_id }}' '${{ github.repository }}' '${{ github.run_id }}' '${{ github.sha }}' > next-site-provenance.json
