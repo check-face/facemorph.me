@@ -15,6 +15,7 @@ export const VOCAB = {
   platform: ['ios', 'android', 'desktop', 'unknown'],
   visit: ['first', 'returning'],
   action: ['face', 'photo', 'morph', 'names', 'blend'],
+  app: ['candidate', 'monorepo'],
   route: ['cpu', 'webgpu', 'auto', 'unknown'],
   outcome: ['completed', 'cancelled', 'failed'],
   cache: ['cold', 'warm'],
@@ -29,8 +30,11 @@ const pick = (field, value) => (VOCAB[field].includes(value) ? value : null);
 const num = (value, max) => (typeof value === 'number' && Number.isFinite(value) && value >= 0 ? Math.min(value, max) : null);
 
 /** Turns one beacon into counter increments, or null if the beacon is malformed. Exposed for tests. */
-export function increments(beacon) {
+export function increments(beacon, host = 'next') {
   if (!beacon || beacon.v !== 1 || !Array.isArray(beacon.events) || beacon.events.length > MAX_EVENTS) return null;
+  // Which build and which host sent it, so candidate and monorepo traffic stay apart across the switch.
+  const app = pick('app', beacon.app) || 'candidate';
+  const site = `app="${app}",host="${host}"`;
   const out = new Map();
   const add = (key, by = 1) => out.set(key, (out.get(key) || 0) + by);
   const observe = (name, labels, seconds) => {
@@ -44,26 +48,26 @@ export function increments(beacon) {
     const platform = pick('platform', e.platform) || 'unknown';
     if (e.t === 'visit') {
       const visit = pick('visit', e.visit);
-      if (visit) add(`fm_web_visits_total{platform="${platform}",visit="${visit}"}`);
+      if (visit) add(`fm_web_visits_total{${site},platform="${platform}",visit="${visit}"}`);
     } else if (e.t === 'job') {
       const action = pick('action', e.action), route = pick('route', e.route) || 'unknown', outcome = pick('outcome', e.outcome);
       if (!action || !outcome) continue;
-      const labels = `action="${action}",route="${route}",platform="${platform}"`;
+      const labels = `${site},action="${action}",route="${route}",platform="${platform}"`;
       add(`fm_web_jobs_total{${labels},outcome="${outcome}"}`);
       const ms = num(e.ms, MAX_MS);
       if (outcome === 'completed' && ms !== null) observe('fm_web_job_duration_seconds', labels, ms / 1000);
     } else if (e.t === 'ttfr') {
       const cache = pick('cache', e.cache), ms = num(e.ms, MAX_MS);
-      if (cache && ms !== null) observe('fm_web_time_to_first_result_seconds', `cache="${cache}",platform="${platform}"`, ms / 1000);
+      if (cache && ms !== null) observe('fm_web_time_to_first_result_seconds', `${site},cache="${cache}",platform="${platform}"`, ms / 1000);
     } else if (e.t === 'frames') {
       const n = num(e.n, 100000);
-      if (n !== null) add(`fm_web_morph_frames_total{platform="${platform}"}`, Math.round(n));
+      if (n !== null) add(`fm_web_morph_frames_total{${site},platform="${platform}"}`, Math.round(n));
     } else if (e.t === 'export') {
       const kind = pick('kind', e.kind), method = pick('method', e.method);
-      if (kind && method) add(`fm_web_exports_total{kind="${kind}",method="${method}"}`);
+      if (kind && method) add(`fm_web_exports_total{${site},kind="${kind}",method="${method}"}`);
     } else if (e.t === 'model_mb') {
       const cache = pick('cache', e.cache), mb = num(e.mb, 4096);
-      if (cache && mb !== null) add(`fm_web_model_megabytes_total{cache="${cache}",platform="${platform}"}`, mb);
+      if (cache && mb !== null) add(`fm_web_model_megabytes_total{${site},cache="${cache}",platform="${platform}"}`, mb);
     }
   }
   return out;
@@ -136,7 +140,7 @@ export async function handle(request, env) {
   if (body.length > MAX_BODY) return empty(413);
   let beacon;
   try { beacon = JSON.parse(body); } catch { return empty(400); }
-  const inc = increments(beacon);
+  const inc = increments(beacon, request.headers.get('origin') === 'https://facemorph.me' ? 'facemorph' : 'next');
   if (!inc) return empty(400);
   if (inc.size) await counter().fetch('https://counter/add', { method: 'POST', body: JSON.stringify([...inc]) });
   return empty(204);

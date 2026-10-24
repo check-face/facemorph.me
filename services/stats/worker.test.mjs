@@ -34,10 +34,10 @@ test('valid beacon becomes aggregate counters only', async () => {
   ])), e);
   assert.equal(res.status, 204);
   const keys = [...e.sql.rows.keys()];
-  assert.ok(keys.includes('fm_web_visits_total{platform="ios",visit="first"}'));
-  assert.ok(keys.includes('fm_web_jobs_total{action="photo",route="cpu",platform="ios",outcome="completed"}'));
-  assert.equal(e.sql.rows.get('fm_web_job_duration_seconds_bucket{action="photo",route="cpu",platform="ios",le="60"}'), 1);
-  assert.equal(e.sql.rows.get('fm_web_job_duration_seconds_bucket{action="photo",route="cpu",platform="ios",le="30"}'), undefined);
+  assert.ok(keys.includes('fm_web_visits_total{app="candidate",host="next",platform="ios",visit="first"}'));
+  assert.ok(keys.includes('fm_web_jobs_total{app="candidate",host="next",action="photo",route="cpu",platform="ios",outcome="completed"}'));
+  assert.equal(e.sql.rows.get('fm_web_job_duration_seconds_bucket{app="candidate",host="next",action="photo",route="cpu",platform="ios",le="60"}'), 1);
+  assert.equal(e.sql.rows.get('fm_web_job_duration_seconds_bucket{app="candidate",host="next",action="photo",route="cpu",platform="ios",le="30"}'), undefined);
   assert.ok(keys.every((k) => k.startsWith('fm_web_')));
   assert.ok(!keys.some((k) => k.includes('203.0.113')), 'no address stored');
 });
@@ -51,8 +51,8 @@ test('unknown vocabulary, free text and oversized values are dropped or clamped'
   ] });
   const keys = [...inc.keys()];
   assert.ok(!keys.some((k) => k.includes('hello') || k.includes('sneaky') || k.includes('mars') || k.includes('toaster')));
-  assert.equal(inc.get('fm_web_morph_frames_total{platform="unknown"}'), 100000);
-  assert.equal(inc.get('fm_web_job_duration_seconds_sum{action="face",route="unknown",platform="unknown"}'), 3600);
+  assert.equal(inc.get('fm_web_morph_frames_total{app="candidate",host="next",platform="unknown"}'), 100000);
+  assert.equal(inc.get('fm_web_job_duration_seconds_sum{app="candidate",host="next",action="face",route="unknown",platform="unknown"}'), 3600);
 });
 
 test('malformed or oversized beacons are refused', async () => {
@@ -94,10 +94,17 @@ test('metrics need the bearer token and render Prometheus text', async () => {
   assert.equal(res.status, 200);
   const text = await res.text();
   assert.match(text, /# TYPE fm_web_time_to_first_result_seconds histogram/);
-  assert.match(text, /fm_web_time_to_first_result_seconds_bucket\{cache="cold",platform="android",le="10"\} 1/);
-  assert.match(text, /fm_web_time_to_first_result_seconds_count\{cache="cold",platform="android"\} 1/);
+  assert.match(text, /fm_web_time_to_first_result_seconds_bucket\{app="candidate",host="next",cache="cold",platform="android",le="10"\} 1/);
+  assert.match(text, /fm_web_time_to_first_result_seconds_count\{app="candidate",host="next",cache="cold",platform="android"\} 1/);
 });
 
 test('exposition ignores keys outside the fm_web_ families', () => {
   assert.equal(exposition([{ key: 'other_total{a="b"}', value: 3 }]), '');
+});
+
+test('app and host labels separate candidate, monorepo and the two hosts', () => {
+  const inc = increments({ v: 1, app: 'monorepo', events: [{ t: 'visit', platform: 'ios', visit: 'first' }] }, 'facemorph');
+  assert.ok(inc.has('fm_web_visits_total{app="monorepo",host="facemorph",platform="ios",visit="first"}'));
+  const odd = increments({ v: 1, app: 'evil"}', events: [{ t: 'visit', platform: 'ios', visit: 'first' }] });
+  assert.ok(odd.has('fm_web_visits_total{app="candidate",host="next",platform="ios",visit="first"}'));
 });
