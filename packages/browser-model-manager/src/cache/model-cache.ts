@@ -76,7 +76,7 @@ export interface ModelCache {
   peek(input: AssetInput | string): Promise<Response | null>;
 }
 
-type Err = Error & { status?: number; transient?: boolean };
+type Err = Error & { status?: number; transient?: boolean; reload?: boolean };
 const aborted = () => new DOMException('Asset acquisition cancelled', 'AbortError');
 /** Why a local-only read has no bytes; the message stays the candidate's. */
 type Local = 'absent' | 'corrupt';
@@ -122,17 +122,23 @@ const SHARD_UNIT_LIMIT = 64 * 1024 * 1024; // unchunked assets above this stay i
 const hex = (buffer: ArrayBuffer) =>
   Array.from(new Uint8Array(buffer), (x) => x.toString(16).padStart(2, '0')).join('');
 /** A non-200 answer; `transient` marks the statuses worth asking again (server faults, rate limits).
- * The message is shown to the visitor as it is, so it says what happened and what to do. */
+ * The message is shown to the visitor as it is, so it says what happened and what to do. Model files are immutable
+ * and named by digest, so one that is gone (404, 410) belongs to a version the site no longer serves: an open tab
+ * that loaded before an update asks for it. That is not retried and no other digest is tried in its place; `reload`
+ * tells the page the remedy is a reload, which loads the current version (fm-fy2.14). */
 function downloadRefused(response: Response): Err {
   void response.body?.cancel().catch(() => {});
   const status = response.type === 'opaque' ? 'opaque response' : `HTTP ${response.status}`;
   const transient = response.status >= 500 || response.status === 429 || response.status === 408;
+  const reload = response.status === 404 || response.status === 410;
   const error = new Error(
     transient
       ? `The model download server had a temporary fault (${status}). Parts already downloaded are kept: try again in a few minutes.`
-      : `A model file could not be downloaded (${status}).`,
+      : reload
+        ? `A model file could not be downloaded (${status}): this page is older than the site, which has been updated since it loaded. Reload the page to continue.`
+        : `A model file could not be downloaded (${status}).`,
   );
-  return Object.assign(error, { status: response.status, transient });
+  return Object.assign(error, { status: response.status, transient, reload });
 }
 // 20 October: one Cloudflare edge answered HTTP 500 for a single 9 MB encoder chunk for twenty-five
 // minutes (part-033, then part-091; the same files were 200 everywhere else), and every attempt
