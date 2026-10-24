@@ -61,3 +61,10 @@ test('every golden, parity or freeze script calls fetch-control first', () => {
   }
   for (const path of scripts) assert.match(readFileSync(path, 'utf8'), /fetch-control/, `${path} must call fetch-control first`);
 });
+
+test('a real download into a new --dest directory verifies (the release asset, over the network)', async () => {
+  const dest = join(tempDir('control-dest-'), 'not', 'yet');
+  const { dir, findings } = await fetchControl({ dest });
+  assert.equal(findings.length, 0);
+  assert.ok(dir.startsWith(dest));
+});

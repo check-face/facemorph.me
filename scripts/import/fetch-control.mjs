@@ -5,7 +5,7 @@
 //   node scripts/import/fetch-control.mjs [--dest <dir>]     download, unpack and verify
 //   node scripts/import/fetch-control.mjs --store <dir>      verify an unpacked store already on disk
 // One JSON line per finding, then a summary naming the source identity; exit 1 on any mismatch.
-import { mkdtempSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -18,6 +18,7 @@ export async function fetchControl({ dest, store, record = readControl(), log = 
   let dir = store && resolve(store);
   if (!dir) {
     dir = resolve(dest ?? mkdtempSync(join(tmpdir(), 'control-')));
+    mkdirSync(dir, { recursive: true });
     // The API asset URL (accept: octet-stream) serves anonymous requests; a CI token only raises the rate limit.
     const token = process.env.GITHUB_TOKEN || process.env.GH_TOKEN;
     const res = await fetch(record.release.api_url, { headers: { accept: 'application/octet-stream', ...(token ? { authorization: `Bearer ${token}` } : {}) } });
