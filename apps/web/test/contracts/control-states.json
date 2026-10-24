@@ -1,0 +1,966 @@
+{
+  "schema": "facemorph.control-states/1",
+  "control": {
+    "commit": "551b60726290b2d67a32c62477b2fd964de51f96",
+    "buildId": "next-dbc2925ff6e7dcb6",
+    "deploy_next_sha256": "aaeb99a92a082b5399aa809a5aadd802c3c61ccc167f306aa86fc091b527bf50",
+    "identityFile": "next-site-identity.json"
+  },
+  "browser": "chromium 156.0.8078.4 (Playwright, headless, CPU only: no WebGPU adapter)",
+  "capturedAt": "2026-10-24",
+  "widths": {
+    "desktop": {
+      "width": 1280,
+      "height": 900
+    },
+    "phone": {
+      "width": 390,
+      "height": 844
+    }
+  },
+  "input": {
+    "desktop": "real mouse",
+    "phone": "real touch taps (emulated touch, not a phone cell)"
+  },
+  "method": "Every press through operatedClick/operatedTap; typing through typeOperated. Origin https://next.facemorph.me answered from the digest-bound local artifact and the acquired runtime; other hosts aborted. observed.copy lines are prefixed by the layer they were read from (dialog, menu, toast, error, status, note, tile N).",
+  "externalRequestsAborted": {
+    "desktop": {},
+    "phone": {
+      "facemorph-seed-gallery.cdilga.workers.dev": 72
+    }
+  },
+  "wallSeconds": {
+    "phone": 373,
+    "total": 373
+  },
+  "surfaces": {
+    "main-page": {
+      "desktop": {
+        "observed": [],
+        "notReachable": []
+      },
+      "phone": {
+        "observed": [
+          {
+            "state": "empty-first-visit",
+            "copy": [
+              "toast: Faces are made on this device. It needs the face model once (149 MB), and using your own photos needs the photo encoder (1.1 GB). It stays on this device; your browser may ask whether to keep it.",
+              "toast: DOWNLOAD · 149 MB",
+              "toast: PLUS PHOTO ENCODER · 1.2 GB",
+              "toast: NOT NOW",
+              "tile 1: Cached preview / Morph from / GENERATE / Name or words / Seed / Photo",
+              "tile 1 picture: img"
+            ],
+            "controls": [
+              "toast: DOWNLOAD · 149 MB",
+              "toast: PLUS PHOTO ENCODER · 1.2 GB",
+              "toast: NOT NOW",
+              "tile 1: Remove Morph from",
+              "tile 1: Change mode",
+              "tile 1:  [text field: \"hello\"]",
+              "tile 1: Browse names",
+              "tile 1: Generate Morph from",
+              "tile 1: Face source (disabled)",
+              "page: Add a face before Morph from"
+            ],
+            "note": "One filled preview tile (\"Cached preview\") and one empty tile; the model-consent toast is open."
+          },
+          {
+            "state": "toast-covering-controls",
+            "copy": [
+              "toast: Faces are made on this device. It needs the face model once (149 MB), and using your own photos needs the photo encoder (1.1 GB). It stays on this device; your browser may ask whether to keep it.",
+              "toast: DOWNLOAD · 149 MB",
+              "toast: PLUS PHOTO ENCODER · 1.2 GB",
+              "toast: NOT NOW",
+              "tile 1: Cached preview / Morph from / GENERATE / Name or words / Seed / Photo",
+              "tile 1 picture: img"
+            ],
+            "controls": [
+              "toast: DOWNLOAD · 149 MB",
+              "toast: PLUS PHOTO ENCODER · 1.2 GB",
+              "toast: NOT NOW",
+              "tile 1: Remove Morph from",
+              "tile 1: Change mode",
+              "tile 1:  [text field: \"hello\"]",
+              "tile 1: Browse names",
+              "tile 1: Generate Morph from",
+              "tile 1: Face source (disabled)",
+              "page: Add a face before Morph from"
+            ],
+            "note": "Pressing Browse names failed: control-states/phone/01-names-under-toast: locator('section.next-face').first().getByRole('button', { name: 'Browse names' }): elementFromPoint at its centre is not the control but <span class=\"MuiButton-label\">Plus photo encoder · 1.2 GB</span>"
+          },
+          {
+            "state": "after-consent-not-now",
+            "copy": [
+              "toast: Help us test? Send debug reports: timings, device type and error codes. Never your photos, words or faces. Kept with no deletion date.",
+              "toast: TURN ON",
+              "toast: NO THANKS",
+              "tile 1: Cached preview / Morph from / GENERATE / Name or words / Seed / Photo",
+              "tile 1 picture: img"
+            ],
+            "controls": [
+              "toast: TURN ON",
+              "toast: NO THANKS",
+              "toast: Ask me later",
+              "tile 1: Remove Morph from",
+              "tile 1: Change mode",
+              "tile 1:  [text field: \"hello\"]",
+              "tile 1: Browse names",
+              "tile 1: Generate Morph from",
+              "tile 1: Face source (disabled)",
+              "page: Add a face before Morph from"
+            ],
+            "note": "Consent toast dismissed with Not now; the test-reports toast follows."
+          },
+          {
+            "state": "after-reports-no-thanks",
+            "copy": [
+              "tile 1: Cached preview / Morph from / GENERATE / Name or words / Seed / Photo",
+              "tile 1 picture: img"
+            ],
+            "controls": [
+              "tile 1: Remove Morph from",
+              "tile 1: Change mode",
+              "tile 1:  [text field: \"hello\"]",
+              "tile 1: Browse names",
+              "tile 1: Generate Morph from",
+              "tile 1: Face source (disabled)",
+              "page: Add a face before Morph from"
+            ],
+            "note": "Debug-report prompt declined."
+          },
+          {
+            "state": "tile-mode-menu",
+            "copy": [
+              "menu: Name or words",
+              "menu: Numeric seed",
+              "menu: Upload image",
+              "tile 1: Cached preview / Morph from / GENERATE / Name or words / Seed / Photo",
+              "tile 1 picture: img"
+            ],
+            "controls": [
+              "menu: Name or words",
+              "menu: Numeric seed",
+              "menu: Upload image",
+              "tile 1: Remove Morph from",
+              "tile 1: Change mode",
+              "tile 1:  [text field: \"hello\"]",
+              "tile 1: Browse names",
+              "tile 1: Generate Morph from",
+              "tile 1: Face source (disabled)",
+              "page: Add a face before Morph from"
+            ],
+            "note": "The per-tile source menu (Change mode)."
+          },
+          {
+            "state": "two-faces-completed",
+            "copy": [
+              "status: Face updated.",
+              "note: Ready · this device’s CPU.",
+              "tile 2: Morph to / GENERATE / Name or words / Seed / Photo / SHARE IMAGE / SAVE IMAGE",
+              "tile 2 picture: canvas"
+            ],
+            "controls": [
+              "tile 2: Remove Morph to",
+              "tile 2: Change mode",
+              "tile 2:  [text field: \"2026-world10-25\"]",
+              "tile 2: Browse names",
+              "tile 2: Generate Morph to",
+              "tile 2: Face source (disabled)",
+              "tile 2: SHARE IMAGE",
+              "tile 2: SAVE IMAGE",
+              "page: CREATE MORPH",
+              "page: MORE OPTIONS",
+              "page: ADD FACE",
+              "page: SHARE IMAGE",
+              "page: SAVE IMAGE",
+              "page: Add a face after Morph to"
+            ],
+            "note": "Both tiles completed; Create morph is offered."
+          },
+          {
+            "state": "more-options-open",
+            "copy": [
+              "note: Ready · this device’s CPU.",
+              "tile 2: Morph to / GENERATE / Name or words / Seed / Photo / SHARE IMAGE / SAVE IMAGE",
+              "tile 2 picture: canvas"
+            ],
+            "controls": [
+              "tile 2: Remove Morph to",
+              "tile 2: Change mode",
+              "tile 2:  [text field: \"2026-world10-25\"]",
+              "tile 2: Browse names",
+              "tile 2: Generate Morph to",
+              "tile 2: Face source (disabled)",
+              "tile 2: SHARE IMAGE",
+              "tile 2: SAVE IMAGE",
+              "page: CREATE MORPH",
+              "page: MORE OPTIONS",
+              "page: ADD FACE",
+              "page: SHARE IMAGE",
+              "page: SAVE IMAGE",
+              "page: Add a face after Morph to"
+            ],
+            "note": "The overflow with morph shape, length and pinch."
+          },
+          {
+            "state": "advanced-processing-mode",
+            "copy": [
+              "status: Face updated.",
+              "note: Ready · this device’s CPU.",
+              "note: 32 frames total"
+            ],
+            "controls": ["page: CREATE MORPH", "page: MORE OPTIONS", "page: ADD FACE"],
+            "note": "The only place the processing choice (Auto, CPU, WebGPU, WebGL) is offered."
+          },
+          {
+            "state": "processing-mode-options",
+            "copy": ["Automatic processing", "CPU", "WebGPU", "WebGL GPU"],
+            "controls": ["Processing mode"],
+            "note": "Options of the native select."
+          }
+        ],
+        "notReachable": []
+      }
+    },
+    "download-modal": {
+      "desktop": {
+        "observed": [],
+        "notReachable": []
+      },
+      "phone": {
+        "observed": [
+          {
+            "state": "cold-face-model-dialog",
+            "copy": [
+              "dialog: Download the face model?",
+              "dialog: Faces are made on this device, so it needs the face model once: 149 MB.",
+              "dialog: It's saved for next time. Your browser may ask whether this site can keep it; saying yes stops it being cleared when space runs low.",
+              "dialog: CANCEL",
+              "dialog: DOWNLOAD AND CONTINUE",
+              "tile 1: Cached preview / Morph from / GENERATE / Name or words / Seed / Photo",
+              "tile 1 picture: img"
+            ],
+            "controls": [
+              "dialog: CANCEL",
+              "dialog: DOWNLOAD AND CONTINUE",
+              "tile 1: Remove Morph from",
+              "tile 1: Change mode",
+              "tile 1:  [text field: \"hello\"]",
+              "tile 1: Browse names",
+              "tile 1: Generate Morph from",
+              "tile 1: Face source (disabled)",
+              "page: Add a face before Morph from"
+            ],
+            "note": "Generate pressed before any model is on the device."
+          },
+          {
+            "state": "cancelled",
+            "copy": [
+              "tile 1: Cached preview / Morph from / GENERATE / Name or words / Seed / Photo",
+              "tile 1 picture: img"
+            ],
+            "controls": [
+              "tile 1: Remove Morph from",
+              "tile 1: Change mode",
+              "tile 1:  [text field: \"hello\"]",
+              "tile 1: Browse names",
+              "tile 1: Generate Morph from",
+              "tile 1: Face source (disabled)",
+              "page: Add a face before Morph from"
+            ],
+            "note": "After closing the dialog without downloading."
+          },
+          {
+            "state": "cancelled-by-button",
+            "copy": [
+              "tile 1: Cached preview / Morph from / GENERATE / Name or words / Seed / Photo",
+              "tile 1 picture: img"
+            ],
+            "controls": [
+              "tile 1: Remove Morph from",
+              "tile 1: Change mode",
+              "tile 1:  [text field: \"hello\"]",
+              "tile 1: Browse names",
+              "tile 1: Generate Morph from",
+              "tile 1: Face source (disabled)",
+              "page: Add a face before Morph from"
+            ],
+            "note": "Cancel pressed."
+          },
+          {
+            "state": "in-progress",
+            "copy": [
+              "tile 1: Cached preview / Downloading model files… 23 MB of 158 MB / CANCEL / Morph from / GENERATE / Name or words / Seed / Photo",
+              "tile 1 picture: img"
+            ],
+            "controls": [
+              "tile 1: Remove Morph from",
+              "tile 1: CANCEL",
+              "tile 1: Change mode",
+              "tile 1:  [text field: \"hello\"]",
+              "tile 1: Browse names",
+              "tile 1: Generate Morph from (disabled)",
+              "tile 1: Face source (disabled)",
+              "page: Add a face before Morph from"
+            ],
+            "note": "Download and continue pressed."
+          },
+          {
+            "state": "cold-encoder-dialog",
+            "copy": [
+              "dialog: Download the photo encoder?",
+              "dialog: Photos are turned into faces on this device, so it needs the photo encoder once: 1.1 GB. Your photo never leaves your device.",
+              "dialog: It's saved for next time. Your browser may ask whether this site can keep it; saying yes stops it being cleared when space runs low.",
+              "dialog: CANCEL",
+              "dialog: DOWNLOAD AND CONTINUE",
+              "tile 2: Morph to / GENERATE / Name or words / Seed / Photo / SHARE IMAGE / SAVE IMAGE",
+              "tile 2 picture: canvas",
+              "tile 3: Drop a photo, or tap to choose / Face 3 / GENERATE / Name or words / Seed / Photo / seed-0.png / CROP PHOTO",
+              "tile 3 picture: none"
+            ],
+            "controls": [
+              "dialog: CANCEL",
+              "dialog: DOWNLOAD AND CONTINUE",
+              "tile 2: Remove Morph to",
+              "tile 2: Change mode",
+              "tile 2:  [text field: \"2026-world10-25\"]",
+              "tile 2: Browse names",
+              "tile 2: Generate Morph to",
+              "tile 2: SHARE IMAGE",
+              "tile 2: SAVE IMAGE",
+              "tile 3: Choose photo",
+              "tile 3: Remove Face 3",
+              "tile 3: Change mode",
+              "tile 3:  [text field: \"seed-0.png\"] (disabled)",
+              "tile 3: Generate Face 3",
+              "tile 3: Face source (disabled)",
+              "tile 3: CROP PHOTO",
+              "page: SHARE IMAGE",
+              "page: SAVE IMAGE",
+              "page: CREATE MORPH",
+              "page: Add a face before Face 3",
+              "page: Add a face after Face 3"
+            ],
+            "note": "The photo-encoder download dialog (stacked or alone: see copy prefixes)."
+          },
+          {
+            "state": "encoder-cancelled",
+            "copy": [
+              "tile 2: Morph to / GENERATE / Name or words / Seed / Photo / SHARE IMAGE / SAVE IMAGE",
+              "tile 2 picture: canvas",
+              "tile 3: Drop a photo, or tap to choose / Face 3 / GENERATE / Name or words / Seed / Photo / seed-0.png / CROP PHOTO",
+              "tile 3 picture: none"
+            ],
+            "controls": [
+              "tile 2: Remove Morph to",
+              "tile 2: Change mode",
+              "tile 2:  [text field: \"2026-world10-25\"]",
+              "tile 2: Browse names",
+              "tile 2: Generate Morph to",
+              "tile 2: SHARE IMAGE",
+              "tile 2: SAVE IMAGE",
+              "tile 3: Choose photo",
+              "tile 3: Remove Face 3",
+              "tile 3: Change mode",
+              "tile 3:  [text field: \"seed-0.png\"] (disabled)",
+              "tile 3: Generate Face 3",
+              "tile 3: Face source (disabled)",
+              "tile 3: CROP PHOTO",
+              "page: SHARE IMAGE",
+              "page: SAVE IMAGE",
+              "page: CREATE MORPH",
+              "page: Add a face before Face 3",
+              "page: Add a face after Face 3"
+            ],
+            "note": "Encoder dialog cancelled; the chosen photo stays in the tile."
+          }
+        ],
+        "notReachable": []
+      }
+    },
+    "photo-crop": {
+      "desktop": {
+        "observed": [],
+        "notReachable": []
+      },
+      "phone": {
+        "observed": [
+          {
+            "state": "encoder-dialog-cold",
+            "copy": [
+              "dialog: Download the photo encoder?",
+              "dialog: Photos are turned into faces on this device, so it needs the photo encoder once: 1.1 GB. Your photo never leaves your device.",
+              "dialog: It's saved for next time. Your browser may ask whether this site can keep it; saying yes stops it being cleared when space runs low.",
+              "dialog: CANCEL",
+              "dialog: DOWNLOAD AND CONTINUE",
+              "tile 2: Morph to / GENERATE / Name or words / Seed / Photo / SHARE IMAGE / SAVE IMAGE",
+              "tile 2 picture: canvas",
+              "tile 3: Drop a photo, or tap to choose / Face 3 / GENERATE / Name or words / Seed / Photo / seed-0.png / CROP PHOTO",
+              "tile 3 picture: none"
+            ],
+            "controls": [
+              "dialog: CANCEL",
+              "dialog: DOWNLOAD AND CONTINUE",
+              "tile 2: Remove Morph to",
+              "tile 2: Change mode",
+              "tile 2:  [text field: \"2026-world10-25\"]",
+              "tile 2: Browse names",
+              "tile 2: Generate Morph to",
+              "tile 2: SHARE IMAGE",
+              "tile 2: SAVE IMAGE",
+              "tile 3: Choose photo",
+              "tile 3: Remove Face 3",
+              "tile 3: Change mode",
+              "tile 3:  [text field: \"seed-0.png\"] (disabled)",
+              "tile 3: Generate Face 3",
+              "tile 3: Face source (disabled)",
+              "tile 3: CROP PHOTO",
+              "page: SHARE IMAGE",
+              "page: SAVE IMAGE",
+              "page: CREATE MORPH",
+              "page: Add a face before Face 3",
+              "page: Add a face after Face 3"
+            ],
+            "note": "A clear single-face photo chosen with the photo encoder missing."
+          },
+          {
+            "state": "choose-photo-retry",
+            "copy": [
+              "tile 2: Morph to / GENERATE / Name or words / Seed / Photo / SHARE IMAGE / SAVE IMAGE",
+              "tile 2 picture: canvas",
+              "tile 3: Drop a photo, or tap to choose / Face 3 / GENERATE / Name or words / Seed / Photo / seed-0.png / CROP PHOTO",
+              "tile 3 picture: none"
+            ],
+            "controls": [
+              "tile 2: Remove Morph to",
+              "tile 2: Change mode",
+              "tile 2:  [text field: \"2026-world10-25\"]",
+              "tile 2: Browse names",
+              "tile 2: Generate Morph to",
+              "tile 2: SHARE IMAGE",
+              "tile 2: SAVE IMAGE",
+              "tile 3: Choose photo",
+              "tile 3: Remove Face 3",
+              "tile 3: Change mode",
+              "tile 3:  [text field: \"seed-0.png\"] (disabled)",
+              "tile 3: Generate Face 3",
+              "tile 3: Face source (disabled)",
+              "tile 3: CROP PHOTO",
+              "page: SHARE IMAGE",
+              "page: SAVE IMAGE",
+              "page: CREATE MORPH",
+              "page: Add a face before Face 3",
+              "page: Add a face after Face 3"
+            ],
+            "note": "Retry of Choose photo: blocked"
+          },
+          {
+            "state": "crop-editor-open",
+            "copy": [
+              "dialog: Crop your photo",
+              "dialog: CANCEL CROP",
+              "dialog: Drag to move, or use the arrow keys. Zoom to fill the square. Only this square is processed.",
+              "dialog: Zoom",
+              "dialog: ROTATE",
+              "dialog: USE THIS CROP",
+              "tile 2: Morph to / GENERATE / Name or words / Seed / Photo / SHARE IMAGE / SAVE IMAGE",
+              "tile 2 picture: canvas",
+              "tile 3: Drop a photo, or tap to choose / Face 3 / GENERATE / Name or words / Seed / Photo / seed-0.png / CROP PHOTO",
+              "tile 3 picture: none"
+            ],
+            "controls": [
+              "dialog: CANCEL CROP",
+              "dialog: Zoom",
+              "dialog: ROTATE",
+              "dialog: USE THIS CROP",
+              "tile 2: Remove Morph to",
+              "tile 2: Change mode",
+              "tile 2:  [text field: \"2026-world10-25\"]",
+              "tile 2: Browse names",
+              "tile 2: Generate Morph to",
+              "tile 2: SHARE IMAGE",
+              "tile 2: SAVE IMAGE",
+              "tile 3: Choose photo",
+              "tile 3: Remove Face 3",
+              "tile 3: Change mode",
+              "tile 3:  [text field: \"seed-0.png\"] (disabled)",
+              "tile 3: Generate Face 3",
+              "tile 3: Face source (disabled)",
+              "tile 3: CROP PHOTO",
+              "page: SHARE IMAGE",
+              "page: SAVE IMAGE",
+              "page: CREATE MORPH",
+              "page: ROTATE",
+              "page: USE THIS CROP",
+              "page: Add a face before Face 3",
+              "page: Add a face after Face 3",
+              "page: CANCEL CROP"
+            ],
+            "note": "Crop photo pressed on an encoded photo."
+          }
+        ],
+        "notReachable": [
+          {
+            "state": "encode-photo",
+            "why": "locator.evaluate: Timeout 30000ms exceeded."
+          },
+          {
+            "state": "Use Crop",
+            "why": "no control named Use crop in the editor"
+          },
+          {
+            "state": "no-face",
+            "why": "locator.evaluate: Error: strict mode violation: locator('section.next-face').nth(2).getByRole('button', { name: /choose photo/i }) resolved to 2 elements:"
+          }
+        ]
+      }
+    },
+    "multi-face": {
+      "desktop": {
+        "observed": [],
+        "notReachable": []
+      },
+      "phone": {
+        "observed": [],
+        "notReachable": [
+          {
+            "state": "several-faces",
+            "why": "locator.evaluate: Error: strict mode violation: locator('section.next-face').nth(2).getByRole('button', { name: /choose photo/i }) resolved to 2 elements:"
+          }
+        ]
+      }
+    },
+    "tiles": {
+      "desktop": {
+        "observed": [],
+        "notReachable": []
+      },
+      "phone": {
+        "observed": [
+          {
+            "state": "active-generating",
+            "copy": [
+              "tile 1: Cached preview / Generating… / CANCEL / Morph from / GENERATE / Name or words / Seed / Photo",
+              "tile 1 picture: img"
+            ],
+            "controls": [
+              "tile 1: Remove Morph from",
+              "tile 1: CANCEL",
+              "tile 1: Change mode",
+              "tile 1:  [text field: \"hello\"]",
+              "tile 1: Browse names",
+              "tile 1: Generate Morph from (disabled)",
+              "tile 1: Face source (disabled)",
+              "page: Add a face before Morph from"
+            ],
+            "note": "The tile that is making its face."
+          },
+          {
+            "state": "cancelled-after-generating",
+            "copy": [
+              "tile 1: Cached preview / Morph from / GENERATE / Name or words / Seed / Photo",
+              "tile 1 picture: img"
+            ],
+            "controls": [
+              "tile 1: Remove Morph from",
+              "tile 1: Change mode",
+              "tile 1:  [text field: \"hello\"]",
+              "tile 1: Browse names",
+              "tile 1: Generate Morph from",
+              "tile 1: Face source (disabled)",
+              "page: Add a face before Morph from"
+            ],
+            "note": "Tile Cancel pressed during generation."
+          },
+          {
+            "state": "second-face-typed-before-generate",
+            "copy": [
+              "note: Ready · this device’s CPU.",
+              "tile 2: Drop a photo, or tap to choose / Morph to / GENERATE / Name or words / Seed / Photo",
+              "tile 2 picture: none"
+            ],
+            "controls": [
+              "tile 2: Choose photo",
+              "tile 2: Remove Morph to",
+              "tile 2: Change mode",
+              "tile 2:  [text field: \"2026-world10-25\"]",
+              "tile 2: Browse names",
+              "tile 2: Generate Morph to",
+              "tile 2: Face source (disabled)",
+              "page: CREATE MORPH",
+              "page: MORE OPTIONS",
+              "page: ADD FACE",
+              "page: Add a face between these two",
+              "page: Add a face after Morph to"
+            ],
+            "note": "Words typed in the second tile; nothing generated yet."
+          },
+          {
+            "state": "second-tile-generating",
+            "copy": [
+              "status: Generating…",
+              "status: 5.783 seconds per face",
+              "status: about 6 seconds remaining",
+              "note: Ready · this device’s CPU.",
+              "tile 2: Drop a photo, or tap to choose / Generating… / CANCEL / Morph to / GENERATE / Name or words / Seed / Photo",
+              "tile 2 picture: none"
+            ],
+            "controls": [
+              "tile 2: Choose photo",
+              "tile 2: Remove Morph to",
+              "tile 2: CANCEL",
+              "tile 2: Change mode",
+              "tile 2:  [text field: \"2026-world10-25\"]",
+              "tile 2: Browse names",
+              "tile 2: Generate Morph to (disabled)",
+              "tile 2: Face source (disabled)",
+              "page: CREATE MORPH",
+              "page: MORE OPTIONS",
+              "page: ADD FACE",
+              "page: CANCEL",
+              "page: Add a face after Morph to"
+            ],
+            "note": "Second tile generating."
+          },
+          {
+            "state": "three-tiles",
+            "copy": ["status: Face updated."],
+            "controls": [],
+            "note": "Add face pressed once."
+          }
+        ],
+        "notReachable": [
+          {
+            "state": "generating",
+            "why": "the first face was not completed within 4 minutes"
+          },
+          {
+            "state": "queued",
+            "why": "no queued/waiting copy appeared; one face is made at a time and the next press ran at once"
+          }
+        ]
+      }
+    },
+    "names-picker": {
+      "desktop": {
+        "observed": [],
+        "notReachable": []
+      },
+      "phone": {
+        "observed": [
+          {
+            "state": "opened",
+            "copy": [
+              "dialog: Browse names",
+              "dialog: CLOSE",
+              "dialog: CHARLOTTE",
+              "dialog: OLIVER",
+              "dialog: AVA",
+              "dialog: WILLIAM",
+              "dialog: ISLA",
+              "dialog: JACK",
+              "dialog: NOAH",
+              "dialog: AMELIA",
+              "dialog: HENRY",
+              "dialog: OLIVIA",
+              "dialog: MIA",
+              "dialog: HARVEY",
+              "dialog: ELLA",
+              "dialog: LEO",
+              "dialog: EVIE",
+              "dialog: GRACE",
+              "dialog: THOMAS",
+              "dialog: CHLOE",
+              "dialog: LUCAS",
+              "dialog: SOPHIE",
+              "dialog: HARRISON",
+              "dialog: RUBY",
+              "dialog: ARCHER",
+              "dialog: EMILY",
+              "dialog: ZOE",
+              "dialog: LILY",
+              "dialog: LUCY",
+              "dialog: HARRY",
+              "dialog: EVELYN",
+              "dialog: HUDSON",
+              "dialog: ARIA",
+              "dialog: HANNAH",
+              "dialog: LIAM",
+              "dialog: ISABELLA",
+              "dialog: OSCAR",
+              "dialog: ZARA",
+              "dialog: SCARLETT",
+              "dialog: ETHAN",
+              "dialog: GEORGIA",
+              "dialog: SEBASTIAN",
+              "dialog: MATILDA",
+              "dialog: SIENNA",
+              "dialog: IVY",
+              "dialog: ISABELLE",
+              "dialog: ARCHIE",
+              "dialog: ALICE",
+              "dialog: LEVI",
+              "dialog: EVA",
+              "dialog: SHOW MORE",
+              "tile 1: Cached preview / Morph from / GENERATE / Name or words / Seed / Photo",
+              "tile 1 picture: img"
+            ],
+            "controls": [
+              "dialog: CLOSE",
+              "dialog:  [text field: \"\"]",
+              "dialog: CHARLOTTE",
+              "dialog: OLIVER",
+              "dialog: AVA",
+              "dialog: WILLIAM",
+              "dialog: ISLA",
+              "dialog: JACK",
+              "dialog: NOAH",
+              "dialog: AMELIA",
+              "tile 1: Remove Morph from",
+              "tile 1: Change mode",
+              "tile 1:  [text field: \"hello\"]",
+              "tile 1: Browse names",
+              "tile 1: Generate Morph from",
+              "tile 1: Face source (disabled)",
+              "page: Add a face before Morph from",
+              "page: CLOSE",
+              "page: CHARLOTTE",
+              "page: OLIVER",
+              "page: AVA",
+              "page: WILLIAM",
+              "page: ISLA",
+              "page: JACK",
+              "page: NOAH",
+              "page: AMELIA"
+            ],
+            "note": "External hosts aborted so far: {\"facemorph-seed-gallery.cdilga.workers.dev\":36}"
+          }
+        ],
+        "notReachable": [
+          {
+            "state": "search, empty search, pick a name",
+            "why": "The control fetches the name list from the catalogue host (facemorph-name-catalogue.cdilga.workers.dev); this run allows no outside request, so no list was shown. The 18 October audit recorded the dialog (search box over 5,055 names, Show more, Close) on the live site."
+          }
+        ]
+      }
+    },
+    "result-actions": {
+      "desktop": {
+        "observed": [],
+        "notReachable": []
+      },
+      "phone": {
+        "observed": [
+          {
+            "state": "save-image-pressed",
+            "copy": ["download: facemorph.webp"],
+            "controls": [],
+            "note": "A real download was started."
+          },
+          {
+            "state": "after-save-image",
+            "copy": [
+              "tile 1: Morph from / GENERATE / Name or words / Seed / Photo / SHARE IMAGE / SAVE IMAGE",
+              "tile 1 picture: canvas",
+              "tile 2: Drop a photo, or tap to choose / Morph to / GENERATE / Name or words / Seed / Photo",
+              "tile 2 picture: none"
+            ],
+            "controls": [
+              "tile 1: Remove Morph from",
+              "tile 1: Change mode",
+              "tile 1:  [text field: \"hello\"]",
+              "tile 1: Browse names",
+              "tile 1: Generate Morph from",
+              "tile 1: Face source (disabled)",
+              "tile 1: SHARE IMAGE",
+              "tile 1: SAVE IMAGE",
+              "tile 2: Choose photo",
+              "tile 2: Face source (disabled)",
+              "page: SHARE IMAGE",
+              "page: SAVE IMAGE",
+              "page: Add a face between these two"
+            ],
+            "note": "After Save image."
+          },
+          {
+            "state": "after-share-image",
+            "copy": [
+              "tile 1: Morph from / GENERATE / Name or words / Seed / Photo / SHARE IMAGE / SAVE IMAGE",
+              "tile 1 picture: canvas",
+              "tile 2: Drop a photo, or tap to choose / Morph to / GENERATE / Name or words / Seed / Photo",
+              "tile 2 picture: none"
+            ],
+            "controls": [
+              "tile 1: Remove Morph from",
+              "tile 1: Change mode",
+              "tile 1:  [text field: \"hello\"]",
+              "tile 1: Browse names",
+              "tile 1: Generate Morph from",
+              "tile 1: Face source (disabled)",
+              "tile 1: SHARE IMAGE",
+              "tile 1: SAVE IMAGE",
+              "tile 2: Choose photo",
+              "tile 2: Face source (disabled)",
+              "page: SHARE IMAGE",
+              "page: SAVE IMAGE",
+              "page: Add a face between these two"
+            ],
+            "note": "navigator.share is absent in this browser."
+          }
+        ],
+        "notReachable": [
+          {
+            "state": "native share sheet",
+            "why": "headless Chromium has no share sheet (navigator.share absent); only the control’s own fallback could be seen"
+          }
+        ]
+      }
+    },
+    "morph-result": {
+      "desktop": {
+        "observed": [],
+        "notReachable": []
+      },
+      "phone": {
+        "observed": [
+          {
+            "state": "morph-length-options",
+            "copy": [
+              "Length: short · 8 frames per segment",
+              "Length: standard · 16 frames per segment",
+              "Length: long · 32 frames per segment"
+            ],
+            "controls": ["Morph length"],
+            "note": "Options of the native select."
+          }
+        ],
+        "notReachable": [
+          {
+            "state": "create-morph",
+            "why": "control-states/phone/33-create-morph: locator('.next-primary-action'): elementFromPoint at its centre is not the control but <img src=\"blob:https://next.facemorph.me/fad7f729-2db0-48c7-9bad-04c1519c384e\" alt=\"Photo being cropped\" class=\"next-crop-image\" style=\"width: 318px; height: 31"
+          }
+        ]
+      }
+    },
+    "modals": {
+      "desktop": {
+        "observed": [],
+        "notReachable": []
+      },
+      "phone": {
+        "observed": [
+          {
+            "state": "names-after-escape",
+            "copy": [
+              "tile 1: Cached preview / Morph from / GENERATE / Name or words / Seed / Photo",
+              "tile 1 picture: img"
+            ],
+            "controls": [
+              "tile 1: Remove Morph from",
+              "tile 1: Change mode",
+              "tile 1:  [text field: \"hello\"]",
+              "tile 1: Browse names",
+              "tile 1: Generate Morph from",
+              "tile 1: Face source (disabled)",
+              "page: Add a face before Morph from"
+            ],
+            "note": "Escape pressed with the names picker open."
+          },
+          {
+            "state": "download-dialog-after-escape",
+            "copy": [
+              "tile 1: Cached preview / Morph from / GENERATE / Name or words / Seed / Photo",
+              "tile 1 picture: img"
+            ],
+            "controls": [
+              "tile 1: Remove Morph from",
+              "tile 1: Change mode",
+              "tile 1:  [text field: \"hello\"]",
+              "tile 1: Browse names",
+              "tile 1: Generate Morph from",
+              "tile 1: Face source (disabled)",
+              "page: Add a face before Morph from"
+            ],
+            "note": "Escape pressed with the download dialog open."
+          },
+          {
+            "state": "crop-editor-after-escape",
+            "copy": [
+              "tile 2: Morph to / GENERATE / Name or words / Seed / Photo / SHARE IMAGE / SAVE IMAGE",
+              "tile 2 picture: canvas",
+              "tile 3: Drop a photo, or tap to choose / Face 3 / GENERATE / Name or words / Seed / Photo / seed-0.png / CROP PHOTO",
+              "tile 3 picture: none"
+            ],
+            "controls": [
+              "tile 2: Remove Morph to",
+              "tile 2: Change mode",
+              "tile 2:  [text field: \"2026-world10-25\"]",
+              "tile 2: Browse names",
+              "tile 2: Generate Morph to",
+              "tile 2: SHARE IMAGE",
+              "tile 2: SAVE IMAGE",
+              "tile 3: Choose photo",
+              "tile 3: Remove Face 3",
+              "tile 3: Change mode",
+              "tile 3:  [text field: \"seed-0.png\"] (disabled)",
+              "tile 3: Generate Face 3",
+              "tile 3: Face source (disabled)",
+              "tile 3: CROP PHOTO",
+              "page: SHARE IMAGE",
+              "page: SAVE IMAGE",
+              "page: CREATE MORPH",
+              "page: Add a face before Face 3",
+              "page: Add a face after Face 3"
+            ],
+            "note": "Escape with the crop editor open."
+          },
+          {
+            "state": "names-after-browser-back",
+            "copy": [],
+            "controls": [],
+            "note": "Browser Back pressed with the names picker open. url before https://next.facemorph.me/, history length 2, url after about:blank."
+          }
+        ],
+        "notReachable": []
+      }
+    },
+    "file-open": {
+      "desktop": {
+        "observed": [],
+        "notReachable": []
+      },
+      "phone": {
+        "observed": [],
+        "notReachable": [
+          {
+            "state": "recovery-v2-still",
+            "why": "locator.evaluate: Error: strict mode violation: locator('section.next-face').nth(2).getByRole('button', { name: /choose photo/i }) resolved to 2 elements:"
+          },
+          {
+            "state": "damaged-v1-still",
+            "why": "locator.evaluate: Error: strict mode violation: locator('section.next-face').nth(2).getByRole('button', { name: /choose photo/i }) resolved to 2 elements:"
+          },
+          {
+            "state": "plain-image",
+            "why": "locator.evaluate: Error: strict mode violation: locator('section.next-face').nth(2).getByRole('button', { name: /choose photo/i }) resolved to 2 elements:"
+          }
+        ]
+      }
+    }
+  },
+  "defects": [
+    {
+      "surface": "main-page",
+      "width": "phone",
+      "what": "The first-visit model-consent toast covers a face control; the real press cannot reach it.",
+      "evidence": "control-states/phone/01-names-under-toast: locator('section.next-face').first().getByRole('button', { name: 'Browse names' }): elementFromPoint at its centre is not the control but <span class=\"MuiButton-label\">Plus photo encoder · 1.2 GB</span>"
+    },
+    {
+      "surface": "main-page",
+      "width": "phone",
+      "what": "The first-visit consent toast covers Change mode.",
+      "evidence": "control-states/phone/02-mode-under-toast: locator('section.next-face').first().getByRole('button', { name: 'Change mode' }): elementFromPoint at its centre is not the control but <div class=\"MuiSnackbarContent-action\"><button class=\"MuiButtonBase-root MuiButton-root MuiButton-outlined MuiButton-colo"
+    }
+  ]
+}
