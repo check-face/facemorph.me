@@ -124,22 +124,56 @@ green (`lab.py qualify --run <CI run id> --bead <id>`: a pass records the eviden
 reopens the bead with `device-lab-failed`). If a cell is unavailable the bead keeps `lab-pending`
 until a later lab run covering it, or the release bead's full validation, settles it.
 
-Commit method: Jeffrey Emanuel's swarm method (operator, 25 October 2026; enforced by fm-1pt6). Every
-agent works on `main` in this one tree (no worktrees, no side branches, no PR queue) and pushes straight
-to `main`. Breakage is stopped before the push; `main.yml` is the backstop, not the first check.
-- Reserve files in Agent Mail before editing them. The Agent Mail pre-commit and pre-push guards run in
-  block mode and are never bypassed (`--no-verify`, `AGENT_MAIL_BYPASS`); if Agent Mail is unreachable,
-  restore it before committing.
-- Commit only the paths you changed (`git add <paths>`, `git commit -- <paths>`), never `git add -A` or
-  `git commit -a`, because other agents' uncommitted work lives in the same tree.
-- Before each commit, format and lint the files you changed.
-- Before each push, land the plane: run the gates for every lane your commits touch (format, lint,
-  typecheck, unit tests, and the build or import checks those paths select, the same mapping `main.yml`
-  uses) and push only when they pass. The versioned hooks (`npm run hooks:install`) do this for you.
-- A push that turns `main` red is its pusher's first job to fix, before new work.
-The ordering edges serialize shared-file edits and the lab lock serializes the devices.
 Prefer the self-hosted runners (eris `device-lab`, triton on the `tank` pool) over hosted minutes.
-The phone's Frigate camera stays held off until the operator asks for it back.
+The phone's Frigate camera stays held off until the operator asks for it back. The ordering edges
+serialize shared-file edits and the lab lock serializes the devices.
+
+
+## Swarm method (Jeffrey Emanuel's, adopted whole; operator, 25 October 2026)
+
+Source: the AGENTS.md files of his `ntm`, `beads_rust`, `beads_viewer`, `mcp_agent_mail` and
+`agentic_coding_flywheel_setup` repositories. fm-1pt6 makes the checkable parts mechanical.
+
+- **Rule 0.** An instruction from the operator overrides anything in this file.
+- **One tree, one branch.** Everyone works on `main` in this checkout (no worktrees, side branches or PR
+  queue) and pushes straight to `main`. Breakage is stopped before the push; `main.yml` is the backstop.
+- **Other agents' changes.** Files you did not touch change in the tree many times a minute; they are
+  other agents' work. Never stash, revert, overwrite or otherwise disturb them, and never stop to ask
+  about them. Commit only your own paths (`git add <paths>`, `git commit -- <paths>`), never `git add -A`,
+  `git commit -a` or a bare `git commit`.
+- **No file deletion** unless the bead you hold names that deletion or the operator asks for it; otherwise
+  ask. **Irreversible commands** (`git reset --hard`, `git clean`, `rm -rf`, `git checkout -- <path>`,
+  `git stash`, force-push, anything that can overwrite code or data) are never run unless the operator
+  gives the exact command and says they want its consequences; restate it and what it affects first.
+- **Editing discipline.** Change code by hand, never with a script that rewrites source files (many simple
+  edits: parallel subagents). Revise files in place: no `_v2`, `_new`, `_improved` copies; a new file only
+  for genuinely new functionality. One reachable implementation per capability: a second one lands only
+  in the change that deletes or subsumes the first. No compatibility shims or wrappers for our own code;
+  fix callers directly (file formats the plan requires us to read are features, not shims). When unsure
+  how a third-party library works, read its current documentation online.
+- **Start of work.** `br sync --import-only` after every pull. `br ready --exclude-label gate` or
+  `bv --robot-next`, claim, then `cm context "<task>" --json` and `cass search ... --robot` for prior
+  lessons. Reserve the files in Agent Mail with the bead ID as reason, and post `[<bead>] Start: <title>`
+  in the bead's thread. If Agent Mail is unreachable, say so to the operator and restore it before
+  committing (`am`, `agent-mail.service`).
+- **While working.** Progress goes in the bead's thread. Never edit `.beads/*.jsonl` by hand; only `br`.
+- **Before each commit.** `ubs <changed files>` (exit 0 or fix and re-run), format and lint the changed
+  files. The Agent Mail pre-commit guard runs in block mode; never bypass it (`--no-verify`,
+  `AGENT_MAIL_BYPASS`). Commit messages name the bead ID; `.beads/` changes go in with the code they
+  describe.
+- **After substantive changes and before each push,** run the gates for every lane your commits touch:
+  typecheck, build, unit tests, plus the import or scaffold checks those paths select (the mapping
+  `main.yml` uses); the versioned hooks (`npm run hooks:install`) run them. Push only when they pass.
+  Never weaken a gate to get green. A push that turns `main` red is its pusher's first fix.
+- **Landing the plane** (end of every session, all five steps; the work is not done until it is pushed):
+  1. File beads for any remaining or discovered work (`br create`).
+  2. Run the quality gates if code changed (tests, linters, builds), as above.
+  3. Update bead status: close what a green `main.yml` run verified, update what is in progress.
+  4. `br sync --flush-only`, commit `.beads/` with your paths, push.
+  5. Hand off: release reservations and post `[<bead>] Completed` (or where you stopped and why) in the
+     bead's thread so the next session can continue.
+- **Results.** Reporting a loss or a null result is a success. A self-speedup against an earlier run of
+  your own code is maintenance, not a win; a win needs the incumbent measured in the same invocation.
 
 
 ## Honest Work and Anti-Ceremony (binding for agents and humans alike)
