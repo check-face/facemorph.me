@@ -120,10 +120,13 @@ test('re-encoding regenerates the envelope over the new payload, never an old ha
   const again = embedRecovery(first, recovery({ seed: 7 }));
   const r = parsed(readRecovery(again));
   assert.equal(r.seed, 7);
+  // hash-assert: replacement=corruption-check; imageSha256 is the recovery envelope's integrity value over the
+  // embedded payload bytes (exact recovery), not an encoder-output equality.
   assert.equal(r.imageSha256, createHash('sha256').update(vector('plain.png')).digest('hex'));
   assert.deepEqual(r.baseImage, vector('plain.png'));
   // A lossy payload gets an envelope for its own bytes too.
   const lossy = parsed(readRecovery(embedRecovery(vector('plain.webp'), recovery())));
+  // hash-assert: replacement=corruption-check; the same integrity value for a lossy payload.
   assert.equal(lossy.imageSha256, createHash('sha256').update(vector('plain.webp')).digest('hex'));
 });
 

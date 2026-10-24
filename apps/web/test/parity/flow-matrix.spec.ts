@@ -437,6 +437,7 @@ for (const r of ROWS.filter((x) => x.tag !== 'parity')) {
   // oxlint-disable-next-line no-empty-pattern -- Playwright requires a destructured fixtures argument
   test(r.rowId, async ({}, info) => {
     annotate(info, r);
+    // disabled-test: reason=changed and new rows are owner-graded and never asserted against the control; owner=fm-fy2.5; until=each row's owning bead asserts it against the new app
     test.skip(
       true,
       r.unexercisable

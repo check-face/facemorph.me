@@ -1,0 +1,61 @@
+name: build-identity
+# Build identity and test-retention checks (fm-pud): per-root identity and the checks a push selects, the worker
+# graphs of the built app against its pins and the qualified runtime, artifact identity for the control, no
+# test removed or renamed without a tests/retired.txt entry, no disabled test without reason/owner/removal
+# condition, and no encoded-image hash assertion without its replacement.
+on:
+  push:
+    branches: [main]
+    paths-ignore: ['.beads/**']
+  workflow_dispatch:
+concurrency:
+  group: build-identity
+  cancel-in-progress: false
+jobs:
+  check:
+    runs-on: [self-hosted, eris]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # --base needs the previous push's commit
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm ci --no-audit --no-fund
+      - run: npm run format:check # the workspace gates come before any build (fm-fy2.4)
+      - run: npm run lint
+      - name: Unit tests of the checks
+        run: >-
+          node --test scripts/build/identity.test.mjs scripts/build/check-tests-listed.test.mjs
+          scripts/build/check-no-disabled-tests.test.mjs scripts/build/check-image-hash-asserts.test.mjs
+      - name: No test removed or renamed without a tests/retired.txt entry
+        env:
+          BEFORE: ${{ github.event.before }}
+        run: |
+          base="$BEFORE"
+          if [ -z "$base" ] || ! git cat-file -e "$base^{commit}" 2>/dev/null; then base=HEAD~1; fi
+          node scripts/build/check-tests-listed.mjs --base "$base"
+      - run: node scripts/build/check-no-disabled-tests.mjs
+      - run: node scripts/build/check-image-hash-asserts.mjs
+      - name: Root identities and the checks this push selects
+        env:
+          BEFORE: ${{ github.event.before }}
+        run: |
+          node scripts/build/identity.mjs > identity.json
+          base="$BEFORE"
+          if [ -z "$base" ] || ! git cat-file -e "$base^{commit}" 2>/dev/null; then base=HEAD~1; fi
+          git diff --name-only "$base" HEAD | xargs node scripts/build/identity.mjs --changed
+      - run: npm run build
+      - name: Worker graphs against their pins and the qualified runtime
+        run: node scripts/build/identity.mjs --workers apps/web/dist --hosted "$HOME/.cache/facemorph-device-lab/runtime-public"
+      - name: Artifact identity of the control
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: npm run build:next && node scripts/build/identity.mjs --artifact . | tee artifact-identity.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: build-identity-${{ github.run_id }}
+          path: |
+            identity.json
+            artifact-identity.json

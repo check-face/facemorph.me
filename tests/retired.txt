@@ -1,0 +1,5 @@
+# Retired tests (fm-pud). A test file that is removed or renamed fails scripts/build/check-tests-listed.mjs --base
+# unless it is named here with its replacement test or the plan change that made it obsolete:
+#   <removed test path> -> replacement: <test path>; reason: <text>
+#   <removed test path> -> plan: <PLAN.md#anchor or dated decision>; reason: <text>
+packages/cloudflare-model-host/test/placeholder.test.ts -> replacement: packages/cloudflare-model-host/test/host.test.ts; reason: the placeholder only asserted the package name; the extraction (fm-3osh) replaced it with the host tests
