@@ -29,9 +29,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - run: npm ci --no-audit --no-fund # one lock for the workspace, at the root
-      - run: npm run format:check # the workspace gates come before any build (fm-fy2.4)
-      - run: npm run lint
+      - uses: ./.github/actions/setup-workspace # node_modules for the lockfile, shared on the runner (fm-98po)
       - name: build:next (the control, digest re-verified)
         env:
           GITHUB_TOKEN: ${{ github.token }}

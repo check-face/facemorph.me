@@ -1,0 +1,31 @@
+name: setup-workspace
+description: >-
+  node_modules for a lockfile directory (fm-98po). Self-hosted runners install once per lockfile and share the
+  result between jobs (scripts/ci/workspace-cache.sh); hosted runners restore it from the Actions cache keyed by the
+  lockfile hash and run npm ci only on a miss. Node must already be set up.
+inputs:
+  directory:
+    description: Directory holding package-lock.json
+    default: '.'
+  node-version:
+    description: Node major the install is for (part of the hosted cache key)
+    default: '24'
+runs:
+  using: composite
+  steps:
+    - if: runner.environment != 'github-hosted'
+      shell: bash
+      run: '"$GITHUB_ACTION_PATH/../../../scripts/ci/workspace-cache.sh" "${{ inputs.directory }}"'
+    - if: runner.environment == 'github-hosted'
+      id: hosted
+      uses: actions/cache@v4
+      with:
+        path: |
+          ${{ inputs.directory }}/node_modules
+          ${{ inputs.directory }}/apps/*/node_modules
+          ${{ inputs.directory }}/packages/*/node_modules
+        key: node-modules-${{ runner.os }}-${{ runner.arch }}-node${{ inputs.node-version }}-${{ hashFiles(format('{0}/package-lock.json', inputs.directory)) }}
+    - if: runner.environment == 'github-hosted' && steps.hosted.outputs.cache-hit != 'true'
+      shell: bash
+      working-directory: ${{ inputs.directory }}
+      run: npm ci --no-audit --no-fund

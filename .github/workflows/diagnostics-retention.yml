@@ -18,7 +18,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: npm ci --no-audit --no-fund
+      - uses: ./.github/actions/setup-workspace # node_modules for the lockfile, shared on the runner (fm-98po)
+        with:
+          directory: scripts/diagnostics
       # The working-copy scan uses ripgrep; the runner has none, so install the pinned release, checksum verified.
       - name: Install ripgrep 14.1.1
         working-directory: .

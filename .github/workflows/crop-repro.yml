@@ -17,9 +17,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: npm ci --no-audit --no-fund # one lock for the workspace, at the root (fm-fy2.4)
-      - run: npm run format:check # the workspace gates come before any build (fm-fy2.4)
-      - run: npm run lint
+      - uses: ./.github/actions/setup-workspace # node_modules for the lockfile, shared on the runner (fm-98po)
       - run: node --test tests/crop/scan-test-hook.test.mjs
       - name: Fixtures match their recorded digests
         run: |

@@ -17,7 +17,9 @@ jobs:
         with:
           node-version: '22'
       - run: node --test worker.test.mjs
-      - run: npm ci --no-audit --no-fund
+      - uses: ./.github/actions/setup-workspace # node_modules for the lockfile, shared on the runner (fm-98po)
+        with:
+          directory: services/stats
       - name: Deploy
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}

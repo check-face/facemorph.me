@@ -19,6 +19,7 @@ export const PIPELINE = [
   'scripts/ci/changes.ts',
   'scripts/ci/path-filters.ts',
   'scripts/ci/path-filters.json',
+  'scripts/ci/workspace-cache.sh',
 ];
 
 /** The globs a lane runs for. Pure. */

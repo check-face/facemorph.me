@@ -16,17 +16,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - run: npm ci --no-audit --no-fund # one lock for the workspace, at the root (fm-fy2.4)
-        working-directory: .
-      - run: npm run format:check # the workspace gates come before any build (fm-fy2.4)
-        working-directory: .
-      - run: npm run lint
-        working-directory: .
-      - run: npm run typecheck
-      # apps/web's tests import the workspace packages through their built dist/ exports, as app-contracts does.
+      - uses: ./.github/actions/setup-workspace # node_modules for the lockfile, shared on the runner (fm-98po)
+      # apps/web imports the workspace packages through their built dist/ exports. Its format, lint, typecheck and unit
+      # tests run once per main.yml run in scaffold's gates (fm-98po).
       - run: npm run build -w packages/stylegan-js -w packages/browser-model-manager
         working-directory: .
-      - run: npm test
       - run: npm run build
       - run: npm run check:inventory
   # The built shell in the Ubuntu 24.04 browser cells of apps/web/browser-matrix.json (Playwright Chromium,
@@ -44,8 +38,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - run: npm ci --no-audit --no-fund # one lock for the workspace, at the root (fm-fy2.4)
-        working-directory: .
+      - uses: ./.github/actions/setup-workspace # node_modules for the lockfile, shared on the runner (fm-98po)
       - run: npx playwright install --with-deps chromium firefox webkit
       - run: npm run build
       - name: build:next (the pinned control, served by the verification harness's artifact fixture, fm-48bj)

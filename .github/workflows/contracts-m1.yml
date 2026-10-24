@@ -14,9 +14,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - run: npm ci --no-audit --no-fund
-      - run: npm run format:check # the workspace gates come before any build (fm-fy2.4)
-      - run: npm run lint
+      - uses: ./.github/actions/setup-workspace # node_modules for the lockfile, shared on the runner (fm-98po)
       - run: npx tsc -p packages/stylegan-js/tsconfig.json && npx tsc -p packages/stylegan-js/tsconfig.test.json
       - run: npx tsc -p packages/browser-model-manager/src/contracts/tsconfig.test.json
       - name: Engine contract tests (incl. recovery-metadata and worker-payload fuzz)
@@ -44,7 +42,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - run: npm ci --no-audit --no-fund
+      - uses: ./.github/actions/setup-workspace # node_modules for the lockfile, shared on the runner (fm-98po)
       - run: npx playwright install --with-deps chromium firefox webkit
         working-directory: apps/web
       - run: npm run build -w packages/stylegan-js

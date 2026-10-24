@@ -20,6 +20,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: npm ci --no-audit --no-fund
+      - uses: ./.github/actions/setup-workspace # node_modules for the lockfile, shared on the runner (fm-98po)
+        with:
+          directory: tools/names-generator
       - name: Tests, the real runs under the eris device lease (a full catalogue run may hold it in chunks)
         run: python3 ../../autoresearch/run.py --lane browser-cpu --device eris --wait 3000 --timeout 1800 -- npm test

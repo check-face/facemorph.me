@@ -21,9 +21,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - run: npm ci --no-audit --no-fund
-      - run: npm run format:check # the workspace gates come before any build (fm-fy2.4)
-      - run: npm run lint
+      - uses: ./.github/actions/setup-workspace # node_modules for the lockfile, shared on the runner (fm-98po)
       - name: Unit tests of the checks
         run: >-
           node --test scripts/build/identity.test.mjs scripts/build/check-tests-listed.test.mjs

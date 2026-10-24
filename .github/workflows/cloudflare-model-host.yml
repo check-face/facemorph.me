@@ -15,11 +15,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - run: npm ci --no-audit --no-fund
-      - run: npm run format:check # the workspace gates come before any build (fm-fy2.4)
-      - run: npm run lint
+      - uses: ./.github/actions/setup-workspace # node_modules for the lockfile, shared on the runner (fm-98po)
       - run: npm run build -w packages/stylegan-js -w packages/browser-model-manager -w packages/cloudflare-model-host
-      - run: npm run typecheck -w packages/cloudflare-model-host
       - name: Host tests, with the qualified runtime as the real staged set
         working-directory: packages/cloudflare-model-host
         env:

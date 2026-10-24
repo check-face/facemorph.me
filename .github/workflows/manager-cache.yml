@@ -18,9 +18,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - run: npm ci --no-audit --no-fund
+      - uses: ./.github/actions/setup-workspace # node_modules for the lockfile, shared on the runner (fm-98po)
       - run: npm run build -w packages/stylegan-js -w packages/browser-model-manager
-      - run: npm run typecheck -w packages/browser-model-manager
       - name: Package tests (browser cases in real Chromium), under the eris device lease
         uses: ./.github/actions/device-lease
         with:

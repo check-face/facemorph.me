@@ -18,7 +18,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: npm ci --no-audit --no-fund
+      - uses: ./.github/actions/setup-workspace # node_modules for the lockfile, shared on the runner (fm-98po)
+        with:
+          directory: tools/names-spike
       - run: npm test
       - run: npx playwright install chromium
       - name: Measure (under the eris device lease)
