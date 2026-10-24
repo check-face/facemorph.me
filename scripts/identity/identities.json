@@ -2,7 +2,11 @@
   "$comment": "What read-identity.mjs reads (fm-a4b, plan: identity.map). Names follow the PLAN.md surface table. Repositories are read by stable ID, so the reads survive the organization rename. Hosts are read from live bytes; a source commit is recorded only when a deploy record attests it.",
   "repositories": [
     { "identity": "new-monorepo", "id": 1413979666, "branches": ["main"] },
-    { "identity": "retained-application", "id": 295956585, "branches": ["master", "candidate/next-delivery-20260916"] },
+    {
+      "identity": "retained-application",
+      "id": 295956585,
+      "branches": ["master", "candidate/next-delivery-20260916"]
+    },
     { "identity": "legacy-names-source", "id": 348379171, "branches": ["master"] },
     { "identity": "archived-backend", "id": 185985766, "branches": ["master"] },
     { "identity": "encoder-fork", "id": 368806700, "branches": ["main"] }
@@ -23,32 +27,77 @@
       "identity": "legacy-production-web",
       "url": "https://facemorph.me/",
       "artifact": true,
-      "deployRecord": { "kind": "vercel-cli-workflow", "repoId": 295956585, "workflow": "deploy.yml", "branch": "master", "logPattern": "Production deployment: (https://[a-z0-9-]+\\.vercel\\.app)" }
+      "deployRecord": {
+        "kind": "vercel-cli-workflow",
+        "repoId": 295956585,
+        "workflow": "deploy.yml",
+        "branch": "master",
+        "logPattern": "Production deployment: (https://[a-z0-9-]+\\.vercel\\.app)"
+      }
     },
     {
       "identity": "on-device-candidate",
       "url": "https://next.facemorph.me/",
       "artifact": true,
-      "embedded": { "buildId": "\"(next-[0-9a-f]{16})\"", "sourceCommit": "release:\"([0-9a-f]{40})\"" },
-      "deployRecord": { "kind": "wrangler-workflow", "repoId": 295956585, "workflow": "next-site.yml", "branch": "candidate/next-delivery-20260916", "job": "deploy" }
+      "embedded": {
+        "buildId": "\"(next-[0-9a-f]{16})\"",
+        "sourceCommit": "release:\"([0-9a-f]{40})\""
+      },
+      "deployRecord": {
+        "kind": "wrangler-workflow",
+        "repoId": 295956585,
+        "workflow": "next-site.yml",
+        "branch": "candidate/next-delivery-20260916",
+        "job": "deploy"
+      }
     },
     {
       "identity": "legacy-names-site",
       "url": "https://names.facemorph.me/",
       "artifact": true,
-      "deployRecord": { "kind": "github-deployment", "repoId": 348379171, "environment": "Production" }
+      "deployRecord": {
+        "kind": "github-deployment",
+        "repoId": 348379171,
+        "environment": "Production"
+      }
     },
     { "identity": "legacy-hosted-api", "url": "https://api.facemorph.me/" },
     { "identity": "legacy-encoder-api", "url": "https://e4e.facemorph.me/" },
-    { "identity": "legacy-api-docs", "url": "https://checkface.facemorph.me/", "pagesRepoId": 185985766 },
+    {
+      "identity": "legacy-api-docs",
+      "url": "https://checkface.facemorph.me/",
+      "pagesRepoId": 185985766
+    },
     { "identity": "triton-metrics", "url": "https://metrics.facemorph.me/" },
-    { "identity": "model-chunks", "url": "https://next.facemorph.me/runtime/manifest.json", "dnsHost": "next.facemorph.me", "manifest": true },
-    { "identity": "model-mirror", "url": "https://models.facemorph.me/", "mirrorOf": "https://next.facemorph.me/runtime/manifest.json" },
-    { "identity": "names-catalogue", "url": "https://next.facemorph.me/catalogue.json", "dnsHost": "next.facemorph.me", "catalogue": true },
+    {
+      "identity": "model-chunks",
+      "url": "https://next.facemorph.me/runtime/manifest.json",
+      "dnsHost": "next.facemorph.me",
+      "manifest": true
+    },
+    {
+      "identity": "model-mirror",
+      "url": "https://models.facemorph.me/",
+      "mirrorOf": "https://next.facemorph.me/runtime/manifest.json"
+    },
+    {
+      "identity": "names-catalogue",
+      "url": "https://next.facemorph.me/catalogue.json",
+      "dnsHost": "next.facemorph.me",
+      "catalogue": true
+    },
     { "identity": "preview-host", "url": "https://facemorph-seed-gallery.cdilga.workers.dev/" },
     { "identity": "latent-host", "url": "https://facemorph-name-catalogue.cdilga.workers.dev/" },
-    { "identity": "diagnostics-collector", "url": "https://next.facemorph.me/diagnostics/events", "dnsHost": "next.facemorph.me" },
-    { "identity": "stats-collector", "url": "https://next.facemorph.me/stats/", "dnsHost": "next.facemorph.me" },
+    {
+      "identity": "diagnostics-collector",
+      "url": "https://next.facemorph.me/diagnostics/events",
+      "dnsHost": "next.facemorph.me"
+    },
+    {
+      "identity": "stats-collector",
+      "url": "https://next.facemorph.me/stats/",
+      "dnsHost": "next.facemorph.me"
+    },
     { "identity": "device-lab", "url": "https://labs.facemorph.me/" },
     { "identity": "beads-tracker", "url": "https://beads.dilger.dev/" },
     { "identity": "beads-tracker-pages-alias", "url": "https://beads-dilger-dev.pages.dev/" }

@@ -7,7 +7,12 @@
 
 import type { ManagerErrorCode } from './errors.ts';
 
-export type LeaseInvalidationCause = 'browser-eviction' | 'corruption' | 'cross-tab-deletion' | 'device-loss' | 'worker-loss';
+export type LeaseInvalidationCause =
+  | 'browser-eviction'
+  | 'corruption'
+  | 'cross-tab-deletion'
+  | 'device-loss'
+  | 'worker-loss';
 
 /** How the operations holding an invalidated lease end. */
 export type SettlementRule =
@@ -25,7 +30,12 @@ export interface AssetLease {
 }
 
 /** Every cause maps to exactly one manager error and settlement rule (exhaustive by its type). */
-export const LEASE_INVALIDATION: Readonly<Record<LeaseInvalidationCause, { readonly error: ManagerErrorCode; readonly settlement: SettlementRule }>> = Object.freeze({
+export const LEASE_INVALIDATION: Readonly<
+  Record<
+    LeaseInvalidationCause,
+    { readonly error: ManagerErrorCode; readonly settlement: SettlementRule }
+  >
+> = Object.freeze({
   'browser-eviction': { error: 'evicted', settlement: 'fail-pending-and-release' },
   corruption: { error: 'corrupt', settlement: 'fail-pending-and-release' },
   'cross-tab-deletion': { error: 'invalidated', settlement: 'fail-pending-and-release' },

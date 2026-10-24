@@ -43,19 +43,37 @@ export interface NumericalCheckResult {
   readonly passed: boolean;
 }
 
-export function checkSynthesis(name: string, route: string, maxRgbDiff: number, maxSampledRawFloatError: number): NumericalCheckResult {
+export function checkSynthesis(
+  name: string,
+  route: string,
+  maxRgbDiff: number,
+  maxSampledRawFloatError: number,
+): NumericalCheckResult {
   const t = PRODUCT_CANARY_TOLERANCE;
   return {
     name,
     route,
     maxRgbDiff,
     maxSampledRawFloatError,
-    passed: Number.isFinite(maxRgbDiff) && Number.isFinite(maxSampledRawFloatError) && maxRgbDiff <= t.maxRgbDiff && maxSampledRawFloatError <= t.maxSampledRawFloatError,
+    passed:
+      Number.isFinite(maxRgbDiff) &&
+      Number.isFinite(maxSampledRawFloatError) &&
+      maxRgbDiff <= t.maxRgbDiff &&
+      maxSampledRawFloatError <= t.maxSampledRawFloatError,
   };
 }
 
-export function checkE4eLatent(name: string, route: string, maxAbsError: number): NumericalCheckResult {
-  return { name, route, maxAbsError, passed: Number.isFinite(maxAbsError) && maxAbsError <= E4E_LATENT_TOLERANCE.maxAbsError };
+export function checkE4eLatent(
+  name: string,
+  route: string,
+  maxAbsError: number,
+): NumericalCheckResult {
+  return {
+    name,
+    route,
+    maxAbsError,
+    passed: Number.isFinite(maxAbsError) && maxAbsError <= E4E_LATENT_TOLERANCE.maxAbsError,
+  };
 }
 
 export type ExportQualityRuleId =
@@ -79,17 +97,39 @@ export interface ExportQualityRule {
  * candidate's inherited image-hash assertions map to the two `isGate: false` rules.
  */
 export const EXPORT_QUALITY_RULES: readonly ExportQualityRule[] = Object.freeze(
-  ([
-  { id: 'dimensions', isGate: true, rule: 'The file has the declared width and height.' },
-  { id: 'orientation', isGate: true, rule: 'The file displays upright, with no orientation transform left to apply.' },
-  { id: 'valid-format-and-playback', isGate: true, rule: 'The file decodes as its declared format; a video plays to its end.' },
-  { id: 'lossless-decode-equals-supplied-pixels', isGate: true, rule: 'A lossless export decodes to exactly the supplied pixels.' },
-  {
-    id: 'recovery-envelope-regenerated',
-    isGate: true,
-    rule: 'Re-encoding regenerates the recovery envelope; an obsolete integrity hash is never copied.',
-  },
-  { id: 'encoded-byte-identity', isGate: false, rule: 'Encoded bytes match a reference file (informational).' },
-  { id: 'decoded-lossy-equality', isGate: false, rule: 'A lossy export decodes to the reference pixels (informational).' },
-  ] satisfies ExportQualityRule[]).map((r) => Object.freeze(r)),
+  (
+    [
+      { id: 'dimensions', isGate: true, rule: 'The file has the declared width and height.' },
+      {
+        id: 'orientation',
+        isGate: true,
+        rule: 'The file displays upright, with no orientation transform left to apply.',
+      },
+      {
+        id: 'valid-format-and-playback',
+        isGate: true,
+        rule: 'The file decodes as its declared format; a video plays to its end.',
+      },
+      {
+        id: 'lossless-decode-equals-supplied-pixels',
+        isGate: true,
+        rule: 'A lossless export decodes to exactly the supplied pixels.',
+      },
+      {
+        id: 'recovery-envelope-regenerated',
+        isGate: true,
+        rule: 'Re-encoding regenerates the recovery envelope; an obsolete integrity hash is never copied.',
+      },
+      {
+        id: 'encoded-byte-identity',
+        isGate: false,
+        rule: 'Encoded bytes match a reference file (informational).',
+      },
+      {
+        id: 'decoded-lossy-equality',
+        isGate: false,
+        rule: 'A lossy export decodes to the reference pixels (informational).',
+      },
+    ] satisfies ExportQualityRule[]
+  ).map((r) => Object.freeze(r)),
 );

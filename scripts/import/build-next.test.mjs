@@ -5,7 +5,13 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import test from 'node:test';
 import { plant, tempDir } from '../inventory/testing.mjs';
-import { buildNext, controlIdentity, identityFindings, IDENTITY, readIdentity } from './build-next.mjs';
+import {
+  buildNext,
+  controlIdentity,
+  identityFindings,
+  IDENTITY,
+  readIdentity,
+} from './build-next.mjs';
 import { CONTROL_LABEL, digestTree, readControl } from './control.mjs';
 
 const pinned = readControl();
@@ -23,7 +29,13 @@ test('a control build lands in classic layout with the control label and classic
   const { store, record } = planted();
   const out = tempDir('build-next-out-');
   const { identity } = await buildNext({ out, store, record });
-  for (const name of ['deploy-next/index.html', 'next-site-SHA256SUMS', 'next-site-source.txt', IDENTITY]) assert.ok(existsSync(join(out, name)), name);
+  for (const name of [
+    'deploy-next/index.html',
+    'next-site-SHA256SUMS',
+    'next-site-source.txt',
+    IDENTITY,
+  ])
+    assert.ok(existsSync(join(out, name)), name);
   assert.equal(identity.label, CONTROL_LABEL);
   assert.equal(identity.deploySource.repository, 'check-face/facemorph.me-classic');
   assert.equal(identity.deploySource.commit, pinned.source.commit);
@@ -44,7 +56,11 @@ test('a changed or missing artifact file fails the reader', async () => {
   const out = tempDir('build-next-out-');
   const { identity } = await buildNext({ out, store, record });
   writeFileSync(join(out, 'deploy-next/app.abc.js'), 'console.log(2)');
-  assert.ok(identityFindings(out, identity, record).some((f) => f.path === 'deploy-next/app.abc.js' && f.problem === 'mismatch'));
+  assert.ok(
+    identityFindings(out, identity, record).some(
+      (f) => f.path === 'deploy-next/app.abc.js' && f.problem === 'mismatch',
+    ),
+  );
   const fresh = tempDir('build-next-out-');
   await buildNext({ out: fresh, store, record });
   assert.ok(readIdentity(tempDir('empty-')).findings.some((f) => f.problem === `no ${IDENTITY}`));
@@ -53,18 +69,46 @@ test('a changed or missing artifact file fails the reader', async () => {
 test('a mismatched control digest or a monorepo deploy source fails', () => {
   const { store, record } = planted();
   const good = controlIdentity(record, 'f'.repeat(40));
-  assert.ok(identityFindings(store, { ...good, control: { ...good.control, zipSha256: '0'.repeat(64) } }, record).some((f) => f.problem === 'control digest is not the pinned one'));
-  assert.ok(identityFindings(store, { ...good, deploySource: { repository: 'check-face/facemorph.me', commit: 'f'.repeat(40) } }, record)
-    .some((f) => f.problem === 'control build does not name classic as its deploy source'));
-  assert.ok(identityFindings(store, { ...good, assembledBy: { commit: pinned.source.commit } }, record).some((f) => f.problem === 'control build names the assembling commit as deploy source'));
-  assert.ok(identityFindings(store, { ...good, label: 'monorepo build' }, record).some((f) => f.problem === 'control build without the control label'));
-  assert.ok(identityFindings(store, { ...good, files: [] }, record).some((f) => f.problem === 'identity lists no files'));
+  assert.ok(
+    identityFindings(
+      store,
+      { ...good, control: { ...good.control, zipSha256: '0'.repeat(64) } },
+      record,
+    ).some((f) => f.problem === 'control digest is not the pinned one'),
+  );
+  assert.ok(
+    identityFindings(
+      store,
+      { ...good, deploySource: { repository: 'check-face/facemorph.me', commit: 'f'.repeat(40) } },
+      record,
+    ).some((f) => f.problem === 'control build does not name classic as its deploy source'),
+  );
+  assert.ok(
+    identityFindings(
+      store,
+      { ...good, assembledBy: { commit: pinned.source.commit } },
+      record,
+    ).some((f) => f.problem === 'control build names the assembling commit as deploy source'),
+  );
+  assert.ok(
+    identityFindings(store, { ...good, label: 'monorepo build' }, record).some(
+      (f) => f.problem === 'control build without the control label',
+    ),
+  );
+  assert.ok(
+    identityFindings(store, { ...good, files: [] }, record).some(
+      (f) => f.problem === 'identity lists no files',
+    ),
+  );
 });
 
 test('build:next refuses to replace a deploy-next it did not write', async () => {
   const { store, record } = planted();
   const out = plant(tempDir('build-next-out-'), { 'deploy-next/hand-made.html': 'mine' });
-  await assert.rejects(buildNext({ out, store, record }), /exists without next-site-identity\.json/);
+  await assert.rejects(
+    buildNext({ out, store, record }),
+    /exists without next-site-identity\.json/,
+  );
   assert.equal(readFileSync(join(out, 'deploy-next/hand-made.html'), 'utf8'), 'mine');
 });
 

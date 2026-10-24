@@ -5,7 +5,13 @@ name: inventory-checks
 on:
   push:
     branches: [main]
-    paths: ['inventory/**', 'scripts/inventory/**', 'packages/cloudflare-model-host/README.md', '.github/workflows/inventory.yml']
+    paths:
+      [
+        'inventory/**',
+        'scripts/inventory/**',
+        'packages/cloudflare-model-host/README.md',
+        '.github/workflows/inventory.yml',
+      ]
   workflow_dispatch:
 concurrency:
   group: inventory-checks

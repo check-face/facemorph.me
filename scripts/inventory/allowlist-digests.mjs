@@ -8,7 +8,9 @@ import { fileURLToPath } from 'node:url';
 import { ALLOWLIST, classicDir, line, options, readJson, sha256, untar } from './lib.mjs';
 
 export function archive(dir, commit, paths) {
-  const r = spawnSync('git', ['-C', dir, 'archive', '--format=tar', commit, '--', ...paths], { maxBuffer: 1 << 30 });
+  const r = spawnSync('git', ['-C', dir, 'archive', '--format=tar', commit, '--', ...paths], {
+    maxBuffer: 1 << 30,
+  });
   if (r.status !== 0) throw new Error(`git archive failed: ${r.stderr.toString().trim()}`);
   return untar(r.stdout);
 }
@@ -26,11 +28,23 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const opts = options(process.argv.slice(2), { allowlist: ALLOWLIST });
   const allowlist = readJson(opts.allowlist);
   const commit = allowlist.source.frozen_commit;
-  const { comment, files } = archive(classicDir(opts), commit, allowlist.files.map((f) => f.source));
+  const { comment, files } = archive(
+    classicDir(opts),
+    commit,
+    allowlist.files.map((f) => f.source),
+  );
   const results = compare(allowlist.files, files);
   for (const { expected, ...row } of results) line(row.match ? row : { ...row, expected });
   const mismatches = results.filter((r) => !r.match).length;
   const ofCommit = comment === commit;
-  line({ summary: { commit, archive_commit: comment, files: results.length, mismatches, archive_is_frozen_commit: ofCommit } });
+  line({
+    summary: {
+      commit,
+      archive_commit: comment,
+      files: results.length,
+      mismatches,
+      archive_is_frozen_commit: ofCommit,
+    },
+  });
   process.exit(mismatches || !ofCommit || !results.length ? 1 : 0);
 }

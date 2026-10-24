@@ -11,7 +11,12 @@ import { defineConfig, type Plugin } from 'vite';
 import svgr from 'vite-plugin-svgr';
 import { loadMatrix } from './build/browser-matrix.ts';
 import { deriveTargets } from './build/targets.ts';
-import { emittedFromBundle, hostedWorkers, workerInventory, type EmittedWorker } from './build/worker-inventory.ts';
+import {
+  emittedFromBundle,
+  hostedWorkers,
+  workerInventory,
+  type EmittedWorker,
+} from './build/worker-inventory.ts';
 
 const targets = deriveTargets(loadMatrix());
 const require = createRequire(import.meta.url);
@@ -23,7 +28,10 @@ const tildeImporter = {
     if (!url.startsWith('~')) return null;
     const [scopeOrName = '', ...rest] = url.slice(1).split('/');
     const name = scopeOrName.startsWith('@') ? `${scopeOrName}/${rest.shift() ?? ''}` : scopeOrName;
-    const base = new URL(rest.join('/'), pathToFileURL(dirname(require.resolve(`${name}/package.json`)) + '/'));
+    const base = new URL(
+      rest.join('/'),
+      pathToFileURL(dirname(require.resolve(`${name}/package.json`)) + '/'),
+    );
     for (const candidate of ['', '.scss', '.sass', '.css']) {
       const path = fileURLToPath(base) + candidate;
       if (existsSync(path) && !path.endsWith('/')) return pathToFileURL(path);
@@ -39,15 +47,25 @@ const emitted: EmittedWorker[] = [];
 const collectWorker = (): Plugin => ({
   name: 'facemorph-collect-worker',
   generateBundle(_options, bundle) {
-    emitted.push(...emittedFromBundle(root, Object.values(bundle).flatMap((o) => (o.type === 'chunk' && o.isEntry ? [o] : []))));
+    emitted.push(
+      ...emittedFromBundle(
+        root,
+        Object.values(bundle).flatMap((o) => (o.type === 'chunk' && o.isEntry ? [o] : [])),
+      ),
+    );
   },
 });
 const writeInventory = (): Plugin => ({
   name: 'facemorph-worker-inventory',
   apply: 'build',
   writeBundle({ dir }) {
-    const inputs = JSON.parse(readFileSync(new URL('../../import/build-inputs.json', import.meta.url), 'utf8'));
-    writeFileSync(`${dir}/worker-inventory.json`, JSON.stringify(workerInventory(emitted, hostedWorkers(inputs)), null, 1) + '\n');
+    const inputs = JSON.parse(
+      readFileSync(new URL('../../import/build-inputs.json', import.meta.url), 'utf8'),
+    );
+    writeFileSync(
+      `${dir}/worker-inventory.json`,
+      JSON.stringify(workerInventory(emitted, hostedWorkers(inputs)), null, 1) + '\n',
+    );
   },
 });
 
@@ -59,11 +77,23 @@ export default defineConfig({
   resolve: { alias: [{ find: /^~(.+)/, replacement: '$1' }] },
   define: {
     // The shell's version line, as classic's build passes FACEMORPH_SOURCE_SHA (commit, '-dirty' when dirty).
-    'import.meta.env.FACEMORPH_SOURCE_SHA': JSON.stringify(process.env['FACEMORPH_SOURCE_SHA'] ?? 'unknown'),
+    'import.meta.env.FACEMORPH_SOURCE_SHA': JSON.stringify(
+      process.env['FACEMORPH_SOURCE_SHA'] ?? 'unknown',
+    ),
   },
   css: {
     preprocessorOptions: {
-      scss: { importers: [tildeImporter], silenceDeprecations: ['import', 'global-builtin', 'color-functions', 'slash-div', 'mixed-decls', 'if-function'] },
+      scss: {
+        importers: [tildeImporter],
+        silenceDeprecations: [
+          'import',
+          'global-builtin',
+          'color-functions',
+          'slash-div',
+          'mixed-decls',
+          'if-function',
+        ],
+      },
     },
   },
   build: {
@@ -73,7 +103,11 @@ export default defineConfig({
     sourcemap: true,
     manifest: true,
     rolldownOptions: {
-      input: { main: fileURLToPath(new URL('./index.html', import.meta.url)), 'worker-check': fileURLToPath(new URL('./worker-check.html', import.meta.url)), 'render-check': fileURLToPath(new URL('./render-check.html', import.meta.url)) },
+      input: {
+        main: fileURLToPath(new URL('./index.html', import.meta.url)),
+        'worker-check': fileURLToPath(new URL('./worker-check.html', import.meta.url)),
+        'render-check': fileURLToPath(new URL('./render-check.html', import.meta.url)),
+      },
     },
   },
   worker: { format: targets.workerFormat, plugins: () => [collectWorker()] },

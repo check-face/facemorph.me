@@ -8,28 +8,63 @@ import FormControlLabel from '@mui/material/FormControlLabel';
 import Slider from '@mui/material/Slider';
 import { useEffect, useRef } from 'react';
 
-export function MorphSlider({ frames, dim, frame, onFrame }: { frames: readonly string[]; dim: number; frame: number; onFrame: (n: number) => void }) {
+export function MorphSlider({
+  frames,
+  dim,
+  frame,
+  onFrame,
+}: {
+  frames: readonly string[];
+  dim: number;
+  frame: number;
+  onFrame: (n: number) => void;
+}) {
   const canvas = useRef<HTMLCanvasElement | null>(null);
   const selected = Math.max(1, Math.min(frame, frames.length));
   const url = frames[selected - 1] ?? '';
   // Drawn in an effect, after the canvas exists, once the frame's image has loaded (classic's first-frame fix).
   useEffect(() => {
     const target = canvas.current;
-    if (!url) { target?.getContext('2d')?.clearRect(0, 0, dim, dim); return; }
+    if (!url) {
+      target?.getContext('2d')?.clearRect(0, 0, dim, dim);
+      return;
+    }
     const img = new Image(dim, dim);
     img.onload = () => {
       if (!canvas.current) return;
-      canvas.current.width = dim; canvas.current.height = dim;
+      canvas.current.width = dim;
+      canvas.current.height = dim;
       canvas.current.getContext('2d')?.drawImage(img, 0, 0, dim, dim);
     };
     img.src = url;
-    return () => { img.onload = null; img.src = ''; };
+    return () => {
+      img.onload = null;
+      img.src = '';
+    };
   }, [url, dim]);
   return (
     <div className="next-slider">
-      {url === '' && <p role="status">This frame is still queued. Scrub to an available frame or wait for generation.</p>}
-      <canvas ref={canvas} width={dim} height={dim} style={{ maxWidth: '100%', height: 'auto' }} aria-label="Morph preview, frame by frame" role="img" />
-      <Slider min={1} max={frames.length} value={selected} onChange={(_, v) => onFrame(Array.isArray(v) ? v[0] ?? 1 : v)} aria-label="Morph frame" className="next-slider-control" />
+      {url === '' && (
+        <p role="status">
+          This frame is still queued. Scrub to an available frame or wait for generation.
+        </p>
+      )}
+      <canvas
+        ref={canvas}
+        width={dim}
+        height={dim}
+        style={{ maxWidth: '100%', height: 'auto' }}
+        aria-label="Morph preview, frame by frame"
+        role="img"
+      />
+      <Slider
+        min={1}
+        max={frames.length}
+        value={selected}
+        onChange={(_, v) => onFrame(Array.isArray(v) ? (v[0] ?? 1) : v)}
+        aria-label="Morph frame"
+        className="next-slider-control"
+      />
     </div>
   );
 }
@@ -52,17 +87,46 @@ export interface VideoSlotProps {
 export function VideoSlot(p: VideoSlotProps) {
   if (p.videoUrl === '') return <div className="next-video-slot" />;
   const showSlider = p.useSlider || (p.busy && p.sliderFrames !== null);
-  const slider = !p.useSlider ? null
-    : p.sliderFrames ? <MorphSlider frames={p.sliderFrames} dim={p.videoDim} frame={p.sliderFrame} onFrame={p.onSliderFrame} />
-    : <p className="next-slider-empty" role="note">This morph's frames are not saved on this device yet, so the slider has nothing to scrub. Generate the morph again once frame storage is on.</p>;
+  const slider = !p.useSlider ? null : p.sliderFrames ? (
+    <MorphSlider
+      frames={p.sliderFrames}
+      dim={p.videoDim}
+      frame={p.sliderFrame}
+      onFrame={p.onSliderFrame}
+    />
+  ) : (
+    <p className="next-slider-empty" role="note">
+      This morph's frames are not saved on this device yet, so the slider has nothing to scrub.
+      Generate the morph again once frame storage is on.
+    </p>
+  );
   return (
     <div className="next-video-slot">
-      {!showSlider && <video src={p.videoUrl} controls loop playsInline aria-label="Your morph" className="next-video" {...(p.poster ? { poster: p.poster } : {})} />}
-      <FormControlLabel control={<Checkbox checked={p.useSlider} onChange={(e) => p.onUseSlider(e.target.checked)} />} label="Use Slider" />
+      {!showSlider && (
+        <video
+          src={p.videoUrl}
+          controls
+          loop
+          playsInline
+          aria-label="Your morph"
+          className="next-video"
+          {...(p.poster ? { poster: p.poster } : {})}
+        />
+      )}
+      <FormControlLabel
+        control={
+          <Checkbox checked={p.useSlider} onChange={(e) => p.onUseSlider(e.target.checked)} />
+        }
+        label="Use Slider"
+      />
       {showSlider && slider}
       <div className="next-actions">
-        <Button color="inherit" variant="text" onClick={p.onShare}>Share morph</Button>
-        <Button color="inherit" variant="text" onClick={p.onSave}>Save video</Button>
+        <Button color="inherit" variant="text" onClick={p.onShare}>
+          Share morph
+        </Button>
+        <Button color="inherit" variant="text" onClick={p.onSave}>
+          Save video
+        </Button>
       </div>
     </div>
   );

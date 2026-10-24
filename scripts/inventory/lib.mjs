@@ -29,19 +29,25 @@ export function options(argv, defaults = {}) {
 
 // Classic's checkout: --classic, then $CLASSIC_DIR, then the sibling directory the workspace guide names.
 export function classicDir(opts) {
-  const dir = resolve(opts.classic ?? process.env.CLASSIC_DIR ?? join(REPO, '../facemorph.me-classic'));
-  if (!existsSync(join(dir, '.git'))) throw new Error(`No classic Git checkout at ${dir} (pass --classic or set CLASSIC_DIR)`);
+  const dir = resolve(
+    opts.classic ?? process.env.CLASSIC_DIR ?? join(REPO, '../facemorph.me-classic'),
+  );
+  if (!existsSync(join(dir, '.git')))
+    throw new Error(`No classic Git checkout at ${dir} (pass --classic or set CLASSIC_DIR)`);
   return dir;
 }
 
 export function git(dir, args, { encoding = 'utf8', input } = {}) {
   const r = spawnSync('git', ['-C', dir, ...args], { encoding, input, maxBuffer: 1 << 30 });
-  if (r.status !== 0) throw new Error(`git ${args.join(' ')} failed: ${r.stderr?.toString().trim()}`);
+  if (r.status !== 0)
+    throw new Error(`git ${args.join(' ')} failed: ${r.stderr?.toString().trim()}`);
   return r.stdout;
 }
 
-export const trackedFiles = (dir, commit) => git(dir, ['ls-tree', '-r', '-z', '--name-only', commit]).split('\0').filter(Boolean);
-export const blob = (dir, commit, path) => git(dir, ['cat-file', 'blob', `${commit}:${path}`], { encoding: 'buffer' });
+export const trackedFiles = (dir, commit) =>
+  git(dir, ['ls-tree', '-r', '-z', '--name-only', commit]).split('\0').filter(Boolean);
+export const blob = (dir, commit, path) =>
+  git(dir, ['cat-file', 'blob', `${commit}:${path}`], { encoding: 'buffer' });
 
 // A ustar/pax reader for `git archive --format=tar` output: returns the pax global comment (git writes
 // the commit id there) and every regular file as {path, bytes}.
@@ -62,7 +68,7 @@ export function untar(buffer) {
     }
     return out;
   };
-  for (let off = 0; off + 512 <= buffer.length; ) {
+  for (let off = 0; off + 512 <= buffer.length;) {
     if (buffer.subarray(off, off + 512).every((b) => b === 0)) break;
     const size = parseInt(text(off + 124, 12).trim() || '0', 8);
     const type = String.fromCharCode(buffer[off + 156] || 0x30);
@@ -89,7 +95,10 @@ export function globRegExp(pattern) {
     const c = p[i];
     if (c === '*' && p[i + 1] === '*') {
       i++;
-      if (p[i + 1] === '/') { i++; re += '(?:.*/)?'; } else re += '.*';
+      if (p[i + 1] === '/') {
+        i++;
+        re += '(?:.*/)?';
+      } else re += '.*';
     } else if (c === '*') re += '[^/]*';
     else if (c === '?') re += '[^/]';
     else re += c.replace(/[.+^${}()|[\]\\]/g, '\\$&');
@@ -110,17 +119,38 @@ export function pinnedRuntime(node, base = '', out = {}, of = undefined) {
     if (at < 0) throw new Error(`Runtime URL outside /runtime/: ${url}`);
     return url.slice(at + '/runtime/'.length);
   };
-  const add = (path, sha256, bytes) => { out[path] = { sha256, bytes, ...(of ? of : {}) }; };
-  if (Array.isArray(node)) { for (const v of node) pinnedRuntime(v, base, out, of); return out; }
+  const add = (path, sha256, bytes) => {
+    out[path] = { sha256, bytes, ...(of ? of : {}) };
+  };
+  if (Array.isArray(node)) {
+    for (const v of node) pinnedRuntime(v, base, out, of);
+    return out;
+  }
   if (!node || typeof node !== 'object') return out;
   if (typeof node.manifestUrl === 'string' && node.manifestSha256) {
     add(rel(node.manifestUrl), node.manifestSha256, null);
     if (node.workerUrl) add(rel(node.workerUrl), node.workerSha256, null);
   }
   if (typeof node.sha256 === 'string' && node.sha256.length === 64 && Number.isInteger(node.size)) {
-    const self = typeof node.url === 'string' ? rel(node.url) : typeof node.file === 'string' && !node.file.includes('/') ? (base ? `${base}/${node.file}` : node.file) : null;
-    if (node.chunks?.length) return pinnedRuntime(node.chunks, base, out, self ? { of: self, of_sha256: node.sha256 } : of);
-    if (self) { add(self, node.sha256, node.size); return out; }
+    const self =
+      typeof node.url === 'string'
+        ? rel(node.url)
+        : typeof node.file === 'string' && !node.file.includes('/')
+          ? base
+            ? `${base}/${node.file}`
+            : node.file
+          : null;
+    if (node.chunks?.length)
+      return pinnedRuntime(
+        node.chunks,
+        base,
+        out,
+        self ? { of: self, of_sha256: node.sha256 } : of,
+      );
+    if (self) {
+      add(self, node.sha256, node.size);
+      return out;
+    }
   }
   for (const v of Object.values(node)) pinnedRuntime(v, base, out, of);
   return out;
@@ -128,11 +158,24 @@ export function pinnedRuntime(node, base = '', out = {}, of = undefined) {
 
 // Every commit after `from` up to `to` (oldest first), with the paths it changed.
 export function delta(dir, from, to) {
-  const out = git(dir, ['log', '--reverse', '--format=%x01%H%x09%cI%x09%s', '--name-status', '--no-renames', `${from}..${to}`]);
-  return out.split('\x01').filter(Boolean).map((chunk) => {
-    const [head, ...rest] = chunk.split('\n');
-    const [commit, date, subject] = head.split('\t');
-    const paths = rest.filter(Boolean).map((l) => { const [status, path] = l.split('\t'); return { status, path }; });
-    return { commit, date, subject, paths };
-  });
+  const out = git(dir, [
+    'log',
+    '--reverse',
+    '--format=%x01%H%x09%cI%x09%s',
+    '--name-status',
+    '--no-renames',
+    `${from}..${to}`,
+  ]);
+  return out
+    .split('\x01')
+    .filter(Boolean)
+    .map((chunk) => {
+      const [head, ...rest] = chunk.split('\n');
+      const [commit, date, subject] = head.split('\t');
+      const paths = rest.filter(Boolean).map((l) => {
+        const [status, path] = l.split('\t');
+        return { status, path };
+      });
+      return { commit, date, subject, paths };
+    });
 }

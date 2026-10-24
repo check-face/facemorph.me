@@ -135,7 +135,10 @@ export class CropValidationError extends Error {
   }
 }
 
-export type CropDerivationCode = 'invalid-source-pixels' | 'source-too-large' | 'rect-outside-source';
+export type CropDerivationCode =
+  | 'invalid-source-pixels'
+  | 'source-too-large'
+  | 'rect-outside-source';
 
 export class CropDerivationError extends Error {
   readonly code: CropDerivationCode;
@@ -153,17 +156,25 @@ const isInt = (v: unknown, min: number, max = Number.MAX_SAFE_INTEGER): v is num
   Number.isSafeInteger(v) && (v as number) >= min && (v as number) <= max;
 
 function checkFields(value: unknown, allowId: boolean): ConfirmedCropFields {
-  if (!isRecord(value)) throw new CropValidationError('not-an-object', 'a confirmed crop is an object');
-  const allowed = new Set<string>([...CONFIRMED_CROP_FIELDS, ...(allowId ? ['confirmedCropId'] : [])]);
+  if (!isRecord(value))
+    throw new CropValidationError('not-an-object', 'a confirmed crop is an object');
+  const allowed = new Set<string>([
+    ...CONFIRMED_CROP_FIELDS,
+    ...(allowId ? ['confirmedCropId'] : []),
+  ]);
   for (const key of Object.keys(value)) {
-    if (!allowed.has(key)) throw new CropValidationError('unexpected-field', `unexpected field ${key}`);
+    if (!allowed.has(key))
+      throw new CropValidationError('unexpected-field', `unexpected field ${key}`);
   }
   for (const key of CONFIRMED_CROP_FIELDS) {
     if (!(key in value)) throw new CropValidationError('missing-field', `missing field ${key}`);
   }
   const v = value as Record<(typeof CONFIRMED_CROP_FIELDS)[number], unknown>;
   if (!isInt(v.sourceRevision, 0)) {
-    throw new CropValidationError('invalid-source-revision', 'sourceRevision is a non-negative integer');
+    throw new CropValidationError(
+      'invalid-source-revision',
+      'sourceRevision is a non-negative integer',
+    );
   }
   if (typeof v.sourceDigest !== 'string' || !HEX64.test(v.sourceDigest)) {
     throw new CropValidationError('invalid-source-digest', 'sourceDigest is lowercase hex SHA-256');
@@ -177,7 +188,10 @@ function checkFields(value: unknown, allowId: boolean): ConfirmedCropFields {
     !isInt(r.width, 1, CROP_MAX_EDGE) ||
     r.height !== r.width
   ) {
-    throw new CropValidationError('invalid-rect', 'rect is an integer square {left, top, width, height}');
+    throw new CropValidationError(
+      'invalid-rect',
+      'rect is an integer square {left, top, width, height}',
+    );
   }
   if (![0, 90, 180, 270].includes(v.rotationDegrees as number)) {
     throw new CropValidationError('invalid-rotation', 'rotationDegrees is 0, 90, 180 or 270');
@@ -193,7 +207,10 @@ function checkFields(value: unknown, allowId: boolean): ConfirmedCropFields {
     !isRecord(v.policyParams) ||
     canonicalJson(v.policyParams) !== canonicalJson(CROP_PREPROCESSING_POLICY_V1)
   ) {
-    throw new CropValidationError('unknown-policy', 'only crop-preprocessing-v1 with its exact parameters');
+    throw new CropValidationError(
+      'unknown-policy',
+      'only crop-preprocessing-v1 with its exact parameters',
+    );
   }
   return value as unknown as ConfirmedCropFields;
 }
@@ -208,7 +225,12 @@ function freeze(fields: ConfirmedCropFields, confirmedCropId: string): Confirmed
   return Object.freeze({
     sourceRevision: fields.sourceRevision,
     sourceDigest: fields.sourceDigest,
-    rect: Object.freeze({ left: fields.rect.left, top: fields.rect.top, width: fields.rect.width, height: fields.rect.height }),
+    rect: Object.freeze({
+      left: fields.rect.left,
+      top: fields.rect.top,
+      width: fields.rect.width,
+      height: fields.rect.height,
+    }),
     rotationDegrees: fields.rotationDegrees,
     exifOrientation: fields.exifOrientation,
     exifApplied: fields.exifApplied,
@@ -229,7 +251,10 @@ export function validateConfirmedCrop(value: unknown): ConfirmedCrop {
   const checked = checkFields(value, true);
   const id = confirmedCropIdentity(checked);
   if ((value as { confirmedCropId?: unknown }).confirmedCropId !== id) {
-    throw new CropValidationError('identity-mismatch', 'confirmedCropId does not match the recorded fields');
+    throw new CropValidationError(
+      'identity-mismatch',
+      'confirmedCropId does not match the recorded fields',
+    );
   }
   return freeze(checked, id);
 }
@@ -257,7 +282,8 @@ function coverage(size: number): { start: number; weights: number[] }[] {
     const hi = (o + 1) * scale;
     const start = Math.floor(lo);
     const weights: number[] = [];
-    for (let i = start; i < hi && i < size; i++) weights.push((Math.min(i + 1, hi) - Math.max(i, lo)) / scale);
+    for (let i = start; i < hi && i < size; i++)
+      weights.push((Math.min(i + 1, hi) - Math.max(i, lo)) / scale);
     return { start, weights };
   });
 }
@@ -271,7 +297,10 @@ export function deriveEncoderInput(source: SourcePixels, crop: ConfirmedCrop): E
   const checked = validateConfirmedCrop(crop);
   const { width, height, data } = source;
   if (!isInt(width, 1) || !isInt(height, 1) || data.length !== width * height * 4) {
-    throw new CropDerivationError('invalid-source-pixels', 'source pixels are RGBA with width * height * 4 bytes');
+    throw new CropDerivationError(
+      'invalid-source-pixels',
+      'source pixels are RGBA with width * height * 4 bytes',
+    );
   }
   if (width > CROP_MAX_EDGE || height > CROP_MAX_EDGE || width * height > CROP_MAX_PIXELS) {
     throw new CropDerivationError('source-too-large', 'source exceeds the single-input limits');
@@ -311,7 +340,8 @@ export function deriveEncoderInput(source: SourcePixels, crop: ConfirmedCrop): E
     for (let x = 0; x < n; x++) {
       for (let c = 0; c < 3; c++) {
         let sum = 0;
-        for (let k = 0; k < weights.length; k++) sum += rows[((start + k) * n + x) * 3 + c]! * weights[k]!;
+        for (let k = 0; k < weights.length; k++)
+          sum += rows[((start + k) * n + x) * 3 + c]! * weights[k]!;
         rgb[(o * n + x) * 3 + c] = Math.min(255, Math.max(0, Math.round(sum)));
       }
     }
@@ -322,10 +352,13 @@ export function deriveEncoderInput(source: SourcePixels, crop: ConfirmedCrop): E
     for (let x = 0; x < n; x++) {
       // Output (x, y) of the image rotated clockwise reads the unrotated pixel (u, v).
       const [u, v] =
-        checked.rotationDegrees === 0 ? [x, y]
-        : checked.rotationDegrees === 90 ? [y, last - x]
-        : checked.rotationDegrees === 180 ? [last - x, last - y]
-        : [last - y, x];
+        checked.rotationDegrees === 0
+          ? [x, y]
+          : checked.rotationDegrees === 90
+            ? [y, last - x]
+            : checked.rotationDegrees === 180
+              ? [last - x, last - y]
+              : [last - y, x];
       for (let c = 0; c < 3; c++) {
         const value = Math.fround(Math.fround(rgb[(v * n + u) * 3 + c]! / 255) - 0.5);
         tensor[c * n * n + y * n + x] = Math.fround(value / 0.5);

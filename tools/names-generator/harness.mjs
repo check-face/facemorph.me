@@ -10,7 +10,8 @@ let runtime;
 
 const b64 = (bytes) => {
   let s = '';
-  for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+  for (let i = 0; i < bytes.length; i += 0x8000)
+    s += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
   return btoa(s);
 };
 const unb64 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
@@ -34,7 +35,10 @@ async function clearOriginals() {
 }
 
 async function rgbaOf(blob) {
-  const bitmap = await createImageBitmap(blob, { colorSpaceConversion: 'none', premultiplyAlpha: 'none' });
+  const bitmap = await createImageBitmap(blob, {
+    colorSpaceConversion: 'none',
+    premultiplyAlpha: 'none',
+  });
   const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
   const ctx = canvas.getContext('2d', { colorSpace: 'srgb', willReadFrequently: true });
   ctx.drawImage(bitmap, 0, 0);
@@ -47,7 +51,10 @@ window.setup = async (route) => {
   runtime?.dispose();
   runtime = createBrowserRuntime({ manifestUrl: '/runtime/manifest.json' });
   const admission = await runtime.qualify(route);
-  return { admission: JSON.parse(JSON.stringify(admission ?? null)), status: JSON.parse(JSON.stringify(runtime.status())) };
+  return {
+    admission: JSON.parse(JSON.stringify(admission ?? null)),
+    status: JSON.parse(JSON.stringify(runtime.status())),
+  };
 };
 
 // One catalogue name through the typed-name path, saved as the candidate saves it.
@@ -58,9 +65,14 @@ window.generateName = async (value, { withPng = false } = {}) => {
   const png = withPng ? new Uint8Array(await result.blob.arrayBuffer()) : null;
   await clearOriginals();
   return {
-    webp: b64(webp), png: png && b64(png), latent: b64(latent), latentSha256: await digest(latent),
-    sourceType: result.blob.type, cached: result.cached === true,
-    generationKind: result.generationKind, generationSha256: result.generationSha256,
+    webp: b64(webp),
+    png: png && b64(png),
+    latent: b64(latent),
+    latentSha256: await digest(latent),
+    sourceType: result.blob.type,
+    cached: result.cached === true,
+    generationKind: result.generationKind,
+    generationSha256: result.generationSha256,
     provenance: JSON.parse(JSON.stringify(result.provenance)),
   };
 };
@@ -70,15 +82,22 @@ window.generateName = async (value, { withPng = false } = {}) => {
 window.reference = async (latentB64, pngB64) => {
   const raw = unb64(latentB64);
   const values = new Float32Array(raw.buffer, raw.byteOffset, raw.byteLength / 4);
-  const ref = await runtime.synthesize({ space: 'w-plus', shape: [1, 18, 512], values: Float32Array.from(values) }, { raw: true, persist: false });
+  const ref = await runtime.synthesize(
+    { space: 'w-plus', shape: [1, 18, 512], values: Float32Array.from(values) },
+    { raw: true, persist: false },
+  );
   const mine = new Uint8Array(ref.rgba);
   const theirs = await rgbaOf(new Blob([unb64(pngB64)], { type: 'image/png' }));
-  if (mine.length !== theirs.length) return { maxDiff: 255, differing: -1, reference: 'size mismatch' };
+  if (mine.length !== theirs.length)
+    return { maxDiff: 255, differing: -1, reference: 'size mismatch' };
   let maxDiff = 0;
   let differing = 0;
   for (let i = 0; i < mine.length; i++) {
     const d = Math.abs(mine[i] - theirs[i]);
-    if (d) { differing++; if (d > maxDiff) maxDiff = d; }
+    if (d) {
+      differing++;
+      if (d > maxDiff) maxDiff = d;
+    }
   }
   return { maxDiff, differing, reference: `candidate ${runtime.status().route ?? 'cpu'} route` };
 };

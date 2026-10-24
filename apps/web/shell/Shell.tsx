@@ -16,7 +16,12 @@ import { darkTheme, lightTheme } from './theme.ts';
 
 export function ThemedApp({ children }: { children: ReactNode }) {
   const dark = useMediaQuery('(prefers-color-scheme: dark)');
-  return <ThemeProvider theme={dark ? darkTheme : lightTheme}><CssBaseline />{children}</ThemeProvider>;
+  return (
+    <ThemeProvider theme={dark ? darkTheme : lightTheme}>
+      <CssBaseline />
+      {children}
+    </ThemeProvider>
+  );
 }
 
 export function Header() {
@@ -24,8 +29,22 @@ export function Header() {
     <header style={{ marginBottom: '2em' }}>
       <div className="column">
         <a href="/">
-          <h1 className="title " style={{ fontSize: 'clamp(2.5rem, 12vw, 4rem)', display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '0.5em' }}>
-            <SvgIcon className="vivus-start" component={AnimatedLogo} inheritViewBox style={{ fontSize: '1em' }} />
+          <h1
+            className="title "
+            style={{
+              fontSize: 'clamp(2.5rem, 12vw, 4rem)',
+              display: 'flex',
+              flexWrap: 'wrap',
+              justifyContent: 'center',
+              gap: '0.5em',
+            }}
+          >
+            <SvgIcon
+              className="vivus-start"
+              component={AnimatedLogo}
+              inheritViewBox
+              style={{ fontSize: '1em' }}
+            />
             <span>{SITE_NAME}</span>
           </h1>
         </a>
@@ -37,11 +56,16 @@ export function Header() {
 export function PreviewStrip({ route = '' }: { route?: string }) {
   return (
     <aside className="next-preview-strip" role="note" aria-label="About this preview">
-      <span className="next-preview-strip-lead"><strong>Experimental preview</strong> of the next facemorph.me. Everything runs on your device.</span>
+      <span className="next-preview-strip-lead">
+        <strong>Experimental preview</strong> of the next facemorph.me. Everything runs on your
+        device.
+      </span>
       <span className="next-preview-strip-links">
         <a href="https://facemorph.me">Classic facemorph.me</a>
         <a href="https://facemorph.me/retirement">Its server is retiring</a>
-        <a href={issueUrl({ route })} target="_blank" rel="noopener">Report an issue</a>
+        <a href={issueUrl({ route })} target="_blank" rel="noopener">
+          Report an issue
+        </a>
       </span>
     </aside>
   );
@@ -52,9 +76,26 @@ export function Footer({ route = '' }: { route?: string }) {
     <footer className="next-footer">
       <div className="next-footer-inner">
         <div className="next-footer-text">
-          <p>Contact: <Link color="inherit" href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</Link></p>
-          <p>Source code: <Link color="inherit" href={`https://github.com/${GITHUB_REPO}`}><GitHubIcon style={{ fontSize: '1em' }} />{` ${GITHUB_REPO}`}</Link></p>
-          <p>Found a problem? <Link color="inherit" href={issueUrl({ route })} target="_blank" rel="noopener">Report an issue</Link> — it fills in your version and device.</p>
+          <p>
+            Contact:{' '}
+            <Link color="inherit" href={`mailto:${CONTACT_EMAIL}`}>
+              {CONTACT_EMAIL}
+            </Link>
+          </p>
+          <p>
+            Source code:{' '}
+            <Link color="inherit" href={`https://github.com/${GITHUB_REPO}`}>
+              <GitHubIcon style={{ fontSize: '1em' }} />
+              {` ${GITHUB_REPO}`}
+            </Link>
+          </p>
+          <p>
+            Found a problem?{' '}
+            <Link color="inherit" href={issueUrl({ route })} target="_blank" rel="noopener">
+              Report an issue
+            </Link>{' '}
+            — it fills in your version and device.
+          </p>
           <p className="next-footer-version">Preview version {sourceVersion()}</p>
         </div>
         <div className="next-footer-logo">
@@ -83,18 +124,43 @@ export interface ShellProps {
   readonly after?: ReactNode;
 }
 
-export function Shell({ busy = false, route = '', faces = 0, onDropFiles, overlay, intro, children, after }: ShellProps) {
-  const over = (e: DragEvent) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; };
-  const drop = (e: DragEvent) => { e.preventDefault(); onDropFiles?.(photoFiles(e)); };
+export function Shell({
+  busy = false,
+  route = '',
+  faces = 0,
+  onDropFiles,
+  overlay,
+  intro,
+  children,
+  after,
+}: ShellProps) {
+  const over = (e: DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+  };
+  const drop = (e: DragEvent) => {
+    e.preventDefault();
+    onDropFiles?.(photoFiles(e));
+  };
   return (
     <ThemedApp>
-      <main className="facemorph-page next-product" data-next-busy={String(busy)} onDragOver={over} onDrop={drop}>
+      <main
+        className="facemorph-page next-product"
+        data-next-busy={String(busy)}
+        onDragOver={over}
+        onDrop={drop}
+      >
         <PreviewStrip route={route} />
         {overlay}
         <Header />
-        <p className="next-tagline">Morph between any faces. Use each face’s controls to enter words, pick a name or choose a photo.</p>
+        <p className="next-tagline">
+          Morph between any faces. Use each face’s controls to enter words, pick a name or choose a
+          photo.
+        </p>
         {intro}
-        <div className="next-faces-area" data-next-faces={faces}>{children}</div>
+        <div className="next-faces-area" data-next-faces={faces}>
+          {children}
+        </div>
         {after}
         <Footer route={route} />
       </main>

@@ -42,24 +42,46 @@ const text = (value: unknown): value is string => typeof value === 'string' && v
 /** Validates a parsed matrix; throws naming every bad cell and field. */
 export function parseMatrix(input: unknown): Matrix {
   const cells = (input as { cells?: unknown } | null)?.cells;
-  if (!Array.isArray(cells) || cells.length === 0) throw new Error('browser matrix: `cells` must be a non-empty array');
+  if (!Array.isArray(cells) || cells.length === 0)
+    throw new Error('browser matrix: `cells` must be a non-empty array');
   const problems: string[] = [];
   const ids = new Set<string>();
   cells.forEach((raw: unknown, i) => {
     const c = (raw ?? {}) as Record<string, unknown>;
     const where = text(c['id']) ? String(c['id']) : `cell ${i}`;
-    for (const field of ['id', 'browser', 'version', 'os', 'evidence', 'engine', 'deviceClass', 'provider']) {
+    for (const field of [
+      'id',
+      'browser',
+      'version',
+      'os',
+      'evidence',
+      'engine',
+      'deviceClass',
+      'provider',
+    ]) {
       if (!text(c[field])) problems.push(`${where}: missing ${field}`);
     }
-    if (text(c['version']) && !VERSION.test(String(c['version']))) problems.push(`${where}: version ${String(c['version'])} is not numeric`);
-    if (text(c['engine']) && !ENGINES.includes(String(c['engine']))) problems.push(`${where}: unknown engine ${String(c['engine'])}`);
-    if (text(c['evidence']) && !EVIDENCE.includes(String(c['evidence']))) problems.push(`${where}: unknown evidence class ${String(c['evidence'])}`);
-    if (text(c['deviceClass']) && !DEVICE_CLASSES.includes(String(c['deviceClass']))) problems.push(`${where}: unknown device class ${String(c['deviceClass'])}`);
-    if (text(c['provider']) && !PROVIDERS.includes(String(c['provider']))) problems.push(`${where}: unknown provider ${String(c['provider'])}`);
-    if (c['platform'] !== undefined && (c['platform'] !== 'ios' || c['engine'] !== 'webkit')) problems.push(`${where}: platform 'ios' is the only platform and needs engine webkit`);
-    if (!('lane' in c) || (c['lane'] !== null && !text(c['lane']))) problems.push(`${where}: lane must name a CI lane or lab cell, or be null`);
-    if (c['lane'] === null && !text(c['laneNote'])) problems.push(`${where}: a cell with no lane needs laneNote saying why`);
-    for (const outcome of ['outcome', 'status', 'result', 'runUrl']) if (outcome in c) problems.push(`${where}: outcomes belong in the release summary, not the matrix (${outcome})`);
+    if (text(c['version']) && !VERSION.test(String(c['version'])))
+      problems.push(`${where}: version ${String(c['version'])} is not numeric`);
+    if (text(c['engine']) && !ENGINES.includes(String(c['engine'])))
+      problems.push(`${where}: unknown engine ${String(c['engine'])}`);
+    if (text(c['evidence']) && !EVIDENCE.includes(String(c['evidence'])))
+      problems.push(`${where}: unknown evidence class ${String(c['evidence'])}`);
+    if (text(c['deviceClass']) && !DEVICE_CLASSES.includes(String(c['deviceClass'])))
+      problems.push(`${where}: unknown device class ${String(c['deviceClass'])}`);
+    if (text(c['provider']) && !PROVIDERS.includes(String(c['provider'])))
+      problems.push(`${where}: unknown provider ${String(c['provider'])}`);
+    if (c['platform'] !== undefined && (c['platform'] !== 'ios' || c['engine'] !== 'webkit'))
+      problems.push(`${where}: platform 'ios' is the only platform and needs engine webkit`);
+    if (!('lane' in c) || (c['lane'] !== null && !text(c['lane'])))
+      problems.push(`${where}: lane must name a CI lane or lab cell, or be null`);
+    if (c['lane'] === null && !text(c['laneNote']))
+      problems.push(`${where}: a cell with no lane needs laneNote saying why`);
+    for (const outcome of ['outcome', 'status', 'result', 'runUrl'])
+      if (outcome in c)
+        problems.push(
+          `${where}: outcomes belong in the release summary, not the matrix (${outcome})`,
+        );
     if (text(c['id'])) {
       if (ids.has(String(c['id']))) problems.push(`${where}: duplicate id`);
       ids.add(String(c['id']));

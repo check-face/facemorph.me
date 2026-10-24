@@ -15,7 +15,14 @@ export interface EstimateProps {
   readonly describeMeasuredMs: (ms: number) => string;
 }
 
-export function estimateText({ perFace, frames, measuredHere, perFrame, describeMs, describeMeasuredMs }: EstimateProps): string {
+export function estimateText({
+  perFace,
+  frames,
+  measuredHere,
+  perFrame,
+  describeMs,
+  describeMeasuredMs,
+}: EstimateProps): string {
   if (measuredHere) {
     return frames > 0
       ? `On this device a face took ${describeMeasuredMs(perFace)}${perFrame === '' ? '' : ` (${perFrame})`}, so a ${frames}-frame morph should take ${describeMs(perFace * frames)}.`

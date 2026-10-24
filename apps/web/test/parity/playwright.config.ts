@@ -20,7 +20,19 @@ export default defineConfig({
   reporter: [['list'], ['json', { outputFile: '../../test-results/parity/report.json' }]],
   use: { ignoreHTTPSErrors: true, trace: 'retain-on-failure', screenshot: 'only-on-failure' },
   projects: [
-    { name: 'desktop', use: { browserName: 'chromium', viewport: { width: 1280, height: 900 }, launchOptions } },
-    { name: 'phone', use: { browserName: 'chromium', viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, launchOptions } },
+    {
+      name: 'desktop',
+      use: { browserName: 'chromium', viewport: { width: 1280, height: 900 }, launchOptions },
+    },
+    {
+      name: 'phone',
+      use: {
+        browserName: 'chromium',
+        viewport: { width: 390, height: 844 },
+        isMobile: true,
+        hasTouch: true,
+        launchOptions,
+      },
+    },
   ],
 });

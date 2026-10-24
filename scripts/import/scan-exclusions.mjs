@@ -15,7 +15,10 @@ import { digestTree } from './control.mjs';
 
 const PROVENANCE = [
   ['local-home-path', /\/(home|Users)\/(?!runner\/|runneradmin\/)[a-z][\w.-]*\//],
-  ['private-host', /\b(eris|triton)\.(local|lan|home)\b|\b(192\.168|10\.\d{1,3})\.\d{1,3}\.\d{1,3}\b/],
+  [
+    'private-host',
+    /\b(eris|triton)\.(local|lan|home)\b|\b(192\.168|10\.\d{1,3})\.\d{1,3}\.\d{1,3}\b/,
+  ],
   ['personal-email', /\b[\w.+-]+@(gmail|outlook|hotmail|icloud|yahoo)\.com\b/gi],
 ];
 // Addresses the product itself publishes (the support contact shown in the app and FAQ).
@@ -31,19 +34,26 @@ export function scanTree(dir, { provenance = false } = {}) {
     const bytes = readFileSync(join(dir, f.path));
     if (!bytes.includes(0)) content.set(f.path, bytes.toString('utf8'));
   }
-  const findings = classFindings(files.map((f) => ({ source: f.path, bytes: f.bytes })), content);
+  const findings = classFindings(
+    files.map((f) => ({ source: f.path, bytes: f.bytes })),
+    content,
+  );
   if (provenance) {
-    for (const [path, text] of content) for (const [name, re] of PROVENANCE) {
-      const hit = (text.match(re) ?? []).find((m) => !PUBLIC_ADDRESSES.has(m.toLowerCase()));
-      if (hit) findings.push({ source: path, class: 'private-provenance', pattern: name, match: hit });
-    }
+    for (const [path, text] of content)
+      for (const [name, re] of PROVENANCE) {
+        const hit = (text.match(re) ?? []).find((m) => !PUBLIC_ADDRESSES.has(m.toLowerCase()));
+        if (hit)
+          findings.push({ source: path, class: 'private-provenance', pattern: name, match: hit });
+      }
   }
   return { files: files.length, findings };
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const opts = options(process.argv.slice(2));
-  const { files, findings } = scanTree(opts.dir ?? join(REPO, 'apps/web'), { provenance: Boolean(opts.provenance) });
+  const { files, findings } = scanTree(opts.dir ?? join(REPO, 'apps/web'), {
+    provenance: Boolean(opts.provenance),
+  });
   for (const f of findings) line(f);
   line({ summary: { files, excluded_hits: findings.length } });
   process.exit(findings.length ? 1 : 0);

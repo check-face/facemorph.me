@@ -40,14 +40,25 @@
 // Promises and callbacks cross no worker boundary: every signal and callback stays caller-side,
 // and worker-messages.ts carries only structured-clone-safe data.
 
-import type { EncodeRequest, EncodeResult, MappingRequest, MappingResult, SynthesisRequest, SynthesisResult } from './operations.ts';
+import type {
+  EncodeRequest,
+  EncodeResult,
+  MappingRequest,
+  MappingResult,
+  SynthesisRequest,
+  SynthesisResult,
+} from './operations.ts';
 import type { StageTimingHook } from './timing.ts';
 
 /** Structural subset of AbortSignal, so contracts need no DOM or Node globals. */
 export interface CancellationSignal {
   readonly aborted: boolean;
   readonly reason?: unknown;
-  addEventListener(type: 'abort', listener: () => void, options?: { readonly once?: boolean }): void;
+  addEventListener(
+    type: 'abort',
+    listener: () => void,
+    options?: { readonly once?: boolean },
+  ): void;
   removeEventListener(type: 'abort', listener: () => void): void;
 }
 
@@ -121,7 +132,11 @@ export type MemoryBoundName =
  * resident. Consent-authorised acquisition and verification finish before its admission.
  */
 export interface LoadedEncoderCapability {
-  encode(request: EncodeRequest, signal?: CancellationSignal, onTiming?: StageTimingHook): Promise<EncodeResult>;
+  encode(
+    request: EncodeRequest,
+    signal?: CancellationSignal,
+    onTiming?: StageTimingHook,
+  ): Promise<EncodeResult>;
   abort(): void;
   dispose(): Promise<void>;
 }
@@ -134,8 +149,16 @@ export interface LoadedModelCapability {
   readonly provider: ProviderState;
   readonly unsupported: readonly UnsupportedCapability[];
   readonly encoder?: LoadedEncoderCapability;
-  map(request: MappingRequest, signal?: CancellationSignal, onTiming?: StageTimingHook): Promise<MappingResult>;
-  synthesize(request: SynthesisRequest, signal?: CancellationSignal, onTiming?: StageTimingHook): Promise<SynthesisResult>;
+  map(
+    request: MappingRequest,
+    signal?: CancellationSignal,
+    onTiming?: StageTimingHook,
+  ): Promise<MappingResult>;
+  synthesize(
+    request: SynthesisRequest,
+    signal?: CancellationSignal,
+    onTiming?: StageTimingHook,
+  ): Promise<SynthesisResult>;
   /** Releases every owned session, buffer and device; pending operations settle first. */
   dispose(): Promise<void>;
 }

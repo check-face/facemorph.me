@@ -5,7 +5,14 @@ name: research-import
 on:
   push:
     branches: [main]
-    paths: ['autoresearch/**', 'docs/research-import/**', 'scripts/research-import/**', 'scripts/check-research-import.mjs', '.github/workflows/research-import.yml']
+    paths:
+      [
+        'autoresearch/**',
+        'docs/research-import/**',
+        'scripts/research-import/**',
+        'scripts/check-research-import.mjs',
+        '.github/workflows/research-import.yml',
+      ]
   workflow_dispatch:
 concurrency:
   group: research-import

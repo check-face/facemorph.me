@@ -9,10 +9,25 @@ import { fileURLToPath } from 'node:url';
 import { checkImport, checkProvenance } from './research-import/lib.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const list = JSON.parse(readFileSync(resolve(root, 'docs/research-import/digest-list.json'), 'utf8'));
+const list = JSON.parse(
+  readFileSync(resolve(root, 'docs/research-import/digest-list.json'), 'utf8'),
+);
 const r = checkImport(list, root);
-const provenance = checkProvenance(readFileSync(resolve(root, 'docs/research-import/provenance.md'), 'utf8'));
+const provenance = checkProvenance(
+  readFileSync(resolve(root, 'docs/research-import/provenance.md'), 'utf8'),
+);
 const ok = r.ok && provenance.length === 0;
-console.log(JSON.stringify({ event: 'check-research-import', ok, imported: r.imported, importedBytes: r.importedBytes, census: list.census.files, problems: r.problems.length, provenanceProblems: provenance.length }));
-for (const p of [...r.problems, ...provenance]) console.log(JSON.stringify({ event: 'problem', ...p }));
+console.log(
+  JSON.stringify({
+    event: 'check-research-import',
+    ok,
+    imported: r.imported,
+    importedBytes: r.importedBytes,
+    census: list.census.files,
+    problems: r.problems.length,
+    provenanceProblems: provenance.length,
+  }),
+);
+for (const p of [...r.problems, ...provenance])
+  console.log(JSON.stringify({ event: 'problem', ...p }));
 process.exitCode = ok ? 0 : 1;

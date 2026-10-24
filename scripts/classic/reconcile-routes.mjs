@@ -34,14 +34,17 @@ export function reconcile({ inventoryRoutes, legacyRoutes, successorRoutes, drop
   const key = (path) => path.replace(/<rule:[^>]+>/, '<path>');
   const successorKeys = new Set([...successorRoutes.keys()].map(key));
   for (const [path, methods] of inventoryRoutes) {
-    if (!successorKeys.has(key(path)) && !dropReason.has(path)) findings.push({ route: path, methods: [...methods], kind: 'gap', source: 'inventory' });
+    if (!successorKeys.has(key(path)) && !dropReason.has(path))
+      findings.push({ route: path, methods: [...methods], kind: 'gap', source: 'inventory' });
   }
   for (const [path, methods] of legacyRoutes) {
     if (inventoryRoutes.has(path)) continue; // already covered by the inventory pass
-    if (!successorKeys.has(key(path)) && !dropReason.has(path)) findings.push({ route: path, methods: [...methods], kind: 'gap', source: 'archived-server' });
+    if (!successorKeys.has(key(path)) && !dropReason.has(path))
+      findings.push({ route: path, methods: [...methods], kind: 'gap', source: 'archived-server' });
   }
   for (const [path, methods] of successorRoutes) {
-    if (!inventoryRoutes.has(path) && !legacyRoutes.has(path)) findings.push({ route: path, methods: [...methods], kind: 'addition', source: 'successor' });
+    if (!inventoryRoutes.has(path) && !legacyRoutes.has(path))
+      findings.push({ route: path, methods: [...methods], kind: 'addition', source: 'successor' });
   }
   for (const d of drops) {
     const known = inventoryRoutes.has(d.path) || legacyRoutes.has(d.path);
@@ -74,7 +77,9 @@ function main() {
   for (const f of findings) console.log(JSON.stringify(f));
   const gaps = findings.filter((f) => f.kind === 'gap' || f.kind === 'stale-drop');
   const additions = findings.filter((f) => f.kind === 'addition');
-  console.error(`route reconciliation: ${inventoryRoutes.size} inventory routes, ${legacyRoutes.size} archived, ${successorRoutes.size} successor; ${gaps.length} gap(s), ${additions.length} addition(s)`);
+  console.error(
+    `route reconciliation: ${inventoryRoutes.size} inventory routes, ${legacyRoutes.size} archived, ${successorRoutes.size} successor; ${gaps.length} gap(s), ${additions.length} addition(s)`,
+  );
   if (gaps.length > 0) process.exit(1);
 }
 

@@ -5,12 +5,29 @@ import { createServer, type Server } from 'node:http';
 import { extname, join, normalize } from 'node:path';
 
 const TYPES: Record<string, string> = {
-  '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.json': 'application/json',
-  '.svg': 'image/svg+xml', '.png': 'image/png', '.webp': 'image/webp', '.ico': 'image/x-icon', '.woff2': 'font/woff2', '.woff': 'font/woff',
-  '.map': 'application/json', '.txt': 'text/plain', '.xml': 'application/xml', '.webmanifest': 'application/manifest+json', '.wasm': 'application/wasm',
+  '.html': 'text/html; charset=utf-8',
+  '.js': 'text/javascript',
+  '.mjs': 'text/javascript',
+  '.css': 'text/css',
+  '.json': 'application/json',
+  '.svg': 'image/svg+xml',
+  '.png': 'image/png',
+  '.webp': 'image/webp',
+  '.ico': 'image/x-icon',
+  '.woff2': 'font/woff2',
+  '.woff': 'font/woff',
+  '.map': 'application/json',
+  '.txt': 'text/plain',
+  '.xml': 'application/xml',
+  '.webmanifest': 'application/manifest+json',
+  '.wasm': 'application/wasm',
 };
 
-export interface Served { readonly origin: string; readonly requests: string[]; close(): Promise<void> }
+export interface Served {
+  readonly origin: string;
+  readonly requests: string[];
+  close(): Promise<void>;
+}
 
 /** `mounts` serves further directories under URL prefixes, e.g. { '/fixtures/': dir }. */
 export async function serve(dir: string, mounts: Record<string, string> = {}): Promise<Served> {
@@ -19,15 +36,27 @@ export async function serve(dir: string, mounts: Record<string, string> = {}): P
     const path = decodeURIComponent(new URL(req.url ?? '/', 'http://x').pathname);
     requests.push(path);
     const mount = Object.keys(mounts).find((prefix) => path.startsWith(prefix));
-    const base = mount ? mounts[mount] as string : dir;
+    const base = mount ? (mounts[mount] as string) : dir;
     const rel = mount ? path.slice(mount.length) : path;
     const file = normalize(join(base, rel.endsWith('/') || rel === '' ? `${rel}index.html` : rel));
-    if (path.startsWith('/runtime/') || !file.startsWith(normalize(base)) || !existsSync(file) || !statSync(file).isFile()) { res.writeHead(404).end(); return; }
+    if (
+      path.startsWith('/runtime/') ||
+      !file.startsWith(normalize(base)) ||
+      !existsSync(file) ||
+      !statSync(file).isFile()
+    ) {
+      res.writeHead(404).end();
+      return;
+    }
     res.writeHead(200, { 'content-type': TYPES[extname(file)] ?? 'application/octet-stream' });
     createReadStream(file).pipe(res);
   });
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
   const address = server.address();
   if (!address || typeof address === 'string') throw new Error('no port');
-  return { origin: `http://127.0.0.1:${address.port}`, requests, close: () => new Promise((resolve) => server.close(() => resolve())) };
+  return {
+    origin: `http://127.0.0.1:${address.port}`,
+    requests,
+    close: () => new Promise((resolve) => server.close(() => resolve())),
+  };
 }

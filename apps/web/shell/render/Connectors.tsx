@@ -7,7 +7,13 @@ import type { ReactNode } from 'react';
 import type { Input } from './types.ts';
 
 export function Connector({ label, onAdd }: { label: string; onAdd: () => void }) {
-  return <div className="next-connector"><IconButton className="next-connector-add" aria-label={label} onClick={onAdd}><AddIcon /></IconButton></div>;
+  return (
+    <div className="next-connector">
+      <IconButton className="next-connector-add" aria-label={label} onClick={onAdd}>
+        <AddIcon />
+      </IconButton>
+    </div>
+  );
 }
 
 export function faceLabel(index: number): string {
@@ -15,12 +21,28 @@ export function faceLabel(index: number): string {
 }
 
 /** A connector before every tile and one after the last: [+ tile + tile ... +]. */
-export function tilesWithConnectors(inputs: readonly Input[], tile: (item: Input, index: number, label: string) => ReactNode, onAddAt: (position: number) => void): ReactNode[] {
+export function tilesWithConnectors(
+  inputs: readonly Input[],
+  tile: (item: Input, index: number, label: string) => ReactNode,
+  onAddAt: (position: number) => void,
+): ReactNode[] {
   const out: ReactNode[] = [];
   inputs.forEach((item, index) => {
-    out.push(<Connector key={`add-${index}`} label={`Add a face before ${faceLabel(index)}`} onAdd={() => onAddAt(index)} />);
+    out.push(
+      <Connector
+        key={`add-${index}`}
+        label={`Add a face before ${faceLabel(index)}`}
+        onAdd={() => onAddAt(index)}
+      />,
+    );
     out.push(tile(item, index, faceLabel(index)));
   });
-  out.push(<Connector key="add-end" label={`Add a face after Face ${inputs.length}`} onAdd={() => onAddAt(inputs.length)} />);
+  out.push(
+    <Connector
+      key="add-end"
+      label={`Add a face after Face ${inputs.length}`}
+      onAdd={() => onAddAt(inputs.length)}
+    />,
+  );
   return out;
 }

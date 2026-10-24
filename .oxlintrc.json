@@ -1,11 +1,6 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": [
-    "typescript",
-    "react",
-    "unicorn",
-    "oxc"
-  ],
+  "plugins": ["typescript", "react", "unicorn", "oxc"],
   "categories": {
     "correctness": "error"
   },
@@ -60,11 +55,7 @@
       }
     },
     {
-      "files": [
-        "**/*worker*.ts",
-        "**/*worker*.mjs",
-        "packages/cloudflare-model-host/src/**"
-      ],
+      "files": ["**/*worker*.ts", "**/*worker*.mjs", "packages/cloudflare-model-host/src/**"],
       "env": {
         "worker": true,
         "serviceworker": true

@@ -17,7 +17,12 @@ export function digestTree(dir) {
       const path = join(at, name);
       const st = statSync(path);
       if (st.isDirectory()) walk(path);
-      else if (st.isFile()) out.push({ path: relative(dir, path).split('\\').join('/'), sha256: sha256(readFileSync(path)), bytes: st.size });
+      else if (st.isFile())
+        out.push({
+          path: relative(dir, path).split('\\').join('/'),
+          sha256: sha256(readFileSync(path)),
+          bytes: st.size,
+        });
     }
   };
   walk(dir);
@@ -31,7 +36,14 @@ export function storeFindings(dir, files) {
   for (const f of files) {
     const got = actual.get(f.path);
     if (!got) out.push({ path: f.path, problem: 'missing', expected: f.sha256 });
-    else if (got.sha256 !== f.sha256 || got.bytes !== f.bytes) out.push({ path: f.path, problem: 'mismatch', expected: f.sha256, actual: got.sha256, bytes: got.bytes });
+    else if (got.sha256 !== f.sha256 || got.bytes !== f.bytes)
+      out.push({
+        path: f.path,
+        problem: 'mismatch',
+        expected: f.sha256,
+        actual: got.sha256,
+        bytes: got.bytes,
+      });
     actual.delete(f.path);
   }
   for (const f of actual.values()) out.push({ path: f.path, problem: 'extra', actual: f.sha256 });

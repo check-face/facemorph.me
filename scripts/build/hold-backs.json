@@ -11,7 +11,13 @@
   ],
   "typescriptApiTools": {
     "checked": ["tsc (typescript 7.0.2) for typecheck and declarations"],
-    "notUsingTheCompilerApi": ["oxlint and oxfmt (native)", "vite 8 (oxc transform)", "@vitejs/plugin-react", "vite-plugin-svgr", "playwright"],
+    "notUsingTheCompilerApi": [
+      "oxlint and oxfmt (native)",
+      "vite 8 (oxc transform)",
+      "@vitejs/plugin-react",
+      "vite-plugin-svgr",
+      "playwright"
+    ],
     "holdBacks": []
   }
 }

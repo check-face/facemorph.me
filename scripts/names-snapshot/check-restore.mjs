@@ -24,22 +24,50 @@ export async function checkRestore({ args, env = process.env, store, sources = [
   const record = join(dir, 'connections.jsonl');
   try {
     const child = await new Promise((done, fail) => {
-      const p = spawn(process.execPath, ['--import', join(here, 'net-recorder.mjs'), join(here, 'restore.mjs'), `--out=${join(dir, 'out')}`, ...args], {
-        env: { ...env, NET_RECORD: record }, stdio: ['ignore', 'pipe', 'pipe'],
-      });
+      const p = spawn(
+        process.execPath,
+        [
+          '--import',
+          join(here, 'net-recorder.mjs'),
+          join(here, 'restore.mjs'),
+          `--out=${join(dir, 'out')}`,
+          ...args,
+        ],
+        {
+          env: { ...env, NET_RECORD: record },
+          stdio: ['ignore', 'pipe', 'pipe'],
+        },
+      );
       let stdout = '';
       let stderr = '';
-      p.stdout.on('data', (d) => { stdout += d; });
-      p.stderr.on('data', (d) => { stderr += d; });
+      p.stdout.on('data', (d) => {
+        stdout += d;
+      });
+      p.stderr.on('data', (d) => {
+        stderr += d;
+      });
       p.on('error', fail);
       p.on('close', (status) => done({ status, stdout, stderr }));
     });
-    const lines = child.stdout.split('\n').filter((l) => l.startsWith('{')).map((l) => JSON.parse(l));
+    const lines = child.stdout
+      .split('\n')
+      .filter((l) => l.startsWith('{'))
+      .map((l) => JSON.parse(l));
     const result = lines.find((l) => l.event === 'restore') ?? null;
-    const connections = existsSync(record) ? readFileSync(record, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l)) : [];
+    const connections = existsSync(record)
+      ? readFileSync(record, 'utf8')
+          .split('\n')
+          .filter(Boolean)
+          .map((l) => JSON.parse(l))
+      : [];
     const byClass = tally(connections, (c) => classify(c, { store, sources }));
-    const pass = child.status === 0 && result?.complete === true && byClass.store.connections > 0
-      && byClass['retired-api'].connections === 0 && byClass['retired-api'].bytes === 0 && byClass['source-worker'].connections === 0;
+    const pass =
+      child.status === 0 &&
+      result?.complete === true &&
+      byClass.store.connections > 0 &&
+      byClass['retired-api'].connections === 0 &&
+      byClass['retired-api'].bytes === 0 &&
+      byClass['source-worker'].connections === 0;
     return { pass, exitCode: child.status, result, byClass, stderr: child.stderr };
   } finally {
     rmSync(dir, { recursive: true, force: true });
@@ -48,23 +76,42 @@ export async function checkRestore({ args, env = process.env, store, sources = [
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const a = parseArgs(process.argv.slice(2));
-  const passthrough = process.argv.slice(2).filter((x) => !/^--(record-summary|summary)(=|$)/.test(x));
+  const passthrough = process.argv
+    .slice(2)
+    .filter((x) => !/^--(record-summary|summary)(=|$)/.test(x));
   if (!(a.names || a.sample || a.all)) {
-    console.error('usage: check-restore.mjs (--names=a,b | --sample=N | --all) [--bucket=] [--mint-r2=<account id>] [--record-summary]');
+    console.error(
+      'usage: check-restore.mjs (--names=a,b | --sample=N | --all) [--bucket=] [--mint-r2=<account id>] [--record-summary]',
+    );
     process.exit(2);
   }
-  const store = a['mint-r2'] ? `${a['mint-r2']}.r2.cloudflarestorage.com` : new URL(process.env.S3_ENDPOINT).host;
+  const store = a['mint-r2']
+    ? `${a['mint-r2']}.r2.cloudflarestorage.com`
+    : new URL(process.env.S3_ENDPOINT).host;
   const r = await checkRestore({ args: passthrough, store });
-  console.log(JSON.stringify({ ...r.result, event: 'check-restore', pass: r.pass, exitCode: r.exitCode, connectionsByHostClass: r.byClass }));
+  console.log(
+    JSON.stringify({
+      ...r.result,
+      event: 'check-restore',
+      pass: r.pass,
+      exitCode: r.exitCode,
+      connectionsByHostClass: r.byClass,
+    }),
+  );
   if (!r.pass && r.stderr) console.error(r.stderr);
   if (a['record-summary'] && r.pass) {
     const text = readFileSync(a.manifest ? resolve(a.manifest) : MANIFEST_PATH, 'utf8');
     const summaryPath = a.summary ? resolve(a.summary) : SUMMARY_PATH;
     const summary = JSON.parse(readFileSync(summaryPath, 'utf8'));
-    if (summary.manifest.sha256 !== sha256(text)) throw new Error('summary describes a different manifest');
+    if (summary.manifest.sha256 !== sha256(text))
+      throw new Error('summary describes a different manifest');
     summary.restoreCheck = {
-      at: new Date().toISOString(), bucket: a.bucket ?? DEFAULTS.bucket, selected: r.result.selected, restoredWithMatchingHashes: r.result.restored,
-      bytes: r.result.bytes, connectionsByHostClass: r.byClass,
+      at: new Date().toISOString(),
+      bucket: a.bucket ?? DEFAULTS.bucket,
+      selected: r.result.selected,
+      restoredWithMatchingHashes: r.result.restored,
+      bytes: r.result.bytes,
+      connectionsByHostClass: r.byClass,
     };
     writeFileSync(summaryPath, `${JSON.stringify(summary, null, 2)}\n`);
   }

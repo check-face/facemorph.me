@@ -9,8 +9,14 @@ const QUIET_MS = 3000;
 async function check(name: EmittedWorker): Promise<Result> {
   const worker = EMITTED_WORKERS[name]();
   return new Promise((resolve) => {
-    const done = (r: Result) => { worker.terminate(); resolve(r); };
-    worker.addEventListener('error', (e) => { e.preventDefault(); done({ worker: name, ok: false, error: e.message || 'worker error' }); });
+    const done = (r: Result) => {
+      worker.terminate();
+      resolve(r);
+    };
+    worker.addEventListener('error', (e) => {
+      e.preventDefault();
+      done({ worker: name, ok: false, error: e.message || 'worker error' });
+    });
     setTimeout(() => done({ worker: name, ok: true }), QUIET_MS);
   });
 }

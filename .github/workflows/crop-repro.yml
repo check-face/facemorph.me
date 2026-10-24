@@ -8,8 +8,15 @@ name: crop-repro
 on:
   push:
     branches: [main]
-    paths: ['tests/crop/**', 'tests/known-failing.json', 'scripts/import/control_site.py', 'apps/web/src/Next/photo/**',
-            'apps/web/src/Next/browser/runtime.mjs', '.github/workflows/crop-repro.yml']
+    paths:
+      [
+        'tests/crop/**',
+        'tests/known-failing.json',
+        'scripts/import/control_site.py',
+        'apps/web/src/Next/photo/**',
+        'apps/web/src/Next/browser/runtime.mjs',
+        '.github/workflows/crop-repro.yml',
+      ]
   workflow_dispatch:
 concurrency:
   group: crop-repro

@@ -9,7 +9,19 @@
 // --check ignores working_tree_overlays: other sessions keep editing classic's working tree.
 import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { ALLOWLIST, blob, classicDir, delta, git, globRegExp, line, options, readJson, sha256, trackedFiles } from './lib.mjs';
+import {
+  ALLOWLIST,
+  blob,
+  classicDir,
+  delta,
+  git,
+  globRegExp,
+  line,
+  options,
+  readJson,
+  sha256,
+  trackedFiles,
+} from './lib.mjs';
 
 export function classify(path, rules) {
   return rules.find((rule) => rule.patterns.some((p) => globRegExp(p).test(path))) ?? null;
@@ -26,12 +38,23 @@ export function overlays(dir) {
     const status = records[i].slice(0, 2).trim();
     const path = records[i].slice(3);
     if (/[RC]/.test(status)) i++; // -z puts a rename's original path in the next record
-    const entry = { path, status, disposition: 'excluded', reason: 'Uncommitted classic working-tree change owned by another session; never imported or labelled as the pinned snapshot.' };
+    const entry = {
+      path,
+      status,
+      disposition: 'excluded',
+      reason:
+        'Uncommitted classic working-tree change owned by another session; never imported or labelled as the pinned snapshot.',
+    };
     if (UNREAD.test(path)) entry.digest = 'not read (may hold credentials)';
     else if (path.endsWith('/')) {
-      const files = git(dir, ['ls-files', '-z', '--others', '--exclude-standard', '--', path]).split('\0').filter(Boolean).sort();
+      const files = git(dir, ['ls-files', '-z', '--others', '--exclude-standard', '--', path])
+        .split('\0')
+        .filter(Boolean)
+        .sort();
       entry.files = files.length;
-      entry.sha256_of_listing = sha256(files.map((f) => `${sha256(readFileSync(`${dir}/${f}`))}  ${f}\n`).join(''));
+      entry.sha256_of_listing = sha256(
+        files.map((f) => `${sha256(readFileSync(`${dir}/${f}`))}  ${f}\n`).join(''),
+      );
     } else if (status !== 'D') entry.sha256 = sha256(readFileSync(`${dir}/${path}`));
     entries.push(entry);
   }
@@ -45,11 +68,20 @@ export function generate(allowlist, dir) {
   const listed = [];
   for (const path of trackedFiles(dir, commit)) {
     const rule = classify(path, allowlist.rules);
-    if (!rule) { unclassified.push(path); continue; }
+    if (!rule) {
+      unclassified.push(path);
+      continue;
+    }
     if (rule.disposition === 'imported' || rule.digests) {
       const bytes = blob(dir, commit, path);
       const row = { source: path, sha256: sha256(bytes), bytes: bytes.length, class: rule.class };
-      if (rule.disposition === 'imported') files.push({ source: path, destination: `${allowlist.destination_root}/${path}`, ...row, ...(rule.temporary ? { temporary: true } : {}) });
+      if (rule.disposition === 'imported')
+        files.push({
+          source: path,
+          destination: `${allowlist.destination_root}/${path}`,
+          ...row,
+          ...(rule.temporary ? { temporary: true } : {}),
+        });
       else listed.push({ ...row, disposition: rule.disposition, owner: rule.owner });
     }
   }
@@ -60,7 +92,12 @@ export function generate(allowlist, dir) {
     note: allowlist.delta_notes[c.commit.slice(0, 7)] ?? null,
     paths: c.paths.map(({ status, path }) => {
       const rule = classify(path, allowlist.rules);
-      return { path, status, disposition: rule?.disposition ?? null, ...(rule?.owner ? { owner: rule.owner } : {}) };
+      return {
+        path,
+        status,
+        disposition: rule?.disposition ?? null,
+        ...(rule?.owner ? { owner: rule.owner } : {}),
+      };
     }),
   }));
   return { unclassified, files, listed, commits };
@@ -74,19 +111,48 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   for (const path of unclassified) line({ unclassified: path });
   const missingNotes = commits.filter((c) => !c.note).map((c) => c.commit);
   for (const commit of missingNotes) line({ delta_commit_without_note: commit });
-  const unclassifiedDelta = commits.flatMap((c) => c.paths.filter((p) => !p.disposition).map((p) => ({ commit: c.commit, path: p.path })));
+  const unclassifiedDelta = commits.flatMap((c) =>
+    c.paths.filter((p) => !p.disposition).map((p) => ({ commit: c.commit, path: p.path })),
+  );
   for (const row of unclassifiedDelta) line({ delta_path_without_disposition: row });
   let drift = [];
   if (opts.check) {
     const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
-    drift = [['files', files], ['delta', commits], ['listed_with_digests', listed]].filter(([k, v]) => !same(allowlist[k], v)).map(([k]) => k);
+    drift = [
+      ['files', files],
+      ['delta', commits],
+      ['listed_with_digests', listed],
+    ]
+      .filter(([k, v]) => !same(allowlist[k], v))
+      .map(([k]) => k);
     for (const section of drift) line({ drift: section });
   } else {
     const head = git(dir, ['rev-parse', 'HEAD']).trim();
-    const next = { ...allowlist, delta: commits, listed_with_digests: listed, working_tree_overlays: { recorded_on: new Date().toISOString().slice(0, 10), classic_head: head, entries: overlays(dir) }, files };
+    const next = {
+      ...allowlist,
+      delta: commits,
+      listed_with_digests: listed,
+      working_tree_overlays: {
+        recorded_on: new Date().toISOString().slice(0, 10),
+        classic_head: head,
+        entries: overlays(dir),
+      },
+      files,
+    };
     writeFileSync(ALLOWLIST, JSON.stringify(next, null, 2) + '\n');
   }
-  const failed = unclassified.length + missingNotes.length + unclassifiedDelta.length + drift.length;
-  line({ summary: { commit: allowlist.source.frozen_commit, files: files.length, listed_with_digests: listed.length, delta_commits: commits.length, unclassified: unclassified.length, drift, mode: opts.check ? 'check' : 'write' } });
+  const failed =
+    unclassified.length + missingNotes.length + unclassifiedDelta.length + drift.length;
+  line({
+    summary: {
+      commit: allowlist.source.frozen_commit,
+      files: files.length,
+      listed_with_digests: listed.length,
+      delta_commits: commits.length,
+      unclassified: unclassified.length,
+      drift,
+      mode: opts.check ? 'check' : 'write',
+    },
+  });
   process.exit(failed ? 1 : 0);
 }

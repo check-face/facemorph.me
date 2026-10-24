@@ -9,16 +9,21 @@
 const DEFAULT_REPOS = ['check-face/facemorph.me-classic', 'check-face/facemorph.me'];
 // Installers and updater feed assets. A bare .zip is deliberately NOT native: the
 // repository's evidence releases (control artifact, visual references) are zips.
-const NATIVE_ASSET = /(\.(dmg|msi|exe|appimage|deb|app\.tar\.gz|sig)$|^latest\.json$|^SHA256SUMS$)/i;
+const NATIVE_ASSET =
+  /(\.(dmg|msi|exe|appimage|deb|app\.tar\.gz|sig)$|^latest\.json$|^SHA256SUMS$)/i;
 
 export function nativeAssets(assets) {
-  return (assets ?? []).filter((a) => NATIVE_ASSET.test(a.name ?? '')).map((a) => ({ name: a.name, size: a.size }));
+  return (assets ?? [])
+    .filter((a) => NATIVE_ASSET.test(a.name ?? ''))
+    .map((a) => ({ name: a.name, size: a.size }));
 }
 
 export async function scanRepo(repo, { token, fetchImpl = fetch } = {}) {
   const headers = { accept: 'application/vnd.github+json', 'user-agent': 'facemorph-inventory' };
   if (token) headers.authorization = `Bearer ${token}`;
-  const response = await fetchImpl(`https://api.github.com/repos/${repo}/releases?per_page=100`, { headers });
+  const response = await fetchImpl(`https://api.github.com/repos/${repo}/releases?per_page=100`, {
+    headers,
+  });
   if (!response.ok) throw new Error(`${repo}: HTTP ${response.status} ${await response.text()}`);
   const releases = await response.json();
   return releases.map((r) => {
@@ -40,7 +45,12 @@ export async function scan(repos = DEFAULT_REPOS, options = {}) {
   const out = [];
   for (const repo of repos) {
     const releases = await scanRepo(repo, options);
-    out.push({ repo, release_count: releases.length, native_releases: releases.filter((r) => r.carries_native).length, releases });
+    out.push({
+      repo,
+      release_count: releases.length,
+      native_releases: releases.filter((r) => r.carries_native).length,
+      releases,
+    });
   }
   return { scanned_at: new Date().toISOString(), repos: out };
 }

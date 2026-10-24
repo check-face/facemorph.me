@@ -1,546 +1,546 @@
 {
- "measured_at": "2026-10-24T11:11:20+00:00",
- "max_compressed_actual_bytes": 65613080,
- "machine": "eris",
- "browser": "chromium",
- "browser_version": "152.0.7977.82",
- "classic_commit": "a42829bb0582b5a7a55ba6b1045a05861612b8a5",
- "modules": {
-  "src/Next/photo/crop.mjs": "7bfcd39a78f125e1504d845e2c8f9cf196db96782a38e459bd1de1a23d4a4052",
-  "src/Next/photo/image-header.mjs": "98bb97323c6732e21b40394c5c5144949b6a28a58ee09ac8c7aad52ad05fa4da",
-  "src/Next/media.mjs": "2f0e09e25ec40db2caef02b15f6e10eda35b9112304a41ddaeec1bc83b69c40a"
- },
- "lease_run_id": "20261024T111010Z-69b94ff3",
- "limits": {
-  "CROP_MAX_BYTES": 67108864,
-  "CROP_MAX_PIXELS": 125829120,
-  "CROP_MAX_EDGE": 20000
- },
- "rows": [
-  {
-   "route": "imagebitmap-full",
-   "fixture": "typical.jpg",
-   "representation": "compressed",
-   "peak_bytes": 5979430,
-   "ok": true,
-   "ms": 83,
-   "heap_delta_bytes": 3756
-  },
-  {
-   "route": "imagebitmap-full",
-   "fixture": "typical.jpg",
-   "representation": "decoded",
-   "peak_bytes": 48771072,
-   "ok": true,
-   "ms": 83,
-   "heap_delta_bytes": 3756
-  },
-  {
-   "route": "preview-decode",
-   "fixture": "typical.jpg",
-   "representation": "compressed",
-   "peak_bytes": 5979430,
-   "ok": true,
-   "ms": 83,
-   "heap_delta_bytes": 5998438
-  },
-  {
-   "route": "preview-decode",
-   "fixture": "typical.jpg",
-   "representation": "decoded",
-   "peak_bytes": 48771072,
-   "ok": true,
-   "ms": 83,
-   "heap_delta_bytes": 5998438
-  },
-  {
-   "route": "preview-display",
-   "fixture": "typical.jpg",
-   "representation": "compressed",
-   "peak_bytes": 5979430,
-   "ok": true,
-   "ms": 495,
-   "heap_delta_bytes": 5481532
-  },
-  {
-   "route": "preview-display",
-   "fixture": "typical.jpg",
-   "representation": "decoded",
-   "peak_bytes": 48771072,
-   "ok": true,
-   "ms": 495,
-   "heap_delta_bytes": 5481532
-  },
-  {
-   "route": "preview-display",
-   "fixture": "typical.jpg",
-   "representation": "reencoded",
-   "peak_bytes": 35262879,
-   "ok": true,
-   "ms": 495,
-   "heap_delta_bytes": 5481532
-  },
-  {
-   "route": "crop-decode",
-   "fixture": "typical.jpg",
-   "representation": "compressed",
-   "peak_bytes": 5979430,
-   "ok": true,
-   "ms": 653,
-   "heap_delta_bytes": 3124797
-  },
-  {
-   "route": "crop-decode",
-   "fixture": "typical.jpg",
-   "representation": "cropped",
-   "peak_bytes": 3095307,
-   "ok": true,
-   "ms": 653,
-   "heap_delta_bytes": 3124797
-  },
-  {
-   "route": "crop-decode",
-   "fixture": "typical.jpg",
-   "representation": "cropped_canvas",
-   "peak_bytes": 4194304,
-   "ok": true,
-   "ms": 653,
-   "heap_delta_bytes": 3124797
-  },
-  {
-   "route": "frame-decode-512",
-   "fixture": "typical.jpg",
-   "representation": "compressed",
-   "peak_bytes": 5979430,
-   "ok": true,
-   "ms": 83,
-   "heap_delta_bytes": 1065548
-  },
-  {
-   "route": "frame-decode-512",
-   "fixture": "typical.jpg",
-   "representation": "decoded",
-   "peak_bytes": 1048576,
-   "ok": true,
-   "ms": 83,
-   "heap_delta_bytes": 1065548
-  },
-  {
-   "route": "frame-decode-1024",
-   "fixture": "typical.jpg",
-   "representation": "compressed",
-   "peak_bytes": 5979430,
-   "ok": true,
-   "ms": 91,
-   "heap_delta_bytes": -10811655
-  },
-  {
-   "route": "frame-decode-1024",
-   "fixture": "typical.jpg",
-   "representation": "decoded",
-   "peak_bytes": 4194304,
-   "ok": true,
-   "ms": 91,
-   "heap_delta_bytes": -10811655
-  },
-  {
-   "route": "imagebitmap-full",
-   "fixture": "max-compressed.jpg",
-   "representation": "compressed",
-   "peak_bytes": 65613080,
-   "ok": true,
-   "ms": 910,
-   "heap_delta_bytes": -503283572
-  },
-  {
-   "route": "imagebitmap-full",
-   "fixture": "max-compressed.jpg",
-   "representation": "decoded",
-   "peak_bytes": 503284356,
-   "ok": true,
-   "ms": 910,
-   "heap_delta_bytes": -503283572
-  },
-  {
-   "route": "preview-decode",
-   "fixture": "max-compressed.jpg",
-   "representation": "compressed",
-   "peak_bytes": 65613080,
-   "ok": true,
-   "ms": 1336,
-   "heap_delta_bytes": 65615916
-  },
-  {
-   "route": "preview-decode",
-   "fixture": "max-compressed.jpg",
-   "representation": "decoded",
-   "peak_bytes": 67108864,
-   "ok": true,
-   "ms": 1336,
-   "heap_delta_bytes": 65615916
-  },
-  {
-   "route": "preview-display",
-   "fixture": "max-compressed.jpg",
-   "representation": "compressed",
-   "peak_bytes": 65613080,
-   "ok": true,
-   "ms": 2207,
-   "heap_delta_bytes": 352
-  },
-  {
-   "route": "preview-display",
-   "fixture": "max-compressed.jpg",
-   "representation": "decoded",
-   "peak_bytes": 67108864,
-   "ok": true,
-   "ms": 2207,
-   "heap_delta_bytes": 352
-  },
-  {
-   "route": "preview-display",
-   "fixture": "max-compressed.jpg",
-   "representation": "reencoded",
-   "peak_bytes": 44504300,
-   "ok": true,
-   "ms": 2207,
-   "heap_delta_bytes": 352
-  },
-  {
-   "route": "crop-decode",
-   "fixture": "max-compressed.jpg",
-   "representation": "compressed",
-   "peak_bytes": 65613080,
-   "ok": true,
-   "ms": 3263,
-   "heap_delta_bytes": 2319402
-  },
-  {
-   "route": "crop-decode",
-   "fixture": "max-compressed.jpg",
-   "representation": "cropped",
-   "peak_bytes": 2313506,
-   "ok": true,
-   "ms": 3263,
-   "heap_delta_bytes": 2319402
-  },
-  {
-   "route": "crop-decode",
-   "fixture": "max-compressed.jpg",
-   "representation": "cropped_canvas",
-   "peak_bytes": 4194304,
-   "ok": true,
-   "ms": 3263,
-   "heap_delta_bytes": 2319402
-  },
-  {
-   "route": "frame-decode-512",
-   "fixture": "max-compressed.jpg",
-   "representation": "compressed",
-   "peak_bytes": 65613080,
-   "ok": true,
-   "ms": 917,
-   "heap_delta_bytes": 1051008
-  },
-  {
-   "route": "frame-decode-512",
-   "fixture": "max-compressed.jpg",
-   "representation": "decoded",
-   "peak_bytes": 1048576,
-   "ok": true,
-   "ms": 917,
-   "heap_delta_bytes": 1051008
-  },
-  {
-   "route": "imagebitmap-full",
-   "fixture": "max-pixels.jpg",
-   "representation": "compressed",
-   "peak_bytes": 750192,
-   "ok": true,
-   "ms": 297,
-   "heap_delta_bytes": -67913545
-  },
-  {
-   "route": "imagebitmap-full",
-   "fixture": "max-pixels.jpg",
-   "representation": "decoded",
-   "peak_bytes": 503284356,
-   "ok": true,
-   "ms": 297,
-   "heap_delta_bytes": -67913545
-  },
-  {
-   "route": "preview-decode",
-   "fixture": "max-pixels.jpg",
-   "representation": "compressed",
-   "peak_bytes": 750192,
-   "ok": true,
-   "ms": 565,
-   "heap_delta_bytes": -318913
-  },
-  {
-   "route": "preview-decode",
-   "fixture": "max-pixels.jpg",
-   "representation": "decoded",
-   "peak_bytes": 67108864,
-   "ok": true,
-   "ms": 565,
-   "heap_delta_bytes": -318913
-  },
-  {
-   "route": "preview-display",
-   "fixture": "max-pixels.jpg",
-   "representation": "compressed",
-   "peak_bytes": 750192,
-   "ok": true,
-   "ms": 615,
-   "heap_delta_bytes": -36
-  },
-  {
-   "route": "preview-display",
-   "fixture": "max-pixels.jpg",
-   "representation": "decoded",
-   "peak_bytes": 67108864,
-   "ok": true,
-   "ms": 615,
-   "heap_delta_bytes": -36
-  },
-  {
-   "route": "preview-display",
-   "fixture": "max-pixels.jpg",
-   "representation": "reencoded",
-   "peak_bytes": 868195,
-   "ok": true,
-   "ms": 615,
-   "heap_delta_bytes": -36
-  },
-  {
-   "route": "crop-decode",
-   "fixture": "max-pixels.jpg",
-   "representation": "compressed",
-   "peak_bytes": 750192,
-   "ok": true,
-   "ms": 1228,
-   "heap_delta_bytes": 168982
-  },
-  {
-   "route": "crop-decode",
-   "fixture": "max-pixels.jpg",
-   "representation": "cropped",
-   "peak_bytes": 147418,
-   "ok": true,
-   "ms": 1228,
-   "heap_delta_bytes": 168982
-  },
-  {
-   "route": "crop-decode",
-   "fixture": "max-pixels.jpg",
-   "representation": "cropped_canvas",
-   "peak_bytes": 4194304,
-   "ok": true,
-   "ms": 1228,
-   "heap_delta_bytes": 168982
-  },
-  {
-   "route": "frame-decode-512",
-   "fixture": "max-pixels.jpg",
-   "representation": "compressed",
-   "peak_bytes": 750192,
-   "ok": true,
-   "ms": 241,
-   "heap_delta_bytes": 1050900
-  },
-  {
-   "route": "frame-decode-512",
-   "fixture": "max-pixels.jpg",
-   "representation": "decoded",
-   "peak_bytes": 1048576,
-   "ok": true,
-   "ms": 241,
-   "heap_delta_bytes": 1050900
-  },
-  {
-   "route": "imagebitmap-full",
-   "fixture": "max-edge.png",
-   "representation": "compressed",
-   "peak_bytes": 35497140,
-   "ok": true,
-   "ms": 445,
-   "heap_delta_bytes": -885016
-  },
-  {
-   "route": "imagebitmap-full",
-   "fixture": "max-edge.png",
-   "representation": "decoded",
-   "peak_bytes": 503200000,
-   "ok": true,
-   "ms": 445,
-   "heap_delta_bytes": -885016
-  },
-  {
-   "route": "preview-decode",
-   "fixture": "max-edge.png",
-   "representation": "compressed",
-   "peak_bytes": 35497140,
-   "ok": true,
-   "ms": 1997,
-   "heap_delta_bytes": 34427568
-  },
-  {
-   "route": "preview-decode",
-   "fixture": "max-edge.png",
-   "representation": "decoded",
-   "peak_bytes": 21102592,
-   "ok": true,
-   "ms": 1997,
-   "heap_delta_bytes": 34427568
-  },
-  {
-   "route": "crop-decode",
-   "fixture": "max-edge.png",
-   "representation": "compressed",
-   "peak_bytes": 35497140,
-   "ok": true,
-   "ms": 1033,
-   "heap_delta_bytes": 369306
-  },
-  {
-   "route": "crop-decode",
-   "fixture": "max-edge.png",
-   "representation": "cropped",
-   "peak_bytes": 363606,
-   "ok": true,
-   "ms": 1033,
-   "heap_delta_bytes": 369306
-  },
-  {
-   "route": "crop-decode",
-   "fixture": "max-edge.png",
-   "representation": "cropped_canvas",
-   "peak_bytes": 4194304,
-   "ok": true,
-   "ms": 1033,
-   "heap_delta_bytes": 369306
-  },
-  {
-   "route": "frame-decode-512",
-   "fixture": "max-edge.png",
-   "representation": "compressed",
-   "peak_bytes": 35497140,
-   "ok": true,
-   "ms": 401,
-   "heap_delta_bytes": 1057032
-  },
-  {
-   "route": "frame-decode-512",
-   "fixture": "max-edge.png",
-   "representation": "decoded",
-   "peak_bytes": 1048576,
-   "ok": true,
-   "ms": 401,
-   "heap_delta_bytes": 1057032
-  }
- ],
- "not_measured": [
-  {
-   "route": "imagebitmap-full",
-   "fixture": "typical.jpg",
-   "reason": "lane unavailable on this machine (Android emulator / iOS Simulator / physical phone lanes run in CI or the device lab); unmeasured routes are not admitted"
-  },
-  {
-   "route": "imagebitmap-full",
-   "fixture": "max-compressed.jpg",
-   "reason": "lane unavailable on this machine (Android emulator / iOS Simulator / physical phone lanes run in CI or the device lab); unmeasured routes are not admitted"
-  },
-  {
-   "route": "imagebitmap-full",
-   "fixture": "max-pixels.jpg",
-   "reason": "lane unavailable on this machine (Android emulator / iOS Simulator / physical phone lanes run in CI or the device lab); unmeasured routes are not admitted"
-  },
-  {
-   "route": "imagebitmap-full",
-   "fixture": "max-edge.png",
-   "reason": "lane unavailable on this machine (Android emulator / iOS Simulator / physical phone lanes run in CI or the device lab); unmeasured routes are not admitted"
-  },
-  {
-   "route": "preview-decode",
-   "fixture": "typical.jpg",
-   "reason": "lane unavailable on this machine (Android emulator / iOS Simulator / physical phone lanes run in CI or the device lab); unmeasured routes are not admitted"
-  },
-  {
-   "route": "preview-decode",
-   "fixture": "max-compressed.jpg",
-   "reason": "lane unavailable on this machine (Android emulator / iOS Simulator / physical phone lanes run in CI or the device lab); unmeasured routes are not admitted"
-  },
-  {
-   "route": "preview-decode",
-   "fixture": "max-pixels.jpg",
-   "reason": "lane unavailable on this machine (Android emulator / iOS Simulator / physical phone lanes run in CI or the device lab); unmeasured routes are not admitted"
-  },
-  {
-   "route": "preview-decode",
-   "fixture": "max-edge.png",
-   "reason": "lane unavailable on this machine (Android emulator / iOS Simulator / physical phone lanes run in CI or the device lab); unmeasured routes are not admitted"
-  },
-  {
-   "route": "preview-display",
-   "fixture": "typical.jpg",
-   "reason": "lane unavailable on this machine (Android emulator / iOS Simulator / physical phone lanes run in CI or the device lab); unmeasured routes are not admitted"
-  },
-  {
-   "route": "preview-display",
-   "fixture": "max-compressed.jpg",
-   "reason": "lane unavailable on this machine (Android emulator / iOS Simulator / physical phone lanes run in CI or the device lab); unmeasured routes are not admitted"
-  },
-  {
-   "route": "preview-display",
-   "fixture": "max-pixels.jpg",
-   "reason": "lane unavailable on this machine (Android emulator / iOS Simulator / physical phone lanes run in CI or the device lab); unmeasured routes are not admitted"
-  },
-  {
-   "route": "preview-display",
-   "fixture": "max-edge.png",
-   "reason": "lane unavailable on this machine (Android emulator / iOS Simulator / physical phone lanes run in CI or the device lab); unmeasured routes are not admitted"
-  },
-  {
-   "route": "crop-decode",
-   "fixture": "typical.jpg",
-   "reason": "lane unavailable on this machine (Android emulator / iOS Simulator / physical phone lanes run in CI or the device lab); unmeasured routes are not admitted"
-  },
-  {
-   "route": "crop-decode",
-   "fixture": "max-compressed.jpg",
-   "reason": "lane unavailable on this machine (Android emulator / iOS Simulator / physical phone lanes run in CI or the device lab); unmeasured routes are not admitted"
-  },
-  {
-   "route": "crop-decode",
-   "fixture": "max-pixels.jpg",
-   "reason": "lane unavailable on this machine (Android emulator / iOS Simulator / physical phone lanes run in CI or the device lab); unmeasured routes are not admitted"
-  },
-  {
-   "route": "crop-decode",
-   "fixture": "max-edge.png",
-   "reason": "lane unavailable on this machine (Android emulator / iOS Simulator / physical phone lanes run in CI or the device lab); unmeasured routes are not admitted"
-  },
-  {
-   "route": "frame-decode-1024",
-   "fixture": "typical.jpg",
-   "reason": "lane unavailable on this machine (Android emulator / iOS Simulator / physical phone lanes run in CI or the device lab); unmeasured routes are not admitted"
-  },
-  {
-   "route": "frame-decode-1024",
-   "fixture": "max-compressed.jpg",
-   "reason": "lane unavailable on this machine (Android emulator / iOS Simulator / physical phone lanes run in CI or the device lab); unmeasured routes are not admitted"
-  },
-  {
-   "route": "frame-decode-1024",
-   "fixture": "max-pixels.jpg",
-   "reason": "lane unavailable on this machine (Android emulator / iOS Simulator / physical phone lanes run in CI or the device lab); unmeasured routes are not admitted"
-  },
-  {
-   "route": "frame-decode-1024",
-   "fixture": "max-edge.png",
-   "reason": "lane unavailable on this machine (Android emulator / iOS Simulator / physical phone lanes run in CI or the device lab); unmeasured routes are not admitted"
-  }
- ]
+  "measured_at": "2026-10-24T11:11:20+00:00",
+  "max_compressed_actual_bytes": 65613080,
+  "machine": "eris",
+  "browser": "chromium",
+  "browser_version": "152.0.7977.82",
+  "classic_commit": "a42829bb0582b5a7a55ba6b1045a05861612b8a5",
+  "modules": {
+    "src/Next/photo/crop.mjs": "7bfcd39a78f125e1504d845e2c8f9cf196db96782a38e459bd1de1a23d4a4052",
+    "src/Next/photo/image-header.mjs": "98bb97323c6732e21b40394c5c5144949b6a28a58ee09ac8c7aad52ad05fa4da",
+    "src/Next/media.mjs": "2f0e09e25ec40db2caef02b15f6e10eda35b9112304a41ddaeec1bc83b69c40a"
+  },
+  "lease_run_id": "20261024T111010Z-69b94ff3",
+  "limits": {
+    "CROP_MAX_BYTES": 67108864,
+    "CROP_MAX_PIXELS": 125829120,
+    "CROP_MAX_EDGE": 20000
+  },
+  "rows": [
+    {
+      "route": "imagebitmap-full",
+      "fixture": "typical.jpg",
+      "representation": "compressed",
+      "peak_bytes": 5979430,
+      "ok": true,
+      "ms": 83,
+      "heap_delta_bytes": 3756
+    },
+    {
+      "route": "imagebitmap-full",
+      "fixture": "typical.jpg",
+      "representation": "decoded",
+      "peak_bytes": 48771072,
+      "ok": true,
+      "ms": 83,
+      "heap_delta_bytes": 3756
+    },
+    {
+      "route": "preview-decode",
+      "fixture": "typical.jpg",
+      "representation": "compressed",
+      "peak_bytes": 5979430,
+      "ok": true,
+      "ms": 83,
+      "heap_delta_bytes": 5998438
+    },
+    {
+      "route": "preview-decode",
+      "fixture": "typical.jpg",
+      "representation": "decoded",
+      "peak_bytes": 48771072,
+      "ok": true,
+      "ms": 83,
+      "heap_delta_bytes": 5998438
+    },
+    {
+      "route": "preview-display",
+      "fixture": "typical.jpg",
+      "representation": "compressed",
+      "peak_bytes": 5979430,
+      "ok": true,
+      "ms": 495,
+      "heap_delta_bytes": 5481532
+    },
+    {
+      "route": "preview-display",
+      "fixture": "typical.jpg",
+      "representation": "decoded",
+      "peak_bytes": 48771072,
+      "ok": true,
+      "ms": 495,
+      "heap_delta_bytes": 5481532
+    },
+    {
+      "route": "preview-display",
+      "fixture": "typical.jpg",
+      "representation": "reencoded",
+      "peak_bytes": 35262879,
+      "ok": true,
+      "ms": 495,
+      "heap_delta_bytes": 5481532
+    },
+    {
+      "route": "crop-decode",
+      "fixture": "typical.jpg",
+      "representation": "compressed",
+      "peak_bytes": 5979430,
+      "ok": true,
+      "ms": 653,
+      "heap_delta_bytes": 3124797
+    },
+    {
+      "route": "crop-decode",
+      "fixture": "typical.jpg",
+      "representation": "cropped",
+      "peak_bytes": 3095307,
+      "ok": true,
+      "ms": 653,
+      "heap_delta_bytes": 3124797
+    },
+    {
+      "route": "crop-decode",
+      "fixture": "typical.jpg",
+      "representation": "cropped_canvas",
+      "peak_bytes": 4194304,
+      "ok": true,
+      "ms": 653,
+      "heap_delta_bytes": 3124797
+    },
+    {
+      "route": "frame-decode-512",
+      "fixture": "typical.jpg",
+      "representation": "compressed",
+      "peak_bytes": 5979430,
+      "ok": true,
+      "ms": 83,
+      "heap_delta_bytes": 1065548
+    },
+    {
+      "route": "frame-decode-512",
+      "fixture": "typical.jpg",
+      "representation": "decoded",
+      "peak_bytes": 1048576,
+      "ok": true,
+      "ms": 83,
+      "heap_delta_bytes": 1065548
+    },
+    {
+      "route": "frame-decode-1024",
+      "fixture": "typical.jpg",
+      "representation": "compressed",
+      "peak_bytes": 5979430,
+      "ok": true,
+      "ms": 91,
+      "heap_delta_bytes": -10811655
+    },
+    {
+      "route": "frame-decode-1024",
+      "fixture": "typical.jpg",
+      "representation": "decoded",
+      "peak_bytes": 4194304,
+      "ok": true,
+      "ms": 91,
+      "heap_delta_bytes": -10811655
+    },
+    {
+      "route": "imagebitmap-full",
+      "fixture": "max-compressed.jpg",
+      "representation": "compressed",
+      "peak_bytes": 65613080,
+      "ok": true,
+      "ms": 910,
+      "heap_delta_bytes": -503283572
+    },
+    {
+      "route": "imagebitmap-full",
+      "fixture": "max-compressed.jpg",
+      "representation": "decoded",
+      "peak_bytes": 503284356,
+      "ok": true,
+      "ms": 910,
+      "heap_delta_bytes": -503283572
+    },
+    {
+      "route": "preview-decode",
+      "fixture": "max-compressed.jpg",
+      "representation": "compressed",
+      "peak_bytes": 65613080,
+      "ok": true,
+      "ms": 1336,
+      "heap_delta_bytes": 65615916
+    },
+    {
+      "route": "preview-decode",
+      "fixture": "max-compressed.jpg",
+      "representation": "decoded",
+      "peak_bytes": 67108864,
+      "ok": true,
+      "ms": 1336,
+      "heap_delta_bytes": 65615916
+    },
+    {
+      "route": "preview-display",
+      "fixture": "max-compressed.jpg",
+      "representation": "compressed",
+      "peak_bytes": 65613080,
+      "ok": true,
+      "ms": 2207,
+      "heap_delta_bytes": 352
+    },
+    {
+      "route": "preview-display",
+      "fixture": "max-compressed.jpg",
+      "representation": "decoded",
+      "peak_bytes": 67108864,
+      "ok": true,
+      "ms": 2207,
+      "heap_delta_bytes": 352
+    },
+    {
+      "route": "preview-display",
+      "fixture": "max-compressed.jpg",
+      "representation": "reencoded",
+      "peak_bytes": 44504300,
+      "ok": true,
+      "ms": 2207,
+      "heap_delta_bytes": 352
+    },
+    {
+      "route": "crop-decode",
+      "fixture": "max-compressed.jpg",
+      "representation": "compressed",
+      "peak_bytes": 65613080,
+      "ok": true,
+      "ms": 3263,
+      "heap_delta_bytes": 2319402
+    },
+    {
+      "route": "crop-decode",
+      "fixture": "max-compressed.jpg",
+      "representation": "cropped",
+      "peak_bytes": 2313506,
+      "ok": true,
+      "ms": 3263,
+      "heap_delta_bytes": 2319402
+    },
+    {
+      "route": "crop-decode",
+      "fixture": "max-compressed.jpg",
+      "representation": "cropped_canvas",
+      "peak_bytes": 4194304,
+      "ok": true,
+      "ms": 3263,
+      "heap_delta_bytes": 2319402
+    },
+    {
+      "route": "frame-decode-512",
+      "fixture": "max-compressed.jpg",
+      "representation": "compressed",
+      "peak_bytes": 65613080,
+      "ok": true,
+      "ms": 917,
+      "heap_delta_bytes": 1051008
+    },
+    {
+      "route": "frame-decode-512",
+      "fixture": "max-compressed.jpg",
+      "representation": "decoded",
+      "peak_bytes": 1048576,
+      "ok": true,
+      "ms": 917,
+      "heap_delta_bytes": 1051008
+    },
+    {
+      "route": "imagebitmap-full",
+      "fixture": "max-pixels.jpg",
+      "representation": "compressed",
+      "peak_bytes": 750192,
+      "ok": true,
+      "ms": 297,
+      "heap_delta_bytes": -67913545
+    },
+    {
+      "route": "imagebitmap-full",
+      "fixture": "max-pixels.jpg",
+      "representation": "decoded",
+      "peak_bytes": 503284356,
+      "ok": true,
+      "ms": 297,
+      "heap_delta_bytes": -67913545
+    },
+    {
+      "route": "preview-decode",
+      "fixture": "max-pixels.jpg",
+      "representation": "compressed",
+      "peak_bytes": 750192,
+      "ok": true,
+      "ms": 565,
+      "heap_delta_bytes": -318913
+    },
+    {
+      "route": "preview-decode",
+      "fixture": "max-pixels.jpg",
+      "representation": "decoded",
+      "peak_bytes": 67108864,
+      "ok": true,
+      "ms": 565,
+      "heap_delta_bytes": -318913
+    },
+    {
+      "route": "preview-display",
+      "fixture": "max-pixels.jpg",
+      "representation": "compressed",
+      "peak_bytes": 750192,
+      "ok": true,
+      "ms": 615,
+      "heap_delta_bytes": -36
+    },
+    {
+      "route": "preview-display",
+      "fixture": "max-pixels.jpg",
+      "representation": "decoded",
+      "peak_bytes": 67108864,
+      "ok": true,
+      "ms": 615,
+      "heap_delta_bytes": -36
+    },
+    {
+      "route": "preview-display",
+      "fixture": "max-pixels.jpg",
+      "representation": "reencoded",
+      "peak_bytes": 868195,
+      "ok": true,
+      "ms": 615,
+      "heap_delta_bytes": -36
+    },
+    {
+      "route": "crop-decode",
+      "fixture": "max-pixels.jpg",
+      "representation": "compressed",
+      "peak_bytes": 750192,
+      "ok": true,
+      "ms": 1228,
+      "heap_delta_bytes": 168982
+    },
+    {
+      "route": "crop-decode",
+      "fixture": "max-pixels.jpg",
+      "representation": "cropped",
+      "peak_bytes": 147418,
+      "ok": true,
+      "ms": 1228,
+      "heap_delta_bytes": 168982
+    },
+    {
+      "route": "crop-decode",
+      "fixture": "max-pixels.jpg",
+      "representation": "cropped_canvas",
+      "peak_bytes": 4194304,
+      "ok": true,
+      "ms": 1228,
+      "heap_delta_bytes": 168982
+    },
+    {
+      "route": "frame-decode-512",
+      "fixture": "max-pixels.jpg",
+      "representation": "compressed",
+      "peak_bytes": 750192,
+      "ok": true,
+      "ms": 241,
+      "heap_delta_bytes": 1050900
+    },
+    {
+      "route": "frame-decode-512",
+      "fixture": "max-pixels.jpg",
+      "representation": "decoded",
+      "peak_bytes": 1048576,
+      "ok": true,
+      "ms": 241,
+      "heap_delta_bytes": 1050900
+    },
+    {
+      "route": "imagebitmap-full",
+      "fixture": "max-edge.png",
+      "representation": "compressed",
+      "peak_bytes": 35497140,
+      "ok": true,
+      "ms": 445,
+      "heap_delta_bytes": -885016
+    },
+    {
+      "route": "imagebitmap-full",
+      "fixture": "max-edge.png",
+      "representation": "decoded",
+      "peak_bytes": 503200000,
+      "ok": true,
+      "ms": 445,
+      "heap_delta_bytes": -885016
+    },
+    {
+      "route": "preview-decode",
+      "fixture": "max-edge.png",
+      "representation": "compressed",
+      "peak_bytes": 35497140,
+      "ok": true,
+      "ms": 1997,
+      "heap_delta_bytes": 34427568
+    },
+    {
+      "route": "preview-decode",
+      "fixture": "max-edge.png",
+      "representation": "decoded",
+      "peak_bytes": 21102592,
+      "ok": true,
+      "ms": 1997,
+      "heap_delta_bytes": 34427568
+    },
+    {
+      "route": "crop-decode",
+      "fixture": "max-edge.png",
+      "representation": "compressed",
+      "peak_bytes": 35497140,
+      "ok": true,
+      "ms": 1033,
+      "heap_delta_bytes": 369306
+    },
+    {
+      "route": "crop-decode",
+      "fixture": "max-edge.png",
+      "representation": "cropped",
+      "peak_bytes": 363606,
+      "ok": true,
+      "ms": 1033,
+      "heap_delta_bytes": 369306
+    },
+    {
+      "route": "crop-decode",
+      "fixture": "max-edge.png",
+      "representation": "cropped_canvas",
+      "peak_bytes": 4194304,
+      "ok": true,
+      "ms": 1033,
+      "heap_delta_bytes": 369306
+    },
+    {
+      "route": "frame-decode-512",
+      "fixture": "max-edge.png",
+      "representation": "compressed",
+      "peak_bytes": 35497140,
+      "ok": true,
+      "ms": 401,
+      "heap_delta_bytes": 1057032
+    },
+    {
+      "route": "frame-decode-512",
+      "fixture": "max-edge.png",
+      "representation": "decoded",
+      "peak_bytes": 1048576,
+      "ok": true,
+      "ms": 401,
+      "heap_delta_bytes": 1057032
+    }
+  ],
+  "not_measured": [
+    {
+      "route": "imagebitmap-full",
+      "fixture": "typical.jpg",
+      "reason": "lane unavailable on this machine (Android emulator / iOS Simulator / physical phone lanes run in CI or the device lab); unmeasured routes are not admitted"
+    },
+    {
+      "route": "imagebitmap-full",
+      "fixture": "max-compressed.jpg",
+      "reason": "lane unavailable on this machine (Android emulator / iOS Simulator / physical phone lanes run in CI or the device lab); unmeasured routes are not admitted"
+    },
+    {
+      "route": "imagebitmap-full",
+      "fixture": "max-pixels.jpg",
+      "reason": "lane unavailable on this machine (Android emulator / iOS Simulator / physical phone lanes run in CI or the device lab); unmeasured routes are not admitted"
+    },
+    {
+      "route": "imagebitmap-full",
+      "fixture": "max-edge.png",
+      "reason": "lane unavailable on this machine (Android emulator / iOS Simulator / physical phone lanes run in CI or the device lab); unmeasured routes are not admitted"
+    },
+    {
+      "route": "preview-decode",
+      "fixture": "typical.jpg",
+      "reason": "lane unavailable on this machine (Android emulator / iOS Simulator / physical phone lanes run in CI or the device lab); unmeasured routes are not admitted"
+    },
+    {
+      "route": "preview-decode",
+      "fixture": "max-compressed.jpg",
+      "reason": "lane unavailable on this machine (Android emulator / iOS Simulator / physical phone lanes run in CI or the device lab); unmeasured routes are not admitted"
+    },
+    {
+      "route": "preview-decode",
+      "fixture": "max-pixels.jpg",
+      "reason": "lane unavailable on this machine (Android emulator / iOS Simulator / physical phone lanes run in CI or the device lab); unmeasured routes are not admitted"
+    },
+    {
+      "route": "preview-decode",
+      "fixture": "max-edge.png",
+      "reason": "lane unavailable on this machine (Android emulator / iOS Simulator / physical phone lanes run in CI or the device lab); unmeasured routes are not admitted"
+    },
+    {
+      "route": "preview-display",
+      "fixture": "typical.jpg",
+      "reason": "lane unavailable on this machine (Android emulator / iOS Simulator / physical phone lanes run in CI or the device lab); unmeasured routes are not admitted"
+    },
+    {
+      "route": "preview-display",
+      "fixture": "max-compressed.jpg",
+      "reason": "lane unavailable on this machine (Android emulator / iOS Simulator / physical phone lanes run in CI or the device lab); unmeasured routes are not admitted"
+    },
+    {
+      "route": "preview-display",
+      "fixture": "max-pixels.jpg",
+      "reason": "lane unavailable on this machine (Android emulator / iOS Simulator / physical phone lanes run in CI or the device lab); unmeasured routes are not admitted"
+    },
+    {
+      "route": "preview-display",
+      "fixture": "max-edge.png",
+      "reason": "lane unavailable on this machine (Android emulator / iOS Simulator / physical phone lanes run in CI or the device lab); unmeasured routes are not admitted"
+    },
+    {
+      "route": "crop-decode",
+      "fixture": "typical.jpg",
+      "reason": "lane unavailable on this machine (Android emulator / iOS Simulator / physical phone lanes run in CI or the device lab); unmeasured routes are not admitted"
+    },
+    {
+      "route": "crop-decode",
+      "fixture": "max-compressed.jpg",
+      "reason": "lane unavailable on this machine (Android emulator / iOS Simulator / physical phone lanes run in CI or the device lab); unmeasured routes are not admitted"
+    },
+    {
+      "route": "crop-decode",
+      "fixture": "max-pixels.jpg",
+      "reason": "lane unavailable on this machine (Android emulator / iOS Simulator / physical phone lanes run in CI or the device lab); unmeasured routes are not admitted"
+    },
+    {
+      "route": "crop-decode",
+      "fixture": "max-edge.png",
+      "reason": "lane unavailable on this machine (Android emulator / iOS Simulator / physical phone lanes run in CI or the device lab); unmeasured routes are not admitted"
+    },
+    {
+      "route": "frame-decode-1024",
+      "fixture": "typical.jpg",
+      "reason": "lane unavailable on this machine (Android emulator / iOS Simulator / physical phone lanes run in CI or the device lab); unmeasured routes are not admitted"
+    },
+    {
+      "route": "frame-decode-1024",
+      "fixture": "max-compressed.jpg",
+      "reason": "lane unavailable on this machine (Android emulator / iOS Simulator / physical phone lanes run in CI or the device lab); unmeasured routes are not admitted"
+    },
+    {
+      "route": "frame-decode-1024",
+      "fixture": "max-pixels.jpg",
+      "reason": "lane unavailable on this machine (Android emulator / iOS Simulator / physical phone lanes run in CI or the device lab); unmeasured routes are not admitted"
+    },
+    {
+      "route": "frame-decode-1024",
+      "fixture": "max-edge.png",
+      "reason": "lane unavailable on this machine (Android emulator / iOS Simulator / physical phone lanes run in CI or the device lab); unmeasured routes are not admitted"
+    }
+  ]
 }

@@ -182,5 +182,5 @@ jobs:
         with:
           python-version: '3.12'
       - name: One row per lane; a failed or missing lane fails this job
-        shell: bash  # bash -eo pipefail: without it `| tee` hides the summary's exit status
+        shell: bash # bash -eo pipefail: without it `| tee` hides the summary's exit status
         run: python tools/device-lab/hosted.py summary lanes --expect "$LANES" | tee -a "$GITHUB_STEP_SUMMARY"

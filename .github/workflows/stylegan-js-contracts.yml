@@ -5,7 +5,14 @@ name: stylegan-js-contracts
 on:
   push:
     branches: [main]
-    paths: ['packages/stylegan-js/**', 'package.json', 'package-lock.json', 'tsconfig*.json', '.github/workflows/stylegan-js-contracts.yml']
+    paths:
+      [
+        'packages/stylegan-js/**',
+        'package.json',
+        'package-lock.json',
+        'tsconfig*.json',
+        '.github/workflows/stylegan-js-contracts.yml',
+      ]
   workflow_dispatch:
 concurrency:
   group: stylegan-js-contracts
@@ -21,7 +28,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - run: npm ci --no-audit --no-fund  # one lock for the workspace, at the root (fm-fy2.4)
+      - run: npm ci --no-audit --no-fund # one lock for the workspace, at the root (fm-fy2.4)
         working-directory: .
       - run: npm run typecheck
       - run: npm test

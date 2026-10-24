@@ -52,11 +52,22 @@ export interface FaceTileProps {
 }
 
 const state = (item: Input, face: Face | undefined, preview: PublicPreview | undefined) =>
-  item.mode === 'photo' ? 'photo' : item.mode === 'project' ? 'project' : face ? 'filled' : preview ? 'preview' : 'empty';
+  item.mode === 'photo'
+    ? 'photo'
+    : item.mode === 'project'
+      ? 'project'
+      : face
+        ? 'filled'
+        : preview
+          ? 'preview'
+          : 'empty';
 
 export function FaceTile(p: FaceTileProps) {
   const { item, label, face, preview, active, queued, preparing } = p;
-  const canGenerate = (item.mode === 'project' && !!face) || (item.mode === 'photo' && !!item.file) || ((item.mode === 'text' || item.mode === 'seed') && item.value.trim() !== '');
+  const canGenerate =
+    (item.mode === 'project' && !!face) ||
+    (item.mode === 'photo' && !!item.file) ||
+    ((item.mode === 'text' || item.mode === 'seed') && item.value.trim() !== '');
   const drag = (leaving: boolean) => (e: DragEvent<HTMLElement>) => dragPhoto(e, false, leaving);
   const determinate = active && p.fraction > 0;
   return (
@@ -66,57 +77,196 @@ export function FaceTile(p: FaceTileProps) {
       data-next-state={state(item, face, preview)}
       onDragOver={drag(false)}
       onDragLeave={drag(true)}
-      onDrop={(e) => { dragPhoto(e, false, true); const files = photoFiles(e); if (files.length > 1) p.onPhotos(files); else p.onPhoto(files); }}
+      onDrop={(e) => {
+        dragPhoto(e, false, true);
+        const files = photoFiles(e);
+        if (files.length > 1) p.onPhotos(files);
+        else p.onPhoto(files);
+      }}
     >
-      <input id={`photo-${item.id}`} type="file" hidden accept="image/*,video/mp4" aria-label="Choose photo" onChange={(e) => p.onPhoto(photoFiles(e))} />
+      <input
+        id={`photo-${item.id}`}
+        type="file"
+        hidden
+        accept="image/*,video/mp4"
+        aria-label="Choose photo"
+        onChange={(e) => p.onPhoto(photoFiles(e))}
+      />
       <div className="next-face-image">
-        {face && face.raw && !p.comparing
-          ? <canvas ref={(el) => p.drawFace?.(el, item.id)} width={1024} height={1024} className="next-face-img" aria-label={`Generated face from ${label}`} role="img" />
-          : face
-            ? <img onLoad={() => { if (!p.comparing) p.displayMilestone?.(item.mode === 'project' ? 'restored-visible' : 'generated-visible'); }} src={p.comparing ? p.sourcePhotoUrl : face.url} alt={`Generated face from ${label}`} width={1024} height={1024} className="next-face-img" />
-            : preview
-              ? <><img onLoad={() => p.displayMilestone?.('preview')} src={preview.url} alt={`Preview of ${label}`} width={1024} height={1024} className="next-face-img" data-public-preview="true" /><span className="next-sr">Cached preview</span></>
-              // The empty tile is a photo drop target, never a bare plus: the plus belongs to the connectors.
-              : <button type="button" className="next-face-empty" tabIndex={-1} aria-label="Choose photo" onClick={() => { p.onWarmPhotoTools?.(); openPhotoPicker(item.id); }}><PhotoIcon /><span>Drop a photo, or tap to choose</span></button>}
+        {face && face.raw && !p.comparing ? (
+          <canvas
+            ref={(el) => p.drawFace?.(el, item.id)}
+            width={1024}
+            height={1024}
+            className="next-face-img"
+            aria-label={`Generated face from ${label}`}
+            role="img"
+          />
+        ) : face ? (
+          <img
+            onLoad={() => {
+              if (!p.comparing)
+                p.displayMilestone?.(
+                  item.mode === 'project' ? 'restored-visible' : 'generated-visible',
+                );
+            }}
+            src={p.comparing ? p.sourcePhotoUrl : face.url}
+            alt={`Generated face from ${label}`}
+            width={1024}
+            height={1024}
+            className="next-face-img"
+          />
+        ) : preview ? (
+          <>
+            <img
+              onLoad={() => p.displayMilestone?.('preview')}
+              src={preview.url}
+              alt={`Preview of ${label}`}
+              width={1024}
+              height={1024}
+              className="next-face-img"
+              data-public-preview="true"
+            />
+            <span className="next-sr">Cached preview</span>
+          </>
+        ) : (
+          // The empty tile is a photo drop target, never a bare plus: the plus belongs to the connectors.
+          <button
+            type="button"
+            className="next-face-empty"
+            tabIndex={-1}
+            aria-label="Choose photo"
+            onClick={() => {
+              p.onWarmPhotoTools?.();
+              openPhotoPicker(item.id);
+            }}
+          >
+            <PhotoIcon />
+            <span>Drop a photo, or tap to choose</span>
+          </button>
+        )}
         {(active || preparing) && (
-          <div className="next-face-progress" role="progressbar" aria-label={`${label} progress`} {...(determinate ? { 'aria-valuenow': p.fraction * 100 } : {})}>
-            <div className={`next-face-progress-fill${determinate ? ' next-face-progress-determinate' : ''}`} {...(determinate ? { style: { transform: `scaleX(${p.fraction})` } } : {})} />
+          <div
+            className="next-face-progress"
+            role="progressbar"
+            aria-label={`${label} progress`}
+            {...(determinate ? { 'aria-valuenow': p.fraction * 100 } : {})}
+          >
+            <div
+              className={`next-face-progress-fill${determinate ? ' next-face-progress-determinate' : ''}`}
+              {...(determinate ? { style: { transform: `scaleX(${p.fraction})` } } : {})}
+            />
           </div>
         )}
         {/* Remove sits on the image it closes, visible at rest on touch and desktop (defect 1's repair is face controls'). */}
         {p.removable && (
           <Tooltip title={`Remove ${label}`}>
-            <IconButton className="next-face-close" aria-label={`Remove ${label}`} size="small" onClick={p.onRemove}><CloseIcon /></IconButton>
+            <IconButton
+              className="next-face-close"
+              aria-label={`Remove ${label}`}
+              size="small"
+              onClick={p.onRemove}
+            >
+              <CloseIcon />
+            </IconButton>
           </Tooltip>
         )}
       </div>
       {(active || queued || preparing) && (
         <div className="next-tile-status" role="status">
           <span>{active ? p.status : preparing ? 'Preparing photo…' : 'Queued'}</span>
-          <Button color="inherit" size="small" onClick={p.onCancel}>Cancel</Button>
+          <Button color="inherit" size="small" onClick={p.onCancel}>
+            Cancel
+          </Button>
         </div>
       )}
       <div className="next-input-row">
-        <FaceField item={item} label={label} disabled={false} onEdit={p.onEdit} onMode={p.onMode} onBrowse={p.onBrowse} onPick={() => openPhotoPicker(item.id)} {...(p.onWarmPhotoTools ? { onWarmPhotoTools: p.onWarmPhotoTools } : {})} />
-        <FancyButton variant="contained" size="small" className="next-face-generate" aria-label={`Generate ${label}`} disabled={!canGenerate || active || preparing || queued} onClick={p.onRun}>Generate</FancyButton>
+        <FaceField
+          item={item}
+          label={label}
+          disabled={false}
+          onEdit={p.onEdit}
+          onMode={p.onMode}
+          onBrowse={p.onBrowse}
+          onPick={() => openPhotoPicker(item.id)}
+          {...(p.onWarmPhotoTools ? { onWarmPhotoTools: p.onWarmPhotoTools } : {})}
+        />
+        <FancyButton
+          variant="contained"
+          size="small"
+          className="next-face-generate"
+          aria-label={`Generate ${label}`}
+          disabled={!canGenerate || active || preparing || queued}
+          onClick={p.onRun}
+        >
+          Generate
+        </FancyButton>
       </div>
       {/* A state mirror for tooling that reads the per-face source as a select; never focusable. */}
-      <select className="next-sr" value={item.mode} tabIndex={-1} disabled aria-label="Face source" onChange={() => {}}>
-        {[...(item.mode === 'project' ? [['project', 'Restored face']] : []), ['text', 'Name or words'], ['seed', 'Seed'], ['photo', 'Photo']].map(([key, text]) => <option key={key} value={key}>{text}</option>)}
+      <select
+        className="next-sr"
+        value={item.mode}
+        tabIndex={-1}
+        disabled
+        aria-label="Face source"
+        onChange={() => {}}
+      >
+        {[
+          ...(item.mode === 'project' ? [['project', 'Restored face']] : []),
+          ['text', 'Name or words'],
+          ['seed', 'Seed'],
+          ['photo', 'Photo'],
+        ].map(([key, text]) => (
+          <option key={key} value={key}>
+            {text}
+          </option>
+        ))}
       </select>
       {item.mode === 'photo' && (
         <div className="next-file">
           <span>{item.value}</span>
-          <Button color="inherit" variant="text" size="small" disabled={active || !item.file} onClick={p.onRequestCrop}>Crop photo</Button>
+          <Button
+            color="inherit"
+            variant="text"
+            size="small"
+            disabled={active || !item.file}
+            onClick={p.onRequestCrop}
+          >
+            Crop photo
+          </Button>
         </div>
       )}
       {face && p.sourcePhotoUrl !== '' && (
-        <button type="button" className="next-compare"
-          onPointerDown={() => p.onCompare(true)} onPointerUp={() => p.onCompare(false)} onPointerLeave={() => p.onCompare(false)} onPointerCancel={() => p.onCompare(false)}
-          onBlur={() => p.onCompare(false)} onKeyDown={(e) => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); p.onCompare(true); } }} onKeyUp={() => p.onCompare(false)}>Hold to compare</button>
+        <button
+          type="button"
+          className="next-compare"
+          onPointerDown={() => p.onCompare(true)}
+          onPointerUp={() => p.onCompare(false)}
+          onPointerLeave={() => p.onCompare(false)}
+          onPointerCancel={() => p.onCompare(false)}
+          onBlur={() => p.onCompare(false)}
+          onKeyDown={(e) => {
+            if (e.key === ' ' || e.key === 'Enter') {
+              e.preventDefault();
+              p.onCompare(true);
+            }
+          }}
+          onKeyUp={() => p.onCompare(false)}
+        >
+          Hold to compare
+        </button>
       )}
       <div className="next-actions next-face-actions">
-        {face && <><Button color="inherit" variant="text" onClick={p.onShare}>Share image</Button><Button color="inherit" variant="text" onClick={p.onSave}>Save image</Button></>}
+        {face && (
+          <>
+            <Button color="inherit" variant="text" onClick={p.onShare}>
+              Share image
+            </Button>
+            <Button color="inherit" variant="text" onClick={p.onSave}>
+              Save image
+            </Button>
+          </>
+        )}
       </div>
     </section>
   );

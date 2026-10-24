@@ -31,7 +31,11 @@ export function judgeAdapters(sources, exists = existsSync) {
   for (const path of findAdapters(sources)) {
     const match = sources.get(path).match(ADAPTER_TEST_MARKER);
     if (!match) {
-      violations.push({ path, rule: 'adapter-test-missing', detail: 'declares `// adapter-test: <file>` next to the closure import' });
+      violations.push({
+        path,
+        rule: 'adapter-test-missing',
+        detail: 'declares `// adapter-test: <file>` next to the closure import',
+      });
       continue;
     }
     if (!exists(match[1])) {
@@ -48,15 +52,25 @@ export function judgeRenames(nameStatusPairs) {
   for (const pair of nameStatusPairs) {
     const [status, oldPath, newPath] = pair;
     if (status === 'R100' && oldPath.endsWith('.mjs') && newPath && /\.tsx?$/.test(newPath)) {
-      violations.push({ rule: 'rename-only-interop', detail: `${oldPath} -> ${newPath} changed only the extension` });
+      violations.push({
+        rule: 'rename-only-interop',
+        detail: `${oldPath} -> ${newPath} changed only the extension`,
+      });
     }
   }
   return violations;
 }
 
 function gitNameStatus(base, root) {
-  const out = execFileSync('git', ['-C', root, 'diff', '--name-status', '-M100%', `${base}..HEAD`], { encoding: 'utf8' });
-  return out.split('\n').filter(Boolean).map((line) => line.split('\t'));
+  const out = execFileSync(
+    'git',
+    ['-C', root, 'diff', '--name-status', '-M100%', `${base}..HEAD`],
+    { encoding: 'utf8' },
+  );
+  return out
+    .split('\n')
+    .filter(Boolean)
+    .map((line) => line.split('\t'));
 }
 
 function main() {
@@ -74,7 +88,8 @@ function main() {
         for (const entry of readdirSync(dir, { withFileTypes: true })) {
           const p = `${dir}/${entry.name}`;
           if (entry.isDirectory()) walk(p);
-          else if (entry.name.endsWith('.ts') || entry.name.endsWith('.tsx')) sources.set(p, readFileSync(p, 'utf8'));
+          else if (entry.name.endsWith('.ts') || entry.name.endsWith('.tsx'))
+            sources.set(p, readFileSync(p, 'utf8'));
         }
       };
       walk(src);

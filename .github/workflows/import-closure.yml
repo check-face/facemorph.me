@@ -6,7 +6,15 @@ name: import-closure
 on:
   push:
     branches: [main]
-    paths: ['apps/web/**', 'import/**', 'scripts/import/**', 'scripts/runtime/**', 'scripts/inventory/**', '.github/workflows/import-closure.yml']
+    paths:
+      [
+        'apps/web/**',
+        'import/**',
+        'scripts/import/**',
+        'scripts/runtime/**',
+        'scripts/inventory/**',
+        '.github/workflows/import-closure.yml',
+      ]
   workflow_dispatch:
 concurrency:
   group: import-closure

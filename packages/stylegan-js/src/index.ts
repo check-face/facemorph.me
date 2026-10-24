@@ -6,4 +6,8 @@ export * from './contracts/worker-messages.ts';
 export * from './contracts/recovery-metadata.ts';
 export * from './contracts/crop-policy.ts';
 export * from './contracts/numerics.ts';
-export { canonicalJson, CanonicalJsonError, type CanonicalValue } from './contracts/canonical-json.ts';
+export {
+  canonicalJson,
+  CanonicalJsonError,
+  type CanonicalValue,
+} from './contracts/canonical-json.ts';

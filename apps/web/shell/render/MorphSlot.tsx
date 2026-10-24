@@ -10,9 +10,23 @@ import { FancyButton } from './FancyButton.tsx';
 import { ProgressBar } from './progress.tsx';
 
 // Smooth figure eight, pinched, is the default shape (operator, 22 September) and leads the list.
-export const SHAPES = [['full-smooth-figure8', 'Smooth figure eight'], ['full-smooth-ellipse', 'Smooth ellipse'], ['pairwise-figure8', 'Figure eight'], ['pairwise-ellipse', 'Ellipse'], ['linear', 'Classic linear']] as const;
-export const LENGTHS = [[8, 'Length: short'], [16, 'Length: standard'], [32, 'Length: long']] as const;
-export const PROVIDERS = [['auto', 'Automatic processing'], ['cpu', 'CPU'], ['webgpu', 'WebGPU']] as const;
+export const SHAPES = [
+  ['full-smooth-figure8', 'Smooth figure eight'],
+  ['full-smooth-ellipse', 'Smooth ellipse'],
+  ['pairwise-figure8', 'Figure eight'],
+  ['pairwise-ellipse', 'Ellipse'],
+  ['linear', 'Classic linear'],
+] as const;
+export const LENGTHS = [
+  [8, 'Length: short'],
+  [16, 'Length: standard'],
+  [32, 'Length: long'],
+] as const;
+export const PROVIDERS = [
+  ['auto', 'Automatic processing'],
+  ['cpu', 'CPU'],
+  ['webgpu', 'WebGPU'],
+] as const;
 export type Shape = (typeof SHAPES)[number][0];
 export type Provider = (typeof PROVIDERS)[number][0];
 
@@ -61,27 +75,71 @@ function Overflow(p: MorphSlotProps) {
   return (
     <div className="next-overflow">
       <div className="next-shape-controls">
-        <label className="next-overflow-field"><span>Shape</span>
-          <select aria-label="Morph shape" value={p.kind} disabled={p.busy} onChange={(e) => p.onSettings({ kind: e.target.value as Shape })}>
-            {SHAPES.map(([key, text]) => <option key={key} value={key}>{text}</option>)}
+        <label className="next-overflow-field">
+          <span>Shape</span>
+          <select
+            aria-label="Morph shape"
+            value={p.kind}
+            disabled={p.busy}
+            onChange={(e) => p.onSettings({ kind: e.target.value as Shape })}
+          >
+            {SHAPES.map(([key, text]) => (
+              <option key={key} value={key}>
+                {text}
+              </option>
+            ))}
           </select>
         </label>
-        <label className="next-overflow-field"><span>Length</span>
-          <select value={String(p.frames)} disabled={p.busy} aria-label="Morph length" onChange={(e) => p.onSettings({ frames: Number(e.target.value) })}>
-            {LENGTHS.map(([value, label]) => <option key={value} value={String(value)}>{`${label} · ${value} frames per segment`}</option>)}
+        <label className="next-overflow-field">
+          <span>Length</span>
+          <select
+            value={String(p.frames)}
+            disabled={p.busy}
+            aria-label="Morph length"
+            onChange={(e) => p.onSettings({ frames: Number(e.target.value) })}
+          >
+            {LENGTHS.map(([value, label]) => (
+              <option
+                key={value}
+                value={String(value)}
+              >{`${label} · ${value} frames per segment`}</option>
+            ))}
           </select>
         </label>
         <span className="next-frame-count">{`${p.plannedFrames ?? p.faces * p.frames} frames total`}</span>
       </div>
-      <FormControlLabel control={<Checkbox checked={p.pinch} disabled={p.busy} slotProps={{ input: { 'aria-label': 'Pinch centre' } }} onChange={(e) => p.onSettings({ pinch: e.target.checked })} />} label="Pinch centre" />
+      <FormControlLabel
+        control={
+          <Checkbox
+            checked={p.pinch}
+            disabled={p.busy}
+            slotProps={{ input: { 'aria-label': 'Pinch centre' } }}
+            onChange={(e) => p.onSettings({ pinch: e.target.checked })}
+          />
+        }
+        label="Pinch centre"
+      />
       <details className="next-advanced">
         <summary>Advanced</summary>
-        <label className="next-overflow-field"><span>Processing mode</span>
-          <select value={p.provider} disabled={p.busy} aria-label="Processing mode" onChange={(e) => p.onSettings({ provider: e.target.value as Provider })}>
-            {PROVIDERS.map(([key, text]) => <option key={key} value={key}>{text}</option>)}
+        <label className="next-overflow-field">
+          <span>Processing mode</span>
+          <select
+            value={p.provider}
+            disabled={p.busy}
+            aria-label="Processing mode"
+            onChange={(e) => p.onSettings({ provider: e.target.value as Provider })}
+          >
+            {PROVIDERS.map(([key, text]) => (
+              <option key={key} value={key}>
+                {text}
+              </option>
+            ))}
           </select>
         </label>
-        <p>Leave processing on automatic unless you are comparing routes. Forced routes still need to pass this device’s checks.</p>
+        <p>
+          Leave processing on automatic unless you are comparing routes. Forced routes still need to
+          pass this device’s checks.
+        </p>
       </details>
     </div>
   );
@@ -92,25 +150,80 @@ export function MorphSlot(p: MorphSlotProps) {
   const cpu = p.route === 'cpu' || p.route === 'native-cpu';
   return (
     <div className="next-morph-slot">
-      <FancyButton variant="contained" size="large" className="next-primary-action" data-next-primary="true" type="button" disabled={!canMorph} onClick={() => p.onRun('morph')}>
+      <FancyButton
+        variant="contained"
+        size="large"
+        className="next-primary-action"
+        data-next-primary="true"
+        type="button"
+        disabled={!canMorph}
+        onClick={() => p.onRun('morph')}
+      >
         {p.pendingMorph ? 'Morph queued' : 'Create morph'}
       </FancyButton>
       <div className="next-actions next-generate">
-        {p.testingInvited && <Button color="inherit" variant="outlined" disabled={p.busy} onClick={() => p.onRun('faces')}>Generate faces</Button>}
-        <Button color="inherit" variant="text" aria-expanded={p.overflow} aria-controls="next-overflow" onClick={() => p.onOverflow(!p.overflow)}>More options</Button>
-        <Button color="inherit" variant="text" disabled={!canMorph || p.faces >= 64} onClick={p.onAddFace}>Add face</Button>
-        {p.busy && <Button color="inherit" variant="text" disabled={p.stage === 'cancelling'} onClick={p.onCancel}>Cancel</Button>}
+        {p.testingInvited && (
+          <Button
+            color="inherit"
+            variant="outlined"
+            disabled={p.busy}
+            onClick={() => p.onRun('faces')}
+          >
+            Generate faces
+          </Button>
+        )}
+        <Button
+          color="inherit"
+          variant="text"
+          aria-expanded={p.overflow}
+          aria-controls="next-overflow"
+          onClick={() => p.onOverflow(!p.overflow)}
+        >
+          More options
+        </Button>
+        <Button
+          color="inherit"
+          variant="text"
+          disabled={!canMorph || p.faces >= 64}
+          onClick={p.onAddFace}
+        >
+          Add face
+        </Button>
+        {p.busy && (
+          <Button
+            color="inherit"
+            variant="text"
+            disabled={p.stage === 'cancelling'}
+            onClick={p.onCancel}
+          >
+            Cancel
+          </Button>
+        )}
       </div>
-      {!canMorph && <p className="next-morph-reason" role="note">Add a second face to create a morph — a single face still generates.</p>}
+      {!canMorph && (
+        <p className="next-morph-reason" role="note">
+          Add a second face to create a morph — a single face still generates.
+        </p>
+      )}
       {p.route !== '' && (
         <p className="next-route-caption" data-next-route={p.route}>
           {`Ready · ${cpu ? 'this device’s CPU' : `this device’s GPU (${p.route})`}.${p.rejected ? ` The ${p.rejected} route failed its device check on this device.` : ''}`}
         </p>
       )}
-      {p.overflow && <div id="next-overflow"><Overflow {...p} /></div>}
+      {p.overflow && (
+        <div id="next-overflow">
+          <Overflow {...p} />
+        </div>
+      )}
       {/* Status, progress and the measured time remaining live next to the action they describe. */}
       <div className="next-status" role="status" aria-live="polite">
-        {p.busy && <progress className="next-sr" max={1} {...(p.fraction > 0 ? { value: p.fraction } : {})} />}
+        {p.busy && (
+          <progress
+            className="next-sr"
+            max={1}
+            {...(p.fraction > 0 ? { value: p.fraction } : {})}
+          />
+        )}
         {p.busy && !p.faceActive && <ProgressBar fraction={p.fraction > 0 ? p.fraction : -1} />}
         <span>{p.status}</span>
         {!p.busy && p.preparing !== '' && <span className="next-preparing">{p.preparing}</span>}
@@ -121,7 +234,9 @@ export function MorphSlot(p: MorphSlotProps) {
       {p.warning && (
         <div className="next-slow-warning box" role="note">
           <p>{p.warning}</p>
-          <Button color="inherit" variant="text" onClick={p.onDismissWarning}>Dismiss</Button>
+          <Button color="inherit" variant="text" onClick={p.onDismissWarning}>
+            Dismiss
+          </Button>
         </div>
       )}
     </div>

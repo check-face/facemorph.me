@@ -3,7 +3,5 @@
   "compilerOptions": {
     "allowImportingTsExtensions": true
   },
-  "include": [
-    "test"
-  ]
+  "include": ["test"]
 }

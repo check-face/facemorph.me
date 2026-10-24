@@ -7,7 +7,17 @@
 //   node scripts/inventory/licence-check.mjs [--classic <dir>]
 // One JSON line per finding and per unresolved right, then a summary; exit 1 on any finding.
 import { fileURLToPath } from 'node:url';
-import { ALLOWLIST, BUILD_INPUTS, LICENCES, classicDir, git, line, matches, options, readJson } from './lib.mjs';
+import {
+  ALLOWLIST,
+  BUILD_INPUTS,
+  LICENCES,
+  classicDir,
+  git,
+  line,
+  matches,
+  options,
+  readJson,
+} from './lib.mjs';
 
 export function coverage(rows, files, assets) {
   const findings = [];
@@ -25,7 +35,8 @@ export function coverage(rows, files, assets) {
     if (!['permitted', 'unresolved'].includes(r.redistribution)) missing.push('redistribution');
     if (r.redistribution === 'unresolved' && !r.unresolved) missing.push('unresolved');
     if (missing.length) findings.push({ row: r.id, problem: `missing ${missing.join(', ')}` });
-    if (!used.has(r.id)) findings.push({ row: r.id, problem: 'matches no allowlist file or runtime asset' });
+    if (!used.has(r.id))
+      findings.push({ row: r.id, problem: 'matches no allowlist file or runtime asset' });
   }
   return findings;
 }
@@ -41,12 +52,27 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const runtimePaths = new Set(assets.map((a) => a.path));
   for (const r of rows.filter((r) => r.notice_file)) {
     const inRuntime = runtimePaths.has(r.notice_file);
-    const inClassic = !inRuntime && git(dir, ['ls-tree', '--name-only', commit, '--', r.notice_file]).trim() === r.notice_file;
-    if (!inRuntime && !inClassic) findings.push({ row: r.id, problem: `notice file ${r.notice_file} is neither in classic at the frozen commit nor a runtime asset` });
+    const inClassic =
+      !inRuntime &&
+      git(dir, ['ls-tree', '--name-only', commit, '--', r.notice_file]).trim() === r.notice_file;
+    if (!inRuntime && !inClassic)
+      findings.push({
+        row: r.id,
+        problem: `notice file ${r.notice_file} is neither in classic at the frozen commit nor a runtime asset`,
+      });
   }
   for (const f of findings) line(f);
   const unresolved = rows.filter((r) => r.redistribution === 'unresolved');
-  for (const r of unresolved) line({ unresolved_rights: r.id, subject: r.subject, question: r.unresolved });
-  line({ summary: { rows: rows.length, allowlist_files: allowlist.files.length, runtime_assets: assets.length, findings: findings.length, unresolved_rights: unresolved.length } });
+  for (const r of unresolved)
+    line({ unresolved_rights: r.id, subject: r.subject, question: r.unresolved });
+  line({
+    summary: {
+      rows: rows.length,
+      allowlist_files: allowlist.files.length,
+      runtime_assets: assets.length,
+      findings: findings.length,
+      unresolved_rights: unresolved.length,
+    },
+  });
   process.exit(findings.length ? 1 : 0);
 }

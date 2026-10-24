@@ -18,12 +18,14 @@ export function violations(issues) {
   for (const i of byId.values()) {
     if (i.status !== 'closed') continue;
     for (const line of (i.acceptance_criteria ?? '').split('\n')) {
-      if (/^\s*- \[ \]/.test(line)) out.push({ bead: i.id, rule: 'unchecked-acceptance', item: line.trim().slice(6, 120) });
+      if (/^\s*- \[ \]/.test(line))
+        out.push({ bead: i.id, rule: 'unchecked-acceptance', item: line.trim().slice(6, 120) });
     }
     for (const d of i.dependencies ?? []) {
       if (!BLOCKING.has(d.type)) continue;
       const dep = byId.get(d.depends_on_id);
-      if (dep && dep.status !== 'closed' && !reopened(dep)) out.push({ bead: i.id, rule: 'closed-while-blocked', dep: dep.id, depStatus: dep.status });
+      if (dep && dep.status !== 'closed' && !reopened(dep))
+        out.push({ bead: i.id, rule: 'closed-while-blocked', dep: dep.id, depStatus: dep.status });
     }
   }
   return out;
@@ -31,9 +33,18 @@ export function violations(issues) {
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const path = process.argv[2] ?? '.beads/issues.jsonl';
-  const issues = readFileSync(path, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l));
+  const issues = readFileSync(path, 'utf8')
+    .split('\n')
+    .filter(Boolean)
+    .map((l) => JSON.parse(l));
   const v = violations(issues);
   for (const x of v) console.log(JSON.stringify(x));
-  console.log(JSON.stringify({ event: 'check-closure', closed: issues.filter((i) => i.status === 'closed').length, violations: v.length }));
+  console.log(
+    JSON.stringify({
+      event: 'check-closure',
+      closed: issues.filter((i) => i.status === 'closed').length,
+      violations: v.length,
+    }),
+  );
   process.exit(v.length ? 1 : 0);
 }

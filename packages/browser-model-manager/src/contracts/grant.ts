@@ -18,7 +18,12 @@ export type GrantOwnerId = `${'face' | 'photo' | 'warming' | 'export'}:${string}
 
 export type GrantDecision = 'approved' | 'declined' | 'cancelled' | 'revision-required';
 
-export type AcquisitionPriority = 'foreground-required' | 'synthesis-prerequisite' | 'detector-prerequisite' | 'optional' | 'speculative-warming';
+export type AcquisitionPriority =
+  | 'foreground-required'
+  | 'synthesis-prerequisite'
+  | 'detector-prerequisite'
+  | 'optional'
+  | 'speculative-warming';
 
 export interface GrantAsset {
   readonly sha256: string;
@@ -44,8 +49,16 @@ export interface WarmingOwnership {
 }
 
 /** A request is covered only by the same manifest, route and digests within the advertised bytes. */
-export function scopeCovers(grant: AcquisitionGrant, request: { readonly manifestSha256: string; readonly route: ComputeRoute; readonly assets: readonly { readonly sha256: string; readonly bytes: number }[] }): 'covered' | 'revision-required' {
-  if (request.manifestSha256 !== grant.manifestSha256 || request.route !== grant.route) return 'revision-required';
+export function scopeCovers(
+  grant: AcquisitionGrant,
+  request: {
+    readonly manifestSha256: string;
+    readonly route: ComputeRoute;
+    readonly assets: readonly { readonly sha256: string; readonly bytes: number }[];
+  },
+): 'covered' | 'revision-required' {
+  if (request.manifestSha256 !== grant.manifestSha256 || request.route !== grant.route)
+    return 'revision-required';
   const granted = new Map(grant.assets.map((a) => [a.sha256, a.bytes]));
   const unique = new Map(request.assets.map((a) => [a.sha256, a.bytes]));
   let bytes = 0;
@@ -62,7 +75,10 @@ export interface SharedFetch {
 }
 
 /** Removes `owner` from every fetch; a fetch with no owner left stops (its verified chunks are kept). */
-export function cancelOwner(fetches: readonly SharedFetch[], owner: GrantOwnerId): { readonly continuing: readonly SharedFetch[]; readonly stopped: readonly string[] } {
+export function cancelOwner(
+  fetches: readonly SharedFetch[],
+  owner: GrantOwnerId,
+): { readonly continuing: readonly SharedFetch[]; readonly stopped: readonly string[] } {
   const continuing: SharedFetch[] = [];
   const stopped: string[] = [];
   for (const f of fetches) {
@@ -74,7 +90,10 @@ export function cancelOwner(fetches: readonly SharedFetch[], owner: GrantOwnerId
 }
 
 /** What may happen to an asset given its inventory and the grant decision. */
-export function inventoryAction(inventory: AssetInventory, decision: GrantDecision): 'none' | 'fetch' | 'inspect' | 'wait-for-decision' {
+export function inventoryAction(
+  inventory: AssetInventory,
+  decision: GrantDecision,
+): 'none' | 'fetch' | 'inspect' | 'wait-for-decision' {
   if (inventory === 'verified-local') return 'none';
   if (inventory === 'unknown') return 'inspect';
   return decision === 'approved' ? 'fetch' : 'wait-for-decision';

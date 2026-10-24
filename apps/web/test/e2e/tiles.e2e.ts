@@ -15,7 +15,10 @@ import { serve, type Served } from '../support/serve.ts';
 
 const app = new URL('../../', import.meta.url);
 const results = new URL('test-results/tiles/', app);
-const WIDTHS = { desktop: { width: 1280, height: 900 }, phone: { width: 390, height: 844 } } as const;
+const WIDTHS = {
+  desktop: { width: 1280, height: 900 },
+  phone: { width: 390, height: 844 },
+} as const;
 const ENGINES: Record<string, BrowserType> = { chromium, firefox, webkit };
 const only = process.env['FACEMORPH_E2E_ENGINES']?.split(',');
 const LONG = 'a very long phrase '.repeat(30).trim(); // 569 characters
@@ -29,14 +32,20 @@ const WATCH_FILLS = `
 
 let site: Served;
 before(async () => {
-  assert.ok(existsSync(new URL('dist/render-check.html', app)), 'no dist/: run `npm run build` first');
+  assert.ok(
+    existsSync(new URL('dist/render-check.html', app)),
+    'no dist/: run `npm run build` first',
+  );
   site = await serve(new URL('dist', app).pathname);
   mkdirSync(results, { recursive: true });
 });
-after(async () => { await site?.close(); });
+after(async () => {
+  await site?.close();
+});
 
 const faces = (page: Page) => page.locator('section.next-face');
-const shot = (page: Page, name: string) => page.screenshot({ path: new URL(`${name}.png`, results).pathname, fullPage: false });
+const shot = (page: Page, name: string) =>
+  page.screenshot({ path: new URL(`${name}.png`, results).pathname, fullPage: false });
 
 for (const [engine, type] of Object.entries(ENGINES).filter(([e]) => !only || only.includes(e))) {
   test(`${engine}: tiles and connectors at 1, 2, 3 and many faces, operated by mouse and touch`, async () => {
@@ -44,7 +53,12 @@ for (const [engine, type] of Object.entries(ENGINES).filter(([e]) => !only || on
     try {
       for (const [width, viewport] of Object.entries(WIDTHS)) {
         const touch = width === 'phone';
-        const context = await browser.newContext({ viewport, hasTouch: touch, isMobile: touch && engine !== 'firefox', ...(engine === 'chromium' ? { permissions: ['clipboard-read', 'clipboard-write'] } : {}) });
+        const context = await browser.newContext({
+          viewport,
+          hasTouch: touch,
+          isMobile: touch && engine !== 'firefox',
+          ...(engine === 'chromium' ? { permissions: ['clipboard-read', 'clipboard-write'] } : {}),
+        });
         await context.addInitScript(WATCH_FILLS);
         const page = await context.newPage();
         const errors: string[] = [];
@@ -54,13 +68,27 @@ for (const [engine, type] of Object.entries(ENGINES).filter(([e]) => !only || on
           await page.goto(`${site.origin}/render-check.html?faces=${n}`);
           await page.waitForSelector('section.next-face');
           assert.equal(await faces(page).count(), n, `${engine} ${width}: ${n} tiles`);
-          assert.equal(await page.locator('.next-connector-add').count(), n === 2 ? 3 : n + 1, `${engine} ${width}: connectors at ${n}`);
-          assert.equal(await page.locator('.next-face-close').count(), n > 1 ? n : 0, `${engine} ${width}: Remove offered on every tile but a lone one`);
-          assert.equal(await page.locator('.next-faces-area').getAttribute('data-next-faces'), String(n));
+          assert.equal(
+            await page.locator('.next-connector-add').count(),
+            n === 2 ? 3 : n + 1,
+            `${engine} ${width}: connectors at ${n}`,
+          );
+          assert.equal(
+            await page.locator('.next-face-close').count(),
+            n > 1 ? n : 0,
+            `${engine} ${width}: Remove offered on every tile but a lone one`,
+          );
+          assert.equal(
+            await page.locator('.next-faces-area').getAttribute('data-next-faces'),
+            String(n),
+          );
           await shot(page, `${engine}-${width}-n${n}`);
           // The last tile of a long list is still reachable and its field operable.
           const last = faces(page).last().locator('input[type=text], input:not([type])').first();
-          assert.ok((await press(page, last, { touch })).inside, `${engine} ${width} n${n}: the last field`);
+          assert.ok(
+            (await press(page, last, { touch })).inside,
+            `${engine} ${width} n${n}: the last field`,
+          );
         }
 
         // N=2: the text field, empty, very long and pasted.
@@ -69,12 +97,24 @@ for (const [engine, type] of Object.entries(ENGINES).filter(([e]) => !only || on
         const field = faces(page).first().locator('.next-field input');
         assert.ok((await press(page, field, { touch })).inside, `${engine} ${width}: text field`);
         assert.equal(await field.inputValue(), '', 'empty to start');
-        assert.equal(await faces(page).first().locator('.next-face-generate').isDisabled(), true, 'Generate is off for an empty field');
+        assert.equal(
+          await faces(page).first().locator('.next-face-generate').isDisabled(),
+          true,
+          'Generate is off for an empty field',
+        );
         // 10 ms a key is about 100 keys a second, beyond any person. At machine speed (0 ms) this tree drops a few
         // characters where the control drops none: recorded on fm-5fhw with the bisect so far.
         await page.keyboard.type(LONG, { delay: 10 });
-        assert.equal(await field.inputValue(), LONG, `${engine} ${width}: the very long value is kept whole`);
-        assert.equal(await faces(page).first().locator('.next-face-generate').isDisabled(), false, 'Generate is on for words');
+        assert.equal(
+          await field.inputValue(),
+          LONG,
+          `${engine} ${width}: the very long value is kept whole`,
+        );
+        assert.equal(
+          await faces(page).first().locator('.next-face-generate').isDisabled(),
+          false,
+          'Generate is on for words',
+        );
         await shot(page, `${engine}-${width}-long`);
         await page.keyboard.press(process.platform === 'darwin' ? 'Meta+A' : 'Control+A');
         await page.keyboard.press('Backspace');
@@ -88,39 +128,87 @@ for (const [engine, type] of Object.entries(ENGINES).filter(([e]) => !only || on
         await shot(page, `${engine}-${width}-pasted`);
 
         // The mode menu: Change mode at its visible position, then Numeric seed.
-        assert.ok((await press(page, faces(page).first().getByRole('button', { name: 'Change mode' }), { touch })).inside, `${engine} ${width}: Change mode`);
+        assert.ok(
+          (
+            await press(page, faces(page).first().getByRole('button', { name: 'Change mode' }), {
+              touch,
+            })
+          ).inside,
+          `${engine} ${width}: Change mode`,
+        );
         const seed = page.getByRole('menuitem', { name: 'Numeric seed' });
         await seed.waitFor();
         await shot(page, `${engine}-${width}-mode-menu`);
         assert.ok((await press(page, seed, { touch })).inside, `${engine} ${width}: Numeric seed`);
         await page.locator('.next-field input[type=number]').first().waitFor();
         // The menu has finished closing, as a person sees it (kept-mounted menus stay in the DOM, hidden).
-        await page.waitForFunction(() => [...document.querySelectorAll('.MuiModal-root')].every((m) => m.classList.contains('MuiModal-hidden')));
-        assert.equal(await faces(page).first().locator('select[aria-label="Face source"]').inputValue(), 'seed');
+        await page.waitForFunction(() =>
+          [...document.querySelectorAll('.MuiModal-root')].every((m) =>
+            m.classList.contains('MuiModal-hidden'),
+          ),
+        );
+        assert.equal(
+          await faces(page).first().locator('select[aria-label="Face source"]').inputValue(),
+          'seed',
+        );
 
         // A connector + between the two, then Remove on the new tile.
-        assert.ok((await press(page, page.getByRole('button', { name: 'Add a face between these two' }), { touch })).inside, `${engine} ${width}: connector +`);
-        await page.waitForFunction(() => document.querySelectorAll('section.next-face').length === 3);
-        assert.ok((await press(page, page.getByRole('button', { name: 'Remove Morph to' }), { touch })).inside, `${engine} ${width}: Remove`);
-        await page.waitForFunction(() => document.querySelectorAll('section.next-face').length === 2);
+        assert.ok(
+          (
+            await press(page, page.getByRole('button', { name: 'Add a face between these two' }), {
+              touch,
+            })
+          ).inside,
+          `${engine} ${width}: connector +`,
+        );
+        await page.waitForFunction(
+          () => document.querySelectorAll('section.next-face').length === 3,
+        );
+        assert.ok(
+          (await press(page, page.getByRole('button', { name: 'Remove Morph to' }), { touch }))
+            .inside,
+          `${engine} ${width}: Remove`,
+        );
+        await page.waitForFunction(
+          () => document.querySelectorAll('section.next-face').length === 2,
+        );
         await shot(page, `${engine}-${width}-after-remove`);
 
         // Remove down to one face: the last one has no Remove.
         await press(page, page.getByRole('button', { name: 'Remove Morph to' }), { touch });
-        await page.waitForFunction(() => document.querySelectorAll('section.next-face').length === 1);
-        assert.equal(await page.locator('.next-face-close').count(), 0, 'the last face is never removable');
+        await page.waitForFunction(
+          () => document.querySelectorAll('section.next-face').length === 1,
+        );
+        assert.equal(
+          await page.locator('.next-face-close').count(),
+          0,
+          'the last face is never removable',
+        );
 
         // A running tile: its fill carries only a transform.
         await page.goto(`${site.origin}/render-check.html?faces=2&active=0&fraction=0.4`);
         const tileFill = page.locator('.next-face-progress-determinate');
         await tileFill.waitFor();
-        assert.match(await tileFill.getAttribute('style') ?? '', /^transform: scaleX\(0\.4\);?$/, `${engine} ${width}: the tile fill`);
+        assert.match(
+          (await tileFill.getAttribute('style')) ?? '',
+          /^transform: scaleX\(0\.4\);?$/,
+          `${engine} ${width}: the tile fill`,
+        );
         await shot(page, `${engine}-${width}-running`);
         // A running morph: the slot's bar is filled in an animation frame, and every write is a transform.
         await page.goto(`${site.origin}/render-check.html?faces=2&busy=1&fraction=0.4`);
-        await page.waitForFunction(() => (window as unknown as { __fillStyles: string[] }).__fillStyles.length > 0);
-        const styles = await page.evaluate(() => (window as unknown as { __fillStyles: (string | null)[] }).__fillStyles);
-        for (const s of styles) assert.match(s ?? '', /^transform: scaleX\(0\.4\);?$/, `${engine} ${width}: a progress fill wrote ${s}`);
+        await page.waitForFunction(
+          () => (window as unknown as { __fillStyles: string[] }).__fillStyles.length > 0,
+        );
+        const styles = await page.evaluate(
+          () => (window as unknown as { __fillStyles: (string | null)[] }).__fillStyles,
+        );
+        for (const s of styles)
+          assert.match(
+            s ?? '',
+            /^transform: scaleX\(0\.4\);?$/,
+            `${engine} ${width}: a progress fill wrote ${s}`,
+          );
         await shot(page, `${engine}-${width}-morph-running`);
 
         assert.deepEqual(errors, [], `${engine} ${width}: page errors`);

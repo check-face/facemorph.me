@@ -22,7 +22,12 @@ export type AssetInventory = 'verified-local' | 'partial' | 'absent' | 'unknown'
 
 export interface ManagerStatus {
   readonly manifestSha256: string;
-  readonly assets: readonly { readonly sha256: string; readonly bytes: number; readonly inventory: AssetInventory; readonly leased: boolean }[];
+  readonly assets: readonly {
+    readonly sha256: string;
+    readonly size: number;
+    readonly inventory: AssetInventory;
+    readonly leased: boolean;
+  }[];
   /** Bytes still to transfer for the approved scope, or null when inventory is unknown. */
   readonly remainingBytes: number | null;
   readonly persistentStorage: 'granted' | 'not-granted' | 'unknown';
@@ -67,7 +72,11 @@ export interface ModelManager {
   /** Re-hashes local bytes; a corrupt unit is removed and reported, not refetched here. */
   verify(assets: readonly AssetDescriptor[]): Promise<Result<void, ManagerError>>;
   /** Builds a loaded handle over verified local bytes only. */
-  load(manifest: ModelManifestV1, reader: VerifiedLocalReader, residency: LiveResidencyLimit): Promise<Result<LoadedModelHandle, ManagerError>>;
+  load(
+    manifest: ModelManifestV1,
+    reader: VerifiedLocalReader,
+    residency: LiveResidencyLimit,
+  ): Promise<Result<LoadedModelHandle, ManagerError>>;
   /** Leases the assets a handle needs; the manager will not evict them while held. */
   lease(sha256: readonly string[]): Result<readonly AssetLease[], ManagerError>;
   /** Called by the platform adapters when a leased asset goes away underneath. */
@@ -95,4 +104,7 @@ export interface ManagerStorage {
 }
 
 /** The network, handed in; only acquire() under an approved grant calls it. */
-export type ManagerFetcher = (url: string, init: { readonly signal?: CancellationSignal }) => Promise<{ readonly ok: boolean; readonly status: number; readonly body: object | null }>;
+export type ManagerFetcher = (
+  url: string,
+  init: { readonly signal?: CancellationSignal },
+) => Promise<{ readonly ok: boolean; readonly status: number; readonly body: object | null }>;

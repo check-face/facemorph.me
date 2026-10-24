@@ -21,7 +21,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - run: npm ci --no-audit --no-fund  # one lock for the workspace, at the root (fm-fy2.4)
+      - run: npm ci --no-audit --no-fund # one lock for the workspace, at the root (fm-fy2.4)
         working-directory: .
       - run: npm run typecheck
       - run: npm test
@@ -40,7 +40,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - run: npm ci --no-audit --no-fund  # one lock for the workspace, at the root (fm-fy2.4)
+      - run: npm ci --no-audit --no-fund # one lock for the workspace, at the root (fm-fy2.4)
         working-directory: .
       - run: npx playwright install --with-deps chromium firefox webkit
       - run: npm run build

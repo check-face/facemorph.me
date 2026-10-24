@@ -4,12 +4,7 @@
   "manifest": {
     "file": "manifest.tsv",
     "sha256": "040d8793f6185c4ce03b2d35d083bac158511f9785cbb26c6277b4f3a7a38b3f",
-    "columns": [
-      "source_url",
-      "name",
-      "bytes",
-      "sha256"
-    ]
+    "columns": ["source_url", "name", "bytes", "sha256"]
   },
   "inventories": [
     {

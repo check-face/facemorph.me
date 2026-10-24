@@ -56,13 +56,17 @@ const DOM_IN_PAGE = `(() => {
 /** Replaces volatile values so a re-recording of the same flow is comparable. */
 export function normalize(value: unknown, blobs: Map<string, string> = new Map()): unknown {
   if (typeof value === 'string') {
-    let s = value.replace(/blob:[^\s"')]+/g, (url) => { if (!blobs.has(url)) blobs.set(url, `blob:<${blobs.size + 1}>`); return blobs.get(url) as string; });
+    let s = value.replace(/blob:[^\s"')]+/g, (url) => {
+      if (!blobs.has(url)) blobs.set(url, `blob:<${blobs.size + 1}>`);
+      return blobs.get(url) as string;
+    });
     s = s.replace(/\b\d+(\.\d+)?\s?(ms|s|seconds?|minutes?|min)\b/g, '<ms>');
     s = s.replace(/^\d{4}-\d{2}-\d{2}$/, '<today>'); // the control seeds a face with the visit's date
     return s;
   }
   if (Array.isArray(value)) return value.map((v) => normalize(v, blobs));
-  if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, normalize(v, blobs)]));
+  if (value && typeof value === 'object')
+    return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, normalize(v, blobs)]));
   return value;
 }
 
@@ -71,12 +75,28 @@ export class Recorder {
   readonly #blobs = new Map<string, string>();
   readonly page: Page;
   readonly rowId: string;
-  constructor(page: Page, rowId: string) { this.page = page; this.rowId = rowId; }
+  constructor(page: Page, rowId: string) {
+    this.page = page;
+    this.rowId = rowId;
+  }
 
   async record(step: string, action: Action): Promise<Step> {
-    const { commits, model } = await this.page.evaluate(READ_MODEL) as { commits: number; model: unknown };
-    const { dom, focused } = await this.page.evaluate(DOM_IN_PAGE) as { dom: unknown; focused: string | null };
-    const s: Step = { step, action, commits, model: normalize(model, this.#blobs), dom: normalize(dom, this.#blobs), focused };
+    const { commits, model } = (await this.page.evaluate(READ_MODEL)) as {
+      commits: number;
+      model: unknown;
+    };
+    const { dom, focused } = (await this.page.evaluate(DOM_IN_PAGE)) as {
+      dom: unknown;
+      focused: string | null;
+    };
+    const s: Step = {
+      step,
+      action,
+      commits,
+      model: normalize(model, this.#blobs),
+      dom: normalize(dom, this.#blobs),
+      focused,
+    };
     this.steps.push(s);
     return s;
   }

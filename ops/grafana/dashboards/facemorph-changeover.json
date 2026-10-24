@@ -1,11 +1,7 @@
 {
   "uid": "fm-before-after",
   "title": "FaceMorph before and after",
-  "tags": [
-    "facemorph",
-    "changeover",
-    "public-stats"
-  ],
+  "tags": ["facemorph", "changeover", "public-stats"],
   "description": "Old hosted-API facemorph.me beside the new in-browser app. Old: server Prometheus counters (job triton_checkface). New: anonymous aggregate counts from the page (job facemorph_web, metrics fm_web_*). Approximate by design. Source: facemorph.me repo ops/grafana.",
   "timezone": "browser",
   "schemaVersion": 38,
@@ -40,9 +36,7 @@
         "name": "Changeover",
         "target": {
           "type": "tags",
-          "tags": [
-            "changeover"
-          ],
+          "tags": ["changeover"],
           "limit": 100,
           "matchAny": true
         }

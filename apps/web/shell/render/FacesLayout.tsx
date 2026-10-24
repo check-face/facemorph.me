@@ -18,7 +18,9 @@ export interface FacesLayoutProps {
 
 const add = (className: string, label: string, onClick: () => void) => (
   <div className={`next-connector ${className}`}>
-    <IconButton className="next-connector-add" aria-label={label} onClick={onClick}><AddIcon /></IconButton>
+    <IconButton className="next-connector-add" aria-label={label} onClick={onClick}>
+      <AddIcon />
+    </IconButton>
   </div>
 );
 
@@ -39,7 +41,9 @@ export function FacesLayout({ inputs, tile, morphSlot, videoSlot, onAddAt }: Fac
   }
   return (
     <div className="next-morph-content n3">
-      <div className="next-faces-row" data-next-face-count={inputs.length}>{tilesWithConnectors(inputs, tile, onAddAt)}</div>
+      <div className="next-faces-row" data-next-face-count={inputs.length}>
+        {tilesWithConnectors(inputs, tile, onAddAt)}
+      </div>
       {morphSlot}
       {videoSlot}
     </div>

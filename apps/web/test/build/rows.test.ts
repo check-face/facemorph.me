@@ -6,7 +6,15 @@ import { ROWS } from '../parity/rows.ts';
 
 const plan = readFileSync(new URL('../../../../PLAN.md', import.meta.url), 'utf8');
 // GitHub's heading anchors: lower case, punctuation dropped, spaces to hyphens.
-const anchors = new Set([...plan.matchAll(/^#{1,6} (.+)$/gm)].map((m) => (m[1] ?? '').toLowerCase().trim().replace(/[^\p{L}\p{N} -]/gu, '').replace(/ /g, '-')));
+const anchors = new Set(
+  [...plan.matchAll(/^#{1,6} (.+)$/gm)].map((m) =>
+    (m[1] ?? '')
+      .toLowerCase()
+      .trim()
+      .replace(/[^\p{L}\p{N} -]/gu, '')
+      .replace(/ /g, '-'),
+  ),
+);
 
 test('every row id is unique and usable as a golden directory name', () => {
   const ids = ROWS.map((r) => r.rowId);
@@ -17,7 +25,13 @@ test('every row id is unique and usable as a golden directory name', () => {
 test('candidate defects 1-23 each appear, and no defect row is tagged parity', () => {
   const seen = new Set(ROWS.flatMap((r) => r.defects ?? []));
   for (let n = 1; n <= 23; n++) assert.ok(seen.has(n), `defect ${n} has no row`);
-  for (const r of ROWS) if (r.defects?.length) assert.notEqual(r.tag, 'parity', `${r.rowId} repairs defect ${r.defects.join(', ')} and cannot be parity`);
+  for (const r of ROWS)
+    if (r.defects?.length)
+      assert.notEqual(
+        r.tag,
+        'parity',
+        `${r.rowId} repairs defect ${r.defects.join(', ')} and cannot be parity`,
+      );
 });
 
 test('changed and new rows name their owner; parity rows have none', () => {
@@ -28,7 +42,8 @@ test('changed and new rows name their owner; parity rows have none', () => {
 });
 
 test('a parity row is exercisable against the control', () => {
-  for (const r of ROWS) if (r.tag === 'parity') assert.equal(r.unexercisable, undefined, `${r.rowId}`);
+  for (const r of ROWS)
+    if (r.tag === 'parity') assert.equal(r.unexercisable, undefined, `${r.rowId}`);
 });
 
 test('every row cites a plan section that exists', () => {

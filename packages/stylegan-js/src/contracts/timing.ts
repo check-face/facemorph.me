@@ -6,7 +6,10 @@ import type { ComputeRoute } from './capability.ts';
 import type { OperationIds, OperationKind } from './operations.ts';
 
 /** What the measured end of a stage waited for. */
-export type StageCompletionBoundary = 'inference-complete' | 'readback-complete' | 'map-async-complete';
+export type StageCompletionBoundary =
+  | 'inference-complete'
+  | 'readback-complete'
+  | 'map-async-complete';
 
 export type EngineStage =
   | 'mapping'

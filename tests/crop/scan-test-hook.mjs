@@ -14,7 +14,10 @@ export function scan(dir) {
     for (const name of readdirSync(at)) {
       const path = join(at, name);
       if (statSync(path).isDirectory()) walk(path);
-      else { files++; if (readFileSync(path).includes(HOOK)) hits.push(path); }
+      else {
+        files++;
+        if (readFileSync(path).includes(HOOK)) hits.push(path);
+      }
     }
   };
   walk(dir);

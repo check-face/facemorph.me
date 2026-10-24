@@ -7,14 +7,36 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { ALLOWLIST, REPO, blob, classicDir, line, options, readJson, sha256 } from '../inventory/lib.mjs';
+import {
+  ALLOWLIST,
+  REPO,
+  blob,
+  classicDir,
+  line,
+  options,
+  readJson,
+  sha256,
+} from '../inventory/lib.mjs';
 
-export function exportClosure({ classic, root = REPO, allowlist = readJson(ALLOWLIST), log = () => {} }) {
+export function exportClosure({
+  classic,
+  root = REPO,
+  allowlist = readJson(ALLOWLIST),
+  log = () => {},
+}) {
   const commit = allowlist.source.frozen_commit;
   const mismatches = [];
   for (const f of allowlist.files) {
     const bytes = blob(classic, commit, f.source);
-    if (sha256(bytes) !== f.sha256) { mismatches.push({ source: f.source, problem: 'blob differs from the allowlist', expected: f.sha256, actual: sha256(bytes) }); continue; }
+    if (sha256(bytes) !== f.sha256) {
+      mismatches.push({
+        source: f.source,
+        problem: 'blob differs from the allowlist',
+        expected: f.sha256,
+        actual: sha256(bytes),
+      });
+      continue;
+    }
     const path = join(root, f.destination);
     mkdirSync(dirname(path), { recursive: true });
     writeFileSync(path, bytes);
@@ -27,6 +49,8 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const opts = options(process.argv.slice(2));
   const result = exportClosure({ classic: classicDir(opts), root: opts.root ?? REPO, log: line });
   for (const m of result.mismatches) line(m);
-  line({ summary: { commit: result.commit, files: result.files, mismatches: result.mismatches.length } });
+  line({
+    summary: { commit: result.commit, files: result.files, mismatches: result.mismatches.length },
+  });
   process.exit(result.mismatches.length ? 1 : 0);
 }

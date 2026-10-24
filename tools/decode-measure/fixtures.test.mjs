@@ -17,7 +17,10 @@ export function jpegSegments(buffer) {
   while (offset < buffer.length) {
     if (buffer[offset] !== 0xff) break;
     const marker = buffer[offset + 1];
-    if (marker === 0xd8 || (marker >= 0xd0 && marker <= 0xd9)) { offset += 2; continue; }
+    if (marker === 0xd8 || (marker >= 0xd0 && marker <= 0xd9)) {
+      offset += 2;
+      continue;
+    }
     const length = buffer.readUInt16BE(offset + 2);
     segments.push({ marker, start: offset + 4, length: length - 2 });
     offset += 2 + length;
@@ -29,7 +32,10 @@ export function jpegSegments(buffer) {
 export function jpegDimensions(buffer) {
   for (const segment of jpegSegments(buffer)) {
     if ([0xc0, 0xc1, 0xc2, 0xc3].includes(segment.marker)) {
-      return { height: buffer.readUInt16BE(segment.start + 1), width: buffer.readUInt16BE(segment.start + 3) };
+      return {
+        height: buffer.readUInt16BE(segment.start + 1),
+        width: buffer.readUInt16BE(segment.start + 3),
+      };
     }
   }
   return null;
@@ -56,11 +62,21 @@ test('manifest fixtures exist, match their pins and carry no metadata', () => {
     if (name.endsWith('.jpg')) {
       const segments = jpegSegments(body);
       for (const segment of segments) {
-        const text = body.toString('latin1', segment.start, segment.start + Math.min(segment.length, 64));
-        const offence = segment.marker === 0xfe ? 'JPEG comment'
-          : segment.marker === 0xe1 && text.startsWith('Exif') ? 'EXIF'
-          : segment.marker === 0xed ? 'Photoshop IRB'
-          : segment.marker === 0xee && text.includes('XMP') ? 'XMP' : null;
+        const text = body.toString(
+          'latin1',
+          segment.start,
+          segment.start + Math.min(segment.length, 64),
+        );
+        const offence =
+          segment.marker === 0xfe
+            ? 'JPEG comment'
+            : segment.marker === 0xe1 && text.startsWith('Exif')
+              ? 'EXIF'
+              : segment.marker === 0xed
+                ? 'Photoshop IRB'
+                : segment.marker === 0xee && text.includes('XMP')
+                  ? 'XMP'
+                  : null;
         assert.equal(offence, null, `${name} metadata: ${offence}`);
       }
       const dims = jpegDimensions(body);
@@ -69,7 +85,10 @@ test('manifest fixtures exist, match their pins and carry no metadata', () => {
     } else {
       const chunks = pngChunks(body);
       for (const chunk of chunks) {
-        assert.ok(!['tEXt', 'iTXt', 'zTXt', 'eXIf'].includes(chunk.type), `${name} metadata chunk ${chunk.type}`);
+        assert.ok(
+          !['tEXt', 'iTXt', 'zTXt', 'eXIf'].includes(chunk.type),
+          `${name} metadata chunk ${chunk.type}`,
+        );
       }
       assert.equal(body.readUInt32BE(16) * body.readUInt32BE(20), spec.pixels, `${name} pixels`);
     }
@@ -87,5 +106,8 @@ test('fixtures sit under the limits they stress', () => {
   assert.ok(manifest.fixtures['max-pixels.jpg'].pixels <= manifest.limits.CROP_MAX_PIXELS);
   assert.ok(manifest.fixtures['max-edge.png'].pixels <= manifest.limits.CROP_MAX_PIXELS);
   assert.ok(manifest.fixtures['max-compressed.jpg'].recipe.bytes <= manifest.limits.CROP_MAX_BYTES);
-  assert.ok(manifest.fixtures['max-compressed.jpg'].recipe.bytes > manifest.limits.CROP_MAX_BYTES * 0.9, 'the compressed fixture is close to the limit, not tiny');
+  assert.ok(
+    manifest.fixtures['max-compressed.jpg'].recipe.bytes > manifest.limits.CROP_MAX_BYTES * 0.9,
+    'the compressed fixture is close to the limit, not tiny',
+  );
 });

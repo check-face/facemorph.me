@@ -24,16 +24,20 @@ const LONE_SURROGATE = /[\ud800-\udbff](?![\udc00-\udfff])|(?<![\ud800-\udbff])[
 export function canonicalJson(value: unknown): string {
   if (value === null || typeof value === 'boolean') return JSON.stringify(value);
   if (typeof value === 'number') {
-    if (!Number.isFinite(value)) throw new CanonicalJsonError('non-finite-number', `${value} has no JSON form`);
+    if (!Number.isFinite(value))
+      throw new CanonicalJsonError('non-finite-number', `${value} has no JSON form`);
     return JSON.stringify(Object.is(value, -0) ? 0 : value);
   }
   if (typeof value === 'string') {
-    if (LONE_SURROGATE.test(value)) throw new CanonicalJsonError('lone-surrogate', 'a string has no UTF-8 form');
+    if (LONE_SURROGATE.test(value))
+      throw new CanonicalJsonError('lone-surrogate', 'a string has no UTF-8 form');
     return JSON.stringify(value);
   }
   if (Array.isArray(value)) return `[${value.map(canonicalJson).join(',')}]`;
   if (typeof value === 'object' && Object.getPrototypeOf(value) === Object.prototype) {
-    const entries = Object.entries(value as Record<string, unknown>).filter(([, v]) => v !== undefined);
+    const entries = Object.entries(value as Record<string, unknown>).filter(
+      ([, v]) => v !== undefined,
+    );
     entries.sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
     return `{${entries.map(([k, v]) => `${canonicalJson(k)}:${canonicalJson(v)}`).join(',')}}`;
   }

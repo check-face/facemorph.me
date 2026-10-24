@@ -5,7 +5,15 @@ name: import-checks
 on:
   push:
     branches: [main]
-    paths: ['package.json', 'apps/web/**', 'import/**', 'scripts/import/**', 'scripts/inventory/**', '.github/workflows/import-checks.yml']
+    paths:
+      [
+        'package.json',
+        'apps/web/**',
+        'import/**',
+        'scripts/import/**',
+        'scripts/inventory/**',
+        '.github/workflows/import-checks.yml',
+      ]
   workflow_dispatch:
 concurrency:
   group: import-checks

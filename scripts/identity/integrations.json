@@ -10,17 +10,42 @@
       "id": "classic-vercel-production",
       "scope": ["repo:facemorph.me-classic", "host:facemorph.me"],
       "kind": "actions-publisher",
-      "binding": { "type": "repository workflow + Vercel project IDs in secrets", "repoId": 295956585, "repo": "check-face/facemorph.me-classic", "branch": "master", "path": ".github/workflows/deploy.yml" },
+      "binding": {
+        "type": "repository workflow + Vercel project IDs in secrets",
+        "repoId": 295956585,
+        "repo": "check-face/facemorph.me-classic",
+        "branch": "master",
+        "path": ".github/workflows/deploy.yml"
+      },
       "publisher": "classic deploy.yml (`vercel --prod --archive=tgz`; pull requests get a preview deployment)",
       "target": "https://facemorph.me (Vercel project in the `oliver-coads-projects` scope; apex A 76.76.21.21, DNS-only in the facemorph.me Cloudflare zone)",
       "trigger": "push to master",
       "credentials": ["VERCEL_TOKEN", "VERCEL_ORG_ID", "VERCEL_PROJECT_ID"],
       "status": "verified",
       "evidence": [
-        { "command": "node scripts/identity/read-identity.mjs (integration:classic-vercel-production workflow.check; retained-application actions.secrets; legacy-production-web deploy.record.* and source.commit)", "at": "2026-10-24" },
-        { "command": "Cloudflare connector DNS read (facemorph.me A 76.76.21.21, proxied false)", "at": "2026-10-24T08:31:00Z" }
+        {
+          "command": "node scripts/identity/read-identity.mjs (integration:classic-vercel-production workflow.check; retained-application actions.secrets; legacy-production-web deploy.record.* and source.commit)",
+          "at": "2026-10-24"
+        },
+        {
+          "command": "Cloudflare connector DNS read (facemorph.me A 76.76.21.21, proxied false)",
+          "at": "2026-10-24T08:31:00Z"
+        }
       ],
-      "check": { "workflow": { "repoId": 295956585, "ref": "master", "path": ".github/workflows/deploy.yml", "contains": ["branches: [ master ]", "vercel --prod", "secrets.VERCEL_TOKEN", "secrets.VERCEL_ORG_ID", "secrets.VERCEL_PROJECT_ID"] } },
+      "check": {
+        "workflow": {
+          "repoId": 295956585,
+          "ref": "master",
+          "path": ".github/workflows/deploy.yml",
+          "contains": [
+            "branches: [ master ]",
+            "vercel --prod",
+            "secrets.VERCEL_TOKEN",
+            "secrets.VERCEL_ORG_ID",
+            "secrets.VERCEL_PROJECT_ID"
+          ]
+        }
+      },
       "rename": "workflow keeps running (secrets and Vercel IDs are not owner-bound); no edit"
     },
     {
@@ -39,66 +64,148 @@
       "id": "classic-next-site",
       "scope": ["repo:facemorph.me-classic", "host:next.facemorph.me"],
       "kind": "actions-publisher",
-      "binding": { "type": "repository workflow + Cloudflare API token", "repoId": 295956585, "repo": "check-face/facemorph.me-classic", "branch": "candidate/next-delivery-20260916", "path": ".github/workflows/next-site.yml" },
+      "binding": {
+        "type": "repository workflow + Cloudflare API token",
+        "repoId": 295956585,
+        "repo": "check-face/facemorph.me-classic",
+        "branch": "candidate/next-delivery-20260916",
+        "path": ".github/workflows/next-site.yml"
+      },
       "publisher": "classic next-site.yml deploy job (`wrangler@4.149.0 deploy --config hosting/next-static/wrangler.jsonc`, GitHub environment `next-preview`), after artifact, qualify and compiled-ui jobs",
       "target": "https://next.facemorph.me (Worker `facemorph-next`, custom domain; static assets plus /diagnostics/* run worker-first into R2 `facemorph-diagnostics` and KV `DIAGNOSTICS`)",
       "trigger": "push to candidate/next-delivery-20260916 touching the site paths (deploy job runs on push only); workflow_dispatch and pull requests build and qualify without deploying",
       "credentials": ["CLOUDFLARE_API_TOKEN", "CLOUDFLARE_ACCOUNT_ID"],
       "status": "verified",
       "evidence": [
-        { "command": "node scripts/identity/read-identity.mjs (integration:classic-next-site workflow.check; on-device-candidate deploy.record.* and source.commit; retained-application environments)", "at": "2026-10-24" },
-        { "command": "Cloudflare connector: workers/domains next.facemorph.me -> facemorph-next; workers/scripts facemorph-next modified 2026-10-24T02:59:22Z", "at": "2026-10-24T08:31:00Z" }
+        {
+          "command": "node scripts/identity/read-identity.mjs (integration:classic-next-site workflow.check; on-device-candidate deploy.record.* and source.commit; retained-application environments)",
+          "at": "2026-10-24"
+        },
+        {
+          "command": "Cloudflare connector: workers/domains next.facemorph.me -> facemorph-next; workers/scripts facemorph-next modified 2026-10-24T02:59:22Z",
+          "at": "2026-10-24T08:31:00Z"
+        }
       ],
-      "check": { "workflow": { "repoId": 295956585, "ref": "candidate/next-delivery-20260916", "path": ".github/workflows/next-site.yml", "contains": ["branches: ['candidate/next-delivery-20260916']", "deploy --config hosting/next-static/wrangler.jsonc", "secrets.CLOUDFLARE_API_TOKEN", "secrets.CLOUDFLARE_ACCOUNT_ID", "name: next-preview"] } },
+      "check": {
+        "workflow": {
+          "repoId": 295956585,
+          "ref": "candidate/next-delivery-20260916",
+          "path": ".github/workflows/next-site.yml",
+          "contains": [
+            "branches: ['candidate/next-delivery-20260916']",
+            "deploy --config hosting/next-static/wrangler.jsonc",
+            "secrets.CLOUDFLARE_API_TOKEN",
+            "secrets.CLOUDFLARE_ACCOUNT_ID",
+            "name: next-preview"
+          ]
+        }
+      },
       "rename": "no owner-bound setting; promote.py's REMOTE is the separate repository-name correction"
     },
     {
       "id": "classic-models-mirror",
       "scope": ["repo:facemorph.me-classic", "host:models.facemorph.me"],
       "kind": "actions-publisher",
-      "binding": { "type": "step in the next-site.yml deploy job", "repoId": 295956585, "repo": "check-face/facemorph.me-classic", "branch": "candidate/next-delivery-20260916", "path": ".github/workflows/next-site.yml" },
+      "binding": {
+        "type": "step in the next-site.yml deploy job",
+        "repoId": 295956585,
+        "repo": "check-face/facemorph.me-classic",
+        "branch": "candidate/next-delivery-20260916",
+        "path": ".github/workflows/next-site.yml"
+      },
       "publisher": "next-site.yml deploy job: `wrangler deploy --config hosting/next-mirror/wrangler.jsonc`, then warms every immutable runtime file through https://models.facemorph.me",
       "target": "https://models.facemorph.me (Worker `facemorph-models`, custom domain; R2 `facemorph-runtime-mirror` as MIRROR; service binding SITE -> `facemorph-next`); the page's second runtime origin",
       "trigger": "same as classic-next-site (each candidate deploy)",
       "credentials": ["CLOUDFLARE_API_TOKEN", "CLOUDFLARE_ACCOUNT_ID"],
       "status": "verified",
       "evidence": [
-        { "command": "node scripts/identity/read-identity.mjs (integration:classic-models-mirror workflow.check; model-mirror mirror.sample.status)", "at": "2026-10-24" },
-        { "command": "Cloudflare connector: workers/domains models.facemorph.me -> facemorph-models; r2/buckets facemorph-runtime-mirror", "at": "2026-10-24T08:31:00Z" }
+        {
+          "command": "node scripts/identity/read-identity.mjs (integration:classic-models-mirror workflow.check; model-mirror mirror.sample.status)",
+          "at": "2026-10-24"
+        },
+        {
+          "command": "Cloudflare connector: workers/domains models.facemorph.me -> facemorph-models; r2/buckets facemorph-runtime-mirror",
+          "at": "2026-10-24T08:31:00Z"
+        }
       ],
-      "check": { "workflow": { "repoId": 295956585, "ref": "candidate/next-delivery-20260916", "path": ".github/workflows/next-site.yml", "contains": ["deploy --config hosting/next-mirror/wrangler.jsonc", "https://models.facemorph.me/{}", "secrets.CLOUDFLARE_API_TOKEN"] } },
+      "check": {
+        "workflow": {
+          "repoId": 295956585,
+          "ref": "candidate/next-delivery-20260916",
+          "path": ".github/workflows/next-site.yml",
+          "contains": [
+            "deploy --config hosting/next-mirror/wrangler.jsonc",
+            "https://models.facemorph.me/{}",
+            "secrets.CLOUDFLARE_API_TOKEN"
+          ]
+        }
+      },
       "rename": "no owner-bound setting"
     },
     {
       "id": "classic-name-catalogue",
       "scope": ["repo:facemorph.me-classic", "host:facemorph-name-catalogue.cdilga.workers.dev"],
       "kind": "actions-publisher",
-      "binding": { "type": "repository workflow + Cloudflare API token", "repoId": 295956585, "repo": "check-face/facemorph.me-classic", "branch": "candidate/next-delivery-20260916", "path": ".github/workflows/name-catalogue.yml" },
+      "binding": {
+        "type": "repository workflow + Cloudflare API token",
+        "repoId": 295956585,
+        "repo": "check-face/facemorph.me-classic",
+        "branch": "candidate/next-delivery-20260916",
+        "path": ".github/workflows/name-catalogue.yml"
+      },
       "publisher": "classic name-catalogue.yml (`wrangler deploy --config hosting/gallery/names-wrangler.jsonc`, GitHub environment `next-preview`); its materialize step fetches missing previews from api.facemorph.me",
       "target": "https://facemorph-name-catalogue.cdilga.workers.dev (Worker `facemorph-name-catalogue`, static assets: name W+ latents and full-size previews)",
       "trigger": "workflow_dispatch, or push to candidate/next-delivery-20260916 touching the catalogue paths",
       "credentials": ["CLOUDFLARE_API_TOKEN", "CLOUDFLARE_ACCOUNT_ID"],
       "status": "verified",
       "evidence": [
-        { "command": "node scripts/identity/read-identity.mjs (integration:classic-name-catalogue workflow.check; names-catalogue catalogue.latentSample.status)", "at": "2026-10-24" },
-        { "command": "Cloudflare connector: workers/scripts facemorph-name-catalogue (assets) modified 2026-10-10T06:19:58Z", "at": "2026-10-24T08:31:00Z" }
+        {
+          "command": "node scripts/identity/read-identity.mjs (integration:classic-name-catalogue workflow.check; names-catalogue catalogue.latentSample.status)",
+          "at": "2026-10-24"
+        },
+        {
+          "command": "Cloudflare connector: workers/scripts facemorph-name-catalogue (assets) modified 2026-10-10T06:19:58Z",
+          "at": "2026-10-24T08:31:00Z"
+        }
       ],
-      "check": { "workflow": { "repoId": 295956585, "ref": "candidate/next-delivery-20260916", "path": ".github/workflows/name-catalogue.yml", "contains": ["deploy --config hosting/gallery/names-wrangler.jsonc", "secrets.CLOUDFLARE_API_TOKEN", "secrets.CLOUDFLARE_ACCOUNT_ID", "environment: next-preview"] } },
+      "check": {
+        "workflow": {
+          "repoId": 295956585,
+          "ref": "candidate/next-delivery-20260916",
+          "path": ".github/workflows/name-catalogue.yml",
+          "contains": [
+            "deploy --config hosting/gallery/names-wrangler.jsonc",
+            "secrets.CLOUDFLARE_API_TOKEN",
+            "secrets.CLOUDFLARE_ACCOUNT_ID",
+            "environment: next-preview"
+          ]
+        }
+      },
       "rename": "no owner-bound setting; the API dependency is the domain-handover snapshot work"
     },
     {
       "id": "seed-gallery-manual",
       "scope": ["host:facemorph-seed-gallery.cdilga.workers.dev"],
       "kind": "manual-publisher",
-      "binding": { "type": "operator wrangler login; no workflow", "repoId": 295956585, "path": "hosting/gallery/wrangler.jsonc" },
+      "binding": {
+        "type": "operator wrangler login; no workflow",
+        "repoId": 295956585,
+        "path": "hosting/gallery/wrangler.jsonc"
+      },
       "publisher": "operator machine: `wrangler deploy --config hosting/gallery/wrangler.jsonc` after reconstructing the verified selection (classic hosting/gallery/README.md)",
       "target": "https://facemorph-seed-gallery.cdilga.workers.dev (Worker `facemorph-seed-gallery`, static assets: historic name and seed previews; the catalogue's preview origin)",
       "trigger": "manual",
       "credentials": [],
       "status": "verified",
       "evidence": [
-        { "command": "git -C facemorph.me-classic grep 'hosting/gallery/wrangler.jsonc' origin/candidate/next-delivery-20260916 -- .github (no workflow deploys it)", "at": "2026-10-24" },
-        { "command": "Cloudflare connector: workers/scripts facemorph-seed-gallery (assets) modified 2026-09-16T05:28:27Z", "at": "2026-10-24T08:31:00Z" }
+        {
+          "command": "git -C facemorph.me-classic grep 'hosting/gallery/wrangler.jsonc' origin/candidate/next-delivery-20260916 -- .github (no workflow deploys it)",
+          "at": "2026-10-24"
+        },
+        {
+          "command": "Cloudflare connector: workers/scripts facemorph-seed-gallery (assets) modified 2026-09-16T05:28:27Z",
+          "at": "2026-10-24T08:31:00Z"
+        }
       ],
       "rename": "not GitHub-bound"
     },
@@ -106,62 +213,131 @@
       "id": "stale-diagnostics-worker",
       "scope": ["host:next.facemorph.me"],
       "kind": "worker",
-      "binding": { "type": "Worker with no route", "repoId": 295956585, "path": "hosting/next-cloudflare/wrangler.toml" },
+      "binding": {
+        "type": "Worker with no route",
+        "repoId": 295956585,
+        "path": "hosting/next-cloudflare/wrangler.toml"
+      },
       "publisher": "manual (no workflow); last modified 2026-09-16",
       "target": "Worker `facemorph-next-diagnostics`: its config declares route next.facemorph.me/diagnostics/*, but the zone has no such route; diagnostics are served by `facemorph-next` (run_worker_first /diagnostics/*)",
       "trigger": "manual",
       "credentials": [],
       "status": "verified",
-      "evidence": [{ "command": "Cloudflare connector: zones/{zone}/workers/routes lists only next.facemorph.me/stats/* and facemorph.me/stats/* (facemorph-stats); workers/scripts facemorph-next-diagnostics modified 2026-09-16T06:27:35Z", "at": "2026-10-24T08:31:00Z" }],
+      "evidence": [
+        {
+          "command": "Cloudflare connector: zones/{zone}/workers/routes lists only next.facemorph.me/stats/* and facemorph.me/stats/* (facemorph-stats); workers/scripts facemorph-next-diagnostics modified 2026-09-16T06:27:35Z",
+          "at": "2026-10-24T08:31:00Z"
+        }
+      ],
       "rename": "not GitHub-bound; a retirement candidate for the domain handover inventory"
     },
     {
       "id": "monorepo-stats-worker",
       "scope": ["repo:facemorph.me", "host:next.facemorph.me", "host:facemorph.me"],
       "kind": "actions-publisher",
-      "binding": { "type": "repository workflow + Cloudflare API token", "repoId": 1413979666, "repo": "check-face/facemorph.me", "branch": "main", "path": ".github/workflows/stats-worker.yml" },
+      "binding": {
+        "type": "repository workflow + Cloudflare API token",
+        "repoId": 1413979666,
+        "repo": "check-face/facemorph.me",
+        "branch": "main",
+        "path": ".github/workflows/stats-worker.yml"
+      },
       "publisher": "monorepo stats-worker.yml (`wrangler deploy` in services/stats, then `wrangler secret put SCRAPE_TOKEN`)",
       "target": "Worker `facemorph-stats` on routes next.facemorph.me/stats/* and facemorph.me/stats/*; the facemorph.me route receives no traffic while the apex is DNS-only to Vercel (https://facemorph.me/stats/ is answered by Vercel)",
       "trigger": "push to main touching services/stats/** or the workflow; workflow_dispatch",
       "credentials": ["CLOUDFLARE_API_TOKEN", "STATS_SCRAPE_TOKEN"],
       "status": "verified",
       "evidence": [
-        { "command": "node scripts/identity/read-identity.mjs (integration:monorepo-stats-worker workflow.check; new-monorepo actions.secrets; stats-collector http.*)", "at": "2026-10-24" },
-        { "command": "Cloudflare connector: zones/{zone}/workers/routes; dns_records facemorph.me A proxied false", "at": "2026-10-24T08:31:00Z" }
+        {
+          "command": "node scripts/identity/read-identity.mjs (integration:monorepo-stats-worker workflow.check; new-monorepo actions.secrets; stats-collector http.*)",
+          "at": "2026-10-24"
+        },
+        {
+          "command": "Cloudflare connector: zones/{zone}/workers/routes; dns_records facemorph.me A proxied false",
+          "at": "2026-10-24T08:31:00Z"
+        }
       ],
-      "check": { "workflow": { "repoId": 1413979666, "ref": "main", "path": ".github/workflows/stats-worker.yml", "contains": ["branches: [main]", "npx wrangler deploy", "secrets.CLOUDFLARE_API_TOKEN", "secrets.STATS_SCRAPE_TOKEN"] } },
+      "check": {
+        "workflow": {
+          "repoId": 1413979666,
+          "ref": "main",
+          "path": ".github/workflows/stats-worker.yml",
+          "contains": [
+            "branches: [main]",
+            "npx wrangler deploy",
+            "secrets.CLOUDFLARE_API_TOKEN",
+            "secrets.STATS_SCRAPE_TOKEN"
+          ]
+        }
+      },
       "rename": "no owner-bound setting"
     },
     {
       "id": "monorepo-beads-site",
       "scope": ["repo:facemorph.me", "host:beads.dilger.dev"],
       "kind": "actions-publisher",
-      "binding": { "type": "repository workflow + Cloudflare Pages token", "repoId": 1413979666, "repo": "check-face/facemorph.me", "branch": "main", "path": ".github/workflows/beads-site.yml" },
+      "binding": {
+        "type": "repository workflow + Cloudflare Pages token",
+        "repoId": 1413979666,
+        "repo": "check-face/facemorph.me",
+        "branch": "main",
+        "path": ".github/workflows/beads-site.yml"
+      },
       "publisher": "monorepo beads-site.yml (`wrangler pages deploy --project-name beads-dilger-dev`)",
       "target": "Cloudflare Pages project `beads-dilger-dev` (no Git source): https://beads.dilger.dev behind Cloudflare Access; the https://beads-dilger-dev.pages.dev alias answers without Access",
       "trigger": "push to main touching .beads/**",
       "credentials": ["BEADS_PAGES_TOKEN", "CLOUDFLARE_ACCOUNT_ID (variable)"],
       "status": "verified",
       "evidence": [
-        { "command": "node scripts/identity/read-identity.mjs (integration:monorepo-beads-site workflow.check; new-monorepo actions.secrets and actions.variables; beads-tracker and beads-tracker-pages-alias http.*)", "at": "2026-10-24" },
-        { "command": "Cloudflare connector: pages/projects beads-dilger-dev (domains beads-dilger-dev.pages.dev, beads.dilger.dev; source none)", "at": "2026-10-24T08:31:00Z" }
+        {
+          "command": "node scripts/identity/read-identity.mjs (integration:monorepo-beads-site workflow.check; new-monorepo actions.secrets and actions.variables; beads-tracker and beads-tracker-pages-alias http.*)",
+          "at": "2026-10-24"
+        },
+        {
+          "command": "Cloudflare connector: pages/projects beads-dilger-dev (domains beads-dilger-dev.pages.dev, beads.dilger.dev; source none)",
+          "at": "2026-10-24T08:31:00Z"
+        }
       ],
-      "check": { "workflow": { "repoId": 1413979666, "ref": "main", "path": ".github/workflows/beads-site.yml", "contains": ["branches: [main]", "pages deploy", "--project-name beads-dilger-dev", "secrets.BEADS_PAGES_TOKEN", "vars.CLOUDFLARE_ACCOUNT_ID"] } },
+      "check": {
+        "workflow": {
+          "repoId": 1413979666,
+          "ref": "main",
+          "path": ".github/workflows/beads-site.yml",
+          "contains": [
+            "branches: [main]",
+            "pages deploy",
+            "--project-name beads-dilger-dev",
+            "secrets.BEADS_PAGES_TOKEN",
+            "vars.CLOUDFLARE_ACCOUNT_ID"
+          ]
+        }
+      },
       "rename": "no owner-bound setting"
     },
     {
       "id": "names-vercel-git",
       "scope": ["repo:facemorph-names", "host:names.facemorph.me"],
       "kind": "github-app-publisher",
-      "binding": { "type": "Vercel GitHub app (org installation, all repositories), Git-connected project", "repoId": 348379171, "repo": "check-face/facemorph-names", "branch": "master" },
+      "binding": {
+        "type": "Vercel GitHub app (org installation, all repositories), Git-connected project",
+        "repoId": 348379171,
+        "repo": "check-face/facemorph-names",
+        "branch": "master"
+      },
       "publisher": "Vercel for GitHub (deployments created by vercel[bot]; Production and Preview environments)",
       "target": "https://names.facemorph.me (CNAME cname.vercel-dns.com, DNS-only; Vercel team slug `erinome`)",
       "trigger": "push to master (Production); other branches and pull requests (Preview)",
       "credentials": ["Vercel GitHub app installation (no repository secret)"],
       "status": "verified",
       "evidence": [
-        { "command": "node scripts/identity/read-identity.mjs (org:check-face installations; legacy-names-site deploy.record.* and source.commit; legacy-names-source environments)", "at": "2026-10-24" },
-        { "command": "Cloudflare connector DNS read (names.facemorph.me CNAME cname.vercel-dns.com, proxied false)", "at": "2026-10-24T08:31:00Z" }
+        {
+          "command": "node scripts/identity/read-identity.mjs (org:check-face installations; legacy-names-site deploy.record.* and source.commit; legacy-names-source environments)",
+          "at": "2026-10-24"
+        },
+        {
+          "command": "Cloudflare connector DNS read (names.facemorph.me CNAME cname.vercel-dns.com, proxied false)",
+          "at": "2026-10-24T08:31:00Z"
+        }
       ],
       "rename": "Vercel's Git connection follows the repository ID through a rename, but re-check the project's linked repository after the rename (Vercel-side settings need a Vercel credential)"
     },
@@ -169,15 +345,27 @@
       "id": "checkface-pages",
       "scope": ["repo:checkface", "host:checkface.facemorph.me"],
       "kind": "github-pages",
-      "binding": { "type": "GitHub Pages (legacy build) + DNS CNAME to the org's github.io host", "repoId": 185985766, "repo": "check-face/checkface", "branch": "master", "path": "/docs" },
+      "binding": {
+        "type": "GitHub Pages (legacy build) + DNS CNAME to the org's github.io host",
+        "repoId": 185985766,
+        "repo": "check-face/checkface",
+        "branch": "master",
+        "path": "/docs"
+      },
       "publisher": "GitHub Pages legacy build from master /docs (archived repository)",
       "target": "https://checkface.facemorph.me (API documentation pages; DNS CNAME check-face.github.io, DNS-only)",
       "trigger": "push to master (archived: no further pushes)",
       "credentials": [],
       "status": "verified",
       "evidence": [
-        { "command": "node scripts/identity/read-identity.mjs (archived-backend pages; legacy-api-docs github-pages, dns.*)", "at": "2026-10-24" },
-        { "command": "Cloudflare connector DNS read (checkface.facemorph.me CNAME check-face.github.io, proxied false)", "at": "2026-10-24T08:31:00Z" }
+        {
+          "command": "node scripts/identity/read-identity.mjs (archived-backend pages; legacy-api-docs github-pages, dns.*)",
+          "at": "2026-10-24"
+        },
+        {
+          "command": "Cloudflare connector DNS read (checkface.facemorph.me CNAME check-face.github.io, proxied false)",
+          "at": "2026-10-24T08:31:00Z"
+        }
       ],
       "rename": "the CNAME target names the organization: after the rename it must point at facemorph-me.github.io (and the Pages custom domain re-verified), or checkface.facemorph.me stops serving; API retirement may remove it instead"
     },
@@ -191,7 +379,12 @@
       "trigger": "push, pull_request (archived: none)",
       "credentials": ["webhook URL path (not recorded)"],
       "status": "verified",
-      "evidence": [{ "command": "node scripts/identity/read-identity.mjs (archived-backend hooks)", "at": "2026-10-24" }],
+      "evidence": [
+        {
+          "command": "node scripts/identity/read-identity.mjs (archived-backend hooks)",
+          "at": "2026-10-24"
+        }
+      ],
       "rename": "webhooks are bound by repository ID; no edit (archived)"
     },
     {
@@ -205,8 +398,14 @@
       "credentials": ["app installations (no repository secret)"],
       "status": "verified",
       "evidence": [
-        { "command": "node scripts/identity/read-identity.mjs (org:check-face installations)", "at": "2026-10-24" },
-        { "command": "Cloudflare connector: pages/projects (no project has a check-face Git source)", "at": "2026-10-24T08:31:00Z" }
+        {
+          "command": "node scripts/identity/read-identity.mjs (org:check-face installations)",
+          "at": "2026-10-24"
+        },
+        {
+          "command": "Cloudflare connector: pages/projects (no project has a check-face Git source)",
+          "at": "2026-10-24T08:31:00Z"
+        }
       ],
       "rename": "installations are bound to the organization ID and survive the rename; re-check after it"
     },
@@ -214,7 +413,9 @@
       "id": "org-actions-config",
       "scope": ["org:check-face"],
       "kind": "actions-config",
-      "binding": { "type": "organization Actions secrets, variables, runners and runner groups; container packages; organization webhooks" },
+      "binding": {
+        "type": "organization Actions secrets, variables, runners and runner groups; container packages; organization webhooks"
+      },
       "publisher": "organization settings",
       "target": "all repositories",
       "trigger": "n/a",
@@ -232,12 +433,23 @@
       "trigger": "jobs whose runs-on matches the labels",
       "credentials": ["runner registration (per repository)"],
       "status": "verified",
-      "evidence": [{ "command": "node scripts/identity/read-identity.mjs (new-monorepo and retained-application actions.runners)", "at": "2026-10-24" }],
+      "evidence": [
+        {
+          "command": "node scripts/identity/read-identity.mjs (new-monorepo and retained-application actions.runners)",
+          "at": "2026-10-24"
+        }
+      ],
       "rename": "runners stay registered to the repository; confirm they come back online after the rename"
     },
     {
       "id": "actions-oidc",
-      "scope": ["repo:facemorph.me", "repo:facemorph.me-classic", "repo:facemorph-names", "repo:checkface", "repo:encoder4editing"],
+      "scope": [
+        "repo:facemorph.me",
+        "repo:facemorph.me-classic",
+        "repo:facemorph-names",
+        "repo:checkface",
+        "repo:encoder4editing"
+      ],
       "kind": "oidc",
       "binding": { "type": "Actions OIDC subject claim" },
       "publisher": "GitHub Actions OIDC",
@@ -246,14 +458,30 @@
       "credentials": [],
       "status": "verified",
       "evidence": [
-        { "command": "node scripts/identity/read-identity.mjs (actions.oidc-sub of each repository: the monorepo uses the immutable ID-based subject, the others the default repo:check-face/<name>)", "at": "2026-10-24" },
-        { "command": "git grep -n id-token <rev> -- .github (no match in any of the five repositories)", "at": "2026-10-24" }
+        {
+          "command": "node scripts/identity/read-identity.mjs (actions.oidc-sub of each repository: the monorepo uses the immutable ID-based subject, the others the default repo:check-face/<name>)",
+          "at": "2026-10-24"
+        },
+        {
+          "command": "git grep -n id-token <rev> -- .github (no match in any of the five repositories)",
+          "at": "2026-10-24"
+        }
       ],
       "rename": "default subjects change with the owner name; harmless while nothing trusts them"
     },
     {
       "id": "facemorph-zone-dns",
-      "scope": ["host:facemorph.me", "host:api.facemorph.me", "host:e4e.facemorph.me", "host:metrics.facemorph.me", "host:labs.facemorph.me", "host:names.facemorph.me", "host:checkface.facemorph.me", "host:next.facemorph.me", "host:models.facemorph.me"],
+      "scope": [
+        "host:facemorph.me",
+        "host:api.facemorph.me",
+        "host:e4e.facemorph.me",
+        "host:metrics.facemorph.me",
+        "host:labs.facemorph.me",
+        "host:names.facemorph.me",
+        "host:checkface.facemorph.me",
+        "host:next.facemorph.me",
+        "host:models.facemorph.me"
+      ],
       "kind": "dns",
       "binding": { "type": "Cloudflare zone facemorph.me (Free plan)" },
       "publisher": "Cloudflare DNS (operator account)",
@@ -262,8 +490,14 @@
       "credentials": [],
       "status": "verified",
       "evidence": [
-        { "command": "Cloudflare connector: zones/{zone}/dns_records (TXT contents not recorded), cfd_tunnel", "at": "2026-10-24T08:31:00Z" },
-        { "command": "node scripts/identity/read-identity.mjs (dns.cname / dns.a of each host, through public DNS-over-HTTPS)", "at": "2026-10-24" }
+        {
+          "command": "Cloudflare connector: zones/{zone}/dns_records (TXT contents not recorded), cfd_tunnel",
+          "at": "2026-10-24T08:31:00Z"
+        },
+        {
+          "command": "node scripts/identity/read-identity.mjs (dns.cname / dns.a of each host, through public DNS-over-HTTPS)",
+          "at": "2026-10-24"
+        }
       ],
       "rename": "only checkface.facemorph.me names the organization (see checkface-pages); e4e.facemorph.me is a retiring API host not yet in the 15 October source scan"
     }

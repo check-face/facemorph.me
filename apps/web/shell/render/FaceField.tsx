@@ -29,20 +29,69 @@ export interface FaceFieldProps {
   readonly onWarmPhotoTools?: () => void;
 }
 
-export function FaceField({ item, label, disabled, onEdit, onMode, onBrowse, onPick, onWarmPhotoTools }: FaceFieldProps) {
+export function FaceField({
+  item,
+  label,
+  disabled,
+  onEdit,
+  onMode,
+  onBrowse,
+  onPick,
+  onWarmPhotoTools,
+}: FaceFieldProps) {
   const [anchor, setAnchor] = useState<HTMLDivElement | null>(null); // the start adornment the menu opens from
   const [open, setOpen] = useState(false);
   // Choosing "Upload image" opens the picker in the same gesture: a mode change alone left an empty field.
   const entry = (kind: FaceMode, icon: ReactNode, text: string) => (
-    <MenuItem selected={item.mode === kind} onClick={() => { setOpen(false); onMode(kind); if (kind === 'photo') { onWarmPhotoTools?.(); onPick(); } }}>
-      <ListItemIcon>{icon}</ListItemIcon><ListItemText>{text}</ListItemText>
+    <MenuItem
+      selected={item.mode === kind}
+      onClick={() => {
+        setOpen(false);
+        onMode(kind);
+        if (kind === 'photo') {
+          onWarmPhotoTools?.();
+          onPick();
+        }
+      }}
+    >
+      <ListItemIcon>{icon}</ListItemIcon>
+      <ListItemText>{text}</ListItemText>
     </MenuItem>
   );
-  const end = item.mode === 'photo'
-    ? <InputAdornment position="end"><Tooltip title="Choose another photo"><IconButton className="next-adornment" tabIndex={-1} aria-label="Choose photo" edge="end" onClick={onPick}><PhotoCameraIcon /></IconButton></Tooltip></InputAdornment>
-    : item.mode === 'seed'
-      ? <InputAdornment position="end"><></></InputAdornment>
-      : <InputAdornment position="end"><Tooltip title="Browse names"><IconButton className="next-adornment" tabIndex={-1} aria-label="Browse names" edge="end" onClick={onBrowse}><ImageSearchIcon /></IconButton></Tooltip></InputAdornment>;
+  const end =
+    item.mode === 'photo' ? (
+      <InputAdornment position="end">
+        <Tooltip title="Choose another photo">
+          <IconButton
+            className="next-adornment"
+            tabIndex={-1}
+            aria-label="Choose photo"
+            edge="end"
+            onClick={onPick}
+          >
+            <PhotoCameraIcon />
+          </IconButton>
+        </Tooltip>
+      </InputAdornment>
+    ) : item.mode === 'seed' ? (
+      <InputAdornment position="end">
+        <></>
+      </InputAdornment>
+    ) : (
+      <InputAdornment position="end">
+        <Tooltip title="Browse names">
+          <IconButton
+            className="next-adornment"
+            tabIndex={-1}
+            aria-label="Browse names"
+            edge="end"
+            onClick={onBrowse}
+          >
+            <ImageSearchIcon />
+          </IconButton>
+        </Tooltip>
+      </InputAdornment>
+    );
   const placeholder = item.mode === 'project' ? '' : 'Just type anything'; // defect 20 (face controls): carried, not asserted
   return (
     <>
@@ -54,7 +103,7 @@ export function FaceField({ item, label, disabled, onEdit, onMode, onBrowse, onP
       </Menu>
       <div className="next-field">
         <TextField
-          value={item.mode === 'photo' ? item.file?.name ?? '' : item.value}
+          value={item.mode === 'photo' ? (item.file?.name ?? '') : item.value}
           placeholder={placeholder}
           disabled={disabled || item.mode === 'photo' || item.mode === 'project'}
           variant="outlined"
@@ -63,11 +112,24 @@ export function FaceField({ item, label, disabled, onEdit, onMode, onBrowse, onP
           className="focuswithin-parent"
           {...(item.mode === 'seed' ? { type: 'number' } : {})}
           slotProps={{
-            htmlInput: { style: { textAlign: 'center' }, ...(item.mode === 'seed' ? { min: 0, max: 4294967295 } : {}) },
+            htmlInput: {
+              style: { textAlign: 'center' },
+              ...(item.mode === 'seed' ? { min: 0, max: 4294967295 } : {}),
+            },
             input: {
               startAdornment: (
                 <InputAdornment position="start" ref={setAnchor}>
-                  <Tooltip title="Change mode"><IconButton className="next-adornment" tabIndex={-1} aria-label="Change mode" edge="start" onClick={() => setOpen(true)}><MenuIcon /></IconButton></Tooltip>
+                  <Tooltip title="Change mode">
+                    <IconButton
+                      className="next-adornment"
+                      tabIndex={-1}
+                      aria-label="Change mode"
+                      edge="start"
+                      onClick={() => setOpen(true)}
+                    >
+                      <MenuIcon />
+                    </IconButton>
+                  </Tooltip>
                 </InputAdornment>
               ),
               endAdornment: end,

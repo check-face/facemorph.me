@@ -14,8 +14,13 @@ export function closureFindings({ root = REPO, allowlist = readJson(ALLOWLIST), 
   const base = allowlist.destination_root;
   const prefix = `${base}/`;
   const dir = join(root, base);
-  const files = allowlist.files.map((f) => ({ path: f.destination.slice(prefix.length), sha256: f.sha256, bytes: f.bytes }));
-  if (!existsSync(dir)) return files.map((f) => ({ path: f.path, problem: 'missing', expected: f.sha256 }));
+  const files = allowlist.files.map((f) => ({
+    path: f.destination.slice(prefix.length),
+    sha256: f.sha256,
+    bytes: f.bytes,
+  }));
+  if (!existsSync(dir))
+    return files.map((f) => ({ path: f.path, problem: 'missing', expected: f.sha256 }));
   return storeFindings(dir, files)
     .filter((f) => !(f.problem === 'extra' && matches(f.path, allow)))
     .map((f) => ({ ...f, path: prefix + f.path }));
@@ -29,6 +34,13 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   for (const f of findings) line(f);
   const count = (p) => findings.filter((f) => f.problem === p).length;
   const files = readJson(ALLOWLIST).files.length;
-  line({ summary: { files, mismatches: count('mismatch'), missing: count('missing'), extra: count('extra') } });
+  line({
+    summary: {
+      files,
+      mismatches: count('mismatch'),
+      missing: count('missing'),
+      extra: count('extra'),
+    },
+  });
   process.exit(findings.length ? 1 : 0);
 }

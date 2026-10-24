@@ -21,12 +21,32 @@ export async function fetchControl({ dest, store, record = readControl(), log = 
     mkdirSync(dir, { recursive: true });
     // The API asset URL (accept: octet-stream) serves anonymous requests; a CI token only raises the rate limit.
     const token = process.env.GITHUB_TOKEN || process.env.GH_TOKEN;
-    const res = await fetch(record.release.api_url, { headers: { accept: 'application/octet-stream', ...(token ? { authorization: `Bearer ${token}` } : {}) } });
+    const res = await fetch(record.release.api_url, {
+      headers: {
+        accept: 'application/octet-stream',
+        ...(token ? { authorization: `Bearer ${token}` } : {}),
+      },
+    });
     const bytes = res.ok ? Buffer.from(await res.arrayBuffer()) : Buffer.alloc(0);
     const actual = sha256(bytes);
-    log({ fetched: record.release.api_url, status: res.status, bytes: bytes.length, expected: record.release.sha256, actual });
-    if (!res.ok) findings.push({ problem: `release asset answered HTTP ${res.status}`, url: record.release.api_url });
-    else if (actual !== record.release.sha256) findings.push({ problem: 'release asset digest mismatch', expected: record.release.sha256, actual });
+    log({
+      fetched: record.release.api_url,
+      status: res.status,
+      bytes: bytes.length,
+      expected: record.release.sha256,
+      actual,
+    });
+    if (!res.ok)
+      findings.push({
+        problem: `release asset answered HTTP ${res.status}`,
+        url: record.release.api_url,
+      });
+    else if (actual !== record.release.sha256)
+      findings.push({
+        problem: 'release asset digest mismatch',
+        expected: record.release.sha256,
+        actual,
+      });
     else {
       const zip = join(dir, record.release.asset);
       writeFileSync(zip, bytes);
@@ -36,14 +56,24 @@ export async function fetchControl({ dest, store, record = readControl(), log = 
   }
   if (!findings.length) findings.push(...storeFindings(dir, record.files));
   for (const f of findings) log(f);
-  if (findings.length) throw Object.assign(new Error(`control artifact failed verification (${findings.length} finding(s))`), { findings });
+  if (findings.length)
+    throw Object.assign(
+      new Error(`control artifact failed verification (${findings.length} finding(s))`),
+      { findings },
+    );
   return { dir, record, findings };
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const opts = options(process.argv.slice(2));
   const record = readControl();
-  const source = { label: record.label, repository: record.source.repository, run_id: record.source.run_id, commit: record.source.commit, artifact: record.source.artifact_name };
+  const source = {
+    label: record.label,
+    repository: record.source.repository,
+    run_id: record.source.run_id,
+    commit: record.source.commit,
+    artifact: record.source.artifact_name,
+  };
   try {
     const { dir } = await fetchControl({ dest: opts.dest, store: opts.store, record, log: line });
     line({ summary: { ok: true, dir, files: record.files.length, ...source } });

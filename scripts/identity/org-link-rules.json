@@ -2,7 +2,12 @@
   "$comment": "Classification rules for scan-org-links.mjs (fm-a4b). Re-used by the organization rename (fm-rur) as its edit list and post-rename check. First matching rule wins; a hit naming a third-party owner is classed `external` before these rules. `target` is a regex on `<owner>/<name>` (owner empty when templated), `line` a regex on the source line, `paths` globs on the repository path. `to` / `correctName` give the post-rename target for active-link and repo-name-correction hits.",
   "targets": [
     { "repo": "facemorph.me", "id": 1413979666, "dir": "facemorph.me", "revs": ["HEAD"] },
-    { "repo": "facemorph.me-classic", "id": 295956585, "dir": "facemorph.me-classic", "revs": ["candidate/next-delivery-20260916", "master"] },
+    {
+      "repo": "facemorph.me-classic",
+      "id": 295956585,
+      "dir": "facemorph.me-classic",
+      "revs": ["candidate/next-delivery-20260916", "master"]
+    },
     { "repo": "facemorph-names", "id": 348379171, "dir": "facemorph-names", "revs": ["master"] },
     { "repo": "checkface", "id": 185985766, "dir": "checkface", "revs": ["master"] },
     { "repo": "encoder4editing", "id": 368806700, "dir": "encoder4editing", "revs": ["main"] }
@@ -158,7 +163,11 @@
     {
       "id": "classic-self-host-provenance",
       "repo": "facemorph.me-classic",
-      "paths": ["self-host/frontend-overlay/source.json", "self-host/frontend-overlay/README.md", "self-host/REPOSITORY-PROVENANCE.md"],
+      "paths": [
+        "self-host/frontend-overlay/source.json",
+        "self-host/frontend-overlay/README.md",
+        "self-host/REPOSITORY-PROVENANCE.md"
+      ],
       "class": "immutable-provenance",
       "disposition": "keep the original repository URL and pinned commit 0abb215f27b16e17e3919cf78b616b6ae4998a5d; add a current-resolution mapping (that commit lives in classic, repository ID 295956585) beside it"
     },
@@ -212,7 +221,14 @@
     {
       "id": "classic-dated-docs",
       "repo": "facemorph.me-classic",
-      "paths": ["docs/review/**", "docs/plans/**", "docs/round-*.md", "docs/*-20??-??-??.md", "docs/current-delivery-scope.md", "docs/side-by-side-trial.md"],
+      "paths": [
+        "docs/review/**",
+        "docs/plans/**",
+        "docs/round-*.md",
+        "docs/*-20??-??-??.md",
+        "docs/current-delivery-scope.md",
+        "docs/side-by-side-trial.md"
+      ],
       "class": "frozen-evidence",
       "disposition": "leave: dated reviews, plans and receipts; check-face/facemorph.me links there name classic before its rename and resolve through the repository-ID mapping"
     }

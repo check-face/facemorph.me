@@ -14,11 +14,18 @@ export function appTheme(dark: boolean): Theme {
   return createTheme({
     palette: {
       mode: dark ? 'dark' : 'light',
-      background: { default: dark ? '#17181c' : '#fff', paper: dark ? '#353535' : '#fff', level2: dark ? '#2a2a2a' : '#f5f5f5' },
+      background: {
+        default: dark ? '#17181c' : '#fff',
+        paper: dark ? '#353535' : '#fff',
+        level2: dark ? '#2a2a2a' : '#f5f5f5',
+      },
     },
     typography: {
       fontFamily: "'Roboto', 'Segoe UI', sans-serif",
-      h1: { fontFamily: headings }, h2: { fontFamily: headings }, h3: { fontFamily: headings }, h4: { fontFamily: headings },
+      h1: { fontFamily: headings },
+      h2: { fontFamily: headings },
+      h3: { fontFamily: headings },
+      h4: { fontFamily: headings },
       subtitle1: { fontFamily: headings },
       body2: { fontSize: '1rem' },
     },

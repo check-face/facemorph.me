@@ -19,7 +19,11 @@
 
 import type { CancellationSignal, ComputeRoute, LatentSchema } from './capability.ts';
 import type { EncoderInput } from './crop-policy.ts';
-import type { RecoveryProvenance, GenerationKind, RecoveryReadResult } from './recovery-metadata.ts';
+import type {
+  RecoveryProvenance,
+  GenerationKind,
+  RecoveryReadResult,
+} from './recovery-metadata.ts';
 import type { E4eTimings } from './timing.ts';
 
 /** Ids carried by every request and result. */
@@ -32,7 +36,13 @@ export interface OperationIds {
   readonly attemptId: number;
 }
 
-export type OperationKind = 'map' | 'synthesize' | 'encode' | 'extract-metadata' | 'encode-raw-image' | 'render-morph';
+export type OperationKind =
+  | 'map'
+  | 'synthesize'
+  | 'encode'
+  | 'extract-metadata'
+  | 'encode-raw-image'
+  | 'render-morph';
 
 /** A W+ latent with its explicit shape (layers x width from the model's LatentSchema). */
 export interface LatentTensor {
@@ -123,7 +133,12 @@ export interface RawImageEncodeResult {
 }
 
 /** Every current morph selector mode (geometry/latent-path.mjs kinds). */
-export type MorphPathMode = 'linear' | 'pairwise-ellipse' | 'pairwise-figure8' | 'full-smooth-ellipse' | 'full-smooth-figure8';
+export type MorphPathMode =
+  | 'linear'
+  | 'pairwise-ellipse'
+  | 'pairwise-figure8'
+  | 'full-smooth-ellipse'
+  | 'full-smooth-figure8';
 export const MORPH_PATH_MODES = [
   'linear',
   'pairwise-ellipse',
@@ -155,12 +170,29 @@ export const RAW_SEGMENT_FRAMES = 8;
 export type VideoResolution = 1024 | 512;
 export type VideoEncoderPath = 'webcodecs' | 'ffmpeg';
 
-export type MediaBranch = 'cached-result' | 'raw-sparse-anchors' | 'blob-stream' | 'sequential' | 'retained-then-encode' | 'endpoint-reuse';
+export type MediaBranch =
+  | 'cached-result'
+  | 'raw-sparse-anchors'
+  | 'blob-stream'
+  | 'sequential'
+  | 'retained-then-encode'
+  | 'endpoint-reuse';
 
 export interface MediaBranchRow {
   readonly branch: MediaBranch;
-  readonly drain: 'none' | 'anchor-callback' | 'ordered-stream' | 'per-frame' | 'after-retention' | 'inner-frames';
-  readonly bufferOwner: 'store' | 'caller' | 'consumer' | 'engine' | 'caller-endpoints-engine-inner';
+  readonly drain:
+    | 'none'
+    | 'anchor-callback'
+    | 'ordered-stream'
+    | 'per-frame'
+    | 'after-retention'
+    | 'inner-frames';
+  readonly bufferOwner:
+    | 'store'
+    | 'caller'
+    | 'consumer'
+    | 'engine'
+    | 'caller-endpoints-engine-inner';
   readonly anchorOrdering: string;
 }
 
@@ -168,12 +200,42 @@ export interface MediaBranchRow {
 export const MEDIA_BRANCHES: readonly MediaBranchRow[] = Object.freeze(
   (
     [
-      { branch: 'cached-result', drain: 'none', bufferOwner: 'store', anchorOrdering: 'not applicable' },
-      { branch: 'raw-sparse-anchors', drain: 'anchor-callback', bufferOwner: 'caller', anchorOrdering: 'display-only; the ordered video drain never waits for an anchor' },
-      { branch: 'blob-stream', drain: 'ordered-stream', bufferOwner: 'consumer', anchorOrdering: 'consumed in frame order even when anchors arrive early' },
-      { branch: 'sequential', drain: 'per-frame', bufferOwner: 'engine', anchorOrdering: 'strictly in order; no anchors' },
-      { branch: 'retained-then-encode', drain: 'after-retention', bufferOwner: 'engine', anchorOrdering: 'anchors come from retained frames; encoding starts after the last' },
-      { branch: 'endpoint-reuse', drain: 'inner-frames', bufferOwner: 'caller-endpoints-engine-inner', anchorOrdering: 'endpoints count as delivered anchors' },
+      {
+        branch: 'cached-result',
+        drain: 'none',
+        bufferOwner: 'store',
+        anchorOrdering: 'not applicable',
+      },
+      {
+        branch: 'raw-sparse-anchors',
+        drain: 'anchor-callback',
+        bufferOwner: 'caller',
+        anchorOrdering: 'display-only; the ordered video drain never waits for an anchor',
+      },
+      {
+        branch: 'blob-stream',
+        drain: 'ordered-stream',
+        bufferOwner: 'consumer',
+        anchorOrdering: 'consumed in frame order even when anchors arrive early',
+      },
+      {
+        branch: 'sequential',
+        drain: 'per-frame',
+        bufferOwner: 'engine',
+        anchorOrdering: 'strictly in order; no anchors',
+      },
+      {
+        branch: 'retained-then-encode',
+        drain: 'after-retention',
+        bufferOwner: 'engine',
+        anchorOrdering: 'anchors come from retained frames; encoding starts after the last',
+      },
+      {
+        branch: 'endpoint-reuse',
+        drain: 'inner-frames',
+        bufferOwner: 'caller-endpoints-engine-inner',
+        anchorOrdering: 'endpoints count as delivered anchors',
+      },
     ] satisfies MediaBranchRow[]
   ).map((row) => Object.freeze(row)),
 );
@@ -252,11 +314,25 @@ export type OperationSettlement<R> =
 /** The engine's operations over a caller-loaded capability. */
 export interface EngineOperations {
   readonly latent: LatentSchema;
-  map(request: MappingRequest, signal?: CancellationSignal): Promise<OperationSettlement<MappingResult>>;
-  synthesize(request: SynthesisRequest, signal?: CancellationSignal): Promise<OperationSettlement<SynthesisResult>>;
-  encode(request: EncodeRequest, signal?: CancellationSignal): Promise<OperationSettlement<EncodeResult>>;
-  extractMetadata(request: ExtractMetadataRequest): Promise<OperationSettlement<ExtractMetadataResult>>;
-  encodeRawImage(request: RawImageEncodeRequest, signal?: CancellationSignal): Promise<OperationSettlement<RawImageEncodeResult>>;
+  map(
+    request: MappingRequest,
+    signal?: CancellationSignal,
+  ): Promise<OperationSettlement<MappingResult>>;
+  synthesize(
+    request: SynthesisRequest,
+    signal?: CancellationSignal,
+  ): Promise<OperationSettlement<SynthesisResult>>;
+  encode(
+    request: EncodeRequest,
+    signal?: CancellationSignal,
+  ): Promise<OperationSettlement<EncodeResult>>;
+  extractMetadata(
+    request: ExtractMetadataRequest,
+  ): Promise<OperationSettlement<ExtractMetadataResult>>;
+  encodeRawImage(
+    request: RawImageEncodeRequest,
+    signal?: CancellationSignal,
+  ): Promise<OperationSettlement<RawImageEncodeResult>>;
   renderMorph(
     request: RenderMorphRequest,
     signal?: CancellationSignal,

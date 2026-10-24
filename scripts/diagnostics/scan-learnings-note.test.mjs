@@ -20,12 +20,18 @@ test('each identifier class is detected', () => {
     hex: 'device 9f86d081884c7d659a2feaa0',
     base64: 'token eyJhbGciOiJIUzI1NiJ9xQ2a in the log',
   };
-  for (const [cls, line] of Object.entries(cases)) assert.ok(classes(line).includes(cls), `${cls} not detected in: ${line}`);
+  for (const [cls, line] of Object.entries(cases))
+    assert.ok(classes(line).includes(cls), `${cls} not detected in: ${line}`);
 });
 
 test('the allowlisted key-list digest and ordinary prose are not flagged', () => {
   assert.deepEqual(scanText(`Key-list digest: \`${KEY_LIST_DIGEST}\``), []);
-  assert.deepEqual(scanText('quota/usage/persistence and docs/findings/diagnostics-learnings-2026-10-18.md, 1,040 MB at 08:02 UTC'), []);
+  assert.deepEqual(
+    scanText(
+      'quota/usage/persistence and docs/findings/diagnostics-learnings-2026-10-18.md, 1,040 MB at 08:02 UTC',
+    ),
+    [],
+  );
 });
 
 test('matched text is redacted in the findings', () => {

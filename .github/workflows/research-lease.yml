@@ -4,7 +4,13 @@ name: research-lease
 on:
   push:
     branches: [main]
-    paths: ['autoresearch/**', 'tools/device-lab/lab.py', 'ops/lease/**', '.github/workflows/research-lease.yml']
+    paths:
+      [
+        'autoresearch/**',
+        'tools/device-lab/lab.py',
+        'ops/lease/**',
+        '.github/workflows/research-lease.yml',
+      ]
   workflow_dispatch:
 concurrency:
   group: research-lease

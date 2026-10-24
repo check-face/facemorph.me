@@ -23,9 +23,11 @@ export function scheduleFill(element: HTMLElement | null, fraction: number) {
 export function ProgressBar({ fraction }: { fraction: number }) {
   return (
     <div className="next-progress">
-      {fraction < 0
-        ? <div className="next-progress-fill next-progress-indeterminate" />
-        : <div className="next-progress-fill" ref={(el) => scheduleFill(el, fraction)} />}
+      {fraction < 0 ? (
+        <div className="next-progress-fill next-progress-indeterminate" />
+      ) : (
+        <div className="next-progress-fill" ref={(el) => scheduleFill(el, fraction)} />
+      )}
     </div>
   );
 }

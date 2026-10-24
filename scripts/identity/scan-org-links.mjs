@@ -15,15 +15,26 @@ import { dirname, resolve } from 'node:path';
 
 const here = dirname(fileURLToPath(import.meta.url));
 export const OUR_OWNERS = ['check-face', 'facemorph-me'];
-export const CLASSES = ['active-link', 'repo-name-correction', 'immutable-provenance', 'frozen-evidence', 'archived', 'native-updater', 'candidate-source', 'external'];
+export const CLASSES = [
+  'active-link',
+  'repo-name-correction',
+  'immutable-provenance',
+  'frozen-evidence',
+  'archived',
+  'native-updater',
+  'candidate-source',
+  'external',
+];
 const NEW_OWNER = 'facemorph-me';
 const LOGIN = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})$/;
 const NAME = /^[A-Za-z0-9_.-]+$/;
 
 // git grep pre-filter (ERE); the JS patterns below decide what each hit is.
-const GREP = 'check-face|github\\.com|githubusercontent\\.com|codeload\\.github|(^|[^A-Za-z])gh .*(-R|--repo)|repos/|uses:';
+const GREP =
+  'check-face|github\\.com|githubusercontent\\.com|codeload\\.github|(^|[^A-Za-z])gh .*(-R|--repo)|repos/|uses:';
 
-const HOST = '(?<![\\w.-])(?:https?:\\/\\/)?(?:www\\.)?(github\\.com|raw\\.githubusercontent\\.com|codeload\\.github\\.com|api\\.github\\.com|objects\\.githubusercontent\\.com)';
+const HOST =
+  '(?<![\\w.-])(?:https?:\\/\\/)?(?:www\\.)?(github\\.com|raw\\.githubusercontent\\.com|codeload\\.github\\.com|api\\.github\\.com|objects\\.githubusercontent\\.com)';
 const PATTERNS = [
   ['url', new RegExp(`${HOST}((?:[/:][^\\s"'<>()\\[\\]\`,;|]*)?)`, 'g')],
   ['gh-repo-flag', /\bgh\b[^\n]*?\s(?:-R|--repo)[ =]['"]?([^\s'"]+)/g],
@@ -39,7 +50,9 @@ export function parseTarget(kind, m) {
   if (kind === 'url') {
     const host = m[1].toLowerCase();
     let parts = m[2].replace(/^[/:]/, '').split(/[/?#]/);
-    if (host === 'api.github.com') parts = parts[0] === 'repos' || parts[0] === 'orgs' || parts[0] === 'users' ? parts.slice(1) : [];
+    if (host === 'api.github.com')
+      parts =
+        parts[0] === 'repos' || parts[0] === 'orgs' || parts[0] === 'users' ? parts.slice(1) : [];
     [owner, name] = parts;
   } else if (kind === 'gh-repo-flag') [owner, name] = m[1].split('/');
   else if (kind === 'api-path') [, owner, name] = m[1].split('/');
@@ -51,7 +64,10 @@ export function parseTarget(kind, m) {
     name = m[1] ?? null;
   }
   name = name ? name.replace(/\.+$/, '').replace(/\.git$/, '') : null;
-  return { owner: owner && LOGIN.test(owner) ? owner : null, name: name && NAME.test(name) ? name : null };
+  return {
+    owner: owner && LOGIN.test(owner) ? owner : null,
+    name: name && NAME.test(name) ? name : null,
+  };
 }
 
 // All hits on one line; an org-name hit inside a URL/flag/path hit is the same reference.
@@ -110,7 +126,12 @@ export function rewriteTarget(hit, rule) {
 
 export function classify(hit, compiled) {
   const ours = hit.owner === null || OUR_OWNERS.includes(hit.owner.toLowerCase());
-  if (!ours) return { class: 'external', disposition: 'leave: third-party GitHub reference, unaffected by the organization rename', rule: 'external-owner' };
+  if (!ours)
+    return {
+      class: 'external',
+      disposition: 'leave: third-party GitHub reference, unaffected by the organization rename',
+      rule: 'external-owner',
+    };
   const target = `${hit.owner ?? ''}/${hit.name ?? ''}`;
   for (const r of compiled) {
     if (r.repo && r.repo !== hit.repo) continue;
@@ -119,15 +140,27 @@ export function classify(hit, compiled) {
     if (r.kind && r.kind !== hit.kind) continue;
     if (r.lineRe && !r.lineRe.test(hit.text)) continue;
     const to = rewriteTarget(hit, r);
-    return { class: r.class, disposition: r.disposition, rule: r.id ?? `#${r.index}`, ...(to ? { to } : {}) };
+    return {
+      class: r.class,
+      disposition: r.disposition,
+      rule: r.id ?? `#${r.index}`,
+      ...(to ? { to } : {}),
+    };
   }
-  return { class: 'unclassified', disposition: 'no rule matches: add one to org-link-rules.json before any edit', rule: null };
+  return {
+    class: 'unclassified',
+    disposition: 'no rule matches: add one to org-link-rules.json before any edit',
+    rule: null,
+  };
 }
 
-const git = (cwd, args) => execFileSync('git', ['-C', cwd, ...args], { encoding: 'utf8', maxBuffer: 256 << 20 });
+const git = (cwd, args) =>
+  execFileSync('git', ['-C', cwd, ...args], { encoding: 'utf8', maxBuffer: 256 << 20 });
 
 export function resolveRev(path, rev) {
-  for (const ref of rev === 'HEAD' ? ['HEAD'] : [`refs/remotes/origin/${rev}`, `refs/heads/${rev}`, rev]) {
+  for (const ref of rev === 'HEAD'
+    ? ['HEAD']
+    : [`refs/remotes/origin/${rev}`, `refs/heads/${rev}`, rev]) {
     try {
       return git(path, ['rev-parse', '--verify', '--quiet', `${ref}^{commit}`]).trim();
     } catch {}
@@ -150,13 +183,24 @@ export function scanRepo({ repo, path, rev, commit }) {
     if (!m) continue;
     const [, file, line, text] = m;
     const workflow = /^\.github\/workflows\/[^/]+\.ya?ml$|(^|\/)action\.ya?ml$/.test(file);
-    for (const h of lineHits(text, { workflow })) hits.push({ repo, rev, commit, file, line: Number(line), text, ...h });
+    for (const h of lineHits(text, { workflow }))
+      hits.push({ repo, rev, commit, file, line: Number(line), text, ...h });
   }
   let origin = '';
   try {
     origin = git(path, ['remote', 'get-url', 'origin']).trim();
   } catch {}
-  if (origin) for (const h of lineHits(origin)) hits.push({ repo, rev, commit, file: '.git/config', line: 0, text: `remote.origin.url=${origin}`, ...h });
+  if (origin)
+    for (const h of lineHits(origin))
+      hits.push({
+        repo,
+        rev,
+        commit,
+        file: '.git/config',
+        line: 0,
+        text: `remote.origin.url=${origin}`,
+        ...h,
+      });
   return hits;
 }
 
@@ -180,7 +224,11 @@ export function scan(targets, rules) {
 }
 
 function parseArgs(argv) {
-  const opts = { root: resolve(here, '../../..'), rules: resolve(here, 'org-link-rules.json'), targets: [] };
+  const opts = {
+    root: resolve(here, '../../..'),
+    rules: resolve(here, 'org-link-rules.json'),
+    targets: [],
+  };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--root') opts.root = resolve(argv[++i]);
@@ -201,11 +249,15 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   try {
     opts = parseArgs(process.argv.slice(2));
   } catch (e) {
-    console.error(`${e.message}\nusage: scan-org-links.mjs [--root <dir>] [--rules <file>] [--target <repo>=<path>@<rev>]...`);
+    console.error(
+      `${e.message}\nusage: scan-org-links.mjs [--root <dir>] [--rules <file>] [--target <repo>=<path>@<rev>]...`,
+    );
     process.exit(2);
   }
   const data = JSON.parse(readFileSync(opts.rules, 'utf8'));
-  const targets = opts.targets.length ? opts.targets : data.targets.map((t) => ({ ...t, path: resolve(opts.root, t.dir) }));
+  const targets = opts.targets.length
+    ? opts.targets
+    : data.targets.map((t) => ({ ...t, path: resolve(opts.root, t.dir) }));
   for (const t of targets) {
     if (!existsSync(t.path)) {
       console.error(`missing checkout for ${t.repo}: ${t.path}`);
@@ -219,6 +271,8 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     byRepo[r.repo] ??= {};
     byRepo[r.repo][r.class] = (byRepo[r.repo][r.class] ?? 0) + 1;
   }
-  console.log(JSON.stringify({ event: 'scan-done', scanned, hits: results.length, counts, byRepo }));
+  console.log(
+    JSON.stringify({ event: 'scan-done', scanned, hits: results.length, counts, byRepo }),
+  );
   process.exit(counts.unclassified ? 1 : 0);
 }

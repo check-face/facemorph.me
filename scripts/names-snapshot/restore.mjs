@@ -9,7 +9,17 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { DEFAULTS, MANIFEST_PATH, clientFromArgs, keyOf, parseArgs, parseManifest, readObject, revokeR2Token, sha256 } from './snapshot.mjs';
+import {
+  DEFAULTS,
+  MANIFEST_PATH,
+  clientFromArgs,
+  keyOf,
+  parseArgs,
+  parseManifest,
+  readObject,
+  revokeR2Token,
+  sha256,
+} from './snapshot.mjs';
 
 export const EXIT = { restored: 0, incomplete: 21, usage: 2 };
 
@@ -29,25 +39,41 @@ export function select(rows, { names, sample, all } = {}) {
   throw new Error('select names, a sample size, or all');
 }
 
-export async function restore({ rows, client, bucket = DEFAULTS.bucket, out, concurrency = DEFAULTS.concurrency }) {
-  const report = { selected: rows.length, restored: 0, bytes: 0, absent: [], mismatch: [], unknownNames: rows.unknown ?? [] };
+export async function restore({
+  rows,
+  client,
+  bucket = DEFAULTS.bucket,
+  out,
+  concurrency = DEFAULTS.concurrency,
+}) {
+  const report = {
+    selected: rows.length,
+    restored: 0,
+    bytes: 0,
+    absent: [],
+    mismatch: [],
+    unknownNames: rows.unknown ?? [],
+  };
   let next = 0;
-  await Promise.all(Array.from({ length: Math.min(concurrency, rows.length) }, async () => {
-    while (next < rows.length) {
-      const row = rows[next++];
-      const key = keyOf(row.url);
-      const bytes = await readObject(client, bucket, key);
-      if (!bytes) report.absent.push(row.url);
-      else if (bytes.length !== row.bytes || sha256(bytes) !== row.sha256) report.mismatch.push(row.url);
-      else {
-        const path = join(out, key);
-        mkdirSync(dirname(path), { recursive: true });
-        writeFileSync(path, bytes);
-        report.restored++;
-        report.bytes += bytes.length;
+  await Promise.all(
+    Array.from({ length: Math.min(concurrency, rows.length) }, async () => {
+      while (next < rows.length) {
+        const row = rows[next++];
+        const key = keyOf(row.url);
+        const bytes = await readObject(client, bucket, key);
+        if (!bytes) report.absent.push(row.url);
+        else if (bytes.length !== row.bytes || sha256(bytes) !== row.sha256)
+          report.mismatch.push(row.url);
+        else {
+          const path = join(out, key);
+          mkdirSync(dirname(path), { recursive: true });
+          writeFileSync(path, bytes);
+          report.restored++;
+          report.bytes += bytes.length;
+        }
       }
-    }
-  }));
+    }),
+  );
   report.absent.sort();
   report.mismatch.sort();
   report.complete = report.restored === rows.length && !report.unknownNames.length;
@@ -57,20 +83,41 @@ export async function restore({ rows, client, bucket = DEFAULTS.bucket, out, con
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const a = parseArgs(process.argv.slice(2));
   if (!a.out || !(a.names || a.sample || a.all)) {
-    console.error('usage: restore.mjs --out=<dir> (--names=a,b | --sample=N | --all) [--bucket=] [--mint-r2=<account id>]');
+    console.error(
+      'usage: restore.mjs --out=<dir> (--names=a,b | --sample=N | --all) [--bucket=] [--mint-r2=<account id>]',
+    );
     process.exit(EXIT.usage);
   }
   const bucket = a.bucket ?? DEFAULTS.bucket;
   const text = readFileSync(a.manifest ? resolve(a.manifest) : MANIFEST_PATH, 'utf8');
-  const rows = select(parseManifest(text), { names: typeof a.names === 'string' ? a.names.split(',') : undefined, sample: a.sample && Number(a.sample), all: a.all });
+  const rows = select(parseManifest(text), {
+    names: typeof a.names === 'string' ? a.names.split(',') : undefined,
+    sample: a.sample && Number(a.sample),
+    all: a.all,
+  });
   const { client, token } = await clientFromArgs(a, bucket, false);
   let report;
   try {
     report = await restore({ rows, client, bucket, out: resolve(a.out) });
   } finally {
-    if (token) console.log(JSON.stringify({ event: 'token', revoked: revokeR2Token(token), expires: token.expires }));
+    if (token)
+      console.log(
+        JSON.stringify({ event: 'token', revoked: revokeR2Token(token), expires: token.expires }),
+      );
   }
-  console.log(JSON.stringify({ event: 'restore', complete: report.complete, selected: report.selected, restored: report.restored, bytes: report.bytes, absent: report.absent.length, mismatch: report.mismatch.length, unknownNames: report.unknownNames }));
-  for (const url of [...report.absent, ...report.mismatch].slice(0, 20)) console.log(JSON.stringify({ event: 'problem', url }));
+  console.log(
+    JSON.stringify({
+      event: 'restore',
+      complete: report.complete,
+      selected: report.selected,
+      restored: report.restored,
+      bytes: report.bytes,
+      absent: report.absent.length,
+      mismatch: report.mismatch.length,
+      unknownNames: report.unknownNames,
+    }),
+  );
+  for (const url of [...report.absent, ...report.mismatch].slice(0, 20))
+    console.log(JSON.stringify({ event: 'problem', url }));
   process.exitCode = report.complete ? EXIT.restored : EXIT.incomplete;
 }

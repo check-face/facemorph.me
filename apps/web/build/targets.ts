@@ -12,7 +12,8 @@ export interface Targets {
 }
 
 const compare = (a: string, b: string): number => {
-  const x = a.split('.').map(Number), y = b.split('.').map(Number);
+  const x = a.split('.').map(Number),
+    y = b.split('.').map(Number);
   for (let i = 0; i < Math.max(x.length, y.length); i++) {
     const d = (x[i] ?? 0) - (y[i] ?? 0);
     if (d) return d;
@@ -26,7 +27,10 @@ function family(cell: Cell): { name: string; version: string } {
   const [major = '', minor] = cell.version.split('.');
   if (cell.engine === 'chromium') return { name: 'chrome', version: major };
   if (cell.engine === 'firefox') return { name: 'firefox', version: major };
-  return { name: cell.platform === 'ios' ? 'ios' : 'safari', version: minor === undefined ? major : `${major}.${minor}` };
+  return {
+    name: cell.platform === 'ios' ? 'ios' : 'safari',
+    version: minor === undefined ? major : `${major}.${minor}`,
+  };
 }
 
 export function deriveTargets(matrix: Matrix): Targets {
@@ -36,6 +40,8 @@ export function deriveTargets(matrix: Matrix): Targets {
     const seen = oldest.get(name);
     if (seen === undefined || compare(version, seen) < 0) oldest.set(name, version);
   }
-  const build = [...oldest].sort(([a], [b]) => (a < b ? -1 : 1)).map(([name, version]) => `${name}${version}`);
+  const build = [...oldest]
+    .sort(([a], [b]) => (a < b ? -1 : 1))
+    .map(([name, version]) => `${name}${version}`);
   return { build, worker: build, workerFormat: 'es' };
 }

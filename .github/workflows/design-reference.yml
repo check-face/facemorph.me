@@ -5,7 +5,13 @@ name: design-reference
 on:
   push:
     branches: [main]
-    paths: ['scripts/design/**', 'docs/design/**', 'apps/web/src/photo/**', '.github/workflows/design-reference.yml']
+    paths:
+      [
+        'scripts/design/**',
+        'docs/design/**',
+        'apps/web/src/photo/**',
+        '.github/workflows/design-reference.yml',
+      ]
   workflow_dispatch:
 concurrency:
   group: design-reference

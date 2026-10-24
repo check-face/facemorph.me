@@ -38,6 +38,9 @@ export function gitRepo() {
 // Runs an inventory script as a real process; returns exit status and parsed JSON lines.
 export function run(script, args, options = {}) {
   const r = spawnSync(process.execPath, [script, ...args], { encoding: 'utf8', ...options });
-  const lines = r.stdout.split('\n').filter(Boolean).map((l) => JSON.parse(l));
+  const lines = r.stdout
+    .split('\n')
+    .filter(Boolean)
+    .map((l) => JSON.parse(l));
   return { status: r.status, lines, summary: lines.at(-1)?.summary, stderr: r.stderr };
 }

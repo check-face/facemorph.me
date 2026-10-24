@@ -1,6 +1,12 @@
 {
   // Declarations and JS for packing (fm-fy2.4): the strict settings of tsconfig.json, emitting into dist/.
   "extends": "./tsconfig.json",
-  "compilerOptions": { "noEmit": false, "declaration": true, "rewriteRelativeImportExtensions": true, "rootDir": "src", "outDir": "dist" },
+  "compilerOptions": {
+    "noEmit": false,
+    "declaration": true,
+    "rewriteRelativeImportExtensions": true,
+    "rootDir": "src",
+    "outDir": "dist"
+  },
   "include": ["src"]
 }

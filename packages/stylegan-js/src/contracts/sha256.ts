@@ -38,7 +38,9 @@ export function sha256Hex(bytes: Uint8Array): string {
     }
     let [a, b, c, d, e, f, g, hh] = [h[0]!, h[1]!, h[2]!, h[3]!, h[4]!, h[5]!, h[6]!, h[7]!];
     for (let t = 0; t < 64; t++) {
-      const t1 = (hh + (rotr(e, 6) ^ rotr(e, 11) ^ rotr(e, 25)) + ((e & f) ^ (~e & g)) + K[t]! + w[t]!) >>> 0;
+      const t1 =
+        (hh + (rotr(e, 6) ^ rotr(e, 11) ^ rotr(e, 25)) + ((e & f) ^ (~e & g)) + K[t]! + w[t]!) >>>
+        0;
       const t2 = ((rotr(a, 2) ^ rotr(a, 13) ^ rotr(a, 22)) + ((a & b) ^ (a & c) ^ (b & c))) >>> 0;
       hh = g;
       g = f;
@@ -69,7 +71,13 @@ export function utf8Bytes(text: string): Uint8Array {
     if (cp < 0x80) out.push(cp);
     else if (cp < 0x800) out.push(0xc0 | (cp >> 6), 0x80 | (cp & 63));
     else if (cp < 0x10000) out.push(0xe0 | (cp >> 12), 0x80 | ((cp >> 6) & 63), 0x80 | (cp & 63));
-    else out.push(0xf0 | (cp >> 18), 0x80 | ((cp >> 12) & 63), 0x80 | ((cp >> 6) & 63), 0x80 | (cp & 63));
+    else
+      out.push(
+        0xf0 | (cp >> 18),
+        0x80 | ((cp >> 12) & 63),
+        0x80 | ((cp >> 6) & 63),
+        0x80 | (cp & 63),
+      );
   }
   return Uint8Array.from(out);
 }
