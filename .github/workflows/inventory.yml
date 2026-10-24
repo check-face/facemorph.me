@@ -30,8 +30,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
-          node scripts/inventory/native-releases.mjs > "$RUNNER_TEMP/native-releases-scan.json"
-          cat "$RUNNER_TEMP/native-releases-scan.json"
+          node scripts/inventory/native-releases.mjs > native-releases-scan.json
+          cat native-releases-scan.json
       - uses: actions/upload-artifact@v4
         with:
           name: native-releases-scan
