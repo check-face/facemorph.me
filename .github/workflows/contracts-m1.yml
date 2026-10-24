@@ -47,3 +47,19 @@ jobs:
           npx --yes ajv-cli@5.0.0 validate --spec=draft2020 -s "$s" -d "$f/model-conv-build-manifest.json"
       - name: External consumer against the packed declarations
         run: node tests/external-consumer/run.mjs
+  # stylegan-js recovery helpers in real browsers (fm-1muu): Chromium, Firefox and WebKit decode the PNG and
+  # lossless WebP writers' output to the exact pixels, every inspectStill kind matches, and inspection makes
+  # no network request (all requests intercepted; only the package's module files are served).
+  browsers:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm ci --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium firefox webkit
+        working-directory: apps/web
+      - run: npm run build -w packages/stylegan-js
+      - run: node packages/stylegan-js/test/browser/media-browsers.mjs
+      - run: node packages/stylegan-js/test/browser/webp-lossless-browsers.mjs
