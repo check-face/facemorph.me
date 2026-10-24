@@ -24,7 +24,7 @@ jobs:
       # must be the allowlist's bytes.
       - run: >-
           node scripts/import/verify-closure.mjs --allow package.json --allow package-lock.json
-          --allow browser-matrix.json --allow 'tsconfig*.json' --allow vite.config.ts --allow index.html --allow worker-check.html --allow .gitignore
+          --allow browser-matrix.json --allow 'tsconfig*.json' --allow vite.config.ts --allow index.html --allow worker-check.html --allow render-check.html --allow .gitignore
           --allow 'build/**' --allow 'shell/**' --allow 'test/**'
       - run: node scripts/import/scan-exclusions.mjs
       - run: node scripts/inventory/unresolved-imports.mjs --root apps/web

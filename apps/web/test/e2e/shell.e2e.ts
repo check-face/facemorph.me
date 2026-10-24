@@ -10,8 +10,9 @@ import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import test, { after, before } from 'node:test';
-import { chromium, firefox, webkit, type Browser, type BrowserType, type Page } from 'playwright';
+import { chromium, firefox, webkit, type Browser, type BrowserType } from 'playwright';
 import { SHELL_ROWS, SNAPSHOT_IN_PAGE } from '../goldens/snapshot.ts';
+import { press } from '../support/operate.ts';
 import { serve, type Served } from '../support/serve.ts';
 
 const app = new URL('../../', import.meta.url);
@@ -54,31 +55,6 @@ before(async () => {
 after(async () => { await site?.close(); });
 
 // Records where a real pointer press lands and which link it would follow, without leaving the page.
-function arm(selector: string) {
-  const w = window as unknown as { __landed: unknown };
-  w.__landed = null;
-  const target = document.querySelector(selector);
-  document.addEventListener('click', (e) => {
-    const a = (e.target as Element).closest('a');
-    e.preventDefault();
-    w.__landed = { inside: !!target && target.contains(e.target as Node), href: a ? a.href : null };
-  }, { capture: true, once: true });
-}
-
-async function operate(page: Page, selector: string, touch: boolean) {
-  const link = page.locator(selector).first();
-  await link.scrollIntoViewIfNeeded();
-  const box = await link.boundingBox();
-  assert.ok(box && box.width > 0 && box.height > 0, `${selector} has no visible box`);
-  const x = box.x + box.width / 2, y = box.y + box.height / 2;
-  const hit = await page.evaluate(([s, px, py]) => { const el = document.querySelector(s as string); const at = document.elementFromPoint(px as number, py as number); return !!el && !!at && (el === at || el.contains(at)); }, [selector, x, y]);
-  assert.ok(hit, `${selector}: elementFromPoint at its centre is not the control`);
-  await page.evaluate(arm, selector);
-  if (touch) await page.touchscreen.tap(x, y); else await page.mouse.click(x, y);
-  await page.waitForFunction('window.__landed', null, { timeout: 5000 });
-  return await page.evaluate('window.__landed') as { inside: boolean; href: string | null };
-}
-
 for (const [engine, type] of Object.entries(ENGINES).filter(([e]) => !only || only.includes(e))) {
   test(`${engine}${engine === 'chromium' && chromiumPath ? ` (${chromiumPath} ${chromiumArgs.join(' ')})` : ''}: shell rows match the control, every link is operable, every emitted worker loads`, async () => {
     const browser: Browser = await launch(engine, type);
@@ -100,7 +76,7 @@ for (const [engine, type] of Object.entries(ENGINES).filter(([e]) => !only || on
         await page.waitForFunction(() => document.getAnimations().every((x) => x.playState !== 'running'));
         await page.screenshot({ path: new URL(`${engine}-${width}-shell.png`, results).pathname, fullPage: true });
         for (const c of CASES) {
-          const landed = await operate(page, c.selector, touch);
+          const landed = await press(page, page.locator(c.selector).first(), { touch, follow: false });
           assert.ok(landed.inside, `${engine} ${width} ${c.id}: the press landed outside the control`);
           assert.match(landed.href ?? '', c.href, `${engine} ${width} ${c.id}: leads to ${landed.href}`);
           await page.screenshot({ path: new URL(`${engine}-${width}-${c.id}.png`, results).pathname });

@@ -85,7 +85,7 @@ export interface ShellProps {
 
 export function Shell({ busy = false, route = '', faces = 0, onDropFiles, overlay, intro, children, after }: ShellProps) {
   const over = (e: DragEvent) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; };
-  const drop = (e: DragEvent) => { e.preventDefault(); onDropFiles?.(photoFiles(e.nativeEvent)); };
+  const drop = (e: DragEvent) => { e.preventDefault(); onDropFiles?.(photoFiles(e)); };
   return (
     <ThemedApp>
       <main className="facemorph-page next-product" data-next-busy={String(busy)} onDragOver={over} onDrop={drop}>

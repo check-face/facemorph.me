@@ -68,7 +68,7 @@ export default defineConfig({
     sourcemap: true,
     manifest: true,
     rolldownOptions: {
-      input: { main: fileURLToPath(new URL('./index.html', import.meta.url)), 'worker-check': fileURLToPath(new URL('./worker-check.html', import.meta.url)) },
+      input: { main: fileURLToPath(new URL('./index.html', import.meta.url)), 'worker-check': fileURLToPath(new URL('./worker-check.html', import.meta.url)), 'render-check': fileURLToPath(new URL('./render-check.html', import.meta.url)) },
     },
   },
   worker: { format: targets.workerFormat, plugins: () => [collectWorker()] },
