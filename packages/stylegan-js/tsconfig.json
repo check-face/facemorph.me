@@ -16,5 +16,6 @@
     "noEmit": true,
     "skipLibCheck": false
   },
-  "include": ["src"]
+  "include": ["src"],
+  "exclude": ["src/engine"]
 }

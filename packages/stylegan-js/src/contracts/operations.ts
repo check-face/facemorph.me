@@ -303,6 +303,11 @@ export interface EngineError {
   readonly message: string;
   /** A device correctness failure invalidates the route (ort-worker.mjs correctnessFailure). */
   readonly correctnessFailure?: boolean;
+  /**
+   * What took the capability away, when it is gone: a lease invalidation cause (browser-eviction,
+   * corruption, cross-tab-deletion, device-loss, worker-loss) or the local reader's error code.
+   */
+  readonly cause?: string;
 }
 
 export type OperationSettlement<R> =

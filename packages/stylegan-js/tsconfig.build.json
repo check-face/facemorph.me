@@ -1,6 +1,6 @@
 {
   // Declarations and JS for packing (fm-fy2.4): the strict settings of tsconfig.json, emitting into dist/.
-  "extends": "./tsconfig.json",
+  "extends": "./tsconfig.engine.json",
   "compilerOptions": {
     "noEmit": false,
     "declaration": true,

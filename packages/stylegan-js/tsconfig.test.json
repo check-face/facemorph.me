@@ -1,6 +1,6 @@
 {
   // Tests run under Node (node --test strips the types), so they alone see Node's globals.
-  "extends": "./tsconfig.json",
+  "extends": "./tsconfig.engine.json",
   "compilerOptions": {
     "types": ["node"]
   },

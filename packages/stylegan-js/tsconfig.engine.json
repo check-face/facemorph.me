@@ -1,0 +1,9 @@
+{
+  // The engine (src/engine): browser code, so DOM and WebGPU types; still no Node globals.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "lib": ["ES2024", "DOM", "DOM.Iterable"]
+  },
+  "include": ["src"],
+  "exclude": []
+}
