@@ -77,26 +77,13 @@ export async function serveArtifact(
   };
 }
 
-export type HostClass = 'app' | 'model-host' | 'names-host' | 'collector' | 'third-party' | 'local';
-/** origin -> host class. The default map is the request-interception helper's (build.ci-site); this module only
- * binds the run's actual origins on top of it. */
-export type HostMap = Readonly<Record<string, HostClass>>;
-
-/** The per-run override: the artifact's served origins (local server, staging or preview URL) bound to their
- * classes on top of the default map. No new class. */
-export function bindOrigins(
-  defaults: HostMap,
-  bound: Partial<Record<HostClass, readonly string[]>>,
-): HostMap {
-  const out: Record<string, HostClass> = { ...defaults };
-  for (const [cls, origins] of Object.entries(bound) as [HostClass, readonly string[]][])
-    for (const o of origins) out[new URL(o).origin] = cls;
-  return out;
-}
-
-/** A request URL's host class: data: and blob: are local, a mapped origin its class, anything else third-party. */
-export function classOf(map: HostMap, url: string): HostClass {
-  const u = new URL(url);
-  if (u.protocol === 'data:' || u.protocol === 'blob:') return 'local';
-  return map[u.origin] ?? 'third-party';
-}
+// Host classes, the default map and the per-run origin binding are the request-interception helper's (fm-o8xn):
+// bindOrigins(DEFAULT_HOST_MAP, { app: [served.origin] }) puts this run's origins ahead of the default rules, and
+// classify() makes data: and blob: local and anything unlisted third-party.
+export { DEFAULT_HOST_MAP } from '../../../../scripts/ci/intercept/playwright.ts';
+export {
+  bindOrigins,
+  classify,
+  type HostClass,
+  type HostMap,
+} from '../../../../scripts/ci/intercept/record.ts';

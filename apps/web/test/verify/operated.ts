@@ -7,12 +7,24 @@
 //
 // Every step goes to a StepLog: step ID, control, point, element actually hit, target size (under 44 px reported)
 // and the requests seen during the step, counted and summed per host class. Requests are only observed, never
-// stubbed. The host classes come from the request-interception helper (build.ci-site); until it lands a step
-// counts by origin.
+// stubbed: the log attaches the request-interception helper (scripts/ci/intercept, fm-o8xn) to the page's context
+// and opens a named step in its record for every operated step and keystroke, so journeys assert with the helper's
+// own primitives (assertNoRequests, assertOrder, bytesBy) over those step names.
 import { AssertionError } from 'node:assert';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
-import type { Locator, Page, Request } from 'playwright';
+import type { Locator, Page } from 'playwright';
+import {
+  attachPlaywright,
+  DEFAULT_HOST_MAP,
+  type Attached,
+} from '../../../../scripts/ci/intercept/playwright.ts';
+import {
+  requestsIn,
+  step as markStep,
+  type HostMap,
+  type NetworkRecord,
+} from '../../../../scripts/ci/intercept/record.ts';
 import { TOUCH_TARGET_PX } from './harness.ts';
 
 export type Part = 'whole' | 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
@@ -49,21 +61,33 @@ export interface StepRecord {
   readonly requests: Readonly<Record<string, StepRequests>>;
 }
 
-/** Maps a request URL to its host class; the default groups by origin until the interception helper lands. */
-export type Classify = (url: string) => string;
-const byOrigin: Classify = (url) => {
-  const u = new URL(url);
-  return u.protocol === 'data:' || u.protocol === 'blob:' ? 'local' : u.origin;
-};
-
 export class StepLog {
   readonly entries: StepRecord[] = [];
-  readonly classify: Classify;
+  /** The helper's host map with the run's own origins bound (bindOrigins). */
+  readonly map: HostMap;
   /** The artifact this run judges (artifact.ts RunTag): every log names the digest of the bytes it tested. */
   readonly run: Readonly<Record<string, string>> | undefined;
-  constructor(classify: Classify = byOrigin, run?: Readonly<Record<string, string>>) {
-    this.classify = classify;
+  readonly #attached = new WeakMap<object, Attached>();
+  constructor({
+    map = DEFAULT_HOST_MAP,
+    run,
+  }: { map?: HostMap; run?: Readonly<Record<string, string>> } = {}) {
+    this.map = map;
     this.run = run;
+  }
+  /** The helper's record for this page's browser context, attached on first use. */
+  attach(page: Page): Attached {
+    const context = page.context();
+    let a = this.#attached.get(context);
+    if (!a) {
+      a = attachPlaywright(context as never, this.map);
+      this.#attached.set(context, a);
+    }
+    return a;
+  }
+  /** The helper's network record for this page's context: assert on it with the helper's primitives. */
+  record(page: Page): NetworkRecord {
+    return this.attach(page).rec;
   }
   add(r: StepRecord) {
     this.entries.push(r);
@@ -100,29 +124,28 @@ export function partOf(box: Box, part: Part = 'whole'): Box {
 export const inside = (p: { x: number; y: number }, b: Box) =>
   p.x >= b.x && p.x <= b.x + b.width && p.y >= b.y && p.y <= b.y + b.height;
 
-/** Counts and sums the requests the page and its workers make while `run` is in progress. */
+const quiet = () => {};
+
+/** Opens the named step in the helper's record, runs it, and counts and sums its requests per host class (bytes
+ * as the helper reads them: Content-Length first). */
 async function watchRequests<T>(
   page: Page,
-  classify: Classify,
+  log: StepLog,
+  name: string,
   run: () => Promise<T>,
 ): Promise<{ value: T; requests: Record<string, StepRequests> }> {
-  const seen: Request[] = [];
-  const on = (r: Request) => seen.push(r);
-  page.context().on('request', on);
-  try {
-    const value = await run();
-    const requests: Record<string, { count: number; bytes: number }> = {};
-    for (const r of seen) {
-      const cls = classify(r.url());
-      const sizes = await r.sizes().catch(() => null); // a failed or aborted request has no sizes
-      const entry = (requests[cls] ??= { count: 0, bytes: 0 });
-      entry.count += 1;
-      entry.bytes += sizes ? sizes.responseBodySize + sizes.responseHeadersSize : 0;
-    }
-    return { value, requests };
-  } finally {
-    page.context().off('request', on);
+  const attached = log.attach(page);
+  markStep(attached.rec, name);
+  const value = await run();
+  await attached.settled();
+  const requests: Record<string, { count: number; bytes: number }> = {};
+  for (const r of requestsIn(attached.rec, { fromStep: name, toStep: name }, quiet).requests ??
+    []) {
+    const entry = (requests[r.hostClass] ??= { count: 0, bytes: 0 });
+    entry.count += 1;
+    entry.bytes += r.bytes ?? 0;
   }
+  return { value, requests };
 }
 
 export interface OperateOptions {
@@ -196,7 +219,7 @@ export async function operatedClick(
   control: Locator,
   { step, log, region, touch = false, effect, settleMs = 3000 }: OperateOptions,
 ): Promise<StepRecord> {
-  const { value: record, requests } = await watchRequests(page, log.classify, async () => {
+  const { value: record, requests } = await watchRequests(page, log, step, async () => {
     const ok = (f: Awaited<ReturnType<typeof locate>>) => 'hit' in f && !!f.hit?.ok;
     let found = await locate(page, control, region);
     for (const end = Date.now() + settleMs; !ok(found) && Date.now() < end;) {
@@ -263,7 +286,7 @@ export async function typeOperated(
   for (const key of text) {
     n += 1;
     const id = `${step}/key-${n}`;
-    const { requests } = await watchRequests(page, log.classify, async () => {
+    const { requests } = await watchRequests(page, log, id, async () => {
       await page.keyboard.type(key);
       await page.waitForTimeout(keyMs);
     });

@@ -8,7 +8,7 @@ artifact digest, and map every case to the flow-matrix row or candidate defect i
 | --- | --- |
 | `harness.ts` | Plain values only:<br>• `SWEEP_WIDTHS`, `GRID_COUNTS`, face and slot counts, `TOUCH_TARGET_PX` (44)<br>• `textVariants()`: empty, whitespace, exactly 512 and 513 UTF-8 bytes with multibyte characters, pasted, IME<br>• `SEEDS`: 0, 4,294,967,295, 4,294,967,296, -1, 1.5, and pasted digits with spaces<br>• `breakpoints()`, `builtBreakpoints()`, `sweepPoints()`, `visualOrderProblems()`<br>• the case manifest |
 | `operated.ts` | `operatedClick` and `operatedTap`, `typeOperated` (one step per keystroke, fails on a request), `StepLog` |
-| `artifact.ts` | `serveArtifact(root, digest)`, `artifactDigest`, `bindOrigins` and `classOf` (per-run host-class binding) |
+| `artifact.ts` | `serveArtifact(root, digest)`, `artifactDigest`, and the interception helper's `DEFAULT_HOST_MAP`, `bindOrigins` and `classify` |
 | `drivers.ts` | `sweep`, `resizeThrough`, `tabWalk`, `focusReturns`, `forCounts`, `withStorageQuota` |
 | `fixtures.ts` | `FIXTURES` with digests, and `fixtureFindings` |
 
@@ -44,9 +44,14 @@ cell when a case claims phone behaviour.
 
 When a run is tagged, its first line is the run tag (`digest`, `kind`, `source`).
 
-Requests are observed, never stubbed. Grouping is by origin until the request-interception helper (fm-o8xn) supplies
-host classes through the `classify` argument. Journey assertions use that helper's `assertNoRequests`,
-`assertOrder` and `bytesBy`; this harness does not reimplement them.
+Requests are observed, never stubbed. `StepLog` attaches the request-interception helper (`scripts/ci/intercept`,
+fm-o8xn) to the page's browser context. Each operated step and each keystroke opens a step of the same name in the
+helper's record (`log.record(page)`), and the step's counts and bytes per host class come from the helper's
+`requestsIn`. Journeys assert with the helper's own `assertNoRequests`, `assertOrder` and `bytesBy` over those step
+names; this harness does not reimplement them.
+
+Bytes come from Content-Length first, so a test server should send it, as a static host does
+(`test/support/serve.ts`).
 
 Write the log with `log.write(path)` as a CI artifact. It is also printed in full on failure.
 
@@ -59,9 +64,9 @@ sorted by path, the same as the goldens' `deploy_next_sha256`.
 Any finding, or a different digest, aborts the run before a browser starts. Staging URLs are not a target yet,
 because no staging deploy serves its identity.
 
-`bindOrigins(defaultMap, { app: [served origin] })` puts the run's origins on the helper's default host map, without
-adding any class. With `classOf`, data: and blob: URLs are `local`, a mapped origin gets its class, and anything else
-is `third-party`.
+`new StepLog({ map: bindOrigins(DEFAULT_HOST_MAP, { app: [site.origin] }), run: site.tag })` puts the run's origins
+ahead of the helper's default rules, without adding any class. Under `classify`, data: and blob: URLs are `local`, a
+mapped host gets its class, and anything else is `third-party`.
 
 ## Case manifest
 

@@ -7,6 +7,7 @@ import assert from 'node:assert/strict';
 import test, { after, before } from 'node:test';
 import { chromium, firefox, webkit, type BrowserType } from 'playwright';
 import { serve, type Served } from '../support/serve.ts';
+import { bindOrigins, DEFAULT_HOST_MAP } from '../verify/artifact.ts';
 import { operatedClick, operatedTap, StepLog } from '../verify/operated.ts';
 
 const app = new URL('../../', import.meta.url);
@@ -31,7 +32,7 @@ for (const [engine, type] of Object.entries(ENGINES)) {
     const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
     await page.goto(`${site.origin}/verify/operated.html?late=1`);
     const pressed = () => page.locator('#pressed').textContent();
-    const log = new StepLog();
+    const log = new StepLog({ map: bindOrigins(DEFAULT_HOST_MAP, { app: [site.origin] }) });
     const fast = { log, settleMs: 300 };
 
     // Defect 1: the covered Remove fails, naming the mode-menu button actually hit, and nothing is pressed.
@@ -62,8 +63,8 @@ for (const [engine, type] of Object.entries(ENGINES)) {
       effect: () => page.waitForResponse((r) => r.url().endsWith('?after-press')),
     });
     assert.equal(await pressed(), 'remove-visible');
-    assert.equal(visible.requests[site.origin]?.count, 1, 'the press caused one request');
-    assert.ok((visible.requests[site.origin]?.bytes ?? 0) > 0, 'its bytes are summed');
+    assert.equal(visible.requests['app']?.count, 1, 'the press caused one request');
+    assert.ok((visible.requests['app']?.bytes ?? 0) > 0, 'its bytes are summed');
     assert.deepEqual(visible.target, { width: 32, height: 32 });
     assert.equal(visible.smallTarget, true, 'a 32 px target is reported under 44 px');
 
@@ -130,7 +131,7 @@ for (const [engine, type] of Object.entries(ENGINES)) {
       ...(engine === 'firefox' ? {} : { isMobile: true }),
     });
     await page.goto(`${site.origin}/verify/operated.html`);
-    const log = new StepLog();
+    const log = new StepLog({ map: bindOrigins(DEFAULT_HOST_MAP, { app: [site.origin] }) });
     const r = await operatedTap(page, page.locator('#nested'), {
       log,
       step: 'verify.harness/tap/nested',

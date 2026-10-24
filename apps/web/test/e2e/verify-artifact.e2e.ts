@@ -1,6 +1,7 @@
 // The artifact fixture and the per-keystroke helper (fm-48bj) for real: the pinned control artifact (deploy-next/
 // from `npm run build:next`) is served only at its digest, with the run tagged by it; a wrong digest or a changed
-// byte aborts before any browser starts; and a field that fetches on a keystroke fails the per-keystroke check.
+// byte aborts before any browser starts; a field that fetches on a keystroke fails the per-keystroke check; and on the
+// control, a model-host request injected into a step fails the interception helper's assertNoRequests (fm-o8xn).
 //   npm run build:next && node --test test/e2e/verify-artifact.e2e.ts
 import assert from 'node:assert/strict';
 import { cpSync, existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
@@ -9,10 +10,11 @@ import { join } from 'node:path';
 import test from 'node:test';
 import { chromium } from 'playwright';
 import { serve } from '../support/serve.ts';
+import { assertNoRequests, step } from '../../../../scripts/ci/intercept/record.ts';
 import {
   artifactDigest,
   bindOrigins,
-  classOf,
+  DEFAULT_HOST_MAP,
   DigestMismatch,
   serveArtifact,
 } from '../verify/artifact.ts';
@@ -32,10 +34,11 @@ test('the control artifact is served at its digest and the run is tagged with it
   t.after(() => site.close());
   assert.equal(site.tag.digest, digest);
   assert.equal(site.tag.kind, 'control');
-  const log = new StepLog(
-    (url) => classOf(bindOrigins({}, { app: [site.origin] }), url),
-    site.tag as unknown as Record<string, string>,
-  );
+  const log = new StepLog({
+    map: bindOrigins(DEFAULT_HOST_MAP, { app: [site.origin] }),
+    run: { ...site.tag },
+  });
+
   const browser = await chromium.launch();
   t.after(() => browser.close());
   const page = await browser.newPage();
@@ -69,7 +72,7 @@ test('a keystroke that makes a request fails the per-keystroke check; a quiet fi
   t.after(() => browser.close());
   const page = await browser.newPage();
   await page.goto(`${site.origin}/verify/typing.html`);
-  const log = new StepLog((url) => classOf(bindOrigins({}, { app: [site.origin] }), url));
+  const log = new StepLog({ map: bindOrigins(DEFAULT_HOST_MAP, { app: [site.origin] }) });
   await operatedClick(page, page.locator('#quiet'), {
     log,
     step: 'verify.harness/typing/focus-quiet',
@@ -85,4 +88,58 @@ test('a keystroke that makes a request fails the per-keystroke check; a quiet fi
     typeOperated(page, 'hello', { log, step: 'verify.harness/typing/chatty' }),
     /verify\.harness\/typing\/chatty\/key-3: keystroke 3 \("l"\) made requests: \{"app":\{"count":1/,
   );
+});
+
+test('sample journey on the control at its digest: an injected model-host request fails assertNoRequests', async (t) => {
+  const site = await serveArtifact(repo, digest);
+  t.after(() => site.close());
+  // A second real local origin, bound as the model host for this run: the page's own fetch reaches it.
+  const models = await serve(new URL('test/fixtures', app).pathname);
+  t.after(() => models.close());
+  const log = new StepLog({
+    map: bindOrigins(DEFAULT_HOST_MAP, { app: [site.origin], 'model-host': [models.origin] }),
+    run: { ...site.tag },
+  });
+  const browser = await chromium.launch();
+  t.after(() => browser.close());
+  const page = await browser.newPage();
+  const rec = log.record(page);
+  const quiet = () => {};
+  step(rec, 'verify.harness/sample/open');
+  await page.goto(site.origin);
+  await log.attach(page).settled();
+  assert.equal(
+    assertNoRequests(
+      rec,
+      'model-host',
+      { fromStep: 'verify.harness/sample/open', toStep: 'verify.harness/sample/open' },
+      quiet,
+    ).verdict,
+    'pass',
+  );
+  assert.equal(
+    assertNoRequests(
+      rec,
+      'third-party',
+      { fromStep: 'verify.harness/sample/open', toStep: 'verify.harness/sample/open' },
+      quiet,
+    ).verdict,
+    'pass',
+    'the control makes no third-party request',
+  );
+  step(rec, 'verify.harness/sample/injected');
+  await page.evaluate(
+    (u) => fetch(u, { mode: 'no-cors' }).then(() => null),
+    `${models.origin}/verify/typing.html`,
+  );
+  await log.attach(page).settled();
+  const v = assertNoRequests(
+    rec,
+    'model-host',
+    { fromStep: 'verify.harness/sample/injected', toStep: 'verify.harness/sample/injected' },
+    quiet,
+  );
+  assert.equal(v.verdict, 'fail');
+  assert.match(v.reason, /1 model-host request/);
+  assert.match(log.text(), new RegExp(`"digest":"${digest}"`), 'the run is tagged with the digest');
 });

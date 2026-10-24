@@ -48,7 +48,11 @@ export async function serve(dir: string, mounts: Record<string, string> = {}): P
       res.writeHead(404).end();
       return;
     }
-    res.writeHead(200, { 'content-type': TYPES[extname(file)] ?? 'application/octet-stream' });
+    // Content-Length, as a static host sends it: the interception helper counts bytes from it.
+    res.writeHead(200, {
+      'content-type': TYPES[extname(file)] ?? 'application/octet-stream',
+      'content-length': String(statSync(file).size),
+    });
     createReadStream(file).pipe(res);
   });
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
