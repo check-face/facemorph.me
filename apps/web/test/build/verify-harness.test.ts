@@ -1,6 +1,7 @@
 // The verification harness's plain values (fm-48bj): text variants, seeds, breakpoints, sweep and manifest.
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { ROWS } from '../parity/rows.ts';
 import {
   aroundBreakpoints,
   breakpoints,
@@ -70,9 +71,15 @@ test('the sweep is the declared widths with touch at or below the breakpoint', (
 test('a case that maps to no flow-matrix row or defect fails validation', () => {
   const ok = {
     bead: 'verify.input',
-    cases: [{ id: 'remove-to-one', steps: ['press-remove'], rows: ['face.remove'], defects: [1] }],
+    cases: [
+      { id: 'remove-to-one', steps: ['press-remove'], rows: ['remove-down-to-one'], defects: [1] },
+    ],
   };
-  assert.deepEqual(manifestProblems(ok, new Set(['face.remove'])), []);
+  assert.deepEqual(
+    manifestProblems(ok, new Set(ROWS.map((r) => r.rowId))),
+    [],
+    'a real flow-matrix row',
+  );
   assert.equal(
     stepId('verify.input', 'remove-to-one', 'press-remove'),
     'verify.input/remove-to-one/press-remove',
@@ -89,7 +96,7 @@ test('a case that maps to no flow-matrix row or defect fails validation', () => 
       { id: 'a', steps: ['s'], defects: [0] },
     ],
   };
-  const problems = manifestProblems(bad, new Set(['face.remove'])).join('\n');
+  const problems = manifestProblems(bad, new Set(ROWS.map((r) => r.rowId))).join('\n');
   for (const p of [
     /is not a plan key/,
     /no steps/,
