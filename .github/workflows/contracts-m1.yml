@@ -28,6 +28,8 @@ jobs:
         with:
           node-version: '24'
       - run: npm ci --no-audit --no-fund
+      - run: npm run format:check # the workspace gates come before any build (fm-fy2.4)
+      - run: npm run lint
       - run: npx tsc -p packages/stylegan-js/tsconfig.json && npx tsc -p packages/stylegan-js/tsconfig.test.json
       - run: npx tsc -p packages/browser-model-manager/src/contracts/tsconfig.test.json
       - name: Engine contract tests (incl. recovery-metadata and worker-payload fuzz)

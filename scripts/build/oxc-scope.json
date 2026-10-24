@@ -44,6 +44,7 @@
   "outside": {
     ".beads": "the tracker's own data (br)",
     "docs": "prose and dated records: Markdown is not formatted",
+    "hosting": "classic's hosting tree imported byte-identical (hosting/PROVENANCE.json, fm-8tyu); ignored as hosting/**",
     "import": "generated import inventory (scripts/inventory regenerates it from classic's Git objects)",
     "inventory": "generated surfaces inventory",
     "tests": "classic-style browser tests (Python) for the crop design reference"

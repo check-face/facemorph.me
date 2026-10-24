@@ -14,6 +14,9 @@
     "dist",
     "schema"
   ],
+  "dependencies": {
+    "@facemorph/stylegan-js": "0.0.0"
+  },
   "engines": {
     "node": ">=24"
   },
