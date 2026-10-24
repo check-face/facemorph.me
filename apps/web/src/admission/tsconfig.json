@@ -1,0 +1,5 @@
+{
+  // Route admission (fm-4umi): the contracts' settings, so no DOM, WebWorker or Node globals.
+  "extends": "../contracts/tsconfig.json",
+  "include": ["."]
+}

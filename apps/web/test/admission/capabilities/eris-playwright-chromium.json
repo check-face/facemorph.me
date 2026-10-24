@@ -1,0 +1,25 @@
+{
+  "captured": "2026-10-24",
+  "machine": "eris",
+  "browser": "chromium 156.0.8078.4",
+  "note": "userAgent is recorded for provenance only; admission never reads it",
+  "record": {
+    "webgpu": {
+      "adapter": null
+    },
+    "wasm": {
+      "simd": true,
+      "threads": true,
+      "maxMemoryBytes": 268435456
+    },
+    "crossOriginIsolated": true,
+    "hardwareConcurrency": 12,
+    "deviceMemoryGiB": 32,
+    "videoEncoder": {
+      "avc1024": true,
+      "avc512": true
+    },
+    "offscreenCanvas": true,
+    "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.8078.4 Safari/537.36"
+  }
+}

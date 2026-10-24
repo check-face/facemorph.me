@@ -1,0 +1,23 @@
+{
+  "captured": "2026-10-24",
+  "machine": "eris",
+  "browser": "firefox 157.0",
+  "note": "userAgent is recorded for provenance only; admission never reads it",
+  "record": {
+    "webgpu": "absent",
+    "wasm": {
+      "simd": true,
+      "threads": true,
+      "maxMemoryBytes": 268435456
+    },
+    "crossOriginIsolated": true,
+    "hardwareConcurrency": 12,
+    "deviceMemoryGiB": null,
+    "videoEncoder": {
+      "avc1024": true,
+      "avc512": true
+    },
+    "offscreenCanvas": true,
+    "userAgent": "Mozilla/5.0 (X11; Linux x86_64; rv:157.0) Gecko/20100101 Firefox/157.0"
+  }
+}

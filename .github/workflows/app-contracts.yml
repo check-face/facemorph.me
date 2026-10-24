@@ -12,6 +12,9 @@ on:
         'apps/web/test/contracts/**',
         'apps/web/src/media/**',
         'apps/web/test/media/**',
+        'apps/web/src/admission/**',
+        'apps/web/test/admission/**',
+        'apps/web/hosting/next-cloudflare/validation.mjs',
         'apps/web/src/Next/media.mjs',
         'apps/web/src/Next/recovery-metadata.mjs',
         'apps/web/src/Next/image-encoder-worker.mjs',
@@ -40,7 +43,8 @@ jobs:
       - name: Contracts without DOM or Node globals; then the tests' types
         run: >-
           npx tsc -p apps/web/src/contracts && npx tsc -p apps/web/src/contracts/tsconfig.test.json &&
-          npx tsc -p apps/web/src/media && npx tsc -p apps/web/src/media/tsconfig.test.json
+          npx tsc -p apps/web/src/media && npx tsc -p apps/web/src/media/tsconfig.test.json &&
+          npx tsc -p apps/web/src/admission && npx tsc -p apps/web/src/admission/tsconfig.test.json
       - name: Contract tests (workspace packages read from source)
         working-directory: apps/web
-        run: node --conditions=source --test test/contracts/*.test.ts test/media/*.test.ts
+        run: node --conditions=source --test test/contracts/*.test.ts test/media/*.test.ts test/admission/*.test.ts
