@@ -18,6 +18,8 @@ import {
 } from './check-scaffold.mjs';
 import { readFileSync } from 'node:fs';
 import { findAdapters, judgeAdapters, judgeRenames } from './interop-check.mjs';
+import { testGlobs, unlisted } from './check-tests-listed.mjs';
+import { changed } from './format-stable.mjs';
 
 test('workspaces must be exactly apps/web plus the four packages', () => {
   assert.equal(checkWorkspaces({})[0].rule, 'workspaces-exact', 'no workspaces is a violation');
@@ -244,4 +246,45 @@ test('root discovery: every tracked top-level directory is in the scope or decla
     checkRoots(scope, ['apps', 'packages']).map((v) => v.rule),
     ['oxc-root-stale'],
   );
+});
+
+test('a test file that no test command names is unlisted', () => {
+  const globs = [
+    ...testGlobs(
+      '',
+      'npm test --workspaces --if-present && node --test scripts/build/scaffold.test.mjs',
+    ),
+    ...testGlobs('packages/stylegan-js', 'node --test test/*.test.ts'),
+  ];
+  assert.deepEqual(globs, [
+    'scripts/build/scaffold.test.mjs',
+    'packages/stylegan-js/test/*.test.ts',
+  ]);
+  assert.deepEqual(
+    unlisted(
+      [
+        'packages/stylegan-js/test/numerics.test.ts',
+        'packages/stylegan-js/test/vectors/new.test.ts',
+        'scripts/build/scaffold.test.mjs',
+        'scripts/build/other.test.mjs',
+      ],
+      globs,
+    ),
+    ['packages/stylegan-js/test/vectors/new.test.ts', 'scripts/build/other.test.mjs'],
+  );
+});
+
+test('a path whose digest moved, appeared or went is changed', () => {
+  const before = new Map([
+    ['a', '1'],
+    ['b', '2'],
+    ['c', '3'],
+  ]);
+  const after = new Map([
+    ['a', '1'],
+    ['b', '9'],
+    ['d', '4'],
+  ]);
+  assert.deepEqual(changed(before, after), ['b', 'c', 'd']);
+  assert.deepEqual(changed(before, before), []);
 });
