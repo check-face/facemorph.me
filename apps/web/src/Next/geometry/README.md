@@ -1,6 +1,6 @@
 # Latent geometry v1
 
-`latent-path.mjs` is a dependency-free ES module for the browser and the same frontend in desktop packages. It evaluates the fixed morphs from the project wire contract; it is not a user-defined function engine. It does not perform inference or admit a runtime.
+`latent-path.mjs` is a dependency-free ES module for the browser. It evaluates the fixed morphs from the project wire contract; it is not a user-defined function engine. It does not perform inference or admit a runtime.
 
 ```js
 import { createLatentPath, GEOMETRY_VERSION } from './latent-path.mjs';

@@ -102,8 +102,8 @@
       "class": "temporary-root",
       "temporary": true,
       "consumer": "src/Next/product-bridge.mjs line 6 imports '../../desktop/runtime.mjs'; classic scripts/build-next.cjs hashes it into the build id.",
-      "owner": "provider.native (fm-be10) removes native dispatch and this path",
-      "reason": "Native-dispatch runtime the bridge statically imports; retained for the first checks only."
+      "owner": "provider.native (fm-be10) removed native dispatch and this path",
+      "reason": "Native-dispatch runtime the bridge statically imported; removed by fm-be10 (file record carries ported.removed)."
     },
     {
       "patterns": [
@@ -114,7 +114,7 @@
       "temporary": true,
       "consumer": "Classic next-e2e.yml and research-built-ui-media-v1.yml verify the exact web artifact with it; hosting/next-static/promote.py calls it.",
       "owner": "provider.native (fm-be10) re-homes the general artifact verifier",
-      "reason": "Browser artifact verifier that happens to live under desktop/; imported without the native packaging around it."
+      "reason": "Browser artifact verifier imported from desktop/; re-homed to apps/web/scripts/ by fm-be10 (file record carries ported.destination)."
     },
     {
       "patterns": [
@@ -919,7 +919,12 @@
       "sha256": "f64904cd2a36c62000ffc86ec7d62f3d3caffafa8b6f5ebca2cfc0a6d743f376",
       "bytes": 4790,
       "class": "temporary-root",
-      "temporary": true
+      "temporary": true,
+      "ported": {
+        "removed": true,
+        "bead": "fm-be10",
+        "reason": "Native dispatch retired for the web-only release; nothing imports or hashes it"
+      }
     },
     {
       "source": "desktop/scripts/verify-web-artifact.py",
@@ -927,7 +932,14 @@
       "sha256": "087d3a9cec32611bba27c0a3ae8762bc3854684716fc1e74dfc23da3d948069b",
       "bytes": 1811,
       "class": "temporary-root",
-      "temporary": true
+      "temporary": true,
+      "ported": {
+        "destination": "apps/web/scripts/verify-web-artifact.py",
+        "sha256": "c7f6e50ed1657fe468e64a571b768f54710e0e9c4b6ec8e56e2ad7fac605fa8a",
+        "bytes": 2244,
+        "bead": "fm-be10",
+        "reason": "Re-homed from desktop/scripts/ with every check kept; streams SHA-256 and resolves containment so it runs on Python 3.8"
+      }
     },
     {
       "source": "experiment/device-lab/fused-resample-boundary-v2.js",
@@ -1007,7 +1019,13 @@
       "sha256": "a796141ee487fc029783185c1d3e321ecdec9607cd36729e927f0ef215282237",
       "bytes": 2695,
       "class": "temporary-root",
-      "temporary": true
+      "temporary": true,
+      "ported": {
+        "sha256": "d31158aa325b8712f2ef1b037bb8f855c9f6c42bf683210e9ca84572b121e63a",
+        "bytes": 3045,
+        "bead": "fm-be10",
+        "reason": "Native retirement: the build id hashes src/Next only (desktop/runtime.mjs removed), exposed as buildIdInputs/buildId for tests"
+      }
     },
     {
       "source": "scripts/check-bridge-imports.mjs",
@@ -1200,7 +1218,13 @@
       "destination": "apps/web/src/Next/analytics.mjs",
       "sha256": "a6f314b7b5806c12428840050a619fb9baee6f432b7bf2767df823fe9a20157a",
       "bytes": 14707,
-      "class": "src-next"
+      "class": "src-next",
+      "ported": {
+        "sha256": "19c30d0171d86f6c7b99e918afa050474d4254034371611d29721bc089418fa1",
+        "bytes": 14690,
+        "bead": "fm-be10",
+        "reason": "Native retirement: comment no longer mentions the desktop app"
+      }
     },
     {
       "source": "src/Next/analytics.test.mjs",
@@ -1473,7 +1497,13 @@
       "destination": "apps/web/src/Next/geometry/README.md",
       "sha256": "fa31ad201234a8035b6d37cd630c5c474f120229c6b1355c262fa33449dad67c",
       "bytes": 5007,
-      "class": "src-next"
+      "class": "src-next",
+      "ported": {
+        "sha256": "21a92838553ffcadc9a0b0f301d6529619a28324d5d2f8586042d317d6711b4a",
+        "bytes": 4965,
+        "bead": "fm-be10",
+        "reason": "Native retirement: no longer describes the module as shared with desktop packages"
+      }
     },
     {
       "source": "src/Next/geometry/latent-path.mjs",
@@ -1564,7 +1594,13 @@
       "destination": "apps/web/src/Next/media.mjs",
       "sha256": "2f0e09e25ec40db2caef02b15f6e10eda35b9112304a41ddaeec1bc83b69c40a",
       "bytes": 13197,
-      "class": "src-next"
+      "class": "src-next",
+      "ported": {
+        "sha256": "e95660a71a50e97c006359825df8234d6cb4be9c392026a1575120319805033a",
+        "bytes": 12865,
+        "bead": "fm-be10",
+        "reason": "Native retirement: saveFile drops the Tauri native_save_media branch; downloads are the browser path"
+      }
     },
     {
       "source": "src/Next/media.test.mjs",
@@ -1662,7 +1698,13 @@
       "destination": "apps/web/src/Next/product-bridge.mjs",
       "sha256": "5aba03354e531d10b177a6b5dae98b41431da418b8a1313e1f5bdb8794cc399c",
       "bytes": 54317,
-      "class": "src-next"
+      "class": "src-next",
+      "ported": {
+        "sha256": "ad940fb86b6d3db6a05ecd9c938c29adba208e748f4f3ad815dd64d014872c43",
+        "bytes": 53804,
+        "bead": "fm-be10",
+        "reason": "Native retirement: no desktop/runtime.mjs import or globalThis.__TAURI__ branches; the browser runtime, raw pixels, preferred route and frames path are unconditional"
+      }
     },
     {
       "source": "src/Next/product-ux.scss",

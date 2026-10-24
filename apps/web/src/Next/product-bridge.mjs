@@ -3,7 +3,6 @@ import {generationIdentity} from './browser/identity.mjs';
 import {digest} from './browser/originals.mjs';
 import {decorateImage,downloadImage,recoverImage,decorateVideo,recoverVideoProject} from './recovery-metadata.mjs';
 import {createPhotoAligner} from './photo/align-photo.mjs';
-import {createDesktopRuntime} from '../../desktop/runtime.mjs';
 import {createBrowserRuntime} from './browser/runtime.mjs';
 import {createLatentPath,GEOMETRY_VERSION} from './geometry/latent-path.mjs';
 import {decode,encode} from './ProjectJson.fs.js';
@@ -115,7 +114,7 @@ async function engine(){
  // The browser adapter rejects missing photo support rather than silently using a server.
  const photoAligner=manifest.photo?createPhotoAligner({manifestUrl:manifest.photo.manifestUrl,workerFactory:()=>new Worker(new URL('./photo/selection-worker.mjs',import.meta.url),{type:'module'})}):null;
  const alignPhoto=photoAligner?async(blob,options)=>{const prepared=await photoAligner(blob,options);if(prepared.provenance?.preprocessingSha256!==manifest.alignmentSha256)throw Error('Photo processing files changed. Reload before trying again.');return prepared;}:undefined;
- runtime=globalThis.__TAURI__?createDesktopRuntime({onProgress:progress}):createBrowserRuntime({manifest,manifestSha256,onProgress:progress,alignPhoto});return runtime;
+ runtime=createBrowserRuntime({manifest,manifestSha256,onProgress:progress,alignPhoto});return runtime;
 }
 function replaceUrl(key,blob){const old=urls.get(key);if(old)URL.revokeObjectURL(old);const url=URL.createObjectURL(blob);urls.set(key,url);return url;}
 function snapshot(message='Done — ready to save or share.',restore=false){
@@ -215,7 +214,7 @@ async function inputs(request,revisions){
   let result;
   if(sameSource(faces.get(item.id),item)){result=faces.get(item.id);}
   else if(item.mode==='project'){result=faces.get(item.id);if(!result)throw Error('Open the saved project again to restore this face.');}
-  else if(item.mode==='photo'){if(!(item.file instanceof Blob))throw Error('Choose a photo for each photo input.');result=await service.encodePhoto(item.file,{signal:active.signal,raw:!globalThis.__TAURI__});}
+  else if(item.mode==='photo'){if(!(item.file instanceof Blob))throw Error('Choose a photo for each photo input.');result=await service.encodePhoto(item.file,{signal:active.signal,raw:true});}
   else {result=await generateNameOrSeed(service,item);}
   if(revisionOf(item.id)!==revisions.get(item.id))throw superseded();
   jobCounts.facesDone=i+1;
@@ -234,12 +233,9 @@ async function commit(next,nextProject,replace=false){
  project=nextProject;
 }
 async function admission(provider){
- const service=await engine(),route=provider==='auto'?'cpu':provider;
+ const service=await engine();
  if(!['auto','cpu','webgl','webgpu'].includes(provider))throw Error('Choose a supported processing mode.');
- if(!globalThis.__TAURI__){service.setPreferredRoute(provider);return;}
- if(provider!=='auto'&&provider!=='cpu')throw Error('This desktop preview currently supports native CPU processing.');
- // Native adapter checks its persistent original cache before qualification.
-
+ service.setPreferredRoute(provider);
 }
 // Issue #28 and operator, 23 September: nothing downloads until the visitor asks, through the
 // model toast or the download dialog in front of Generate. Load only observes: the manifest (a few
@@ -315,7 +311,7 @@ export async function execute(request){
    let result;
    if(sameSource(faces.get(item.id),item)){result=faces.get(item.id);}
    else if(item.mode==='project'){result=faces.get(item.id);if(!result)throw Error('Open the saved project again to restore this face.');}
-   else if(item.mode==='photo'){if(!(item.file instanceof Blob))throw Error('Choose a photo for this face.');result=await service.encodePhoto(item.file,{signal:active.signal,raw:!globalThis.__TAURI__});}
+   else if(item.mode==='photo'){if(!(item.file instanceof Blob))throw Error('Choose a photo for this face.');result=await service.encodePhoto(item.file,{signal:active.signal,raw:true});}
    else {if(!String(item.value??'').length)throw Error('Type a name or seed first.');result=await generateNameOrSeed(service,item);}
    checked();if(revisionOf(item.id)!==revisions.get(item.id))throw superseded();await register(item.id,result,item.mode==='photo'?'Photo':item.value);
    const current=faces.get(item.id);current.source={mode:item.mode,value:item.value,file:item.file};
@@ -337,7 +333,7 @@ export async function execute(request){
    if(stored&&stored.length===path.totalFrames){
     liveFrames=stored.map(blob=>URL.createObjectURL(blob));
     for(const frame of path.frames()){checked();await writer.add(stored[frame.index],frame.index);jobCounts.framesDone=frame.index+1;}
-   }else if(writer.addRaw&&runtime.synthesizeFrames&&typeof OffscreenCanvas==='function'&&!globalThis.__TAURI__){
+   }else if(writer.addRaw&&runtime.synthesizeFrames&&typeof OffscreenCanvas==='function'){
     // Sparse anchors land first; all remaining frames stream in presentation order.
     // Waiting for an ordered frame while producing a full sparse window would deadlock.
     directEncoded=true;
@@ -579,10 +575,10 @@ export function sourcePhotoUrl(id){return photoSources.get(id)||'';}
 let arrivalRevision=0;
 export function invalidateArrivalRestore(){arrivalRevision++;}
 async function namedLatent(item){
- if(item.mode!=='text'||globalThis.__TAURI__||typeof publicNameLatent!=='function')return null;
+ if(item.mode!=='text'||typeof publicNameLatent!=='function')return null;
  try{return await publicNameLatent(item.value,manifest,{signal:active?.signal});}catch(error){checked();return null;}
 }
-async function generateNameOrSeed(service,item){const latent=await namedLatent(item);return latent?service.synthesize(latent,{signal:active.signal,raw:!globalThis.__TAURI__}):service.generate({mode:item.mode,value:item.value,signal:active.signal},{raw:!globalThis.__TAURI__});}
+async function generateNameOrSeed(service,item){const latent=await namedLatent(item);return latent?service.synthesize(latent,{signal:active.signal,raw:true}):service.generate({mode:item.mode,value:item.value,signal:active.signal},{raw:true});}
 export async function checkCachedFace(item){try{const service=await engine();if(await service.peekOriginal?.(item))return true;const latent=await namedLatent(item);return !!(latent&&await service.peekOriginal?.({mode:'latent',latent}));}catch{return false;}}
 export async function restoreLastResult(){
  const revision=arrivalRevision;analytics.operationResult?.('restore','ready');let reason='missing';

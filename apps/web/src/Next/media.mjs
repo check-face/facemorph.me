@@ -18,7 +18,6 @@ import { frameStorePut, frameKey } from './morph-frames.mjs';
 
 export async function saveFile(blob,name){
  if(!(blob instanceof Blob))throw Error('No completed file is available.');
- if(globalThis.__TAURI__){const kind=blob.type==='video/mp4'?'video':blob.type==='application/json'?'project':'image';const result=await globalThis.__TAURI__.core.invoke('native_save_media',await blob.arrayBuffer(),{headers:{'x-facemorph-kind':kind}});return result.saved?'File saved.':'Save cancelled. Your file is still ready.';}
  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;a.rel='noopener';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);
  return 'Your file is ready to save.';
 }

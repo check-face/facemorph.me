@@ -13,7 +13,7 @@
 // kind and a stage belongs to the consented diagnostics collector, not here.
 //
 // Behaviour rules:
-//   - Loads on the production host only. Not on the desktop app, labs, localhost or under
+//   - Loads on the production host only. Not on labs, localhost or under
 //     automation, so builds, tests and qualification runs never count as visitors.
 //   - Waits for the page to be idle before fetching gtag.js, so it never competes with the model
 //     download. Events raised before then are queued and sent when it loads.

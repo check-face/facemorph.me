@@ -22,7 +22,7 @@ work=a.work.resolve();work.mkdir(parents=True,exist_ok=False)
 web=work/'web';proof=work/'qualification'
 command('gh','run','download',str(a.build_run),'-R',REMOTE,'-n','next-site-'+build['head_sha'],'-D',str(web))
 command('gh','run','download',str(a.qualification_run),'-R',REMOTE,'-n','next-e2e-'+str(a.qualification_run),'-D',str(proof))
-command(sys.executable,'desktop/scripts/verify-web-artifact.py','--artifact',str(web),'--revision',build['head_sha'],'--receipt',str(work/'web-receipt.json'))
+command(sys.executable,'apps/web/scripts/verify-web-artifact.py','--artifact',str(web),'--revision',build['head_sha'],'--receipt',str(work/'web-receipt.json'))
 report=json.loads((proof/'report.json').read_text());source=json.loads((proof/'source-run.json').read_text())
 required={'nameSeed','repeatOriginal','syntheticPhotoE4e','localCrop','morphPlayableMp4','routeRejectionNamed'}
 # Project export and open sit behind `projectFilesVisible` in Product.fs and have been off since

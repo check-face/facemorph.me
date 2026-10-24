@@ -97,6 +97,63 @@ test('a ported file is checked against its new bytes, and a ported record must n
   );
 });
 
+const withA = (ported) => ({
+  ...allowlist,
+  files: allowlist.files.map((f) => (f.destination.endsWith('a.mjs') ? { ...f, ported } : f)),
+});
+const only = (planted) => {
+  const root = tempDir('closure-');
+  plant(join(root, 'apps/web'), planted);
+  return root;
+};
+
+test('a removed file must be absent, and its record must name its bead and reason', () => {
+  const removed = withA({ removed: true, bead: 'fm-x', reason: 'r' });
+  const withoutA = only({ 'src/Next/b.mjs': files['src/Next/b.mjs'] });
+  assert.deepEqual(closureFindings({ root: withoutA, allowlist: removed }), []);
+  assert.deepEqual(
+    closureFindings({ root: tree(), allowlist: removed }).map((f) => [f.path, f.problem]),
+    [
+      ['apps/web/src/Next/a.mjs', 'removed file is present'],
+      ['apps/web/src/Next/a.mjs', 'extra'],
+    ],
+  );
+  assert.deepEqual(
+    closureFindings({ root: withoutA, allowlist: withA({ removed: true }) }).map((f) => f.problem),
+    ['ported without its digest, bead and reason'],
+  );
+});
+
+test('a moved file is checked at its new path only, and must stay inside the destination root', () => {
+  const text = 'export const a = 4;\n';
+  const moved = withA({
+    destination: 'apps/web/scripts/a.mjs',
+    sha256: sha256(Buffer.from(text)),
+    bytes: Buffer.byteLength(text),
+    bead: 'fm-x',
+    reason: 'r',
+  });
+  const b = { 'src/Next/b.mjs': files['src/Next/b.mjs'] };
+  assert.deepEqual(
+    closureFindings({ root: only({ ...b, 'scripts/a.mjs': text }), allowlist: moved }),
+    [],
+  );
+  assert.deepEqual(
+    closureFindings({ root: tree(), allowlist: moved }).map((f) => [f.path, f.problem]),
+    [
+      ['apps/web/scripts/a.mjs', 'missing'],
+      ['apps/web/src/Next/a.mjs', 'extra'],
+    ],
+    'the old path no longer passes',
+  );
+  const outside = withA({ ...moved.files[0].ported, destination: 'scripts/a.mjs' });
+  assert.ok(
+    closureFindings({ root: only(b), allowlist: outside }).some(
+      (f) => f.problem === 'moved outside the destination root',
+    ),
+  );
+});
+
 test('a planted Foo.fs.js and a planted .wrangler/ each fail the exclusion scan; a clean tree passes', () => {
   assert.deepEqual(scanTree(join(tree(), 'apps/web')).findings, []);
   assert.deepEqual(

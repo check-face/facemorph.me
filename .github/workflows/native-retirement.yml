@@ -1,0 +1,42 @@
+name: native-retirement
+# Native retirement (fm-be10): no desktop/ import or native branch in the bridge and media, the build id without
+# desktop/runtime.mjs, the re-homed web-artifact verifier (every classic check on planted artifacts, then the
+# control-labelled deploy-next/ that build:next lays out), and no reference to the verifier's old path outside
+# history notes. The same test file also runs in root `npm test`, where the control case reports untested.
+on:
+  push:
+    branches: [main]
+    paths:
+      [
+        'apps/web/src/Next/**',
+        'apps/web/scripts/**',
+        'apps/web/test/build/native-retirement.test.ts',
+        'hosting/next-static/promote.py',
+        'scripts/import/**',
+        'scripts/inventory/unresolved-imports.mjs',
+        '.github/workflows/native-retirement.yml',
+      ]
+  workflow_dispatch:
+concurrency:
+  group: native-retirement
+  cancel-in-progress: false
+jobs:
+  check:
+    runs-on: [self-hosted, eris]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm ci --no-audit --no-fund
+      - run: npm run format:check # the workspace gates come before any build (fm-fy2.4)
+      - run: npm run lint
+      - name: build:next (control)
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: npm run build:next && npm run build:next -- --check
+      - name: Native retirement checks, with the control case
+        working-directory: apps/web
+        env:
+          FACEMORPH_REQUIRE_CONTROL: '1'
+        run: node --test test/build/native-retirement.test.ts
