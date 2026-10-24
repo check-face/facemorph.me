@@ -823,6 +823,27 @@ BEADS_REPO = HERE.parents[1]
 BEAD_ID = re.compile(r'\bfm-[a-z0-9]{2,}(?:\.[0-9]+)*\b')
 
 
+QUALIFIED = STATE.parent / 'qualified.json'
+
+
+def commit_messages(repo, sha, since):
+    """Messages of every commit a build carries since the last qualified commit, so beads from earlier commits
+    in a newest-only build still get their evidence. Falls back to the head commit alone, with the reason logged."""
+    head = subprocess.run(['gh', 'api', f'repos/{repo}/commits/{sha}', '-q', '.commit.message'],
+                          capture_output=True, text=True).stdout
+    if not since:
+        log('qualify_range', base=None, commits=1, reason='no earlier qualified commit recorded')
+        return [head]
+    r = subprocess.run(['gh', 'api', f'repos/{repo}/compare/{since}...{sha}', '-q',
+                        '{status, msgs: [.commits[].commit.message]}'], capture_output=True, text=True)
+    d = json.loads(r.stdout) if r.returncode == 0 and r.stdout.strip() else {}
+    if d.get('status') not in ('ahead', 'identical'):
+        log('qualify_range', base=since, commits=1, reason=f"compare unusable ({d.get('status') or r.stderr.strip()[:80]})")
+        return [head]
+    log('qualify_range', base=since, commits=len(d['msgs']))
+    return d['msgs'] or [head]
+
+
 def br(*a):
     return subprocess.run(['br', *a, '--lock-timeout', '60000'], cwd=BEADS_REPO, capture_output=True, text=True)
 
@@ -915,7 +936,8 @@ def main():
     q.add_argument('--journey', default='cold-face,warm-face,morph')
     q.add_argument('--repeat', type=int, default=1)
     q.add_argument('--keep-camera', action='store_true')
-    q.add_argument('--bead', action='append', help='beads to pass back; the tested commit message is also scanned for fm-... ids')
+    q.add_argument('--bead', action='append', help='beads to pass back; every commit since the last qualified one is also scanned for fm-... ids')
+    q.add_argument('--since', help='scan commits after this one instead of the last qualified commit')
     m = sub.add_parser('matrix', help='several cells, one summary (the deploy gate)')
     m.add_argument('--cells', default=','.join(CELLS))
     common(m, 'cold-face,warm-face,morph')
@@ -946,10 +968,13 @@ def main():
         os.environ.setdefault('RUNTIME_FILES', str(Path.home() / '.cache/facemorph-device-lab/runtime-public'))
         a.artifact, a.url, a.label = str(dest), f'https://{ORIGIN_HOST}/', f'qualify-{name}'
         sha = name.removeprefix('next-site-')
-        msg = subprocess.run(['gh', 'api', f'repos/{a.repo}/commits/{sha}', '-q', '.commit.message'],
-                             capture_output=True, text=True).stdout
-        a.bead = sorted(set((a.bead or []) + BEAD_ID.findall(msg)))
-        sys.exit(0 if run_matrix(a) else 1)
+        seen = json.loads(QUALIFIED.read_text()) if QUALIFIED.exists() else {}
+        msgs = commit_messages(a.repo, sha, a.since or seen.get(a.repo))
+        a.bead = sorted(set((a.bead or []) + [b for m in msgs for b in BEAD_ID.findall(m)]))
+        ok = run_matrix(a)
+        # The passback has covered this range, pass or fail; the next qualify starts after it.
+        QUALIFIED.write_text(json.dumps(seen | {a.repo: sha}, indent=2))
+        sys.exit(0 if ok else 1)
     if a.artifact and not a.runtime_sha:
         raise SystemExit('--artifact needs --runtime-sha')
     sys.exit(0 if run_matrix(a) else 1)

@@ -26,8 +26,9 @@ The swarm is fungible: no tester or shipping agent. Any agent whose bead needs d
   `gh workflow run device-lab.yml -R check-face/facemorph.me -f artifact_run=<run id> -f artifact_name=next-site-<sha>`,
   or `-f url=...`.
 - **A candidate before it deploys:** `lab.py qualify --run <CI run id>` fetches that build's artifact and runs all
-  four cells against it, served locally under the production origin. A local build directory works with
-  `matrix --artifact DIR`.
+  four cells against it, served locally under the production origin. Evidence goes to every bead named in any
+  commit since the last qualified one (CI is newest-only, so one build can carry several beads); `--since <sha>`
+  overrides the starting point. A local build directory works with `matrix --artifact DIR`.
 - **Scheduling:** through beads, not cron. When a candidate needs checking, create or pick up a bead for it, and
   close it with the run's `summary.md`.
 
