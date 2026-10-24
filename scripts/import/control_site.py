@@ -10,7 +10,7 @@ Two traps on eris it guards against: 127.0.0.1:9222 is the device lab's adb forw
 debugging port is never fixed and the endpoint must be the websocket this Chrome logged; and browser-harness keeps
 a daemon per BU_NAME that outlives a run, so each site gets its own name and stops it at exit.
 """
-import hashlib, json, os, shutil, socket, ssl, subprocess, sys, tempfile, time, urllib.request
+import hashlib, json, os, re, shutil, socket, ssl, subprocess, sys, tempfile, time, urllib.request
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -97,6 +97,28 @@ class Site:
     runtime: dict
     browser: str = ''
     info: dict = field(default_factory=dict)
+
+
+SHIM = re.compile(r"""^export \* from '((?:\.\./)+packages/[^']+\.ts)';$""", re.M)
+STRIP = "const m=require('node:module'),fs=require('node:fs');process.stdout.write(m.stripTypeScriptTypes(fs.readFileSync(process.argv[1],'utf8')))"
+
+
+def browser_source(src: Path, into: Path) -> Path:
+    """A copy of the imported source a browser can load module by module.
+
+    fm-eulc moved src/Next/Assets/{model-cache,shard-store,sha256}.mjs into packages/browser-model-manager as TS and
+    left re-export shims at the old paths; Node and Vite load the TS, a browser served raw source cannot. In the copy,
+    each such shim is replaced by its target with the types stripped (Node's own stripTypeScriptTypes), and sibling
+    `./x.ts` imports become `./x.mjs` (the siblings are shims replaced the same way). Nothing else changes."""
+    shutil.copytree(src, into, symlinks=True)
+    for shim in into.rglob('*.mjs'):
+        m = SHIM.search(shim.read_text())
+        if not m:
+            continue
+        target = (src / shim.relative_to(into)).parent / m.group(1)
+        js = subprocess.run(['node', '-e', STRIP, str(target.resolve())], check=True, capture_output=True, text=True).stdout
+        shim.write_text(re.sub(r"from '(\./[\w-]+)\.ts'", r"from '\1.mjs'", js))
+    return into
 
 
 @contextmanager

@@ -30,6 +30,7 @@ jobs:
       - run: npm run format:check # the workspace gates come before any build (fm-fy2.4)
       - run: npm run lint
       - run: node --test scripts/import/build-next.test.mjs scripts/import/destination-checks.test.mjs
+      - run: python3 scripts/import/control_site_test.py
       - name: build:next (control)
         env:
           GITHUB_TOKEN: ${{ github.token }}

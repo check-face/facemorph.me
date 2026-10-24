@@ -38,13 +38,13 @@ such hook, so the cases above use real fixtures instead.
   python3 tests/crop/crop_confirm_loop.py [--runtime .cache/runtime] [--out crop-evidence] [--case ui-no-face ...]
 Writes <out>/results.json; exit 0 when every case matches tests/known-failing.json, 1 otherwise.
 """
-import argparse, asyncio, json, re, shutil, sys, time
+import argparse, asyncio, json, re, shutil, sys, tempfile, time
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parents[1]
 sys.path.insert(0, str(REPO / 'scripts/import'))
-from control_site import ORIGIN, served_control  # noqa: E402
+from control_site import ORIGIN, browser_source, served_control  # noqa: E402
 
 FIXTURES = HERE / 'fixtures'
 TEST_HOOK = '__FACEMORPH_TEST_FAIL_DETECTION__'
@@ -225,7 +225,9 @@ def main():
     known = expected_outcomes(registry)
     cases = a.case or all_cases
     # The fixtures are served beside the control in the site's copy; the control's own files are unchanged.
-    with served_control(a.runtime, evidence, a.chrome, extra_trees={'src': REPO / 'apps/web/src', 'crop-fixtures': FIXTURES}) as site:
+    # The bridge cases load source modules in the browser: serve a browser-loadable copy (fm-eulc's TS shims inlined).
+    src = browser_source(REPO / 'apps/web/src', Path(tempfile.mkdtemp(prefix='crop-src-')) / 'src')
+    with served_control(a.runtime, evidence, a.chrome, extra_trees={'src': src, 'crop-fixtures': FIXTURES}) as site:
         results = asyncio.run(run_cases(site, cases, evidence))
         artifact, runtime = site.artifact, site.runtime
     mismatches = []
