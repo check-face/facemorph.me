@@ -3390,7 +3390,8 @@ names its measure and is the only allowed exception. Gains on one device never o
   iPhone. The physical device runs the same paired workload automatically through `safaridriver` on the Mac it is
   connected to, as a scheduled lane under the device lease. The device is setup, not an approval step; if none is
   connected, the iPhone gate is untested and blocks.
-- **Android:** the emulator lane, plus a physical Android phone when one is leased.
+- **Android:** the emulator lane, plus the physical phone in `tools/device-lab/android` (Huawei P30 Pro, Android 10,
+  current Chrome; a human-free loop that pauses and restores the phone's Frigate camera role) on every gate run.
 - **Desktop:** WebGPU on eris (RTX 2080 SUPER) and on the Mac, and CPU in CI.
 
 **After release, from real visitors.** The [changeover statistics](#changeover-statistics-in-grafana) record

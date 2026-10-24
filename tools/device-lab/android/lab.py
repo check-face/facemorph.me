@@ -429,6 +429,22 @@ def journey_morph(phone):
     return {'videoS': round(time.time() - t0, 2)}
 
 
+def cool_down(limit_c=40.0, max_wait_s=900):
+    """Heat throttles the CPU and would skew paired comparisons: wait (screen dimmed) until the
+    battery temperature is at or below the limit, up to max_wait_s, and return the start temperature."""
+    end = time.time() + max_wait_s
+    t = device_facts()['batteryTempC']
+    if t > limit_c:
+        log('cooling', tempC=t, limitC=limit_c)
+        sh('svc power stayon false; input keyevent KEYCODE_SLEEP', check=False)
+        while t > limit_c and time.time() < end:
+            time.sleep(30)
+            t = device_facts()['batteryTempC']
+        sh('svc power stayon true', check=False)
+        wake()
+    return t
+
+
 def _terminate(signum, frame):
     raise SystemExit(f'signal {signum}')
 
@@ -462,7 +478,7 @@ def run_session(args):
             phone = Phone(pw)
             journeys = args.journey.split(',')
             for i in range(args.repeat):
-                rec = {'iteration': i + 1}
+                rec = {'iteration': i + 1, 'startTempC': cool_down()}
                 mem = MemorySampler()
                 mem.start()
                 try:
