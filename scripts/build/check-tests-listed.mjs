@@ -19,6 +19,7 @@ const PY_TEST_FILE = /(^|\/)test_[^/]*\.py$/;
 export function testGlobs(dir, script = '') {
   return script
     .split(/\s+/)
+    .map((arg) => arg.replace(/^(['"])(.*)\1$/, '$2')) // a quoted glob reaches node --test unexpanded
     .filter((arg) => TEST_FILE.test(arg) || PY_TEST_FILE.test(arg))
     .map((arg) => (dir ? `${dir}/${arg}` : arg));
 }

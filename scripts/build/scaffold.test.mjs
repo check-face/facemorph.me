@@ -313,3 +313,11 @@ test('a bare x.y.z dependency is a pin; ranges, workspace and exempt entries pas
     ],
   );
 });
+
+test('a quoted glob in a test script is a glob', () => {
+  assert.deepEqual(testGlobs('', 'node --test \'scripts/ci/**/*.test.ts\' "x/*.test.mjs"'), [
+    'scripts/ci/**/*.test.ts',
+    'x/*.test.mjs',
+  ]);
+  assert.deepEqual(unlisted(['scripts/ci/a/b.test.ts'], ['scripts/ci/**/*.test.ts']), []);
+});
