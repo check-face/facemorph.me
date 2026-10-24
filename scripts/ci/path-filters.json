@@ -58,6 +58,11 @@
         "tsconfig*.json"
       ],
       "extra": ["apps/web/src/Next/Assets/**"]
+    },
+    "delivery-dry-run": {
+      "workflow": ".github/workflows/delivery-dry-run.yml",
+      "shared": ["scripts/**"],
+      "extra": []
     }
   }
 }

@@ -1,0 +1,828 @@
+{
+  "schema": "facemorph.delivery-runbook/1",
+  "bead": "fm-5u9",
+  "note": "The operator-controlled delivery actions, prepared so nothing is improvised at cutover (domain.actions). One source: scripts/delivery/render-handover.mjs writes handover.md from it and scripts/delivery/dry-run.mjs runs every command's dry-run or read-only form. Nothing here executes an action. Values observed read-only on 24 October 2026 (Cloudflare API through the cf CLI, ssh to triton, gh api, HTTPS); credentials are named, never valued. Cloudflare commands use the cf CLI, never Wrangler (operator, 24 October 2026).",
+  "observed_at": "2026-10-24",
+  "zone": {
+    "name": "facemorph.me",
+    "id": "893772fe7a5a4ee368f71706bc19e609"
+  },
+  "account": "8f550a622a484c03d9267efd45573583",
+  "artifacts": {
+    "candidate": {
+      "label": "classic candidate build (the pinned control): what next.facemorph.me serves",
+      "source": "check-face/facemorph.me-classic@551b60726290b2d67a32c62477b2fd964de51f96",
+      "run": "https://github.com/check-face/facemorph.me-classic/actions/runs/40056009101",
+      "buildId": "next-dbc2925ff6e7dcb6",
+      "deployNextSha256": "aaeb99a92a082b5399aa809a5aadd802c3c61ccc167f306aa86fc091b527bf50",
+      "zipSha256": "868583788670d5651579acd88c238280523cdbf75d8b17360ea2b20e00180c01"
+    },
+    "legacyProduction": {
+      "label": "legacy facemorph.me on Vercel: classic master's last successful deploy.yml",
+      "source": "check-face/facemorph.me-classic@e6e229831533244133f80aea61ae944c811bf9a0",
+      "run": "https://github.com/check-face/facemorph.me-classic/actions/runs/36654890071",
+      "buildId": "deploy.yml run 36654890071"
+    },
+    "namesSite": {
+      "label": "names.facemorph.me on Vercel (facemorph-names)",
+      "source": "check-face/facemorph-names@9243fef8a34050ccf0a08d37de02784bd06fb57b",
+      "buildId": "GitHub deployment 359827192 (Production)"
+    }
+  },
+  "retirement": [
+    {
+      "id": "dns-api",
+      "kind": "dns",
+      "target": "api.facemorph.me CNAME triton.dilger.dev (proxied), record b2c42b2999fa669db0c9a8c9467a2703",
+      "disposition": "remove",
+      "when": "api-retirement",
+      "reason": "The old API's public hostname; nothing in the on-device app calls it.",
+      "command": "cf dns records delete b2c42b2999fa669db0c9a8c9467a2703 --zone 893772fe7a5a4ee368f71706bc19e609 --force",
+      "dryRun": {
+        "type": "cf",
+        "argv": [
+          "dns",
+          "records",
+          "delete",
+          "b2c42b2999fa669db0c9a8c9467a2703",
+          "--zone",
+          "893772fe7a5a4ee368f71706bc19e609",
+          "--dry-run"
+        ]
+      },
+      "probe": {
+        "type": "cf-get",
+        "argv": [
+          "dns",
+          "records",
+          "get",
+          "b2c42b2999fa669db0c9a8c9467a2703",
+          "--zone",
+          "893772fe7a5a4ee368f71706bc19e609"
+        ],
+        "expect": {
+          "name": "api.facemorph.me"
+        }
+      }
+    },
+    {
+      "id": "dns-e4e",
+      "kind": "dns",
+      "target": "e4e.facemorph.me CNAME triton.dilger.dev (proxied), record ec9bc3bd316f393fe194f8b93b94bbbd",
+      "disposition": "remove",
+      "when": "api-retirement",
+      "reason": "The hosted encoder's hostname; the app encodes photos on the device.",
+      "command": "cf dns records delete ec9bc3bd316f393fe194f8b93b94bbbd --zone 893772fe7a5a4ee368f71706bc19e609 --force",
+      "dryRun": {
+        "type": "cf",
+        "argv": [
+          "dns",
+          "records",
+          "delete",
+          "ec9bc3bd316f393fe194f8b93b94bbbd",
+          "--zone",
+          "893772fe7a5a4ee368f71706bc19e609",
+          "--dry-run"
+        ]
+      },
+      "probe": {
+        "type": "cf-get",
+        "argv": [
+          "dns",
+          "records",
+          "get",
+          "ec9bc3bd316f393fe194f8b93b94bbbd",
+          "--zone",
+          "893772fe7a5a4ee368f71706bc19e609"
+        ],
+        "expect": {
+          "name": "e4e.facemorph.me"
+        }
+      }
+    },
+    {
+      "id": "dns-checkface",
+      "kind": "dns",
+      "target": "checkface.facemorph.me CNAME check-face.github.io, record baa8e426a96ed754490629120d52c525",
+      "disposition": "remove",
+      "when": "api-retirement",
+      "reason": "The API documentation site (GitHub Pages of check-face/checkface); retired with the API.",
+      "command": "cf dns records delete baa8e426a96ed754490629120d52c525 --zone 893772fe7a5a4ee368f71706bc19e609 --force",
+      "dryRun": {
+        "type": "cf",
+        "argv": [
+          "dns",
+          "records",
+          "delete",
+          "baa8e426a96ed754490629120d52c525",
+          "--zone",
+          "893772fe7a5a4ee368f71706bc19e609",
+          "--dry-run"
+        ]
+      },
+      "probe": {
+        "type": "cf-get",
+        "argv": [
+          "dns",
+          "records",
+          "get",
+          "baa8e426a96ed754490629120d52c525",
+          "--zone",
+          "893772fe7a5a4ee368f71706bc19e609"
+        ],
+        "expect": {
+          "name": "checkface.facemorph.me"
+        }
+      }
+    },
+    {
+      "id": "pages-checkface",
+      "kind": "publisher",
+      "target": "GitHub Pages of check-face/checkface (master:/docs, custom domain checkface.facemorph.me)",
+      "disposition": "remove",
+      "when": "api-retirement",
+      "reason": "Publishes the API documentation; the repository itself stays archived as-is.",
+      "command": "gh api -X DELETE repos/check-face/checkface/pages",
+      "dryRun": null,
+      "noDryRun": "GitHub has no dry-run for disabling Pages; the read-only probe shows the site exists.",
+      "probe": {
+        "type": "gh",
+        "path": "repos/check-face/checkface/pages",
+        "expect": {
+          "cname": "checkface.facemorph.me"
+        }
+      }
+    },
+    {
+      "id": "caddy-api",
+      "kind": "route",
+      "target": "triton: caddy-docker-proxy service ccheckfaceapi (caddy label api.facemorph.me), /usr/local/caddy-docker-proxy/docker-compose.yml",
+      "disposition": "remove",
+      "when": "api-retirement",
+      "reason": "Routes api.facemorph.me to the API container.",
+      "command": "ssh triton 'cd /usr/local/caddy-docker-proxy && docker compose rm -sf ccheckfaceapi' && remove the ccheckfaceapi service from that docker-compose.yml so a later `up` does not restore it",
+      "dryRun": null,
+      "noDryRun": "Docker Compose v2.2.3 on triton has no --dry-run; the probe shows the container and its caddy label.",
+      "probe": {
+        "type": "ssh",
+        "host": "triton",
+        "argv": [
+          "docker",
+          "inspect",
+          "-f",
+          "{{index .Config.Labels \"caddy\"}}",
+          "caddy-docker-proxy-ccheckfaceapi-1"
+        ],
+        "expect": "api.facemorph.me"
+      }
+    },
+    {
+      "id": "caddy-e4e",
+      "kind": "route",
+      "target": "triton: caddy-docker-proxy service ce4eapi (caddy label e4e.facemorph.me)",
+      "disposition": "remove",
+      "when": "api-retirement",
+      "reason": "Routes e4e.facemorph.me to the encoder container.",
+      "command": "ssh triton 'cd /usr/local/caddy-docker-proxy && docker compose rm -sf ce4eapi' && remove the ce4eapi service from that docker-compose.yml",
+      "dryRun": null,
+      "noDryRun": "Docker Compose v2.2.3 on triton has no --dry-run; the probe shows the container and its caddy label.",
+      "probe": {
+        "type": "ssh",
+        "host": "triton",
+        "argv": [
+          "docker",
+          "inspect",
+          "-f",
+          "{{index .Config.Labels \"caddy\"}}",
+          "caddy-docker-proxy-ce4eapi-1"
+        ],
+        "expect": "e4e.facemorph.me"
+      }
+    },
+    {
+      "id": "triton-api",
+      "kind": "process",
+      "target": "triton: compose project server, service api (container server-api-1, image server_api), checkface/src/server",
+      "disposition": "remove",
+      "when": "api-retirement",
+      "reason": "The hosted inference API (checkface backend, archived as-is).",
+      "command": "ssh triton 'cd /home/chris/repos/checkface/src/server && docker compose -p server rm -sf api'",
+      "dryRun": null,
+      "noDryRun": "Docker Compose v2.2.3 on triton has no --dry-run; the probe shows the running container.",
+      "probe": {
+        "type": "ssh",
+        "host": "triton",
+        "argv": [
+          "docker",
+          "inspect",
+          "-f",
+          "{{index .Config.Labels \"com.docker.compose.service\"}} {{.State.Status}}",
+          "server-api-1"
+        ],
+        "expectPrefix": "api "
+      }
+    },
+    {
+      "id": "triton-encoder",
+      "kind": "process",
+      "target": "triton: compose project server, service encoderapi (container server-encoderapi-1, image olicoad/encoder4editing)",
+      "disposition": "remove",
+      "when": "api-retirement",
+      "reason": "The hosted e4e encoder behind e4e.facemorph.me.",
+      "command": "ssh triton 'cd /home/chris/repos/checkface/src/server && docker compose -p server rm -sf encoderapi'",
+      "dryRun": null,
+      "noDryRun": "Docker Compose v2.2.3 on triton has no --dry-run; the probe shows the running container.",
+      "probe": {
+        "type": "ssh",
+        "host": "triton",
+        "argv": [
+          "docker",
+          "inspect",
+          "-f",
+          "{{index .Config.Labels \"com.docker.compose.service\"}} {{.State.Status}}",
+          "server-encoderapi-1"
+        ],
+        "expectPrefix": "encoderapi "
+      }
+    },
+    {
+      "id": "triton-db",
+      "kind": "process",
+      "target": "triton: compose project server, service db (container server-db-1, mongo 4.2): the API's stored GUIDs and results",
+      "disposition": "keep",
+      "when": "separate data-disposal operation",
+      "reason": "Production data disposal and deleting personal records are a separate explicit operation (out of scope here); the container stops with that operation, not with API retirement.",
+      "command": null,
+      "dryRun": null,
+      "noDryRun": "Kept here; no command.",
+      "probe": {
+        "type": "ssh",
+        "host": "triton",
+        "argv": [
+          "docker",
+          "inspect",
+          "-f",
+          "{{index .Config.Labels \"com.docker.compose.service\"}} {{.State.Status}}",
+          "server-db-1"
+        ],
+        "expectPrefix": "db "
+      }
+    },
+    {
+      "id": "cred-mongo",
+      "kind": "credential",
+      "target": "MONGO_INITDB_ROOT_PASSWORD in checkface/src/server/docker-compose.yml (name only)",
+      "disposition": "remove",
+      "when": "separate data-disposal operation",
+      "reason": "API-only; goes with the database at its disposal.",
+      "command": null,
+      "dryRun": null,
+      "noDryRun": "Removed with the compose project; the probe shows the variable is set (its value is never read out).",
+      "probe": {
+        "type": "ssh",
+        "host": "triton",
+        "argv": [
+          "sh",
+          "-c",
+          "grep -c MONGO_INITDB_ROOT_PASSWORD /home/chris/repos/checkface/src/server/docker-compose.yml"
+        ],
+        "expect": "1"
+      }
+    },
+    {
+      "id": "cred-vercel",
+      "kind": "credential",
+      "target": "VERCEL_TOKEN, VERCEL_ORG_ID, VERCEL_PROJECT_ID (secrets of check-face/facemorph.me-classic)",
+      "disposition": "remove",
+      "when": "vercel-retirement",
+      "reason": "Used only by classic deploy.yml to publish legacy facemorph.me.",
+      "command": "for s in VERCEL_TOKEN VERCEL_ORG_ID VERCEL_PROJECT_ID; do gh secret delete \"$s\" -R check-face/facemorph.me-classic; done",
+      "dryRun": null,
+      "noDryRun": "gh has no dry-run for deleting a secret; the probe lists the secret names.",
+      "probe": {
+        "type": "gh",
+        "path": "repos/check-face/facemorph.me-classic/actions/secrets",
+        "expectNames": ["VERCEL_TOKEN", "VERCEL_ORG_ID", "VERCEL_PROJECT_ID"]
+      }
+    },
+    {
+      "id": "dns-vercel-ns",
+      "kind": "dns",
+      "target": "vercel.facemorph.me NS ns1/ns2.vercel-dns.com, records e644890bdfee1ffb266ecd5759f83c0e and 0285eb6dad67df6609f19b6d3be71481",
+      "disposition": "remove",
+      "when": "vercel-retirement",
+      "reason": "Delegation to Vercel's DNS, used only by the Vercel publishers.",
+      "command": "for id in e644890bdfee1ffb266ecd5759f83c0e 0285eb6dad67df6609f19b6d3be71481; do cf dns records delete \"$id\" --zone 893772fe7a5a4ee368f71706bc19e609 --force; done",
+      "dryRun": {
+        "type": "cf",
+        "argv": [
+          "dns",
+          "records",
+          "delete",
+          "e644890bdfee1ffb266ecd5759f83c0e",
+          "--zone",
+          "893772fe7a5a4ee368f71706bc19e609",
+          "--dry-run"
+        ]
+      },
+      "probe": {
+        "type": "cf-get",
+        "argv": [
+          "dns",
+          "records",
+          "get",
+          "e644890bdfee1ffb266ecd5759f83c0e",
+          "--zone",
+          "893772fe7a5a4ee368f71706bc19e609"
+        ],
+        "expect": {
+          "name": "vercel.facemorph.me"
+        }
+      }
+    },
+    {
+      "id": "keep-models",
+      "kind": "worker",
+      "target": "Worker facemorph-models (models.facemorph.me) over R2 facemorph-runtime-mirror, SITE service binding, its deploy credentials",
+      "disposition": "keep",
+      "when": "always",
+      "reason": "Second runtime origin of every on-device artifact, including rollback artifacts.",
+      "command": null,
+      "dryRun": null,
+      "noDryRun": "Kept.",
+      "probe": {
+        "type": "http",
+        "url": "https://models.facemorph.me/",
+        "method": "HEAD"
+      }
+    },
+    {
+      "id": "keep-stats",
+      "kind": "worker",
+      "target": "Worker facemorph-stats (/stats/v1 on next.facemorph.me) and its scrape token (STATS_SCRAPE_TOKEN, SCRAPE_TOKEN)",
+      "disposition": "keep",
+      "when": "always",
+      "reason": "The changeover statistics' 'after' side.",
+      "command": null,
+      "dryRun": null,
+      "noDryRun": "Kept.",
+      "probe": {
+        "type": "cf-get",
+        "argv": ["workers", "scripts", "search", "--name", "facemorph-stats"],
+        "expectNonEmpty": true
+      }
+    },
+    {
+      "id": "keep-metrics",
+      "kind": "host",
+      "target": "metrics.facemorph.me (Grafana via caddy service cmetrics on triton) and the triton Prometheus with its stored old-API counter series (5-year retention)",
+      "disposition": "keep",
+      "when": "always",
+      "reason": "The changeover statistics' 'before' side and the cutover annotations; the CNAME to triton stays.",
+      "command": null,
+      "dryRun": null,
+      "noDryRun": "Kept.",
+      "probe": {
+        "type": "ssh",
+        "host": "triton",
+        "argv": ["docker", "inspect", "-f", "{{.State.Status}}", "grafana-prometheus-1"],
+        "expect": "running"
+      }
+    },
+    {
+      "id": "keep-triton",
+      "kind": "host",
+      "target": "the triton machine: development worker (GitHub runners for both repositories), Prometheus and Grafana host",
+      "disposition": "keep",
+      "when": "always",
+      "reason": "Only its Triton inference/API processes, their routes and API-only credentials are remove items.",
+      "command": null,
+      "dryRun": null,
+      "noDryRun": "Kept.",
+      "probe": {
+        "type": "ssh",
+        "host": "triton",
+        "argv": ["systemctl", "is-active", "actions.runner.check-face-facemorph.me.triton.service"],
+        "expect": "active"
+      }
+    },
+    {
+      "id": "keep-diagnostics",
+      "kind": "worker",
+      "target": "Worker facemorph-next-diagnostics and R2 facemorph-diagnostics (the diagnostics collector)",
+      "disposition": "keep",
+      "when": "always",
+      "reason": "Collects reports for every on-device artifact.",
+      "command": null,
+      "dryRun": null,
+      "noDryRun": "Kept.",
+      "probe": {
+        "type": "cf-get",
+        "argv": ["workers", "scripts", "search", "--name", "facemorph-next-diagnostics"],
+        "expectNonEmpty": true
+      }
+    },
+    {
+      "id": "keep-names-data",
+      "kind": "worker",
+      "target": "Workers facemorph-name-catalogue and facemorph-seed-gallery (preview and latent Workers) and R2 facemorph-names-snapshot",
+      "disposition": "keep",
+      "when": "until the snapshot and static names replace their API dependency",
+      "reason": "The names catalogue and previews the app reads; their API dependency is replaced by the snapshot (fm-old) before they change.",
+      "command": null,
+      "dryRun": null,
+      "noDryRun": "Kept.",
+      "probe": {
+        "type": "cf-get",
+        "argv": ["workers", "scripts", "search", "--name", "facemorph-name-catalogue"],
+        "expectNonEmpty": true
+      }
+    },
+    {
+      "id": "keep-next",
+      "kind": "worker",
+      "target": "Worker facemorph-next (next.facemorph.me) and its assets",
+      "disposition": "keep",
+      "when": "always",
+      "reason": "Serves the candidate today and the monorepo build after the handover.",
+      "command": null,
+      "dryRun": null,
+      "noDryRun": "Kept.",
+      "probe": {
+        "type": "http",
+        "url": "https://next.facemorph.me/",
+        "method": "HEAD"
+      }
+    },
+    {
+      "id": "keep-cloudflare-token",
+      "kind": "credential",
+      "target": "CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID (Workers, R2, Pages deploys)",
+      "disposition": "keep",
+      "when": "always",
+      "reason": "Shared by every Cloudflare publisher that stays.",
+      "command": null,
+      "dryRun": null,
+      "noDryRun": "Kept.",
+      "probe": {
+        "type": "gh",
+        "path": "repos/check-face/facemorph.me/actions/secrets",
+        "expectNames": ["CLOUDFLARE_API_TOKEN"]
+      }
+    },
+    {
+      "id": "keep-preview-tunnel",
+      "kind": "tunnel",
+      "target": "cloudflared tunnel facemorph-preview (labs.facemorph.me -> truenas), record 2a02b6eb432cbb165df394bb5192b24b, TUNNEL_TOKEN",
+      "disposition": "keep",
+      "when": "outside the API retirement",
+      "reason": "App-legacy preview host, not the API; its own retirement is the preview owner's.",
+      "command": null,
+      "dryRun": null,
+      "noDryRun": "Kept.",
+      "probe": {
+        "type": "cf-get",
+        "argv": [
+          "dns",
+          "records",
+          "get",
+          "2a02b6eb432cbb165df394bb5192b24b",
+          "--zone",
+          "893772fe7a5a4ee368f71706bc19e609"
+        ],
+        "expect": {
+          "name": "labs.facemorph.me"
+        }
+      }
+    }
+  ],
+  "references": [
+    {
+      "path": "classic hosting/gallery/materialize.py, .github/workflows/name-catalogue.yml",
+      "disposition": "reads the names snapshot (fm-old) instead of the API before the API retires"
+    },
+    {
+      "path": "classic src/Next/Product.fs (FAQ) and src/explain.md linking checkface.facemorph.me/api",
+      "disposition": "retirement copy: the links go and the copy says the API is retired"
+    },
+    {
+      "path": "classic src/Config.fs, the overlay Config.fs, verify-config.mjs, verify-overlay.py",
+      "disposition": "historical, classic only, unchanged; apiAddr is never copied into the new app"
+    },
+    {
+      "path": "facemorph-names grid (names.facemorph.me)",
+      "disposition": "retired: the host redirects to the main app's names modal (namesHost below); the repository keeps its history with an archive notice"
+    },
+    {
+      "path": "external multi-morph-test.vercel.app (api/face/?num_multi=N&guidK=…&amountK=…)",
+      "disposition": "replaced by the on-device weighted face blend; its user is told before the API retires (action api-retirement)"
+    }
+  ],
+  "actions": [
+    {
+      "id": "early-promotion",
+      "title": "Early retained-candidate promotion: facemorph.me to the retained candidate before the monorepo app is ready",
+      "owner": "operator",
+      "changesVisitors": true,
+      "preconditions": [
+        "The retained candidate artifact (deploy-next aaeb99a9…) passes post-delivery-check --mode app on next.facemorph.me.",
+        "Every mirrored runtime file of the candidate is held by models.facemorph.me (the dry run's R2 listing).",
+        "The operator's explicit decision to promote early is recorded in PLAN.md's decisions table."
+      ],
+      "commands": [
+        "Route facemorph.me to Worker facemorph-next, which serves the retained candidate: replace A record ef8a8938cd3275bf1a4e83a7050e8eb6 (76.76.21.21, Vercel) with a proxied AAAA 100:: and add the facemorph.me/* Worker route (cf dns records update ef8a8938cd3275bf1a4e83a7050e8eb6 --zone 893772fe7a5a4ee368f71706bc19e609 --body '{\"type\":\"AAAA\",\"name\":\"facemorph.me\",\"content\":\"100::\",\"proxied\":true}')."
+      ],
+      "rollback": {
+        "target": "artifacts.legacyProduction",
+        "steps": [
+          "cf dns records update ef8a8938cd3275bf1a4e83a7050e8eb6 --zone 893772fe7a5a4ee368f71706bc19e609 --body '{\"type\":\"A\",\"name\":\"facemorph.me\",\"content\":\"76.76.21.21\",\"proxied\":false}' (Vercel production, deploy.yml run 36654890071)."
+        ]
+      },
+      "onePublisher": "Classic deploy.yml (vercel --prod) is disabled (gh workflow disable deploy.yml -R check-face/facemorph.me-classic); classic next-site.yml remains the only publisher of facemorph-next until the candidate-source handover.",
+      "check": "node scripts/delivery/post-delivery-check.mjs --mode app --host facemorph.me --expect-digest aaeb99a92a082b5399aa809a5aadd802c3c61ccc167f306aa86fc091b527bf50",
+      "annotate": "node scripts/delivery/annotate-cutover.mjs --action early-promotion --host facemorph.me --digest aaeb99a92a082b5399aa809a5aadd802c3c61ccc167f306aa86fc091b527bf50",
+      "dryRun": {
+        "type": "cf",
+        "argv": [
+          "dns",
+          "records",
+          "update",
+          "ef8a8938cd3275bf1a4e83a7050e8eb6",
+          "--zone",
+          "893772fe7a5a4ee368f71706bc19e609",
+          "--body",
+          "{\"type\":\"AAAA\",\"name\":\"facemorph.me\",\"content\":\"100::\",\"proxied\":true}",
+          "--dry-run"
+        ]
+      },
+      "probe": {
+        "type": "cf-get",
+        "argv": [
+          "dns",
+          "records",
+          "get",
+          "ef8a8938cd3275bf1a4e83a7050e8eb6",
+          "--zone",
+          "893772fe7a5a4ee368f71706bc19e609"
+        ],
+        "expect": {
+          "name": "facemorph.me",
+          "content": "76.76.21.21"
+        }
+      }
+    },
+    {
+      "id": "candidate-source-handover",
+      "title": "Candidate-source handover: next.facemorph.me from classic candidate/next-delivery-20260916 to the monorepo",
+      "owner": "operator (release bead fm-s3o)",
+      "changesVisitors": true,
+      "preconditions": [
+        "The monorepo release bead set is closed and its artifact passed the full local validation.",
+        "models.facemorph.me holds every runtime path of the live and rollback artifacts (warm them, or re-point the mirror's origin, before the switch; verified by the dry-run HEAD list)."
+      ],
+      "commands": [
+        "Deploy the monorepo artifact to Worker facemorph-next through the monorepo's deploy workflow (fm-6fx6), then disable classic next-site.yml's deploy job: gh workflow disable next-site.yml -R check-face/facemorph.me-classic."
+      ],
+      "rollback": {
+        "target": "artifacts.candidate",
+        "steps": [
+          "Redeploy the classic candidate artifact next-site-551b60726290b2d67a32c62477b2fd964de51f96 (deploy-next aaeb99a9…) to facemorph-next and re-enable classic next-site.yml."
+        ]
+      },
+      "onePublisher": "After the switch only the monorepo deploy workflow publishes facemorph-next; classic next-site.yml is disabled.",
+      "check": "node scripts/delivery/post-delivery-check.mjs --mode app --host next.facemorph.me --expect-digest <the monorepo artifact's deploy-next digest>",
+      "annotate": "node scripts/delivery/annotate-cutover.mjs --action candidate-source-handover --host next.facemorph.me --digest <the monorepo artifact's deploy-next digest>",
+      "probe": {
+        "type": "gh",
+        "path": "repos/check-face/facemorph.me-classic/actions/workflows/next-site.yml",
+        "expect": {
+          "state": "active"
+        }
+      }
+    },
+    {
+      "id": "production-promotion",
+      "title": "Production promotion: facemorph.me from legacy Vercel (classic master) to the chosen on-device artifact",
+      "owner": "operator",
+      "changesVisitors": true,
+      "preconditions": [
+        "The chosen artifact passes post-delivery-check --mode app on next.facemorph.me.",
+        "The operator's explicit cutover decision is recorded in PLAN.md's decisions table."
+      ],
+      "commands": [
+        "If early-promotion ran, facemorph.me already routes to Worker facemorph-next: production promotion is the deploy of the chosen artifact there (rollback target: the retained candidate). Otherwise: Route facemorph.me to Worker facemorph-next: replace A record ef8a8938cd3275bf1a4e83a7050e8eb6 (76.76.21.21, Vercel) with a proxied AAAA 100:: and add the facemorph.me/* Worker route (cf dns records update ef8a8938cd3275bf1a4e83a7050e8eb6 --zone 893772fe7a5a4ee368f71706bc19e609 --body '{\"type\":\"AAAA\",\"name\":\"facemorph.me\",\"content\":\"100::\",\"proxied\":true}')."
+      ],
+      "rollback": {
+        "target": "artifacts.legacyProduction",
+        "steps": [
+          "cf dns records update ef8a8938cd3275bf1a4e83a7050e8eb6 --zone 893772fe7a5a4ee368f71706bc19e609 --body '{\"type\":\"A\",\"name\":\"facemorph.me\",\"content\":\"76.76.21.21\",\"proxied\":false}' (Vercel production, deploy.yml run 36654890071)."
+        ]
+      },
+      "onePublisher": "Classic deploy.yml (vercel --prod) is disabled: gh workflow disable deploy.yml -R check-face/facemorph.me-classic.",
+      "check": "node scripts/delivery/post-delivery-check.mjs --mode app --host facemorph.me --expect-digest <the promoted artifact's deploy-next digest>",
+      "annotate": "node scripts/delivery/annotate-cutover.mjs --action production-promotion --host facemorph.me --digest <the promoted artifact's deploy-next digest>",
+      "dryRun": {
+        "type": "cf",
+        "argv": [
+          "dns",
+          "records",
+          "update",
+          "ef8a8938cd3275bf1a4e83a7050e8eb6",
+          "--zone",
+          "893772fe7a5a4ee368f71706bc19e609",
+          "--body",
+          "{\"type\":\"AAAA\",\"name\":\"facemorph.me\",\"content\":\"100::\",\"proxied\":true}",
+          "--dry-run"
+        ]
+      },
+      "probe": {
+        "type": "cf-get",
+        "argv": [
+          "dns",
+          "records",
+          "get",
+          "ef8a8938cd3275bf1a4e83a7050e8eb6",
+          "--zone",
+          "893772fe7a5a4ee368f71706bc19e609"
+        ],
+        "expect": {
+          "name": "facemorph.me",
+          "content": "76.76.21.21"
+        }
+      }
+    },
+    {
+      "id": "api-retirement",
+      "title": "API retirement",
+      "owner": "operator",
+      "changesVisitors": true,
+      "preconditions": [
+        "facemorph.me serves an on-device artifact (production-promotion done) and nothing in it calls api.facemorph.me or e4e.facemorph.me.",
+        "The names catalogue and previews read the snapshot, not the API (fm-old).",
+        "The multi-morph-test.vercel.app user (the Synthetic Data Ltd tester) has been told that it stops and that the on-device weighted blend replaces it; old GUIDs do not carry over, they re-add their photos.",
+        "A retained working on-device artifact and its immutable runtime, model and catalogue assets are held for rollback within the declared retention window."
+      ],
+      "commands": [
+        "Run every retirement item with when = api-retirement, in table order (DNS first, then routes and processes, then GitHub Pages)."
+      ],
+      "rollback": {
+        "target": "artifacts.candidate",
+        "steps": [
+          "Rollback serves the retained on-device artifact (deploy-next aaeb99a9…) with its immutable assets; Triton and the API are never restarted and historic production data is never restored."
+        ]
+      },
+      "onePublisher": "No publisher remains for api.facemorph.me, e4e.facemorph.me or checkface.facemorph.me.",
+      "check": "node scripts/delivery/post-delivery-check.mjs --mode retired --host api.facemorph.me --retired api.facemorph.me,e4e.facemorph.me,checkface.facemorph.me",
+      "annotate": "node scripts/delivery/annotate-cutover.mjs --action api-retirement --host api.facemorph.me --digest aaeb99a92a082b5399aa809a5aadd802c3c61ccc167f306aa86fc091b527bf50",
+      "probe": {
+        "type": "http",
+        "url": "https://api.facemorph.me/",
+        "method": "HEAD"
+      }
+    },
+    {
+      "id": "names-redirect",
+      "title": "Names-host redirect: names.facemorph.me to the main app's names modal",
+      "owner": "operator",
+      "changesVisitors": false,
+      "preconditions": [
+        "facemorph.me serves the on-device app with the fullscreen names modal at /names."
+      ],
+      "commands": ["See namesHost."],
+      "rollback": {
+        "target": "artifacts.namesSite",
+        "steps": ["See namesHost.rollback."]
+      },
+      "onePublisher": "Vercel for GitHub no longer deploys facemorph-names: remove the Vercel project at vercel-retirement.",
+      "check": "node scripts/delivery/post-delivery-check.mjs --mode redirect --host names.facemorph.me --target https://facemorph.me",
+      "probe": {
+        "type": "cf-get",
+        "argv": [
+          "dns",
+          "records",
+          "get",
+          "305676364f6ed740e56c97b95fe2d782",
+          "--zone",
+          "893772fe7a5a4ee368f71706bc19e609"
+        ],
+        "expect": {
+          "name": "names.facemorph.me",
+          "content": "cname.vercel-dns.com"
+        }
+      }
+    },
+    {
+      "id": "vercel-retirement",
+      "title": "Vercel publisher retirement",
+      "owner": "operator",
+      "changesVisitors": false,
+      "preconditions": ["production-promotion and names-redirect are done and checked."],
+      "commands": [
+        "Run every retirement item with when = vercel-retirement; delete the Vercel projects for legacy facemorph.me and facemorph-names in the Vercel dashboard (no dry-run; the probe below shows they still serve)."
+      ],
+      "rollback": {
+        "target": "artifacts.legacyProduction",
+        "steps": [
+          "Vercel keeps deleted projects' builds only until deletion; rollback after this point is the on-device artifact (artifacts.candidate)."
+        ]
+      },
+      "onePublisher": "No Vercel publisher remains for any facemorph.me host.",
+      "check": "node scripts/delivery/post-delivery-check.mjs --mode unchanged --host facemorph.me --before <the production-promotion run's identity file>",
+      "probe": {
+        "type": "http",
+        "url": "https://facemorph.me/",
+        "method": "HEAD",
+        "expectHeader": "server"
+      }
+    },
+    {
+      "id": "classic-default-branch",
+      "title": "Classic publication's default-branch switch (pre-checks only)",
+      "owner": "operator",
+      "changesVisitors": false,
+      "preconditions": [
+        "See the classic publication bead's pre-checks; this runbook only records that the switch follows the candidate-source handover."
+      ],
+      "commands": ["None here."],
+      "rollback": {
+        "target": "artifacts.candidate",
+        "steps": ["None here."]
+      },
+      "onePublisher": "Unchanged by this action.",
+      "check": "node scripts/delivery/post-delivery-check.mjs --mode unchanged --host next.facemorph.me --before <identity before the switch>",
+      "probe": {
+        "type": "gh",
+        "path": "repos/check-face/facemorph.me-classic",
+        "expect": {
+          "default_branch": "master"
+        }
+      }
+    }
+  ],
+  "namesHost": {
+    "before": {
+      "dns": "names.facemorph.me CNAME cname.vercel-dns.com (not proxied), record 305676364f6ed740e56c97b95fe2d782",
+      "status": 200,
+      "bodyBytes": 1267,
+      "bodySha256Prefix": "de7a9518b946d451",
+      "deployment": "Vercel (facemorph-names), GitHub deployment 359827192, check-face/facemorph-names@9243fef8"
+    },
+    "redirect": [
+      "cf dns records update 305676364f6ed740e56c97b95fe2d782 --zone 893772fe7a5a4ee368f71706bc19e609 --body '{\"type\":\"AAAA\",\"name\":\"names.facemorph.me\",\"content\":\"100::\",\"proxied\":true}'",
+      "Add a Single Redirect rule in the zone's http_request_dynamic_redirect phase: when http.host eq \"names.facemorph.me\", 301 to https://facemorph.me/names (no query, no path carried: no result-bearing or two-click URLs)."
+    ],
+    "rollback": [
+      "cf dns records update 305676364f6ed740e56c97b95fe2d782 --zone 893772fe7a5a4ee368f71706bc19e609 --body '{\"type\":\"CNAME\",\"name\":\"names.facemorph.me\",\"content\":\"cname.vercel-dns.com\",\"proxied\":false}'",
+      "Delete the Single Redirect rule for names.facemorph.me."
+    ],
+    "dryRun": {
+      "type": "cf",
+      "argv": [
+        "dns",
+        "records",
+        "update",
+        "305676364f6ed740e56c97b95fe2d782",
+        "--zone",
+        "893772fe7a5a4ee368f71706bc19e609",
+        "--body",
+        "{\"type\":\"AAAA\",\"name\":\"names.facemorph.me\",\"content\":\"100::\",\"proxied\":true}",
+        "--dry-run"
+      ]
+    },
+    "probe": {
+      "type": "cf-get",
+      "argv": [
+        "dns",
+        "records",
+        "get",
+        "305676364f6ed740e56c97b95fe2d782",
+        "--zone",
+        "893772fe7a5a4ee368f71706bc19e609"
+      ],
+      "expect": {
+        "name": "names.facemorph.me",
+        "content": "cname.vercel-dns.com"
+      }
+    },
+    "check": "node scripts/delivery/post-delivery-check.mjs --mode redirect --host names.facemorph.me --target https://facemorph.me",
+    "claims": "The redirect does not establish inference-free selection: the candidate's picker still synthesizes. What the names host may claim is decided at delivery, after static names.",
+    "archiveNotice": "facemorph-names is archived. names.facemorph.me now opens facemorph.me's names browser, which runs entirely on your device. This repository keeps its history."
+  },
+  "mirror": {
+    "note": "models.facemorph.me (Worker facemorph-models over R2 facemorph-runtime-mirror) copies a runtime file it does not hold from https://next.facemorph.me/ on its first GET or HEAD (classic hosting/next-mirror/worker.mjs; the deploy warms every path that way). The dry run therefore never requests the mirror: it lists the bucket read-only and checks each runtime file of every live and rollback artifact is held (a chunked asset by its chunks). Warming the missing ones is the candidate-source-handover precondition. Only the Worker's MIRRORED prefixes are held (classic hosting/next-mirror/worker.mjs); other runtime paths (the notices page) are served from the site only.",
+    "bucket": "facemorph-runtime-mirror",
+    "manifests": [
+      {
+        "artifact": "candidate",
+        "manifest": "https://next.facemorph.me/runtime/manifest.json"
+      }
+    ],
+    "prefixes": [
+      "runtime/assets/",
+      "runtime/chunks/",
+      "runtime/manifests/",
+      "runtime/photo/",
+      "runtime/encoder-stream/"
+    ]
+  }
+}

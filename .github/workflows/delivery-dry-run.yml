@@ -1,0 +1,40 @@
+name: delivery-dry-run
+# fm-5u9: the delivery runbook's dry run. Every retirement and handover command (scripts/delivery/runbook.json) runs in
+# its provider's dry-run form where one exists (cf --dry-run shows the request without sending it) and every target is
+# probed read-only (cf get, gh api GET, ssh with a read-only command); a command whose target does not exist fails.
+# Every runtime file of the live and rollback artifacts is checked against a read-only listing of the mirror's R2
+# bucket. One JSON line per command. Changes nothing. On eris, whose runner user has cf, gh and ssh-to-triton access.
+on:
+  push:
+    branches: [main]
+    paths: ['scripts/**', '.github/workflows/delivery-dry-run.yml', '.github/actions/**']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: delivery-dry-run-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  dry-run:
+    runs-on: [self-hosted, eris]
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm ci --no-audit --no-fund
+      - run: npm run format:check
+      - run: npm run lint
+      - run: node --test scripts/delivery/runbook.test.mjs
+      - name: handover.md is what the runbook renders
+        run: node scripts/delivery/render-handover.mjs --check
+      - name: Dry run of every command (one JSON line each)
+        run: node scripts/delivery/dry-run.mjs | tee dry-run.jsonl
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: delivery-dry-run-${{ github.run_id }}
+          path: dry-run.jsonl
+          retention-days: 30
+          if-no-files-found: ignore
