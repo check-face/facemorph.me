@@ -1,6 +1,8 @@
 // The model cache: acquisition, verification and storage of pinned model assets in Cache Storage and OPFS shards.
 // Moved from the candidate's src/Next/Assets/model-cache.mjs (classic a42829b) without behaviour change (fm-eulc);
 // the comments are the candidate's.
+import type { ManagerError, Result } from '../contracts/errors.ts';
+import type { AssetDescriptor } from '../contracts/manifest.ts';
 import { Sha256 } from './sha256.ts';
 import {
   browserGlobals,
@@ -60,7 +62,14 @@ export interface AssetHandle {
   bytes(): Promise<Uint8Array<ArrayBuffer>>;
   open(): Promise<Response>;
 }
+/** Verified local bytes only: never a fetch, never a repair (contracts/lifecycle.ts VerifiedLocalReader). */
+export interface LocalReader {
+  readonly allowRepair: false;
+  read(asset: AssetDescriptor): Promise<Result<Uint8Array<ArrayBuffer>, ManagerError>>;
+}
 export interface ModelCache {
+  /** Verified local reads with typed misses (fm-eulc). */
+  readonly local: LocalReader;
   acquire(input: AssetInput, options?: { signal?: AbortSignal | undefined }): Promise<AssetHandle>;
   readonly records: RecordAccess;
   has(input: AssetInput | string): Promise<boolean>;
@@ -69,6 +78,9 @@ export interface ModelCache {
 
 type Err = Error & { status?: number; transient?: boolean };
 const aborted = () => new DOMException('Asset acquisition cancelled', 'AbortError');
+/** Why a local-only read has no bytes; the message stays the candidate's. */
+type Local = 'absent' | 'corrupt';
+const localError = (message: string, local: Local) => Object.assign(new Error(message), { local });
 const check = (signal: AbortSignal | undefined) => {
   if (signal?.aborted) throw signal.reason || aborted();
 };
@@ -398,7 +410,10 @@ export function createModelCache({
   const pending = new Map<string, Pending>();
   const queue: Task[] = [];
   let active = 0;
+  // Identities this cache has seen stored (saved, retained, or read locally): an absent one is then evicted.
+  const stored = new Set<string>();
   const emit = (event: CacheEvent) => {
+    if (event.status === 'saved' || event.status === 'retained') stored.add(event.sha256);
     try {
       report(event);
     } catch {
@@ -586,9 +601,9 @@ export function createModelCache({
       if (!bytes || (await platformHex(bytes)) !== unit.sha256) {
         emit({ status: bytes ? 'corrupt-removed' : 'missing-after-acquire', sha256: asset.sha256 });
         if (!allowRepair)
-          throw new Error(
-            bytes ? 'Asset integrity mismatch' : 'Stored asset disappeared; acquire again',
-          );
+          throw bytes
+            ? localError('Asset integrity mismatch', 'corrupt')
+            : localError('Stored asset disappeared; acquire again', 'absent');
         emit({ status: 'repairing', sha256: asset.sha256 });
         bytes = await underLock(unit.sha256, async () => {
           const again = await shards!.read(unit.sha256, unit.size); // another tab may have repaired it
@@ -847,7 +862,7 @@ export function createModelCache({
     }
     if (!response) {
       emit({ status: 'missing-after-acquire', sha256: asset.sha256 });
-      if (!allowRepair) throw new Error('Stored asset disappeared; acquire again');
+      if (!allowRepair) throw localError('Stored asset disappeared; acquire again', 'absent');
       emit({ status: 'repairing', sha256: asset.sha256 });
       await ensure(asset, new AbortController().signal);
       return openVerified(asset, { allowRepair: false });
@@ -866,7 +881,7 @@ export function createModelCache({
     await Promise.resolve(store.remove(asset.sha256)).catch(() => {});
     await records.remove(VERIFIED_MARKER + asset.sha256).catch(() => {});
     emit({ status: 'corrupt-removed', sha256: asset.sha256 });
-    if (!allowRepair) throw failure;
+    if (!allowRepair) throw Object.assign(failure, { local: 'corrupt' as const });
     emit({ status: 'repairing', sha256: asset.sha256 });
     await ensure(asset, new AbortController().signal);
     return openVerified(asset, { allowRepair: false });
@@ -996,7 +1011,67 @@ export function createModelCache({
       return null;
     }
   }
-  return { acquire, records, has, peek };
+  // ---- Verified local reads (fm-eulc) ------------------------------------------------------
+  // No network, ever: readShards and openVerified run with allowRepair false, and nothing here reaches the
+  // fetcher. Every read digests what it returns: each OPFS unit by readShards, and Cache Storage bytes once
+  // more here, because open() trusts bytes it verified earlier in the session and a local read must not.
+  // Presence alone (has(), a committed trailer) never vouches for bytes. An absent asset is `evicted` when
+  // it was stored before as far as this cache can tell (some of its units remain, or this cache saw it
+  // stored this session) and `cache-miss` otherwise: after a whole-origin eviction a new session cannot
+  // tell the two apart.
+  const unitsPresent = async (asset: Asset) =>
+    (
+      await Promise.all(unitsOf(asset).map((u) => shards!.has(u.sha256, u.size).catch(() => false)))
+    ).filter(Boolean).length;
+  async function readLocal(
+    input: AssetDescriptor,
+  ): Promise<Result<Uint8Array<ArrayBuffer>, ManagerError>> {
+    const asset = validateAsset(input as AssetInput);
+    const fail = (error: ManagerError) => ({ ok: false as const, error });
+    try {
+      let bytes: Uint8Array<ArrayBuffer>;
+      const legacy = async () => {
+        const body = new Uint8Array(
+          await (await openVerified(asset, { allowRepair: false })).arrayBuffer(),
+        );
+        if (body.byteLength !== asset.size || (await platformHex(body)) !== asset.sha256) {
+          await Promise.resolve(store.remove(asset.sha256)).catch(() => {});
+          throw localError('Asset integrity mismatch', 'corrupt');
+        }
+        return body;
+      };
+      if (usesShards(asset)) {
+        // Bytes still in the old Cache Storage entry (not yet migrated) are read from there, verified.
+        const fromLegacy =
+          !(await unitsPresent(asset)) &&
+          Boolean(await store.get(asset.sha256).catch(() => undefined));
+        bytes = fromLegacy ? await legacy() : await readShards(asset, { allowRepair: false });
+      } else bytes = await legacy();
+      stored.add(asset.sha256);
+      return { ok: true, value: bytes };
+    } catch (error) {
+      const e = error as Err & { local?: Local };
+      if (e?.local === 'corrupt' || e?.name === 'NotReadableError') {
+        stored.delete(asset.sha256); // a removed identity is not an eviction
+        return fail({ code: 'corrupt', sha256: asset.sha256, message: e.message });
+      }
+      if (e?.local === 'absent') {
+        const partial = usesShards(asset) && (await unitsPresent(asset)) > 0;
+        return fail({
+          code: partial || stored.has(asset.sha256) ? 'evicted' : 'cache-miss',
+          sha256: asset.sha256,
+          message: e.message,
+        });
+      }
+      return fail({
+        code: 'unknown-status',
+        retryable: true,
+        message: String(e?.message ?? error),
+      });
+    }
+  }
+  const local: LocalReader = Object.freeze({ allowRepair: false as const, read: readLocal });
+  return { acquire, records, has, peek, local };
 }
 
 export async function createBrowserModelCache(

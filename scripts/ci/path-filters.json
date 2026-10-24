@@ -47,6 +47,17 @@
         "autoresearch/run.py",
         "autoresearch/lease.py"
       ]
+    },
+    "manager-cache": {
+      "workflow": ".github/workflows/manager-cache.yml",
+      "shared": [
+        "packages/**",
+        "scripts/**",
+        "package.json",
+        "package-lock.json",
+        "tsconfig*.json"
+      ],
+      "extra": ["apps/web/src/Next/Assets/**"]
     }
   }
 }
