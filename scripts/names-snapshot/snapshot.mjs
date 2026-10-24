@@ -217,7 +217,11 @@ export async function run({ rows, client, bucket = DEFAULTS.bucket, concurrency 
 }
 
 export function s3Client({ endpoint, accessKeyId, secretAccessKey }) {
-  return new S3Client({ region: 'auto', endpoint, forcePathStyle: true, credentials: { accessKeyId, secretAccessKey } });
+  // Without timeouts one stalled request blocks its pool worker for ever (seen on R2 at 12,000 objects).
+  return new S3Client({
+    region: 'auto', endpoint, forcePathStyle: true, credentials: { accessKeyId, secretAccessKey },
+    requestHandler: { connectionTimeout: 10_000, requestTimeout: 60_000 },
+  });
 }
 
 // R2 S3 credentials derived from a short-lived Cloudflare API token scoped to one bucket:
