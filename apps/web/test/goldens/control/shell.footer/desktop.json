@@ -1,0 +1,94 @@
+{
+ "tag": "footer",
+ "classes": [
+  "next-footer"
+ ],
+ "children": [
+  {
+   "tag": "div",
+   "classes": [
+    "next-footer-inner"
+   ],
+   "children": [
+    {
+     "tag": "div",
+     "classes": [
+      "next-footer-text"
+     ],
+     "children": [
+      {
+       "tag": "p",
+       "text": "Contact:",
+       "children": [
+        {
+         "tag": "a",
+         "attrs": {
+          "href": "mailto:checkfaceml@gmail.com"
+         },
+         "text": "checkfaceml@gmail.com"
+        }
+       ]
+      },
+      {
+       "tag": "p",
+       "text": "Source code:",
+       "children": [
+        {
+         "tag": "a",
+         "attrs": {
+          "href": "https://github.com/check-face/facemorph.me"
+         },
+         "text": "check-face/facemorph.me",
+         "children": [
+          {
+           "tag": "svg",
+           "attrs": {
+            "aria-hidden": "true"
+           }
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "tag": "p",
+       "text": "Found a problem? — it fills in your version and device.",
+       "children": [
+        {
+         "tag": "a",
+         "attrs": {
+          "href": "https://github.com/check-face/facemorph.me/issues/new?template=next-facemorph.yml&labels=next.facemorph.me&title=%5Bnext%5D+ (+body,device,reference,route,version)",
+          "target": "_blank",
+          "rel": "noopener"
+         },
+         "text": "Report an issue"
+        }
+       ]
+      },
+      {
+       "tag": "p",
+       "classes": [
+        "next-footer-version"
+       ],
+       "text": "Preview version <build>"
+      }
+     ]
+    },
+    {
+     "tag": "div",
+     "classes": [
+      "next-footer-logo"
+     ],
+     "children": [
+      {
+       "tag": "svg",
+       "attrs": {
+        "aria-hidden": "true"
+       }
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

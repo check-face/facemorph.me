@@ -1,0 +1,56 @@
+{
+ "tag": "aside",
+ "classes": [
+  "next-preview-strip"
+ ],
+ "attrs": {
+  "role": "note",
+  "aria-label": "About this preview"
+ },
+ "children": [
+  {
+   "tag": "span",
+   "classes": [
+    "next-preview-strip-lead"
+   ],
+   "text": "of the next facemorph.me. Everything runs on your device.",
+   "children": [
+    {
+     "tag": "strong",
+     "text": "Experimental preview"
+    }
+   ]
+  },
+  {
+   "tag": "span",
+   "classes": [
+    "next-preview-strip-links"
+   ],
+   "children": [
+    {
+     "tag": "a",
+     "attrs": {
+      "href": "https://facemorph.me"
+     },
+     "text": "Classic facemorph.me"
+    },
+    {
+     "tag": "a",
+     "attrs": {
+      "href": "https://facemorph.me/retirement"
+     },
+     "text": "Its server is retiring"
+    },
+    {
+     "tag": "a",
+     "attrs": {
+      "href": "https://github.com/check-face/facemorph.me/issues/new?template=next-facemorph.yml&labels=next.facemorph.me&title=%5Bnext%5D+ (+body,device,reference,route,version)",
+      "target": "_blank",
+      "rel": "noopener"
+     },
+     "text": "Report an issue"
+    }
+   ]
+  }
+ ]
+}

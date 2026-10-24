@@ -1,0 +1,10 @@
+{
+ "tag": "main",
+ "classes": [
+  "facemorph-page",
+  "next-product"
+ ],
+ "attrs": {
+  "data-next-busy": "false"
+ }
+}

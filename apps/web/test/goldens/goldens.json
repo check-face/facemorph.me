@@ -1,0 +1,74 @@
+{
+ "schema": "facemorph.goldens/1",
+ "control": {
+  "label": "control (classic candidate build; not built by this repository)",
+  "commit": "551b60726290b2d67a32c62477b2fd964de51f96",
+  "release_sha256": "868583788670d5651579acd88c238280523cdbf75d8b17360ea2b20e00180c01",
+  "deploy_next_sha256": "79306e90dbb948a346dd96da30c3a936cacd671dbf83e4cfd2da1623e1c52dca"
+ },
+ "recorder": {
+  "command": "node test/goldens/record-shell.ts",
+  "browser": "chromium 156.0.8078.4",
+  "widths": {
+   "desktop": {
+    "width": 1280,
+    "height": 900
+   },
+   "phone": {
+    "width": 390,
+    "height": 844
+   }
+  }
+ },
+ "rows": [
+  {
+   "id": "shell.root",
+   "selector": "main.next-product",
+   "freeze": "parity",
+   "note": "Root element only (classes, data-next-busy); its content is the other rows and the screens.",
+   "files": [
+    "control/shell.root/desktop.json",
+    "control/shell.root/phone.json"
+   ]
+  },
+  {
+   "id": "shell.preview-strip",
+   "selector": "aside.next-preview-strip",
+   "freeze": "parity",
+   "files": [
+    "control/shell.preview-strip/desktop.json",
+    "control/shell.preview-strip/phone.json"
+   ]
+  },
+  {
+   "id": "shell.header",
+   "selector": "main.next-product > header",
+   "freeze": "parity",
+   "files": [
+    "control/shell.header/desktop.json",
+    "control/shell.header/phone.json"
+   ]
+  },
+  {
+   "id": "shell.tagline",
+   "selector": "p.next-tagline",
+   "freeze": "parity",
+   "files": [
+    "control/shell.tagline/desktop.json",
+    "control/shell.tagline/phone.json"
+   ]
+  },
+  {
+   "id": "shell.footer",
+   "selector": "footer.next-footer",
+   "freeze": "parity",
+   "note": "The version line's value is this build's commit; the issue link's version and device fields are the visitor's.",
+   "files": [
+    "control/shell.footer/desktop.json",
+    "control/shell.footer/phone.json"
+   ]
+  }
+ ],
+ "owner_graded": [],
+ "untested": []
+}

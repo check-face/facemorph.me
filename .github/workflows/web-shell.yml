@@ -26,3 +26,28 @@ jobs:
       - run: npm test
       - run: npm run build
       - run: npm run check:inventory
+  # The built shell in the Ubuntu 24.04 browser cells of apps/web/browser-matrix.json (Playwright Chromium,
+  # Firefox and WebKit): control goldens at the shell rows, operated links at desktop and phone width (mouse
+  # and touch), and every emitted worker loading. Screenshots are kept as an artifact.
+  e2e:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm ci --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium firefox webkit
+      - run: npm run build
+      - run: npm run test:e2e
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-shell-e2e
+          path: apps/web/test-results/
+          if-no-files-found: ignore
