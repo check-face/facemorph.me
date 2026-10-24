@@ -30,6 +30,8 @@ jobs:
       - run: npm ci --no-audit --no-fund
       - run: npm run format:check # the workspace gates come before any build (fm-fy2.4)
       - run: npm run lint
+      # The manager's exports name dist/ only (no source condition), so its declarations are built first.
+      - run: npm run build -w packages/stylegan-js -w packages/browser-model-manager
       - name: Contracts without DOM or Node globals; then the tests' types
         run: npx tsc -p apps/web/src/contracts && npx tsc -p apps/web/src/contracts/tsconfig.test.json
       - name: Contract tests (workspace packages read from source)
