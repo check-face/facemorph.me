@@ -32,7 +32,10 @@ The swarm is fungible: no tester or shipping agent. Any agent whose bead needs d
 - **A candidate before it deploys:** `lab.py qualify --run <CI run id>` fetches that build's artifact and runs all
   four cells against it, served locally under the production origin. Evidence goes to every bead named in any
   commit since the last qualified one (CI is newest-only, so one build can carry several beads); `--since <sha>`
-  overrides the starting point. A local build directory works with `matrix --artifact DIR`.
+  overrides the starting point. Without a recorded start, or when the compare is unusable, only the head commit is
+  scanned and the log says why. `summary.md` names the beads, and the tested commit is recorded per repository
+  (`qualified.json` beside the lab state) after every run, pass or fail. A local build directory works with
+  `matrix --artifact DIR`.
 - **Scheduling:** through beads, not cron. When a candidate needs checking, create or pick up a bead for it, and
   close it with the run's `summary.md`.
 

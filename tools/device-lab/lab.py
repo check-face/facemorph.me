@@ -900,7 +900,7 @@ class LocalServer:
             self.proc.kill()
 
 
-def summarise(reports, out, title):
+def summarise(reports, out, title, beads=()):
     def cellrow(r):
         def fmt(j, k):
             v = [x.get(j, {}).get(k) for x in r['runs'] if x.get(j)]
@@ -911,9 +911,11 @@ def summarise(reports, out, title):
         return f"| {r['cell']} | {res} | {fmt('cold', 'faceS')} | {fmt('warm', 'faceS')} | {fmt('morph', 'videoS')} | {route} | {err[:120]} |"
     md = [f'## {title}', '', '| Cell | Result | Cold face | Warm face | Morph video | Route | Error |', '|---|---|---|---|---|---|---|']
     md += [cellrow(r) for r in reports]
+    if beads:
+        md += ['', f"Beads in the tested build: {', '.join(beads)}."]
     text = '\n'.join(md) + '\n'
     (out / 'summary.md').write_text(text)
-    (out / 'summary.json').write_text(json.dumps({'title': title, 'ok': all(r.get('ok') for r in reports), 'cells': reports}, indent=2))
+    (out / 'summary.json').write_text(json.dumps({'title': title, 'ok': all(r.get('ok') for r in reports), 'beads': list(beads), 'cells': reports}, indent=2))
     if os.environ.get('GITHUB_STEP_SUMMARY'):
         with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as f:
             f.write(text)
@@ -925,6 +927,17 @@ BEAD_ID = re.compile(r'\bfm-[a-z0-9]{2,}(?:\.[0-9]+)*\b')
 
 
 QUALIFIED = STATE.parent / 'qualified.json'
+
+
+def beads_in(messages, extra=()):
+    """Every bead ID named across these commit messages, plus any given, deduplicated and sorted. Pure."""
+    return sorted(set(extra or ()) | {b for m in messages for b in BEAD_ID.findall(m)})
+
+
+def record_qualified(path, repo, sha):
+    """The tested commit becomes this repository's base for the next qualify; other repositories keep theirs."""
+    seen = json.loads(path.read_text()) if path.exists() else {}
+    path.write_text(json.dumps(seen | {repo: sha}, indent=2))
 
 
 def commit_messages(repo, sha, since):
@@ -1008,9 +1021,9 @@ def run_matrix(args):
             for c in cells:
                 reports.append(run_cell_retrying(c, args, out))
     title = f'Device lab: {args.label} ({args.url})'
-    summarise(reports, out, title)
-    ok = all(r.get('ok') for r in reports)
     beads = sorted(set(getattr(args, 'bead', None) or []))
+    summarise(reports, out, title, beads)
+    ok = all(r.get('ok') for r in reports)
     if os.environ.get('GITHUB_ACTIONS'):
         if beads and os.environ.get('GITHUB_STEP_SUMMARY'):
             with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as f:
@@ -1081,11 +1094,11 @@ def main():
         a.artifact, a.url, a.label = str(dest), f'https://{ORIGIN_HOST}/', f'qualify-{name}'
         sha = name.removeprefix('next-site-')
         seen = json.loads(QUALIFIED.read_text()) if QUALIFIED.exists() else {}
-        msgs = commit_messages(a.repo, sha, a.since or seen.get(a.repo))
-        a.bead = sorted(set((a.bead or []) + [b for m in msgs for b in BEAD_ID.findall(m)]))
+        a.bead = beads_in(commit_messages(a.repo, sha, a.since or seen.get(a.repo)), a.bead)
+        log('qualify_beads', repo=a.repo, sha=sha, beads=a.bead)
         ok = run_matrix(a)
         # The passback has covered this range, pass or fail; the next qualify starts after it.
-        QUALIFIED.write_text(json.dumps(seen | {a.repo: sha}, indent=2))
+        record_qualified(QUALIFIED, a.repo, sha)
         sys.exit(0 if ok else 1)
     if a.artifact and not a.runtime_sha:
         raise SystemExit('--artifact needs --runtime-sha')
