@@ -3,4 +3,4 @@
 #   <removed test path> -> replacement: <test path>; reason: <text>
 #   <removed test path> -> plan: <PLAN.md#anchor or dated decision>; reason: <text>
 packages/cloudflare-model-host/test/placeholder.test.ts -> replacement: packages/cloudflare-model-host/test/host.test.ts; reason: the placeholder only asserted the package name; the extraction (fm-3osh) replaced it with the host tests
-apps/web/src/Next/verify-fable.mjs -> replacement: apps/web/test/project/project-json.test.ts; reason: it exercised Fable's compiled ProjectJson.fs.js, which never exists here; every assertion is a named case in project-json.test.ts and the bridge imports project-json.ts (fm-stth)
+apps/web/src/Next/verify-fable.mjs -> replacement: apps/web/test/project/project-json.test.ts; reason: its CI step (next-site.yml) is retired: it exercised Fable's compiled ProjectJson.fs.js, which never exists here, and every assertion is a named case in project-json.test.ts; the file itself stays as byte-identical imported classic source (fm-stth)
