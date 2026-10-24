@@ -1,0 +1,378 @@
+{
+ "schema": "facemorph.control-artifact/1",
+ "bead": "fm-gpx",
+ "label": "control (classic candidate build; not built by this repository)",
+ "why": "The live next.facemorph.me build on 24 October 2026: its app, runtime and vendors bundle bytes fetched from the live site equal the artifact's (sha256 c7e79410…, 7c9bc7a6…, bd666c47…). The earlier recorded 001ba853…/next-04403766fff8630a is no longer live. import.closure (fm-gpx) re-verifies against the live site at pin time and uploads the bytes as a release asset of this repository.",
+ "source": {
+  "repository": "check-face/facemorph.me-classic",
+  "repository_id": 295956585,
+  "workflow": ".github/workflows/next-site.yml",
+  "run_id": 40056009101,
+  "run_attempt": 1,
+  "run_url": "https://github.com/check-face/facemorph.me-classic/actions/runs/40056009101",
+  "commit": "551b60726290b2d67a32c62477b2fd964de51f96",
+  "artifact_name": "next-site-551b60726290b2d67a32c62477b2fd964de51f96",
+  "artifact_id": 12545680450,
+  "artifact_zip_sha256": "868583788670d5651579acd88c238280523cdbf75d8b17360ea2b20e00180c01",
+  "build_id": "next-dbc2925ff6e7dcb6",
+  "bundle_hash": "d885fffd08bf9a3aec53",
+  "qualified_by": "the same run's qualify / real-ui-cpu job (next-e2e.yml with runtime_sha d9e37e50…) and compiled-ui job; deployed by its deploy job at 2026-10-24T02:59:51Z"
+ },
+ "exercised_with": {
+  "runtime_manifest_sha256": "d9e37e50a436e9fb7c0c7f973e70adee353c808f48c6a51fa5a9186f1c650a5c",
+  "catalogue_sha256": "4a9e1c199e2a629f11cc5d016128b36efbcde301928ae2735c42e5025c13c341"
+ },
+ "frozen_commit": "a42829bb0582b5a7a55ba6b1045a05861612b8a5",
+ "control_vs_frozen": {
+  "equal": false,
+  "commits": [
+   {
+    "commit": "a42829bb0582b5a7a55ba6b1045a05861612b8a5",
+    "subject": "Remove the device-lab deploy gate again [skip ci]"
+   },
+   {
+    "commit": "91b777880c79ff3011c5eff969ce9ad0d28c15a8",
+    "subject": "Gate next.facemorph.me deploys on the four-cell device lab, then re-test the live site"
+   }
+  ],
+  "changed_paths": [],
+  "closure_effect": "none: the commits between them leave no file changed"
+ },
+ "release": {
+  "repository": "check-face/facemorph.me",
+  "tag": "control-551b60726290",
+  "asset": "next-site-551b60726290b2d67a32c62477b2fd964de51f96.zip",
+  "sha256": "868583788670d5651579acd88c238280523cdbf75d8b17360ea2b20e00180c01",
+  "bytes": 2908514,
+  "url": "https://github.com/check-face/facemorph.me/releases/download/control-551b60726290/next-site-551b60726290b2d67a32c62477b2fd964de51f96.zip",
+  "api_url": "https://api.github.com/repos/check-face/facemorph.me/releases/assets/671786863"
+ },
+ "files": [
+  {
+   "path": "deploy-next/230.d885fffd08bf9a3aec53.js",
+   "sha256": "68c9f26bbeaafd739086ade64713aee6c844fd18d6034ccc0eb466261f97604b",
+   "bytes": 8594
+  },
+  {
+   "path": "deploy-next/230.d885fffd08bf9a3aec53.js.map",
+   "sha256": "09cf8fa6d6a29a7f7ef7e9a46fa45d2e305a43c7e2d3b605c02a24a88d83fdc4",
+   "bytes": 31390
+  },
+  {
+   "path": "deploy-next/465.d885fffd08bf9a3aec53.js",
+   "sha256": "ec9a0c799fe3f18b52625ccefdf86b601f87b9ae3654b3fd81bcc7ca75eb8c45",
+   "bytes": 11550
+  },
+  {
+   "path": "deploy-next/465.d885fffd08bf9a3aec53.js.map",
+   "sha256": "86bb4dd8d5e87be2fd875d7c7850d63ca294b9f08c104a134da9f160de22ae3c",
+   "bytes": 30812
+  },
+  {
+   "path": "deploy-next/516.d885fffd08bf9a3aec53.js",
+   "sha256": "006708f36bdecf7963bbddc9396171d77bcfdbbce501f5d71868c246bf2fc2e3",
+   "bytes": 46329
+  },
+  {
+   "path": "deploy-next/516.d885fffd08bf9a3aec53.js.map",
+   "sha256": "623239dcc27c47e3e5c969932f30a908dc8a3f53ef6fc11ea650e4e4e336be74",
+   "bytes": 148726
+  },
+  {
+   "path": "deploy-next/590.d885fffd08bf9a3aec53.js",
+   "sha256": "0c8c274431c24f53b10e5bd42b23395fa1d3ad33802adb59f2098dec7cad5ed5",
+   "bytes": 7933
+  },
+  {
+   "path": "deploy-next/590.d885fffd08bf9a3aec53.js.map",
+   "sha256": "deeb56d1cb8ee3c5e1b89434f6d53f673f28ebe0f1b1e371268a3d91f7bdefd3",
+   "bytes": 29490
+  },
+  {
+   "path": "deploy-next/5c8ee929c2afd43ecaae.svg",
+   "sha256": "efbea292163f37ec78cdf89f9158078c04c8a7c101cbd9db8e321b3f3e4863c1",
+   "bytes": 466
+  },
+  {
+   "path": "deploy-next/744.d885fffd08bf9a3aec53.js",
+   "sha256": "8b8f1c3d307ab223c2d407e80d1e1849d8cce44f9c32b3acd0fcf056d17f9d40",
+   "bytes": 18331
+  },
+  {
+   "path": "deploy-next/744.d885fffd08bf9a3aec53.js.map",
+   "sha256": "b201cff557a78be124d838b494a888735f1b61045461f845bd21685195eb3e47",
+   "bytes": 67626
+  },
+  {
+   "path": "deploy-next/825.d885fffd08bf9a3aec53.js",
+   "sha256": "1b1c3860433e256fedd35bb9ca928c0b6da76428c694cfd3fac8b4609967a65c",
+   "bytes": 18989
+  },
+  {
+   "path": "deploy-next/825.d885fffd08bf9a3aec53.js.map",
+   "sha256": "d654f5878b31489b3c86ab943c6118a5ca42351bb1773273449c59eb83fe4b7e",
+   "bytes": 68164
+  },
+  {
+   "path": "deploy-next/README.md",
+   "sha256": "4fefffa64bd1609a5235ae1dd17570acf73bdb2883d732d622f2408f4df2350b",
+   "bytes": 1063
+  },
+  {
+   "path": "deploy-next/android-chrome-192x192.png",
+   "sha256": "3f72c9084ea1999bee60007f1cdb2388113e278cef723a9396c788ba72267e17",
+   "bytes": 3666
+  },
+  {
+   "path": "deploy-next/android-chrome-512x512.png",
+   "sha256": "a8a83baf7c337fc92c4450a6a80ae11725bbc3776a6990421c91fe609ee0eb61",
+   "bytes": 10377
+  },
+  {
+   "path": "deploy-next/app.d885fffd08bf9a3aec53.js",
+   "sha256": "c7e794109ae234a080938e954b67644cd9b51a9edb23eaa1c49e7bbb182f34d3",
+   "bytes": 450377
+  },
+  {
+   "path": "deploy-next/app.d885fffd08bf9a3aec53.js.map",
+   "sha256": "fe374dbe17245ef15c8e8313261daa1bf856dbb17d45527d7f7c79f7f779d3bc",
+   "bytes": 2084338
+  },
+  {
+   "path": "deploy-next/apple-touch-icon.png",
+   "sha256": "e9ede9794648e56ef5f4ec1c9e5d44e006308e813324c99a89f615a6e9c345ea",
+   "bytes": 8956
+  },
+  {
+   "path": "deploy-next/browserconfig.xml",
+   "sha256": "02a58d43084ba9759cadf94f4cbeff22a854e0a70810a5542d96ae83ac501ec8",
+   "bytes": 246
+  },
+  {
+   "path": "deploy-next/catalogue.json",
+   "sha256": "4a9e1c199e2a629f11cc5d016128b36efbcde301928ae2735c42e5025c13c341",
+   "bytes": 3405692
+  },
+  {
+   "path": "deploy-next/cropper-stencil.svg",
+   "sha256": "efbea292163f37ec78cdf89f9158078c04c8a7c101cbd9db8e321b3f3e4863c1",
+   "bytes": 466
+  },
+  {
+   "path": "deploy-next/favicon-16x16.png",
+   "sha256": "4060bf9e4f3cb7eca8f3c513640d7cd119571ebfac18d01d3bd0f59054c043d9",
+   "bytes": 680
+  },
+  {
+   "path": "deploy-next/favicon-32x32.png",
+   "sha256": "a72ed385ab728f61dd20704edfb30030ff637bfb6bc490380f88ec72ec3011bf",
+   "bytes": 1112
+  },
+  {
+   "path": "deploy-next/favicon.ico",
+   "sha256": "a59dbcd5e1932386b57f5e9e430b372bf0a78f3b736b4342a8f66b9fc0219342",
+   "bytes": 15086
+  },
+  {
+   "path": "deploy-next/favicon.svg",
+   "sha256": "c5e29b4935fe76743a7efd81705d9f05490c6ec6acaf03f085d8401164b1ff61",
+   "bytes": 576
+  },
+  {
+   "path": "deploy-next/fonts/RECEIPT.json",
+   "sha256": "9cef3f7021877ee26ab54347106278f161dfd4b2b65badae20312c3bc2d18559",
+   "bytes": 4020
+  },
+  {
+   "path": "deploy-next/fonts/fonts.css",
+   "sha256": "844e5fe4c31dc0014af73971a7518af66b375b57f778f75a2b07c78bdaa995c4",
+   "bytes": 22361
+  },
+  {
+   "path": "deploy-next/fonts/nunito-3c2f6e4752.woff2",
+   "sha256": "3c2f6e4752294913f818a47cb12270ae8d5ae7a39fe22df37b7127ab0a82282f",
+   "bytes": 16184
+  },
+  {
+   "path": "deploy-next/fonts/nunito-42e1ff5021.woff2",
+   "sha256": "42e1ff5021da0127487c838d2f712b905447101ae108f51efe15b8cd5907c28a",
+   "bytes": 16572
+  },
+  {
+   "path": "deploy-next/fonts/nunito-5ac503807c.woff2",
+   "sha256": "5ac503807c1b99435f247a4e7f97bd440036fe2fedf36252a8d9f54f61578123",
+   "bytes": 11212
+  },
+  {
+   "path": "deploy-next/fonts/nunito-7a3225c1c5.woff2",
+   "sha256": "7a3225c1c52326d1ff65dc7d1d7fd157f72261b3210476b7cca3e666e79b7b53",
+   "bytes": 6160
+  },
+  {
+   "path": "deploy-next/fonts/nunito-c54d656747.woff2",
+   "sha256": "c54d6567473728e65baa95e2729b1719625601595a4a33ce0f2bb3e392f862f5",
+   "bytes": 8556
+  },
+  {
+   "path": "deploy-next/fonts/roboto-0a44e0bb6b.woff2",
+   "sha256": "0a44e0bb6ba5c8537e8814c148ef7755f1bce12112361231f595ecc584a18d7a",
+   "bytes": 37520
+  },
+  {
+   "path": "deploy-next/fonts/roboto-2071148c26.woff2",
+   "sha256": "2071148c26bd0430cad316373c26db399e0cf8f6275b9e1a2c1b831f05ee7dc3",
+   "bytes": 10572
+  },
+  {
+   "path": "deploy-next/fonts/roboto-297193369e.woff2",
+   "sha256": "297193369eea600161f4b5219bd7b08850180fcfe0752f1a2eaa436575cd03b7",
+   "bytes": 36292
+  },
+  {
+   "path": "deploy-next/fonts/roboto-32886c5ec6.woff2",
+   "sha256": "32886c5ec61a0d06e5677a98c5ed78a5f1c788c18c5e8d7dcd931c4b6dc19830",
+   "bytes": 19624
+  },
+  {
+   "path": "deploy-next/fonts/roboto-4813e3dfbb.woff2",
+   "sha256": "4813e3dfbbb23708c817ef7fd3fd9c82cd0d33c778def0897f0447f1c364ce64",
+   "bytes": 13984
+  },
+  {
+   "path": "deploy-next/fonts/roboto-5fdfeaf926.woff2",
+   "sha256": "5fdfeaf926cac990770dfa66011bdb87d6b69f43c42aa759dcdcf0a7a197c19a",
+   "bytes": 1632
+  },
+  {
+   "path": "deploy-next/fonts/roboto-cdd53dc557.woff2",
+   "sha256": "cdd53dc5576a79f35cf280dfbd9c1cb2a5dd2f0ede30afba9b9ccdc7fe12e7d0",
+   "bytes": 24444
+  },
+  {
+   "path": "deploy-next/fonts/roboto-e44224eb71.woff2",
+   "sha256": "e44224eb71a96cb33bd046ded16a4e22bb441b170bdfbcba0268a754141b97c8",
+   "bytes": 31472
+  },
+  {
+   "path": "deploy-next/fonts/roboto-fab8a0056d.woff2",
+   "sha256": "fab8a0056d92fdd8d64fed4b049744144e1d24d08762c513bff78265299ed7a3",
+   "bytes": 16692
+  },
+  {
+   "path": "deploy-next/index.html",
+   "sha256": "e1a4d0469ab63ccd82c276474f98ac76812585cc0af5ff5acd3b4a3d08b3f754",
+   "bytes": 2763
+  },
+  {
+   "path": "deploy-next/logo-animated.svg",
+   "sha256": "da046863dce8a13ec197b0e24bced45605c5921eead53b25efba89bf018158d3",
+   "bytes": 1178
+  },
+  {
+   "path": "deploy-next/logo.svg",
+   "sha256": "e61e303b90a8c5c3a7832acf4be19d814de5027ee7a6093da8d923885451d57f",
+   "bytes": 488
+  },
+  {
+   "path": "deploy-next/mstile-144x144.png",
+   "sha256": "8776f1dac99defd6e4c1b564766d0fce8e700713c30013911911ea5e328729ca",
+   "bytes": 3458
+  },
+  {
+   "path": "deploy-next/mstile-150x150.png",
+   "sha256": "c5b7e8d769a4862299a083da886699ea2fc18fd80299c8207b472bbe8eaf1ee5",
+   "bytes": 3399
+  },
+  {
+   "path": "deploy-next/mstile-310x150.png",
+   "sha256": "245b80d88ce34b3d4fbf41ea69d3892794bd2b280631bc5f3f0cd5fe937528b3",
+   "bytes": 3661
+  },
+  {
+   "path": "deploy-next/mstile-310x310.png",
+   "sha256": "1ee17338ba9311943abb71c999a478c16765e747e9d03a1e8f1ac41bdd003865",
+   "bytes": 7241
+  },
+  {
+   "path": "deploy-next/mstile-70x70.png",
+   "sha256": "d9b89ab33df87717788c8fb718b869bc61fb26196e21925da37de53a1307a593",
+   "bytes": 2436
+  },
+  {
+   "path": "deploy-next/og-next.png",
+   "sha256": "4896c6cebccfbbe77e7e7ecee93f06860482e5b31b21bac592f3244e2fe6c4cc",
+   "bytes": 480238
+  },
+  {
+   "path": "deploy-next/preview/hello-1024.webp",
+   "sha256": "0fd3aacaf63a9b574960f926e4fbd48fadf853ba16189519053438e55fb9d615",
+   "bytes": 92624
+  },
+  {
+   "path": "deploy-next/robots.txt",
+   "sha256": "44f3f8eafdf064cf69acb05f23ee4dfc9ab5b3d67d81c64246bc29f7e438789a",
+   "bytes": 22
+  },
+  {
+   "path": "deploy-next/runtime.d885fffd08bf9a3aec53.js",
+   "sha256": "7c9bc7a6d6387d8a4b3ac8cda35fca58c9f68706e5c4929261c4727221a043f8",
+   "bytes": 3523
+  },
+  {
+   "path": "deploy-next/runtime.d885fffd08bf9a3aec53.js.map",
+   "sha256": "528c32a8d8d125b1b4272d9cebde035ed7de0b072ae4a2d99cbd629063dc4b1d",
+   "bytes": 18332
+  },
+  {
+   "path": "deploy-next/safari-pinned-tab.svg",
+   "sha256": "5137e23ec8b91f59efdf28211cbe5cbdc9f2b0b4891bfb42640d607b4b0834bb",
+   "bytes": 2913
+  },
+  {
+   "path": "deploy-next/site.webmanifest",
+   "sha256": "e74f0398c8305132141d29de5583da6b9b2825cd993af9b1ccc4816e9686f554",
+   "bytes": 449
+  },
+  {
+   "path": "deploy-next/style.d885fffd08bf9a3aec53.css",
+   "sha256": "2214b34294537c78a7f2edb9d781fba362d9ed61133ab509c8005f063997d8d6",
+   "bytes": 411159
+  },
+  {
+   "path": "deploy-next/style.d885fffd08bf9a3aec53.css.map",
+   "sha256": "3488e9edcb19b890ca194427c2571a75a37fedc31fc7503064990e3a586f0079",
+   "bytes": 304025
+  },
+  {
+   "path": "deploy-next/vendors.d885fffd08bf9a3aec53.js",
+   "sha256": "bd666c47456de02e6032526ff181585210ae94800920912ad807c8fc85c22975",
+   "bytes": 453495
+  },
+  {
+   "path": "deploy-next/vendors.d885fffd08bf9a3aec53.js.LICENSE.txt",
+   "sha256": "33c2fc0d2470eedc4c9609544d582cd59dc0e4db9643d0cddb4a335e7d4df7e5",
+   "bytes": 1201
+  },
+  {
+   "path": "deploy-next/vendors.d885fffd08bf9a3aec53.js.map",
+   "sha256": "176d814ba38a37f44bd1b0c32a2667558696f968127fa90cc627d24cb39fea0b",
+   "bytes": 1773927
+  },
+  {
+   "path": "next-site-SHA256SUMS",
+   "sha256": "79306e90dbb948a346dd96da30c3a936cacd671dbf83e4cfd2da1623e1c52dca",
+   "bytes": 6397
+  },
+  {
+   "path": "next-site-source.txt",
+   "sha256": "a88823f5d5adaafd30ed04fcf70a99b9255c7f92fa42be86ecb0491c6f3e2139",
+   "bytes": 41
+  }
+ ],
+ "live_check": {
+  "origin": "https://next.facemorph.me",
+  "checked_at": "2026-10-24T09:07:38.924Z",
+  "files_compared": 62,
+  "differences": 0
+ }
+}
