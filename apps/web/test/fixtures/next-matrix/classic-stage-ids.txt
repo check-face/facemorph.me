@@ -1,0 +1,7 @@
+120: await stage('nameSeed',
+129: await stage('repeatOriginal',
+136: await stage('photoE4e',
+145: await stage('localCrop',
+163: await stage('projectSaveReopen',
+183: await stage('morphExport',
+191: await stage('morphPlayback',
