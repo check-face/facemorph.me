@@ -35,7 +35,7 @@ jobs:
           --allow browser-matrix.json --allow 'tsconfig*.json' --allow vite.config.ts --allow index.html --allow worker-check.html --allow render-check.html --allow .gitignore
           --allow 'build/**' --allow 'shell/**' --allow 'test/**' --allow 'src/photo/**'
       - run: node scripts/import/scan-exclusions.mjs
-      - run: node scripts/inventory/unresolved-imports.mjs --root apps/web
+      - run: node scripts/inventory/unresolved-imports.mjs --root apps/web --lock package-lock.json # one root lock (fm-fy2.4)
       - name: Control artifact downloads, verifies and scans clean
         env:
           GITHUB_TOKEN: ${{ github.token }}
