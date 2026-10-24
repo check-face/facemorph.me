@@ -63,3 +63,4 @@ jobs:
       - run: npm run build -w packages/stylegan-js
       - run: node packages/stylegan-js/test/browser/media-browsers.mjs
       - run: node packages/stylegan-js/test/browser/webp-lossless-browsers.mjs
+      - run: node packages/stylegan-js/test/browser/crop-policy-browsers.mjs

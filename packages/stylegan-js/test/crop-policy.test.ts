@@ -9,13 +9,13 @@ import {
   CROP_MAX_PIXELS,
   CROP_OUTPUT,
   CROP_PREPROCESSING_POLICY_V1,
-  ENCODER_INPUT_LENGTH,
   PREVIEW_MAX_EDGE,
   SINGLE_INPUT_LIMITS,
   CropDerivationError,
   CropValidationError,
   createConfirmedCrop,
   deriveEncoderInput,
+  pillowBilinearRgb,
   validateConfirmedCrop,
   type ConfirmedCropFields,
   type SourcePixels,
@@ -124,7 +124,10 @@ test('every invalid record is a typed CropValidationError', () => {
     [fields({ exifApplied: 'no' as unknown as boolean }), 'invalid-exif-applied'],
     [
       fields({
-        policyParams: { ...CROP_PREPROCESSING_POLICY_V1, resize: 'bilinear' as 'area-average' },
+        policyParams: {
+          ...CROP_PREPROCESSING_POLICY_V1,
+          resize: 'area-average' as 'pillow-bilinear',
+        },
       }),
       'unknown-policy',
     ],
@@ -163,29 +166,46 @@ const at = (tensor: Float32Array, c: number, x: number, y: number) =>
   tensor[c * 65536 + y * 256 + x]!;
 const norm = (v: number) => Math.fround(Math.fround(Math.fround(v / 255) - 0.5) / 0.5);
 
-test('worked example: 2x2 blocks of a 512 crop average to one encoder pixel each', () => {
-  // Inside a 600x560 source, the crop at (40, 30) holds blocks whose four pixels are 10, 20, 30, 40.
-  const source = pixels(600, 560, (x, y) => {
-    const u = x - 40;
-    const v = y - 30;
-    const block = (Math.floor(u / 2) + Math.floor(v / 2)) % 2;
-    const corner = (u & 1) + 2 * (v & 1);
-    return [10 + 10 * corner, block ? 255 : 0, 7];
-  });
-  const crop = createConfirmedCrop(
-    fields({ rect: { left: 40, top: 30, width: 512, height: 512 } }),
+test("candidate fixtures: the policy reproduces the candidate's qualified preprocessing bit for bit", () => {
+  // classic a42829b photo-runtime/fixtures: Pillow 12.3.0 RGB + bilinear, no alignment. seed-0-unaligned's
+  // tensor is also the exact input the encoder-stream qualification ran (its inputSha256), so the W+ the
+  // product computes from a confirmed crop of this photo is the qualified W+ itself.
+  const dir = new URL('./vectors/candidate-preprocessing/', import.meta.url);
+  const cases = JSON.parse(readFileSync(new URL('cases.json', dir), 'utf8')).cases as {
+    id: string;
+    inputRgb: string;
+    inputRgbSha256: string;
+    width: number;
+    height: number;
+    preparedSha256: string;
+    tensorSha256: string;
+  }[];
+  const sha = (b: Uint8Array) => createHash('sha256').update(b).digest('hex');
+  for (const c of cases) {
+    const rgb = new Uint8Array(readFileSync(new URL(c.inputRgb, dir)));
+    assert.equal(sha(rgb), c.inputRgbSha256, `${c.id} input bytes`);
+    assert.equal(
+      sha(pillowBilinearRgb(rgb, c.width, c.height, 256, 256)),
+      c.preparedSha256,
+      `${c.id} prepared RGB`,
+    );
+    if (c.width !== c.height) continue; // a confirmed crop is square; the stretched non-square resize is checked above
+    const rgba = new Uint8Array(c.width * c.height * 4);
+    for (let i = 0; i < c.width * c.height; i++)
+      rgba.set([rgb[i * 3]!, rgb[i * 3 + 1]!, rgb[i * 3 + 2]!, 255], i * 4);
+    const crop = createConfirmedCrop(
+      fields({ rect: { left: 0, top: 0, width: c.width, height: c.height } }),
+    );
+    assert.equal(
+      deriveEncoderInput({ width: c.width, height: c.height, data: rgba }, crop).tensorDigest,
+      c.tensorSha256,
+      `${c.id} tensor`,
+    );
+  }
+  assert.equal(
+    cases.find((c) => c.id === 'seed-0-unaligned')!.tensorSha256,
+    '51529b7a56d218a191b308a889db37fbff311a0bd4c2096e46b2334f7d835726',
   );
-  const { tensor, tensorDigest, policyVersion } = deriveEncoderInput(source, crop);
-  assert.equal(tensor.length, ENCODER_INPUT_LENGTH);
-  assert.equal(policyVersion, 'crop-preprocessing-v1');
-  assert.equal(at(tensor, 0, 0, 0), norm(25)); // mean of 10, 20, 30, 40
-  assert.equal(at(tensor, 1, 0, 0), norm(0));
-  assert.equal(at(tensor, 1, 1, 0), norm(255));
-  assert.equal(at(tensor, 2, 200, 100), norm(7));
-  assert.equal(norm(255), 1);
-  assert.equal(norm(0), -1);
-  const bytes = Buffer.from(tensor.buffer, tensor.byteOffset, tensor.byteLength); // little-endian hosts
-  assert.equal(tensorDigest, createHash('sha256').update(bytes).digest('hex'));
 });
 
 test('non-integer scale: a uniform crop stays uniform; a 256 crop is copied exactly', () => {

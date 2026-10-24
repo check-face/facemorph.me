@@ -1,0 +1,37 @@
+{
+  "note": "Candidate qualified preprocessing (classic a42829b photo-runtime/fixtures, manifest sourceSha256 263e4860769ce456d7f2b1b8ae2a5546e9e5feebd9efc118f9898ae944f1ade8: \"Unmodified deployed alignment.py and Pillow RGB/bilinear preprocessing\", Pillow 12.3.0). inputRgb is the decoded source as packed 8-bit RGB; preparedSha256 is the 256x256 RGB the candidate produced without alignment, tensorSha256 its float32 [1,3,256,256] tensor (little-endian). Copied byte-identical; the other cases differ only in size or decode (large, jpeg, alpha) and were checked the same way when this file was written.",
+  "source": {
+    "repository": "check-face/facemorph.me-classic",
+    "commit": "a42829bb0582b5a7a55ba6b1045a05861612b8a5",
+    "path": "photo-runtime/fixtures/manifest.json"
+  },
+  "cases": [
+    {
+      "id": "seed-0-unaligned",
+      "inputRgb": "seed-0.rgb",
+      "inputRgbSha256": "03a75319d0bea473198fe9e458c5321fe93fdeda75279104fded29c09a7697f8",
+      "width": 512,
+      "height": 512,
+      "preparedSha256": "9695510d7040adb2ed48ff45734662a09d535c83a2154a24b7d6624c165d8f24",
+      "tensorSha256": "51529b7a56d218a191b308a889db37fbff311a0bd4c2096e46b2334f7d835726"
+    },
+    {
+      "id": "seed-0-border-unaligned",
+      "inputRgb": "seed-0-border.rgb",
+      "inputRgbSha256": "b387e62fa1feeae732c9570c124433351bfa1fbd3589ddcc15a169f4db857bb9",
+      "width": 330,
+      "height": 360,
+      "preparedSha256": "bebca30e072a798822c77a669210651b4dec5a46388dcbcdadfb2c0380e57699",
+      "tensorSha256": "eae6759c8437dfdf12afc616b3423d8c3f7648d796420564393500b9bf0a6246"
+    },
+    {
+      "id": "no-face-unaligned",
+      "inputRgb": "no-face.rgb",
+      "inputRgbSha256": "83ab53863cf746efe2611c6b521cfbdefba4f5325cf123ab451c385035b394ef",
+      "width": 256,
+      "height": 256,
+      "preparedSha256": "83ab53863cf746efe2611c6b521cfbdefba4f5325cf123ab451c385035b394ef",
+      "tensorSha256": "2a0db9dafd24471a6b874e8810aae5e75508ad019ba3a24c2e957aa766d2f218"
+    }
+  ]
+}

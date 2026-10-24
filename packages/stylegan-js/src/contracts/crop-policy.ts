@@ -38,8 +38,12 @@ export const ENCODER_INPUT_LENGTH = 3 * ENCODER_INPUT_SIZE * ENCODER_INPUT_SIZE;
 
 export interface CropPreprocessingPolicyV1 {
   readonly version: 'crop-preprocessing-v1';
-  /** Box filter with fractional coverage from the square crop to 256x256, then rounded to 8 bits. */
-  readonly resize: 'area-average';
+  /**
+   * Pillow's BILINEAR resample (Image.resize, Pillow 12.3.0 libImaging/Resample.c), as the candidate's qualified
+   * preprocessing ran it: a triangle filter widened by the downscale factor, 22-bit fixed-point coefficients,
+   * a horizontal then a vertical pass, each rounded to 8 bits. Bit-exact with the candidate's fixtures.
+   */
+  readonly resize: 'pillow-bilinear';
   /** RGB channels of 8-bit sRGB RGBA source pixels; alpha is ignored; no colour management. */
   readonly colour: 'srgb-rgb-8bit-alpha-ignored';
   /** Each step rounded to float32, as photo/selection-worker.mjs does. */
@@ -50,7 +54,7 @@ export interface CropPreprocessingPolicyV1 {
 
 export const CROP_PREPROCESSING_POLICY_V1: CropPreprocessingPolicyV1 = Object.freeze({
   version: 'crop-preprocessing-v1',
-  resize: 'area-average',
+  resize: 'pillow-bilinear',
   colour: 'srgb-rgb-8bit-alpha-ignored',
   normalisation: 'float32((x / 255 - 0.5) / 0.5)',
   layout: 'nchw',
@@ -259,7 +263,11 @@ export function validateConfirmedCrop(value: unknown): ConfirmedCrop {
   return freeze(checked, id);
 }
 
-/** Oriented source pixels: 8-bit RGBA, row-major, `width * height * 4` bytes. */
+/**
+ * Decoded source pixels as the file stores them (no EXIF orientation applied): 8-bit RGBA, row-major,
+ * `width * height * 4` bytes. A crop with `exifApplied` is oriented before cropping; the candidate's
+ * legacy-ignore-exif crops are not.
+ */
 export interface SourcePixels {
   readonly width: number;
   readonly height: number;
@@ -274,24 +282,123 @@ export interface EncoderInput {
   readonly policyVersion: CropPreprocessingPolicyV1['version'];
 }
 
-/** 1-D area-average weights from `size` source samples onto `ENCODER_INPUT_SIZE` outputs. */
-function coverage(size: number): { start: number; weights: number[] }[] {
-  const scale = size / ENCODER_INPUT_SIZE;
-  return Array.from({ length: ENCODER_INPUT_SIZE }, (_, o) => {
-    const lo = o * scale;
-    const hi = (o + 1) * scale;
-    const start = Math.floor(lo);
-    const weights: number[] = [];
-    for (let i = start; i < hi && i < size; i++)
-      weights.push((Math.min(i + 1, hi) - Math.max(i, lo)) / scale);
-    return { start, weights };
-  });
+const PRECISION_BITS = 32 - 8 - 2;
+
+/** Pillow's bilinear coefficients for one axis, as fixed-point integers with their first input index. */
+function bilinearCoefficients(inSize: number, outSize: number): { start: number; k: Int32Array }[] {
+  const scale = inSize / outSize;
+  const filterscale = Math.max(scale, 1);
+  const support = filterscale;
+  const ss = 1 / filterscale;
+  const out: { start: number; k: Int32Array }[] = [];
+  for (let xx = 0; xx < outSize; xx++) {
+    const center = (xx + 0.5) * scale;
+    const start = Math.max(Math.trunc(center - support + 0.5), 0);
+    const count = Math.min(Math.trunc(center + support + 0.5), inSize) - start;
+    const pre = new Float64Array(count);
+    let total = 0;
+    for (let x = 0; x < count; x++) {
+      const t = Math.abs((x + start - center + 0.5) * ss);
+      pre[x] = t < 1 ? 1 - t : 0;
+      total += pre[x]!;
+    }
+    const k = new Int32Array(count);
+    for (let x = 0; x < count; x++) {
+      const v = total !== 0 ? pre[x]! / total : pre[x]!;
+      k[x] =
+        v < 0
+          ? Math.trunc(-0.5 + v * (1 << PRECISION_BITS))
+          : Math.trunc(0.5 + v * (1 << PRECISION_BITS));
+    }
+    out.push({ start, k });
+  }
+  return out;
+}
+
+const clip8 = (sum: number): number => {
+  const v = sum >> PRECISION_BITS;
+  return v < 0 ? 0 : v > 255 ? 255 : v;
+};
+
+/** Pillow BILINEAR resize of packed 8-bit RGB, horizontal pass first, both passes rounded to 8 bits. */
+export function pillowBilinearRgb(
+  rgb: Uint8Array,
+  width: number,
+  height: number,
+  outWidth: number,
+  outHeight: number,
+): Uint8Array {
+  const horizontal = bilinearCoefficients(width, outWidth);
+  const vertical = bilinearCoefficients(height, outHeight);
+  const mid = new Uint8Array(outWidth * height * 3);
+  for (let y = 0; y < height; y++)
+    for (let x = 0; x < outWidth; x++) {
+      const { start, k } = horizontal[x]!;
+      for (let c = 0; c < 3; c++) {
+        let sum = 1 << (PRECISION_BITS - 1);
+        for (let i = 0; i < k.length; i++) sum += rgb[(y * width + start + i) * 3 + c]! * k[i]!;
+        mid[(y * outWidth + x) * 3 + c] = clip8(sum);
+      }
+    }
+  const out = new Uint8Array(outWidth * outHeight * 3);
+  for (let y = 0; y < outHeight; y++) {
+    const { start, k } = vertical[y]!;
+    for (let x = 0; x < outWidth; x++)
+      for (let c = 0; c < 3; c++) {
+        let sum = 1 << (PRECISION_BITS - 1);
+        for (let i = 0; i < k.length; i++)
+          sum += mid[((start + i) * outWidth + x) * 3 + c]! * k[i]!;
+        out[(y * outWidth + x) * 3 + c] = clip8(sum);
+      }
+  }
+  return out;
 }
 
 /**
- * The only route from a confirmed crop to the encoder, run once per confirmed crop: square crop,
- * area-average to 256x256 8-bit RGB, rotate clockwise, normalise to float32 NCHW.
- * This is the contract's reference derivation; fm-smdf implements the product path against it.
+ * Where oriented pixel (x, y) is in the stored image, for EXIF orientation 1-8 (TIFF 6.0 / Exif 2.3 tag 0x0112),
+ * with the oriented size. Orientations 5-8 swap width and height.
+ */
+export function orientedSize(
+  width: number,
+  height: number,
+  o: ExifOrientation,
+): { width: number; height: number } {
+  return o >= 5 ? { width: height, height: width } : { width, height };
+}
+export function storedPixel(
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  o: ExifOrientation,
+): [number, number] {
+  const w = width - 1;
+  const h = height - 1;
+  switch (o) {
+    case 1:
+      return [x, y];
+    case 2:
+      return [w - x, y];
+    case 3:
+      return [w - x, h - y];
+    case 4:
+      return [x, h - y];
+    case 5:
+      return [y, x];
+    case 6:
+      return [y, h - x];
+    case 7:
+      return [w - y, h - x];
+    case 8:
+      return [w - y, x];
+  }
+}
+
+/**
+ * The only route from a confirmed crop to the encoder, run once per confirmed crop: orient (only when the crop
+ * was confirmed in EXIF-applied coordinates), cut the square, rotate it clockwise (an exact pixel permutation),
+ * resize to 256x256 with Pillow bilinear, drop alpha, normalise to float32 NCHW. Reads decoded pixels, never a
+ * display canvas, so guides and handles drawn for the person can never reach the tensor.
  */
 export function deriveEncoderInput(source: SourcePixels, crop: ConfirmedCrop): EncoderInput {
   const checked = validateConfirmedCrop(crop);
@@ -305,52 +412,18 @@ export function deriveEncoderInput(source: SourcePixels, crop: ConfirmedCrop): E
   if (width > CROP_MAX_EDGE || height > CROP_MAX_EDGE || width * height > CROP_MAX_PIXELS) {
     throw new CropDerivationError('source-too-large', 'source exceeds the single-input limits');
   }
+  const o: ExifOrientation = checked.exifApplied ? checked.exifOrientation : 1;
+  const oriented = orientedSize(width, height, o);
   const { left, top, width: size } = checked.rect;
-  if (left + size > width || top + size > height) {
+  if (left + size > oriented.width || top + size > oriented.height) {
     throw new CropDerivationError('rect-outside-source', 'the crop lies outside the source pixels');
   }
-  const n = ENCODER_INPUT_SIZE;
-  const cols = coverage(size);
-  // Horizontal pass: each crop row onto 256 columns, three channels.
-  const rows = new Float64Array(size * n * 3);
-  for (let y = 0; y < size; y++) {
-    const rowBase = ((top + y) * width + left) * 4;
-    for (let o = 0; o < n; o++) {
-      const { start, weights } = cols[o]!;
-      let r = 0;
-      let g = 0;
-      let b = 0;
-      for (let k = 0; k < weights.length; k++) {
-        const at = rowBase + (start + k) * 4;
-        const w = weights[k]!;
-        r += data[at]! * w;
-        g += data[at + 1]! * w;
-        b += data[at + 2]! * w;
-      }
-      const out = (y * n + o) * 3;
-      rows[out] = r;
-      rows[out + 1] = g;
-      rows[out + 2] = b;
-    }
-  }
-  // Vertical pass, rounded to 8 bits, into the unrotated 256x256 RGB image.
-  const rgb = new Uint8Array(n * n * 3);
-  for (let o = 0; o < n; o++) {
-    const { start, weights } = cols[o]!;
-    for (let x = 0; x < n; x++) {
-      for (let c = 0; c < 3; c++) {
-        let sum = 0;
-        for (let k = 0; k < weights.length; k++)
-          sum += rows[((start + k) * n + x) * 3 + c]! * weights[k]!;
-        rgb[(o * n + x) * 3 + c] = Math.min(255, Math.max(0, Math.round(sum)));
-      }
-    }
-  }
-  const tensor = new Float32Array(ENCODER_INPUT_LENGTH);
-  const last = n - 1;
-  for (let y = 0; y < n; y++) {
-    for (let x = 0; x < n; x++) {
-      // Output (x, y) of the image rotated clockwise reads the unrotated pixel (u, v).
+  // The square crop, rotated clockwise about its centre, as packed RGB.
+  const square = new Uint8Array(size * size * 3);
+  const last = size - 1;
+  for (let y = 0; y < size; y++)
+    for (let x = 0; x < size; x++) {
+      // Output (x, y) of the clockwise-rotated crop reads the unrotated crop pixel (u, v).
       const [u, v] =
         checked.rotationDegrees === 0
           ? [x, y]
@@ -359,12 +432,21 @@ export function deriveEncoderInput(source: SourcePixels, crop: ConfirmedCrop): E
             : checked.rotationDegrees === 180
               ? [last - x, last - y]
               : [last - y, x];
-      for (let c = 0; c < 3; c++) {
-        const value = Math.fround(Math.fround(rgb[(v * n + u) * 3 + c]! / 255) - 0.5);
-        tensor[c * n * n + y * n + x] = Math.fround(value / 0.5);
-      }
+      const [sx, sy] = storedPixel(left + u, top + v, width, height, o);
+      const from = (sy * width + sx) * 4;
+      const to = (y * size + x) * 3;
+      square[to] = data[from]!;
+      square[to + 1] = data[from + 1]!;
+      square[to + 2] = data[from + 2]!;
     }
-  }
+  const n = ENCODER_INPUT_SIZE;
+  const rgb = pillowBilinearRgb(square, size, size, n, n);
+  const tensor = new Float32Array(ENCODER_INPUT_LENGTH);
+  for (let i = 0; i < n * n; i++)
+    for (let c = 0; c < 3; c++) {
+      const value = Math.fround(Math.fround(rgb[i * 3 + c]! / 255) - 0.5);
+      tensor[c * n * n + i] = Math.fround(value / 0.5);
+    }
   const bytes = new Uint8Array(tensor.length * 4);
   const view = new DataView(bytes.buffer);
   for (let i = 0; i < tensor.length; i++) view.setFloat32(i * 4, tensor[i]!, true);

@@ -5,6 +5,7 @@ export * from './contracts/operations.ts';
 export * from './contracts/worker-messages.ts';
 export * from './contracts/recovery-metadata.ts';
 export * from './contracts/crop-policy.ts';
+export * from './contracts/photo-admission.ts';
 export * from './contracts/numerics.ts';
 export {
   canonicalJson,
