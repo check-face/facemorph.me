@@ -18,5 +18,5 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: node --test scripts/beads/
+      - run: node --test scripts/beads/*.test.mjs
       - run: node scripts/beads/check-close-after.mjs
