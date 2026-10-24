@@ -1,0 +1,38 @@
+name: stats-worker
+on:
+  push:
+    branches: [main]
+    paths: ['services/stats/**', '.github/workflows/stats-worker.yml']
+  workflow_dispatch:
+concurrency:
+  group: stats-worker-deploy
+  cancel-in-progress: false
+jobs:
+  test-and-deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/stats
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --test worker.test.mjs
+      - run: npm install --no-audit --no-fund
+      - name: Deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: npx wrangler deploy
+      - name: Set scrape token
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          STATS_SCRAPE_TOKEN: ${{ secrets.STATS_SCRAPE_TOKEN }}
+        run: printf '%s' "$STATS_SCRAPE_TOKEN" | npx wrangler secret put SCRAPE_TOKEN
+      - name: Smoke check
+        env:
+          STATS_SCRAPE_TOKEN: ${{ secrets.STATS_SCRAPE_TOKEN }}
+        run: |
+          code=$(curl -s -o /dev/null -w '%{http_code}' https://next.facemorph.me/stats/metrics)
+          test "$code" = 401
+          curl -sf -H "Authorization: Bearer $STATS_SCRAPE_TOKEN" https://next.facemorph.me/stats/metrics > /dev/null

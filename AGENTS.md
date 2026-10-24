@@ -38,7 +38,7 @@ autoresearch happen in this repo and optimise the new app; classic is being woun
 use the plan's targeted research launch recipe, whose existing commands run only in
 classic with its append-only experiment history; start no new rounds there.
 Keep model-free names/completed-file use where computation is unavailable. The
-plan's requirements drift ledger, research map, strict TypeScript and package boundaries govern
+plan's requirements drift ledger, strict TypeScript and package boundaries govern
 implementation. Distinguish planned, experimental, implemented
 and deployed results. No weights or secrets in Git. Do not infer performance or
 completion from repository setup.
@@ -48,15 +48,15 @@ Initialize/import a local DB with Beads Rust (`br`) when needed; DB files are ig
 All tasks remain deferred until implementation is explicitly started. The selected
 organization login is `facemorph-me`, while remotes currently use `check-face`.
 
-Planning-pass rule: keep specification workstreams in `PLAN.md` separate from
-execution records. The latest operator request authorizes one deferred independent
-published-npm-package acceptance bead, including public docs and real registry use.
-Keep this exception scoped to that item. Otherwise do not create, import, update
-or open Beads during planning or fresh review. Existing `.beads` descriptions predate the revised remaining-work
-plan; treat them as deferred historical execution setup until a separate requested
-synchronization. Use the reviewed plan as the scope authority.
+Execution graph (converted 24 October 2026 at the operator's request, then consolidated to
+shippable slices per PLAN.md "Bead size and ceremony"): the 22 earlier `fm-fy2*` IDs are kept.
+Each bead's `external_ref` is `plan:<key>`; its workstream is a `ws-<name>` label. There are no
+workstream or milestone join beads; never use `parent-child` links, which block in `br` and
+deadlock the graph. Once implementation starts, pick work with `br ready --exclude-label gate`
+or `bv --robot-next` (never bare `bv`). Keep specification in `PLAN.md` (still the scope
+authority) and execution state in Beads. Evidence for a bead is its merged commit and CI run;
+no per-bead receipt files.
 
 The original plan and supplied crop screenshots are locked local references linked
 from `PLAN.md`. Preserve their bytes and follow the original crop design plus explicit
-operator revisions. Planning uses named architecture workstreams, not ticket IDs or
-a Markdown Beads graph; execution decomposition remains a separate requested step.
+operator revisions.

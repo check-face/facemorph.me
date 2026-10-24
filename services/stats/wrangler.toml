@@ -1,0 +1,23 @@
+# FaceMorph changeover statistics Worker (PLAN.md "Changeover statistics in Grafana").
+# Deployed by .github/workflows/stats-worker.yml; SCRAPE_TOKEN is a Worker secret set by that workflow.
+name = "facemorph-stats"
+account_id = "8f550a622a484c03d9267efd45573583"
+main = "worker.mjs"
+compatibility_date = "2026-09-16"
+workers_dev = false
+preview_urls = false
+routes = [
+  { pattern = "next.facemorph.me/stats/*", zone_name = "facemorph.me" },
+  { pattern = "facemorph.me/stats/*", zone_name = "facemorph.me" },
+]
+
+[observability]
+enabled = false
+
+[[durable_objects.bindings]]
+name = "COUNTERS"
+class_name = "StatsCounters"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["StatsCounters"]

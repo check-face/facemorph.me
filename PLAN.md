@@ -56,8 +56,9 @@ capabilities determine supported work. Native retirement does not retire classic
 Docker, conversion or browser CPU/WASM helpers.
 Phones are first-class product targets: preserve their ordinary generation/photo /
 recovery/export journeys where admitted, responsive UI and existing Android/iOS CI.
-Missing physical-iPhone performance evidence is an evidence gap, not a reason to
-downgrade phone support or drop emulator/Simulator checks.
+Phones are also inside the [strictly-not-worse gate](#strictly-not-worse-than-the-candidate-operator-24-october-2026):
+the new build must be no slower or less reliable than the candidate on the iPhone (Simulator and a physical device)
+and Android cells.
 
 The operator's [Google Doc overview](https://docs.google.com/document/d/1lVNtTjPOsVYfFUJa0jCiiVU2jtDENcFcQF8iHrufJ1s/edit)
 is the new direction. A [dated source snapshot](#operator-overview-and-clarifications) records what
@@ -95,7 +96,7 @@ extracted image were recovered. Do not mislabel them as a fresh Google Doc expor
 **Design authority:** implement the original crop experience from these references,
 with only explicit later operator changes. Reviews may clarify behavior or fix
 implementation defects; they do not reopen the visual design by default. The
-walkthrough below checks fidelity and fills genuinely unspecified states, rather
+screen-state types and operated checks below check fidelity and fill genuinely unspecified states, rather
 than commissioning a replacement crop UI.
 
 - [Confirmation mockup](../reference-locks/2026-10-11-original-plan-and-images/images/crop%20image.png):
@@ -330,7 +331,7 @@ publisher and any rollback material classic holds stay only until the declared s
 been verified. Wind-down is staged behind the handover it depends on: the new publisher, a working
 rollback artifact and the re-homed research record (the whole tree, with the ledger prefix hash
 recorded) are verified first. It is automated, not approved step by step: each stage runs when its
-preconditions verify and writes a receipt (see [classic wind-down](#classic-wind-down)). This plan
+CI preconditions verify, as an ordinary commit that Git can revert (see [classic wind-down](#classic-wind-down)). This plan
 does not itself delete or archive classic, and no wind-down step is performed by the planning
 update.
 
@@ -714,6 +715,83 @@ slot records, Off-only toast visibility, explicit ongoing opt-in and later withd
 and the failure-toast consent fix.
 Exercise the actual configured collector's retention and production host bindings.
 
+### Changeover statistics in Grafana
+
+Operator request, 24 October 2026. Collect a few key usage and performance numbers into the existing Grafana
+(`metrics.facemorph.me`), so that a blog post can show traffic and performance before and after the switch from the
+hosted-API facemorph.me to the new in-browser engine. It is ordinary product analytics, kept separate from the
+existing Grafana dashboards. It is approximate by design: exact counts are not needed.
+
+**Before and after.** The "before" side already exists. The old API server exports Prometheus counters that the
+existing Prometheus on triton keeps for 5 years: `image_generating_total`, `image_encoding_total`,
+`request_processing_seconds`, `generator_network_seconds` and `ffmpeg_processing_seconds`. The "after" side is new:
+the new app works in the browser, so the server never sees an encode. The app therefore reports a small set of
+anonymous counts and timings to a first-party endpoint, and Prometheus scrapes it. The dashboard puts the old
+server's counts beside their new equivalents, with an annotation at each cutover step.
+
+**Privacy and consent.**
+- It reuses the analytics vocabulary already in the candidate (`src/Next/analytics.mjs`): closed-vocabulary values
+  and bounded numbers only. It records no words, seeds, names, photos, file names, IP addresses, cookies, device
+  identifiers or attempt IDs.
+- The endpoint stores only aggregate counters and histogram buckets. No per-event record is kept, so nothing can be
+  re-identified later.
+- Because it stores nothing on the device and keeps no identifier, no cookie banner is needed. It follows the same
+  opt-outs as the existing analytics: off for Global Privacy Control, Do Not Track and Save-Data, and off on non-
+  production hosts and under automation. A one-line **Usage statistics: On/Off** switch beside the debug-report
+  disclosure lets anyone turn it off; the choice is kept in local storage. Help states what is counted.
+
+**What is counted.**
+- Visits, by platform class (iPhone, Android, desktop) and first or returning visit.
+- Jobs by action (face, photo encode, morph, names pick, blend), route (CPU or WebGPU) and outcome.
+- Job durations as histograms by action, route and platform class.
+- Time to first result, cold or warm.
+- Morph frames, exports by kind and method, and first-visit model megabytes.
+
+These are the analogues of the old counters (encodes, generated faces, request and generation time), and they also
+feed the after-release half of the [strictly-not-worse gate](#strictly-not-worse-than-the-candidate-operator-24-october-2026).
+
+**Path.**
+1. The page batches events in memory and sends one small beacon when the page is hidden, or at most every 60
+   seconds while it is in use. It goes to the same-origin `/stats/v1` on the app host, so there is no CORS and no
+   new origin.
+2. A Cloudflare Worker, deployed by CI like the diagnostics collector, validates the beacon and adds it to counters
+   in one Durable Object. It runs on the Workers Free plan; the beacons are batched to stay inside its daily limits.
+3. The Worker exposes the totals in Prometheus text format at a token-protected `/stats/metrics`.
+4. The triton Prometheus scrapes it every 60 seconds as job `facemorph_web`. Metric names start with `fm_web_`, so
+   they never mix with the old server's.
+
+**Anti-abuse.**
+- The Worker accepts only `POST` from the app's own origins (`Origin` and `Sec-Fetch-Site: same-origin`).
+- A beacon body is at most 4 KB, holds at most 200 events, and uses only the closed vocabulary. Each beacon can add
+  only bounded amounts to any counter, and durations are clamped.
+- Each client is rate-limited in memory by a hash of its address and a daily salt; the hash is never stored.
+- Obvious automation is dropped.
+- The scrape endpoint needs a bearer token, held as a Worker secret and in Prometheus's config.
+- A flood can therefore skew the numbers a little but cannot store data or reach anything else, which is acceptable
+  for blog statistics.
+
+**Grafana.** A new folder, "FaceMorph changeover (public stats)", holds one dashboard, "FaceMorph before and after":
+- faces and encodes per day, old server against new app;
+- typical job time by action, old server against new app by route and platform class;
+- WebGPU against CPU share;
+- visits by platform class;
+- cutover annotations.
+
+The dashboard and the scrape job are kept as code in this repository and provisioned onto triton, not edited by
+hand. Existing dashboards are untouched.
+
+**Where it lands first.** The endpoint, the scrape job and the dashboard are set up now. The page-side sink is added
+to the candidate as ordinary candidate work (operator, 18 October), so data exists before the cutover, and the port
+carries it over. No operator decision is needed (operator, 24 October); only the live cutover pushes need one.
+
+**Acceptance.**
+- Worker unit tests: the vocabulary allowlist, size and count limits, the origin check, the rate limit, and the
+  Prometheus text output.
+- A sink unit test: it is off under GPC, DNT, Save-Data, the switch, non-production hosts and automation.
+- An end-to-end run against a test Worker checks the beacon contents by intercepting the request, and that no other
+  host is called.
+- After deploy: the Prometheus target is up, and one real beacon shows up in `fm_web_*` within two scrapes.
+
 ## Required repository architecture
 
 | Surface | Required end state | Migration constraint |
@@ -873,31 +951,136 @@ inventory.
 
 ### Weighted face blend (advanced mode)
 
-Planned, 21 October 2026; not implemented. The retired API has one feature the app does
-not: `num_multi` blends up to 16 faces into one image with a weight per face. A tester
-at Synthetic Data Ltd uses it through `multi-morph-test.vercel.app`. That page offers one slot
-per face (upload a photo, weight slider 0–1 in steps of 0.1), a "+" to add a slot,
-"Reset sliders", and one 500 px blended face.
+Planned 21 October 2026, revised 24 October 2026 (operator: "a button and a deep link to switch to a more
+advanced UI for merging multiple faces at once", on the new engine, reusing existing elements and the established
+export paths; desktop first, phone welcome but not required). Not implemented.
 
-The server computes `sum(weight_k * latent_k)` in W+ (a W latent is mapped to W+ first),
-with each weight clamped to [-2, 2] and the weights **not** normalised, then synthesises once
-([`checkface/src/server/checkface.py`](../checkface/src/server/checkface.py), `LatentByMultiLerp`).
-The candidate already holds every face as an explicit W+ `[1,18,512]` latent (photo encoder,
-names, text and seed) and its runtime exposes `synthesize(latent)` (`src/Next/browser/runtime.mjs`).
-Parity is therefore one weighted sum in JS plus one synthesis, about 0.4 s warm on WebGPU in that
-tester's own diagnostics. No new model, encoder or download is needed.
+**Who it is for and why.** The retired API has one feature the app lacks: `num_multi` blends up to 16 faces
+into one image with a weight per face. The Synthetic Data Ltd tester has used it since June 2023, through
+Oliver's `multi-morph-test.vercel.app`, to build a library of fictitious, straight-on, ID-photo-style faces for
+a synthetic dataset. They asked several times how to self-host the GPU server, and a laptop with a 6 GB GPU was
+judged too small for encoding. That page offers one slot per photo (upload, server auto-alignment and encoding,
+no crop to confirm; a weight slider 0–1 in steps of 0.1), a "+" that adds a slot and resets every weight to 1/N,
+"Reset sliders", and one 500 px blended face; nothing survives a reload. It stops working when the API is retired.
+The new app does the same work in the visitor's browser, with no server, GPU host or install, which also answers
+their self-hosting question for this use.
 
-Target: an "Advanced: blend faces" mode over the faces already in the session. One weight
-per face, plus "Reset" (equal weights 1/N, the API's default). One 1024 px result, regenerated
-when a weight is released, not on every slider tick. Save/share the result like any other image,
-and include the weights in project export/import. Keep the API's arithmetic exactly (unnormalised,
-clamped to [-2, 2]) and show the weight sum, so a blend made the old way can be reproduced. Show
-a hint when the sum is far from 1, because the face then drifts towards the average face or past it.
+**Arithmetic.** The app computes `sum(weight_k * W+_k)` over each slot's existing W+ `[1,18,512]` latent, with
+each weight clamped to [-2, 2] and **not** normalised, then synthesises once. For photo slots this is exactly the
+API's `num_multi` (`LatentByMultiLerp` in [`checkface.py`](../checkface/src/server/checkface.py) sums the weighted
+dlatents), and photo slots are what the tester used. For word and seed slots the API differs and is deliberately
+not matched: it holds them as Z vectors, sums them in Z space when no photo is present, and with a photo present
+applies each weight inside the mapping network and never again (verified in the source, 24 October). That is not a
+linear blend. The candidate already holds every face as W+ (photo encoder, names, text and seed) and its runtime
+exposes `synthesize(latent)` (`src/Next/browser/runtime.mjs`), so a blend is one weighted sum plus one synthesis,
+about 0.4 s warm on WebGPU in that tester's own diagnostics (one device, not a promise). No new model, encoder or
+download is needed.
 
-Effort: small. Roughly a day for the blend operation with tests (sum, clamp, W→W+, cache
-key from the weights and latent digests), and one to two days for the panel, export/import and
-real-browser checks on desktop and phone width. It needs no change to models, workers or hosting.
-Not in scope: old GUIDs or links (see above), a hosted endpoint, or blending inside the morph video.
+**Entry and exit.**
+- A **Blend faces** button in More options is the only main-page addition.
+- The deep link `https://facemorph.me/#blend` opens the app straight into the blend view. A plain hash works on
+  static hosting with no server routing, survives reload, and Back leaves the view. It carries no faces or results;
+  result-sharing URLs stay retired. Only `#blend` selects a view: Help and footer anchors scroll to their target
+  without changing the hash, and an open names picker or crop modal is closed by Back before the view is.
+- **Back to morph** (and browser Back, including after arriving by the deep link) returns to the main page with the
+  session intact.
+
+**One session, two views.** The blend view keeps its own ordered list of slots in the same session as the morph
+faces, persisted and restored with the session (photo retry pixels stay tab-only, as everywhere). The first time it
+opens, its slots are seeded as copies of all morph faces that have or can get a latent, at equal weights. Slots are copies: editing a slot never changes a morph face, or the
+reverse. A newly added slot gets weight 1/N and the other weights are left alone. **Add to morph** inserts the
+blended result at the end of the morph row as a recovered still labelled "Blend of N faces", through the same
+admission check as every other entry path.
+
+**Reuse, not new UI.**
+- Each slot is the compact face tile from the [many-face layout](#face-controls-and-modals) (words, seed, Browse
+  names, Encode image with the confirmed-crop flow, Open saved image, Generate/Cancel/Retry, Remove) plus its weight.
+  Photo slots use the same consent, confirmed crop and bounded encode queue as the main page.
+- **Filling many slots at once** uses the existing [ordered multi-selection](#confirmed-crop-and-ordered-multi-selection-flow)
+  and mixed-batch flows. Choosing or dropping several photos or saved faces opens the one batch proposal: each
+  detected face gets a proposed crop that can be accepted as is, saved faces are staged without re-encoding, and one
+  OK fills that many slots in click order. This keeps the tester's old "upload and go" speed while keeping
+  the confirmed-crop rule. Their practical library is a folder of saved WebP/PNG faces: reopening them restores the
+  latent at once, with no photo encoding.
+- The result is an ordinary face output, shown and exported exactly like any other face, with no blend-specific
+  size or format. That means the full model frame (1024 × 1024 for the face model) in the complete-output display,
+  and the established [export paths](#file-sharing-and-export-direction): Share as the primary action, Save, the
+  compact WebP (default, quality 0.8) / PNG (lossless) choice, the editable filename and prepared-file reuse. The old
+  page's 500 px is not a target. Save writes recovery metadata holding the blended W+ latent and the recipe: each
+  slot's kind (word, seed, name or photo), latent digest and weight. Typed words, seeds and file names are not
+  embedded, per the export rule; the suggested filename may carry labels under the filename rule (for example
+  `blend-3-faces-k4p7s2.webp`). Reopening a saved blend restores it as an ordinary face anywhere. In the blend view
+  it also restores the weights of any slot whose latent digest matches.
+- The engine gets a pure `blend(latents, weights)` in stylegan-js, descriptor-driven so non-face models get it too.
+  The app runs a blend through the operation controller as a parent intent, like Morph: it waits for each slot's
+  latent (mapping for an unfinished word or seed, the confirmed encode for a photo, the catalogue latent for a name),
+  not for slot images or files, then runs one synthesis. Slots at weight 0 are skipped, and all-zero weights are
+  refused with one plain line. A newer weight change supersedes a pending blend (latest wins by input revision). The
+  result regenerates when a slider is released or a keyboard step is committed, not on every drag tick. While it
+  regenerates, the previous result stays visible marked "Updating…" with Share/Save off until the new pixels and
+  file are ready. A missing generator model goes through the existing consent modal; failures offer Retry in the
+  result's action area. Leaving the view cancels a pending blend synthesis; slot photo encodes keep running, as on
+  the main page.
+
+**Weight control.** A slider from 0 to 1 in steps of 0.05 (old 0.1 values stay reproducible), its value shown as
+text, arrow keys stepping by 0.05. The engine accepts the API's [-2, 2] for library callers; the view does not
+expose values outside 0–1. Show the weight sum. **Reset** sets every weight to 1/N, the API's default. When the sum
+is outside 0.8–1.2, show one line, for example "Weights add up to 1.35. Faces usually look most natural at 1.",
+with a **Make it 1** action that scales every weight in proportion. (Weights that add up to less than 1 pull the
+face towards the origin of W, not towards the average face.)
+
+**Capacity: no fixed slot limit (operator, 24 October: only real constraints).** The old API's 16 was a server
+choice, not a hardware limit. A blend costs one weighted sum and one synthesis whatever N is; each slot holds one
+W+ latent (about 36 KB) and a thumbnail, and each photo slot costs one encode through the bounded queue. The real
+limits are memory for retained photo inputs (the existing byte budgets in the contracts) and screen space. When a
+batch would exceed the photo-input budget, the existing actionable reduce-selection message applies, never silent
+truncation. Degrading nicely: past what fits on screen the slot grid scrolls inside its panel while the result stays
+in view; slots shrink to compact rows (thumbnail, field, weight); small weights stay usable through the sum line,
+Reset and Make it 1.
+
+**Layout.** On desktop the result is large and stays in view on the right, with the slots in a grid of compact
+tiles (2–4 columns) on the left and each weight under its slot. On a phone the result is pinned at the top at a
+smaller size and the slots form a single-column list of compact tiles. Phone polish is not required, but the view
+passes the responsiveness sweep's no-clipping, no-overflow bars. Admission is per operation as everywhere else:
+generation on any admitted route including phone CPU, and photo encoding where photo encoding is admitted. There is
+no phone-specific code path.
+
+**Moving the tester across.** The retirement notice in [domain handover](#domain-handover-and-retirement-preparation)
+tells the tester about the blend view and its link. Ship the blend view before API retirement where practical: this
+is a preference, not a gate. If retirement comes first, the notice says so plainly. Old GUIDs do not carry over; the
+tester re-adds their photos once and keeps the saved faces.
+
+**Acceptance.**
+- Unit tests in stylegan-js: on fixed W+ latents the blend matches a fixture produced by classic
+  `LatentByMultiLerp`'s arithmetic on dlatent inputs (numpy, no GPU; raw latent error ≤ 0.0001). Covers clamping,
+  unnormalised and negative weights, 1, 16 and 500 slots, refusal of 0 slots and of a non-W+ latent, and a cache key
+  built from the weights and latent digests. Synthesis of the result is covered by the existing
+  [raw synthesis tolerance](#synthesis-correctness-and-export-quality) canaries; no separate parity image.
+- One operated end-to-end run at desktop width, and the same run at phone width where admitted, under the
+  [operated-acceptance rule](#acceptance-receipts-and-gate-style-acceptance). Open via the button and via `#blend`.
+  Fill three slots (a word, a name, a confirmed photo), then fill five more from one multi-photo batch. Drag the
+  weights and check one regeneration per release, Reset and Make it 1. Save a PNG, reopen it as a face on the main
+  page, and use Back to return with the session intact. Also: 1, 2, 3, 8, 16, 40 and 100 slots, checking
+  the scrolling slot panel and that the result stays in view; Add to morph with a long morph row; reload in the view restores slots and weights; a footer Help link does not leave the view;
+  Back with the names picker open closes only the picker.
+
+**Owners.** Compute extraction owns the `blend` function (it can land in the stylegan-js package before the rest of
+extraction, since it is pure arithmetic). Face controls owns the view, button, deep link and slot reuse. The
+operation controller owns the blend parent intent and supersession. Media and recovery owns the recipe in saved
+files. Diagnostics consent control adds the `blend` operation to the shared action list. The view needs the TS/React
+milestone, the operation controller, confirmed-crop encoding, the batch flows, the many-face compact tile and the
+export controls.
+
+**Effort.** About a day for the engine operation and its tests, and two to three days for the view: reusing tiles,
+batch flows, result and export; the deep link; recipe metadata; the operated checks. No change to models, workers or
+hosting.
+
+**Not in scope:** old GUIDs or links, a hosted endpoint, blending inside the morph video, automatic or batch
+generation of many blends (the saved recipe keeps that possible later), and model training.
+
+**Shuffle weights** (planned 24 October under the no-human-gates rule; the operator may still remove it): one button
+that sets random weights adding up to 1, so the tester can produce many distinct faces quickly. Its unit test checks
+the sum and the range; the operated run presses it and sees one regeneration.
 
 ## Web release and desktop-package retirement — 12 October 2026
 
@@ -1591,8 +1774,10 @@ This shows the inputs exist today, not that the stack builds or runs.
    run confirms it. Moving to a newer PyTorch would shrink this further, which is one more reason to
    stay frozen.
 
-**The one-command contract (proposed).** On a host with Git, Docker Engine with Compose v2, an NVIDIA
-driver and the NVIDIA Container Toolkit, the whole quickstart is:
+**The one-command contract: the success criterion of the classic workstream (operator, 16 and 24 October).**
+On a host with Git, Docker Engine with Compose v2, an NVIDIA driver and the NVIDIA Container Toolkit (so the GPU is
+passed through to containers), `docker compose up` builds everything and leaves a complete local CheckFace (the old
+frontend and API, photo encoding included) running. The whole quickstart is:
 
 ```sh
 git clone <canonical-url>
@@ -1933,7 +2118,7 @@ keeps its route and cancellation; update the estimate from observed progress. Wa
 that switching apps/tabs may pause work and closing/reloading can lose unfinished
 photo inputs; never promise background completion. No estimate guarantees success.
 
-Maintain a versioned support/evidence table for browser/OS/runtime and separate
+The release summary (integrated verification) lists, per browser/OS/runtime and separately for
 generation, photo encoding, morph/video export, file sharing and retention. Distinguish
 tested, feature-eligible but untested, and unsupported. A small preflight success
 cannot promote a cell to full-model tested. Publish useful ranges only for calibrated
@@ -2129,16 +2314,14 @@ selection behavior; do not claim an unseen supplied mock establishes it.
 
 ### End-to-end experience and design-fidelity check
 
-[package and operation contracts](#package-and-operation-contracts) includes a small reviewable screen/state walkthrough before [application migration](#application-migration) translation
-or [face controls and modals](#face-controls-and-modals) behavior work: main page, cold download modal, single/multi-face crop,
-queued/cancelled/failed tiles, names picker and completed-result Share/Save. Use
-the legacy production/names references named above, candidate retained controls
-and supplied crop screenshots. [face controls and modals](#face-controls-and-modals) implements it; [integrated verification](#integrated-verification) checks the real result.
-This checks the locked design while implementation changes are cheap. Fill only
-unspecified states within that design; do not replace the supplied crop layouts.
-A walkthrough does not establish working inference.
+The screen states (main page, cold download modal, single/multi-face crop, queued/cancelled/failed tiles, names
+picker, completed-result Share/Save) are typed once in the app contracts (`ui-states.ts`, with type tests); there is
+no separate walkthrough document (cut 24 October). Use the legacy production/names references named above, candidate
+retained controls and supplied crop screenshots. [Face controls and modals](#face-controls-and-modals) implements the
+states; [integrated verification](#integrated-verification) checks the real result. Fill only unspecified states within
+the locked design; do not replace the supplied crop layouts.
 
-Specify these transitions in that walkthrough and the typed [package and operation contracts](#package-and-operation-contracts) controller:
+Specify these transitions in the typed [package and operation contracts](#package-and-operation-contracts) controller:
 
 - Browse Names lives in each face field's burger/mode menu and captures that face's
   stable ID when opened. Move its candidate end adornment there; no page-wide
@@ -2254,7 +2437,7 @@ coverage remains scoped to evidence.
 | Confirm photo with encoder/generator assets absent | Clear bundle decision; approved preparation overlaps crop selection, then automatic encoding after OK | Planned: scoped consent, synthesis-first acquisition plus prompt detector assets, photo selection/adjustment during remaining encoder transfer, OK freezes/queues input, then automatic encode when ready. |
 | Cancel/retry one confirmed photo encode | Cancel then Retry in same slot; no recrop/duplicate keypoints | Planned: confirmed photo Retry reuses one slot/crop; lost tab-only pixels require existing Encode image entry again. |
 | Add/remove controls | Stable ordered inputs and clear morph invalidation | Settled: insert and remove, no direct face reordering UI. **Remove does not work for a person on the live candidate** (operated check, 18 October; [defect 1](#known-candidate-defects-found-by-operating-the-live-candidate--18-october-2026)), so the retained behavior is repaired, not ported as it stands. |
-| Add many faces (batch, several photos or repeated Add), then remove most of them | Every face's image, field, Generate and Remove stay visible and reachable at any count up to the cap, with no hidden sideways scrolling | **Gap, added 18 October** ([defects 2 and 3](#known-candidate-defects-found-by-operating-the-live-candidate--18-october-2026)). The candidate's layout is designed for two or three faces. Needs the many-face layout and removal requirements in [face controls](#face-controls-and-modals). |
+| Add many faces (batch, several photos or repeated Add), then remove most of them | Every face's image, field, Generate and Remove stay visible and reachable at any count, with no hidden sideways scrolling | **Gap, added 18 October** ([defects 2 and 3](#known-candidate-defects-found-by-operating-the-live-candidate--18-october-2026)). The candidate's layout is designed for two or three faces. Needs the many-face layout and removal requirements in [face controls](#face-controls-and-modals). |
 | Undo a removal; start over | A removed face comes back with one action, and one action returns the project to two empty faces | **Planned, added 18 October** (a planner's proposal the operator may veto): a short Undo notice after Remove, and **Start over** in More options with the same Undo. The last face still cannot be removed. |
 | Use every journey with the keyboard alone | Every control reachable and operable by Tab in visual order, focus visible, focus returned after a dialog | **Gap, added 18 October** (defect 4): Tab skips the mode menu, names browser and file picker today. |
 | Morph two identical neighbouring faces (same word twice, or A, B, A) | A plain refusal before any work, naming what to change | **Gap, added 18 October** (defect 6): the candidate says "This project is invalid or uses an unsupported format." |
@@ -2322,7 +2505,7 @@ freeze, graded against this plan's specification, has a named owner and is accep
 | 4 | Keyboard users cannot reach Change mode, Browse names or Choose photo: Tab skips them (classic's are reachable). | Every control is reachable by Tab in visual order; acceptance drives each journey with the keyboard alone. | Face controls |
 | 5 | The text field lacks `autocapitalize=off` (classic sets it). A phone keyboard turns "hello" into "Hello", a different face, because the text is hashed exactly; picked names fill in lowercase. | Turn off capitalisation, correction and spell-check on the field; never trim or normalise the text. | Face controls |
 | 6 | The same word in both faces, or A, B, A, fails with "This project is invalid or uses an unsupported format." | Refuse identical neighbours before any work, with a plain message that names what to change; A, B, A is allowed or refused by one stated rule (the closed loop makes the last face a neighbour of the first). | Morph pipeline |
-| 7 | With one face left, Add face is disabled beside a note telling the person to add a second face. | Add face stays enabled up to the cap. | Face controls |
+| 7 | With one face left, Add face is disabled beside a note telling the person to add a second face. | Add face stays enabled; there is no fixed face count. | Face controls |
 | 8 | A typed word with no instant picture leaves the tile saying "Drop a photo, or tap to choose". | Say "Press Generate to make this face" for a typed word; the photo entry stays in the mode menu and by drop (planner's wording). | Face controls |
 | 9 | After a reload the faces return but their words are gone: the field shows a disabled "Restored face". | Planner's proposal (the operator may veto): restore the typed words or seed with the session; photo faces show the file name. | Media and recovery |
 | 10 | Download sizes disagree: the toast says 149 MB, 1.1 GB and 1.2 GB, the progress line says 158 MB and 1,040 MB. | One figure per purpose in one unit, the same in the toast, dialog and progress; acceptance compares them. | Acquisition consent |
@@ -2333,7 +2516,7 @@ freeze, graded against this plan's specification, has a named owner and is accep
 | 15 | With models cached and the network off, a new face fails with "The local generation engine stopped." (seen once); source: every job re-fetches the model manifest with no cache. | State what works offline; planner's proposal (the operator may veto): a job whose files are all cached needs no network. | Application operation controller |
 | 16 | The first visit stacks two bottom toasts; the first covers Create morph at 1,280 by 800 and fills a third of a phone screen. | No prompt covers an action and only one shows at a time (the download prompt is already removed by the consent rules). | Diagnostics consent control |
 | 17 | Source: removing a face that is generating does not stop its job; a saved-MP4 drop can leave Morph queued for good and replaces every face without asking; replacing a photo destroys the face before the new photo is checked; cancelling a queued re-generate can leave a broken image. | Each is a case in the stale-completion acceptance. | Application operation controller |
-| 18 | Source: the 64-face cap is enforced in one of three places (the "+" silently does nothing, multi-file drop is uncapped, a 65-face morph fails with the generic project error). | One cap, one plain message, every entry path. | Face controls |
+| 18 | Source: the 64-face cap is enforced in one of three places (the "+" silently does nothing, multi-file drop is uncapped, a 65-face morph fails with the generic project error). | No fixed face count (operator, 24 October): the 64 is only a project-validation constant (`MaxControls` in `ProjectJson.fs`). Every entry path uses one admission check against real budgets (frame budget, memory, stored-session size), and refusal names the actual limit reached in one plain message. Parsing untrusted project files keeps a byte-size bound, not a face count. | Face controls |
 | 19 | Source: the 32 MB video-fallback download is outside every consent, and the download gate lets work start when the size list cannot be built. | Unknown size means ask; the fallback codec joins the consent. | Acquisition consent |
 | 20 | Source: "about 1 seconds"; "smaller than25 MB" and two more messages missing a space; seed placeholder "Just type anything"; the cold-device estimate text can never appear; disabled Create morph looks enabled; the crop panel is transparent in light mode. | Fix with the owning control; the one-string fixes also join the early candidate edits. | Face controls |
 | 21 | Source: the licence and notices page is published but linked from nowhere, and misstates where the video codec is served from. | Link it from Help and the footer and keep it true. | Provider simplification (Help) |
@@ -2900,10 +3083,9 @@ expensive per-device encoder check; the later 21 September direction in current
 worker source moves it to labs/CI. Preserve quick product admission and full lab
 numerical checks separately; do not reinstate the 20s+ guard on ordinary startup.
 
-During execution, extend the application/check-migration inventory with each
-integrated path's current source, originating ledger/report, retained behavior,
-destination check and disposition: retained, deliberately replaced, historical,
-proposal, rejected or evidence unavailable. This map accounts for the known families
+During execution, each bead that moves an integrated path keeps its tests, or lists their replacement in
+`tests/retired.txt` (retained, deliberately replaced, historical, proposal, rejected or evidence
+unavailable). This accounts for the known families
 and catalogue; it does not claim every missing historical raw report was recovered
 or every hypothesis deserves adoption. Missing receipts constrain claims. Use existing
 relevant checks to preserve real paths; this is not a new every-experiment benchmark
@@ -3102,7 +3284,7 @@ on a different browser, GPU, artifact, codec resolution or photo flow.
 | Historical Android10 handset Chrome152 | CPU4 2300–2400 ms/face passed; CPU1 stalled and tiled GPU failed correctness | Retain proven CPU route/failure recovery; failed GPU timings never qualify support. Current emulator components execute no model. |
 | iPhone16Pro Simulator, macOS15/Safari iOS18.5, current CPU product screen | First full1024 face 25287 ms; recorded warm synthesis 4741.2 ms | [Product receipt](../facemorph.me-classic/docs/review/feedback-fixes-2026-10-11/ios-product.json); partial cache/acquisition, not paired clean cold/warm or physical-iPhone speed. |
 | Historical iOS27 Simulator photo candidate | Actual streamed e4e 32.5–41.8 s; one full photo/reconstruction 71.1 s | [Photo evidence](../facemorph.me-classic/photo-runtime/README.md); historical reconstruction used WebGL. Preserve memory/photo mechanisms, not automatic qualification of the new CPU reconstruction path. |
-| Physical iPhones; current Firefox/WebKit full performance; GTX1050 inference | No complete current qualified performance cell found | Physical iPhones remain untested for this release; Simulator speed cannot fill that gap. Desktop workflow presence and GPU adapter failure are not timing passes. |
+| Physical iPhones; current Firefox/WebKit full performance; GTX1050 inference | No complete current qualified performance cell found | Since 24 October the physical iPhone is a gate cell (paired against the candidate through `safaridriver`); Simulator speed cannot stand in for it. Desktop workflow presence and GPU adapter failure are not timing passes. |
 
 For architecture/provider/UI/build changes, use the pinned candidate artifact or an
 explicitly qualified rebuild as control and the same available cell/workload for the
@@ -3148,6 +3330,56 @@ Explicit source invariants beyond the broad preservation requirement:
 - Preserve explained Firefox storage permission timing, exact pinned/self-hosted
   runtime dependencies and the named no-third-party gate alongside actual photo /
   fallback/cleanup checks. Do not replace them with mock inference or preview reuse.
+
+### Strictly not worse than the candidate (operator, 24 October 2026)
+
+The operator's requirement: the new app must be strictly no worse than the current next.facemorph.me candidate
+in performance and in the ordinary experience, iPhone included. The candidate "works and we do get faces"; that
+is the floor. The declared UI changes may change a journey's shape, but they must not make the same work slower,
+less reliable or heavier. This is a release gate: promotion of the monorepo build (handover of next.facemorph.me
+and promotion to facemorph.me) does not happen while a regression stands. It replaces the earlier wording that no
+control/control performance report and no physical-iPhone pass were required.
+
+**Control and candidate.** The control is the pinned candidate artifact (by hash, from candidate import). The
+candidate under test is the monorepo release artifact. Both run the same workload on the same device, browser,
+provider and cache state, in paired alternating order (ABBA), with enough pairs for the comparison to be stable
+(at least 5 pairs per cell; more where the control's own spread is wide).
+
+**What is compared, per cell** (each at the same finish boundary for both builds):
+- time to a usable page; cold first face (empty cache, including model download) and warm face; the next face;
+- confirmed-photo encode, where photo encoding is admitted on that device;
+- a complete morph: time to playable video and time per frame;
+- first and repeated Save;
+- responsiveness while working (long tasks and input delay);
+- bytes downloaded on first visit and on a return visit;
+- peak memory where the platform reports it;
+- reliability: every run that produced a face, photo or video on the control must produce it on the new build.
+  No new crashes, tab reloads, out-of-memory kills or fallbacks.
+
+**Pass rule.** Reliability must be equal or better: no new failure in any paired run. For each timing, byte and
+memory measure, the new build fails if it is slower or heavier than the control beyond the control's own
+run-to-run noise. Concretely, it fails when the 95% interval of the paired new/control ratio lies entirely above
+1 plus the noise margin measured from control/control pairs on that cell. A cell that cannot run, or that is
+inconclusive, is reported as untested and blocks the gate for that platform class until it runs. It never counts
+as passing. A deliberate trade recorded in this plan (for example a larger first Save in exchange for reuse)
+names its measure and is the only allowed exception. Gains on one device never offset a loss on another.
+
+**Cells.**
+- **iPhone:** Safari in the iOS Simulator (the existing CI lane, now paired against the control), and a physical
+  iPhone. The physical device runs the same paired workload automatically through `safaridriver` on the Mac it is
+  connected to, as a scheduled lane under the device lease. The device is setup, not an approval step; if none is
+  connected, the iPhone gate is untested and blocks.
+- **Android:** the emulator lane, plus a physical Android phone when one is leased.
+- **Desktop:** WebGPU on eris (RTX 2080 SUPER) and on the Mac, and CPU in CI.
+
+**After release, from real visitors.** The [changeover statistics](#changeover-statistics-in-grafana) record
+anonymous timings by platform class (iPhone, Android, desktop) and route. They compare the candidate's last weeks
+with the new build's first weeks. A median regression beyond noise on any platform class is treated like a failed
+gate: it is investigated and fixed, and rollback to the control artifact stays available until the comparison is
+clean.
+
+**Owners.** Integrated verification runs the gate and writes it into the release summary. Workspace build carries
+the paired lanes, and autoresearch re-homing supplies the existing paired ABBA harness and the device lease.
 
 ### Development workers and GitHub-minute use
 
@@ -3362,7 +3594,7 @@ it; a soft preference is called out as such.
 | [Application inventory](#application-inventory) | source and repository identity | nearly everything below | Supplies the import allowlist, commands, asset acquisition and defect ledger. |
 | [Candidate source import and bootstrap](#candidate-source-import-and-bootstrap) | application inventory | workspace build, application migration, provider simplification, diagnostics consent control, confirmed-crop (reproduction), deploy re-homing, autoresearch re-homing stage 2 | Imports the JS closure and pins the control artifact by hash; no .NET, Fable or Webpack in this repository (D1, decided 16 October); Node only. The workstation's missing .NET SDK is therefore not a blocker. |
 | [Package and operation contracts](#package-and-operation-contracts) | application inventory; autoresearch re-homing stage 1 (hard only for the decode-ceiling measurement in milestone 2, soft for milestone 1) | every workstream that builds against its types | A design deliverable: no engine or manager implementation is needed to freeze it. Initial byte ceilings come from a bounded decode measurement it must include. |
-| [Workspace build and artifact identity](#workspace-build-and-artifact-identity) | candidate import; package contracts (inferred: type and worker gates); autoresearch re-homing stage 1 (soft: the lease wrapper) | application migration milestones 2–4, provider simplification, autoresearch re-homing stage 2, the dependency currency lane, ONNX Runtime Web evaluation, extraction CI, integrated verification | Owns the CI/performance-preservation map. Scaffolds the four package workspaces first. Two milestones: (1) workspaces, TypeScript, lint/format, identity hashing and CI carry-over, which precede the port; (2) Vite targets, production headers and artifact fan-out, delivered together with the port's rendering step. It defines the support-and-evidence table's schema; integrated verification fills it, so neither waits on the other. |
+| [Workspace build and artifact identity](#workspace-build-and-artifact-identity) | candidate import; package contracts (inferred: type and worker gates); autoresearch re-homing stage 1 (soft: the lease wrapper) | application migration milestones 2–4, provider simplification, autoresearch re-homing stage 2, the dependency currency lane, ONNX Runtime Web evaluation, extraction CI, integrated verification | Owns the CI/performance-preservation map. Scaffolds the four package workspaces first. Two milestones: (1) workspaces, TypeScript, lint/format, identity hashing and CI carry-over, which precede the port; (2) Vite targets, production headers and artifact fan-out, delivered together with the port's rendering step. |
 | [Application migration](#application-migration) | candidate import; workspace build milestone 1; provider simplification (an ordering edge for the typed-facade milestone only, which edits the shared bridge files) | compute extraction (needs only the typed-facade milestone), and every UI workstream (needs the TS/React milestone) | Ordered milestones: flow-matrix freeze and golden-capture spike, typed facade, controller port, rendering port on Vite, parity against the control artifact. The port (the TS/React milestone) is the largest single unit (the candidate's `Product.fs` alone is about 1,470 dense lines, about 2,000 with the other Next F#); split it at the controller/rendering seam. It owns the UI state machine only; the operation layer is the next row. No time box and no fallback: the port runs to completion (17 October). |
 | [Application operation controller](#application-operation-controller) | package contracts; typed-facade milestone | face controls, morph pipeline, acquisition consent | New named workstream; was unowned. Owns the scheduler, residency, intent snapshots, cancellation and whole-action progress behind the operation-service interface that the migration's reducers call. |
 | [Provider simplification](#provider-simplification) | candidate import; workspace build milestone 1 (native retirement lands right after the first destination build) | face controls (selector), help and guidance copy, application migration's typed-facade milestone (ordering edge) | The section says it does **not** depend on package or converter extraction. Soft preference: before compute extraction so dead WebGL execution is not extracted. |
@@ -3386,9 +3618,9 @@ it; a soft preference is called out as such.
 | [Autoresearch re-homing, stage 2](#autoresearch-re-homing) (drivers and recipes that consume an app artifact, workflow path filters) | autoresearch stage 1; candidate import; workspace build | ONNX Runtime Web currency evaluation, research evaluator (adapters), verified-cache warming (adapters), classic wind-down | Split from stage 1 on 17 October so the table has no row-level cycle: workspace build needs only stage 1's lease wrapper, softly, and stage 2 cannot start before workspace build. |
 | [Research workload design](#research-workload-design) | autoresearch re-homing stage 1 | research evaluator, targeted campaigns | Independent of release. |
 | [Research evaluator](#research-evaluator) | research workload design; autoresearch re-homing stage 2 (adapters) | targeted campaigns, verified-cache warming (its adapters) | Terminal for release: application migration and cutover do not wait for it. The only row that waits on it is the optional verified-cache warming sub-node. |
-| [ONNX Runtime Web currency evaluation](#onnx-runtime-web-currency-evaluation) | autoresearch re-homing stage 2; application deploy and collector re-homing (runtime staging); workspace build | compute extraction's provider adapters (soft, the JSEP removal timeline); integrated verification (the decision is recorded) | New 16 October. Gates no adoption: if it holds, the pinned runtimes ship under a recorded hold-back (reason and re-check trigger) required by the currency policy. |
+| [ONNX Runtime Web currency evaluation](#onnx-runtime-web-currency-evaluation) | autoresearch re-homing stage 2; application deploy and collector re-homing (runtime staging); workspace build | — | One grouped dependency bump: numerical canaries, phone lanes and a paired desktop comparison decide adopt or hold-back (recorded in the updater config). WebNN is a later idea, not an item. |
 | [Classic distribution](#classic-distribution) | application inventory; organization rename execution (hard only for publishing the README with its final URL; build and tests do not wait); the branch plan in D4 | delivery (the classic publication action); classic wind-down (re-runs the clean-clone acceptance on the cleaned tree) | Independent of everything else except the default-branch switch's pre-checks in D4 (and retiring the Vercel publisher first if a test shows the switch triggers it). Since 16 October it also owns the [frozen self-host guarantee](#dependency-currency-and-the-frozen-self-host-guarantee--16-october-2026): vendoring, a one-command README-executed clean-clone acceptance on a GPU worker, and a recurring rot check. Its decisions (D4 to D7) were settled on 16 October. |
-| [Integrated verification](#integrated-verification) | application migration; provider simplification; compute extraction; media and recovery; confirmed-crop encoding; morph pipeline; operation controller; acquisition consent; device check and estimates; face controls; static names; diagnostics consent control; model manager extraction; model hosting extraction; conversion tooling; workspace build (every workstream whose claim it records) | delivery from this repository, package publication and documentation, independent acceptance | Produces the versioned support and evidence table. |
+| [Integrated verification](#integrated-verification) | application migration; provider simplification; compute extraction; media and recovery; confirmed-crop encoding; morph pipeline; operation controller; acquisition consent; device check and estimates; face controls; static names; diagnostics consent control; model manager extraction; model hosting extraction; conversion tooling; workspace build (every workstream whose claim it records) | delivery from this repository, package publication and documentation, independent acceptance | Produces the release summary, including the tested browser/OS list Help uses. |
 | Package publication and documentation (new 17 October; the preparation for the package-publication action in [delivery](#delivery-and-publication)) | compute extraction (engine); model manager extraction; model hosting extraction; media and recovery; conversion tooling; integrated verification (the non-face journey); npm scope and credentials (an execution prerequisite, not a decision) | delivery (the package-publication action); independent published-package acceptance | Owns each package's public README and API docs, a copyable quickstart, examples, licences and notices, model-acquisition instructions, version and provenance binding, the registry name-availability check, and a clean-consumer smoke test from the packed tarballs with a content scan (no weights, no repository-only paths, no secrets). It publishes nothing; publishing is the delivery action. |
 | [Domain handover and retirement preparation](#domain-handover-and-retirement-preparation) | source and repository identity; application inventory (hosting, DNS, credential inventory) | delivery and publication; static names (the preview and latent snapshot) | Can start right after the inventory and does not need the monorepo. Includes snapshotting the published name previews before the API stops. What the names host may claim is decided in delivery, after static names, so this row has no edge back to static names. |
 | [Delivery and publication](#delivery-and-publication) | domain handover preparation; the operator's decision; static names (what the names host may claim). Promotion from this repository also needs integrated verification, deploy re-homing and autoresearch re-homing stage 1. The package-publication action needs package publication and documentation. A production collector needs the diagnostics retention decision applied (no expiry written); the classic publication action needs classic distribution | classic wind-down; independent published-package acceptance | Six separate actions, each a terminal outcome (candidate-source handover, production promotion, API retirement, package publication, independent acceptance, classic publication). An early candidate promotion needs none of the monorepo workstreams. Its edits to the candidate source are a distinct edit set made on a non-deploying classic branch. |
@@ -3409,8 +3641,10 @@ no separate approval; the existing tracker items are rewritten from this plan at
 distribution plus Git history only, with its wind-down run without per-step approval (see the
 [end state](#end-state-of-the-repositories)). The research overlay was defaulted on 16 October
 (committed objects only) and is no longer open. The one thing left to the operator after execution
-begins is the explicit cutover decision (promotion to `facemorph.me`, retiring the old API and
-publishing packages), which is a delivery action, not a workstream gate.
+begins is the explicit cutover decision: the pushes that change what live visitors get (switching
+next.facemorph.me to the monorepo build, promotion to `facemorph.me`, and retiring the old API). It is a delivery
+action, not a workstream gate. Everything else runs without waiting for a human decision (operator, 24 October);
+package publication needs only its npm credentials and the packed-tarball checks.
 
 **Acyclicity.** A reviewer's parse of this table on 16 October read 32 workstreams and found no hard
 cycle, but found three latent ones that the edits above break: workspace build against application
@@ -3463,13 +3697,14 @@ work. Where a section already settles an item, it governs.
 | Dynamic-shape recovery schema versioning; descriptor-driven mapping; descriptor-driven morph geometry | Media and recovery; Compute extraction; Morph pipeline respectively |
 | Help text, computer guidance, native-link removal | Provider simplification |
 | Retirement and FAQ copy, names-host redirect | Domain handover and retirement preparation |
-| Versioned support and evidence table | Integrated verification |
+| Release summary and the Help tested-browser list | Integrated verification |
 | Release-consistent asset sets, old-tab compatibility, retention window | Model hosting extraction (retention, publication order) with Workspace build (identity) |
-| Stale harness repair (`next-matrix`, `check-next-artifact`, `check-progress-copy`) | Workspace build's check-migration map; each repair lands in the revision that replaces the control it asserts |
+| Stale harness repair (`next-matrix`, `check-next-artifact`, `check-progress-copy`) | The bead that replaces the control it asserts, recorded in `tests/retired.txt` when a test goes |
 | No-regression comparisons on cells that already exist | Integrated verification records them and the Workspace build lanes run them; no new campaign |
 | Development-worker inventory and lease wrapper | Workspace build (inventory, CI wrapper); Autoresearch re-homing (lease protocol) |
 | Targeted campaigns | Research evaluator adapters first; the rounds are optional research after the features exist |
 | Goal-based extra export formats ([export direction](#file-sharing-and-export-direction)) | Proposal only. If pursued, Media and recovery after the default paths work; nothing depends on it (a deferred, optional item at conversion, so it is not dropped) |
+| Weighted face blend: operation, view, button, `#blend` deep link, saved recipe ([weighted face blend](#weighted-face-blend-advanced-mode)) | Compute extraction (the `blend` function); Face controls (view, button, deep link, slot reuse); operation controller (blend parent intent); Media and recovery (recipe in saved files); Diagnostics (action list entry) |
 | `last-result.mjs` retention split; `media.mjs` split | Application migration (TS/React milestone); Media and recovery |
 | Active-link and self-host URL repair | Organization rename; Classic distribution verifies the fresh-clone commands afterwards |
 | `?testing` bulk Generate, Help/footer issue links | Retained candidate behavior under application migration; no new work |
@@ -3485,9 +3720,8 @@ the either/or):** shared files are serialized by ordering edges, mandatory in th
 order for `product-bridge.mjs`, `browser/runtime.mjs` and `browser/ort-worker.mjs` is native
 retirement and provider simplification, then the typed facade, then compute extraction, then
 confirmed-crop and morph pipeline, then static names and diagnostics edits, with the TS/React port
-proceeding alongside against the facade (it edits UI sources, not those three files). Each workstream
-adds the files it edits to the check-migration map's conflict list, so a new edge is added when one is
-discovered. Separate clones are allowed for read-only runs and experiments, never for concurrent edits
+proceeding alongside against the facade (it edits UI sources, not those three files). A newly discovered
+shared file gets an ordering edge in the tracker. Separate clones are allowed for read-only runs and experiments, never for concurrent edits
 of the same file, and never as a worktree.
 The shared physical-device lease is a second serialization resource for heavy runs.
 
@@ -3509,9 +3743,9 @@ itself offers:
   many-face layout, Remove, Undo and Start over; Morph controls and complete-output layout; the responsive sweep.
 - Package and operation contracts: per package (engine, manager, app) and per area
   (batch and progress types, scheduler and residency, preflight types, export identity,
-  UI walkthrough, model descriptor).
+  screen-state types, model descriptor).
 - Workspace build and artifact identity: workspaces and TS; Oxc lint/format; identity
-  hashing; CI lane carry-over; check-migration map; artifact fan-out.
+  hashing; CI lane carry-over and the retired-tests check; artifact fan-out.
 - Application inventory: identity map; import readiness; licenses; native inventory;
   research dispositions. Candidate import: closure; wrapper and `deploy-next/`
   contract; runtime reuse.
@@ -3519,7 +3753,7 @@ itself offers:
   retirement. Compute extraction: mapping and synthesis; photo orchestration;
   descriptor generalization.
 - Static names: data-shape spike; catalogue generator and publication; picker. Device check:
-  checker; calibration (supplies measurements to the support table, which integrated
+  checker; calibration (supplies measurements to the release summary, which integrated
   verification owns). Conversion: package and container; FFHQ; the non-face fixture.
 - Integrated verification, by its own paragraphs: functional journey; consent, overlap
   and warming; scheduler dependencies; mixed batch; non-face proof; degradation;
@@ -3527,18 +3761,18 @@ itself offers:
 
 ### Source and repository identity
 
-Freeze the source/surface table and known org-link inventory above with
-current stable IDs, branches and live artifact references. Record which GitHub /
-hosting integrations are verified and which need inspection. This small deliverable
-unblocks [organization rename execution](#organization-rename-execution) before the deeper [application inventory](#application-inventory) application inventory. Do not infer legacy
-production's exact commit from classic's default branch or candidate checkout.
+This is the first step of [organization rename execution](#organization-rename-execution): scan and classify
+every `check-face`/GitHub reference and integration listed above, then rename. No separate committed map. Do
+not infer legacy production's exact commit from classic's default branch or candidate checkout.
 
 ### Application inventory
 
 Inspect `src/Next/product-bridge.mjs`, runtimes, geometry/photo/media,
 `self-host/`, read-only sibling server, workflows, staging and historical clones.
 Record every moving path, consumer, build/worker URL, persistent identity, source
-revision and live receipt in `docs/plans/repo-cleanup-and-architecture-refactor/inventory.md`. Identify provenance/history transfer
+revision and live receipt where the import needs it: the machine-readable allowlist the import script reads
+(`import/allowlist.json`, with source commit, paths and digests) and shipped licence notices. No separate
+inventory document; the defect list is this plan's. Identify provenance/history transfer
 and external model sources. Acceptance: all release surfaces have an owner and a
 retained/rebuildable input; uncertainties are explicit; this inventory makes no
 new remote changes. Include licenses and required notices for imported app,
@@ -3647,7 +3881,7 @@ package improvements continue under their separate workstreams.
 extraction, the typed facade and the manager need: loaded handles, operation signatures, the
 confirmed-crop preprocessing policy and manifest compatibility. Milestone 2 freezes the rest: tile,
 consent and progress state types, export identity, preflight types, the external developer journey, the
-UI walkthrough and the numeric byte ceilings. Workstreams that need only milestone 1 start after it.
+screen-state types and the numeric byte ceilings. Workstreams that need only milestone 1 start after it.
 Numeric ceilings are the exception that follows measurement: downstream acceptance criteria that cite a
 ceiling can be written only after milestone 2 closes, so decomposition writes those criteria in a
 second phase.
@@ -3661,8 +3895,8 @@ typical photo; report peak allocation per representation (compressed, decoded, c
 the machine, browser and build, and set each ceiling per route. A route that was not measured has no
 ceiling and is therefore not admitted.
 
-Write `docs/plans/repo-cleanup-and-architecture-refactor/contracts.md` using
-[application inventory](#application-inventory)'s inventory at `docs/plans/repo-cleanup-and-architecture-refactor/inventory.md`.
+Write the contracts as TypeScript modules in the packages that own them, with type tests and a limits
+constants file; there is no separate `contracts.md`.
 Inspect `src/Next/browser/runtime.mjs`, `src/Next/browser/ort-worker.mjs`,
 `src/Next/product-bridge.mjs` for actual browser adapter signatures; classify its
 temporary `desktop/runtime.mjs` import as a retirement seam, not a new native contract.
@@ -3713,7 +3947,7 @@ permits, loaded-asset leases and actual runtime-residency reservations. Model/se
 loading and canary execution participate in admission; idle warm memory remains
 accounted until released. These contracts must work for independent consumers as
 well as the application scheduler, without importing application policy into packages.
-Include the early screen/state walkthrough and shared resource/version contracts
+Include the screen-state types and shared resource/version contracts
 above. Record each borrowed UI reference by named surface; resolve picker targeting,
 touch exit and cold/error states before their behavior implementation.
 Freeze the [preflight](#lightweight-device-check-and-pre-download-guidance) evidence /
@@ -3812,8 +4046,8 @@ performance result and does not require the evaluator.
 
 ### Research workload design
 
-Create campaign-owned workload specs, in this repository once
-[autoresearch re-homing](#autoresearch-re-homing) stage 1 lands, using current harnesses and retained
+Deferred until a campaign is requested (one deferred tracker item with the evaluator). Then create
+campaign-owned workload specs, in this repository, using current harnesses and retained
 control or qualified rebuild. Pin control bytes and declare all expected outcomes,
 required cells, statistical method, confidence level, sample/confirmation rules,
 protected UX/resource metrics and invalid-run handling. Acceptance: cold/warm/output
@@ -3843,15 +4077,15 @@ through an unexplained test removal. Scaffold the four package workspaces first 
 empty, building and packable placeholders: this acceptance cannot otherwise be met
 before the extraction workstreams that it gates. Establish Vite targets/worker checks
 for its later build milestone from a minimal declared browser matrix taken from the
-retained CI lanes (versioned with the support and evidence table, not invented);
+retained CI lanes (the same list the release summary reports, not invented);
 there is no Fable/Webpack build in this repository; Vite is the only bundler from the first app build.
 CI format/lint/type checks are read-only and fail on violations; validate configured
 root discovery, ignored historical/generated bytes and formatting idempotence.
 Record the formatting baseline separately from rule fixes and behavioral changes.
 
-Maintain a check-migration map beside the inventory: each check names the behavior
-it protects, source/layout assumptions, destination invocation and the declared
-plan change that replaces any obsolete expectation. For unchanged migration stages,
+Extend `scripts/check-tests-listed.mjs` so that removing or renaming a listed test fails CI unless
+`tests/retired.txt` names it with its replacement test or the declared plan change that made it obsolete.
+There is no separate map document. For unchanged migration stages,
 retain candidate expectations with path/adaptor updates. When a planned UI/provider
 change lands, update its mapped checks in the same revision; do not retain assertions
 that demand removed controls or freeze a known candidate defect. Source-language
@@ -3902,9 +4136,10 @@ has with behaviour this plan adds. Before porting, drive the control artifact th
 and record one of three classes per row: *present and unchanged* (parity-graded), *present and changed
 by a declared UX change* (graded against this plan's specification after parity, citing the change in
 this plan's live requirement sections (the UI requirements table, the flow matrix and the known candidate defects), which the application inventory's defect ledger keeps current)
-or *absent* (new, specification-graded). Only the first class gates the port. The output is a committed
-table keyed by journey, with the Playwright steps and a screenshot for each parity row. A row that
-cannot be exercised against the control is recorded untested, never passed.
+or *absent* (new, specification-graded). Only the first class gates the port. The output is the Playwright
+parity spec itself: one test per journey row, tagged `parity`, `changed` or `new`; its run against the control
+is the grading. A row that cannot be exercised against the control is a skipped test with its reason, never a
+pass.
 
 **Control custody.** The control is a hash-pinned built `deploy-next/` artifact. Keep its bytes
 somewhere that does not depend on classic staying alive: a release asset of this repository (the
@@ -4070,11 +4305,10 @@ and exports under their separate quality/recovery rules; image file bytes need n
 Use available relevant devices/checks, record unsupported or untested cases, and
 fix actual correctness, privacy, cancellation and resource errors. This is not
 full parity with the historic API or a separate shutdown-qualification campaign.
-No iPhone/physical-phone pass or control/control performance report is required.
+The [strictly-not-worse gate](#strictly-not-worse-than-the-candidate-operator-24-october-2026) against the pinned candidate, iPhone included, is part of this verification.
 This does not waive existing Android/iOS Simulator, desktop-browser or real-GPU
 lanes: retain the [CI matrix and applicable no-regression checks](#platform-ci-retention-and-performance-preservation),
-record gaps and investigate observed migration regressions. Physical-iPhone
-performance remains untested, without downgrading phone journeys.
+and fix any regression the gate finds before promotion.
 For new architecture artifacts, retain [workspace build and artifact identity](#workspace-build-and-artifact-identity) lint/format/type checks, independent
 compute/conversion checks and clean package consumers; source/license/notice and
 weight-exclusion checks apply to artifacts actually being published. Record the
@@ -4144,7 +4378,7 @@ focus, queue/progress and results are active. Include short viewports, long name
 browser zoom/text enlargement and touch virtual-keyboard occlusion where available.
 Face/crop geometry must stay correct; menus, primary actions, progress and dismissal
 remain visible/reachable with sensible scrolling, no overlapping/clipped controls,
-page-wide overflow or lost focus. Check grid reflow with 1, 2, 3, 4, 8, 30 and 64 faces at each width in the sweep (the many-face rules in [face controls](#face-controls-and-modals)).
+page-wide overflow or lost focus. Check grid reflow with 1, 2, 3, 4, 8, 30, 64 and 150 faces at each width in the sweep (the many-face rules in [face controls](#face-controls-and-modals)).
 Record exact tested viewport/zoom/artifact and unsupported environments. These are
 layout checks using available browsers/devices, not a new physical-phone release gate.
 
@@ -4157,19 +4391,19 @@ Next features. Check preservation of existing warm reuse, bounded pipelines,
 session/video/scrub recovery and export reuse without requiring a new performance
 campaign or historical API parity certification.
 
-**Structure for decomposition and pass criteria (added 16 October after two reviewers called this
-section too broad to decompose as one task).** Integrated verification is four sub-results and a join,
-each ending in a receipt (schema in [acceptance receipts](#acceptance-receipts-and-gate-style-acceptance)):
+**Structure for decomposition and pass criteria.** Integrated verification is four sub-results run by one
+release-verification workflow against one artifact digest:
 
 1. *App flows:* the journeys, cancellation and recovery checks above, with the parity-graded rows
    of the frozen flow matrix and the specification-graded rows for the planned changes.
 2. *Platform and resource:* consent, overlap, scheduler, degradation and the responsiveness sweep.
 3. *Packages and non-face:* clean consumers, conversion and the non-face joint proof.
-4. *Release artifact and evidence:* identity, the versioned support-and-evidence table and the
-   preservation of existing performance paths.
+4. *Release artifact and evidence:* identity, the retained lanes and the preservation of existing
+   performance paths.
 
-The join is a final report that checks the four receipts name the same source commit and artifact
-digest and lists every unsupported or unclaimed capability. A check passes only if it ran against the
+The workflow writes one release summary: the artifact digest, each sub-result's pass/fail/untested cells, the
+tested browser/OS list that Help copies, and every unsupported or unclaimed capability. The operator's cutover
+decision reads that summary. A check passes only if it ran against the
 named artifact on the named platform and met its stated threshold (numerical tolerances unchanged,
 parity-graded rows exact, defects fixed). Otherwise it is recorded as failed or untested, and claims
 are limited to the cells that passed. A threshold still unmeasured when this runs (device-check
@@ -4181,16 +4415,14 @@ the check is reported as "measured, no threshold" and never as passed.
 Added 16 October after both reviewers found that several workstreams were accepted only by prose such
 as "record" or "accepted explicitly".
 
-**Receipt schema, used by every acceptance in this plan.** Source commit; artifact digest; runtime and
-model identity where relevant; command or workflow run; platform and provider; outcome; deviations;
-untested cells; and a link to the evidence. A receipt that omits one of these is incomplete, not
-passed.
+**Evidence.** A bead's evidence is its merged commit and the CI run on it. Two file receipts exist, because an
+irreversible action reads them: the API retirement (what was removed, with the runbook's commands) and the
+old-report deletion (count and key-list digest). The release summary (integrated verification) is generated
+by CI.
 
-**End-to-end evidence convention (17 October).** Every end-to-end script emits a structured event log: step
-ID, ISO timestamp, artifact digest, platform and provider, network requests by host class and bytes,
-console errors and the outcome. Screenshots are kept on failure, and the log is retained as a CI artifact
-and privacy-filtered like diagnostics. Claims such as "no model network before approval" and "no
-speculative network" are asserted from that log, never from a screenshot. Unit tests accompany each
+**Network assertions.** End-to-end tests that claim network or consent behaviour (consent, warming, names,
+device check, diagnostics) intercept requests and assert on them by host class and bytes, never from a
+screenshot. Traces and screenshots are kept on failure. Unit tests accompany each
 workstream's own logic; the integrated journeys live in integrated verification.
 
 **UI acceptance is operated, not queried (18 October).** The candidate's Remove control passes its checks and is
@@ -4199,7 +4431,7 @@ because the checks click by accessible name. So every UI acceptance in this plan
 (1) act with real pointer or touch input at the control's visible position, and also assert that the element at
 that point is the control (`elementFromPoint`) and that it lies inside the region a person would look in;
 (2) a by-name or by-role click is allowed only to set up state, never as the acceptance step;
-(3) every list-like or repeating control is exercised at 0 or 1, 2, 3, many and the cap, and every
+(3) every list-like or repeating control is exercised at 0 or 1, 2, 3, many and, where a real resource limit exists, at that limit and its degraded state, and every
 text-like input with an empty, a very long and a pasted value;
 (4) check the result on a phone-width and a desktop-width page and keep a screenshot per case;
 (5) a first look at a flow is done by operating the running app (as in the operated check above), because a
@@ -4207,37 +4439,19 @@ reading of the plan or the source cannot see what is covered, clipped or off scr
 
 **Acceptance for workstreams that had none:**
 
-- *Source and repository identity:* the identity map is committed; each stable ID, branch and live
-  artifact reference carries its verification date and the command that verified it; every integration
-  is marked verified or needs-inspection.
-- *Domain handover and retirement preparation:* the action list exists with, per action, preconditions,
-  exact commands or console steps, rollback, owner and the check that proves it; the cutover copy and
-  chrome inventory locates every string by file and replaces or removes it; the snapshot of published
-  previews and latents is stored durably with hashes and a restore test; a scan of the production build
-  finds zero links to a retired host or to the candidate branch.
-- *Delivery and publication:* each of the six actions has its own receipt with the before and after
-  state, the actual artifact digest, the commands run and the ordinary post-delivery checks (the app
-  loads, a diagnostics report is accepted, models load). No action's completion is inferred from
-  another.
-- *Classic wind-down:* each stage records its automated precondition check, the change, the reversal
-  path and a post-check, and runs without a human approval step; a stage whose precondition fails does
-  not run and is reported. After the last stage the default branch's tree lists only the distribution,
+- *Organization rename:* the rename acceptance in [organization rename first](#organization-rename-first-known-reference-changes).
+- *Domain handover and retirement preparation:* the retirement runbook's commands run in a dry run where the
+  provider allows; the snapshot of published previews and latents restores; a scan of the production build
+  (a CI check) finds zero links to a retired host or to the candidate branch.
+- *Delivery and publication:* each action's workflow runs the post-delivery smoke check (the app loads, a
+  diagnostics report is accepted, models load). No action's completion is inferred from another.
+- *Classic wind-down:* each stage is a commit gated by its CI precondition, run without a human approval
+  step. After the last stage the default branch's tree lists only the distribution,
   its README and its rot-check workflows; the recorded README-executed clean-clone acceptance is re-run
   on that tree and passes (a path it shows to be needed is restored); the research tree is present in
   this repository byte-identical; the Git history is unchanged and no branch or tag was deleted.
-- *WebGL removal ([provider simplification](#provider-simplification)):* the receipt records the route
-  counts and time window read from existing data, caveats such as missing consent or data, the
-  supported devices affected, the CPU fallback they would use, and the operator's decision. It is already
-  filled for the diagnostics source (read and decided 17 October, in that section), so removal is not
-  waiting on a further read; only the check that a phone without admitted WebGPU finishes on CPU remains.
-- *Operator decisions:* each is a dated entry in a decision log in the repository with the outcome and
-  who decided. The decisions closed on 17 October (no port checkpoint or fallback, diagnostics retention,
-  the update lane, package scope, the WebGL removal) and on 18 October (candidate-source edits are ordinary
-  work, the tracker is rewritten, classic ends as the distribution plus history with an automated wind-down,
-  and the old-wording diagnostics reports are deleted once mined) are entered in the log with their date.
-  The log lives in `docs/decisions/` and
-  receipts in `docs/receipts/`; workspace build creates both directories and source and repository identity
-  writes the first entries.
+- *WebGL removal ([provider simplification](#provider-simplification)):* decided 17 October from the route
+  read in that section; the remaining check is that a phone without admitted WebGPU finishes on CPU.
 - *Application operation controller:* fake-clock scheduler tests cover permit versus residency, Morph
   yielding its permit, joining an existing operation, cancel at each boundary and no starvation; one
   real-bridge run asserts the operation event log against the expected trace.
@@ -4250,8 +4464,7 @@ reading of the plan or the source cannot see what is covered, clipped or off scr
   compiling against the emitted declaration files.
 - *Dependency currency lane:* a dry-run bump that widens a numerical tolerance or removes a cell is
   rejected; the bleeding-edge lane is non-blocking and its output never reaches `deploy-next`.
-- *Diagnostics learnings:* the committed note is aggregates only; a scripted scan finds no device, session
-  or run identifiers; the read used a read-only credential and wrote nothing to the bucket.
+
 - *Typed failure causes:* a forced failure at each listed stage (corrupt photo, refused route, storage full,
   broken download) produces the matching cause and stage in the report, and a scan of the test reports finds
   no `unknown` without a counted defect.
@@ -4259,8 +4472,7 @@ reading of the plan or the source cannot see what is covered, clipped or off scr
   key-list digest, the go-live moment of the corrected line and the post-deletion count of the deleted
   set (zero); no object uploaded after the go-live moment was deleted; no raw working copy remains on the
   analysis machine; the bucket has no expiration rule and the new disclosure states retention truthfully.
-- *Research workload design:* the specs validate against the evaluator's schema and one dry run passes
-  through the lease runner.
+
 
 ### Decomposition order, size and tracker coverage
 
@@ -4268,47 +4480,47 @@ Added 16 October from the cross-model review and a fresh-context structural revi
 reported "ready after listed fixes", and the fixes are in the sections above. Execution
 decomposition itself is still a separate requested step and has not started.
 
-**Expected size (an estimate, not a measurement).** One reviewer put a faithful decomposition at about
-250 items (range 200 to 320): about 35 parent items, about 200 leaves and a handful of gate items (the cutover decision and the credentials the publication actions need),
-against 22 records in the tracker export today.
+**Bead size and ceremony (operator, 24 October 2026).** The first conversion produced 373 beads, which the
+operator judged too fine-grained: per-item receipts, join nodes and bookkeeping items cost more than they
+protected. These rules replace the earlier estimate of about 250 items:
+
+- A bead is a shippable slice of capability: one coherent change with its own unit tests and, where it has
+  user-visible behaviour, its operated end-to-end check. That is typically one to a few days of agent work.
+  Splitting stops at "one reviewer can check it in one sitting", not at the finest seam.
+- No bead whose only output is a record (an inventory note, a decision entry, a receipt, a map), unless a
+  named later bead or decision reads it and cannot go ahead without it. Otherwise that output lives inside
+  the bead that needs it.
+- Milestones are the work items that complete them, not separate join nodes.
+- A "milestone" edge in the Needs column (for example "typed-facade milestone") points at the bead that
+  completes that milestone. Apart from the root entry bead (`fm-fy2`, which has no edges), there are no epic, workstream or milestone beads; the workstream is a label.
+- Edges come only from the Needs column and the mandatory ordering edges. Soft preferences and Feeds cells are
+  not edges.
+- Optional work (extra export formats, verified-cache warming, the research evaluator) is one deferred bead
+  each. Planner proposals awaiting a veto go inside the owning bead's acceptance as a removable clause.
+- Size limit: a reviewer can check it in one sitting, roughly under 1,500 changed lines excluding pure moves
+  and generated files.
+- The target is about 100 to 140 beads (an estimate).
+- An ordinary bead's evidence is its merged commit and the CI run on it, with no separate receipt file. Full
+  [receipts](#acceptance-receipts-and-gate-style-acceptance) are kept only where an irreversible action reads
+  them: the API retirement and the old-report deletion. The CI-generated release summary from integrated
+  verification is what the cutover decision reads.
+- Operator decisions live once, in the dated table in PLAN.md; there is no separate decision log. Planner
+  proposals are listed once in [remaining choices](#remaining-choices-completion-and-cutover-authority), not as
+  tracker items.
 
 **Split first, in this order** (each section already names its seams): face controls and modals
 (crop and dialog, photo batch, result export, many-face layout and removal, morph layout and the responsive sweep as separately
 accepted items); application migration (flow-matrix freeze, facade, controller, rendering, parity
-harness); integrated verification (the four sub-results and the join); classic distribution (reproducible
+harness); integrated verification (the four sub-results); classic distribution (reproducible
 inputs, one-command startup, GPU and runtime acceptance, recurring rot detection); contracts (two
 milestones); workspace build (CI-lane carry-over alone is large); delivery with domain handover; static
 names; diagnostics (learnings ingestion first); device check and acquisition consent.
 
-**Two-phase decomposition.** Phase 1 creates items and edges with acceptance at the level this plan
-supports. Phase 2 adds the numeric acceptance that depends on measurements: the byte ceilings after
-contracts milestone 2, the parity rows after the flow-matrix freeze, and the data-shape bars after the
-names spike.
-
-**Coverage against the existing tracker export** (`.beads/issues.jsonl`: 22 deferred records, 35
-blocking and 21 parent-child edges). Items `fm-fy2.1` to `.20` map to workstreams in order: inventory with identity,
-contracts, workload design, workspace build, application migration, compute extraction, media and
-recovery, confirmed-crop, morph pipeline, research evaluator, integrated verification, delivery (bundled
-with publication, and so with the package publication and documentation row), model manager, model hosting, conversion, classic distribution, face controls, static
-names, provider simplification and organization rename; `.21` is the independent package acceptance. These
-plan workstreams have **no item**: candidate import, application operation controller, acquisition
-consent and warming, device check and estimates, application deploy and collector re-homing,
-diagnostics consent control (and its learnings ingestion), autoresearch re-homing, the ONNX Runtime Web
-evaluation, domain handover, classic wind-down, the dependency currency lane and the cropper decision.
-No tracker item lacks a workstream. The scopes of the facade item (it still describes the Fable path),
-the delivery item, the classic item and the organization-rename item are stale, and the three stale
-edges named in the workstream table are confirmed in the export. Acceptance in the records is two
-generic checkboxes (except `.21`), and most descriptions embed 11 to 100 KB copies of an older plan.
-Classic also holds its own untracked `.beads/` with 21 records that differ from this repository's copy;
-neither copy is authority.
-
-**Operator decision for the conversion step (18 October).** The tracker is rewritten from this plan. The
-22 existing items keep their IDs, as the repository rule to preserve IDs and dependencies asks, and have
-their descriptions and edges replaced from this plan; the workstreams with no item get new ones. (The
-operator's words were "I assume we rewrite tracker"; keeping the old IDs is the planner's reading, and
-discarding the old items instead is a one-line change if that was meant.) Nothing is written to the
-tracker during planning. Tooling: Beads Rust (`br`) and
-`bv` were not found on this workstation's PATH on 16 October, so they need installing before conversion.
+**Tracker state (24 October 2026).** The plan was converted to Beads on 24 October (`.beads/issues.jsonl`, `br`
+and `bv` installed from verified release binaries), then consolidated to the bead size above. The 22 earlier
+item IDs (`fm-fy2*`) are kept on the beads that absorbed their workstreams. Each bead's `external_ref` is
+`plan:<key>` and its workstream is a `ws-<name>` label. Hierarchy never uses `parent-child` links, which block in
+`br` and deadlocked the first graph. All beads stay deferred until implementation is explicitly started.
 
 ### Delivery and publication
 
@@ -4347,7 +4559,7 @@ copy accordingly and keep names/model/diagnostics hosting functional. Record the
 actual source/artifact and actions performed; use ordinary post-delivery checks
 that the chosen app and diagnostic endpoint work. Do not add a phone or full
 shutdown-parity certification. Package publication remains a distinct action
-after its actual pack/install, metadata and license checks; unfinished package
+after its actual pack/install, metadata and license checks, and needs no operator decision (24 October); unfinished package
 work does not force the hosted GPU/API to stay on.
 
 ### Model manager extraction
@@ -4539,10 +4751,10 @@ filename remains. Match confirmation/editor/failure layouts from the inspected a
 The [audit's repair rows](#known-candidate-defects-found-by-operating-the-live-candidate--18-october-2026) 4 to 8, 18
 and 20 belong here. Acceptance adds a keyboard-only pass through every journey, a check that the text field turns off
 capitalisation, correction and spell-check and sends the text exactly as typed, and one plain message for each refused
-input (identical neighbours, over the cap, empty word).
+input (identical neighbours, over a real resource budget, empty word).
 
 **Many faces and removal (added 18 October, from the [operated check](#known-candidate-defects-found-by-operating-the-live-candidate--18-october-2026)).**
-The face row is designed for the cap (64), not for two. Requirements:
+The face row is designed for many faces, not for two; there is no fixed face count (operator, 24 October). Requirements:
 
 - *Remove is a real control.* A visible close button on each face image, at rest on touch and desktop, not
   overlapped by any other control, reachable by keyboard, with a hit area of at least 44 by 44 px on touch
@@ -4552,23 +4764,26 @@ The face row is designed for the cap (64), not for two. Requirements:
   with its content. **Start over** in More options returns the project to two empty faces, with the same
   Undo. The last remaining face stays non-removable, as in the candidate. These two are the planner's
   proposal to make "I added thirty and want to remove twenty" bearable; the operator may veto either.
-- *Many-face layout.* No page-level sideways scrolling and no hidden scrolling surface at any count up to
-  the cap, at any width in the responsiveness sweep. Past the width where two or three full tiles fit, the
+- *Many-face layout.* No page-level sideways scrolling and no hidden scrolling surface at any count, at any
+  width in the responsiveness sweep. Past the width where two or three full tiles fit, the
   faces are a contained strip with a visible scroll cue (edge fade or arrows, and a scrollbar) and snapping,
   or a compact grid; on a phone, tiles beyond the fourth shrink to a compact row (small image, field,
-  Remove) so that thirty faces take a few screens, not about fourteen. The control design review picks the
-  presentation against the locked references and these bars; the plan fixes the bars, not the pixels.
+  Remove) so that thirty faces take a few screens, not about fourteen. Past a hundred or so, the strip or grid
+  renders only the tiles near the view (virtualised), so the page stays responsive. A Morph that would exceed the
+  real frame, memory or storage budget says so before frame inference, with the estimate and the existing
+  reduce-length option, rather than failing on a hidden count. The presentation is chosen against the locked
+  references and these bars; the plan fixes the bars, not the pixels.
 - *Where it lands.* The Remove repair is a one-rule change in the candidate and is ordinary candidate work
   that does not wait for the port; the port implements the full set above. The separately accepted item is
   "many-face layout and removal", in the split list for face controls.
-- *Acceptance (operated, see the evidence rule below).* For 1, 2, 3, 4, 8, 30 and 64 faces at every width of the
+- *Acceptance (operated, see the evidence rule below).* For 1, 2, 3, 4, 8, 30, 64 and 150 faces at every width of the
   responsiveness sweep (integrated verification): no horizontal page scroll; the layout shows a scroll cue whenever faces are off
   screen; each Remove control lies inside its face image; the element at the control's centre is the
   control; a real pointer click (touch tap on phone widths) at that point removes exactly that face and
   leaves focus on a sensible neighbour; Undo restores it in place; Start over works and can be undone;
   from thirty faces every Remove is visible and hittable, each tap removes exactly one face with no
   page reload, and Start over returns thirty faces to two empty faces in one action that Undo reverses.
-  Keep one screenshot per case as a receipt.
+  Keep one screenshot per case on failure.
 
 ### Static names and picker
 
@@ -4824,12 +5039,13 @@ No earlier ruling settles these. Until answered, the plan keeps the candidate's 
    them, show a short notice, or open an empty page as the candidate does?
 2. **Autoplay.** Classic played the result muted in a loop on its own; the candidate waits for a click. Autoplay?
 3. **A plain blend of two faces.** Classic's slider was an exact 50/50 blend. The candidate's slider walks a closed loop
-   on a figure-eight path, so a blend needs the shape "Classic linear". Keep a plain blend as an easy path?
+   on a figure-eight path, so a blend needs the shape "Classic linear". Keep a plain blend as an easy path? (Since 24 October, two slots at 0.5/0.5 in the [blend view](#weighted-face-blend-advanced-mode) give exactly that
+   still; the question remains only for the morph slider.)
 4. **Cropper extras.** Wheel and pinch zoom, a crop square that may extend past the photo edge and the pre-upload
    "look straight forward" tip are in classic and in neither the candidate nor the locked images. Include them?
 
-Planner proposals awaiting a veto: Undo and Start over (face controls); keeping typed words across reload (defect 9);
-a stored-data line with a Clear button (defect 22); a job whose files are all cached needing no network (defect 15).
+Planner proposals go ahead as planned and the operator may veto any of them later (24 October: no human gates): Shuffle weights in the blend view; Undo and Start over (face controls); keeping typed words across reload (defect 9);
+a stored-data line with a Clear button (defect 22); a job whose files are all cached needing no network (defect 15); and three rules picked during bead conversion: refusing A,B,A morphs (identical neighbours on the closed loop), what Clear keeps, and that the 25 MB alignment limit applies only to the detector's proposed crop.
 
 ## Operator overview and clarifications
 Source: [Google Doc](https://docs.google.com/document/d/1lVNtTjPOsVYfFUJa0jCiiVU2jtDENcFcQF8iHrufJ1s/edit).
@@ -4855,1331 +5071,18 @@ The inspected image descriptions and checksums are retained in
 superseded naming/hold addenda are removed from the remaining-work plan; Git
 history retains their provenance.
 
-## Planning review and scope-change record
-
-Historical reviews below retain their original labels and graph counts as records
-of what was reviewed then. They do not define the current plan format or authorize
-creating execution records. The active design above uses named workstreams.
-Every "Open items" list inside a dated entry is the status at the close of that entry; later
-entries and the live sections resolve many of them (for example D1 to D7, the names data file
-and the PNG-versus-WebP default). Read the live sections and the latest entry for current status.
-
-**Rounds whose scope was later withdrawn or superseded** (read them only as history):
-the 12 October "clean web-only release and restricted-device journeys" round required
-desktop-browser WebGPU and removed app CPU/WebGL fallback and admitted-phone inference;
-the next round withdrew that. The earlier "pre-download decisions" and "individual UI
-journey" rounds carry proposals that the operator dispositions in the 12 October
-rounds settled differently. Counts such as "38 journeys" and "26 nodes / 42 edges"
-describe the graph and table of that date. The active sections above govern.
-
-This pass reviews only the remaining architecture, migration, classic qualification,
-UI, research and delivery work. Completed repository setup is current context,
-not a task to repeat. Older review history remains in Git; it does not qualify
-this revised plan. Fresh review findings and their disposition are recorded here.
-
-This is a planning-only pass. Named workstreams describe the architecture and
-implementation approach, not issue records. Do not create, convert, import, update or open execution-tracker
-records during plan drafting or review. Existing tracker data is separate from
-this document and remains untouched; conversion/synchronization is a distinct
-later step after the plan is reviewed and the operator requests execution setup.
-
-### Historical fresh review findings integrated — 11 October 2026
-
-This review predates the operator simplification below; its older retirement and
-qualification recommendations are superseded where they conflict.
-Three independent read-only reviewers checked the cleaned remaining-work plan
-against classic/backend source. Integrated corrections: staged next/production
-promotion before destructive legacy-host retirement; host-independent rollback;
-RN-05/RN-06 scheduling consistent with the graph; immutable confirmed-crop geometry;
-verified local-asset leases and typed offline invalidation; exact classic branch /
-clone quickstart qualification; explicit free-tier serving/billing checks; and
-source-license/notice gates for distributions. A fourth fresh reviewer read the revised plan and source, found no remaining
-substantive issue, and requested only matching the RN-20 table label to its
-preparation-only retirement ownership. That wording correction is integrated.
-These were three independent initial reviews followed by one fresh convergence
-review; no cross-model or GPT Pro review is claimed. No execution-tracker records were created or updated.
-
-### Operator simplification and deep feature audit — 11 October 2026
-
-Latest ruling supersedes earlier preservation/parity/retirement recommendations:
-no old GUIDs, no result-sharing URLs, no hosted API or API-hostname compatibility
-layer, no Next-to-production OPFS/session migration, and no mandatory phone or
-full shutdown qualification. Timing is aspirational and the operator chooses
-cutover. Retain diagnostics and embedded latents in every exported/shared file;
-users may self-host their own API through classic Compose.
-
-The feature/source audit above was grounded in the current Next candidate branch,
-classic App/Share/Checkface/Server files, archived backend route implementation,
-standalone names source and existing self-host packaging. Next already implements
-local generation/encoding, multi-face paths, file Save/Share, recovery envelopes
-and diagnostics. The remaining work extends/extracts those code paths. This is
-source inspection, not a new live device test or another four-round review claim.
-Existing execution-tracker files and research ledger remain untouched.
-
-### Planning-workflow review round — source clarity and complete journeys
-
-11 October 2026. One additional review round using the planning-workflow skill,
-including the operator's clarification that organization rename may be the first
-work and that legacy production/names remain useful UI references. Integrated
-into this single plan; no application implementation, rename, publication,
-deployment, tracker synchronization or API retirement was performed.
-
-Changes and rationale:
-
-1. Name live production, hosted API, standalone names, retained candidate, new
-   monorepo and classic distribution separately. The retained repository contains
-   two applications; “classic repo” did not identify which code/UI a task meant.
-2. Split early org/link work from later domain/API work, and split five delivery
-   actions. The former table contradicted early operator-controlled cutover by
-   making it depend on every architecture/classic deliverable. One publisher per
-   domain prevents the retained candidate workflow overwriting a monorepo release.
-3. Record five stable repository IDs and concrete stale references. An org-prefix
-   replacement alone leaves several links pointing to the wrong fresh repository.
-4. Correct the candidate names claim: current selection triggers synthesis.
-   Specify verified static result assets, their preparation owner/dependencies,
-   network/error states and explicit destination, so inference-free selection is
-   implementable without laundering old JPEG previews into canonical outputs.
-5. Add the early UI state walkthrough, photo visual-quality check, file readiness,
-   import/recovery outcomes and best-effort retention explanation. These address
-   visible usefulness beyond compilation, component checks or numerical accuracy.
-6. Specify aggregate heavy-work admission, large-photo decode budgets and immutable
-   release asset sets. Per-operation bounds alone miss aggregate contention and
-   old-tab/new-release failure modes. Preserve already qualified internal pipelines.
-
-Grounding: read the entire pre-round active draft including its existing uncommitted
-revisions; inspected candidate `b2d945a` Product/bridge/public-preview/media/recovery
-code, names source, promotion/desktop/self-host references and current workflow.
-Read the 10 October screenshot/process feedback. Cass located earlier feedback
-about cached-load speed, broad browser support and lack of an iPhone; session user
-messages were checked directly because returned physical-line windows did not
-consistently locate the indexed message. Recent planning sessions were not returned
-by Cass; this plan's latest operator rulings remain authoritative. Read-only GitHub
-API checks verified IDs and admin membership, and official org-rename documentation
-was checked. Browser inspection covered production and its names modal, plus the
-standalone names grid; no inference, phone qualification or latency measurement.
-
-Validation: manually traced RN-18 from named source through asset preparation,
-selection, Save/reopen and morph; sampled rationale for TS/React, npm workspaces,
-loaded-model separation, serialized admission and split delivery. Parsed the task
-table: 26 nodes / 42 edges, acyclic even including the conditional RN-11 dependency
-for new-monorepo publication. Terminal nodes are explicit research, org and delivery
-outcomes, not orphan prerequisites. Local section links and `git diff --check` pass.
-This is a substantive round, not steady-state convergence or four new independent
-reviews. A fresh-context self-containment review remains useful before execution
-setup. No Beads conversion is claimed; the repository's planning-only rule applies.
-
-### Original-reference lock and settled decisions — 11 October 2026
-
-Recovered the pre-consolidation operator source, complete earlier plan companions,
-original image archive and extracted screenshots into the linked local read-only,
-checksummed reference bundle. The raw DOCX was not found; recovery provenance is
-explicit. Existing originals remain unchanged. Re-inspected confirmation and crop
-adjustment mockups; the written flow continues to defer to them.
-
-The operator confirmed one-time catalogue publication to remove selection-time
-synthesis, accepted the e4e tradeoff and accepted the touch Back exit. These are
-settled requirements. Corrected the previous review's framing: instant names and
-the original crop design were already specified, not newly proposed features.
-
-Re-read the planning-workflow skill and its FAQ. Its process separates iterative
-plan refinement from later Beads conversion; the operator explicitly requests only
-the former. Removed the active numbered task graph and ticket-style headings,
-retaining architectural rationale, named workstreams, sequencing and verification.
-No Beads files or records were opened, created, imported or updated. No catalogue
-build/upload, application implementation, organization rename or deployment ran.
-
-### Pre-download decisions, non-face consumers and filenames — 11 October 2026
-
-Integrated the operator's requests for separate up-front photo-encoding and per-face
-generation estimates, fastest eligible route guidance, a desktop suggestion on
-phones, and a lightweight model-free device test. The checker uses bounded synthetic
-work plus versioned measured calibration; it cannot certify full-model correctness,
-memory fit or background completion. Keep automatic failure fallback distinct from
-recommendations based on speed, preserving explicit choices and active jobs.
-
-The external `stylegan-js` walkthrough now covers checkpoint compatibility/licensing,
-conversion, custom static hosting, independent installation, seed/morph/media round
-trips and model-specific optional inversion. Inspection found FFHQ-only dimensions
-in `browser/identity.mjs`, `geometry/latent-path.mjs` and `recovery-metadata.mjs`;
-generic support therefore requires descriptor-driven code and a real non-face
-example, not documentation alone. Upstream's AFHQ cat 512px checkpoint is a proposed
-qualification fixture, not an assertion of existing converter/provider support.
-
-Recorded the operator's filename ruling: informative short labels from names, typed
-text, seeds or source basenames, morph-mode distinction and stable export suffixes,
-with collision checks and no silent native overwrites. This supersedes the earlier
-unadopted suggestion to avoid informative source labels. Recovery metadata and
-diagnostics still exclude typed text and original source filenames.
-
-This remains one planning review, with substantive additions rather than steady-state
-convergence. The lightweight checker, calibrated timings and non-face example are
-planned, not implemented, benchmarked or deployed. Only this active plan was edited
-for this pass; locked reference bytes, other sessions' edits and execution trackers
-were preserved. Validation covers document consistency, section links and whitespace;
-no application tests or performance measurements are claimed.
-
-### Concise UI and existing consent gate — 12 October 2026
-
-Applied the operator's preference for justified, limited UI changes. The download
-modal now specifies only the requested action's missing assets and relevant range;
-setup/route breakdowns stay secondary, and a separate full-video estimate/panel is
-not required. Added explicit unknown-cache and dismissal behavior to the acquisition
-contract, plus checks for concise default copy. No new product decision is required.
-
-Live inspection of `next.facemorph.me` preview `001ba85` confirmed that Generate
-already opens “Download the face model?” with bytes, Cancel and Download and
-continue, alongside the proactive model-offer toast. Cancel returned to the app;
-no download was approved. Source inspection of `Product.fs` confirmed both paths.
-The new model-free checker/calibrated guidance remains planned. Cass recovered
-earlier cached-load and broad-browser feedback. This was a scoped plan refinement
-and UI observation, not application implementation, inference/network qualification,
-another independent review round or deployment. Only this plan was edited.
-
-### Individual UI journey review — 12 October 2026
-
-Added the flow matrix and explicit choices/gaps above after comparing the locked
-operator overview, current plan and candidate `b2d945a` source. Inspected Product
-input/queue/crop/menu/export/recovery behavior, photo selection, bridge Morph input
-preparation and project import, media metadata and native runtime capabilities.
-Cass recovered earlier name-picker and automatic-selection feedback; later explicit
-operator rulings remain authoritative. Corrected the unsupported claim that a
-direct reorder UI already exists. Proposed resolutions stay labelled as proposals;
-the three journey choices are not silently decided by this review.
-
-This is a substantive source-grounded planning review, not another independent
-multi-agent round. No new live inference/device test, benchmark, application change,
-deployment or execution-tracker conversion was performed. Other sessions' files and
-locked references remain unchanged. Validation checks document whitespace, section
-links and matrix coverage, not implemented product behavior.
-
-
-### Settled UI decisions and responsiveness — 12 October 2026
-
-Integrated the operator's dispositions throughout the active specification and the
-38-journey matrix: automatic Morph text/seed preparation; no direct face reorder;
-external MP4 opening deferred; global face-click order across files replacing the
-originating panel; route snapshot at Start/download approval; inexpensive reasonable
-replacement preservation; optional manual crop/direct e4e continuation; tasteful
-contextual errors and whole-action progress. Retry unchanged input is accepted.
-
-Clarified names precisely: modal example faces are prepared from displayed names
-with the same ordinary-text generation semantics, and selection fills that text
-field plus its ready result. Editing uses the ordinary text flow. Reuse/refine the
-fullscreen modal without a required `/names` route, search/header/X or old network
-contract. Added width sweeps, breakpoint-edge and live resize/orientation checks,
-short heights, zoom and active-state testing rather than only endpoint breakpoints.
-
-These are planned acceptance contracts. Historical reviews above record their
-then-open proposals; the latest dispositions govern implementation. No application
-changes, inference benchmarks, deployment or execution-tracker conversion occurred.
-
-
-### Follow-up whole-plan review — 12 October 2026
-
-Reviewed the active plan after publication of operator dispositions at `bdeb0a4`.
-Checked all 38 journeys and the architecture/migration/package/conversion/hosting /
-classic/release sequencing. Source grounding included candidate `Product.fs`,
-`product-bridge.mjs`, `photo-selection.mjs`, `browser/runtime.mjs`, `public-previews.mjs`,
-`browser/identity.mjs`, `last-result.mjs` and geometry frame-budget validation.
-
-Load-bearing corrections: a composite Morph must not hold the compute lease needed
-by its prerequisite jobs; global A1 → B2 → A2 selection needs one shared batch proposal,
-not isolated file modals; broad route/photo consent and unknown-cache bypass are not
-the required bounded acquisition authorization; catalogue-latent fallback does not
-prove equality to ordinary typed names; progress finishes at default recoverable-file
-readiness, excluding optional persistence/diagnostics. Existing cancel/worker-stop
-primitives are retained, with action-owned acquisition cancellation verified separately
-from the current prefetch toast's Hide. Added compact action states and concrete
-paste/open/restore/modal/error/result transitions using existing UI areas.
-
-Clarified early frame-budget checks, dependency cancellation ownership, native build
-consumer migration and packed-consumer qualification before npm publication. No new
-user decision or visible dashboard, reorder/search/project toolbar was introduced.
-Precise progress percentages remain conditional on calibration; an indeterminate
-whole-action bar is required when a truthful denominator is unavailable. Actual device
-capability, model redistribution/hosting allowance and organization/npm availability
-still need their planned execution checks; no planning conclusion claims them passed.
-
-This follow-up is a source-grounded review of planned work, not an independent agent
-round, application implementation, benchmark, live device qualification, deployment
-or tracker conversion. Publication receipts are Git commits; product delivery is
-unchanged. Historical proposals above remain as dated records only.
-
-### Planning-workflow round — composed readiness and retained runtime paths
-
-12 October 2026. Read the complete current active plan, README and AGENTS before
-applying the planning-workflow review prompt. Three independent read-only reviewers
-each read the full plan and entry guides, covering package/resource contracts,
-composed user journeys and workstream/delivery sequencing. Their findings were
-grounded in the retained candidate source and integrated into this single plan.
-This is one additional review round; the focused checks after integration belong
-to this round. No cross-model/GPT Pro session or new four-round campaign is claimed.
-
-Accepted revisions and rationale:
-
-1. Protect the direct WebGPU coefficient bundle during WebGL removal. Candidate
-   `browser/ort-worker.mjs` uses `manifest.webgl` for direct WebGPU loading and
-   canary identity. Removing the execution provider must preserve this shared
-   data format and its optimized kernels; clean/cache/recovery checks make the
-   existing performance-preservation requirement concrete.
-2. Account for loading and idle residency as well as compute. Candidate
-   `browser/runtime.mjs` and worker residency policy retain the encoder where
-   qualified and terminate constrained WASM workers to reclaim heaps. A serial
-   inference permit alone does not bound competing model loads or retained idle
-   memory. Separate permits, disk-asset leases and live-memory reservations while
-   preserving warm reuse and independent package consumers.
-3. Separate compute-ready Morph inputs from face-file completion. Candidate
-   `product-bridge.mjs` commits valid raw results/latents before `fileReady`.
-   Requiring every face export to finish before frames would remove useful overlap.
-   File-preparation failure now has explicit independent Retry; verified latents
-   remain usable without another inference attempt. Default-file completion still
-   governs the face action's progress.
-4. Stage mixed recovery/photo entries under one batch commit. The candidate's
-   recovery-first wrapper immediately installs a saved face, while the new batch
-   flow defers insertion until OK. Ready recovery candidates and photo crops now
-   share click order and atomic insertion without re-encoding recovered faces.
-   Unknown-model media stays selectable/viewable/saveable with compute disabled;
-   photo-only adjustment and distinct budgets preserve the original crop design.
-5. Close non-face qualification after component integration. Generic compute can
-   prove descriptor-driven inference/geometry before media recovery exists; final
-   integrated verification proves the complete conversion/hosting/manager/compute /
-   export/reopen journey using local packs before publication. This removes an
-   ambiguous acceptance dependency without weakening the non-face requirement.
-6. Identify a usable rollback target after API retirement. Historical `src/Config.fs`
-   points generation at `api.facemorph.me`; restoring that frontend cannot restore
-   generation once the API stops. Use the retained on-device artifact and matching
-   immutable assets/diagnostics for that stage. Early promotion still records the
-   chosen candidate's actual names capability and static origins; the optional
-   capability clarification is not a new retirement prerequisite.
-
-All six corrections were accepted. They clarify existing scope; no replacement
-encoder, crop redesign, added search/reorder/project toolbar, native GPU expansion,
-mandatory phone/performance gate or new shutdown campaign was introduced.
-
-Grounding: candidate source remains `b2d945a8c7f0ff9f382fbfefaecc2651943077a3`.
-Inspected worker/runtime loading and residency, bridge raw-result/file/recovery
-dispatch, Product multi-drop/name selection, generic identity/geometry/metadata
-assumptions, legacy API configuration and the current candidate rollback workflow.
-Cass recovered earlier operator feedback about cached-model loading; current settled
-operator rulings in this plan take precedence over historical suggestions.
-
-Validation: a fresh-context reviewer assessed the isolated conversion workstream
-with its declared prerequisites and found it implementable without another product
-decision. Manually modeled named-workstream dependencies are acyclic; research,
-organization, classic publication and the alternative delivery paths are deliberate
-terminal outcomes. Sampled rationale for React/TS, npm workspaces, caller-loaded
-models, bounded resource admission and separate delivery decisions remains explicit.
-Focused post-integration review found no new structural conflict. Local section/file
-links, `git diff --check` and locked-reference `SHA256SUMS` pass; README/AGENTS retain
-their exact pre-pass bytes. Revisions are localized contract changes, not a claim
-that the entire plan has reached steady-state convergence.
-
-Only `PLAN.md` was edited by this pass. No application implementation/test run,
-inference benchmark, device qualification, organization/domain mutation, publication,
-deployment, API retirement or execution-tracker access/conversion occurred.
-
-### Planning-workflow round — named behavior sources and development bootstrap
-
-12 October 2026. One additional planning-workflow round focused on the actual
-mechanics of developing the change and the meaning of “existing behavior.” Three
-independent read-only reviewers read the full pre-round plan, README and AGENTS,
-then grounded their findings in candidate/legacy/names/build sources. Their
-post-integration checks and one fresh-context bootstrap check belong to this round;
-no new four-round campaign, cross-model/GPT Pro session or convergence is claimed.
-
-Accepted corrections and rationale:
-
-1. Name behavior authorities per interaction. Candidate main-page/runtime/performance
-   and recovery behavior, locked production-style crop references, standalone names
-   grid visuals and the separately pinned classic frontend/API now have explicit
-   sources and target checks. A changing hostname or a repository name cannot
-   silently change the migration baseline; production source provenance remains an
-   inventory question rather than an inferred candidate/self-host commit.
-2. Correct source facts and picker targeting. Candidate names already has fullscreen /
-   gapless CSS but retains other chrome and below-image labels; main-field image
-   paste is planned. Browse Names moves into each face's own burger and captures
-   its stable ID. This avoids implementing an invented page-wide selection/fallback
-   mechanism and avoids treating desired behavior as already present.
-3. Import a runnable pinned dependency closure before introducing the facade.
-   `src/App.fsproj` and `src/Index.fs` need shared/historical Fable inputs, not only
-   `src/Next`. An allowlisted Git-object import with separate dirty-overlay provenance
-   preserves concurrent work. Inventory must supply executable paths/commands,
-   asset acquisition/digests, applicable checks and known-defect/deliberate-change
-   records before the destination build; legacy compilation inputs do not establish
-   legacy HTTP behavior as the product baseline.
-4. Retain the candidate toolchain/artifact contract for the first build and reuse
-   immutable verified runtime/photo assets. Frontend output alone is not inference
-   readiness, and full restaging has private/ignored lab prerequisites. Early runtime
-   reuse avoids a dependency on conversion/hosting extraction. Track app-worker and
-   hosted-runtime import graphs separately so path changes preserve both.
-5. Make the strict TS facade execute through emitted ESM and actual Fable imports.
-   Current Webpack does not load TS directly; declarations alone cannot demonstrate
-   integration. Check emitted exports, invocation and build identity before moving
-   paths, translating state/rendering and switching to Vite.
-6. Map checks by protected behavior and replace obsolete source/layout/UI assertions
-   alongside the declared change. Preserve numerical/resource/acquisition/export
-   coverage while removing assertions for removed controls. Contract-freeze acceptance
-   is a design/type/ownership walkthrough; actual independent-consumer execution is
-   checked after compute exists. This removes an accidental implementation prerequisite
-   from the earlier contract-design stage.
-
-Grounding: reviewed candidate remains `b2d945a8c7f0ff9f382fbfefaecc2651943077a3`;
-recorded live candidate and classic self-host pins remain separate identities.
-Inspected Product/menu/crop/names state and SCSS, historical EncodeImageDialog,
-Fable project/entry, Webpack/build scripts, runtime mirror/restaging, media envelope
-schemas and source/artifact checks. Cass was queried for relevant earlier feedback;
-current settled operator instructions remain authoritative.
-
-Validation: the fresh-context check could identify the behavior authorities and
-first runnable sequence without another product decision; its missing executable
-details are now explicit inventory outputs before import. Independent dependency
-review found the import/workspace/facade/path/TS/Vite sequence acyclic, with early
-runtime reuse independent of final crop/names and package extraction. Sampled
-source precedence, staged import, toolchain retention, runtime reuse and check
-migration choices have rationale. Local Markdown links/anchors, `git diff --check`
-and locked-reference `SHA256SUMS` pass; README/AGENTS and all prior review history
-retain their pre-round bytes. These are substantive planning corrections rather
-than a claim that the entire plan has reached steady-state convergence.
-
-Only `PLAN.md` was edited by this round. No application implementation/test run,
-benchmark, deployment, publication, remote mutation or execution-tracker access /
-conversion occurred. Existing concurrent edits and deferred execution records remain
-preserved.
-
-### Planning-workflow round — clean web-only release and restricted-device journeys
-
-12 October 2026. Latest operator direction: assess usability, likely frustration,
-complete outputs and exact guidance/degradation placement while keeping the UI
-clean; retire desktop packages for this release and require desktop-browser WebGPU.
-This supersedes active browser/Tauri parity, CPU selector/fallback and admitted-phone
-inference requirements. Existing historical review records retain their original
-scope and bytes; they do not reinstate those superseded requirements.
-
-Three independent read-only reviewers read the complete pre-round plan and entry
-guides, covering frustration, screen/status placement and retirement/development
-mechanics. Source grounding used the pinned candidate Product/SCSS, bridge/runtime,
-media, build hashes, browser artifact verifier and workflow/test consumers. Cass
-health/search were used for earlier context; current operator scope takes precedence.
-Follow-up checks after integration belong to this round. A separate fresh-context
-review checked restricted file/batch recovery and temporary native-named imports.
-This is one substantive review round, not a new four-round/convergence or live
-usability qualification claim.
-
-Accepted changes and rationale:
-
-1. Replace active native distribution/alignment promises throughout the plan and
-   entry guides. New inference needs desktop/laptop WebGPU; remove app CPU/WebGL
-   synthesis selection and fallback. Preserve qualified WASM mapping/e4e/photo/codec
-   helpers, independent reference/library capabilities and classic NVIDIA Compose.
-   Requiring WebGPU must not imply that the accepted photo encoder now runs on GPU.
-2. Name exact visible homes: one conditional restriction above the first +, face
-   operations/errors in their tile, Morph operations/errors beside Create Morph,
-   face/video export actions immediately beneath their complete output, costs in
-   the existing consent modal, and detailed support/retirement/recovery in Help/FAQ.
-   Healthy computers gain no permanent support panel or provider chooser. This
-   prevents duplicated banners and technical stage panels from obscuring useful work.
-3. Fail known-ineligible compute before detector/model downloads or crop effort.
-   Phones keep static names and compatible completed files, with Browse Names
-   discoverable in each face's menu. The same file entry becomes Open saved image;
-   recovery-first inspection remains available and ordinary-photo encoding is blocked.
-   Mixed batches can omit unavailable photos and commit recovered siblings together,
-   preserving order without a new import toolbar or whole-batch rejection.
-4. Specify full unclipped display and full-resolution/complete-sequence export.
-   Preparing file/export Retry belongs beside that result; final progress waits for
-   usable prepared bytes. Discover known-unavailable video preparation before costly
-   frames where possible, retain completed faces, and distinguish codec/cache/network
-   failure from unsupported compute. File Retry must not duplicate inference.
-5. Scope editable-file promises to PNG/WebP and disclose deferred external MP4
-   project reopening in compact format help. Explain large cold costs, e4e changes,
-   lost unfinished photos, social metadata loss and unsynced computer handoff at
-   their relevant actions. Some exclusions remain disappointing; document them
-   plainly without inventing an onboarding/migration flow or promising universal support.
-6. Retire native build/update/download recommendations and installed-host gates,
-   preserving archival artifacts/source and other sessions' edits. The browser
-   bridge/build still imports/hashes `desktop/runtime.mjs` and uses the artifact
-   verifier under `desktop/`; retain these first-build dependencies temporarily,
-   then remove dispatch/re-home checks in a checked revision. Replace app CPU/native
-   assertions with WebGPU refusal, loss, Retry and cleanup coverage. Any early
-   promoted artifact also applies the release scope and describes actual limitations.
-
-Validation: independent post-integration reviews found no remaining active native
-gate, CPU synthesis fallback, false MP4-reopening promise or placement conflict.
-The fresh-context check found restricted recovery/batches and bootstrap retirement
-implementable without another product decision; inventory/acquisition/budget/device
-qualification remain explicit execution prerequisites. Named dependencies remain
-acyclic; native retirement does not wait for native adapters or package/converter
-completion. Rationale is explicit for reduced release scope, early eligibility,
-recovery-only entry, full-output/file readiness and contextual guidance. Local links /
-anchors, locked-reference SHA256SUMS and `git diff --check` pass. Prior review history
-and locked references retain their bytes; entry-guide changes are limited to this
-release policy. The changed scope is substantive, not steady-state polish.
-
-This round edits `PLAN.md`, `README.md` and `AGENTS.md` only. No app implementation /
-test run, benchmark, installed-package removal, workflow/deployment mutation,
-publication, API shutdown or execution-tracker access/conversion occurred. Native
-retirement is specified work for execution; concurrent classic files remain preserved.
-
-### Planning-workflow round — original drift, debug control and research preservation
-
-12 October 2026. This round corrects the preceding exclusive desktop-WebGPU policy
-under the latest operator feedback. Retiring native packages was requested; CPU
-fallback removal and blanket phone prohibition were overinterpretations, now withdrawn.
-The prior round remains an unchanged historical record, not active authority for those
-exclusions. Its implied universal full-resolution video requirement is also corrected
-to preserve complete frames at the qualified/disclosed codec resolution.
-
-Read the current plan, README and AGENTS, and applied Jeffrey Emanuel's
-planning-workflow review method. Independent read-only reviews checked locked original
-requirements/actual drift, debug consent source/UI mechanics, the research catalogue
-and relevant candidate runtime/photo/cache/media code. Follow-up reviews checked the
-revised active sections and entry guides. A fresh-context reviewer assessed the
-candidate bootstrap and dependency branches without prior conversation. This is
-one review round with focused validation; no GPT Pro/cross-model session, fresh
-four-round campaign or convergence claim is made.
-
-Integrated revisions and rationale:
-
-1. Add the original-to-current requirements ledger. Separate original requirements,
-   recorded accepted changes/deferrals, engineering proposals and withdrawn errors.
-   Name actual lost capabilities and added scope instead of calling them all
-   clarifications. Reuse that baseline in each small checked revision.
-2. Preserve the requested CPU/WebGPU selector above the first +, actual adapter
-   probing, fixed WebGPU → CPU failure-only preference, explicit CPU choice and
-   bounded fallback within approved assets/costs. Remove WebGL execution only,
-   preserving shared `manifest.webgl` data. Capability/resource admission governs
-   each operation; computer guidance is contextual and capable phones can continue.
-3. Keep native packages retired. Browser bootstrap still retains required shared
-   native-directory dependencies until dispatch removal/verifier relocation passes
-   browser checks. No native build/parity/update requirement is reintroduced.
-4. Specify the existing below-Help debug area as a compact anchored On/Off disclosure,
-   with FAQ/footer access, correct restoration/tab-only persistence copy and immediate
-   withdrawal cleanup. Debug consent remains distinct from analytics. Correct the
-   ambiguous future-opt-in failure toast and scope one-shot reports to their owning
-   failed attempt; verify actual collector retention before a deletion promise.
-5. Add research accounting for all 69 ledger entries, six present candidate families,
-   the closed 10 October round, historical/device protocols, all 25 v2 proposals,
-   v3/backlog and relevant mobile receipts. Preserve integrated mechanisms and
-   negative lessons; missing historical sources/raw reports remain explicitly missing.
-   This closes catalogue traceability, not every-device numerical/performance proof.
-6. Preserve iPhone CPU synthesis, bounded streamed e4e, mobile kernels, sequential
-   constrained worker teardown, background watchdogs and cache repair. Phone admission
-   metadata and Simulator receipts keep their actual trial scope. Do not reinstate
-   the superseded costly per-device product encoder check or add a physical-phone veto.
-7. Preserve 1024→512 WebCodecs and 512 FFmpeg degradation with actual resolution beside
-   result/format actions. Complete means unclipped framing and the entire selected
-   sequence; codec fallback must not silently become a universal 1024px MP4 gate.
-8. Simplify extraction sequencing: runnable typed facade + frozen contracts + applicable
-   build checks + accepted manager handles unlock compute. Path/TS/React/Vite stages
-   remain ordered and join final integration; integrate shared-bridge changes in
-   separate checked revisions rather than unnecessarily serialising all work.
-
-Validation: fresh-context bootstrap is implementable after the explicitly required
-inventory handoff. Named dependency branches are acyclic and final integration joins
-both. Rationale sampling covered framework choice, loaded-handle ownership, resource
-admission, file identity and contextual UI placement. Independent revised-text checks
-found no remaining active exclusive desktop-WebGPU/phone ban, native release gate,
-universal 1024px video requirement or telemetry/analytics consent conflation.
-Local Markdown paths/anchors, locked-reference SHA256SUMS and `git diff --check`
-pass. Existing review history and locked bytes are preserved; README/AGENTS edits
-are limited to corrected release-policy guidance. This round contains substantive
-corrections/additions rather than steady-state polish.
-
-Only `PLAN.md`, `README.md` and `AGENTS.md` were edited. No application implementation,
-build/test run, benchmark, Beads access/conversion, commit/publication, installed-package
-removal, workflow mutation, deployment or API shutdown occurred. Native retirement
-and product changes remain planned execution; concurrent classic work is preserved.
-
-### Planning-workflow round — first-class phones, CI matrix and independent acceptance
-
-12 October 2026. The operator reaffirmed first-class phones, existing desktop/mobile
-CI and performance preservation, worker use to save GitHub minutes, accepted 512px
-video, requested goal-based additional image/video exports and an explicit unbiased
-published-package acceptance bead, and retained the report toast when reporting is
-Off with a clear later opt-out. This round follows that intent rather than recasting
-phone support as a limited desktop handoff feature.
-
-The earlier exclusive-provider review degraded the **planned support contract** by
-misreading native retirement and replacing CPU/mobile recovery checks. It did not
-alter the application or workflows. Generic “available devices” wording was inadequate
-for preserving the actual matrix. Named lane/behavior commitments now prevent that
-ambiguity; previous review records remain historical and byte-preserved.
-
-Read current entry guides/plan and relevant candidate guides/sources. Three independent
-read-only reviews audited feature/CI disposition, performance/research evidence and
-workers/exports, followed by focused revised-text checks. Cass recovered earlier
-Simulator/CI feedback. GitHub read-only APIs confirmed current-source site/mobile
-success, job labels/roles and the older failed manual matrix run. Public entry HTML
-references the recorded app/style filenames; downloaded app/style/runtime-manifest
-bytes match the retained delivery receipt. This is not new inference qualification.
-
-Integrated revisions and rationale:
-
-1. First-class phone support is explicit, including responsive ordinary journeys,
-   CPU/eligible GPU/photo paths and Android/iOS CI. Preserve Auto default, explicit
-   CPU/WebGPU, one-face usability, tester bulk action, storage-consent timing and
-   safe Help/footer issue context. No physical-iPhone speed/certification is invented.
-2. Name the full existing desktop/mobile/GPU workflow/job matrix and its current roles.
-   Keep automatic qualified-push previews after explicit source handover; required
-   exact-artifact CPU/compiled-UI checks survive. Manual matrix and hardware GPU
-   evidence do not become new promotion gates. Repair stale controls and recovered
-   “photo” fixtures instead of dropping cells or counting preview reuse as e4e.
-3. Catalogue achieved scoped timings and unavailable performance cells. Retain direct
-   GPU kernels/pipeline/cache/media wins, actual inference/readback/shard timings,
-   keyed canary admission, direct/mobile ORT GPU mapping overlap and bounded CPU/e4e
-   threads/worker lifetimes. Pair compatible migration cells without arbitrary
-   cross-device budgets; no new build exists to claim whole-matrix non-regression.
-4. Preserve worker acceleration and exact-artifact sharing. Use actual available
-   eris/TrueNAS/Triton/other capabilities with shared physical-device leases, bounded
-   runs and GitHub provenance/gates. Triton **inference-service** retirement does not
-   retire the machine. Proposed/current worker readiness and Simulator byte identity
-   are not silently promoted to achieved facts.
-5. Extend export design with optional qualified options for a particular still/video
-   goal under the existing result, preserving simple defaults, 512px video, complete
-   frames, actual formats, metadata and bounded file reuse. Extra codecs/presets are
-   proposed work, not falsely described as existing candidate export support.
-6. Retain the Off-state report toast. One-shot versus future-report consent is explicit;
-   no repeated opt-in invitation while On, and the below-Help/footer-linked disclosure
-   supports immediate withdrawal without stopping generation. Debug reporting is
-   distinct from existing analytics/platform telemetry; no all-telemetry promise.
-7. Add independent public-registry/docs acceptance, after publication, without author /
-   conversation/private-checkout help. Created only the explicitly requested deferred
-   `fm-fy2.21` using Beads Rust JSONL-only mode. Its public-package prerequisites are
-   recorded; historical broad-release edges are not imported as new blockers. All
-   21 earlier portable records retain their complete semantic content/status/deps.
-8. Record real mechanical changes, including permission-gated eager acquisition and
-   moving HTTP shard materialization before offline engine work. Preserve bounded
-   local reads without requiring all shards in RAM, and qualify cold-photo tradeoffs.
-   Both `api.facemorph.me` and `checkface.facemorph.me` remain explicitly retired.
-9. Incorporate the operator's synthesis/compression clarification: raw network output
-   retains small frozen numerical error margins, while image compression/container
-   bytes may differ. Exact recovery values and lossless helper pixel preservation
-   are separate from encoded-file identity; artifact/model hashes remain provenance.
-
-Validation: revised-text reviews found no remaining phone downgrade, lost named lane,
-automatic-preview change, false worker/codec claim or ambiguous toast removal. Named
-workstream dependencies remain acyclic; publication precedes independent acceptance
-and neither gates early API retirement. Portable Beads dependency cycle check is empty;
-the one new item is deferred and earlier records are unchanged. Local Markdown paths /
-anchors, locked-reference SHA256SUMS and `git diff --check` pass. The prior review history
-remains byte-preserved. Substantive additions/corrections are not a convergence claim.
-
-Edited `PLAN.md`, `README.md`, `AGENTS.md` and the one added portable acceptance record.
-No application/workflow implementation, local build/test, benchmark, CI dispatch,
-package publication, deployment, API shutdown, worker registration or classic edits
-occurred. Existing pipeline/device reports were inspected, not rerun. Beads access is
-the narrowly requested exception; the rest of the execution graph remains deferred.
-
-### Planning-workflow round — useful download overlap and targeted autoresearch
-
-12 October 2026. The operator reaffirmed minimizing each wait and complete choosing /
-generation time, recommended both models with concise estimates, synthesis-first
-downloads during photo selection, helpful slow-work desktop-WebGPU guidance and
-budgeted cached-model warming. New opportunities must be raised to the operator /
-planner. The operator also requested a public-methodology check and clear targeted
-autoresearch/history preservation.
-
-Read the active plan/guides, current classic research protocol/records/runner/templates
-and source seams for prefetch, cache handles and worker residency. Cass recovered
-relevant prior research sessions. Three read-only independent reviews checked UX /
-consent, runtime/resource mechanics and the targeted research launch; focused revised
-reviews confirmed the material ownership and per-capability readiness fixes. Public
-primary sources inspected: Karpathy's autoresearch protocol, Kalibera/Jones's
-benchmarking paper, the reusable-holdout researchers' explanation and official ONNX
-Runtime Web performance guidance. Their applicable lessons are linked above.
-
-Integrated changes and rationale:
-
-1. Replace crop-OK-delayed acquisition with explicit selected-bundle preparation during
-   choosing/review. Recommend Generate and encode, retain Generate and model-free recovery.
-   Synthesis-first ordering exists in the candidate; wider independent overlap is new.
-   Only the executing capability's own required assets gate its admission, so requested
-   synthesis need not wait for photo assets. Record the cancelled-crop bandwidth tradeoff.
-2. Show each offered purpose's actual missing bytes, transfer range and use range, or
-   an honest unknown. Keep estimates concise, loading/checks secondary and the desktop
-   WebGPU nudge contextual; no assumed physical-phone timing or GPU-e4e speedup.
-3. Place optional pre-source preparation beside Choose image and ongoing status/Cancel
-   in existing modal/tile areas. Explicitly define setup Cancel, crop/source/initial-
-   chooser Cancel, later add-file cancellation and missing-asset resumption. No cancelled
-   continuation silently revives and independent authorized owners remain independent.
-4. Qualify low-priority verified-cache runtime warming as a new optimization, separate
-   from existing disk-cache prefetch. Count aggregate download/live resources, protect
-   foreground and zero-inference recovery, and retain constrained phone phase teardown.
-5. Make local-only/no-network-repair handles concrete. Existing cache presence/peek /
-   readOnly and network-repair-capable acquire handles cannot satisfy that guarantee.
-   Freeze typed invalidation, manager reacquisition and tests for both cache backends.
-6. Add a targeted launch playbook with actual wrapper flags, worker/path/lease readiness,
-   bounded heavy checks, pinned controls, explicit chooser/overlap instrumentation,
-   noise-aware pairing and fresh confirmation. Name prospective acquisition, cached-
-   hydration and photo-lifecycle campaigns; neither runner nor adapters are claimed to
-   be the completed evaluator. Preserve native history separately from web-release work.
-7. Preserve experiments/frozen reports/history, append-only round journals, all existing
-   ledger rows and distinct execution journals. Re-homing maintains provenance and one
-   canonical active writable history; unknown or unretained receipts stay labelled.
-   Report proposed opportunities with scoped evidence, costs, suitable worker and test.
-
-Validation: focused reviews pass after the ownership/readiness corrections. Local
-Markdown paths/anchors, `git diff --check` and locked-reference SHA256SUMS pass;
-the prior planning review history is byte-preserved. Classic research guides/protocol /
-ledger/runner and the entire portable Beads file are unchanged from this pass's
-baseline. New scheduling/launch refinements are substantive, not a convergence claim.
-
-Edited only `PLAN.md`, `README.md` and `AGENTS.md` in this pass. No application or
-classic edits, builds/application tests, experiments/benchmarks, CI dispatch, new
-Beads records, package publication, deployments or worker registration occurred.
-
-### Planning-workflow round — decomposition readiness and live-state grounding
-
-15 October 2026. Requested as the planning pass before execution work is created. One
-review round with live-state grounding and one fresh-context decomposition test: a
-reviewer with no project context read a frozen copy of this plan and its entry guide
-and tried to derive a workstream graph, an ownership map and a guess log. Its verdict
-was that a skeleton was derivable but not a graph, because roughly nineteen units of
-required work had no workstream, seven sections stated no prerequisite, and several
-sections claimed the same work. This is not a convergence claim and no cross-model or
-GPT Pro session took place. The operator also gave a mid-round end-state direction
-(classic wound down; new development and any further autoresearch in this repository,
-optimising the new app), which is integrated.
-
-Accepted changes and rationale:
-
-1. Name the unowned work. Debug-reporting control, bundle consent with overlap and
-   warming, the device check with calibration, and the application scheduler each had
-   a full specification and a verification stub but no workstream that builds them.
-   They are now four named workstreams, and a tie-break table settles the remaining
-   shared items (native retirement named in five sections, Browse Names, Morph
-   responsibilities, export naming, schema versioning). A mechanical decomposition of
-   the previous sections would have silently dropped them.
-2. Collect the dependencies. One table of named-workstream prerequisites replaces
-   about a dozen scattered statements; inferred edges are marked. It exposes that the
-   historical records' edges contradict the plan in three places, that the longest
-   dependency chain runs through two formerly unowned workstreams (the operation
-   controller and acquisition consent), and that eight
-   workstreams edit the same bridge file while worktrees are forbidden. Split seams are
-   listed for the oversized units, chiefly Face controls and modals.
-3. Record the repository end state and its consequences: autoresearch re-homing
-   (including a lease-continuity hazard and a promotion gate that reads the research
-   ledger and silently skips the check when it is absent), application deploy and
-   collector re-homing (the monorepo had no home for staging, promotion, the
-   diagnostics collector or the catalogue pipeline), and a staged, operator-approved
-   classic wind-down. Nothing is deleted or archived by the plan.
-4. Ground the static-names workstream in what is published. Latents already exist for
-   all 5,055 names; canonical recovery-bearing pixels do not, and the only image
-   tooling calls the API that is being retired. A catalogue result generator is
-   specified that does not wait for compute extraction, with a size and Cloudflare
-   limit check. Known source references to the retiring hosts are tabulated and the
-   preview assets are to be snapshotted before shutdown.
-5. Record a live gap: the diagnostics bucket has no expiration rule while delivered
-   consent copy promises deletion after 30 days. The plan does not migrate that
-   promise into the new app until it is true.
-6. Close latent cycles and undefined milestones: the manager's "loaded handles
-   accepted" milestone and provider-adapter ownership, empty package scaffolding
-   before the checks that gate extraction, multi-selection acceptance placed in face
-   controls rather than confirmed-crop, an initial measurement behind the numeric
-   byte ceilings, warming made conditional on research, and candidate-source edits
-   for an early promotion made on a non-deploying branch.
-
-Grounding: the whole plan and entry guides; the candidate at `b2d945a` (names, debug
-toast, limits, tolerances, `manifest.webgl`, promotion script, collector and catalogue
-pipeline); the 10 October names receipt; Cloudflare limits and R2 lifecycle
-documentation; a read-only Cloudflare API query of the diagnostics bucket's lifecycle
-and lock rules; GitHub organization and repository listings; local toolchain and GPU
-checks on the workstation. Cass returned no sessions for this workspace after
-12 October. The existing portable tracker export was read only to compare its task
-titles and dependency edges with this plan; no record was created, imported, updated
-or queried through the tracker tool.
-
-Validation: local anchors and relative links resolve, there is no trailing whitespace,
-every workstream section appears in the prerequisites table, and the derived graph
-(31 nodes, 85 edges) is acyclic with only declared terminals lacking consumers. Every
-difference from the pre-round text is a hunk of this round. The independent reviewer's
-remaining findings are either integrated above or listed below.
-
-Open items that need an operator decision before or during execution setup:
-whether execution records are rewired in place keeping their IDs or replaced; adding an
-expiration rule to the diagnostics bucket or changing the promise before about
-21 October; confirming the set classic keeps; which artifacts are published to npm and
-how the converter is distributed; provisioning .NET for the first destination build;
-and whether classic's four uncommitted research documents are adopted into the
-re-homing import.
-
-Edited `PLAN.md`, `README.md` and `AGENTS.md` only. No application or classic
-edits, builds, experiments, CI dispatch, remote configuration change, package
-publication, deployment or Beads change occurred.
-
-### Planning-workflow round — interim .NET, names payload and user-visible changes
-
-16 October 2026. Requested as operator questions: why .NET is needed at all, whether
-named faces can avoid a multi-megabyte download while every morph frame is still computed
-on the device, and what else would change the experience of the service. One review round
-with live-state grounding; no cross-model or GPT Pro session took place, so this is not a
-convergence claim. Cass returned no earlier operator feedback on these topics. Nothing here
-changes a settled decision. Items marked **Proposed** wait for the operator, and no
-sequencing section above has been rewritten.
-
-**1. .NET rebuilds the F# candidate and is needed only for an interim build.** Verified at
-the pinned candidate and on this workstation today:
-
-- The F# that Next actually uses is about 2,000 lines: `Product.fs` 1,468, `ProjectJson.fs`
-  266, `Contracts.fs` 101, `Runtime.fs` 83, `ModelAssets.fs` 45, plus `Config` flags,
-  `FancyButton` (33), `Logos` (6) and, from the 515-line legacy `App.fs`, only `ThemedApp`
-  (a theme provider) and `header`. The other ~2,300 compiled lines (legacy dialogs, `MorphForm`,
-  `Share`, `Review`) are not used by Next; they compile because `App.fsproj` is one project.
-  The crop UI, compute, media, workers and bridge are already `.mjs`, which needs no .NET.
-- `global.json` pins SDK 5.0.302 (rolling forward only within 5.0) and `.config` pins Fable
-  3.1.12. .NET 5 has long been out of support. This workstation (eris) has a .NET 10.0.11
-  runtime and no SDK, so it cannot build the candidate. Classic CI still builds it (run
-  38066762339), so provisioning is possible but not free.
-- Comparing old builds does not need .NET. The plan already makes the control a pinned
-  built artifact recorded by hash, never a rebuilt candidate ([autoresearch re-homing](#autoresearch-re-homing)).
-  A built artifact is static files (the local classic `deploy-next/` is 9.5 MB, and classic CI
-  already produces the artifact). Only changing the old source requires rebuilding it.
-- The plan already removes F#/Fable from new-app builds after the TS/React/Vite milestone. The
-  interim matters because the first destination build gates seven workstreams (see the
-  prerequisites table), so a toolchain absent from the workstation sits at the root of the graph.
-- The interim buys a running app in the new repository early, stepwise rollback, and a facade
-  proven through real Fable imports. It costs throwaway scaffolding (the import closure with
-  Webpack/Fable pins, the emitted-ESM interop plumbing, checks that assert F# source text),
-  four toolchains in CI during migration, .NET on every worker, and applying declared UX
-  changes to F# that is then ported anyway. The TS/React port of `Product.fs` is unavoidable
-  either way.
-
-**Proposed (D1): do not build F# in the new repository.** Import only the JS closure (bridge,
-`browser/`, `photo/`, media, assets, scripts, tests, `project-v1.fixture.json`). Port the F#
-files and the theme/header/button/logo shims to TS/React/Vite as a *faithful* port, using the
-control artifact as the behaviour oracle: the `.next-*` DOM contract the plan already requires
-TS components to retain, the same Playwright flows and the frozen UX matrix. Port the
-controller first as pure typed reducers with unit tests, then rendering (the seam
-[application migration](#application-migration) already names). Apply declared UX changes as
-separate checked revisions afterwards, so a rewrite is never combined with untracked UX
-drift. Compute extraction proceeds against the JS bridge through a TS typed facade and needs
-no F#. Classic remains the only place F# is built, for the control. Risks to carry: parity
-risk concentrates in one port step, Elmish message ordering must map to reducers, and
-`ProjectJson` must round-trip the existing fixture (embedded MP4 recovery data must stay
-readable). **Fallback trigger:** if the faithful port cannot satisfy the frozen flow matrix
-after the controller and first render pass, within a box the operator sets, provision .NET 5
-in a container worker and follow the original path. Option A, keeping the plan as written,
-remains valid.
-
-**2. Named faces: no multi-megabyte per-name download is planned; the figures differ.**
-Measured or read at source today:
-
-| Figure | What it is | Fetched per picked name? |
-| --- | --- | --- |
-| 4,194,304 B | One 1024² RGBA buffer, the worker-to-page hand-off | No, memory only |
-| 4.38 MB | Recovery-bearing PNG Save before WebP became the default | No; the plan rejects PNG as a catalogue format (about 22 GB) |
-| about 117 KB | Planned recovery-bearing 1024 WebP result (lossy, quality 0.8, about 50 KB of metadata carrying the exact W+) | Yes, only the picked name |
-| 36,864 B | W+ latent, already published for all 5,055 names | Optional, see below |
-| 3,405,692 B raw | `catalogue.json` for 5,055 rows; 569,940 B Brotli on the live site, `no-cache` | Once when names or previews are used |
-
-The only multi-megabyte item is the catalogue. Every one of its 5,055 rows repeats identical
-`modelSha256`, `generationSha256`, size, space and shape (one distinct set), plus fields the
-code already re-derives and checks (`value` equals the lowercased name, `id` equals
-SHA-256(`value`), the latent URL equals the id-derived URL). The planned per-name result
-descriptors would grow it. **D3 (superseded 16 October: the file is not a requirement, see
-[names selection](#names-selection-implementation-gap-and-complete-target)).** The original proposal was
-to hoist the constants into the existing top-level `latentIdentity`, drop derivable fields and keep one
-32-byte hash per name. Measured on the local build's catalogue: 394 KB raw / 220 KB gzip with names plus
-latent hashes, 46 KB / 18 KB for names only, a floor of 162 KB for the hashes; those figures now serve
-as the spike's reference points. Validation is unchanged because identities are still re-derived.
-**Hypothesis to test:** the WebP's embedded latent equals the published latent, so a
-pick could validate the embedded W+ against a published hash and skip the separate 36 KB request.
-The plan keeps regenerating canonical results rather than reusing historic JPEGs: those came from
-the retiring API, and a guessed latent cannot make them recovery-bearing. Regeneration is one-time
-offline work, not a per-visitor cost.
-
-**3. Proposed (D2; decided 16 October by the operator, the measurement dropped as a gate and replaced by ordinary visual review; this paragraph is history): the morph-endpoint representation for a picked name is unspecified.** The
-Morph rule lets an "owned usable endpoint representation" satisfy a dependency and asks for
-endpoint reuse without repeated synthesis. The candidate builds its four anchor frames from
-the saved face's pixels when one exists, so for a static name the endpoint would be the decoded
-lossy WebP, as it already is for a reopened saved still. The delivered morph forms are already
-lossy (H.264 MP4, display-size JPEG at 0.85 in the slider), so the difference is probably
-invisible, but it is unmeasured and the quality policy covers exports only. Options: E1 reuse
-the decoded static result; E2 synthesize the endpoints from the validated latent whenever Morph
-runs (the generator is acquired for Morph anyway; cost is two frames, small against the whole
-morph except on slow CPU routes); E3 reuse unless a measured threshold fails. Decide by
-measurement: for about fifty names compare the decoded WebP with on-device synthesis from the same latent
-(PSNR/SSIM at 1024 and at 512 after the video encode) and inspect the endpoint-to-neighbour step in the
-slider. Adopt E1 only if the step is no larger than the encode already introduces; otherwise E2.
-Every option keeps the pick, preview and Save inference-free and every intermediate frame
-computed on the device.
-
-**4. Coverage gap: preview-state chrome and copy to change at cutover is not inventoried.**
-From `Product.fs` at the pinned candidate, none of these strings is named in this plan: the
-preview strip ("Experimental preview of the next facemorph.me", with links to "Classic
-facemorph.me", "Its server is retiring" and Report an issue); the tester invite ("Thanks for
-testing FaceMorph" with its consent buttons); the error footer "Use classic FaceMorph while we
-fix this"; the slow-device link to `desktop/README.md` on the candidate branch; the footer
-"Preview version"; and FAQ entries that become wrong in production: "What is next.facemorph.me?"
-(says the classic site still works), "Is there an API I can self-host?" (documents
-`checkface.facemorph.me/api`, a host this plan retires completely), "Can I morph a photo"
-(says Upload image, renamed Encode image), the "about 200 MB / about 1 GB" figures (the plan
-says to use actual bytes) and the support address. The plan names only classic recovery
-links, API FAQ links and retirement copy. **Proposed:** add a cutover copy and chrome
-inventory to [domain handover and retirement preparation](#domain-handover-and-retirement-preparation),
-which already owns retirement and FAQ copy, listing each string with its replacement or
-removal, and a check that no production build links to a retired host or to the candidate
-branch.
-
-**5. User-visible change register.** One place to see what a returning visitor feels, with
-the authority for each. "Settled" is an operator decision; "Planned" is specified, not built.
-
-| Change | Compared with | Authority | Status and remaining choice |
-| --- | --- | --- | --- |
-| Faces are computed on the device; first use needs consent and a model download (candidate FAQ: about 200 MB generator, about 1 GB more for photos; use actual bytes); phones and CPU routes are slower | Hosted legacy site | [consent](#consented-downloads-useful-overlap-and-cached-model-warming), [retirement](#retire-hosted-inference-and-the-old-api-completely) | Settled. Cost is shown before download. |
-| Result links, GUID links, link previews, public API and browser extension end; sharing means sending the file | Hosted legacy site | [ledger](#requirements-drift-and-decision-ledger) | Settled real loss. Old links stop working. |
-| Face download is lossy WebP (about 117 KB, includes editable-face data), PNG optional, morph is MP4 (1024, 512 fallback); GIF, animated WebP and JPEG downloads the old API produced are not offered | Hosted legacy site | [export direction](#file-sharing-and-export-direction) | Settled as deferred for GIF and the others. Export quality is unchanged: WebP quality 0.8, PNG lossless on request, video settings as they are. |
-| Standalone names site and two-name flow become an in-app picker; no search | Hosted legacy site | [names](#static-names-and-picker) | Settled. |
-| New production origin; no cache or session carry-over, so models download once more | `next.facemorph.me` | [retirement](#retire-hosted-inference-and-the-old-api-completely) | Settled. |
-| Picking a name gives a finished face at once, with no model or Generate step; morphing still needs the generator | Candidate | [names](#names-selection-implementation-gap-and-complete-target) | Planned. A picked name contributes its latent and its validated image (preview, slider and video); decided 16 October. |
-| Browse Names moves into each face's menu; gapless picker, names over images, no header, search or X, small Back | Candidate | [face controls](#face-controls-and-modals) | Planned. |
-| Hold-to-compare removed | Candidate | [UI requirements](#next-release-ui-and-photo-requirements) | Settled. |
-| WebGL execution removed; Auto, CPU and WebGPU remain, and a device that ran well only on WebGL falls to CPU | Candidate | [provider simplification](#provider-simplification) | Settled. The route read was done on 17 October (see provider simplification); the Google Analytics distribution was not read and adds no requirement. |
-| Photo flow rebuilt to the locked crop mockups; Upload image becomes Encode image; paste into the text field; ordered multi-face insert | Candidate | [face controls](#face-controls-and-modals) | Planned. |
-| Morph generates unfinished words and seeds itself; one progress bar with Cancel; duplicate starts disabled | Candidate | [UI requirements](#next-release-ui-and-photo-requirements) | Settled. |
-| Consent modal (Generate and encode recommended, or Generate) replaces the consent toast; photo downloads overlap with choosing and crop review | Candidate | [consent](#consented-downloads-useful-overlap-and-cached-model-warming) | Planned. |
-| Share first, Save beside it, format choice and informative filenames under each output | Candidate | [export direction](#file-sharing-and-export-direction) | Planned. |
-| Debug-report control becomes an anchored disclosure under Help; Off-state toast kept | Candidate | [debug reporting](#debug-reporting-control-and-consent) | Planned. |
-| Preview strip, tester invite, classic links and FAQ copy change at cutover | Candidate | section 4 above | Gap, proposed inventory. |
-| Optional eager warming of the verified model cache on capable devices | Candidate | [consent](#consented-downloads-useful-overlap-and-cached-model-warming) | Planned, research-gated, unmeasured. Memory and network cost on phones. |
-| Pipelined morph (129.8 to 69.7 ms per frame on the RTX 2080 SUPER, ABBA x4) and RGBA8 conversion are kept; first Save is slower (CPU 108.6 to 202.2 ms) but 117 KB instead of 4.38 MB, and repeat Save is faster | Recent experiments | [synthesis and export](#synthesis-correctness-and-export-quality) | Implemented in the candidate. Evidence is that machine and workload only. |
-
-Unchanged by design: all integrated performance paths, recovery, cancellation, the scrub
-slider, session restore, bounded CPU fallback and the phone paths.
-
-Grounding: the pinned candidate (`Product.fs`, `App.fsproj`, `global.json`, `.config`,
-`public-previews.mjs`, `product-bridge.mjs`, `morph-frames.mjs`, the quality policy); this plan's
-prerequisites table, names, export and ledger sections; `deploy-next/catalogue.json` measured
-locally; one read-only GET of the live catalogue for its compressed size; `dotnet --info` on this
-workstation. No analytics, device or performance measurement was made.
-
-Open items that need an operator decision: D1 (skip the interim F# build or keep it); D2 (endpoint
-representation for picked names, after the measurement above); D3 (compact catalogue and whether
-to drop the separate latent request); whether to read WebGL route data before removing it; and
-accepting the cutover copy and chrome inventory as a named item.
-
-Edited `PLAN.md` only. No application or classic edits, builds, experiments, CI dispatch, remote
-configuration change, package publication, deployment or Beads change occurred.
-
-### Planning-workflow round — dependency currency, frozen self-host and crop fidelity
-
-16 October 2026, second round that day, driven by three operator messages. One review round with
-live-state grounding; no cross-model or GPT Pro session took place, so this is not a convergence
-claim. The operator's remark that endpoints should eventually not be hosted on Triton concerns hosted
-API endpoints, which this plan already retires; it does not settle D2, which concerns the first and
-last frames of a morph and stays open.
-
-Accepted changes and rationale:
-
-1. Record three operator directions in the ledger: general dependencies to latest stable with
-   bleeding edge only as a qualified non-shipping lane; classic self-host as a frozen, finished
-   product; crop very similar to the old hosted UI with the export flow kept.
-2. Add the dependency-currency policy and a verified currency table. Its main findings: React 19
-   forces a UI-kit change (Material-UI v4 declares React 16 to 17), ONNX Runtime is a measured change
-   rather than a free bump (candidate runs 1.24.3 and 1.22.0; latest is 1.30.0), and nightly artifacts
-   are not equally retained (PyTorch's index held 55).
-3. Reframe the self-host work as rot-proofing rather than updating, because the operator wants it
-   frozen. Findings that matter: the build clones another repository at build time, two of four base
-   images are floating tags, the 1.2 GB e4e checkpoint rests on one Google Drive link, the README's
-   quickstart is long and has a wrong directory, and the pinned PyTorch wheels should not cover
-   Pascal GPUs. The one-command contract and a README-is-the-test acceptance are specified.
-4. Tighten crop fidelity with an inventory read from the locked images and the legacy source, and a
-   parity spike for the cropper library on its latest version.
-
-Grounding: npm and PyPI registries, nodejs.org's release index and PyTorch's wheel indexes, queried
-16 October; the candidate's runtime manifest; classic `self-host/` Dockerfile, requirements,
-compose files, README, asset tables and frontend-overlay README; manifest checks of four base images
-and GitHub checks of two pinned commits; HEAD requests to the three asset URLs; the four locked
-images (three viewed); PyTorch's published architecture notices by web search, titles and summaries
-only. Verified nothing about whether the frozen stack builds or runs today.
-
-Validation: local anchors resolve and there is no trailing whitespace; every changed hunk is listed
-in the edit summary below.
-
-Superseded by the next entry. Open items for the operator: D1 to D3 from the earlier round (D2 unchanged); D4 home of the
-distribution; D5 publish prebuilt GHCR images after a licence review; D6 e4e weight durability; D7 UI
-kit path; and whether "keep the export flow" meant the candidate's flow as written or something
-further.
-
-Edited `PLAN.md` only (ledger rows, one new section, one table cell, this entry). No application or
-classic edits, builds, container runs, experiments, CI dispatch, remote configuration change,
-repository creation, package publication, deployment or Beads change occurred.
-
-### Planning-workflow round — operator decisions, download labels and ONNX Runtime Web
-
-16 October 2026, third round that day, after the operator replied to the open decisions. One review
-round with live-state grounding; no cross-model or GPT Pro session took place, so this is not a
-convergence claim.
-
-Accepted changes and rationale:
-
-1. Rename the download choices to the verbs the interface already uses. The consent modal offers
-   **Generate and encode** (recommended when both routes are eligible) and **Generate**; the later
-   optional action is **Prepare encoder**; the example rows read Generate and Encode. The candidate
-   currently shows "Download" and "Plus photo encoder" buttons in a toast and "Download the face model?"
-   or "Download the photo encoder?" in its gate dialog, so this is a vocabulary change on top of the
-   planned two-bundle modal, not a behaviour change. The wording is changed throughout, including
-   earlier review entries, to avoid stale labels contradicting the plan.
-2. Record D4 to D7 as settled (see the section above). D4 is settled by the locked original plan
-   (`overview-source.md`: rename the repository to the classic name and integrate the server with
-   docker-compose), which I had wrongly treated as open; the frozen distribution lives in
-   `facemorph.me-classic`. D5: no published backend images, so the user builds locally, with our own
-   frontend build hostable and buildable. D6: upstream weight hosts, including the single Google Drive
-   link, are an accepted dependency. D7: MUI moves to the latest, with the visual-parity check kept.
-3. Add the ONNX Runtime Web currency evaluation as a named workstream, with its prerequisites row.
-   Findings that shape it: ORT Web is removing JSEP, which the pinned WebGPU runtime uses, in two
-   phases; most WebGPU gains in recent notes target LLM workloads this app does not run; and
-   `webonnx/wonnx` is archived and excluded.
-
-Grounding: ORT release notes for 1.23 to 1.31 and the JSEP and WebGL removal design documents on
-GitHub; npm versions; the `wonnx` repository status; the locked original plan; the candidate's download
-dialog source. Nothing was measured, built or run, and no ORT Web result for this app exists yet.
-
-Validation: local anchors resolve, no trailing whitespace remains, and the old labels no longer appear
-in `PLAN.md`, `README.md` or `AGENTS.md`.
-
-Open items for the operator (D1 was decided in the next entry): D1 (skip the interim F# build or keep it), D2 (morph first and last frame
-representation for picked names, after the measurement), D3 (compact catalogue), whether to read WebGL
-route data before removing WebGL, accepting the cutover copy and chrome inventory, and whether "keep the
-export flow" meant the candidate's flow as written.
-
-Edited `PLAN.md`, plus label wording only in `README.md` and `AGENTS.md`. The tracker export's task
-descriptions were not touched, per the planning-pass rule; they predate these revisions. No application
-or classic edits, builds, container runs, experiments, CI dispatch, remote change, repository creation,
-package publication or deployment occurred.
-
-### Planning-workflow round — D1 decided, optional cropper, D5 to D7 confirmed
-
-16 October 2026, fourth round that day, after the operator replied that .NET builds should happen only
-if needed, that the cropper library is optional, that D5 follows the original plan, that D6 was already
-thought through and that D7 is simply to make the new MUI work. One review round; no cross-model or GPT
-Pro session took place, so this is not a convergence claim.
-
-Accepted changes and rationale:
-
-1. **D1 decided: no .NET build in this repository.** Nothing found needs one. Rebuilding the old source
-   is unnecessary because the control is the built artifact; the F# the new app replaces is about
-   2,000 lines and the compute, crop, media and worker code is already JS; project-JSON goldens come
-   from driving the control artifact in a headless browser; and the frozen self-host builds its
-   frontend from a hosted bundle by default, keeping its pinned .NET 5 stage only as the opt-in
-   source-build route. Integrated into the ledger, migration gates, sequencing, prerequisites table,
-   candidate import (JS closure only, `deploy-next/` seeded from the control artifact), workspace
-   build, application migration (typed facade, controller port, rendering port on Vite, parity against
-   the control) and compute extraction. The earlier import-and-facade path remains only as a fallback.
-2. **Risks D1 introduces, each with its mitigation in the plan:** parity risk concentrates in one port
-   step (control-artifact oracle and controller-first order); Elmish message ordering must map to
-   reducers (transition tests with goldens); `ProjectJson` must stay readable by existing files
-   (fixture and control-artifact goldens); checks that read F# source need replacing (already in the
-   check-migration map); early consumers of `deploy-next/` receive the control artifact labelled as
-   such, never as a new-repo build.
-3. **Cropper:** `react-advanced-cropper` is no longer required; use its latest version or reproduce the
-   dialog and drop the dependency, decided by a spike on the locked mockups.
-4. **D5** now cites the locked original plan and records the inference from it (user builds locally,
-   frontend hostable and buildable). **D6** stays accepted. **D7** reads "upgrade and make it work",
-   with the control-artifact comparison kept only as a regression catch.
-
-Grounding: the classic F# project, `Product.fs` dependencies, the plan's sequencing, import, workspace
-build, migration and compute sections, and the locked original plan. Nothing was built or run.
-
-Validation: local anchors resolve, no trailing whitespace remains, and a search for the interim terms
-(path move, Fable facade, `global.json`, Webpack for the interim) finds only the history entries and the
-documented fallback.
-
-Open items for the operator: D2 (morph first and last frame for picked names, after the measurement),
-D3 (compact catalogue), reading WebGL route data before removing WebGL, accepting the cutover copy and
-chrome inventory, and whether "keep the export flow" meant the candidate's flow as written.
-
-Edited `PLAN.md` only. No application or classic edits, builds, container runs, experiments, CI
-dispatch, remote change, repository creation, package publication, deployment or Beads change occurred.
-
-### Planning-workflow round — picked names, names data file and export clarified
-
-16 October 2026, fifth round that day, after the operator replied that a picked name plainly
-contributes its starting latent and the image used for the slider, video and preview; that "compact
-catalogue" read like a request to match the old picker's visual style; and that "keep the export flow"
-means exporting PNG and the other formats, and their quality. One review round; no cross-model or GPT Pro
-session took place, so this is not a convergence claim.
-
-Accepted changes and rationale:
-
-1. **D2 decided.** A picked name contributes its latent and its validated image, which serves the
-   preview, the slider and the video at that point; no endpoint frame is re-synthesized. The earlier
-   fifty-name measurement is dropped as a gate and becomes ordinary visual review. Rationale: the
-   delivered morph forms are already lossy, and the operator's reading is the simplest consistent one.
-2. **D3 reclassified.** It was never about appearance: it concerns the size of the `catalogue.json`
-   data file (3.4 MB parsed, about 570 KB transferred, repeating identical constants in every row).
-   It is now internal work of the static-names workstream with no visual effect, and the picker's
-   look stays the legacy names grid. My label "compact catalogue" was misleading.
-3. **Export clarified.** The candidate has no format or quality picker today; the plan's compact
-   format choice makes PNG an explicit lossless option beside the WebP default, and quality settings
-   are unchanged. The default stays WebP, per the operator's 10 October quality ruling.
-4. **Two proposals folded into their workstreams.** The cutover copy and chrome inventory now sits in
-   domain handover, and the analytics route-distribution read now sits in provider simplification.
-   Both are steps within settled decisions, not scope changes.
-
-Grounding: the candidate's export controls and encoder code, the catalogue file, and the plan's names,
-export, provider and handover sections. Nothing was built or run.
-
-Validation: local anchors resolve and no trailing whitespace remains.
-
-Open items for the operator: none outstanding except the earlier ONNX Runtime Web evaluation result, and
-one check: whether PNG should be the default instead of WebP.
-
-Edited `PLAN.md` only. No application or classic edits, builds, container runs, experiments, CI
-dispatch, remote change, repository creation, package publication, deployment or Beads change occurred.
-
-(Status at the close of that entry; the next entry resolves the PNG-versus-WebP question: WebP stays the
-default.)
-
-### Planning-workflow round — cross-model review and decomposition-readiness fixes
-
-16 October 2026, sixth round that day, after the operator confirmed WebP as the default, said the names
-data file should not limit the design ("does Catalog json need to exist? Not fundamentally"), accepted the
-two folded proposals, and asked whether the plan is ready for Beads and for a deep review. **This is the
-first round with an independent model.** The review prompt was the planning-workflow plan-review prompt,
-extended with five questions (decomposition readiness, contradictions, epistemics, risk, scope). Two
-reviews ran on a snapshot of `PLAN.md` (5,334 lines):
-
-- **OpenAI Codex CLI, model `gpt-6-luna`, read-only.** It read all 5,334 lines in 30 consecutive chunks and
-  returned the verdict "ready after the listed fixes" with five blocking and eight important findings.
-  The default model in the operator's Codex configuration, `gpt-6.1-sol`, is rejected for a ChatGPT
-  account, so `gpt-6-luna` was used instead.
-- **A fresh-context Claude agent, read-only,** focused on whether the plan converts mechanically to a task
-  graph. It reported "ready after listed fixes" with ten blockers, a graph parse (32 workstreams, no hard
-  cycle, three latent cycles), a coverage comparison with the tracker export and a bead-count estimate.
-- **Gemini CLI did not run:** no authentication is configured on this workstation. A third model family
-  has therefore not reviewed the plan.
-
-A **second, focused Codex pass** (same model, read-only, again reading all lines of the revised plan) then
-checked each first-round finding against the live text: 18 resolved, 6 partly resolved, and 6 new problems,
-all small consistency fixes. Applied in this round: the no-.NET wording now names the recorded fallback as
-the one exception (the fallback itself stays, per D1); the clean-clone acceptance clones exactly as the
-README states; contracts gained its autoresearch-stage-1 edge; "five actions" became six; and the
-package-publication scope (which npm packages, names and scope, converter distribution) became an
-operator gate. That reviewer judged the plan **not yet at steady state** before those fixes and "ready after
-the listed fixes". No third pass checked the fixes.
-
-Both first-round reviewers are single passes. This is not a convergence claim: steady state needs further rounds, and
-the reviewers did not verify the plan's external facts (registries, hosts, release notes) or run anything.
-
-Accepted changes and rationale:
-
-1. **`catalogue.json` is not a requirement.** The picker needs four things (names list, incremental
-   previews, one validated result per pick, one atomic pointer); the static-names workstream chooses the
-   shape by a short spike against stated bars and publishes it beside the existing file, which stays for
-   the candidate and the control. D3 is therefore superseded rather than answered.
-2. **Parity oracle defined.** The flow matrix is frozen against the control artifact first, with three
-   classes of row; control custody, a golden-capture spike with a stated coarser fallback, versions during
-   the port, a controller-versus-operation-layer split and a defined fallback path and checkpoint were added.
-   The checkpoint limit is an operator gate with a proposed default.
-3. **Self-host branch collision resolved.** Verified on `origin/master` that classic's default branch
-   publishes legacy production to Vercel on every push, so the frozen distribution lives on its own branch
-   and tag, never merges into `master`, and becomes the default only on stated conditions; the interim
-   quickstart carries `--branch`. The three overlapping descriptions of the quickstart were reconciled.
-4. **Workstream table repaired:** Needs and Feeds disagreements resolved, missing edges and rows added
-   (diagnostics retention fix, dependency currency lane), three latent cycles broken, six delivery actions
-   counted correctly, gate items and non-nodes stated.
-5. **Acceptance:** a receipt schema, pass criteria and a four-part structure for integrated verification,
-   and acceptance for the workstreams that had none (identity, handover, delivery, wind-down, WebGL
-   removal, decision gates).
-6. **Ownership and ordering:** shared-file serialization decided as mandatory ordering edges; native
-   retirement, the API-free names pipeline, Prepare encoder and the support table each have one owner;
-   contracts split into two milestones with a decode-measurement protocol; the research-overlay question
-   defaulted to "committed objects only".
-7. **Wording and policy:** the ONNX Runtime hold-back is the currency policy's recorded hold-back; the CUDA
-   validation cell is planned, not qualified; history entries are labelled as status at their date; the
-   UI-kit sentence and the stale "Updated" line were corrected.
-8. **Decomposition guidance:** expected size, split-first order, two-phase decomposition and coverage
-   against the existing tracker export, including ten workstreams without an item.
-
-Not accepted or deferred: Codex's suggestion of a retained cache for previously fetched name results (it is
-an optional enhancement, noted but not planned); the reviewers' view that eager warming and the device
-benchmark are gold-plating (the plan already marks both optional and research-gated; they stay).
-
-Grounding: both reviews; `origin/master:.github/workflows/deploy.yml` in classic; classic `git status`; the
-tracker export; `which br bv codex gemini`. Nothing was built or run.
-
-Open items for the operator (each is a recorded gate; defaults are proposed in the sections cited):
-the classic keep-set; and whether to rewire the 22 existing tracker items in place or replace them
-([decomposition](#decomposition-order-size-and-tracker-coverage)). The port checkpoint, the retention
-remedy, the maintenance owner and the package-publication scope listed here earlier were closed on
-17 October (see the entry below); one question arising from that closure stays open: whether the live
-candidate's "Deleted after 30 days" string is corrected before 22 October ([retention decision](#debug-reporting-control-and-consent)).
-
-Edited `PLAN.md` only. No application or classic edits, builds, container runs, experiments, CI dispatch,
-remote change, repository creation, package publication, deployment or Beads change occurred. The plan text
-was sent to the operator's Codex account for the review; no secrets are in it.
-
-### Planning-workflow round — operator rulings of 17 October
-
-The operator answered the open items from the previous round and asked for the WebGL route data to be
-read at once. Recorded as decisions, not proposals:
-
-1. **Port: no time box, no fallback.** "We do it instantly. We have the ability. No hacks, back porting,
-   or patches for legacy." The two-week/25% checkpoint and the .NET 5 container fallback are withdrawn
-   ([application migration](#application-migration)). This also closes a contradiction a reviewer found
-   between the fallback and the settled no-.NET decision.
-2. **Diagnostics: ingest the learnings, then no deletion promise.** Reports are kept; no expiration rule is
-   added; the 30-day line is removed from the new app's copy and from the re-homed collector
-   ([retention decision](#debug-reporting-control-and-consent)). The ingestion task and a first pass (the
-   WebGL route) are recorded there. One question remains: the live candidate still says "Deleted after 30
-   days", and the first reports pass 30 days on 22 October, so correcting that string is a small classic
-   edit that the operator has yet to confirm.
-3. **WebGL: read and removed.** The consented diagnostics were read the same day (791 reports, 300 runs,
-   22 devices). WebGL was slowest everywhere a comparison existed and its only advantage on one iPhone was
-   a smaller download ([provider simplification](#provider-simplification)). The Google Analytics route
-   distribution could not be read from the planning environment; it adds no requirement.
-4. **Self-host branch simplified.** The operator did not recognize the `self-host` branch plan. It is now
-   described in plain terms and no longer reaches the README: the frozen distribution is built on its own
-   branch and becomes the default when the README is published, so the quickstart is a plain `git clone`
-   ([D4](#dependency-currency-and-the-frozen-self-host-guarantee--16-october-2026)).
-5. **Package scope: from the original plan.** Three TypeScript packages publish (engine, browser model
-   manager, Cloudflare model host); the converter ships as a pinned container; real names are chosen at
-   publication ([independent published-package acceptance](#independent-published-package-acceptance)).
-   One inference is flagged: the manager and host are published because the acceptance journey needs them
-   from the registry; the original text names only the engine explicitly.
-6. **Dependency lane: automated.** The monthly review and its named owner are replaced by automated update
-   changes judged by the existing gates ([dependency currency](#dependency-currency-and-the-frozen-self-host-guarantee--16-october-2026)).
-   The review calendar was a planner's mechanism, not an operator request.
-
-Still open: the classic keep-set, rewire-versus-replace for the 22 tracker items, and the live-candidate
-string above. Grounding: the diagnostics bucket (read-only, nothing deleted or changed), the locked
-original plan, and `origin/master` in classic. Edited `PLAN.md` only; no build, run, deployment or Beads
-change occurred.
-
-### Planning-workflow round — fresh-eyes bead-readiness polish (17 October)
-
-A third review, by a fresh-context Claude reviewer who had seen no earlier round, applied the bead-polish
-lens to this plan, since no Beads exist to polish: sense, optimality, self-containment, tests with detailed
-logging, explicit two-way dependencies, no lost features, no cycles. The planned Codex pass could not run
-(the operator's ChatGPT account had reached its usage limit until 1 November) and Gemini still has no
-credentials, so this round has **one reviewer from one model family**. Its verdict: ready after the
-listed fixes, not yet at steady state, because ten of twenty findings were structural. They had moved from
-missing work (the 15 October round) to edge fidelity and test scope (this one), which is convergence.
-
-Applied in this round:
-1. Three remnants of the 17 October rulings (the ledger's D1 fallback, the register's pending WebGL read,
-   the architecture table's engine-only npm row) and four further contradictions (review-date wording
-   for hold-backs, a .NET opening in the eris notes, a branch in the Dockerfile row, the "only classic
-   edit" claim) were corrected.
-2. The table gained rows: autoresearch re-homing is split into stages 1 and 2 (the only row-level cycle),
-   package publication and documentation (previously unowned), and optional verified-cache warming (it
-   depended on a research round the table did not show). Domain handover no longer needs static names
-   (a two-node loop); static names needs the handover snapshot instead; Media's envelope helpers are
-   marked independent of compute extraction; integrated verification lists its prerequisites; several Feeds
-   cells were completed; the columns' reading rules and milestone-qualified edges are stated.
-3. The serialization decision became explicit ordering edges, and the "soft, either order" wording for
-   confirmed-crop was removed so the plan no longer contradicts itself.
-4. Seven workstreams that deferred to integrated verification gained their own unit-level acceptance, and an
-   end-to-end evidence convention (structured event log per script) was added.
-5. The converter distribution is defined (Dockerfile and Compose in the tagged public repository; no
-   registry image), the reviewer's starting point was adjusted to match, and the default-branch switch in
-   D4 gained pre-checks for scheduled workflows and the Vercel Git settings.
-6. Smaller items: tracker edge counts, legacy-dialog inventory owner, desktop workflow wording, currency
-   table label, rot-check ownership, decision-log home, deferred export-formats item.
-
-Not applied: the reviewer's suggestion to split every milestone-qualified row (the reading rule above
-covers it at conversion); updating `AGENTS.md` and `README.md` with the no-.NET and npm rulings (outside
-the plan-only rule for this pass, so a task for the conversion step); one suggested naming fix whose text
-was not found in the plan.
-
-Mechanical checks after the edits: no unresolved internal links, no trailing whitespace, and a heuristic
-parse of the Needs column (37 rows, including soft edges) found no cycle. Open for the operator: the
-classic keep-set, rewire versus replace for the 22 tracker items, and whether copy-only edits may be made to
-the candidate source (the "Deleted after 30 days" line and the delivery handover edit set).
-
-### Planning-workflow round — operator answers of 18 October 2026
-
-The operator answered the three questions left open at the end of the fresh-eyes round.
-
-1. **Candidate-source edits are ordinary work.** "We are working on the next candidate, so we change it as
-   we work on it." The "no hacks, backports or patches for legacy" ruling of 17 October is about the old stack
-   and fallbacks (a .NET build, an F# import, changes to classic as a safety net), not about the working
-   candidate. The "Deleted after 30 days" correction and the delivery handover edit set therefore need no
-   separate approval ([retention decision](#debug-reporting-control-and-consent),
-   [delivery](#delivery-and-publication)). The plan-only rule for this planning pass still holds, so the
-   candidate was not touched; the correction is an execution task, due before 22 October.
-2. **The tracker is rewritten from this plan** (see [decomposition](#decomposition-order-size-and-tracker-coverage)).
-   The planner reads "rewrite" as keeping the 22 existing IDs and replacing their content, which is the
-   former default.
-3. **The classic keep-list** was not understood as a question. It is the list of what classic still holds once
-   everything has moved: its history, the experiment record, the self-host Compose distribution, and the
-   publisher and rollback artifacts until handover. It stays the proposal in the end state and is confirmed at
-   the wind-down step that already needs the operator's approval; it is no longer a standalone gate.
-
-Edited `PLAN.md` only. No candidate, classic or Beads change, build, run or deployment occurred.
-
-### Planning-workflow round — operator follow-up of 18 October 2026
-
-The operator replied to the previous entry with four rulings. They supersede the keep-list paragraph
-of that entry.
-
-1. **No human approval after conversion.** "I don't want to block on human after this plan goes to
-   beads and is built." The per-step approval for classic wind-down was the planner's caution, not the
-   operator's request; it is removed. Wind-down is automated, with preconditions, receipts and reversal
-   paths. The explicit cutover decision (promotion, retiring the old API, publishing packages) was
-   not part of that ruling and is left as the operator's single call.
-2. **Classic ends as the self-host Docker distribution plus Git history.** The experiment record
-   does not stay there: it is for the next candidate, so the whole tree moves here and classic's tree
-   is cleaned ([end state](#end-state-of-the-repositories), [wind-down](#classic-wind-down)).
-3. **The old-wording diagnostics reports are deleted once mined; the insights are kept**
-   ([retention decision](#debug-reporting-control-and-consent)). This replaces the earlier "keep them"
-   default for those reports only; no expiration rule is added.
-4. The "Deleted after 30 days" correction in the candidate, due before 22 October, fixes the boundary
-   between reports to delete and reports to keep.
-
-Edited `PLAN.md` only. No candidate, classic, bucket or Beads change, build, run or deletion occurred; the
-raw reports downloaded for the earlier WebGL read still sit in the session scratch directory and are to be
-deleted with the mining step above.
-
-### Planning-workflow round — mining, the string fix and an operated check (18 October 2026)
-
-At the operator's request on 18 October, three things were done and one defect class was found.
-
-1. **Mined the diagnostics bucket** (801 objects, 309 runs; key-list digest in the note) into the committed
-   findings note, aggregates only. Two requirement changes came out of it: typed failure causes, and the
-   iPhone cache-capacity acceptance ([diagnostics](#debug-reporting-control-and-consent),
-   [provider simplification](#provider-simplification)).
-2. **Corrected the candidate's retention wording** in four places (commit `40c63a9`, deployed 2026-10-17
-   20:28:59 UTC, checked in the live bundle). Not touched: the collector and the classic documents, which
-   still describe the old expiry; they retire with classic or are re-homed under the retention decision.
-3. **Deletion of the 801 mined reports is staged and not run.** A dry run confirmed that all 801 objects still
-   exist, none is newer than the mined set, and all were uploaded before the boundary above. It runs on the
-   operator's go; the receipt format and the working-copy deletion are specified in the retention decision.
-4. **An operated check of the live candidate found that a person cannot remove a face**, which three text
-   reviews and the candidate's own checks had missed, plus a many-face layout problem and no bulk removal or
-   reset ([defect list](#known-candidate-defects-found-by-operating-the-live-candidate--18-october-2026)). The plan now
-   carries the requirements, a stricter evidence rule (UI acceptance is operated with real input at scale, not
-   queried by name) and the face-controls split item. The candidate's Remove repair itself is a one-rule change
-   that has not been made.
-
-Limits: one browser engine (headless Chromium), two form factors, the build live that day, no photos and
-no models, so photo, crop, names and generation journeys were not operated. The rest of the live flow
-inventory has not been operated and may hold more of this class.
-
-Edited `PLAN.md` and the candidate's four consent strings; added the findings note. No bucket object was deleted.
-
-### Planning-workflow round — candidate audit (18 October 2026)
-
-The operator asked that the candidate and the plan be read against each other for gaps, regressions and
-inconsistencies. Three independent read-only passes (the candidate, classic against the candidate, the plan), spot
-checks of their claims and operation of the live candidate gave the following. The evidence and the full list are in
-the [findings note](docs/findings/candidate-audit-2026-10-18.md).
-
-1. **Candidate defects beyond the first three:** twenty further rows (4 to 23), eleven operated (keyboard reach, phone
-   capitalisation, identical neighbours, Add face at one face, the typed-word tile text, words lost on reload,
-   disagreeing download sizes, outside requests the privacy text omits, near-invisible names text, offline failure,
-   stacked first-visit toasts) and nine read in code. Recorded as repair rows with owners; none is frozen as parity.
-2. **Statements in the plan that were wrong about the candidate:** it does have Share controls (the export bullet said
-   it did not), and its provider selector is inside More options → Advanced, not above the first + (six places said
-   "retain").
-3. **Inconsistencies fixed:** two names for the encoder action, promotion ownership, the research evaluator's terminal
-   status, the physical-iPhone acceptance against the no-phone-gate rule, a many-face bar that the broken candidate
-   already met, sweep widths, a gate that cited a stale register, where research history lives and stale retention
-   tense.
-4. **Left as they are, by design:** nine Feeds cells (Needs wins), and shared ownership of Help copy, modal Escape and
-   Back rules, source-pixel retention, detector download gating and accessibility across several workstreams.
-5. **Asked of the operator:** four questions (old text links, autoplay, a plain blend, cropper extras) and four planner
-   proposals awaiting a veto, in [the questions section](#questions-raised-by-the-18-october-audit).
-
-Limits: one browser engine, no WebGPU, no physical device, no real camera photo. Not reproduced: a legacy analytics
-tag that the code suggested. Edited `PLAN.md`; added the findings note. Nothing was pushed or deleted.
+## Operator decisions (dated)
+
+| Date | Decision |
+| --- | --- |
+| 11 Oct | e4e accepted; locked crop design; static names with no selection-time synthesis; API, GUIDs and result links retired; production starts fresh |
+| 12 Oct | Native packages retired; Auto/CPU/WebGPU and bounded CPU fallback kept; phones first-class; Morph prepares unfinished inputs; MP4 reopening deferred; no face reordering |
+| 15 Oct | New development and autoresearch move to this repository; classic is wound down |
+| 16 Oct | D1: direct TS port, no .NET here; dependencies on latest stable; frozen classic self-host guarantee; D4–D7 settled |
+| 17 Oct | No port checkpoint or fallback; reports carry no deletion promise; automated update lane; package scope settled; WebGL removed |
+| 18 Oct | Candidate edits are ordinary work; tracker rewritten from the plan; classic ends as distribution plus history, wound down automatically; old-wording reports deleted once mined |
+| 24 Oct | Only the live cutover pushes need the operator; package publication and planner proposals go ahead; no fixed count caps (only real resource limits, degrading nicely); strictly-not-worse gate against the candidate, iPhone included; changeover statistics in Grafana |
+| 24 Oct | Weighted multi-face blend as an advanced view on the new engine (button and `#blend` deep link, established export paths); beads are shippable slices (about 100–140); receipts only where an irreversible action or the cutover decision reads them |
+
+Earlier review rounds, including the 24 October round's findings, are in [`docs/plan-history.md`](docs/plan-history.md)
+and Git history; they do not define the current plan.

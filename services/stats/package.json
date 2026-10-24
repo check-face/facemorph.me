@@ -1,0 +1,12 @@
+{
+  "name": "@facemorph/stats-worker",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test worker.test.mjs",
+    "deploy": "wrangler deploy"
+  },
+  "devDependencies": {
+    "wrangler": "4.40.0"
+  }
+}
