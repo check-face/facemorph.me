@@ -12,6 +12,7 @@ import {
   laneProblems,
   mainProblems,
   pushesMain,
+  runKeysOnUses,
   type Filters,
   type Lane,
 } from './path-filters.ts';
@@ -135,4 +136,13 @@ test('a fixture tree where a second workflow runs on push to main fails', () => 
     ['.github/workflows/rogue.yml runs on push to main outside main.yml'],
   );
   rmSync(root, { recursive: true });
+});
+
+test('a uses step that carries working-directory, shell or run is found; run steps and with/env are not', () => {
+  const steps = (extra: string) =>
+    `jobs:\n  a:\n    steps:\n      - uses: ./.github/actions/x\n        with:\n          y: 1\n${extra}      - run: echo\n        working-directory: apps/web\n        shell: bash\n`;
+  assert.deepEqual(runKeysOnUses(steps('')), []);
+  assert.deepEqual(runKeysOnUses(steps('        env:\n          A: b\n')), []);
+  assert.equal(runKeysOnUses(steps('        working-directory: apps/web\n')).length, 1);
+  assert.equal(runKeysOnUses(steps('        shell: bash\n')).length, 1);
 });

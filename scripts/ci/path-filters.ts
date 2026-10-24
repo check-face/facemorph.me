@@ -137,6 +137,28 @@ export function laneProblems(
   return out;
 }
 
+/** A `uses` step carrying a key only a `run` step may have: GitHub rejects the whole workflow, and since every lane
+ * is called from main.yml, main.yml fails at startup with no annotation (dd32439). Pure. */
+export function runKeysOnUses(yaml: string): string[] {
+  const out: string[] = [];
+  const lines = yaml.split('\n');
+  lines.forEach((line, i) => {
+    const m = /^(\s*)- uses: (\S+)/.exec(line);
+    if (!m) return;
+    const keyIndent = (m[1] ?? '').length + 2;
+    for (let j = i + 1; j < lines.length; j++) {
+      const l = lines[j] ?? '';
+      if (!l.trim() || l.trim().startsWith('#')) continue;
+      const indent = l.length - l.trimStart().length;
+      if (indent < keyIndent || (indent === keyIndent - 2 && l.trimStart().startsWith('- '))) break;
+      const key = indent === keyIndent ? /^\s*([\w-]+):/.exec(l)?.[1] : undefined;
+      if (key === 'working-directory' || key === 'shell' || key === 'run')
+        out.push(`line ${j + 1}: '${key}' on the uses step ${m[2]}`);
+    }
+  });
+  return out;
+}
+
 /** main.yml itself: one group 'main' that never cancels a run in progress. Pure. */
 export function mainProblems(main: string): Problem[] {
   const out: Problem[] = [];
@@ -195,9 +217,12 @@ export function check(root: string, filters: Filters): { roots: string[]; proble
     }
     problems.push(...laneProblems(name, lane, filters, yaml, main));
   }
-  for (const f of files.filter((f) => /^\.github\/workflows\/[^/]+\.ya?ml$/.test(f) && f !== MAIN))
-    if (pushesMain(readFileSync(join(root, f), 'utf8')))
+  for (const f of files.filter((f) => /^\.github\/workflows\/[^/]+\.ya?ml$/.test(f))) {
+    const yaml = readFileSync(join(root, f), 'utf8');
+    if (f !== MAIN && pushesMain(yaml))
       problems.push({ rule: 'queue', detail: `${f} runs on push to main outside main.yml` });
+    for (const d of runKeysOnUses(yaml)) problems.push({ rule: 'step', detail: `${f}: ${d}` });
+  }
   return { roots, problems };
 }
 
