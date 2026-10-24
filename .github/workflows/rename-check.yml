@@ -1,0 +1,39 @@
+name: rename-check
+# Organization rename check (fm-rur): check-rename.mjs's tests against the real GitHub API (read-only), then the
+# check itself. On push it runs the pre-rename assertions under check-face. Dispatch it with org=facemorph-me
+# immediately after the rename to run the post-rename assertions.
+on:
+  push:
+    branches: [main]
+    paths:
+      [
+        'scripts/identity/check-rename*.mjs',
+        'scripts/identity/rename-expected.json',
+        'scripts/identity/read-identity.mjs',
+        '.github/workflows/rename-check.yml',
+      ]
+  workflow_dispatch:
+    inputs:
+      org:
+        description: Organization the repositories should be under now
+        default: check-face
+        type: string
+concurrency:
+  group: rename-check
+  cancel-in-progress: false
+jobs:
+  check:
+    runs-on: [self-hosted, eris]
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Check-script tests against the real API
+        run: node --test scripts/identity/check-rename.test.mjs
+      - name: Rename assertions
+        env:
+          ORG: ${{ inputs.org || 'check-face' }}
+        run: node scripts/identity/check-rename.mjs --org "$ORG"

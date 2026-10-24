@@ -1,0 +1,29 @@
+{
+  "$comment": "What check-rename.mjs asserts (fm-rur). Repositories by stable ID: the same IDs, names, archive flags and default branches must hold under the old organization before the rename and under the new one after it. Commits are historical references that must still resolve.",
+  "organizations": { "before": "check-face", "after": "facemorph-me" },
+  "repositories": [
+    { "id": 1413979666, "name": "facemorph.me", "archived": false, "defaultBranch": "main" },
+    {
+      "id": 295956585,
+      "name": "facemorph.me-classic",
+      "archived": false,
+      "defaultBranch": "master"
+    },
+    { "id": 185985766, "name": "checkface", "archived": true, "defaultBranch": "master" },
+    { "id": 348379171, "name": "facemorph-names", "archived": false, "defaultBranch": "master" },
+    { "id": 368806700, "name": "encoder4editing", "archived": false, "defaultBranch": "main" }
+  ],
+  "commits": [
+    {
+      "label": "frontend pin (self-host overlay)",
+      "repoId": 295956585,
+      "sha": "0abb215f27b16e17e3919cf78b616b6ae4998a5d"
+    },
+    {
+      "label": "planning reference",
+      "repoId": 295956585,
+      "sha": "b2d945a8c7f0ff9f382fbfefaecc2651943077a3"
+    }
+  ],
+  "activeDocs": ["README.md", "AGENTS.md", "docs/dev"]
+}

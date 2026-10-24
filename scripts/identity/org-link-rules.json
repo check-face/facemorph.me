@@ -101,6 +101,17 @@
     },
 
     {
+      "id": "api-base-by-repository-id",
+      "repo": "facemorph.me",
+      "paths": ["scripts/ci/**"],
+      "kind": "url",
+      "target": "^/$",
+      "line": "https://api\\.github\\.com\\$\\{",
+      "class": "active-link",
+      "to": "(the repository named by its numeric ID at run time)",
+      "disposition": "no edit: the bare API origin is joined with a path built from a repository ID passed in, which survives the rename"
+    },
+    {
       "id": "runtime-repository",
       "paths": [".github/workflows/**"],
       "line": "\\$GITHUB_REPOSITORY|\\$\\{\\{ *github\\.repository *\\}\\}",
