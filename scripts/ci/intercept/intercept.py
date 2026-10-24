@@ -71,6 +71,12 @@ def classify(url, host_map):
     return 'third-party'
 
 
+def bindOrigins(host_map, bound):
+    """A run's own origins bound to their classes ahead of the default rules (record.ts bindOrigins)."""
+    rules = [{'host': _host(urlsplit(o)), 'class': cls} for cls, origins in bound.items() for o in origins]
+    return {'version': host_map['version'], 'rules': rules + list(host_map['rules'])}
+
+
 def _origin(u):
     default = {'http': 80, 'https': 443}.get(u.scheme)
     port = f':{u.port}' if u.port and u.port != default else ''

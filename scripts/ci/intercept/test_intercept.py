@@ -57,6 +57,14 @@ class Vectors(unittest.TestCase):
         for url, t in VECTORS['template']:
             self.assertEqual(intercept.template(url), t, url)
 
+    def test_a_run_binds_its_own_origins_ahead_of_the_default_map(self):
+        run = intercept.bindOrigins(intercept.DEFAULT_HOST_MAP, {
+            'app': ['http://127.0.0.1:8443'], 'model-host': ['https://models.preview.example']})
+        self.assertEqual(intercept.classify('http://127.0.0.1:8443/runtime/manifest.json', run), 'app')
+        self.assertEqual(intercept.classify('https://models.preview.example/a.bin', run), 'model-host')
+        self.assertEqual(intercept.classify('https://models.facemorph.me/a.bin', run), 'model-host')
+        self.assertEqual(intercept.classify('http://127.0.0.1:9000/x', run), 'third-party')
+
     def test_one_json_line_per_primitive(self):
         lines = []
         intercept.assertNoRequests(VECTORS['records']['early'], 'model-host', {'toStep': 'load'}, lines.append)

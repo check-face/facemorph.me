@@ -14,6 +14,7 @@ import { attachPlaywright, fileLog, keepOnFailure } from './playwright.ts';
 import {
   assertNoRequests,
   assertOrder,
+  bindOrigins,
   bytesBy,
   classify,
   requestsIn,
@@ -67,6 +68,17 @@ test('shared vectors: every primitive gives the declared verdict, count and byte
   }
   for (const [url, cls] of V.classify) assert.equal(classify(url, MAP), cls, url);
   for (const [url, t] of V.template) assert.equal(template(url), t, url);
+});
+
+test('a run binds its own origins ahead of the default map', () => {
+  const run = bindOrigins(MAP, {
+    app: ['http://127.0.0.1:8443'],
+    'model-host': ['https://models.preview.example'],
+  });
+  assert.equal(classify('http://127.0.0.1:8443/runtime/manifest.json', run), 'app');
+  assert.equal(classify('https://models.preview.example/a.bin', run), 'model-host');
+  assert.equal(classify('https://models.facemorph.me/a.bin', run), 'model-host');
+  assert.equal(classify('http://127.0.0.1:9000/x', run), 'third-party');
 });
 
 test('each primitive logs one JSON line with primitive, host class, window, count, bytes and verdict', () => {

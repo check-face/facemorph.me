@@ -116,6 +116,18 @@ export function classify(url: string, map: HostMap): HostClass {
   return 'third-party';
 }
 
+/** A run's own origins (local server, staging or preview URL) bound to their classes ahead of the default rules, so
+ * they win; the defaults still class everything else. Pure. */
+export function bindOrigins(
+  map: HostMap,
+  bound: Partial<Record<HostClass, readonly string[]>>,
+): HostMap {
+  const rules: HostRule[] = [];
+  for (const [cls, origins] of Object.entries(bound) as [HostClass, readonly string[]][])
+    for (const o of origins) rules.push({ host: new URL(o).host, class: cls });
+  return { version: map.version, rules: [...rules, ...map.rules] };
+}
+
 /** origin + path template: no query or fragment; numeric segments become ':n', hex of 16+ characters ':hex'. Pure. */
 export function template(url: string): string {
   if (url.startsWith('data:')) return 'data:';
