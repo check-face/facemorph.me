@@ -1,74 +1,118 @@
 {
- "schema": "facemorph.goldens/1",
- "control": {
-  "label": "control (classic candidate build; not built by this repository)",
-  "commit": "551b60726290b2d67a32c62477b2fd964de51f96",
-  "release_sha256": "868583788670d5651579acd88c238280523cdbf75d8b17360ea2b20e00180c01",
-  "deploy_next_sha256": "79306e90dbb948a346dd96da30c3a936cacd671dbf83e4cfd2da1623e1c52dca"
- },
- "recorder": {
-  "command": "node test/goldens/record-shell.ts",
-  "browser": "chromium 156.0.8078.4",
-  "widths": {
-   "desktop": {
-    "width": 1280,
-    "height": 900
+ "schema": "facemorph.goldens/2",
+ "sections": {
+  "shell": {
+   "control": {
+    "label": "control (classic candidate build; not built by this repository)",
+    "commit": "551b60726290b2d67a32c62477b2fd964de51f96",
+    "release_sha256": "868583788670d5651579acd88c238280523cdbf75d8b17360ea2b20e00180c01",
+    "deploy_next_sha256": "79306e90dbb948a346dd96da30c3a936cacd671dbf83e4cfd2da1623e1c52dca"
    },
-   "phone": {
-    "width": 390,
-    "height": 844
-   }
+   "recorder": {
+    "command": "node test/goldens/record-shell.ts",
+    "browser": "chromium 156.0.8078.4",
+    "widths": {
+     "desktop": {
+      "width": 1280,
+      "height": 900
+     },
+     "phone": {
+      "width": 390,
+      "height": 844
+     }
+    },
+    "oracle": "DOM snapshot of each shell row (tags, authored classes, text, link targets, ARIA)"
+   },
+   "rows": [
+    {
+     "id": "shell.root",
+     "selector": "main.next-product",
+     "freeze": "parity",
+     "note": "Root element only (classes, data-next-busy); its content is the other rows and the screens.",
+     "files": [
+      "control/shell.root/desktop.json",
+      "control/shell.root/phone.json"
+     ]
+    },
+    {
+     "id": "shell.preview-strip",
+     "selector": "aside.next-preview-strip",
+     "freeze": "parity",
+     "files": [
+      "control/shell.preview-strip/desktop.json",
+      "control/shell.preview-strip/phone.json"
+     ]
+    },
+    {
+     "id": "shell.header",
+     "selector": "main.next-product > header",
+     "freeze": "parity",
+     "files": [
+      "control/shell.header/desktop.json",
+      "control/shell.header/phone.json"
+     ]
+    },
+    {
+     "id": "shell.tagline",
+     "selector": "p.next-tagline",
+     "freeze": "parity",
+     "files": [
+      "control/shell.tagline/desktop.json",
+      "control/shell.tagline/phone.json"
+     ]
+    },
+    {
+     "id": "shell.footer",
+     "selector": "footer.next-footer",
+     "freeze": "parity",
+     "note": "The version line's value is this build's commit; the issue link's version and device fields are the visitor's.",
+     "files": [
+      "control/shell.footer/desktop.json",
+      "control/shell.footer/phone.json"
+     ]
+    }
+   ]
+  },
+  "flows": {
+   "control": {
+    "label": "control (classic candidate build; not built by this repository)",
+    "commit": "551b60726290b2d67a32c62477b2fd964de51f96",
+    "release_sha256": "868583788670d5651579acd88c238280523cdbf75d8b17360ea2b20e00180c01",
+    "deploy_next_sha256": "79306e90dbb948a346dd96da30c3a936cacd671dbf83e4cfd2da1623e1c52dca",
+    "runtime_manifest_sha256": "d9e37e50a436e9fb7c0c7f973e70adee353c808f48c6a51fa5a9186f1c650a5c"
+   },
+   "recorder": {
+    "command": "python3 autoresearch/run.py --lane browser-cpu --device eris --wait 900 --timeout 900 -- node apps/web/test/parity/record-sample.ts",
+    "browser": "chromium 156.0.8078.4",
+    "viewport": {
+     "width": 1280,
+     "height": 900
+    },
+    "provider": "cpu (WebGPU disabled at launch)",
+    "oracle": "journey-step snapshots: the Elmish model read through a React DevTools hook on every commit (elmish-probe.ts) plus the DOM a person sees (faces area, dialogs, toasts, notes) and the focused element",
+    "blind_spots": [
+     "Messages are not observable (Elmish dispatch is private): a step is the model after an input, not the message sequence.",
+     "Commits between steps are counted, not kept.",
+     "Pixels are not compared: generated images, canvases and video are reduced to their elements; raw synthesis parity belongs to the numerics checks.",
+     "Blob URLs, durations and times are normalized; their values are not compared.",
+     "Photo bytes and latents never enter the goldens (files reduced to size and type, typed arrays to length)."
+    ],
+    "privacy": "no photo bytes, latents or typed inputs beyond the synthetic fixture words and seeds"
+   },
+   "rows": [
+    {
+     "id": "words.generate-cpu",
+     "freeze": "parity",
+     "note": "Golden spike sample flow: type a word, Generate, accept the download, Completed on CPU.",
+     "files": [
+      "control/words.generate-cpu/01-first-visit.json",
+      "control/words.generate-cpu/02-type-word.json",
+      "control/words.generate-cpu/03-press-generate.json",
+      "control/words.generate-cpu/04-accept-download.json",
+      "control/words.generate-cpu/05-completed.json"
+     ]
+    }
+   ]
   }
- },
- "rows": [
-  {
-   "id": "shell.root",
-   "selector": "main.next-product",
-   "freeze": "parity",
-   "note": "Root element only (classes, data-next-busy); its content is the other rows and the screens.",
-   "files": [
-    "control/shell.root/desktop.json",
-    "control/shell.root/phone.json"
-   ]
-  },
-  {
-   "id": "shell.preview-strip",
-   "selector": "aside.next-preview-strip",
-   "freeze": "parity",
-   "files": [
-    "control/shell.preview-strip/desktop.json",
-    "control/shell.preview-strip/phone.json"
-   ]
-  },
-  {
-   "id": "shell.header",
-   "selector": "main.next-product > header",
-   "freeze": "parity",
-   "files": [
-    "control/shell.header/desktop.json",
-    "control/shell.header/phone.json"
-   ]
-  },
-  {
-   "id": "shell.tagline",
-   "selector": "p.next-tagline",
-   "freeze": "parity",
-   "files": [
-    "control/shell.tagline/desktop.json",
-    "control/shell.tagline/phone.json"
-   ]
-  },
-  {
-   "id": "shell.footer",
-   "selector": "footer.next-footer",
-   "freeze": "parity",
-   "note": "The version line's value is this build's commit; the issue link's version and device fields are the visitor's.",
-   "files": [
-    "control/shell.footer/desktop.json",
-    "control/shell.footer/phone.json"
-   ]
-  }
- ],
- "owner_graded": [],
- "untested": []
+ }
 }

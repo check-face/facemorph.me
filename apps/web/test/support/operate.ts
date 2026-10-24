@@ -4,10 +4,10 @@
 import assert from 'node:assert/strict';
 import type { Locator, Page } from 'playwright';
 
-export interface Landed { inside: boolean; href: string | null }
+export interface Landed { inside: boolean; href: string | null; x: number; y: number }
 
 function arm({ follow }: { follow: boolean }) {
-  const w = window as unknown as { __landed: Landed | null; __target: Element | null };
+  const w = window as unknown as { __landed: Omit<Landed, 'x' | 'y'> | null; __target: Element | null };
   w.__landed = null;
   document.addEventListener('click', (e) => {
     const target = w.__target, hit = e.target as Element, a = hit.closest('a');
@@ -30,5 +30,5 @@ export async function press(page: Page, control: Locator, { touch = false, follo
   await page.evaluate(arm, { follow });
   if (touch) await page.touchscreen.tap(x, y); else await page.mouse.click(x, y);
   await page.waitForFunction('window.__landed', null, { timeout: 5000 });
-  return await page.evaluate('window.__landed') as Landed;
+  return { ...(await page.evaluate('window.__landed') as Omit<Landed, 'x' | 'y'>), x: Math.round(x), y: Math.round(y) };
 }

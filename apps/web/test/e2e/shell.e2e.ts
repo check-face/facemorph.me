@@ -18,7 +18,7 @@ import { serve, type Served } from '../support/serve.ts';
 const app = new URL('../../', import.meta.url);
 const repo = new URL('../../', app);
 const results = new URL('test-results/shell/', app);
-const goldens = JSON.parse(readFileSync(new URL('test/goldens/goldens.json', app), 'utf8'));
+const goldens = JSON.parse(readFileSync(new URL('test/goldens/goldens.json', app), 'utf8')).sections.shell;
 const WIDTHS = goldens.recorder.widths as Record<string, { width: number; height: number }>;
 const ENGINES: Record<string, BrowserType> = { chromium, firefox, webkit };
 // FACEMORPH_E2E_ENGINES=chromium,... narrows the run; FACEMORPH_E2E_CHROMIUM=/usr/bin/chromium (with optional

@@ -2,5 +2,5 @@
   // Browser tests: Node drives real browsers, and the functions they evaluate in the page need DOM types.
   "extends": "./tsconfig.node.json",
   "compilerOptions": { "lib": ["ES2024", "DOM", "DOM.Iterable"] },
-  "include": ["test/e2e", "test/goldens", "test/support"]
+  "include": ["test/e2e", "test/goldens", "test/support", "test/parity"]
 }

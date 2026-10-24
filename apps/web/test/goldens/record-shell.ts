@@ -7,6 +7,7 @@ import { createHash } from 'node:crypto';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { chromium } from 'playwright';
 import { serve } from '../support/serve.ts';
+import { writeIndex } from './index-file.ts';
 import { SHELL_ROWS, SNAPSHOT_IN_PAGE } from './snapshot.ts';
 
 export const WIDTHS = { desktop: { width: 1280, height: 900 }, phone: { width: 390, height: 844 } } as const;
@@ -39,12 +40,9 @@ try {
   await browser.close();
   await site.close();
 }
-writeFileSync(new URL('goldens.json', out), JSON.stringify({
-  schema: 'facemorph.goldens/1',
+writeIndex('shell', {
   control: { label: record.label, commit: record.source.commit, release_sha256: record.release.sha256, deploy_next_sha256: deployNextSha256 },
-  recorder: { command: 'node test/goldens/record-shell.ts', browser: `chromium ${browser.version()}`, widths: WIDTHS },
+  recorder: { command: 'node test/goldens/record-shell.ts', browser: `chromium ${browser.version()}`, widths: WIDTHS, oracle: 'DOM snapshot of each shell row (tags, authored classes, text, link targets, ARIA)' },
   rows: SHELL_ROWS.map((r) => ({ id: r.id, selector: r.selector, freeze: r.freeze, ...(r.note ? { note: r.note } : {}), files: Object.keys(WIDTHS).map((w) => `control/${r.id}/${w}.json`) })),
-  owner_graded: [],
-  untested: [],
-}, null, 1) + '\n');
+});
 console.log(JSON.stringify({ recorded: SHELL_ROWS.length, widths: Object.keys(WIDTHS), deploy_next_sha256: deployNextSha256 }));
