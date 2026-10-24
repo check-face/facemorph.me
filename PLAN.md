@@ -1842,10 +1842,31 @@ and claims only cells that actually ran.
   one value as a variable, and publication of the README waits for [organization rename execution](#organization-rename-execution);
   building and testing do not.
 
-**Not guaranteed:** GPUs older than Volta or newer than the wheels' kernels and PTX, the third-party
-hosts for the weights (accepted), and future Docker or driver behaviour. The guarantee is: these exact
-inputs build and run on the listed matrix, and rot, including a dead weight link, shows up as a failed
-monthly clean-clone run.
+**Modern-GPU support, checked 24 October 2026.** The self-host is a PyTorch port of the old server: the original
+TF 1.15 / CUDA 10 backend cannot run on current GPUs, and the old `olicoad/encoder4editing` image is no longer
+publicly pullable, so the encoder is vendored as PyTorch source in `self-host/e4e/`. The image ships `torch 2.9.1+cu128`
+with compiled kernels for `sm_70 sm_75 sm_80 sm_86 sm_90 sm_100 sm_120` and **no PTX**. StyleGAN2's custom CUDA ops are
+off (`impl='ref'`), and nothing is compiled at runtime. Measured on eris (RTX 2080 SUPER, Turing): a no-cache build in
+9 min 38 s, model setup in 2 min 46 s with all three hashes verified, healthy in 17 s, a face in 0.85 s, and the GPU and
+encoder smoke tests passing. So it should run on Volta, Turing, Ampere (RTX 30), Ada (RTX 40, through sm_86), Hopper and
+Blackwell (RTX 50) with an NVIDIA driver 570 or newer; Pascal and older run on CPU only. Only Turing has been run.
+Requirements this adds:
+- The README carries an honest support table: compute capability 7.0–12.x, driver 570+, Pascal CPU-only, and each
+  tested row marked with its date.
+- At startup the API compares the GPU's compute capability with `torch.cuda.get_arch_list()`. An unsupported GPU gets
+  one plain message naming the card, its capability and the supported range, never a raw "no kernel image" CUDA
+  error.
+- Each rot-check run records the GPU, its capability, the arch list and the driver.
+- Before the release tag, the README-executed acceptance also runs once on the newest GPU generation available to
+  the project (a Blackwell card, rented if none is at hand).
+- **One allowed unfreeze:** when a new GPU generation appears that the arch list does not cover, the torch/CUDA pin is
+  bumped behind the same README-executed acceptance, and the support table is updated. The cost is stated in the
+  table: newer torch drops older generations (for example Volta), so the lower bound moves.
+
+**Not guaranteed:** GPUs outside the supported range above (until the allowed unfreeze covers a new generation), the
+third-party hosts for the weights (accepted), and future Docker or driver behaviour. The guarantee is: these exact
+inputs build and run on the listed matrix, a newly bought GPU inside the range works, one outside it gets a plain
+message, and rot, including a dead weight link, shows up as a failed monthly clean-clone run.
 
 **Decisions made by the operator, 16 October:**
 
