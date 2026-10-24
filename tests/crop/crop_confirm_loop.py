@@ -84,6 +84,10 @@ async def ui_case(context, name, fixture, zoom, evidence):
         await page.wait_for_function("document.querySelector('.next-product')?.getAttribute('data-next-busy')==='false'", timeout=60000)
         await page.evaluate("document.querySelector('.next-consent-toast button[aria-label=\"Ask me later\"]')?.click()")
         await page.evaluate("setInterval(()=>document.querySelector('.next-download-dialog .next-download-accept')?.click(),250)")
+        # The model-download toast can sit over the crop dialog's buttons (candidate defect 16); accept it whenever it
+        # shows, as the download dialog is, and count how often it was in the way.
+        await page.evaluate("window.__toastAccepted=0;setInterval(()=>{const b=[...document.querySelectorAll('button')].find(x=>/^download\\b/i.test(x.textContent.trim())"
+                            "&&x.closest('[class*=toast]'));if(b){window.__toastAccepted++;b.click();}},250)")
         # Count every time the crop dialog appears.
         await page.evaluate("window.__cropOpens=0;let open=false;new MutationObserver(()=>{const now=!!document.querySelector('.next-crop-view');"
                             "if(now&&!open)window.__cropOpens++;open=now;}).observe(document.body,{subtree:true,childList:true})")
@@ -97,9 +101,13 @@ async def ui_case(context, name, fixture, zoom, evidence):
                                         ".indexOf('Crop to a clear face')<0")
             button = page.get_by_role('button', name='Crop photo').last
             if ready and await button.count() and await button.is_enabled():
+                # The eager run can start a moment after the upload settles: require the same state a second later.
                 await page.wait_for_timeout(1000)
-                if not await page.evaluate("!!document.querySelector('.next-crop-dialog')"):
-                    await button.click(timeout=5000)
+                if await button.is_enabled() and not await page.evaluate("!!document.querySelector('.next-crop-dialog')"):
+                    try:
+                        await button.click(timeout=3000)
+                    except Exception:
+                        pass  # disabled again by a run that just started; look again
             await page.wait_for_timeout(500)
         await page.wait_for_selector('.next-crop-view img', timeout=30000)
         if zoom != 1:
@@ -122,7 +130,9 @@ async def ui_case(context, name, fixture, zoom, evidence):
         outcome = classify(encodes, reopened)
         if outcome != 'intended':
             await page.screenshot(path=str(evidence / f'{name}.png'), full_page=True)
+        toast = await page.evaluate("window.__toastAccepted")
         return {'case': name, 'outcome': outcome, 'fixture': fixture, 'cropReopened': reopened, 'e4eAttemptsAfterConfirm': encodes,
+                'downloadToastAccepted': toast, **({'defect16': 'model-download toast shown over the page'} if toast else {}),
                 'detectionPassesAfterConfirm': after['align'] - before['align'], 'status': after['status'], 'error': after['error']}
     except Exception as exc:
         await page.screenshot(path=str(evidence / f'{name}.png'), full_page=True)
