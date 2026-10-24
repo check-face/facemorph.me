@@ -1,0 +1,60 @@
+{
+  "captured": "2026-10-24",
+  "machine": "eris",
+  "browser": "chromium-webgpu 152.0.7977.82",
+  "note": "userAgent is recorded for provenance only; admission never reads it",
+  "record": {
+    "webgpu": {
+      "adapter": {
+        "limits": {
+          "maxBufferSize": 4294967292,
+          "maxStorageBufferBindingSize": 2147483644,
+          "maxComputeWorkgroupStorageSize": 49152
+        },
+        "features": [
+          "bgra8unorm-storage",
+          "chromium-experimental-multi-draw-indirect",
+          "chromium-experimental-sampling-resource-table",
+          "chromium-experimental-subgroup-matrix",
+          "chromium-experimental-timestamp-query-inside-passes",
+          "clip-distances",
+          "core-features-and-limits",
+          "depth-clip-control",
+          "depth32float-stencil8",
+          "dual-source-blending",
+          "float32-blendable",
+          "float32-filterable",
+          "indirect-first-instance",
+          "primitive-index",
+          "rg11b10ufloat-renderable",
+          "subgroup-size-control",
+          "subgroups",
+          "texture-component-swizzle",
+          "texture-compression-bc",
+          "texture-compression-bc-sliced-3d",
+          "texture-compression-unaligned",
+          "texture-formats-tier1",
+          "texture-formats-tier2",
+          "timestamp-query"
+        ],
+        "fallback": false,
+        "architecture": "turing",
+        "vendor": "nvidia"
+      }
+    },
+    "wasm": {
+      "simd": true,
+      "threads": true,
+      "maxMemoryBytes": 268435456
+    },
+    "crossOriginIsolated": true,
+    "hardwareConcurrency": 12,
+    "deviceMemoryGiB": 32,
+    "videoEncoder": {
+      "avc1024": true,
+      "avc512": true
+    },
+    "offscreenCanvas": true,
+    "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36"
+  }
+}

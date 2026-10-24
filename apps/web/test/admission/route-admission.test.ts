@@ -100,6 +100,22 @@ test('captured records: real browsers on eris admit each operation by capability
     const gpu = admit('face', 'auto', caps('eris-chromium-webgpu'), evidence());
     assert.equal(gpu.status === 'admitted' && gpu.provider, 'webgpu');
   }
+  // The lab phone (Chrome on the P30 Pro, no WebGPU debug flags): an adapter-less navigator.gpu, 8 GiB, H.264.
+  if (captured['lab-phone-chrome']) {
+    const phone = caps('lab-phone-chrome');
+    for (const op of OPS)
+      assert.equal(admit(op, 'auto', phone, evidence()).event.provider, 'cpu', `phone ${op}`);
+    const strict = evidence({
+      encoderStream: { phoneAdmitted: false, maxWasmBytes: E4E_MAX_WASM_BYTES, scope: 'none' },
+    });
+    assert.equal(
+      admit('photo-encode', 'auto', phone, strict).status,
+      phone.deviceMemoryGiB !== null && phone.deviceMemoryGiB <= CONSTRAINED_MEMORY_GIB
+        ? 'refused'
+        : 'admitted',
+      'decided by memory, not by being a phone',
+    );
+  }
   // Admission never reads the user agent: blanking it changes nothing.
   for (const [name, doc] of Object.entries(captured))
     for (const op of OPS)

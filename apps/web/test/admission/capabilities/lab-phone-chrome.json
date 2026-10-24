@@ -1,0 +1,25 @@
+{
+  "captured": "2026-10-25",
+  "machine": "lab phone (Huawei P30 Pro, USB)",
+  "browser": "Chrome 150.0.7871.128",
+  "note": "userAgent is recorded for provenance only; admission never reads it",
+  "record": {
+    "webgpu": {
+      "adapter": null
+    },
+    "wasm": {
+      "simd": true,
+      "threads": true,
+      "maxMemoryBytes": 268435456
+    },
+    "crossOriginIsolated": true,
+    "hardwareConcurrency": 8,
+    "deviceMemoryGiB": 8,
+    "videoEncoder": {
+      "avc1024": true,
+      "avc512": true
+    },
+    "offscreenCanvas": true,
+    "userAgent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Mobile Safari/537.36"
+  }
+}
