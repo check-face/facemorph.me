@@ -176,3 +176,53 @@ export function checkImport(list, root) {
   if (census.files !== list.census.files || census.bytes !== list.census.bytes) problems.push({ kind: 'census', path: '(digest list)' });
   return { ok: problems.length === 0, imported: imported.length, importedBytes: bytes, problems };
 }
+
+// --- Provenance map -----------------------------------------------------------------------------------
+
+export const DISPOSITIONS = ['retained', 'deliberately replaced', 'historical', 'proposal', 'rejected', 'evidence unavailable'];
+
+// Rows bead fm-86u requires, by the exact first-column text of each table in provenance.md.
+export const REQUIRED_ROWS = {
+  'Integrated optimisation paths': ['morph-frame pipeline', 'WGSL/direct engine', 'OPFS shard cache', 'direct RGBA media', 'compressed session', 'photo runtime', 'current media/video worker', 'native CUDA'],
+  'Source invariants and phone-contract items': [
+    'keyed synthesis admission receipts', '`ort-worker.mjs` `warmMapping()` overlap', 'CPU loading sequential', 'CPU synthesis 1–4 threads',
+    'streamed e4e bounded, unshared, single-threaded', 'dedicated cache-only worker', 'Firefox storage-permission timing', 'no-third-party gate',
+    'adapter probe before GPU acquisition', 'failure-only preference', 'visible-time watchdogs', 'worker-start vs route failure',
+    'constrained worker teardown', '268,435,456-byte e4e WASM limit',
+  ],
+  'Negative lessons': ['no silent fp16 e4e or tolerance widening', 'realtime WebCodecs encoder settings', 'PNG sub-filtering', 'IDB durability tuning', 'abandoned integrity-marker assumptions'],
+};
+
+// Tables of a markdown document: { [section heading]: [{ cells }] } (header and divider rows dropped).
+export function markdownTables(text) {
+  const tables = {};
+  let section = null;
+  for (const line of text.split('\n')) {
+    const h = /^## (.+)$/.exec(line);
+    if (h) { section = h[1].trim(); continue; }
+    if (!section || !line.startsWith('|')) continue;
+    const cells = line.slice(1, line.trimEnd().endsWith('|') ? line.trimEnd().length - 1 : undefined).split(/(?<!\\)\|/).map((c) => c.trim());
+    (tables[section] ??= []).push(cells);
+  }
+  for (const k of Object.keys(tables)) tables[k] = tables[k].slice(2); // header + divider
+  return tables;
+}
+
+// Every required row present (first cell starts with its name), every cell non-empty, the last cell a known
+// disposition, and the destination cell naming a bead (a check owner or the closest bead to a GAP).
+export function checkProvenance(text, required = REQUIRED_ROWS) {
+  const tables = markdownTables(text);
+  const problems = [];
+  for (const [section, names] of Object.entries(required)) {
+    const rows = tables[section] ?? [];
+    if (!rows.length) problems.push({ kind: 'missing-table', section });
+    for (const name of names) {
+      const row = rows.find((r) => r[0].startsWith(name));
+      if (!row) { problems.push({ kind: 'missing-row', section, name }); continue; }
+      if (row.some((c) => !c)) problems.push({ kind: 'empty-cell', section, name });
+      if (!DISPOSITIONS.includes(row.at(-1))) problems.push({ kind: 'disposition', section, name, value: row.at(-1) });
+      if (!/\bfm-[0-9a-z.]+\b/.test(row.at(-2))) problems.push({ kind: 'no-owner', section, name });
+    }
+  }
+  return problems;
+}

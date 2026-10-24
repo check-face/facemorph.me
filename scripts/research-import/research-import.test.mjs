@@ -203,3 +203,13 @@ test('census of a real repository records the snapshot commit and tree, and whet
     assert.equal(list.snapshot.sameTreeAt.identical, true);
   } finally { rmSync(c.root, { recursive: true, force: true }); }
 });
+
+test('provenance: a missing row, an empty cell, an unknown disposition and a row with no bead each fail', async () => {
+  const { checkProvenance } = await import('./lib.mjs');
+  const req = { Paths: ['alpha', 'beta'] };
+  const doc = (rows) => `# t\n\n## Paths\n| Family | Destination check | Disposition |\n| --- | --- | --- |\n${rows.join('\n')}\n`;
+  assert.deepEqual(checkProvenance(doc(['| alpha | fm-abc (plan:x) | retained |', '| beta | GAP: closest fm-x.1 | rejected |']), req), []);
+  assert.deepEqual(checkProvenance(doc(['| alpha | fm-abc | retained |']), req), [{ kind: 'missing-row', section: 'Paths', name: 'beta' }]);
+  assert.deepEqual(checkProvenance(doc(['| alpha |  | retained |', '| beta | fm-b | kept |']), req).map((p) => p.kind), ['empty-cell', 'no-owner', 'disposition']);
+  assert.deepEqual(checkProvenance(doc(['| alpha | a test | retained |', '| beta | fm-b | rejected |']), req).map((p) => p.kind), ['no-owner']);
+});
