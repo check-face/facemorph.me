@@ -3,3 +3,5 @@
 export const PACKAGE = '@facemorph/browser-model-manager' as const;
 export * from './contracts/index.ts';
 export * from './cache/index.ts';
+export * from './handles/index.ts';
+export * from './adapters/index.ts';
