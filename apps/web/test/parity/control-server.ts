@@ -93,28 +93,49 @@ export interface Control {
   stop(): Promise<void>;
 }
 
+export interface StartOptions {
+  readonly runtime?: string;
+  readonly log?: string;
+  /** Parity harness (fm-q007): serve this deploy-next-shaped directory as the subject instead of the verified control. */
+  readonly artifact?: string;
+  /** The subject's own source identity (sent as X-Next-Artifact-Source); required with `artifact`. */
+  readonly source?: string;
+}
+
 export async function startControl({
   runtime = join(CACHE, 'runtime'),
   log = join(CACHE, 'control-site/server.log'),
-} = {}): Promise<Control> {
-  const check = (() => {
-    try {
-      return execFileSync(
-        process.execPath,
-        [join(REPO, 'scripts/import/build-next.mjs'), '--check'],
-        { encoding: 'utf8' },
-      );
-    } catch (e) {
-      throw new Error(
-        `deploy-next/ does not verify against its identity (run npm run build:next at the repository root): ${(e as { stdout?: string }).stdout ?? e}`,
-      );
-    }
-  })();
-  const identity = (
-    JSON.parse(check.trim().split('\n').at(-1) ?? '{}') as { summary: ControlIdentity }
-  ).summary;
-  if (identity.kind !== 'control')
+  artifact,
+  source,
+}: StartOptions = {}): Promise<Control> {
+  if (artifact && !source) throw new Error('a subject artifact needs its own source identity');
+  const subjectIdentity = (): ControlIdentity => ({
+    ok: existsSync(join(artifact!, 'index.html')),
+    kind: 'subject',
+    files: walk(artifact!).length,
+  });
+  const check = artifact
+    ? ''
+    : (() => {
+        try {
+          return execFileSync(
+            process.execPath,
+            [join(REPO, 'scripts/import/build-next.mjs'), '--check'],
+            { encoding: 'utf8' },
+          );
+        } catch (e) {
+          throw new Error(
+            `deploy-next/ does not verify against its identity (run npm run build:next at the repository root): ${(e as { stdout?: string }).stdout ?? e}`,
+          );
+        }
+      })();
+  const identity = artifact
+    ? subjectIdentity()
+    : (JSON.parse(check.trim().split('\n').at(-1) ?? '{}') as { summary: ControlIdentity }).summary;
+  if (!artifact && identity.kind !== 'control')
     throw new Error(`deploy-next/ is a ${identity.kind} build, not the control`);
+  if (artifact && !identity.ok)
+    throw new Error(`${artifact} has no index.html: not a servable subject`);
   const manifest = join(runtime, 'manifest.json');
   if (!existsSync(manifest))
     throw new Error(
@@ -129,9 +150,11 @@ export async function startControl({
   const work = join(CACHE, 'control-site');
   rmSync(join(work, 'deploy-next'), { recursive: true, force: true });
   mkdirSync(join(work, 'overlay'), { recursive: true });
-  cpSync(join(REPO, 'deploy-next'), join(work, 'deploy-next'), { recursive: true });
-  for (const name of ['next-site-source.txt', 'next-site-SHA256SUMS'])
-    copyFileSync(join(REPO, name), join(work, name));
+  cpSync(artifact ?? join(REPO, 'deploy-next'), join(work, 'deploy-next'), { recursive: true });
+  if (artifact) writeFileSync(join(work, 'next-site-source.txt'), `${source}\n`);
+  else
+    for (const name of ['next-site-source.txt', 'next-site-SHA256SUMS'])
+      copyFileSync(join(REPO, name), join(work, name));
   copyFileSync(manifest, join(work, 'overlay/manifest.json'));
   const mirrorFiles = await seedMirror(runtime, join(work, '.runtime-mirror'), manifestSha256);
   execFileSync(

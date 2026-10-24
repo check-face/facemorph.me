@@ -1,0 +1,5 @@
+{
+  // The parity harness (fm-q007): Node code driving the parity spec, typed like the e2e tests.
+  "extends": "../../tsconfig.e2e.json",
+  "include": ["."]
+}

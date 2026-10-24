@@ -6,10 +6,17 @@
 // Privacy: photo bytes never enter (files and blobs are reduced to size and type), latents never enter (typed
 // arrays are reduced to their length), and the only typed inputs are the spec's synthetic words and seeds.
 import { mkdirSync, writeFileSync } from 'node:fs';
+import { pathToFileURL } from 'node:url';
 import type { Page } from 'playwright';
 import { READ_MODEL } from './elmish-probe.ts';
 
 export const GOLDENS = new URL('../goldens/', import.meta.url);
+/** Where a run writes: the committed control goldens, or (parity harness, fm-q007) PARITY_GOLDENS_DIR/<PARITY_SUBJECT_NAME>/. */
+const outRoot = () =>
+  process.env['PARITY_GOLDENS_DIR']
+    ? pathToFileURL(`${process.env['PARITY_GOLDENS_DIR']}/`)
+    : GOLDENS;
+const subjectName = () => process.env['PARITY_SUBJECT_NAME'] ?? 'control';
 
 export interface Action {
   readonly kind: 'load' | 'press' | 'touch' | 'type' | 'key' | 'wait';
@@ -101,14 +108,14 @@ export class Recorder {
     return s;
   }
 
-  /** Writes test/goldens/control/<rowId>/<nn>-<step>.json. */
+  /** Writes test/goldens/control/<rowId>/<nn>-<step>.json (or the harness's subject directory, see outRoot). */
   write(): string[] {
-    const dir = new URL(`control/${this.rowId}/`, GOLDENS);
+    const dir = new URL(`${subjectName()}/${this.rowId}/`, outRoot());
     mkdirSync(dir, { recursive: true });
     return this.steps.map((s, i) => {
       const name = `${String(i + 1).padStart(2, '0')}-${s.step}.json`;
       writeFileSync(new URL(name, dir), JSON.stringify(s, null, 1) + '\n');
-      return `control/${this.rowId}/${name}`;
+      return `${subjectName()}/${this.rowId}/${name}`;
     });
   }
 }

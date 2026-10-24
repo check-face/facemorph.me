@@ -3,7 +3,7 @@
 // matrix (apps/web/test/parity/rows.ts): parity rows compare the DOM contract of every step exactly; changed and new
 // rows are emitted owner-graded and never compared. Goldens are apps/web/test/goldens/<subject>/<row>/<project>/NN-<step>.json
 // as recorded by the parity spec with RECORD=1.
-//   node --experimental-strip-types scripts/verify/parity-grade.mjs [--control DIR] --subject DIR [--out FILE]
+//   node --experimental-strip-types scripts/verify/parity-grade.mjs [--control DIR] --subject DIR [--rows a,b] [--out FILE]
 // One JSON line per row and project, then a summary; exit 1 when any parity row fails.
 import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
@@ -60,7 +60,16 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     console.error('--subject DIR is required');
     process.exit(2);
   }
-  const { results, summary } = grade(ROWS, controlDir, resolve(args.subject));
+  // --rows a,b grades only those rows (a smoke subset); the rest are not reported.
+  const only = args.rows ? new Set(args.rows.split(',')) : null;
+  const rows = only ? ROWS.filter((r) => only.has(r.rowId)) : ROWS;
+  if (only && rows.length !== only.size) {
+    console.error(
+      `unknown rows in --rows: ${[...only].filter((id) => !ROWS.some((r) => r.rowId === id)).join(', ')}`,
+    );
+    process.exit(2);
+  }
+  const { results, summary } = grade(rows, controlDir, resolve(args.subject));
   for (const r of results) console.log(JSON.stringify(r));
   console.log(
     JSON.stringify({
