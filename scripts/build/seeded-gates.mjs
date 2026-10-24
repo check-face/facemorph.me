@@ -44,10 +44,11 @@ const CASES = [
     run: ['run', 'typecheck', '-w', 'packages/stylegan-js'],
   },
   {
-    name: 'a process reference in a worker module fails typecheck',
-    file: `packages/cloudflare-model-host/src/${tag}.ts`,
+    // Browser package code has no Node globals (the host is Node tooling, where process is allowed).
+    name: 'a process reference in browser package code fails typecheck',
+    file: `packages/browser-model-manager/src/${tag}.ts`,
     text: 'export const mode = process.env.NODE_ENV;\n',
-    run: ['run', 'typecheck', '-w', 'packages/cloudflare-model-host'],
+    run: ['run', 'typecheck', '-w', 'packages/browser-model-manager'],
   },
 ];
 
