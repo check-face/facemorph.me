@@ -968,15 +968,17 @@ export function createModelCache({
       // One unchunked asset streams into the store under one slot and one charge for its whole size.
       const slot = slots ? await slots.take(transfer.priority(), signal) : () => {};
       held.add(slot);
-      const charge = chargeGrant(transfer.payer(), asset.sha256, asset.size);
+      let charge: ReturnType<typeof chargeGrant> | undefined;
       try {
+        charge = chargeGrant(transfer.payer(), asset.sha256, asset.size);
         body = charged(await download(asset), charge);
       } catch (error) {
-        charge.settle();
-        letGo(slot);
+        charge?.settle();
+        letGo(slot); // a refused grant gives its slot back at once
         throw error;
       }
-      settlePlain = () => charge.settle();
+      const settle = charge;
+      settlePlain = () => settle.settle();
     }
     const verified = new Response(verifiedStream(counted(body!, asset, emit), asset, signal), {
       headers: {

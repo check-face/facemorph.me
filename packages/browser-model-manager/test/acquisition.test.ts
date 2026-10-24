@@ -478,6 +478,53 @@ test(
   },
 );
 
+test(
+  'a refused grant gives its slot back: Cache Storage, one slot, refused then covered',
+  { skip: NO_BROWSER, timeout: 30_000 },
+  async () => {
+    const P = asset('plain-refused', 0, 24);
+    const s = await session();
+    try {
+      const from = log.length;
+      const out = await s.page.evaluate(
+        async ({ p, short, enough }) => {
+          const m = await import(String('/pkg/index.js'));
+          const cache = await m.createBrowserModelCache({
+            shards: null,
+            retryDelaysMs: [],
+            slots: m.createAcquisitionSlots({
+              locks: navigator.locks,
+              count: 1,
+              name: 'refused-slot',
+            }),
+          });
+          let first = 'acquired';
+          try {
+            await cache.acquire(p, { grant: short, owner: 'face:a' });
+          } catch (e) {
+            first = e instanceof m.GrantRefused ? (e as { refusal: string }).refusal : String(e);
+          }
+          await cache.acquire(p, { grant: enough, owner: 'face:a' }); // hangs if the first kept the only slot
+          return { first, remaining: m.grantRemaining(enough) as number };
+        },
+        {
+          p: descriptor(P),
+          short: grant(['face:a'], [P], P.size - 1),
+          enough: grant(['face:a'], [P], P.size),
+        },
+      );
+      assert.deepEqual(out, { first: 'revision-required', remaining: 0 });
+      assert.deepEqual(
+        requestsFor(P.parts, from).map((l) => l.status),
+        [200],
+        'the refused attempt made no request',
+      );
+    } finally {
+      await s.context.close();
+    }
+  },
+);
+
 // ---------------------------------------------------------------- shared fetch ownership
 
 test(
