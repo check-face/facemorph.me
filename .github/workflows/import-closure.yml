@@ -28,12 +28,12 @@ jobs:
         with:
           node-version: '22'
       - run: node --test scripts/import/control.test.mjs scripts/import/closure.test.mjs scripts/runtime/runtime.test.mjs
-      # Files the app adds beside the imported closure (fm-svg shell and build, fm-s9n contracts); everything else under apps/web
+      # Files the app adds beside the imported closure (fm-svg shell and build, fm-s9n contracts, fm-l6mq media core); everything else under apps/web
       # must be the allowlist's bytes.
       - run: >-
           node scripts/import/verify-closure.mjs --allow package.json --allow package-lock.json
           --allow browser-matrix.json --allow 'tsconfig*.json' --allow vite.config.ts --allow index.html --allow worker-check.html --allow render-check.html --allow .gitignore
-          --allow 'build/**' --allow 'shell/**' --allow 'test/**' --allow 'src/photo/**' --allow 'src/contracts/**'
+          --allow 'build/**' --allow 'shell/**' --allow 'test/**' --allow 'src/photo/**' --allow 'src/contracts/**' --allow 'src/media/**'
       - run: node scripts/import/scan-exclusions.mjs
       - run: node scripts/inventory/unresolved-imports.mjs --root apps/web --lock package-lock.json # one root lock (fm-fy2.4)
       - name: Control artifact downloads, verifies and scans clean

@@ -1,0 +1,5 @@
+{
+  // Computational media core (fm-l6mq): the contracts' settings, so no DOM, WebWorker or Node globals.
+  "extends": "../contracts/tsconfig.json",
+  "include": ["."]
+}

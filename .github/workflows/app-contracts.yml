@@ -10,6 +10,11 @@ on:
       [
         'apps/web/src/contracts/**',
         'apps/web/test/contracts/**',
+        'apps/web/src/media/**',
+        'apps/web/test/media/**',
+        'apps/web/src/Next/media.mjs',
+        'apps/web/src/Next/recovery-metadata.mjs',
+        'apps/web/src/Next/image-encoder-worker.mjs',
         'packages/stylegan-js/**',
         'packages/browser-model-manager/**',
         'package-lock.json',
@@ -33,7 +38,9 @@ jobs:
       # The manager's exports name dist/ only (no source condition), so its declarations are built first.
       - run: npm run build -w packages/stylegan-js -w packages/browser-model-manager
       - name: Contracts without DOM or Node globals; then the tests' types
-        run: npx tsc -p apps/web/src/contracts && npx tsc -p apps/web/src/contracts/tsconfig.test.json
+        run: >-
+          npx tsc -p apps/web/src/contracts && npx tsc -p apps/web/src/contracts/tsconfig.test.json &&
+          npx tsc -p apps/web/src/media && npx tsc -p apps/web/src/media/tsconfig.test.json
       - name: Contract tests (workspace packages read from source)
         working-directory: apps/web
-        run: node --conditions=source --test test/contracts/*.test.ts
+        run: node --conditions=source --test test/contracts/*.test.ts test/media/*.test.ts
