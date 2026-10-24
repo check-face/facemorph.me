@@ -149,6 +149,7 @@ const decodeInPage = async ({ b64 }) => {
 };
 
 let failed = false;
+const verifiedTranslucent = new Set();
 for (const [name, launcher] of [
   ['chromium', chromium],
   ['firefox', firefox],
@@ -212,18 +213,15 @@ for (const [name, launcher] of [
           line.glExact = glBytes.length === c.rgba.length && glBytes.equals(Buffer.from(c.rgba));
         }
         if (c.opaque || !alphaMatches) failed = true;
-        else if (line.glExact)
+        else if (line.glExact) {
           line.note = '2D canvas premultiplies; WebGL unpremultiplied readback is exact';
-        else if (name === 'webkit') {
-          // The WebKit build here keeps decoded pixels premultiplied, so neither 2D nor WebGL can
-          // return the original colour under translucent pixels. Alpha and opaque pixels are still
-          // exact; the translucent colour is verified by Chromium and Firefox only.
-          line.untestedColourUnderAlpha = true;
-          line.note =
-            'WebKit stores premultiplied pixels: alpha exact, translucent colour unverifiable here';
+          verifiedTranslucent.add(c.name);
         } else {
-          failed = true;
-          line.note = 'colour differs and no exact unpremultiplied readback was available';
+          // No exact unpremultiplied readback here (WebKit keeps decoded pixels premultiplied; some
+          // GL stacks premultiply on upload). Alpha is exact; the colour under translucent pixels is
+          // untested in this browser and must be verified exactly by another one (checked below).
+          line.untestedColourUnderAlpha = true;
+          line.note = 'alpha exact; translucent colour has no exact readback in this browser';
         }
       }
     } catch (error) {
@@ -234,5 +232,19 @@ for (const [name, launcher] of [
     console.log(JSON.stringify(line));
   }
   await browser.close();
+}
+// Every translucent case's colour must be read back exactly somewhere, or the encoder's colour under alpha is
+// unverified.
+const unverified = cases
+  .filter(
+    (c) =>
+      !c.opaque &&
+      c.rgba.some((v, i) => i % 4 === 3 && v !== 0) &&
+      !verifiedTranslucent.has(c.name),
+  )
+  .map((c) => c.name);
+if (unverified.length) {
+  failed = true;
+  console.log(JSON.stringify({ translucentColourUnverifiedInEveryBrowser: unverified }));
 }
 process.exit(failed ? 1 : 0);

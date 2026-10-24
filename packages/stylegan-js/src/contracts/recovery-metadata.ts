@@ -349,9 +349,7 @@ function fields(
 }
 
 /** A still's container and pixel size (PNG or WebP), or null for a format that cannot carry recovery metadata. */
-export function stillContainer(
-  bytes: Uint8Array,
-): {
+export function stillContainer(bytes: Uint8Array): {
   readonly mime: RecoveryImageMime;
   readonly width: number;
   readonly height: number;
