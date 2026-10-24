@@ -14,6 +14,7 @@ test('every present test file must be run here or owned elsewhere', () => {
 
 test('node --test summary counts; a missing summary is NaN, never zero-as-pass', () => {
   assert.deepEqual(nodeTestCounts('ok 1 - x\nℹ tests 283\nℹ suites 0\nℹ pass 282\nℹ fail 1\n'), { tests: 283, pass: 282, fail: 1 });
+  assert.deepEqual(nodeTestCounts('TAP version 13\nok 1 - x\n# tests 3\n# pass 3\n# fail 0\n'), { tests: 3, pass: 3, fail: 0 });
   const none = nodeTestCounts('nothing ran');
   assert.ok(Number.isNaN(none.tests) && !(none.tests > 0));
 });

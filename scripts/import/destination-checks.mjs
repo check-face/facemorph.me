@@ -36,9 +36,9 @@ export function listedFindings(present, rows) {
   return out;
 }
 
-/** Counts from node --test's summary lines (ℹ tests N / ℹ pass N / ℹ fail N). */
+/** Counts from node --test's summary lines: spec reporter `ℹ tests N` (Node 23+) or TAP `# tests N` (Node 22). */
 export function nodeTestCounts(output) {
-  const count = (name) => Number(output.match(new RegExp(`^ℹ ${name} (\\d+)$`, 'm'))?.[1] ?? NaN);
+  const count = (name) => Number(output.match(new RegExp(`^(?:ℹ|#) ${name} (\\d+)$`, 'm'))?.[1] ?? NaN);
   return { tests: count('tests'), pass: count('pass'), fail: count('fail') };
 }
 
