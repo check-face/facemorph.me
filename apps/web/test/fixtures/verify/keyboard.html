@@ -1,0 +1,37 @@
+<!doctype html>
+<!-- The keyboard-driver fixture (fm-48bj). ?order=bad gives the last button tabindex=1, so it is reached first
+     though it sits last. #good-opener's dialog returns focus to it on close; #bad-opener's sends focus to body. -->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Keyboard fixture</title>
+    <style>
+      .row { display: flex; gap: 16px; margin: 24px; }
+      button { width: 120px; height: 48px; }
+    </style>
+  </head>
+  <body>
+    <div class="row">
+      <button id="one">One</button><button id="two">Two</button><button id="three">Three</button>
+    </div>
+    <div class="row"><button id="good-opener">Open good</button><button id="bad-opener">Open bad</button></div>
+    <dialog id="dialog"><button id="close">Close</button></dialog>
+    <script>
+      if (new URLSearchParams(location.search).get('order') === 'bad')
+        document.getElementById('bad-opener').tabIndex = 1;
+      const dialog = document.getElementById('dialog');
+      let opener = null;
+      for (const id of ['good-opener', 'bad-opener'])
+        document.getElementById(id).addEventListener('click', (e) => {
+          opener = e.currentTarget;
+          dialog.showModal();
+        });
+      document.getElementById('close').addEventListener('click', () => {
+        dialog.close();
+        if (opener.id === 'good-opener') opener.focus();
+        else document.activeElement.blur();
+      });
+    </script>
+  </body>
+</html>

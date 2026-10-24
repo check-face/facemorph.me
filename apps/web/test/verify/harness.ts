@@ -1,6 +1,8 @@
 // The integrated-verification harness's plain values (fm-48bj): the width sweep and grid counts every layout case
 // uses, the text-input and seed variants, breakpoints read from the built CSS, and the case manifest each verify
-// bead declares. No browser here; the operated input and the artifact fixture are in operated.ts and artifact.ts.
+// bead declares, the sweep's points and the focus-order judge. No browser here; the operated input and the artifact fixture are in operated.ts and artifact.ts.
+import { readdirSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 /** Viewport widths of the sweep, in CSS px (identical to face.many, fm-id4c, which imports them from here). */
 export const SWEEP_WIDTHS = [320, 360, 390, 480, 600, 768, 900, 1024, 1280, 1920, 2560] as const;
@@ -142,6 +144,73 @@ export function manifestProblems(m: CaseManifest, knownRows?: ReadonlySet<string
         out.push(`${at}: unknown lab cell ${cell}`);
     for (const w of c.widths ?? [])
       if (!Number.isInteger(w) || w < 1) out.push(`${at}: width ${w} is not a px width`);
+  }
+  return out;
+}
+
+/** Every width breakpoint in the built site's CSS files (dist/ or deploy-next/), sorted. */
+export function builtBreakpoints(dir: string): number[] {
+  const css: string[] = [];
+  const walk = (d: string) => {
+    for (const e of readdirSync(d, { withFileTypes: true })) {
+      const p = join(d, e.name);
+      if (e.isDirectory()) walk(p);
+      else if (e.name.endsWith('.css')) css.push(readFileSync(p, 'utf8'));
+      else if (e.name.endsWith('.html'))
+        for (const m of readFileSync(p, 'utf8').matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g))
+          css.push(m[1] ?? '');
+    }
+  };
+  walk(dir);
+  return breakpoints(css.join('\n'));
+}
+
+export interface SweepPoint extends Viewport {
+  readonly id: string;
+  readonly deviceScaleFactor?: number;
+  readonly textScale?: number;
+}
+
+/** The sweep's points: declared widths, every breakpoint +/-1 px, landscape and portrait phones, a short window,
+ * 200 % zoom at desktop width and 200 % text at phone width. */
+export function sweepPoints(
+  touchBreakpoint: number,
+  cssBreakpoints: readonly number[],
+): SweepPoint[] {
+  const at = (width: number, height = 900, extra: Partial<SweepPoint> = {}): SweepPoint => {
+    const touch = width <= touchBreakpoint;
+    return { id: `${width}x${height}`, width, height, hasTouch: touch, isMobile: touch, ...extra };
+  };
+  const widths = [...new Set([...SWEEP_WIDTHS, ...aroundBreakpoints(cssBreakpoints)])].filter(
+    (w) => w >= 280,
+  );
+  return [
+    ...widths.sort((a, b) => a - b).map((w) => at(w)),
+    at(390, 844, { id: 'portrait-390x844' }),
+    at(844, 390, { id: 'landscape-844x390', hasTouch: true, isMobile: true }),
+    at(1280, 480, { id: 'short-1280x480' }),
+    at(640, 450, { id: 'zoom-200-1280', deviceScaleFactor: 2 }),
+    at(390, 844, { id: 'text-200-390', textScale: 2 }),
+  ];
+}
+
+export interface FocusStop {
+  readonly element: string;
+  readonly box: { x: number; y: number; width: number; height: number } | null;
+  readonly focusVisible: boolean;
+}
+
+/** Stops whose order runs against reading order: a later stop that sits a full row above an earlier one, or on the
+ * same row to its left. Plain boxes in, problems out. */
+export function visualOrderProblems(stops: readonly FocusStop[]): string[] {
+  const out: string[] = [];
+  for (let i = 1; i < stops.length; i++) {
+    const a = stops[i - 1]!.box,
+      b = stops[i]!.box;
+    if (!a || !b) continue;
+    const sameRow = Math.abs(a.y - b.y) < Math.min(a.height, b.height) / 2;
+    if (sameRow ? b.x + b.width / 2 < a.x : b.y + b.height <= a.y)
+      out.push(`${stops[i]!.element} is reached after ${stops[i - 1]!.element} but sits before it`);
   }
   return out;
 }
