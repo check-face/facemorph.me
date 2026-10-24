@@ -848,10 +848,14 @@ def br(*a):
     return subprocess.run(['br', *a, '--lock-timeout', '60000'], cwd=BEADS_REPO, capture_output=True, text=True)
 
 
+LAB_FIX_ITEM = 'device-lab failure fixed and a later lab run passed (ticked by lab.py on that pass)'
+
+
 def passback(beads, ok, out, title):
-    """Device evidence goes to the beads it concerns. A failure hands each bead back to its implementer:
-    reopened if closed, labelled device-lab-failed, with the evidence as a comment (assignee unchanged).
-    A pass records the evidence and clears an earlier failure label."""
+    """Device evidence goes to the beads it concerns. A failure hands each bead back: reopened if closed,
+    labelled device-lab-failed and reopened, with the evidence as a comment and an unchecked acceptance item
+    that the closure policy will not let anyone close past until a later lab run passes. A pass records the
+    evidence, ticks that item and clears the failure label."""
     if not beads:
         return
     summary = (out / 'summary.md').read_text()
@@ -865,13 +869,20 @@ def passback(beads, ok, out, title):
             continue
         d = json.loads(info.stdout)
         d = d[0] if isinstance(d, list) else d
+        pending = f'- [ ] {LAB_FIX_ITEM}' in (d.get('acceptance_criteria') or '')
         if ok:
             br('comments', 'add', b, evidence)
             br('update', b, '--remove-label', 'device-lab-failed')
+            if pending:
+                br('update', b, '--check-acceptance', LAB_FIX_ITEM)
         else:
             if d.get('status') == 'closed':
                 br('reopen', b, '--reason', f'device lab failed: {title}')
-            br('update', b, '--add-label', 'device-lab-failed')
+            br('update', b, '--add-label', 'device-lab-failed', '--add-label', 'reopened')
+            if LAB_FIX_ITEM not in (d.get('acceptance_criteria') or ''):
+                br('update', b, '--add-acceptance', LAB_FIX_ITEM)
+            elif not pending:
+                br('update', b, '--uncheck-acceptance', LAB_FIX_ITEM)
             br('comments', 'add', b, evidence)
         log('passback', bead=b, ok=ok, status=d.get('status'), assignee=d.get('assignee'))
     br('sync', '--flush-only')
