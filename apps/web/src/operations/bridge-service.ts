@@ -84,6 +84,33 @@ const PHASES: Readonly<Record<string, AdmittedPhase>> = {
   face: 'inference',
   morph: 'inference',
 };
+/** Parent intents wait for their slots' latents, holding nothing, and join the queue when ready. */
+const isParent = (request: OperationRequest): boolean =>
+  request.kind === 'morph' || request.kind === 'blend';
+/** The slots a parent depends on: every morph face, and each blend slot with a nonzero weight. */
+function dependencySources(request: OperationRequest) {
+  return request.kind === 'blend'
+    ? request.sources.filter((_, index) => request.weights[index] !== 0)
+    : sources(request);
+}
+function blendFailure(request: OperationRequest): OperationFailure | undefined {
+  if (request.kind !== 'blend') return;
+  if (
+    request.weights.length !== request.sources.length ||
+    request.weights.some((weight) => !Number.isFinite(weight))
+  )
+    return {
+      kind: 'blend-weights',
+      recovery: 'adjust-weights',
+      message: 'Give every blended face a weight.',
+    };
+  if (request.weights.every((weight) => weight === 0))
+    return {
+      kind: 'blend-weights',
+      recovery: 'adjust-weights',
+      message: 'Give at least one face a weight other than 0.',
+    };
+}
 const heavyOp = (request: OperationRequest): HeavyOp =>
   request.kind === 'morph'
     ? 'morph-frames'
@@ -226,7 +253,7 @@ export function createOperationService(
   function attach(item: Pending, work: Work, role: 'face' | 'dependency' | 'direct'): void {
     // A parent's frame lease joins at readiness, after faces requested while it
     // waited. Other requests retain their original FIFO position.
-    if (role === 'face' || (role === 'direct' && item.handle.request.kind !== 'morph'))
+    if (role === 'face' || (role === 'direct' && !isParent(item.handle.request)))
       work.order = Math.min(work.order, item.order);
     work.owners.set(item, role);
     if (role === 'dependency') item.dependencies.add(work);
@@ -262,12 +289,12 @@ export function createOperationService(
     finish(item, result);
     pump();
   }
-  function stop(ids: readonly RequestId[]): void {
+  function stop(ids: readonly RequestId[], status: 'cancelled' | 'superseded' = 'cancelled'): void {
     for (const id of ids) {
       const item = pending.get(id);
       if (!item || item.cancelled) continue;
       item.cancelled = true;
-      track(abandon(item, { status: 'cancelled' }));
+      track(abandon(item, { status }));
     }
   }
   function fail(item: Pending, cause: OperationFailure): void {
@@ -297,15 +324,10 @@ export function createOperationService(
     } else emit(item, { type: 'compute-ready', output });
   }
   function prepareParent(item: Pending): void {
-    if (
-      item.started ||
-      item.handle.request.kind !== 'morph' ||
-      blocked.blockMorph ||
-      !current(item)
-    )
+    if (item.started || !isParent(item.handle.request) || blocked.blockMorph || !current(item))
       return;
     const request = item.handle.request;
-    for (const source of request.sources) {
+    for (const source of dependencySources(request)) {
       const input = source.input;
       if (
         (input.mode === 'text' && !validateWords(input.value).valid) ||
@@ -331,7 +353,7 @@ export function createOperationService(
     }
     // Install every dependency before observing already-ready shared jobs.
     // Otherwise the first cache hit could prematurely queue the frame lease.
-    const dependencies = sources(request).map((source) =>
+    const dependencies = dependencySources(request).map((source) =>
       faceWork({
         kind: 'face',
         source,
@@ -378,6 +400,23 @@ export function createOperationService(
           file: request.file,
           inputs,
           jobId: work.jobId,
+          provider: request.route.requested,
+          routeSnapshot: request.route,
+        });
+      } else if (request.kind === 'blend') {
+        // Weight-0 slots were never dependencies and are not part of the sum.
+        const used = request.sources.flatMap((source, index) =>
+          request.weights[index] === 0
+            ? []
+            : [{ input: source.input, weight: request.weights[index]! }],
+        );
+        output = await b.execute({
+          ...request.settings,
+          jobId: work.jobId,
+          action: 'blend',
+          target: request.target,
+          inputs: used.map((slot) => slot.input),
+          weights: used.map((slot) => slot.weight),
           provider: request.route.requested,
           routeSnapshot: request.route,
         });
@@ -511,20 +550,36 @@ export function createOperationService(
       provider: null,
       cancelled: false,
       started: false,
-      refusal: morphFrameFailure(intent.request),
+      refusal: morphFrameFailure(intent.request) ?? blendFailure(intent.request),
     };
+    // A newer blend for the same result supersedes a pending one: latest wins, the old result is never
+    // installed. It is stopped after the newer one has joined the shared slot jobs, so no face reruns.
+    const superseded =
+      intent.request.kind === 'blend'
+        ? [...pending.values()]
+            .filter((other) => {
+              const r = other.handle.request;
+              return (
+                r.kind === 'blend' &&
+                intent.request.kind === 'blend' &&
+                r.target === intent.request.target
+              );
+            })
+            .map((other) => other.handle.requestId)
+        : [];
     pending.set(intent.requestId, item);
     if (intent.request.kind === 'face') retries.set(intent.request.source.slot, intent.request);
     emit(item, { type: 'queued' });
     // Attaching is deferred so a caller can subscribe/cancel using the returned handle.
     queueMicrotask(() => {
       if (!current(item)) return;
-      if (!item.refusal && intent.request.kind !== 'morph') {
+      if (!item.refusal && !isParent(intent.request)) {
         const work =
           intent.request.kind === 'face' ? faceWork(intent.request) : makeWork(intent.request);
         attach(item, work, intent.request.kind === 'face' ? 'face' : 'direct');
       }
       pump();
+      stop(superseded, 'superseded');
     });
     return handle;
   }
@@ -532,6 +587,7 @@ export function createOperationService(
     requestFace: queue,
     requestFaces: queue,
     requestMorph: queue,
+    requestBlend: queue,
     requestImport: queue,
     requestNext,
     capability(route) {

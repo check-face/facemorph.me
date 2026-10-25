@@ -198,7 +198,7 @@ export interface Output {
   readonly refusal: Refusal | null;
 }
 
-export const ACTIONS = ['face', 'faces', 'morph'] as const;
+export const ACTIONS = ['face', 'faces', 'morph', 'blend'] as const;
 export type Action = (typeof ACTIONS)[number];
 export const PROVIDERS = ['auto', 'cpu', 'webgpu'] as const;
 export type RequestedProvider = (typeof PROVIDERS)[number];
@@ -206,9 +206,11 @@ export type RequestedProvider = (typeof PROVIDERS)[number];
 export interface Request {
   readonly jobId: number;
   readonly action: Action;
-  /** The face a `face` action works on; '' otherwise. */
+  /** The face a `face` action works on, or the id a `blend` result is installed under; '' otherwise. */
   readonly target: string;
   readonly inputs: readonly Input[];
+  /** A `blend` action's weight per input, in input order. */
+  readonly weights?: readonly number[];
   readonly kind: MorphKind;
   readonly width: number;
   readonly pinch: boolean;

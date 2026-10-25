@@ -44,6 +44,13 @@ export type OperationRequest =
   | (Common & { readonly kind: 'morph'; readonly sources: readonly SourceSnapshot[] })
   | (Common & { readonly kind: 'faces'; readonly sources: readonly SourceSnapshot[] })
   | (Common & {
+      readonly kind: 'blend';
+      /** Ordered slot inputs and one weight per slot; the result is installed under `target`. */
+      readonly sources: readonly SourceSnapshot[];
+      readonly weights: readonly number[];
+      readonly target: string;
+    })
+  | (Common & {
       readonly kind: 'import';
       readonly sources: readonly SourceSnapshot[];
       readonly file: Blob;
@@ -60,6 +67,11 @@ export type OperationFailure =
       readonly reason: 'over-budget' | 'invalid-settings';
       readonly message: string;
       readonly recovery: 'shorten-morph' | 'adjust-frames' | 'select-faces';
+    }
+  | {
+      readonly kind: 'blend-weights';
+      readonly message: string;
+      readonly recovery: 'adjust-weights';
     }
   | {
       readonly kind: 'dependency';
@@ -94,7 +106,7 @@ export interface OperationHandle extends IntentSnapshot {
 export type CancelTarget = { readonly slot: string } | { readonly requestId: RequestId };
 export type ScheduledJob = (
   | { readonly kind: 'face'; readonly id: string }
-  | { readonly kind: 'morph' | 'faces' | 'import' }
+  | { readonly kind: 'morph' | 'faces' | 'import' | 'blend' }
 ) & { readonly phase?: 'queued' | 'compute' | 'file' };
 export interface SchedulingState {
   readonly busy?: boolean;
@@ -105,6 +117,8 @@ export interface OperationService {
   requestFace(request: Extract<OperationRequest, { kind: 'face' }>): OperationHandle;
   requestFaces(request: Extract<OperationRequest, { kind: 'faces' }>): OperationHandle;
   requestMorph(request: Extract<OperationRequest, { kind: 'morph' }>): OperationHandle;
+  /** A parent intent: waits for each weighted slot's latent, then one blend synthesis; newest wins. */
+  requestBlend(request: Extract<OperationRequest, { kind: 'blend' }>): OperationHandle;
   requestImport(request: Extract<OperationRequest, { kind: 'import' }>): OperationHandle;
   requestNext(jobs: readonly ScheduledJob[], state?: SchedulingState): number;
   /** Whether the provider context this route would use is available, busy or unavailable. */
@@ -156,6 +170,14 @@ export function capture(request: OperationRequest): OperationRequest {
   if (request.kind === 'face')
     return Object.freeze({ ...common, kind: 'face', source: source(request.source) });
   const copied = Object.freeze(request.sources.map(source));
+  if (request.kind === 'blend')
+    return Object.freeze({
+      ...common,
+      kind: 'blend',
+      sources: copied,
+      weights: Object.freeze([...request.weights]),
+      target: request.target,
+    });
   return request.kind !== 'import'
     ? Object.freeze({ ...common, kind: request.kind, sources: copied })
     : Object.freeze({ ...common, kind: 'import', sources: copied, file: request.file });

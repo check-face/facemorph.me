@@ -6,6 +6,7 @@ import {createPhotoAligner} from './photo/align-photo.mjs';
 import {createBrowserRuntime} from './browser/runtime.mjs';
 import {AdmissionRefused} from './browser/admission.mjs';
 import {createLatentPath,GEOMETRY_VERSION} from './geometry/latent-path.mjs';
+import {blend,FFHQ_1024_DESCRIPTOR} from '@facemorph/stylegan-js';
 import {decode,encode} from '../project/bridge-result.ts';
 import {saveFile,shareFile,videoWriter} from './media.mjs';
 import {diagnostics,onJobEnd} from './reporting.mjs';
@@ -336,6 +337,18 @@ export async function execute(request){
    project=null;video=null;
    jobCounts.facesDone=1;if(typeof rememberLast==='function')void readyFace(current).then(complete=>{if(revisionOf(item.id)===revisions.get(item.id))return rememberLast(complete,request);}).catch(()=>{});
    if(!sessionView)rememberView(request);retainSession();diagnostics.finish('completed');return snapshot('Face updated.');
+  }
+  // Weighted blend (fm-in6a, compute.blend): one weighted W+ sum over each slot's verified current latent, one synthesis.
+  if(request.action==='blend'){
+   const latents=(request.inputs||[]).map(item=>{const face=faces.get(item.id);if(!face?.latent||!sameSource(face,item))throw Error('Generate every blended face first.');if(face.latent.space!=='w-plus')throw Error('Only W+ faces can be blended.');return {space:'w-plus',shape:[18,512],values:face.latent.values};});
+   const mixed=blend(FFHQ_1024_DESCRIPTOR,latents,request.weights||[]);if(!mixed.ok)throw Error(mixed.error.message);
+   jobCounts.facesDone=0;jobCounts.facesTotal=1;
+   progress({stage:'face',face:request.target,text:'Blending faces…',loaded:0,total:1});
+   // The descriptor's latent is [18,512]; the runtime takes the batched W+ [1,18,512].
+   const result=await (await engine()).synthesize({...mixed.value.latent,shape:[1,18,512]},{signal:active.signal,raw:true});
+   checked();if(request.inputs.some(item=>revisionOf(item.id)!==revisions.get(item.id)))throw superseded();
+   await register(request.target,result,`Blend of ${latents.length} faces`);faces.get(request.target).source={mode:'project',value:'',file:null};
+   jobCounts.facesDone=1;diagnostics.finish('completed');return snapshot('Blend updated.');
   }
   jobCounts.facesDone=0;jobCounts.facesTotal=request.inputs.length;jobCounts.framesDone=0;jobCounts.framesTotal=0;jobCounts.videoFramesDone=0;jobCounts.videoFramesTotal=0;
   await inputs(request,revisions);checked();
