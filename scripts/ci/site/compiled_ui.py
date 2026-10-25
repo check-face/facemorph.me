@@ -41,6 +41,25 @@ def free_port():
     return port
 
 
+def stop_process(process, timeout=10):
+    """Reap one owned session, including Chromium's children if graceful exit stalls."""
+    try:
+        os.killpg(process.pid, signal.SIGTERM)
+    except ProcessLookupError:
+        pass
+    try:
+        process.wait(timeout)
+    except subprocess.TimeoutExpired:
+        pass  # Escalation below still has to reap the real process within the bound.
+    finally:
+        # A wrapper may exit before its renderer children; the whole session is ours.
+        try:
+            os.killpg(process.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+        process.wait(timeout)
+
+
 def stop_daemon(name):
     """Stops only this run's browser-harness daemon (other sessions share the machine)."""
     for pid in os.listdir('/proc'):
@@ -77,11 +96,12 @@ def main(argv=None):
     site_port, cdp_port = free_port(), free_port()
     origin = f'http://127.0.0.1:{site_port}'
     server = subprocess.Popen([sys.executable, str(REPO / 'scripts/hosting/response_headers.py'), '--port', str(site_port),
-                               '--directory', a.artifact], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                               '--directory', a.artifact], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                              start_new_session=True)
     profile = tempfile.mkdtemp(prefix='compiled-ui-')
     chrome = subprocess.Popen([CHROMIUM, '--headless=new', '--no-sandbox', '--disable-gpu', '--disable-extensions',
                                f'--remote-debugging-port={cdp_port}', f'--user-data-dir={profile}', 'about:blank'],
-                              stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
+                              stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True, start_new_session=True)
     name = f'compiled-ui-{os.getpid()}'
     code = 1
     try:
@@ -119,12 +139,14 @@ def main(argv=None):
         code = 0 if check.returncode == 0 and verdict['verdict'] == 'pass' and app['count'] > 0 else 1
     finally:
         stop_daemon(name)
-        chrome.terminate()
-        server.terminate()
-        chrome.wait(10)
-        server.wait(10)
-        chrome.stderr.close()
-        shutil.rmtree(profile, ignore_errors=True)
+        try:
+            stop_process(chrome)
+        finally:
+            try:
+                stop_process(server)
+            finally:
+                chrome.stderr.close()
+                shutil.rmtree(profile, ignore_errors=True)
     return code
 
 

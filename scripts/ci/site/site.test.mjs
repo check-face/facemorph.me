@@ -17,6 +17,14 @@ import { classify } from '../intercept/record.ts';
 import { DEFAULT_HOST_MAP } from '../intercept/playwright.ts';
 import { hits, modeFor } from './retired-hosts.mjs';
 
+test('compiled-ui reaps a real TERM-refusing process without touching another session', () => {
+  const result = spawnSync('python3', ['scripts/ci/site/test_compiled_ui.py'], {
+    encoding: 'utf8',
+    timeout: 30_000,
+  });
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}\n${result.error ?? ''}`);
+});
+
 const CLI = new URL('./retired-hosts.mjs', import.meta.url).pathname;
 
 test('retired hosts and the candidate branch match; shared hosts that stay do not', () => {
