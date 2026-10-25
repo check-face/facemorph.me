@@ -195,6 +195,7 @@ async function main(argv) {
     [
       '--headless=new',
       '--enable-automation',
+      '--disable-extensions',
       '--no-sandbox',
       '--no-proxy-server',
       ...chromiumArgs,

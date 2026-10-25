@@ -1127,8 +1127,8 @@
       "class": "temporary-root",
       "temporary": true,
       "ported": {
-        "sha256": "e05f499c428762ab2846be1a952e9bb953e2c786d7d3c5d9e510014af7f72243",
-        "bytes": 38787,
+        "sha256": "222d4128043084f1b04c8b6f20a2a2b9ce2ed124aa2f98ab5506b2886993cdc9",
+        "bytes": 38740,
         "bead": "fm-aa8",
         "reason": "Preserve typed project-codec checks; adapt provider and tile controls for WebGL/filename retirement, retain crop in its mode menu, and use the existing CDP interceptor for worker evidence under no-referrer production headers."
       }

@@ -168,10 +168,11 @@ def stage_preflight():
  # Seconds-fast tripwire for the failure class that actually burned us: UI drift. No
  # synthesis, no downloads - only presence of the controls the later stages depend on, plus
  # the provenance assertions (isolation headers, exact artifact origin, engine identity).
- cdp('Page.enable')
- cdp('Page.addScriptToEvaluateOnNewDocument',source="window.__ciWorkers=0;window.__ciWorkerRequests=0;const OriginalWorker=window.Worker;window.Worker=class extends OriginalWorker{constructor(...args){super(...args);window.__ciWorkers++;}postMessage(...args){window.__ciWorkerRequests++;return super.postMessage(...args);}};")
  cdp('Browser.setDownloadBehavior',behavior='allow',downloadPath=str(downloads))
  new_tab('about:blank')
+ # Install on the journey tab before navigation, including every subsequent reload.
+ cdp('Page.enable')
+ cdp('Page.addScriptToEvaluateOnNewDocument',source="window.__ciWorkers=0;window.__ciWorkerRequests=0;window.__ciWorkerKinds=[];const OriginalWorker=window.Worker;window.Worker=class extends OriginalWorker{constructor(...args){super(...args);window.__ciWorkers++;}postMessage(...args){window.__ciWorkerRequests++;window.__ciWorkerKinds.push({type:args[0]?.type||null,keys:Object.keys(args[0]||{})});return super.postMessage(...args);}};")
  if os.environ.get('INTERCEPT_DIR'):
   import sys
   sys.path.insert(0,os.environ['INTERCEPT_DIR'])
@@ -180,8 +181,6 @@ def stage_preflight():
   network=intercept.attach_cdp(cdp,drain_events,json.loads(os.environ['NETWORK_HOST_MAP']),page_session=_send({'meta':'session'}).get('session_id'),page_target=current_tab()['targetId'])
   intercept.step(network.rec,'journey')
  goto_url('https://next.facemorph.me/');wait_for_load()
- # Register on the actual tab too: the initial registration may belong to the prior tab.
- js("if(window.__ciWorkers===undefined){window.__ciWorkers=0;window.__ciWorkerRequests=0;const W=window.Worker;window.Worker=class extends W{constructor(...a){super(...a);window.__ciWorkers++;}postMessage(...args){window.__ciWorkerRequests++;return super.postMessage(...args);}};}")
  wait(idle,60);assert js('crossOriginIsolated'), 'Production isolation headers missing'
  # The trial-phase reporting question appears on every fresh profile. "Ask me later" closes it
  # without answering, so the harness neither consents nor declines on anyone's behalf, and the
@@ -429,7 +428,8 @@ def stage_sessionRestore():
  wait(lambda:js("!!document.querySelector('.next-slider-control')"),60)
  assert q("JSON.parse(localStorage.getItem('facemorph-slider-v1'))")==preference
  assert js("[...document.querySelectorAll('.next-face')].length===2&&[...document.querySelectorAll('.next-face')].every(s=>s.dataset.nextState==='project')")
- assert js('window.__ciWorkerRequests')==0, 'Restore performed inference'
+ assert isinstance(js('window.__ciWorkerRequests'),int), 'Restore worker instrumentation missing'
+ assert js('window.__ciWorkerRequests')==0, 'Restore worker requests: '+str(q('window.__ciWorkerKinds'))
  js("[...document.querySelectorAll('label')].find(l=>l.textContent.includes('Use Slider')).querySelector('input').click()")
  wait(lambda:js("document.querySelector('.next-video-slot video')?.readyState>=2"),30)
  js("document.querySelectorAll('button[aria-label=\"Change mode\"]')[1].click()")
