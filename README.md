@@ -65,8 +65,12 @@ The YAML queue and path filters are the authority; no parallel local workflow en
 Inspect CI at startup and before each next bead; repair observed failures through Beads before new work. Automatic CI
 reopening is not implemented. See AGENTS.md for commands and honest coverage limits.
 
-For now one agent operates directly outside NTM, with Agent Mail skipped and
-`AGENT_MAIL_GUARD_MODE=warn` on commits/pushes. Preserve existing dirty changes.
+The operator enabled the existing NTM swarm on 26 October, adding one Claude Opus
+worker at medium effort. Use Agent Mail reservations and guard block mode; preserve
+existing dirty changes. After each validated slice, check CI first, then claim and
+implement the next useful ready unowned bead without waiting for another prompt.
+Recover abandoned claims from current process/mail/reservation evidence and record
+the handoff. See AGENTS.md for the continuation and tending contract.
 The [device lab](tools/device-lab/README.md) provides local phone/eris validation;
 physical phones never run in CI. Correctness work shares compute, timing alone uses
 exclusive measurement locks. Research and release qualification have stronger

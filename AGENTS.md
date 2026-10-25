@@ -70,13 +70,23 @@ then command help), never Wrangler. Add/upgrade dependencies with `npm install <
 Integrity digests are not dependency pins. Classic's frozen distribution is exempt.
 Current GitHub owner is check-face; selected future organization is facemorph-me.
 
-## Work loop: one agent now, swarm later
+## Work loop: operator-enabled swarm
 
-Operator instructions override this guide and generic skills. **Work directly in
-this session, outside NTM, with ONE agent until the operator changes that.** Skip
-Agent Mail registration/reservations/threads in solo mode. Use
-`AGENT_MAIL_GUARD_MODE=warn` on commits AND pushes; no `--no-verify` or mail bypass.
-Do not restart panes, launch a swarm or spawn helpers in the current mode.
+Operator instructions override this guide and generic skills. **On 26 October the
+operator enabled the existing NTM swarm and one additional Claude Opus worker at
+medium effort.** Register with Agent Mail, reserve edited files, answer relevant
+mail and release reservations on completion. Use `AGENT_MAIL_GUARD_MODE=block` on
+commits AND pushes; no `--no-verify` or mail bypass. Do not add further workers
+without operator authorization. Preserve the requested model/effort.
+
+After each validated slice, repeat the CI-first check below, then atomically claim
+and reserve the next useful ready unowned bead and start implementing. Do not go
+idle merely because one bead landed. Recover abandoned claims only after checking
+live processes, pane output, mail and reservations, and document the reassignment;
+old timestamps alone do not establish abandonment. Stop on operator request,
+exhausted authorized work or a genuine external blocker with no independent ready
+work. Identify the live continuity owner and recurring tending mechanism before
+calling an unattended run established.
 
 1. Inspect changes and inspect CI at startup and before picking up each next bead:
    `gh run list --workflow main.yml --branch main --limit 5`.

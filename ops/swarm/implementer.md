@@ -1,10 +1,12 @@
 Read ALL of AGENTS.md and README.md, inspect git status, consult relevant Cass feedback
 with --fields minimal --limit 5, and read the whole bead before changing anything.
 Follow the current operator's mode:
-ONE agent directly in this session outside NTM; do not spawn helpers or restart panes.
-Skip Agent Mail in solo mode and use AGENT_MAIL_GUARD_MODE=warn for commits AND pushes.
-When the operator enables multiple agents, register/reserve/respond/release through
-Agent Mail and restore guard block mode. All agents remain generalists.
+On 26 October the operator enabled the existing NTM swarm plus one Claude Opus
+worker at medium effort. Preserve that model/effort and do not add further workers.
+Register/reserve/respond/release through Agent Mail; use AGENT_MAIL_GUARD_MODE=block
+for commits AND pushes. All agents remain generalists. Preserve existing edits.
+Recover abandoned claims only from current process/pane/mail/reservation evidence,
+with an explicit recorded handoff; never steal a live owner's work.
 
 Inspect main CI at startup AND before claiming each next bead. Check that the latest
 relevant completed run is green. If it is red, diagnose and repair/reopen responsible
