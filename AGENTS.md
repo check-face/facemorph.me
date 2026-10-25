@@ -34,8 +34,10 @@ flags explicitly; do not infer Firefox from Chromium or silently substitute brow
 Missing/unsupported local cells leave delivery incomplete; diagnose them rather than
 waiving the grid. Hosted iOS Simulator/Android emulator evidence is additional and
 best effort under the CI availability policy below. Real executed CI failures require
-repair. The current lab has four Chromium/Huawei cells and no eris Firefox adapter;
-the six-cell requirement is the acceptance target, not a claim it is implemented.
+repair. All six cell adapters are implemented; the eris Firefox cells (Firefox 157.0,
+Playwright build) passed operated checks and real cold/warm face journeys with the CPU
+and WebGPU routes both admitted on 25 October 2026. Adapter support is not six-cell
+release qualification: artifact-attested runs across all six cells remain the target.
 
 ## Current application and delivery
 
