@@ -55,7 +55,7 @@ jobs:
           # Provision this eris input once via the documented R2 restore command. CI verifies every
           # pinned byte without an administrator token; missing/corrupt input fails before publication.
           node scripts/names-snapshot/restore.mjs --out="$cache/snapshot" --all --check-local
-          python3 autoresearch/run.py --timeout 7200 -- node tools/names-generator/generate.mjs \
+          python3 autoresearch/run.py --timeout 3600 -- node tools/names-generator/generate.mjs \
             --catalogue="$cache/snapshot/facemorph-name-catalogue.cdilga.workers.dev/catalogue.json" \
             --latents="$cache/snapshot" --out="$cache/out"
       - name: Publish immutables, verify, switch pointer and verify again
