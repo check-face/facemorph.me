@@ -7,7 +7,8 @@ on:
   workflow_dispatch:
 jobs:
   checks:
-    runs-on: [self-hosted, triton]
+    runs-on: [self-hosted, linux-x64]
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - name: Classic at the frozen commit, with history back to the planning reference (read-only)

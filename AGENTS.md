@@ -245,6 +245,16 @@ concurrent code/data and consult current library documentation when needed.
 
 ## CI queue and hardware
 
+Triton is opportunistic capacity (operator, 25 October): use its available CPUs,
+RAM and Docker for compatible work, freeing eris for local development. Portable
+Linux CPU jobs use `runs-on: [self-hosted, linux-x64]`, advertised by both Triton
+and eris build runners. Never pin a required CPU job to Triton or wait for it to
+return; eris can take queued pool jobs when Triton is offline. Keep browser, GPU,
+runtime-asset and provider-tool requirements explicit. An interrupted running job
+may fail and need a rerun on an available worker; do not count it as a pass or
+stop independent implementation. Correctness work shares compute; exclusive
+timing/device rules below still apply.
+
 The queue has ONE definition: `.github/workflows/main.yml`, concurrency group main,
 `cancel-in-progress: false`. A running workflow finishes. GitHub keeps one pending
 workflow and newer pushes replace only that pending workflow. Its selected lanes

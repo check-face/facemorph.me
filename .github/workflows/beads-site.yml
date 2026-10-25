@@ -14,7 +14,8 @@ env:
   BV_SHA256: 4c269087af7a0ddef6825609cb4cdf7db0163624d26d7b02030c38c260b1e199
 jobs:
   publish:
-    runs-on: [self-hosted, triton]
+    runs-on: [self-hosted, linux-x64]
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
         with:

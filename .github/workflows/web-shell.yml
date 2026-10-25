@@ -7,7 +7,8 @@ on:
   workflow_dispatch:
 jobs:
   check:
-    runs-on: [self-hosted, triton]
+    runs-on: [self-hosted, linux-x64]
+    timeout-minutes: 30
     defaults:
       run:
         working-directory: apps/web

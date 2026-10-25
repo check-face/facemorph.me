@@ -55,7 +55,7 @@ jobs:
           retention-days: 14
           if-no-files-found: warn
   lookup:
-    runs-on: [self-hosted, eris]
+    runs-on: [self-hosted, linux-x64]
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
