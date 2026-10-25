@@ -5,17 +5,26 @@
     "cold-face": {
       "implemented": true,
       "flow": "First face on a fresh profile: arrival, consented model download, CPU/WebGPU admission and one generated face (PLAN.md#device-lab-deploy-gates-and-ci-policy-operator-24-october-2026).",
-      "budgetsS": {}
+      "budgetsS": {
+        "phone-cpu": 60,
+        "phone-webgpu": 70
+      }
     },
     "warm-face": {
       "implemented": true,
       "flow": "A face with the models already cached: generate on the admitted route, no download (PLAN.md#device-lab-deploy-gates-and-ci-policy-operator-24-october-2026).",
-      "budgetsS": {}
+      "budgetsS": {
+        "phone-cpu": 45,
+        "phone-webgpu": 50
+      }
     },
     "morph": {
       "implemented": true,
       "flow": "Create Morph from two generated faces through to a playable MP4 (PLAN.md#ui-flow-matrix-and-open-journey-contracts).",
-      "budgetsS": {}
+      "budgetsS": {
+        "phone-cpu": 385,
+        "phone-webgpu": 400
+      }
     },
     "operated": {
       "implemented": true,
@@ -37,5 +46,8 @@
       "owner": "fm-ve73",
       "flow": "Blend view: weighted slots, one blend synthesis and its export."
     }
+  },
+  "measurements": {
+    "phone-cpu and phone-webgpu": "tools/device-lab/out/20261026-080803-run (lab.py matrix --repeat 3, local build:next destination at 3dd0238+, 26 Oct 2026); slowest of 3: phone-cpu cold 37.4 s, warm 27.4 s, morph 255.0 s; phone-webgpu cold 45.3 s, warm 32.5 s, morph 263.9 s"
   }
 }
