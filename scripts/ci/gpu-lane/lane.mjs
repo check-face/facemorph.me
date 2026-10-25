@@ -13,7 +13,7 @@
 //
 //   node scripts/ci/gpu-lane/lane.mjs --chrome <binary> [--url <origin>] [--faces 6] [--out next-gpu-evidence]
 //        [--runtime <acquired runtime>] [--software]      (--software forces SwiftShader: the named-failure case)
-// Run it under the eris device lease (lane browser-gpu). Exit 0 green, 1 failed (named in the report).
+// Run it under autoresearch/run.py --exclusive gpu-timing. Exit 0 green, 1 failed (named in the report).
 import { execFileSync, spawn } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:net';
@@ -158,35 +158,35 @@ async function main(argv) {
       stdio: ['ignore', 'ignore', 'pipe'],
     },
   );
-  const ws = await new Promise((resolveWs, reject) => {
-    let log = '';
-    const timer = setTimeout(
-      () => reject(new Error(`Chrome did not report DevTools on ${port}: ${log.slice(-500)}`)),
-      30_000,
-    );
-    chrome.stderr.on('data', (d) => {
-      log += d;
-      const m = /DevTools listening on (ws:\/\/127\.0\.0\.1:(\d+)\/\S+)/.exec(log);
-      if (m && Number(m[2]) === port) {
-        clearTimeout(timer);
-        resolveWs(m[1]);
-      }
-    });
-  });
   const name = `gpu-lane-${process.pid}`;
-  const env = {
-    BU_NAME: name,
-    BU_CDP_WS: ws,
-    BU_CDP_URL: '',
-    GPU_BENCH_URL: origin,
-    GPU_BENCH_FACES: a.faces,
-    GPU_BENCH_EVIDENCE: out,
-    GPU_BENCH_HOST_GPU: report.hostGpu,
-    LANE_ORIGIN: origin,
-  };
   let bench;
   let canaries = [];
   try {
+    const ws = await new Promise((resolveWs, reject) => {
+      let log = '';
+      const timer = setTimeout(
+        () => reject(new Error(`Chrome did not report DevTools on ${port}: ${log.slice(-500)}`)),
+        30_000,
+      );
+      chrome.stderr.on('data', (d) => {
+        log += d;
+        const m = /DevTools listening on (ws:\/\/127\.0\.0\.1:(\d+)\/\S+)/.exec(log);
+        if (m && Number(m[2]) === port) {
+          clearTimeout(timer);
+          resolveWs(m[1]);
+        }
+      });
+    });
+    const env = {
+      BU_NAME: name,
+      BU_CDP_WS: ws,
+      BU_CDP_URL: '',
+      GPU_BENCH_URL: origin,
+      GPU_BENCH_FACES: a.faces,
+      GPU_BENCH_EVIDENCE: out,
+      GPU_BENCH_HOST_GPU: report.hostGpu,
+      LANE_ORIGIN: origin,
+    };
     bench = await harness(readFileSync(DRIVER, 'utf8'), env, 2_100_000);
     writeFileSync(join(out, 'benchmark.log'), bench.out + bench.err);
     const read = await harness(CANARY_READOUT, env, 120_000);
@@ -208,9 +208,19 @@ async function main(argv) {
         /* gone */
       }
     }
-    chrome.kill('SIGTERM');
+    // Chrome flushes its profile on shutdown. Wait for it before removing that directory.
+    if (chrome.exitCode === null && chrome.signalCode === null) {
+      await new Promise((stopped) => {
+        const timer = setTimeout(() => chrome.kill('SIGKILL'), 10_000);
+        chrome.once('close', () => {
+          clearTimeout(timer);
+          stopped();
+        });
+        chrome.kill('SIGTERM');
+      });
+    }
     await control?.stop();
-    rmSync(profile, { recursive: true, force: true });
+    rmSync(profile, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
   }
   let result = null;
   try {
