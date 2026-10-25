@@ -1,0 +1,9 @@
+[Unit]
+Description=FaceMorph evidence snapshot (beads, CI, device lab)
+OnFailure=%n
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/Work/dev/checkface/facemorph.me
+# Put the pages project behind Cloudflare Access before enabling --publish.
+ExecStart=/usr/bin/env python3 scripts/obs/snapshot.py --publish facemorph-obs
