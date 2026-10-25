@@ -1,15 +1,16 @@
-// Leases across real browser tabs (fm-ffn7): two Chromium tabs on one origin share OPFS, Web Locks and a
+// Leases across real browser tabs (fm-ffn7/fm-fy2.13): two selected-engine tabs on one origin share OPFS, Web Locks and a
 // BroadcastChannel, running the package's built handles module (dist/, `npm run build -w ...`). A leased asset
 // survives the other tab's eviction until its lease is released; the person's explicit deletion in one tab removes it
 // anyway and invalidates the other tab's lease with 'cross-tab-deletion'. The deletion steps make no request (the
 // request-interception helper's record, fm-o8xn).
 import assert from 'node:assert/strict';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { createServer, type Server } from 'node:http';
 import { extname, join, normalize } from 'node:path';
 import test, { after, before } from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { createRequire } from 'node:module';
+import type { Page } from 'playwright';
+import { componentBrowser } from './support/browser.ts';
 import { attachPlaywright } from '../../../scripts/ci/intercept/playwright.ts';
 import { assertNoRequests, bindOrigins, step } from '../../../scripts/ci/intercept/record.ts';
 import { DEFAULT_HOST_MAP } from '../../../scripts/ci/intercept/playwright.ts';
@@ -38,22 +39,9 @@ const PAGE = `<!doctype html><meta charset="utf-8"><title>tab</title><script typ
   window.ready = true;
 </script>`;
 
-type Page = {
-  evaluate<T, A>(fn: (a: A) => T | Promise<T>, arg: A): Promise<T>;
-  goto(u: string): Promise<unknown>;
-  waitForFunction(fn: () => boolean): Promise<unknown>;
-};
-type Browser = { newContext(): Promise<{ newPage(): Promise<Page> }>; close(): Promise<void> };
-// Playwright from apps/web, as the package's other browser cases (cache-local.test.ts); where Chromium does not
-// start (triton's scaffold lane), this case reports untested; the manager-cache lane runs it on eris.
-const REPO = fileURLToPath(new URL('../../../', import.meta.url));
-const { chromium } = createRequire(join(REPO, 'apps/web/package.json'))('playwright') as {
-  chromium: { launch(o: object): Promise<Browser> };
-};
-const browser = await chromium
-  .launch({ executablePath: process.env['CHROMIUM_PATH'] })
-  .catch(() => null);
-const NO_BROWSER = browser ? false : 'untested: Chromium does not start here';
+// Reuse the engine selection of cache-local.test.ts. Unavailable engines report their startup error;
+// the manager-cache lane requires its selected browser to start.
+const { engine, browser, newContext, unavailable: NO_BROWSER } = await componentBrowser();
 after(() => browser?.close());
 
 let server: Server, origin: string;
@@ -86,65 +74,85 @@ const call = <T>(page: Page, fn: string, ...args: unknown[]) =>
   );
 
 test(
-  'a lease in one tab survives eviction in another; deletion there invalidates it, with no request',
+  `${engine} a lease in one tab survives eviction in another; deletion there invalidates it, with no request`,
   { timeout: 120_000, skip: NO_BROWSER },
   async () => {
     assert.ok(
       existsSync(join(dist, 'handles/index.js')),
       'no dist/: run `npm run build -w packages/browser-model-manager` first',
     );
-    const context = await browser!.newContext();
+    const context = await newContext!();
+    await context.tracing.start({ screenshots: true, snapshots: true });
     const net = attachPlaywright(
       context as never,
       bindOrigins(DEFAULT_HOST_MAP, { app: [origin] }),
     );
     const quiet = () => {};
     const [a, b] = [await context.newPage(), await context.newPage()];
-    for (const p of [a, b]) {
-      await p.goto(`${origin}/tab.html`);
-      await p.waitForFunction(() => (window as unknown as { ready?: boolean }).ready === true);
-    }
-    const [x, y, z] = [sha('a'), sha('b'), sha('c')];
-    for (const s of [x, y, z]) await call(a, 'write', s);
-    await call(b, 'lease', x);
-    await call(b, 'lease', z);
+    const errors: string[] = [];
+    for (const page of [a, b]) page.on('pageerror', (error) => errors.push(error.message));
+    try {
+      for (const p of [a, b]) {
+        await p.goto(`${origin}/tab.html`);
+        await p.waitForFunction(() => (window as unknown as { ready?: boolean }).ready === true);
+      }
+      const [x, y, z] = [sha('a'), sha('b'), sha('c')];
+      for (const s of [x, y, z]) await call(a, 'write', s);
+      await call(b, 'lease', x);
+      await call(b, 'lease', z);
 
-    step(net.rec, 'evict-in-a');
-    assert.deepEqual(
-      await call(a, 'evict', [x, y]),
-      { removed: [y], kept: [x] },
-      "tab A's eviction keeps what tab B holds",
-    );
-    assert.equal(await call(a, 'has', x), true);
-    assert.equal(await call(a, 'has', y), false);
+      step(net.rec, 'evict-in-a');
+      assert.deepEqual(
+        await call(a, 'evict', [x, y]),
+        { removed: [y], kept: [x] },
+        "tab A's eviction keeps what tab B holds",
+      );
+      assert.equal(await call(a, 'has', x), true);
+      assert.equal(await call(a, 'has', y), false);
 
-    await call(b, 'release', z);
-    assert.deepEqual(
-      await call(a, 'evict', [z]),
-      { removed: [z], kept: [] },
-      'released in B, evictable in A',
-    );
-
-    step(net.rec, 'delete-in-a');
-    assert.deepEqual(await call(a, 'remove', [x]), [x]);
-    await b.waitForFunction(
-      () =>
-        (window as unknown as { tab: { invalidations(): unknown[] } }).tab.invalidations().length >
-        0,
-    );
-    assert.deepEqual(await call(b, 'invalidations'), [
-      { cause: 'cross-tab-deletion', code: 'invalidated' },
-    ]);
-    assert.equal(await call(a, 'has', x), false);
-    await net.settled();
-    for (const cls of ['app', 'model-host', 'third-party'] as const)
-      assert.equal(
-        assertNoRequests(net.rec, cls, { fromStep: 'evict-in-a' }, quiet).verdict,
-        'pass',
-        `no ${cls} request while evicting or deleting`,
+      await call(b, 'release', z);
+      assert.deepEqual(
+        await call(a, 'evict', [z]),
+        { removed: [z], kept: [] },
+        'released in B, evictable in A',
       );
 
-    await call(b, 'release', x);
-    assert.deepEqual(await call(b, 'leased'), [], 'tab B holds nothing after release');
+      step(net.rec, 'delete-in-a');
+      assert.deepEqual(await call(a, 'remove', [x]), [x]);
+      await b.waitForFunction(
+        () =>
+          (window as unknown as { tab: { invalidations(): unknown[] } }).tab.invalidations()
+            .length > 0,
+      );
+      assert.deepEqual(await call(b, 'invalidations'), [
+        { cause: 'cross-tab-deletion', code: 'invalidated' },
+      ]);
+      assert.equal(await call(a, 'has', x), false);
+      await net.settled();
+      for (const cls of ['app', 'model-host', 'third-party'] as const)
+        assert.equal(
+          assertNoRequests(net.rec, cls, { fromStep: 'evict-in-a' }, quiet).verdict,
+          'pass',
+          `no ${cls} request while evicting or deleting`,
+        );
+
+      await call(b, 'release', x);
+      assert.deepEqual(await call(b, 'leased'), [], 'tab B holds nothing after release');
+    } catch (error) {
+      const dir = fileURLToPath(new URL('../../../test-results/manager-cache/', import.meta.url));
+      const out = join(dir, engine);
+      mkdirSync(out, { recursive: true });
+      writeFileSync(
+        join(out, 'cross-tab-network.json'),
+        JSON.stringify({ network: net.rec, errors }),
+      );
+      await Promise.allSettled([
+        a.screenshot({ path: join(out, 'cross-tab.png') }),
+        context.tracing.stop({ path: join(out, 'cross-tab.zip') }),
+      ]);
+      throw error;
+    } finally {
+      await context.close();
+    }
   },
 );

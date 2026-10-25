@@ -13,14 +13,23 @@ jobs:
   cache:
     runs-on: [self-hosted, eris]
     timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        engine: [chromium, firefox, webkit]
+    env:
+      FACEMORPH_MANAGER_ENGINE: ${{ matrix.engine }}
+      FACEMORPH_REQUIRE_MANAGER_BROWSER: '1'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
       - uses: ./.github/actions/setup-workspace # node_modules for the lockfile, shared on the runner (fm-98po)
+      - name: Install the selected real browser
+        run: npx playwright install ${{ matrix.engine }}
       - run: npm run build -w packages/stylegan-js -w packages/browser-model-manager
-      - name: Package tests (browser cases in real Chromium), with a bounded runner
+      - name: Package tests (cache and cross-tab cases in the selected engine), with a bounded runner
         uses: ./.github/actions/run-command
         env:
           FACEMORPH_ISOLATE_TEST_NETWORK: '1'
@@ -32,3 +41,9 @@ jobs:
       - name: The candidate's model-cache.test.mjs through the shim, expectations unchanged
         working-directory: apps/web
         run: node --test src/Next/Assets/model-cache.test.mjs
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: manager-cache-${{ matrix.engine }}-${{ github.run_id }}
+          path: test-results/manager-cache/
+          if-no-files-found: ignore

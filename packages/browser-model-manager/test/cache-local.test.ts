@@ -1,21 +1,22 @@
-// Verified local reads (fm-eulc), in real Chromium on both backends: OPFS shards and Cache Storage. An https app
+// Verified local reads (fm-eulc/fm-fy2.13), in the selected real engine on both backends: OPFS shards and Cache Storage. An https app
 // origin serves the built package and the candidate's own frozen cache modules; an https model-host origin
 // serves pinned test assets. Network is observed with the request-interception helper
 // (scripts/ci/intercept/playwright.ts) and counted by host class: every local read, and constructing the cache and
 // reading its status, must issue zero requests. Corruption and eviction are made the way they happen: bytes
-// changed or removed in the browser's own storage behind the cache's back. A host where Chromium cannot start
-// reports these cases untested.
+// changed or removed in the browser's own storage behind the cache's back. Unavailable engines report an
+// explicit untested reason; the manager-cache CI lane requires its selected browser to start.
 /// <reference lib="dom" />
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { mkdtempSync, readFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer, type Server } from 'node:https';
-import { createRequire } from 'node:module';
 import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
 import { extname, join, normalize } from 'node:path';
 import test from 'node:test';
+import type { Page } from 'playwright';
+import { componentBrowser } from './support/browser.ts';
 
 const PKG = new URL('..', import.meta.url).pathname;
 const REPO = new URL('../../..', import.meta.url).pathname;
@@ -180,32 +181,39 @@ const ASSETS = {
 
 // ---------------------------------------------------------------- browser
 
-type Page = {
-  goto(u: string): Promise<unknown>;
-  evaluate<T, A>(fn: (a: A) => Promise<T> | T, arg: A): Promise<T>;
-};
-type Context = { newPage(): Promise<Page>; close(): Promise<void> };
-type Browser = { newContext(o: object): Promise<Context>; close(): Promise<void> };
-const { chromium } = createRequire(join(REPO, 'apps/web/package.json'))('playwright') as {
-  chromium: { launch(o: object): Promise<Browser> };
-};
-const browser = await chromium
-  .launch({ executablePath: process.env['CHROMIUM_PATH'] })
-  .catch(() => null);
-const NO_BROWSER = browser ? false : 'untested: Chromium does not start here';
+const { engine, browser, newContext, unavailable: NO_BROWSER } = await componentBrowser();
 test.after(async () => {
   await browser?.close();
-  app.close();
-  model.close();
+  await Promise.all(
+    [app, model].map((server) => new Promise<void>((resolve) => server.close(() => resolve()))),
+  );
+  rmSync(work, { recursive: true, force: true });
 });
 
 /** A fresh context and page on the app origin, with the interception helper attached. */
-async function session() {
-  const context = await browser!.newContext({ ignoreHTTPSErrors: true });
+async function session(name: string, persistent = true) {
+  const context = await (persistent ? newContext! : (options) => browser!.newContext(options))({
+    ignoreHTTPSErrors: true,
+  });
+  await context.tracing.start({ screenshots: true, snapshots: true });
   const att = helper.attachPlaywright(context, hostMap);
   const page = await context.newPage();
   await page.goto(`${APP}/`);
-  return { context, page, rec: att.rec, settled: () => att.settled() };
+  return {
+    context,
+    page,
+    rec: att.rec,
+    settled: () => att.settled(),
+    async capture() {
+      const dir = join(REPO, 'test-results/manager-cache', engine);
+      mkdirSync(dir, { recursive: true });
+      writeFileSync(join(dir, `${name}-network.json`), JSON.stringify(att.rec));
+      await Promise.allSettled([
+        page.screenshot({ path: join(dir, `${name}.png`) }),
+        context.tracing.stop({ path: join(dir, `${name}.zip`) }),
+      ]);
+    },
+  };
 }
 
 /** Requests of any host class in one step: local work must have none. */
@@ -309,10 +317,10 @@ for (const backend of ['opfs', 'cache-storage'] as const) {
   const name = backend === 'opfs' ? 'readShards (OPFS)' : 'openVerified (Cache Storage)';
 
   test(
-    `${name}, allowRepair:false: verified bytes, then typed miss, corruption and eviction, no request`,
+    `${engine} ${name}, allowRepair:false: verified bytes, then typed miss, corruption and eviction, no request`,
     { skip: NO_BROWSER },
     async () => {
-      const s = await session();
+      const s = await session(`${backend}-local`);
       try {
         record.step(s.rec, 'setup');
         await acquireIn(s.page, backend, [ASSETS.chunked, ASSETS.plain]);
@@ -355,6 +363,9 @@ for (const backend of ['opfs', 'cache-storage'] as const) {
         await s.settled();
         for (const w of ['local:verified', 'local:miss', 'local:corrupt', 'local:evicted'])
           quiet(s.rec, w);
+      } catch (error) {
+        await s.capture();
+        throw error;
       } finally {
         await s.context.close();
       }
@@ -362,10 +373,10 @@ for (const backend of ['opfs', 'cache-storage'] as const) {
   );
 
   test(
-    `${name}: presence or an unchecked peek never bypasses the digest`,
+    `${engine} ${name}: presence or an unchecked peek never bypasses the digest`,
     { skip: NO_BROWSER },
     async () => {
-      const s = await session();
+      const s = await session(`${backend}-digest`);
       try {
         await acquireIn(s.page, backend, [ASSETS.chunked]);
         const target = backend === 'opfs' ? ASSETS.chunked.chunks[0]! : ASSETS.chunked;
@@ -406,6 +417,9 @@ for (const backend of ['opfs', 'cache-storage'] as const) {
         assert.equal(seen.read, 'corrupt');
         await s.settled();
         quiet(s.rec, 'local:peek');
+      } catch (error) {
+        await s.capture();
+        throw error;
       } finally {
         await s.context.close();
       }
@@ -413,10 +427,10 @@ for (const backend of ['opfs', 'cache-storage'] as const) {
   );
 
   test(
-    `${name}: entries the control's own cache wrote are read locally without a download`,
+    `${engine} ${name}: entries the control's own cache wrote are read locally without a download`,
     { skip: NO_BROWSER },
     async () => {
-      const s = await session();
+      const s = await session(`${backend}-candidate`);
       try {
         record.step(s.rec, 'candidate-writes');
         await acquireIn(
@@ -434,6 +448,9 @@ for (const backend of ['opfs', 'cache-storage'] as const) {
         }
         await s.settled();
         quiet(s.rec, 'package-reads');
+      } catch (error) {
+        await s.capture();
+        throw error;
       } finally {
         await s.context.close();
       }
@@ -441,11 +458,59 @@ for (const backend of ['opfs', 'cache-storage'] as const) {
   );
 }
 
+if (engine === 'webkit')
+  test(
+    'webkit ephemeral OPFS unavailable: automatic Cache Storage fallback verifies local bytes without repair',
+    { skip: NO_BROWSER },
+    async () => {
+      const s = await session('automatic-fallback', false);
+      try {
+        const directory = await s.page.evaluate(async () => {
+          try {
+            await navigator.storage.getDirectory();
+            return { available: true, error: '' };
+          } catch (error) {
+            return { available: false, error: String(error) };
+          }
+        });
+        assert.equal(directory.available, false, 'this cell requires genuinely unavailable OPFS');
+        assert.ok(directory.error.length > 0);
+        // Default options: no injected backend, patched API or simulated storage failure.
+        await acquireIn(s.page, 'opfs', [ASSETS.chunked]);
+        await s.settled();
+        record.step(s.rec, 'local:auto-fallback');
+        const stored = await s.page.evaluate(async (digest) => {
+          const blobs = await caches.open('checkface-model-blobs-v1');
+          const key = new URL(`/__checkface_model_blobs__/sha256/${digest}`, location.origin);
+          return !!(await blobs.match(key));
+        }, ASSETS.chunked.sha256);
+        assert.equal(stored, true, 'the default cache actually stored the asset in Cache Storage');
+        assert.deepEqual(await readIn(s.page, 'opfs', ASSETS.chunked), {
+          ok: true,
+          sha256: ASSETS.chunked.sha256,
+          size: whole.byteLength,
+        });
+        await tamper(s.page, 'cache-storage', 'corrupt', ASSETS.chunked, ASSETS.chunked.sha256);
+        assert.deepEqual(await readIn(s.page, 'opfs', ASSETS.chunked), {
+          ok: false,
+          code: 'corrupt',
+        });
+        await s.settled();
+        quiet(s.rec, 'local:auto-fallback');
+      } catch (error) {
+        await s.capture();
+        throw error;
+      } finally {
+        await s.context.close();
+      }
+    },
+  );
+
 test(
-  'constructing the cache and reading status and presence issue zero requests',
+  `${engine} constructing the cache and reading status and presence issue zero requests`,
   { skip: NO_BROWSER },
   async () => {
-    const s = await session();
+    const s = await session('status');
     try {
       await s.page.evaluate(() => import(String('/pkg/index.js')), undefined); // the module itself is app traffic, before the window
       record.step(s.rec, 'construct');
@@ -463,6 +528,9 @@ test(
       assert.deepEqual(out.has, [false, false, false]);
       await s.settled();
       quiet(s.rec, 'construct');
+    } catch (error) {
+      await s.capture();
+      throw error;
     } finally {
       await s.context.close();
     }
