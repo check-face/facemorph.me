@@ -99,17 +99,19 @@ device or runner never blocks anything; runs queue, and missing cells are record
 failure passes beads back. The new app deploys to next.facemorph.me only when the full release bead set
 is ready: the agent taking the release bead validates everything locally, then deploys. Nothing here
 ever stops new work being picked up. Build, test and validate locally as you go (eris, triton, the
-phone via the lab). Closure loop (`fm-fy2` step 8): test locally in the Linux browsers on eris (system
-Chromium with and without WebGPU; Playwright Chromium, Firefox, WebKit) and on the phone when relevant;
-a bead closes on the first green `main.yml` run that contains its commits, across the supported
-browser matrix (`browser-matrix.json`: Ubuntu Chrome/Chromium/Firefox/WebKit, macOS WebKit/Firefox,
-Android emulator, iOS Simulator, GPU lane), never on the author's word. Main has one CI pipeline, a
-merge queue (operator, 25 October 2026; fm-98po): `.github/workflows/main.yml` runs one run at a time
-and never cancels it; pushes made while it runs wait, and the next run takes every change pushed
-since, stacked, diffs from the last green run's head and calls only the lanes those paths select
-(`scripts/ci/path-filters.json`). Area workflows are reusable (`workflow_call`), never push-triggered.
-A red run covering several beads is bisected locally on eris and only the culprit stays open. CI
-closes beads; it does not gate starting the next.
+phone via the lab). Closure loop (`fm-fy2` step 8; operator revision, 25 October 2026): validate locally before you
+push — run the gates your changed paths select (typecheck, build, unit tests, the path-selected
+import or scaffold checks) and iterate on the specific tests your bead is working on, not every
+lane or the whole browser matrix (`browser-matrix.json`: Ubuntu Chrome/Chromium/Firefox/WebKit,
+macOS WebKit/Firefox, Android emulator, iOS Simulator, GPU lane); CI runs those so you do not have
+to. Tick acceptance items only from checks you actually executed, then close the bead and push —
+never wait for or watch CI to consider work done. `.github/workflows/main.yml` is the backstop
+(merge queue, operator, 25 October 2026; fm-98po): one run at a time, never cancelled; pushes made
+while it runs wait, and the next run takes every change pushed since, stacked, diffs from the last
+green run's head and calls only the lanes those paths select (`scripts/ci/path-filters.json`). Area
+workflows are reusable (`workflow_call`), never push-triggered. CI never gates closing a bead or
+starting the next; a red run is bisected locally on eris and the culprit bead reopens with the
+`reopened` label — breakage you pushed is your next work, not a wait.
 Beads enforce this (`.beads/policy.yaml`, no bypass): `br close` refuses while any acceptance item is
 unchecked, so tick each one as you verify it (`br update <id> --check-acceptance <n|text>`). There
 are no close-after waits (operator, 24 October 2026): a check that spans two beads belongs to whichever
@@ -119,9 +121,11 @@ Failures come back as work: a failed lab run (`lab.py` passback), a red CI run b
 failed release check reopens the bead with the `reopened` label, the evidence as a comment, and a new
 unchecked acceptance item, so it cannot be closed again until that check passes. Agents take open
 `reopened` beads before new work, whoever they were assigned to.
-User-visible or speed-affecting beads are also put through the lab by their implementer once CI is
-green (`lab.py qualify --run <CI run id> --bead <id>`: a pass records the evidence, a real failure
-reopens the bead with `device-lab-failed`). If a cell is unavailable the bead keeps `lab-pending`
+User-visible or speed-affecting beads are also put through the lab once a `main.yml` run has built
+them (`lab.py qualify --run <CI run id> --bead <id>`: a pass records the evidence, a real failure
+reopens the bead with `device-lab-failed`); implementers usually leave `lab-pending` and a later lab
+run or the release bead's full validation settles it — the lab is never a wait. If a cell is
+unavailable the bead keeps `lab-pending`
 until a later lab run covering it, or the release bead's full validation, settles it.
 
 Prefer the self-hosted runners (eris `device-lab`, triton on the `tank` pool) over hosted minutes.
@@ -168,13 +172,46 @@ Source: the AGENTS.md files of his `ntm`, `beads_rust`, `beads_viewer`, `mcp_age
 - **Landing the plane** (end of every session, all five steps; the work is not done until it is pushed):
   1. File beads for any remaining or discovered work (`br create`).
   2. Run the quality gates if code changed (tests, linters, builds), as above.
-  3. Update bead status: close what a green `main.yml` run verified, update what is in progress.
+  3. Update bead status: close finished work whose gates you ran locally; CI verifies after the
+     push and a failure reopens the bead as new work.
   4. `br sync --flush-only`, commit `.beads/` with your paths, push.
   5. Hand off: release reservations and post `[<bead>] Completed` (or where you stopped and why) in the
      bead's thread so the next session can continue.
 - **Results.** Reporting a loss or a null result is a success. A self-speedup against an earlier run of
   your own code is maintenance, not a win; a win needs the incumbent measured in the same invocation.
 
+
+## Token, context and validation discipline (operator, 25 October 2026)
+
+The 24–25 October burn was context multiplication, not single big reads: sessions that stayed alive
+re-sent their entire accumulated context every turn. One pane session billed ≈1.8B tokens (99%
+cache-read) across ~1,500 turns and 1,300+ Bash calls while it watched CI; sessions that ended at
+bead boundaries cost orders of magnitude less.
+
+- Read narrowly: locate with `grep`/Cass first, then read the specific line ranges you need;
+  whole-file reads only for genuinely small files. Unbounded reads of large files were the
+  second-largest burn after CI watching.
+- Validate narrowly: run the gates and tests your changed paths select (`scripts/ci/changes.ts`
+  and `scripts/ci/run-lanes.ts` show the path→lane mapping) and iterate on the specific failing
+  test you are fixing; never a full lane sweep or e2e pass per slice. The full browser matrix and
+  device cells are CI's and the lab's backstop job, not yours per slice.
+- Never poll CI: no `gh run watch`, no sleep-and-check loops. Push, land the plane, end the
+  session; results come back as reopened beads or evidence comments.
+- One bead per session; land the plane at every bead boundary. A live session re-bills everything
+  it has ever read on every turn.
+- Device and lab resources: the lease (`autoresearch/run.py`, `tools/device-lab/lab.py`) exists for
+  timing accuracy and single-phone exclusivity during measurement runs. Everyday local validation
+  never takes it and never waits on it; only timed measurement runs and phone/GPU-exclusive e2e
+  hold it, best effort — an unavailable device records `untested`/`lab-pending` instead of
+  blocking anything.
+
+## Single-agent mode (operator, 25 October 2026, until revoked)
+
+One agent works at a time; no NTM panes are launched. Skip Agent Mail registration, file
+reservations and threads, and the pane-restart machinery; the bead graph plus Git are the only
+coordination surfaces. Everything else — one branch (`main`), gates before push, landing the
+plane, no fakes, no ceremony — applies unchanged. When swarm mode resumes, this section is deleted
+and `ops/swarm/implementer.md` governs panes again.
 
 ## Honest Work and Anti-Ceremony (binding for agents and humans alike)
 
