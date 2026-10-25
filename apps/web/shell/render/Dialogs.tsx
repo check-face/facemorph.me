@@ -43,15 +43,24 @@ function Modal({
   close,
   children,
   faceId,
+  backReturnsToDialog = false,
 }: {
   label: string;
   className: string;
   close: () => void;
   children: ReactNode;
   faceId?: string;
+  backReturnsToDialog?: boolean;
 }) {
   const root = useRef<HTMLDivElement>(null);
   const dismiss = useEffectEvent(close);
+  const popped = useEffectEvent((token: string) => {
+    const returns = backReturnsToDialog;
+    dismiss();
+    // Editor Back restores the proposal in this same modal. Replace the consumed
+    // history entry so the next Back still belongs to confirmation, not the page.
+    if (returns) history.pushState({ ...history.state, facemorphDialog: token }, '');
+  });
   useLayoutEffect(() => {
     const previous = faceId
       ? document.querySelector<HTMLElement>(
@@ -83,7 +92,7 @@ function Modal({
     const token = crypto.randomUUID();
     let mounted = true;
     let listening = false;
-    const back = () => dismiss();
+    const back = () => popped(token);
     void (async () => {
       await returning;
       if (!mounted) return;
@@ -338,6 +347,7 @@ export function CropDialog({ state, dispatch }: { state: State; dispatch: Dispat
       label="Encode an image"
       className="next-crop-dialog next-encode-dialog"
       faceId={owner}
+      backReturnsToDialog={!!crop?.previousView}
       close={close}
     >
       {crop?.previousView ? (

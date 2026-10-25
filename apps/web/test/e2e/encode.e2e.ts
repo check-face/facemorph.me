@@ -304,6 +304,41 @@ test(
             await dialog.waitFor({ state: 'detached' });
             noModels();
 
+            // Editor cancellation restores the exact proposal; the next Back must still
+            // belong to confirmation after the editor consumed the history entry.
+            for (const exit of ['escape', 'back', 'backdrop']) {
+              const burger = await open();
+              await hit(dialog.getByRole('textbox', { name: 'Or paste image here' }));
+              await page.keyboard.press('ControlOrMeta+V');
+              await dialog.locator('.next-encode-preview img').waitFor();
+              const proposal = () =>
+                page.evaluate(() =>
+                  JSON.stringify(
+                    (window as unknown as { __elmish: { model: { Crop: { view: unknown } } } })
+                      .__elmish.model.Crop.view,
+                  ),
+                );
+              const prior = await proposal();
+              await hit(dialog.getByRole('button', { name: 'ADJUST CROP', exact: true }));
+              await dialog.getByRole('application', { name: 'Crop area' }).waitFor();
+              await page.keyboard.press('ArrowLeft');
+              await shot(`editor-${exit}`);
+              if (exit === 'escape') await page.keyboard.press('Escape');
+              else if (exit === 'back') await page.goBack();
+              else await page.mouse.click(2, 2);
+              await dialog.getByRole('button', { name: 'OK', exact: true }).waitFor();
+              assert.equal(
+                await proposal(),
+                prior,
+                'editor cancellation restores the exact prior proposal',
+              );
+              await page.goBack();
+              await dialog.waitFor({ state: 'detached' });
+              assert.ok(await burger.evaluate((el) => el === document.activeElement));
+              assert.equal(await tiles.first().getByRole('textbox').inputValue(), before);
+              noModels();
+            }
+
             // Source ownership at 2 of 3 and 64 of 64. By-name additions only arrange the input state.
             while ((await tiles.count()) < 3)
               await page.locator('.next-connector-add').last().click();
