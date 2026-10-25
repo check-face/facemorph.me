@@ -181,9 +181,15 @@ class OriginStorage:
     def send(self, method, params):
         if method != 'Storage.clearDataForOrigin' or set(params['storageTypes'].split(',')) != {'indexeddb', 'local_storage'}:
             raise NotImplementedError(f'{method} {params} is not available without the DevTools protocol')
-        self.dev.page.goto(params['origin'] + '/robots.txt')
-        self.dev.page.evaluate(WARM_RESET)
-        self.dev.page.goto('about:blank')
+        # The journey has already left the app. Reset storage from a short-lived
+        # same-origin page, keeping Firefox's journey tab out of competing blank
+        # navigations and always releasing the reset page if deletion fails.
+        reset = self.dev.page.context.new_page()
+        try:
+            reset.goto(params['origin'] + '/robots.txt')
+            reset.evaluate(WARM_RESET)
+        finally:
+            reset.close()
 
 
 class HostedBrowser(lab.Desktop):
