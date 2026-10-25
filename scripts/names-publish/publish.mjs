@@ -24,6 +24,7 @@ import {
 } from '../../tools/names-generator/lib.mjs';
 import { recoverEnvelope } from '../../apps/web/src/Next/image-envelope.mjs';
 import { limitFindings } from '../../packages/cloudflare-model-host/src/limits.ts';
+import { fetchSource } from '../names-snapshot/snapshot.mjs';
 
 const REPO = fileURLToPath(new URL('../..', import.meta.url));
 export const POINTER = 'catalogue-v2.json';
@@ -191,15 +192,20 @@ export async function prepare({
   return { out, pointer, manifest: JSON.parse(manifest), summary };
 }
 
-async function get(url, { optional = false } = {}) {
-  const response = await fetch(url, { cache: 'no-store', signal: AbortSignal.timeout(120000) });
-  if (optional && response.status === 404) return null;
-  if (!response.ok) throw Error(`HTTP ${response.status}: ${url}`);
-  return Buffer.from(await response.arrayBuffer());
+export async function getPublished(url, { optional = false } = {}) {
+  // These reads are idempotent. Reuse the snapshot's bounded transport retries
+  // for an idle connection reset, while keeping 404 and integrity failures final.
+  const result = await fetchSource(url, { attempts: 3, timeoutMs: 120_000, cache: 'no-store' });
+  if (result.status === 'missing' && optional) return null;
+  if (result.status !== 'ok')
+    throw Error(
+      `Publication read ${url}: ${result.status === 'missing' ? 'HTTP 404' : result.error}`,
+    );
+  return result.bytes;
 }
 /** Recover prior immutable inventory from the live origin; no older open tab loses its manifest/results. */
 export async function retainPrevious(origin, out) {
-  const inventoryBytes = await get(new URL(INVENTORY, origin), { optional: true });
+  const inventoryBytes = await getPublished(new URL(INVENTORY, origin), { optional: true });
   if (!inventoryBytes) return null;
   const inventory = JSON.parse(inventoryBytes);
   if (inventory.schema !== 'facemorph.names-publication/1' || !Array.isArray(inventory.files))
@@ -222,14 +228,14 @@ export async function retainPrevious(origin, out) {
           throw Error('Invalid retained file');
         let bytes = existsSync(join(out, file.path)) ? readFileSync(join(out, file.path)) : null;
         if (!bytes || bytes.length !== file.bytes || sha256(bytes) !== file.sha256)
-          bytes = await get(new URL(file.path, origin));
+          bytes = await getPublished(new URL(file.path, origin));
         if (bytes.length !== file.bytes || sha256(bytes) !== file.sha256)
           throw Error(`Retained file integrity: ${file.path}`);
         mkdirSync(dirname(join(out, file.path)), { recursive: true });
         writeFileSync(join(out, file.path), bytes);
       }),
     );
-  const pointer = await get(new URL(POINTER, origin));
+  const pointer = await getPublished(new URL(POINTER, origin));
   writeFileSync(join(out, POINTER), pointer);
   writeFileSync(join(out, INVENTORY), inventoryBytes);
   return out;
@@ -237,17 +243,18 @@ export async function retainPrevious(origin, out) {
 
 export async function verifyPublished(origin, prepared, { pointer = true, samples = 25 } = {}) {
   const manifestPath = JSON.parse(prepared.pointer).manifest.url;
-  const manifest = await get(new URL(manifestPath, origin));
+  const manifest = await getPublished(new URL(manifestPath, origin));
   if (sha256(manifest) !== prepared.summary.manifestSha256)
     throw Error('Published manifest differs');
-  if (pointer && !(await get(new URL(POINTER, origin))).equals(prepared.pointer))
+  if (pointer && !(await getPublished(new URL(POINTER, origin))).equals(prepared.pointer))
     throw Error('Published pointer differs');
   if (
-    sha256(await get(new URL('catalogue.json', origin))) !== prepared.summary.legacyCatalogueSha256
+    sha256(await getPublished(new URL('catalogue.json', origin))) !==
+    prepared.summary.legacyCatalogueSha256
   )
     throw Error('Classic catalogue changed');
   for (const name of sampleRows(prepared.manifest.names, samples, 'fm-e6yj')) {
-    const bytes = await get(new URL(name.result.url, origin));
+    const bytes = await getPublished(new URL(name.result.url, origin));
     await validateResult(
       bytes,
       {
@@ -296,7 +303,7 @@ export async function main(argv) {
   const origin = new URL(args.origin);
   if (origin.protocol !== 'https:') throw Error('Publication origin must use HTTPS');
   const previous = await retainPrevious(origin, resolve(args.previous ?? '.cache/names-previous'));
-  const before = await get(new URL('catalogue.json', origin));
+  const before = await getPublished(new URL('catalogue.json', origin));
   if (!before.equals(readFileSync(join(args.legacy, 'catalogue.json'))))
     throw Error('Snapshot catalogue differs from live legacy catalogue');
   const prepared = await prepare({
@@ -307,7 +314,7 @@ export async function main(argv) {
   console.log(JSON.stringify({ event: 'validated', ...prepared.summary }));
   if (args.check) return prepared;
   if (args.publish) {
-    const current = await get(new URL(POINTER, origin), { optional: true });
+    const current = await getPublished(new URL(POINTER, origin), { optional: true });
     if (current?.equals(prepared.pointer)) {
       console.log(
         JSON.stringify({ event: 'unchanged', ...(await verifyPublished(origin, prepared)) }),

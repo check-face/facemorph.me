@@ -14,7 +14,14 @@ import {
   nameIdentity,
   sha256,
 } from '../../tools/names-generator/lib.mjs';
-import { prepare, retainPrevious, verifyPublished, list, POINTER } from './publish.mjs';
+import {
+  getPublished,
+  prepare,
+  retainPrevious,
+  verifyPublished,
+  list,
+  POINTER,
+} from './publish.mjs';
 
 async function input(root, label, identityDigit) {
   const generated = join(root, label),
@@ -92,8 +99,8 @@ test('corruption refuses publication; old manifest and result survive an actual 
   t.after(() => new Promise((r) => server.close(r)));
   const origin = `http://127.0.0.1:${server.address().port}/`;
   // This is what an already-open consumer retains before the deployment.
-  const oldPointer = await (await fetch(new URL(POINTER, origin))).json();
-  const oldManifest = await (await fetch(new URL(oldPointer.manifest.url, origin))).json();
+  const oldPointer = JSON.parse(await getPublished(new URL(POINTER, origin)));
+  const oldManifest = JSON.parse(await getPublished(new URL(oldPointer.manifest.url, origin)));
   let page;
   if (process.env.PUBLICATION_BROWSER) {
     const require = createRequire(
@@ -117,12 +124,12 @@ test('corruption refuses publication; old manifest and result survive an actual 
   const second = await prepare({ ...nextInput, previous: prior });
   t.after(() => rmSync(second.out, { recursive: true, force: true }));
   served = second.out; // immutable phase still serves the old pointer
-  assert.deepEqual(await (await fetch(new URL(POINTER, origin))).json(), oldPointer);
+  assert.deepEqual(JSON.parse(await getPublished(new URL(POINTER, origin))), oldPointer);
   await verifyPublished(origin, second, { pointer: false });
   writeFileSync(join(second.out, POINTER), second.pointer);
   assert.equal((await verifyPublished(origin, second)).pointerChecked, true);
   const oldBytes = Buffer.from(
-    await (await fetch(new URL(oldManifest.names[0].result.url, origin))).arrayBuffer(),
+    await getPublished(new URL(oldManifest.names[0].result.url, origin)),
   );
   assert.equal(sha256(oldBytes), oldManifest.names[0].result.sha256);
   assert.notDeepEqual(JSON.parse(second.pointer), oldPointer);
@@ -139,13 +146,13 @@ test('corruption refuses publication; old manifest and result survive an actual 
     assert.equal(retained.actual, retained.expected);
     console.log('Actual open Chromium tab retained and fetched its old result after switch.');
   }
-  const current = await (await fetch(new URL(POINTER, origin))).text();
+  const current = (await getPublished(new URL(POINTER, origin))).toString();
   writeFileSync(join(nextInput.generated, 'result.webp'), 'corrupted');
   await assert.rejects(
     prepare({ ...nextInput, previous: prior, out: join(root, 'failed') }),
     /Unqualified result/,
   );
-  assert.equal(await (await fetch(new URL(POINTER, origin))).text(), current);
+  assert.equal((await getPublished(new URL(POINTER, origin))).toString(), current);
   assert.equal(second.summary.assetCount, list(second.out).length);
   assert.equal(
     second.summary.bytes,
