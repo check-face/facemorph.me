@@ -2,7 +2,8 @@ name: native-retirement
 # Native retirement (fm-be10): no desktop/ import or native branch in the bridge and media, the build id without
 # desktop/runtime.mjs, the re-homed web-artifact verifier (every classic check on planted artifacts, then the
 # control-labelled deploy-next/ that build:next lays out), and no reference to the verifier's old path outside
-# history notes. The same test file also runs in root `npm test`, where the control case reports untested.
+# history notes, and the destination artifact scan for WebGL execution/native recommendations (fm-fy2.19).
+# The same test files also run in root `npm test`, where the control case reports untested.
 on:
   workflow_call:
   workflow_dispatch:
@@ -24,4 +25,4 @@ jobs:
         working-directory: apps/web
         env:
           FACEMORPH_REQUIRE_ARTIFACT: '1'
-        run: node --test test/build/native-retirement.test.ts
+        run: node --test test/build/native-retirement.test.ts test/build/execution-scan.test.ts

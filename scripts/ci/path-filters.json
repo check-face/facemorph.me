@@ -193,6 +193,8 @@
       "extra": [
         "apps/web/src/Next/**",
         "apps/web/scripts/**",
+        "apps/web/build/execution-scan.ts",
+        "apps/web/test/build/execution-scan.test.ts",
         "apps/web/test/build/native-retirement.test.ts",
         "hosting/next-static/promote.py",
         "scripts/import/**",
