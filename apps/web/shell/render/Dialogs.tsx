@@ -1,7 +1,17 @@
 // Product.fs modal surfaces. The controller owns selections, jobs and acquisition; these views only dispatch.
 import Button from '@mui/material/Button';
-import { useEffect, useEffectEvent, useLayoutEffect, useRef, type ReactNode } from 'react';
-import { cropFrame, namesKey } from '../facade/helpers.ts';
+import {
+  useEffect,
+  useEffectEvent,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
+import { cropFrame } from '../facade/helpers.ts';
+import { photoFiles, openPhotoPicker, dragPhoto } from '../../src/Next/photo-selection.mjs';
+import { classifyClipboard } from '../../src/photo/source.ts';
+import Logo from '../../src/public/logo.svg?react';
 import { msg, type Msg } from '../../src/controller/msg.ts';
 import type { CropChoice, State } from '../../src/controller/state.ts';
 
@@ -32,24 +42,43 @@ function Modal({
   className,
   close,
   children,
+  faceId,
 }: {
   label: string;
   className: string;
   close: () => void;
   children: ReactNode;
+  faceId?: string;
 }) {
   const root = useRef<HTMLDivElement>(null);
   const dismiss = useEffectEvent(close);
   useLayoutEffect(() => {
-    const previous = document.activeElement;
+    const previous = faceId
+      ? document.querySelector<HTMLElement>(
+          `[data-next-face="${CSS.escape(faceId)}"] [aria-label="Change mode"]`,
+        )
+      : document.activeElement;
+    const inert: { element: HTMLElement; previous: boolean }[] = [];
+    let branch: Element | null = root.current;
+    while (branch?.parentElement) {
+      for (const sibling of branch.parentElement.children) {
+        if (sibling !== branch && sibling instanceof HTMLElement) {
+          inert.push({ element: sibling, previous: sibling.inert });
+          sibling.inert = true;
+        }
+      }
+      branch = branch.parentElement;
+      if (branch === document.body) break;
+    }
     const target =
       root.current?.querySelector<HTMLElement>('.next-crop-view') ??
-      root.current?.querySelector<HTMLElement>('input, button');
+      root.current?.querySelector<HTMLElement>('button, input:not([type="file"])');
     target?.focus();
     return () => {
+      for (const item of inert) item.element.inert = item.previous;
       if (previous instanceof HTMLElement && previous.isConnected) previous.focus();
     };
-  }, []);
+  }, [faceId]);
   useEffect(() => {
     const token = crypto.randomUUID();
     let mounted = true;
@@ -77,7 +106,34 @@ function Modal({
       aria-modal="true"
       aria-label={label}
       className={className}
-      onKeyDown={(e) => namesKey(e, close)}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) close();
+      }}
+      onKeyDown={(e) => {
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          e.stopPropagation();
+          close();
+        } else if (e.key === 'Tab') {
+          const controls = [
+            ...e.currentTarget.querySelectorAll<HTMLElement>(
+              'button, input, textarea, select, [tabindex]',
+            ),
+          ].filter(
+            (item) =>
+              item.tabIndex >= 0 && !item.matches(':disabled') && item.getClientRects().length > 0,
+          );
+          const first = controls[0],
+            last = controls.at(-1);
+          if (e.shiftKey && document.activeElement === first) {
+            e.preventDefault();
+            last?.focus();
+          } else if (!e.shiftKey && document.activeElement === last) {
+            e.preventDefault();
+            first?.focus();
+          }
+        }
+      }}
     >
       {children}
     </div>
@@ -176,6 +232,7 @@ function CropEditor({ crop, dispatch }: { crop: CropChoice; dispatch: Dispatch }
   useLayoutEffect(() => {
     const element = area.current;
     if (!element) return;
+    element.focus();
     const measure = () => dispatch(msg('CropViewport', element.getBoundingClientRect().width));
     measure();
     const observer = new ResizeObserver(measure);
@@ -186,8 +243,8 @@ function CropEditor({ crop, dispatch }: { crop: CropChoice; dispatch: Dispatch }
   return (
     <div className="next-crop-panel box">
       <div className="next-topline">
-        <h2>Crop your photo</h2>
-        <Button onClick={() => dispatch(msg('CropCancel'))}>Cancel crop</Button>
+        <h2>Crop your image</h2>
+        <Button onClick={() => dispatch(msg('CropCancel'))}>CANCEL</Button>
       </div>
       <p>
         Drag to move, or use the arrow keys. Zoom to fill the square. Only this square is processed.
@@ -262,8 +319,8 @@ function CropEditor({ crop, dispatch }: { crop: CropChoice; dispatch: Dispatch }
       </label>
       <div className="next-actions">
         <Button onClick={() => dispatch(msg('CropRotate'))}>Rotate</Button>
-        <Button variant="contained" onClick={() => dispatch(msg('CropAccept'))}>
-          Use this crop
+        <Button variant="contained" onClick={() => dispatch(msg('CropUse'))}>
+          Use Crop
         </Button>
       </div>
     </div>
@@ -271,15 +328,136 @@ function CropEditor({ crop, dispatch }: { crop: CropChoice; dispatch: Dispatch }
 }
 
 export function CropDialog({ state, dispatch }: { state: State; dispatch: Dispatch }) {
-  if (!state.Crop) return null;
+  const crop = state.Crop;
+  const owner = crop?.faceId ?? state.Encode?.faceId;
+  // A consent replaces this modal. There is only one focus trap and one history owner.
+  if (!owner || state.Gate) return null;
+  const close = () => dispatch(msg(crop ? 'CropCancel' : 'CloseEncode'));
   return (
     <Modal
-      label="Crop photo"
-      className="next-crop-dialog"
-      close={() => dispatch(msg('CropCancel'))}
+      label="Encode an image"
+      className="next-crop-dialog next-encode-dialog"
+      faceId={owner}
+      close={close}
     >
-      <CropEditor crop={state.Crop} dispatch={dispatch} />
+      {crop?.previousView ? (
+        <CropEditor crop={crop} dispatch={dispatch} />
+      ) : (
+        <div
+          className={`next-encode-panel${crop ? ' next-encode-confirmation' : ''}`}
+          onDragOver={(e) => dragPhoto(e, false)}
+          onDragLeave={(e) => dragPhoto(e, false, true)}
+          onDrop={(e) => {
+            dragPhoto(e, false, true);
+            const files = photoFiles(e);
+            if (files.length > 1) dispatch(msg('EncodeNotice', 'Choose one image at a time.'));
+            else if (files.length) dispatch(msg('PickPhoto', owner, files));
+          }}
+        >
+          <header className="next-encode-header">
+            <h2>Encode an image</h2>
+            <Logo aria-label="FaceMorph logo" />
+          </header>
+          {crop ? (
+            <>
+              <CropPreview crop={crop} />
+              <Button className="next-encode-adjust" onClick={() => dispatch(msg('CropAdjust'))}>
+                ADJUST CROP
+              </Button>
+              <p className="next-encode-explanation">
+                Encoding recreates the face; details may change.
+              </p>
+            </>
+          ) : (
+            <div className="next-encode-source">
+              <input
+                id={`photo-encode-${owner}`}
+                type="file"
+                hidden
+                accept="image/*,video/mp4"
+                aria-label="Choose image file"
+                onChange={(e) => {
+                  const files = photoFiles(e);
+                  if (files.length) dispatch(msg('PickPhoto', owner, files));
+                }}
+              />
+              <div className="next-encode-source-actions">
+                <Button variant="contained" onClick={() => openPhotoPicker(`encode-${owner}`)}>
+                  Choose image
+                </Button>
+              </div>
+              <div
+                className="next-encode-paste"
+                role="textbox"
+                aria-label="Or paste image here"
+                tabIndex={0}
+                onPaste={(e) => {
+                  e.preventDefault();
+                  const items = [...e.clipboardData.items];
+                  const result = classifyClipboard(items);
+                  if (result.kind === 'invalid') dispatch(msg('EncodeNotice', result.message));
+                  else {
+                    const file = items.find((item) => item.kind === 'file')?.getAsFile();
+                    if (file) dispatch(msg('PickPhoto', owner, [file]));
+                    else dispatch(msg('EncodeNotice', 'This clipboard image could not be read.'));
+                  }
+                }}
+              >
+                Or paste image here
+              </div>
+              {state.Encode?.error && <p role="status">{state.Encode.error}</p>}
+              {state.PreparingFaces.has(owner) && <p role="status">Preparing image…</p>}
+            </div>
+          )}
+          <footer className="next-encode-footer">
+            <Button className="next-encode-cancel" onClick={close}>
+              CANCEL
+            </Button>
+            {crop && (
+              <Button
+                className="next-encode-ok"
+                variant="contained"
+                onClick={() => dispatch(msg('CropAccept'))}
+              >
+                OK
+              </Button>
+            )}
+          </footer>
+        </div>
+      )}
     </Modal>
+  );
+}
+
+function CropPreview({ crop }: { crop: CropChoice }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [width, setWidth] = useState(300);
+  useLayoutEffect(() => {
+    const element = ref.current;
+    if (!element) return;
+    const measure = () => setWidth(element.getBoundingClientRect().width);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
+  const placed = cropFrame(crop.view, width);
+  return (
+    <div ref={ref} className="next-encode-preview" aria-label="Confirmed crop preview">
+      <img
+        src={crop.url}
+        alt="Proposed face crop"
+        draggable={false}
+        style={{
+          width: placed.width,
+          height: placed.height,
+          left: placed.x,
+          top: placed.y,
+          transformOrigin: `${placed.originX}px ${placed.originY}px`,
+          transform: `rotate(${placed.rotation}deg)`,
+        }}
+      />
+    </div>
   );
 }
 

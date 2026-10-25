@@ -281,13 +281,27 @@ export function createController(
           );
           break;
         }
-        case 'previewPhoto':
+        case 'previewPhoto': {
+          const selection = ++photoSelectionSequence;
+          photoSelections.set(effect.id, selection);
           task(
             facade.previewPhoto(effect.file),
-            (offer) => store.dispatch(msg('Photo', effect.id, { kind: 'crop', offer })),
-            (error) => store.dispatch(rejection(effect, error)),
+            (offer) => {
+              if (photoSelections.get(effect.id) !== selection) {
+                helpers.revokeUrl(offer.url);
+                return;
+              }
+              photoSelections.delete(effect.id);
+              store.dispatch(msg('Photo', effect.id, { kind: 'crop', offer }));
+            },
+            (error) => {
+              if (photoSelections.get(effect.id) !== selection) return;
+              photoSelections.delete(effect.id);
+              store.dispatch(rejection(effect, error));
+            },
           );
           break;
+        }
         case 'cropPhoto':
           task(
             facade.cropPhoto(effect.file, effect.area, effect.options),

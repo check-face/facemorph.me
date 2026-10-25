@@ -312,3 +312,34 @@
 // fm-25um: the sole operation action stays inside its face image slot.
 .next-face-hint { position:absolute; inset:25% 1rem auto; text-align:center; }
 .next-face-operation { position:absolute!important; left:50%; top:60%; transform:translate(-50%,-50%); min-width:8rem; z-index:2; }
+
+// Encode confirmation follows docs/design/legacy-encode-dialog-geometry.json (372px reference).
+// This opaque dark surface is intentional in both themes.
+.next-encode-dialog { padding:16px; }
+.next-encode-panel {
+  --encode-width:min(372px, calc(100vw - 32px), calc((100dvh - 92px) / 1.3306));
+  width:var(--encode-width); max-height:calc(100dvh - 32px); overflow:auto;
+  position:relative; border-radius:3px; background:#353535; color:#fff;
+  padding:calc(var(--encode-width) * .0645) 0 0; box-shadow:0 8px 28px #0006;
+}
+.next-encode-header { display:flex; align-items:flex-start; justify-content:space-between; margin:0 7.53% 0 6.72%; }
+.next-encode-header h2 { color:#fff; font:500 20px/1.25 Roboto, sans-serif; margin:0; }
+.next-encode-header svg { position:absolute; right:7.53%; top:calc(var(--encode-width) * .043); width:21px; height:30px; color:#fff; flex-shrink:0; }
+.next-encode-preview { position:relative; width:80.65%; aspect-ratio:1; overflow:hidden; margin:calc(var(--encode-width) * .1613 - 25px) auto 0; background:#222; }
+.next-encode-preview img { position:absolute; max-width:none; }
+.next-encode-panel .next-encode-adjust { display:flex; margin:4px auto 0; padding:4px 8px; color:#fff; font:500 14px/20px Roboto,sans-serif; min-height:30px; }
+.next-encode-explanation { margin:0 9.68%; color:#fff; font:12px/16px Roboto,sans-serif; text-align:center; }
+.next-encode-footer { display:flex; justify-content:space-between; align-items:center; margin:6px 9.68% 5.37%; gap:12px; }
+.next-encode-panel .next-encode-cancel { background:#e0e0e0; color:#1d1d1d; min-width:85px; min-height:36px; }
+.next-encode-panel .next-encode-ok { background:#3f51b5; color:#fff; min-width:64px; min-height:36px; }
+.next-encode-source { margin:28px 9.68%; }
+.next-encode-source-actions { display:flex; flex-wrap:wrap; gap:8px; }
+.next-encode-paste { margin-top:16px; border:1px dashed #bbb; border-radius:3px; padding:16px 8px; color:#fff; cursor:text; }
+.next-encode-paste:focus-visible { outline:2px solid #9fa8da; outline-offset:3px; }
+.next-encode-source [role=status] { margin-top:12px; color:#fff; font-size:14px; }
+@media (max-width:359px), (max-height:620px) {
+  .next-encode-header h2 { font-size:18px; }
+  .next-encode-preview { margin-top:8%; }
+  .next-encode-footer { margin-top:8px; }
+  .next-encode-explanation { font-size:11px; line-height:14px; }
+}

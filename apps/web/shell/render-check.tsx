@@ -54,6 +54,7 @@ function RenderCheck() {
       onMode={(mode: FaceMode) => change(item.id, (i) => ({ ...i, mode }))}
       onBrowse={() => {}}
       onPhoto={() => {}}
+      onOpenEncode={() => {}}
       onPhotos={() => {}}
       onRun={() => {}}
       onCancel={() => {}}

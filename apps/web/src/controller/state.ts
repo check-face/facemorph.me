@@ -25,9 +25,14 @@ export interface CropChoice {
   readonly file: Blob;
   readonly scale: number;
   readonly view: CropView;
+  readonly input?: Input;
+  /** Editing is an in-dialog state. Its saved view is restored by editor Cancel. */
+  readonly previousView?: CropView;
 }
 /** The classic model, with its optional values represented by null and F# sets by ReadonlySet. */
 export interface State {
+  /** Absent/null while closed; opening this source step never grants acquisition. */
+  readonly Encode?: { readonly faceId: string; readonly error: string | null } | null;
   readonly Inputs: readonly Input[];
   readonly Faces: readonly Face[];
   readonly Previews: readonly PublicPreview[];

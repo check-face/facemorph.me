@@ -6,6 +6,59 @@ import { photo } from '../../src/controller/reducers/photo.ts';
 import { rejection } from '../../src/controller/effects.ts';
 import { MULTIPLE_FACES_MESSAGE } from '../../shell/facade/bridge.ts';
 import { state, file, offer, recovered } from './photo-inputs.ts';
+import { classifyClipboard } from '../../src/photo/source.ts';
+
+test('clipboard classification: image wins over text; malformed selections leave the source unchanged', () => {
+  const image = { kind: 'file', type: 'image/png' };
+  const text = { kind: 'string', type: 'text/plain' };
+  assert.deepEqual(classifyClipboard([image]), { kind: 'image' });
+  assert.deepEqual(classifyClipboard([text, image]), { kind: 'image' });
+  for (const items of [[], [text], [image, image], [{ kind: 'file', type: 'application/pdf' }]]) {
+    const result = classifyClipboard(items);
+    assert.equal(result.kind, 'invalid');
+    assert.ok('message' in result && result.message.length > 0);
+  }
+});
+
+test('opening and cancelling source never alters a face or authorizes downloads; chooser cancel keeps it open', () => {
+  const opened = reduce(msg('OpenEncode', 'face-2'), state)!;
+  assert.deepEqual(opened.state.Encode, { faceId: 'face-2', error: null });
+  assert.deepEqual(opened.effects, []);
+  assert.equal(opened.state.Inputs, state.Inputs);
+  assert.equal(reduce(msg('PickPhoto', 'face-2', []), opened.state)!.state, opened.state);
+  const selecting = reduce(msg('PickPhoto', 'face-2', [file('new.jpg')]), opened.state)!;
+  const closed = reduce(msg('CloseEncode'), selecting.state)!;
+  assert.equal(closed.state.Encode, null);
+  assert.equal(closed.state.PreparingFaces.has('face-2'), false);
+  assert.equal(closed.state.Inputs, state.Inputs);
+  assert.deepEqual(closed.effects, [
+    { type: 'invalidatePhotoSelections', id: 'face-2' },
+    { type: 'cancelPhotoRun' },
+  ]);
+  assert.equal(reduce(msg('OpenEncode', 'missing'), state)!.state, state);
+});
+
+test('recovery closes source without encoding; direct fresh photos preview before any RunFace', () => {
+  const opened = reduce(msg('OpenEncode', 'face-1'), state)!.state;
+  const fresh = file('fresh.jpg');
+  const preview = reduce(msg('Photo', 'face-1', { kind: 'photo', file: fresh }), opened)!;
+  assert.equal(preview.state.Inputs, state.Inputs);
+  assert.deepEqual(preview.effects, [{ type: 'previewPhoto', id: 'face-1', file: fresh }]);
+  const restored = reduce(
+    msg('Photo', 'face-1', { kind: 'recovered', output: recovered }),
+    opened,
+  )!;
+  assert.equal(restored.state.Encode, null);
+  assert.ok(
+    !restored.effects.some(
+      (effect) => effect.type === 'execute' || effect.type === 'downloadModels',
+    ),
+  );
+  const failed = reduce(msg('PhotoFailed', 'face-1', 'Unreadable image'), opened)!;
+  assert.equal(failed.state.Encode?.error, 'Unreadable image');
+  assert.equal(failed.state.Inputs, state.Inputs);
+  assert.equal(failed.state.FailureToast, false);
+});
 
 test('a stale crop result cannot change a replacement photo', () => {
   const next = reduce(msg('Cropped', 'face-1', 2, file('older.jpg')), state, { photoRevision: 3 })!;

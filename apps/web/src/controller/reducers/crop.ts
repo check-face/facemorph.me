@@ -18,6 +18,15 @@ export function nextCrop(state: State, effects: readonly Effect[] = []): Transit
 export function crop(message: Msg, state: State, facts: PhotoFacts = {}): Transition | null {
   const choice = state.Crop;
   switch (message.type) {
+    case 'CropAdjust':
+      return choice && !choice.previousView
+        ? { state: { ...state, Crop: { ...choice, previousView: choice.view } }, effects: [] }
+        : unchanged(state);
+    case 'CropUse': {
+      if (!choice?.previousView) return unchanged(state);
+      const { previousView: _saved, ...proposal } = choice;
+      return { state: { ...state, Crop: proposal }, effects: [] };
+    }
     case 'RequestCrop': {
       const [id] = message.args;
       if (state.ActiveFace === id) return unchanged(state);
@@ -55,10 +64,18 @@ export function crop(message: Msg, state: State, facts: PhotoFacts = {}): Transi
         ? { state: { ...state, Crop: { ...choice, view: rotateCrop(choice.view) } }, effects: [] }
         : unchanged(state);
     case 'CropCancel': {
+      if (choice?.previousView) {
+        const { previousView, ...proposal } = choice;
+        return {
+          state: { ...state, Crop: { ...proposal, view: previousView } },
+          effects: [],
+        };
+      }
       const next = nextCrop(
         {
           ...state,
           Crop: null,
+          Encode: null,
           PendingJobs: state.PendingJobs.filter(
             (job) => job.type !== 'RunFace' || job.args[0] !== choice?.faceId,
           ),
@@ -66,6 +83,7 @@ export function crop(message: Msg, state: State, facts: PhotoFacts = {}): Transi
         },
         [
           { type: 'cancelPhotoRun' },
+          ...(choice ? [{ type: 'invalidatePhotoSelections' as const, id: choice.faceId }] : []),
           ...(choice ? [{ type: 'revokeUrl' as const, url: choice.url }] : []),
         ],
       );
@@ -73,9 +91,17 @@ export function crop(message: Msg, state: State, facts: PhotoFacts = {}): Transi
       return schedule(ready.state, ready.effects);
     }
     case 'CropAccept': {
-      if (!choice) return unchanged(state);
+      if (!choice || choice.previousView) return unchanged(state);
+      // A replaced or removed target cannot commit an old proposal, even through a delayed event.
+      if (choice.input && state.Inputs.find((input) => input.id === choice.faceId) !== choice.input)
+        return crop({ type: 'CropCancel', args: [] }, state, facts);
       const next = nextCrop(
-        { ...state, Crop: null, PreparingFaces: new Set([...state.PreparingFaces, choice.faceId]) },
+        {
+          ...state,
+          Crop: null,
+          Encode: null,
+          PreparingFaces: new Set([...state.PreparingFaces, choice.faceId]),
+        },
         [{ type: 'revokeUrl', url: choice.url }],
       );
       return {
@@ -87,8 +113,8 @@ export function crop(message: Msg, state: State, facts: PhotoFacts = {}): Transi
             id: choice.faceId,
             revision: revision(facts),
             file: choice.file,
-            area: cropRect(choice.view),
-            options: { previewScale: choice.scale, rotation: choice.view.rotation },
+            area: Object.freeze(cropRect(choice.view)),
+            options: Object.freeze({ previewScale: choice.scale, rotation: choice.view.rotation }),
           },
         ],
       };

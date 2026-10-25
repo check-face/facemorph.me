@@ -13,6 +13,11 @@ import type {
 } from '../../shell/facade/records.ts';
 export type ConsentBasis = 'checkbox' | 'invite' | 'toast' | 'labs-default' | 'legacy' | 'once';
 export interface Payloads {
+  OpenEncode: readonly [string];
+  CloseEncode: readonly [];
+  EncodeNotice: readonly [string];
+  CropAdjust: readonly [];
+  CropUse: readonly [];
   Edit: readonly [string, string];
   Mode: readonly [string, InputMode];
   Photo: readonly [string, PhotoSelection];

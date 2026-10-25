@@ -14,6 +14,11 @@ export type ControllerFacts = InputFacts & JobFacts & PhotoFacts;
 type ControllerReducer = (message: Msg, state: State, facts: ControllerFacts) => Transition | null;
 // Every frozen message has one explicit pure reducer. Adding a Msg requires a case here.
 export const CASES = {
+  OpenEncode: photo,
+  CloseEncode: photo,
+  EncodeNotice: photo,
+  CropAdjust: crop,
+  CropUse: crop,
   Edit: inputs,
   Mode: inputs,
   AddAt: inputs,

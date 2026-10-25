@@ -68,8 +68,10 @@ export function Product({ store }: { store: Store }) {
             stagedReports={facade.stagedReportCount()}
             reference={facade.reportReference()}
           />
-          <NamesDialog state={s} dispatch={dispatch} />
-          <DetectedDialog state={s} dispatch={dispatch} />
+          {!s.Encode && !s.Crop && !s.PhotoChoice && !s.Gate && (
+            <NamesDialog state={s} dispatch={dispatch} />
+          )}
+          {!s.Encode && !s.Crop && !s.Gate && <DetectedDialog state={s} dispatch={dispatch} />}
           <CropDialog state={s} dispatch={dispatch} />
           <DownloadDialog state={s} dispatch={dispatch} />
         </>
@@ -114,6 +116,7 @@ export function Product({ store }: { store: Store }) {
             onMode={(mode) => dispatch(msg('Mode', item.id, mode))}
             onBrowse={() => dispatch(msg('BrowseNames', item.id))}
             onPhoto={(files) => dispatch(msg('PickPhoto', item.id, files))}
+            onOpenEncode={() => dispatch(msg('OpenEncode', item.id))}
             onRequestCrop={() => dispatch(msg('RequestCrop', item.id))}
             onPhotos={(files) => dispatch(msg('Photos', item.id, files))}
             onRun={() => dispatch(msg('RunFace', item.id))}
@@ -125,7 +128,6 @@ export function Product({ store }: { store: Store }) {
               if (canvas) facade.drawFace(canvas, id);
             }}
             displayMilestone={facade.displayMilestone}
-            onWarmPhotoTools={facade.warmPhotoTools}
           />
         )}
         morphSlot={

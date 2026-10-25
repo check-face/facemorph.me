@@ -30,10 +30,13 @@ export function dequeue(state: State, effects: readonly Effect[] = []): Transiti
       };
 }
 export function offerCrop(state: State, id: string, offer: Offer): Transition {
+  const input = state.Inputs.find((item) => item.id === id);
+  if (!input) return { state, effects: [{ type: 'revokeUrl', url: offer.url }] };
   const preparing = new Set(state.PreparingFaces);
   preparing.delete(id);
   const choice = {
     faceId: id,
+    input,
     url: offer.url,
     file: offer.file,
     scale: offer.scale,
@@ -44,7 +47,7 @@ export function offerCrop(state: State, id: string, offer: Offer): Transition {
       viewport: 320,
     }),
   };
-  const next = { ...state, PreparingFaces: preparing, Error: null };
+  const next = { ...state, PreparingFaces: preparing, Error: null, ModelToastHidden: true };
   return state.Crop && state.Crop.faceId !== id
     ? {
         state: { ...next, CropQueue: [...state.CropQueue, choice] },
@@ -92,12 +95,39 @@ function acceptPhoto(state: State, id: string, file: Blob, fromCrop: boolean): T
 }
 export function photo(message: Msg, state: State, facts: PhotoFacts = {}): Transition | null {
   switch (message.type) {
+    case 'OpenEncode': {
+      const [id] = message.args;
+      return !state.Inputs.some((input) => input.id === id) || state.Crop || state.Encode
+        ? unchanged(state)
+        : {
+            state: { ...state, Encode: { faceId: id, error: null }, ModelToastHidden: true },
+            effects: [],
+          };
+    }
+    case 'EncodeNotice':
+      return state.Encode
+        ? { state: { ...state, Encode: { ...state.Encode, error: message.args[0] } }, effects: [] }
+        : unchanged(state);
+    case 'CloseEncode': {
+      const owner = state.Encode;
+      if (!owner || state.Crop) return unchanged(state);
+      const preparing = new Set(state.PreparingFaces);
+      preparing.delete(owner.faceId);
+      return {
+        state: { ...state, Encode: null, PreparingFaces: preparing },
+        effects: [
+          { type: 'invalidatePhotoSelections', id: owner.faceId },
+          { type: 'cancelPhotoRun' },
+        ],
+      };
+    }
     case 'PickPhoto': {
       const [id, files] = message.args;
-      if (!files.length) return unchanged(state);
+      if (!files.length || !state.Inputs.some((input) => input.id === id)) return unchanged(state);
       return {
         state: {
           ...state,
+          ...(state.Encode?.faceId === id ? { Encode: { faceId: id, error: null } } : {}),
           PreparingFaces: new Set([...state.PreparingFaces, id]),
         },
         effects: [
@@ -119,8 +149,9 @@ export function photo(message: Msg, state: State, facts: PhotoFacts = {}): Trans
         PreparingFaces: preparing,
         PendingJobs: without(state.PendingJobs, runFace(id)),
         PendingFaces: state.PendingFaces.filter((face) => face !== id),
-        Error: error,
-        FailureToast: !state.Debug,
+        ...(state.Encode?.faceId === id
+          ? { Encode: { faceId: id, error }, FailureToast: false }
+          : { Error: error, FailureToast: !state.Debug }),
       });
       return schedule(next.state, next.effects);
     }
@@ -144,7 +175,7 @@ export function photo(message: Msg, state: State, facts: PhotoFacts = {}): Trans
         }
         case 'project':
           return {
-            state,
+            state: { ...state, Encode: null },
             effects: [{ type: 'dispatch', message: msg('Import', selection.projectFile) }],
           };
         case 'recovered': {
@@ -154,6 +185,7 @@ export function photo(message: Msg, state: State, facts: PhotoFacts = {}): Trans
           cached.delete(id);
           const next = dequeue({
             ...state,
+            Encode: null,
             Inputs: state.Inputs.map((item) =>
               item.id === id ? { ...item, mode: 'project', file: null, value: 'Saved face' } : item,
             ),
@@ -169,7 +201,8 @@ export function photo(message: Msg, state: State, facts: PhotoFacts = {}): Trans
         case 'crop':
           return offerCrop(state, id, selection.offer);
         case 'photo':
-          return acceptPhoto(state, id, selection.file, false);
+          // Even a directly readable photo needs explicit crop confirmation before any encode.
+          return { state, effects: [{ type: 'previewPhoto', id, file: selection.file }] };
       }
     }
     case 'Photos': {

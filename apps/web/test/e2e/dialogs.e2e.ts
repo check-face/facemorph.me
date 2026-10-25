@@ -118,7 +118,7 @@ for (const [engine, type] of Object.entries(engines).filter(
 
         // Each modal traps Tab and closes by Escape and by actual browser Back, even when opened rapidly.
         for (const [trigger, label, closed] of [
-          ['Crop photo', 'Crop photo', 'CropCancel'],
+          ['Crop photo', 'Encode an image', 'CropCancel'],
           ['Pick face', 'Which face?', 'DismissDetected'],
           ['Offer face model', 'Download the face model?', 'GateCancel'],
         ]) {
@@ -163,9 +163,12 @@ for (const [engine, type] of Object.entries(engines).filter(
         await names.waitFor({ state: 'detached' });
 
         await hit(page.getByRole('button', { name: 'Crop photo', exact: true }));
-        const crop = page.getByRole('dialog', { name: 'Crop photo' });
+        const crop = page.getByRole('dialog', { name: 'Encode an image' });
         await crop.waitFor();
-        await shot('crop');
+        await shot('crop-confirmation');
+        await hit(crop.getByRole('button', { name: 'ADJUST CROP', exact: true }));
+        await crop.getByRole('application', { name: 'Crop area' }).waitFor();
+        await shot('crop-editor');
         assert.equal(
           await crop.getByRole('application').evaluate((e) => e === document.activeElement),
           true,
@@ -187,12 +190,15 @@ for (const [engine, type] of Object.entries(engines).filter(
         await last(page, 'CropZoom');
         await hit(crop.getByRole('button', { name: 'Rotate', exact: true }));
         await last(page, 'CropRotate');
-        await hit(crop.getByRole('button', { name: 'Use this crop', exact: true }));
+        await hit(crop.getByRole('button', { name: 'Use Crop', exact: true }));
+        await last(page, 'CropUse');
+        await crop.getByRole('button', { name: 'OK', exact: true }).waitFor();
+        await hit(crop.getByRole('button', { name: 'OK', exact: true }));
         await last(page, 'CropAccept');
         await crop.waitFor({ state: 'detached' });
         await hit(page.getByRole('button', { name: 'Crop photo', exact: true }));
         await crop.waitFor();
-        await hit(crop.getByRole('button', { name: 'Cancel crop', exact: true }));
+        await hit(crop.getByRole('button', { name: 'CANCEL', exact: true }));
         await last(page, 'CropCancel');
         await crop.waitFor({ state: 'detached' });
 

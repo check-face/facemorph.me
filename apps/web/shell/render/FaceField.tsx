@@ -32,8 +32,6 @@ export interface FaceFieldProps {
   readonly onPhoto?: (files: File[]) => void;
   readonly onNotice?: (message: string) => void;
   readonly photoEncodingAvailable?: boolean;
-  /** Warms the photo tools when a person reaches for a photo (classic warmPhotoTools). */
-  readonly onWarmPhotoTools?: () => void;
 }
 
 export function FaceField({
@@ -50,7 +48,6 @@ export function FaceField({
   onPhoto,
   onNotice,
   photoEncodingAvailable = true,
-  onWarmPhotoTools,
 }: FaceFieldProps) {
   const [anchor, setAnchor] = useState<HTMLDivElement | null>(null); // the start adornment the menu opens from
   const [open, setOpen] = useState(false);
@@ -61,7 +58,6 @@ export function FaceField({
       onClick={() => {
         setOpen(false);
         if (kind === 'photo') {
-          onWarmPhotoTools?.();
           onPick();
         } else onMode(kind);
       }}

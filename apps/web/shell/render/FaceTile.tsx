@@ -5,7 +5,7 @@ import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
 import type { DragEvent } from 'react';
-import { dragPhoto, openPhotoPicker, photoFiles } from '../../src/Next/photo-selection.mjs';
+import { dragPhoto, photoFiles } from '../../src/Next/photo-selection.mjs';
 import { FaceField } from './FaceField.tsx';
 import { FancyButton } from './FancyButton.tsx';
 import type { Face, FaceMode, Input, PublicPreview } from './types.ts';
@@ -34,6 +34,7 @@ export interface FaceTileProps {
   readonly onMode: (mode: FaceMode) => void;
   readonly onBrowse: () => void;
   readonly onPhoto: (files: File[]) => void;
+  readonly onOpenEncode: () => void;
   readonly onRequestCrop?: () => void;
   readonly onPhotos: (files: File[]) => void;
   readonly onRun: () => void;
@@ -44,7 +45,6 @@ export interface FaceTileProps {
   /** Paints raw pixels into the canvas (bridge drawFace). */
   readonly drawFace?: (canvas: HTMLCanvasElement | null, id: string) => void;
   readonly displayMilestone?: (name: 'preview' | 'generated-visible' | 'restored-visible') => void;
-  readonly onWarmPhotoTools?: () => void;
 }
 
 const state = (item: Input, face: Face | undefined, preview: PublicPreview | undefined) =>
@@ -82,14 +82,6 @@ export function FaceTile(p: FaceTileProps) {
         else p.onPhoto(files);
       }}
     >
-      <input
-        id={`photo-${item.id}`}
-        type="file"
-        hidden
-        accept="image/*,video/mp4"
-        aria-label={p.photoEncodingAvailable === false ? 'Open saved image' : 'Encode image'}
-        onChange={(e) => p.onPhoto(photoFiles(e))}
-      />
       <div className="next-face-image">
         {face && face.raw ? (
           <canvas
@@ -135,10 +127,7 @@ export function FaceTile(p: FaceTileProps) {
             className="next-face-empty"
             tabIndex={-1}
             aria-label={p.photoEncodingAvailable === false ? 'Open saved image' : 'Encode image'}
-            onClick={() => {
-              p.onWarmPhotoTools?.();
-              openPhotoPicker(item.id);
-            }}
+            onClick={p.onOpenEncode}
           >
             <PhotoIcon />
             <span>{p.photoEncodingAvailable === false ? 'Open saved image' : 'Encode image'}</span>
@@ -195,7 +184,7 @@ export function FaceTile(p: FaceTileProps) {
           onEdit={p.onEdit}
           onMode={p.onMode}
           onBrowse={p.onBrowse}
-          onPick={() => openPhotoPicker(item.id)}
+          onPick={p.onOpenEncode}
           {...(p.onRequestCrop ? { onRequestCrop: p.onRequestCrop } : {})}
           canRun={!!canGenerate && !working}
           onRun={p.onRun}
@@ -204,7 +193,6 @@ export function FaceTile(p: FaceTileProps) {
           {...(p.photoEncodingAvailable !== undefined
             ? { photoEncodingAvailable: p.photoEncodingAvailable }
             : {})}
-          {...(p.onWarmPhotoTools ? { onWarmPhotoTools: p.onWarmPhotoTools } : {})}
         />
       </div>
       {/* A state mirror for tooling that reads the per-face source as a select; never focusable. */}
