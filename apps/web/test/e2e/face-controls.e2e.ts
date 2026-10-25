@@ -463,6 +463,107 @@ test(
             'the late import installs no face; only the edited face lost its result',
           );
           await shot('late-import-not-installed');
+
+          // Typing in face 2 of 3 while it generates cancels only face 2; faces 1 and 3 still
+          // generate and face 2's late result for the old words is never installed.
+          await operate(page.getByRole('button', { name: 'Add face', exact: true }));
+          const tiles = page.locator('section.next-face');
+          await tiles.nth(2).waitFor();
+          assert.equal(await tiles.count(), 3);
+          const ids = await tiles.evaluateAll((all) =>
+            all.map((element) => element.getAttribute('data-next-face')!),
+          );
+          await replace(tiles.nth(0).locator('.next-field input'), 'first of three');
+          await replace(tiles.nth(2).locator('.next-field input'), 'third of three');
+          await replace(field, 'second of three');
+          await page.evaluate((ids) => {
+            const seen: Record<string, string[]> = Object.fromEntries(ids.map((id) => [id, []]));
+            (window as unknown as { __slots: typeof seen }).__slots = seen;
+            const record = () => {
+              for (const id of ids) {
+                const text = document
+                  .querySelector(`section.next-face[data-next-face="${id}"] .next-face-generate`)
+                  ?.textContent?.trim();
+                const list = seen[id]!;
+                if (text && list.at(-1) !== text) list.push(text);
+              }
+            };
+            new MutationObserver(record).observe(document.body, {
+              subtree: true,
+              childList: true,
+              characterData: true,
+              attributes: true,
+            });
+            record();
+          }, ids);
+          const slot = (index: number) =>
+            tiles.nth(index).locator('.next-face-image .next-face-generate');
+          const slow = await context.newCDPSession(page);
+          await slow.send('Emulation.setCPUThrottlingRate', { rate: 4 });
+          await operate(slot(1));
+          await operate(slot(0));
+          await operate(slot(2));
+          const activeAtEdit = await page.evaluate(
+            () =>
+              (window as unknown as { __elmish: { model: { Busy: boolean; ActiveFace: string } } })
+                .__elmish.model,
+          );
+          await operate(field);
+          await page.keyboard.press('End');
+          await page.keyboard.insertText(' edited');
+          await slow.send('Emulation.setCPUThrottlingRate', { rate: 1 });
+          await slow.detach();
+          assert.ok(
+            activeAtEdit.Busy && activeAtEdit.ActiveFace === ids[1],
+            'face 2 was generating when its words changed',
+          );
+          await page.waitForFunction(
+            (ids) =>
+              [ids[0], ids[2]].every(
+                (id) =>
+                  document
+                    .querySelector(`section.next-face[data-next-face="${id}"]`)
+                    ?.getAttribute('data-next-state') === 'filled',
+              ),
+            ids,
+            { timeout: 180_000 },
+          );
+          await idle();
+          await page.waitForTimeout(1000);
+          await shot('edit-face-2-of-3');
+          const slots = await page.evaluate(
+            () => (window as unknown as { __slots: Record<string, string[]> }).__slots,
+          );
+          const finalModel = JSON.parse(await snapshot()) as {
+            faces: { id: string }[];
+            inputs: { id: string; value: string }[];
+          };
+          assert.equal(await field.inputValue(), 'second of three edited');
+          assert.notEqual(await tiles.nth(1).getAttribute('data-next-state'), 'filled');
+          assert.equal(
+            (await slot(1).textContent())?.trim(),
+            'Generate',
+            'new revision offers Generate',
+          );
+          assert.ok(
+            !finalModel.faces.some((face) => face.id === ids[1]),
+            'the old revision result is rejected',
+          );
+          assert.deepEqual(
+            finalModel.faces.map((face) => face.id).sort(),
+            [ids[0], ids[2]].sort(),
+            'faces 1 and 3 completed',
+          );
+          // Cancelling is shown unless the CPU worker settled before the next frame.
+          const second = slots[ids[1]!]!;
+          assert.equal(second.at(-1), 'Generate');
+          assert.ok(second.includes('Cancel'), `face 2 was cancellable: ${second.join(' > ')}`);
+          for (const id of [ids[0]!, ids[2]!])
+            assert.ok(
+              !slots[id]!.includes('Cancelling'),
+              `only face 2 cancels: ${slots[id]!.join(' > ')}`,
+            );
+          console.log(`fm-25um ${name} face slots`, JSON.stringify(slots));
           assert.deepEqual(errors, []);
         } catch (error) {
           await shot('failure').catch(() => {});
