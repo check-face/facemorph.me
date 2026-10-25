@@ -15,6 +15,9 @@ jobs:
   gates:
     runs-on: [self-hosted, linux-x64]
     timeout-minutes: 30
+    env:
+      # Controller tests independently re-verify the release in child processes.
+      GITHUB_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v4
         with:

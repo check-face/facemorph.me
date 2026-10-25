@@ -38,6 +38,8 @@ jobs:
     timeout-minutes: 120
     env:
       CHROME_VERSION: '141.0.7390.54'
+      # The benchmark driver re-verifies the release in its own child process.
+      GITHUB_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -45,8 +47,6 @@ jobs:
           node-version: '24'
       - uses: ./.github/actions/setup-workspace # node_modules for the lockfile, shared on the runner (fm-98po)
       - name: Fetch retained control independently (digest re-verified)
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
         run: node scripts/import/fetch-control.mjs --dest .cache/control
       - name: Pinned Chrome for Testing (cached on the runner)
         id: chrome

@@ -12,6 +12,9 @@ jobs:
   crop:
     runs-on: [self-hosted, eris]
     timeout-minutes: 120
+    env:
+      # The crop driver re-verifies the release after the initial fetch step.
+      GITHUB_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -31,8 +34,6 @@ jobs:
           print(len([k for k in m if not k.startswith('_')]), 'fixtures verified')
           PY
       - name: Fetch retained control independently
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
         run: node scripts/import/fetch-control.mjs --dest .cache/control
       - name: Test-only detector hook absent from the built site
         run: node tests/crop/scan-test-hook.mjs .cache/control/tree/deploy-next
