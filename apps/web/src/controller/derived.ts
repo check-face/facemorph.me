@@ -9,6 +9,7 @@ import type { Estimator, EstimatorSources } from '../../shell/facade/helpers.ts'
 import type { JobProgress } from '../../shell/facade/records.ts';
 import type { Msg } from './msg.ts';
 import type { State, Downloads } from './state.ts';
+export const describeDuration = (ms: number): string => describeMs(ms);
 export interface Measurements {
   readonly faceMs: number | null;
   readonly frameMs: number | null;

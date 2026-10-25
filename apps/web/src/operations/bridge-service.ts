@@ -15,6 +15,7 @@ import {
   type SchedulingState,
 } from './service.ts';
 import type { Output, Progress } from '../../shell/facade/records.ts';
+import * as facade from '../../shell/facade/bridge.ts';
 
 type Bridge = typeof import('../../shell/facade/bridge.ts');
 type EventPayload<E = OperationEvent> = E extends OperationEvent
@@ -46,7 +47,7 @@ export function createOperationService(): OperationService {
   let active: Pending | undefined;
   let disposed = false;
   let disposing: Promise<void> | undefined;
-  let bridge: Bridge | undefined;
+  let bridge: Bridge = facade;
   let loading: Promise<Bridge> | undefined;
   let unsubscribe: (() => void) | undefined;
   let running: Promise<void> | undefined;
@@ -79,7 +80,7 @@ export function createOperationService(): OperationService {
     emit(item, { type: 'progress', progress: p });
   }
   async function getBridge(): Promise<Bridge> {
-    return (loading ??= import('../../shell/facade/bridge.ts').then((b) => {
+    return (loading ??= Promise.resolve(bridge).then((b) => {
       bridge = b;
       if (!disposed) {
         unsubscribe = b.subscribe(progress);
@@ -142,7 +143,9 @@ export function createOperationService(): OperationService {
           provider: request.route.requested,
           routeSnapshot: request.route,
         };
-        b.rememberView(payload);
+        // A face request contains one slot; the controller has already remembered the full
+        // view. Replacing it here would lose siblings when the visitor returns.
+        if (request.kind !== 'face') b.rememberView(payload);
         output = await b.execute(payload);
       }
       if (item.cancelled || disposed) return;
@@ -232,6 +235,7 @@ export function createOperationService(): OperationService {
   }
   return {
     requestFace: queue,
+    requestFaces: queue,
     requestMorph: queue,
     requestImport: queue,
     requestNext,

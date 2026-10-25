@@ -23,6 +23,8 @@ import base, { after, afterEach, before, beforeEach } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { chromium, type Browser, type BrowserContext, type Page, type Worker } from 'playwright';
 import { build } from 'vite';
+import { fixture, verifyControl } from '../controller/control.ts';
+import { replayRows, type Replayers } from '../controller/replay.ts';
 
 const app = fileURLToPath(new URL('../../', import.meta.url));
 const repo = fileURLToPath(new URL('../../../../', import.meta.url));
@@ -348,6 +350,198 @@ test(
 );
 
 // This is the operation boundary over the real facade/runtime, not a service double.
+test(
+  'controller: recorded job journeys replay with actual CPU execution',
+  { timeout: 600_000 },
+  async () => {
+    verifyControl();
+    const replayed: Record<string, Replayers[string]> = {};
+    for (const row of [
+      'retry-unchanged',
+      'morph.settings-start-cancel',
+      'testing-bulk-generate',
+    ] as const) {
+      // Control rows were recorded in separate contexts. Preserve that isolation so retained
+      // bridge faces from an earlier row cannot change this row's insertion order or restore.
+      await context.close();
+      await open();
+      const actual = await call<{
+        cancelled: Record<string, unknown> | null;
+        completed: Record<string, unknown>;
+        faces: Record<string, unknown>[];
+        video: boolean;
+      }>('controllerGoldenJourney', row);
+      const files =
+        row === 'retry-unchanged'
+          ? ['02-cancelled', '03-retried']
+          : row === 'morph.settings-start-cancel'
+            ? ['03-cancelled', '04-morphed']
+            : [null, '01-bulk-generated'];
+      for (const device of ['desktop', 'phone']) {
+        for (const [i, observed] of [actual.cancelled, actual.completed].entries()) {
+          const file = files[i];
+          if (!file || !observed) continue;
+          const expected = fixture(`${row}/${device}/${file}.json`).model;
+          for (const [key, value] of Object.entries(observed))
+            assert.deepEqual(value, expected[key], `${row}/${device}/${file}: ${key}`);
+        }
+        const expected = fixture(`${row}/${device}/${files[1]}.json`).model;
+        assert.deepEqual(
+          actual.faces,
+          (expected.Faces as Record<string, unknown>[]).map(
+            ({ id, raw, label, sourceMode, sourceFile }) => ({
+              id,
+              raw,
+              label,
+              sourceMode,
+              sourceFile,
+            }),
+          ),
+          `${row}/${device}: real face records`,
+        );
+        assert.equal(actual.video, Boolean(expected.VideoUrl), `${row}/${device}: video`);
+      }
+      log(
+        JSON.stringify({
+          row,
+          status: 'passed',
+          evidence:
+            'real controller/operation-service CPU execution; exact recorded job fields, face metadata and video availability on both fixture variants',
+        }),
+      );
+      replayed[row] = () => {};
+    }
+    for (const verdict of replayRows(replayed)) log(JSON.stringify(verdict));
+  },
+);
+test(
+  'controller: every effect reaches its real facade function once',
+  { timeout: 300_000 },
+  async () => {
+    const session = await context.newCDPSession(page);
+    const counts = new Map<string, number>();
+    const names = new Map<string, string>();
+    const errors: unknown[] = [];
+    await session.send('Debugger.enable');
+    session.on('Debugger.paused', async (event) => {
+      for (const id of event.hitBreakpoints ?? []) {
+        const name = names.get(id);
+        if (name) counts.set(name, (counts.get(name) ?? 0) + 1);
+      }
+      try {
+        await session.send('Debugger.resume');
+      } catch (error) {
+        errors.push(error);
+      }
+    });
+    try {
+      const targets = [
+        'restoreLastResult',
+        'subscribe',
+        'subscribeDownloads',
+        'invalidateArrivalRestore',
+        'invalidateFace',
+        'invalidateMorph',
+        'invalidatePhotoSelections',
+        'rememberSourcePhoto',
+        'openNamesFocus',
+        'closeNamesFocus',
+        'loadNames',
+        'publicPreview',
+        'sliderFrames',
+        'setDebug',
+        'sendReportOnce',
+        'rememberSlider',
+        'rememberView',
+        'checkCachedFace',
+        'consentToDownload',
+        'downloadModels',
+        'queueFace',
+        'cancelQueuedFace',
+        'requestNext',
+        'saveMedia',
+        'shareMedia',
+        'exportProject',
+        'execute',
+        'cancel',
+        'importProject',
+      ];
+      for (const name of targets) {
+        const object = await session.send('Runtime.evaluate', {
+          expression: `window.harness.controllerTarget(${JSON.stringify(name)})`,
+        });
+        assert.ok(object.result.objectId, `${name}: actual function missing`);
+        const breakpoint = await session.send('Debugger.setBreakpointOnFunctionCall', {
+          objectId: object.result.objectId,
+        });
+        names.set(breakpoint.breakpointId, name);
+      }
+      await call('startControllerRouting');
+      for (const name of ['restoreLastResult', 'subscribe', 'subscribeDownloads'])
+        assert.equal(counts.get(name), 1, name);
+      for (const name of targets.filter(
+        (name) => !['restoreLastResult', 'subscribe', 'subscribeDownloads'].includes(name),
+      )) {
+        const before = counts.get(name) ?? 0;
+        await call('controllerRoutingStep', name === 'cancel' ? 'cancelWork' : name);
+        assert.equal((counts.get(name) ?? 0) - before, 1, `${name}: calls for one effect`);
+      }
+      assert.equal(
+        await call('controllerRoutingStep', 'dispatch'),
+        'effect dispatch reached the queue',
+      );
+      assert.deepEqual(errors, []);
+    } finally {
+      await call('stopControllerRouting');
+      await session.detach();
+    }
+  },
+);
+test(
+  'controller: CPU faces and a short morph complete through reducers and effects',
+  { timeout: 600_000 },
+  async () => {
+    try {
+      const result = await call<{
+        first: boolean;
+        second: boolean;
+        video: boolean;
+        faces: number;
+        route: string;
+        unchangedAfterDispose: boolean;
+        bulkCompleted: boolean;
+        saveRejected: boolean;
+        shareRejected: boolean;
+        exportRejected: boolean;
+        importRejected: boolean;
+        reportObserved: boolean;
+        downloadObserved: boolean;
+        subscriptionsDetached: boolean;
+      }>('controllerJourney');
+      assert.equal(result.first, true);
+      assert.equal(result.second, true);
+      assert.equal(result.video, true);
+      assert.equal(result.faces, 2);
+      assert.equal(result.route, 'cpu');
+      assert.equal(result.unchangedAfterDispose, true);
+      for (const key of [
+        'bulkCompleted',
+        'saveRejected',
+        'shareRejected',
+        'exportRejected',
+        'importRejected',
+        'reportObserved',
+        'downloadObserved',
+        'subscriptionsDetached',
+      ] as const)
+        assert.equal(result[key], true, key);
+    } catch (error) {
+      await keep('controller');
+      throw error;
+    }
+  },
+);
+
 test(
   'operation-service: queued CPU faces and a morph complete with scoped lifecycle events',
   { timeout: 600_000 },

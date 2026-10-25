@@ -156,7 +156,7 @@ export function checkScope(scope, oxfmt, oxlint) {
     'autoresearch/history/',
     'autoresearch/reviews/',
     'autoresearch/templates/',
-    'apps/web/src/',
+    'apps/web/src/Next/',
     '.beads/',
   ]) {
     if (!scope.ignore.includes(`${frozen}**`))

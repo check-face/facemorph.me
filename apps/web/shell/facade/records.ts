@@ -142,6 +142,8 @@ export interface Progress {
   readonly text: string;
   /** 0..1, the bar's position for the whole job. */
   readonly fraction: number;
+  /** Present on face progress, absent on global acquisition/reporting events. */
+  readonly face?: string;
 }
 
 export const MORPH_KINDS = [
@@ -344,6 +346,7 @@ export function readProgress(value: unknown): Progress {
     stage: r.string('stage'),
     text: r.optionalString('text'),
     fraction: r.number('fraction'),
+    ...(r.has('face') ? { face: r.string('face') } : {}),
   };
 }
 

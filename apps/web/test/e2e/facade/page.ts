@@ -7,6 +7,14 @@ import type { InputRevision } from '../../../src/contracts/inputs.ts';
 import { readSession } from '../../../src/Next/last-result.mjs';
 import { generationIdentity } from '../../../src/Next/browser/identity.mjs';
 import { digest, openOriginals } from '../../../src/Next/browser/originals.mjs';
+import {
+  controllerJourney,
+  controllerTarget,
+  startControllerRouting,
+  controllerRoutingStep,
+  stopControllerRouting,
+  controllerGoldenJourney,
+} from '../../harness/ctl-effects.spec.ts';
 
 const progress: f.Progress[] = [];
 const downloads: f.Downloads[] = [];
@@ -46,6 +54,12 @@ const settled = () => ({
 });
 
 const harness = {
+  controllerJourney,
+  controllerTarget,
+  startControllerRouting,
+  controllerRoutingStep,
+  stopControllerRouting,
+  controllerGoldenJourney,
   async serviceJourney() {
     const service = createOperationService();
     const events: { type: OperationEvent['type']; provider: string | null; attempt: string }[] = [];

@@ -172,7 +172,7 @@ export async function chooseDetectedFace(choice: DetectedFaces, index: number): 
 }
 export const cancelPhotoRun = (): void => bridge.cancelPhotoRun();
 export const warmPhotoTools = (): void => bridge.warmPhotoTools();
-export const rememberSourcePhoto = (id: string, file: Blob): void =>
+export const rememberSourcePhoto = (id: string, file: Blob | null): void =>
   bridge.rememberSourcePhoto(id, file);
 export const sourcePhotoUrl = (id: string): string =>
   readString(bridge.sourcePhotoUrl(id), 'sourcePhotoUrl');
@@ -205,8 +205,8 @@ export async function importProject(request: {
 export function subscribeDownloads(
   callback: (downloads: Downloads) => void,
   onInvalid: (error: FacadeError) => void = report,
-): void {
-  bridge.subscribeDownloads((value: unknown) => {
+): () => void {
+  return bridge.subscribeDownloads((value: unknown) => {
     let downloads: Downloads;
     try {
       downloads = readDownloads(value);

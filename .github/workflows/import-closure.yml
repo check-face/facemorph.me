@@ -21,7 +21,7 @@ jobs:
       - run: >-
           node scripts/import/verify-closure.mjs --allow package.json --allow package-lock.json
           --allow browser-matrix.json --allow 'tsconfig*.json' --allow vite.config.ts --allow index.html --allow worker-check.html --allow render-check.html --allow .gitignore
-          --allow 'build/**' --allow 'shell/**' --allow 'test/**' --allow 'src/photo/**' --allow 'src/contracts/**' --allow 'src/media/**' --allow 'src/admission/**' --allow 'src/project/**' --allow src/Next/browser/bridge-grant.mjs --allow src/Next/browser/admission.mjs --allow scripts/next-matrix-stages.mjs --allow scripts/next-matrix-stages.d.mts
+          --allow 'build/**' --allow 'shell/**' --allow 'test/**' --allow 'src/photo/**' --allow 'src/contracts/**' --allow 'src/media/**' --allow 'src/admission/**' --allow 'src/project/**' --allow 'src/operations/**' --allow 'src/controller/**' --allow src/Next/browser/bridge-grant.mjs --allow src/Next/browser/admission.mjs --allow scripts/next-matrix-stages.mjs --allow scripts/next-matrix-stages.d.mts
       - run: node scripts/import/scan-exclusions.mjs
       - run: node scripts/inventory/unresolved-imports.mjs --root apps/web --lock package-lock.json --expect-none # one root lock (fm-fy2.4); none since the ProjectJson swap (fm-stth)
       - name: Control artifact downloads, verifies and scans clean

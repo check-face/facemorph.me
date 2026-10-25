@@ -18,6 +18,8 @@ export function checkTypes(
   service.requestFace({ ...request, onProgress() {} });
   // @ts-expect-error Face requests cannot enter the morph boundary.
   service.requestMorph(request);
+  // @ts-expect-error A single-slot request cannot masquerade as the tester bulk operation.
+  service.requestFaces(request);
   void requestId;
   void revision;
 }

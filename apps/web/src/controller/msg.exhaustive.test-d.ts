@@ -1,6 +1,6 @@
 import type { Msg, Payloads } from './msg.ts';
 import type { CASES } from './reducers/index.ts';
-import type { Effect } from './effects.ts';
+import type { EverydayEffect as Effect } from './effects.ts';
 type Assert<T extends true> = T;
 export type AllCases = Assert<
   Exclude<Msg['type'], keyof typeof CASES> extends never ? true : false

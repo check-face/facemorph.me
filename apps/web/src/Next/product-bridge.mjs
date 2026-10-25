@@ -260,7 +260,7 @@ const downloads={known:false,phase:'idle',scope:'',loaded:0,total:0,routeReady:f
 const wanted=new Set(),downloadListeners=new Set();
 let downloading=null;
 function announceDownloads(){const snapshot={...downloads};for(const callback of downloadListeners){try{callback(snapshot);}catch{}}}
-export function subscribeDownloads(callback){downloadListeners.add(callback);callback({...downloads});}
+export function subscribeDownloads(callback){downloadListeners.add(callback);callback({...downloads});return ()=>downloadListeners.delete(callback);}
 async function refreshInventory(){
  try{
   const service=await engine();if(!service.plan)return;

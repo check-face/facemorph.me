@@ -6,5 +6,5 @@
 export function nextScheduled(jobs,{busy=false,blockedFaces=[],blockMorph=false}={}){
  if(busy)return -1;
  const blocked=new Set(blockedFaces);
- return jobs.findIndex(job=>job.kind==='face'?!blocked.has(job.id):job.kind==='morph'?!blockMorph:job.kind==='import');
+ return jobs.findIndex(job=>job.kind==='face'?!blocked.has(job.id):job.kind==='morph'?!blockMorph:job.kind==='faces'||job.kind==='import');
 }

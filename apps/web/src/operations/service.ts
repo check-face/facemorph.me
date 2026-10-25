@@ -42,6 +42,7 @@ interface Common {
 export type OperationRequest =
   | (Common & { readonly kind: 'face'; readonly source: SourceSnapshot })
   | (Common & { readonly kind: 'morph'; readonly sources: readonly SourceSnapshot[] })
+  | (Common & { readonly kind: 'faces'; readonly sources: readonly SourceSnapshot[] })
   | (Common & {
       readonly kind: 'import';
       readonly sources: readonly SourceSnapshot[];
@@ -81,7 +82,7 @@ export interface OperationHandle extends IntentSnapshot {
 export type CancelTarget = { readonly slot: string } | { readonly requestId: RequestId };
 export type ScheduledJob =
   | { readonly kind: 'face'; readonly id: string }
-  | { readonly kind: 'morph' | 'import' };
+  | { readonly kind: 'morph' | 'faces' | 'import' };
 export interface SchedulingState {
   readonly busy?: boolean;
   readonly blockedFaces?: readonly string[];
@@ -89,6 +90,7 @@ export interface SchedulingState {
 }
 export interface OperationService {
   requestFace(request: Extract<OperationRequest, { kind: 'face' }>): OperationHandle;
+  requestFaces(request: Extract<OperationRequest, { kind: 'faces' }>): OperationHandle;
   requestMorph(request: Extract<OperationRequest, { kind: 'morph' }>): OperationHandle;
   requestImport(request: Extract<OperationRequest, { kind: 'import' }>): OperationHandle;
   requestNext(jobs: readonly ScheduledJob[], state?: SchedulingState): number;
@@ -139,7 +141,7 @@ export function capture(request: OperationRequest): OperationRequest {
   if (request.kind === 'face')
     return Object.freeze({ ...common, kind: 'face', source: source(request.source) });
   const copied = Object.freeze(request.sources.map(source));
-  return request.kind === 'morph'
-    ? Object.freeze({ ...common, kind: 'morph', sources: copied })
+  return request.kind !== 'import'
+    ? Object.freeze({ ...common, kind: request.kind, sources: copied })
     : Object.freeze({ ...common, kind: 'import', sources: copied, file: request.file });
 }

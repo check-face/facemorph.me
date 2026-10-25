@@ -2,9 +2,14 @@ import { inputs, type InputFacts } from './inputs.ts';
 import { names } from './names.ts';
 import { reporting } from './reporting.ts';
 import { slider } from './slider.ts';
+import { jobs, type JobFacts } from './jobs.ts';
+import { gate } from './gate.ts';
+import { sameInputs } from './schedule.ts';
 import type { Msg } from '../msg.ts';
 import type { State } from '../state.ts';
-import type { Transition } from '../effects.ts';
+import { viewSnapshot, type Transition } from '../effects.ts';
+export type ControllerFacts = InputFacts & JobFacts;
+type ControllerReducer = (message: Msg, state: State, facts: ControllerFacts) => Transition | null;
 // Explicit ownership: jobs and photo/crop transitions land in fm-v80g/fm-j16n. Adding a Msg needs a case here.
 export const CASES = {
   Edit: inputs,
@@ -52,34 +57,42 @@ export const CASES = {
   CropCancel: 'photo',
   RequestCrop: 'photo',
   Cropped: 'photo',
-  CancelFace: 'jobs',
-  Run: 'jobs',
-  RunFace: 'jobs',
-  Cancel: 'jobs',
-  Progressed: 'jobs',
-  Completed: 'jobs',
-  Failed: 'jobs',
-  Save: 'jobs',
-  Share: 'jobs',
-  Export: 'jobs',
-  Import: 'jobs',
-  Notice: 'jobs',
-  DownloadsChanged: 'jobs',
-  DownloadNow: 'jobs',
-  HideModelToast: 'jobs',
-  GateAccept: 'jobs',
-  GateCancel: 'jobs',
-  Retry: 'jobs',
-  RestoredLast: 'jobs',
-} satisfies Record<
-  Msg['type'],
-  ((message: Msg, state: State) => Transition | null) | 'jobs' | 'photo'
->;
+  CancelFace: jobs,
+  Run: jobs,
+  RunFace: jobs,
+  Cancel: jobs,
+  Progressed: jobs,
+  Completed: jobs,
+  Failed: jobs,
+  Save: jobs,
+  Share: jobs,
+  Export: jobs,
+  Import: jobs,
+  Notice: jobs,
+  DownloadsChanged: gate,
+  DownloadNow: gate,
+  HideModelToast: gate,
+  GateAccept: gate,
+  GateCancel: gate,
+  Retry: jobs,
+  RestoredLast: jobs,
+} satisfies Record<Msg['type'], ControllerReducer | 'photo'>;
 /** null means this message belongs to a subsequent controller slice; callers must handle it, never discard it. */
-export function reduce(message: Msg, state: State, facts: InputFacts = {}): Transition | null {
-  const handler = CASES[message.type];
+export function reduce(message: Msg, state: State, facts: ControllerFacts = {}): Transition | null {
+  const gated = gate(message, state);
+  if (gated !== null) return gated;
+  const handler: ControllerReducer | 'photo' = CASES[message.type];
   if (typeof handler === 'string') return null;
   const result = handler(message, state, facts);
   if (result === null) throw new Error(`Controller case ${message.type} has no reducer`);
-  return result;
+  return rememberView(state, result);
+}
+export function rememberView(previous: State, next: Transition): Transition {
+  const state = next.state;
+  return !sameInputs(previous.Inputs, state.Inputs) ||
+    previous.Kind !== state.Kind ||
+    previous.Frames !== state.Frames ||
+    previous.Pinch !== state.Pinch
+    ? { ...next, effects: [...next.effects, { type: 'rememberView', view: viewSnapshot(state) }] }
+    : next;
 }

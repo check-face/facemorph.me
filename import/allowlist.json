@@ -1476,10 +1476,10 @@
       "bytes": 37783,
       "class": "src-next",
       "ported": {
-        "sha256": "37dbe9d7736736c7c83b19335a489c317a6eea276c11ee7e05873ed86d44956f",
-        "bytes": 40916,
-        "bead": "fm-lt2p",
-        "reason": "WebGL execution removed (fm-x6h5); per-operation admission through admission/route-admission.ts before any worker or model request, photo encoding admitted by capability instead of user-agent labels (fm-lt2p)"
+        "sha256": "22e587eca404f21152ff40260470e12052a99da1dfdb61df3691218acee670e1",
+        "bytes": 41339,
+        "bead": "fm-0y24",
+        "reason": "WebGL execution removed (fm-x6h5); per-operation admission through admission/route-admission.ts before any worker or model request, photo encoding admitted by capability instead of user-agent labels (fm-lt2p); route snapshot selects bounded fallback scope and forwards cancellation signal (fm-0y24)"
       }
     },
     {
@@ -1779,10 +1779,10 @@
       "bytes": 54317,
       "class": "src-next",
       "ported": {
-        "sha256": "44267c9e7f50c85bb13254ed63f909e36cc80c341b8bb56019bfc074787ef414",
-        "bytes": 54712,
-        "bead": "fm-lt2p",
-        "reason": "ProjectJson imported from project/bridge-result.ts (fm-stth, one line); Morph admitted on its own and refusals returned with reasonKey/text/helpAnchor (fm-lt2p)"
+        "sha256": "d1182295fd53b90f59f83d077157de65d9aaa7b9e0c08efd81ec54a7518d3563",
+        "bytes": 56013,
+        "bead": "fm-v80g",
+        "reason": "ProjectJson imported from project/bridge-result.ts (fm-stth, one line); Morph admitted on its own and refusals returned with reasonKey/text/helpAnchor (fm-lt2p); revision-owned operation cancellation, compute/file readiness and bounded route snapshots (fm-0y24); downloads subscription returns its disposer (fm-v80g)"
       }
     },
     {
@@ -1860,7 +1860,13 @@
       "destination": "apps/web/src/Next/scheduler.mjs",
       "sha256": "a48e6744a2e115ef8ef78bade42f91ecb1af6891d89a230b433160b798233b9c",
       "bytes": 622,
-      "class": "src-next"
+      "class": "src-next",
+      "ported": {
+        "sha256": "7adfce41180bf3593566f7914ab28f4d1080868958446cd8fae47cc26fc8f9f5",
+        "bytes": 642,
+        "bead": "fm-v80g",
+        "reason": "Admit the existing tester bulk Generate faces action as one serial operation so it retains the project/export state and aggregate progress rather than becoming independent face jobs."
+      }
     },
     {
       "source": "src/Next/scheduler.test.mjs",

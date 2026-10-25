@@ -35,6 +35,35 @@ test('an eligible morph keeps its position ahead of newly queued faces', async (
   await service.dispose();
 });
 
+test('bulk faces capture every source as one cancellable intent', async () => {
+  const service = createOperationService();
+  const revision = 1 as import('../contracts/inputs.ts').InputRevision;
+  const sources = ['bulk-a', 'bulk-b'].map((slot) => ({
+    slot,
+    revision,
+    input: { id: slot, mode: 'text' as const, value: slot, file: null },
+  }));
+  const handle = service.requestFaces({
+    kind: 'faces',
+    sources,
+    route: {
+      requested: 'cpu',
+      fallbackScope: 'none',
+      runtimeSha256: 'runtime',
+      modelSha256: 'model',
+    },
+    settings: { kind: 'linear', width: 1, pinch: false, frames: 8, fps: 16 },
+  });
+  sources[0]!.input.value = 'edited after approval';
+  assert.equal(handle.request.kind, 'faces');
+  if (handle.request.kind !== 'faces') throw new Error('bulk request lost its kind');
+  assert.equal(handle.request.sources[0]!.input.value, 'bulk-a');
+  service.cancel({ slot: 'bulk-b' });
+  assert.equal((await handle.done).status, 'cancelled');
+  assert.equal(service.requestNext([{ kind: 'faces' }], { blockMorph: true }), 0);
+  await service.dispose();
+});
+
 test('queued cancellation and Retry settle through the public service without starting blocked work', async () => {
   const service = createOperationService();
   const revision = 1 as import('../contracts/inputs.ts').InputRevision;
