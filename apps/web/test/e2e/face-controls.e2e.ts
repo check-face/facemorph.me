@@ -1,6 +1,6 @@
 // fm-25um: operated controls in the identified, composed application, with real CPU synthesis.
 import assert from 'node:assert/strict';
-import { existsSync, mkdirSync, readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { resolve, join } from 'node:path';
 import test from 'node:test';
@@ -45,6 +45,7 @@ test(
           hasTouch: touch,
           isMobile: touch,
           ignoreHTTPSErrors: true,
+          permissions: ['clipboard-read', 'clipboard-write'],
         });
         // Omit DOM snapshots and source files: runtime model responses can otherwise make traces enormous.
         await context.tracing.start({ screenshots: true, snapshots: false, sources: false });
@@ -338,6 +339,130 @@ test(
           );
           await idle();
           await shot('retried');
+
+          // Replacement commit points: a cancelled chooser and a damaged saved image keep the result
+          // and every other face; an import still pending when the field is edited is never installed.
+          const snapshot = () =>
+            page.evaluate(() => {
+              const model = (
+                window as unknown as {
+                  __elmish: {
+                    model: {
+                      Faces: { id: string; url: string; label: string; sourceMode: string }[];
+                      Inputs: { id: string; mode: string; value: string }[];
+                    };
+                  };
+                }
+              ).__elmish.model;
+              return JSON.stringify({
+                faces: model.Faces.map(({ id, url, label, sourceMode }) => ({
+                  id,
+                  url,
+                  label,
+                  sourceMode,
+                })),
+                inputs: model.Inputs.map(({ id, mode, value }) => ({ id, mode, value })),
+              });
+            });
+          const kept = await snapshot();
+          const encodeDialog = page.getByRole('dialog', { name: 'Encode an image', exact: true });
+          const choose = async (files: string[]) => {
+            await mode('Encode image');
+            await encodeDialog.waitFor();
+            const chooser = page.waitForEvent('filechooser');
+            await operate(encodeDialog.getByRole('button', { name: 'Choose image', exact: true }));
+            await (await chooser).setFiles(files);
+          };
+          await choose([]);
+          await page.keyboard.press('Escape');
+          await encodeDialog.waitFor({ state: 'detached' });
+          assert.equal(await snapshot(), kept, 'a cancelled chooser keeps the result');
+          assert.equal(await tile.getAttribute('data-next-state'), 'filled');
+          const saved = readFileSync(join(results, `${name}-hello.webp`));
+          const damaged = join(results, `${name}-damaged.webp`);
+          writeFileSync(damaged, saved.subarray(0, Math.floor(saved.length / 2)));
+          await choose([damaged]);
+          await page.waitForFunction(
+            () =>
+              (window as unknown as { __elmish: { model: { PreparingFaces: Set<string> } } })
+                .__elmish.model.PreparingFaces.size === 0,
+          );
+          await shot('damaged-saved-image');
+          assert.equal(
+            (await encodeDialog.getByRole('status').innerText()).trim(),
+            'This saved image is damaged.',
+            'one plain message, not the parser error',
+          );
+          if (await encodeDialog.count()) {
+            await page.keyboard.press('Escape');
+            await encodeDialog.waitFor({ state: 'detached' });
+          }
+          assert.equal(await snapshot(), kept, 'a damaged saved image keeps the result');
+          assert.equal(await tile.getAttribute('data-next-state'), 'filled');
+          // A real PNG on the clipboard, pasted into the field while the CPU is throttled so the import
+          // is still preparing when the words change; it must never be installed.
+          await page.evaluate(
+            async (bytes) => {
+              const source = await createImageBitmap(
+                new Blob([new Uint8Array(bytes)], { type: 'image/jpeg' }),
+              );
+              const canvas = document.createElement('canvas');
+              canvas.width = source.width;
+              canvas.height = source.height;
+              canvas.getContext('2d')!.drawImage(source, 0, 0);
+              const png = await new Promise<Blob>((resolve, reject) =>
+                canvas.toBlob(
+                  (b) => (b ? resolve(b) : reject(Error('PNG encode failed'))),
+                  'image/png',
+                ),
+              );
+              await navigator.clipboard.write([new ClipboardItem({ 'image/png': png })]);
+            },
+            [...readFileSync(join(REPO, 'tests/crop/fixtures/non-square.jpg'))],
+          );
+          const throttle = await context.newCDPSession(page);
+          await throttle.send('Emulation.setCPUThrottlingRate', { rate: 20 });
+          const faceId = await tile.getAttribute('data-next-face');
+          await operate(field);
+          await page.keyboard.press('ControlOrMeta+V');
+          // Measured before the edit (an edit itself ends that face's preparation).
+          const pendingAtEdit = await page.evaluate(
+            (id) =>
+              (
+                window as unknown as { __elmish: { model: { PreparingFaces: Set<string> } } }
+              ).__elmish.model.PreparingFaces.has(id!) &&
+              !document.querySelector('.next-encode-preview img'),
+            faceId,
+          );
+          await page.keyboard.press('ControlOrMeta+A');
+          await page.keyboard.insertText('edited while importing');
+          await throttle.send('Emulation.setCPUThrottlingRate', { rate: 1 });
+          await throttle.detach();
+          assert.ok(pendingAtEdit, 'the paste import was still preparing when the words changed');
+          await page.waitForFunction(
+            () =>
+              (window as unknown as { __elmish: { model: { PreparingFaces: Set<string> } } })
+                .__elmish.model.PreparingFaces.size === 0,
+          );
+          await page.waitForTimeout(1000);
+          assert.equal(await encodeDialog.count(), 0, 'the late import opens no confirmation');
+          assert.equal(await field.inputValue(), 'edited while importing');
+          const after = JSON.parse(await snapshot()) as {
+            faces: unknown[];
+            inputs: { id: string }[];
+          };
+          const before = JSON.parse(kept) as { faces: { id: string }[]; inputs: { id: string }[] };
+          assert.deepEqual(
+            after.inputs.filter((i) => i.id !== faceId),
+            before.inputs.filter((i) => i.id !== faceId),
+            'other faces unchanged',
+          );
+          assert.deepEqual(
+            after.faces,
+            before.faces.filter((f) => f.id !== faceId),
+            'the late import installs no face; only the edited face lost its result',
+          );
+          await shot('late-import-not-installed');
           assert.deepEqual(errors, []);
         } catch (error) {
           await shot('failure').catch(() => {});

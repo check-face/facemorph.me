@@ -541,7 +541,8 @@ export async function selectPhotoReported(request){
  const selectionRevision=revisionOf(request.id);
  const file=request.files?.[0];if(file)analytics.operationResult?.('selection','ready',undefined,{size_band:file.size<1024*1024?'small':file.size<8*1024*1024?'medium':'large'});
  const projectText=file?await recoverVideoProject(file):null;if(selectionRevision!==revisionOf(request.id))return null;if(projectText)return {projectFile:new Blob([projectText],{type:'application/json'})};
- const recovered=file?await recoverImage(file):null;
+ // A saved image whose recovery data fails to parse or verify is one plain message; the parser's reason stays as the cause.
+ const recovered=file?await recoverImage(file).catch(error=>{throw Error('This saved image is damaged.',{cause:error});}):null;
  if(recovered){
   const response=await fetch('/runtime/manifest.json');if(!response.ok)throw Error('Unable to verify this saved face.');const m=await response.json();
   if(m.modelSourceSha256!==recovered.provenance.modelSha256||m.noiseSha256!==recovered.provenance.noiseSha256||(recovered.generationSha256&&await digest(JSON.stringify(generationIdentity(m,recovered.generationKind)))!==recovered.generationSha256))throw Error('This saved face uses a different model.');
