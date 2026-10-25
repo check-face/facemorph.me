@@ -32,6 +32,7 @@ interface Recorded {
     bytes: number | null;
     status: number | null;
     failed: boolean;
+    errorText: string | null;
   }[];
 }
 interface Helper {
@@ -145,8 +146,25 @@ const app = createServer(tls, (req, res) => {
   res.writeHead(404);
   res.end();
 });
+interface ModelResponse {
+  path: string;
+  bytes: number;
+  finished: boolean;
+  aborted: boolean;
+}
+const modelResponses: ModelResponse[] = [];
 const model = createServer(tls, (req, res) => {
-  const body = files[new URL(req.url ?? '/', 'https://x').pathname];
+  const path = new URL(req.url ?? '/', 'https://x').pathname;
+  const cut = path === '/cut-part';
+  const body = files[cut ? '/part-0' : path];
+  const entry = { path, bytes: 0, finished: false, aborted: false };
+  modelResponses.push(entry);
+  res.once('finish', () => {
+    entry.finished = true;
+  });
+  res.once('close', () => {
+    entry.aborted = !res.writableFinished;
+  });
   if (!body) {
     res.writeHead(404, { 'access-control-allow-origin': '*' });
     return res.end();
@@ -157,7 +175,14 @@ const model = createServer(tls, (req, res) => {
     'access-control-allow-origin': '*',
     'cache-control': 'no-store',
   });
-  res.end(body);
+  if (cut) {
+    entry.bytes = body.byteLength / 2;
+    res.write(body.subarray(0, entry.bytes));
+    setTimeout(() => res.destroy(), 25);
+  } else {
+    entry.bytes = body.byteLength;
+    res.end(body);
+  }
 });
 const appPort = await listen(app);
 const modelPort = await listen(model);
@@ -322,6 +347,79 @@ const tamper = (
 for (const backend of ['opfs', 'cache-storage'] as const) {
   const name = backend === 'opfs' ? 'readShards (OPFS)' : 'openVerified (Cache Storage)';
 
+  test(
+    `${engine} ${backend} an interrupted HTTP body cannot pass the cold transfer cell`,
+    { skip: NO_BROWSER },
+    async () => {
+      const s = await session(`${backend}-cut-transfer`);
+      const fromResponse = modelResponses.length;
+      try {
+        const out = await s.page.evaluate(
+          async ({ backend, asset }) => {
+            const m = await import(String('/pkg/index.js'));
+            const cache = await m.createBrowserModelCache({
+              ...(backend === 'opfs' ? {} : { shards: null }),
+              retryDelaysMs: [],
+            });
+            const broken = {
+              ...asset,
+              chunks: asset.chunks.map((part, i) =>
+                i === 0 ? { ...part, url: new URL('/cut-part', part.url).href } : part,
+              ),
+            };
+            let acquired = false;
+            try {
+              await cache.acquire(broken, {
+                owner: 'face:cut',
+                grant: {
+                  manifestSha256: 'cut-transfer',
+                  route: 'cpu',
+                  purpose: 'generate',
+                  owners: ['face:cut'],
+                  remainingBytes: asset.size,
+                  assets: [
+                    { sha256: asset.sha256, bytes: asset.size, priority: 'foreground-required' },
+                  ],
+                },
+              });
+              acquired = true;
+            } catch {
+              /* a real connection reset must reject */
+            }
+            (window as unknown as { cutCache: typeof cache }).cutCache = cache;
+            return { acquired, present: await cache.has(asset) };
+          },
+          { backend, asset: ASSETS.chunked },
+        );
+        assert.deepEqual(out, { acquired: false, present: false });
+        await s.settled();
+        const cut = modelResponses
+          .slice(fromResponse)
+          .filter((response) => response.path === '/cut-part');
+        assert.deepEqual(cut, [
+          { path: '/cut-part', bytes: parts[0]!.byteLength / 2, finished: false, aborted: true },
+        ]);
+        record.step(s.rec, 'local:after-cut');
+        const local = await s.page.evaluate(async (asset) => {
+          const cache = (
+            window as unknown as {
+              cutCache: { local: { read(a: object): Promise<{ ok: boolean }> } };
+            }
+          ).cutCache;
+          return (await cache.local.read(asset)).ok;
+        }, ASSETS.chunked);
+        assert.equal(local, false, 'partial bytes never become a verified local model');
+        await s.settled();
+        quiet(s.rec, 'local:after-cut');
+      } catch (error) {
+        await s.capture();
+        throw error;
+      } finally {
+        await s.context.close();
+      }
+    },
+  );
+
   test(`${engine} ${backend} action cache cells`, { skip: NO_BROWSER }, async (t) => {
     const s = await session(`${backend}-action-cells`);
     const output = { id: 'completed-result', sha256: ASSETS.plain.sha256 };
@@ -387,6 +485,7 @@ for (const backend of ['opfs', 'cache-storage'] as const) {
         size: ASSETS.chunked.size,
       };
       await cell('cold: output miss acquires exact pinned model chunks', async () => {
+        const fromResponse = modelResponses.length;
         record.step(s.rec, 'action:cold');
         assert.deepEqual(await action(ASSETS.chunked.size), modelResult);
         await s.settled();
@@ -396,16 +495,26 @@ for (const backend of ['opfs', 'cache-storage'] as const) {
           ASSETS.chunked.chunks.map((part) => part.url).sort(),
           'cold action downloads each chunk exactly once',
         );
-        assert.ok(
-          requests.every((r) => r.bytes !== null),
-          'every response byte count is observed',
+        const served = modelResponses.slice(fromResponse);
+        assert.deepEqual(
+          served.map((response) => response.path).sort(),
+          ASSETS.chunked.chunks.map((part) => new URL(part.url).pathname).sort(),
+          'the model server handled exactly the pinned chunk requests',
         );
         assert.ok(
-          requests.every((r) => r.status === 200 && !r.failed),
-          `successfully consumed chunks must complete their HTTP requests without cancellation: ${JSON.stringify(requests)}`,
+          served.every((response) => response.finished && !response.aborted),
+          `every model response completed without an early close: ${JSON.stringify(served)}`,
+        );
+        // Chromium can report ERR_ABORTED around EOF under concurrent runtime load even when
+        // the server finished and the caller verified every byte. Keep that protocol fact in
+        // the record; establish transfer completion from both endpoints, not Content-Length.
+        assert.ok(
+          requests.every(
+            (r) => r.status === 200 && (!r.failed || r.errorText === 'net::ERR_ABORTED'),
+          ),
         );
         assert.equal(
-          requests.reduce((sum, r) => sum + r.bytes!, 0),
+          served.reduce((sum, response) => sum + response.bytes, 0),
           ASSETS.chunked.size,
           'cold transfer bytes equal the pinned model size',
         );
