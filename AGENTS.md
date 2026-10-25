@@ -110,6 +110,17 @@ candidate build). Resource policy, three classes:
   https://next.facemorph.me`). CI covers phones via the hosted Android emulator and iOS Simulator
   lanes only.
 
+**Journey suite (operator, 25 October 2026).** The end-to-end scenarios are a fixed, named,
+budgeted registry — not an accreting suite. Today: `cold-face`, `warm-face`, `morph`. The
+photo/encode journey (upload → crop → e4e → add face), explicit image+video export assertions and
+the blend (advanced, multi-face) journey join as their product beads land (`fm-ejwq`, `fm-y2jb`,
+`fm-ve73`). Each journey names the plan flow it protects and carries a wall-clock budget per cell,
+measured once and then frozen; a journey over budget, or a name outside the registry, fails the
+summary. Agents iterate locally on the one journey their bead touches (`lab.py run --journey
+<name>`, `--cell phone-webgpu` when the phone is relevant); CI runs the whole registry every push
+as the backstop — it stays fast because the registry stays small. A new journey needs a bead naming
+the product flow it protects; anything else is a unit or lane test.
+
 It is best effort: an unavailable device or runner never blocks anything; runs queue, and missing
 cells are recorded as untested. A real
 failure passes beads back. The new app deploys to next.facemorph.me only when the full release bead set
