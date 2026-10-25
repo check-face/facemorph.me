@@ -235,5 +235,32 @@
       "size": 1002,
       "sha256": "31f8af5e73ae48ddda8fdc376a544ee6d9fec966adbffa582da923eca3d36810"
     }
+  ],
+  "addedFiles": [
+    {
+      "path": "hosting/gallery/cloudflare.config.ts",
+      "bead": "fm-e6yj",
+      "reason": "Monorepo immutable static catalogue publication using installed cf."
+    },
+    {
+      "path": "hosting/gallery/package.json",
+      "bead": "fm-e6yj",
+      "reason": "Monorepo immutable static catalogue publication using installed cf."
+    },
+    {
+      "path": "hosting/gallery/package-lock.json",
+      "bead": "fm-e6yj",
+      "reason": "Monorepo immutable static catalogue publication using installed cf."
+    },
+    {
+      "path": "hosting/gallery/vite.config.ts",
+      "bead": "fm-e6yj",
+      "reason": "Monorepo immutable static catalogue publication using installed cf."
+    },
+    {
+      "path": "hosting/next-static/headers.json",
+      "bead": "fm-zz2i",
+      "reason": "Shared production header policy consumed by staging and local preview."
+    }
   ]
 }

@@ -27,7 +27,7 @@ export function scanFiles(files) {
       out.push({ path, problem: 'over the size limit' });
     if (
       (path.endsWith('.json') && path !== 'hosting/next-static/catalogue.json') ||
-      /\.(mjs|js|py|toml|jsonc|md|txt|html|yml)$/.test(path)
+      /\.(mjs|js|ts|tsx|py|toml|jsonc|md|txt|html|yml)$/.test(path)
     ) {
       const text = bytes.toString('utf8');
       for (const [kind, re] of SECRETS)
@@ -49,10 +49,9 @@ function walk(dir, root, out = []) {
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const opts = options(process.argv.slice(2));
   const files = walk(join(REPO, opts.dir ?? 'hosting'), REPO);
+  const provenance = JSON.parse(readFileSync(join(REPO, 'hosting/PROVENANCE.json'), 'utf8'));
   const recorded = new Set(
-    JSON.parse(readFileSync(join(REPO, 'hosting/PROVENANCE.json'), 'utf8')).files.map(
-      (f) => f.path,
-    ),
+    [...provenance.files, ...(provenance.addedFiles ?? [])].map((f) => f.path),
   );
   const findings = [
     ...scanFiles(files),

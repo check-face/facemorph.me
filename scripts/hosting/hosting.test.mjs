@@ -50,6 +50,10 @@ test('the scan finds planted wrangler state, weights, oversized files and creden
       'headers = {"Authorization": "Bearer abcdefghijklmnopqrstuvwxyz0123456789"}',
     ),
     f('hosting/next-static/wrangler.jsonc', '{ "vars": { "TOKEN_NAME": "CLOUDFLARE_API_TOKEN" } }'),
+    f(
+      'hosting/gallery/cloudflare.config.ts',
+      'export const key = "Bearer abcdefghijklmnopqrstuvwxyz0123456789";',
+    ),
   ]);
   const by = (p) => findings.filter((x) => x.path === p).map((x) => x.problem);
   assert.deepEqual(by('hosting/next-cloudflare/.wrangler/state/v3/kv/x.sqlite'), [
@@ -59,6 +63,9 @@ test('the scan finds planted wrangler state, weights, oversized files and creden
   assert.deepEqual(by('hosting/next-static/big.txt'), ['over the size limit']);
   assert.deepEqual(by('hosting/next-static/deploy.py'), ['credential-looking value (bearer)']);
   assert.deepEqual(by('hosting/next-static/wrangler.jsonc'), []);
+  assert.deepEqual(by('hosting/gallery/cloudflare.config.ts'), [
+    'credential-looking value (bearer)',
+  ]);
 });
 
 test('the two split rows the site lane needs import; other split rows do not', () => {
