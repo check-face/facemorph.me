@@ -1913,10 +1913,10 @@
       "bytes": 622,
       "class": "src-next",
       "ported": {
-        "sha256": "7adfce41180bf3593566f7914ab28f4d1080868958446cd8fae47cc26fc8f9f5",
-        "bytes": 642,
-        "bead": "fm-v80g",
-        "reason": "Admit the existing tester bulk Generate faces action as one serial operation so it retains the project/export state and aggregate progress rather than becoming independent face jobs."
+        "sha256": "56703c697c396bc8091b3715ebaf96964e0a86e036b7cc25e650104a8d1a88ab",
+        "bytes": 719,
+        "bead": "fm-in6a",
+        "reason": "Retain tester bulk scheduling; skip file-preparation entries after compute settles without letting later faces overtake an eligible Morph."
       }
     },
     {

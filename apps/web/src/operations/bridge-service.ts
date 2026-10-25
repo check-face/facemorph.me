@@ -1,4 +1,5 @@
-// Serial bridge execution with intent ownership. React supplies descriptors/blockers; this boundary owns jobs.
+// Serial provider work with intent ownership; file preparation has its own budget.
+// React supplies descriptors/blockers; this boundary owns jobs through settlement.
 import type { ComputeRoute } from '@facemorph/stylegan-js';
 import { nextScheduled } from '../Next/scheduler.mjs';
 import { IntentRegistry } from './intents.ts';
@@ -27,6 +28,7 @@ interface Pending {
   readonly resolve: (value: OperationSettlement) => void;
   provider: ComputeRoute | null;
   cancelled: boolean;
+  phase: 'queued' | 'compute' | 'file';
 }
 
 /** The same public scheduling seam used by the service, callable with plain descriptors before a browser exists. */
@@ -50,7 +52,7 @@ export function createOperationService(): OperationService {
   let bridge: Bridge = facade;
   let loading: Promise<Bridge> | undefined;
   let unsubscribe: (() => void) | undefined;
-  let running: Promise<void> | undefined;
+  const running = new Set<Promise<void>>();
 
   function emit(item: Pending, event: EventPayload): void {
     const full = {
@@ -111,7 +113,7 @@ export function createOperationService(): OperationService {
         bridge?.cancel();
         if (sources(item.handle.request).some((s) => s.input.mode === 'photo'))
           bridge?.cancelPhotoRun();
-      } else {
+      } else if (item.phase === 'queued') {
         if (item.handle.request.kind === 'face')
           bridge?.cancelQueuedFace(item.handle.request.source.slot);
         finish(item, { status: 'cancelled' });
@@ -162,6 +164,17 @@ export function createOperationService(): OperationService {
         finish(item, { status: 'superseded' });
       } else {
         emit(item, { type: 'compute-ready', output });
+        if (item.cancelled || disposed) return;
+        if (!registry.current(item.handle)) {
+          finish(item, { status: 'superseded' });
+          return;
+        }
+        // execute has settled its provider work. File encoding has its own worker
+        // and budget; it must not hold the shared compute permit. Keep this item
+        // pending so cancellation/revision checks still guard its eventual file.
+        item.phase = 'file';
+        if (active === item) active = undefined;
+        queueMicrotask(pump);
         // Bridge file readiness is separate from raw display readiness. Its save path awaits encoding.
         const prepared =
           request.kind === 'face' && !output.photoChoices && !output.cropFace
@@ -186,18 +199,17 @@ export function createOperationService(): OperationService {
       }
     } finally {
       if (item.cancelled || disposed) finish(item, { status: 'cancelled' });
-      active = undefined;
-      running = undefined;
+      if (active === item) active = undefined;
       pump();
     }
   }
   function pump(): void {
     if (active || disposed) return;
     const items = [...pending.values()];
-    const descriptors = items.map(({ handle: { request } }) =>
+    const descriptors = items.map(({ handle: { request }, phase }) =>
       request.kind === 'face'
-        ? { kind: 'face' as const, id: request.source.slot }
-        : { kind: request.kind },
+        ? { kind: 'face' as const, id: request.source.slot, phase }
+        : { kind: request.kind, phase },
     );
     const index = requestNext(descriptors, blocked);
     const item = items[index];
@@ -208,7 +220,10 @@ export function createOperationService(): OperationService {
       return;
     }
     active = item;
-    running = run(item);
+    item.phase = 'compute';
+    const task = run(item);
+    running.add(task);
+    void task.finally(() => running.delete(task));
   }
   function queue(request: OperationRequest): OperationHandle {
     if (disposed) throw new Error('Operation service disposed');
@@ -224,6 +239,7 @@ export function createOperationService(): OperationService {
       jobId: ++jobSequence,
       provider: null,
       cancelled: false,
+      phase: 'queued',
     };
     pending.set(intent.requestId, item);
     if (intent.request.kind === 'face') {
@@ -295,7 +311,7 @@ export function createOperationService(): OperationService {
       return (disposing ??= (async () => {
         disposed = true;
         for (const id of pending.keys()) stop(registry.cancel(id));
-        await running;
+        await Promise.all(running);
         unsubscribe?.();
         registry.clear();
         listeners.clear();

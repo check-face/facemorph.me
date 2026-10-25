@@ -80,9 +80,10 @@ export interface OperationHandle extends IntentSnapshot {
   readonly done: Promise<OperationSettlement>;
 }
 export type CancelTarget = { readonly slot: string } | { readonly requestId: RequestId };
-export type ScheduledJob =
+export type ScheduledJob = (
   | { readonly kind: 'face'; readonly id: string }
-  | { readonly kind: 'morph' | 'faces' | 'import' };
+  | { readonly kind: 'morph' | 'faces' | 'import' }
+) & { readonly phase?: 'queued' | 'compute' | 'file' };
 export interface SchedulingState {
   readonly busy?: boolean;
   readonly blockedFaces?: readonly string[];

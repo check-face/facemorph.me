@@ -11,6 +11,10 @@ test('serial scheduling skips photo decisions, preserves tails, and resumes them
     { kind: 'face', id: 'c' },
   ];
   assert.equal(service.requestNext(jobs, { busy: true }), -1);
+  assert.equal(
+    service.requestNext([{ kind: 'face', id: 'active', phase: 'compute' }, ...jobs]),
+    -1,
+  );
   assert.equal(service.requestNext(jobs, { blockedFaces: ['crop'] }), 1);
   jobs.splice(1, 1);
   assert.deepEqual(
@@ -32,6 +36,20 @@ test('an eligible morph keeps its position ahead of newly queued faces', async (
   assert.equal(service.requestNext(jobs), 0);
   assert.equal(service.requestNext(jobs, { blockMorph: true }), 1);
   assert.equal(service.requestNext([{ kind: 'morph' }], { blockMorph: true }), -1);
+  await service.dispose();
+});
+
+test('file preparation yields compute admission without letting later faces overtake an eligible morph', async () => {
+  const service = createOperationService();
+  const jobs: ScheduledJob[] = [
+    { kind: 'face', id: 'encoded', phase: 'file' },
+    { kind: 'morph', phase: 'queued' },
+    { kind: 'face', id: 'next', phase: 'queued' },
+  ];
+  assert.equal(service.requestNext(jobs), 1);
+  assert.equal(service.requestNext(jobs, { busy: true }), -1);
+  assert.equal(service.requestNext(jobs, { blockMorph: true }), 2);
+  assert.equal(service.requestNext([{ kind: 'face', id: 'encoded', phase: 'file' }]), -1);
   await service.dispose();
 });
 
