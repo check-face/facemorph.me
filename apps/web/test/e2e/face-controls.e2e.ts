@@ -150,6 +150,23 @@ test(
             ['spellcheck', 'false'],
           ])
             assert.equal(await field.getAttribute(attribute!), value);
+          // Copy snapshot: exactly one plain message per refused input, and no glued sentences,
+          // "1 seconds" or raw exception text anywhere in the product.
+          const refused = async (caseName: string, expected: string | null) => {
+            assert.deepEqual(
+              await tile.locator('.MuiFormHelperText-root').allInnerTexts(),
+              expected === null ? [] : [expected],
+              caseName,
+            );
+            const text = await page.locator('.next-product').innerText();
+            assert.doesNotMatch(text, /\b1 seconds\b/, caseName);
+            assert.doesNotMatch(text, /[a-z][.!?][A-Z]/, `${caseName}: missing space`);
+            assert.doesNotMatch(
+              text,
+              /\b(Type|Range|Reference|Syntax)?Error\b|\n\s+at \S+:\d+/,
+              caseName,
+            );
+          };
           const mode = async (label: string) => {
             await operate(tile.getByRole('button', { name: 'Change mode' }));
             await operate(page.getByRole('menuitem', { name: label, exact: true }));
@@ -161,6 +178,12 @@ test(
               await tile.locator('.next-face-generate').isDisabled(),
               !['0', '4294967295'].includes(value),
               value,
+            );
+            await refused(
+              `seed ${JSON.stringify(value)}`,
+              ['0', '4294967295'].includes(value)
+                ? null
+                : 'Use a whole number from 0 to 4294967295.',
             );
             await shot(`seed-${value.replace(/\W/g, '_') || 'empty'}`);
           }
@@ -175,6 +198,14 @@ test(
           ] as const) {
             await replace(field, value);
             assert.equal(await tile.locator('.next-face-generate').isDisabled(), !valid, caseName);
+            await refused(
+              caseName,
+              valid
+                ? null
+                : value.trim() === ''
+                  ? 'Type some words to make a face.'
+                  : 'Use at most 512 bytes of text.',
+            );
             await shot(caseName);
           }
           // Drive native IME composition, then a real Enter key. Composition must
