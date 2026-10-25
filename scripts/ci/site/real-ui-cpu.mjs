@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // real-ui-cpu (fm-aa8, next-e2e.yml): the exact artifact through classic's whole product journey on the CPU route
-// (apps/web/scripts/next-e2e-browser.py, unedited: name and seed faces, e4e on a metadata-free photo, crop,
+// (apps/web/scripts/next-e2e-browser.py, adapted to the declared UI: name and seed faces, e4e on a metadata-free photo, crop,
 // original reuse, recovered still without inference, GPU refusal scope, playable and saved MP4, restore), with
 // its network folded by host class (scripts/ci/intercept): zero third-party requests, and real inference
 // (inferenceVerdict: worker replies per model operation, and the weights the workers fetched).

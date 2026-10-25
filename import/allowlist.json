@@ -1127,10 +1127,10 @@
       "class": "temporary-root",
       "temporary": true,
       "ported": {
-        "sha256": "0977e0d3ff0d352e5744c17ddf817eac1610727a149c9036a94b48e519c3db66",
-        "bytes": 39050,
+        "sha256": "5788e4b9b4e3898855b8e1a23deb78e712e21a098567b02ba8dd280a3f0d073b",
+        "bytes": 42086,
         "bead": "fm-aa8",
-        "reason": "Preserve typed project-codec checks; adapt provider and tile controls for WebGL/filename retirement, retain crop in its mode menu, and use the existing CDP interceptor for worker evidence under no-referrer production headers. Schedule initial navigation and pump events within the unchanged document-load deadline, avoiding the shorter synchronous harness IPC timeout."
+        "reason": "Preserve typed project-codec checks; adapt provider and tile controls for WebGL/filename retirement, retain crop in its mode menu, and use the existing CDP interceptor for worker evidence under no-referrer production headers. Schedule initial navigation and pump events within the unchanged document-load deadline, avoiding the shorter synchronous harness IPC timeout. Adapt the declared Encode source/confirmation/editor flow through real pointer hits while retaining CPU/e4e/crop/export/restore and network assertions (main40183901932 preflight repair)."
       }
     },
     {

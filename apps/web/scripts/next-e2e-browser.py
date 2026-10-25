@@ -117,7 +117,7 @@ def click(name,expect=None):
  # failure looking for a missing button that was present and enabled the whole time.
  seen=js("(()=>{const b=[...document.querySelectorAll('button')].find(x=>x.textContent.trim()===%s);return JSON.stringify({present:!!b,disabled:b?b.disabled:null,status:(document.querySelector('.next-status')?.innerText||'').slice(0,120)});})()"%json.dumps(name))
  raise RuntimeError('Could not place a click on %s; page showed %s'%(name,seen))
-def idle():return js("document.querySelector('.next-product')?.getAttribute('data-next-busy')==='false'")
+def idle():return js("document.querySelector('.next-product')?.getAttribute('data-next-busy')==='false'&&!([...document.querySelectorAll('.next-face-generate')].some(b=>/^(Cancel|Cancelling)$/.test(b.textContent.trim())))")
 
 def run(name,predicate=None):
  if name==S['buttons']['generate']:
@@ -158,7 +158,20 @@ def set_last_text_input():
 def download(name):
  folder=downloads/str(time.time_ns());folder.mkdir();cdp('Browser.setDownloadBehavior',behavior='allow',downloadPath=str(folder));click(name)
  return wait(lambda:next((p for p in folder.iterdir() if p.suffix!='.crdownload' and p.stat().st_size>0),None),60)
+def press_selector(selector,index=0,name=None):
+ # Operate the actual rendered source/crop controls with a verified pointer hit.
+ def point():
+  return js("""(()=>{const es=[...document.querySelectorAll(%s)].filter(e=>{const r=e.getBoundingClientRect();return r.width&&r.height&&getComputedStyle(e).visibility!=='hidden'&&(!%s||e.textContent.trim().toLowerCase()===%s);});
+   const e=es[%d];if(!e)return null;e.scrollIntoView({block:'center'});const r=e.getBoundingClientRect();
+   const x=r.left+r.width/2,y=r.top+r.height/2;return r.width&&r.height&&e.contains(document.elementFromPoint(x,y))?{x,y}:null;})()"""%(json.dumps(selector),json.dumps(name),json.dumps(name.lower() if name else None),index))
+ p=wait(point,30);click_at_xy(p['x'],p['y'])
+def open_photo_source(index=0):
+ press_selector('.next-face [aria-label="Change mode"]',index)
+ press_selector('[role="menuitem"]',name='Encode image')
+ wait(lambda:js("!!document.querySelector('.next-encode-source input[type=file]')"),30)
 def upload(selector,path):
+ if CTX.get('sourceDialog') and selector==S['choosePhoto']:
+  open_photo_source()
  root=cdp('DOM.getDocument')['root']['nodeId'];node=cdp('DOM.querySelector',nodeId=root,selector=selector)['nodeId'];assert node,'File input missing';cdp('DOM.setFileInputFiles',nodeId=node,files=[str(path.resolve())])
 def save_check(name,data):result['checks'][name]=data;(out/'report.json').write_text(json.dumps(result,indent=2));print(json.dumps({'check':name,**data}),flush=True)
 
@@ -172,17 +185,35 @@ def stage_preflight():
  new_tab('about:blank')
  # Install on the journey tab before navigation, including every subsequent reload.
  cdp('Page.enable')
+ load_session=cdp('Target.attachToTarget',targetId=current_tab()['targetId'],flatten=True)['sessionId']
+ cdp('Page.enable',session_id=load_session)
+ document_loaded=False
+ def navigation_events():
+  nonlocal document_loaded
+  events=drain_events()
+  if any(e.get('method')=='Page.loadEventFired' and e.get('session_id')==load_session for e in events):document_loaded=True
+  return events
  cdp('Page.addScriptToEvaluateOnNewDocument',source="window.__ciWorkers=0;window.__ciWorkerRequests=0;window.__ciWorkerKinds=[];const OriginalWorker=window.Worker;window.Worker=class extends OriginalWorker{constructor(...args){super(...args);window.__ciWorkers++;}postMessage(...args){window.__ciWorkerRequests++;window.__ciWorkerKinds.push({type:args[0]?.type||null,keys:Object.keys(args[0]||{})});return super.postMessage(...args);}};")
  if os.environ.get('INTERCEPT_DIR'):
   import sys
   sys.path.insert(0,os.environ['INTERCEPT_DIR'])
   import intercept
   from browser_harness.helpers import _send
-  network=intercept.attach_cdp(cdp,drain_events,json.loads(os.environ['NETWORK_HOST_MAP']),page_session=_send({'meta':'session'}).get('session_id'),page_target=current_tab()['targetId'])
+  network=intercept.attach_cdp(cdp,navigation_events,json.loads(os.environ['NETWORK_HOST_MAP']),page_session=_send({'meta':'session'}).get('session_id'),page_target=current_tab()['targetId'])
   intercept.step(network.rec,'journey')
- # Page.navigate can outlive browser-harness's 5s synchronous IPC deadline under CI load.
- # Schedule navigation, then keep draining target/network events within the existing 15s load bound.
+ # Navigation and renderer evaluations can exceed the harness's 5s IPC deadline.
+ # Observe the actual load event first, folding every drained network event into
+ # the unchanged privacy record without querying the navigating renderer.
+ if network is not None:network.collect()
+ else:navigation_events()
+ document_loaded=False
  js("setTimeout(()=>{location.href='https://next.facemorph.me/';},0);0")
+ deadline=time.monotonic()+15
+ while not document_loaded:
+  if network is not None:network.collect()
+  else:navigation_events()
+  if time.monotonic()>=deadline:raise TimeoutError('The journey document did not finish loading')
+  time.sleep(.25)
  wait(lambda:js("location.href==='https://next.facemorph.me/'&&document.readyState==='complete'"),15)
  wait(idle,60);assert js('crossOriginIsolated'), 'Production isolation headers missing'
  # The trial-phase reporting question appears on every fresh profile. "Ask me later" closes it
@@ -198,7 +229,17 @@ def stage_preflight():
  click('More options')
  js("document.querySelector('.next-advanced').open=true")
  state=q("({tiles:document.querySelectorAll('.next-face').length,photos:document.querySelectorAll('%s').length,words:!!document.querySelector('%s'),generate:[...document.querySelectorAll('button')].some(b=>b.classList.contains('next-face-generate')&&b.textContent==='Generate'),modeOptions:[...document.querySelectorAll('%s option')].map(o=>o.value),error:(document.querySelector('%s')?.innerText||'')})"%(S['choosePhoto'],S['faceTextInputs'],S['processingMode'],S['error']))
- assert state['tiles']==2 and state['photos']==2 and state['words'] and state['generate'],state
+ assert state['tiles']==2 and state['words'] and state['generate'],state
+ CTX['sourceDialog']=state['photos']==0
+ if CTX['sourceDialog']:
+  for index in range(2):
+   open_photo_source(index)
+   assert js("document.querySelector('.next-encode-source input[type=file]').accept")=='image/*,video/mp4'
+   press_selector('.next-encode-dialog button',name='Cancel')
+   wait(lambda:not js("!!document.querySelector('.next-encode-dialog')"),30)
+  S['choosePhoto']='.next-encode-source input[type=file]'
+  S['buttons']['useCrop']='Use Crop'
+ else:assert state['photos']==2,state
  assert set(state['modeOptions'])=={'auto','cpu','webgpu'},state
  assert not state['error'],state['error']
  save_check('preflight',{'passed':True,'modeOptions':state['modeOptions'],'engine':result['engine']})
@@ -320,19 +361,28 @@ def stage_recoveredDownload():
  save_check('recoveredDownload',{'passed':True,'format':'webp','newWorkers':0,'newWorkerRequests':0,'dimensions':[[i['width'],i['height']] for i in faces()]})
 def stage_syntheticPhotoE4e():
  upload(S['choosePhoto'],CTX['seedPng'])
- wait(lambda:js("document.querySelector('%s').value==='photo'"%S['faceSource']),60)
- # R2-3 eager e4e: choosing the photo IS the instruction to encode it — the face encodes
- # with no Generate press at all. The photo face is the second tile; face one came from the
- # seed stage. Wait for the eager result, then confirm a full pass still leaves both whole.
+ if CTX.get('sourceDialog'):
+  wait(lambda:js("!!document.querySelector('.next-encode-preview img')"),60)
+  press_selector('.next-encode-dialog button',name='OK')
+  wait(lambda:js("!!document.querySelector('.next-face[data-next-state=\"photo\"]')"),60)
+ else:wait(lambda:js("document.querySelector('%s').value==='photo'"%S['faceSource']),60)
+ # The retained control encodes on selection; the new app encodes after explicit
+ # crop OK. Neither needs an extra Generate press. Wait for the completed e4e
+ # result, then confirm a repeated full pass still leaves both faces whole.
  wait(lambda:len(faces())==2 and all(i['width']==1024 and i['height']==1024 for i in faces()) and idle(),240);assert js('window.__ciWorkers')>CTX['workerBaseline']
  run(S['buttons']['generate'],predicate=lambda:len(faces())==2)
  wait(lambda:len(faces())==2 and all(i['width']==1024 and i['height']==1024 for i in faces()),60)
  save_check('syntheticPhotoE4e',{'passed':True,'newWorkers':js('window.__ciWorkers')-CTX['workerBaseline'],'widths':[i['width'] for i in faces()]})
 def stage_localCrop():
- # Crop the chosen photo locally and generate from the crop, so an arbitrary original never
- # has to be aligned whole. The crop is what reaches alignment.
- js("document.querySelector('.next-face[data-next-state=\"photo\"] [aria-label=\"Change mode\"]').click()")
- click(S['buttons']['crop'],expect=lambda:js("!!document.querySelector('%s img')"%S['cropView']))
+ # Exercise the editor before confirmation in the new app, or the retained
+ # control's crop menu. The accepted geometry must produce the encoded face.
+ if CTX.get('sourceDialog'):
+  upload(S['choosePhoto'],CTX['seedPng'])
+  wait(lambda:js("!!document.querySelector('.next-encode-preview img')"),60)
+  press_selector('.next-encode-dialog button',name='ADJUST CROP')
+ else:
+  js("document.querySelector('.next-face[data-next-state=\"photo\"] [aria-label=\"Change mode\"]').click()")
+  click(S['buttons']['crop'],expect=lambda:js("!!document.querySelector('%s img')"%S['cropView']))
  wait(lambda:js("!!document.querySelector('%s img')"%S['cropView']),60)
  # The whole square is kept: alignment rightly refuses a crop that cuts the face in half or
  # turns it on its side, so this proves the crop pipeline feeds alignment, not the detector.
@@ -348,6 +398,9 @@ def stage_localCrop():
  assert js("!!document.querySelector('%s')"%S['cropView']),'Arrow keys closed the crop dialog'
  click(S['buttons']['useCrop'],expect=lambda:js("!document.querySelector('%s')"%S['cropView']))
  wait(lambda:js("!document.querySelector('%s')"%S['cropView']),60)
+ if CTX.get('sourceDialog'):
+  wait(lambda:js("!!document.querySelector('.next-encode-preview img')"),30)
+  press_selector('.next-encode-dialog button',name='OK')
  deadline=time.monotonic()+300
  while time.monotonic()<deadline:
   # Local crop preparation keeps the UI responsive and does not own the heavy-job busy
