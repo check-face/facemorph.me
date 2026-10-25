@@ -94,10 +94,25 @@ export interface LocalReader {
   readonly allowRepair: false;
   read(asset: AssetDescriptor): Promise<Result<Uint8Array<ArrayBuffer>, ManagerError>>;
 }
+/** A real storage-quota refusal, separate from execution/provider capability.
+ * The DOM name and cause remain available to existing browser-storage callers;
+ * `error` is the structured-clone-safe manager result for app/worker boundaries.
+ */
+export class CacheQuotaExceeded extends Error {
+  readonly error: Extract<ManagerError, { code: 'quota' }>;
+  constructor(requiredBytes: number, cause: unknown) {
+    const message =
+      'Not enough browser storage to save this model. Free some storage and try again.';
+    super(message, { cause });
+    this.name = 'QuotaExceededError';
+    this.error = { code: 'quota', requiredBytes, message };
+  }
+}
+
 export interface ModelCache {
   /** Verified local reads with typed misses (fm-eulc). */
   readonly local: LocalReader;
-  /** Rejects with GrantRefused, before any request, when the grant does not cover the asset for this owner. */
+  /** Rejects with GrantRefused before unauthorized requests, or CacheQuotaExceeded when storage is full. */
   acquire(input: AssetInput, options: AcquireOptions): Promise<AssetHandle>;
   readonly records: RecordAccess;
   has(input: AssetInput | string): Promise<boolean>;
@@ -587,12 +602,12 @@ export function createModelCache({
     try {
       await shards!.write(unit.sha256, bytes);
     } catch (error) {
+      const quota = (error as Err | null)?.name === 'QuotaExceededError';
       emit({
-        status:
-          (error as Err | null)?.name === 'QuotaExceededError' ? 'quota-exceeded' : 'save-failed',
+        status: quota ? 'quota-exceeded' : 'save-failed',
         sha256: asset.sha256,
       });
-      throw error;
+      throw quota ? new CacheQuotaExceeded(asset.size, error) : error;
     }
   }
   // Bounded-concurrency map over units, in order of index; the first failure stops new work.
@@ -992,12 +1007,12 @@ export function createModelCache({
     } catch (error) {
       // A backend can reject before consuming (e.g. quota); cancel the unconsumed network stream.
       if (verified.body && !verified.body.locked) await verified.body.cancel(error).catch(() => {});
+      const quota = (error as Err | null)?.name === 'QuotaExceededError';
       emit({
-        status:
-          (error as Err | null)?.name === 'QuotaExceededError' ? 'quota-exceeded' : 'save-failed',
+        status: quota ? 'quota-exceeded' : 'save-failed',
         sha256: asset.sha256,
       });
-      throw error;
+      throw quota ? new CacheQuotaExceeded(asset.size, error) : error;
     } finally {
       for (const release of held) letGo(release); // deleting the visited entry is safe
       settlePlain?.();

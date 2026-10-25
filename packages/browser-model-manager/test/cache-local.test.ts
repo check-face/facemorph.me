@@ -535,3 +535,102 @@ test(
     }
   },
 );
+
+for (const backend of ['opfs', 'cache-storage'] as const)
+  test(
+    `${engine} ${backend} actual quota exhaustion is typed, settles without repair, and permits an explicit retry`,
+    {
+      skip:
+        NO_BROWSER ||
+        (engine !== 'chromium' && 'untested: browser quota override requires Chromium CDP'),
+      timeout: 120_000,
+    },
+    async () => {
+      const s = await session(`quota-${backend}`);
+      const cdp = await s.context.newCDPSession(s.page);
+      try {
+        // Initialize the real backend before constraining this isolated origin's storage.
+        await s.page.evaluate(async (backend) => {
+          const m = await import(String('/pkg/index.js'));
+          await m.createBrowserModelCache(backend === 'opfs' ? {} : { shards: null });
+        }, backend);
+        await cdp.send('Storage.overrideQuotaForOrigin', { origin: APP, quotaSize: 1 });
+        const out = await s.page.evaluate(
+          async ({ backend, asset }) => {
+            const m = await import(String('/pkg/index.js'));
+            const events: string[] = [];
+            const cache = await m.createBrowserModelCache({
+              ...(backend === 'opfs' ? {} : { shards: null }),
+              report: (event: { status: string }) => events.push(event.status),
+            });
+            const grant = {
+              manifestSha256: 'quota-cell',
+              route: 'cpu',
+              purpose: 'generate',
+              assets: [
+                { sha256: asset.sha256, bytes: asset.size, priority: 'foreground-required' },
+              ],
+              remainingBytes: asset.size,
+              owners: ['face:quota'],
+            };
+            try {
+              await cache.acquire(asset, { grant, owner: 'face:quota' });
+              return { acquired: true };
+            } catch (error) {
+              const e = error as {
+                name: string;
+                error?: { code: string; requiredBytes: number };
+                cause?: { name: string };
+              };
+              return {
+                acquired: false,
+                name: e.name,
+                typed: e.error,
+                cause: e.cause?.name,
+                events,
+              };
+            }
+          },
+          { backend, asset: ASSETS.plain },
+        );
+        assert.equal(out.acquired, false, 'the real browser must refuse the storage write');
+        assert.equal(out.name, 'QuotaExceededError');
+        assert.deepEqual(out.typed, {
+          code: 'quota',
+          requiredBytes: ASSETS.plain.size,
+          message:
+            'Not enough browser storage to save this model. Free some storage and try again.',
+        });
+        assert.equal(out.cause, 'QuotaExceededError');
+        assert.ok(out.events?.includes('quota-exceeded'));
+        await s.settled();
+        assert.equal(
+          s.rec.requests.filter((request) => request.hostClass === 'model-host').length,
+          1,
+          'quota refusal must not start another model transfer',
+        );
+        record.step(s.rec, 'local:quota-failure');
+        assert.equal((await readIn(s.page, backend, ASSETS.plain)).ok, false);
+        await s.settled();
+        quiet(s.rec, 'local:quota-failure');
+        // A separate authorized acquisition after freeing storage succeeds; the failed
+        // operation itself never fetches replacement bytes behind the caller's back.
+        await cdp.send('Storage.overrideQuotaForOrigin', { origin: APP });
+        await acquireIn(s.page, backend, [ASSETS.plain]);
+        assert.deepEqual(await readIn(s.page, backend, ASSETS.plain), {
+          ok: true,
+          sha256: ASSETS.plain.sha256,
+          size: ASSETS.plain.size,
+        });
+      } catch (error) {
+        await s.capture();
+        throw error;
+      } finally {
+        try {
+          await cdp.send('Storage.overrideQuotaForOrigin', { origin: APP });
+        } finally {
+          await s.context.close();
+        }
+      }
+    },
+  );

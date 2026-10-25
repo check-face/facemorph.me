@@ -432,3 +432,16 @@ test("live residency covers the candidate's generator bundle and its streamed en
   assert.equal(m.encoderStream.maxWasmBytes, api.LIVE_RESIDENCY_LIMIT.maxResidentBytes);
   assert.equal(api.LIVE_RESIDENCY_LIMIT.maxLiveSessions, 2);
 });
+
+test('quota errors keep their browser cause and cross a worker boundary as manager storage errors', () => {
+  const cause = new DOMException('Quota exceeded.', 'QuotaExceededError');
+  const failure = new api.CacheQuotaExceeded(1040 * 1024 * 1024, cause);
+  assert.equal(failure.name, 'QuotaExceededError');
+  assert.equal(failure.cause, cause);
+  const result: ManagerError = structuredClone(failure.error);
+  assert.deepEqual(result, {
+    code: 'quota',
+    requiredBytes: 1040 * 1024 * 1024,
+    message: 'Not enough browser storage to save this model. Free some storage and try again.',
+  });
+});
