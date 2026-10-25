@@ -330,6 +330,16 @@
       "workflow": ".github/workflows/mobile-browser.yml",
       "shared": ["apps/web/**", "packages/**", "package.json", "package-lock.json"],
       "extra": ["scripts/ci/intercept/**", "tools/device-lab/hosted.py", "tools/device-lab/lab.py"]
+    },
+    "name-catalogue": {
+      "workflow": ".github/workflows/name-catalogue.yml",
+      "shared": [],
+      "extra": [
+        "hosting/gallery/**",
+        "scripts/names-publish/**",
+        "scripts/names-snapshot/**",
+        "tools/names-generator/**"
+      ]
     }
   }
 }

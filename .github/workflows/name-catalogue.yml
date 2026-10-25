@@ -1,0 +1,74 @@
+name: Public name catalogue
+on:
+  workflow_call:
+  workflow_dispatch:
+concurrency:
+  group: name-catalogue-publication
+  cancel-in-progress: false
+jobs:
+  test:
+    runs-on: [self-hosted, linux-x64]
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: ./.github/actions/setup-workspace
+      - run: node --test scripts/names-publish/publish.test.mjs
+  publish:
+    needs: test
+    # The producer needs qualified Chromium/WebGPU and the pinned classic source, available on eris.
+    # Publication has no runtime inference; it consumes the producer's checked manifest and files.
+    runs-on: [self-hosted, eris]
+    environment: next-preview
+    timeout-minutes: 180
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+      FACEMORPH_CLASSIC: /home/cdilga/Work/dev/checkface/facemorph.me-classic
+      CHROMIUM: /usr/bin/chromium
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: ./.github/actions/setup-workspace
+      - uses: ./.github/actions/setup-workspace
+        with:
+          directory: tools/names-generator
+      - uses: ./.github/actions/setup-workspace
+        with:
+          directory: scripts/names-snapshot
+      - uses: ./.github/actions/setup-workspace
+        with:
+          directory: hosting/gallery
+      - name: Restore immutable snapshot and resume checked generator output
+        run: |
+          set -euo pipefail
+          cache="$HOME/.cache/facemorph-names-generator"
+          # The snapshot restorer verifies every object's pinned size and hash, using only R2.
+          node scripts/names-snapshot/restore.mjs --out="$cache/snapshot" --all --mint-r2="$CLOUDFLARE_ACCOUNT_ID"
+          python3 autoresearch/run.py --timeout 7200 -- node tools/names-generator/generate.mjs \
+            --catalogue="$cache/snapshot/facemorph-name-catalogue.cdilga.workers.dev/catalogue.json" \
+            --latents="$cache/snapshot" --out="$cache/out"
+      - name: Publish immutables, verify, switch pointer and verify again
+        run: |
+          set -euo pipefail
+          cache="$HOME/.cache/facemorph-names-generator"
+          export NET_RECORD="$RUNNER_TEMP/names-publication-network.jsonl"
+          export NODE_OPTIONS="${NODE_OPTIONS:+$NODE_OPTIONS }--import=$PWD/scripts/names-snapshot/net-recorder.mjs"
+          node scripts/names-publish/publish.mjs --generated="$cache/out" \
+            --legacy="$cache/snapshot/facemorph-name-catalogue.cdilga.workers.dev" \
+            --origin=https://facemorph-name-catalogue.cdilga.workers.dev --publish \
+            > "$RUNNER_TEMP/names-publication.log" 2>&1
+          node scripts/names-publish/report.mjs "$NET_RECORD" "$RUNNER_TEMP/names-publication.log" >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: name-catalogue-publication
+          retention-days: 30
+          path: |
+            ${{ runner.temp }}/names-publication.log
+            ${{ runner.temp }}/names-publication-network.jsonl
+            ~/.cache/facemorph-names-generator/out/manifest.jsonl

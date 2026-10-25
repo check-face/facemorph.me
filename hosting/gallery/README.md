@@ -13,7 +13,7 @@ Every public-name identity was recomputed from its exact lowercase request with 
 
 The workspace's `review-artifacts/static-assets-2026-09-16/verified-selection.json` is the complete file ledger. `cloudflare-publication.json` records three public byte/hash checks. New1024 PNG canonical originals belong in the device cache and are not substituted by these historic images.
 
-Deploy with `wrangler deploy --config hosting/gallery/wrangler.jsonc` only after reconstructing and validating the explicit allowlist. Keep this origin static-only; no worker code or upload endpoint is required.
+The seed gallery is retained unchanged. Cloudflare publication uses the installed `cf` CLI.
 
 ## Public-name supplement, 10 October 2026
 
@@ -29,3 +29,33 @@ the W+ assets. On-device synthesis produces canonical PNGs from verified W+,
 while hosted JPEGs remain display previews. Identity/hash verification is not a
 claim of numerical parity across every device. The delivery CPU gate exercises
 a published name without accepting silent mapping fallback.
+
+## Recovery-bearing catalogue publication
+
+`.github/workflows/name-catalogue.yml` consumes the checked names generator manifest and result
+files, restored from the snapshot and resumed on eris. No retiring API is used. The publisher
+checks every result's file, image, latent and model/generation identity before deploying anything.
+It keeps the legacy tree byte-identical and all earlier published immutable manifests/results.
+
+From the repository root, after generating the complete catalogue:
+
+```sh
+node scripts/names-publish/publish.mjs \
+  --generated="$HOME/.cache/facemorph-names-generator/out" \
+  --legacy="$HOME/.cache/facemorph-names-generator/snapshot/facemorph-name-catalogue.cdilga.workers.dev" \
+  --origin=https://facemorph-name-catalogue.cdilga.workers.dev --publish
+```
+
+Omit `--publish` for a `cf deploy --dry-run`; `--check` only validates. The publisher stages
+`results/<sha256>.webp` and `catalogues/<sha256>.json` first, verifies fetched objects, then
+switches `catalogue-v2.json` in a second atomic Workers asset deployment and verifies it again.
+`publication.json` retains the inventory needed by the next publication. An unchanged pointer
+only runs verification. Counts, bytes, Free-tier limits and all identities appear in job output.
+The local cf project uses the same Vite-plugin beta as the model-host package because stable v1
+does not produce the Build Output Specification required by `cf`.
+
+Tests: `node --test scripts/names-publish/publish.test.mjs`. Set
+`PUBLICATION_BROWSER=/usr/bin/chromium` to additionally retain an actual browser tab across the
+local pointer switch. These tests use planted file inputs and real envelopes/HTTP, not inference
+evidence. A task-owned staging directory is retained under `/tmp/facemorph-names-publish-*` for
+inspection; it can be removed after publication evidence is recorded.

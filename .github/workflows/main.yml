@@ -167,6 +167,11 @@ jobs:
     if: contains(fromJSON(needs.changes.outputs.lanes), 'model-conv')
     uses: ./.github/workflows/model-conv.yml
     secrets: inherit
+  name-catalogue:
+    needs: changes
+    if: contains(fromJSON(needs.changes.outputs.lanes), 'name-catalogue')
+    uses: ./.github/workflows/name-catalogue.yml
+    secrets: inherit
   names-generator:
     needs: changes
     if: contains(fromJSON(needs.changes.outputs.lanes), 'names-generator')
