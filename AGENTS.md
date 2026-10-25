@@ -11,8 +11,8 @@ history and earlier feedback: `cass search "<task>" --robot --fields minimal --l
 
 ## Work
 
-Work autonomously with the existing two generalist workers: Claude Opus medium and
-GPT-6.1-Sol high. Pick useful ready work, claim it atomically, coordinate file ownership
+Work autonomously in the current swarm. Pick useful ready work, claim it atomically,
+coordinate file ownership
 through Agent Mail, and finish it. Prefer finishing existing acceptance over opening
 more partial work. Keep coding, testing and shipping; do not stop just to write a
 handoff. Compact in place when necessary and continue until the goal is achieved,
