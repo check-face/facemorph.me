@@ -344,6 +344,39 @@ test(
               noModels();
             }
 
+            // Main-field paste (fm-25um), trusted Ctrl+V of the real system clipboard: the PNG with
+            // coincident text still on it opens the same confirmation for this face, and the image wins
+            // over the text; text alone is ordinary typing with no dialog.
+            const field = tiles.first().getByRole('textbox');
+            await hit(field);
+            await page.keyboard.press('ControlOrMeta+V');
+            await dialog.locator('.next-encode-preview img').waitFor();
+            assert.equal(
+              await page.evaluate(
+                () =>
+                  // The same photo dispatch as the chooser: crop confirmation owned by this face.
+                  (window as unknown as { __elmish: { model: { Crop: { faceId: string } } } })
+                    .__elmish.model.Crop.faceId,
+              ),
+              await tiles.first().getAttribute('data-next-face'),
+            );
+            assert.equal(await field.inputValue(), before, 'image wins: no text was inserted');
+            await shot('main-field-paste-image');
+            await hit(dialog.getByRole('button', { name: 'CANCEL', exact: true }));
+            await dialog.waitFor({ state: 'detached' });
+            assert.equal(await field.inputValue(), before);
+            await page.evaluate(() => navigator.clipboard.writeText(' pasted words'));
+            await hit(field);
+            await page.keyboard.press('End');
+            await page.keyboard.press('ControlOrMeta+V');
+            assert.equal(await field.inputValue(), `${before} pasted words`);
+            assert.equal(await page.getByRole('dialog').count(), 0);
+            await shot('main-field-paste-text');
+            await page.keyboard.press('ControlOrMeta+A');
+            await page.keyboard.insertText(before);
+            assert.equal(await field.inputValue(), before);
+            noModels();
+
             // Source ownership at 2 of 3 and 64 of 64. By-name additions only arrange the input state.
             while ((await tiles.count()) < 3)
               await page.locator('.next-connector-add').last().click();
