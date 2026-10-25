@@ -5189,6 +5189,7 @@ history retains their provenance.
 
 | Date | Decision |
 | --- | --- |
+| 25 Oct | Hand-driven validation now: one agent directly outside NTM; no helper swarm or forced pane restart. Keep direct pushes to main, one running workflow allowed to finish, newest pending push only (main.yml is the single queue definition). Agents choose proportional local build/test/browser/device checks before pushing; versioned hooks enforce cheap staged/pushed format/lint only, without a second YAML workflow interpreter. Close ordinary beads on executed local acceptance; inspect CI once at startup and explicitly update/reopen responsible work on real failures (automatic CI reopening is not implemented). Optional timing research is explicitly dispatched. Hosted phone/desktop coverage is currently release-only, physical phone validation is local. These instructions supersede older whole-lane hooks, tool-install/doctor blockers, independent-verifier closure rules and mandatory session restart language; full release qualification remains required. |
 | 11 Oct | e4e accepted; locked crop design; static names with no selection-time synthesis; API, GUIDs and result links retired; production starts fresh |
 | 12 Oct | Native packages retired; Auto/CPU/WebGPU and bounded CPU fallback kept; phones first-class; Morph prepares unfinished inputs; MP4 reopening deferred; no face reordering |
 | 15 Oct | New development and autoresearch move to this repository; classic is wound down |

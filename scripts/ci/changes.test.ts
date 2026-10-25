@@ -44,12 +44,12 @@ test('packages/stylegan-js: its lanes run', () => {
   assert.ok(!lanes.includes('web-shell'));
 });
 
-test('a beads-only change runs the beads lanes and scaffold, not build-identity (its .beads/** ignore)', () => {
-  assert.deepEqual(selectLanes(['.beads/issues.jsonl'], FILTERS), [
-    'beads-check',
-    'beads-site',
-    'scaffold',
-  ]);
+test('bead and documentation changes do not rebuild or retest the application', () => {
+  assert.deepEqual(selectLanes(['.beads/issues.jsonl'], FILTERS), ['beads-check', 'beads-site']);
+  assert.deepEqual(
+    selectLanes(['README.md', 'AGENTS.md', 'ops/swarm/implementer.md'], FILTERS),
+    [],
+  );
 });
 
 test('a dot-file under a glob is matched as GitHub matches it', () => {

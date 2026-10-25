@@ -22,12 +22,14 @@ or a runner label is not inference evidence; the adapter column is what a real b
 
 - **eris**: the device lab (the phone and the GPU, one `device-lab` instance), the GPU lane (`next-gpu-lane.yml`),
   the research workflows, browser end-to-end and parity, model conversion, hosting staging. Two build/test
-  instances run beside the device-lab one, so independent jobs no longer queue; every heavy step takes the eris
-  device lease (`.github/actions/device-lease`), so a GPU or the phone is never shared, whichever instance runs it.
-- **triton**: builds, gates, unit and package tests (scaffold, import checks, inventory, contracts). **Blocked from
-  more:** its root filesystem is full (0 bytes free on 24 October), which breaks any job that writes, and Ubuntu
-  20.04 is below Playwright 1.64's floor, so it cannot carry CPU end-to-end or the GTX 1080 GPU lane until the
-  disk is cleared and the OS upgraded (operator). Extra runner instances there wait for the same.
+  instances run beside the device-lab one. Correctness runs share compute without a
+  machine-wide lease; the physical phone is local-only with its own lab lock.
+- **triton**: builds, gates, unit and package tests. The disk-full inventory above is
+  historical; root remains full on 25 October, but runner workspaces, TMPDIR and
+  npm/uv/browser caches use `/mnt/unit/gh-runners` on tank (3.1 TB free). Plain SSH
+  shells must also set TMPDIR there for tests; default /tmp cannot create files.
+  Four triton runners and five eris runners were online. Ubuntu 20.04 still cannot
+  run the current Playwright browser stack.
 - **TrueNAS**: optional (fm-ip6g); nothing waits on it.
 - **Mac and iPhone**: until the operator registers the Mac as a runner (labels `mac`, `iphone`), the Mac WebGPU
   and physical-iPhone cells are reported untested with that blocker, never skipped silently.
@@ -35,6 +37,5 @@ or a runner label is not inference evidence; the adapter column is what a real b
 ## Heavy work moved off hosted minutes
 
 Classic ran `research-built-ui-media-v1.yml` on hosted `ubuntu-24.04` with a 55-minute budget and
-`research-rgba-screen-v1.yml` with 20 minutes; both now run on eris under the lease (fm-qqh). The GPU lane has no
-hosted equivalent (no hosted GPU), so it only ever ran on a self-hosted machine. Per push that touches their
-paths, the two research workflows save about 75 hosted minutes.
+`research-rgba-screen-v1.yml` with 20 minutes; both now run on eris (fm-qqh), explicitly dispatched for timing research. The GPU lane has no
+hosted equivalent (no hosted GPU), so it only ever ran on a self-hosted machine. They are not correctness gates on each push.

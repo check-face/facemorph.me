@@ -10,7 +10,7 @@ The 256MiB bound fits the webgpu segments the previous 32MiB bound could never p
 import argparse,hashlib,json,re,ssl,traceback,urllib.error,urllib.request
 from pathlib import Path
 from http.server import ThreadingHTTPServer,SimpleHTTPRequestHandler
-p=argparse.ArgumentParser();p.add_argument('--manifest-sha',required=True);p.add_argument('--cert',required=True);p.add_argument('--key',required=True);p.add_argument('--runtime-overlay',type=Path,default=None);p.add_argument('--runtime-files',type=Path,default=None,help='The runtime tree the deploy publishes, laid out as served under /runtime/ (mirror-runtime.py)');a=p.parse_args()
+p=argparse.ArgumentParser();p.add_argument('--port',type=int,default=8443);p.add_argument('--manifest-sha',required=True);p.add_argument('--cert',required=True);p.add_argument('--key',required=True);p.add_argument('--runtime-overlay',type=Path,default=None);p.add_argument('--runtime-files',type=Path,default=None,help='The runtime tree the deploy publishes, laid out as served under /runtime/ (mirror-runtime.py)');a=p.parse_args()
 ORIGIN='https://next.facemorph.me'
 SOURCE=Path('next-site-source.txt').read_text().strip()
 MIRROR=Path('.runtime-mirror');MIRROR.mkdir(exist_ok=True)
@@ -115,4 +115,4 @@ class Handler(SimpleHTTPRequestHandler):
    self.respond(data,self.mime_for(self.path))
   except Exception:
    traceback.print_exc();self.send_error(502,'Pinned runtime acquisition failed')
-server=ThreadingHTTPServer(('127.0.0.1',8443),Handler);ctx=ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER);ctx.load_cert_chain(a.cert,a.key);server.socket=ctx.wrap_socket(server.socket,server_side=True);server.serve_forever()
+server=ThreadingHTTPServer(('127.0.0.1',a.port),Handler);ctx=ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER);ctx.load_cert_chain(a.cert,a.key);server.socket=ctx.wrap_socket(server.socket,server_side=True);server.serve_forever()

@@ -21,14 +21,12 @@ Journeys: `cold-face` (site data and models cleared), `warm-face` (models kept, 
 ## How agents use it (on demand)
 
 The swarm is fungible: no tester or shipping agent. Any agent whose bead needs device evidence runs the lab itself.
-- **On eris:** run `lab.py` directly. A second lab session waits its turn, and a session holds the machine's
-  device lease ([ops/lease](../../ops/lease/README.md)) for every device its cells use: eris for the `eris-*`
-  cells, `p30pro` for the `phone-*` cells. A leased research or heavy CI run on the same device and a lab
-  session therefore never overlap: the lab waits for a run, and a run waits for the lab (`--wait`) or exits busy
-  (75). Started under `autoresearch/run.py`, the lab honours the lease that run already holds.
-- **From anywhere:** dispatch the workflow,
-  `gh workflow run device-lab.yml -R check-face/facemorph.me -f artifact_run=<run id> -f artifact_name=next-site-<sha>`,
-  or `-f url=...`.
+- **On eris:** run `lab.py` directly against the exact artifact. Physical phone sessions
+  serialize against the phone only; eris cells serialize against eris lab sessions only.
+  `LAB_LOCK_WAIT` defaults to 300 seconds; a busy device exits 75. Ordinary CI, builds,
+  browser/GPU correctness checks and research work do not take this lab lock.
+- **Physical phones never run in CI.** Run them locally during development and at
+  release handover. Hosted Android/iOS simulator coverage currently lives in the release gate.
 - **A candidate before it deploys:** `lab.py qualify --run <CI run id>` fetches that build's artifact and runs all
   four cells against it, served locally under the production origin. Evidence goes to every bead named in any
   commit since the last qualified one (CI is newest-only, so one build can carry several beads); `--since <sha>`
@@ -93,7 +91,7 @@ time, every runtime request with the origin that answered it, each retried chunk
 terminal event and its stage, the served app bundle, and on eris the host's own network changes (Chromium aborts
 in-flight requests on any of them). Interruptions are real: Wi-Fi off and on through adb on the phone (it has
 no SIM), and on eris a local CONNECT proxy with a throttle and a fault switch that either resets open tunnels
-(`--cut drop`) or silences them for good (`--cut blackhole`). It takes the same lock and device lease as
+(`--cut drop`) or silences them for good (`--cut blackhole`). It takes the same per-device lab lock as
 `lab.py`, and the Frigate camera must be held off for the phone cell.
 
 ```sh
@@ -110,8 +108,10 @@ uv run --with playwright python download.py --cells eris-cpu --throttle-kbps 300
   post-deploy checks. It is not a hard gate on classic's candidate deploys. It has no `pull_request` trigger, so fork code never reaches eris.
 - The runners are systemd user services on eris: `gh-runner-facemorph` and `gh-runner-facemorph-classic` in
   `~/gh-runners/`. They have the desktop display in their environment, for headed Chromium.
-- Concurrency: one `device-lab` run at a time, newest waiting run next; the lab's own lock and the device
-  leases together wait up to `LAB_LOCK_WAIT` seconds (default 3600) behind a local session or a leased run.
+- Concurrency: main.yml controls the main queue. Lab per-device locks have bounded waits;
+  a phone run never holds up an eris cell. CI does not use the physical phone.
+- Implemented journey names are cold-face, warm-face, morph and operated. Unknown names
+  fail. Frozen per-cell wall-clock budgets are not implemented yet; do not claim them.
 
 ## How it works
 

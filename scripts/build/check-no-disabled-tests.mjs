@@ -168,12 +168,28 @@ const UNTESTED = /^['"`]untested here/;
 const LITERAL_STRING = /^['"`]/;
 const RUNTIME_CTX = /^(t|ctx|context|subtest)$/;
 
-function skipCall(recv, args, line, prev) {
+/** The skip immediately follows an if condition, including multiline hardware probes. */
+function runtimeGuard(before) {
+  const text = before
+    .replace(/(['"`])(?:\\[\s\S]|(?!\1)[^\\])*?\1/g, '""')
+    .replace(/\/\/[^\n]*|\/\*[\s\S]*?\*\//g, '')
+    .replace(/\breturn\s*$/, '')
+    .trim()
+    .replace(/\{\s*$/, '')
+    .trim();
+  if (!text.endsWith(')')) return false;
+  let depth = 0;
+  for (let p = text.length - 1; p >= 0; p--) {
+    if (text[p] === ')') depth++;
+    if (text[p] === '(' && --depth === 0) return /\bif\s*$/.test(text.slice(0, p));
+  }
+  return false;
+}
+
+function skipCall(recv, args, guarded) {
   const a = args.map((s) => s.trim());
   if (RUNTIME_CTX.test(recv)) {
     if (!a.length || !LITERAL_STRING.test(a[0]) || UNTESTED.test(a[0])) return null;
-    const guarded =
-      /\bif\s*\(/.test(line) || /^\s*(\}\s*)?(else\s+)?if\s*\(.*\)\s*\{?\s*$/.test(prev);
     return guarded ? null : 'unconditional t.skip with a literal message';
   }
   if (!a.length) return 'bare .skip()';
@@ -192,7 +208,12 @@ function nodeFindings(lines) {
     const rest = (from) => lines.slice(i).join('\n').slice(from);
     for (const m of line.matchAll(/([\w$.]+)\.skip\s*\(/g)) {
       const text = rest(m.index + m[0].length);
-      if (skipCall(m[1], splitTop(text), line, lines[i - 1] ?? '')) add('skip', i);
+      const before = [...lines.slice(0, i), line.slice(0, m.index)].join('\n');
+      const guarded =
+        /\bif\s*\(/.test(line) ||
+        /^\s*(\}\s*)?(else\s+)?if\s*\(.*\)\s*\{?\s*$/.test(lines[i - 1] ?? '') ||
+        runtimeGuard(before);
+      if (skipCall(m[1], splitTop(text), guarded)) add('skip', i);
     }
     if (/\.only\s*\(/.test(line)) add('only', i);
     if (/\.todo\s*\(/.test(line)) add('todo', i);

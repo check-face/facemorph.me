@@ -129,11 +129,15 @@ class Runner(Machine):
         self.assertEqual(record['qualification'], 'not_evaluated')
 
     def test_two_runs_of_one_device_run_at_the_same_time(self):
-        first = self.start([sys.executable, str(RUN), '--lane', 'browser-gpu', '--device', HOST, '--', 'sleep', '3'])
-        t0 = time.monotonic()
-        r = self.run_py('--', 'true')
+        ready, release = self.tmp / 'ready', self.tmp / 'release'
+        child = ('import pathlib,sys,time; ready,release=map(pathlib.Path,sys.argv[1:]); '
+                 'ready.touch();\nwhile not release.exists(): time.sleep(0.02)')
+        first = self.start([sys.executable, str(RUN), '--lane', 'browser-gpu', '--device', HOST,
+                            '--', sys.executable, '-c', child, str(ready), str(release)])
+        self.assertTrue(wait_for(ready.exists, 30), 'the first child did not start')
+        # The first child cannot finish until the second runs. This proves overlap without a speed threshold.
+        r = self.run_py('--', sys.executable, '-c', 'import pathlib,sys; pathlib.Path(sys.argv[1]).touch()', str(release))
         self.assertEqual(r.returncode, 0, r.stderr)
-        self.assertLess(time.monotonic() - t0, 2.5, 'the second run waited for the first')
         self.assertEqual(first.wait(15), 0)
         self.assertEqual(sorted(x['status'] for x in self.journal()), ['completed', 'completed'])
 

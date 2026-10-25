@@ -6,7 +6,8 @@ name: main
 # previous commit), so a change that a failed or stacked run did not cover is still covered, and selects the lanes
 # whose paths it touches (scripts/ci/path-filters.json, scripts/ci/changes.ts). Each lane is a reusable workflow
 # called below; a lane that is not selected is skipped. Beads close on locally executed gates before
-# their commits are pushed; this pipeline is the backstop, and a red run reopens the culprit bead.
+# their commits are pushed; this pipeline is the backstop. The agent inspecting a red run diagnoses it and
+# updates/reopens the responsible bead; an automatic CI-to-Beads handler is not implemented.
 on:
   push:
     branches: [main]
@@ -204,7 +205,7 @@ jobs:
     secrets: inherit
   research-built-ui-media:
     needs: changes
-    if: contains(fromJSON(needs.changes.outputs.lanes), 'research-built-ui-media')
+    if: contains(fromJSON(needs.changes.outputs.lanes), 'research-built-ui-media') && github.event_name == 'workflow_dispatch'
     uses: ./.github/workflows/research-built-ui-media.yml
     permissions:
       contents: read
@@ -226,7 +227,7 @@ jobs:
     secrets: inherit
   research-rgba-screen:
     needs: changes
-    if: contains(fromJSON(needs.changes.outputs.lanes), 'research-rgba-screen')
+    if: contains(fromJSON(needs.changes.outputs.lanes), 'research-rgba-screen') && github.event_name == 'workflow_dispatch'
     uses: ./.github/workflows/research-rgba-screen.yml
     permissions:
       contents: read

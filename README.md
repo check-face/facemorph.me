@@ -1,45 +1,58 @@
 # FaceMorph.me
 
-Fresh monorepo for the **[repo-cleanup-and-architecture-refactor plan](PLAN.md)**.
-The plan was converted to an execution graph of beads on 24 October 2026; start from the entry
-bead `fm-fy2` (`br show fm-fy2`). `PLAN.md` is frozen background. Implementation has not begun.
+FaceMorph is a web app for choosing, generating, blending and morphing faces, preparing
+photos and exporting recoverable images/video. This monorepo is the active migration
+from the classic app to strict TypeScript, React, Vite and npm workspaces.
+Implementation is underway; Beads (`br show fm-fy2`) defines executable scope and
+[PLAN.md](PLAN.md) preserves architectural background. Read [AGENTS.md](AGENTS.md)
+in full before contributing.
 
-The retained application and Docker/PyTorch work live in
-[facemorph.me-classic](https://github.com/check-face/facemorph.me-classic)
-(local sibling `../facemorph.me-classic/`). Existing candidate delivery continues
-from `candidate/next-delivery-20260916` in that repository. The revamp carries
-forward its existing features and all integrated performance optimizations, with
-the plan’s explicit changes. This repo will deliver **https://next.facemorph.me** after
-qualification, then **https://facemorph.me** after production cutover.
+**https://next.facemorph.me still comes from classic's candidate branch**, in
+[facemorph.me-classic](https://github.com/check-face/facemorph.me-classic).
+This repo takes over after release qualification. Production promotion is a separate
+operator decision. Classic keeps its history and Docker/PyTorch work; new development
+and [research](autoresearch/README.md) happen here.
 
-This release is web-only; native desktop packages are retired for now. Preserve
-browser CPU/WebGPU selection, bounded CPU fallback and the candidate's working
-iPhone/mobile paths. Admit each operation by its actual capabilities and memory
-policy, with contextual computer guidance where useful. See the plan for evidence
-limits and the requirements/research preservation maps.
-Phones remain first-class targets; the existing desktop/mobile/GPU CI lanes and
-available performance-regression checks are preserved. Use capable workers with
-shared device leases for development; Triton-service retirement does not retire
-the machine as a worker.
-Raw synthesis retains small numerical error margins; image compression and encoded
-file bytes may differ, with valid recovery metadata and practical export quality.
-The plan minimizes each wait and full choosing/generation/export time: recommend
-explicitly approved generate-and-encode models with a Generate choice, prioritize synthesis
-downloads and overlap photo preparation. Budgeted warming of verified cached models
-is a proposed optimization to qualify. The plan's targeted autoresearch playbook
-keeps classic's experiment history and append-only logs/ledger as read-only reference.
-Research is moving into this repo as its own workstream, and further rounds will
-optimise the new app; the existing commands run only in classic until that lands.
+The web-only release preserves CPU/WebGPU selection, bounded fallback, mobile/iPhone
+paths and integrated performance optimizations. Native packages and WebGL execution
+are retired. Phones remain first-class targets, admitted per operation/capability.
+Raw synthesis and exact recovery values are preserved within the plan's tolerances;
+compressed export bytes can differ. No model weights or credentials are bundled.
 
-The selected future GitHub organization login is `facemorph-me`; current owner is
-`check-face`. Legacy `checkface` is archived as-is.
+## Development
 
-Planned stack: strict TypeScript, React, Vite and npm workspaces; Python/PyTorch for
-model conversion and classic API. Planned packages: `stylegan-js`,
-`browser-model-manager`, `cloudflare-model-host` and `model-conv`. Oxfmt/Oxlint and
-a conversion Docker environment are specified in the plan, not installed here.
+Use Node 24 or newer. From this directory:
 
-Execution records are in `.beads/issues.jsonl` (about 140 beads, all deferred until
-implementation starts) and are browsable at https://beads.dilger.dev. The beads are
-self-contained and are the scope authority; where a bead and `PLAN.md` differ, the bead
-wins. No model weights, credentials or legacy runtime are bundled.
+```sh
+npm ci
+npm run hooks:install
+npm run typecheck
+npm run build
+# Run tests relevant to the change; the full suite is available with npm test.
+node --test scripts/ci/changes.test.ts scripts/ci/path-filters.test.ts
+```
+
+Workspaces are apps/web, packages/stylegan-js, browser-model-manager,
+cloudflare-model-host and model-conv. Oxfmt/Oxlint provide formatting/lint gates.
+`npm run build` builds the new application; **`npm run build:next` currently downloads
+a verified pinned CLASSIC CONTROL**, not the edited monorepo app. See
+[build details](docs/dev/build-next.md). Control tests validate the harness/control,
+not feature migration. Use verified external runtime assets for inference checks.
+
+Work directly on main, validate locally in proportion to the change, then push.
+Versioned hooks check format/lint of staged/pushed content; agents run relevant
+builds/tests and local browser/device checks themselves. CI runs one workflow at a
+time, finishes running work, and replaces only the pending run with the newest push.
+The YAML queue and path filters are the authority; no parallel local workflow engine.
+Inspect CI once at startup and repair observed failures through Beads; automatic CI
+reopening is not implemented. See AGENTS.md for commands and honest coverage limits.
+
+For now one agent operates directly outside NTM, with Agent Mail skipped and
+`AGENT_MAIL_GUARD_MODE=warn` on commits/pushes. Preserve existing dirty changes.
+The [device lab](tools/device-lab/README.md) provides local phone/eris validation;
+physical phones never run in CI. Correctness work shares compute, timing alone uses
+exclusive measurement locks. Research and release qualification have stronger
+requirements than ordinary slices.
+
+Execution records are `.beads/issues.jsonl`, published at https://beads.dilger.dev.
+Current GitHub owner is check-face; selected future organization is facemorph-me.

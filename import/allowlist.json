@@ -1136,7 +1136,13 @@
       "sha256": "35fea6bc37ccb0c8306aa433a1cfd2336d8f2a7a784f756f7fd62493c279fba3",
       "bytes": 7456,
       "class": "temporary-root",
-      "temporary": true
+      "temporary": true,
+      "ported": {
+        "sha256": "dd79cce3c227ff00402c6930f620ed5b1dfb88624a73d4712a4012fc6e6d464b",
+        "bytes": 7505,
+        "bead": "fm-98po",
+        "reason": "Optional --port isolates concurrent correctness servers while preserving the classic default of 8443"
+      }
     },
     {
       "source": "scripts/next-e2e.md",

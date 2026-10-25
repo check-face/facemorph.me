@@ -11,42 +11,29 @@ written down.
 
 ## The one entry command
 
-Every heavy build, correctness run, warmup or measurement runs under the machine's device lease, from the repository
-root:
+Correctness builds and tests run concurrently, without a machine-wide device lock.
+Use ordinary npm/test commands directly. `autoresearch/run.py` is a bounded command
+runner, not a scheduler or a local interpreter for GitHub Actions.
 
-```sh
-python3 autoresearch/run.py --lane <browser-cpu|browser-gpu|native-cpu|native-gpu|build> --device <machine> \
-  --state-dir "<absolute per-machine lease dir>" --timeout <seconds, at most 3600> -- <driver command with quoted arguments>
-```
+Timing policy: only GPU measurements take an exclusive `gpu-timing` lock, with a
+bounded wait and an honest busy/deferred outcome. The runner/driver implementation
+is being updated; verify `python3 autoresearch/run.py --help` supports `--exclusive`
+before using that flag. Do not start a timing campaign without the required lock.
+Normal correctness work never waits for it. The phone has its own bounded physical
+device lock in the lab; eris and CI correctness work may overlap it.
 
-Worked example on eris (a maintained driver against the pinned control artifact; see the
-[eris recipe](workers/eris/README.md) for the candidate arguments and the durable output directory):
-
-```sh
-python3 autoresearch/run.py --lane browser-gpu --device eris --state-dir "/home/cdilga/.local/state/facemorph/lease" \
-  --timeout 1800 -- node autoresearch/drivers/morph-frame-product.mjs --label "UNIQUE_RUN_LABEL" --route webgpu \
-  --control deploy-next --control-digest ecc4c357d536b5d9ae0f98ce6dea1f2cbe72537f3e124b28108db1449f14a0fe \
-  --runtime /home/cdilga/.cache/facemorph-runtime
-```
-
-- The lease is one per physical machine, shared with classic, the device lab and heavy CI. Its directory, machine
-  config and refusals are in [ops/lease](../ops/lease/README.md); `--state-dir` may be left out where the machine config
-  names it. Busy exits 75; `--wait` is a bounded wait, not a queue.
-- That GPU screen is a route benchmark. It is **not** the chooser-overlap benchmark, and the evaluator and its adapters
-  do not exist just because the wrapper does. The frozen eris scripts still call classic's paths and run only from
-  classic; for this app use the [maintained drivers](drivers/README.md), which measure an artifact by digest, and the
-  worker recipes ([eris](workers/eris/README.md), [TrueNAS](workers/truenas/README.md), blocked on fm-ip6g).
-- The runner journals every command to `<lease dir>/runs.jsonl` (one journal per machine, shared with classic). Exit
-  zero means the command finished, never that it qualified.
+The [maintained drivers](drivers/README.md) measure exact artifacts by digest.
+`npm run build:next` supplies the pinned classic control; it does not build the new
+app. Frozen scripts in `devices/` still name classic paths and are historical.
+See the [eris recipe](workers/eris/README.md) for runtime and browser readiness.
+Check the actual runner's output for journal locations; do not infer qualification
+from command exit zero. No new research round starts in classic.
 
 ## Smoke check
 
-From a clean clone on a worker, this runs the import digest check and the ledger checks through the lease runner, and
-journals the run:
-
 ```sh
-python3 autoresearch/run.py --lane build --device "$(hostname -s)" --timeout 600 -- \
-  sh -c 'node scripts/check-research-import.mjs && node scripts/check-research-ledger.mjs'
+node scripts/check-research-import.mjs
+node scripts/check-research-ledger.mjs
 ```
 
 ## Where things are

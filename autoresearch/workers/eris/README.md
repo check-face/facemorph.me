@@ -11,6 +11,15 @@ Linux x86-64 (Omarchy), RTX 2080 SUPER 8 GB (Turing, driver 610.57), 12 threads,
 It is also the operator's desktop: check load first, never drive the desktop browser, and never use CDP port 9222
 (an adb forward to the USB P30 Pro's Chrome). Every browser here is headless, with its own profile.
 
+## Concurrency and measurements
+
+Correctness builds, browser checks and GPU adapter probes share compute without a
+machine-wide lease. Physical phone sessions serialize only against that device.
+Timing alone requires the exclusive gpu-timing lock. The runner/drivers are being
+updated: check `run.py --help` for `--exclusive` and use it for every measured
+smoke/paired driver below once supported; defer timing until then. The older
+`--lane`/`--device` arguments are not evidence of an exclusive lock.
+
 ## Launch recipe
 
 | Field | Value |
@@ -20,7 +29,7 @@ It is also the operator's desktop: check load first, never drive the desktop bro
 | Artifacts | `npm run build:next` fetches and verifies the pinned control into `deploy-next/` (`autoresearch/drivers/control.json`, tree SHA-256 `ecc4c357…a0fe`); a candidate is any deploy-next-shaped directory with its tree digest |
 | Runtime | the verified acquired runtime `/home/cdilga/.cache/facemorph-runtime` (manifest `d9e37e50…`); the drivers re-verify every pinned file and fetch nothing |
 | Readiness | `node autoresearch/workers/check.mjs --lane browser-cpu\|browser-gpu --runtime /home/cdilga/.cache/facemorph-runtime` |
-| Device identity | `--device eris` (`p30pro` is the attached phone, leased separately) |
+| Device identity | `--device eris` (`p30pro` is the attached phone, locked separately by the lab) |
 | Lease directory | `/home/cdilga/.local/state/facemorph/lease` (from `~/.config/facemorph/lease.json`; shared with classic, the device lab and CI on this machine) |
 | Fixtures | the control artifact's public `preview/hello-1024.webp`, shifted per case outside timing; no personal photos |
 | Browser profile | a fresh profile per side under the run directory (`profiles/<side>/`), never shared across runs |

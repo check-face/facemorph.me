@@ -25,7 +25,6 @@ MIRROR_HOST = 'models.facemorph.me'
 # The candidate's own public catalogue Workers (name latents, previews): project hosts the control reads, so they
 # resolve; blocking them makes the control silently fall back to mapping for a published name.
 PROJECT_HOSTS = ('facemorph-name-catalogue.cdilga.workers.dev', 'facemorph-seed-gallery.cdilga.workers.dev')
-PORT = 8443  # fixed by classic's next-e2e-server.py
 
 
 def sha256_file(path):
@@ -53,11 +52,6 @@ def free_port():
     with socket.socket() as s:
         s.bind(('127.0.0.1', 0))
         return s.getsockname()[1]
-
-
-def port_in_use(port):
-    with socket.socket() as s:
-        return s.connect_ex(('127.0.0.1', port)) == 0
 
 
 def stop_harness_daemons(name):
@@ -163,8 +157,7 @@ def served_control(runtime: Path, evidence: Path, chrome_path: str, *, extra_tre
     artifact = json.loads(check.stdout.strip().splitlines()[-1])['summary']
     if check.returncode != 0:
         raise RuntimeError('deploy-next/ does not verify against its identity; run npm run build:next')
-    if port_in_use(PORT):
-        raise RuntimeError(f'127.0.0.1:{PORT} is in use; the qualification server needs it')
+    port = free_port()
     manifest = runtime.resolve() / 'manifest.json'
     manifest_sha = sha256_file(manifest)
     cdp_port = free_port()
@@ -187,7 +180,7 @@ def served_control(runtime: Path, evidence: Path, chrome_path: str, *, extra_tre
         (work / 'next-e2e-evidence/downloads').mkdir(parents=True)
         subprocess.run(['openssl', 'req', '-x509', '-newkey', 'rsa:2048', '-nodes', '-keyout', str(work / 'next.key'), '-out', str(work / 'next.crt'),
                         '-days', '1', '-subj', f'/CN={ORIGIN_HOST}'], check=True, capture_output=True)
-        server = subprocess.Popen([sys.executable, str(REPO / 'apps/web/scripts/next-e2e-server.py'), '--manifest-sha', manifest_sha,
+        server = subprocess.Popen([sys.executable, str(REPO / 'apps/web/scripts/next-e2e-server.py'), '--port', str(port), '--manifest-sha', manifest_sha,
                                    '--runtime-overlay', str(work / 'overlay'), '--runtime-files', str(runtime.resolve()),
                                    '--cert', str(work / 'next.crt'), '--key', str(work / 'next.key')],
                                   cwd=work, stdout=open(evidence / 'server.log', 'wb'), stderr=subprocess.STDOUT)
@@ -195,7 +188,7 @@ def served_control(runtime: Path, evidence: Path, chrome_path: str, *, extra_tre
         chrome = subprocess.Popen([chrome_path, '--headless=new', '--no-sandbox', '--ignore-certificate-errors', '--no-proxy-server',
                                    # The origin maps to the local server; every host but the project catalogue Workers fails to
                                    # resolve, so third-party and analytics requests are attempted (and recorded) but never delivered.
-                                   f'--host-resolver-rules=MAP {ORIGIN_HOST}:443 127.0.0.1:{PORT},MAP * ~NOTFOUND,EXCLUDE 127.0.0.1,'
+                                   f'--host-resolver-rules=MAP {ORIGIN_HOST}:443 127.0.0.1:{port},MAP * ~NOTFOUND,EXCLUDE 127.0.0.1,'
                                    + ','.join(f'EXCLUDE {h}' for h in PROJECT_HOSTS),
                                    f'--remote-debugging-port={cdp_port}', f'--user-data-dir={work / "chrome"}', 'about:blank'],
                                   stdout=open(evidence / 'chrome.log', 'wb'), stderr=subprocess.STDOUT)
@@ -204,7 +197,7 @@ def served_control(runtime: Path, evidence: Path, chrome_path: str, *, extra_tre
         browser = ''
         for _ in range(60):
             try:
-                urllib.request.urlopen(f'https://127.0.0.1:{PORT}/runtime/manifest.json', context=insecure, timeout=2)
+                urllib.request.urlopen(f'https://127.0.0.1:{port}/runtime/manifest.json', context=insecure, timeout=2)
                 version = json.loads(urllib.request.urlopen(f'http://127.0.0.1:{cdp_port}/json/version', timeout=2).read())
                 logged = (evidence / 'chrome.log').read_text(errors='replace')
                 if chrome.poll() is not None or f'DevTools listening on {version.get("webSocketDebuggerUrl")}' not in logged:

@@ -45,6 +45,17 @@ PHONE_WEBGPU_FLAGS = ['--enable-unsafe-webgpu', '--ignore-gpu-blocklist']
 CELLS = {'eris-webgpu': ('desktop', True), 'eris-cpu': ('desktop', False),
          'phone-webgpu': ('phone', True), 'phone-cpu': ('phone', False)}
 PHONE_LEASE = 'p30pro'  # the phone, for the devices a session reports
+JOURNEYS = frozenset(('cold-face', 'warm-face', 'morph', 'operated'))
+
+
+def validate_journeys(value):
+    names = value.split(',')
+    unknown = set(names) - JOURNEYS
+    if unknown:
+        raise ValueError('unknown journey: ' + ', '.join(sorted(unknown)))
+    return names
+
+
 CHROME = 'com.android.chrome'
 WEBCAM, WATCHDOG = 'com.pas.webcam', 'dev.dilger.camera.watchdog'
 CDP_PORT = 9222
@@ -754,7 +765,7 @@ def run_journeys(dev, args, cell, gpu, out, report, memory=None):
         elif hasattr(dev, 'ctx'):
             dev.ctx.tracing.start(screenshots=True, snapshots=True)
         try:
-            for j in args.journey.split(','):
+            for j in validate_journeys(args.journey):
                 if j == 'cold-face':
                     rec['cold'] = journey_face(dev, args.url, True, f'lab{i}cold', gpu)
                 elif j == 'warm-face':
@@ -998,6 +1009,9 @@ def passback(beads, ok, out, title):
 
 
 def run_matrix(args):
+    validate_journeys(args.journey)  # refuse before locks, browser/device I/O or an empty success report
+    if args.repeat < 1:
+        raise ValueError('repeat must be at least 1')
     import signal
     signal.signal(signal.SIGTERM, _terminate)
     signal.signal(signal.SIGHUP, _terminate)

@@ -61,7 +61,7 @@
       "shared": [],
       "extra": [],
       "always": true,
-      "ignore": [".beads/**"]
+      "ignore": [".beads/**", "**/*.md", "docs/**", "ops/swarm/**"]
     },
     "ci-shared": {
       "workflow": ".github/workflows/ci-shared.yml",
@@ -299,10 +299,22 @@
     },
     "scaffold": {
       "workflow": ".github/workflows/scaffold.yml",
-      "shared": [],
-      "extra": [],
-      "always": true,
-      "ignore": []
+      "shared": [
+        "apps/web/**",
+        "packages/**",
+        "scripts/**",
+        "hosting/**",
+        "services/**",
+        "tests/**",
+        "package.json",
+        "package-lock.json",
+        "tsconfig*.json",
+        ".oxlintrc.json",
+        ".oxfmtrc.json",
+        ".nvmrc",
+        ".github/actions/**"
+      ],
+      "extra": []
     },
     "stats-worker": {
       "workflow": ".github/workflows/stats-worker.yml",

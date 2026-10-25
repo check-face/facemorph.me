@@ -2,27 +2,43 @@
 // by classic's own qualification server (apps/web/scripts/next-e2e-server.py), with the runtime from a verified
 // acquisition (scripts/runtime/acquire.mjs) seeded into its sha-keyed mirror so a miss can never reach the
 // network. deploy-next/ is re-checked against its identity first (npm run build:next -- --check); a control that
-// does not verify is refused. Browsers reach it through a host mapping to 127.0.0.1:8443 (the server's fixed port).
+// does not verify is refused. Each independent run owns its port and server directory.
 import { execFileSync, spawn, type ChildProcess } from 'node:child_process';
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import {
   copyFileSync,
+  closeSync,
   cpSync,
   createReadStream,
   existsSync,
   linkSync,
   mkdirSync,
+  mkdtempSync,
   openSync,
   readdirSync,
   readFileSync,
+  renameSync,
   rmSync,
+  symlinkSync,
   writeFileSync,
 } from 'node:fs';
 import { join } from 'node:path';
 
 export const ORIGIN_HOST = 'next.facemorph.me';
 export const ORIGIN = `https://${ORIGIN_HOST}`;
-export const PORT = 8443;
+// Playwright's setup and workers inherit the same mapping; independent runs choose their own port.
+async function freePort(): Promise<number> {
+  const { createServer } = await import('node:net');
+  return new Promise((resolve, reject) => {
+    const server = createServer();
+    server.once('error', reject).listen(0, '127.0.0.1', () => {
+      const port = (server.address() as { port: number }).port;
+      server.close((error) => (error ? reject(error) : resolve(port)));
+    });
+  });
+}
+export const PORT = Number(process.env['FACEMORPH_CONTROL_PORT'] ?? (await freePort()));
+process.env['FACEMORPH_CONTROL_PORT'] = String(PORT);
 /** The candidate's own public catalogue Workers: project hosts the control reads (names, previews). */
 export const PROJECT_HOSTS = [
   'facemorph-name-catalogue.cdilga.workers.dev',
@@ -67,8 +83,17 @@ async function seedMirror(runtime: string, mirror: string, manifestSha: string):
     if (!existsSync(target)) {
       try {
         linkSync(f, target);
-      } catch {
-        copyFileSync(f, target);
+      } catch (error) {
+        // Another run may have linked it first. Cross-device copies publish only complete bytes.
+        if ((error as NodeJS.ErrnoException).code !== 'EEXIST') {
+          const part = `${target}.${randomUUID()}.part`;
+          try {
+            copyFileSync(f, part);
+            renameSync(part, target);
+          } finally {
+            rmSync(part, { force: true });
+          }
+        }
       }
     }
   }
@@ -104,7 +129,7 @@ export interface StartOptions {
 
 export async function startControl({
   runtime = join(CACHE, 'runtime'),
-  log = join(CACHE, 'control-site/server.log'),
+  log,
   artifact,
   source,
 }: StartOptions = {}): Promise<Control> {
@@ -144,11 +169,12 @@ export async function startControl({
   const manifestSha256 = await sha256File(manifest);
   if (!(await portFree()))
     throw new Error(
-      `127.0.0.1:${PORT} is in use (the device lab's local server or another control); classic's server needs it`,
+      `control port 127.0.0.1:${PORT} is already in use; retry with a free FACEMORPH_CONTROL_PORT`,
     );
 
-  const work = join(CACHE, 'control-site');
-  rmSync(join(work, 'deploy-next'), { recursive: true, force: true });
+  mkdirSync(CACHE, { recursive: true });
+  const work = mkdtempSync(join(CACHE, 'control-site-'));
+  log ??= join(work, 'server.log');
   mkdirSync(join(work, 'overlay'), { recursive: true });
   cpSync(artifact ?? join(REPO, 'deploy-next'), join(work, 'deploy-next'), { recursive: true });
   if (artifact) writeFileSync(join(work, 'next-site-source.txt'), `${source}\n`);
@@ -156,7 +182,9 @@ export async function startControl({
     for (const name of ['next-site-source.txt', 'next-site-SHA256SUMS'])
       copyFileSync(join(REPO, name), join(work, name));
   copyFileSync(manifest, join(work, 'overlay/manifest.json'));
-  const mirrorFiles = await seedMirror(runtime, join(work, '.runtime-mirror'), manifestSha256);
+  const mirror = join(CACHE, 'control-mirror');
+  const mirrorFiles = await seedMirror(runtime, mirror, manifestSha256);
+  symlinkSync(mirror, join(work, '.runtime-mirror'));
   execFileSync(
     'openssl',
     [
@@ -176,48 +204,63 @@ export async function startControl({
     ],
     { stdio: 'ignore' },
   );
-  const server: ChildProcess = spawn(
-    'python3',
-    [
-      join(REPO, 'apps/web/scripts/next-e2e-server.py'),
-      '--manifest-sha',
-      manifestSha256,
-      '--runtime-overlay',
-      join(work, 'overlay'),
-      '--runtime-files',
-      runtime,
-      '--cert',
-      join(work, 'next.crt'),
-      '--key',
-      join(work, 'next.key'),
-    ],
-    { cwd: work, stdio: ['ignore', openSync(log, 'w'), openSync(log, 'a')] },
-  );
-  const stop = () =>
-    new Promise<void>((resolve) => {
-      if (server.exitCode !== null) return resolve();
-      server.once('exit', () => resolve());
-      server.kill('SIGTERM');
-    });
-  for (let i = 0; i < 60; i++) {
-    if (server.exitCode !== null)
-      throw new Error(`classic's server exited (${server.exitCode}); see ${log}`);
-    try {
-      execFileSync('curl', [
-        '-kfsS',
-        '--max-time',
-        '2',
-        `https://127.0.0.1:${PORT}/runtime/manifest.json`,
-        '-o',
-        '/dev/null',
-      ]);
-      return { identity, manifestSha256, mirrorFiles, stop };
-    } catch {
-      await new Promise((r) => setTimeout(r, 500));
-    }
+  const logFd = openSync(log, 'w');
+  let server: ChildProcess;
+  try {
+    server = spawn(
+      'python3',
+      [
+        join(REPO, 'apps/web/scripts/next-e2e-server.py'),
+        '--port',
+        String(PORT),
+        '--manifest-sha',
+        manifestSha256,
+        '--runtime-overlay',
+        join(work, 'overlay'),
+        '--runtime-files',
+        runtime,
+        '--cert',
+        join(work, 'next.crt'),
+        '--key',
+        join(work, 'next.key'),
+      ],
+      { cwd: work, stdio: ['ignore', logFd, logFd] },
+    );
+  } finally {
+    closeSync(logFd);
   }
-  await stop();
-  throw new Error(`classic's server did not answer on ${PORT}; see ${log}`);
+  const stop = async () => {
+    if (server.exitCode === null)
+      await new Promise<void>((resolve) => {
+        server.once('exit', () => resolve());
+        server.kill('SIGTERM');
+      });
+    rmSync(work, { recursive: true, force: true });
+  };
+  try {
+    for (let i = 0; i < 60; i++) {
+      if (server.exitCode !== null)
+        throw new Error(`classic's server exited (${server.exitCode}); see ${log}`);
+      try {
+        execFileSync('curl', [
+          '-kfsS',
+          '--max-time',
+          '2',
+          `https://127.0.0.1:${PORT}/runtime/manifest.json`,
+          '-o',
+          '/dev/null',
+        ]);
+        return { identity, manifestSha256, mirrorFiles, stop };
+      } catch {
+        await new Promise((r) => setTimeout(r, 500));
+      }
+    }
+    throw new Error(`classic's server did not answer on ${PORT}; see ${log}`);
+  } catch (error) {
+    const detail = existsSync(log) ? readFileSync(log, 'utf8').slice(-4000) : '';
+    await stop();
+    throw new Error(`${error}\n${detail}`);
+  }
 }
 
 /** Chromium arguments that send the production origin to the local server. */

@@ -52,6 +52,8 @@ permissions:
 concurrency:
   group: next-site-${{ github.ref }}
   cancel-in-progress: false
+env:
+  BUILD_WORKFLOW: ${{ github.workflow == 'main' && '.github/workflows/main.yml' || '.github/workflows/next-site.yml' }}
 jobs:
   artifact:
     runs-on: [self-hosted, eris]
@@ -107,7 +109,7 @@ jobs:
           # Byte order (LC_ALL=C), as treeDigest sorts: the runner's en_US collation orders README.md and fonts/ apart.
           find deploy-next -type f -print0 | LC_ALL=C sort -z | xargs -0 sha256sum > next-site-SHA256SUMS
           printf '%s\n' '${{ github.sha }}' > next-site-source.txt
-          node -e 'console.log(JSON.stringify({sourceRepoId: Number(process.argv[1]), repository: process.argv[2], workflow: ".github/workflows/next-site.yml", runId: Number(process.argv[3]), commit: process.argv[4]}))' \
+          node -e 'console.log(JSON.stringify({sourceRepoId: Number(process.argv[1]), repository: process.argv[2], workflow: process.env.BUILD_WORKFLOW, runId: Number(process.argv[3]), commit: process.argv[4]}))' \
             '${{ github.repository_id }}' '${{ github.repository }}' '${{ github.run_id }}' '${{ github.sha }}' > next-site-provenance.json
           # The SUMS digest is the identity-hashing artifact digest (scripts/ci/fetch-artifact.ts treeDigest).
           node --input-type=module -e "import {treeDigest} from './scripts/ci/fetch-artifact.ts'; const t=treeDigest('deploy-next'); const s=(await import('node:crypto')).createHash('sha256').update((await import('node:fs')).readFileSync('next-site-SHA256SUMS','utf8').replace(/  deploy-next\//g,'  ')).digest('hex'); console.log(JSON.stringify({treeDigest:t, sumsDigest:s})); if (t!==s) process.exit(1)"
@@ -119,6 +121,7 @@ jobs:
             next-site-SHA256SUMS
             next-site-source.txt
             next-site-provenance.json
+            next-site-identity.json
           if-no-files-found: error
           retention-days: 14
 
@@ -149,7 +152,7 @@ jobs:
         uses: ./.github/actions/fetch-artifact
         with:
           source_repo_id: ${{ github.repository_id }}
-          workflow: .github/workflows/next-site.yml
+          workflow: ${{ env.BUILD_WORKFLOW }}
           run_id: ${{ github.run_id }}
           commit: ${{ github.sha }}
           artifact_name: next-site-${{ github.sha }}

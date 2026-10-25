@@ -16,6 +16,19 @@ const ONLY = '.on' + 'ly';
 const MARK = 'disabled-' + 'test: ';
 const GOOD = `${MARK}reason=flaky on WebKit; owner=fm-abc; until=fm-abc closes`;
 
+test('a multiline runtime hardware condition is not a disabled test', () => {
+  const source = `test('hardware', async (t) => {
+    const adapter = await navigator.gpu?.requestAdapter();
+    if (
+      !adapter ||
+      adapter.isFallbackAdapter
+    )
+      return t${SKIP}('no hardware adapter');
+  });`;
+  assert.equal(run('hardware.test.ts', source).status, 0);
+  assert.equal(run('hardware.test.ts', source.replace(/if \([\s\S]*?\)\n/, '')).status, 1);
+});
+
 function run(name, text) {
   const dir = mkdtempSync(join(tmpdir(), 'fm-pud-'));
   try {
