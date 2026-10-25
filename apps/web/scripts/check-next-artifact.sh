@@ -23,8 +23,8 @@ def click(role,name):
     raise AssertionError('No visible pointer hit for '+role+' '+name)
 
 DESTINATION=os.environ.get('NEXT_ARTIFACT_KIND')=='destination'
-# Destination photo entry lives in each tile's mode menu; the chooser belongs
-# to the source dialog. Count the entry controls and actually open that dialog.
+# Destination photo entry lives in each face card: its mode menu's Encode image
+# invokes that card's own file input. Count the entry controls and operate one.
 PHOTO_SELECTOR='.next-face button[aria-label="Change mode"]' if DESTINATION else 'button[aria-label="Choose photo"]'
 PHOTO_OFFSET=0 if DESTINATION else 1
 def state():
@@ -49,14 +49,15 @@ try:
     result['consentToastShown']=bool(js('(()=>{const b=document.querySelector(\'.next-consent-toast button[aria-label="Ask me later"]\');if(b)b.click();return !!b;})()'))
     initial=until(lambda s:s['tiles']==2 and s['photoControls']==2-PHOTO_OFFSET and s['helloPreview'] and s['generate'],what='the initial two tiles')
     if DESTINATION:
+        # Record which file input the menu entry invokes; the native chooser itself is not opened here.
+        js("(()=>{window.__fileChooser=[];const click=HTMLInputElement.prototype.click;HTMLInputElement.prototype.click=function(){if(this.type!=='file')return click.call(this);window.__fileChooser.push({face:this.closest('[data-next-face]')?.getAttribute('data-next-face'),accept:this.accept});};})()")
         click('button','Change mode')
         click('menuitem','Encode image')
-        until(lambda s:js("!!document.querySelector('.next-encode-source input[type=file]')"),what='the Encode source dialog after Encode image')
-        accept=js("document.querySelector('.next-encode-source input[type=file]').accept")
-        assert accept=='image/*,video/mp4', accept
-        result['encodeSource']={'opened':True,'accept':accept}
-        click('button','Cancel')
-        until(lambda s:not js("!!document.querySelector('.next-encode-dialog')"),what='the Encode dialog to close')
+        until(lambda s:js("window.__fileChooser.length===1"),what="the first card's file chooser after Encode image")
+        chooser=js("JSON.stringify(window.__fileChooser[0])");chooser=json.loads(chooser) if isinstance(chooser,str) else chooser
+        assert chooser=={'face':'face-1','accept':'image/*,video/mp4'}, chooser
+        assert not js("!!document.querySelector('[role=dialog]')"), 'Encode image must open the card chooser, not a dialog'
+        result['encodeEntry']={'chooser':chooser,'dialog':False}
     assert not js("document.querySelector('.next-tagline a, .next-tagline button')"), 'Tagline must not replace an implicitly selected face'
     click('button','More options')
     until(lambda s:js("!!document.querySelector('.next-overflow')"))

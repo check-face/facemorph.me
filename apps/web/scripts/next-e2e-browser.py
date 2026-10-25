@@ -165,13 +165,7 @@ def press_selector(selector,index=0,name=None):
    const e=es[%d];if(!e)return null;e.scrollIntoView({block:'center'});const r=e.getBoundingClientRect();
    const x=r.left+r.width/2,y=r.top+r.height/2;return r.width&&r.height&&e.contains(document.elementFromPoint(x,y))?{x,y}:null;})()"""%(json.dumps(selector),json.dumps(name),json.dumps(name.lower() if name else None),index))
  p=wait(point,30);click_at_xy(p['x'],p['y'])
-def open_photo_source(index=0):
- press_selector('.next-face [aria-label="Change mode"]',index)
- press_selector('[role="menuitem"]',name='Encode image')
- wait(lambda:js("!!document.querySelector('.next-encode-source input[type=file]')"),30)
 def upload(selector,path):
- if CTX.get('sourceDialog') and selector==S['choosePhoto']:
-  open_photo_source()
  root=cdp('DOM.getDocument')['root']['nodeId'];node=cdp('DOM.querySelector',nodeId=root,selector=selector)['nodeId'];assert node,'File input missing';cdp('DOM.setFileInputFiles',nodeId=node,files=[str(path.resolve())])
 def save_check(name,data):result['checks'][name]=data;(out/'report.json').write_text(json.dumps(result,indent=2));print(json.dumps({'check':name,**data}),flush=True)
 
@@ -230,16 +224,24 @@ def stage_preflight():
  js("document.querySelector('.next-advanced').open=true")
  state=q("({tiles:document.querySelectorAll('.next-face').length,photos:document.querySelectorAll('%s').length,words:!!document.querySelector('%s'),generate:[...document.querySelectorAll('button')].some(b=>b.classList.contains('next-face-generate')&&b.textContent==='Generate'),modeOptions:[...document.querySelectorAll('%s option')].map(o=>o.value),error:(document.querySelector('%s')?.innerText||'')})"%(S['choosePhoto'],S['faceTextInputs'],S['processingMode'],S['error']))
  assert state['tiles']==2 and state['words'] and state['generate'],state
- CTX['sourceDialog']=state['photos']==0
- if CTX['sourceDialog']:
+ assert state['photos']==2,state
+ # The new app's card menu offers Encode image, which invokes that card's own file input, and a
+ # fresh photo then waits for crop confirmation; the retained control encodes on selection.
+ press_selector('.next-face [aria-label="Change mode"]',0)
+ CTX['confirmCrop']='Encode image' in q("[...document.querySelectorAll('[role=menuitem]')].map(e=>e.textContent.trim())")
+ if CTX['confirmCrop']:
   for index in range(2):
-   open_photo_source(index)
-   assert js("document.querySelector('.next-encode-source input[type=file]').accept")=='image/*,video/mp4'
-   press_selector('.next-encode-dialog button',name='Cancel')
-   wait(lambda:not js("!!document.querySelector('.next-encode-dialog')"),30)
-  S['choosePhoto']='.next-encode-source input[type=file]'
+   if index:press_selector('.next-face [aria-label="Change mode"]',index)
+   # Record which file input the entry invokes; the native chooser itself is not opened here.
+   js("(()=>{window.__fileChooser=[];window.__inputClick=HTMLInputElement.prototype.click;HTMLInputElement.prototype.click=function(){if(this.type!=='file')return window.__inputClick.call(this);window.__fileChooser.push({face:this.closest('[data-next-face]')?.getAttribute('data-next-face'),accept:this.accept});};})()")
+   press_selector('[role="menuitem"]',name='Encode image')
+   wait(lambda:js("window.__fileChooser.length===1"),30)
+   face=js("document.querySelectorAll('.next-face')[%d].getAttribute('data-next-face')"%index)
+   assert q("window.__fileChooser[0]")=={'face':face,'accept':'image/*,video/mp4'},q("window.__fileChooser")
+   assert not js("!!document.querySelector('[role=dialog]')"),'Encode image must open the card chooser, not a dialog'
+   js("HTMLInputElement.prototype.click=window.__inputClick")
   S['buttons']['useCrop']='Use Crop'
- else:assert state['photos']==2,state
+ else:cdp('Input.dispatchKeyEvent',type='keyDown',key='Escape',windowsVirtualKeyCode=27);cdp('Input.dispatchKeyEvent',type='keyUp',key='Escape',windowsVirtualKeyCode=27)
  assert set(state['modeOptions'])=={'auto','cpu','webgpu'},state
  assert not state['error'],state['error']
  save_check('preflight',{'passed':True,'modeOptions':state['modeOptions'],'engine':result['engine']})
@@ -361,7 +363,7 @@ def stage_recoveredDownload():
  save_check('recoveredDownload',{'passed':True,'format':'webp','newWorkers':0,'newWorkerRequests':0,'dimensions':[[i['width'],i['height']] for i in faces()]})
 def stage_syntheticPhotoE4e():
  upload(S['choosePhoto'],CTX['seedPng'])
- if CTX.get('sourceDialog'):
+ if CTX.get('confirmCrop'):
   wait(lambda:js("!!document.querySelector('.next-encode-preview img')"),60)
   press_selector('.next-encode-dialog button',name='OK')
   wait(lambda:js("!!document.querySelector('.next-face[data-next-state=\"photo\"]')"),60)
@@ -376,7 +378,7 @@ def stage_syntheticPhotoE4e():
 def stage_localCrop():
  # Exercise the editor before confirmation in the new app, or the retained
  # control's crop menu. The accepted geometry must produce the encoded face.
- if CTX.get('sourceDialog'):
+ if CTX.get('confirmCrop'):
   upload(S['choosePhoto'],CTX['seedPng'])
   wait(lambda:js("!!document.querySelector('.next-encode-preview img')"),60)
   press_selector('.next-encode-dialog button',name='ADJUST CROP')
@@ -398,7 +400,7 @@ def stage_localCrop():
  assert js("!!document.querySelector('%s')"%S['cropView']),'Arrow keys closed the crop dialog'
  click(S['buttons']['useCrop'],expect=lambda:js("!document.querySelector('%s')"%S['cropView']))
  wait(lambda:js("!document.querySelector('%s')"%S['cropView']),60)
- if CTX.get('sourceDialog'):
+ if CTX.get('confirmCrop'):
   wait(lambda:js("!!document.querySelector('.next-encode-preview img')"),30)
   press_selector('.next-encode-dialog button',name='OK')
  deadline=time.monotonic()+300
