@@ -209,6 +209,9 @@ class HostedBrowser(lab.Desktop):
         self.ctx = engine.launch_persistent_context(str(self.out / f'profile-{self.n}'), **kw)
         self.page = self.ctx.pages[0] if self.ctx.pages else self.ctx.new_page()
         self.page.add_init_script(lab.GUARD)
+        self.page.add_init_script(PROGRESS_OBSERVER)
+        self.browser_errors = []
+        self.page.on('pageerror', lambda error: self.browser_errors.append(str(error)[:800]) if len(self.browser_errors) < 40 else None)
         self.cdp = self.ctx.new_cdp_session(self.page) if CHANNELS[self.browser] == 'chromium' else OriginStorage(self)
         self.crashed = False
         self.page.on('crash', lambda *_: setattr(self, 'crashed', True))
@@ -254,6 +257,9 @@ class AndroidChrome(lab.Desktop):
         self.context = self.browser_cdp.contexts[0]
         self.page = self.context.pages[0] if self.context.pages else self.context.new_page()
         self.page.add_init_script(lab.GUARD)
+        self.page.add_init_script(PROGRESS_OBSERVER)
+        self.browser_errors = []
+        self.page.on('pageerror', lambda error: self.browser_errors.append(str(error)[:800]) if len(self.browser_errors) < 40 else None)
         self.cdp = self.context.new_cdp_session(self.page)
         self.crashed = False
         self.page.on('crash', lambda *_: setattr(self, 'crashed', True))
@@ -287,6 +293,35 @@ def finish(report, out):
     return 0 if report['ok'] else 1
 
 
+# Bounded failure context for real hosted browser runs. A mutation observer sees
+# actual status changes; it neither injects results nor sends visitor diagnostics.
+PROGRESS_OBSERVER = r"""
+(() => {
+  const history = window.__hostedProgress = [];
+  let previous = '';
+  const capture = () => {
+    const product = document.querySelector('.next-product');
+    const video = document.querySelector('video');
+    const state = {
+      busy: product?.getAttribute('data-next-busy'),
+      status: [...document.querySelectorAll('[role="status"], [role="alert"], .next-status')]
+        .map(el => el.textContent.slice(0, 400)).slice(0, 8),
+      images: document.querySelectorAll('img').length,
+      video: video ? {readyState: video.readyState, networkState: video.networkState,
+        error: video.error?.code, width: video.videoWidth, height: video.videoHeight} : null
+    };
+    const signature = JSON.stringify(state);
+    if (signature === previous) return;
+    previous = signature;
+    history.push({at: Math.round(performance.now()), ...state});
+    if (history.length > 120) history.shift();
+  };
+  new MutationObserver(capture).observe(document, {subtree: true, childList: true,
+    characterData: true, attributes: true, attributeFilter: ['data-next-busy', 'src']});
+})();
+"""
+
+
 def run_driven(args, make_device, kind):
     """A lane whose browser Playwright drives: lab.run_journeys with a hosted device."""
     from playwright.sync_api import sync_playwright
@@ -300,7 +335,16 @@ def run_driven(args, make_device, kind):
             dev = make_device(pw, srv)
             try:
                 report['userAgent'] = dev.version()
+                # Keep real browser errors and progress leading up to a failed journey.
+                # This observes DOM/media state; it does not replace browser APIs or
+                # change the app's timers, model routes or media readiness checks.
                 lab.run_journeys(dev, args, args.lane, None, out, report)
+                if not all(run.get('ok') for run in report['runs']):
+                    report['browserErrors'] = dev.browser_errors
+                    try:
+                        report['progress'] = dev.page.evaluate('window.__hostedProgress || []')
+                    except Exception as error:
+                        report['progressError'] = str(error)[:400]
                 dev.screenshot(out / f'{args.lane}-last.png')
             finally:
                 dev.close()
