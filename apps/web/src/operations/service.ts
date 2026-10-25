@@ -2,7 +2,7 @@
 import type { ComputeRoute } from '@facemorph/stylegan-js';
 import type { Replacement } from './intents.ts';
 import type { InputRevision } from '../contracts/inputs.ts';
-import type { RouteSnapshot } from '../contracts/scheduler.ts';
+import type { CapabilityStatus, RouteSnapshot } from '../contracts/scheduler.ts';
 import type { Input, MorphKind, Output, Progress, Refusal } from '../../shell/facade/records.ts';
 
 declare const requestTag: unique symbol;
@@ -107,6 +107,8 @@ export interface OperationService {
   requestMorph(request: Extract<OperationRequest, { kind: 'morph' }>): OperationHandle;
   requestImport(request: Extract<OperationRequest, { kind: 'import' }>): OperationHandle;
   requestNext(jobs: readonly ScheduledJob[], state?: SchedulingState): number;
+  /** Whether the provider context this route would use is available, busy or unavailable. */
+  capability(route: RouteSnapshot): CapabilityStatus;
   setBlocked(state: Omit<SchedulingState, 'busy'>): void;
   revise(slot: string, revision: InputRevision): void;
   remove(slot: string): void;

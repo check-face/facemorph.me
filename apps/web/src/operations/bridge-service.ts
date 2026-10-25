@@ -4,6 +4,8 @@ import type { ComputeRoute } from '@facemorph/stylegan-js';
 import { nextScheduled } from '../Next/scheduler.mjs';
 import { IntentRegistry } from './intents.ts';
 import { morphFrameFailure } from './morph-budget.ts';
+import { createGovernor, type AdmittedPhase, type Governor, type Lease } from './scheduler.ts';
+import type { HeavyOp, ProviderContextId } from '../contracts/scheduler.ts';
 import { validateSeedText, validateWords } from '../contracts/inputs.ts';
 import {
   sources,
@@ -74,9 +76,35 @@ export function requestNext(jobs: readonly ScheduledJob[], state: SchedulingStat
 }
 
 let jobSequence = 0;
+/** Runtime progress stages that are admitted phases of the job holding the compute permit. */
+const PHASES: Readonly<Record<string, AdmittedPhase>> = {
+  'models-download': 'runtime-init',
+  'route-attempt': 'session-load',
+  'canary-invalidated': 'canary',
+  face: 'inference',
+  morph: 'inference',
+};
+const heavyOp = (request: OperationRequest): HeavyOp =>
+  request.kind === 'morph'
+    ? 'morph-frames'
+    : request.kind === 'face' && request.source.input.mode === 'photo'
+      ? 'photo-encode'
+      : 'face-synthesis';
+const contextOf = (request: OperationRequest): ProviderContextId =>
+  `${request.route.requested === 'webgpu' ? 'webgpu' : 'cpu'}:${request.route.runtimeSha256}`;
+
 export function createOperationService(
-  options: { readonly bridge?: OperationBridge } = {},
+  options: { readonly bridge?: OperationBridge; readonly governor?: Governor } = {},
 ): OperationService {
+  // Residency bytes stay symbolic (zero) until the contracts decode measurement supplies them; the
+  // runtime keeps its own warm-model policy, so release hooks have nothing further to do here yet.
+  const governor =
+    options.governor ??
+    createGovernor({
+      policy: { memory: 'ample' },
+      hooks: { releaseWarm() {}, terminateWorkers() {} },
+    });
+  const leases = new Map<number, Lease>();
   const registry = new IntentRegistry<Output>();
   const pending = new Map<RequestId, Pending>();
   const works = new Map<number, Work>();
@@ -138,6 +166,8 @@ export function createOperationService(
     if (!work || work.cancelled || work.jobId !== p.jobId) return;
     if (p.stage === 'route-admitted' && (p.text === 'cpu' || p.text === 'webgpu'))
       work.provider = p.text;
+    const phase = PHASES[p.stage];
+    if (phase) leases.get(work.jobId)?.phase(phase);
     for (const item of work.owners.keys()) {
       if (!current(item)) continue;
       item.provider = work.provider;
@@ -319,11 +349,28 @@ export function createOperationService(
       if (work.output) readyOwner(item, work, 'dependency', work.output);
     promote(item);
   }
+  async function settleLease(work: Work): Promise<void> {
+    const lease = leases.get(work.jobId);
+    leases.delete(work.jobId);
+    await lease?.settle();
+  }
   async function run(work: Work): Promise<void> {
     try {
       const b = await getBridge();
       if (work.cancelled || disposed) return;
       const request = work.request;
+      // The compute permit covers runtime init, session load, canary and inference.
+      leases.set(
+        work.jobId,
+        await governor.request({
+          id: String(work.jobId),
+          op: heavyOp(request),
+          context: contextOf(request),
+          bytes: 0,
+          sessions: 1,
+        }),
+      );
+      if (work.cancelled || disposed) return;
       const inputs = sources(request).map((source) => source.input);
       let output: Output;
       if (request.kind === 'import') {
@@ -381,6 +428,8 @@ export function createOperationService(
             });
       }
       work.output = output;
+      // Compute has settled: file preparation below holds no heavyweight permit.
+      await settleLease(work);
       // Delivery can detach owners or synchronously request another operation.
       const readyOwners = [...work.owners];
       for (const [item, role] of readyOwners) readyOwner(item, work, role, output);
@@ -420,6 +469,7 @@ export function createOperationService(
               },
         );
     } finally {
+      await settleLease(work);
       works.delete(work.jobId);
       if (active === work) active = undefined;
       work.release();
@@ -484,6 +534,11 @@ export function createOperationService(
     requestMorph: queue,
     requestImport: queue,
     requestNext,
+    capability(route) {
+      return governor.capability(
+        `${route.requested === 'webgpu' ? 'webgpu' : 'cpu'}:${route.runtimeSha256}`,
+      );
+    },
     setBlocked(state) {
       blocked = {
         ...state,
