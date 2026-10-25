@@ -49,14 +49,26 @@ for (const revision of revisions) {
     const lint = format.filter((f) => /\.m?[jt]sx?$/.test(f));
     for (const [tool, args] of [
       ['oxfmt', ['--check', ...format]],
-      ['oxlint', ['--deny-warnings', ...lint]],
+      ['oxlint', ['--deny-warnings', '--no-error-on-unmatched-pattern', ...lint]],
     ]) {
       if (tool === 'oxlint' && !lint.length) continue;
       const binary = join(root, 'node_modules/.bin', tool);
       if (!existsSync(binary)) throw new Error(`${tool} is missing: run npm ci first`);
-      const result = spawnSync(binary, args, { cwd: temp, stdio: 'inherit' });
+      const result = spawnSync(binary, args, { cwd: temp, encoding: 'utf8' });
       if (result.error) throw result.error;
-      if (result.status !== 0) {
+      // Oxfmt has no equivalent of Oxlint's unmatched-pattern flag. Accept only its exact
+      // no-target verdict, never syntax/configuration errors or ordinary formatting failures.
+      const noFormatTargets =
+        tool === 'oxfmt' &&
+        result.status === 2 &&
+        result.stdout === 'Checking formatting...\n\n' &&
+        result.stderr.trim() ===
+          'Expected at least one target file. All matched files may have been excluded by ignore rules.';
+      if (!noFormatTargets) {
+        process.stdout.write(result.stdout);
+        process.stderr.write(result.stderr);
+      }
+      if (result.status !== 0 && !noFormatTargets) {
         console.error(
           `${mode}: ${tool} failed on ${staged ? 'staged' : head} files; fix and commit them before pushing.`,
         );

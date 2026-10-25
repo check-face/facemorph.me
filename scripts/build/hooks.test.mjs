@@ -52,16 +52,23 @@ test('cheap hooks reject broken staged/pushed blobs despite a clean working copy
     git('add', 'bad.mjs');
     git('commit', '-qm', 'good');
     assert.match(readFileSync(`${plugin}.ran`, 'utf8'), /guardguard/);
-    const base = git('rev-parse', 'HEAD').trim();
     const remote = join(dir, 'remote.git');
     execFileSync('git', ['init', '-q', '--bare', remote]);
     git('remote', 'add', 'origin', remote);
     git('push', '-q', 'origin', 'main');
+    // Imported legacy sources are intentionally excluded by Oxc's versioned config. A
+    // change consisting only of these still needs to commit and push through the real hooks.
+    mkdirSync(join(root, 'apps/web/src/Next'), { recursive: true });
+    writeFileSync(join(root, 'apps/web/src/Next/legacy.mjs'), 'export const legacy={a:1}\n');
+    git('add', 'apps/web/src/Next/legacy.mjs');
+    git('commit', '-qm', 'ignored legacy source');
+    git('push', '-q', 'origin', 'main');
+    const remoteHead = git('rev-parse', 'HEAD').trim();
     // Create an actual bad commit with plumbing, leaving the good working copy intact.
     writeFileSync(join(root, 'bad.mjs'), 'export const x={a:1}\n');
     git('add', 'bad.mjs');
     const tree = git('write-tree').trim();
-    const bad = git('commit-tree', tree, '-p', base, '-m', 'bad pushed').trim();
+    const bad = git('commit-tree', tree, '-p', remoteHead, '-m', 'bad pushed').trim();
     writeFileSync(join(root, 'bad.mjs'), good);
     const push = spawnSync('git', ['push', 'origin', `${bad}:refs/heads/main`], {
       cwd: root,
@@ -69,7 +76,7 @@ test('cheap hooks reject broken staged/pushed blobs despite a clean working copy
     });
     assert.notEqual(push.status, 0, push.stdout + push.stderr);
     assert.match(push.stderr, /oxfmt failed/);
-    assert.equal(git('ls-remote', 'origin', 'refs/heads/main').split(/\s/)[0], base);
+    assert.equal(git('ls-remote', 'origin', 'refs/heads/main').split(/\s/)[0], remoteHead);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
