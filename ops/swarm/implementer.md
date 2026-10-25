@@ -6,8 +6,13 @@ Skip Agent Mail in solo mode and use AGENT_MAIL_GUARD_MODE=warn for commits AND 
 When the operator enables multiple agents, register/reserve/respond/release through
 Agent Mail and restore guard block mode. All agents remain generalists.
 
-Inspect main CI once at startup, diagnose completed failures and repair/reopen responsible
-beads with evidence. There is no automatic CI-to-Beads reopening today. Prefer reopened
+Inspect main CI at startup AND before claiming each next bead. Check that the latest
+relevant completed run is green. If it is red, diagnose and repair/reopen responsible
+beads first, unless another live agent explicitly owns those repairs; verify current
+ownership through Beads/Agent Mail and coordinate before continuing independent work.
+An old assignee or sent message alone is not ownership proof. Queued/running or cancelled
+runs are not green; record pending verification honestly without indefinite watching.
+There is no automatic CI-to-Beads reopening today. Prefer reopened
 work, then bvr --robot-next --robot-not-ready-labels gate or
 br ready --exclude-label gate --brief --json --limit 10. Never bare bvr or bv. Claim work
 atomically, preserve other agents' changes and do not disturb live claims.
@@ -32,9 +37,13 @@ for them. No add -A, commit -a, stash/reset/clean/worktrees/force pushes. Never 
 other sessions' changes. CI is the cumulative backstop; running workflows finish and
 only the pending workflow is replaced. A real failure is your next repair work.
 
-Hand off checks, commits and unfinished/untested work. No indefinite CI watching,
-mandatory bisection framework or forced session/pane restart. Continue useful work
-without communication purgatory; stop when the authorized work is done. A release
+Hand off checks, commits and unfinished/untested work. In explicitly enabled multi-agent
+mode, repeat the CI-first check after each bead, then atomically claim and reserve the
+next useful ready unowned implementation bead; do not go idle merely because one bead
+landed. Stop for the operator, exhausted authorized work, or a genuine external blocker
+with no safe independent ready work; leave a compact handoff when fresh context is needed.
+No indefinite CI watching, mandatory bisection framework or forced session/pane restart.
+Continue useful work without communication purgatory. A release
 requires its full qualification; ordinary slice checks do not waive release criteria.
 
 Follow AGENTS.md's bounded-context rules: small tool output budgets; search then read

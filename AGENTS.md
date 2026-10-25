@@ -78,6 +78,13 @@ Do not restart panes, launch a swarm or spawn helpers in the current mode.
 
 1. Inspect changes and inspect CI at startup and before picking up each next bead:
    `gh run list --workflow main.yml --branch main --limit 5`.
+   Check whether the latest relevant completed CI is green before claiming new
+   implementation work. If it is red, repair the failures first unless another
+   live agent explicitly owns those repairs. Verify that ownership through current
+   Beads/Agent Mail evidence; an old assignee or sent message alone is insufficient.
+   With an active repair owner, coordinate and continue independent ready work.
+   Queued/running or cancelled runs are not green; record pending verification
+   honestly, without indefinite watching or duplicating an owned repair.
    If a relevant completed run failed, capture `gh run view <id> --log-failed` to
    a local file and inspect bounded error excerpts, diagnose
    the actual failure and repair attributable breakage before new bead work. CI does not
