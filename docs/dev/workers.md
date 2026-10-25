@@ -43,6 +43,11 @@ for development or the ordinary CPU CI checks.
 
 Portable jobs use `runs-on: [self-hosted, linux-x64]`. All four Triton runners and
 all four eris build runners advertise those labels; the device-lab runner does not.
+The portable pool needs GitHub CLI (`gh`) on its service PATH for artifact lookup
+tests, in addition to the workflow-provided Node toolchain. After an observed
+`spawnSync gh ENOENT` scaffold failure, Triton received the checksum-verified
+upstream CLI 2.103.2 in `/usr/local/bin/gh`; the real expired-classic-artifact test
+passed there on 25 October. New/rebuilt workers need the same prerequisite.
 GitHub can assign independent jobs to either machine, so queued CPU work remains
 eligible for eris when every Triton runner is offline. Four Triton slots share its
 20 threads and 125 GiB RAM; they are not four separate 20-thread machines. Run useful
