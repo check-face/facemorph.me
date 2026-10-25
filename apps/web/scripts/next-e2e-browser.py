@@ -18,6 +18,11 @@ out=Path('next-e2e-evidence');downloads=(out/'downloads').resolve()
 UNTIL=os.environ.get('E2E_UNTIL','')
 result={'passed':False,'checks':{},'runtimeSha256':os.environ.get('RUNTIME_SHA',''),'scope':'Exact compiled UI CPU qualification; synthetic inputs only; not physical-phone evidence. The agent string below states which engine actually ran this; one engine is not evidence for another.'}
 CTX={}  # stage-to-stage artifacts: seedPng, seedSha, workerBaseline, projectFile
+network=None
+_browser_js=js
+def js(source):
+ if network is not None:network.collect()
+ return _browser_js(source)
 
 # --- Locator contract: the single place a UI rename may break this harness. ---------------
 # Buttons are matched by accessible name via the AX tree; fields by aria-label; containers by
@@ -80,7 +85,7 @@ def click(name,expect=None):
  # button; `expect` (when given) re-queries up to three times, re-clicking if the UI did not
  # react, before falling back to the coordinate route.
  for attempt in range(3):
-  if js("(()=>{const b=[...document.querySelectorAll('button')].find(x=>x.textContent.trim()===%s||x.getAttribute('aria-label')===%s);if(!b)return false;b.click();return true;})()"%(json.dumps(name),json.dumps(name))):
+  if js("(()=>{const b=[...document.querySelectorAll('button,[role=menuitem]')].find(x=>x.textContent.trim()===%s||x.getAttribute('aria-label')===%s);if(!b)return false;b.click();return true;})()"%(json.dumps(name),json.dumps(name))):
    if expect is None:
     time.sleep(1)
     if js("(()=>{const b=[...document.querySelectorAll('button')].find(x=>x.textContent.trim()===%s||x.getAttribute('aria-label')===%s);return !!b;})()"%(json.dumps(name),json.dumps(name))) or True:
@@ -99,10 +104,12 @@ def click(name,expect=None):
  # the accessible button.
  for attempt in range(5):
   nodes=cdp('Accessibility.getFullAXTree')['nodes'];name_lower=name.lower()
-  n=next((n for n in nodes if n.get('role',{}).get('value')=='button' and n.get('name',{}).get('value','').lower()==name_lower),None)
+  n=next((n for n in nodes if n.get('role',{}).get('value') in ('button','menuitem') and n.get('name',{}).get('value','').lower()==name_lower),None)
+  if n is None:
+   time.sleep(.5);continue
   ident=n['backendDOMNodeId'];cdp('DOM.scrollIntoViewIfNeeded',backendNodeId=ident)
   box=cdp('DOM.getBoxModel',backendNodeId=ident)['model']['content'];x,y=sum(box[0::2])/4,sum(box[1::2])/4
-  if js("(()=>{const e=document.elementFromPoint(%f,%f),b=e&&e.closest('button');return !!(b&&(b.textContent.trim()===%s||b.getAttribute('aria-label')===%s));})()"%(x,y,json.dumps(name),json.dumps(name))):
+  if js("(()=>{const e=document.elementFromPoint(%f,%f),b=e&&e.closest('button,[role=menuitem]');return !!(b&&(b.textContent.trim()===%s||b.getAttribute('aria-label')===%s));})()"%(x,y,json.dumps(name),json.dumps(name))):
    click_at_xy(x,y);return
   time.sleep(.5)
  # Name what the page was actually showing: whether the button was there at all, whether it was
@@ -157,13 +164,22 @@ def save_check(name,data):result['checks'][name]=data;(out/'report.json').write_
 
 # --- Stages ------------------------------------------------------------------------------
 def stage_preflight():
+ global network
  # Seconds-fast tripwire for the failure class that actually burned us: UI drift. No
  # synthesis, no downloads - only presence of the controls the later stages depend on, plus
  # the provenance assertions (isolation headers, exact artifact origin, engine identity).
  cdp('Page.enable')
  cdp('Page.addScriptToEvaluateOnNewDocument',source="window.__ciWorkers=0;window.__ciWorkerRequests=0;const OriginalWorker=window.Worker;window.Worker=class extends OriginalWorker{constructor(...args){super(...args);window.__ciWorkers++;}postMessage(...args){window.__ciWorkerRequests++;return super.postMessage(...args);}};")
  cdp('Browser.setDownloadBehavior',behavior='allow',downloadPath=str(downloads))
- new_tab('https://next.facemorph.me/');wait_for_load()
+ new_tab('about:blank')
+ if os.environ.get('INTERCEPT_DIR'):
+  import sys
+  sys.path.insert(0,os.environ['INTERCEPT_DIR'])
+  import intercept
+  from browser_harness.helpers import _send
+  network=intercept.attach_cdp(cdp,drain_events,json.loads(os.environ['NETWORK_HOST_MAP']),page_session=_send({'meta':'session'}).get('session_id'),page_target=current_tab()['targetId'])
+  intercept.step(network.rec,'journey')
+ goto_url('https://next.facemorph.me/');wait_for_load()
  # Register on the actual tab too: the initial registration may belong to the prior tab.
  js("if(window.__ciWorkers===undefined){window.__ciWorkers=0;window.__ciWorkerRequests=0;const W=window.Worker;window.Worker=class extends W{constructor(...a){super(...a);window.__ciWorkers++;}postMessage(...args){window.__ciWorkerRequests++;return super.postMessage(...args);}};}")
  wait(idle,60);assert js('crossOriginIsolated'), 'Production isolation headers missing'
@@ -313,6 +329,7 @@ def stage_syntheticPhotoE4e():
 def stage_localCrop():
  # Crop the chosen photo locally and generate from the crop, so an arbitrary original never
  # has to be aligned whole. The crop is what reaches alignment.
+ js("document.querySelector('.next-face[data-next-state=\"photo\"] [aria-label=\"Change mode\"]').click()")
  click(S['buttons']['crop'],expect=lambda:js("!!document.querySelector('%s img')"%S['cropView']))
  wait(lambda:js("!!document.querySelector('%s img')"%S['cropView']),60)
  # The whole square is kept: alignment rightly refuses a crop that cuts the face in half or
@@ -445,6 +462,9 @@ except Exception as error:
  result['error']=str(error)
  raise
 finally:
+ if network is not None:
+  network.settled()
+  (out/'network.json').write_text(json.dumps(network.rec,indent=1))
  try:result['downloadGateAccepted']=js('window.__ciGate||0')
  except Exception:pass
  result['finishedAt']=time.time();(out/'report.json').write_text(json.dumps(result,indent=2));print(json.dumps(result))

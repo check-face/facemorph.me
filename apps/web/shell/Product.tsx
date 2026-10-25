@@ -114,6 +114,7 @@ export function Product({ store }: { store: Store }) {
             onMode={(mode) => dispatch(msg('Mode', item.id, mode))}
             onBrowse={() => dispatch(msg('BrowseNames', item.id))}
             onPhoto={(files) => dispatch(msg('PickPhoto', item.id, files))}
+            onRequestCrop={() => dispatch(msg('RequestCrop', item.id))}
             onPhotos={(files) => dispatch(msg('Photos', item.id, files))}
             onRun={() => dispatch(msg('RunFace', item.id))}
             onCancel={() => dispatch(msg('CancelFace', item.id))}

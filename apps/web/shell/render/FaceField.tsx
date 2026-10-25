@@ -26,6 +26,7 @@ export interface FaceFieldProps {
   readonly onMode: (mode: FaceMode) => void;
   readonly onBrowse: () => void;
   readonly onPick: () => void;
+  readonly onRequestCrop?: () => void;
   readonly onRun?: () => void;
   readonly canRun?: boolean;
   readonly onPhoto?: (files: File[]) => void;
@@ -43,6 +44,7 @@ export function FaceField({
   onMode,
   onBrowse,
   onPick,
+  onRequestCrop,
   onRun,
   canRun = false,
   onPhoto,
@@ -116,6 +118,16 @@ export function FaceField({
           photoEncodingAvailable ? 'Encode image' : 'Open saved image',
         )}
         {item.mode === 'project' && entry('project', <RefreshIcon />, 'Restored face')}
+        {item.mode === 'photo' && item.file && onRequestCrop && (
+          <MenuItem
+            onClick={() => {
+              setOpen(false);
+              onRequestCrop();
+            }}
+          >
+            Crop photo
+          </MenuItem>
+        )}
       </Menu>
       <div className="next-field">
         <TextField

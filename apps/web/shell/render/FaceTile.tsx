@@ -34,6 +34,7 @@ export interface FaceTileProps {
   readonly onMode: (mode: FaceMode) => void;
   readonly onBrowse: () => void;
   readonly onPhoto: (files: File[]) => void;
+  readonly onRequestCrop?: () => void;
   readonly onPhotos: (files: File[]) => void;
   readonly onRun: () => void;
   readonly onCancel: () => void;
@@ -195,6 +196,7 @@ export function FaceTile(p: FaceTileProps) {
           onMode={p.onMode}
           onBrowse={p.onBrowse}
           onPick={() => openPhotoPicker(item.id)}
+          {...(p.onRequestCrop ? { onRequestCrop: p.onRequestCrop } : {})}
           canRun={!!canGenerate && !working}
           onRun={p.onRun}
           onPhoto={p.onPhoto}

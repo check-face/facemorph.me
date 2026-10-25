@@ -1127,10 +1127,10 @@
       "class": "temporary-root",
       "temporary": true,
       "ported": {
-        "sha256": "e2052e220ace50697951291a41d0dddc99c7597413af2b5909cdff3e2d60f99d",
-        "bytes": 37840,
-        "bead": "fm-j16n",
-        "reason": "projectSaveReopen reason and comment name project-json.test.ts, which replaced verify-fable.mjs; Photo/crop source assertions now execute typed reducers; active check descriptions reference the retained artifact and typed codec."
+        "sha256": "260416203392be69891a66e471b3c3fc15b4c9a1786b6b77c0a14506150d8263",
+        "bytes": 38783,
+        "bead": "fm-aa8",
+        "reason": "Preserve typed project-codec checks; adapt provider and tile controls for WebGL/filename retirement, retain crop in its mode menu, and use the existing CDP interceptor for worker evidence under no-referrer production headers."
       }
     },
     {

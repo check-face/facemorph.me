@@ -222,43 +222,41 @@ async function main(argv) {
         }
       });
     });
+    const { fileLog, DEFAULT_HOST_MAP } = await import(
+      join(REPO, 'scripts/ci/intercept/playwright.ts')
+    );
     const env = {
       BU_NAME: name,
       BU_CDP_WS: ws,
       BU_CDP_URL: '',
       RUNTIME_SHA: a['runtime-sha'],
+      INTERCEPT_DIR: join(REPO, 'scripts/ci/intercept'),
+      NETWORK_HOST_MAP: JSON.stringify({
+        version: DEFAULT_HOST_MAP.version,
+        rules: [ANALYTICS_RULE, ...DEFAULT_HOST_MAP.rules],
+      }),
     };
-    // The journey drains the harness daemon's event buffer as it waits, so the network is recorded by a second CDP
-    // client on the same browser: Playwright over CDP with the interception helper on its default context.
+    // The existing CDP interceptor records worker targets directly, including under no-referrer production
+    // headers. Playwright observes inference replies; its referrer-based network attribution cannot do that.
     const { chromium } = createRequire(join(REPO, 'apps/web/package.json'))('playwright');
-    const { attachPlaywright, fileLog, DEFAULT_HOST_MAP } = await import(
-      join(REPO, 'scripts/ci/intercept/playwright.ts')
-    );
-    const { assertNoRequests, requestsIn, step } = await import(
+    const { assertNoRequests, requestsIn } = await import(
       join(REPO, 'scripts/ci/intercept/record.ts')
     );
     const observer = await chromium.connectOverCDP(ws);
     const context = observer.contexts()[0];
-    const att = attachPlaywright(context, {
-      version: DEFAULT_HOST_MAP.version,
-      rules: [ANALYTICS_RULE, ...DEFAULT_HOST_MAP.rules],
-    });
     const events = [];
     context.on('console', (m) => {
       const text = m.text();
       if (text.startsWith(PROBE_TAG)) events.push(JSON.parse(text.slice(PROBE_TAG.length)));
     });
     await context.addInitScript(PROBE);
-    step(att.rec, 'journey');
     const journey = await harness(readFileSync(JOURNEY, 'utf8'), env, work, 1_500_000);
     writeFileSync(join(out, 'journey.log'), journey.out + journey.err);
     if (journey.code !== 0) process.stderr.write(journey.err.slice(-4000));
-    await att.settled();
     await observer.close().catch(() => {}); // disconnects; the harness's browser keeps running until stopped below
     if (existsSync(join(work, 'next-e2e-evidence')))
       cpSync(join(work, 'next-e2e-evidence'), out, { recursive: true });
-    const rec = att.rec;
-    writeFileSync(join(out, 'network.json'), JSON.stringify(rec, null, 1));
+    const rec = JSON.parse(readFileSync(join(out, 'network.json'), 'utf8'));
     writeFileSync(join(out, 'inference-events.json'), JSON.stringify(events, null, 1));
     const log = fileLog(join(out, 'network-assertions.jsonl'));
     const third = assertNoRequests(rec, 'third-party', {}, log);
