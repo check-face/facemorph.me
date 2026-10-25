@@ -396,6 +396,15 @@ test(
     const result = await call<{
       rejectionMessage: string;
       rejectionClearedPreparing: boolean;
+      beforeConfirmation: {
+        gate: boolean;
+        jobId: number;
+        sourceModes: string[];
+        preparing: number;
+      };
+      cancelledSourceMode: string;
+      editorBlocksConfirmation: boolean;
+      adjustmentCancelled: boolean;
       queued: string[];
       cancelledUrlReleased: boolean;
       nextShown: string;
@@ -407,6 +416,15 @@ test(
     }>('controllerPhotoJourney');
     assert.equal(result.rejectionMessage, 'Choose a photo.');
     assert.equal(result.rejectionClearedPreparing, true);
+    assert.deepEqual(result.beforeConfirmation, {
+      gate: false,
+      jobId: 0,
+      sourceModes: ['text', 'text'],
+      preparing: 0,
+    });
+    assert.equal(result.cancelledSourceMode, 'text');
+    assert.equal(result.editorBlocksConfirmation, true);
+    assert.equal(result.adjustmentCancelled, true);
     assert.deepEqual(result.queued, ['face-2']);
     assert.equal(result.cancelledUrlReleased, true);
     assert.equal(result.nextShown, 'face-2');

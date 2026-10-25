@@ -368,17 +368,22 @@ export async function controllerPhotoJourney() {
     const file = new File([bytes], 'photo.jpg', { type: 'image/jpeg' });
     for (const id of ['face-1', 'face-2']) {
       store.dispatch(msg('PickPhoto', id, [file]));
-      await until(store, () => store.getState().Gate !== null || Boolean(store.getState().Error));
-      if (store.getState().Error) throw new Error(store.getState().Error!);
-      store.dispatch(msg('GateCancel'));
-      store.dispatch(msg('RequestCrop', id));
       await until(
         store,
         () =>
           store.getState().Crop?.faceId === id ||
-          store.getState().CropQueue.some((choice) => choice.faceId === id),
+          store.getState().CropQueue.some((choice) => choice.faceId === id) ||
+          Boolean(store.getState().Error),
       );
+      if (store.getState().Error) throw new Error(store.getState().Error!);
     }
+    const unconfirmed = store.getState();
+    const beforeConfirmation = {
+      gate: unconfirmed.Gate !== null,
+      jobId: unconfirmed.JobId,
+      sourceModes: unconfirmed.Inputs.map((input) => input.mode),
+      preparing: unconfirmed.PreparingFaces.size,
+    };
     const firstUrl = store.getState().Crop!.url;
     const queued = store.getState().CropQueue.map((choice) => choice.faceId);
     store.dispatch(msg('CropCancel'));
@@ -388,12 +393,27 @@ export async function controllerPhotoJourney() {
     } catch {
       cancelledUrlReleased = true;
     }
+    const cancelledSourceMode = store
+      .getState()
+      .Inputs.find((input) => input.id === 'face-1')?.mode;
     const nextShown = store.getState().Crop?.faceId;
+    const proposal = JSON.stringify(store.getState().Crop!.view);
+    store.dispatch(msg('CropAdjust'));
+    store.dispatch(msg('CropZoom', 1.5));
+    store.dispatch(msg('CropAccept'));
+    const editorBlocksConfirmation =
+      store.getState().Crop?.previousView !== undefined &&
+      store.getState().JobId === 0 &&
+      store.getState().PreparingFaces.size === 0;
+    store.dispatch(msg('CropCancel'));
+    const adjustmentCancelled = JSON.stringify(store.getState().Crop!.view) === proposal;
+    store.dispatch(msg('CropAdjust'));
     store.dispatch(msg('CropZoom', 1.5));
     store.dispatch(msg('CropPan', 4, 2));
     store.dispatch(msg('CropPan', -4, -2));
     store.dispatch(msg('CropZoom', 1));
     for (let turns = 0; turns < 4; turns++) store.dispatch(msg('CropRotate'));
+    store.dispatch(msg('CropUse'));
     store.dispatch(msg('DownloadNow', true));
     store.dispatch(msg('CropAccept'));
     await until(
@@ -409,6 +429,10 @@ export async function controllerPhotoJourney() {
     return {
       rejectionMessage,
       rejectionClearedPreparing,
+      beforeConfirmation,
+      cancelledSourceMode,
+      editorBlocksConfirmation,
+      adjustmentCancelled,
       queued,
       cancelledUrlReleased,
       nextShown,
