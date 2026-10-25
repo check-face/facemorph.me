@@ -1132,6 +1132,19 @@ def run_cell_retrying(cell, args, out):
     return rep
 
 
+def port_listening(port):
+    """Whether a process listens on the port. SO_REUSEADDR lets the probe ignore TIME-WAIT sockets a
+    just-finished run leaves behind (the server itself reuses the address), while a live listener still
+    refuses the bind."""
+    with socket.socket() as probe:
+        probe.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        try:
+            probe.bind(('127.0.0.1', port))
+        except OSError:
+            return True
+    return False
+
+
 class LocalServer:
     """Serves an exact candidate artifact under the production origin (classic's qualification server),
     reached by eris Chromium through host-resolver rules and by the phone through adb reverse."""
@@ -1143,8 +1156,8 @@ class LocalServer:
 
     def __enter__(self):
         # Refuse an occupied port rather than probing another session's server as our artifact.
-        with socket.socket() as port_check:
-            port_check.bind(('127.0.0.1', LOCAL_PORT))
+        if port_listening(LOCAL_PORT):
+            raise OSError(f'127.0.0.1:{LOCAL_PORT} is already served by another process')
         runtime = Path(os.environ.get('RUNTIME_FILES', self.artifact / '.runtime-public'))
         if not runtime.exists():
             raise RuntimeError(f'No acquired runtime at {runtime}; set RUNTIME_FILES to a verified runtime directory')

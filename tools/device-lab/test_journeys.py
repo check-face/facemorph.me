@@ -150,13 +150,30 @@ class Registry(unittest.TestCase):
         report = {**Evidence.report(self), 'ok': True}
         warm = {**report['runs'][0]['warm'], 'faceS': 9.0}
         report['runs'] = [{'ok': True, 'warm': warm, 'durationsS': {'warm-face': 12.0}},
-                          {'ok': True, 'warm': warm, 'durationsS': {'warm-face': 14.0, 'morph': 70.0},
-                           'morph': {'videoS': 70.0, 'route': 'Ready', 'url': 'https://localhost/'}}]
+                          {'ok': True, 'warm': warm, 'durationsS': {'warm-face': 14.0, 'operated': 3.0}}]
         with tempfile.TemporaryDirectory() as tmp:
             lab.summarise([report], Path(tmp), 'budget check')
             text = (Path(tmp) / 'summary.md').read_text()
         self.assertIn('| eris-cpu | warm-face | 12s/14s | 20s | within budget |', text)
-        self.assertIn('| eris-cpu | morph | 70s | – | unbudgeted |', text)
+        self.assertIn('| eris-cpu | operated | 3s | – | unbudgeted |', text)
+
+
+class LocalPort(unittest.TestCase):
+    def test_a_live_listener_is_refused_but_time_wait_is_not(self):
+        import socket
+        server = socket.socket()
+        server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        server.bind(('127.0.0.1', 0))
+        server.listen()
+        port = server.getsockname()[1]
+        self.assertTrue(lab.port_listening(port), 'a live server owns the port')
+        # A completed connection closed by the server side leaves TIME-WAIT on the server port.
+        client = socket.create_connection(('127.0.0.1', port))
+        accepted, _ = server.accept()
+        accepted.close()
+        client.close()
+        server.close()
+        self.assertFalse(lab.port_listening(port), 'TIME-WAIT from a finished run is not a listener')
 
 
 if __name__ == '__main__':
