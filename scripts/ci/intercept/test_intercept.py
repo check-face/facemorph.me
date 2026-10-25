@@ -162,6 +162,8 @@ class CdpHelper(unittest.TestCase):
         self.assertEqual([v['verdict'] for v in r['verdicts']], ['pass', 'pass', 'pass', 'pass', 'fail'])
         self.assertTrue(any(q['initiator'] == 'worker' for q in r['record']['requests']))
         self.assertTrue(any(q['initiator'] == 'service-worker' for q in r['record']['requests']))
+        self.assertTrue(r['shot'])
+        self.assertEqual(Path(r['shot']).read_bytes()[:8], b'\x89PNG\r\n\x1a\n')
 
     def test_fixture_page_attribution_failures_console_and_the_approved_model(self):
         r = journey(False)

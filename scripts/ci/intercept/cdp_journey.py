@@ -52,6 +52,9 @@ verdicts = [
     intercept.requestsIn(att.rec, {'hostClass': 'app', 'fromCache': True}, log),
     intercept.assertNoRequests(att.rec, 'model-host', {'fromStep': 'consent'}, log),
 ]
+# Activate the measured page before capturing its compositor surface. Without
+# this, the real delayed-navigation regression stalls in Page.captureScreenshot.
+cdp('Page.bringToFront')
 shot = intercept.keep_on_failure(verdicts, capture_screenshot, os.path.join(log_dir, 'early' if early else 'approved'))
 print(json.dumps({'record': att.rec, 'verdicts': [{k: v for k, v in x.items() if k != 'requests'} for x in verdicts],
                   'shot': shot}))

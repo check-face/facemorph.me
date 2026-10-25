@@ -107,7 +107,7 @@ const { chromium } = createRequire(join(REPO, 'apps/web/package.json'))('playwri
       endpoint: string,
       o?: object,
     ): Promise<{
-      newContext(o?: object): Promise<{ newPage(): Promise<Page> } & object>;
+      newContext(o?: object): Promise<Context>;
       close(): Promise<void>;
     }>;
   };
@@ -116,24 +116,30 @@ interface BrowserServer {
   wsEndpoint(): string;
   process(): ChildProcess;
   close(): Promise<void>;
+  kill(): Promise<void>;
 }
 
-// Keep shutdown failure visible and kill only this test's browser process. A browser
-// that stops answering must not consume the entire CI job before printing results.
-async function closeBrowser(server: BrowserServer) {
+// Settle the explicitly owned context (including service workers and pending
+// artifacts) before asking the browser server to exit. Both steps share one bound;
+// a stuck browser still fails, and only this fixture's process group is killed.
+async function closeBrowser(server: BrowserServer, context?: Context) {
   let deadline: ReturnType<typeof setTimeout> | undefined;
   try {
     await Promise.race([
-      server.close(),
+      (async () => {
+        await context?.close();
+        await server.close();
+      })(),
       new Promise<never>((_, reject) => {
         deadline = setTimeout(() => {
-          server.process().kill('SIGKILL');
           reject(new Error('Chromium shutdown exceeded 5 seconds; owned process killed'));
         }, 5_000);
       }),
     ]);
   } catch (error) {
-    server.process().kill('SIGKILL');
+    // Playwright kills the owned process group, not just Chromium's parent.
+    // Do not let cleanup mask the original failure or extend the shutdown bound.
+    void server.kill().catch(() => server.process().kill('SIGKILL'));
     throw error;
   } finally {
     clearTimeout(deadline);
@@ -146,20 +152,27 @@ interface Page {
   waitForFunction(f: string): Promise<unknown>;
   screenshot(o: { path: string; fullPage: boolean }): Promise<unknown>;
 }
+interface Context {
+  newPage(): Promise<Page>;
+  close(): Promise<void>;
+  on(event: 'close', listener: () => void): void;
+}
 
 async function journey(early: boolean, logDir: string) {
   const f = await startFixture();
   let server: BrowserServer | undefined;
+  let context: Context | undefined;
   let lifetime: ReturnType<typeof setTimeout> | undefined;
   try {
     server = await chromium.launchServer({
       executablePath: process.env['CHROMIUM_PATH'],
       timeout: 30_000,
     });
-    const owned = server.process();
-    lifetime = setTimeout(() => owned.kill('SIGKILL'), 90_000);
+    lifetime = setTimeout(() => {
+      void server!.kill().catch(() => server!.process().kill('SIGKILL'));
+    }, 90_000);
     const browser = await chromium.connect(server.wsEndpoint(), { timeout: 30_000 });
-    const context = await browser.newContext({ serviceWorkers: 'allow' });
+    context = await browser.newContext({ serviceWorkers: 'allow' });
     const att = attachPlaywright(context as never, f.hostMap);
     const page = await context.newPage();
     step(att.rec, 'load');
@@ -181,7 +194,7 @@ async function journey(early: boolean, logDir: string) {
     return { rec: att.rec, verdicts, shot };
   } finally {
     try {
-      if (server) await closeBrowser(server);
+      if (server) await closeBrowser(server, context);
     } finally {
       clearTimeout(lifetime);
       await f.stop();
@@ -195,27 +208,6 @@ const logDir = process.env['INTERCEPT_LOG_DIR'] ?? mkdtempSync(join(tmpdir(), 'i
 const NO_BROWSER = existsSync(process.env['CHROMIUM_PATH'] ?? chromium.executablePath())
   ? false
   : 'untested: Chromium executable is not installed';
-
-test(
-  'an unresponsive owned Chromium is killed and shutdown reports failure',
-  { skip: NO_BROWSER },
-  async () => {
-    const server = await chromium.launchServer({
-      executablePath: process.env['CHROMIUM_PATH'],
-      timeout: 30_000,
-    });
-    const child = server.process();
-    const exited = new Promise<void>((resolve) => child.once('exit', () => resolve()));
-    try {
-      assert.equal(child.kill('SIGSTOP'), true);
-      await assert.rejects(closeBrowser(server), /shutdown exceeded 5 seconds/);
-      await exited;
-      assert.equal(child.signalCode, 'SIGKILL');
-    } finally {
-      if (child.exitCode === null && child.signalCode === null) child.kill('SIGKILL');
-    }
-  },
-);
 
 test(
   'Playwright helper on the fixture page: attribution, failures, console and the approved model',
@@ -260,5 +252,58 @@ test(
     assert.equal(verdicts[0]?.count, 1);
     assert.equal(verdicts[1]?.verdict, 'fail');
     assert.ok(shot && existsSync(shot));
+  },
+);
+
+test(
+  'an unresponsive owned Chromium fails shutdown and its process group is killed',
+  { skip: NO_BROWSER },
+  async () => {
+    const server = await chromium.launchServer({
+      executablePath: process.env['CHROMIUM_PATH'],
+      timeout: 30_000,
+    });
+    try {
+      const browser = await chromium.connect(server.wsEndpoint(), { timeout: 30_000 });
+      const context = await browser.newContext();
+      await context.newPage();
+      const child = server.process();
+      const exited = new Promise<void>((resolve) => child.once('exit', () => resolve()));
+      assert.ok(child.pid);
+      process.kill(child.pid, 'SIGSTOP');
+      await assert.rejects(closeBrowser(server, context), /shutdown exceeded 5 seconds/);
+      await exited;
+      assert.equal(child.signalCode, 'SIGKILL');
+    } finally {
+      await server.kill();
+    }
+  },
+);
+
+test(
+  'owned context closes before the browser server exits normally',
+  { skip: NO_BROWSER },
+  async () => {
+    const server = await chromium.launchServer({
+      executablePath: process.env['CHROMIUM_PATH'],
+      timeout: 30_000,
+    });
+    try {
+      const browser = await chromium.connect(server.wsEndpoint(), { timeout: 30_000 });
+      const context = await browser.newContext();
+      await context.newPage();
+      let contextClosed = false;
+      context.on('close', () => {
+        contextClosed = true;
+      });
+      const child = server.process();
+      child.once('exit', () => assert.equal(contextClosed, true));
+      await closeBrowser(server, context);
+      assert.equal(contextClosed, true);
+      assert.equal(child.exitCode, 0);
+      assert.equal(child.signalCode, null);
+    } finally {
+      await server.kill();
+    }
   },
 );
