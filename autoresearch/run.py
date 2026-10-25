@@ -87,7 +87,7 @@ def take(name, wait, env):
                 f.close()
                 return None
             if not said:
-                print(f'Waiting for the {name} lock (another timing run is measuring)', file=sys.stderr)
+                print(f'Waiting for the {name} lock (another timing run is measuring)', file=sys.stderr, flush=True)
                 said = True
             time.sleep(0.2)
 
