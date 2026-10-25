@@ -1831,10 +1831,10 @@
       "bytes": 23028,
       "class": "src-next",
       "ported": {
-        "sha256": "a23d9ad4ecf5a29677e4de824dbd5b75c01329777e5c93f791a01fe0710d18f9",
-        "bytes": 23311,
-        "bead": "fm-7ahg",
-        "reason": "Preserve intended placement; opaque crop panel in light mode and readable names labels with MUI button layout, owner-graded rendering repairs."
+        "sha256": "0122b568d844ccfe21529970def78bf8fbb98f375edb98a1eebbd4d4cb2a7bea",
+        "bytes": 23454,
+        "bead": "fm-25um",
+        "reason": "Retain crop and names rendering repairs; place the single tile operation action inside the face image and retire hold-to-compare styling."
       }
     },
     {

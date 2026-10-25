@@ -7,6 +7,7 @@ import {
   remainingText,
   describeDuration,
   type Measurements,
+  faceInputProblem,
 } from '../derived.ts';
 import { enqueue, without, sameInputs, settingsKey, schedule, runFace } from './schedule.ts';
 
@@ -63,6 +64,9 @@ export function jobs(message: Msg, state: State, facts: JobFacts = {}): Transiti
   switch (message.type) {
     case 'RunFace': {
       const [id] = message.args;
+      const input = state.Inputs.find((item) => item.id === id);
+      if (!input || faceInputProblem(input) || state.Faces.some((face) => face.id === id))
+        return unchanged(state);
       if (state.Busy || state.PreparingFaces.has(id))
         return {
           state: {
@@ -72,12 +76,11 @@ export function jobs(message: Msg, state: State, facts: JobFacts = {}): Transiti
           },
           effects: [{ type: 'queueFace', id, depth: state.PendingFaces.length + 1 }],
         };
-      const input = state.Inputs.find((item) => item.id === id);
-      if (!input) return unchanged(state);
       return start(state, message, 'face', [input], id);
     }
     case 'Run': {
       const [action] = message.args;
+      if (state.Inputs.some((input) => faceInputProblem(input))) return unchanged(state);
       if (
         action === 'morph' &&
         (state.Busy ||
@@ -113,7 +116,7 @@ export function jobs(message: Msg, state: State, facts: JobFacts = {}): Transiti
       };
       if (state.ActiveFace === id)
         return {
-          state: { ...next, Comparing: null, Stage: 'cancelling' },
+          state: { ...next, Stage: 'cancelling' },
           effects: [{ type: 'cancelQueuedFace', id }, { type: 'cancelWork' }],
         };
       const preparing = new Set(state.PreparingFaces);

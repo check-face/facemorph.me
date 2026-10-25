@@ -53,16 +53,6 @@ test('a three-file drop uses an empty tile first then appends in drop order', ()
     ['new-a', files[1]],
     ['new-b', files[2]],
   ]);
-  assert.deepEqual(
-    next.effects
-      .filter((effect) => effect.type === 'rememberSourcePhoto')
-      .map((effect) => [effect.id, effect.file]),
-    [
-      ['face-1', files[0]],
-      ['new-a', files[1]],
-      ['new-b', files[2]],
-    ],
-  );
   assert.deepEqual(next.effects.at(-1), { type: 'selectPhoto', id: 'face-1', files: [files[0]] });
 });
 test('selection failure advances pending photos and drops only that face intent', () => {
@@ -140,4 +130,41 @@ test('photo promise rejections map to PhotoFailed with the original slot and err
     },
   ] as const)
     assert.deepEqual(rejection(effect, error), msg('PhotoFailed', 'face-1', error.message));
+});
+
+test('cancelled chooser and rejected replacement keep the previous result and other faces', () => {
+  const face = (id: string) => ({
+    id,
+    raw: false,
+    url: `blob:${id}`,
+    label: id,
+    sourceMode: 'text',
+    sourceFile: null,
+  });
+  const prior = { ...state, Faces: [face('face-1'), face('face-2')] };
+  assert.equal(photo(msg('PickPhoto', 'face-1', []), prior)!.state, prior);
+  const pending = photo(msg('PickPhoto', 'face-1', [file('damaged.webp')]), prior)!;
+  assert.equal(pending.state.Faces, prior.Faces);
+  assert.equal(
+    pending.effects.some((effect) => effect.type === 'invalidateFace'),
+    false,
+  );
+  const rejected = photo(
+    msg('PhotoFailed', 'face-1', 'This saved image is damaged.'),
+    pending.state,
+  )!;
+  assert.equal(rejected.state.Faces, prior.Faces);
+  assert.equal(rejected.state.Inputs, prior.Inputs);
+  const imported = photo(
+    msg('Photo', 'face-1', {
+      kind: 'recovered',
+      output: { ...recovered, faces: [face('face-1')] },
+    }),
+    pending.state,
+  )!;
+  assert.deepEqual(imported.state.Faces.map((value) => value.id).sort(), ['face-1', 'face-2']);
+  assert.equal(
+    imported.state.Faces.find((value) => value.id === 'face-2'),
+    prior.Faces[1],
+  );
 });

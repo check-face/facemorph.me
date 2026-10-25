@@ -60,11 +60,6 @@ export function Product({ store }: { store: Store }) {
                 available processing routes under More options → Advanced. A capable desktop browser
                 may help if you are using a phone.
               </p>
-              <p>
-                <a href="https://github.com/check-face/facemorph.me-classic/tree/master/desktop">
-                  Desktop app capabilities and availability
-                </a>
-              </p>
             </div>
           )}
           <Support
@@ -100,9 +95,21 @@ export function Product({ store }: { store: Store }) {
             preparing={s.PreparingFaces.has(item.id)}
             fraction={s.Fraction}
             status={s.Status}
+            stopping={s.ActiveFace === item.id && s.Stage === 'cancelling'}
+            retry={
+              s.LastRun?.type === 'RunFace' &&
+              s.LastRun.args[0] === item.id &&
+              s.RunInputs.some(
+                (input) =>
+                  input.id === item.id &&
+                  input.mode === item.mode &&
+                  input.value === item.value &&
+                  input.file === item.file,
+              )
+            }
+            photoEncodingAvailable={!s.Downloads.known || s.Downloads.photoAvailable}
+            onNotice={(message) => dispatch(msg('PhotoError', message))}
             removable={s.Inputs.length > 1}
-            comparing={s.Comparing === item.id}
-            sourcePhotoUrl={facade.sourcePhotoUrl(item.id)}
             onEdit={(value) => dispatch(msg('Edit', item.id, value))}
             onMode={(mode) => dispatch(msg('Mode', item.id, mode))}
             onBrowse={() => dispatch(msg('BrowseNames', item.id))}
@@ -111,8 +118,6 @@ export function Product({ store }: { store: Store }) {
             onRun={() => dispatch(msg('RunFace', item.id))}
             onCancel={() => dispatch(msg('CancelFace', item.id))}
             onRemove={() => dispatch(msg('Remove', item.id))}
-            onRequestCrop={() => dispatch(msg('RequestCrop', item.id))}
-            onCompare={(on) => dispatch(msg('Compare', on ? item.id : null))}
             onShare={() => dispatch(msg('Share', item.id))}
             onSave={() => dispatch(msg('Save', item.id))}
             drawFace={(canvas, id) => {

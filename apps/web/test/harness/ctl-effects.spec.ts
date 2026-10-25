@@ -79,7 +79,6 @@ export async function controllerRoutingStep(type: Effect['type']) {
     },
     invalidateFace: { type: 'invalidateFace', id: probeInput.id },
     invalidatePhotoSelections: { type: 'invalidatePhotoSelections', id: probeInput.id },
-    rememberSourcePhoto: { type: 'rememberSourcePhoto', id: probeInput.id, file: null },
     publicPreview: { type: 'publicPreview', id: probeInput.id },
     setDebug: { type: 'setDebug', enabled: false, basis: 'checkbox' },
     rememberSlider: { type: 'rememberSlider', enabled: false, frame: 1 },

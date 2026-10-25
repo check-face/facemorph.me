@@ -29,7 +29,6 @@ export type EverydayEffect =
       readonly type: 'invalidateFace' | 'invalidatePhotoSelections' | 'publicPreview';
       readonly id: string;
     }
-  | { readonly type: 'rememberSourcePhoto'; readonly id: string; readonly file: null }
   | {
       readonly type: 'dispatch';
       readonly message: Extract<Msg, { type: 'RunFace' | 'BrowseNames' }>;
@@ -59,7 +58,6 @@ export type Effect =
 export type PhotoEffect =
   | { readonly type: 'focusCropArea' | 'cancelPhotoRun' }
   | { readonly type: 'revokeUrl'; readonly url: string }
-  | { readonly type: 'rememberSourcePhoto'; readonly id: string; readonly file: Blob }
   | { readonly type: 'selectPhoto'; readonly id: string; readonly files: readonly File[] }
   | { readonly type: 'previewPhoto'; readonly id: string; readonly file: Blob }
   | {

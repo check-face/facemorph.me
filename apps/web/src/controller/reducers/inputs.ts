@@ -4,16 +4,26 @@ import { unchanged, type Transition } from '../effects.ts';
 export function change(state: State, id: string, replace: (input: Input) => Input): State {
   const cached = new Set(state.CachedFaces);
   cached.delete(id);
+  const preparing = new Set(state.PreparingFaces);
+  preparing.delete(id);
   return {
     ...state,
     CachedFaces: cached,
+    PreparingFaces: preparing,
+    PendingFaces: state.PendingFaces.filter((slot) => slot !== id),
+    PendingJobs: state.PendingJobs.filter(
+      (job) =>
+        !(job.type === 'RunFace' && job.args[0] === id) &&
+        !(job.type === 'Run' && job.args[0] === 'morph'),
+    ),
+    PendingMorph: false,
+    Stage: state.Busy && state.ActiveFace === id ? 'cancelling' : state.Stage,
     Faces: state.Faces.filter((f) => f.id !== id),
     Inputs: state.Inputs.map((i) => (i.id === id ? replace(i) : i)),
     VideoUrl: '',
-    Status: '',
+    Status: state.Busy && state.ActiveFace !== id ? state.Status : '',
   };
 }
-const digits = (value: string) => [...value].filter((c) => /\p{Nd}/u.test(c)).join('');
 /** AddAt's fresh ID is supplied by the effect runner, keeping randomness outside pure reducers. */
 export interface InputFacts {
   readonly newFaceId?: string;
@@ -24,7 +34,7 @@ export function inputs(message: Msg, state: State, facts: InputFacts = {}): Tran
       const [id, value] = message.args;
       const next = change(state, id, (item) => ({
         ...item,
-        value: item.mode === 'seed' ? digits(value) : value,
+        value,
       }));
       return {
         state: next,
@@ -32,7 +42,6 @@ export function inputs(message: Msg, state: State, facts: InputFacts = {}): Tran
           { type: 'invalidateArrivalRestore' },
           { type: 'invalidatePhotoSelections', id },
           { type: 'invalidateFace', id },
-          ...(next.Inputs.some((i) => i.id === id) ? [{ type: 'publicPreview' as const, id }] : []),
         ],
       };
     }
@@ -42,18 +51,12 @@ export function inputs(message: Msg, state: State, facts: InputFacts = {}): Tran
         ...item,
         mode,
         file: null,
-        value:
-          item.mode === 'photo' || item.mode === 'project'
-            ? ''
-            : mode === 'seed'
-              ? digits(item.value)
-              : item.value,
+        value: item.mode === 'photo' || item.mode === 'project' ? '' : item.value,
       }));
       return {
         state: next,
         effects: [
           { type: 'invalidateArrivalRestore' },
-          { type: 'rememberSourcePhoto', id, file: null },
           { type: 'invalidatePhotoSelections', id },
           { type: 'invalidateFace', id },
           ...(next.Inputs.some((i) => i.id === id) ? [{ type: 'publicPreview' as const, id }] : []),
@@ -96,7 +99,6 @@ export function inputs(message: Msg, state: State, facts: InputFacts = {}): Tran
         },
         effects: [
           { type: 'invalidateFace', id },
-          { type: 'rememberSourcePhoto', id, file: null },
           { type: 'invalidatePhotoSelections', id },
         ],
       };
@@ -146,8 +148,6 @@ export function inputs(message: Msg, state: State, facts: InputFacts = {}): Tran
         : { state: { ...state, Provider: message.args[0] }, effects: [] };
     case 'OverflowToggle':
       return { state: { ...state, Overflow: message.args[0] }, effects: [] };
-    case 'Compare':
-      return { state: { ...state, Comparing: message.args[0] }, effects: [] };
     default:
       return null;
   }

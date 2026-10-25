@@ -31,6 +31,11 @@ export function validSeed(value: number): boolean {
   return Number.isSafeInteger(value) && value >= SEED_RANGE.min && value <= SEED_RANGE.max;
 }
 
+/** Validate the literal field value before converting it; never repair a different seed. */
+export function validateSeedText(value: string): boolean {
+  return /^[0-9]+$/.test(value) && validSeed(Number(value));
+}
+
 export type FaceInput =
   | { readonly mode: 'words'; readonly revision: InputRevision; readonly words: string }
   | { readonly mode: 'seed'; readonly revision: InputRevision; readonly seed: number }

@@ -1,8 +1,4 @@
-// One face tile (classic Product.fs viewFace, lines 866-956): the image slot (generated canvas or image, a cached
-// public preview, or an empty photo drop target), the tile progress, the Remove control on the image, the
-// status line with Cancel, the field and Generate, the hidden source mirror, the photo row, Hold to compare and
-// the finished face's Share/Save actions. The `.next-*` DOM contract is the control's.
-// Buttons classic left uncoloured get color="inherit": MUI 4's default Button colour was the text colour, MUI 5+ made it primary.
+// One operation action inside each face image; fields preserve exact input identity.
 import CloseIcon from '@mui/icons-material/Close';
 import PhotoIcon from '@mui/icons-material/Photo';
 import Button from '@mui/material/Button';
@@ -13,6 +9,7 @@ import { dragPhoto, openPhotoPicker, photoFiles } from '../../src/Next/photo-sel
 import { FaceField } from './FaceField.tsx';
 import { FancyButton } from './FancyButton.tsx';
 import type { Face, FaceMode, Input, PublicPreview } from './types.ts';
+import { faceInputProblem } from '../../src/controller/derived.ts';
 
 export interface FaceTileProps {
   readonly item: Input;
@@ -27,12 +24,12 @@ export interface FaceTileProps {
   readonly fraction: number;
   /** The active job's status line. */
   readonly status: string;
+  readonly stopping?: boolean;
+  readonly retry?: boolean;
+  readonly photoEncodingAvailable?: boolean;
+  readonly onNotice?: (message: string) => void;
   /** Whether Remove is offered: never on the last face, so a morph always has something to morph from. */
   readonly removable: boolean;
-  /** The source photo is being compared in place of the generated face. */
-  readonly comparing: boolean;
-  /** The source photo's URL for Hold to compare ('' when there is none). */
-  readonly sourcePhotoUrl: string;
   readonly onEdit: (value: string) => void;
   readonly onMode: (mode: FaceMode) => void;
   readonly onBrowse: () => void;
@@ -41,8 +38,6 @@ export interface FaceTileProps {
   readonly onRun: () => void;
   readonly onCancel: () => void;
   readonly onRemove: () => void;
-  readonly onRequestCrop: () => void;
-  readonly onCompare: (on: boolean) => void;
   readonly onShare: () => void;
   readonly onSave: () => void;
   /** Paints raw pixels into the canvas (bridge drawFace). */
@@ -65,9 +60,11 @@ const state = (item: Input, face: Face | undefined, preview: PublicPreview | und
 export function FaceTile(p: FaceTileProps) {
   const { item, label, face, preview, active, queued, preparing } = p;
   const canGenerate =
-    (item.mode === 'project' && !!face) ||
-    (item.mode === 'photo' && !!item.file) ||
-    ((item.mode === 'text' || item.mode === 'seed') && item.value.trim() !== '');
+    !face &&
+    ((item.mode === 'photo' && !!item.file) ||
+      ((item.mode === 'text' || item.mode === 'seed') && !faceInputProblem(item)));
+  const working = active || queued || preparing;
+  const action = p.stopping ? 'Cancelling' : working ? 'Cancel' : p.retry ? 'Retry' : 'Generate';
   const drag = (leaving: boolean) => (e: DragEvent<HTMLElement>) => dragPhoto(e, false, leaving);
   const determinate = active && p.fraction > 0;
   return (
@@ -89,11 +86,11 @@ export function FaceTile(p: FaceTileProps) {
         type="file"
         hidden
         accept="image/*,video/mp4"
-        aria-label="Choose photo"
+        aria-label={p.photoEncodingAvailable === false ? 'Open saved image' : 'Encode image'}
         onChange={(e) => p.onPhoto(photoFiles(e))}
       />
       <div className="next-face-image">
-        {face && face.raw && !p.comparing ? (
+        {face && face.raw ? (
           <canvas
             ref={(el) => p.drawFace?.(el, item.id)}
             width={1024}
@@ -105,12 +102,11 @@ export function FaceTile(p: FaceTileProps) {
         ) : face ? (
           <img
             onLoad={() => {
-              if (!p.comparing)
-                p.displayMilestone?.(
-                  item.mode === 'project' ? 'restored-visible' : 'generated-visible',
-                );
+              p.displayMilestone?.(
+                item.mode === 'project' ? 'restored-visible' : 'generated-visible',
+              );
             }}
-            src={p.comparing ? p.sourcePhotoUrl : face.url}
+            src={face.url}
             alt={`Generated face from ${label}`}
             width={1024}
             height={1024}
@@ -127,22 +123,24 @@ export function FaceTile(p: FaceTileProps) {
               className="next-face-img"
               data-public-preview="true"
             />
-            <span className="next-sr">Cached preview</span>
           </>
+        ) : item.mode === 'text' || item.mode === 'seed' ? (
+          <p className="next-face-hint">
+            {faceInputProblem(item) ? '' : 'Press Generate to make this face'}
+          </p>
         ) : (
-          // The empty tile is a photo drop target, never a bare plus: the plus belongs to the connectors.
           <button
             type="button"
             className="next-face-empty"
             tabIndex={-1}
-            aria-label="Choose photo"
+            aria-label={p.photoEncodingAvailable === false ? 'Open saved image' : 'Encode image'}
             onClick={() => {
               p.onWarmPhotoTools?.();
               openPhotoPicker(item.id);
             }}
           >
             <PhotoIcon />
-            <span>Drop a photo, or tap to choose</span>
+            <span>{p.photoEncodingAvailable === false ? 'Open saved image' : 'Encode image'}</span>
           </button>
         )}
         {(active || preparing) && (
@@ -158,7 +156,18 @@ export function FaceTile(p: FaceTileProps) {
             />
           </div>
         )}
-        {/* Remove sits on the image it closes, visible at rest on touch and desktop (defect 1's repair is face controls'). */}
+        {(working || (!face && (canGenerate || item.mode === 'text' || item.mode === 'seed'))) && (
+          <FancyButton
+            variant="contained"
+            className="next-face-generate next-face-operation"
+            aria-label={`${action} ${label}`}
+            disabled={p.stopping || (!working && !canGenerate)}
+            onClick={working ? p.onCancel : p.onRun}
+          >
+            {action}
+          </FancyButton>
+        )}
+        {/* Remove sits on the image it closes, visible at rest on touch and desktop. */}
         {p.removable && (
           <Tooltip title={`Remove ${label}`}>
             <IconButton
@@ -175,9 +184,6 @@ export function FaceTile(p: FaceTileProps) {
       {(active || queued || preparing) && (
         <div className="next-tile-status" role="status">
           <span>{active ? p.status : preparing ? 'Preparing photo…' : 'Queued'}</span>
-          <Button color="inherit" size="small" onClick={p.onCancel}>
-            Cancel
-          </Button>
         </div>
       )}
       <div className="next-input-row">
@@ -189,18 +195,15 @@ export function FaceTile(p: FaceTileProps) {
           onMode={p.onMode}
           onBrowse={p.onBrowse}
           onPick={() => openPhotoPicker(item.id)}
+          canRun={!!canGenerate && !working}
+          onRun={p.onRun}
+          onPhoto={p.onPhoto}
+          {...(p.onNotice ? { onNotice: p.onNotice } : {})}
+          {...(p.photoEncodingAvailable !== undefined
+            ? { photoEncodingAvailable: p.photoEncodingAvailable }
+            : {})}
           {...(p.onWarmPhotoTools ? { onWarmPhotoTools: p.onWarmPhotoTools } : {})}
         />
-        <FancyButton
-          variant="contained"
-          size="small"
-          className="next-face-generate"
-          aria-label={`Generate ${label}`}
-          disabled={!canGenerate || active || preparing || queued}
-          onClick={p.onRun}
-        >
-          Generate
-        </FancyButton>
       </div>
       {/* A state mirror for tooling that reads the per-face source as a select; never focusable. */}
       <select
@@ -222,40 +225,6 @@ export function FaceTile(p: FaceTileProps) {
           </option>
         ))}
       </select>
-      {item.mode === 'photo' && (
-        <div className="next-file">
-          <span>{item.value}</span>
-          <Button
-            color="inherit"
-            variant="text"
-            size="small"
-            disabled={active || !item.file}
-            onClick={p.onRequestCrop}
-          >
-            Crop photo
-          </Button>
-        </div>
-      )}
-      {face && p.sourcePhotoUrl !== '' && (
-        <button
-          type="button"
-          className="next-compare"
-          onPointerDown={() => p.onCompare(true)}
-          onPointerUp={() => p.onCompare(false)}
-          onPointerLeave={() => p.onCompare(false)}
-          onPointerCancel={() => p.onCompare(false)}
-          onBlur={() => p.onCompare(false)}
-          onKeyDown={(e) => {
-            if (e.key === ' ' || e.key === 'Enter') {
-              e.preventDefault();
-              p.onCompare(true);
-            }
-          }}
-          onKeyUp={() => p.onCompare(false)}
-        >
-          Hold to compare
-        </button>
-      )}
       <div className="next-actions next-face-actions">
         {face && (
           <>

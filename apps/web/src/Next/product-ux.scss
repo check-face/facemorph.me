@@ -290,7 +290,6 @@
 .next-face-picker-image img { display:block; width:100%; }
 .next-face-picker-image button { position:absolute; background:transparent; border:3px solid #3cf0c5; cursor:pointer; }
 .next-face-picker-image button:focus-visible { outline:4px solid #ffa63d; }
-.next-compare { font:inherit; color:inherit; background:none; border:1px solid #8887; padding:.5rem; border-radius:4px; touch-action:none; }
 // Native selects size themselves from their longest option. Bound and wrap their fields so
 // the phone viewport is not silently widened by length or Advanced processing controls.
 .next-shape-controls, .next-shape-selector, .next-advanced { min-width:0; max-width:100%; }
@@ -309,3 +308,7 @@
 .next-advanced p { margin-top:.75rem; font-size:.9rem; line-height:1.5; opacity:.85; }
 
 .next-face-generate:disabled { background:#8883!important; background-image:none!important; color:#888!important; box-shadow:none; }
+
+// fm-25um: the sole operation action stays inside its face image slot.
+.next-face-hint { position:absolute; inset:25% 1rem auto; text-align:center; }
+.next-face-operation { position:absolute!important; left:50%; top:60%; transform:translate(-50%,-50%); min-width:8rem; z-index:2; }

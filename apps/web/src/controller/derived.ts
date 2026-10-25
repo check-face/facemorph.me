@@ -9,6 +9,21 @@ import type { Estimator, EstimatorSources } from '../../shell/facade/helpers.ts'
 import type { JobProgress } from '../../shell/facade/records.ts';
 import type { Msg } from './msg.ts';
 import type { State, Downloads } from './state.ts';
+import type { Input } from './state.ts';
+import { validateWords, validateSeedText } from '../contracts/inputs.ts';
+
+/** The same validation owns field feedback and the pre-acquisition Generate boundary. */
+export function faceInputProblem(input: Input): string | null {
+  if (input.mode === 'seed')
+    return validateSeedText(input.value) ? null : 'Use a whole number from 0 to 4294967295.';
+  if (input.mode !== 'text') return null;
+  const result = validateWords(input.value);
+  return result.valid
+    ? null
+    : result.reason === 'too-long'
+      ? 'Use at most 512 bytes of text.'
+      : 'Type some words to make a face.';
+}
 export const describeDuration = (ms: number): string => describeMs(ms);
 export interface Measurements {
   readonly faceMs: number | null;

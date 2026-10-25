@@ -21,7 +21,7 @@ test('recorded seed edit replays exactly on desktop and phone', () => {
     compareFields(result, next, ['Inputs', 'Faces', 'VideoUrl', 'Status', 'CachedFaces']);
     assert.deepEqual(
       result.effects.map((e) => e.type),
-      ['invalidateArrivalRestore', 'invalidatePhotoSelections', 'invalidateFace', 'publicPreview'],
+      ['invalidateArrivalRestore', 'invalidatePhotoSelections', 'invalidateFace'],
     );
   }
 });
@@ -38,7 +38,6 @@ test('remove of the last face is a no-op; queued removal drops only its job and 
   assert.deepEqual(result.state.PendingFaces, ['face-2']);
   assert.deepEqual(result.effects, [
     { type: 'invalidateFace', id: 'face-1' },
-    { type: 'rememberSourcePhoto', id: 'face-1', file: null },
     { type: 'invalidatePhotoSelections', id: 'face-1' },
   ]);
 });
@@ -75,8 +74,9 @@ test('cached completion belongs to the exact input that requested the check', ()
   const edited = { ...state, Inputs: state.Inputs.map((i) => ({ ...i, value: 'changed' })) };
   assert.equal(inputs(msg('CachedFaceChecked', input, true), edited)!.state, edited);
 });
-test('all 64 frozen messages have explicit ownership; future slices are never silently dropped', () => {
-  assert.equal(Object.keys(CASES).length, 64);
+test('all retained messages have explicit ownership; Compare is retired by fm-25um', () => {
+  assert.equal(Object.keys(CASES).length, 63);
+  assert.equal('Compare' in CASES, false);
   assert.equal(reduce(msg('Cancel'), state)!.state, state);
   assert.equal(reduce(msg('CropAccept'), state)!.state, state);
   assert.equal(reduce(msg('Provider', 'cpu'), state)!.state.Provider, 'cpu');
@@ -103,4 +103,42 @@ test('word edits and boundary seeds replay the recorded input and invalidation f
       assert.equal(JSON.stringify(result.effects).includes(nextInput.value), false);
     }
   }
+});
+
+test('invalid seeds stay literal and cannot enter acquisition; editing never fetches a preview', () => {
+  for (const value of ['-1', '1.5', '4294967296', '', ' 42 ', '1e2']) {
+    const seeded = {
+      ...state,
+      Inputs: [{ ...state.Inputs[0]!, mode: 'seed' as const, value: '42' }],
+    };
+    const next = inputs(msg('Edit', 'face-1', value), seeded)!;
+    assert.equal(next.state.Inputs[0]!.value, value);
+    assert.equal(
+      next.effects.some((effect) => effect.type === 'publicPreview'),
+      false,
+    );
+    assert.deepEqual(reduce(msg('RunFace', 'face-1'), next.state)!.effects, []);
+    assert.equal(reduce(msg('RunFace', 'face-1'), next.state)!.state.Busy, false);
+  }
+});
+
+test('editing invalidates only that tile and abandons its queued revision without starting another job', () => {
+  const prior = {
+    ...state,
+    Busy: true,
+    ActiveFace: 'face-2',
+    Status: 'Generating…',
+    PendingFaces: ['face-1', 'face-2'],
+    PendingJobs: [msg('RunFace', 'face-1'), msg('RunFace', 'face-2')],
+    PreparingFaces: new Set(['face-1', 'face-2']),
+  };
+  const next = inputs(msg('Edit', 'face-1', 'new words'), prior)!;
+  assert.deepEqual(next.state.PendingFaces, ['face-2']);
+  assert.deepEqual(next.state.PendingJobs, [msg('RunFace', 'face-2')]);
+  assert.deepEqual([...next.state.PreparingFaces], ['face-2']);
+  assert.equal(next.state.Status, 'Generating…');
+  assert.deepEqual(
+    next.effects.map((effect) => effect.type),
+    ['invalidateArrivalRestore', 'invalidatePhotoSelections', 'invalidateFace'],
+  );
 });

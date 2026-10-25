@@ -112,8 +112,8 @@ for (const [engine, type] of Object.entries(ENGINES).filter(([e]) => !only || on
         );
         assert.equal(
           await faces(page).first().locator('.next-face-generate').isDisabled(),
-          false,
-          'Generate is on for words',
+          true,
+          'Generate is off above 512 UTF-8 bytes',
         );
         await shot(page, `${engine}-${width}-long`);
         await page.keyboard.press(process.platform === 'darwin' ? 'Meta+A' : 'Control+A');
@@ -140,7 +140,7 @@ for (const [engine, type] of Object.entries(ENGINES).filter(([e]) => !only || on
         await seed.waitFor();
         await shot(page, `${engine}-${width}-mode-menu`);
         assert.ok((await press(page, seed, { touch })).inside, `${engine} ${width}: Numeric seed`);
-        await page.locator('.next-field input[type=number]').first().waitFor();
+        await page.locator('.next-field input[inputmode=numeric]').first().waitFor();
         // The menu has finished closing, as a person sees it (kept-mounted menus stay in the DOM, hidden).
         await page.waitForFunction(() =>
           [...document.querySelectorAll('.MuiModal-root')].every((m) =>

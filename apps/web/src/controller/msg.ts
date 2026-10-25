@@ -24,7 +24,6 @@ export interface Payloads {
   Remove: readonly [string];
   Kind: readonly [MorphKind];
   CancelFace: readonly [string];
-  Compare: readonly [string | null];
   ChooseDetected: readonly [number];
   DismissDetected: readonly [];
   Frames: readonly [number];

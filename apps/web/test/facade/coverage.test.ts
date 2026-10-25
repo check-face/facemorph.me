@@ -21,12 +21,17 @@ const recorded = JSON.parse(
   readFileSync(new URL('../fixtures/facade/product-fs-imports.json', import.meta.url), 'utf8'),
 ) as { imports: { module: string; name: string }[] };
 
-test('every Product.fs import has its typed facade export', (t) => {
+const RETIRED = new Set(['rememberSourcePhoto', 'sourcePhotoUrl']); // fm-25um: hold-to-compare removed.
+test('every retained Product.fs import has its typed facade export; retired comparison helpers are absent', (t) => {
   const exports = facade as unknown as Record<string, unknown>;
   const missing: string[] = [];
   for (const { module, name } of recorded.imports) {
     const as = RENAMED[name] ?? name;
     const value = exports[as];
+    if (RETIRED.has(name)) {
+      assert.equal(value, undefined, `${name}: fm-25um removes the comparison facade`);
+      continue;
+    }
     t.diagnostic(`${module} ${name} -> ${as}: ${typeof value}`);
     if (value === undefined) missing.push(`${module} ${name} (facade ${as})`);
   }

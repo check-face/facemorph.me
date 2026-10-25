@@ -96,7 +96,7 @@ export function Explain({ route = '', reference = '' }: { route?: string; refere
         <summary>{'Can I morph a photo of a real face?'}</summary>
         <p>
           {
-            "Yes. Drop a photo onto a face, tap an empty face, or open a face's mode menu and choose Upload image. Photos are processed on your device and never uploaded."
+            'Yes. Drop a photo onto a face, open a face’s mode menu and choose Encode image. Photos are processed on your device and never uploaded.'
           }
         </p>
       </details>

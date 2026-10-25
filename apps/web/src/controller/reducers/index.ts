@@ -22,7 +22,6 @@ export const CASES = {
   Frames: inputs,
   Provider: inputs,
   OverflowToggle: inputs,
-  Compare: inputs,
   CachedFaceChecked: inputs,
   PinchToggle: inputs,
   BrowseNames: names,

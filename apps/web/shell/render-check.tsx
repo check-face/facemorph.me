@@ -50,8 +50,6 @@ function RenderCheck() {
       fraction={fraction}
       status={index === active ? 'Generating…' : ''}
       removable={inputs.length > 1}
-      comparing={false}
-      sourcePhotoUrl=""
       onEdit={(value) => change(item.id, (i) => ({ ...i, value }))}
       onMode={(mode: FaceMode) => change(item.id, (i) => ({ ...i, mode }))}
       onBrowse={() => {}}
@@ -60,8 +58,6 @@ function RenderCheck() {
       onRun={() => {}}
       onCancel={() => {}}
       onRemove={() => setInputs((all) => all.filter((i) => i.id !== item.id))}
-      onRequestCrop={() => {}}
-      onCompare={() => {}}
       onShare={() => {}}
       onSave={() => {}}
     />

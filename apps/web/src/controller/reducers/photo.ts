@@ -94,19 +94,14 @@ export function photo(message: Msg, state: State, facts: PhotoFacts = {}): Trans
   switch (message.type) {
     case 'PickPhoto': {
       const [id, files] = message.args;
-      const cached = new Set(state.CachedFaces);
-      cached.delete(id);
+      if (!files.length) return unchanged(state);
       return {
         state: {
           ...state,
           PreparingFaces: new Set([...state.PreparingFaces, id]),
-          Faces: state.Faces.filter((face) => face.id !== id),
-          CachedFaces: cached,
         },
         effects: [
-          { type: 'invalidateFace', id },
           { type: 'invalidatePhotoSelections', id },
-          ...(files[0] ? [{ type: 'rememberSourcePhoto' as const, id, file: files[0] }] : []),
           { type: 'selectPhoto', id, files },
         ],
       };
@@ -163,7 +158,10 @@ export function photo(message: Msg, state: State, facts: PhotoFacts = {}): Trans
               item.id === id ? { ...item, mode: 'project', file: null, value: 'Saved face' } : item,
             ),
             CachedFaces: cached,
-            Faces: selection.output.faces,
+            Faces: [
+              ...state.Faces.filter((face) => face.id !== id),
+              ...selection.output.faces.filter((face) => face.id === id),
+            ],
             PreparingFaces: preparing,
           });
           return schedule(next.state, next.effects);
@@ -177,6 +175,8 @@ export function photo(message: Msg, state: State, facts: PhotoFacts = {}): Trans
     case 'Photos': {
       const [target, files] = message.args;
       if (!files.length) return unchanged(state);
+      if (target !== null && !state.Inputs.some((input) => input.id === target))
+        return unchanged(state);
       const inputs = [...state.Inputs];
       const targets: string[] = [];
       let generated = 0;
@@ -193,12 +193,7 @@ export function photo(message: Msg, state: State, facts: PhotoFacts = {}): Trans
       targets.push(target ?? empty?.id ?? append());
       for (let index = 1; index < files.length; index++) targets.push(append());
       const effects: Effect[] = [{ type: 'invalidateArrivalRestore' }];
-      for (const [index, id] of targets.entries())
-        effects.push(
-          { type: 'invalidateFace', id },
-          { type: 'invalidatePhotoSelections', id },
-          { type: 'rememberSourcePhoto', id, file: files[index]! },
-        );
+      for (const id of targets) effects.push({ type: 'invalidatePhotoSelections', id });
       effects.push({ type: 'selectPhoto', id: targets[0]!, files: [files[0]!] });
       return {
         state: {
@@ -207,8 +202,6 @@ export function photo(message: Msg, state: State, facts: PhotoFacts = {}): Trans
           PhotoQueue: targets.slice(1).map((id, index) => [id, files[index + 1]!] as const),
           Error: null,
           PreparingFaces: new Set([...state.PreparingFaces, targets[0]!]),
-          CachedFaces: new Set(),
-          Faces: state.Faces.filter((face) => !targets.includes(face.id)),
         },
         effects,
       };

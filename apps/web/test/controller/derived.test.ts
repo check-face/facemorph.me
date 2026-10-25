@@ -9,6 +9,7 @@ import {
   perFrameText,
   predictedMorphMs,
   remainingText,
+  faceInputProblem,
 } from '../../src/controller/derived.ts';
 import { msg } from '../../src/controller/msg.ts';
 const state = init({
@@ -19,6 +20,29 @@ const state = init({
   sliderPosition: 1,
 }).state;
 const none = { faceMs: null, frameMs: null, videoMs: null, plannedFrames: null };
+test('field validation preserves exact words and seed syntax before any operation', () => {
+  const input = state.Inputs[0]!;
+  for (const value of ['0', '4294967295'])
+    assert.equal(faceInputProblem({ ...input, mode: 'seed', value }), null);
+  for (const value of ['', '-1', '1.5', '4294967296', ' 42 ', '1e2', '+42', '１２'])
+    assert.equal(
+      faceInputProblem({ ...input, mode: 'seed', value }),
+      'Use a whole number from 0 to 4294967295.',
+      value,
+    );
+  for (const value of ['hello', 'Hello', ' hello ', 'é'.repeat(256)])
+    assert.equal(faceInputProblem({ ...input, value }), null);
+  for (const value of ['', ' \t\n'])
+    assert.equal(faceInputProblem({ ...input, value }), 'Type some words to make a face.');
+  assert.equal(
+    faceInputProblem({ ...input, value: 'a'.repeat(513) }),
+    'Use at most 512 bytes of text.',
+  );
+  assert.equal(
+    faceInputProblem({ ...input, value: 'é'.repeat(257) }),
+    'Use at most 512 bytes of text.',
+  );
+});
 test('megabytes has the classic MiB/GiB boundary and minimum one MB', () => {
   assert.deepEqual([1, 1024 ** 2, 1024 ** 3 - 1, 1024 ** 3].map(megabytes), [
     '1 MB',

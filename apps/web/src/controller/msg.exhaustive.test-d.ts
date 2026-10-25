@@ -26,4 +26,4 @@ export const privatePreview: Effect = { type: 'publicPreview', id: 'face-1', tex
 // @ts-expect-error Error objects and raw errors are never reporting payloads.
 export const privateReport: Effect = { type: 'sendReportOnce', error: new Error('private') };
 // @ts-expect-error Photos remain in the model/bridge, never in these effect descriptions.
-export const privatePhoto: Effect = { type: 'rememberSourcePhoto', id: 'face-1', file: new Blob() };
+export const privatePhoto: Effect = { type: 'publicPreview', id: 'face-1', file: new Blob() };

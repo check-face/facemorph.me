@@ -70,7 +70,6 @@ export interface State {
   readonly RunInputs: readonly Input[];
   readonly RunSettings: string;
   readonly PreparingFaces: ReadonlySet<string>;
-  readonly Comparing: string | null;
   readonly PhotoChoice: DetectedFaces | null;
   readonly CachedFaces: ReadonlySet<string>;
   readonly ActiveFace: string | null;

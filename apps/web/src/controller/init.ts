@@ -67,7 +67,6 @@ export function init(facts: InitialFacts): Transition {
       RunInputs: [],
       RunSettings: '',
       PreparingFaces: new Set(),
-      Comparing: null,
       PhotoChoice: null,
       CachedFaces: new Set(),
       ActiveFace: null,

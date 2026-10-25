@@ -173,10 +173,6 @@ export async function chooseDetectedFace(choice: DetectedFaces, index: number): 
 }
 export const cancelPhotoRun = (): void => bridge.cancelPhotoRun();
 export const warmPhotoTools = (): void => bridge.warmPhotoTools();
-export const rememberSourcePhoto = (id: string, file: Blob | null): void =>
-  bridge.rememberSourcePhoto(id, file);
-export const sourcePhotoUrl = (id: string): string =>
-  readString(bridge.sourcePhotoUrl(id), 'sourcePhotoUrl');
 export const MULTIPLE_FACES_MESSAGE: string = readString(multipleFacesJs, 'MULTIPLE_FACES_MESSAGE');
 
 // ---- results and projects ------------------------------------------------------------------------------------------

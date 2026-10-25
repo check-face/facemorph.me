@@ -57,6 +57,8 @@ export function createController(
   const service = createOperationService();
   const initial = init(facts);
   const revisions = new Map<string, number>();
+  const photoSelections = new Map<string, number>();
+  let photoSelectionSequence = 0;
   const handles = new Map<OperationHandle, number>();
   const pending = new Set<Promise<unknown>>();
   const subscriptions = new Map<'subscribe' | 'subscribeDownloads', () => void>();
@@ -236,10 +238,8 @@ export function createController(
           facade.invalidateMorph();
           break;
         case 'invalidatePhotoSelections':
+          photoSelections.delete(effect.id);
           helpers.invalidatePhotoSelections(effect.id);
-          break;
-        case 'rememberSourcePhoto':
-          facade.rememberSourcePhoto(effect.id, effect.file);
           break;
         case 'focusCropArea':
           helpers.focusCropArea();
@@ -263,13 +263,24 @@ export function createController(
             (error) => store.dispatch(rejection(effect, error)),
           );
           break;
-        case 'selectPhoto':
+        case 'selectPhoto': {
+          const selection = ++photoSelectionSequence;
+          photoSelections.set(effect.id, selection);
           task(
             facade.selectPhoto({ id: effect.id, files: effect.files }),
-            (selection) => store.dispatch(msg('Photo', effect.id, selection)),
-            (error) => store.dispatch(rejection(effect, error)),
+            (result) => {
+              if (photoSelections.get(effect.id) !== selection) return;
+              photoSelections.delete(effect.id);
+              store.dispatch(msg('Photo', effect.id, result));
+            },
+            (error) => {
+              if (photoSelections.get(effect.id) !== selection) return;
+              photoSelections.delete(effect.id);
+              store.dispatch(rejection(effect, error));
+            },
           );
           break;
+        }
         case 'previewPhoto':
           task(
             facade.previewPhoto(effect.file),
