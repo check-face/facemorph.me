@@ -24,6 +24,7 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
+import { fetchControl } from '../../../../scripts/import/fetch-control.mjs';
 import { REPO } from '../parity/control-server.ts';
 
 interface Args {
@@ -134,10 +135,10 @@ export function runSubject({
 }
 
 /** A copy of the served control with one visible label changed in its app bundle. */
-export function plantedCopy(into: string): { dir: string; file: string } {
+export function plantedCopy(into: string, control: string): { dir: string; file: string } {
   const dir = join(into, 'planted-deploy-next');
   rmSync(dir, { recursive: true, force: true });
-  cpSync(join(REPO, 'deploy-next'), dir, { recursive: true });
+  cpSync(control, dir, { recursive: true });
   const bundles = readdirSync(dir).filter((f) => /^app\.[0-9a-f]+\.js$/.test(f));
   for (const f of bundles) {
     const text = readFileSync(join(dir, f), 'utf8');
@@ -149,7 +150,7 @@ export function plantedCopy(into: string): { dir: string; file: string } {
   throw new Error('no app bundle carries the label the self-test plants into');
 }
 
-function main() {
+async function main() {
   const a = parse(process.argv.slice(2));
   mkdirSync(a.out, { recursive: true });
   if (!a.selfTest) {
@@ -162,20 +163,23 @@ function main() {
       out: a.out,
       ...(a.rows ? { rows: a.rows } : {}),
     });
-    console.log(JSON.stringify({ subject: r.name, summary: r.summary }));
-    process.exit(r.summary.failed || r.gradeExit !== 0 ? 1 : 0);
+    console.log(
+      JSON.stringify({ subject: r.name, playwrightExit: r.playwrightExit, summary: r.summary }),
+    );
+    process.exit(r.playwrightExit !== 0 || r.summary.failed || r.gradeExit !== 0 ? 1 : 0);
   }
   const rows = a.rows ?? 'first-visit';
-  const controlSource = readFileSync(join(REPO, 'next-site-source.txt'), 'utf8').trim();
+  const { dir: controlDir, record } = await fetchControl({ log: () => {} });
+  const controlSource = record.source.commit;
   const same = runSubject({
-    subject: join(REPO, 'deploy-next'),
+    subject: join(controlDir, 'deploy-next'),
     name: 'control-as-subject',
     source: controlSource,
     rows,
     out: a.out,
   });
   const scratch = mkdtempSync(join(tmpdir(), 'parity-harness-'));
-  const planted = plantedCopy(scratch);
+  const planted = plantedCopy(scratch, join(controlDir, 'deploy-next'));
   const changed = runSubject({
     subject: planted.dir,
     name: 'planted',
@@ -190,14 +194,17 @@ function main() {
   const report = {
     selfTest: {
       controlVsControl: {
-        passed: same.summary.failed === 0 && same.summary.passed > 0,
+        passed: same.playwrightExit === 0 && same.summary.failed === 0 && same.summary.passed > 0,
         summary: same.summary,
       },
       plantedDifference: {
         bundle: planted.file,
         change: "'Morph from' -> 'Morph form'",
         failed: plantedFailedRows,
-        passed: plantedFailedRows.length > 0 && changed.summary.passed + changed.summary.failed > 0,
+        passed:
+          changed.playwrightExit === 0 &&
+          plantedFailedRows.length > 0 &&
+          changed.summary.passed + changed.summary.failed > 0,
       },
     },
     rows,

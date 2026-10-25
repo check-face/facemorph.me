@@ -7,9 +7,12 @@ each asset's OWN manifest sha256 (URL directory shas collide across sibling file
  pinned chunk list (Pages caps per-file size) -> assemble from chunks, verify sha.
 The 256MiB bound fits the webgpu segments the previous 32MiB bound could never proxy.
 """
-import argparse,hashlib,json,re,ssl,traceback,urllib.error,urllib.request
+import argparse,hashlib,json,re,ssl,sys,traceback,urllib.error,urllib.request
+from urllib.parse import urlsplit
 from pathlib import Path
 from http.server import ThreadingHTTPServer,SimpleHTTPRequestHandler
+sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'scripts/hosting'))
+from response_headers import headers_for
 p=argparse.ArgumentParser();p.add_argument('--port',type=int,default=8443);p.add_argument('--manifest-sha',required=True);p.add_argument('--cert',required=True);p.add_argument('--key',required=True);p.add_argument('--runtime-overlay',type=Path,default=None);p.add_argument('--runtime-files',type=Path,default=None,help='The runtime tree the deploy publishes, laid out as served under /runtime/ (mirror-runtime.py)');a=p.parse_args()
 ORIGIN='https://next.facemorph.me'
 SOURCE=Path('next-site-source.txt').read_text().strip()
@@ -71,9 +74,8 @@ seed_from_local()
 class Handler(SimpleHTTPRequestHandler):
  def __init__(self,*args,**kw):super().__init__(*args,directory='deploy-next',**kw)
  def end_headers(self):
-  # No third-party CDN in the qualification CSP (AGENTS.md): the ffmpeg codec and the
-  # webfonts are served from the product's own origin, so jsdelivr is no longer allowlisted.
-  for k,v in [('Cross-Origin-Opener-Policy','same-origin'),('Cross-Origin-Embedder-Policy','require-corp'),('Cross-Origin-Resource-Policy','same-origin'),('Cache-Control','no-store'),('Content-Security-Policy',"script-src 'self' blob: 'unsafe-inline' 'unsafe-eval'"),('X-Next-Artifact-Source',SOURCE)]:self.send_header(k,v)
+  for k,v in headers_for(urlsplit(self.path).path).items():self.send_header(k,v)
+  self.send_header('X-Next-Artifact-Source',SOURCE)
   super().end_headers()
  def do_POST(self):self.send_error(403,'Diagnostics and uploads disabled in qualification')
  def mime_for(self,path):
@@ -93,7 +95,10 @@ class Handler(SimpleHTTPRequestHandler):
    if hashlib.sha256(data).hexdigest()!=expected:raise ValueError('Chunk assembly does not match the pinned asset sha')
    return data
  def do_GET(self):
-  if not self.path.startswith('/runtime/'):return super().do_GET()
+  if not self.path.startswith('/runtime/'):
+   path=urlsplit(self.path).path
+   if not Path(path).suffix and 'text/html' in self.headers.get('Accept','') and not Path(self.translate_path(path)).is_file():return self.respond(Path('deploy-next/index.html').read_bytes(),'text/html; charset=utf-8')
+   return super().do_GET()
   if '?' in self.path or '#' in self.path or '..' in self.path or '%' in self.path:return self.send_error(400)
   try:
    if self.path=='/runtime/manifest.json':return self.respond(manifest,self.mime_for(self.path))

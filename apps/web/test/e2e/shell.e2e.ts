@@ -132,12 +132,24 @@ for (const [engine, type] of Object.entries(ENGINES).filter(([e]) => !only || on
           );
         }
         await page.waitForFunction(() =>
-          document.getAnimations().every((x) => x.playState !== 'running'),
+          document
+            .getAnimations()
+            .every(
+              (x) => x.effect?.getTiming().iterations === Infinity || x.playState !== 'running',
+            ),
         );
         await page.screenshot({
           path: new URL(`${engine}-${width}-shell.png`, results).pathname,
           fullPage: true,
+          animations: 'disabled',
         });
+        // The composed app now mounts its first-visit toast. Dismiss it with real input before
+        // operating footer links beneath it, as a visitor would.
+        const later = page.locator('.next-consent-toast [aria-label="Ask me later"]');
+        if (await later.count()) {
+          await press(page, later, { touch });
+          await later.waitFor({ state: 'hidden' });
+        }
         for (const c of CASES) {
           const landed = await press(page, page.locator(c.selector).first(), {
             touch,

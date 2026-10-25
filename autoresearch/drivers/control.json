@@ -1,9 +1,9 @@
 {
   "schema": "facemorph.research-control/1",
   "bead": "fm-qqh",
-  "note": "The default control of the maintained research drivers: the pinned control artifact by hash (import/control-artifact.json), never F# source or a rebuilt candidate. npm run build:next fetches it into deploy-next/ and verifies it; the drivers then check deploy-next/ against treeSha256 (sha256 of the sorted '<sha256>  <path>' listing, scripts/hosting/stage.mjs treeDigest).",
+  "note": "The pinned classic control remains independent of destination build:next. Fetch with node scripts/import/fetch-control.mjs --dest .cache/control; drivers verify its exact treeSha256 before execution.",
   "label": "control (classic candidate build; not built by this repository)",
-  "path": "deploy-next",
+  "path": ".cache/control/tree/deploy-next",
   "treeSha256": "ecc4c357d536b5d9ae0f98ce6dea1f2cbe72537f3e124b28108db1449f14a0fe",
   "files": 62,
   "bytes": 10314864,

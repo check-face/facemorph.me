@@ -218,6 +218,14 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   let lock;
   if (opts.root) {
     files = walk(opts.root);
+    // The mobile test server's declared workspace mount is part of its real HTTP module tree.
+    // Inspect the actual compiled files, including their imports; missing builds still fail.
+    const mounts = join(opts.root, 'tests/mobile/mounts.json');
+    if (existsSync(mounts))
+      for (const [prefix, source] of Object.entries(readJson(mounts)))
+        if (existsSync(join(opts.root, source)))
+          for (const [path, text] of walk(join(opts.root, source)))
+            files.set(posix.join(prefix.slice(1), path), text);
     lock = readJson(opts.lock ?? join(opts.root, 'package-lock.json'));
   } else {
     const dir = classicDir(opts);

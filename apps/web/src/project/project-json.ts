@@ -1,8 +1,8 @@
 // ProjectJson in TypeScript (fm-7s3a): the explicit, bounded project-file codec ported from classic
 // src/Next/ProjectJson.fs with identical semantics: field names, schema version 1 only, classic's limits and
 // messages, and classic's shipped text (fields in a fixed order, strings escaped per UTF-16 unit, numbers as the
-// Fable build wrote them: String(value)). Typed results replace Fable's `tag === 1`; the bridge swaps its Fable
-// import for this module in fm-stth, so the export names stay decode and encode.
+// classic build wrote them: String(value)). Typed results replace the legacy tag protocol;
+// export names stay decode and encode for the retained bridge.
 import {
   MAX_CONTROLS,
   MAX_INPUT_CHARS,
@@ -133,7 +133,7 @@ export function quote(value: string): string {
   }
   return out + '"';
 }
-/** A number as classic's shipped (Fable) build wrote it: String(value), so -0 is "0" and 1e-7 is "1e-7". */
+/** A number as classic's shipped build wrote it: String(value), so -0 is "0" and 1e-7 is "1e-7". */
 export const numeric = (value: number): string => String(value);
 
 const jsonArray = (values: readonly string[]): string => '[' + values.join(',') + ']';

@@ -1,3 +1,4 @@
+import CloseIcon from '@mui/icons-material/Close';
 import Button from '@mui/material/Button';
 import Checkbox from '@mui/material/Checkbox';
 import IconButton from '@mui/material/IconButton';
@@ -33,8 +34,8 @@ export function TestingInvite({
       <p>
         Reports contain a random device ID, app and browser versions, processing stages, timings and
         safe error codes. They never contain your photos, the words you type, the faces you make, or
-        anything identifying you. They go to our private diagnostics service and are deleted after
-        30 days.
+        anything identifying you. They go to our private diagnostics service and are kept with no
+        deletion date.
       </p>
       <div className="next-actions">
         <Button variant="contained" onClick={() => dispatch(msg('Consent', true, 'invite'))}>
@@ -210,7 +211,7 @@ export function Toasts({ state, dispatch }: Pick<Props, 'state' | 'dispatch'>) {
     content = (
       <span>
         <strong>Something went wrong.</strong> Send a debug report so we can fix it? Timings, device
-        type and error codes only. Never your photos, words or faces. Deleted after 30 days.
+        type and error codes only. Never your photos, words or faces. Kept with no deletion date.
       </span>
     );
     actions = (
@@ -231,10 +232,12 @@ export function Toasts({ state, dispatch }: Pick<Props, 'state' | 'dispatch'>) {
     );
   } else if (state.ConsentPrompt) {
     content = (
-      <span>
-        <strong>Help us test?</strong> Send debug reports: timings, device type and error codes.
-        Never your photos, words or faces. Deleted after 30 days.
-      </span>
+      <>
+        <strong>Help us test?</strong>
+        {
+          ' Send debug reports: timings, device type and error codes. Never your photos, words or faces. Kept with no deletion date.'
+        }
+      </>
     );
     actions = (
       <>
@@ -250,7 +253,7 @@ export function Toasts({ state, dispatch }: Pick<Props, 'state' | 'dispatch'>) {
           aria-label="Ask me later"
           onClick={() => dispatch(msg('DismissConsentPrompt'))}
         >
-          ×
+          <CloseIcon />
         </IconButton>
       </>
     );

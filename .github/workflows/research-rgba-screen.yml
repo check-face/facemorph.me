@@ -39,10 +39,10 @@ jobs:
       - uses: ./.github/actions/setup-workspace # node_modules for the lockfile, shared on the runner (fm-98po)
       - name: Driver tests
         run: node --test autoresearch/drivers/drivers.test.mjs
-      - name: build:next (the pinned control, digest re-verified)
+      - name: Fetch retained control independently (digest re-verified)
         env:
           GITHUB_TOKEN: ${{ github.token }}
-        run: npm run build:next && npm run build:next -- --check
+        run: node scripts/import/fetch-control.mjs --dest .cache/control
       - name: Worker readiness, with a hardware WebGPU adapter (correctness probe)
         uses: ./.github/actions/run-command
         with:
@@ -56,7 +56,7 @@ jobs:
           timeout: '3600'
           command: >-
             node autoresearch/drivers/morph-frame-product.mjs --label "$LABEL" --mode "${{ inputs.mode || 'smoke' }}"
-            --route webgpu --control deploy-next --control-digest "$(node -p
+            --route webgpu --control .cache/control/tree/deploy-next --control-digest "$(node -p
             'require("./autoresearch/drivers/control.json").treeSha256')" --runtime "$RUNTIME" --out-root "$OUT"
       - name: Durable location
         if: always()

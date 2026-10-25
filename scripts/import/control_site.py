@@ -147,16 +147,25 @@ def browser_source(src: Path, into: Path) -> Path:
 
 
 @contextmanager
-def served_control(runtime: Path, evidence: Path, chrome_path: str, *, extra_trees: dict | None = None):
+def served_control(runtime: Path, evidence: Path, chrome_path: str, *, extra_trees: dict | None = None, retained=False):
     """Yield a Site with the control served at https://next.facemorph.me/ in a headless Chrome.
 
     extra_trees maps a served path prefix to a directory linked into the served tree (for module-level tests of
     the imported source, e.g. {'src': apps/web/src}); the control's own files are never changed."""
     evidence.mkdir(parents=True, exist_ok=True)
-    check = subprocess.run(['node', str(REPO / 'scripts/import/build-next.mjs'), '--check'], capture_output=True, text=True)
-    artifact = json.loads(check.stdout.strip().splitlines()[-1])['summary']
-    if check.returncode != 0:
-        raise RuntimeError('deploy-next/ does not verify against its identity; run npm run build:next')
+    artifact_root = REPO
+    if retained:
+        check = subprocess.run(['node', str(REPO / 'scripts/import/fetch-control.mjs'), '--dest', str(REPO / '.cache/control')], capture_output=True, text=True)
+        if check.returncode:
+            raise RuntimeError('Retained control failed hash verification: ' + check.stdout + check.stderr)
+        fetched = json.loads(check.stdout.strip().splitlines()[-1])['summary']
+        artifact_root = Path(fetched['dir'])
+        artifact = {**fetched, 'kind': 'control'}
+    else:
+        check = subprocess.run(['node', str(REPO / 'scripts/import/build-next.mjs'), '--check'], capture_output=True, text=True)
+        artifact = json.loads(check.stdout.strip().splitlines()[-1])['summary']
+        if check.returncode != 0:
+            raise RuntimeError('deploy-next/ does not verify against its identity; run npm run build:next')
     port = free_port()
     manifest = runtime.resolve() / 'manifest.json'
     manifest_sha = sha256_file(manifest)
@@ -165,13 +174,13 @@ def served_control(runtime: Path, evidence: Path, chrome_path: str, *, extra_tre
     work = Path(tempfile.mkdtemp(prefix='control-site-'))
     procs = []
     try:
-        shutil.copytree(REPO / 'deploy-next', work / 'deploy-next')
+        shutil.copytree(artifact_root / 'deploy-next', work / 'deploy-next')
         for prefix, directory in (extra_trees or {}).items():
             if (work / 'deploy-next' / prefix).exists():
                 raise RuntimeError(f'extra tree {prefix} would shadow a control file')
             os.symlink(Path(directory).resolve(), work / 'deploy-next' / prefix)
         for name in ['next-site-source.txt', 'next-site-SHA256SUMS']:
-            shutil.copyfile(REPO / name, work / name)
+            shutil.copyfile(artifact_root / name, work / name)
         (work / 'overlay').mkdir()
         shutil.copyfile(manifest, work / 'overlay/manifest.json')
         seeded = seed_mirror(runtime.resolve(), work / '.runtime-mirror')

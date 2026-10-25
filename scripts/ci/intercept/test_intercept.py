@@ -104,7 +104,7 @@ def journey(early):
     port = free_port()
     chrome = subprocess.Popen([CHROMIUM, '--headless=new', '--no-sandbox', f'--remote-debugging-port={port}',
                                f'--user-data-dir={profile}', 'about:blank'],
-                              stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
+                              stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True, start_new_session=True)
     name = f'intercept-{os.getpid()}-{"early" if early else "approved"}'
     try:
         info = fixture.stdout.readline()
@@ -126,9 +126,21 @@ def journey(early):
         return json.loads(lines[-1])
     finally:
         stop_daemon(name)
-        chrome.terminate()
         fixture.terminate()
-        chrome.wait(10)
+        # This Chrome's descendants share only its task-owned process group. Drain its pipe
+        # while stopping it; a full stderr pipe otherwise blocks graceful shutdown.
+        try:
+            os.killpg(chrome.pid, signal.SIGTERM)
+        except ProcessLookupError:
+            pass
+        try:
+            chrome.communicate(timeout=10)
+        except subprocess.TimeoutExpired:
+            try:
+                os.killpg(chrome.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+            chrome.communicate(timeout=10)
         fixture.wait(10)
         chrome.stderr.close()
         fixture.stdout.close()

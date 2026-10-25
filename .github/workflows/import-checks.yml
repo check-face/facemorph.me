@@ -13,11 +13,11 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '24'
       - uses: ./.github/actions/setup-workspace # node_modules for the lockfile, shared on the runner (fm-98po)
       - run: node --test scripts/import/build-next.test.mjs scripts/import/destination-checks.test.mjs
       - run: python3 scripts/import/control_site_test.py
-      - name: build:next (control)
+      - name: build:next (monorepo destination)
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: npm run build:next && npm run build:next -- --check

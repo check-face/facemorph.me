@@ -1,8 +1,7 @@
 name: New site artifact
 # fm-aa8: classic's next-site.yml carried over with its workflow name and job IDs (artifact, qualify, compiled-ui;
 # deploy comes with the deploy workstream), so required-status names map one to one. Every later lane tests the
-# exact bytes `artifact` uploads. deploy-next/ is the pinned control artifact (npm run build:next) until the
-# monorepo's Vite build replaces it. Portable CPU work uses the shared eris/triton pool (docs/dev/workers.md).
+# exact bytes `artifact` uploads. build:next builds this repository's mounted Vite destination once. Portable CPU work uses the shared eris/triton pool (docs/dev/workers.md).
 # This repository never publishes next.facemorph.me before the source handover (no deploy job here).
 on:
   workflow_call:
@@ -85,7 +84,7 @@ jobs:
       - name: Independent reviewed morph geometry
         working-directory: apps/web
         run: node src/Next/geometry/verify.mjs
-      - name: Build the actual new-site artifact (the pinned control until the Vite build)
+      - name: Build the canonical monorepo destination artifact
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: npm run build:next && npm run build:next -- --check
@@ -97,7 +96,7 @@ jobs:
         run: node apps/web/scripts/check-no-third-party.mjs deploy-next
       - name: The site lane's own checks are tested (retired-host scan fixtures, runtime refusal, inference verdict)
         run: node --test scripts/ci/site/site.test.mjs
-      - name: Retired hosts (report-only on the control, blocking for a monorepo build)
+      - name: No retired hosts in the destination artifact
         run: node scripts/ci/site/retired-hosts.mjs deploy-next --summary "$GITHUB_STEP_SUMMARY"
       - name: Record exact bytes for promotion
         run: |
@@ -159,6 +158,18 @@ jobs:
           test "$(cat next-site-source.txt)" = '${{ github.sha }}'
           test -s deploy-next/index.html
           sha256sum --check next-site-SHA256SUMS
+      - uses: ./.github/actions/setup-workspace
+      - uses: ./.github/actions/setup-playwright
+        with:
+          browsers: chromium
+      - name: Verify retained control before destination parity smoke
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/import/fetch-control.mjs --dest .cache/control
+      - name: Destination parity smoke under the production origin
+        env:
+          PARITY_RUNTIME: /home/cdilga/.cache/facemorph-runtime
+        run: node apps/web/test/harness/run.ts --subject site/deploy-next --name port --source '${{ github.sha }}' --rows first-visit --out next-artifact-ui-evidence/parity
       - name: Publication and qualification scripts parse
         run: python3 -m compileall -q apps/web/scripts hosting/next hosting/next-static apps/web/src/Next/browser
       - name: WebGPU bundle contract gate

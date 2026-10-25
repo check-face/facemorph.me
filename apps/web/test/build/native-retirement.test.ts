@@ -199,14 +199,14 @@ test('verifier: index.html must be listed', () => {
   assert.match(r.stderr, /Incomplete web artifact inventory/);
 });
 
-test('verifier: the control-labelled deploy-next/ from build:next passes', (t) => {
+test('verifier: the identified deploy-next/ from build:next passes', (t) => {
   const identity = join(REPO, 'next-site-identity.json');
-  if (!existsSync(identity) && process.env.FACEMORPH_REQUIRE_CONTROL)
-    assert.fail('FACEMORPH_REQUIRE_CONTROL is set but build:next has not run');
+  if (!existsSync(identity) && process.env.FACEMORPH_REQUIRE_ARTIFACT)
+    assert.fail('FACEMORPH_REQUIRE_ARTIFACT is set but build:next has not run');
   if (!existsSync(identity))
     return t.skip('untested here: run `npm run build:next` first (CI does)');
   const label = JSON.parse(readFileSync(identity, 'utf8')).label as string;
-  assert.match(label, /^control /);
+  assert.ok(label === 'destination' || label.startsWith('control '), label);
   const revision = readFileSync(join(REPO, 'next-site-source.txt'), 'utf8').trim();
   const out = mkdtempSync(join(tmpdir(), 'control-receipt-'));
   const r = spawnSync(

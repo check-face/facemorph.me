@@ -10,6 +10,9 @@ export const INSTALL_HOOK = `(() => {
     for (let f = fiber, depth = 0; f && depth < 30; f = f.child, depth++) {
       const p = f.memoizedProps;
       if (p && typeof p === 'object' && 'model' in p && p.model && typeof p.model === 'object') return p.model;
+      // React port: observe the actual useSyncExternalStore-backed controller through Product props.
+      // This only reads getState; it neither dispatches nor replaces a runtime/browser operation.
+      if (p && typeof p.store?.getState === 'function') return p.store.getState();
     }
     return null;
   };
@@ -49,8 +52,8 @@ export const READ_MODEL = `(() => {
       visit(v.tree);
       return { fsharp: entries.length && Array.isArray(entries[0]) ? 'map' : 'set', entries };
     }
-    if (v instanceof Map) return { map: [...v].map(([k, x]) => [plain(k, depth + 1), plain(x, depth + 1)]) };
-    if (v instanceof Set) return { set: [...v].map((x) => plain(x, depth + 1)) };
+    if (v instanceof Map) return { fsharp: 'map', entries: [...v].map(([k, x]) => [plain(k, depth + 1), plain(x, depth + 1)]) };
+    if (v instanceof Set) return { fsharp: 'set', entries: [...v].map((x) => plain(x, depth + 1)) };
     if ('tag' in v && 'fields' in v && Array.isArray(v.fields)) return { union: v.tag, name: v.cases?.()[v.tag], fields: v.fields.map((x) => plain(x, depth + 1)) };
     const out = {};
     for (const k of Object.keys(v)) { const x = plain(v[k], depth + 1); if (x !== undefined) out[k] = x; }

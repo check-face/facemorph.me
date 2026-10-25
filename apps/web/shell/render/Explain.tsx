@@ -163,7 +163,7 @@ export function Explain({ route = '', reference = '' }: { route?: string; refere
         <summary>{"What's in a debug report?"}</summary>
         <p>
           {
-            'A random ID for the report, the site version, your browser and operating system, rough device facts like the number of processor cores, which processing mode was used, how long each step took, and error codes. Never your photos, words, faces or videos. Reports are deleted after 30 days.'
+            'A random ID for the report, the site version, your browser and operating system, rough device facts like the number of processor cores, which processing mode was used, how long each step took, and error codes. Never your photos, words, faces or videos. Reports are kept with no deletion date.'
           }
         </p>
         <p>
@@ -190,8 +190,7 @@ export function Explain({ route = '', reference = '' }: { route?: string; refere
           <a href={'https://github.com/check-face/checkface'}>
             {'github.com/check-face/checkface'}
           </a>
-          {' and is documented at '}
-          <a href={'https://checkface.facemorph.me/api'}>{'checkface.facemorph.me/api'}</a>
+          {' with setup instructions in its README'}
           {'.'}
         </p>
         <p>

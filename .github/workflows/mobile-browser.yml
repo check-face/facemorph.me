@@ -1,9 +1,43 @@
 name: Mobile browser components
-# fm-hlv: retained classic job IDs; until fm-zz2i this is a separately rebuilt control.
+# fm-zz2i: retained job IDs consume one canonical, provenance-verified destination artifact.
 # main serializes push work; a running check is never cancelled. Exact files are fetched by provenance.
 on:
   workflow_call:
+    inputs:
+      artifact_run:
+        type: string
+        required: true
+        description: Canonical site workflow run ID
+      artifact_workflow:
+        type: string
+        required: true
+        description: Workflow file that produced the canonical site
+      artifact_commit:
+        type: string
+        required: true
+        description: Full source commit of the canonical site
+      artifact_name:
+        type: string
+        required: true
+        description: Canonical site artifact name
   workflow_dispatch:
+    inputs:
+      artifact_run:
+        type: string
+        required: true
+        description: Canonical site workflow run ID
+      artifact_workflow:
+        type: string
+        required: true
+        description: Workflow file that produced the canonical site
+      artifact_commit:
+        type: string
+        required: true
+        description: Full source commit of the canonical site
+      artifact_name:
+        type: string
+        required: true
+        description: Canonical site artifact name
 permissions:
   contents: read
   actions: read
@@ -21,30 +55,19 @@ jobs:
           node-version: '24'
           cache: npm
       - uses: ./.github/actions/setup-workspace
-      - name: Build the artifact under test, labelled rebuilt
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-        run: npm run build:next
-      - name: Explicit source and exact file identity
-        env:
-          SOURCE_WORKFLOW: ${{ github.workflow == 'main' && '.github/workflows/main.yml' || '.github/workflows/mobile-browser.yml' }}
-        run: |
-          set -euo pipefail
-          find deploy-next -type f -print0 | LC_ALL=C sort -z | xargs -0 sha256sum > next-site-SHA256SUMS
-          printf '%s\n' '${{ github.sha }}' > next-site-source.txt
-          node -e 'console.log(JSON.stringify({sourceRepoId:Number(process.argv[1]),repository:process.argv[2],workflow:process.env.SOURCE_WORKFLOW,runId:Number(process.argv[3]),commit:process.argv[4]}))' '${{ github.repository_id }}' '${{ github.repository }}' '${{ github.run_id }}' '${{ github.sha }}' > next-site-provenance.json
-          echo 'Simulator evidence, not physical iPhone; rebuilt control, canonical artifact fan-out remains fm-zz2i' >> "$GITHUB_STEP_SUMMARY"
-      - uses: actions/upload-artifact@v4
+      - uses: ./.github/actions/fetch-artifact
+        id: artifact
         with:
-          name: next-ios-artifact-${{ github.run_id }}
-          path: |
-            deploy-next/
-            next-site-SHA256SUMS
-            next-site-source.txt
-            next-site-provenance.json
-            next-site-identity.json
-          if-no-files-found: error
-          retention-days: 14
+          source_repo_id: ${{ github.repository_id }}
+          workflow: ${{ inputs.artifact_workflow }}
+          run_id: ${{ inputs.artifact_run }}
+          commit: ${{ inputs.artifact_commit }}
+          artifact_name: ${{ inputs.artifact_name }}
+          out: mobile-artifact
+      - name: Canonical artifact identity
+        env:
+          DIGEST: ${{ steps.artifact.outputs.artifact_digest }}
+        run: echo "Canonical destination artifact, digest $DIGEST" >> "$GITHUB_STEP_SUMMARY"
   android:
     needs: ios-product-artifact
     runs-on: ubuntu-24.04
@@ -65,18 +88,17 @@ jobs:
         id: artifact
         with:
           source_repo_id: ${{ github.repository_id }}
-          workflow: ${{ github.workflow == 'main' && '.github/workflows/main.yml' || '.github/workflows/mobile-browser.yml' }}
-          run_id: ${{ github.run_id }}
-          commit: ${{ github.sha }}
-          artifact_name: next-ios-artifact-${{ github.run_id }}
+          workflow: ${{ inputs.artifact_workflow }}
+          run_id: ${{ inputs.artifact_run }}
+          commit: ${{ inputs.artifact_commit }}
+          artifact_name: ${{ inputs.artifact_name }}
           out: mobile-artifact
       - name: Artifact identity and limits
         env:
           DIGEST: ${{ steps.artifact.outputs.artifact_digest }}
         run: |
           echo 'Simulator/emulator evidence, not physical iPhone/Android.' >> "$GITHUB_STEP_SUMMARY"
-          echo "rebuilt, digest $DIGEST; canonical control digest $(node -p 'require("./autoresearch/drivers/control.json").treeSha256')" >> "$GITHUB_STEP_SUMMARY"
-          echo 'Until fm-zz2i fan-out this is a separately rebuilt control; no migrated product claim.' >> "$GITHUB_STEP_SUMMARY"
+          echo "Canonical destination artifact, digest $DIGEST" >> "$GITHUB_STEP_SUMMARY"
       - name: Enable KVM
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
@@ -118,18 +140,17 @@ jobs:
         id: artifact
         with:
           source_repo_id: ${{ github.repository_id }}
-          workflow: ${{ github.workflow == 'main' && '.github/workflows/main.yml' || '.github/workflows/mobile-browser.yml' }}
-          run_id: ${{ github.run_id }}
-          commit: ${{ github.sha }}
-          artifact_name: next-ios-artifact-${{ github.run_id }}
+          workflow: ${{ inputs.artifact_workflow }}
+          run_id: ${{ inputs.artifact_run }}
+          commit: ${{ inputs.artifact_commit }}
+          artifact_name: ${{ inputs.artifact_name }}
           out: mobile-artifact
       - name: Artifact identity and limits
         env:
           DIGEST: ${{ steps.artifact.outputs.artifact_digest }}
         run: |
           echo 'Simulator/emulator evidence, not physical iPhone/Android.' >> "$GITHUB_STEP_SUMMARY"
-          echo "rebuilt, digest $DIGEST; canonical control digest $(node -p 'require("./autoresearch/drivers/control.json").treeSha256')" >> "$GITHUB_STEP_SUMMARY"
-          echo 'Until fm-zz2i fan-out this is a separately rebuilt control; no migrated product claim.' >> "$GITHUB_STEP_SUMMARY"
+          echo "Canonical destination artifact, digest $DIGEST" >> "$GITHUB_STEP_SUMMARY"
       - name: Safari in iOS Simulator
         run: python3 apps/web/tests/mobile/run.py --platform ios
       - uses: actions/upload-artifact@v4
@@ -154,18 +175,17 @@ jobs:
         id: artifact
         with:
           source_repo_id: ${{ github.repository_id }}
-          workflow: ${{ github.workflow == 'main' && '.github/workflows/main.yml' || '.github/workflows/mobile-browser.yml' }}
-          run_id: ${{ github.run_id }}
-          commit: ${{ github.sha }}
-          artifact_name: next-ios-artifact-${{ github.run_id }}
+          workflow: ${{ inputs.artifact_workflow }}
+          run_id: ${{ inputs.artifact_run }}
+          commit: ${{ inputs.artifact_commit }}
+          artifact_name: ${{ inputs.artifact_name }}
           out: mobile-artifact
       - name: Artifact identity and limits
         env:
           DIGEST: ${{ steps.artifact.outputs.artifact_digest }}
         run: |
           echo 'Simulator/emulator evidence, not physical iPhone/Android.' >> "$GITHUB_STEP_SUMMARY"
-          echo "rebuilt, digest $DIGEST; canonical control digest $(node -p 'require("./autoresearch/drivers/control.json").treeSha256')" >> "$GITHUB_STEP_SUMMARY"
-          echo 'Until fm-zz2i fan-out this is a separately rebuilt control; no migrated product claim.' >> "$GITHUB_STEP_SUMMARY"
+          echo "Canonical destination artifact, digest $DIGEST" >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/cache@v4
         with:
           path: .cache/mobile-runtime

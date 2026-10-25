@@ -3,6 +3,7 @@
 import { createReadStream, existsSync, statSync } from 'node:fs';
 import { createServer, type Server } from 'node:http';
 import { extname, join, normalize } from 'node:path';
+import { headersFor } from '../../../../scripts/hosting/headers.mjs';
 
 const TYPES: Record<string, string> = {
   '.html': 'text/html; charset=utf-8',
@@ -38,10 +39,13 @@ export async function serve(dir: string, mounts: Record<string, string> = {}): P
     const mount = Object.keys(mounts).find((prefix) => path.startsWith(prefix));
     const base = mount ? (mounts[mount] as string) : dir;
     const rel = mount ? path.slice(mount.length) : path;
-    const file = normalize(join(base, rel.endsWith('/') || rel === '' ? `${rel}index.html` : rel));
+    let file = normalize(join(base, rel.endsWith('/') || rel === '' ? `${rel}index.html` : rel));
+    // The staged site's SPA fallback; missing file assets still fail as missing assets.
+    if (!mount && !existsSync(file) && !extname(path) && req.headers.accept?.includes('text/html'))
+      file = join(dir, 'index.html');
     if (
-      path.startsWith('/runtime/') ||
-      !file.startsWith(normalize(base)) ||
+      (path.startsWith('/runtime/') && !mount) ||
+      !(file === normalize(base) || file.startsWith(normalize(base) + '/')) ||
       !existsSync(file) ||
       !statSync(file).isFile()
     ) {
@@ -52,6 +56,7 @@ export async function serve(dir: string, mounts: Record<string, string> = {}): P
     res.writeHead(200, {
       'content-type': TYPES[extname(file)] ?? 'application/octet-stream',
       'content-length': String(statSync(file).size),
+      ...headersFor(path),
     });
     createReadStream(file).pipe(res);
   });

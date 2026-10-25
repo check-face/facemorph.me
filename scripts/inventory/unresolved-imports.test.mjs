@@ -208,3 +208,18 @@ test('a relative import that leaves the root resolves only when the file beside 
     'missing-file',
   );
 });
+
+test('mobile HTTP mounts resolve only files actually built for the server', () => {
+  const good = fixture({
+    'tests/mobile/mounts.json': JSON.stringify({ '/packages/cache/': 'built-cache' }),
+    'tests/mobile/a.mjs': "import '/packages/cache/hash.js';",
+    'built-cache/hash.js': 'export const hash = 1;',
+  })('--expect-none');
+  assert.equal(good.status, 0, JSON.stringify(good.lines));
+  const absent = fixture({
+    'tests/mobile/mounts.json': JSON.stringify({ '/packages/cache/': 'missing-build' }),
+    'tests/mobile/a.mjs': "import '/packages/cache/hash.js';",
+  })('--expect-none');
+  assert.equal(absent.status, 1);
+  assert.equal(absent.summary.unresolved, 1);
+});

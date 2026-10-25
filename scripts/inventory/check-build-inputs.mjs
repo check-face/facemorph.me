@@ -119,6 +119,7 @@ export function deriveRuntime(dir, commit, origin, fetched = new Map()) {
       source: `${OVERLAY}/manifest.json`,
       sha256: sha256(manifestBytes),
       bytes: manifestBytes.length,
+      modelSourceSha256: JSON.parse(manifestBytes).modelSourceSha256,
     },
     nested,
     rows,

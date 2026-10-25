@@ -155,9 +155,14 @@ jobs:
       contents: read
     secrets: inherit
   mobile-browser:
-    needs: changes
+    needs: [changes, next-site]
     if: contains(fromJSON(needs.changes.outputs.lanes), 'mobile-browser')
     uses: ./.github/workflows/mobile-browser.yml
+    with:
+      artifact_run: ${{ github.run_id }}
+      artifact_workflow: .github/workflows/main.yml
+      artifact_commit: ${{ github.sha }}
+      artifact_name: next-site-${{ github.sha }}
     permissions:
       contents: read
       actions: read
@@ -201,7 +206,7 @@ jobs:
     secrets: inherit
   next-site:
     needs: changes
-    if: contains(fromJSON(needs.changes.outputs.lanes), 'next-site')
+    if: contains(fromJSON(needs.changes.outputs.lanes), 'next-site') || contains(fromJSON(needs.changes.outputs.lanes), 'mobile-browser') || contains(fromJSON(needs.changes.outputs.lanes), 'web-shell')
     uses: ./.github/workflows/next-site.yml
     permissions:
       contents: read
@@ -259,7 +264,15 @@ jobs:
     uses: ./.github/workflows/stats-worker.yml
     secrets: inherit
   web-shell:
-    needs: changes
+    needs: [changes, next-site]
     if: contains(fromJSON(needs.changes.outputs.lanes), 'web-shell')
     uses: ./.github/workflows/web-shell.yml
+    permissions:
+      contents: read
+      actions: read
+    with:
+      artifact_run: ${{ github.run_id }}
+      artifact_workflow: .github/workflows/main.yml
+      artifact_commit: ${{ github.sha }}
+      artifact_name: next-site-${{ github.sha }}
     secrets: inherit

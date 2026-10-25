@@ -4,6 +4,9 @@ import argparse
 import os
 from pathlib import Path
 import shutil
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'scripts/hosting'))
+from response_headers import headers_text
 
 p=argparse.ArgumentParser();p.add_argument('--runtime',type=Path,required=True);p.add_argument('--frontend',type=Path,required=True);p.add_argument('--catalogue',type=Path,required=True);p.add_argument('--output',type=Path,default=Path(__file__).parent/'public');a=p.parse_args()
 if a.output.exists():
@@ -27,35 +30,14 @@ def copy_tree(src,dst):
         except OSError:
             shutil.copyfile(item,dest)
 copy_tree(a.runtime,a.output/'runtime');copy_tree(a.frontend,a.output)
+# Generated publication files may have been hard-linked from the frontend. Detach
+# them before writing so staging never changes the identified input artifact.
+for relative in ('catalogue.json', 'names/index.html', '_headers', '_redirects'):
+    (a.output/relative).unlink(missing_ok=True)
 shutil.copyfile(a.catalogue,a.output/'catalogue.json')
 (a.output/'names').mkdir(exist_ok=True)
 shutil.copyfile(a.output/'index.html',a.output/'names/index.html')
 copy_tree(Path(__file__).parent.parent/'next/notices',a.output/'runtime/notices')
-(a.output/'_headers').write_text('''/*
-  Cross-Origin-Opener-Policy: same-origin
-  Cross-Origin-Embedder-Policy: require-corp
-  X-Content-Type-Options: nosniff
-  Referrer-Policy: no-referrer
-/runtime/*
-  Access-Control-Allow-Origin: *
-  Cross-Origin-Resource-Policy: cross-origin
-/runtime/assets/*
-  Cache-Control: public, max-age=31536000, immutable
-/runtime/chunks/*
-  Cache-Control: public, max-age=31536000, immutable
-/runtime/manifests/*
-  Cache-Control: public, max-age=31536000, immutable
-/runtime/photo/*
-  Cache-Control: public, max-age=31536000, immutable
-/runtime/encoder-stream/*
-  Cache-Control: public, max-age=31536000, immutable
-/runtime/manifest.json
-  Cache-Control: no-cache
-/runtime/qualification-manifest.json
-  Cache-Control: no-cache
-/catalogue.json
-  Cache-Control: no-cache
-/preview/*
-  Cache-Control: public, max-age=86400
-''')
+(a.output/'_headers').write_text(headers_text())
+(a.output/'_redirects').write_text('/* /index.html 200\n')
 print('Independent static candidate staged:',a.output)

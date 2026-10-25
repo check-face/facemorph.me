@@ -12,6 +12,15 @@ name: device-lab
 on:
   workflow_dispatch:
     inputs:
+      artifact_source_repo_id:
+        required: false
+        description: Numeric source repository ID
+      artifact_workflow:
+        required: false
+        description: Source workflow file
+      artifact_commit:
+        required: false
+        description: Full source commit SHA
       url:
         description: Site to test (ignored when an artifact is given)
         default: https://next.facemorph.me/
@@ -32,6 +41,18 @@ on:
         default: d9e37e50a436e9fb7c0c7f973e70adee353c808f48c6a51fa5a9186f1c650a5c
   workflow_call:
     inputs:
+      artifact_source_repo_id:
+        type: string
+        required: false
+        description: Numeric source repository ID
+      artifact_workflow:
+        type: string
+        required: false
+        description: Source workflow file
+      artifact_commit:
+        type: string
+        required: false
+        description: Full source commit SHA
       artifact_run:
         type: string
         default: ''
@@ -67,35 +88,27 @@ jobs:
       - name: Check out the device lab
         uses: actions/checkout@v4
         with:
-          repository: check-face/facemorph.me
-          ref: main
           path: lab
-          sparse-checkout: |
-            /tools/device-lab/
-          sparse-checkout-cone-mode: false
-      - name: Check out classic (qualification server) for an artifact run
-        if: inputs.artifact_name != ''
-        uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          repository: check-face/facemorph.me-classic
-          ref: ${{ github.repository == 'check-face/facemorph.me-classic' && github.sha || 'candidate/next-delivery-20260916' }}
-          path: classic
-      - name: Download the exact candidate artifact
+          node-version: '24'
+      - name: Verify the exact candidate artifact
         if: inputs.artifact_name != ''
-        uses: actions/download-artifact@v4
+        uses: ./lab/.github/actions/fetch-artifact
         with:
-          name: ${{ inputs.artifact_name }}
-          run-id: ${{ inputs.artifact_run }}
-          repository: check-face/facemorph.me-classic
-          github-token: ${{ github.token }}
-          path: artifact
+          source_repo_id: ${{ inputs.artifact_source_repo_id }}
+          workflow: ${{ inputs.artifact_workflow }}
+          run_id: ${{ inputs.artifact_run }}
+          commit: ${{ inputs.artifact_commit }}
+          artifact_name: ${{ inputs.artifact_name }}
+          out: artifact
       - name: Preflight
         working-directory: lab/tools/device-lab
         run: uv run --quiet --with playwright python lab.py preflight
       - name: Run the matrix
         working-directory: lab/tools/device-lab
         env:
-          CLASSIC_CHECKOUT: ${{ github.workspace }}/classic
+          FACEMORPH_CHECKOUT: ${{ github.workspace }}/lab
           LABEL: ${{ inputs.label || (inputs.artifact_name != '' && format('gate-{0}', inputs.artifact_name)) || 'on-demand' }}
           URL: ${{ inputs.url || 'https://next.facemorph.me/' }}
           CELLS: ${{ inputs.cells || 'eris-webgpu,eris-cpu' }}

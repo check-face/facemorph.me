@@ -1,4 +1,4 @@
-// build:next identity writer/reader (fm-5ey), on real files in temporary directories: a planted control store
+// build:next identity writer/reader (fm-zz2i), on real files in temporary directories: a planted control store
 // stands in for the release asset's unpacked tree (planted inputs, not fakes); the pinned record is also checked.
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
@@ -6,29 +6,38 @@ import { join } from 'node:path';
 import test from 'node:test';
 import { plant, tempDir } from '../inventory/testing.mjs';
 import {
-  buildNext,
+  stageBuilt,
   controlIdentity,
   identityFindings,
   IDENTITY,
   readIdentity,
 } from './build-next.mjs';
-import { CONTROL_LABEL, digestTree, readControl } from './control.mjs';
+import { digestTree, readControl } from './control.mjs';
 
 const pinned = readControl();
+const source = {
+  commit: 'f'.repeat(40),
+  buildId: 'f'.repeat(40),
+  sourceTreeClean: true,
+  sourceTreeSha256: 'a'.repeat(64),
+};
+const stage = (out, store, record) =>
+  stageBuilt({ out, built: join(store, 'deploy-next'), source, record });
 function planted() {
   const store = plant(tempDir('build-next-store-'), {
     'deploy-next/index.html': '<!doctype html><title>x</title>',
     'deploy-next/app.abc.js': 'console.log(1)',
+    'deploy-next/.vite/manifest.json': '{}',
     'next-site-SHA256SUMS': 'x  deploy-next/index.html\n',
     'next-site-source.txt': `${pinned.source.commit}\n`,
   });
   return { store, record: { ...pinned, files: digestTree(store) } };
 }
 
-test('a control build lands in classic layout with the control label and classic identity', async () => {
+test('a monorepo build lands in retained layout with destination identity and import provenance', async () => {
   const { store, record } = planted();
   const out = tempDir('build-next-out-');
-  const { identity } = await buildNext({ out, store, record });
+  const { identity } = stage(out, store, record);
   for (const name of [
     'deploy-next/index.html',
     'next-site-SHA256SUMS',
@@ -36,25 +45,26 @@ test('a control build lands in classic layout with the control label and classic
     IDENTITY,
   ])
     assert.ok(existsSync(join(out, name)), name);
-  assert.equal(identity.label, CONTROL_LABEL);
-  assert.equal(identity.deploySource.repository, 'check-face/facemorph.me-classic');
-  assert.equal(identity.deploySource.commit, pinned.source.commit);
-  assert.equal(identity.control.zipSha256, pinned.release.sha256);
-  assert.notEqual(identity.assembledBy.commit, identity.deploySource.commit);
+  assert.ok(!existsSync(join(out, 'deploy-next/.vite')));
+  assert.equal(identity.label, 'destination');
+  assert.equal(identity.deploySource.repository, 'check-face/facemorph.me');
+  assert.equal(identity.deploySource.commit, source.commit);
+  assert.equal(identity.importedFrom.controlZipSha256, pinned.release.sha256);
+  assert.equal(identity.importedFrom.commit, pinned.source.commit);
   assert.deepEqual(identityFindings(out, identity, record), []);
 });
 
 test('the identity file is outside deploy-next, so it is never served', async () => {
   const { store, record } = planted();
   const out = tempDir('build-next-out-');
-  await buildNext({ out, store, record });
+  stage(out, store, record);
   assert.ok(!existsSync(join(out, 'deploy-next', IDENTITY)));
 });
 
 test('a changed or missing artifact file fails the reader', async () => {
   const { store, record } = planted();
   const out = tempDir('build-next-out-');
-  const { identity } = await buildNext({ out, store, record });
+  const { identity } = stage(out, store, record);
   writeFileSync(join(out, 'deploy-next/app.abc.js'), 'console.log(2)');
   assert.ok(
     identityFindings(out, identity, record).some(
@@ -62,7 +72,7 @@ test('a changed or missing artifact file fails the reader', async () => {
     ),
   );
   const fresh = tempDir('build-next-out-');
-  await buildNext({ out: fresh, store, record });
+  stage(fresh, store, record);
   assert.ok(readIdentity(tempDir('empty-')).findings.some((f) => f.problem === `no ${IDENTITY}`));
 });
 
@@ -105,10 +115,7 @@ test('a mismatched control digest or a monorepo deploy source fails', () => {
 test('build:next refuses to replace a deploy-next it did not write', async () => {
   const { store, record } = planted();
   const out = plant(tempDir('build-next-out-'), { 'deploy-next/hand-made.html': 'mine' });
-  await assert.rejects(
-    buildNext({ out, store, record }),
-    /exists without next-site-identity\.json/,
-  );
+  assert.throws(() => stage(out, store, record), /exists without a valid next-site-identity\.json/);
   assert.equal(readFileSync(join(out, 'deploy-next/hand-made.html'), 'utf8'), 'mine');
 });
 

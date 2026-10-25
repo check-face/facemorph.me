@@ -89,7 +89,7 @@ self.onmessage=async({data})=>{currentId=data.id;try{
    const cache=await createBrowserModelCache({timeoutMs:180000,maxConcurrent:1,report:e=>postMessage({progress:{stage:'codec-loading',loaded:e.bytes}})});
    const grant=bridgeGrant(data.codec,{purpose:'generate'}),wasm=await bytes(data.codec.wasm,cache,grant),moduleBytes=await bytes(data.codec.module,cache,grant);
    const moduleUrl=URL.createObjectURL(new Blob([moduleBytes],{type:'text/javascript'}));
-   try{const {default:create}=await import(/* webpackIgnore: true */ moduleUrl);core=await create({wasmBinary:wasm,locateFile:()=>data.codec.wasm.url});}
+   try{const {default:create}=await import(/* @vite-ignore */ moduleUrl);core=await create({wasmBinary:wasm,locateFile:()=>data.codec.wasm.url});}
    finally{URL.revokeObjectURL(moduleUrl);}
    core.setLogger(()=>{});begin();
   }

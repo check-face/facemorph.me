@@ -7,23 +7,38 @@ name: hosted-lanes
 on:
   workflow_dispatch:
     inputs:
-      artifact_repository:
-        description: Repository holding the build run
-        default: check-face/facemorph.me-classic
+      artifact_source_repo_id:
+        required: true
+        description: Numeric source repository ID
+      artifact_workflow:
+        required: true
+        description: Source workflow file
+      artifact_commit:
+        required: true
+        description: Full source commit SHA
       artifact_run:
         description: Build run id
-        default: '40056009101'
+        required: true
       artifact_name:
         description: Its site artifact (contains deploy-next/)
-        default: next-site-551b60726290b2d67a32c62477b2fd964de51f96
+        required: true
       runtime_sha:
         description: Runtime manifest SHA256 the artifact was qualified with
         default: d9e37e50a436e9fb7c0c7f973e70adee353c808f48c6a51fa5a9186f1c650a5c
   workflow_call:
     inputs:
-      artifact_repository:
+      artifact_source_repo_id:
         type: string
-        default: check-face/facemorph.me-classic
+        required: true
+        description: Numeric source repository ID
+      artifact_workflow:
+        type: string
+        required: true
+        description: Source workflow file
+      artifact_commit:
+        type: string
+        required: true
+        description: Full source commit SHA
       artifact_run:
         type: string
         required: true
@@ -56,17 +71,17 @@ jobs:
     timeout-minutes: 75
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          sparse-checkout: |
-            tools/device-lab
-            autoresearch
-      - uses: actions/download-artifact@v4
+          node-version: '24'
+      - uses: ./.github/actions/fetch-artifact
         with:
-          name: ${{ inputs.artifact_name }}
-          run-id: ${{ inputs.artifact_run }}
-          repository: ${{ inputs.artifact_repository }}
-          github-token: ${{ github.token }}
-          path: artifact
+          source_repo_id: ${{ inputs.artifact_source_repo_id }}
+          workflow: ${{ inputs.artifact_workflow }}
+          run_id: ${{ inputs.artifact_run }}
+          commit: ${{ inputs.artifact_commit }}
+          artifact_name: ${{ inputs.artifact_name }}
+          out: artifact
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -91,17 +106,17 @@ jobs:
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          sparse-checkout: |
-            tools/device-lab
-            autoresearch
-      - uses: actions/download-artifact@v4
+          node-version: '24'
+      - uses: ./.github/actions/fetch-artifact
         with:
-          name: ${{ inputs.artifact_name }}
-          run-id: ${{ inputs.artifact_run }}
-          repository: ${{ inputs.artifact_repository }}
-          github-token: ${{ github.token }}
-          path: artifact
+          source_repo_id: ${{ inputs.artifact_source_repo_id }}
+          workflow: ${{ inputs.artifact_workflow }}
+          run_id: ${{ inputs.artifact_run }}
+          commit: ${{ inputs.artifact_commit }}
+          artifact_name: ${{ inputs.artifact_name }}
+          out: artifact
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -138,17 +153,17 @@ jobs:
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          sparse-checkout: |
-            tools/device-lab
-            autoresearch
-      - uses: actions/download-artifact@v4
+          node-version: '24'
+      - uses: ./.github/actions/fetch-artifact
         with:
-          name: ${{ inputs.artifact_name }}
-          run-id: ${{ inputs.artifact_run }}
-          repository: ${{ inputs.artifact_repository }}
-          github-token: ${{ github.token }}
-          path: artifact
+          source_repo_id: ${{ inputs.artifact_source_repo_id }}
+          workflow: ${{ inputs.artifact_workflow }}
+          run_id: ${{ inputs.artifact_run }}
+          commit: ${{ inputs.artifact_commit }}
+          artifact_name: ${{ inputs.artifact_name }}
+          out: artifact
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -170,10 +185,6 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-        with:
-          sparse-checkout: |
-            tools/device-lab
-            autoresearch
       - uses: actions/download-artifact@v4
         with:
           pattern: lane-*

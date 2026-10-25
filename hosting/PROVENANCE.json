@@ -1,227 +1,239 @@
 {
- "schema": "facemorph.hosting-import/1",
- "bead": "fm-8tyu",
- "source": {
-  "repository": "check-face/facemorph.me-classic",
-  "commit": "a42829bb0582b5a7a55ba6b1045a05861612b8a5",
-  "tree": "hosting/"
- },
- "boundary": "packages/cloudflare-model-host/README.md",
- "rule": "every boundary-table path with destination hosting/, at the same path, and the split rows in SPLIT_IMPORTED (fm-aa8); .wrangler/ never; files over 1 MiB only if size-allowlisted",
- "sizeAllowlist": [
-  "hosting/next-static/catalogue.json"
- ],
- "notImported": [],
- "files": [
-  {
-   "path": "hosting/gallery/.gitignore",
-   "mode": "100644",
-   "size": 19,
-   "sha256": "1984d0c1ad5dcc5a476beabb78270ddb9a087e761df1eba2e4d084e5b0c25a7a"
+  "schema": "facemorph.hosting-import/1",
+  "bead": "fm-8tyu",
+  "source": {
+    "repository": "check-face/facemorph.me-classic",
+    "commit": "a42829bb0582b5a7a55ba6b1045a05861612b8a5",
+    "tree": "hosting/"
   },
-  {
-   "path": "hosting/gallery/README.md",
-   "mode": "100644",
-   "size": 2277,
-   "sha256": "f119ba1bc6aa6ab41efee8a06cbb5b7f976cbc66c3c1d14eb3993990bdddd944"
-  },
-  {
-   "path": "hosting/gallery/hello-provenance.md",
-   "mode": "100644",
-   "size": 1258,
-   "sha256": "837a6510ee6995a974e3121345ef156a3c74289f73d2b19939f18027f08dcc57"
-  },
-  {
-   "path": "hosting/gallery/materialize.py",
-   "mode": "100644",
-   "size": 6252,
-   "sha256": "b366d9689706da0fa1de42c116993de024b1002f5469136330d668ca3353534b"
-  },
-  {
-   "path": "hosting/gallery/names-wrangler.jsonc",
-   "mode": "100644",
-   "size": 231,
-   "sha256": "8782b9d6c6e83251859f5c7a27d4926ceda761356823a45d696ce4e27ecffd54"
-  },
-  {
-   "path": "hosting/gallery/wrangler.jsonc",
-   "mode": "100644",
-   "size": 223,
-   "sha256": "8fc9dd0025099eb89e1709177628216dedd45daf67d15bb0c131621693de5a2c"
-  },
-  {
-   "path": "hosting/next-cloudflare/README.md",
-   "mode": "100644",
-   "size": 5680,
-   "sha256": "c09b83125ada71e17f4fd00b2246a96e80686157a324f6ea62c2c5021deb9289"
-  },
-  {
-   "path": "hosting/next-cloudflare/delete-run.mjs",
-   "mode": "100644",
-   "size": 2227,
-   "sha256": "2b60ab5ba1fe741c459a8258f9e8165b486d635505c23b5049aa9d09f130e469"
-  },
-  {
-   "path": "hosting/next-cloudflare/validation.mjs",
-   "mode": "100644",
-   "size": 4952,
-   "sha256": "f81fb5b47ec537f42d088f724529ea21e132798cf1f9b94ed6ad92a62dfb1f23"
-  },
-  {
-   "path": "hosting/next-cloudflare/worker.mjs",
-   "mode": "100644",
-   "size": 5221,
-   "sha256": "0c45f9be49c2dc7778b6d8a35185d3d3054b8eb3203f1ce51a6fcd37303a141b"
-  },
-  {
-   "path": "hosting/next-cloudflare/worker.test.mjs",
-   "mode": "100644",
-   "size": 10357,
-   "sha256": "7d1b103852237c52bd956ee60c4ca1c7d992839bc9f88e9b45f3c093473f22ec",
-   "ported": {
-    "sha256": "9702428cc3f3aebfbd2b0b61e0480755d8923d31943f2e4ff9aa36fef87aed76",
-    "bytes": 10375,
-    "bead": "fm-aa8",
-    "reason": "the collector's stage and consent tests read reporting.mjs at its destination apps/web/src/Next/ (classic: src/Next/)"
-   }
-  },
-  {
-   "path": "hosting/next-cloudflare/wrangler.toml",
-   "mode": "100644",
-   "size": 536,
-   "sha256": "a9018d3519daa2c099dd3da62a6c4bd913e6b5ea99e8341e2ed04ff160944c34"
-  },
-  {
-   "path": "hosting/next-static/.gitignore",
-   "mode": "100644",
-   "size": 273,
-   "sha256": "3f0d757b35a4c7711f0824f596f1c8467e6eba2a59275797773ea9dc2cc064c7"
-  },
-  {
-   "path": "hosting/next-static/README.md",
-   "mode": "100644",
-   "size": 1151,
-   "sha256": "885ab00d45b29d84f2de7939e5d73ff3cfcacf46ef364db7eb34a5bb34602503"
-  },
-  {
-   "path": "hosting/next-static/analytics.mjs",
-   "mode": "100644",
-   "size": 2558,
-   "sha256": "4920fcc53451e78039917519064ad36df7db54019118a896a4a316b69f85cb04"
-  },
-  {
-   "path": "hosting/next-static/analytics.test.mjs",
-   "mode": "100644",
-   "size": 2205,
-   "sha256": "e42663e54e40e9b3bb7b5a17acbd2fbb6233bd2c2bf02c04a2edf4bf83275acd"
-  },
-  {
-   "path": "hosting/next-static/attach-domain.py",
-   "mode": "100644",
-   "size": 1890,
-   "sha256": "61c6814036846fba0a377c0ec1860ce26b4e5366e179f2e5cf225d113900c686"
-  },
-  {
-   "path": "hosting/next-static/catalogue.json",
-   "mode": "100644",
-   "size": 3405692,
-   "sha256": "4a9e1c199e2a629f11cc5d016128b36efbcde301928ae2735c42e5025c13c341"
-  },
-  {
-   "path": "hosting/next-static/promote.py",
-   "mode": "100644",
-   "size": 6833,
-   "sha256": "4f9d9247d06045763ddd09f90cf5e2503a83bce71418e490ff3985c51c988e47",
-   "ported": {
-    "sha256": "13684cfb4a9ad63b9b27302c0eeb8794e1e97183cfb94eb722d4eea3608a6af9",
-    "bytes": 6834,
-    "bead": "fm-be10",
-    "reason": "promote.py calls the web-artifact verifier at its re-homed path apps/web/scripts/verify-web-artifact.py (native dispatch retired; f876ddd)"
-   }
-  },
-  {
-   "path": "hosting/next-static/stage.py",
-   "mode": "100644",
-   "size": 2768,
-   "sha256": "6eb443c393f4accaecfff18a81cbb7b4c13ad005c7b4a145509a77fd4649891a"
-  },
-  {
-   "path": "hosting/next-static/webgpu_contract.py",
-   "mode": "100644",
-   "size": 7204,
-   "sha256": "3534fe409c10e161bc9e18461dff44487972f24e314155f68c146ab395524af7"
-  },
-  {
-   "path": "hosting/next-static/webgpu_contract_test.py",
-   "mode": "100644",
-   "size": 4903,
-   "sha256": "5ab663e16fbcc07d59a58a041e5899a586139f4704269494e6a9fe077957ff1d"
-  },
-  {
-   "path": "hosting/next-static/worker.mjs",
-   "mode": "100644",
-   "size": 324,
-   "sha256": "8180b61a7368a5fe243fe747abb5a53be88c760970d186a28629cfacb189f114"
-  },
-  {
-   "path": "hosting/next-static/wrangler.jsonc",
-   "mode": "100644",
-   "size": 1690,
-   "sha256": "37207ae12387a30677bd3471dea599ff11cfe5115b862ff16032e5b90d19f1c7"
-  },
-  {
-   "path": "hosting/next/.gitignore",
-   "mode": "100644",
-   "size": 35,
-   "sha256": "95530b6d83708e7369f6739a1956750d5a858eb994a32777806c29f40ea236e6"
-  },
-  {
-   "path": "hosting/next/notices/NVIDIA-StyleGAN2-ADA.txt",
-   "mode": "100755",
-   "size": 4421,
-   "sha256": "d782a1e765f4848609352fd9d74cc36b103ef6f51900baed06fb1c995188b95f"
-  },
-  {
-   "path": "hosting/next/notices/ONNX-Runtime-1.22-ThirdPartyNotices.txt",
-   "mode": "100644",
-   "size": 326866,
-   "sha256": "e9e90971a8e75a9a8ac0c6412e29c1202d079998389915aa485f46c816c3b4cc"
-  },
-  {
-   "path": "hosting/next/notices/ONNX-Runtime-MIT.txt",
-   "mode": "100644",
-   "size": 1073,
-   "sha256": "2f07c72751aed99790b8a4869cf2311df85a860b22ded05fa22803587a48922c"
-  },
-  {
-   "path": "hosting/next/notices/ONNX-Runtime-ThirdPartyNotices.txt",
-   "mode": "100644",
-   "size": 325054,
-   "sha256": "0e07b95f3a8d6230037707c5c4a2b554d12c4cb67369669ac255635528ffcee2"
-  },
-  {
-   "path": "hosting/next/notices/e4e-MIT.txt",
-   "mode": "100644",
-   "size": 1064,
-   "sha256": "898c5cade80d057efcc9c80614505eeae73251c9e217ffd3331bfc8f6e4a14b6"
-  },
-  {
-   "path": "hosting/next/notices/index.html",
-   "mode": "100644",
-   "size": 1224,
-   "sha256": "9f22ee195c64c31c2a2b30185768143d63f3b80c25051a0cc56559dff71c8894"
-  },
-  {
-   "path": "hosting/next/phone-candidate-admission.json",
-   "mode": "100644",
-   "size": 460,
-   "sha256": "480dc4e6cd881b9076d4fadd732d794e4bc55e5a35b06711b34daacc08dee80c"
-  },
-  {
-   "path": "hosting/next/photo-canary-provenance.json",
-   "mode": "100644",
-   "size": 1002,
-   "sha256": "31f8af5e73ae48ddda8fdc376a544ee6d9fec966adbffa582da923eca3d36810"
-  }
- ]
+  "boundary": "packages/cloudflare-model-host/README.md",
+  "rule": "every boundary-table path with destination hosting/, at the same path, and the split rows in SPLIT_IMPORTED (fm-aa8); .wrangler/ never; files over 1 MiB only if size-allowlisted",
+  "sizeAllowlist": [
+    "hosting/next-static/catalogue.json"
+  ],
+  "notImported": [],
+  "files": [
+    {
+      "path": "hosting/gallery/.gitignore",
+      "mode": "100644",
+      "size": 19,
+      "sha256": "1984d0c1ad5dcc5a476beabb78270ddb9a087e761df1eba2e4d084e5b0c25a7a"
+    },
+    {
+      "path": "hosting/gallery/README.md",
+      "mode": "100644",
+      "size": 2277,
+      "sha256": "f119ba1bc6aa6ab41efee8a06cbb5b7f976cbc66c3c1d14eb3993990bdddd944",
+      "ported": {
+        "sha256": "06d01698c303bb1aef8f557a5a6aac579782049f7e9db0832a0960fae85767ea",
+        "bytes": 4294,
+        "bead": "fm-e6yj",
+        "reason": "Document recovery-bearing immutable catalogue publication and verified provisioned snapshot reuse."
+      }
+    },
+    {
+      "path": "hosting/gallery/hello-provenance.md",
+      "mode": "100644",
+      "size": 1258,
+      "sha256": "837a6510ee6995a974e3121345ef156a3c74289f73d2b19939f18027f08dcc57"
+    },
+    {
+      "path": "hosting/gallery/materialize.py",
+      "mode": "100644",
+      "size": 6252,
+      "sha256": "b366d9689706da0fa1de42c116993de024b1002f5469136330d668ca3353534b"
+    },
+    {
+      "path": "hosting/gallery/names-wrangler.jsonc",
+      "mode": "100644",
+      "size": 231,
+      "sha256": "8782b9d6c6e83251859f5c7a27d4926ceda761356823a45d696ce4e27ecffd54"
+    },
+    {
+      "path": "hosting/gallery/wrangler.jsonc",
+      "mode": "100644",
+      "size": 223,
+      "sha256": "8fc9dd0025099eb89e1709177628216dedd45daf67d15bb0c131621693de5a2c"
+    },
+    {
+      "path": "hosting/next-cloudflare/README.md",
+      "mode": "100644",
+      "size": 5680,
+      "sha256": "c09b83125ada71e17f4fd00b2246a96e80686157a324f6ea62c2c5021deb9289"
+    },
+    {
+      "path": "hosting/next-cloudflare/delete-run.mjs",
+      "mode": "100644",
+      "size": 2227,
+      "sha256": "2b60ab5ba1fe741c459a8258f9e8165b486d635505c23b5049aa9d09f130e469"
+    },
+    {
+      "path": "hosting/next-cloudflare/validation.mjs",
+      "mode": "100644",
+      "size": 4952,
+      "sha256": "f81fb5b47ec537f42d088f724529ea21e132798cf1f9b94ed6ad92a62dfb1f23"
+    },
+    {
+      "path": "hosting/next-cloudflare/worker.mjs",
+      "mode": "100644",
+      "size": 5221,
+      "sha256": "0c45f9be49c2dc7778b6d8a35185d3d3054b8eb3203f1ce51a6fcd37303a141b"
+    },
+    {
+      "path": "hosting/next-cloudflare/worker.test.mjs",
+      "mode": "100644",
+      "size": 10357,
+      "sha256": "7d1b103852237c52bd956ee60c4ca1c7d992839bc9f88e9b45f3c093473f22ec",
+      "ported": {
+        "sha256": "9702428cc3f3aebfbd2b0b61e0480755d8923d31943f2e4ff9aa36fef87aed76",
+        "bytes": 10375,
+        "bead": "fm-aa8",
+        "reason": "the collector's stage and consent tests read reporting.mjs at its destination apps/web/src/Next/ (classic: src/Next/)"
+      }
+    },
+    {
+      "path": "hosting/next-cloudflare/wrangler.toml",
+      "mode": "100644",
+      "size": 536,
+      "sha256": "a9018d3519daa2c099dd3da62a6c4bd913e6b5ea99e8341e2ed04ff160944c34"
+    },
+    {
+      "path": "hosting/next-static/.gitignore",
+      "mode": "100644",
+      "size": 273,
+      "sha256": "3f0d757b35a4c7711f0824f596f1c8467e6eba2a59275797773ea9dc2cc064c7"
+    },
+    {
+      "path": "hosting/next-static/README.md",
+      "mode": "100644",
+      "size": 1151,
+      "sha256": "885ab00d45b29d84f2de7939e5d73ff3cfcacf46ef364db7eb34a5bb34602503"
+    },
+    {
+      "path": "hosting/next-static/analytics.mjs",
+      "mode": "100644",
+      "size": 2558,
+      "sha256": "4920fcc53451e78039917519064ad36df7db54019118a896a4a316b69f85cb04"
+    },
+    {
+      "path": "hosting/next-static/analytics.test.mjs",
+      "mode": "100644",
+      "size": 2205,
+      "sha256": "e42663e54e40e9b3bb7b5a17acbd2fbb6233bd2c2bf02c04a2edf4bf83275acd"
+    },
+    {
+      "path": "hosting/next-static/attach-domain.py",
+      "mode": "100644",
+      "size": 1890,
+      "sha256": "61c6814036846fba0a377c0ec1860ce26b4e5366e179f2e5cf225d113900c686"
+    },
+    {
+      "path": "hosting/next-static/catalogue.json",
+      "mode": "100644",
+      "size": 3405692,
+      "sha256": "4a9e1c199e2a629f11cc5d016128b36efbcde301928ae2735c42e5025c13c341"
+    },
+    {
+      "path": "hosting/next-static/promote.py",
+      "mode": "100644",
+      "size": 6833,
+      "sha256": "4f9d9247d06045763ddd09f90cf5e2503a83bce71418e490ff3985c51c988e47",
+      "ported": {
+        "sha256": "13684cfb4a9ad63b9b27302c0eeb8794e1e97183cfb94eb722d4eea3608a6af9",
+        "bytes": 6834,
+        "bead": "fm-be10",
+        "reason": "promote.py calls the web-artifact verifier at its re-homed path apps/web/scripts/verify-web-artifact.py (native dispatch retired; f876ddd)"
+      }
+    },
+    {
+      "path": "hosting/next-static/stage.py",
+      "mode": "100644",
+      "size": 2768,
+      "sha256": "6eb443c393f4accaecfff18a81cbb7b4c13ad005c7b4a145509a77fd4649891a",
+      "ported": {
+        "sha256": "8e9bb189e987d83f0ab0fbf6a4fa2516e745d08062541ab81d766b23e8c1f505",
+        "bytes": 2446,
+        "bead": "fm-zz2i",
+        "reason": "Consume the one production header policy and SPA fallback redirects for the Vite destination. Detach generated publication files before writing to preserve hard-linked input bytes."
+      }
+    },
+    {
+      "path": "hosting/next-static/webgpu_contract.py",
+      "mode": "100644",
+      "size": 7204,
+      "sha256": "3534fe409c10e161bc9e18461dff44487972f24e314155f68c146ab395524af7"
+    },
+    {
+      "path": "hosting/next-static/webgpu_contract_test.py",
+      "mode": "100644",
+      "size": 4903,
+      "sha256": "5ab663e16fbcc07d59a58a041e5899a586139f4704269494e6a9fe077957ff1d"
+    },
+    {
+      "path": "hosting/next-static/worker.mjs",
+      "mode": "100644",
+      "size": 324,
+      "sha256": "8180b61a7368a5fe243fe747abb5a53be88c760970d186a28629cfacb189f114"
+    },
+    {
+      "path": "hosting/next-static/wrangler.jsonc",
+      "mode": "100644",
+      "size": 1690,
+      "sha256": "37207ae12387a30677bd3471dea599ff11cfe5115b862ff16032e5b90d19f1c7"
+    },
+    {
+      "path": "hosting/next/.gitignore",
+      "mode": "100644",
+      "size": 35,
+      "sha256": "95530b6d83708e7369f6739a1956750d5a858eb994a32777806c29f40ea236e6"
+    },
+    {
+      "path": "hosting/next/notices/NVIDIA-StyleGAN2-ADA.txt",
+      "mode": "100755",
+      "size": 4421,
+      "sha256": "d782a1e765f4848609352fd9d74cc36b103ef6f51900baed06fb1c995188b95f"
+    },
+    {
+      "path": "hosting/next/notices/ONNX-Runtime-1.22-ThirdPartyNotices.txt",
+      "mode": "100644",
+      "size": 326866,
+      "sha256": "e9e90971a8e75a9a8ac0c6412e29c1202d079998389915aa485f46c816c3b4cc"
+    },
+    {
+      "path": "hosting/next/notices/ONNX-Runtime-MIT.txt",
+      "mode": "100644",
+      "size": 1073,
+      "sha256": "2f07c72751aed99790b8a4869cf2311df85a860b22ded05fa22803587a48922c"
+    },
+    {
+      "path": "hosting/next/notices/ONNX-Runtime-ThirdPartyNotices.txt",
+      "mode": "100644",
+      "size": 325054,
+      "sha256": "0e07b95f3a8d6230037707c5c4a2b554d12c4cb67369669ac255635528ffcee2"
+    },
+    {
+      "path": "hosting/next/notices/e4e-MIT.txt",
+      "mode": "100644",
+      "size": 1064,
+      "sha256": "898c5cade80d057efcc9c80614505eeae73251c9e217ffd3331bfc8f6e4a14b6"
+    },
+    {
+      "path": "hosting/next/notices/index.html",
+      "mode": "100644",
+      "size": 1224,
+      "sha256": "9f22ee195c64c31c2a2b30185768143d63f3b80c25051a0cc56559dff71c8894"
+    },
+    {
+      "path": "hosting/next/phone-candidate-admission.json",
+      "mode": "100644",
+      "size": 460,
+      "sha256": "480dc4e6cd881b9076d4fadd732d794e4bc55e5a35b06711b34daacc08dee80c"
+    },
+    {
+      "path": "hosting/next/photo-canary-provenance.json",
+      "mode": "100644",
+      "size": 1002,
+      "sha256": "31f8af5e73ae48ddda8fdc376a544ee6d9fec966adbffa582da923eca3d36810"
+    }
+  ]
 }

@@ -276,7 +276,7 @@ export const kind = (name: string): PathKind =>
     : invalid('Unknown morph kind.');
 
 const sha256 = (s: string): boolean => typeof s === 'string' && /^[0-9a-f]{64}$/.test(s);
-// String.IsNullOrWhiteSpace, as Fable compiles it.
+// Preserve the retained String.IsNullOrWhiteSpace semantics.
 const nonblank = (s: string): boolean => typeof s === 'string' && !/^\s*$/.test(s);
 const sameNumbers = (a: readonly number[], b: readonly number[]): boolean =>
   a.length === b.length && a.every((v, i) => v === b[i]);

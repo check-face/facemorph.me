@@ -415,7 +415,8 @@
     "manifest": {
       "source": "hosting/next-static/runtime-overlay/manifest.json",
       "sha256": "d9e37e50a436e9fb7c0c7f973e70adee353c808f48c6a51fa5a9186f1c650a5c",
-      "bytes": 41236
+      "bytes": 41236,
+      "modelSourceSha256": "adf127ea7bb8a7788c8bdeda3c9937f7310b669b09ecf799ca53a631ff46948d"
     },
     "nested_manifests": [
       {

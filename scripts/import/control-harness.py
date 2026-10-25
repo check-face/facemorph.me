@@ -133,7 +133,7 @@ def main():
     ap.add_argument('--until', default='', help="classic harness E2E_UNTIL stage (a partial run never passes)")
     a = ap.parse_args()
     evidence = a.out.resolve()
-    report = {'bead': 'fm-5ey', 'scope': 'control artifact (classic candidate build) on the CPU route in headless Chromium on this machine'}
+    report = {'bead': 'fm-5ey', 'scope': 'identified exact artifact on the CPU route in headless Chromium on this machine'}
     try:
         with served_control(a.runtime, evidence, a.chrome) as site:
             report.update(artifact=site.artifact, runtime=site.runtime, browser=site.browser)

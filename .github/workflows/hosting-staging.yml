@@ -21,13 +21,14 @@ jobs:
           fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
-      - run: node --test scripts/hosting/hosting.test.mjs
+          node-version: '24'
+      - run: npm ci
+      - run: node --test 'scripts/hosting/*.test.mjs'
       - name: Imported files equal the frozen revision
         run: node scripts/hosting/import-hosting.mjs --check --classic .cache/classic
       - name: No .wrangler state, secrets or weights in hosting/
         run: node scripts/hosting/scan-hosting.mjs
-      - name: build:next (the control)
+      - name: build:next (monorepo destination)
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: npm run build:next

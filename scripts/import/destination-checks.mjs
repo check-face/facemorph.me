@@ -208,7 +208,7 @@ export function checks({ rows }) {
     : 0;
   add({
     step: 'Record exact bytes for promotion',
-    command: 'next-site-SHA256SUMS (from the control)',
+    command: 'next-site-SHA256SUMS (verified artifact)',
     count: sums,
     ok: sums > 0 && sums === scanned,
   });

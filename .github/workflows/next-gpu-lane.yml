@@ -44,10 +44,10 @@ jobs:
         with:
           node-version: '24'
       - uses: ./.github/actions/setup-workspace # node_modules for the lockfile, shared on the runner (fm-98po)
-      - name: build:next (the pinned control, digest re-verified)
+      - name: Fetch retained control independently (digest re-verified)
         env:
           GITHUB_TOKEN: ${{ github.token }}
-        run: npm run build:next && npm run build:next -- --check
+        run: node scripts/import/fetch-control.mjs --dest .cache/control
       - name: Pinned Chrome for Testing (cached on the runner)
         id: chrome
         run: |

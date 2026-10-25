@@ -47,7 +47,7 @@ export interface FaceTileProps {
   readonly onSave: () => void;
   /** Paints raw pixels into the canvas (bridge drawFace). */
   readonly drawFace?: (canvas: HTMLCanvasElement | null, id: string) => void;
-  readonly displayMilestone?: (name: string) => void;
+  readonly displayMilestone?: (name: 'preview' | 'generated-visible' | 'restored-visible') => void;
   readonly onWarmPhotoTools?: () => void;
 }
 

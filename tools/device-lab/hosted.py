@@ -31,6 +31,8 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
+sys.path.insert(0, str(HERE.parents[1] / 'scripts/hosting'))
+from response_headers import headers_for  # noqa: E402
 try:
     import fcntl  # noqa: F401  lab.py's device lease needs it
 except ImportError:
@@ -78,8 +80,7 @@ class ArtifactServer:
             def send(self, status, body, kind, extra=()):
                 self.send_response(status)
                 for k, v in [('Content-Type', kind), ('Content-Length', str(len(body))),
-                             ('Cross-Origin-Opener-Policy', 'same-origin'), ('Cross-Origin-Embedder-Policy', 'require-corp'),
-                             ('Cross-Origin-Resource-Policy', 'cross-origin'), ('Cache-Control', 'no-cache'), *extra]:
+                             *headers_for(self.path.split('?')[0]).items(), *extra]:
                     self.send_header(k, v)
                 self.end_headers()
                 if self.command != 'HEAD':
@@ -92,6 +93,10 @@ class ArtifactServer:
                     html = (server.artifact / 'index.html').read_text()
                     return (server.inject(html) if server.inject else html).encode(), 'text/html; charset=utf-8'
                 file = (server.artifact / path.lstrip('/')).resolve()
+                if (server.artifact in file.parents and not file.exists() and not file.suffix
+                        and 'text/html' in self.headers.get('Accept', '')):
+                    html = (server.artifact / 'index.html').read_text()
+                    return (server.inject(html) if server.inject else html).encode(), 'text/html; charset=utf-8'
                 if server.artifact not in file.parents or not file.is_file():
                     return None, None
                 return file.read_bytes(), mimetypes.guess_type(file.name)[0] or 'application/octet-stream'

@@ -1,21 +1,13 @@
 #!/usr/bin/env node
-// `npm run build:next` (fm-5ey): writes the deploy-next artifact at the repository root, in classic's layout
-// (next-site.yml job `artifact`): deploy-next/, next-site-SHA256SUMS, next-site-source.txt.
-//
-// Until the rendering port, the artifact IS the pinned control: classic's candidate build, fetched from this
-// repository's release asset and verified file by file (fetch-control.mjs). This script never bundles the
-// edited monorepo source. next-site-identity.json, beside
-// deploy-next/ so it is never served, labels it: the deploy source is classic's commit; this repository's
-// commit is recorded only as the one that assembled it.
-//   node scripts/import/build-next.mjs [--out <dir>] [--store <unpacked control>]
-//   node scripts/import/build-next.mjs --check [--out <dir>]     read and verify an existing artifact
-import { cpSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+// Builds the mounted monorepo app once and writes deploy-next/ plus its source and file identity.
+// The retained control remains independently fetched by fetch-control.mjs for comparison.
+import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { headersText } from '../hosting/headers.mjs';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { REPO, git, line, options, sha256 } from '../inventory/lib.mjs';
 import { CONTROL_LABEL, digestTree, readControl } from './control.mjs';
-import { fetchControl } from './fetch-control.mjs';
 
 export const IDENTITY = 'next-site-identity.json';
 export const IDENTITY_SCHEMA = 'facemorph.next-site-identity/1';
@@ -70,13 +62,27 @@ export function identityFindings(dir, identity, record = readControl()) {
         problem: 'control digest is not the pinned one',
         got: identity.control?.zipSha256,
       });
+  } else if (identity?.kind === 'destination') {
+    if (
+      identity.deploySource?.repository !== 'check-face/facemorph.me' ||
+      !/^[a-f0-9]{40}$/.test(identity.deploySource?.commit ?? '') ||
+      identity.label !== 'destination' ||
+      !/^[a-f0-9]{64}$/.test(identity.deploySource?.sourceTreeSha256 ?? '') ||
+      typeof identity.deploySource?.sourceTreeClean !== 'boolean'
+    )
+      out.push({ problem: 'invalid monorepo deploy source' });
+    if (
+      identity.importedFrom?.commit !== record.source.commit ||
+      identity.importedFrom?.repository !== record.source.repository
+    )
+      out.push({ problem: 'invalid import provenance' });
   } else out.push({ problem: 'unknown build kind', got: identity?.kind });
   if (!Array.isArray(identity?.files) || identity.files.length === 0)
     out.push({ problem: 'identity lists no files' });
   else {
     const recorded = new Map(record.files.map((f) => [f.path, f.sha256]));
     for (const f of identity.files)
-      if (recorded.get(f.path) !== f.sha256)
+      if (identity.kind === 'control' && recorded.get(f.path) !== f.sha256)
         out.push({ problem: 'identity file digest differs from the pinned control', path: f.path });
     out.push(...artifactFindings(dir, identity.files));
   }
@@ -115,37 +121,104 @@ export function readIdentity(dir) {
   return { identity, findings: identityFindings(dir, identity) };
 }
 
-export async function buildNext({
-  out = REPO,
-  store,
-  record = readControl(),
-  log = () => {},
-} = {}) {
+/** Stage an actual built directory, preserving its bytes and attaching source/import provenance. */
+export function stageBuilt({ out, built, source, record = readControl() }) {
   out = resolve(out);
-  const scratch = store ? null : mkdtempSync(join(tmpdir(), 'build-next-'));
-  try {
-    const { dir } = await fetchControl({ dest: scratch ?? undefined, store, record, log });
-    // Replace only what this script writes; never a deploy-next it cannot account for.
-    const existing = join(out, IDENTITY);
-    if (existsSync(join(out, 'deploy-next')) && !existsSync(existing))
-      throw new Error(`${join(out, 'deploy-next')} exists without ${IDENTITY}; move it away first`);
-    for (const name of [...ARTIFACT_FILES, IDENTITY])
-      rmSync(join(out, name), { recursive: true, force: true });
-    for (const name of ARTIFACT_FILES)
-      cpSync(join(dir, name), join(out, name), { recursive: true });
-    let commit = 'unknown';
-    try {
-      commit = git(REPO, ['rev-parse', 'HEAD']).trim();
-    } catch {}
-    const identity = controlIdentity(record, commit);
-    writeFileSync(join(out, IDENTITY), JSON.stringify(identity, null, 2) + '\n');
-    const findings = identityFindings(out, identity, record);
-    if (findings.length)
-      throw Object.assign(new Error('built artifact does not match its identity'), { findings });
-    return { out, identity };
-  } finally {
-    if (scratch) rmSync(scratch, { recursive: true, force: true });
-  }
+  if (!existsSync(join(built, 'index.html'))) throw Error('No built application index.html');
+  if (existsSync(join(out, 'deploy-next')) && readIdentity(out).findings.length)
+    throw Error(`deploy-next exists without a valid ${IDENTITY}; refusing to replace it`);
+  mkdirSync(out, { recursive: true });
+  for (const name of [...ARTIFACT_FILES, IDENTITY])
+    rmSync(join(out, name), { recursive: true, force: true });
+  cpSync(built, join(out, 'deploy-next'), {
+    recursive: true,
+    // Vite's build graph is private tooling metadata, never a publication input.
+    filter: (path) => path !== join(built, '.vite'),
+  });
+  cpSync(join(REPO, 'hosting/next-static/catalogue.json'), join(out, 'deploy-next/catalogue.json'));
+  writeFileSync(join(out, 'deploy-next/_headers'), headersText());
+  writeFileSync(join(out, 'deploy-next/_redirects'), '/* /index.html 200\n');
+  const files = digestTree(join(out, 'deploy-next')).map((f) => ({
+    ...f,
+    path: `deploy-next/${f.path}`,
+  }));
+  writeFileSync(
+    join(out, 'next-site-SHA256SUMS'),
+    files.map((f) => `${f.sha256}  ${f.path}\n`).join(''),
+  );
+  writeFileSync(join(out, 'next-site-source.txt'), source.commit + '\n');
+  const identity = {
+    schema: IDENTITY_SCHEMA,
+    kind: 'destination',
+    label: 'destination',
+    deploySource: { repository: 'check-face/facemorph.me', ...source },
+    importedFrom: {
+      repository: record.source.repository,
+      commit: record.source.commit,
+      controlZipSha256: record.release.sha256,
+    },
+    files: [
+      ...files,
+      ...ARTIFACT_FILES.slice(1).map((path) => {
+        const bytes = readFileSync(join(out, path));
+        return { path, bytes: bytes.length, sha256: sha256(bytes) };
+      }),
+    ],
+  };
+  writeFileSync(join(out, IDENTITY), JSON.stringify(identity, null, 2) + '\n');
+  const findings = identityFindings(out, identity, record);
+  if (findings.length)
+    throw Object.assign(Error('Built artifact does not match its identity'), { findings });
+  return { out, identity };
+}
+
+export async function buildNext({ out = REPO, log = () => {} } = {}) {
+  const commit = git(REPO, ['rev-parse', 'HEAD']).trim();
+  const sourceTreeClean = !git(REPO, ['status', '--porcelain', '--untracked-files=normal']).trim();
+  const inputs = git(REPO, [
+    'ls-files',
+    '-z',
+    '--cached',
+    '--others',
+    '--exclude-standard',
+    '--',
+    'apps/web',
+    'packages',
+    'import',
+    'hosting/next-static',
+    'scripts/hosting',
+    'scripts/import/build-next.mjs',
+    'package.json',
+    'package-lock.json',
+  ])
+    .split('\0')
+    .filter(Boolean)
+    .sort();
+  const sourceTreeSha256 = sha256(
+    inputs
+      .filter((p) => existsSync(join(REPO, p)))
+      .map((p) => `${sha256(readFileSync(join(REPO, p)))}  ${p}\n`)
+      .join(''),
+  );
+  const buildId = commit + (sourceTreeClean ? '' : '-dirty');
+  const child = spawnSync('npm', ['run', 'build'], {
+    cwd: REPO,
+    env: { ...process.env, FACEMORPH_SOURCE_SHA: buildId },
+    encoding: 'utf8',
+    maxBuffer: 16 * 1024 * 1024,
+    timeout: 10 * 60 * 1000,
+  });
+  process.stderr.write(child.stdout ?? '');
+  process.stderr.write(child.stderr ?? '');
+  if (child.error || child.status !== 0)
+    throw child.error ?? Error(`Application build failed: ${child.status}`);
+  const result = stageBuilt({
+    out,
+    built: join(REPO, 'apps/web/dist'),
+    source: { commit, buildId, sourceTreeClean, sourceTreeSha256 },
+  });
+  log({ event: 'built-monorepo', source: result.identity.deploySource });
+  return result;
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
@@ -167,7 +240,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     process.exit(findings.length ? 1 : 0);
   }
   try {
-    const { identity } = await buildNext({ out, store: opts.store, log: line });
+    const { identity } = await buildNext({ out, log: line });
     line({
       summary: {
         ok: true,
@@ -175,7 +248,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
         label: identity.label,
         deploySource: identity.deploySource,
         files: identity.files.length,
-        controlZipSha256: identity.control.zipSha256,
+        importedControlZipSha256: identity.importedFrom.controlZipSha256,
       },
     });
   } catch (error) {

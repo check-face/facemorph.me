@@ -109,8 +109,9 @@ export const invalidateMorph = (): void => bridge.invalidateMorph();
 export const invalidateArrivalRestore = (): void => bridge.invalidateArrivalRestore();
 export const queueFace = (id: string, depth: number): void => bridge.queueFace(id, depth);
 export const cancelQueuedFace = (id: string): void => bridge.cancelQueuedFace(id);
-export const displayMilestone = (kind: 'preview' | 'face' | 'morph'): void =>
-  bridge.displayMilestone(kind);
+export const displayMilestone = (
+  kind: 'preview' | 'generated-visible' | 'restored-visible',
+): void => bridge.displayMilestone(kind);
 export async function checkCachedFace(item: Input): Promise<boolean> {
   return readBoolean(await bridge.checkCachedFace(item), 'checkCachedFace');
 }

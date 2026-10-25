@@ -52,10 +52,10 @@ node --test scripts/ci/changes.test.ts scripts/ci/path-filters.test.ts
 
 Workspaces are apps/web, packages/stylegan-js, browser-model-manager,
 cloudflare-model-host and model-conv. Oxfmt/Oxlint provide formatting/lint gates.
-`npm run build` builds the new application; **`npm run build:next` currently downloads
-a verified pinned CLASSIC CONTROL**, not the edited monorepo app. See
-[build details](docs/dev/build-next.md). Control tests validate the harness/control,
-not feature migration. Use verified external runtime assets for inference checks.
+`npm run build` builds the application; **`npm run build:next` builds its mounted
+Vite destination into deploy-next with this repository's source identity**. See
+[build details](docs/dev/build-next.md). Classic comparisons fetch an independent, hash-verified control;
+control tests validate the harness/control, not feature migration. Use verified external runtime assets for inference checks.
 
 Work directly on main, validate locally in proportion to the change, then push.
 Versioned hooks check format/lint of staged/pushed content; agents run relevant

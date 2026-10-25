@@ -84,6 +84,14 @@ export default defineConfig({
   // Sass leaves `@import "~pkg/x.css"` as a CSS import; the CSS layer resolves the same `~` convention.
   resolve: { alias: [{ find: /^~(.+)/, replacement: '$1' }] },
   define: {
+    'import.meta.env.FACEMORPH_RUNTIME_SHA256': JSON.stringify(
+      JSON.parse(readFileSync(new URL('../../import/build-inputs.json', import.meta.url), 'utf8'))
+        .runtime.manifest.sha256,
+    ),
+    'import.meta.env.FACEMORPH_MODEL_SHA256': JSON.stringify(
+      JSON.parse(readFileSync(new URL('../../import/build-inputs.json', import.meta.url), 'utf8'))
+        .runtime.manifest.modelSourceSha256,
+    ),
     // The shell's version line, as classic's build passes FACEMORPH_SOURCE_SHA (commit, '-dirty' when dirty).
     'import.meta.env.FACEMORPH_SOURCE_SHA': JSON.stringify(
       process.env['FACEMORPH_SOURCE_SHA'] ?? 'unknown',

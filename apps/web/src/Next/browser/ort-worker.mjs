@@ -210,7 +210,7 @@ async function prefetchRoute(id,scope='route'){
 async function ensureOrt(id){if(ort)return;report(id,'runtime-loading');const assets=manifest.runtime.assets,module=assets.find(a=>a.url===manifest.runtime.moduleUrl),factory=assets.find(a=>a.url.endsWith('/ort-wasm-simd-threaded.mjs')),wasm=assets.find(a=>a.url.endsWith('/ort-wasm-simd-threaded.wasm'));if(!module||!factory||!wasm)throw Error('Incomplete pinned runtime bundle');
  // Import exactly the verified bytes, avoiding a second unchecked network request.
  const moduleUrl=URL.createObjectURL(new Blob([await bytes(module,id)],{type:'text/javascript'})),factoryUrl=URL.createObjectURL(new Blob([await bytes(factory,id)],{type:'text/javascript'})),wasmUrl=URL.createObjectURL(new Blob([await bytes(wasm,id)],{type:'application/wasm'}));
- ort=await import(/* webpackIgnore: true */ moduleUrl);ort.env.wasm.numThreads=cpuThreads();ort.env.wasm.wasmPaths={mjs:factoryUrl,wasm:wasmUrl};}
+ ort=await import(/* @vite-ignore */ moduleUrl);ort.env.wasm.numThreads=cpuThreads();ort.env.wasm.wasmPaths={mjs:factoryUrl,wasm:wasmUrl};}
 /**
  * The runtime bundle is the threaded build and the site is cross-origin isolated, so the CPU
  * route was running a multi-threaded binary pinned to one thread. Threads are bounded rather
@@ -242,7 +242,7 @@ async function encodeStream(tensor,id,qualifiedEncoderSha256){
   if(!encoderStream){
    const apiUrl=await verifiedModule(config.runtime.module),factoryUrl=await verifiedModule(config.runtime.factory),wasmUrl=URL.createObjectURL(new Blob([await bytes(config.runtime.wasm,id)],{type:'application/wasm'}));urls.push(wasmUrl);
    const observerUrl=URL.createObjectURL(new Blob([`import factory from ${JSON.stringify(factoryUrl)};let ref;export default async function(config){const m=await factory(config);ref=new WeakRef(m);return m;}export function snapshot(){const buffer=ref?.deref()?.HEAPU8?.buffer;return {available:Boolean(buffer),shared:Object.prototype.toString.call(buffer)==='[object SharedArrayBuffer]',currentBytes:buffer?.byteLength};}`],{type:'text/javascript'}));urls.push(observerUrl);
-   const observer=await import(/* webpackIgnore: true */ observerUrl),encoderOrt=await import(/* webpackIgnore: true */ apiUrl),executor=await import(/* webpackIgnore: true */ await verifiedModule(config.executor));encoderOrt.env.wasm.numThreads=1;encoderOrt.env.wasm.wasmPaths={mjs:observerUrl,wasm:wasmUrl};
+   const observer=await import(/* @vite-ignore */ observerUrl),encoderOrt=await import(/* @vite-ignore */ apiUrl),executor=await import(/* @vite-ignore */ await verifiedModule(config.executor));encoderOrt.env.wasm.numThreads=1;encoderOrt.env.wasm.wasmPaths={mjs:observerUrl,wasm:wasmUrl};
    encoderStream={sha256:descriptor.sha256,urls,observer,encoderOrt,executor};
   }
   const {observer,encoderOrt,executor}=encoderStream;

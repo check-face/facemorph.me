@@ -16,12 +16,12 @@ jobs:
         with:
           node-version: '24'
       - uses: ./.github/actions/setup-workspace # node_modules for the lockfile, shared on the runner (fm-98po)
-      - name: build:next (control)
+      - name: build:next (monorepo destination)
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: npm run build:next && npm run build:next -- --check
-      - name: Native retirement checks, with the control case
+      - name: Native retirement checks, with the actual destination artifact
         working-directory: apps/web
         env:
-          FACEMORPH_REQUIRE_CONTROL: '1'
+          FACEMORPH_REQUIRE_ARTIFACT: '1'
         run: node --test test/build/native-retirement.test.ts

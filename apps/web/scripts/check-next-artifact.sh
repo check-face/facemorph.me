@@ -29,7 +29,7 @@ def until(predicate, timeout=15):
         if predicate(last): return last
         time.sleep(.1)
     raise AssertionError(f'UI condition timed out: {last}')
-result={'passed':False,'scope':'Exact compiled artifact startup and face controls only; no inference, photo generation or physical-device qualification'}
+result={'passed':False,'artifactKind':os.environ.get('NEXT_ARTIFACT_KIND','control'),'scope':'Exact compiled artifact startup and face controls only; no inference, photo generation or physical-device qualification'}
 try:
     new_tab(os.environ.get('NEXT_ARTIFACT_ORIGIN','http://127.0.0.1:8080/'))
     wait_for_load()

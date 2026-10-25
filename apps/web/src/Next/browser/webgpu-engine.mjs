@@ -3,7 +3,7 @@
 // experiment/device-lab/fused-resample-boundary-v2.js — no kernel changes; the prefix segment and
 // split come from browser-onnx-mobile-fusion so the phase tensor arrives as two 64-channel tiles
 // (tile0/tile1), matching the measured 686 ms/face S24 Ultra configuration.
-export async function createWebGpuSession({config,noiseManifest,bytes,progress=()=>{},importModule=url=>import(/* webpackIgnore: true */ url)}){
+export async function createWebGpuSession({config,noiseManifest,bytes,progress=()=>{},importModule=url=>import(/* @vite-ignore */ url)}){
  const adapter=await globalThis.navigator?.gpu?.requestAdapter();if(!adapter)throw new DOMException('WebGPU is unavailable.','NotSupportedError');
  // The bounded mobile split needs exactly 128 MiB (32 * 1024 * 1024 float32s),
  // not the older untiled graph's 134742528-byte binding. Keep both adapter and device gates.

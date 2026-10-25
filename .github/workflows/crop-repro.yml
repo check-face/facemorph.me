@@ -30,10 +30,10 @@ jobs:
               assert len(data) == rec['bytes'] and hashlib.sha256(data).hexdigest() == rec['sha256'], name
           print(len([k for k in m if not k.startswith('_')]), 'fixtures verified')
           PY
-      - name: build:next (control)
+      - name: Fetch retained control independently
         env:
           GITHUB_TOKEN: ${{ github.token }}
-        run: npm run build:next
+        run: node scripts/import/fetch-control.mjs --dest .cache/control
       - name: Test-only detector hook absent from the built site
         run: node tests/crop/scan-test-hook.mjs deploy-next
       - name: Runtime already acquired on this runner (verified; nothing downloaded)

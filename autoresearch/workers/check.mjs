@@ -72,7 +72,8 @@ await check('acquired runtime', async () => {
 });
 await check('control artifact', () => {
   const dir = join(REPO, CONTROL.path);
-  if (!existsSync(join(dir, 'index.html'))) throw new Error(`${dir} missing: npm run build:next`);
+  if (!existsSync(join(dir, 'index.html')))
+    throw new Error(`${dir} missing: node scripts/import/fetch-control.mjs --dest .cache/control`);
   const id = artifactDigest(dir);
   if (id.treeSha256 !== CONTROL.treeSha256)
     throw new Error(`${dir} is ${id.treeSha256}, not the pinned control ${CONTROL.treeSha256}`);

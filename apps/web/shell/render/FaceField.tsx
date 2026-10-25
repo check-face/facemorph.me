@@ -103,7 +103,9 @@ export function FaceField({
       </Menu>
       <div className="next-field">
         <TextField
-          value={item.mode === 'photo' ? (item.file?.name ?? '') : item.value}
+          value={
+            item.mode === 'photo' ? (item.file instanceof File ? item.file.name : '') : item.value
+          }
           placeholder={placeholder}
           disabled={disabled || item.mode === 'photo' || item.mode === 'project'}
           variant="outlined"

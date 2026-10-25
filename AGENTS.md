@@ -45,10 +45,10 @@ history and supplies https://next.facemorph.me from `candidate/next-delivery-202
 until qualified handover. Classic Docker/PyTorch work stays there. Legacy checkface
 is archived as-is; fm-control and fm-direct are historical benchmark copies.
 
-`npm run build` builds the evolving monorepo app. `npm run build:next` currently
-fetches the pinned classic CONTROL into deploy-next; it does not build your changed
-application source. Label control evidence accurately. A control pass proves the
-harness/control path, never completion of the migrated product. See
+`npm run build` builds the monorepo app. `npm run build:next` builds that mounted
+Vite application into deploy-next with this repository's destination identity.
+Retained classic comparisons fetch their independent, hash-verified control with
+`scripts/import/fetch-control.mjs`; a control pass never proves the migrated product. See
 [docs/dev/build-next.md](docs/dev/build-next.md) and [autoresearch/README.md](autoresearch/README.md).
 
 Preserve existing Next features and integrated optimizations while applying the

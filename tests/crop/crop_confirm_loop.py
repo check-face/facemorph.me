@@ -227,7 +227,7 @@ def main():
     # The fixtures are served beside the control in the site's copy; the control's own files are unchanged.
     # The bridge cases load source modules in the browser: serve a browser-loadable copy (fm-eulc's TS shims inlined).
     src = browser_source(REPO / 'apps/web/src', Path(tempfile.mkdtemp(prefix='crop-src-')) / 'src')
-    with served_control(a.runtime, evidence, a.chrome, extra_trees={'src': src, 'crop-fixtures': FIXTURES}) as site:
+    with served_control(a.runtime, evidence, a.chrome, retained=True, extra_trees={'src': src, 'crop-fixtures': FIXTURES}) as site:
         results = asyncio.run(run_cases(site, cases, evidence))
         artifact, runtime = site.artifact, site.runtime
     mismatches = []

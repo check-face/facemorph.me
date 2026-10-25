@@ -2,9 +2,46 @@ name: web-shell
 # apps/web (fm-svg): the declared browser matrix and the Vite targets derived from it, strict typecheck,
 # unit tests, and the Vite production build of the app shell. Folds into the workspace gates once the
 # scaffold (fm-fy2.4) lands.
+permissions:
+  contents: read
+  actions: read
 on:
   workflow_call:
+    inputs:
+      artifact_run:
+        type: string
+        required: true
+        description: Canonical site workflow run ID
+      artifact_workflow:
+        type: string
+        required: true
+        description: Canonical site workflow file
+      artifact_commit:
+        type: string
+        required: true
+        description: Full canonical source commit
+      artifact_name:
+        type: string
+        required: true
+        description: Canonical site artifact name
   workflow_dispatch:
+    inputs:
+      artifact_run:
+        type: string
+        required: true
+        description: Canonical site workflow run ID
+      artifact_workflow:
+        type: string
+        required: true
+        description: Canonical site workflow file
+      artifact_commit:
+        type: string
+        required: true
+        description: Full canonical source commit
+      artifact_name:
+        type: string
+        required: true
+        description: Canonical site artifact name
 jobs:
   check:
     runs-on: [self-hosted, linux-x64]
@@ -71,12 +108,21 @@ jobs:
       - uses: ./.github/actions/setup-playwright # browsers cached per Playwright version (fm-98po)
         with:
           browsers: chromium firefox webkit
-      - run: npm run build
-      - name: build:next (the pinned control, served by the verification harness's artifact fixture, fm-48bj)
-        run: npm run build:next
+      - name: Verify the canonical site artifact
+        uses: ./.github/actions/fetch-artifact
+        with:
+          source_repo_id: ${{ github.repository_id }}
+          workflow: ${{ inputs.artifact_workflow }}
+          run_id: ${{ inputs.artifact_run }}
+          commit: ${{ inputs.artifact_commit }}
+          artifact_name: ${{ inputs.artifact_name }}
+          out: .cache/canonical-site
+      - name: Use those exact bytes for shell and rendering fixtures
         working-directory: .
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          cp -R .cache/canonical-site/. .
+          mkdir -p apps/web/dist
+          cp -R deploy-next/. apps/web/dist/
       - run: npm run test:e2e
         env:
           GITHUB_TOKEN: ${{ github.token }}

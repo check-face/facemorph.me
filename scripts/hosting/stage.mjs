@@ -9,6 +9,7 @@
 //   5. record     the staged file list with sizes and SHA-256s, and the staging output fields
 // Every input must resolve inside the clone or the declared acquisition cache (symlinks included); anything else fails.
 //   node scripts/hosting/stage.mjs [--runtime .cache/runtime] [--out .cache/staging] [--record staging.json]
+import { headersText } from './headers.mjs';
 import { spawnSync } from 'node:child_process';
 import {
   lstatSync,
@@ -61,6 +62,31 @@ export function compareTrees(a, b) {
     else if (mb.get(p) !== d) out.push({ path: p, problem: 'different bytes' });
   for (const p of mb.keys()) if (!ma.has(p)) out.push({ path: p, problem: 'only in the second' });
   return out;
+}
+
+/** The one declared migration from frozen staging: the shared production header policy.
+ * Every other path/byte remains compared to classic. A wrong candidate header still fails.
+ */
+export function publicationReference(other) {
+  if (!/^[a-f0-9]{40}$/.test(other.classicCommit ?? '')) return other;
+  const bytes = Buffer.from(headersText());
+  const header = other.files.find((f) => f.path === '_headers');
+  if (!header || header.sha256 !== other.fields.headersSha256)
+    throw Error('Classic staging reference has no consistent header record');
+  const files = other.files.map((f) =>
+    f.path === '_headers' ? { ...f, size: bytes.length, sha256: sha256(bytes) } : f,
+  );
+  return {
+    ...other,
+    files,
+    headerMigration: { classic: header.sha256, production: sha256(bytes), bead: 'fm-zz2i' },
+    fields: {
+      ...other.fields,
+      bytes: files.reduce((n, f) => n + f.size, 0),
+      headersSha256: sha256(bytes),
+      treeSha256: treeDigest(files),
+    },
+  };
 }
 
 export function stage({ runtime, out, log = () => {} }) {
@@ -150,7 +176,8 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     if (opts.record)
       writeFileSync(opts.record, JSON.stringify({ fields, files: staged }, null, 1) + '\n');
     if (opts.compare) {
-      const other = JSON.parse(readFileSync(opts.compare, 'utf8'));
+      const other = publicationReference(JSON.parse(readFileSync(opts.compare, 'utf8')));
+      if (other.headerMigration) line({ headerMigration: other.headerMigration });
       const diffs = compareTrees(staged, other.files);
       for (const d of diffs) line(d);
       const fieldDiffs = Object.keys(fields).filter((k) => fields[k] !== other.fields[k]);

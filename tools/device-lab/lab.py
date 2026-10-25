@@ -33,7 +33,7 @@ SERIAL = os.environ.get('ANDROID_SERIAL', 'DUM0220115002146')
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parents[1]
 CHROMIUM = os.environ.get('CHROMIUM', '/usr/bin/chromium')
-CLASSIC = Path(os.environ.get('CLASSIC_CHECKOUT', HERE.parents[2] / 'facemorph.me-classic'))
+CHECKOUT = Path(os.environ.get('FACEMORPH_CHECKOUT', HERE.parents[1]))
 ORIGIN_HOST = 'next.facemorph.me'
 LOCAL_PORT = 8443
 CHROME_FLAGS_FILE = '/data/local/tmp/chrome-command-line'
@@ -881,10 +881,9 @@ class LocalServer:
                         '-days', '1', '-subj', f'/CN={ORIGIN_HOST}'], check=True, capture_output=True)
         runtime = Path(os.environ.get('RUNTIME_FILES', self.artifact / '.runtime-public'))
         if not runtime.exists():
-            subprocess.run([sys.executable, CLASSIC / 'hosting/next-static/mirror-runtime.py', '--output', runtime],
-                           check=True, cwd=CLASSIC)
-        cmd = [sys.executable, CLASSIC / 'scripts/next-e2e-server.py', '--manifest-sha', self.runtime_sha,
-               '--runtime-overlay', CLASSIC / 'hosting/next-static/runtime-overlay', '--runtime-files', runtime,
+            raise RuntimeError(f'No acquired runtime at {runtime}; set RUNTIME_FILES to a verified runtime directory')
+        cmd = [sys.executable, CHECKOUT / 'apps/web/scripts/next-e2e-server.py', '--manifest-sha', self.runtime_sha,
+               '--runtime-overlay', runtime, '--runtime-files', runtime,
                '--cert', crt, '--key', key]
         self.log = open(self.out / 'server.log', 'w')
         self.proc = subprocess.Popen([str(c) for c in cmd], cwd=self.artifact, stdout=self.log, stderr=subprocess.STDOUT)

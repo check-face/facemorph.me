@@ -76,7 +76,7 @@ def main(argv=None):
     out.mkdir(parents=True, exist_ok=True)
     site_port, cdp_port = free_port(), free_port()
     origin = f'http://127.0.0.1:{site_port}'
-    server = subprocess.Popen([sys.executable, '-m', 'http.server', str(site_port), '--bind', '127.0.0.1',
+    server = subprocess.Popen([sys.executable, str(REPO / 'scripts/hosting/response_headers.py'), '--port', str(site_port),
                                '--directory', a.artifact], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     profile = tempfile.mkdtemp(prefix='compiled-ui-')
     chrome = subprocess.Popen([CHROMIUM, '--headless=new', '--no-sandbox', '--disable-gpu', '--disable-extensions',
@@ -93,7 +93,11 @@ def main(argv=None):
         if ws is None:
             raise SystemExit('Chromium did not report its DevTools endpoint on the chosen port')
         host_map = intercept.bindOrigins(intercept.DEFAULT_HOST_MAP, {'app': [origin]})
-        env = dict(os.environ, BU_NAME=name, BU_CDP_WS=ws, NEXT_ARTIFACT_ORIGIN=f'{origin}/',
+        identity = json.loads((Path(a.artifact).resolve().parent / 'next-site-identity.json').read_text())
+        kind = identity['kind']
+        if kind not in ('control', 'destination'):
+            raise ValueError(f'Unknown artifact kind: {kind}')
+        env = dict(os.environ, BU_NAME=name, BU_CDP_WS=ws, NEXT_ARTIFACT_KIND=kind, NEXT_ARTIFACT_ORIGIN=f'{origin}/',
                    INTERCEPT_DIR=str(REPO / 'scripts' / 'ci' / 'intercept'), HOST_MAP=json.dumps(host_map))
         env.pop('BU_CDP_URL', None)
         env['PATH'] = f"{Path(HARNESS).parent}:{env.get('PATH', '')}"  # the classic script calls browser-harness

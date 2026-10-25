@@ -6,7 +6,8 @@ import { msg, type Msg } from '../../src/controller/msg.ts';
 import type { CropChoice, State } from '../../src/controller/state.ts';
 
 export type Dispatch = (message: Msg) => void;
-export const megabytes = (bytes: number): string => `${Math.ceil(bytes / (1024 * 1024))} MB`;
+export { megabytes } from '../../src/controller/derived.ts';
+import { megabytes } from '../../src/controller/derived.ts';
 
 // A programmatic close traverses history asynchronously. A subsequent modal must not treat that traversal
 // (including React StrictMode's setup/cleanup probe) as the person pressing Back on the new modal.

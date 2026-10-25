@@ -15,7 +15,10 @@ git -C "$classic" --no-optional-locks archive "$commit" hosting/ photo-runtime/ 
 mkdir -p "$work/runtime-public"
 cp -al "$runtime/." "$work/runtime-public/"
 python3 "$work/hosting/next-static/mirror-runtime.py" --overlay "$work/hosting/next-static/runtime-overlay" --output "$work/runtime-public"
-python3 "$work/hosting/next-static/stage.py" --runtime "$work/runtime-public" --frontend "$repo/deploy-next" \
+# Classic overwrites its hard-linked _headers. Give it a private frontend copy so
+# its comparison run cannot mutate the candidate's identified bytes.
+cp -a --reflink=auto "$repo/deploy-next" "$work/frontend"
+python3 "$work/hosting/next-static/stage.py" --runtime "$work/runtime-public" --frontend "$work/frontend" \
   --catalogue "$work/hosting/next-static/catalogue.json" --output "$work/public"
 # argv[1] is a placeholder word: with -e, argv[1] would otherwise be stage.mjs and trigger its CLI on import.
 node --input-type=module -e '

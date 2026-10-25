@@ -71,7 +71,7 @@ export interface ModuleHost {
 export const browserModuleHost = (): ModuleHost => ({
   url: (bytes, type) => URL.createObjectURL(new Blob([bytes as BlobPart], { type })),
   revoke: (url) => URL.revokeObjectURL(url),
-  import: (url) => import(/* @vite-ignore */ /* webpackIgnore: true */ url),
+  import: (url) => import(/* @vite-ignore */ url),
 });
 
 export interface LoadedRuntime {

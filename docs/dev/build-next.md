@@ -9,46 +9,58 @@ npm run build:next             # writes deploy-next/ and its identity files at t
 npm run build:next -- --check  # reads them back and verifies every file against the identity
 ```
 
-No dependencies are installed; Node 22 or newer. In `facemorph.me-classic`, `npm run build` builds the historical
-app and is no substitute.
+Run `npm ci` first; Node 24 or newer. `build:next` runs the workspace build, then stages
+its actual Vite output. It does not install dependencies or publish anything.
+Classic still serves next.facemorph.me until release qualification and cutover.
 
-## What it builds today: the control
+## Destination and retained control
 
-Until the rendering port, `build:next` does **not** bundle this repository's source (`apps/web/src/Next/product-bridge.mjs`
-still imports the absent `./ProjectJson.fs.js`). It fetches the pinned control artifact, classic's candidate build
-recorded in `import/control-artifact.json`, from this repository's release asset (`scripts/import/fetch-control.mjs`),
-verifies the zip digest and every file, and lays it out exactly as classic's `next-site.yml` job `artifact` did.
+`build:next` builds the mounted React controller and views from this repository. The
+retained classic control is independent:
 
-## Layout
+```sh
+node scripts/import/fetch-control.mjs --dest .cache/control
+```
 
-| Path (repository root) | Content |
-| --- | --- |
-| `deploy-next/` | The static site: `index.html`, hashed `app/runtime/vendors/style` bundles and maps, fonts, icons, `catalogue.json`, `preview/hello-1024.webp`. Served as is; nothing else may be added. |
-| `next-site-SHA256SUMS` | Classic's `sha256sum` of every `deploy-next/` file. |
-| `next-site-source.txt` | The commit the site was built from: classic's `551b6072…` for the control. |
-| `next-site-identity.json` | Identity and label (below). Beside `deploy-next/`, never inside it, so it is never served. |
+This verifies the pinned release ZIP and every file against `import/control-artifact.json`.
+Research drivers read `.cache/control/tree/deploy-next` and verify its frozen tree digest.
+Parity self-tests fetch and verify that control independently; they never treat a destination
+build as its own baseline or change committed control goldens.
 
-All four are ignored by Git.
+## Artifact layout and identity
 
-## Identity file
+`deploy-next/` contains the Vite site, worker inventory, catalogue, historic hello preview,
+production `_headers` and SPA `_redirects`. Vite's private `.vite` build metadata is excluded.
+Three sibling files are never served: `next-site-SHA256SUMS`, `next-site-source.txt`, and
+`next-site-identity.json`. All are ignored by Git.
 
-`schema: facemorph.next-site-identity/1`, with:
+The identity (`facemorph.next-site-identity/1`) has `kind` and `label` **destination**,
+`deploySource` naming check-face/facemorph.me, its commit/build ID, clean/dirty state and
+source-tree digest, plus `importedFrom` naming the frozen classic import and ZIP digest.
+Its file list records sizes and SHA-256 for the complete artifact. `--check` refuses missing,
+changed or extra files, invalid provenance, and unknown identities. Building refuses to replace
+an unknown or modified existing artifact. The reader also verifies retained control identities
+for independent comparisons.
 
-- `kind: "control"` and `label`: "control (classic candidate build; not built by this repository)";
-- `deploySource`: the repository, commit, build id and CI run the site's bytes come from (classic, for the control);
-- `control`: the release URL, the zip's SHA-256 and the file count;
-- `assembledBy`: this repository's commit, recorded only as the commit that fetched and verified the control. A control
-  build never names it as the deploy source, and the reader fails one that does;
-- `files`: path, SHA-256 and size of every artifact file.
+## Canonical CI artifact
 
-`--check` (and `readIdentity()` in `scripts/import/build-next.mjs`) fails on a missing identity, a control digest that is
-not the pinned one, any missing, changed or extra file under `deploy-next/`, or a control build without the control label
-or classic's identity. The later Vite build writes `kind: "monorepo"` with its own commit and import provenance; until
-then no other kind is accepted.
+The site lane builds once and uploads `next-site-<commit>` with explicit repository ID,
+workflow/run/commit provenance. E2E, shell, Android components, iOS components and iOS product
+lanes use the shared download-and-verify action against those exact bytes. Digest/source
+mismatches fail before browser tests. Release-only hosted/device lanes accept the same explicit
+provenance. Dependency caches use lockfile hashes; runtime caches use the immutable manifest SHA.
+
+`hosting/next-static/headers.json` is the production header policy used by staging and local
+preview servers. Check actual preview/staged responses, including worker/WASM MIME, isolation,
+CORS, runtime digests and SPA fallback:
+
+```sh
+node scripts/hosting/check-headers.mjs --url http://127.0.0.1:<port> --artifact deploy-next
+```
 
 ## Runtime acquisition (clean clone)
 
-The runtime the control loads (overlay manifest `d9e37e50…`, every file it pins, nested manifests and photo worker
+The runtime the application loads (overlay manifest `d9e37e50…`, every file it pins, nested manifests and photo worker
 siblings) is acquired into the ignored `.cache/runtime/`, each file checked against `import/build-inputs.json`.
 It downloads model weights (about 2.8 GB), so it needs explicit acceptance of the terms in `import/licences.json`:
 

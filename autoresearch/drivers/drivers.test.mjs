@@ -47,10 +47,12 @@ test('malformed digests and directories without index.html are refused', () => {
   rmSync(dir, { recursive: true });
 });
 
-test('the pinned control in deploy-next/ matches control.json', (t) => {
+test('the independently cached pinned control matches control.json', (t) => {
   const dir = join(REPO, CONTROL.path);
   if (!existsSync(join(dir, 'index.html')))
-    return t.skip('untested: no deploy-next/ (npm run build:next fetches the control)');
+    return t.skip(
+      'untested: fetch the retained control with node scripts/import/fetch-control.mjs --dest .cache/control',
+    );
   const id = verifyArtifact(dir, CONTROL.treeSha256);
   assert.equal(id.files, CONTROL.files);
   assert.equal(id.bytes, CONTROL.bytes);
@@ -185,7 +187,9 @@ for (const driver of ['built-ui-paired.mjs', 'morph-frame-product.mjs'])
 test('a copy of the control with one file removed is not the control', (t) => {
   const dir = join(REPO, CONTROL.path);
   if (!existsSync(join(dir, 'index.html')))
-    return t.skip('untested: no deploy-next/ (npm run build:next fetches the control)');
+    return t.skip(
+      'untested: fetch the retained control with node scripts/import/fetch-control.mjs --dest .cache/control',
+    );
   const copy = scratch();
   cpSync(dir, copy, { recursive: true });
   rmSync(join(copy, 'robots.txt'));

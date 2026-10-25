@@ -3,27 +3,4 @@
 
 export type FaceMode = 'text' | 'seed' | 'photo' | 'project';
 
-export interface Input {
-  readonly id: string;
-  readonly mode: FaceMode;
-  readonly value: string;
-  /** The chosen photo for a photo face (a File), or null. */
-  readonly file: File | null;
-}
-
-export interface Face {
-  readonly id: string;
-  /** Raw pixels are painted onto a canvas by `drawFace` instead of shown from `url`. */
-  readonly raw: boolean;
-  readonly url: string;
-  readonly label: string;
-  readonly sourceMode: string;
-  readonly sourceFile: File | null;
-}
-
-export interface PublicPreview {
-  readonly id: string;
-  readonly mode: FaceMode;
-  readonly value: string;
-  readonly url: string;
-}
+export type { Input, Face, PublicPreview } from '../facade/records.ts';

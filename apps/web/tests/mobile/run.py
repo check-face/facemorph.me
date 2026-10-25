@@ -125,9 +125,11 @@ def main():
                 except (BrokenPipeError, ConnectionResetError):
                     pass
                 return
-            if path.startswith('/packages/browser-model-manager/'):
-                package = (REPO/'packages/browser-model-manager/dist').resolve()
-                source = (package/path.removeprefix('/packages/browser-model-manager/')).resolve()
+            mounts = json.loads((ROOT/'tests/mobile/mounts.json').read_text())
+            prefix = next((prefix for prefix in mounts if path.startswith(prefix)), None)
+            if prefix:
+                package = (ROOT/mounts[prefix]).resolve()
+                source = (package/path.removeprefix(prefix)).resolve()
                 if package not in source.parents or not source.is_file() or source.suffix != '.js':
                     self.send_error(404); return
                 body = source.read_bytes()

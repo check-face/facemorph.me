@@ -18,6 +18,23 @@ const INTERACTIVE = new Set([
 ]);
 const CONTRACT_ATTRS = /^(aria-|role$|disabled$|type$|data-next-)/;
 
+// Reviewed MUI 4 → 9 restyles (fm-zz2i): button-label spans became direct text,
+// and outlined inputs gained an aria-hidden zero-width sentinel. Preserve labels/ARIA
+// and all real controls while ignoring only those presentation changes.
+const sentinel = (node) =>
+  node?.tag === 'span' &&
+  node.attrs?.['aria-hidden'] === 'true' &&
+  node.text === '\u200b' &&
+  !node.children?.length;
+const transparentLabel = (node) =>
+  node?.tag === 'span' &&
+  !(node.classes ?? []).some((c) => c.startsWith('next-')) &&
+  !Object.keys(node.attrs ?? {}).length;
+const labelText = (node) =>
+  [node.text ?? '', ...(node.children ?? []).filter(transparentLabel).map(labelText)]
+    .filter(Boolean)
+    .join(' ');
+
 function normalText(text) {
   return typeof text === 'string' ? text.replace(/\s+/g, ' ').trim() : '';
 }
@@ -25,23 +42,91 @@ function normalText(text) {
 /** One contract entry per kept node, in document order: {region, tag?, next[], attrs{}, text}. */
 export function contractOf(dom) {
   const out = [];
-  const visit = (node, region) => {
-    if (!node || typeof node !== 'object') return;
+  const visit = (node, region, checkboxLabel) => {
+    if (!node || typeof node !== 'object' || sentinel(node)) return;
+    if (node.tag === 'input' && node.attrs?.type === 'hidden') return;
+    // Explicit provider retirement (fm-x6h5), not an arbitrary option/label exception.
+    if (
+      node.tag === 'option' &&
+      node.attrs?.value === 'webgl' &&
+      normalText(node.text) === 'WebGL GPU'
+    )
+      return;
     const next = (node.classes ?? []).filter((c) => c.startsWith('next-')).sort();
+    // MUI 4 put the Checkbox aria-label on its presentation span; MUI 9 puts it
+    // on the native checkbox. Carry only that label to the same actual control.
+    const containsCheckbox = (n) =>
+      (n.children ?? []).some(
+        (c) => (c.tag === 'input' && c.attrs?.type === 'checkbox') || containsCheckbox(c),
+      );
+    const labelCarrier =
+      node.tag === 'span' &&
+      !next.length &&
+      Object.keys(node.attrs ?? {}).length === 1 &&
+      node.attrs?.['aria-label'] &&
+      containsCheckbox(node);
+    if (labelCarrier) {
+      for (const child of node.children ?? []) visit(child, region, node.attrs['aria-label']);
+      return;
+    }
     const attrs = Object.fromEntries(
       Object.entries(node.attrs ?? {})
         .filter(([k]) => CONTRACT_ATTRS.test(k))
         .sort(([a], [b]) => (a < b ? -1 : 1)),
     );
-    const text = normalText(node.text);
-    const interactive = INTERACTIVE.has(node.tag);
-    if (next.length || Object.keys(attrs).length || text || interactive) {
-      out.push({ region, ...(interactive ? { tag: node.tag } : {}), next, attrs, text });
+    if (
+      checkboxLabel &&
+      node.tag === 'input' &&
+      node.attrs?.type === 'checkbox' &&
+      !attrs['aria-label']
+    )
+      attrs['aria-label'] = checkboxLabel;
+    // A native range exposes the same slider role as MUI 4's thumb. Its hidden
+    // form input was metadata; the visible role/value/label remain the contract.
+    const slider =
+      attrs.role === 'slider' || (node.tag === 'input' && node.attrs?.type === 'range');
+    if (slider) {
+      attrs.role = 'slider';
+      attrs.type = 'range';
     }
-    for (const child of node.children ?? []) visit(child, region);
+    const text = normalText(node.tag === 'button' ? labelText(node) : node.text);
+    const interactive = INTERACTIVE.has(node.tag) || slider;
+    if (next.length || Object.keys(attrs).length || text || interactive) {
+      out.push({
+        region,
+        ...(interactive ? { tag: slider ? 'input' : node.tag } : {}),
+        next,
+        attrs: Object.fromEntries(Object.entries(attrs).sort(([a], [b]) => (a < b ? -1 : 1))),
+        text,
+      });
+    }
+    for (const child of node.children ?? []) {
+      if (node.tag === 'button' && transparentLabel(child)) {
+        // Text already belongs to the button; retain any nested meaningful nodes.
+        for (const nested of child.children ?? [])
+          if (!transparentLabel(nested)) visit(nested, region, checkboxLabel);
+      } else visit(child, region, checkboxLabel);
+    }
   };
   for (const [region, roots] of Object.entries(dom ?? {}))
-    for (const root of [].concat(roots)) visit(root, region);
+    for (const root of [].concat(roots)) {
+      // MUI 4 retained the closed consent Snackbar during its exit transition; MUI 9
+      // unmounts it. The model/failure toast owns the visible slot in both versions.
+      const priorityToast =
+        region === 'toasts' &&
+        []
+          .concat(roots)
+          .some((r) =>
+            (r.classes ?? []).some((c) => c === 'next-model-toast' || c === 'next-failure-toast'),
+          );
+      if (
+        priorityToast &&
+        (root.classes ?? []).includes('next-consent-toast') &&
+        !(root.classes ?? []).some((c) => c === 'next-model-toast' || c === 'next-failure-toast')
+      )
+        continue;
+      visit(root, region);
+    }
   return out;
 }
 

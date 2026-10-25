@@ -23,6 +23,7 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { join } from 'node:path';
+import { fetchControl } from '../../../../scripts/import/fetch-control.mjs';
 
 export const ORIGIN_HOST = 'next.facemorph.me';
 export const ORIGIN = `https://${ORIGIN_HOST}`;
@@ -139,26 +140,17 @@ export async function startControl({
     kind: 'subject',
     files: walk(artifact!).length,
   });
-  const check = artifact
-    ? ''
-    : (() => {
-        try {
-          return execFileSync(
-            process.execPath,
-            [join(REPO, 'scripts/import/build-next.mjs'), '--check'],
-            { encoding: 'utf8' },
-          );
-        } catch (e) {
-          throw new Error(
-            `deploy-next/ does not verify against its identity (run npm run build:next at the repository root): ${(e as { stdout?: string }).stdout ?? e}`,
-          );
-        }
-      })();
-  const identity = artifact
+  // Retained control is independent of build:next, which now builds the destination.
+  const retained = artifact ? null : await fetchControl({ log: () => {} });
+  const controlDir = retained?.dir;
+  const identity: ControlIdentity = artifact
     ? subjectIdentity()
-    : (JSON.parse(check.trim().split('\n').at(-1) ?? '{}') as { summary: ControlIdentity }).summary;
-  if (!artifact && identity.kind !== 'control')
-    throw new Error(`deploy-next/ is a ${identity.kind} build, not the control`);
+    : {
+        ok: true,
+        kind: 'control',
+        files: retained!.record.files.length,
+        control: { sha256: retained!.record.release.sha256 },
+      };
   if (artifact && !identity.ok)
     throw new Error(`${artifact} has no index.html: not a servable subject`);
   const manifest = join(runtime, 'manifest.json');
@@ -176,11 +168,13 @@ export async function startControl({
   const work = mkdtempSync(join(CACHE, 'control-site-'));
   log ??= join(work, 'server.log');
   mkdirSync(join(work, 'overlay'), { recursive: true });
-  cpSync(artifact ?? join(REPO, 'deploy-next'), join(work, 'deploy-next'), { recursive: true });
+  cpSync(artifact ?? join(controlDir!, 'deploy-next'), join(work, 'deploy-next'), {
+    recursive: true,
+  });
   if (artifact) writeFileSync(join(work, 'next-site-source.txt'), `${source}\n`);
   else
     for (const name of ['next-site-source.txt', 'next-site-SHA256SUMS'])
-      copyFileSync(join(REPO, name), join(work, name));
+      copyFileSync(join(controlDir!, name), join(work, name));
   copyFileSync(manifest, join(work, 'overlay/manifest.json'));
   const mirror = join(CACHE, 'control-mirror');
   const mirrorFiles = await seedMirror(runtime, mirror, manifestSha256);
