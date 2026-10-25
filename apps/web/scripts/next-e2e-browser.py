@@ -31,11 +31,11 @@ S={
  'faceTextInputs':'.next-face input',
  'processingMode':'select[aria-label="Processing mode"]',
  'faceSource':'select[aria-label="Face source"]',
- 'choosePhoto':'input[aria-label="Choose photo"]',
+ 'choosePhoto':'.next-face input[type="file"]',
  'openProject':'input[aria-label="Open project"]',
  'cropView':'.next-crop-view',
  'cropZoom':'.next-crop-zoom input',
- 'fileName':'.next-file span',
+ 'fileName':'.next-face[data-next-state="photo"] .next-field input',
  'video':'.next-video-slot video',
  'product':'.next-product',
  'advanced':'.next-advanced',
@@ -63,7 +63,7 @@ def ensure_instrumented():
  # only way instrumentation goes stale.
  js("window.__ciBusyChanges=window.__ciBusyChanges||0;if(!window.__ciBusyObserver||!window.__ciBusyNode||!document.contains(window.__ciBusyNode)){if(window.__ciBusyObserver)window.__ciBusyObserver.disconnect();window.__ciBusyNode=document.querySelector('.next-status');window.__ciBusyObserver=new MutationObserver(()=>{window.__ciBusyChanges++;});window.__ciBusyObserver.observe(window.__ciBusyNode,{subtree:true,attributes:true,childList:true,characterData:true});window.__ciBusyChanges++;}")
 def q(expr):return json.loads(js('JSON.stringify('+expr+')'))
-def text(sel):return js("(document.querySelector('%s')?.innerText||'')"%sel)
+def text(sel):return js("(()=>{const e=document.querySelector('%s');return e instanceof HTMLInputElement?e.value:(e?.innerText||'');})()"%sel)
 def wait(predicate,seconds=600):
  deadline=time.monotonic()+seconds
  while time.monotonic()<deadline:
@@ -181,7 +181,7 @@ def stage_preflight():
  js("document.querySelector('.next-advanced').open=true")
  state=q("({tiles:document.querySelectorAll('.next-face').length,photos:document.querySelectorAll('%s').length,words:!!document.querySelector('%s'),generate:[...document.querySelectorAll('button')].some(b=>b.classList.contains('next-face-generate')&&b.textContent==='Generate'),modeOptions:[...document.querySelectorAll('%s option')].map(o=>o.value),error:(document.querySelector('%s')?.innerText||'')})"%(S['choosePhoto'],S['faceTextInputs'],S['processingMode'],S['error']))
  assert state['tiles']==2 and state['photos']==2 and state['words'] and state['generate'],state
- assert set(['auto','cpu','webgpu','webgl'])<=set(state['modeOptions']),state
+ assert set(state['modeOptions'])=={'auto','cpu','webgpu'},state
  assert not state['error'],state['error']
  save_check('preflight',{'passed':True,'modeOptions':state['modeOptions'],'engine':result['engine']})
 def stage_seedGeneration():

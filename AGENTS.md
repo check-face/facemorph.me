@@ -76,11 +76,11 @@ Agent Mail registration/reservations/threads in solo mode. Use
 `AGENT_MAIL_GUARD_MODE=warn` on commits AND pushes; no `--no-verify` or mail bypass.
 Do not restart panes, launch a swarm or spawn helpers in the current mode.
 
-1. Inspect changes and inspect CI once at startup:
+1. Inspect changes and inspect CI at startup and before picking up each next bead:
    `gh run list --workflow main.yml --branch main --limit 5`.
    If a relevant completed run failed, capture `gh run view <id> --log-failed` to
    a local file and inspect bounded error excerpts, diagnose
-   the actual failure and repair attributable breakage before new work. CI does not
+   the actual failure and repair attributable breakage before new bead work. CI does not
    automatically reopen beads today: whoever observes a real failure updates/reopens
    its responsible bead with the failing command/log and an unchecked repair item.
    Local lab passback can do this when explicitly given bead IDs. No indefinite

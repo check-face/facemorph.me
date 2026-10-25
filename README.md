@@ -62,7 +62,7 @@ Versioned hooks check format/lint of staged/pushed content; agents run relevant
 builds/tests and local browser/device checks themselves. CI runs one workflow at a
 time, finishes running work, and replaces only the pending run with the newest push.
 The YAML queue and path filters are the authority; no parallel local workflow engine.
-Inspect CI once at startup and repair observed failures through Beads; automatic CI
+Inspect CI at startup and before each next bead; repair observed failures through Beads before new work. Automatic CI
 reopening is not implemented. See AGENTS.md for commands and honest coverage limits.
 
 For now one agent operates directly outside NTM, with Agent Mail skipped and

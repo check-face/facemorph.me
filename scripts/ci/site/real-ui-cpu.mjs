@@ -36,8 +36,9 @@ const CHROMIUM = process.env['CHROMIUM_PATH'] ?? '/usr/bin/chromium';
 const JOURNEY = join(REPO, 'apps/web/scripts/next-e2e-browser.py');
 // Served at https://next.facemorph.me, the product's analytics.mjs asks for GA4's loader: the one operator-approved
 // exception (30 September 2026), the same single URL check-no-third-party.mjs allows. Only that URL is 'analytics'
-// (any other Google origin, a collect hit included, stays third-party), and the qualification server's CSP refuses
-// it, so the lane also requires that it moved zero bytes: qualification never reaches the production property.
+// (any other Google origin, a collect hit included, stays third-party). Chrome is explicitly launched as an
+// automated browser, so the product's existing webdriver privacy rule suppresses analytics. The lane also
+// requires zero analytics bytes: qualification never reaches the production property.
 export const ANALYTICS_RULE = {
   host: 'www.googletagmanager.com',
   pathPrefix: '/gtag/js',
@@ -193,6 +194,7 @@ async function main(argv) {
     CHROMIUM,
     [
       '--headless=new',
+      '--enable-automation',
       '--no-sandbox',
       '--no-proxy-server',
       ...chromiumArgs,
