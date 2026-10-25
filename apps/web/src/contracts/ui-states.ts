@@ -102,7 +102,8 @@ export type CropConfirmState =
   /** "Unable to auto align face." guidance; Adjust Crop still allows a manual crop. */
   | { readonly modal: 'crop-confirm'; readonly phase: 'detector-failed'; readonly proposal: CropProposal & { readonly source: 'detector-failed' } }
   /** OK pressed: the dialog is replaced (not stacked) by the tile's progress. */
-  | { readonly modal: 'crop-confirm'; readonly phase: 'committed'; readonly faceId: string; readonly tile: TileActionState };
+  | { readonly modal: 'crop-confirm'; readonly phase: 'committed'; readonly faceId: string; readonly tile: TileActionState }
+  | { readonly modal: 'crop-confirm'; readonly phase: 'abandoned' };
 
 export type CropEditorState =
   /** "Crop your image": square bounds with corner/edge handles, eye/face guides, rotation and angle, Cancel, Use Crop. */
@@ -124,7 +125,8 @@ export type MultiFaceSelectionState =
         | { readonly ceiling: 'BATCH_RETAINED_INPUT_BYTES'; readonly action: 'remove-retry-input' };
     }
   /** Committed atomically, in click order. */
-  | { readonly modal: 'multi-face'; readonly phase: 'committed'; readonly inserted: readonly CandidateId[] };
+  | { readonly modal: 'multi-face'; readonly phase: 'committed'; readonly inserted: readonly CandidateId[] }
+  | { readonly modal: 'multi-face'; readonly phase: 'cancelled'; readonly inserted: readonly [] };
 
 /** A parity-interim state: candidate search, removed from the target picker by fm-96if. */
 export interface ParityInterim {
@@ -210,6 +212,12 @@ export const SURFACES = Object.freeze({
     reference: { kind: 'legacy-surface', surface: 'candidate main page (Product.fs view), control 551b6072' },
     states: ['empty', 'one', 'two-or-more', 'many', 'generating', 'completed', 'one-failed-among-completed'],
     transitions: [
+      { event: 'inspect-interface', from: 'empty', to: 'empty', contract: 'none', copyKey: 'main.inspect' },
+      { event: 'add-face', from: 'two-or-more', to: 'many', contract: 'TileActionState', copyKey: 'main.add-face' },
+      { event: 'remove-to-one', from: 'completed', to: 'one', contract: 'TileActionState', copyKey: 'main.remove' },
+      { event: 'undo', from: 'one', to: 'two-or-more', contract: 'TileActionState', copyKey: 'main.undo' },
+      { event: 'start-over', from: 'completed', to: 'empty', contract: 'none', copyKey: 'main.start-over' },
+      { event: 'reload', from: 'completed', to: 'completed', contract: 'TileActionState', copyKey: 'main.restored' },
       { event: 'add-face', from: 'empty', to: 'one', contract: 'TileActionState', copyKey: 'main.add-face' },
       { event: 'add-face', from: 'one', to: 'two-or-more', contract: 'TileActionState', copyKey: 'main.add-face' },
       { event: 'generate', from: 'two-or-more', to: 'generating', contract: 'WholeActionProgress', copyKey: 'main.generating' },
@@ -226,6 +234,7 @@ export const SURFACES = Object.freeze({
     reference: { kind: 'legacy-surface', surface: 'candidate model download dialog (.next-download-dialog), control 551b6072' },
     states: ['confirm', 'revised-scope', 'in-progress', 'cancelled', 'error'],
     transitions: [
+      { event: 'cancel', from: 'confirm', to: 'cancelled', contract: 'AppGrantState', copyKey: 'download.cancelled-chunks-kept' },
       { event: 'continue', from: 'confirm', to: 'in-progress', contract: 'AppGrantState', copyKey: 'download.continue' },
       { event: 'scope-grew', from: 'in-progress', to: 'revised-scope', contract: 'ConsentCostRow', copyKey: 'download.revised-scope' },
       { event: 'continue', from: 'revised-scope', to: 'in-progress', contract: 'AppGrantState', copyKey: 'download.continue' },
@@ -242,6 +251,8 @@ export const SURFACES = Object.freeze({
     reference: locked('crop image.png'),
     states: ['proposed', 'detector-failed', 'committed', 'abandoned'],
     transitions: [
+      { event: 'adjust-crop', from: 'proposed', to: 'proposed', contract: 'none', copyKey: 'crop.adjust' },
+      { event: 'use-crop', from: 'proposed', to: 'proposed', contract: 'none', copyKey: 'crop.preview' },
       { event: 'ok', from: 'proposed', to: 'committed', contract: 'TileActionState', copyKey: 'crop.ok' },
       { event: 'ok', from: 'detector-failed', to: 'committed', contract: 'TileActionState', copyKey: 'crop.ok' },
       { event: 'cancel', from: 'proposed', to: 'abandoned', contract: 'none', copyKey: 'crop.cancel' },
@@ -255,7 +266,9 @@ export const SURFACES = Object.freeze({
   cropFailedToAlign: surface<'detector-failed'>({
     reference: locked('failed to align.png'),
     states: ['detector-failed'],
-    transitions: [],
+    transitions: [
+      { event: 'adjust-crop', from: 'detector-failed', to: 'detector-failed', contract: 'none', copyKey: 'crop.adjust' },
+    ],
     focus: 'Adjust Crop',
     escape: 'Cancel (abandons)',
     back: 'Cancel (abandons)',
@@ -277,6 +290,8 @@ export const SURFACES = Object.freeze({
     reference: { kind: 'new-design', requirement: 'PLAN.md#ui-flow-matrix-and-open-journey-contracts' },
     states: ['detecting', 'choosing', 'over-ceiling', 'committed', 'cancelled'],
     transitions: [
+      { event: 'cancel', from: 'detecting', to: 'cancelled', contract: 'none', copyKey: 'multi.cancel' },
+      { event: 'cancel', from: 'over-ceiling', to: 'cancelled', contract: 'none', copyKey: 'multi.cancel' },
       { event: 'faces-detected', from: 'detecting', to: 'choosing', contract: 'BatchSelection', copyKey: 'multi.choose' },
       { event: 'click', from: 'choosing', to: 'choosing', contract: 'BatchSelection', copyKey: 'multi.click-order' },
       { event: 'click-over-ceiling', from: 'choosing', to: 'over-ceiling', contract: 'BatchSelection', copyKey: 'multi.over-ceiling' },
@@ -293,6 +308,13 @@ export const SURFACES = Object.freeze({
     reference: { kind: 'legacy-surface', surface: 'candidate face tile, control 551b6072' },
     states: ['empty-or-invalid', 'ready', 'queued', 'active', 'cancelling', 'failed-retryable', 'retry-pixels-lost', 'file-pending', 'file-failed', 'verified-result', 'static-selection-pending'],
     transitions: [
+      { event: 'input', from: 'empty-or-invalid', to: 'ready', contract: 'TileActionState', copyKey: 'tile.generate' },
+      { event: 'select-name', from: 'ready', to: 'static-selection-pending', contract: 'TileActionState', copyKey: 'names.loading' },
+      { event: 'static-ready', from: 'static-selection-pending', to: 'verified-result', contract: 'ExportIdentity', copyKey: 'tile.result' },
+      { event: 'edit', from: 'verified-result', to: 'ready', contract: 'TileActionState', copyKey: 'tile.generate' },
+      { event: 'reload', from: 'verified-result', to: 'verified-result', contract: 'ExportIdentity', copyKey: 'tile.restored' },
+      { event: 'remove', from: 'verified-result', to: 'empty-or-invalid', contract: 'TileActionState', copyKey: 'tile.remove' },
+      { event: 'retry-file', from: 'file-failed', to: 'file-pending', contract: 'TileActionState', copyKey: 'tile.preparing-file' },
       { event: 'generate', from: 'ready', to: 'queued', contract: 'TileActionState', copyKey: 'tile.queued' },
       { event: 'start', from: 'queued', to: 'active', contract: 'WholeActionProgress', copyKey: 'tile.progress' },
       { event: 'cancel', from: 'active', to: 'cancelling', contract: 'TileActionState', copyKey: 'tile.cancelling' },
@@ -313,6 +335,11 @@ export const SURFACES = Object.freeze({
     reference: { kind: 'new-design', requirement: 'PLAN.md#ui-flow-matrix-and-open-journey-contracts' },
     states: ['closed', 'cold-loading', 'loaded', 'error', 'search', 'picked', 'invalidated'],
     transitions: [
+      { event: 'retry', from: 'error', to: 'cold-loading', contract: 'none', copyKey: 'names.loading' },
+      { event: 'dismiss', from: 'cold-loading', to: 'closed', contract: 'none', copyKey: 'names.dismiss' },
+      { event: 'dismiss', from: 'error', to: 'closed', contract: 'none', copyKey: 'names.dismiss' },
+      { event: 'target-revised', from: 'cold-loading', to: 'invalidated', contract: 'none', copyKey: 'names.target-changed' },
+      { event: 'target-revised', from: 'picked', to: 'invalidated', contract: 'none', copyKey: 'names.target-changed' },
       { event: 'open-from-burger', from: 'closed', to: 'cold-loading', contract: 'none', copyKey: 'names.loading' },
       { event: 'loaded', from: 'cold-loading', to: 'loaded', contract: 'none', copyKey: 'names.loaded' },
       { event: 'failed', from: 'cold-loading', to: 'error', contract: 'none', copyKey: 'names.error-retry' },
@@ -330,6 +357,12 @@ export const SURFACES = Object.freeze({
     reference: { kind: 'legacy-surface', surface: 'candidate result Save/Share, control 551b6072 (post-result Crop and Hold to compare removed)' },
     states: ['none', 'preparing-file', 'ready', 'share-cancelled'],
     transitions: [
+      { event: 'result-changed', from: 'ready', to: 'preparing-file', contract: 'ExportIdentity', copyKey: 'result.preparing-file' },
+      { event: 'save', from: 'ready', to: 'ready', contract: 'ExportIdentity', copyKey: 'result.save' },
+      { event: 'share', from: 'ready', to: 'ready', contract: 'ExportIdentity', copyKey: 'result.share' },
+      { event: 'dismiss-share', from: 'share-cancelled', to: 'ready', contract: 'ExportIdentity', copyKey: 'result.save-share' },
+      { event: 'invalidate', from: 'ready', to: 'none', contract: 'none', copyKey: 'result.withdrawn' },
+      { event: 'invalidate', from: 'preparing-file', to: 'none', contract: 'none', copyKey: 'result.withdrawn' },
       { event: 'result', from: 'none', to: 'preparing-file', contract: 'ExportIdentity', copyKey: 'result.preparing-file' },
       { event: 'file-ready', from: 'preparing-file', to: 'ready', contract: 'ExportIdentity', copyKey: 'result.save-share' },
       { event: 'format-change', from: 'ready', to: 'preparing-file', contract: 'ExportIdentity', copyKey: 'result.preparing-file' },
@@ -344,6 +377,13 @@ export const SURFACES = Object.freeze({
     reference: { kind: 'legacy-surface', surface: 'candidate morph result (play/slider), control 551b6072' },
     states: ['none', 'producing', 'current', 'invalidated', 'cancelled'],
     transitions: [
+      { event: 'retry', from: 'cancelled', to: 'producing', contract: 'WholeActionProgress', copyKey: 'morph.producing' },
+      { event: 'play', from: 'current', to: 'current', contract: 'ExportIdentity', copyKey: 'morph.play' },
+      { event: 'scrub', from: 'current', to: 'current', contract: 'ExportIdentity', copyKey: 'morph.scrub' },
+      { event: 'reload', from: 'current', to: 'current', contract: 'ExportIdentity', copyKey: 'morph.restored' },
+      { event: 'unsupported-route', from: 'none', to: 'none', contract: 'RouteSnapshot', copyKey: 'morph.route-unavailable' },
+      { event: 'incompatible-endpoints', from: 'none', to: 'none', contract: 'none', copyKey: 'morph.incompatible-models' },
+      { event: 'identical-neighbours', from: 'none', to: 'none', contract: 'none', copyKey: 'morph.identical-neighbours' },
       { event: 'create-morph', from: 'none', to: 'producing', contract: 'WholeActionProgress', copyKey: 'morph.producing' },
       { event: 'complete', from: 'producing', to: 'current', contract: 'ExportIdentity', copyKey: 'morph.play' },
       { event: 'cancel', from: 'producing', to: 'cancelled', contract: 'none', copyKey: 'morph.cancelled-no-partial' },
