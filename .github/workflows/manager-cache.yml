@@ -48,6 +48,24 @@ jobs:
       - name: Candidate cache shim and worker source regressions
         working-directory: apps/web
         run: node --test src/Next/Assets/model-cache.test.mjs src/Next/browser/model-source.test.mjs
+      - name: Cold photo with the real 108-shard encoder
+        if: matrix.engine == 'chromium'
+        uses: ./.github/actions/run-command
+        env:
+          FACEMORPH_ISOLATE_TEST_NETWORK: '1'
+          FACEMORPH_REQUIRE_RUNTIME: '1'
+        with:
+          timeout: '360'
+          # Keep the 1 GiB cold acquisition out of the concurrent package timing cells.
+          command: |
+            export FACEMORPH_RUNTIME_CACHE="$HOME/.cache/facemorph-device-lab/runtime-public"
+            node packages/browser-model-manager/test/run.mjs packages/browser-model-manager/test/cold-photo.component.ts
+      - uses: actions/upload-artifact@v4
+        if: always() && matrix.engine == 'chromium'
+        with:
+          name: manager-cold-photo-${{ github.run_id }}
+          path: test-results/manager-cache/chromium/cold-photo/result.json
+          if-no-files-found: ignore
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
