@@ -18,6 +18,11 @@ more partial work. Keep coding, testing and shipping; do not stop just to write 
 handoff. Compact in place when necessary and continue until the goal is achieved,
 the operator stops you, or no useful work remains without an external unblock.
 
+Use focused subagents when independent coding, investigation or review will make
+completion faster and more efficient. Give them bounded tasks and distinct file
+ownership; keep integration, meaningful validation and bead completion with the
+parent worker. Avoid duplicate work and coordination that costs more than it saves.
+
 Use `br ready --exclude-label gate --brief --json --limit 10` or
 `bvr --robot-next --robot-not-ready-labels gate`. Never run the bare viewer TUI.
 Gate-labelled decisions remain with the operator. Reclaim abandoned work from
