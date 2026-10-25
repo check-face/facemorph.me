@@ -14,7 +14,11 @@ atomically, preserve other agents' changes and do not disturb live claims.
 
 Implement a working slice, run relevant real tests/builds and browser/device checks,
 and review your changes with fresh eyes. Choose validation proportionate to the change;
-not every lane or a timing campaign per slice. The hooks installed by npm run hooks:install
+not every lane or a timing campaign per slice. Phone reflex (operator, 25 October 2026):
+if your bead touches browser runtime or UI behaviour (`apps/web/src`, `packages/*`, worker
+or model paths), run `lab.py run --cell phone-cpu --journey warm-face` before push (~20 s)
+and record it in the bead; if the bead is types, docs, process or CI-only, write "phone not
+relevant" in the bead — never skip silently. The hooks installed by npm run hooks:install
 check exact staged/pushed format/lint; they do not run your build/tests. Do that yourself.
 No mocks, fabricated proof, skipped failures or weakened assertions. The control artifact
 from build:next is not the changed monorepo application built by npm run build.

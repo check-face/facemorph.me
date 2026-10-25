@@ -284,7 +284,11 @@ exclusive lock. Timing measurements alone require `autoresearch/run.py --exclusi
 with bounded wait and honest busy/deferred results. Runner/driver changes are in progress:
 verify the installed runner supports this flag; defer timing if it does not. The physical P30 Pro runs locally,
 never in CI; `tools/device-lab/lab.py` serializes only the physical device with bounded
-per-device locks. Eris browser cells do not wait behind a phone run. The Frigate phone
+per-device locks. Eris browser cells do not wait behind a phone run. Reflex (operator,
+25 October 2026): a bead touching browser runtime or UI behaviour (`apps/web/src`,
+`packages/*`, worker or model paths) records one `lab.py run --cell phone-cpu --journey
+warm-face` (~20 s) or an explicit "phone not relevant" in the bead — never a silent skip.
+The Frigate phone
 camera stays held off until the operator asks otherwise.
 
 Use lab preflight and the affected journey on the exact candidate artifact. Current
