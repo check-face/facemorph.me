@@ -122,6 +122,7 @@ export default defineConfig({
         main: fileURLToPath(new URL('./index.html', import.meta.url)),
         'worker-check': fileURLToPath(new URL('./worker-check.html', import.meta.url)),
         'render-check': fileURLToPath(new URL('./render-check.html', import.meta.url)),
+        'preflight-check': fileURLToPath(new URL('./preflight-check.html', import.meta.url)),
       },
     },
   },

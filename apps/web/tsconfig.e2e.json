@@ -7,7 +7,15 @@
     "checkJs": false,
     "maxNodeModuleJsDepth": 0
   },
-  "include": ["test/e2e", "test/goldens", "test/support", "test/parity", "test/verify"],
+  "include": [
+    "test/e2e",
+    "test/goldens",
+    "test/support",
+    "test/parity",
+    "test/verify",
+    "src/preflight",
+    "test/preflight"
+  ],
   // The facade harness page imports the shell's facade: checked with it, by test/facade/tsconfig.json.
   "exclude": ["test/e2e/facade"]
 }

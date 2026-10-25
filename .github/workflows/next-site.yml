@@ -90,6 +90,9 @@ jobs:
         run: npm run build:next && npm run build:next -- --check
       - name: Historic hello preview is included byte for byte
         run: cmp apps/web/src/public/preview/hello-1024.webp deploy-next/preview/hello-1024.webp
+      - name: Model-free checker compressed budget (entry, shared dependencies and worker)
+        # The staging helper deliberately excludes Vite's private manifest from the public artifact.
+        run: node apps/web/build/preflight-size.ts apps/web/dist
       - name: Exercise typed project import and export (project-json.test.ts, fm-stth)
         run: node --test apps/web/test/project/project-json.test.ts
       - name: No third-party runtime dependencies
@@ -164,6 +167,17 @@ jobs:
       - uses: ./.github/actions/setup-playwright
         with:
           browsers: chromium
+      - name: Model-free checker real WASM, WebGPU loss, background and wall-clock budgets
+        env:
+          DISPLAY: ':0'
+          FACEMORPH_PREFLIGHT_SITE: site/deploy-next
+        run: node --test apps/web/test/e2e/preflight.e2e.ts
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: preflight-${{ github.sha }}
+          path: apps/web/test-results/preflight/
+          if-no-files-found: warn
       - name: Verify retained control before destination parity smoke
         env:
           GITHUB_TOKEN: ${{ github.token }}
