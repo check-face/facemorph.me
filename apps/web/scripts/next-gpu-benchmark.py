@@ -74,8 +74,15 @@ def wait(check, seconds, what):
     raise AssertionError('Timed out waiting for ' + what)
 
 
-new_tab(os.environ.get('GPU_BENCH_URL', 'https://next.facemorph.me/'))
-wait_for_load()
+origin = os.environ.get('GPU_BENCH_URL', 'https://next.facemorph.me/')
+new_tab('about:blank')
+origin = js('new URL(%s).href' % json.dumps(origin))
+# Page.navigate can exceed browser-harness's synchronous IPC deadline while
+# Chrome starts the document. Return before navigating and poll the real page,
+# as the CPU journey does, rather than blocking the harness's event pump.
+js('setTimeout(()=>{location.href=%s;},0);0' % json.dumps(origin))
+wait(lambda: q('location.href===%s&&document.readyState==="complete"' % json.dumps(origin)),
+     30, 'the benchmark document to load')
 # Close the trial-phase reporting toast without answering it.
 time.sleep(1)
 js('(()=>{const b=document.querySelector(\'.next-consent-toast button[aria-label="Ask me later"]\');if(b)b.click();return !!b;})()')

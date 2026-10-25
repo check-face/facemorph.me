@@ -147,6 +147,10 @@ test('first-visit', async ({ page, context }, info) => {
   });
   const rec = recorder(page, info, 'first-visit');
   await open(page);
+  // The first React commit precedes the asynchronous model inventory. Capture
+  // the same model-download prompt as the frozen arrival contract, rather than
+  // racing the interim debug-consent toast on one viewport.
+  await expect(page.locator('.next-model-toast')).toBeVisible({ timeout: 30_000 });
   await rec.step('arrived', { kind: 'load', target: `${ORIGIN}/` });
   await expect(page.locator('section.next-face')).toHaveCount(2);
   await expect(tile(page, 0)).toHaveAttribute('data-next-state', 'preview');

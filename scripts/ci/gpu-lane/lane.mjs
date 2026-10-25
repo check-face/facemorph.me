@@ -86,9 +86,15 @@ function harness(script, env, timeoutMs) {
 }
 
 const CANARY_READOUT = `
-import json, os
-new_tab(os.environ['LANE_ORIGIN'])
-wait_for_load()
+import json, os, time
+origin = os.environ['LANE_ORIGIN']
+new_tab('about:blank')
+js('setTimeout(()=>{location.href=%s;},0);0' % json.dumps(origin))
+deadline = time.monotonic() + 30
+while not js('location.href===%s&&document.readyState==="complete"' % json.dumps(origin)):
+  if time.monotonic() >= deadline:
+    raise TimeoutError('Canary readout document did not load')
+  time.sleep(.25)
 print('CANARIES ' + json.dumps(js("""(async()=>{const c=await caches.open('checkface-model-blobs-v1');const out=[];
   for(const r of await c.keys()){if(!r.url.includes('canary-qualification'))continue;
     const j=await (await c.match(r)).json().catch(()=>null);if(j)out.push({provider:j.provider,manifestSha256:j.manifestSha256,checks:j.checks});}

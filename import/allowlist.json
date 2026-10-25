@@ -1161,7 +1161,13 @@
       "sha256": "5bd540e2535416fdf6721a0e818cc05e65cd0ea46dc17296f3f1176e2ba5f62c",
       "bytes": 11176,
       "class": "temporary-root",
-      "temporary": true
+      "temporary": true,
+      "ported": {
+        "sha256": "1165d63008eff152620f2a84070a354e13f9a8c87872f160c73eebe9d497e2d6",
+        "bytes": 11668,
+        "bead": "fm-wzy",
+        "reason": "Navigate asynchronously while polling document readiness so the browser harness event pump does not hit its synchronous IPC deadline before GPU admission."
+      }
     },
     {
       "source": "scripts/next-ios-sim.py",
