@@ -53,8 +53,10 @@ test('declared arrival tile changes retain checks on labels, action presence, pl
     actions,
   ]);
   const current = dom([
-    image([{ ...action, classes: ['next-face-generate', 'next-face-operation'] }, close]),
+    input('Encode image'),
+    image([close]),
     field,
+    { ...action, classes: ['next-face-generate', 'next-face-operation'] },
     actions,
   ]);
   const grade = (subject) =>
@@ -66,19 +68,25 @@ test('declared arrival tile changes retain checks on labels, action presence, pl
   assert.equal(grade(current), 'passed');
   for (const mutate of [
     (d) => {
-      d.faces[0].children[0].children.shift();
+      d.faces[0].children.splice(3, 1); // no action
     },
     (d) => {
-      d.faces[0].children[0].children[0].attrs['aria-label'] = 'Generate the wrong face';
+      d.faces[0].children[3].attrs['aria-label'] = 'Generate the wrong face';
     },
     (d) => {
-      d.faces[0].children[0].children[0].attrs.disabled = '';
+      d.faces[0].children[3].attrs.disabled = '';
     },
     (d) => {
-      d.faces[0].children.push(d.faces[0].children[0].children.shift());
+      d.faces[0].children[1].children.unshift(d.faces[0].children.splice(3, 1)[0]); // back in the image
     },
     (d) => {
-      d.faces[0].children[1].text = 'Morph form';
+      d.faces[0].children[2].text = 'Morph form';
+    },
+    (d) => {
+      d.faces[0].children.shift(); // no card chooser
+    },
+    (d) => {
+      d.faces[0].children[0].attrs['aria-label'] = 'Choose photo'; // old name
     },
   ]) {
     const changed = structuredClone(current);

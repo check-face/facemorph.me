@@ -131,7 +131,9 @@ export function contractOf(dom) {
 }
 
 // fm-25um/fm-fy2.17.1's declared arrival changes, applied to the retained layout only. The new
-// layout is compared as-is, so a missing/misplaced action or changed label still fails.
+// layout is compared as-is, so a missing/misplaced action or changed label still fails. Since the
+// operator's card-entry correction (26 October) the card keeps its own chooser and Generate stays
+// beside the field, as in the retained layout; only their names and the operation class change.
 // Frozen goldens remain untouched; all unrelated first-visit entries compare exactly.
 export function arrivalTileContract(entries) {
   const out = [];
@@ -161,7 +163,11 @@ export function arrivalTileContract(entries) {
     const changed = [];
     for (let j = 0; j < face.length; j++) {
       const e = face[j];
-      if (e === action) continue;
+      if (e === action) {
+        // The one operation action, in its retained place beside the field.
+        changed.push({ ...action, next: ['next-face-generate', 'next-face-operation'] });
+        continue;
+      }
       if (
         e.next.length === 1 &&
         e.next[0] === 'next-sr' &&
@@ -174,9 +180,8 @@ export function arrivalTileContract(entries) {
         e.attrs.type === 'file' &&
         e.attrs['aria-label'] === 'Choose photo'
       ) {
-        // The chooser now lives in the Encode source dialog. first-visit operates
-        // that actual dialog and checks its chooser before returning to the tile.
-        continue;
+        // The card's own chooser, renamed: photo entry reads Encode image.
+        changed.push({ ...e, attrs: { ...e.attrs, 'aria-label': 'Encode image' } });
       } else if (
         e.tag === 'button' &&
         e.next.length === 1 &&
@@ -201,12 +206,6 @@ export function arrivalTileContract(entries) {
           j++;
       } else changed.push(e);
     }
-    const at = changed.findIndex(
-      (e) => e.next.includes('next-face-close') || e.next.includes('next-input-row'),
-    );
-    if (at >= 0)
-      changed.splice(at, 0, { ...action, next: ['next-face-generate', 'next-face-operation'] });
-    else changed.push(action);
     out.push(...changed);
     i = end - 1;
   }
