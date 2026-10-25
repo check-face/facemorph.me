@@ -1,6 +1,7 @@
 // fm-25um: operated controls in the identified, composed application, with real CPU synthesis.
 import assert from 'node:assert/strict';
-import { existsSync, mkdirSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { resolve, join } from 'node:path';
 import test from 'node:test';
 import { chromium, devices, type Locator } from 'playwright';
@@ -8,6 +9,7 @@ import { startControl, chromiumArgs, ORIGIN, REPO } from '../parity/control-serv
 import { readIdentity } from '../../../../scripts/import/build-next.mjs';
 import { press } from '../support/operate.ts';
 import { INSTALL_HOOK } from '../parity/elmish-probe.ts';
+import { generationIdentity } from '../../src/Next/browser/identity.mjs';
 
 const runtime = process.env['FACEMORPH_RUNTIME_DIR'] ?? join(REPO, '.cache/runtime');
 const results = join(REPO, 'apps/web/test-results/face-controls');
@@ -50,8 +52,10 @@ test(
         const page = await context.newPage();
         const errors: string[] = [];
         const modelRequests: string[] = [];
+        const requests: string[] = [];
         page.on('pageerror', (error) => errors.push(error.message));
         page.on('request', (request) => {
+          requests.push(request.url());
           const path = new URL(request.url()).pathname;
           if (/^\/runtime\/(assets|chunks|encoder-stream|photo)\//.test(path))
             modelRequests.push(path);
@@ -69,7 +73,7 @@ test(
         };
         const idle = async () =>
           page.waitForFunction(
-            () => !document.querySelector('.next-product[aria-busy=true]'),
+            () => !document.querySelector('.next-product[data-next-busy=true]'),
             null,
             { timeout: 180_000 },
           );
@@ -93,6 +97,53 @@ test(
           await page.getByLabel('Processing mode').selectOption('cpu');
           const tile = page.locator('section.next-face').nth(1);
           const field = tile.locator('.next-field input');
+          const completedInput = async (value: string) => {
+            // Saving awaits the real file encoder and cache commit. Its cache key
+            // contains the generator's exact UTF-8 input identity, not a UI label.
+            const saved = page.waitForEvent('download');
+            await operate(tile.getByRole('button', { name: 'Save image', exact: true }));
+            const file = await saved;
+            await file.saveAs(join(results, `${name}-${value}.webp`));
+            const sha = (text: string) => createHash('sha256').update(text).digest('hex');
+            const manifest = JSON.parse(readFileSync(join(runtime, 'manifest.json'), 'utf8'));
+            const generationSha256 = sha(JSON.stringify(generationIdentity(manifest, 'seed')));
+            const key = sha(
+              JSON.stringify({ generationSha256, kind: 'seed', identity: { sha256: sha(value) } }),
+            );
+            const record = await page.evaluate(async (key) => {
+              const open = indexedDB.open('checkface-originals-v1');
+              const db = await new Promise<IDBDatabase>((resolve, reject) => {
+                open.onsuccess = () => resolve(open.result);
+                open.onerror = () => reject(open.error);
+              });
+              try {
+                const get = db.transaction('originals').objectStore('originals').get(key);
+                const result = await new Promise<{
+                  blob: Blob;
+                  generationSha256: string;
+                  latentSha256: string;
+                }>((resolve, reject) => {
+                  get.onsuccess = () => resolve(get.result);
+                  get.onerror = () => reject(get.error);
+                });
+                return result
+                  ? {
+                      bytes: result.blob.size,
+                      generationSha256: result.generationSha256,
+                      latentSha256: result.latentSha256,
+                    }
+                  : null;
+              } finally {
+                db.close();
+              }
+            }, key);
+            assert.equal(record?.generationSha256, generationSha256);
+            assert.ok(
+              (record?.bytes ?? 0) > 0,
+              `${value}: exact input has a real completed cache record`,
+            );
+            return record!;
+          };
           for (const [attribute, value] of [
             ['autocapitalize', 'off'],
             ['autocorrect', 'off'],
@@ -118,13 +169,31 @@ test(
             ['empty', '', false],
             ['whitespace', '   ', false],
             ['512-bytes', 'é'.repeat(256), true],
-            ['513-bytes', 'a'.repeat(513), false],
+            ['513-bytes', 'é'.repeat(256) + 'a', false],
+            ['long-pasted', 'x'.repeat(10_000), false],
             ['lowercase', 'hello', true],
           ] as const) {
             await replace(field, value);
             assert.equal(await tile.locator('.next-face-generate').isDisabled(), !valid, caseName);
             await shot(caseName);
           }
+          // Drive native IME composition, then a real Enter key. Composition must
+          // not start generation or acquisition; no event/browser API is replaced.
+          await replace(field, '');
+          const cdp = await context.newCDPSession(page);
+          const beforeComposition = await page.evaluate('window.__elmish.model.JobId');
+          await cdp.send('Input.imeSetComposition', {
+            text: 'hello',
+            selectionStart: 5,
+            selectionEnd: 5,
+          });
+          await page.keyboard.press('Enter');
+          await cdp.send('Input.insertText', { text: 'hello' });
+          assert.equal(await field.inputValue(), 'hello');
+          assert.equal(await page.evaluate('window.__elmish.model.JobId'), beforeComposition);
+          assert.equal(await page.locator('.next-download-dialog').count(), 0);
+          await shot('ime-composition');
+          await cdp.detach();
           assert.deepEqual(modelRequests, [], 'typing and invalid Generate acquire no model');
           await operate(field);
           await page.keyboard.press('Enter');
@@ -136,6 +205,11 @@ test(
             )
           )
             await operate(download);
+          await page.waitForFunction(() =>
+            document.querySelector('.next-product[data-next-busy=true]'),
+          );
+          const firstJob = await page.evaluate('window.__elmish.model.JobId');
+          for (let repeat = 0; repeat < 3; repeat++) await page.keyboard.press('Enter');
           await page.waitForFunction(
             () =>
               document.querySelectorAll('section.next-face')[1]?.getAttribute('data-next-state') ===
@@ -144,6 +218,11 @@ test(
             { timeout: 180_000 },
           );
           await idle();
+          assert.equal(
+            await page.evaluate('window.__elmish.model.JobId'),
+            firstJob,
+            'Enter cannot duplicate an active job',
+          );
           assert.match(await page.locator('.next-route-caption').innerText(), /CPU/);
           assert.equal(
             await tile.locator('.next-face-generate').count(),
@@ -152,7 +231,36 @@ test(
           );
           assert.equal(await page.locator('.next-compare, .next-file').count(), 0);
           await shot('generated');
-          await replace(field, 'cancel this exact input');
+          const lowercase = await completedInput('hello');
+          await replace(field, 'Hello');
+          await operate(tile.locator('.next-face-image .next-face-generate'));
+          await page.waitForFunction(
+            () =>
+              document.querySelectorAll('section.next-face')[1]?.getAttribute('data-next-state') ===
+              'filled',
+            null,
+            { timeout: 180_000 },
+          );
+          await idle();
+          const uppercase = await completedInput('Hello');
+          assert.notEqual(
+            lowercase.latentSha256,
+            uppercase.latentSha256,
+            'Hello and hello produce different actual identities',
+          );
+          await shot('uppercase-identity');
+          const beforeEdit = modelRequests.length;
+          const requestsBeforeEdit = requests.length;
+          await operate(field);
+          await page.keyboard.press('Control+A');
+          await page.keyboard.insertText('c');
+          assert.notEqual(await tile.getAttribute('data-next-state'), 'filled');
+          assert.equal(await tile.locator('.next-face-image .next-face-generate').count(), 1);
+          await page.keyboard.insertText('ancel this exact input');
+          assert.equal(await field.inputValue(), 'cancel this exact input');
+          assert.equal(modelRequests.length, beforeEdit, 'editing makes no model requests');
+          assert.deepEqual(requests.slice(requestsBeforeEdit), [], 'keystrokes make no requests');
+          await shot('edited-result');
           assert.notEqual(
             await tile.getAttribute('data-next-state'),
             'filled',
