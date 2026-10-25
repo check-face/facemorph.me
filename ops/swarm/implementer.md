@@ -18,7 +18,9 @@ not every lane or a timing campaign per slice. Phone reflex (operator, 25 Octobe
 if your bead touches browser runtime or UI behaviour (`apps/web/src`, `packages/*`, worker
 or model paths), run `lab.py run --cell phone-cpu --journey warm-face` before push (~20 s)
 and record it in the bead; if the bead is types, docs, process or CI-only, write "phone not
-relevant" in the bead — never skip silently. The hooks installed by npm run hooks:install
+relevant" in the bead — never skip silently. Beyond the reflex, validate on the phone whenever
+you judge it worthwhile: the per-device lock makes concurrent attempts safe and a busy phone
+defers honestly instead of blocking you. The hooks installed by npm run hooks:install
 check exact staged/pushed format/lint; they do not run your build/tests. Do that yourself.
 No mocks, fabricated proof, skipped failures or weakened assertions. The control artifact
 from build:next is not the changed monorepo application built by npm run build.

@@ -288,6 +288,8 @@ per-device locks. Eris browser cells do not wait behind a phone run. Reflex (ope
 25 October 2026): a bead touching browser runtime or UI behaviour (`apps/web/src`,
 `packages/*`, worker or model paths) records one `lab.py run --cell phone-cpu --journey
 warm-face` (~20 s) or an explicit "phone not relevant" in the bead — never a silent skip.
+Any agent may additionally validate on the phone whenever it judges it worthwhile — the
+per-device lock makes concurrent attempts safe, the wait is bounded, and busy defers honestly.
 The Frigate phone
 camera stays held off until the operator asks otherwise.
 
