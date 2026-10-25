@@ -72,6 +72,12 @@ def seed_from_local():
    except OSError:continue
 seed_from_local()
 class Handler(SimpleHTTPRequestHandler):
+ def setup(self):
+  # Handshake in this client's thread: an idle speculative TCP connection must not block accept.
+  self.request.settimeout(10)
+  self.request.do_handshake()
+  self.request.settimeout(None)
+  super().setup()
  def __init__(self,*args,**kw):super().__init__(*args,directory='deploy-next',**kw)
  def end_headers(self):
   for k,v in headers_for(urlsplit(self.path).path).items():self.send_header(k,v)
@@ -120,4 +126,4 @@ class Handler(SimpleHTTPRequestHandler):
    self.respond(data,self.mime_for(self.path))
   except Exception:
    traceback.print_exc();self.send_error(502,'Pinned runtime acquisition failed')
-server=ThreadingHTTPServer(('127.0.0.1',a.port),Handler);ctx=ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER);ctx.load_cert_chain(a.cert,a.key);server.socket=ctx.wrap_socket(server.socket,server_side=True);server.serve_forever()
+server=ThreadingHTTPServer(('127.0.0.1',a.port),Handler);ctx=ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER);ctx.load_cert_chain(a.cert,a.key);server.socket=ctx.wrap_socket(server.socket,server_side=True,do_handshake_on_connect=False);server.serve_forever()

@@ -2,7 +2,12 @@
 // artifact trees, report-only for the control's identity and blocking for a build's), and real-ui-cpu's runtime
 // refusal (plain values).
 import assert from 'node:assert/strict';
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
+import { once } from 'node:events';
+import { get } from 'node:https';
+import { createConnection, createServer } from 'node:net';
+import { setTimeout as delay } from 'node:timers/promises';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -168,4 +173,98 @@ test('real-ui-cpu inference: a real run passes; a mocked or partial one fails wi
     'the encoded face was never synthesized',
   ]);
   assert.deepEqual(reasons(REAL, {}), ['the journey reported no generated faces']);
+});
+
+test('the exact-artifact TLS server serves requests while another client has not started its handshake', async (t) => {
+  const root = mkdtempSync(join(tmpdir(), 'site-tls-'));
+  const manifest = '{}';
+  mkdirSync(join(root, 'overlay'));
+  mkdirSync(join(root, 'deploy-next'));
+  writeFileSync(join(root, 'overlay/manifest.json'), manifest);
+  writeFileSync(join(root, 'next-site-source.txt'), 'tls-test');
+  writeFileSync(join(root, 'deploy-next/index.html'), '<title>exact bytes</title>');
+  const cert = spawnSync('openssl', [
+    'req',
+    '-x509',
+    '-newkey',
+    'rsa:2048',
+    '-nodes',
+    '-days',
+    '1',
+    '-subj',
+    '/CN=localhost',
+    '-keyout',
+    join(root, 'key.pem'),
+    '-out',
+    join(root, 'cert.pem'),
+  ]);
+  assert.equal(cert.status, 0, String(cert.stderr));
+  const reservation = createServer();
+  reservation.listen(0, '127.0.0.1');
+  await once(reservation, 'listening');
+  const port = reservation.address().port;
+  await new Promise((resolve) => reservation.close(resolve));
+  const server = spawn(
+    'python3',
+    [
+      new URL('../../../apps/web/scripts/next-e2e-server.py', import.meta.url).pathname,
+      '--port',
+      String(port),
+      '--manifest-sha',
+      createHash('sha256').update(manifest).digest('hex'),
+      '--runtime-overlay',
+      join(root, 'overlay'),
+      '--cert',
+      join(root, 'cert.pem'),
+      '--key',
+      join(root, 'key.pem'),
+    ],
+    { cwd: root, stdio: ['ignore', 'ignore', 'pipe'] },
+  );
+  let logs = '';
+  server.stderr.on('data', (chunk) => {
+    logs += chunk;
+  });
+  let idleClient;
+  t.after(async () => {
+    idleClient?.destroy();
+    if (server.exitCode === null) {
+      server.kill();
+      await once(server, 'exit');
+    }
+    rmSync(root, { recursive: true });
+  });
+  // This is a real TCP client, like a speculative browser connection that has not sent TLS bytes.
+  const deadline = Date.now() + 10000;
+  while (!idleClient) {
+    const candidate = createConnection({ port, host: '127.0.0.1' });
+    try {
+      await once(candidate, 'connect');
+      idleClient = candidate;
+    } catch (error) {
+      candidate.destroy();
+      if (Date.now() >= deadline) throw new Error(logs, { cause: error });
+      await delay(50);
+    }
+  }
+  const result = await new Promise((resolve, reject) => {
+    const request = get({ host: '127.0.0.1', port, rejectUnauthorized: false }, (response) => {
+      let body = '';
+      response.on('data', (chunk) => {
+        body += chunk;
+      });
+      response.on('end', () =>
+        resolve({
+          status: response.statusCode,
+          source: response.headers['x-next-artifact-source'],
+          body,
+        }),
+      );
+    });
+    request.setTimeout(3000, () =>
+      request.destroy(new Error('TLS handshake blocked the next request')),
+    );
+    request.on('error', reject);
+  });
+  assert.deepEqual(result, { status: 200, source: 'tls-test', body: '<title>exact bytes</title>' });
 });

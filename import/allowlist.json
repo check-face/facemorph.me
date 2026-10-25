@@ -1141,10 +1141,10 @@
       "class": "temporary-root",
       "temporary": true,
       "ported": {
-        "sha256": "a74c45853a01d5498a74c79f38ac871a381b6c75caf90feddff6229b26b2d048",
-        "bytes": 7551,
+        "sha256": "7f0e940d4ba3492200caa8ca2137cb3c4c7c87a8f8c47fc2f73caf3f47720b5e",
+        "bytes": 7806,
         "bead": "fm-zz2i",
-        "reason": "Optional --port isolates concurrent correctness servers while preserving the classic default of 8443; Vite destination integration: shared production headers and native dynamic-import directives; compiled artifact identity."
+        "reason": "Optional --port isolates concurrent correctness servers while preserving the classic default of 8443; Vite destination integration: shared production headers and native dynamic-import directives; compiled artifact identity. TLS handshake runs in the client thread so speculative idle connections cannot block accept (fm-aa8)."
       }
     },
     {
