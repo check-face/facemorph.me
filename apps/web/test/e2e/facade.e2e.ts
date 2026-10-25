@@ -53,9 +53,13 @@ const TYPES: Record<string, string> = {
   '.html': 'text/html; charset=utf-8',
   '.js': 'text/javascript',
   '.mjs': 'text/javascript',
+  '.css': 'text/css',
   '.json': 'application/json',
   '.wasm': 'application/wasm',
   '.jpg': 'image/jpeg',
+  '.png': 'image/png',
+  '.webp': 'image/webp',
+  '.woff2': 'font/woff2',
 };
 const log = (line: string) => console.log(`# ${line}`);
 
@@ -874,6 +878,11 @@ test(
   'control-written retention restores through the port on the same origin',
   { timeout: 600000 },
   async (t) => {
+    // Earlier journeys retain photo inputs whose classic field is disabled.
+    // Start the control writer with fresh storage, then retain that same origin
+    // and storage for the port reader below.
+    await context.close();
+    await open();
     const scratch = mkdtempSync(join(tmpdir(), 'facade-retention-control-'));
     t.after(() => rmSync(scratch, { recursive: true, force: true }));
     const cached = join(repo, '.cache/control/tree');
@@ -942,8 +951,11 @@ test(
         { timeout: 300000 },
       );
       assert.match((await page.locator('.next-route-caption').textContent()) ?? '', /CPU/);
-      await page.waitForFunction(
-        async () => {
+      // waitForFunction treats an async predicate's Promise as truthy before
+      // its IndexedDB result is known. Poll awaited evaluations so a false
+      // durable-storage check cannot finish the wait.
+      const retained = () =>
+        page.evaluate(async () => {
           const db = await new Promise<IDBDatabase>((resolve, reject) => {
             const q = indexedDB.open('checkface-originals-v1');
             q.onsuccess = () => resolve(q.result);
@@ -961,25 +973,20 @@ test(
           } finally {
             db.close();
           }
-        },
-        null,
-        { timeout: 30000 },
-      );
+        });
+      const deadline = Date.now() + 30_000;
+      let stored = await retained();
+      while (!stored && Date.now() < deadline) {
+        await page.waitForTimeout(100);
+        stored = await retained();
+      }
+      assert.equal(stored, true, 'classic did not finish its durable session write');
       await page.screenshot({ path: join(results, 'control-written-session.png') });
-      await context.storageState({
-        path: join(results, 'control-written-session-storage.json'),
-        indexedDB: true,
-      });
     } finally {
       await context.unroute(`${ORIGIN}/**`, control);
     }
     await page.goto(`${ORIGIN}/`);
     await page.waitForFunction('window.harnessReady');
-    const restored = await call<Out>('restore');
-    assert.equal(restored.restored, true);
-    assert.equal(restored.faces.length, 1);
-    assert.equal(restored.faces[0]?.id, 'face-1');
-    assert.equal(restored.errorMessage, '');
     const facts = await call<{
       checks: {
         id: string;
@@ -990,6 +997,12 @@ test(
       }[];
       storage: { rawFaces: number };
     }>('retentionFacts');
+    const restored = await call<Out | null>('restore');
+    assert.ok(restored, `control session was not restored: ${JSON.stringify(facts)}`);
+    assert.equal(restored.restored, true);
+    assert.equal(restored.faces.length, 1);
+    assert.equal(restored.faces[0]?.id, 'face-1');
+    assert.equal(restored.errorMessage, '');
     assert.equal(facts.storage.rawFaces, 1);
     assert.ok(
       facts.checks.every((f) => f.modelMatches && f.noiseMatches && f.generation === f.expected),
