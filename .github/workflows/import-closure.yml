@@ -17,7 +17,7 @@ jobs:
           node-version: '22'
       - run: npm ci
       - name: Build the package files mounted by the mobile browser suite
-        run: npm run build -w packages/browser-model-manager
+        run: npm run build -w packages/stylegan-js -w packages/browser-model-manager
       - run: node --test scripts/import/control.test.mjs scripts/import/closure.test.mjs scripts/runtime/runtime.test.mjs
       # Files the app adds beside the imported closure (fm-svg shell and build, fm-s9n contracts, fm-l6mq media core, fm-4umi admission); everything else under apps/web
       # must be the allowlist's bytes.
