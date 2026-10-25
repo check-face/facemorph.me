@@ -15,24 +15,39 @@ response, so the bytes under test are the bytes that shipped apart from one appe
 
     python3 scripts/next-ios-sim.py --device 'iPhone 17 Pro' --evidence next-ios-evidence
 """
-import argparse, http.server, json, mimetypes, socketserver, subprocess, sys, threading, time, urllib.request
+import argparse, json, subprocess, sys, threading, time
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = Path(__file__).resolve().parents[3]
+sys.path.insert(0, str(ROOT/'tools/device-lab'))
+from hosted import ArtifactServer
+sys.path.insert(0, str(ROOT/'scripts/ci/intercept'))
+import intercept
 ORIGIN = 'https://next.facemorph.me'
 
 CAMPAIGN = """
 <script>
 (async () => {
   const COLD = __COLD__;
-  const report = {stages: [], errors: [], startedAt: Date.now()};
+  const inferenceEvents=[];
+  // Passive instrumentation: every worker, message and return value remains native and real.
+  const NativeWorker=window.Worker;
+  window.Worker=class extends NativeWorker {
+    constructor(...args){super(...args);this.ops=new Map();this.addEventListener('message',({data})=>{
+      const op=this.ops.get(data?.id);
+      if(op&&['complete','frame','error'].includes(data?.type))inferenceEvents.push({op,reply:data.type});
+    });}
+    postMessage(message,...rest){if(message?.id!=null&&['generate','synthesize','encode-aligned','synthesize-frames'].includes(message.type))this.ops.set(message.id,message.type);return super.postMessage(message,...rest);}
+  };
+  const report = {stages: [], errors: [], inferenceEvents, startedAt: Date.now(),secureContext:isSecureContext};
   const say = (k, v) => { report[k] = v; };
   addEventListener('error', e => report.errors.push(String(e.message || e)));
   addEventListener('unhandledrejection', e => report.errors.push('rejection: ' + String(e.reason && e.reason.message || e.reason)));
   const post = async done => {
     report.completed = !!done;
     report.elapsedMs = Date.now() - report.startedAt;
-    try { await fetch('/__campaign', {method: 'POST', headers: {'content-type': 'application/json'},
+    report.resources=performance.getEntriesByType('resource').map(e=>({url:e.name,bytes:e.transferSize,duration:e.duration}));
+    try { await fetch('/__lane', {method: 'POST', headers: {'content-type': 'application/json'},
       body: JSON.stringify(report)}); } catch (e) {}
   };
   try {
@@ -100,7 +115,7 @@ CAMPAIGN = """
     const surface = document.querySelector('[data-next-face="face-1"] .next-face-image canvas[data-face-drawn="true"], [data-next-face="face-1"] .next-face-image img:not([data-public-preview])');
     const rendered = surface?.getBoundingClientRect(), tileBounds = surface?.closest('.next-face-image').getBoundingClientRect();
     const faceFitsTile = !!rendered && rendered.width > 0 && rendered.height > 0 && Math.abs(rendered.width - tileBounds.width) <= 1 && Math.abs(rendered.height - tileBounds.height) <= 1 && Math.abs(rendered.left - tileBounds.left) <= 1 && Math.abs(rendered.top - tileBounds.top) <= 1;
-    say('faceLayout', rendered ? {width: rendered.width, height: rendered.height, tileWidth: tileBounds.width, tileHeight: tileBounds.height, fitsTile: faceFitsTile} : null);
+    say('faceLayout', rendered ? {width: rendered.width, height: rendered.height, tileWidth: tileBounds.width, tileHeight: tileBounds.height, fitsTile: faceFitsTile, fitsViewport: rendered.left>=-1 && rendered.right<=innerWidth+1} : null);
     say('memoryAfterFace', mem());
     say('route', (document.querySelector('.next-route-caption')?.innerText || '').trim());
     say('speeds', localStorage.getItem('facemorph-route-speed-v2'));
@@ -124,13 +139,25 @@ CAMPAIGN = """
 """
 
 
+def assess(report):
+    return (isinstance(report,dict) and report.get('completed') is True
+            and report.get('faceProduced') is True and not report.get('errors')
+            and report.get('secureContext') is True and report.get('crossOriginIsolated') is True
+            and 'cpu' in str(report.get('route','')).lower()
+            and report.get('faceLayout',{}).get('fitsTile') is True
+            and report.get('faceLayout',{}).get('fitsViewport') is True
+            and any(e.get('op') in ('generate','synthesize') and e.get('reply')=='complete'
+                    for e in report.get('inferenceEvents',[])))
+
+
 def main():
     p = argparse.ArgumentParser()
-    p.add_argument('--device', default='iPhone 17 Pro')
+    p.add_argument('--device', default='iPhone 16 Pro')
     p.add_argument('--artifact', type=Path, default=ROOT / 'deploy-next')
     p.add_argument('--evidence', type=Path, default=ROOT / 'next-ios-evidence')
     p.add_argument('--port', type=int, default=8543)
     p.add_argument('--timeout', type=int, default=1200)
+    p.add_argument('--runtime-sha', required=True)
     p.add_argument('--cold', action='store_true', help="Clear this origin's storage before measuring")
     a = p.parse_args()
     artifact = a.artifact.resolve()
@@ -144,84 +171,14 @@ def main():
 
     received = {}
     ready = threading.Event()
-
-    class Handler(http.server.SimpleHTTPRequestHandler):
-        def __init__(self, *args, **kwargs):
-            super().__init__(*args, directory=str(artifact), **kwargs)
-
-        def log_message(self, *args):
-            pass
-
-        def _headers(self, kind, length):
-            # The product requires cross-origin isolation for its threaded runtime.
-            self.send_header('Content-Type', kind)
-            self.send_header('Content-Length', str(length))
-            self.send_header('Cross-Origin-Opener-Policy', 'same-origin')
-            self.send_header('Cross-Origin-Embedder-Policy', 'require-corp')
-            self.send_header('Cross-Origin-Resource-Policy', 'cross-origin')
-            self.send_header('Cache-Control', 'no-store')
-            self.end_headers()
-
-        def do_POST(self):
-            if self.path != '/__campaign':
-                self.send_error(404); return
-            size = int(self.headers.get('content-length', '0'))
-            if not 0 < size < 4 * 1024 * 1024:
-                self.send_error(400); return
-            received.update(json.loads(self.rfile.read(size)))
-            (a.evidence / 'report.json').write_text(json.dumps(received, indent=2))
-            self.send_response(200); self._headers('application/json', 2); self.wfile.write(b'{}')
-            if received.get('completed') is not None:
-                ready.set()
-
-        def do_GET(self):
-            path = self.path.split('?')[0]
-            if path.startswith('/runtime/'):
-                # The runtime is proxied from the deployed origin: this lane measures the product
-                # against the bundle that is actually published, not a local rebuild of it.
-                try:
-                    with urllib.request.urlopen(urllib.request.Request(
-                            ORIGIN + path, headers={'User-Agent': 'curl/8.7.1'}), timeout=120) as r:
-                        body = r.read()
-                        kind = r.headers.get('Content-Type', 'application/octet-stream')
-                except Exception as error:
-                    self.send_error(502, str(error)); return
-                self.send_response(200); self._headers(kind, len(body)); self.wfile.write(body)
-                return
-            if path in ('/', '/index.html'):
-                html = (artifact / 'index.html').read_text()
-                campaign = CAMPAIGN.replace('__COLD__', 'true' if a.cold else 'false')
-                body = html.replace('</body>', campaign + '</body>').encode()
-                self.send_response(200); self._headers('text/html; charset=utf-8', len(body))
-                self.wfile.write(body); return
-            super().do_GET()
-
-        def end_headers(self):
-            # SimpleHTTPRequestHandler's own path for static files still needs isolation headers.
-            if not self.headers.get('__patched'):
-                pass
-            super().end_headers()
-
-        def send_head(self):
-            self.send_response(200)
-            path = self.translate_path(self.path.split('?')[0])
-            try:
-                data = Path(path).read_bytes()
-            except OSError:
-                self.send_error(404); return None
-            import mimetypes
-            kind = mimetypes.guess_type(path)[0] or 'application/octet-stream'
-            self._headers(kind, len(data))
-            import io
-            return io.BytesIO(data)
-
-    class Server(socketserver.ThreadingTCPServer):
-        allow_reuse_address = True
-        daemon_threads = True
-
-    server = Server(('127.0.0.1', a.port), Handler)
-    threading.Thread(target=server.serve_forever, daemon=True).start()
-    url = f'http://localhost:{a.port}/'
+    def on_post(report):
+        received.update(report)
+        (a.evidence/'report.json').write_text(json.dumps(received,indent=2))
+        if report.get('completed') is not None: ready.set()
+    def inject(html):
+        return html.replace('</body>',CAMPAIGN.replace('__COLD__','true' if a.cold else 'false')+'</body>')
+    server = ArtifactServer(artifact,a.runtime_sha,a.port,ROOT/'.cache/mobile-runtime'/a.runtime_sha,inject,on_post)
+    url=server.url
 
     def sim(*args, timeout=180):
         return subprocess.run(['xcrun', 'simctl', *args], capture_output=True, text=True, timeout=timeout)
@@ -239,11 +196,14 @@ def main():
     devices = json.loads(sim('list', 'devices', 'available', '--json').stdout)['devices']
     match = next((d for group in devices.values() for d in group if d['name'] == a.device), None)
     assert match, f'No available Simulator named {a.device!r}'
-    udid = match['udid']
+    runtime=next(k for k,group in devices.items() if match in group)
+    created=sim('create','FaceMorph-product-CI',match['deviceTypeIdentifier'],runtime)
+    assert created.returncode==0,created.stderr
+    udid=created.stdout.strip()
+    server.__enter__()
     try:
-        if match['state'] != 'Booted':
-            boot = sim('boot', udid); assert boot.returncode == 0, boot.stderr
-            assert sim('bootstatus', udid, '-b').returncode == 0
+        boot = sim('boot', udid); assert boot.returncode == 0, boot.stderr
+        assert sim('bootstatus', udid, '-b').returncode == 0
         # A freshly booted or erased device accepts `openurl` only once Safari and its URL
         # handlers are actually up; before that it times out with NSPOSIXErrorDomain 60. Launching
         # Safari first and retrying is the difference between a flaky lane and a usable one.
@@ -260,7 +220,8 @@ def main():
         ready.wait(timeout=a.timeout)
         sim('io', udid, 'screenshot', str(a.evidence / 'screen.png'))
     finally:
-        server.shutdown(); server.server_close()
+        sim('shutdown',udid);sim('delete',udid)
+        server.__exit__(None,None,None)
 
     report = received
     (a.evidence / 'report.json').write_text(json.dumps(report, indent=2))
@@ -270,13 +231,20 @@ def main():
     summary['errors'] = report.get('errors', [])[:4]
     summary['device'] = a.device
     print(json.dumps(summary, indent=2), flush=True)
-    if not report:
-        print('No report was returned by the Simulator.', file=sys.stderr); sys.exit(1)
-    # A lane that cannot produce a face on the constrained tier is the finding, and it fails.
-    if not report.get('faceProduced'):
-        print('The constrained tier did not produce a face.', file=sys.stderr); sys.exit(1)
-    if not report.get('faceLayout', {}).get('fitsTile'):
-        print('The generated face is clipped or does not fit its tile.', file=sys.stderr); sys.exit(1)
+    network = intercept.new_record('Safari Resource Timing (window only)',intercept.DEFAULT_HOST_MAP,
+        ['worker requests','cache hit status','complete transfer bytes','JS heap/RSS','trusted input'])
+    host_map=intercept.bindOrigins(intercept.DEFAULT_HOST_MAP,{'app':[url]})
+    intercept.step(network,'product')
+    for entry in report.get('resources',[]):
+        request=intercept.add_request(network,host_map,entry['url'],'GET','window Resource Timing')
+        request['bytes']=None  # transferSize=0 can mean TAO-restricted, not zero traffic.
+    (a.evidence/'network.json').write_text(json.dumps(network,indent=2))
+    verdict={'passed':assess(report),'evidence':'Simulator evidence, not physical iPhone',
+        'untested':network['unobservable'],'timingReferenceMs':{'firstFace':25287,'warmSynthesis':4741.2},
+        'timingsArePassFail':False}
+    (a.evidence/'verdict.json').write_text(json.dumps(verdict,indent=2))
+    if not verdict['passed']:
+        print('iOS product failed CPU inference, isolation, layout or error checks.',file=sys.stderr);sys.exit(1)
 
 
 if __name__ == '__main__':

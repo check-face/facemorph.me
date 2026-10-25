@@ -325,6 +325,11 @@
       "workflow": ".github/workflows/web-shell.yml",
       "shared": ["apps/web/**", "package.json", "package-lock.json"],
       "extra": []
+    },
+    "mobile-browser": {
+      "workflow": ".github/workflows/mobile-browser.yml",
+      "shared": ["apps/web/**", "packages/**", "package.json", "package-lock.json"],
+      "extra": ["scripts/ci/intercept/**", "tools/device-lab/hosted.py", "tools/device-lab/lab.py"]
     }
   }
 }

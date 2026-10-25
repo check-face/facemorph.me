@@ -1,0 +1,188 @@
+name: Mobile browser components
+# fm-hlv: retained classic job IDs; until fm-zz2i this is a separately rebuilt control.
+# main serializes push work; a running check is never cancelled. Exact files are fetched by provenance.
+on:
+  workflow_call:
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: mobile-components-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  ios-product-artifact:
+    runs-on: [self-hosted, linux-x64]
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - uses: ./.github/actions/setup-workspace
+      - name: Build the artifact under test, labelled rebuilt
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: npm run build:next
+      - name: Explicit source and exact file identity
+        env:
+          SOURCE_WORKFLOW: ${{ github.workflow == 'main' && '.github/workflows/main.yml' || '.github/workflows/mobile-browser.yml' }}
+        run: |
+          set -euo pipefail
+          find deploy-next -type f -print0 | LC_ALL=C sort -z | xargs -0 sha256sum > next-site-SHA256SUMS
+          printf '%s\n' '${{ github.sha }}' > next-site-source.txt
+          node -e 'console.log(JSON.stringify({sourceRepoId:Number(process.argv[1]),repository:process.argv[2],workflow:process.env.SOURCE_WORKFLOW,runId:Number(process.argv[3]),commit:process.argv[4]}))' '${{ github.repository_id }}' '${{ github.repository }}' '${{ github.run_id }}' '${{ github.sha }}' > next-site-provenance.json
+          echo 'Simulator evidence, not physical iPhone; rebuilt control, canonical artifact fan-out remains fm-zz2i' >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: next-ios-artifact-${{ github.run_id }}
+          path: |
+            deploy-next/
+            next-site-SHA256SUMS
+            next-site-source.txt
+            next-site-provenance.json
+            next-site-identity.json
+          if-no-files-found: error
+          retention-days: 14
+  android:
+    needs: ios-product-artifact
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - uses: ./.github/actions/setup-workspace
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: npm run build -w packages/stylegan-js -w packages/browser-model-manager
+      - run: python3 -m unittest discover -s apps/web/tests/mobile -p 'test_*.py'
+      - uses: ./.github/actions/fetch-artifact
+        id: artifact
+        with:
+          source_repo_id: ${{ github.repository_id }}
+          workflow: ${{ github.workflow == 'main' && '.github/workflows/main.yml' || '.github/workflows/mobile-browser.yml' }}
+          run_id: ${{ github.run_id }}
+          commit: ${{ github.sha }}
+          artifact_name: next-ios-artifact-${{ github.run_id }}
+          out: mobile-artifact
+      - name: Artifact identity and limits
+        env:
+          DIGEST: ${{ steps.artifact.outputs.artifact_digest }}
+        run: |
+          echo 'Simulator/emulator evidence, not physical iPhone/Android.' >> "$GITHUB_STEP_SUMMARY"
+          echo "rebuilt, digest $DIGEST; canonical control digest $(node -p 'require("./autoresearch/drivers/control.json").treeSha256')" >> "$GITHUB_STEP_SUMMARY"
+          echo 'Until fm-zz2i fan-out this is a separately rebuilt control; no migrated product claim.' >> "$GITHUB_STEP_SUMMARY"
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Chrome in Android Emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back none
+          disable-animations: true
+          script: python3 apps/web/tests/mobile/run.py --platform android
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mobile-android-components
+          path: apps/web/mobile-evidence/
+          if-no-files-found: warn
+  ios:
+    needs: ios-product-artifact
+    runs-on: macos-15
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - uses: ./.github/actions/setup-workspace
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: npm run build -w packages/stylegan-js -w packages/browser-model-manager
+      - run: python3 -m unittest discover -s apps/web/tests/mobile -p 'test_*.py'
+      - uses: ./.github/actions/fetch-artifact
+        id: artifact
+        with:
+          source_repo_id: ${{ github.repository_id }}
+          workflow: ${{ github.workflow == 'main' && '.github/workflows/main.yml' || '.github/workflows/mobile-browser.yml' }}
+          run_id: ${{ github.run_id }}
+          commit: ${{ github.sha }}
+          artifact_name: next-ios-artifact-${{ github.run_id }}
+          out: mobile-artifact
+      - name: Artifact identity and limits
+        env:
+          DIGEST: ${{ steps.artifact.outputs.artifact_digest }}
+        run: |
+          echo 'Simulator/emulator evidence, not physical iPhone/Android.' >> "$GITHUB_STEP_SUMMARY"
+          echo "rebuilt, digest $DIGEST; canonical control digest $(node -p 'require("./autoresearch/drivers/control.json").treeSha256')" >> "$GITHUB_STEP_SUMMARY"
+          echo 'Until fm-zz2i fan-out this is a separately rebuilt control; no migrated product claim.' >> "$GITHUB_STEP_SUMMARY"
+      - name: Safari in iOS Simulator
+        run: python3 apps/web/tests/mobile/run.py --platform ios
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mobile-ios-components
+          path: apps/web/mobile-evidence/
+          if-no-files-found: warn
+  ios-product-simulator:
+    needs: ios-product-artifact
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: ./.github/actions/fetch-artifact
+        id: artifact
+        with:
+          source_repo_id: ${{ github.repository_id }}
+          workflow: ${{ github.workflow == 'main' && '.github/workflows/main.yml' || '.github/workflows/mobile-browser.yml' }}
+          run_id: ${{ github.run_id }}
+          commit: ${{ github.sha }}
+          artifact_name: next-ios-artifact-${{ github.run_id }}
+          out: mobile-artifact
+      - name: Artifact identity and limits
+        env:
+          DIGEST: ${{ steps.artifact.outputs.artifact_digest }}
+        run: |
+          echo 'Simulator/emulator evidence, not physical iPhone/Android.' >> "$GITHUB_STEP_SUMMARY"
+          echo "rebuilt, digest $DIGEST; canonical control digest $(node -p 'require("./autoresearch/drivers/control.json").treeSha256')" >> "$GITHUB_STEP_SUMMARY"
+          echo 'Until fm-zz2i fan-out this is a separately rebuilt control; no migrated product claim.' >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/cache@v4
+        with:
+          path: .cache/mobile-runtime
+          key: mobile-runtime-sha256-d9e37e50a436e9fb7c0c7f973e70adee353c808f48c6a51fa5a9186f1c650a5c
+      - name: Product in an iOS Simulator
+        run: python3 apps/web/scripts/next-ios-sim.py --device 'iPhone 16 Pro' --artifact mobile-artifact/deploy-next --evidence next-ios-evidence --runtime-sha d9e37e50a436e9fb7c0c7f973e70adee353c808f48c6a51fa5a9186f1c650a5c
+      - name: Explicit unobservable fields and timing reference
+        if: always()
+        run: |
+          echo 'Simulator evidence, not physical iPhone' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Untested: worker requests, cache-hit status, complete transfer bytes, JS heap/RSS, trusted input. No dependent zero-network/resource claim.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Timing comparison only (not pass/fail): iOS 18.5 first full1024 25287 ms; warm synthesis 4741.2 ms.' >> "$GITHUB_STEP_SUMMARY"
+          if [ -f next-ios-evidence/report.json ]; then python3 -c 'import json; r=json.load(open("next-ios-evidence/report.json")); print(json.dumps({k:r.get(k) for k in ["completed","faceProduced","route","firstFaceMs","faceLayout","errors"]}))' >> "$GITHUB_STEP_SUMMARY"; fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: next-ios-simulator-${{ github.run_id }}
+          path: next-ios-evidence/
+          retention-days: 14
+          if-no-files-found: warn

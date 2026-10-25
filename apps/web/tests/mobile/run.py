@@ -9,11 +9,14 @@ import re
 from pathlib import Path
 import subprocess
 import threading
+import ssl
+import tempfile
 import time
 from urllib.parse import urlsplit
 import uuid
 
 ROOT = Path(__file__).resolve().parents[2]
+REPO = ROOT.parents[1]
 EXPECTED = {'worker-module-hash', 'integrity-rejection', 'cancel-partial-retry',
             'concurrent-download-dedup', 'corrupt-cache-repair',
             'png-1024-roundtrip', 'portrait-exif-crop', 'reload-retained-offline'}
@@ -64,7 +67,7 @@ def simulator_options(devices, sdk_version):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--platform', required=True, choices=['android', 'ios'])
+    parser.add_argument('--platform', required=True, choices=['android', 'ios', 'desktop'])
     parser.add_argument('--timeout', type=int, default=240)
     parser.add_argument('--port', type=int, default=8765,
                         help='Loopback port for the test origin. CI keeps the default; local machines may need another port when a developer service already holds 8765.')
@@ -72,7 +75,7 @@ def main():
     args = parser.parse_args()
     args.output.mkdir(parents=True, exist_ok=True)
     run_id = str(uuid.uuid4())
-    evidence = {'runId': run_id, 'executionEnvironment': 'android-emulator' if args.platform == 'android' else 'ios-simulator',
+    evidence = {'runId': run_id, 'executionEnvironment': {'android':'android-emulator','ios':'ios-simulator','desktop':'desktop-component-only'}[args.platform],
                 'physicalDeviceQualified': False, 'inferenceQualified': False, 'photoWorkflowQualified': False,
                 'sourceCommit': command('git', '-C', str(ROOT), 'rev-parse', 'HEAD'),
                 'sourceSha256': {str(p.relative_to(ROOT)): hashlib.sha256(p.read_bytes()).hexdigest()
@@ -80,6 +83,8 @@ def main():
                                  for p in (ROOT/folder).glob('*') if p.suffix in ['.py', '.mjs', '.html']},
                 'runnerImage': os.environ.get('ImageVersion'), 'completed': False}
     state = {'report': None}
+    requests = {}
+    requests_lock = threading.Lock()
 
     class Handler(SimpleHTTPRequestHandler):
         def log_message(self, *args):
@@ -92,6 +97,43 @@ def main():
             super().end_headers()
 
         def do_GET(self):
+            path = urlsplit(self.path).path
+            if path.startswith('/fixture/'):
+                name = path.removeprefix('/fixture/')
+                if name == 'stats':
+                    with requests_lock:
+                        body = json.dumps(requests).encode()
+                elif name in ('good', 'bad', 'slow', 'offline'):
+                    with requests_lock:
+                        requests[name] = requests.get(name, 0) + 1
+                    body = b'abd' if name == 'bad' else b'abc'
+                else:
+                    self.send_error(404); return
+                self.send_response(410 if name == 'offline' else 200)
+                self.send_header('Content-Type', 'application/json' if name == 'stats' else 'application/octet-stream')
+                self.send_header('Content-Length', str(len(body)))
+                self.end_headers()
+                try:
+                    if name == 'slow':
+                        self.wfile.write(body[:1]); self.wfile.flush()
+                        with requests_lock:
+                            requests['slowStarted'] = True
+                        time.sleep(1)
+                        self.wfile.write(body[1:])
+                    else:
+                        self.wfile.write(body)
+                except (BrokenPipeError, ConnectionResetError):
+                    pass
+                return
+            if path.startswith('/packages/browser-model-manager/'):
+                package = (REPO/'packages/browser-model-manager/dist').resolve()
+                source = (package/path.removeprefix('/packages/browser-model-manager/')).resolve()
+                if package not in source.parents or not source.is_file() or source.suffix != '.js':
+                    self.send_error(404); return
+                body = source.read_bytes()
+                self.send_response(200); self.send_header('Content-Type', 'text/javascript')
+                self.send_header('Content-Length', str(len(body))); self.end_headers(); self.wfile.write(body)
+                return
             # Serve only test/component sources, never arbitrary checkout files.
             path = (ROOT/urlsplit(self.path).path.lstrip('/')).resolve()
             allowed = any(path.is_relative_to(ROOT/folder) for folder in ['tests/mobile', 'src/Next/Assets', 'src/Next/photo'])
@@ -115,21 +157,30 @@ def main():
             except (ValueError, TypeError):
                 self.send_error(400)
 
+    certificate_dir = tempfile.TemporaryDirectory(prefix='facemorph-mobile-tls-')
+    cert = Path(certificate_dir.name)/'localhost.pem'
+    key = Path(certificate_dir.name)/'localhost-key.pem'
+    command('openssl', 'req', '-x509', '-newkey', 'rsa:2048', '-nodes', '-days', '1',
+            '-keyout', str(key), '-out', str(cert), '-subj', '/CN=localhost',
+            '-addext', 'subjectAltName=DNS:localhost,IP:127.0.0.1')
     server = ThreadingHTTPServer(('127.0.0.1', args.port), functools.partial(Handler, directory=str(ROOT)))
+    tls = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    tls.load_cert_chain(cert, key)
+    server.socket = tls.wrap_socket(server.socket, server_side=True)
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
     udid = None
-    url = f'http://127.0.0.1:{args.port}/tests/mobile/index.html?run={run_id}'
+    url = f'https://127.0.0.1:{args.port}/tests/mobile/index.html?run={run_id}'
     try:
         if args.platform == 'android':
             evidence['device'] = command('adb', 'shell', 'getprop')
             evidence['browser'] = command('adb', 'shell', 'dumpsys', 'package', 'com.android.chrome')
             command('adb', 'reverse', f'tcp:{args.port}', f'tcp:{args.port}')
             command('adb', 'shell', 'am', 'set-debug-app', '--persistent', 'com.android.chrome')
-            command('adb', 'shell', "echo 'chrome --no-first-run --disable-fre --no-default-browser-check' > /data/local/tmp/chrome-command-line")
+            command('adb', 'shell', "echo 'chrome --no-first-run --disable-fre --no-default-browser-check --ignore-certificate-errors' > /data/local/tmp/chrome-command-line")
             command('adb', 'shell', 'am', 'force-stop', 'com.android.chrome')
             command('adb', 'shell', 'am', 'start', '-W', '-a', 'android.intent.action.VIEW', '-d', url, 'com.android.chrome')
-        else:
+        elif args.platform == 'ios':
             evidence['xcode'] = command('xcodebuild', '-version')
             evidence['simulatorSdk'] = command('xcrun', '--sdk', 'iphonesimulator', '--show-sdk-version')
             # First contact with CoreSimulator on a cold runner is the slow one: the service has
@@ -147,7 +198,10 @@ def main():
             evidence['device'] = {'udid': udid, 'runtime': runtime, 'profile': device['name']}
             command('xcrun', 'simctl', 'boot', udid)
             command('xcrun', 'simctl', 'bootstatus', udid, '-b', timeout=180)
+            command('xcrun', 'simctl', 'keychain', udid, 'add-root-cert', str(cert), timeout=60)
             evidence['launchAttempts'] = [open_safari(udid, url)]
+        if args.platform == 'desktop':
+            print(json.dumps({'url':url}), flush=True)
         deadline = time.monotonic()+args.timeout
         retry_at = time.monotonic()+30
         while time.monotonic() < deadline:
@@ -179,7 +233,11 @@ def main():
             if udid:
                 command('xcrun', 'simctl', 'shutdown', udid, check=False)
                 command('xcrun', 'simctl', 'delete', udid, check=False)
-            server.shutdown()
+            server.shutdown(); server.server_close()
+            certificate_dir.cleanup()
+            evidence['fixtureRequests'] = requests
+            evidence['tls'] = 'ephemeral localhost certificate; iOS Simulator trusts this root, Android emulator explicitly ignores certificate errors'
+            evidence['componentPackageSha256'] = {str(p.relative_to(REPO)):hashlib.sha256(p.read_bytes()).hexdigest() for p in (REPO/'packages/browser-model-manager/dist').rglob('*.js')}
             (args.output/'host.json').write_text(json.dumps(evidence, indent=2))
             print(json.dumps({k: evidence.get(k) for k in ['runId', 'executionEnvironment', 'passed', 'error']}))
 

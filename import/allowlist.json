@@ -1166,7 +1166,13 @@
       "sha256": "22250796391c15f049a3b78dc52c6ee5936d5e240a1de22aa3899f98102a7096",
       "bytes": 15421,
       "class": "temporary-root",
-      "temporary": true
+      "temporary": true,
+      "ported": {
+        "sha256": "d5da56256efb63d04b4dafc97f8b6ad25b05fc1c4356983f25bf8f2b2d6ddc87",
+        "bytes": 14722,
+        "bead": "fm-hlv",
+        "reason": "Mobile component runner uses real HTTPS fixture transfers and built manager modules with grants; persistent storage, strict eight-component assessor and Simulator product CPU inference/layout evidence. Shared artifact server/interception helper; no fake fetches; Simulator/emulator labels retained."
+      }
     },
     {
       "source": "scripts/next-matrix-summary.py",
@@ -2261,7 +2267,13 @@
       "sha256": "5bd69afb38bbfc3154a14124d3fde96e5eda58f9ae4cc03d64a6d3e5605e8053",
       "bytes": 3935,
       "class": "temporary-root",
-      "temporary": true
+      "temporary": true,
+      "ported": {
+        "sha256": "1ea3ce335aa74ce6909e5e758b21dc1dae20a8dfec6281bff607b5200d37c148",
+        "bytes": 4812,
+        "bead": "fm-hlv",
+        "reason": "Mobile component runner uses real HTTPS fixture transfers and built manager modules with grants; persistent storage, strict eight-component assessor and Simulator product CPU inference/layout evidence. Shared artifact server/interception helper; no fake fetches; Simulator/emulator labels retained."
+      }
     },
     {
       "source": "tests/mobile/hash-worker.mjs",
@@ -2269,7 +2281,13 @@
       "sha256": "6ba792d263cad5d747b85ba24d4e3f467b7353df93263ec445dc2ed5020f0f7c",
       "bytes": 244,
       "class": "temporary-root",
-      "temporary": true
+      "temporary": true,
+      "ported": {
+        "sha256": "a955aa2c4765094c1bf9fcd6990559b18a772f31e2ca1c8ea8eeb56ca7fc508b",
+        "bytes": 264,
+        "bead": "fm-hlv",
+        "reason": "Mobile component runner uses real HTTPS fixture transfers and built manager modules with grants; persistent storage, strict eight-component assessor and Simulator product CPU inference/layout evidence. Shared artifact server/interception helper; no fake fetches; Simulator/emulator labels retained."
+      }
     },
     {
       "source": "tests/mobile/index.html",
@@ -2285,7 +2303,13 @@
       "sha256": "e17fb2e20a1dac2add0281fd1ea1fcdbc322542359de729db21f2bfa3ea0b151",
       "bytes": 10107,
       "class": "temporary-root",
-      "temporary": true
+      "temporary": true,
+      "ported": {
+        "sha256": "54d2f7e1ae1bff3b28c8b91287ad08284dc1c3bd592647563eb029a4e92fc4f2",
+        "bytes": 13582,
+        "bead": "fm-hlv",
+        "reason": "Mobile component runner uses real HTTPS fixture transfers and built manager modules with grants; persistent storage, strict eight-component assessor and Simulator product CPU inference/layout evidence. Shared artifact server/interception helper; no fake fetches; Simulator/emulator labels retained."
+      }
     },
     {
       "source": "tests/mobile/suite.mjs",
@@ -2293,7 +2317,13 @@
       "sha256": "4d050b4a573a7836e82a836d79bb5a0af54bc79316ed97a0ab0570a96f42ac32",
       "bytes": 8341,
       "class": "temporary-root",
-      "temporary": true
+      "temporary": true,
+      "ported": {
+        "sha256": "ea9c5cbe8ea66bdaef59e6f5f48c8a9ed30dd03540a8f2fba1a57a04168ad58f",
+        "bytes": 9358,
+        "bead": "fm-hlv",
+        "reason": "Mobile component runner uses real HTTPS fixture transfers and built manager modules with grants; persistent storage, strict eight-component assessor and Simulator product CPU inference/layout evidence. Shared artifact server/interception helper; no fake fetches; Simulator/emulator labels retained."
+      }
     },
     {
       "source": "tests/mobile/test_runner.py",
@@ -2301,7 +2331,13 @@
       "sha256": "8075e6d96f83a93cb7ca4c35125d3c891d32f16945b03db225539a6009c9f243",
       "bytes": 1921,
       "class": "temporary-root",
-      "temporary": true
+      "temporary": true,
+      "ported": {
+        "sha256": "1811719244758913165d0eacadc90baac502f8c13bf20db997b95ad276474be2",
+        "bytes": 2940,
+        "bead": "fm-hlv",
+        "reason": "Mobile component runner uses real HTTPS fixture transfers and built manager modules with grants; persistent storage, strict eight-component assessor and Simulator product CPU inference/layout evidence. Shared artifact server/interception helper; no fake fetches; Simulator/emulator labels retained."
+      }
     }
   ]
 }

@@ -154,6 +154,14 @@ jobs:
     permissions:
       contents: read
     secrets: inherit
+  mobile-browser:
+    needs: changes
+    if: contains(fromJSON(needs.changes.outputs.lanes), 'mobile-browser')
+    uses: ./.github/workflows/mobile-browser.yml
+    permissions:
+      contents: read
+      actions: read
+    secrets: inherit
   model-conv:
     needs: changes
     if: contains(fromJSON(needs.changes.outputs.lanes), 'model-conv')

@@ -270,7 +270,8 @@ GPU timing research is explicitly dispatched, not run on every push. Reuse class
 working CI approach: Safari in the iOS Simulator inside the GitHub macOS runner,
 Chrome in an Android emulator in CI, plus normal unit/build/type/browser tests.
 Do not replace simulator evidence with desktop WebKit or require a physical iPhone
-for these CI lanes. Current hosted Android/iOS/macOS/Windows coverage is release-only;
+for these CI lanes. The retained mobile-browser lane covers Android/iOS components and Simulator CPU
+product on selected source pushes; broader hosted macOS/Windows journeys remain release-only.
 Linux/browser correctness lanes are push backstops. Do not claim full hosted phone
 coverage on each push. Hosted lanes are best effort as runner availability changes:
 attempt available lanes with bounded waits; record an unavailable/retired runner or

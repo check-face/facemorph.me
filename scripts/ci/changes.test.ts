@@ -39,7 +39,14 @@ test('apps/web only: the web lanes and the always lanes, none of the unrelated o
 
 test('packages/stylegan-js: its lanes run', () => {
   const lanes = selectLanes(['packages/stylegan-js/src/index.ts'], FILTERS);
-  for (const l of ['contracts-m1', 'app-contracts', 'next-gpu-lane', 'next-site', 'scaffold'])
+  for (const l of [
+    'contracts-m1',
+    'app-contracts',
+    'next-gpu-lane',
+    'next-site',
+    'scaffold',
+    'mobile-browser',
+  ])
     assert.ok(lanes.includes(l), l);
   assert.ok(!lanes.includes('web-shell'));
 });

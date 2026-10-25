@@ -1,12 +1,14 @@
-import {createBrowserModelCache, MODEL_CACHE_NAME} from '/src/Next/Assets/model-cache.mjs';
+import {createBrowserModelCache, MODEL_CACHE_NAME} from '/packages/browser-model-manager/cache/model-cache.js';
 import {decodeBounded,cropPhoto} from '/src/Next/photo/crop.mjs';
-import {openShardStore} from '/src/Next/Assets/shard-store.mjs';
+import {openShardStore} from '/packages/browser-model-manager/cache/shard-store.js';
 
 const runId = new URLSearchParams(location.search).get('run');
 const storageKey = `mobile-ci-${runId}`;
 const bytes = new TextEncoder().encode('abc');
 const hash = 'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad';
-const asset = {sha256:hash,size:3,url:'https://synthetic.invalid/model-v1'};
+const asset = {sha256:hash,size:3,url:new URL('/fixture/good',location.origin).href};
+const options=()=>({owner:'face:mobile-component',grant:{manifestSha256:hash,route:'cpu',purpose:'generate',assets:[{sha256:hash,bytes:3,priority:'foreground-required'}],remainingBytes:3,owners:['face:mobile-component']}});
+const stats=async()=>fetch('/fixture/stats').then(r=>r.json());
 const key = new URL(`/__checkface_model_blobs__/sha256/${hash}`,location.origin).href;
 const report = {runId,completed:false,evidenceLevel:'browser-component',e4eExecuted:false,
   inferenceExecuted:false,physicalDeviceQualified:false,userAgent:navigator.userAgent,
@@ -29,17 +31,21 @@ async function rejected(promise) {
 }
 try {
   const previous=sessionStorage.getItem(storageKey);
+  report.storageBackend={shards:!!await openShardStore(),cacheKeys:(await (await caches.open(MODEL_CACHE_NAME)).keys()).map(r=>r.url)};
   if (previous) {
+    report.previousBackend=JSON.parse(sessionStorage.getItem(storageKey+'backend'));sessionStorage.removeItem(storageKey+'backend');
     report.results=JSON.parse(previous);
     await test('reload-retained-offline',async()=>{
-      const cache=await createBrowserModelCache({fetcher:()=>{throw Error('Unexpected network acquisition after reload');}});
-      const handle=await cache.acquire({...asset,url:'https://synthetic.invalid/version-2-same-content'});
+      const before=(await stats()).offline||0;
+      const cache=await createBrowserModelCache();
+      const handle=await cache.acquire({...asset,url:new URL('/fixture/offline',location.origin).href},options());
+      check(((await stats()).offline||0)===before,'Unexpected network acquisition after reload');
       check(await (await handle.open()).text()==='abc','Retained bytes changed');
     });
     sessionStorage.removeItem(storageKey);
     report.completed=true;await submit();
   } else {
-    // Only synthetic identities on a dedicated ephemeral CI origin are removed.
+    // Only fixture identities on a dedicated ephemeral CI origin are removed.
     // Small assets live as OPFS shards where the engine has them (Android Chrome), Cache Storage
     // elsewhere: every test starts from neither, and checks both for committed bytes.
     const raw=await caches.open(MODEL_CACHE_NAME),shards=await openShardStore();
@@ -55,34 +61,35 @@ try {
       worker.postMessage(bytes.buffer);
     }));
     await test('integrity-rejection',async()=>{
-      const cache=await createBrowserModelCache({fetcher:async()=>new Response('abd')});
-      await rejected(cache.acquire(asset));check(!await committed(),'Corrupt bytes committed');
+      const cache=await createBrowserModelCache();
+      await rejected(cache.acquire({...asset,url:new URL('/fixture/bad',location.origin).href},options()));check(!await committed(),'Corrupt bytes committed');
     });
     await test('cancel-partial-retry',async()=>{
-      let ready;const started=new Promise(resolve=>{ready=resolve;});
       const controller=new AbortController();
-      const cache=await createBrowserModelCache({fetcher:async()=>new Response(new ReadableStream({start(c){c.enqueue(bytes.slice(0,1));ready();}}))});
-      const pending=rejected(cache.acquire(asset,{signal:controller.signal}));
-      await started;controller.abort();const error=await pending;
-      check(error.name==='AbortError','Wrong cancellation error');
+      const cache=await createBrowserModelCache();
+      const pending=rejected(cache.acquire({...asset,url:new URL('/fixture/slow',location.origin).href},{...options(),signal:controller.signal}));
+      const deadline=performance.now()+10000;
+      while(!(await stats()).slowStarted){check(performance.now()<deadline,'No partial HTTP transfer');await new Promise(r=>setTimeout(r,20));}
+      controller.abort();const error=await pending;
+      check(error.name==='AbortError','Wrong cancellation error: '+error.name+': '+error.message);
       check(!await committed(),'Partial bytes committed');
-      const retry=await createBrowserModelCache({fetcher:async()=>new Response(bytes)});
-      check(await (await (await retry.acquire(asset)).open()).text()==='abc','Retry failed');
+      const retry=await createBrowserModelCache();
+      check(await (await (await retry.acquire(asset,options())).open()).text()==='abc','Retry failed');
       await forget();
     });
     await test('concurrent-download-dedup',async()=>{
-      let calls=0;
-      const cache=await createBrowserModelCache({fetcher:async()=>{calls++;return new Response(bytes);}});
-      const handles=await Promise.all([cache.acquire(asset),cache.acquire(asset)]);
-      check(calls===1,'Concurrent transfer repeated');
+      const before=(await stats()).good||0;
+      const cache=await createBrowserModelCache();
+      const handles=await Promise.all([cache.acquire(asset,options()),cache.acquire(asset,options())]);
+      check((await stats()).good-before===1,'Concurrent transfer repeated');
       for (const handle of handles) check(await (await handle.open()).text()==='abc','Cached bytes changed');
     });
     await test('corrupt-cache-repair',async()=>{
       await forget();const bad=new TextEncoder().encode('bad');
-      if(shards)await shards.write(hash,bad);else await raw.put(key,new Response(bad));let calls=0;
-      const cache=await createBrowserModelCache({fetcher:async()=>{calls++;return new Response(bytes);}});
-      check(await (await (await cache.acquire(asset)).open()).text()==='abc','Repair failed');
-      check(calls===1,'Repair did not acquire replacement');
+      if(shards)await shards.write(hash,bad);else await raw.put(key,new Response(bad));const before=(await stats()).good||0;
+      const cache=await createBrowserModelCache();
+      check(await (await (await cache.acquire(asset,options())).open()).text()==='abc','Repair failed');
+      check((await stats()).good-before===1,'Repair did not acquire replacement');
     });
     await test('png-1024-roundtrip',async()=>{
       const canvas=document.createElement('canvas');canvas.width=canvas.height=1024;
@@ -115,6 +122,9 @@ try {
       }
       canvas.width=canvas.height=1;
     });
+    report.beforeReload={shards:!!shards,committed:await committed(),cacheKeys:(await raw.keys()).map(r=>r.url)};
+    await submit();
+    sessionStorage.setItem(storageKey+'backend',JSON.stringify(report.beforeReload));
     sessionStorage.setItem(storageKey,JSON.stringify(report.results));
     location.reload();
   }
