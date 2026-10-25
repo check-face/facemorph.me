@@ -14,16 +14,15 @@ import {
   statSync,
   writeFileSync,
 } from 'node:fs';
-import { homedir, tmpdir } from 'node:os';
+import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseManifest, sha256 } from './lib.mjs';
+import { openHarness, serve } from './generate.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const CLASSIC = process.env.FACEMORPH_CLASSIC ?? join(here, '../../../facemorph.me-classic');
 const CHROMIUM = process.env.CHROMIUM ?? '/usr/bin/chromium';
-// Its own cache and browser profiles, so the test never shares a profile with a full run.
-const CACHE = join(homedir(), '.cache', 'facemorph-names-generator-test');
 const CATALOGUE = 'https://facemorph-name-catalogue.cdilga.workers.dev';
 const NAMES = ['charlotte', 'saanvi'];
 const skip =
@@ -43,13 +42,7 @@ function generate(args, onTick, script = 'generate.mjs', signal) {
   return new Promise((resolve, reject) => {
     const p = spawn(
       process.execPath,
-      [
-        join(here, script),
-        ...args,
-        `--classic=${CLASSIC}`,
-        `--chromium=${CHROMIUM}`,
-        `--cache=${CACHE}`,
-      ],
+      [join(here, script), `--classic=${CLASSIC}`, `--chromium=${CHROMIUM}`, ...args],
       { stdio: ['ignore', 'pipe', 'pipe'], detached: process.platform !== 'win32' },
     );
     // Killing only Node leaves Playwright's driver/browser holding its pipes and persistent profile.
@@ -66,17 +59,27 @@ function generate(args, onTick, script = 'generate.mjs', signal) {
     if (signal?.aborted) stop();
     let out = '';
     let err = '';
+    const reportAbort = () => {
+      console.error('generator child aborted:', script, args, {
+        out: out.slice(-8000),
+        err: err.slice(-8000),
+      });
+    };
+    signal?.addEventListener('abort', reportAbort, { once: true });
     p.stdout.on('data', (d) => {
       out += d;
+      process.stdout.write(d);
     });
     p.stderr.on('data', (d) => {
       err += d;
+      process.stderr.write(d);
     });
     const tick = onTick && setInterval(() => onTick(p, stop), 100);
     p.on('error', reject);
     p.on('close', (code, exitSignal) => {
       if (tick) clearInterval(tick);
       signal?.removeEventListener('abort', stop);
+      signal?.removeEventListener('abort', reportAbort);
       resolve({
         code,
         signal: exitSignal,
@@ -94,8 +97,12 @@ test(
   'a killed run resumes without regenerating any valid row; a corrupted file is regenerated alone; zero API requests',
   { skip, timeout: 900_000 },
   async (t) => {
-    const run = (args, onTick, script) => generate(args, onTick, script, t.signal);
     const dir = mkdtempSync(join(tmpdir(), 'fm-a40f-'));
+    // One persistent cache across this test's resume steps, never across test
+    // processes. CI and a local run otherwise contend for Chromium's singleton
+    // lock in the same global profile.
+    const run = (args, onTick, script) =>
+      generate([...args, `--cache=${join(dir, 'cache')}`], onTick, script, t.signal);
     try {
       const catalogue = await (await fetch(`${CATALOGUE}/catalogue.json`)).json();
       catalogue.names = catalogue.names.filter((n) => NAMES.includes(n.value));
@@ -210,6 +217,33 @@ test(
         ),
       );
     } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  },
+);
+
+test(
+  'an entry-module load failure has a bounded startup and releases its browser profile',
+  { skip, timeout: 45_000 },
+  async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'names-broken-entry-'));
+    const { server, origin } = await serve(dir); // Real missing source files answer 404.
+    const pw = await import('playwright');
+    const profile = join(dir, 'profile');
+    try {
+      await assert.rejects(
+        openHarness(pw, { origin, route: 'cpu', chromium: CHROMIUM, profile, hosts: {} }),
+        /Timeout.*exceeded/,
+      );
+      // A second real launch can use the same profile only after the failed
+      // startup closed its context and released Chromium's singleton lock.
+      const context = await pw.chromium.launchPersistentContext(profile, {
+        executablePath: CHROMIUM,
+        headless: true,
+      });
+      await context.close();
+    } finally {
+      server.close();
       rmSync(dir, { recursive: true, force: true });
     }
   },

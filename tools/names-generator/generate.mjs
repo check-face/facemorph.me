@@ -177,35 +177,46 @@ export async function openHarness(pw, { origin, route, chromium, profile, hosts 
   });
   recordRequests(context, hosts);
   const page = context.pages()[0] ?? (await context.newPage());
-  page.setDefaultTimeout(0);
-  await page.goto(`${origin}/names-generator.html`);
-  await page.waitForFunction(() => window.harnessReady === true);
-  if (gpu) {
-    const adapter = await page.evaluate(async () => {
-      for (const end = performance.now() + 15000; ;) {
-        const a = await navigator.gpu?.requestAdapter();
-        if (a)
-          return {
-            vendor: a.info?.vendor,
-            architecture: a.info?.architecture,
-            fallback: Boolean(a.info?.isFallbackAdapter),
-          };
-        if (!navigator.gpu || performance.now() > end) return null;
-        await new Promise((r) => setTimeout(r, 250));
-      }
-    });
-    // A software rasteriser is not a GPU reference.
-    if (
-      !adapter ||
-      adapter.fallback ||
-      /swiftshader|llvmpipe|lavapipe/i.test(`${adapter.vendor} ${adapter.architecture}`)
-    )
-      throw new Error(
-        `no hardware WebGPU adapter for the ${route} route: ${JSON.stringify(adapter)}`,
-      );
+  page.on('pageerror', (error) => console.error('names harness page error:', error.message));
+  page.on('requestfailed', (request) =>
+    console.error('names harness request failed:', request.url(), request.failure()?.errorText),
+  );
+  try {
+    await page.goto(`${origin}/names-generator.html`);
+    // An entry-module import failure never sets harnessReady. Keep the normal
+    // Playwright startup deadline; an unbounded wait hid this behind the outer
+    // 15-minute test timeout and retained the browser/server on startup errors.
+    await page.waitForFunction(() => window.harnessReady === true);
+    if (gpu) {
+      const adapter = await page.evaluate(async () => {
+        for (const end = performance.now() + 15000; ;) {
+          const a = await navigator.gpu?.requestAdapter();
+          if (a)
+            return {
+              vendor: a.info?.vendor,
+              architecture: a.info?.architecture,
+              fallback: Boolean(a.info?.isFallbackAdapter),
+            };
+          if (!navigator.gpu || performance.now() > end) return null;
+          await new Promise((r) => setTimeout(r, 250));
+        }
+      });
+      // A software rasteriser is not a GPU reference.
+      if (
+        !adapter ||
+        adapter.fallback ||
+        /swiftshader|llvmpipe|lavapipe/i.test(`${adapter.vendor} ${adapter.architecture}`)
+      )
+        throw new Error(
+          `no hardware WebGPU adapter for the ${route} route: ${JSON.stringify(adapter)}`,
+        );
+    }
+    const setup = await page.evaluate((r) => window.setup(r), route);
+    return { context, page, setup };
+  } catch (error) {
+    await context.close();
+    throw error;
   }
-  const setup = await page.evaluate((r) => window.setup(r), route);
-  return { context, page, setup };
 }
 
 export async function main(argv) {
@@ -286,27 +297,28 @@ export async function main(argv) {
     const { server, origin } = await serve(classic.dir);
     const chromium =
       a.chromium ?? (existsSync('/usr/bin/chromium') ? '/usr/bin/chromium' : undefined);
-    const producer = await openHarness(pw, {
-      origin,
-      route,
-      chromium,
-      profile: join(CACHE, `profile-${route}`),
-      hosts,
-    });
-    log({ event: 'producer', route, setup: producer.setup.status });
-    const needRef = work.generate.some((r) => refSet.has(r.id));
-    const reference = needRef
-      ? await openHarness(pw, {
-          origin,
-          route: referenceRoute,
-          chromium,
-          profile: join(CACHE, `profile-reference-${referenceRoute}`),
-          hosts,
-        })
-      : null;
-    if (reference)
-      log({ event: 'reference', route: referenceRoute, setup: reference.setup.status });
+    let producer, reference;
     try {
+      producer = await openHarness(pw, {
+        origin,
+        route,
+        chromium,
+        profile: join(CACHE, `profile-${route}`),
+        hosts,
+      });
+      log({ event: 'producer', route, setup: producer.setup.status });
+      const needRef = work.generate.some((r) => refSet.has(r.id));
+      reference = needRef
+        ? await openHarness(pw, {
+            origin,
+            route: referenceRoute,
+            chromium,
+            profile: join(CACHE, `profile-reference-${referenceRoute}`),
+            hosts,
+          })
+        : null;
+      if (reference)
+        log({ event: 'reference', route: referenceRoute, setup: reference.setup.status });
       for (const r of work.generate) {
         const started = Date.now();
         try {
@@ -399,9 +411,15 @@ export async function main(argv) {
         }
       }
     } finally {
-      await producer.context.close();
-      await reference?.context.close();
-      server.close();
+      try {
+        await producer?.context.close();
+      } finally {
+        try {
+          await reference?.context.close();
+        } finally {
+          server.close();
+        }
+      }
     }
   }
 
