@@ -1,0 +1,154 @@
+{
+  "comment": "fm-fy2.19 module map: the classic runtime modules that must survive, where each lives now and the tests that cover it. A bead that moves a module updates its path here in the same revision. A module may be absent only when tagged webgl-execution-only or native-only.",
+  "modules": [
+    {
+      "module": "browser/route-selection.mjs",
+      "path": "apps/web/src/Next/browser/route-selection.mjs",
+      "tests": [
+        "apps/web/src/Next/route-choice.test.mjs",
+        "packages/stylegan-js/test/engine/routes.test.ts"
+      ]
+    },
+    {
+      "module": "browser/route-priors.mjs",
+      "path": "apps/web/src/Next/browser/route-priors.mjs",
+      "tests": [
+        "apps/web/src/Next/browser/route-priors.test.mjs",
+        "apps/web/test/build/webgl-removal.test.ts"
+      ]
+    },
+    {
+      "module": "browser/canary-qualification.mjs",
+      "path": "apps/web/src/Next/browser/canary-qualification.mjs",
+      "tests": [
+        "apps/web/src/Next/browser/canary-qualification.test.mjs",
+        "packages/stylegan-js/test/engine/canary.test.ts"
+      ]
+    },
+    {
+      "module": "browser/encoder-preflight.mjs",
+      "path": "apps/web/src/Next/browser/encoder-preflight.mjs",
+      "tests": ["apps/web/src/Next/browser/encoder-preflight.test.mjs"]
+    },
+    {
+      "module": "browser/identity.mjs",
+      "path": "apps/web/src/Next/browser/identity.mjs",
+      "tests": [
+        "apps/web/src/Next/browser/runtime.test.mjs",
+        "apps/web/src/Next/public-previews.test.mjs"
+      ]
+    },
+    {
+      "module": "browser/identity-fixtures.json",
+      "path": "apps/web/src/Next/browser/identity-fixtures.json",
+      "tests": [
+        "apps/web/src/Next/browser/runtime.test.mjs",
+        "packages/stylegan-js/test/engine/identity.test.ts"
+      ]
+    },
+    {
+      "module": "browser/acquisition-budget.mjs",
+      "path": "apps/web/src/Next/browser/acquisition-budget.mjs",
+      "tests": ["apps/web/src/Next/browser/acquisition-budget.test.mjs"]
+    },
+    {
+      "module": "browser/webgpu-direct.mjs",
+      "path": "apps/web/src/Next/browser/webgpu-direct.mjs",
+      "tests": ["packages/stylegan-js/test/engine/routes.test.ts"]
+    },
+    {
+      "module": "browser/webgpu-engine.mjs",
+      "path": "apps/web/src/Next/browser/webgpu-engine.mjs",
+      "tests": ["apps/web/src/Next/browser/webgpu-engine.test.mjs"]
+    },
+    {
+      "module": "browser/fused-resample-v1.mjs",
+      "path": "apps/web/src/Next/browser/fused-resample-v1.mjs",
+      "tests": ["apps/web/src/Next/browser/fused-resample.test.mjs"]
+    },
+    {
+      "module": "browser/png.mjs",
+      "path": "apps/web/src/Next/browser/png.mjs",
+      "tests": [
+        "apps/web/src/Next/browser/runtime.test.mjs",
+        "apps/web/src/Next/browser/mobile-runtime.test.mjs"
+      ]
+    },
+    {
+      "module": "image-encoder.mjs",
+      "path": "apps/web/src/Next/image-encoder.mjs",
+      "tests": ["apps/web/src/Next/image-encoder.test.mjs"]
+    },
+    {
+      "module": "image-encoder-worker.mjs",
+      "path": "apps/web/src/Next/image-encoder-worker.mjs",
+      "tests": ["apps/web/test/media/media-core.test.ts"]
+    },
+    {
+      "module": "video-worker.mjs",
+      "path": "apps/web/src/Next/video-worker.mjs",
+      "tests": ["apps/web/src/Next/video-worker.test.mjs", "apps/web/src/Next/media.test.mjs"]
+    },
+    {
+      "module": "photo/align-photo.mjs",
+      "path": "apps/web/src/Next/photo/align-photo.mjs",
+      "tests": [
+        "apps/web/src/Next/photo-selection.test.mjs",
+        "packages/stylegan-js/test/confirmed-crop.test.ts"
+      ]
+    },
+    {
+      "module": "photo/selection-worker.mjs",
+      "path": "apps/web/src/Next/photo/selection-worker.mjs",
+      "tests": ["apps/web/test/e2e/shell.e2e.ts"]
+    },
+    {
+      "module": "storage-request.mjs",
+      "path": "apps/web/src/Next/storage-request.mjs",
+      "tests": ["apps/web/src/Next/storage-request.test.mjs"]
+    },
+    {
+      "module": "runtime.mjs",
+      "path": "apps/web/src/Next/browser/runtime.mjs",
+      "tests": [
+        "apps/web/src/Next/browser/runtime.test.mjs",
+        "apps/web/src/Next/browser/mobile-runtime.test.mjs"
+      ]
+    },
+    {
+      "module": "ort-worker.mjs",
+      "path": "apps/web/src/Next/browser/ort-worker.mjs",
+      "tests": [
+        "apps/web/src/Next/browser/mobile-runtime.test.mjs",
+        "apps/web/test/build/webgl-removal.test.ts"
+      ]
+    }
+  ],
+  "capabilities": [
+    {
+      "id": "wasm-mapping",
+      "path": "apps/web/src/Next/browser/runtime.mjs",
+      "pattern": "mappingProvider:keyData\\.kind==='seed'\\?'wasm'"
+    },
+    {
+      "id": "streamed-single-threaded-e4e",
+      "path": "apps/web/src/Next/browser/ort-worker.mjs",
+      "pattern": "encoderOrt\\.env\\.wasm\\.numThreads=1;"
+    },
+    {
+      "id": "streamed-e4e-descriptor",
+      "path": "apps/web/src/Next/browser/ort-worker.mjs",
+      "pattern": "encoderStream"
+    },
+    {
+      "id": "cpu-thread-bounds-1-4",
+      "path": "apps/web/src/Next/browser/ort-worker.mjs",
+      "pattern": "Math\\.max\\(1,Math\\.min\\(4,"
+    },
+    {
+      "id": "codec-stages",
+      "path": "apps/web/src/Next/browser/ort-worker.mjs",
+      "pattern": "report\\(id,'encoding'[\\s\\S]*report\\(id,'encoding-complete'"
+    }
+  ]
+}
