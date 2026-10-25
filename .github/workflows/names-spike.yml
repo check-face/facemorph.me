@@ -23,13 +23,10 @@ jobs:
           directory: tools/names-spike
       - run: npm test
       - run: npx playwright install chromium
-      - name: Measure (under the eris device lease)
-        uses: ./.github/actions/device-lease
+      - name: Measure (with a bounded runner)
+        uses: ./.github/actions/run-command
         with:
-          device: eris
-          lane: browser-cpu
           timeout: '2400'
-          wait: '1800'
           command: cd tools/names-spike && node measure.mjs --out out/ci
       - name: Summary
         if: always()

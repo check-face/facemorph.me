@@ -13,3 +13,5 @@ apps/web/src/Next/photo-selection.test.mjs -> replacement: apps/web/test/control
 # and delivery copy provenance (scripts/delivery/*). No active check reads those classic source files.
 # Shell rendering goldens belong to the rendering bead; controller rows without recorded events or
 # snapshots are explicitly untested rather than fabricated. See the per-row replay report.
+autoresearch/test_lease.py -> replacement: autoresearch/test_run.py; reason: machine-wide correctness leases and journals retired by operator 25 October; real process, timing-lock and per-phone lock coverage replaces the obsolete protocol (fm-a7iz)
+scripts/ci/lease/test_lease_run.py -> replacement: autoresearch/test_run.py; reason: obsolete journal-following wrapper removed; the composite action invokes the single bounded runner directly, preserving streamed output (fm-a7iz)

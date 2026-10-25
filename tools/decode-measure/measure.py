@@ -8,12 +8,12 @@ a JS-heap delta where the browser exposes one. Phone lanes (Android emulator, iO
 Simulator) are not available on this machine and are listed as not measured -> not
 admitted.
 
-Heavy steps must run under the shared device lease (classic autoresearch/run.py):
+Run from this repository with a bounded GPU timing lock for a measurement campaign:
 
-    cd ../facemorph.me-classic/autoresearch && python3 run.py --lane browser-cpu \
-      --device eris --timeout 1800 -- \
+    python3 autoresearch/run.py --exclusive gpu-timing --wait 0 --timeout 1800 -- \
       mise x uv@0.12.21 -- uv run --with playwright python \
-      /abs/path/to/tools/decode-measure/measure.py --browser chromium
+      tools/decode-measure/measure.py --browser chromium
+
 """
 import argparse
 import base64
@@ -166,37 +166,19 @@ def module_digests(classic: Path) -> dict:
     return out
 
 
-def lease_run_id(state_dir: Path) -> str | None:
-    if not state_dir.is_dir():
-        return None
-    best = None
-    for run_json in state_dir.glob("*/run.json"):
-        try:
-            record = json.loads(run_json.read_text())
-        except (OSError, ValueError):
-            continue
-        if any("measure.py" in part for part in record.get("command", [])):
-            started = record.get("id", "")
-            if best is None or started > best[0]:
-                best = (started, record.get("id"))
-    return best[1] if best else None
-
-
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--browser", choices=["chromium", "firefox", "webkit"], default="chromium")
     parser.add_argument("--fixtures", default=str(ROOT / "tools/decode-measure"))
     parser.add_argument("--classic", default=str(ROOT.parent / "facemorph.me-classic"))
     parser.add_argument("--out", default=str(ROOT / "packages/stylegan-js/src/contracts/decode-measurements"))
-    parser.add_argument("--lease-state", default=str(Path(args_classic_default()) / "autoresearch/state"))
     args = parser.parse_args()
     classic = Path(args.classic)
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
     manifest = json.loads((Path(args.fixtures) / "fixtures.json").read_text())
     limits = manifest["limits"]
-    # autoresearch/run.py names the run; older classic runners are found by their run folders.
-    run_id = os.environ.get("FACEMORPH_LEASE_RUN") or lease_run_id(Path(args.lease_state)) or "no-lease-record"
+    run_id = os.environ.get("FACEMORPH_RUN") or "direct-command"
 
     with tempfile.TemporaryDirectory() as temp:
         served = Path(temp)
@@ -272,7 +254,7 @@ def main() -> int:
         "browser_version": version,
         "classic_commit": classic_commit(classic),
         "modules": module_digests(classic),
-        "lease_run_id": run_id,
+        "lease_run_id": run_id,  # persisted measurement schema; value is the current FACEMORPH_RUN ID
         "limits": limits,
         "rows": rows,
         "not_measured": [

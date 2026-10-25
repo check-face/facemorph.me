@@ -10,10 +10,12 @@ by host, and a run that saw one fails.
 Inputs: the published `catalogue.json` and the published W+ latents, restored from the names snapshot
 (`scripts/names-snapshot/restore.mjs`, bead fm-old).
 
+From the repository root:
+
 ```sh
 npm ci
-node ../../scripts/names-snapshot/restore.mjs --out=$HOME/.cache/facemorph-names-generator/snapshot --all --mint-r2=<account id>
-python3 ../../autoresearch/run.py --lane browser-gpu --device eris --timeout 3600 -- \
+node scripts/names-snapshot/restore.mjs --out=$HOME/.cache/facemorph-names-generator/snapshot --all --mint-r2=<account id>
+python3 autoresearch/run.py --timeout 3600 -- \
   node tools/names-generator/generate.mjs \
     --catalogue=$HOME/.cache/facemorph-names-generator/snapshot/facemorph-name-catalogue.cdilga.workers.dev/catalogue.json \
     --latents=$HOME/.cache/facemorph-names-generator/snapshot
@@ -39,7 +41,7 @@ Per-row checks, all recorded in the manifest:
 ## Sampled typed-vs-catalogue check
 
 ```sh
-python3 autoresearch/run.py --lane browser-cpu --device eris --timeout 3600 -- \
+python3 autoresearch/run.py --timeout 3600 -- \
   node tools/names-generator/sample-check.mjs --out=$HOME/.cache/facemorph-names-generator/out --samples=25
 ```
 

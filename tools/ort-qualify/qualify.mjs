@@ -13,7 +13,7 @@
 //
 //   node tools/ort-qualify/qualify.mjs --ort <onnxruntime-web package dir | pinned> [--routes cpu,webgpu-ort]
 //        [--gpu-build webgpu|jsep] [--classic ../facemorph.me-classic] [--chromium /usr/bin/chromium] [--out <file>]
-// Run under the device lease. One JSON line per route, then a summary; exit 1 when any route fails.
+// Run with the bounded command runner. One JSON line per route, then a summary; exit 1 when any route fails.
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { createServer } from 'node:http';

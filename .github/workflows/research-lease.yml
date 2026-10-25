@@ -1,24 +1,14 @@
-name: research-lease
-# The per-machine device lease (autoresearch/lease.py, run.py; ops/lease/README.md) against real
-# processes, classic's run.py at its pinned revision and the device lab's lab_lock.
+name: command-runner
+# Bounded process cleanup, GPU timing exclusion and per-device lab locks with real processes.
 on:
   workflow_call:
   workflow_dispatch:
 jobs:
   test:
     runs-on: [self-hosted, linux-x64]
-    timeout-minutes: 30
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - name: Check out classic at the pinned revision (cross-repository lease)
-        uses: actions/checkout@v4
-        with:
-          repository: check-face/facemorph.me-classic
-          ref: b2d945a8c7f0ff9f382fbfefaecc2651943077a3
-          path: classic
-          # No sparse checkout: triton's git (2.25) is too old for it, and the action then
-          # downloads the tree without .git, so the revision could not be verified.
-      - run: python3 autoresearch/test_lease.py
+      - run: python3 autoresearch/test_run.py
         env:
-          CLASSIC_CHECKOUT: ${{ github.workspace }}/classic
           PYTHONDONTWRITEBYTECODE: '1'

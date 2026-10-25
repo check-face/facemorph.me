@@ -15,7 +15,7 @@ or a runner label is not inference evidence; the adapter column is what a real b
 | Node | 26.8.2 system; CI uses setup-node | none system; CI uses setup-node | — | — |
 | Browsers | system Chromium 152; Playwright 1.64 browsers; Chrome for Testing 141.0.7390.54 (GPU lane pin); browser-harness 0.1.8 in `~/Work/runs/venv-bh` | none; Playwright 1.64 does not support Ubuntu 20.04 | — | — |
 | WebGPU adapter, real browser | `nvidia turing`, hardware (headless, Vulkan via ANGLE; `requestAdapter()` answers once the GPU process is up, a few seconds after launch). SwiftShader forced: fallback adapter, refused (`autoresearch/workers/check.mjs --software`) | not capturable: no supported browser | not captured (unreachable) | untested |
-| Lease directory | `/home/cdilga/.local/state/facemorph/lease` (devices `eris`, `p30pro`) | `/home/chris/.local/state/facemorph/lease` (device `triton`) | not set (fm-ip6g) | — |
+| Timing lock directory | `~/.cache/facemorph/locks` or `FACEMORPH_LOCK_DIR`; phone lock is separate | same account-local default or `FACEMORPH_LOCK_DIR` | untested (fm-ip6g) | — |
 | Runners (this repository) | `eris-device-lab` (labels `device-lab, eris, android-p30pro, gpu-rtx2080s`: the only one that takes device-lab jobs), plus `eris-build-2` through `eris-build-5` (labels `eris, eris-build, linux-x64`) | Four: `triton`, `triton-2`, `triton-3`, `triton-4` (all `triton, linux-x64, cpu-20`; the first also `gpu-gtx1080`) | none; its runners (`truenas`, `truenas-gpu`) serve classic only | none |
 
 ## Lanes and tasks

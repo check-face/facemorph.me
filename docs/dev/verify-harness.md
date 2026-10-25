@@ -151,5 +151,5 @@ node --test test/e2e/verify-*.e2e.ts                      # Chromium, Firefox, W
 cd ../../tools/device-lab && uv run --with playwright python lab.py run --cell phone-cpu --journey operated
 ```
 
-Run browser work on eris under the device lease
-(`python3 autoresearch/run.py --lane browser-cpu --device eris --wait 900 --timeout 900 -- <cmd>`).
+Run browser work on eris with a bounded command
+(`python3 autoresearch/run.py --timeout 900 -- <cmd>`).

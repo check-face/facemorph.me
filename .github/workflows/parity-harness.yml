@@ -2,7 +2,7 @@ name: parity-harness
 # fm-q007: the parity harness.
 # - unit: the shared strictly-not-worse rule, the DOM-contract grading and its self-test on the committed control goldens,
 #   and the per-cell performance/retained-lane table (printed to the job summary; cells without paired runs read untested).
-# - served: the harness self-test in real Chromium on eris under the device lease: the verified control served as the
+# - served: the harness self-test in real Chromium on eris with a bounded runner: the verified control served as the
 #   subject passes the smoke row, and a copy with one planted label change fails it. The control digest is re-checked
 #   before serving. Uses a runtime already acquired on the runner (verified; CI never accepts the model terms itself).
 on:
@@ -51,7 +51,7 @@ jobs:
         env:
           PARITY_RUNTIME: ${{ steps.runtime.outputs.dir }}
         run: |
-          python3 autoresearch/run.py --lane browser-cpu --device eris --wait 1800 --timeout 3600 -- \
+          python3 autoresearch/run.py --timeout 3600 -- \
             node --experimental-strip-types apps/web/test/harness/run.ts --self-test --out test-results/parity-harness
       - uses: actions/upload-artifact@v4
         if: always()

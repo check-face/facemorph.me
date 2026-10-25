@@ -4,7 +4,7 @@
 // (two new faces, first Save, the same face again, repeat Save with identical bytes, a 32-frame morph to playable
 // video, Save video, then a first and a next photo with real encoder events and Save) through the built UI of exact
 // artifacts. Changes from revision 1: artifacts are verified by digest before anything runs (default control: the
-// pinned control artifact, control.json); the run must hold the device lease; every request goes through the
+// pinned control artifact, control.json); the run must hold the GPU timing lock; every request goes through the
 // interception helper; each side is served by the parity specs' control server with the verified acquired runtime;
 // outputs go to a fresh run directory in the durable location (never overwritten); a failed sample keeps its trace
 // and screenshot; selectors follow the control's current DOM contract (section.next-face, data-next-state,
@@ -14,7 +14,7 @@
 // establish native chooser latency (that needs the evaluator's adapters). Not user analytics, hardware GPU, physical
 // phone, compositor paint, total memory or OS share qualification.
 //
-//   python3 autoresearch/run.py --lane browser-cpu --device eris --timeout 3600 -- \
+//   python3 autoresearch/run.py --exclusive gpu-timing --wait 0 --timeout 3600 -- \
 //     node autoresearch/drivers/built-ui-paired.mjs --label <fresh> [--mode smoke|paired] \
 //       [--control deploy-next --control-digest <sha>] [--candidate <dir> --candidate-digest <sha> --candidate-source <s>] \
 //       [--runtime <acquired runtime>] [--out-root <durable dir>] [--route cpu|webgpu|auto]
@@ -27,7 +27,7 @@ import {
   REPO,
   freshRunDir,
   outRoot,
-  requireLease,
+  requireTimingLock,
   verifyArtifact,
 } from './lib/artifact.mjs';
 import {
@@ -69,7 +69,7 @@ if (!['smoke', 'paired'].includes(opt.mode)) throw new Error('--mode is smoke or
 if (!['cpu', 'webgpu', 'auto'].includes(opt.route))
   throw new Error('--route is cpu, webgpu or auto');
 
-// Identity first: a wrong digest is refused before the lease, the server or a browser is touched.
+// Identity first: a wrong digest is refused before the timing lock, the server or a browser is touched.
 const artifacts = {
   control: { ...verifyArtifact(opt.control, opt['control-digest']), source: opt['control-source'] },
 };
@@ -79,7 +79,7 @@ artifacts.candidate = opt.candidate
       source: opt['candidate-source'] ?? `artifact:${opt['candidate-digest']}`,
     }
   : { ...artifacts.control, note: 'no candidate given: control/control' };
-const lease = requireLease();
+const timing = requireTimingLock();
 const runtime = verifiedRuntime(resolve(opt.runtime));
 // A paired measurement refuses a contended host; a smoke is not an evaluated outcome, so it only records the load.
 const maxLoad = Number(opt['max-load'] ?? (opt.mode === 'paired' ? 4 : Infinity));
@@ -93,7 +93,7 @@ const report = {
   label: opt.label,
   mode: opt.mode,
   run,
-  lease,
+  timing,
   at: new Date().toISOString(),
   scope:
     'Paired exact built-UI Linux screen of the declared route; consent, download dialog and files supplied by the driver. Not native chooser latency, user analytics, hardware-GPU, physical-phone, paint, total-memory or OS-share qualification.',

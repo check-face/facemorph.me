@@ -31,20 +31,13 @@ jobs:
         env:
           BROWSER_HARNESS: /home/cdilga/Work/runs/venv-bh/bin/browser-harness
         run: python3 scripts/ci/intercept/test_intercept.py
-      - name: The device-lease wrapper (real processes and flocks on a temporary lease directory)
-        run: python3 scripts/ci/lease/test_lease_run.py
-      - name: The wrapper on this machine's own lease journals its run
-        id: leased
-        uses: ./.github/actions/device-lease
+      - name: Bounded commands and timing locks (real processes)
+        run: python3 autoresearch/test_run.py
+      - name: Bounded command output reaches the job log
+        uses: ./.github/actions/run-command
         with:
-          device: eris
-          lane: build
           timeout: '120'
-          wait: '1800'
-          command: echo "leased on $(hostname -s) as $FACEMORPH_LEASE_RUN"
-      - name: The journal has that run
-        run: |
-          grep -q "\"id\": \"${{ steps.leased.outputs.run_id }}\"" "$HOME/.local/state/facemorph/lease/runs.jsonl"
+          command: test -n "$FACEMORPH_RUN" && echo "bounded run on $(hostname -s) as $FACEMORPH_RUN"
       - name: Path filters of this tree
         run: node scripts/ci/path-filters.ts
       - uses: actions/upload-artifact@v4

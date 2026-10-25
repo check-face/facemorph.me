@@ -1,0 +1,35 @@
+name: run-command
+description: >-
+  Runs one heavy command through autoresearch/run.py: bounded by its timeout, and its whole process group ended on
+  timeout or cancel. No lock is taken for ordinary work (operator, 25 October 2026): CI, research and agents run side
+  by side on the machine's full CPU and GPU. A job that times the GPU sets `exclusive: gpu-timing` and runs alone
+  among such jobs; its timeout-minutes must cover the wait, command budget and cleanup. The command's output streams into the job log.
+inputs:
+  command:
+    description: The command, run with bash -c
+    required: true
+  timeout:
+    description: Seconds, at most 3600
+    required: false
+    default: '600'
+  exclusive:
+    description: gpu-timing for a job that times the GPU, else empty
+    required: false
+    default: ''
+  wait:
+    description: Seconds an exclusive job waits for the one ahead, at most 3600
+    required: false
+    default: '0'
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      env:
+        RUN_TIMEOUT: ${{ inputs.timeout }}
+        RUN_WAIT: ${{ inputs.wait }}
+        RUN_EXCLUSIVE: ${{ inputs.exclusive }}
+        RUN_COMMAND: ${{ inputs.command }}
+      run: |
+        args=(--timeout "$RUN_TIMEOUT")
+        if [ -n "$RUN_EXCLUSIVE" ]; then args+=(--exclusive "$RUN_EXCLUSIVE" --wait "$RUN_WAIT"); fi
+        python3 "$GITHUB_ACTION_PATH/../../../autoresearch/run.py" "${args[@]}" -- bash -c "$RUN_COMMAND"

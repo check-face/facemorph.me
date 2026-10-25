@@ -40,7 +40,7 @@ dialog are answered by an in-page poll; the time each stayed up is a `wait` even
 ## Running the desktop lanes
 
 ```sh
-python3 autoresearch/run.py --lane browser-cpu --device eris --wait 3600 --timeout 3600 -- \
+python3 autoresearch/run.py --exclusive gpu-timing --wait 0 --timeout 3600 -- \
   node scripts/verify/not-worse/run.ts --control deploy-next --pairs 5 --provider cpu \
     --browser chromium --label <fresh label> --out /home/cdilga/Work/runs/facemorph-research
 ```
@@ -48,18 +48,18 @@ python3 autoresearch/run.py --lane browser-cpu --device eris --wait 3600 --timeo
 `--build <root> --build-digest <sha256>` adds the build under test; without it both sides are the control
 (control/control noise). Outputs land in `<out>/<label>/`: `NN-<side>-<order>[-pK].json` (schema document),
 `.trace.json` (raw events and observations), `summary.json` (per-measure medians per side, n, the min and max of the
-per-pair build/control ratio), `untested.json` when a cell cannot run. Labels are never overwritten. The lease cap
-is 3600 s per command, so a 5-pair CPU cell (11 runs including the warmup) is the practical ceiling for one lease; a
+per-pair build/control ratio), `untested.json` when a cell cannot run. Labels are never overwritten. The command cap
+is 3600 s per command, so a 5-pair CPU cell (11 runs including the warmup) is the practical ceiling for one bounded command; a
 larger one is split across labels.
 
 ## Lanes
 
 | Lane | How it runs | Status |
 | --- | --- | --- |
-| eris CPU | `run.ts --provider cpu --browser chromium`, `browser-cpu` lease | run (see the bead comment for the pairs completed) |
-| eris WebGPU | `run.ts --provider webgpu --browser system-chromium`, headed system Chromium with `--enable-unsafe-webgpu --enable-features=Vulkan,WebGPU --use-angle=vulkan --ignore-gpu-blocklist`, `browser-gpu` lease. Without an adapter the cell writes `untested.json` with the reason and runs nothing | run, or untested with the adapter reason |
-| Hosted Ubuntu CPU | the same command as eris CPU on a GitHub-hosted runner, no lease (hosted runners are not shared devices) | untested: no workflow yet; wiring waits for the CI rebuild |
-| Mac WebGPU | the same command on the self-hosted Mac, `--browser chromium`, under the lease | untested: not run on a Mac in this slice; wiring waits for the CI rebuild |
+| eris CPU | `run.ts --provider cpu --browser chromium`, the timing lock | run (see the bead comment for the pairs completed) |
+| eris WebGPU | `run.ts --provider webgpu --browser system-chromium`, headed system Chromium with `--enable-unsafe-webgpu --enable-features=Vulkan,WebGPU --use-angle=vulkan --ignore-gpu-blocklist`, the timing lock. Without an adapter the cell writes `untested.json` with the reason and runs nothing | run, or untested with the adapter reason |
+| Hosted Ubuntu CPU | the same command as eris CPU on a GitHub-hosted runner, an isolated hosted worker (local timing uses the timing lock) | untested: no workflow yet; wiring waits for the CI rebuild |
+| Mac WebGPU | the same command on the self-hosted Mac, `--browser chromium`, under the timing lock | untested: not run on a Mac in this slice; wiring waits for the CI rebuild |
 | iOS Simulator | the `mobile-browser.yml` `ios` lane gains a paired job driving Mobile Safari; the trace events and `measures()` are the same, the boundary reads go through WebDriver instead of `page.waitForFunction` | untested: needs a WebDriver driver for the simulator, not written in this slice |
 | Physical iPhone | a scheduled job on the Mac the phone is connected to, Safari through `safaridriver`. Setup (not an approval step): Settings > Safari > Advanced > Remote Automation on the phone, `safaridriver --enable` once on the Mac. With no iPhone connected the job records the cell `untested` ("no iPhone connected") and exits | untested: no phone attached to a runner; driver not written |
 | Android emulator | the `mobile-browser.yml` `android` lane gains a paired job (Chrome over CDP/adb) | untested: driver not written in this slice |
@@ -69,4 +69,4 @@ Mobile safety: a lane uses only the routes the app admits on that device and nev
 did not admit; a cell's requested provider is `auto` there, and `reliability().fallback` ignores `auto`.
 
 Wiring any lane as a workflow job waits for the CI rebuild (workflows are frozen while it is rebuilt); until then the
-runs are made by hand under the lease, as above.
+runs are made by hand under the timing lock, as above.

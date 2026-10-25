@@ -20,13 +20,10 @@ jobs:
           node-version: '24'
       - uses: ./.github/actions/setup-workspace # node_modules for the lockfile, shared on the runner (fm-98po)
       - run: npm run build -w packages/stylegan-js -w packages/browser-model-manager
-      - name: Package tests (browser cases in real Chromium), under the eris device lease
-        uses: ./.github/actions/device-lease
+      - name: Package tests (browser cases in real Chromium), with a bounded runner
+        uses: ./.github/actions/run-command
         with:
-          device: eris
-          lane: browser-cpu
           timeout: '900'
-          wait: '1800'
           command: npm test -w packages/browser-model-manager
       - name: The candidate's model-cache.test.mjs through the shim, expectations unchanged
         working-directory: apps/web

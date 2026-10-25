@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 // Worker readiness for the maintained research drivers (fm-qqh): run on the worker itself, from its executable
-// checkout, before a leased run. Checks the things a recipe used to assume: the checkout, Node, the browser
-// controller and browser, the machine's absolute lease directory, the verified acquired runtime, the pinned control
+// checkout, before a measured run. Checks the things a recipe used to assume: the checkout, Node, the browser
+// controller and browser, the shared timing lock directory, the verified acquired runtime, the pinned control
 // artifact, host load and, for browser-gpu, a hardware WebGPU adapter in the same browser and flags the drivers use
 // (a software adapter is rejected). Prints one JSON line per check and a summary; exit 1 when any check fails.
 //   node autoresearch/workers/check.mjs --lane browser-cpu|browser-gpu [--runtime <dir>] [--smoke] [--software]
 // --software launches the adapter probe with SwiftShader forced: the planted case the recipe must reject.
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { hostname, loadavg, tmpdir } from 'node:os';
 import { isAbsolute, join, resolve } from 'node:path';
@@ -60,17 +60,10 @@ await check('browser controller', async () => {
 });
 const browser = process.env.CHROMIUM_PATH ?? '/usr/bin/chromium';
 await check('browser', () => run(browser, ['--version']));
-await check('lease directory', () => {
-  const configs = [
-    process.env.FACEMORPH_LEASE_CONFIG,
-    '/etc/facemorph/lease.json',
-    join(process.env.HOME, '.config/facemorph/lease.json'),
-  ];
-  const path = configs.find((p) => p && existsSync(p));
-  if (!path) throw new Error('no lease config (ops/lease/README.md)');
-  const config = JSON.parse(readFileSync(path, 'utf8'));
-  if (!isAbsolute(config.stateDir ?? '')) throw new Error(`${path}: stateDir must be absolute`);
-  return { config: path, stateDir: config.stateDir, devices: config.devices };
+await check('timing lock directory', () => {
+  const path = process.env.FACEMORPH_LOCK_DIR ?? join(process.env.HOME, '.cache/facemorph/locks');
+  if (!isAbsolute(path)) throw new Error('FACEMORPH_LOCK_DIR must be absolute');
+  return { path, exclusive: 'gpu-timing', correctnessLock: false };
 });
 await check('acquired runtime', async () => {
   const { verifiedRuntime } = await import('../drivers/lib/session.mjs');

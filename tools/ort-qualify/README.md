@@ -8,7 +8,7 @@ the run; no request is intercepted.
 
 ```sh
 npm pack onnxruntime-web@latest && tar -xzf onnxruntime-web-*.tgz    # in an empty directory
-python3 autoresearch/run.py --lane browser-gpu --device eris --wait 1800 --timeout 3600 -- \
+python3 autoresearch/run.py --timeout 3600 -- \
   node tools/ort-qualify/qualify.mjs --ort <dir>/package --routes cpu,webgpu-ort [--gpu-build webgpu|jsep]
 ```
 

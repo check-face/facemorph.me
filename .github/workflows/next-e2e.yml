@@ -7,7 +7,7 @@ name: Exact new-site qualification
 # browser-harness 0.1.8 with a 1500 s watchdog, and the network recorded by a second CDP client by host class:
 # zero third-party requests (GA4's approved loader is 'analytics' and must move zero bytes), plus real inference
 # events for every generated face and the e4e encode (scripts/ci/site/real-ui-cpu.mjs). Port 8443 and the CPU work run under
-# the eris device lease.
+# bounded process cleanup.
 on:
   workflow_call:
     inputs:
@@ -103,13 +103,10 @@ jobs:
           fi
           "$binary" --version
           echo "binary=$binary" >> "$GITHUB_OUTPUT"
-      - name: Run real production UI CPU workflow (eris device lease)
-        uses: ./.github/actions/device-lease
+      - name: Run real production UI CPU workflow (bounded command)
+        uses: ./.github/actions/run-command
         with:
-          device: eris
-          lane: browser-cpu
           timeout: '2400'
-          wait: '3000'
           command: >-
             CHROMIUM_PATH="${{ steps.chrome.outputs.binary }}" node scripts/ci/site/real-ui-cpu.mjs --site site --runtime-sha "${{ inputs.runtime_sha }}"
             --runtime /home/cdilga/.cache/facemorph-runtime --out next-e2e-evidence

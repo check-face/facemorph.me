@@ -8,8 +8,8 @@
 // --latents is a names-snapshot restore of the name-catalogue latents (scripts/names-snapshot/restore.mjs),
 // so the published reference latents come from the snapshot, never from the hosted API.
 //
-// Run it under the machine's device lease, e.g.
-//   python3 autoresearch/run.py --lane browser-gpu --device eris --timeout 3600 -- node tools/names-generator/generate.mjs ...
+// Run it with the bounded command runner, e.g.
+//   python3 autoresearch/run.py --timeout 3600 -- node tools/names-generator/generate.mjs ...
 // The producer is the CPU route by default (deterministic, the typed-name path every device can run); the
 // WebGPU route (direct WGSL engine) is the independent synthesis reference.
 // Resumable: a row already in manifest.jsonl for this result set, with passing checks and its file intact,

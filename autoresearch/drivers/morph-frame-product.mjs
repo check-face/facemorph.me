@@ -6,11 +6,11 @@
 // built UI on the declared route, timing every synthesized frame the worker posts ('frame' messages of
 // synthesize-frames), every frame handed to the video writer, and the playable video; then Save video for the
 // output's digest. Per-frame time counts from the last warm-up frame (3) to the last frame, as revision 1 did.
-// Artifacts are verified by digest first (default control: control.json), the run must hold the device lease, a
+// Artifacts are verified by digest first (default control: control.json), the run must hold the GPU timing lock, a
 // WebGPU route needs a hardware adapter (a software one is rejected), every request goes through the interception
 // helper, outputs go to a fresh run directory in the durable location and failed samples keep trace and screenshot.
 //
-//   python3 autoresearch/run.py --lane browser-gpu --device eris --timeout 3600 -- \
+//   python3 autoresearch/run.py --exclusive gpu-timing --wait 0 --timeout 3600 -- \
 //     node autoresearch/drivers/morph-frame-product.mjs --label <fresh> [--route webgpu|cpu|auto] [--mode smoke|paired] \
 //       [--control deploy-next --control-digest <sha>] [--candidate <dir> --candidate-digest <sha> --candidate-source <s>] \
 //       [--runtime <acquired runtime>] [--out-root <durable dir>]
@@ -24,7 +24,7 @@ import {
   REPO,
   freshRunDir,
   outRoot,
-  requireLease,
+  requireTimingLock,
   verifyArtifact,
 } from './lib/artifact.mjs';
 import { frameTiming } from './lib/frames.mjs';
@@ -69,7 +69,7 @@ if (!['smoke', 'paired'].includes(opt.mode)) throw new Error('--mode is smoke or
 if (!['cpu', 'webgpu', 'auto'].includes(opt.route))
   throw new Error('--route is cpu, webgpu or auto');
 
-// Identity first: a wrong digest is refused before the lease, the server or a browser is touched.
+// Identity first: a wrong digest is refused before the timing lock, the server or a browser is touched.
 const artifacts = {
   control: { ...verifyArtifact(opt.control, opt['control-digest']), source: opt['control-source'] },
 };
@@ -79,7 +79,7 @@ artifacts.candidate = opt.candidate
       source: opt['candidate-source'] ?? `artifact:${opt['candidate-digest']}`,
     }
   : { ...artifacts.control, note: 'no candidate given: control/control' };
-const lease = requireLease();
+const timing = requireTimingLock();
 const lane = opt.route === 'webgpu' ? 'browser-gpu' : 'browser-cpu';
 const runtime = verifiedRuntime(resolve(opt.runtime));
 const maxLoad = Number(opt['max-load'] ?? (opt.mode === 'paired' ? 4 : Infinity));
@@ -92,7 +92,7 @@ const report = {
   label: opt.label,
   mode: opt.mode,
   run,
-  lease,
+  timing,
   at: new Date().toISOString(),
   scope:
     'Morph frame throughput of an exact artifact through its built UI on one route and device; consent and the download dialog answered by the driver. Not physical-phone, other-browser, paint or total-memory qualification; frames are not compared numerically here.',

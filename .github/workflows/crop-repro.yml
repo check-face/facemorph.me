@@ -53,14 +53,11 @@ jobs:
         run: |
           python3 -m venv "$RUNNER_TEMP/venv"
           "$RUNNER_TEMP/venv/bin/pip" install -q browser-harness==0.1.8 playwright==1.56.0
-      - name: Crop-confirm loop cases on the control (under the eris device lease)
+      - name: Crop-confirm loop cases on the control (with a bounded runner)
         if: steps.runtime.outputs.dir != ''
-        uses: ./.github/actions/device-lease
+        uses: ./.github/actions/run-command
         with:
-          device: eris
-          lane: browser-cpu
           timeout: '2400'
-          wait: '1800'
           command: >-
             "$RUNNER_TEMP/venv/bin/python" tests/crop/crop_confirm_loop.py --runtime "${{ steps.runtime.outputs.dir }}"
             --out crop-evidence --chrome "$(command -v chromium || command -v google-chrome)"

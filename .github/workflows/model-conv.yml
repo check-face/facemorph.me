@@ -25,12 +25,9 @@ jobs:
           python3 -c "import json,sys; sys.path.insert(0,'.'); from tests.test_manifest import built; from model_conv.models import FFHQ_CONFIG_F; json.dump(built(chunk_bytes=FFHQ_CONFIG_F.chunk_bytes), sys.stdout)" > "$RUNNER_TEMP/build-manifest.json"
           npx --yes ajv-cli@5.0.0 validate --spec=draft2020 -s ../browser-model-manager/schema/model-manifest.v1.schema.json -d "$RUNNER_TEMP/build-manifest.json" --errors=text
       - name: Documented commands, verbatim (docs/usage.md; FFHQ and the AFHQ cat non-face model), under the eris lease
-        uses: ./.github/actions/device-lease
+        uses: ./.github/actions/run-command
         with:
-          device: eris
-          lane: build
           timeout: '3000'
-          wait: '1800'
           command: python3 packages/model-conv/tests/doc_commands.py
       - name: Converted manifests validate against the producer-facing model manifest schema
         run: |
@@ -51,10 +48,7 @@ jobs:
           if-no-files-found: warn
           retention-days: 90
       - name: Acceptance (real checkpoint, real container), under the eris lease
-        uses: ./.github/actions/device-lease
+        uses: ./.github/actions/run-command
         with:
-          device: eris
-          lane: build
           timeout: '3000'
-          wait: '1800'
           command: cd packages/model-conv && tests/acceptance.sh

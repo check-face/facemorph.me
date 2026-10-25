@@ -11,8 +11,8 @@
 //
 // Cells: Playwright Chromium, Firefox and WebKit on the CPU route; system Chromium with WebGPU (CHROMIUM_PATH, default
 // /usr/bin/chromium; headed, Vulkan) on the ORT WebGPU engine and the direct engine. A cell whose browser does not
-// start, has no hardware adapter or lacks the runtime is reported untested. Run the GPU cells under the eris lease:
-//   python3 scripts/ci/lease/lease_run.py --device eris --lane browser-gpu -- npm test -w packages/stylegan-js
+// start, has no hardware adapter or lacks the runtime is reported untested. Run correctness cells with a bounded command:
+//   python3 autoresearch/run.py -- npm test -w packages/stylegan-js
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';

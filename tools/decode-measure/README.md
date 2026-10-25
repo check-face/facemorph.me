@@ -8,15 +8,15 @@ these rows to set numeric ceilings; a route with no row is not admitted.
 
 ## One command (from a clean checkout)
 
-Heavy steps run under the machine's device lease ([ops/lease](../../ops/lease/README.md)), from the
+Heavy steps run with the [bounded runner](../../ops/lease/README.md), from the
 repository root (the candidate code is read from the sibling classic checkout, `--classic`):
 
 ```sh
-python3 autoresearch/run.py --lane browser-cpu --device eris --timeout 1800 --wait 120 -- \
+python3 autoresearch/run.py --exclusive gpu-timing --wait 0 --timeout 1800 -- \
   mise x uv@0.12.21 -- uv run --with playwright python tools/decode-measure/measure.py --browser chromium
 ```
 
-The lease run id is recorded from `FACEMORPH_LEASE_RUN`, which `run.py` sets for its command.
+The persisted `lease_run_id` field retains its schema name; its run ID comes from `FACEMORPH_RUN`, which `run.py` sets for its command. GPU timing campaigns use `--exclusive gpu-timing` with a bounded wait.
 
 Repeat with `--browser firefox` and `--browser webkit` (the Linux CI matrix browsers).
 The fixtures must exist first: `mise x uv@0.12.21 -- uv run --with playwright python

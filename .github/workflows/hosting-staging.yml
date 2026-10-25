@@ -43,12 +43,9 @@ jobs:
             echo "::error::No verified runtime in $dir: staging cannot be reproduced on this runner"; exit 1
           fi
       - name: Classic's staging on the same artifact, then the clean-clone staging compared file by file (eris lease)
-        uses: ./.github/actions/device-lease
+        uses: ./.github/actions/run-command
         with:
-          device: eris
-          lane: build
           timeout: '1800'
-          wait: '1800'
           command: >-
             scripts/hosting/classic-reference.sh .cache/classic "${{ steps.runtime.outputs.dir }}" .cache/classic-staging.json
             && node scripts/hosting/stage.mjs --runtime "${{ steps.runtime.outputs.dir }}" --out .cache/staging

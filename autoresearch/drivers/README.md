@@ -15,14 +15,14 @@ revision 2 drives the built UI and times the worker's `frame` messages instead.
 ## Contract
 
 - **Artifacts by digest.** `--control DIR --control-digest SHA` and `--candidate DIR --candidate-digest SHA`. The digest
-  is the tree SHA-256 of the directory (`scripts/hosting/stage.mjs` `treeDigest`). A mismatch is refused before the
-  lease, a server or a browser is touched. The default control is the pinned control artifact
+  is the tree SHA-256 of the directory (`scripts/hosting/stage.mjs` `treeDigest`). A mismatch is refused before a
+  timing lock, server or a browser is touched. The default control is the pinned control artifact
   ([control.json](control.json)), never F# source or a rebuilt candidate. Without a candidate the run is control/control.
 - **Origin.** The artifact is served at `https://next.facemorph.me` by classic's qualification server through the parity
   specs' `apps/web/test/parity/control-server.ts`, with the verified acquired runtime, and the browser reaches it
   through a host mapping. Measuring a deployed origin directly is not supported by revision 2: its bytes could not be
   verified against the digest first.
-- **Leased.** A driver refuses to start outside `autoresearch/run.py` (it checks `FACEMORPH_LEASE_HELD`).
+- **Timing admission.** A measured driver requires `autoresearch/run.py --exclusive gpu-timing` and checks `FACEMORPH_EXCLUSIVE` plus `FACEMORPH_RUN`. Correctness checks take no machine-wide lock.
 - **Fresh label, no overwrite.** Outputs go to `<out root>/<label>/`; an existing label is refused. The out root is
   `--out-root`, else `$FACEMORPH_RESEARCH_RUNS`, else `~/Work/runs/facemorph-research` (the worker recipe names it).
 - **Network.** Every request goes through the interception helper (`lib/session.mjs` `guardNetwork`): the origin and the

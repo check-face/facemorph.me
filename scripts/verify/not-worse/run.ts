@@ -3,11 +3,11 @@
 // selector maps in workload.ts, takes its timestamps in the page, and writes one run.schema.json document plus the
 // raw trace per scheduled run (ABBA order, a discarded warmup, a fresh profile per run).
 //
-//   python3 autoresearch/run.py --lane browser-cpu --device eris --wait 1800 --timeout 3600 -- \
+//   python3 autoresearch/run.py --exclusive gpu-timing --wait 0 --timeout 3600 -- \
 //     node scripts/verify/not-worse/run.ts --control deploy-next --pairs 5 --provider cpu \
 //       --browser chromium --label <fresh> --out /home/cdilga/Work/runs/facemorph-research
 //
-// Serving, the verified runtime, the network guard, the lease check and artifact verification are the research
+// Serving, the verified runtime, the network guard, the timing-lock check and artifact verification are the research
 // drivers' (autoresearch/drivers/lib/*.mjs, as built-ui-paired.mjs uses them); journey.mjs's step helpers read the
 // window.Worker instrumentation that the bead forbids (a mocked browser API), so the journey here is written against
 // the DOM instead. Nothing is mocked or stubbed: the page-side code only observes (event listeners, a rAF loop, a
@@ -481,7 +481,7 @@ const build = opt.build
       source: opt['build-source'] ?? `artifact:${opt['build-digest']}`,
     }
   : { ...control };
-const lease = artifact.requireLease();
+const timing = artifact.requireTimingLock();
 const runtime = session.verifiedRuntime(resolve(opt.runtime ?? join(REPO, '.cache/runtime')));
 const photo = readFileSync(join(REPO, PHOTO.path));
 if (journey.sha(photo) !== PHOTO.sha256)
@@ -542,7 +542,7 @@ const gate = await adapterGate();
 if (gate) {
   writeFileSync(
     join(out, 'untested.json'),
-    JSON.stringify({ cell: cellName, status: 'untested', reason: gate, lease }, null, 2) + '\n',
+    JSON.stringify({ cell: cellName, status: 'untested', reason: gate, timing }, null, 2) + '\n',
   );
   console.log(JSON.stringify({ summary: { cell: cellName, untested: gate, out } }));
   process.exit(0);
@@ -664,7 +664,7 @@ writeFileSync(
       cell: cellName,
       pairs: Number(opt.pairs),
       digests: { control: control.treeSha256, build: build.treeSha256 },
-      lease,
+      timing,
       failures: results.filter((r) => r.failure).map((r) => ({ file: r.file, failure: r.failure })),
       measures: summary,
     },

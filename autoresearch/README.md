@@ -16,9 +16,7 @@ Use ordinary npm/test commands directly. `autoresearch/run.py` is a bounded comm
 runner, not a scheduler or a local interpreter for GitHub Actions.
 
 Timing policy: only GPU measurements take an exclusive `gpu-timing` lock, with a
-bounded wait and an honest busy/deferred outcome. The runner/driver implementation
-is being updated; verify `python3 autoresearch/run.py --help` supports `--exclusive`
-before using that flag. Do not start a timing campaign without the required lock.
+bounded wait and an honest busy/deferred outcome. Use `python3 autoresearch/run.py --exclusive gpu-timing --wait 0 --timeout 1800 -- <command>`. Do not start a timing campaign without the required lock.
 Normal correctness work never waits for it. The phone has its own bounded physical
 device lock in the lab; eris and CI correctness work may overlap it.
 
@@ -26,8 +24,8 @@ The [maintained drivers](drivers/README.md) measure exact artifacts by digest.
 `npm run build:next` supplies the pinned classic control; it does not build the new
 app. Frozen scripts in `devices/` still name classic paths and are historical.
 See the [eris recipe](workers/eris/README.md) for runtime and browser readiness.
-Check the actual runner's output for journal locations; do not infer qualification
-from command exit zero. No new research round starts in classic.
+The runner streams output directly and sets `FACEMORPH_RUN`; it creates no journal.
+Do not infer qualification from command exit zero. No new research round starts in classic.
 
 ## Smoke check
 

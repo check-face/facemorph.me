@@ -1,33 +1,36 @@
 #!/usr/bin/env python3
-"""Bounded command execution, journalled in the machine's run directory (lease.py, ops/lease/README.md).
+"""Bounded command execution, with an exclusive lock only for runs that time something.
 
-  python3 autoresearch/run.py --lane <lane> --device <machine> --state-dir <absolute lease dir> \\
-      --timeout <seconds, at most 3600> [--wait <seconds>] -- <driver command>
+  python3 autoresearch/run.py [--exclusive gpu-timing] [--timeout <seconds, at most 3600>] [--wait <seconds>] \\
+      -- <command>
 
-Seeded from facemorph.me-classic autoresearch/run.py at b2d945a8 and compatible with it: the same
-<device>.lock, run folders and runs.jsonl journal, and exit 75 when the device is busy. Added here:
-the machine's one absolute run directory; refusal of a device this host does not own; cleanup of the owned
-process group on SIGTERM/SIGHUP as well as on timeout. No device lock is taken (operator, 25 October 2026), so
---wait is accepted and ignored. Exit zero means the command completed, not that its result qualifies.
+The command's output goes straight to this process's stdout and stderr. A timeout, SIGTERM or SIGHUP ends the
+command's whole process group (workers that outlived it included); exit 124 on timeout, 128+signal when stopped,
+else the command's own status.
+
+Ordinary work takes no lock (operator, 25 October 2026): eris runs CI, research and agents side by side on its full
+CPU and GPU. A run that times the GPU passes --exclusive gpu-timing and runs alone among such runs, waiting up to
+--wait seconds (default 3600) for the one ahead; nothing else ever waits on it, so it cannot hold up a CI job. The
+command sees FACEMORPH_EXCLUSIVE (the lock it holds) and FACEMORPH_RUN (this run's id), which the timing drivers
+require (autoresearch/drivers/lib/artifact.mjs requireTimingLock). --wait is valid only with --exclusive;
+ordinary commands never wait for machine capacity.
 """
 import argparse
 import datetime as dt
 import fcntl
-import json
 import os
 from pathlib import Path
+import re
 import signal
 import subprocess
 import sys
 import time
 import uuid
 
-ROOT = Path(__file__).resolve().parent
-sys.path.insert(0, str(ROOT))
-import lease  # noqa: E402
-
-LANES = ['browser-cpu', 'browser-gpu', 'native-cpu', 'native-gpu', 'build']
 GRACE_S = 5  # from SIGTERM to SIGKILL for whatever is left of the command's process group
+EXCLUSIVE_NAME = re.compile(r'[a-z0-9-]+')
+LOCK_DIR_ENV = 'FACEMORPH_LOCK_DIR'
+BUSY = 75  # an exclusive lock still held after --wait
 
 
 class Stopped(Exception):
@@ -51,8 +54,7 @@ def group_gone(child):
 
 
 def stop_group(child, grace=GRACE_S):
-    """End the command's own process group, workers that outlived it included: SIGTERM, then SIGKILL
-    whatever is still there after grace seconds."""
+    """End the command's own process group: SIGTERM, then SIGKILL whatever is still there after grace seconds."""
     for sig in (signal.SIGTERM, signal.SIGKILL):
         if group_gone(child):
             break
@@ -66,74 +68,89 @@ def stop_group(child, grace=GRACE_S):
     child.wait()
 
 
-def execute(command, args, state, run_id, host):
-    folder = state / run_id
-    folder.mkdir()
-    record = dict(id=run_id, lane=args.lane, device=args.device, command=command, cwd=os.getcwd(),
-                  timeout=args.timeout, status='running', runner_pid=os.getpid(), host=host, repo=str(ROOT.parent))
-    metadata = folder / 'run.json'
-    metadata.write_text(json.dumps(record, indent=2) + '\n')
-    # The command and its tools see the lease they run inside (the lab honours it).
-    env = dict(os.environ, **{lease.HELD_ENV: args.device, lease.STATE_DIR_ENV: str(state), lease.RUN_ENV: run_id})
-    start = time.monotonic()
-    child, code = None, 1
+def lock_dir(env):
+    return Path(env.get(LOCK_DIR_ENV) or Path.home() / '.cache' / 'facemorph' / 'locks')
+
+
+def take(name, wait, env):
+    """The open, flocked lock file for name, or None if it is still held after wait seconds."""
+    folder = lock_dir(env)
+    folder.mkdir(parents=True, exist_ok=True)
+    f = (folder / f'{name}.lock').open('a+')
+    deadline, said = time.monotonic() + wait, False
+    while True:
+        try:
+            fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            return f
+        except BlockingIOError:
+            if time.monotonic() >= deadline:
+                f.close()
+                return None
+            if not said:
+                print(f'Waiting for the {name} lock (another timing run is measuring)', file=sys.stderr)
+                said = True
+            time.sleep(0.2)
+
+
+def execute(command, timeout, env):
+    child = None
     try:
-        with (folder / 'output.log').open('w') as output:
-            child = subprocess.Popen(command, stdout=output, stderr=subprocess.STDOUT, start_new_session=True, env=env)
-            code = child.wait(timeout=args.timeout)
-            record['status'] = 'completed' if code == 0 else 'failed'
+        child = subprocess.Popen(command, start_new_session=True, env=env)
+        return child.wait(timeout=timeout)
     except subprocess.TimeoutExpired:
-        record['status'], code = 'timeout', 124
+        print(f'run.py: timed out after {timeout:g} s', file=sys.stderr)
+        return 124
     except Stopped as exc:
-        record['status'], code = 'interrupted', 128 + exc.signum
+        return 128 + exc.signum
     except KeyboardInterrupt:
-        record['status'], code = 'interrupted', 130
+        return 130
     except OSError as exc:
-        record['status'], record['error'], code = 'failed', str(exc), 127
+        print(f'run.py: {exc}', file=sys.stderr)
+        return 127
     finally:
         for sig in (signal.SIGTERM, signal.SIGHUP, signal.SIGINT):
             signal.signal(sig, signal.SIG_IGN)  # a second signal must not cut the cleanup short
         if child is not None:
             stop_group(child)
-        record.update(exit_code=code, seconds=time.monotonic() - start, qualification='not_evaluated')
-        metadata.write_text(json.dumps(record, indent=2) + '\n')
-        with (state / 'runs.jsonl').open('a') as journal:
-            fcntl.flock(journal, fcntl.LOCK_EX)
-            journal.write(json.dumps(record) + '\n')
-        print(json.dumps({'run': str(folder), 'status': record['status'], 'exit_code': code}))
-    return code
 
 
-def main():
+def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument('--lane', required=True, choices=LANES)
-    parser.add_argument('--device', required=True, help='the machine doing the work, or a device attached to it')
+    parser.add_argument('--exclusive', help='run alone among runs naming this lock (gpu-timing)')
     parser.add_argument('--timeout', type=float, default=600, help='budget in seconds, at most 3600 (default 600)')
-    parser.add_argument('--wait', type=float, default=0, help='ignored: no device lock is taken any more')
-    parser.add_argument('--state-dir', help="the machine's absolute lease directory "
-                                            '(default: FACEMORPH_LEASE_DIR, else the lease config)')
+    parser.add_argument('--wait', type=float, default=None, help='seconds to wait for an --exclusive lock (default 3600)')
     parser.add_argument('command', nargs=argparse.REMAINDER)
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
     command = args.command[1:] if args.command[:1] == ['--'] else args.command
-    if not command or not 0 < args.timeout <= 3600 or not 0 <= args.wait <= 3600:
+    if args.wait is not None and not args.exclusive:
+        parser.error('--wait requires --exclusive; ordinary commands take no lock')
+    wait = 3600 if args.wait is None else args.wait
+    if not command or not 0 < args.timeout <= 3600 or not 0 <= wait <= 3600:
         parser.error('Provide a command, a timeout in (0, 3600] and a wait in [0, 3600].')
-    host = lease.host()
-    try:
-        config = lease.machine_config(os.environ)
-        state = lease.resolve_state_dir(args.state_dir, os.environ, config)
-        lease.check_device(args.device, host, config)
-    except lease.Refused as exc:
-        parser.error(str(exc))
+    if args.exclusive and not EXCLUSIVE_NAME.fullmatch(args.exclusive):
+        parser.error(f'unsafe lock name {args.exclusive!r}')
     for sig in (signal.SIGTERM, signal.SIGHUP):
         signal.signal(sig, _stop)
     run_id = dt.datetime.now(dt.timezone.utc).strftime('%Y%m%dT%H%M%SZ') + '-' + uuid.uuid4().hex[:8]
+    env = dict(os.environ, FACEMORPH_RUN=run_id)
+    env.pop('FACEMORPH_EXCLUSIVE', None)  # only a lock this invocation actually holds may be advertised
+    lock = None
     try:
-        with lease.hold(state, args.device, holder='run.py', run=run_id, lane=args.lane, repo=str(ROOT.parent)):
-            return execute(command, args, state, run_id, host)
-    except Stopped as exc:
+        if args.exclusive:
+            if not lock_dir(env).is_absolute():
+                parser.error('FACEMORPH_LOCK_DIR must be absolute so checkouts share the timing lock')
+            lock = take(args.exclusive, wait, env)
+            if lock is None:
+                print(f'run.py: the {args.exclusive} lock is still held after {wait:g} s; nothing started',
+                      file=sys.stderr)
+                return BUSY
+            env['FACEMORPH_EXCLUSIVE'] = args.exclusive
+        return execute(command, args.timeout, env)
+    except Stopped as exc:  # while waiting for the lock: nothing was started
         return 128 + exc.signum
-    except KeyboardInterrupt:
-        return 130
+    finally:
+        if lock:
+            lock.close()
 
 
 if __name__ == '__main__':

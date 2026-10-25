@@ -67,15 +67,11 @@ export function freshRunDir(root, label) {
   return dir;
 }
 
-/** Every run is leased: run.py sets FACEMORPH_LEASE_HELD for the command it runs. */
-export function requireLease(env = process.env) {
-  if (!env.FACEMORPH_LEASE_HELD || !env.FACEMORPH_LEASE_RUN)
+/** A timing run measures alone among timing runs: run.py --exclusive gpu-timing sets these for its command. */
+export function requireTimingLock(env = process.env) {
+  if (env.FACEMORPH_EXCLUSIVE !== 'gpu-timing' || !env.FACEMORPH_RUN)
     throw new Error(
-      'not running under the device lease: python3 autoresearch/run.py --lane <lane> --device <machine> -- <this command>',
+      'not running under the gpu-timing lock: python3 autoresearch/run.py --exclusive gpu-timing -- <this command>',
     );
-  return {
-    device: env.FACEMORPH_LEASE_HELD,
-    run: env.FACEMORPH_LEASE_RUN,
-    dir: env.FACEMORPH_LEASE_DIR,
-  };
+  return { lock: env.FACEMORPH_EXCLUSIVE, run: env.FACEMORPH_RUN };
 }

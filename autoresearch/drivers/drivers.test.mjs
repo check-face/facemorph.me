@@ -14,7 +14,7 @@ import {
   artifactDigest,
   freshRunDir,
   labelProblem,
-  requireLease,
+  requireTimingLock,
   verifyArtifact,
 } from './lib/artifact.mjs';
 import { frameTiming } from './lib/frames.mjs';
@@ -68,17 +68,17 @@ test('run labels are fresh simple names; an existing run directory is never reus
   rmSync(root, { recursive: true });
 });
 
-test('a driver needs the lease run.py holds', () => {
-  assert.throws(() => requireLease({}), /not running under the device lease/);
-  assert.throws(() => requireLease({ FACEMORPH_LEASE_HELD: 'eris' }), /device lease/);
-  assert.deepEqual(
-    requireLease({
-      FACEMORPH_LEASE_HELD: 'eris',
-      FACEMORPH_LEASE_RUN: 'r1',
-      FACEMORPH_LEASE_DIR: '/l',
-    }),
-    { device: 'eris', run: 'r1', dir: '/l' },
+test('a timing driver needs the gpu-timing lock run.py holds', () => {
+  assert.throws(() => requireTimingLock({}), /not running under the gpu-timing lock/);
+  assert.throws(() => requireTimingLock({ FACEMORPH_RUN: 'r1' }), /gpu-timing lock/);
+  assert.throws(
+    () => requireTimingLock({ FACEMORPH_EXCLUSIVE: 'other', FACEMORPH_RUN: 'r1' }),
+    /gpu-timing lock/,
   );
+  assert.deepEqual(requireTimingLock({ FACEMORPH_EXCLUSIVE: 'gpu-timing', FACEMORPH_RUN: 'r1' }), {
+    lock: 'gpu-timing',
+    run: 'r1',
+  });
 });
 
 test('a GPU lane admits only a hardware adapter; CPU lanes make no claim', () => {
@@ -129,7 +129,7 @@ test('frame timing counts synthesized and written frames from the last warm-up f
 });
 
 for (const driver of ['built-ui-paired.mjs', 'morph-frame-product.mjs'])
-  test(`${driver} refuses a wrong digest before the lease, a server or a browser`, () => {
+  test(`${driver} refuses a wrong digest before the timing lock, a server or a browser`, () => {
     const dir = artifact();
     const out = scratch();
     const wrong = 'f'.repeat(64);
@@ -148,14 +148,14 @@ for (const driver of ['built-ui-paired.mjs', 'morph-frame-product.mjs'])
       ],
       {
         encoding: 'utf8',
-        env: { ...process.env, FACEMORPH_LEASE_HELD: '', FACEMORPH_LEASE_RUN: '' },
+        env: { ...process.env, FACEMORPH_EXCLUSIVE: '', FACEMORPH_RUN: '' },
       },
     );
     assert.notEqual(r.status, 0);
     assert.match(r.stderr, new RegExp(`not the expected ${wrong}: refused before the run`));
-    assert.doesNotMatch(r.stderr, /device lease/); // identity is checked before the lease
+    assert.doesNotMatch(r.stderr, /gpu-timing lock/); // identity is checked before the timing lock
     assert.deepEqual(readdirSync(out), []); // no run directory, so nothing ran
-    // With the right digest and no lease, the lease refusal is next, still before any output.
+    // With the right digest and no timing lock, the timing refusal is next, still before any output.
     const right = artifactDigest(dir).treeSha256;
     const r2 = spawnSync(
       process.execPath,
@@ -172,11 +172,11 @@ for (const driver of ['built-ui-paired.mjs', 'morph-frame-product.mjs'])
       ],
       {
         encoding: 'utf8',
-        env: { ...process.env, FACEMORPH_LEASE_HELD: '', FACEMORPH_LEASE_RUN: '' },
+        env: { ...process.env, FACEMORPH_EXCLUSIVE: '', FACEMORPH_RUN: '' },
       },
     );
     assert.notEqual(r2.status, 0);
-    assert.match(r2.stderr, /not running under the device lease/);
+    assert.match(r2.stderr, /not running under the gpu-timing lock/);
     assert.deepEqual(readdirSync(out), []);
     rmSync(dir, { recursive: true });
     rmSync(out, { recursive: true });

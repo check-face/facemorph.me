@@ -1,6 +1,6 @@
 name: decode-measure
 # fm-4cp: the decode-ceiling measurement runs on demand (workflow_dispatch) on the triton
-# runner under the machine's device lease, so ceiling inputs are re-measurable in CI and
+# runner with an exclusive timing lock, so ceiling inputs are re-measurable in CI and
 # failure screenshots are kept as workflow artifacts.
 on:
   workflow_dispatch:
@@ -28,9 +28,9 @@ jobs:
         with:
           node-version: '22'
       - run: node --test tools/decode-measure/fixtures.test.mjs
-      - name: Measure under the device lease
+      - name: Measure with a bounded runner
         run: >
-          python3 autoresearch/run.py --lane browser-cpu --device triton --timeout 1800 --wait 300 --
+          python3 autoresearch/run.py --exclusive gpu-timing --wait 0 --timeout 1800 --
           mise x uv@0.12.21 -- uv run --with playwright python
           tools/decode-measure/measure.py --browser "${{ inputs.browser }}"
       - uses: actions/upload-artifact@v4

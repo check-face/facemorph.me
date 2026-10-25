@@ -4,7 +4,7 @@ name: GPU lane benchmark
 # runs on eris's RTX 2080 SUPER (triton's GTX 1080 is on Ubuntu 20.04, below current Chromium, and its disk is
 # full: docs/dev/workers.md). Classic's driver (apps/web/scripts/next-gpu-benchmark.py) runs unedited under
 # browser-harness 0.1.8 in pinned Chrome for Testing, wrapped by scripts/ci/gpu-lane/lane.mjs and the eris
-# device lease. The report gives nvidia-smi, the in-page adapter and the product's webgpu canaries (RGB <= 1,
+# GPU timing lock. The report gives nvidia-smi, the in-page adapter and the product's webgpu canaries (RGB <= 1,
 # raw float <= 0.002) before any timing; a software adapter is the named failure "software adapter" with no
 # timings. Per-face timings are evidence about this machine. Not a promotion gate, not a required status.
 on:
@@ -62,13 +62,11 @@ jobs:
           fi
           "$binary" --version
           echo "binary=$binary" >> "$GITHUB_OUTPUT"
-      - name: Benchmark the WebGPU route through the product UI (eris device lease)
-        uses: ./.github/actions/device-lease
+      - name: Benchmark the WebGPU route through the product UI (exclusive GPU timing)
+        uses: ./.github/actions/run-command
         with:
-          device: eris
-          lane: browser-gpu
+          exclusive: gpu-timing # times the GPU: alone among timing jobs, never blocking others
           timeout: '2700'
-          wait: '3000'
           command: >-
             BROWSER_HARNESS=/home/cdilga/Work/runs/venv-bh/bin/browser-harness node scripts/ci/gpu-lane/lane.mjs
             --chrome "${{ steps.chrome.outputs.binary }}" --faces "${{ inputs.faces || '6' }}" --out next-gpu-evidence

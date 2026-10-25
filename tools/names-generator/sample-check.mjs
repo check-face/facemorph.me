@@ -8,7 +8,7 @@
 //
 //   node sample-check.mjs --out=<generator output dir> [--samples=25] [--seed=fm-a40f] [--route=cpu]
 //                         [--classic=<path>] [--chromium=<path>] [--cache=<dir>]
-// Run it under the machine's device lease. Exit 0 when every sampled row passes, 1 otherwise, 2 usage.
+// Run it with the bounded command runner. Exit 0 when every sampled row passes, 1 otherwise, 2 usage.
 import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
