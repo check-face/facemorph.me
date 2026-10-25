@@ -14,7 +14,7 @@ jobs:
       - name: Classic checkout at the frozen import revision (read-only)
         uses: actions/checkout@v4
         with:
-          repository: check-face/facemorph.me-classic
+          repository: facemorph-me/facemorph.me-classic
           ref: a42829bb0582b5a7a55ba6b1045a05861612b8a5
           path: classic
       - uses: actions/setup-node@v4

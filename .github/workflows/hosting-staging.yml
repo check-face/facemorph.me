@@ -16,7 +16,7 @@ jobs:
       - name: Classic, read from Git objects only
         uses: actions/checkout@v4
         with:
-          repository: check-face/facemorph.me-classic
+          repository: facemorph-me/facemorph.me-classic
           path: .cache/classic
           fetch-depth: 0
       - uses: actions/setup-node@v4

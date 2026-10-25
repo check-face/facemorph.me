@@ -24,7 +24,7 @@ jobs:
         run: node scripts/delivery/render-handover.mjs --check
       - name: The retirement copy inventory matches classic's candidate source (fm-8lq)
         run: |
-          git clone -q --filter=blob:none --no-checkout https://github.com/check-face/facemorph.me-classic.git classic
+          git clone -q --filter=blob:none --no-checkout https://github.com/facemorph-me/facemorph.me-classic.git classic
           git -C classic fetch -q origin a42829bb0582b5a7a55ba6b1045a05861612b8a5 candidate/next-delivery-20260916
           node scripts/delivery/copy-inventory.mjs --classic classic --check
       - name: Dry run of every command (one JSON line each)

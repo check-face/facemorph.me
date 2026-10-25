@@ -6,7 +6,7 @@
 //   node scripts/inventory/native-releases.mjs [repo ...]   (default: both FaceMorph repos)
 // Output: one JSON document {scanned_at, repos: [{repo, releases: [...], native_releases: n}]}.
 
-const DEFAULT_REPOS = ['check-face/facemorph.me-classic', 'check-face/facemorph.me'];
+const DEFAULT_REPOS = ['facemorph-me/facemorph.me-classic', 'facemorph-me/facemorph.me'];
 // Installers and updater feed assets. A bare .zip is deliberately NOT native: the
 // repository's evidence releases (control artifact, visual references) are zips.
 const NATIVE_ASSET =

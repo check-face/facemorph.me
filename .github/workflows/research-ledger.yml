@@ -15,7 +15,7 @@ jobs:
       - name: Classic, for the forward pointer and fork detection
         uses: actions/checkout@v4
         with:
-          repository: check-face/facemorph.me-classic
+          repository: facemorph-me/facemorph.me-classic
           path: classic
           fetch-depth: 0
       - uses: actions/setup-node@v4

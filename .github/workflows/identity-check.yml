@@ -34,7 +34,7 @@ jobs:
           mkdir -p "$ws"
           ln -s "$GITHUB_WORKSPACE" "$ws/facemorph.me"
           for r in facemorph.me-classic facemorph-names checkface encoder4editing; do
-            git clone -q --depth 1 --no-single-branch "https://github.com/check-face/$r.git" "$ws/$r"
+            git clone -q --depth 1 --no-single-branch "https://github.com/facemorph-me/$r.git" "$ws/$r"
           done
       - name: Tests
         env:
