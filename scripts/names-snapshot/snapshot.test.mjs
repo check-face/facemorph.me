@@ -4,11 +4,11 @@
 // when Docker is unavailable.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { execFileSync, execFile } from 'node:child_process';
+import { execFileSync, execFile, spawnSync } from 'node:child_process';
 import { promisify } from 'node:util';
 import { createServer } from 'node:http';
 import { randomBytes } from 'node:crypto';
-import { mkdtempSync, readFileSync, existsSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, existsSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { CreateBucketCommand, PutObjectCommand } from '@aws-sdk/client-s3';
@@ -181,7 +181,8 @@ async function bucket() {
 async function storedBucket() {
   const b = await bucket();
   reset();
-  assert.equal((await run({ rows, client: client(), bucket: b })).complete, true);
+  const report = await run({ rows, client: client(), bucket: b, log: console.log });
+  assert.equal(report.complete, true, JSON.stringify(report));
   return b;
 }
 
@@ -238,7 +239,22 @@ before(async () => {
 after(() => {
   seedOrigin.server.close();
   catOrigin.server.close();
-  if (container) execFileSync('docker', ['rm', '-f', container], { stdio: 'ignore' });
+  if (container) {
+    try {
+      const evidence = process.env['SNAPSHOT_EVIDENCE_DIR'];
+      if (evidence) {
+        mkdirSync(evidence, { recursive: true });
+        const logs = spawnSync('docker', ['logs', container], { encoding: 'utf8' });
+        writeFileSync(join(evidence, 'seaweed.log'), (logs.stdout ?? '') + (logs.stderr ?? ''));
+        writeFileSync(
+          join(evidence, 'storage.txt'),
+          execFileSync('docker', ['exec', container, 'df', '-h', '/data']),
+        );
+      }
+    } finally {
+      execFileSync('docker', ['rm', '-f', container], { stdio: 'ignore' });
+    }
+  }
 });
 
 test(
@@ -247,8 +263,8 @@ test(
   async () => {
     const b = await bucket();
     reset();
-    const r = await run({ rows, client: client(), bucket: b });
-    assert.equal(r.complete, true);
+    const r = await run({ rows, client: client(), bucket: b, log: console.log });
+    assert.equal(r.complete, true, JSON.stringify(r));
     assert.equal(r.fetched, rows.length);
     assert.equal(originHits(), rows.length);
     for (const row of rows)
@@ -338,7 +354,7 @@ test(
     // SeaweedFS accepts a PutObject to a bucket that does not exist, but the object is never readable.
     const r = await run({ rows, client: client(), bucket: 'no-such-bucket-fm-old' });
     assert.equal(r.complete, false);
-    assert.equal(r.problems['store-mismatch'].length, rows.length);
+    assert.equal(r.problems['store-mismatch'].length, rows.length, JSON.stringify(r));
     assert.equal(r.fetched, 0);
   },
 );

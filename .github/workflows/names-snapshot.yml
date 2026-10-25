@@ -21,3 +21,11 @@ jobs:
           directory: scripts/names-snapshot
       - run: docker info --format '{{.ServerVersion}}'
       - run: node --test plan.test.mjs local.test.mjs snapshot.test.mjs
+        env:
+          SNAPSHOT_EVIDENCE_DIR: ${{ runner.temp }}/names-snapshot-evidence
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: names-snapshot-evidence-${{ github.run_id }}
+          path: ${{ runner.temp }}/names-snapshot-evidence
+          if-no-files-found: ignore

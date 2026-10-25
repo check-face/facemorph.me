@@ -288,9 +288,14 @@ export async function run({
   let done = 0;
   await pool(rows, concurrency, async (row) => {
     // A store error (after the SDK's own retries) is reported for its row; a re-run picks it up.
-    const r = await syncRow(row, { client, bucket, verifyOnly, attempts }).catch(() => ({
-      outcome: 'store-error',
-    }));
+    const r = await syncRow(row, { client, bucket, verifyOnly, attempts }).catch((error) => {
+      log({
+        event: 'store-error',
+        url: row.url,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return { outcome: 'store-error' };
+    });
     if (r.outcome === 'verified') counts.verified++;
     else if (r.outcome === 'fetched') {
       counts.fetched++;
