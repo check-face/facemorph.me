@@ -225,7 +225,7 @@ for (const [engine, type] of Object.entries(engines).filter(
             name: photo ? 'Download the photo encoder?' : 'Download the face model?',
           });
           await gate.waitFor();
-          assert.match((await gate.textContent()) ?? '', photo ? /1224 MB/ : /200 MB/);
+          assert.match((await gate.textContent()) ?? '', photo ? /1\.2 GB/ : /200 MB/);
           await shot(photo ? 'download-photo' : 'download-face');
           await hit(gate.getByRole('button', { name: 'Cancel', exact: true }));
           await last(page, 'GateCancel');
@@ -290,7 +290,7 @@ for (const [engine, type] of Object.entries(engines).filter(
           await last(page, action === 'Ask me later' ? 'DismissConsentPrompt' : 'Consent');
           await consent.waitFor({ state: 'detached' });
         }
-        for (const action of ['Download · 200 MB', 'Plus photo encoder · 1224 MB', 'Not now']) {
+        for (const action of ['Download · 200 MB', 'Plus photo encoder · 1.2 GB', 'Not now']) {
           await open();
           await hit(page.getByRole('button', { name: 'Show model toast', exact: true }));
           const model = page.locator('.next-model-toast');

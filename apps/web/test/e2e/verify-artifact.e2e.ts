@@ -1,10 +1,10 @@
-// The artifact fixture and the per-keystroke helper (fm-48bj) for real: the pinned control artifact (deploy-next/
+// The artifact fixture and the per-keystroke helper (fm-48bj) for real: the monorepo destination (deploy-next/
 // from `npm run build:next`) is served only at its digest, with the run tagged by it; a wrong digest or a changed
 // byte aborts before any browser starts; a field that fetches on a keystroke fails the per-keystroke check; and on the
-// control, a model-host request injected into a step fails the interception helper's assertNoRequests (fm-o8xn).
+// destination, a model-host request injected into a step fails the interception helper's assertNoRequests (fm-o8xn).
 //   npm run build:next && node --test test/e2e/verify-artifact.e2e.ts
 import assert from 'node:assert/strict';
-import { cpSync, existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
@@ -25,7 +25,7 @@ const repo = new URL('../../../../', import.meta.url).pathname;
 const identity = JSON.parse(readFileSync(join(repo, 'next-site-identity.json'), 'utf8'));
 const digest = artifactDigest(identity.files);
 
-test('the control artifact is served at its digest and the run is tagged with it', async (t) => {
+test('the destination artifact is served at its digest and the run is tagged with its source', async (t) => {
   assert.ok(
     existsSync(join(repo, 'deploy-next')),
     'no deploy-next/: run `npm run build:next` first',
@@ -33,7 +33,12 @@ test('the control artifact is served at its digest and the run is tagged with it
   const site = await serveArtifact(repo, digest);
   t.after(() => site.close());
   assert.equal(site.tag.digest, digest);
-  assert.equal(site.tag.kind, 'control');
+  assert.equal(site.tag.kind, 'destination');
+  assert.equal(identity.deploySource.repository, 'check-face/facemorph.me');
+  assert.equal(
+    site.tag.source,
+    `${identity.deploySource.repository}@${identity.deploySource.commit}`,
+  );
   const log = new StepLog({
     map: bindOrigins(DEFAULT_HOST_MAP, { app: [site.origin] }),
     run: { ...site.tag },
@@ -44,7 +49,7 @@ test('the control artifact is served at its digest and the run is tagged with it
   const page = await browser.newPage();
   await page.goto(site.origin);
   assert.match(log.text(), new RegExp(`"digest":"${digest}"`), 'the step log names the digest');
-  assert.ok(await page.title(), 'the control loaded');
+  assert.ok(await page.title(), 'the destination loaded');
 });
 
 test('a digest that is not the run’s aborts before serving', async () => {
@@ -54,7 +59,7 @@ test('a digest that is not the run’s aborts before serving', async () => {
 
 test('one changed byte in the artifact aborts the run', async (t) => {
   const copy = mkdtempSync(join(tmpdir(), 'verify-artifact-'));
-  t.after(() => {});
+  t.after(() => rmSync(copy, { recursive: true, force: true }));
   cpSync(join(repo, 'deploy-next'), join(copy, 'deploy-next'), { recursive: true });
   for (const name of ['next-site-identity.json', 'next-site-SHA256SUMS', 'next-site-source.txt'])
     cpSync(join(repo, name), join(copy, name));
@@ -90,11 +95,14 @@ test('a keystroke that makes a request fails the per-keystroke check; a quiet fi
   );
 });
 
-test('sample journey on the control at its digest: an injected model-host request fails assertNoRequests', async (t) => {
+test('sample journey on the destination at its digest: an injected model-host request fails assertNoRequests', async (t) => {
   const site = await serveArtifact(repo, digest);
   t.after(() => site.close());
   // A second real local origin, bound as the model host for this run: the page's own fetch reaches it.
-  const models = await serve(new URL('test/fixtures', app).pathname);
+  const fixtures = new URL('test/fixtures', app).pathname;
+  // Serve the real file as a model asset, including production CORS/CORP headers;
+  // the destination's COEP must permit the request before we can classify it.
+  const models = await serve(fixtures, { '/runtime/': fixtures });
   t.after(() => models.close());
   const log = new StepLog({
     map: bindOrigins(DEFAULT_HOST_MAP, { app: [site.origin], 'model-host': [models.origin] }),
@@ -125,13 +133,14 @@ test('sample journey on the control at its digest: an injected model-host reques
       quiet,
     ).verdict,
     'pass',
-    'the control makes no third-party request',
+    'the destination makes no third-party request',
   );
   step(rec, 'verify.harness/sample/injected');
-  await page.evaluate(
-    (u) => fetch(u, { mode: 'no-cors' }).then(() => null),
-    `${models.origin}/verify/typing.html`,
+  const status = await page.evaluate(
+    (u) => fetch(u).then((response) => response.status),
+    `${models.origin}/runtime/verify/typing.html`,
   );
+  assert.equal(status, 200, 'the real injected request reached the model origin');
   await log.attach(page).settled();
   const v = assertNoRequests(
     rec,
