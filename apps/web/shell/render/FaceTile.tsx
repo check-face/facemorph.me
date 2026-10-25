@@ -1,12 +1,12 @@
-// One operation action inside each face image; fields preserve exact input identity.
+// The face card is the photo entry (choose, drop, paste); one operation action sits beside the field.
 import CloseIcon from '@mui/icons-material/Close';
 import PhotoIcon from '@mui/icons-material/Photo';
 import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
 import type { DragEvent } from 'react';
-import { dragPhoto, photoFiles } from '../../src/Next/photo-selection.mjs';
-import { FaceField } from './FaceField.tsx';
+import { dragPhoto, openPhotoPicker, photoFiles } from '../../src/Next/photo-selection.mjs';
+import { FaceField, pastedPhoto } from './FaceField.tsx';
 import { FancyButton } from './FancyButton.tsx';
 import type { Face, FaceMode, Input, PublicPreview } from './types.ts';
 import { faceInputProblem } from '../../src/controller/derived.ts';
@@ -34,7 +34,6 @@ export interface FaceTileProps {
   readonly onMode: (mode: FaceMode) => void;
   readonly onBrowse: () => void;
   readonly onPhoto: (files: File[]) => void;
-  readonly onOpenEncode: () => void;
   readonly onRequestCrop?: () => void;
   readonly onPhotos: (files: File[]) => void;
   readonly onRun: () => void;
@@ -68,6 +67,12 @@ export function FaceTile(p: FaceTileProps) {
   const action = p.stopping ? 'Cancelling' : working ? 'Cancel' : p.retry ? 'Retry' : 'Generate';
   const drag = (leaving: boolean) => (e: DragEvent<HTMLElement>) => dragPhoto(e, false, leaving);
   const determinate = active && p.fraction > 0;
+  const choose = () => openPhotoPicker(item.id);
+  const chosen = (files: File[]) => {
+    if (files.length > 1) p.onPhotos(files);
+    else if (files.length) p.onPhoto(files);
+  };
+  const entry = p.photoEncodingAvailable === false ? 'Open saved image' : 'Encode image';
   return (
     <section
       className={`next-face box${active ? ' next-face-active' : ''}`}
@@ -77,11 +82,20 @@ export function FaceTile(p: FaceTileProps) {
       onDragLeave={drag(true)}
       onDrop={(e) => {
         dragPhoto(e, false, true);
-        const files = photoFiles(e);
-        if (files.length > 1) p.onPhotos(files);
-        else p.onPhoto(files);
+        chosen(photoFiles(e));
+      }}
+      onPaste={(e) => {
+        if (!e.defaultPrevented) pastedPhoto(e, p.onPhoto, p.onNotice);
       }}
     >
+      <input
+        id={`photo-${item.id}`}
+        type="file"
+        hidden
+        accept="image/*,video/mp4"
+        aria-label={entry}
+        onChange={(e) => chosen(photoFiles(e))}
+      />
       <div className="next-face-image">
         {face && face.raw ? (
           <canvas
@@ -117,7 +131,7 @@ export function FaceTile(p: FaceTileProps) {
               data-public-preview="true"
             />
           </>
-        ) : item.mode === 'text' || item.mode === 'seed' ? (
+        ) : (item.mode === 'text' || item.mode === 'seed') && item.value !== '' ? (
           <p className="next-face-hint">
             {faceInputProblem(item) ? '' : 'Press Generate to make this face'}
           </p>
@@ -126,11 +140,11 @@ export function FaceTile(p: FaceTileProps) {
             type="button"
             className="next-face-empty"
             tabIndex={-1}
-            aria-label={p.photoEncodingAvailable === false ? 'Open saved image' : 'Encode image'}
-            onClick={p.onOpenEncode}
+            aria-label={entry}
+            onClick={choose}
           >
             <PhotoIcon />
-            <span>{p.photoEncodingAvailable === false ? 'Open saved image' : 'Encode image'}</span>
+            <span>{entry}</span>
           </button>
         )}
         {(active || preparing) && (
@@ -145,17 +159,6 @@ export function FaceTile(p: FaceTileProps) {
               {...(determinate ? { style: { transform: `scaleX(${p.fraction})` } } : {})}
             />
           </div>
-        )}
-        {(working || (!face && (canGenerate || item.mode === 'text' || item.mode === 'seed'))) && (
-          <FancyButton
-            variant="contained"
-            className="next-face-generate next-face-operation"
-            aria-label={`${action} ${label}`}
-            disabled={p.stopping || (!working && !canGenerate)}
-            onClick={working ? p.onCancel : p.onRun}
-          >
-            {action}
-          </FancyButton>
         )}
         {/* Remove sits on the image it closes, visible at rest on touch and desktop. */}
         {p.removable && (
@@ -184,7 +187,7 @@ export function FaceTile(p: FaceTileProps) {
           onEdit={p.onEdit}
           onMode={p.onMode}
           onBrowse={p.onBrowse}
-          onPick={p.onOpenEncode}
+          onPick={choose}
           {...(p.onRequestCrop ? { onRequestCrop: p.onRequestCrop } : {})}
           canRun={!!canGenerate && !working}
           onRun={p.onRun}
@@ -194,6 +197,18 @@ export function FaceTile(p: FaceTileProps) {
             ? { photoEncodingAvailable: p.photoEncodingAvailable }
             : {})}
         />
+        {(working || (!face && (canGenerate || item.mode === 'text' || item.mode === 'seed'))) && (
+          <FancyButton
+            variant="contained"
+            size="small"
+            className="next-face-generate next-face-operation"
+            aria-label={`${action} ${label}`}
+            disabled={p.stopping || (!working && !canGenerate)}
+            onClick={working ? p.onCancel : p.onRun}
+          >
+            {action}
+          </FancyButton>
+        )}
       </div>
       {/* A state mirror for tooling that reads the per-face source as a select; never focusable. */}
       <select

@@ -20,44 +20,43 @@ test('clipboard classification: image wins over text; malformed selections leave
   }
 });
 
-test('opening and cancelling source never alters a face or authorizes downloads; chooser cancel keeps it open', () => {
-  const opened = reduce(msg('OpenEncode', 'face-2'), state)!;
-  assert.deepEqual(opened.state.Encode, { faceId: 'face-2', error: null });
-  assert.deepEqual(opened.effects, []);
-  assert.equal(opened.state.Inputs, state.Inputs);
-  assert.equal(reduce(msg('PickPhoto', 'face-2', []), opened.state)!.state, opened.state);
-  const selecting = reduce(msg('PickPhoto', 'face-2', [file('new.jpg')]), opened.state)!;
-  const closed = reduce(msg('CloseEncode'), selecting.state)!;
-  assert.equal(closed.state.Encode, null);
-  assert.equal(closed.state.PreparingFaces.has('face-2'), false);
-  assert.equal(closed.state.Inputs, state.Inputs);
-  assert.deepEqual(closed.effects, [
+test('a card choice never alters a face or authorizes downloads; an empty chooser and Cancel change nothing', () => {
+  assert.equal(reduce(msg('PickPhoto', 'face-2', []), state)!.state, state);
+  assert.equal(reduce(msg('PickPhoto', 'missing', [file('new.jpg')]), state)!.state, state);
+  const chosen = file('new.jpg');
+  const selecting = reduce(msg('PickPhoto', 'face-2', [chosen]), state)!;
+  assert.equal(selecting.state.Inputs, state.Inputs);
+  assert.equal(selecting.state.PreparingFaces.has('face-2'), true);
+  assert.deepEqual(selecting.effects, [
     { type: 'invalidatePhotoSelections', id: 'face-2' },
-    { type: 'cancelPhotoRun' },
+    { type: 'selectPhoto', id: 'face-2', files: [chosen] },
   ]);
-  assert.equal(reduce(msg('OpenEncode', 'missing'), state)!.state, state);
+  const cancelled = reduce(msg('CancelFace', 'face-2'), selecting.state)!;
+  assert.equal(cancelled.state.PreparingFaces.has('face-2'), false);
+  assert.equal(cancelled.state.Inputs, state.Inputs);
+  assert.ok(
+    cancelled.effects.some(
+      (effect) => effect.type === 'invalidatePhotoSelections' && effect.id === 'face-2',
+    ),
+  );
 });
 
-test('recovery closes source without encoding; direct fresh photos preview before any RunFace', () => {
-  const opened = reduce(msg('OpenEncode', 'face-1'), state)!.state;
+test('recovery installs without encoding; direct fresh photos preview before any RunFace', () => {
   const fresh = file('fresh.jpg');
-  const preview = reduce(msg('Photo', 'face-1', { kind: 'photo', file: fresh }), opened)!;
+  const preview = reduce(msg('Photo', 'face-1', { kind: 'photo', file: fresh }), state)!;
   assert.equal(preview.state.Inputs, state.Inputs);
   assert.deepEqual(preview.effects, [{ type: 'previewPhoto', id: 'face-1', file: fresh }]);
-  const restored = reduce(
-    msg('Photo', 'face-1', { kind: 'recovered', output: recovered }),
-    opened,
-  )!;
-  assert.equal(restored.state.Encode, null);
+  const restored = reduce(msg('Photo', 'face-1', { kind: 'recovered', output: recovered }), state)!;
+  assert.equal(restored.state.Inputs.find((input) => input.id === 'face-1')?.mode, 'project');
   assert.ok(
     !restored.effects.some(
       (effect) => effect.type === 'execute' || effect.type === 'downloadModels',
     ),
   );
-  const failed = reduce(msg('PhotoFailed', 'face-1', 'Unreadable image'), opened)!;
-  assert.equal(failed.state.Encode?.error, 'Unreadable image');
-  assert.equal(failed.state.Inputs, state.Inputs);
+  const failed = reduce(msg('PhotoFailed', 'face-1', 'Unreadable image'), state)!;
+  assert.equal(failed.state.Error, 'Unreadable image');
   assert.equal(failed.state.FailureToast, false);
+  assert.equal(failed.state.Inputs, state.Inputs);
 });
 
 test('a stale crop result cannot change a replacement photo', () => {
@@ -118,7 +117,7 @@ test('selection failure advances pending photos and drops only that face intent'
   };
   const next = photo(msg('PhotoFailed', 'face-1', 'decode failed'), pending)!;
   assert.equal(next.state.Error, 'decode failed');
-  assert.equal(next.state.FailureToast, true);
+  assert.equal(next.state.FailureToast, false, 'the error area alone owns a refused photo');
   assert.deepEqual([...next.state.PreparingFaces], ['face-2']);
   assert.deepEqual(next.state.PendingJobs, [msg('RunFace', 'face-2')]);
   assert.deepEqual(

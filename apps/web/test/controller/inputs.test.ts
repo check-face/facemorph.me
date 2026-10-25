@@ -81,14 +81,8 @@ test('cached completion belongs to the exact input that requested the check', ()
   assert.equal(inputs(msg('CachedFaceChecked', input, true), edited)!.state, edited);
 });
 test('all retained messages have explicit ownership; Compare is retired by fm-25um', () => {
-  assert.equal(Object.keys(CASES).length, 68);
-  for (const name of [
-    'OpenEncode',
-    'CloseEncode',
-    'EncodeNotice',
-    'CropAdjust',
-    'CropUse',
-  ] as const)
+  assert.equal(Object.keys(CASES).length, 65);
+  for (const name of ['CropAdjust', 'CropUse'] as const)
     assert.equal(typeof CASES[name], 'function', `${name} needs a reducer`);
   assert.equal('Compare' in CASES, false);
   assert.equal(reduce(msg('Cancel'), state)!.state, state);

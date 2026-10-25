@@ -28,7 +28,7 @@
 .next-adornment { opacity:1; transition:opacity .2s ease-out; }
 .focuswithin-parent .focuswithin-child { opacity:1; }
 .next-face:focus-within .next-adornment, .next-face:hover .next-adornment { opacity:1; }
-.next-face-generate { align-self:center; }
+.next-face-generate { align-self:flex-start; }
 
 // A-3: the close control sits on the image it closes, visible at rest. It is deliberately not
 // an `.next-adornment` — that class fades to 25% until hover or focus, which on a touch device
@@ -259,7 +259,7 @@
 // Candidate UI revision: clean tiles, visible choices and responsive per-face actions.
 .next-product .box { background:transparent; box-shadow:none; border-radius:0; }
 .next-product .next-crop-panel.box { background:var(--bulma-scheme-main, #fff); color:var(--bulma-text, #222); }
-.next-input-row { display:flex; align-items:center; flex-wrap:wrap; gap:.6rem; }
+.next-input-row { display:flex; align-items:flex-start; flex-wrap:wrap; gap:.6rem; }
 .next-input-row .next-field { flex:1 1 180px; min-width:0; }
 .next-input-row .MuiTextField-root { width:100%; }
 .next-face-generate { flex:0 0 auto; min-height:56px; }
@@ -309,9 +309,9 @@
 
 .next-face-generate:disabled { background:#8883!important; background-image:none!important; color:#888!important; box-shadow:none; }
 
-// fm-25um: the sole operation action stays inside its face image slot.
-.next-face-hint { position:absolute; inset:25% 1rem auto; text-align:center; }
-.next-face-operation { position:absolute!important; left:50%; top:60%; transform:translate(-50%,-50%); min-width:8rem; z-index:2; }
+// fm-25um: the sole operation action sits beside the field, as in classic; the card is the photo entry.
+.next-face-hint { position:absolute; inset:40% 1rem auto; text-align:center; }
+.next-face-operation { min-width:7.5rem; }
 
 // Encode confirmation follows docs/design/legacy-encode-dialog-geometry.json (372px reference).
 // This opaque dark surface is intentional in both themes.
@@ -332,11 +332,6 @@
 .next-encode-footer { display:flex; justify-content:space-between; align-items:center; margin:6px 9.68% 5.37%; gap:12px; }
 .next-encode-panel .next-encode-cancel { background:#e0e0e0; color:#1d1d1d; min-width:85px; min-height:36px; }
 .next-encode-panel .next-encode-ok { background:#3f51b5; color:#fff; min-width:64px; min-height:36px; }
-.next-encode-source { margin:28px 9.68%; }
-.next-encode-source-actions { display:flex; flex-wrap:wrap; gap:8px; }
-.next-encode-paste { margin-top:16px; border:1px dashed #bbb; border-radius:3px; padding:16px 8px; color:#fff; cursor:text; }
-.next-encode-paste:focus-visible { outline:2px solid #9fa8da; outline-offset:3px; }
-.next-encode-source [role=status] { margin-top:12px; color:#fff; font-size:14px; }
 @media (max-width:359px), (max-height:620px) {
   .next-encode-header h2 { font-size:18px; }
   .next-encode-preview { margin-top:8%; }

@@ -136,7 +136,7 @@ async function exportIsClean(page: Page, touch: boolean): Promise<void> {
   await operate(page.getByText('Advanced', { exact: true }));
   await page.getByLabel('Processing mode').selectOption('cpu');
   const tile = page.locator('section.next-face').nth(1);
-  await operate(tile.locator('.next-face-image .next-face-generate'));
+  await operate(tile.locator('.next-input-row .next-face-generate'));
   const download = page.locator('.next-download-accept');
   if (
     await download.waitFor({ timeout: 8000 }).then(

@@ -26,7 +26,7 @@
 //     need a scale term in its view-to-source maths for zoom; the pre-upload tip is plain UI on either basis.
 
 export type LegacySource = 'crop image.png' | 'crop 2.png' | 'failed to align.png' | 'recovered image.png' | 'EncodeImageDialog.fs';
-export type DialogState = 'source-empty' | 'proposal' | 'editor' | 'failure';
+export type DialogState = 'proposal' | 'editor' | 'failure';
 export type Disposition = 'reproduce' | 'deliberate difference';
 
 export interface LegacyElement {
@@ -56,7 +56,7 @@ export interface LegacyInteraction {
   readonly owner: string;
 }
 
-const ENCODE = 'fm-fy2.17.1'; // face.encode: source step, crop confirmation, Prepare encoder entry
+const ENCODE = 'fm-fy2.17.1'; // face.encode: card photo entry and crop confirmation
 const EDITOR = 'fm-z0et'; // face.crop-editor: crop editor per crop 2.png and the alignment-failure path
 const TILES = 'fm-25um'; // face.tiles: tile action states, paste, Encode image rename
 const CROP_FIX = 'fm-6ib8'; // crop.fix: confirmed crop to e4e without redetection
@@ -110,13 +110,15 @@ export const LEGACY_ELEMENTS: readonly LegacyElement[] = [
     copy: "When the face isn't aligned you may get strange results. Try a different image or manually crop it. Make sure the entire face is in frame and looking towards the camera.",
     geometry: 'dialogs.failure.guidance', disposition: 'deliberate difference',
     reason: 'The legacy text says "looking towards to camera" (sic); the typo is corrected by default. Otherwise word for word.', planAnchor: 'PLAN.md#crop-fidelity-and-export-flow-clarification', owner: EDITOR },
-  // Source step (EncodeImageDialog.fs only).
-  { id: 'file-chooser', sources: ['EncodeImageDialog.fs'], states: ['source-empty'], kind: 'input', copy: 'Choose image', disposition: 'deliberate difference',
-    reason: 'A Choose image button replaces the bare file input (accepts JPEG, PNG and WebP as before); the dialog opens from the tile, not from an API form.', planAnchor: 'PLAN.md#face-controls-and-modals', owner: ENCODE },
-  { id: 'paste-field', sources: ['EncodeImageDialog.fs'], states: ['source-empty'], kind: 'input', copy: 'Or paste image here', disposition: 'reproduce',
-    reason: 'Paste stays in the source step; pasting text still says "Paste an actual image, not text."', owner: TILES },
-  { id: 'prepare-encoder', sources: [], states: ['source-empty'], kind: 'button', copy: 'Prepare encoder', disposition: 'deliberate difference',
-    reason: 'Beside Choose image, only when eligible required encoder assets are missing; acquisition consent owns the action.', planAnchor: 'PLAN.md#face-controls-and-modals', owner: CONSENT },
+  // Legacy source step (EncodeImageDialog.fs only). Operator correction, 26 October 2026: there is no empty
+  // source modal; the face card owns choose, drop and paste as in the classic candidate, and the dialog opens
+  // only to confirm a fresh photo's crop.
+  { id: 'file-chooser', sources: ['EncodeImageDialog.fs'], states: [], kind: 'input', copy: 'Choose image', disposition: 'deliberate difference',
+    reason: "The face card's Encode image entry (empty card or mode menu) opens that card's own file chooser (JPEG, PNG and WebP as before); no source dialog.", planAnchor: 'PLAN.md#face-controls-and-modals', owner: ENCODE },
+  { id: 'paste-field', sources: ['EncodeImageDialog.fs'], states: [], kind: 'input', copy: 'Or paste image here', disposition: 'deliberate difference',
+    reason: "Paste goes into the face card's field: an image wins over coincident text; other clipboard content leaves the text unchanged with one message.", planAnchor: 'PLAN.md#face-controls-and-modals', owner: TILES },
+  { id: 'prepare-encoder', sources: [], states: [], kind: 'button', copy: 'Prepare encoder', disposition: 'deliberate difference',
+    reason: 'No source step holds it; acquisition consent owns encoder setup and its entry.', planAnchor: 'PLAN.md#face-controls-and-modals', owner: CONSENT },
   { id: 'rotate-90-button', sources: ['EncodeImageDialog.fs', 'crop 2.png'], states: ['editor'], kind: 'button', geometry: 'dialogs.editor.rotate_icon', disposition: 'reproduce',
     reason: 'The crop-rotate icon button: 90 degrees per press (EncodeImageDialog.fs rotateCrop), resetting the fine slider.', owner: EDITOR },
   // recovered image.png: controls the plan removes.
@@ -129,8 +131,10 @@ export const LEGACY_ELEMENTS: readonly LegacyElement[] = [
 ];
 
 export const LEGACY_INTERACTIONS: readonly LegacyInteraction[] = [
-  { id: 'choose-file', source: 'EncodeImageDialog.fs', states: ['source-empty'], what: 'Choose an image file (JPEG, PNG, WebP).', disposition: 'reproduce', owner: ENCODE },
-  { id: 'paste', source: 'EncodeImageDialog.fs', states: ['source-empty'], what: 'Paste an image from the clipboard; pasted text is refused with "Paste an actual image, not text."', disposition: 'reproduce', owner: TILES },
+  { id: 'choose-file', source: 'EncodeImageDialog.fs', states: [], what: 'Choose an image file (JPEG, PNG, WebP).', disposition: 'deliberate difference',
+    reason: "Chosen from the face card's own file chooser; a fresh photo then opens the crop confirmation.", planAnchor: 'PLAN.md#face-controls-and-modals', owner: ENCODE },
+  { id: 'paste', source: 'EncodeImageDialog.fs', states: [], what: 'Paste an image from the clipboard; pasted text is refused with "Paste an actual image, not text."', disposition: 'deliberate difference',
+    reason: "Pasted into the face card's field; text stays ordinary typing there, so only image or unsupported clipboard content is handled.", planAnchor: 'PLAN.md#face-controls-and-modals', owner: TILES },
   { id: 'detect-before-confirm', source: 'EncodeImageDialog.fs', states: ['proposal', 'failure'], what: 'Face detection proposes the crop.', disposition: 'deliberate difference',
     reason: 'On-device detection replaces the server call (POST with tryalign); the guidance copy stays.', planAnchor: 'PLAN.md#crop-fidelity-and-export-flow-clarification', owner: ENCODE },
   { id: 'confirm-before-encode', source: 'crop image.png', states: ['proposal'], what: 'Proposal, then ADJUST CROP or OK; encoding starts only after OK.', disposition: 'deliberate difference',

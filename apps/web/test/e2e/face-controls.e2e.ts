@@ -265,7 +265,7 @@ test(
           await shot('generated');
           const lowercase = await completedInput('hello');
           await replace(field, 'Hello');
-          await operate(tile.locator('.next-face-image .next-face-generate'));
+          await operate(tile.locator('.next-input-row .next-face-generate'));
           await page.waitForFunction(
             () =>
               document.querySelectorAll('section.next-face')[1]?.getAttribute('data-next-state') ===
@@ -287,7 +287,7 @@ test(
           await page.keyboard.press('Control+A');
           await page.keyboard.insertText('c');
           assert.notEqual(await tile.getAttribute('data-next-state'), 'filled');
-          assert.equal(await tile.locator('.next-face-image .next-face-generate').count(), 1);
+          assert.equal(await tile.locator('.next-input-row .next-face-generate').count(), 1);
           await page.keyboard.insertText('ancel this exact input');
           assert.equal(await field.inputValue(), 'cancel this exact input');
           assert.equal(modelRequests.length, beforeEdit, 'editing makes no model requests');
@@ -298,7 +298,7 @@ test(
             'filled',
             'edit clears the old result',
           );
-          const action = tile.locator('.next-face-image .next-face-generate');
+          const action = tile.locator('.next-input-row .next-face-generate');
           await operate(action);
           await page.waitForFunction(
             () =>
@@ -366,16 +366,14 @@ test(
             });
           const kept = await snapshot();
           const encodeDialog = page.getByRole('dialog', { name: 'Encode an image', exact: true });
+          // Encode image opens this card's own file chooser directly: no empty source modal.
           const choose = async (files: string[]) => {
-            await mode('Encode image');
-            await encodeDialog.waitFor();
             const chooser = page.waitForEvent('filechooser');
-            await operate(encodeDialog.getByRole('button', { name: 'Choose image', exact: true }));
+            await mode('Encode image');
             await (await chooser).setFiles(files);
+            assert.equal(await encodeDialog.count(), 0, 'no source modal before a photo');
           };
           await choose([]);
-          await page.keyboard.press('Escape');
-          await encodeDialog.waitFor({ state: 'detached' });
           assert.equal(await snapshot(), kept, 'a cancelled chooser keeps the result');
           assert.equal(await tile.getAttribute('data-next-state'), 'filled');
           const saved = readFileSync(join(results, `${name}-hello.webp`));
@@ -389,14 +387,12 @@ test(
           );
           await shot('damaged-saved-image');
           assert.equal(
-            (await encodeDialog.getByRole('status').innerText()).trim(),
+            (await page.locator('.next-error > p').first().innerText()).trim(),
             'This saved image is damaged.',
             'one plain message, not the parser error',
           );
-          if (await encodeDialog.count()) {
-            await page.keyboard.press('Escape');
-            await encodeDialog.waitFor({ state: 'detached' });
-          }
+          assert.equal(await encodeDialog.count(), 0, 'a damaged file opens no crop');
+          await operate(page.locator('.next-error').getByRole('button', { name: 'Dismiss' }));
           assert.equal(await snapshot(), kept, 'a damaged saved image keeps the result');
           assert.equal(await tile.getAttribute('data-next-state'), 'filled');
           // A real PNG on the clipboard, pasted into the field while the CPU is throttled so the import
@@ -497,7 +493,7 @@ test(
             record();
           }, ids);
           const slot = (index: number) =>
-            tiles.nth(index).locator('.next-face-image .next-face-generate');
+            tiles.nth(index).locator('.next-input-row .next-face-generate');
           const slow = await context.newCDPSession(page);
           await slow.send('Emulation.setCPUThrottlingRate', { rate: 4 });
           await operate(slot(1));

@@ -75,7 +75,6 @@ export function crop(message: Msg, state: State, facts: PhotoFacts = {}): Transi
         {
           ...state,
           Crop: null,
-          Encode: null,
           PendingJobs: state.PendingJobs.filter(
             (job) => job.type !== 'RunFace' || job.args[0] !== choice?.faceId,
           ),
@@ -99,7 +98,6 @@ export function crop(message: Msg, state: State, facts: PhotoFacts = {}): Transi
         {
           ...state,
           Crop: null,
-          Encode: null,
           PreparingFaces: new Set([...state.PreparingFaces, choice.faceId]),
         },
         [{ type: 'revokeUrl', url: choice.url }],

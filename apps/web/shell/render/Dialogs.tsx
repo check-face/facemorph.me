@@ -9,8 +9,6 @@ import {
   type ReactNode,
 } from 'react';
 import { cropFrame } from '../facade/helpers.ts';
-import { photoFiles, openPhotoPicker, dragPhoto } from '../../src/Next/photo-selection.mjs';
-import { classifyClipboard } from '../../src/photo/source.ts';
 import Logo from '../../src/public/logo.svg?react';
 import { msg, type Msg } from '../../src/controller/msg.ts';
 import type { CropChoice, State } from '../../src/controller/state.ts';
@@ -338,100 +336,44 @@ function CropEditor({ crop, dispatch }: { crop: CropChoice; dispatch: Dispatch }
 
 export function CropDialog({ state, dispatch }: { state: State; dispatch: Dispatch }) {
   const crop = state.Crop;
-  const owner = crop?.faceId ?? state.Encode?.faceId;
+  // Fresh photos arrive from the face card; this modal only confirms or adjusts their crop.
   // A consent replaces this modal. There is only one focus trap and one history owner.
-  if (!owner || state.Gate) return null;
-  const close = () => dispatch(msg(crop ? 'CropCancel' : 'CloseEncode'));
+  if (!crop || state.Gate) return null;
+  const close = () => dispatch(msg('CropCancel'));
   return (
     <Modal
       label="Encode an image"
       className="next-crop-dialog next-encode-dialog"
-      faceId={owner}
-      backReturnsToDialog={!!crop?.previousView}
+      faceId={crop.faceId}
+      backReturnsToDialog={!!crop.previousView}
       close={close}
     >
-      {crop?.previousView ? (
+      {crop.previousView ? (
         <CropEditor crop={crop} dispatch={dispatch} />
       ) : (
-        <div
-          className={`next-encode-panel${crop ? ' next-encode-confirmation' : ''}`}
-          onDragOver={(e) => dragPhoto(e, false)}
-          onDragLeave={(e) => dragPhoto(e, false, true)}
-          onDrop={(e) => {
-            dragPhoto(e, false, true);
-            const files = photoFiles(e);
-            if (files.length > 1) dispatch(msg('EncodeNotice', 'Choose one image at a time.'));
-            else if (files.length) dispatch(msg('PickPhoto', owner, files));
-          }}
-        >
+        <div className="next-encode-panel next-encode-confirmation">
           <header className="next-encode-header">
             <h2>Encode an image</h2>
             <Logo aria-label="FaceMorph logo" />
           </header>
-          {crop ? (
-            <>
-              <CropPreview crop={crop} />
-              <Button className="next-encode-adjust" onClick={() => dispatch(msg('CropAdjust'))}>
-                ADJUST CROP
-              </Button>
-              <p className="next-encode-explanation">
-                Encoding recreates the face; details may change.
-              </p>
-            </>
-          ) : (
-            <div className="next-encode-source">
-              <input
-                id={`photo-encode-${owner}`}
-                type="file"
-                hidden
-                accept="image/*,video/mp4"
-                aria-label="Choose image file"
-                onChange={(e) => {
-                  const files = photoFiles(e);
-                  if (files.length) dispatch(msg('PickPhoto', owner, files));
-                }}
-              />
-              <div className="next-encode-source-actions">
-                <Button variant="contained" onClick={() => openPhotoPicker(`encode-${owner}`)}>
-                  Choose image
-                </Button>
-              </div>
-              <div
-                className="next-encode-paste"
-                role="textbox"
-                aria-label="Or paste image here"
-                tabIndex={0}
-                onPaste={(e) => {
-                  e.preventDefault();
-                  const items = [...e.clipboardData.items];
-                  const result = classifyClipboard(items);
-                  if (result.kind === 'invalid') dispatch(msg('EncodeNotice', result.message));
-                  else {
-                    const file = items.find((item) => item.kind === 'file')?.getAsFile();
-                    if (file) dispatch(msg('PickPhoto', owner, [file]));
-                    else dispatch(msg('EncodeNotice', 'This clipboard image could not be read.'));
-                  }
-                }}
-              >
-                Or paste image here
-              </div>
-              {state.Encode?.error && <p role="status">{state.Encode.error}</p>}
-              {state.PreparingFaces.has(owner) && <p role="status">Preparing image…</p>}
-            </div>
-          )}
+          <CropPreview crop={crop} />
+          <Button className="next-encode-adjust" onClick={() => dispatch(msg('CropAdjust'))}>
+            ADJUST CROP
+          </Button>
+          <p className="next-encode-explanation">
+            Encoding recreates the face; details may change.
+          </p>
           <footer className="next-encode-footer">
             <Button className="next-encode-cancel" onClick={close}>
               CANCEL
             </Button>
-            {crop && (
-              <Button
-                className="next-encode-ok"
-                variant="contained"
-                onClick={() => dispatch(msg('CropAccept'))}
-              >
-                OK
-              </Button>
-            )}
+            <Button
+              className="next-encode-ok"
+              variant="contained"
+              onClick={() => dispatch(msg('CropAccept'))}
+            >
+              OK
+            </Button>
           </footer>
         </div>
       )}

@@ -170,6 +170,8 @@ test('first-visit', async ({ page, context }, info) => {
         })
       ).inside,
     ).toBe(true);
+    // Encode image opens the card's own file chooser; there is no source dialog.
+    const chooser = page.waitForEvent('filechooser');
     expect(
       (
         await press(page, page.getByRole('menuitem', { name: 'Encode image', exact: true }), {
@@ -177,18 +179,13 @@ test('first-visit', async ({ page, context }, info) => {
         })
       ).inside,
     ).toBe(true);
-    const source = page.getByRole('dialog', { name: 'Encode an image', exact: true });
-    await expect(source).toBeVisible();
-    await expect(source.getByRole('button', { name: 'Choose image', exact: true })).toBeVisible();
-    await expect(source.locator('input[type=file]')).toHaveAttribute('accept', 'image/*,video/mp4');
-    expect(
-      (
-        await press(page, source.getByRole('button', { name: 'CANCEL', exact: true }), {
-          touch: touch(info),
-        })
-      ).inside,
-    ).toBe(true);
-    await expect(source).toHaveCount(0);
+    const picked = await chooser;
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    await expect(tile(page, 0).locator('input[type=file]')).toHaveAttribute(
+      'accept',
+      'image/*,video/mp4',
+    );
+    await picked.setFiles([]);
     await expect(tile(page, 0).locator('.next-field input')).toHaveValue('hello');
   }
   await page.waitForTimeout(3000); // anything an arrival would fetch has had time to start

@@ -14,7 +14,7 @@ import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
 import TextField from '@mui/material/TextField';
 import Tooltip from '@mui/material/Tooltip';
-import { useState, type ReactNode } from 'react';
+import { useState, type ClipboardEvent, type ReactNode } from 'react';
 import type { FaceMode, Input } from './types.ts';
 import { faceInputProblem } from '../../src/controller/derived.ts';
 
@@ -34,6 +34,23 @@ export interface FaceFieldProps {
   readonly photoEncodingAvailable?: boolean;
 }
 
+/** Image clipboard data wins over coincident text and enters the same dispatch as the chooser. */
+export function pastedPhoto(
+  e: ClipboardEvent,
+  onPhoto?: (files: File[]) => void,
+  onNotice?: (message: string) => void,
+) {
+  const files = [...e.clipboardData.items].filter((item) => item.kind === 'file');
+  if (!files.length) return;
+  e.preventDefault();
+  if (files.length !== 1 || !/^image\/(png|jpeg|webp)$/.test(files[0]!.type)) {
+    onNotice?.('Paste one PNG, JPEG or WebP image. Your text is unchanged.');
+    return;
+  }
+  const file = files[0]!.getAsFile();
+  if (file) onPhoto?.([file]);
+}
+
 export function FaceField({
   item,
   label,
@@ -51,7 +68,7 @@ export function FaceField({
 }: FaceFieldProps) {
   const [anchor, setAnchor] = useState<HTMLDivElement | null>(null); // the start adornment the menu opens from
   const [open, setOpen] = useState(false);
-  // Choosing Encode image opens the picker without replacing the existing face.
+  // Choosing Encode image opens this card's file chooser without replacing the existing face.
   const entry = (kind: FaceMode, icon: ReactNode, text: string) => (
     <MenuItem
       selected={item.mode === kind}
@@ -149,17 +166,7 @@ export function FaceField({
               onRun?.();
             }
           }}
-          onPaste={(e) => {
-            const files = [...e.clipboardData.items].filter((item) => item.kind === 'file');
-            if (!files.length) return;
-            e.preventDefault();
-            if (files.length !== 1 || !/^image\/(png|jpeg|webp)$/.test(files[0]!.type)) {
-              onNotice?.('Paste one PNG, JPEG or WebP image. Your text is unchanged.');
-              return;
-            }
-            const file = files[0]!.getAsFile();
-            if (file) onPhoto?.([file]);
-          }}
+          onPaste={(e) => pastedPhoto(e, onPhoto, onNotice)}
           className="focuswithin-parent"
           slotProps={{
             htmlInput: {

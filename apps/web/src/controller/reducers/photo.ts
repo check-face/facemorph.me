@@ -95,39 +95,12 @@ function acceptPhoto(state: State, id: string, file: Blob, fromCrop: boolean): T
 }
 export function photo(message: Msg, state: State, facts: PhotoFacts = {}): Transition | null {
   switch (message.type) {
-    case 'OpenEncode': {
-      const [id] = message.args;
-      return !state.Inputs.some((input) => input.id === id) || state.Crop || state.Encode
-        ? unchanged(state)
-        : {
-            state: { ...state, Encode: { faceId: id, error: null }, ModelToastHidden: true },
-            effects: [],
-          };
-    }
-    case 'EncodeNotice':
-      return state.Encode
-        ? { state: { ...state, Encode: { ...state.Encode, error: message.args[0] } }, effects: [] }
-        : unchanged(state);
-    case 'CloseEncode': {
-      const owner = state.Encode;
-      if (!owner || state.Crop) return unchanged(state);
-      const preparing = new Set(state.PreparingFaces);
-      preparing.delete(owner.faceId);
-      return {
-        state: { ...state, Encode: null, PreparingFaces: preparing },
-        effects: [
-          { type: 'invalidatePhotoSelections', id: owner.faceId },
-          { type: 'cancelPhotoRun' },
-        ],
-      };
-    }
     case 'PickPhoto': {
       const [id, files] = message.args;
       if (!files.length || !state.Inputs.some((input) => input.id === id)) return unchanged(state);
       return {
         state: {
           ...state,
-          ...(state.Encode?.faceId === id ? { Encode: { faceId: id, error: null } } : {}),
           PreparingFaces: new Set([...state.PreparingFaces, id]),
         },
         effects: [
@@ -149,9 +122,9 @@ export function photo(message: Msg, state: State, facts: PhotoFacts = {}): Trans
         PreparingFaces: preparing,
         PendingJobs: without(state.PendingJobs, runFace(id)),
         PendingFaces: state.PendingFaces.filter((face) => face !== id),
-        ...(state.Encode?.faceId === id
-          ? { Encode: { faceId: id, error }, FailureToast: false }
-          : { Error: error, FailureToast: !state.Debug }),
+        // The error area is the one owner of a refused photo; no second failure toast.
+        Error: error,
+        FailureToast: false,
       });
       return schedule(next.state, next.effects);
     }
@@ -175,7 +148,7 @@ export function photo(message: Msg, state: State, facts: PhotoFacts = {}): Trans
         }
         case 'project':
           return {
-            state: { ...state, Encode: null },
+            state,
             effects: [{ type: 'dispatch', message: msg('Import', selection.projectFile) }],
           };
         case 'recovered': {
@@ -185,7 +158,6 @@ export function photo(message: Msg, state: State, facts: PhotoFacts = {}): Trans
           cached.delete(id);
           const next = dequeue({
             ...state,
-            Encode: null,
             Inputs: state.Inputs.map((item) =>
               item.id === id ? { ...item, mode: 'project', file: null, value: 'Saved face' } : item,
             ),

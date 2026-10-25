@@ -114,7 +114,7 @@ export function Toasts({ state, dispatch }: Pick<Props, 'state' | 'dispatch'>) {
   let content: ReactNode = null;
   let actions: ReactNode = null;
   let kind = '';
-  if (state.Gate || state.Encode || state.Crop) return null;
+  if (state.Gate || state.Crop) return null;
   if (model) {
     kind = 'next-model-toast';
     switch (downloads.phase) {

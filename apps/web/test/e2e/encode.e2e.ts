@@ -20,7 +20,7 @@ const geometry = JSON.parse(
 ).dialogs.confirmation as Record<string, { x: number; y: number; w: number; h: number }>;
 
 test(
-  'Encode source and confirmed crop: trusted chooser/paste, geometry, cancellation and focus',
+  'Card photo entry and confirmed crop: trusted chooser/paste, geometry, cancellation and focus',
   { timeout: 300_000 },
   async (t) => {
     if (!existsSync(join(runtime, 'manifest.json'))) {
@@ -82,9 +82,9 @@ test(
               page.screenshot({ path: join(results, `${width}-${colorScheme}-${name}.png`) });
             const dialog = page.getByRole('dialog', { name: 'Encode an image', exact: true });
             const tiles = page.locator('[data-next-face]');
-            const open = async (index = 0) => {
+            // Encode image opens the face card's own file chooser: there is no empty source modal.
+            const choose = async (files: string[], index = 0) => {
               const tile = tiles.nth(index);
-              const id = await tile.getAttribute('data-next-face');
               await hit(tile.getByRole('button', { name: 'Change mode', exact: true }));
               const entry = page.getByRole('menuitem', { name: 'Encode image', exact: true });
               await entry.evaluate(async (el) => {
@@ -95,54 +95,92 @@ test(
                   ),
                 );
               });
+              const chooser = page.waitForEvent('filechooser');
               await hit(entry);
-              await dialog.waitFor();
-              assert.equal(await page.getByRole('dialog').count(), 1);
-              assert.equal(await page.locator('.next-model-toast').count(), 0);
+              const event = await chooser;
+              assert.equal(await page.getByRole('dialog').count(), 0, 'no source modal');
               assert.equal(
-                await page.evaluate(() => {
-                  const model = (
-                    window as unknown as { __elmish: { model: { Encode: { faceId: string } } } }
-                  ).__elmish.model;
-                  return model.Encode.faceId;
-                }),
-                id,
+                await event
+                  .element()
+                  .evaluate((el) =>
+                    (el as Element).closest('[data-next-face]')?.getAttribute('data-next-face'),
+                  ),
+                await tile.getAttribute('data-next-face'),
+                'the chooser belongs to this card',
               );
+              await event.setFiles(files);
               return tile.getByRole('button', { name: 'Change mode', exact: true });
+            };
+            const fixture = (name: string) => join(repo, 'tests/crop/fixtures', name);
+            const cropOwner = async () => {
+              await dialog.locator('.next-encode-preview img').waitFor();
+              return page.evaluate(
+                () =>
+                  (window as unknown as { __elmish: { model: { Crop: { faceId: string } } } })
+                    .__elmish.model.Crop.faceId,
+              );
             };
             await page.goto(`${site.origin}/?testing`);
             await tiles.first().waitFor();
             await page.getByRole('button', { name: 'Remove Morph to', exact: true }).click(); // setup
-            const before = await tiles.first().getByRole('textbox').inputValue();
+            const toast = page
+              .locator('.next-model-toast')
+              .getByRole('button', { name: 'Not now' });
+            if (
+              await toast.waitFor({ timeout: 5000 }).then(
+                () => true,
+                () => false,
+              )
+            )
+              await toast.click(); // setup: the download offer is not under test here
+            const field = tiles.first().getByRole('textbox');
+            const before = await field.inputValue();
+
+            // A cancelled chooser, from the menu or from an empty card, changes nothing.
+            await choose([]);
+            await page.waitForTimeout(300);
+            assert.equal(await page.getByRole('dialog').count(), 0);
+            assert.equal(await field.inputValue(), before);
+            await page.locator('.next-connector-add').last().click(); // setup: one empty face
+            const card = tiles.nth(1).locator('.next-face-image').getByRole('button', {
+              name: 'Encode image',
+              exact: true,
+            });
+            const cardChooser = page.waitForEvent('filechooser');
+            await hit(card);
+            await shot('card-entry');
+            await (await cardChooser).setFiles([]);
+            await page.waitForTimeout(300);
+            assert.equal(await page.getByRole('dialog').count(), 0);
+            await hit(tiles.nth(1).getByRole('button', { name: /^Remove/ }));
+            await tiles.nth(1).waitFor({ state: 'detached' });
+            noModels();
+
+            // An unreadable file reports one message in the error area and opens no crop.
+            await choose([fixture('malformed.jpg')]);
+            const failure = page.locator('.next-error > p').first();
+            await failure.waitFor();
+            assert.ok((await failure.textContent())?.trim());
+            assert.equal(await dialog.count(), 0);
+            assert.equal(await field.inputValue(), before);
+            await shot('malformed-source');
+            await hit(page.locator('.next-error').getByRole('button', { name: 'Dismiss' }));
+
+            // A fresh photo goes straight to confirmation. Every exit abandons it, returns focus to
+            // the burger and changes no face; Tab stays inside the one modal.
+            const firstId = await tiles.first().getAttribute('data-next-face');
             for (const exit of ['cancel', 'escape', 'back', 'backdrop']) {
-              const burger = await open();
-              await shot(`source-${exit}`);
-              const chooserEvent = page.waitForEvent('filechooser');
-              await hit(dialog.getByRole('button', { name: 'Choose image', exact: true }));
-              await (await chooserEvent).setFiles([]);
-              await dialog.waitFor();
-              const choose = dialog.getByRole('button', { name: 'Choose image', exact: true });
-              await choose.focus();
-              await page.keyboard.press('Shift+Tab');
-              assert.ok(
-                await dialog
-                  .getByRole('button', { name: 'CANCEL', exact: true })
-                  .evaluate((el) => el === document.activeElement),
-              );
-              await page.keyboard.press('Tab');
-              assert.ok(await choose.evaluate((el) => el === document.activeElement));
-              await page.keyboard.press('Tab');
-              assert.ok(
-                await dialog
-                  .getByRole('textbox', { name: 'Or paste image here' })
-                  .evaluate((el) => el === document.activeElement),
-              );
-              await page.keyboard.press('Tab');
-              assert.ok(
-                await dialog
-                  .getByRole('button', { name: 'CANCEL', exact: true })
-                  .evaluate((el) => el === document.activeElement),
-              );
+              const burger = await choose([fixture('non-square.jpg')]);
+              assert.equal(await cropOwner(), firstId);
+              assert.equal(await page.getByRole('dialog').count(), 1);
+              await shot(`confirmation-${exit}`);
+              for (let step = 0; step < 6; step += 1) {
+                await page.keyboard.press('Tab');
+                assert.ok(
+                  await dialog.evaluate((el) => el.contains(document.activeElement)),
+                  'Tab never leaves the modal',
+                );
+              }
               assert.equal(
                 await page
                   .locator('header')
@@ -157,51 +195,12 @@ test(
               else await page.mouse.click(2, 2);
               await dialog.waitFor({ state: 'detached' });
               assert.ok(await burger.evaluate((el) => el === document.activeElement));
-              assert.equal(await tiles.first().getByRole('textbox').inputValue(), before);
+              assert.equal(await field.inputValue(), before);
               noModels();
             }
 
-            await open();
-            const chooserModal = await dialog.elementHandle();
-            for (const name of ['malformed.jpg', 'non-square.jpg']) {
-              const fileChooser = page.waitForEvent('filechooser');
-              await hit(dialog.getByRole('button', { name: 'Choose image', exact: true }));
-              await (await fileChooser).setFiles(join(repo, 'tests/crop/fixtures', name));
-              if (name === 'malformed.jpg') {
-                await page.waitForFunction(() => {
-                  const state = (
-                    window as unknown as {
-                      __elmish: {
-                        model: { Encode: { error: string | null }; PreparingFaces: Set<string> };
-                      };
-                    }
-                  ).__elmish.model;
-                  return !!state.Encode?.error && state.PreparingFaces.size === 0;
-                });
-                assert.ok(await dialog.getByRole('status').textContent());
-                assert.equal(await dialog.locator('.next-encode-preview').count(), 0);
-                assert.equal(await tiles.first().getByRole('textbox').inputValue(), before);
-                await shot('malformed-source');
-              } else {
-                await dialog.locator('.next-encode-preview img').waitFor();
-                assert.ok(await chooserModal!.evaluate((el) => el.isConnected));
-                await shot('chooser-confirmation');
-              }
-            }
-            await hit(dialog.getByRole('button', { name: 'CANCEL', exact: true }));
-            await dialog.waitFor({ state: 'detached' });
-            noModels();
-            await open();
-            const paste = dialog.getByRole('textbox', { name: 'Or paste image here' });
-            for (const text of ['not an image', 'x'.repeat(100_000), '']) {
-              await page.evaluate((value) => navigator.clipboard.writeText(value), text);
-              await hit(paste);
-              await page.keyboard.press('ControlOrMeta+V');
-              await dialog.getByRole('status').waitFor();
-              assert.equal(await tiles.first().getByRole('textbox').inputValue(), before);
-              assert.equal(await dialog.locator('.next-encode-preview').count(), 0);
-            }
-            // A real PNG on the system clipboard, prepared from a real JPEG input by the browser.
+            // A real PNG on the system clipboard, prepared from a real JPEG input by the browser,
+            // with coincident text: pasted into the card's field, the image wins.
             await page.evaluate(async () => {
               const source = await createImageBitmap(
                 await (await fetch('/crop-inputs/non-square.jpg')).blob(),
@@ -224,13 +223,12 @@ test(
                 }),
               ]);
             });
-            const sameElement = await dialog.elementHandle();
-            await hit(paste);
+            await hit(field);
             await page.keyboard.press('ControlOrMeta+V');
-            await dialog.locator('.next-encode-preview img').waitFor();
-            assert.ok(await sameElement!.evaluate((el) => el.isConnected));
+            assert.equal(await cropOwner(), firstId);
+            const sameElement = await dialog.elementHandle();
             assert.equal(await tiles.count(), 1);
-            assert.equal(await tiles.first().getByRole('textbox').inputValue(), before);
+            assert.equal(await field.inputValue(), before);
             await shot('confirmation');
             const bounds = await dialog.locator('.next-encode-panel').boundingBox();
             const preview = await dialog.locator('.next-encode-preview').boundingBox();
@@ -312,8 +310,10 @@ test(
             // Editor cancellation restores the exact proposal; the next Back must still
             // belong to confirmation after the editor consumed the history entry.
             for (const exit of ['escape', 'back', 'backdrop']) {
-              const burger = await open();
-              await hit(dialog.getByRole('textbox', { name: 'Or paste image here' }));
+              const burger = tiles
+                .first()
+                .getByRole('button', { name: 'Change mode', exact: true });
+              await hit(field);
               await page.keyboard.press('ControlOrMeta+V');
               await dialog.locator('.next-encode-preview img').waitFor();
               const proposal = () =>
@@ -347,7 +347,6 @@ test(
             // Main-field paste (fm-25um), trusted Ctrl+V of the real system clipboard: the PNG with
             // coincident text still on it opens the same confirmation for this face, and the image wins
             // over the text; text alone is ordinary typing with no dialog.
-            const field = tiles.first().getByRole('textbox');
             await hit(field);
             await page.keyboard.press('ControlOrMeta+V');
             await dialog.locator('.next-encode-preview img').waitFor();
@@ -398,20 +397,11 @@ test(
                 [box.x + box.width / 2, box.y + box.height / 2] as const,
               );
             };
-            const cropOwner = async () => {
-              await dialog.locator('.next-encode-preview img').waitFor();
-              return page.evaluate(
-                () =>
-                  (window as unknown as { __elmish: { model: { Crop: { faceId: string } } } })
-                    .__elmish.model.Crop.faceId,
-              );
-            };
             const dismiss = async (name: string) => {
               await shot(name);
               await hit(dialog.getByRole('button', { name: 'CANCEL', exact: true }));
               await dialog.waitFor({ state: 'detached' });
             };
-            const firstId = await tiles.first().getAttribute('data-next-face');
             assert.equal(await dropAt(tiles.first().locator('.next-face-image')), firstId);
             assert.equal(await cropOwner(), firstId);
             assert.equal(await tiles.count(), 1);
@@ -436,13 +426,15 @@ test(
             // Source ownership at 2 of 3 and 64 of 64. By-name additions only arrange the input state.
             while ((await tiles.count()) < 3)
               await page.locator('.next-connector-add').last().click();
-            await open(1);
+            await choose([fixture('non-square.jpg')], 1);
+            assert.equal(await cropOwner(), await tiles.nth(1).getAttribute('data-next-face'));
             await shot('source-2-of-3');
             await page.keyboard.press('Escape');
             await dialog.waitFor({ state: 'detached' });
             while ((await tiles.count()) < 64)
               await page.locator('.next-connector-add').last().click();
-            await open(63);
+            await choose([fixture('non-square.jpg')], 63);
+            assert.equal(await cropOwner(), await tiles.nth(63).getAttribute('data-next-face'));
             await shot('source-64-of-64');
             await page.keyboard.press('Escape');
             await dialog.waitFor({ state: 'detached' });
