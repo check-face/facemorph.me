@@ -15,6 +15,7 @@ import {
   LOCKED_REFERENCES,
   MODAL_STACK,
   SURFACES,
+  type CandidateDefect,
   type ColdDownloadModalState,
   type CropConfirmState,
   type CropEditorState,
@@ -73,6 +74,8 @@ const other = { kind: 'locked', file: 'other.png', sha256: '' } as const;
 export const unknownFile: Ref = other;
 // @ts-expect-error a cancelled morph never exports a partial animation
 export const partial: MorphResultState = { morph: 'cancelled', partialExported: true };
+// @ts-expect-error recorder slugs must not bypass the shared surface contract
+export const legacyDefect: CandidateDefect = { surface: 'main-page', what: '', evidence: '' };
 
 test('every listed surface has a reference, states and a transition table that stays inside its states', () => {
   const expected = [
@@ -144,4 +147,42 @@ test('locked reference digests match the bundle on disk', (t) => {
       sha,
       file,
     );
+});
+
+test('recorded control states cover both operated widths and keep defects in the shared contract', () => {
+  const record: unknown = JSON.parse(
+    readFileSync(new URL('./control-states.json', import.meta.url), 'utf8'),
+  );
+  assert.ok(record && typeof record === 'object');
+  assert.ok('schema' in record && record.schema === 'facemorph.control-states/1');
+  assert.ok('surfaces' in record && record.surfaces && typeof record.surfaces === 'object');
+  for (const surface of Object.values(record.surfaces)) {
+    assert.ok(surface && typeof surface === 'object');
+    for (const width of ['phone', 'desktop']) {
+      assert.ok(width in surface, `missing ${width} observations`);
+      const observations: unknown = Reflect.get(surface, width);
+      assert.ok(observations && typeof observations === 'object');
+      assert.ok('observed' in observations && Array.isArray(observations.observed));
+      assert.ok('notReachable' in observations && Array.isArray(observations.notReachable));
+      assert.ok(observations.observed.length + observations.notReachable.length > 0);
+    }
+  }
+  assert.ok('defects' in record && Array.isArray(record.defects) && record.defects.length > 0);
+  const isSurface = (value: unknown): value is CandidateDefect['surface'] =>
+    typeof value === 'string' && Object.hasOwn(SURFACES, value);
+  for (const entry of record.defects) {
+    const defect: unknown = entry;
+    assert.ok(defect && typeof defect === 'object');
+    assert.ok('surface' in defect && isSurface(defect.surface));
+    assert.ok('what' in defect && typeof defect.what === 'string' && defect.what.length > 0);
+    assert.ok(
+      'evidence' in defect && typeof defect.evidence === 'string' && defect.evidence.length > 0,
+    );
+    const typed: CandidateDefect = {
+      surface: defect.surface,
+      what: defect.what,
+      evidence: defect.evidence,
+    };
+    assert.ok(SURFACES[typed.surface].reference);
+  }
 });

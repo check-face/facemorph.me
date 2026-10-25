@@ -1,5 +1,5 @@
 {
-  // Build-time code (the matrix, targets, Vite config) and its tests: Node, no DOM.
+  // Build-time code and contract type tests: Node, no DOM.
   "compilerOptions": {
     "target": "ES2024",
     "lib": ["ES2024"],
@@ -17,5 +17,5 @@
     // Third-party declarations (Vite plugins pull in svgr/babel typings with unlisted peers) are not ours to check.
     "skipLibCheck": true
   },
-  "include": ["build", "test/build", "vite.config.ts", "shell/render/estimate.ts"]
+  "include": ["build", "test/build", "test/contracts", "vite.config.ts", "shell/render/estimate.ts"]
 }

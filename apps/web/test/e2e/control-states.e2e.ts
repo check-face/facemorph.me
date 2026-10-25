@@ -12,6 +12,7 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import type { CandidateDefect } from '../../src/contracts/ui-states.ts';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
@@ -49,11 +50,8 @@ interface Surface {
   observed: Observed[];
   notReachable: { state: string; why: string }[];
 }
-interface Defect {
-  surface: string;
+interface Defect extends CandidateDefect {
   width: WidthName;
-  what: string;
-  evidence: string;
 }
 const SURFACES = [
   'main-page',
@@ -172,7 +170,7 @@ class Session {
     console.error(`[${this.width}] notReachable ${surface}/${state}: ${why}`);
     surfaces[surface][this.width].notReachable.push({ state, why });
   }
-  defect(surface: SurfaceName, what: string, evidence: string) {
+  defect(surface: CandidateDefect['surface'], what: string, evidence: string) {
     if (!defects.some((d) => d.surface === surface && d.width === this.width && d.what === what))
       defects.push({ surface, width: this.width, what, evidence });
   }
@@ -439,7 +437,7 @@ async function journey(s: Session, fx: ReturnType<typeof fixtures>, errors: stri
   const cover = await s.tryPress('names-under-toast', s.btn(s.tile(0), 'Browse names'), 1500);
   if (cover) {
     s.defect(
-      'main-page',
+      'main',
       'The first-visit model-consent toast covers a face control; a real press cannot reach it.',
       cover,
     );
@@ -453,8 +451,7 @@ async function journey(s: Session, fx: ReturnType<typeof fixtures>, errors: stri
     await page.keyboard.press('Escape');
   }
   const coverMode = await s.tryPress('mode-under-toast', s.btn(s.tile(0), 'Change mode'), 1500);
-  if (coverMode)
-    s.defect('main-page', 'The first-visit consent toast covers Change mode.', coverMode);
+  if (coverMode) s.defect('main', 'The first-visit consent toast covers Change mode.', coverMode);
   else await page.keyboard.press('Escape');
 
   await s.press('not-now', consentNotNow());
@@ -527,7 +524,7 @@ async function journey(s: Session, fx: ReturnType<typeof fixtures>, errors: stri
     for (const [label, value] of Object.entries(contrast)) {
       const ratio = Number(/: ([\d.]+) to 1/.exec(value)?.[1]);
       if (ratio < 4.5)
-        s.defect('names-picker', `${label} in the names dialog is below 4.5 to 1 contrast.`, value);
+        s.defect('namesPicker', `${label} in the names dialog is below 4.5 to 1 contrast.`, value);
     }
     await s.see(
       'names-picker',
