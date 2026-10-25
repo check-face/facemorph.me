@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""FaceMorph device lab: the same end-to-end journeys on four cells, human-free.
+"""FaceMorph device lab: shared end-to-end journeys on six named local cells.
 
-Cells: eris-webgpu, eris-cpu (desktop Chromium on eris, RTX 2080 SUPER), phone-webgpu, phone-cpu
+Cells: eris-webgpu, eris-cpu (Google Chrome on eris), eris-firefox-webgpu, eris-firefox-cpu,
+phone-webgpu, phone-cpu
 (Chrome on the USB-connected Huawei P30 Pro, VOG-L29). Every cell asserts the route that actually ran.
 
   uv run --with playwright python lab.py matrix [--url URL | --artifact DIR --runtime-sha SHA] [--cells ...]
@@ -23,7 +24,7 @@ elementFromPoint that the element there is the intended control. Analytics and t
 statistics are kept clean: every page gets navigator.globalPrivacyControl = true before load.
 Results: out/<timestamp>-<label>/report.json plus screenshots.
 """
-import argparse, json, os, re, socket, subprocess, sys, threading, time
+import argparse, hashlib, json, os, re, shutil, socket, subprocess, sys, threading, time
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
@@ -43,9 +44,44 @@ CHROME_FLAGS_FILE = '/data/local/tmp/chrome-command-line'
 # and untouchable after navigation (24 Oct 2026).
 PHONE_WEBGPU_FLAGS = ['--enable-unsafe-webgpu', '--ignore-gpu-blocklist']
 CELLS = {'eris-webgpu': ('desktop', True), 'eris-cpu': ('desktop', False),
+         'eris-firefox-webgpu': ('desktop', True), 'eris-firefox-cpu': ('desktop', False),
          'phone-webgpu': ('phone', True), 'phone-cpu': ('phone', False)}
 PHONE_LEASE = 'p30pro'  # the phone, for the devices a session reports
 JOURNEYS = frozenset(('cold-face', 'warm-face', 'morph', 'operated'))
+
+
+class Untested(RuntimeError):
+    """A required browser/capability is unavailable; this is never a passing cell."""
+
+
+def browser_identity(executable, family):
+    if not executable or not Path(executable).is_file():
+        raise Untested(f'{family} executable missing: {executable!r}')
+    result = subprocess.run([executable, '--version'], capture_output=True, text=True, timeout=15, check=True)
+    version = result.stdout.strip()
+    pattern = r'^Google Chrome(?: for Testing)? \d' if family == 'chrome' else r'^Mozilla Firefox \d'
+    if not re.search(pattern, version):
+        raise Untested(f'{executable} identifies as {version!r}, not {family}')
+    return {'family': family, 'executable': str(Path(executable).resolve()), 'version': version}
+
+
+def artifact_evidence(artifact, expected=None):
+    """Reuse the build's complete identity verifier and the integrated verification digest format."""
+    path = Path(artifact).resolve()
+    root = path.parent if path.name == 'deploy-next' else path
+    script = """import {readIdentity} from './scripts/import/build-next.mjs';
+const {identity,findings}=readIdentity(process.argv[1]);
+if(!identity||findings.length)throw Error(JSON.stringify(findings));
+console.log(JSON.stringify(identity));"""
+    result = subprocess.run(['node', '--input-type=module', '-e', script, str(root)], cwd=REPO,
+                            capture_output=True, text=True, timeout=60, check=True)
+    identity = json.loads(result.stdout)
+    lines = sorted(f"{f['sha256']}  {f['path']}\n" for f in identity['files'] if f['path'].startswith('deploy-next/'))
+    digest = hashlib.sha256(''.join(lines).encode()).hexdigest()
+    if expected and digest != expected:
+        raise ValueError(f'artifact digest {digest} is not expected {expected}')
+    return {'digest': digest, 'kind': identity['kind'], 'source': identity['deploySource'],
+            'directory': str(root / 'deploy-next'), 'files': identity['files']}
 
 
 def validate_journeys(value):
@@ -360,21 +396,25 @@ class Phone:
         # picker sits inside Chrome's activity, so focus checks cannot see it).
         sh(f'am force-stop {CHROME}', check=False)
         sh(f'am start -n {CHROME}/com.google.android.apps.chrome.Main -d about:blank >/dev/null', check=False)
-        adb('forward', f'tcp:{CDP_PORT}', 'localabstract:chrome_devtools_remote')
         for _ in range(20):
             if 'chrome_devtools_remote' in sh('cat /proc/net/unix', check=False):
                 break
             time.sleep(0.5)
         time.sleep(2)
         chrome_front()
-        self.browser = pw.chromium.connect_over_cdp(f'http://localhost:{CDP_PORT}')
-        ctx = self.browser.contexts[0]
-        # A fresh tab, brought to the front: OS taps land on the visible tab, not on ctx.pages[0].
-        self.page = ctx.new_page()
-        self.page.bring_to_front()
-        time.sleep(1)
-        self.page.add_init_script(GUARD)
-        self.cdp = ctx.new_cdp_session(self.page)
+        self.forward_port = int(adb('forward', 'tcp:0', 'localabstract:chrome_devtools_remote'))
+        try:
+            self.browser = pw.chromium.connect_over_cdp(f'http://localhost:{self.forward_port}')
+            ctx = self.browser.contexts[0]
+            # A fresh tab, brought to the front: OS taps land on the visible tab, not on ctx.pages[0].
+            self.page = ctx.new_page()
+            self.page.bring_to_front()
+            time.sleep(1)
+            self.page.add_init_script(GUARD)
+            self.cdp = ctx.new_cdp_session(self.page)
+        except BaseException:
+            self.close()
+            raise
 
     def js(self, expr, arg=None):
         return self.page.evaluate(expr) if arg is None else self.page.evaluate(expr, arg)
@@ -460,6 +500,8 @@ class Phone:
             self.page.close()
         except Exception:
             pass
+        finally:
+            adb('forward', '--remove', f'tcp:{self.forward_port}', check=False)
 
     def screenshot(self, path):
         with open(path, 'wb') as f:
@@ -467,24 +509,73 @@ class Phone:
 
 
 class Desktop:
-    """Chromium on eris. WebGPU cell: headed (headless Chromium gets no adapter on eris). CPU cell:
-    headless with WebGPU switched off, so the app's own fallback picks the CPU route."""
+    """Named Chrome/Firefox on eris, sharing the real-input journey implementation."""
 
-    def __init__(self, pw, gpu, local, profile):
-        args = ['--enable-unsafe-webgpu', '--ignore-gpu-blocklist'] if gpu else ['--disable-features=WebGPU']
-        if local:
+    def __init__(self, pw, gpu, local, profile, family='chrome'):
+        self.pw, self.gpu, self.local, self.profile, self.family = pw, gpu, local, Path(profile), family
+        self.profiles, self.n = [], 0
+        if family == 'chrome':
+            executable = os.environ.get('LAB_CHROME') or shutil.which('google-chrome') or shutil.which('google-chrome-stable')
+        else:
+            executable = os.environ.get('LAB_FIREFOX', pw.firefox.executable_path)
+        self.identity = browser_identity(executable, family)
+        args = (['--enable-unsafe-webgpu', '--ignore-gpu-blocklist'] if gpu else ['--disable-features=WebGPU']) if family == 'chrome' else []
+        if family == 'chrome':
+            args.insert(0, '--enable-automation')  # CDP command-line provenance requires this explicit flag.
+        if local and family == 'chrome':
             args += local_flags()
-        self.ctx = pw.chromium.launch_persistent_context(str(profile), executable_path=CHROMIUM, headless=not gpu,
-                                                          args=args, viewport={'width': 1280, 'height': 900})
+        self.options = dict(executable_path=executable, headless=not gpu, args=args,
+                            ignore_https_errors=local, viewport={'width': 1280, 'height': 900})
+        prefs = {'dom.webgpu.enabled': gpu, 'dom.webgpu.force-enabled': gpu} if family == 'firefox' else {}
+        if prefs:
+            self.options['firefox_user_prefs'] = prefs
+        self.identity.update(flags=args, preferences=prefs, headless=not gpu,
+                             ignoreHttpsErrors=local,
+                             distribution='playwright' if 'ms-playwright' in executable else 'installed')
+        try:
+            self._open()
+        except Exception:
+            self.close()
+            raise
+
+    def _open(self):
+        self.n += 1
+        profile = self.profile.with_name(self.profile.name + f'-{self.n}')
+        self.profiles.append(profile)
+        engine = self.pw.firefox if self.family == 'firefox' else self.pw.chromium
+        self.ctx = engine.launch_persistent_context(str(profile), **self.options)
+        self.identity.setdefault('launches', [])
+        for cmdline in Path('/proc').glob('[0-9]*/cmdline'):
+            try:
+                argv = cmdline.read_bytes().decode().rstrip('\0').split('\0')
+                if str(profile) in argv or f'--user-data-dir={profile}' in argv:
+                    self.identity['launches'].append({'commandLine': argv,
+                        'executable': str((cmdline.parent / 'exe').resolve())})
+                    break
+            except (OSError, UnicodeError):
+                continue
         self.page = self.ctx.pages[0] if self.ctx.pages else self.ctx.new_page()
         self.page.add_init_script(GUARD)
-        self.cdp = self.ctx.new_cdp_session(self.page)
+        if self.family == 'firefox':
+            from hosted import OriginStorage
+            self.cdp = OriginStorage(self)
+        else:
+            self.cdp = self.ctx.new_cdp_session(self.page)
+            command = self.cdp.send('Browser.getBrowserCommandLine')['arguments']
+            self.identity['launches'] = [{'commandLine': command, 'executable': str(Path(command[0]).resolve())}]
         self.crashed = False
         self.page.on('crash', lambda *_: setattr(self, 'crashed', True))
 
     js = Phone.js
-    clear_origin = Phone.clear_origin
     wait = Phone.wait
+
+    def clear_origin(self, url):
+        if getattr(self, 'family', 'chrome') == 'firefox':
+            # No CDP on Firefox: a new empty profile is the cold-state boundary (same as hosted).
+            self.ctx.close()
+            self._open()
+        else:
+            Phone.clear_origin(self, url)
 
     def tap(self, selector, index=0):
         """A real mouse click at the element's visible centre, with the same before/after checks as the phone."""
@@ -519,7 +610,12 @@ class Desktop:
         self.page.screenshot(path=str(path))
 
     def close(self):
-        self.ctx.close()
+        try:
+            if hasattr(self, 'ctx'):
+                self.ctx.close()
+        finally:
+            for profile in getattr(self, 'profiles', []):
+                shutil.rmtree(profile, ignore_errors=True)
 
 
 def chrome_pss_mb():
@@ -574,11 +670,27 @@ FACES = "(sel)=>[...document.querySelectorAll(sel)].filter(i=>(i.naturalWidth||i
 
 
 def check_route(route, gpu):
-    r = route.lower()
-    if gpu and 'webgpu' not in r:
+    r = str(route or '').lower()
+    if gpu and ('webgpu' not in r or 'cpu' in r):
         raise RuntimeError(f'expected the WebGPU route, got {route!r}')
-    if not gpu and 'cpu' not in r:
+    if not gpu and ('cpu' not in r or 'webgpu' in r):
         raise RuntimeError(f'expected the CPU route, got {route!r}')
+
+
+def capture_capabilities(dev):
+    """Probe the real page in its secure context, without loading a model or timing a workload."""
+    return dev.js("""async () => {
+      const result = {userAgent:navigator.userAgent, secureContext:isSecureContext,
+        webgpu:!!navigator.gpu, adapter:false, url:location.href};
+      if(navigator.gpu) {
+        const adapter = await Promise.race([navigator.gpu.requestAdapter(),
+          new Promise((_,reject)=>setTimeout(()=>reject(Error('adapter probe timed out')),10000))]);
+        result.adapter = !!adapter;
+        if(adapter?.info) result.adapterInfo = {vendor:adapter.info.vendor, architecture:adapter.info.architecture,
+          device:adapter.info.device, description:adapter.info.description};
+      }
+      return result;
+    }""")
 
 
 def journey_face(phone, url, cold, word, gpu=None):
@@ -592,7 +704,13 @@ def journey_face(phone, url, cold, word, gpu=None):
         origin = re.match(r'https?://[^/]+', url).group(0)
         phone.cdp.send('Storage.clearDataForOrigin', {'origin': origin, 'storageTypes': 'indexeddb,local_storage'})
     t0 = time.time()
-    phone.page.goto(url, wait_until='domcontentloaded')
+    response = phone.page.goto(url, wait_until='domcontentloaded')
+    html_digest = hashlib.sha256(response.body()).hexdigest() if response else None
+    if getattr(phone, 'expected_index', None) and html_digest != phone.expected_index:
+        raise RuntimeError(f'executed document digest {html_digest} differs from the artifact index')
+    phone.capabilities = capture_capabilities(phone)
+    if gpu and not phone.capabilities['adapter']:
+        raise Untested('no WebGPU adapter in the actual page; CPU fallback cannot qualify this cell')
     phone.wait(f"!!document.querySelector('{S['product']}')", 120)
     usable = time.time() - t0
     # A warm visit restores the previous session and re-renders the tiles; typing before that
@@ -623,18 +741,22 @@ def journey_face(phone, url, cold, word, gpu=None):
     route = phone.js(f"document.querySelector('{S['route']}')?.innerText||''").strip()
     if gpu is not None:
         check_route(route, gpu)
-    return {'usableS': round(usable, 2), 'faceS': round(face, 2), 'route': route.strip()[:80],
+    return {'usableS': round(usable, 2), 'faceS': round(face, 2), 'route': route.strip()[:80], 'url': phone.page.url,
+            'documentSha256': html_digest,
             'typed': word, 'fieldValue': typed, 'typedExactly': typed == word}
 
 
-def journey_morph(phone):
+def journey_morph(phone, gpu=None):
     t0 = time.time()
     btn = phone.js("[...document.querySelectorAll('button')].findIndex(b=>b.textContent.trim()==='Create morph')")
     if btn < 0:
         raise RuntimeError('no Create morph button')
     phone.tap('button', btn)
     phone.wait(f"(()=>{{const v=document.querySelector('{S['video']}');return !!v&&v.readyState>=2&&v.duration>0}})()", 1800)
-    return {'videoS': round(time.time() - t0, 2)}
+    route = phone.js(f"document.querySelector('{S['route']}')?.innerText||''").strip()
+    if gpu is not None:
+        check_route(route, gpu)
+    return {'videoS': round(time.time() - t0, 2), 'route': route, 'url': phone.page.url}
 
 
 OPERATED_PORT = 8461  # the operated-input fixture page, reached by the phone through adb reverse
@@ -659,7 +781,11 @@ def journey_operated(dev, cell):
     try:
         url = f'http://127.0.0.1:{OPERATED_PORT}/verify/operated.html'
         dev.clear_origin(url)  # the phone's Chrome keeps an earlier copy of the page otherwise
-        dev.page.goto(f'{url}?run={int(time.time())}', wait_until='load')
+        response = dev.page.goto(f'{url}?run={int(time.time())}', wait_until='load')
+        digest = hashlib.sha256(response.body()).hexdigest()
+        if digest != hashlib.sha256((root / 'verify/operated.html').read_bytes()).hexdigest():
+            raise RuntimeError('executed operated fixture digest differs from checkout')
+        dev.capabilities = capture_capabilities(dev)
         layout = dev.js('({w: document.documentElement.scrollWidth, iw: innerWidth, scale: visualViewport.scale})')
         if layout['w'] > layout['iw'] or layout['scale'] != 1:
             raise RuntimeError(f'the fixture page does not fit this viewport: {layout}')
@@ -679,12 +805,13 @@ def journey_operated(dev, cell):
                 steps.append({'step': f'verify.harness/lab/{sel[1:]}', 'expect': 'refused', 'ok': ok, 'detail': str(e)[:200]})
     finally:
         server.shutdown()
+        server.server_close()
         if phone:
             adb('reverse', '--remove', f'tcp:{OPERATED_PORT}', check=False)
     failed = [s for s in steps if not s['ok']]
     if failed:
         raise RuntimeError(f'operated contract failed on {cell}: {json.dumps(failed)[:400]}')
-    return {'steps': steps}
+    return {'steps': steps, 'url': dev.page.url, 'documentSha256': digest}
 
 
 def cool_down(limit_c=40.0, max_wait_s=900):
@@ -773,17 +900,22 @@ def run_journeys(dev, args, cell, gpu, out, report, memory=None):
                 elif j == 'warm-face':
                     rec['warm'] = journey_face(dev, args.url, False, f'lab{i}warm', gpu)
                 elif j == 'morph':
-                    rec['morph'] = journey_morph(dev)
+                    rec['morph'] = journey_morph(dev, gpu)
                 elif j == 'operated':
                     rec['operated'] = journey_operated(dev, cell)
                 log('journey_done', cell=cell, iteration=i + 1, journey=j)
+                report['url'] = dev.page.url
             rec['ok'] = True
         except Exception as e:
             rec['ok'], rec['error'] = False, f'{type(e).__name__}: {e}'[:400]
+            rec['status'] = 'untested' if isinstance(e, Untested) else 'fail'
             if getattr(dev, 'crashed', False):
                 rec['error'] = 'PageCrashed: the page process died (often memory pressure) - ' + rec['error']
                 rec['crashed'] = True
-            dev.screenshot(out / f'{cell}-fail-{i + 1}.png')
+            try:
+                dev.screenshot(out / f'{cell}-fail-{i + 1}.png')
+            except Exception as screenshot_error:
+                rec['screenshotError'] = str(screenshot_error)[:200]
             if CELLS[cell][0] == 'phone':
                 chrome_front()
             log('journey_failed', cell=cell, iteration=i + 1, error=rec['error'])
@@ -805,21 +937,85 @@ def run_journeys(dev, args, cell, gpu, out, report, memory=None):
             if CELLS[cell][0] == 'phone':
                 rec['batteryTempC'] = device_facts()['batteryTempC']
         report['runs'].append(rec)
+        report['capabilities'] = getattr(dev, 'capabilities', None)
         (out / f'{cell}.json').write_text(json.dumps(report, indent=2))
 
 
-def run_cell(cell, args, out):
+def report_findings(report, journeys, digest=None):
+    """Plain evidence validation: a requested backend, browser label or empty run is insufficient."""
+    findings = []
+    cell = report.get('cell')
+    if cell not in CELLS:
+        return ['unknown cell']
+    browser = report.get('browser') or {}
+    family = 'firefox' if 'firefox' in cell else 'chrome'
+    if not isinstance(browser, dict) or browser.get('family') != family or not browser.get('version') or not browser.get('executable'):
+        findings.append('missing or wrong browser identity')
+    elif not isinstance(browser.get('flags'), list):
+        findings.append('missing browser flags')
+    elif family == 'firefox' and not re.search(r'^Mozilla Firefox \d', browser['version']):
+        findings.append('wrong Firefox version identity')
+    elif family == 'chrome' and not (re.search(r'^Google Chrome(?: for Testing)? \d', browser['version']) or
+            (browser.get('package') == CHROME and re.fullmatch(r'\d+(?:\.\d+)+', browser['version']))):
+        findings.append('wrong Chrome version identity')
+    artifact = report.get('artifact') or {}
+    if not re.fullmatch('[a-f0-9]{64}', artifact.get('digest', '')) or (digest and artifact.get('digest') != digest):
+        findings.append('missing or wrong artifact digest')
+    if CELLS[cell][1] and not (report.get('capabilities') or {}).get('adapter'):
+        findings.append('WebGPU adapter unavailable; required capability untested')
+    runs = report.get('runs') or []
+    if not runs:
+        findings.append('no executed journeys')
+    keys = {'cold-face': 'cold', 'warm-face': 'warm', 'morph': 'morph', 'operated': 'operated'}
+    for run in runs:
+        if not run.get('ok'):
+            findings.append('journey failed or untested')
+        for journey in journeys:
+            result = run.get(keys[journey])
+            if not result:
+                findings.append(f'missing {journey} evidence')
+            elif journey in ('cold-face', 'warm-face', 'morph'):
+                if not result.get('url'):
+                    findings.append(f'missing executed URL for {journey}')
+                if journey != 'morph' and not re.fullmatch('[a-f0-9]{64}', result.get('documentSha256', '')):
+                    findings.append(f'missing document digest for {journey}')
+                try:
+                    check_route(result.get('route', ''), CELLS[cell][1])
+                except RuntimeError as e:
+                    findings.append(str(e))
+            elif not result.get('steps') or not all(s.get('ok') for s in result['steps']):
+                findings.append('operated steps failed or missing')
+    return findings
+
+
+def run_cell(cell, args, out, report=None):
     """One cell, start to finish, always leaving the devices in their resting state."""
     from playwright.sync_api import sync_playwright
     kind, gpu = CELLS[cell]
     local = bool(getattr(args, 'local', False))
-    report = {'cell': cell, 'label': args.label, 'url': args.url, 'local': local, 'runs': []}
+    artifact = getattr(args, 'artifact_evidence', None)
+    if args.journey == 'operated':
+        fixture = REPO / 'apps/web/test/fixtures/verify/operated.html'
+        artifact = {'digest': hashlib.sha256(fixture.read_bytes()).hexdigest(), 'kind': 'operated-fixture'}
+    report = {} if report is None else report
+    report.update({'cell': cell, 'label': args.label, 'url': args.url, 'requestedUrl': args.url,
+              'local': local, 'runs': [], 'journeys': validate_journeys(args.journey),
+              'artifact': {k: v for k, v in (artifact or {}).items() if k != 'files'},
+              'requestedRoute': 'webgpu' if gpu else 'cpu'})
     log('cell_start', cell=cell, url=args.url, local=local)
     if kind == 'desktop':
-        report['browser'] = 'chromium ' + subprocess.run([CHROMIUM, '--version'], capture_output=True, text=True).stdout.strip()
         with sync_playwright() as pw:
-            dev = Desktop(pw, gpu, local, out / f'profile-{cell}')
+            family = 'firefox' if 'firefox' in cell else 'chrome'
+            dev = Desktop(pw, gpu, local, out / f'profile-{cell}', family)
             try:
+                report['browser'] = dev.identity
+                dev.expected_index = next((f['sha256'] for f in (artifact or {}).get('files', []) if f['path'] == 'deploy-next/index.html'), None)
+                if local and family == 'firefox':
+                    # Firefox has no Chromium host-resolver port remapping. Use the same TLS server,
+                    # at its real localhost origin, and record the URL actually executed.
+                    args = argparse.Namespace(**vars(args))
+                    args.url = f'https://localhost:{LOCAL_PORT}/'
+                    report['url'] = args.url
                 run_journeys(dev, args, cell, gpu, out, report)
                 dev.screenshot(out / f'{cell}-last.png')
             finally:
@@ -839,10 +1035,14 @@ def run_cell(cell, args, out):
                 paused = True
             session_begin()
             phone_chrome_flags(gpu, local)
+            report['browser'] = {'family': 'chrome', 'executable': sh(f'pm path {CHROME}'),
+                                 'version': report['device']['chrome'], 'package': CHROME,
+                                 'flags': SAVED.get('chromeFlags', []), 'commandLine': sh(f'cat {CHROME_FLAGS_FILE}', check=False)}
             report['startTempC'] = cool_down()  # the camera role warms the phone; start cool
             with sync_playwright() as pw:
                 dev = Phone(pw)
                 try:
+                    dev.expected_index = next((f['sha256'] for f in (artifact or {}).get('files', []) if f['path'] == 'deploy-next/index.html'), None)
                     run_journeys(dev, args, cell, gpu, out, report, memory=True)
                     dev.screenshot(out / f'{cell}-last.png')
                 finally:
@@ -853,20 +1053,42 @@ def run_cell(cell, args, out):
             if paused:
                 report['cameraAfter'] = camera_resume()
             STATE.unlink(missing_ok=True)
-    report['ok'] = bool(report['runs']) and all(r.get('ok') for r in report['runs'])
+    report['evidenceErrors'] = report_findings(report, validate_journeys(args.journey), (artifact or {}).get('digest'))
+    report['ok'] = not report['evidenceErrors']
+    failed_journey = any(not r.get('ok') and r.get('status') != 'untested' for r in report['runs'])
+    unavailable = not artifact or (gpu and not (report.get('capabilities') or {}).get('adapter')) or any(
+        r.get('status') == 'untested' for r in report['runs'])
+    if report['ok']:
+        report['status'] = 'pass'
+    elif failed_journey:
+        report['status'] = 'fail'
+    else:
+        report['status'] = 'untested' if unavailable else 'fail'
     (out / f'{cell}.json').write_text(json.dumps(report, indent=2))
     log('cell_end', cell=cell, ok=report['ok'])
     return report
 
 
+def run_cell_report(cell, args, out):
+    rep = {'cell': cell, 'runs': []}
+    try:
+        rep = run_cell(cell, args, out, rep)
+    except Exception as e:
+        rep.update(ok=False, status='untested' if isinstance(e, Untested) else 'fail', error=f'{type(e).__name__}: {e}')
+        (out / f'{cell}.json').write_text(json.dumps(rep, indent=2))
+        log('cell_unavailable' if isinstance(e, Untested) else 'cell_failed', cell=cell, error=rep['error'])
+    return rep
+
+
 def run_cell_retrying(cell, args, out):
     """A page crash gets one more full attempt, recorded in the report; any other failure stands."""
-    rep = run_cell(cell, args, out)
+    rep = run_cell_report(cell, args, out)
     if not rep['ok'] and any(r.get('crashed') for r in rep['runs']):
         log('cell_retry_after_crash', cell=cell)
         first = rep
-        rep = run_cell(cell, args, out)
+        rep = run_cell_report(cell, args, out)
         rep['retriedAfterCrash'] = first['runs']
+        (out / f'{cell}.json').write_text(json.dumps(rep, indent=2))
     return rep
 
 
@@ -876,35 +1098,49 @@ class LocalServer:
 
     def __init__(self, artifact, runtime_sha, out):
         self.artifact, self.runtime_sha, self.out = Path(artifact).resolve(), runtime_sha, out
+        if self.artifact.name == 'deploy-next':
+            self.artifact = self.artifact.parent
 
     def __enter__(self):
-        key, crt = self.out / 'next.key', self.out / 'next.crt'
-        subprocess.run(['openssl', 'req', '-x509', '-newkey', 'rsa:2048', '-nodes', '-keyout', key, '-out', crt,
-                        '-days', '1', '-subj', f'/CN={ORIGIN_HOST}'], check=True, capture_output=True)
+        # Refuse an occupied port rather than probing another session's server as our artifact.
+        with socket.socket() as port_check:
+            port_check.bind(('127.0.0.1', LOCAL_PORT))
         runtime = Path(os.environ.get('RUNTIME_FILES', self.artifact / '.runtime-public'))
         if not runtime.exists():
             raise RuntimeError(f'No acquired runtime at {runtime}; set RUNTIME_FILES to a verified runtime directory')
+        key, crt = self.out / 'next.key', self.out / 'next.crt'
+        subprocess.run(['openssl', 'req', '-x509', '-newkey', 'rsa:2048', '-nodes', '-keyout', key, '-out', crt,
+                        '-days', '1', '-subj', f'/CN={ORIGIN_HOST}'], check=True, capture_output=True)
         cmd = [sys.executable, CHECKOUT / 'apps/web/scripts/next-e2e-server.py', '--manifest-sha', self.runtime_sha,
                '--runtime-overlay', runtime, '--runtime-files', runtime,
                '--cert', crt, '--key', key]
         self.log = open(self.out / 'server.log', 'w')
         self.proc = subprocess.Popen([str(c) for c in cmd], cwd=self.artifact, stdout=self.log, stderr=subprocess.STDOUT)
-        for _ in range(60):
-            if self.proc.poll() is not None:
-                raise RuntimeError('local server exited; see server.log')
-            if subprocess.run(['curl', '-kfsS', '--max-time', '2', f'https://127.0.0.1:{LOCAL_PORT}/runtime/manifest.json'],
-                              capture_output=True).returncode == 0:
-                log('local_server_ready', artifact=str(self.artifact))
-                return self
-            time.sleep(1)
-        raise RuntimeError('local server did not become ready')
+        try:
+            for _ in range(60):
+                if self.proc.poll() is not None:
+                    raise RuntimeError('local server exited; see server.log')
+                if subprocess.run(['curl', '-kfsS', '--max-time', '2', f'https://127.0.0.1:{LOCAL_PORT}/runtime/manifest.json'],
+                                  capture_output=True).returncode == 0:
+                    log('local_server_ready', artifact=str(self.artifact))
+                    return self
+                time.sleep(1)
+            raise RuntimeError('local server did not become ready')
+        except BaseException:
+            self.__exit__()
+            raise
 
     def __exit__(self, *exc):
         self.proc.terminate()
         try:
             self.proc.wait(10)
-        except Exception:
+        except subprocess.TimeoutExpired:
             self.proc.kill()
+            self.proc.wait(10)
+        finally:
+            self.log.close()
+            (self.out / 'next.key').unlink(missing_ok=True)
+            (self.out / 'next.crt').unlink(missing_ok=True)
 
 
 def summarise(reports, out, title, beads=()):
@@ -913,16 +1149,23 @@ def summarise(reports, out, title, beads=()):
             v = [x.get(j, {}).get(k) for x in r['runs'] if x.get(j)]
             return '/'.join(f'{t:.0f}s' for t in v) if v else '–'
         route = next((x[j]['route'] for x in r['runs'] for j in ('warm', 'cold') if x.get(j)), '–')
-        err = next((x['error'] for x in r['runs'] if x.get('error')), '')
-        res = ('pass' if r.get('ok') else 'FAIL') + (' (after a crash retry)' if r.get('retriedAfterCrash') else '')
+        err = next((x['error'] for x in r['runs'] if x.get('error')), r.get('error') or '; '.join(r.get('evidenceErrors', [])))
+        err = err.replace('\n', ' ').replace('|', '/')
+        res = r.get('status', 'pass' if r.get('ok') else 'FAIL') + (' (after a crash retry)' if r.get('retriedAfterCrash') else '')
         return f"| {r['cell']} | {res} | {fmt('cold', 'faceS')} | {fmt('warm', 'faceS')} | {fmt('morph', 'videoS')} | {route} | {err[:120]} |"
     md = [f'## {title}', '', '| Cell | Result | Cold face | Warm face | Morph video | Route | Error |', '|---|---|---|---|---|---|---|']
     md += [cellrow(r) for r in reports]
+    for r in reports:
+        browser = r.get('browser') or {}
+        artifact = r.get('artifact') or {}
+        md += ['', f"{r['cell']}: browser `{json.dumps(browser)}`; artifact `{artifact.get('digest', 'unbound')}` ({artifact.get('kind', 'unbound')}); URL `{r.get('url', 'unknown')}`."]
     if beads:
         md += ['', f"Beads in the tested build: {', '.join(beads)}."]
     text = '\n'.join(md) + '\n'
     (out / 'summary.md').write_text(text)
-    (out / 'summary.json').write_text(json.dumps({'title': title, 'ok': all(r.get('ok') for r in reports), 'beads': list(beads), 'cells': reports}, indent=2))
+    (out / 'summary.json').write_text(json.dumps({'title': title, 'ok': bool(reports) and all(r.get('ok') for r in reports),
+        'requiredCells': list(CELLS), 'missingCells': sorted(set(CELLS) - {r['cell'] for r in reports}),
+        'beads': list(beads), 'cells': reports}, indent=2))
     if os.environ.get('GITHUB_STEP_SUMMARY'):
         with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as f:
             f.write(text)
@@ -1013,6 +1256,8 @@ def run_matrix(args):
     validate_journeys(args.journey)  # refuse before locks, browser/device I/O or an empty success report
     if args.repeat < 1:
         raise ValueError('repeat must be at least 1')
+    if getattr(args, 'artifact_digest', None) and not args.artifact:
+        raise ValueError('--artifact-digest needs --artifact; deployed artifact attestation is not implemented')
     import signal
     signal.signal(signal.SIGTERM, _terminate)
     signal.signal(signal.SIGHUP, _terminate)
@@ -1022,6 +1267,8 @@ def run_matrix(args):
         out.mkdir(parents=True, exist_ok=True)
         reports = []
         if args.artifact:
+            args.artifact_evidence = artifact_evidence(args.artifact, getattr(args, 'artifact_digest', None))
+            args.artifact = args.artifact_evidence['directory']
             args.local, args.url = True, f'https://{ORIGIN_HOST}/'
             with LocalServer(args.artifact, args.runtime_sha, out):
                 for c in cells:
@@ -1054,6 +1301,7 @@ def main():
     def common(p, default_journey):
         p.add_argument('--url', default='https://next.facemorph.me/')
         p.add_argument('--artifact', help='serve this exact candidate artifact locally under the production origin')
+        p.add_argument('--artifact-digest', help='require this integrated-verification artifact SHA256')
         p.add_argument('--runtime-sha', help='runtime manifest SHA256 for --artifact (fails closed if it differs)')
         p.add_argument('--journey', default=default_journey)
         p.add_argument('--repeat', type=int, default=1)
@@ -1068,6 +1316,7 @@ def main():
     q.add_argument('--repo', default='check-face/facemorph.me-classic')
     q.add_argument('--runtime-sha', default='d9e37e50a436e9fb7c0c7f973e70adee353c808f48c6a51fa5a9186f1c650a5c')
     q.add_argument('--cells', default=','.join(CELLS))
+    q.add_argument('--artifact-digest')
     q.add_argument('--journey', default='cold-face,warm-face,morph')
     q.add_argument('--repeat', type=int, default=1)
     q.add_argument('--keep-camera', action='store_true')

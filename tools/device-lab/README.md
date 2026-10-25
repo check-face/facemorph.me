@@ -1,15 +1,14 @@
 # Device lab
 
-The implemented harness runs the same end-to-end journeys on four cells, with no human in the loop.
+The lab has adapters for six named cells, sharing the existing journeys and real-input helpers.
 Agents run it on demand for affected work, including candidate builds. Unavailable hardware does not block
 ordinary development; it is recorded untested. There is no schedule.
 
 **Release target (operator, 25 October 2026): six local cells**, CPU and WebGPU in Chrome on Linux eris,
 Firefox on Linux eris, and Chrome on the actual Huawei P30 Pro, against the deployed next.facemorph.me
-artifact, plus normal applicable CI. Missing local evidence leaves handover incomplete. The four-cell
-table below describes current implementation, not completion of that gate: eris Firefox is not implemented
-and eris currently uses Chromium. Record the actual executable/version; do not silently substitute it for
-required browser evidence. Hosted iOS Simulator/Android emulator lanes are additional, best effort for
+artifact, plus normal applicable CI. Adapter support is not six-cell release qualification. Missing local
+evidence leaves handover incomplete. The table below names the implemented adapters. Record the actual
+executable/version/distribution; system Chromium is refused as Chrome. Hosted iOS Simulator/Android emulator lanes are additional, best effort for
 runner availability; a real executed test failure requires repair.
 
 During iteration, reuse existing scripts and direct browser-protocol helpers before interactive harnesses
@@ -19,14 +18,26 @@ task-owned servers, profiles, ADB mappings and device flags are cleaned up/resto
 
 | Cell | Device | Route it must take |
 | --- | --- | --- |
-| `eris-webgpu` | Chromium on eris (RTX 2080 SUPER), headed: headless Chromium gets no adapter there | WebGPU |
-| `eris-cpu` | the same Chromium, headless, WebGPU switched off | CPU |
+| `eris-webgpu` | Google Chrome on eris, headed, `--enable-unsafe-webgpu --ignore-gpu-blocklist` | WebGPU |
+| `eris-cpu` | Google Chrome, headless, `--disable-features=WebGPU` | CPU |
+| `eris-firefox-webgpu` | Firefox on eris, headed, `dom.webgpu.enabled=true`, `dom.webgpu.force-enabled=true` | WebGPU |
+| `eris-firefox-cpu` | Firefox, headless, both WebGPU preferences false | CPU |
 | `phone-webgpu` | Chrome on the USB Huawei P30 Pro, with `--enable-unsafe-webgpu --ignore-gpu-blocklist` | WebGPU |
 | `phone-cpu` | Chrome on the same phone without flags: what a real visitor on this phone gets | CPU |
 
 Chrome blocklists the phone's Android 10 Mali-G76 driver, so real visitors on it get CPU. The flagged cell
 shows what works on devices that do have WebGPU enabled. Forcing Vulkan compositing as well
 (`--enable-features=Vulkan`) left pages white and untouchable, so only the two flags above are used.
+
+`LAB_CHROME` selects an explicit Google Chrome executable; otherwise the lab searches `google-chrome`
+and `google-chrome-stable` on PATH. It does not fall back to `/usr/bin/chromium`. A cached executable
+that actually reports **Google Chrome for Testing** can be selected explicitly and is labelled with that
+version and its distribution. `LAB_FIREFOX` selects a Playwright-compatible Firefox executable;
+otherwise the Python Playwright package selects its cached Firefox build. An arbitrary stock
+Firefox binary may lack Playwright's protocol; a launch failure is not substituted evidence.
+Reports include launcher, version, lab flags/preferences, observed process command line when readable,
+secure-context adapter probe and actual journey URLs. Unsupported WebGPU remains untested.
+Both desktop Chrome cells include `--enable-automation` so CDP can record their full command line.
 
 Journeys: `cold-face` (site data and models cleared), `warm-face` (models kept, session cleared), and
 `morph` (two faces to a playable video). Each cell fails if the route shown differs from the one it must take.
@@ -41,7 +52,7 @@ The swarm is fungible: no tester or shipping agent. Any agent whose bead needs d
 - **Physical phones never run in CI.** Run them locally during development and at
   release handover. Hosted Android/iOS simulator coverage currently lives in the release gate.
 - **A candidate before it deploys:** `lab.py qualify --run <CI run id>` fetches that build's artifact and runs all
-  four cells against it, served locally under the production origin. Evidence goes to every bead named in any
+  six cells against it. Evidence goes to every bead named in any
   commit since the last qualified one (CI is newest-only, so one build can carry several beads); `--since <sha>`
   overrides the starting point. Without a recorded start, or when the compare is unusable, only the head commit is
   scanned and the log says why. `summary.md` names the beads, and the tested commit is recorded per repository
@@ -58,13 +69,20 @@ uv run --with playwright python lab.py preflight
 uv run --with playwright python lab.py matrix                                   # all cells, production
 uv run --with playwright python lab.py matrix --cells phone-webgpu --journey cold-face,warm-face
 uv run --with playwright python lab.py matrix --artifact DIR --runtime-sha SHA  # an exact candidate build
+LAB_CHROME=/path/to/google-chrome uv run --with playwright python lab.py run --cell eris-cpu --journey operated
+uv run --with playwright python lab.py run --cell eris-firefox-cpu --journey operated
 uv run --with playwright python lab.py camera status|pause|resume|off|on
 uv run --with playwright python lab.py recover
 ```
 
-`--artifact` serves a candidate's `next-site-<sha>` artifact (a `deploy-next/` directory) under the production
-origin with classic's qualification server (`CLASSIC_CHECKOUT`, default `../../../facemorph.me-classic`).
-eris Chromium reaches it through host-resolver rules, and the phone reaches it through `adb reverse`. The runtime
+`--artifact` accepts an artifact root containing `deploy-next/` and `next-site-identity.json`, or its
+`deploy-next/` subdirectory. The existing build identity verifier checks every artifact file before launch.
+`--artifact-digest SHA` additionally requires the integrated-verification digest (SHA256 of sorted
+`<file-sha256>  deploy-next/<path>\n` lines). Each face journey hashes the document actually loaded and
+rejects a mismatch with that verified artifact. The qualification server comes from this checkout
+(`FACEMORPH_CHECKOUT` overrides it). Chrome reaches its production origin through host-resolver rules,
+and the phone through `adb reverse`. Firefox reaches the same TLS server at `https://localhost:8443/`;
+that actual origin is explicitly recorded. This is local candidate evidence, not post-deploy evidence. The runtime
 tree is cached in `~/.cache/facemorph-device-lab/` (2.8 GB on first build). Local-mode cold faces skip the internet
 download, so compare their times only with other local runs.
 
@@ -72,6 +90,16 @@ Each run writes `out/<timestamp>-<label>/`: `summary.md` and `summary.json`, one
 per-iteration timings, route, `typedExactly`, peak Chrome memory on the phone, temperatures), a screen recording
 (phone) or Playwright trace (eris) of each failed iteration, and screenshots. In CI the summary also goes to the
 job summary.
+
+An `operated`-only run hashes the real fixture and reports `kind=operated-fixture`; it does not qualify a
+product artifact or prove synthesis used WebGPU. Live URL runs currently lack deployed-artifact attestation:
+their journeys can execute, but missing verified artifact identity leaves the result untested/incomplete.
+Post-deploy identity binding and release-summary consumption still need implementation. A targeted matrix
+also lists missing required cells; passing its subset is not a six-cell release pass.
+
+Targeted checks: `python -m unittest test_browsers test_journeys test_lab_lock`. For real Firefox operated
+and cold/warm storage contracts: `LAB_REAL_BROWSERS=1 uv run --with playwright python -m unittest test_browsers`.
+These use real processes, temporary artifact files and browser storage; no network response replay.
 
 ### The operated-input contract (`--journey operated`, fm-48bj)
 
@@ -106,6 +134,8 @@ in-flight requests on any of them). Interruptions are real: Wi-Fi off and on thr
 no SIM), and on eris a local CONNECT proxy with a throttle and a fault switch that either resets open tunnels
 (`--cut drop`) or silences them for good (`--cut blackhole`). It takes the same per-device lab lock as
 `lab.py`, and the Frigate camera must be held off for the phone cell.
+This download diagnostic retains its existing Chromium adapter and reports that browser explicitly;
+it is not named Chrome/Firefox release evidence. Firefox cells are rejected before device access.
 
 ```sh
 uv run --with playwright python download.py --cells eris-cpu,eris-webgpu,phone-cpu --repeat 3

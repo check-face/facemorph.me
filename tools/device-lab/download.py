@@ -596,6 +596,9 @@ def main():
                     help="who downloads: the deployed app (its model toast) or this checkout's browser-model-manager")
     args = ap.parse_args()
     cells = args.cells.split(',')
+    unsupported = [c for c in cells if c not in CELLS or 'firefox' in c]
+    if unsupported:
+        ap.error('download.py has Chromium/Huawei adapters only; unsupported cell(s): ' + ', '.join(unsupported))
     signal.signal(signal.SIGTERM, lab._terminate)
     signal.signal(signal.SIGHUP, lab._terminate)
     with devices_held(cells):

@@ -158,7 +158,12 @@ class ArtifactServer:
 # ---------------------------------------------------------------- devices
 WARM_RESET = """async () => {
   const names = indexedDB.databases ? (await indexedDB.databases()).map(d => d.name) : ['checkface-originals-v1'];
-  await Promise.all(names.map(n => new Promise(done => { const q = indexedDB.deleteDatabase(n); q.onsuccess = q.onerror = q.onblocked = () => done(); })));
+  await Promise.all(names.map(n => new Promise((done,fail) => {
+    const q = indexedDB.deleteDatabase(n);
+    q.onsuccess = () => done();
+    q.onerror = () => fail(q.error);
+    q.onblocked = () => fail(Error('warm reset blocked: ' + n));
+  })));
   localStorage.clear();
   return names;
 }"""

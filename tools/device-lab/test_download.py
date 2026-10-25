@@ -31,6 +31,19 @@ class ParseInterrupt(unittest.TestCase):
                 parse_interrupt(bad)
 
 
+class DownloadCells(unittest.TestCase):
+    def test_firefox_is_not_silently_run_in_chromium(self):
+        import subprocess, sys
+        from pathlib import Path
+        script = Path(__file__).with_name('download.py')
+        for cell in ('eris-firefox-cpu', 'eris-firefox-webgpu', 'eris-unknown'):
+            with self.subTest(cell=cell):
+                result = subprocess.run([sys.executable, script, '--cells', cell], capture_output=True, text=True, timeout=10)
+                self.assertEqual(result.returncode, 2)
+                self.assertIn('unsupported cell(s)', result.stderr)
+                self.assertNotIn('cell_start', result.stdout)
+
+
 class Requests(unittest.TestCase):
     chunk = '/runtime/chunks/7c5c.bin'
     rows = [
