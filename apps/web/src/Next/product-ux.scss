@@ -258,6 +258,7 @@
 
 // Candidate UI revision: clean tiles, visible choices and responsive per-face actions.
 .next-product .box { background:transparent; box-shadow:none; border-radius:0; }
+.next-product .next-crop-panel.box { background:var(--bulma-scheme-main, #fff); color:var(--bulma-text, #222); }
 .next-input-row { display:flex; align-items:center; flex-wrap:wrap; gap:.6rem; }
 .next-input-row .next-field { flex:1 1 180px; min-width:0; }
 .next-input-row .MuiTextField-root { width:100%; }
@@ -277,10 +278,12 @@
 .next-face-progress { height:8px; }
 .next-face-progress-determinate { animation:none; transform-origin:left; transition:transform .2s; }
 .next-tile-status { display:flex; align-items:center; justify-content:space-between; font-size:.85rem; min-height:1.5rem; }
-.next-name-dialog { padding:0; background:#17181c; }
+.next-name-dialog { padding:0; background:#17181c; color:#fff; }
 .next-name-panel { max-width:none; width:100%; height:100%; max-height:100vh; border:0; }
+.next-product .next-name-panel.box { color:#fff; }
 .next-name-grid { gap:0; }
 .next-name-choice { border-radius:0; }
+.next-name-choice.MuiButton-root { flex-direction:column; align-items:stretch; padding:0; color:inherit; }
 
 .next-face-picker { width:min(90vw,650px); max-height:90vh; overflow:auto; background:#17181c; color:white; padding:1rem; }
 .next-face-picker-image { position:relative; }

@@ -13,6 +13,7 @@ import { MorphSlot, type MorphSettings } from './render/MorphSlot.tsx';
 import { VideoSlot } from './render/VideoSlot.tsx';
 import type { FaceMode, Input } from './render/types.ts';
 import { Shell } from './Shell.tsx';
+import { DialogCheck } from './render/DialogCheck.tsx';
 
 const query = new URLSearchParams(location.search);
 const count = Math.max(1, Number(query.get('faces') ?? 2));
@@ -118,7 +119,5 @@ function RenderCheck() {
 const root = document.getElementById('elmish-app');
 if (!root) throw new Error('No #elmish-app element');
 createRoot(root).render(
-  <StrictMode>
-    <RenderCheck />
-  </StrictMode>,
+  <StrictMode>{query.has('dialogs') ? <DialogCheck /> : <RenderCheck />}</StrictMode>,
 );

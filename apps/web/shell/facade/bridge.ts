@@ -9,7 +9,7 @@ import {
   rememberSlider as rememberSliderJs,
   sliderPosition as sliderPositionJs,
   sliderPreference as sliderPreferenceJs,
-} from '../../src/Next/last-result.mjs';
+} from '../../src/controller/preferences.ts';
 import { nextScheduled as nextScheduledJs } from '../../src/Next/scheduler.mjs';
 import { MULTIPLE_FACES_MESSAGE as multipleFacesJs } from '../../src/Next/photo/align-photo.mjs';
 import {

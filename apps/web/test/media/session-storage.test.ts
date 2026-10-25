@@ -24,6 +24,18 @@ const SOURCES: Record<string, () => { body: string; type: string }> = {
     body: readFileSync(web('src/Next/last-result.mjs'), 'utf8'),
     type: 'text/javascript',
   }),
+  '/shell/session/retention.ts': () => ({
+    body: stripTypeScriptTypes(readFileSync(web('shell/session/retention.ts'), 'utf8')),
+    type: 'text/javascript',
+  }),
+  '/src/controller/preferences.ts': () => ({
+    body: stripTypeScriptTypes(readFileSync(web('src/controller/preferences.ts'), 'utf8')),
+    type: 'text/javascript',
+  }),
+  '/src/Next/browser/originals.mjs': () => ({
+    body: readFileSync(web('src/Next/browser/originals.mjs'), 'utf8'),
+    type: 'text/javascript',
+  }),
   '/browser/originals.mjs': () => ({
     body: readFileSync(web('src/Next/browser/originals.mjs'), 'utf8'),
     type: 'text/javascript',
@@ -48,6 +60,10 @@ type Context = {
   newPage: () => Promise<Page>;
   route: (p: string, h: (r: Route) => unknown) => Promise<void>;
   close: () => Promise<void>;
+  newCDPSession: (page: Page) => Promise<{
+    send: (method: string, params?: Record<string, unknown>) => Promise<Record<string, unknown>>;
+    on: (event: string, handler: (event: Record<string, unknown>) => void) => void;
+  }>;
 };
 type Route = { request: () => { url: () => string }; fulfill: (o: object) => Promise<void> };
 type Browser = { newContext: () => Promise<Context>; close: () => Promise<void> };
@@ -172,6 +188,112 @@ const FACES = (n: number, size?: number) => `(async () => {
   }
   return { lr, faces, settings: { kind: 'linear', width: 0.2, pinch: true, frames: 16, fps: 16 } };
 })()`;
+
+test('retention split preserves slider format, real session/video writes and superseded-write behavior across reload', async (t) => {
+  const l = await launch(t);
+  if (!l) return;
+  try {
+    const page = await l.context.newPage();
+    await page.goto(`${ORIGIN}/`);
+    const saved = await page.evaluate(`(async () => {
+      const preferences = await import('${ORIGIN}/src/controller/preferences.ts');
+      preferences.rememberSlider(true,7);
+      const {lr,faces,settings}=await ${FACES(2)};
+      for(const face of faces) face.result.source={file:new Blob(['private source']),value:'private typed words'};
+      const request={ids:faces.map(f=>f.id),faces,settings,project:{version:1},video:new Blob(['video'],{type:'video/mp4'}),frames:[new Blob(['frame'],{type:'image/jpeg'})]};
+      const before=await lr.rememberSession(request,()=>false);
+      const empty=await lr.readSession();
+      const saved=await lr.rememberSession(request);
+      const store=await import('${ORIGIN}/browser/originals.mjs').then(m=>m.openOriginals());
+      const raw=await store.get('last-generated-session-v2');store.close();
+      return {before,empty,saved,key:raw.kind,sourceAbsent:raw.faces.every(f=>!('source' in f.result)), slider:localStorage.getItem('facemorph-slider-v1')};
+    })()`);
+    assert.deepEqual(saved, {
+      before: false,
+      empty: null,
+      saved: true,
+      key: 'last-generated-session-v2',
+      sourceAbsent: true,
+      slider: '{"enabled":true,"frame":7}',
+    });
+    await page.reload();
+    const restored = await page.evaluate(`(async () => {
+      const preferences=await import('${ORIGIN}/src/controller/preferences.ts');
+      const lr=await import('${ORIGIN}/last-result.mjs');const back=await lr.readSession();
+      const preference={enabled:preferences.sliderPreference(),frame:preferences.sliderPosition()};
+      preferences.rememberSlider(false,5000);
+      return {preference,clamped:preferences.sliderPosition(),off:preferences.sliderPreference(),ids:back.ids,faces:back.faces.length,video:await back.video.text(),frames:await Promise.all(back.frames.map(f=>f.text()))};
+    })()`);
+    assert.deepEqual(restored, {
+      preference: { enabled: true, frame: 7 },
+      clamped: 4096,
+      off: false,
+      ids: ['face-0', 'face-1'],
+      faces: 2,
+      video: 'video',
+      frames: ['frame'],
+    });
+  } finally {
+    await l.browser.close();
+  }
+});
+
+test('a real IndexedDB quota failure retries the session without video and keeps faces', async (t) => {
+  const l = await launch(t);
+  if (!l) return;
+  try {
+    const page = await l.context.newPage();
+    await page.goto(`${ORIGIN}/`);
+    const cdp = await l.context.newCDPSession(page);
+    await cdp.send('Storage.overrideQuotaForOrigin', {
+      origin: ORIGIN,
+      quotaSize: 64 * 1024 * 1024,
+    });
+    await cdp.send('Debugger.enable');
+    await cdp.send('Runtime.enable');
+    const messages: string[] = [];
+    cdp.on('Runtime.consoleAPICalled', (event) => messages.push(JSON.stringify(event)));
+    const lineNumber = readFileSync(web('shell/session/retention.ts'), 'utf8')
+      .split('\n')
+      .findIndex((line) => line.includes('await store.put(SESSION, record)'));
+    assert.ok(lineNumber > 0);
+    const breakpoint = await cdp.send('Debugger.setBreakpointByUrl', {
+      url: `${ORIGIN}/shell/session/retention.ts`,
+      lineNumber,
+    });
+    // DevTools pauses the actual code after its real headroom check. Reduce Chrome's actual origin quota
+    // before its IndexedDB transaction; no function, storage API or browser response is replaced.
+    const paused = new Promise<void>((resolve, reject) =>
+      cdp.on('Debugger.paused', () => {
+        void (async () => {
+          await cdp.send('Debugger.removeBreakpoint', { breakpointId: breakpoint['breakpointId'] });
+          await cdp.send('Storage.overrideQuotaForOrigin', {
+            origin: ORIGIN,
+            quotaSize: 16 * 1024 * 1024,
+          });
+          await cdp.send('Debugger.resume');
+          resolve();
+        })().catch(reject);
+      }),
+    );
+    const write = page.evaluate(`(async()=>{
+      const {lr,faces,settings}=await ${FACES(2)};
+      const saved=await lr.rememberSession({ids:faces.map(f=>f.id),faces,settings,project:{},video:new Blob([new Uint8Array(24*1024*1024)],{type:'video/mp4'})});
+      const restored=await lr.readSession();return {saved,faces:restored?.faces.length ?? null,video:restored?.video ?? null};
+    })()`);
+    const [, result] = await Promise.all([paused, write]);
+    assert.deepEqual(result, { saved: true, faces: 2, video: null }, messages.join('\n'));
+    assert.ok(
+      messages.some(
+        (line) =>
+          line.includes('Last session write retried without video:') &&
+          line.includes('QuotaExceededError'),
+      ),
+    );
+  } finally {
+    await l.browser.close();
+  }
+});
 
 test('session-restore.150-faces and .indexeddb-record-has-no-strings; session-save.over-byte-bound-refused', async (t) => {
   const l = await launch(t);

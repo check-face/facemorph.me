@@ -21,7 +21,15 @@ import { tmpdir } from 'node:os';
 import { extname, join } from 'node:path';
 import base, { after, afterEach, before, beforeEach } from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { chromium, type Browser, type BrowserContext, type Page, type Worker } from 'playwright';
+import {
+  chromium,
+  type Browser,
+  type BrowserContext,
+  type Page,
+  type Worker,
+  type Route,
+} from 'playwright';
+import { press } from '../support/operate.ts';
 import { build } from 'vite';
 import { controlRows, fixture, verifyControl } from '../controller/control.ts';
 import { replayFirstVisit, replayRows, type Replayers } from '../controller/replay.ts';
@@ -724,3 +732,124 @@ test(
     }
   },
 );
+
+// A real control-written IndexedDB session is read on the same origin by the typed retention and bridge.
+test('control-written retention restores through the port on the same origin', async () => {
+  execFileSync(process.execPath, [join(repo, 'scripts/import/build-next.mjs'), '--check'], {
+    stdio: 'pipe',
+  });
+  const control = async (route: Route) => {
+    const path = new URL(route.request().url()).pathname;
+    const file = join(repo, 'deploy-next', path === '/' ? 'index.html' : path);
+    if (path.startsWith('/runtime/') || !existsSync(file) || !statSync(file).isFile())
+      return route.fallback();
+    return route.fulfill({
+      status: 200,
+      body: readFileSync(file),
+      headers: {
+        'content-type': TYPES[extname(file)] ?? 'application/octet-stream',
+        'cross-origin-opener-policy': 'same-origin',
+        'cross-origin-embedder-policy': 'require-corp',
+      },
+    });
+  };
+  await context.route(`${ORIGIN}/**`, control);
+  try {
+    await page.goto(`${ORIGIN}/?testing`);
+    await page.locator('section.next-face').first().waitFor();
+    // Answer the nonblocking questions before operating controls under them.
+    for (const control of [
+      page.locator('.next-model-toast').getByRole('button', { name: 'Not now', exact: true }),
+      page.locator('.next-invite').getByRole('button', { name: 'Not now', exact: true }),
+    ]) {
+      if (
+        await control.waitFor({ timeout: 10000 }).then(
+          () => true,
+          () => false,
+        )
+      )
+        assert.ok((await press(page, control)).inside);
+    }
+    assert.ok(
+      (await press(page, page.getByRole('button', { name: 'More options', exact: true }))).inside,
+    );
+    assert.ok(
+      (await press(page, page.locator('summary').filter({ hasText: /^Advanced$/ }))).inside,
+    );
+    await page.getByLabel('Processing mode').selectOption('cpu');
+    const face = page.locator('section.next-face').first();
+    const field = face.locator('.next-field input');
+    assert.ok((await press(page, field)).inside);
+    await page.keyboard.press('ControlOrMeta+A');
+    await page.keyboard.type('control retention compatibility', { delay: 10 });
+    assert.ok((await press(page, face.locator('.next-face-generate'))).inside);
+    const gate = page.locator('.next-download-accept');
+    if (
+      await gate.waitFor({ timeout: 10000 }).then(
+        () => true,
+        () => false,
+      )
+    )
+      assert.ok((await press(page, gate)).inside);
+    await page.waitForFunction(
+      () =>
+        document.querySelector('section.next-face')?.getAttribute('data-next-state') === 'filled' &&
+        document.querySelector('.next-product')?.getAttribute('data-next-busy') === 'false',
+      null,
+      { timeout: 300000 },
+    );
+    assert.match((await page.locator('.next-route-caption').textContent()) ?? '', /CPU/);
+    await page.waitForFunction(
+      async () => {
+        const db = await new Promise<IDBDatabase>((resolve, reject) => {
+          const q = indexedDB.open('checkface-originals-v1');
+          q.onsuccess = () => resolve(q.result);
+          q.onerror = () => reject(q.error);
+        });
+        try {
+          return await new Promise<boolean>((resolve, reject) => {
+            const q = db
+              .transaction('originals')
+              .objectStore('originals')
+              .get('last-generated-session-v2');
+            q.onsuccess = () => resolve(q.result?.faces?.length > 0);
+            q.onerror = () => reject(q.error);
+          });
+        } finally {
+          db.close();
+        }
+      },
+      null,
+      { timeout: 30000 },
+    );
+    await page.screenshot({ path: join(results, 'control-written-session.png') });
+    await context.storageState({
+      path: join(results, 'control-written-session-storage.json'),
+      indexedDB: true,
+    });
+  } finally {
+    await context.unroute(`${ORIGIN}/**`, control);
+  }
+  await page.goto(`${ORIGIN}/`);
+  await page.waitForFunction('window.harnessReady');
+  const restored = await call<Out>('restore');
+  assert.equal(restored.restored, true);
+  assert.equal(restored.faces.length, 1);
+  assert.equal(restored.faces[0]?.id, 'face-1');
+  assert.equal(restored.errorMessage, '');
+  const facts = await call<{
+    checks: {
+      id: string;
+      modelMatches: boolean;
+      noiseMatches: boolean;
+      generation: string;
+      expected: string;
+    }[];
+    storage: { rawFaces: number };
+  }>('retentionFacts');
+  assert.equal(facts.storage.rawFaces, 1);
+  assert.ok(
+    facts.checks.every((f) => f.modelMatches && f.noiseMatches && f.generation === f.expected),
+  );
+  log(`control-written session restored by port: ${JSON.stringify(facts)}`);
+});

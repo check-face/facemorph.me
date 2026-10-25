@@ -1654,10 +1654,10 @@
       "bytes": 7269,
       "class": "src-next",
       "ported": {
-        "sha256": "8b71a89724e6c741ff8776e8544aba580b1c0db25ce3faec16d7a4eb80191a46",
-        "bytes": 7651,
-        "bead": "fm-udut",
-        "reason": "session restore bounded by bytes, not a face count (the >64 face and id checks removed, operator 24 October); frames follow MORPH_FRAME_BUDGET (classic 4,096); an over-bound save reports one plain message through an optional callback"
+        "sha256": "a19bf3419bba62aa7f26ac2c9ff6032794eca048b31854a8e8a153faff4b91e4",
+        "bytes": 276,
+        "bead": "fm-7ahg",
+        "reason": "Typed retention implementation moved to shell/session/retention.ts with stable bridge exports and unchanged storage formats; UI slider preferences moved to controller/preferences.ts. Preserves fm-udut byte budget and 4096-frame bound."
       }
     },
     {
@@ -1665,7 +1665,13 @@
       "destination": "apps/web/src/Next/last-result.test.mjs",
       "sha256": "c4b2af5fd0e68e812da9ef64bf11435037f46740200a426d8110ff1ef766c093",
       "bytes": 5657,
-      "class": "src-next"
+      "class": "src-next",
+      "ported": {
+        "sha256": "73d29286c5cb47c09291e90134e1d6a14ac2fef374a08f7d28eaf7745c0c5664",
+        "bytes": 4267,
+        "bead": "fm-7ahg",
+        "reason": "Retains integrity/format/budget decisions; actual browser IndexedDB/localStorage/quota/reload and control-written restore replace former fake storage tests (test/media/session-storage.test.ts and test/e2e/facade.e2e.ts)."
+      }
     },
     {
       "source": "src/Next/logging.test.mjs",
@@ -1802,7 +1808,13 @@
       "destination": "apps/web/src/Next/product-ux.scss",
       "sha256": "8384ffbabb2362574703cc7a2cd0ebec0ba35fc640ac481e16bd348f79cbc899",
       "bytes": 23028,
-      "class": "src-next"
+      "class": "src-next",
+      "ported": {
+        "sha256": "a23d9ad4ecf5a29677e4de824dbd5b75c01329777e5c93f791a01fe0710d18f9",
+        "bytes": 23311,
+        "bead": "fm-7ahg",
+        "reason": "Preserve intended placement; opaque crop panel in light mode and readable names labels with MUI button layout, owner-graded rendering repairs."
+      }
     },
     {
       "source": "src/Next/project-v1.fixture.json",
