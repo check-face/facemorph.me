@@ -192,9 +192,8 @@ test.after(async () => {
 
 /** A fresh context and page on the app origin, with the interception helper attached. */
 async function session(name: string, persistent = true) {
-  const context = await (persistent ? newContext! : (options) => browser!.newContext(options))({
-    ignoreHTTPSErrors: true,
-  });
+  const options = { ignoreHTTPSErrors: true };
+  const context = persistent ? await newContext!(options) : await browser!.newContext(options);
   await context.tracing.start({ screenshots: true, snapshots: true });
   const att = helper.attachPlaywright(context, hostMap);
   const page = await context.newPage();
