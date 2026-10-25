@@ -4,6 +4,14 @@ import type { OperationFailure, OperationRequest } from './service.ts';
 /** Product morphs are closed: every selected face owns one segment, including the return segment. */
 export function morphFrameFailure(request: OperationRequest): OperationFailure | undefined {
   if (request.kind !== 'morph') return;
+  if (request.sources.length < 2) {
+    return {
+      kind: 'morph-frames',
+      reason: 'invalid-settings',
+      recovery: 'select-faces',
+      message: 'Choose at least two faces to create a morph.',
+    };
+  }
   const frames = request.settings.frames;
   if (!Number.isSafeInteger(frames) || frames < 2 || frames % 2) {
     return {

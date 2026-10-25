@@ -196,6 +196,9 @@ function completeFace(result){return !!result?.latent&&((result.blob instanceof 
 async function readyFace(face){return face.fileReady?{...face,...await face.fileReady}:face;}
 async function register(id,result,label){
  if(!completeFace(result))throw Error('The generation engine returned an incomplete face.');
+ // Reusing a verified endpoint must preserve the identity held by its file encoder
+ // and canvas. Only an actual replacement invalidates those in-flight consumers.
+ if(faces.get(id)===result)return;
  const face={...result,label};faces.set(id,face);
  if(face.blob)replaceUrl(id,face.blob);
  else {const old=urls.get(id);if(old)URL.revokeObjectURL(old);urls.delete(id);}
@@ -223,7 +226,7 @@ async function inputs(request,revisions){
   else {result=await generateNameOrSeed(service,item);}
   if(revisionOf(item.id)!==revisions.get(item.id))throw superseded();
   jobCounts.facesDone=i+1;
-  next.set(item.id,{...result,label:item.mode==='photo'?'Photo':item.value,source:{mode:item.mode,value:item.value,file:item.file}});
+  next.set(item.id,faces.get(item.id)===result?result:{...result,label:item.mode==='photo'?'Photo':item.value,source:{mode:item.mode,value:item.value,file:item.file}});
  }
  const provenance=next.get(request.inputs[0].id).provenance;
  if(typeof rememberLast==='function'&&next.size){const lastId=[...next.keys()].at(-1),last=next.get(lastId),revision=revisions.get(lastId);void readyFace(last).then(complete=>{if(revisionOf(lastId)===revision)return rememberLast(complete,request);}).catch(()=>{});}

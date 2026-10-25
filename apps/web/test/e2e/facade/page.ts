@@ -2,7 +2,11 @@
 // ort-worker, bundled by Vite. Every step returns the facade's typed records; nothing here replaces bridge behaviour.
 import * as f from '../../../shell/facade/bridge.ts';
 import { createOperationService } from '../../../src/operations/bridge-service.ts';
-import type { OperationEvent, SourceSnapshot } from '../../../src/operations/service.ts';
+import type {
+  OperationEvent,
+  OperationHandle,
+  SourceSnapshot,
+} from '../../../src/operations/service.ts';
 import type { InputRevision } from '../../../src/contracts/inputs.ts';
 import { readSession } from '../../../src/Next/last-result.mjs';
 import { generationIdentity } from '../../../src/Next/browser/identity.mjs';
@@ -56,6 +60,20 @@ const settled = () => ({
   invalid: [...invalid],
 });
 
+async function serviceRoute() {
+  const bytes = await (await fetch('/runtime/manifest.json')).arrayBuffer();
+  const manifest = JSON.parse(new TextDecoder().decode(bytes)) as { modelSourceSha256: string };
+  const hash = [...new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))]
+    .map((v) => v.toString(16).padStart(2, '0'))
+    .join('');
+  return {
+    requested: 'cpu',
+    fallbackScope: 'none',
+    runtimeSha256: hash,
+    modelSha256: manifest.modelSourceSha256,
+  } as const;
+}
+
 const harness = {
   controllerJourney,
   controllerTarget,
@@ -66,6 +84,96 @@ const harness = {
   controllerFoundationJourney,
   controllerPhotoJourney,
   controllerRecoveryJourney,
+  async serviceParentJourney(cancelParent: boolean) {
+    const service = createOperationService();
+    const route = await serviceRoute();
+    const settings = { kind: 'linear', width: 1, pinch: false, frames: 8, fps: 16 } as const;
+    const source = (slot: string, value: string): SourceSnapshot => ({
+      slot,
+      revision: 1 as InputRevision,
+      input: input(slot, 'seed', value),
+    });
+    const prefix = cancelParent ? 'cancel-parent' : 'parent';
+    const a = source(`${prefix}-a`, cancelParent ? '843301' : '833301'),
+      b = source(`${prefix}-b`, cancelParent ? '843302' : '833302');
+    const trace: { type: string; id: string; stage?: string; job?: number }[] = [];
+    let parent: OperationHandle | undefined;
+    let shared: OperationHandle | undefined;
+    let other: OperationHandle | undefined;
+    service.subscribe((event) => {
+      trace.push({
+        type: event.type,
+        id: event.intent.requestId,
+        ...(event.type === 'progress'
+          ? { stage: event.progress.stage, job: event.progress.jobId }
+          : {}),
+      });
+      if (event.intent.requestId !== parent?.requestId || event.type !== 'progress') return;
+      if (event.progress.stage === 'face' && !shared) {
+        shared = service.requestFace({ kind: 'face', source: a, settings, route });
+        other = service.requestFace({
+          kind: 'face',
+          source: source(`${prefix}-c`, cancelParent ? '843303' : '833303'),
+          settings,
+          route,
+        });
+      }
+      if (cancelParent && shared && event.progress.stage === 'synthesis')
+        service.cancel({ requestId: parent.requestId });
+    });
+    try {
+      parent = service.requestMorph({ kind: 'morph', sources: [a, b], settings, route });
+      const p = await parent.done;
+      const s = shared && (await shared.done);
+      const o = other && (await other.done);
+      return {
+        statuses: [p.status, s?.status, o?.status],
+        video: p.status === 'completed' && Boolean(p.output.videoUrl),
+        ids: { parent: parent.requestId, shared: shared?.requestId, other: other?.requestId },
+        trace,
+        ...settled(),
+      };
+    } finally {
+      await service.dispose();
+    }
+  },
+  async serviceFileCancelJourney() {
+    const service = createOperationService();
+    const route = await serviceRoute();
+    const settings = { kind: 'linear', width: 1, pinch: false, frames: 8, fps: 16 } as const;
+    const request = (slot: string, value: string) => ({
+      kind: 'face' as const,
+      source: { slot, revision: 1 as InputRevision, input: input(slot, 'seed', value) },
+      settings,
+      route,
+    });
+    const trace: { type: string; id: string }[] = [];
+    let first: OperationHandle | undefined;
+    let second: OperationHandle | undefined;
+    let third: OperationHandle | undefined;
+    service.subscribe((event) => {
+      trace.push({ type: event.type, id: event.intent.requestId });
+      if (event.type === 'compute-ready' && event.intent.requestId === first?.requestId) {
+        second = service.requestFace(request('file-b', '733302'));
+        third = service.requestFace(request('file-c', '733303'));
+        queueMicrotask(() => service.cancel({ requestId: first!.requestId }));
+      }
+    });
+    try {
+      first = service.requestFace(request('file-a', '733301'));
+      const a = await first.done;
+      const b = second && (await second.done);
+      const c = third && (await third.done);
+      return {
+        statuses: [a.status, b?.status, c?.status],
+        trace,
+        first: first.requestId,
+        ...settled(),
+      };
+    } finally {
+      await service.dispose();
+    }
+  },
   async serviceJourney() {
     const service = createOperationService();
     const events: { type: OperationEvent['type']; provider: string | null; attempt: string }[] = [];
@@ -73,17 +181,7 @@ const harness = {
       events.push({ type: e.type, provider: e.provider, attempt: e.intent.attemptId }),
     );
     try {
-      const bytes = await (await fetch('/runtime/manifest.json')).arrayBuffer();
-      const manifest = JSON.parse(new TextDecoder().decode(bytes)) as { modelSourceSha256: string };
-      const hash = [...new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))]
-        .map((v) => v.toString(16).padStart(2, '0'))
-        .join('');
-      const route = {
-        requested: 'cpu',
-        fallbackScope: 'none',
-        runtimeSha256: hash,
-        modelSha256: manifest.modelSourceSha256,
-      } as const;
+      const route = await serviceRoute();
       const settings = { kind: 'linear', width: 1, pinch: false, frames: 8, fps: 16 } as const;
       const source = (slot: string, value: string): SourceSnapshot => ({
         slot,

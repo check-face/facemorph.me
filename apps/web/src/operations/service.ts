@@ -59,7 +59,13 @@ export type OperationFailure =
       readonly kind: 'morph-frames';
       readonly reason: 'over-budget' | 'invalid-settings';
       readonly message: string;
-      readonly recovery: 'shorten-morph' | 'adjust-frames';
+      readonly recovery: 'shorten-morph' | 'adjust-frames' | 'select-faces';
+    }
+  | {
+      readonly kind: 'dependency';
+      readonly slot: string;
+      readonly message: string;
+      readonly recovery: 'retry-face' | 'confirm-photo' | 'choose-supported-route' | 'edit-input';
     }
   | { readonly kind: 'operation'; readonly message: string };
 interface EventIdentity {

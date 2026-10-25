@@ -789,6 +789,86 @@ test(
   },
 );
 
+for (const cancelParent of [false, true]) {
+  test(
+    `operation-service: Morph ${cancelParent ? 'cancellation preserves' : 'joins'} its independently requested CPU face`,
+    { timeout: 600_000 },
+    async () => {
+      try {
+        const r = await call<
+          {
+            statuses: string[];
+            video: boolean;
+            ids: { parent: string; shared: string; other: string };
+            trace: { type: string; id: string; stage?: string; job?: number }[];
+          } & Settled
+        >('serviceParentJourney', cancelParent);
+        const detail = JSON.stringify(r.trace);
+        assert.deepEqual(
+          r.statuses,
+          [cancelParent ? 'cancelled' : 'completed', 'completed', 'completed'],
+          detail,
+        );
+        const parent = r.trace.filter((e) => e.id === r.ids.parent);
+        assert.equal(parent.filter((e) => e.type === 'settled').length, 1, detail);
+        assert.equal(
+          parent.filter((e) => e.type === 'compute-ready').length,
+          cancelParent ? 0 : 1,
+          detail,
+        );
+        const sharedJobs = new Set(
+          r.trace.filter((e) => e.id === r.ids.shared && e.job !== undefined).map((e) => e.job),
+        );
+        assert.equal(sharedJobs.size, 1, `shared face executed more than once: ${detail}`);
+        if (!cancelParent) {
+          assert.ok(r.video, 'Morph produced no video');
+          const frame = r.trace.findIndex((e) => e.id === r.ids.parent && e.stage === 'morph');
+          const other = r.trace.findIndex((e) => e.id === r.ids.other && e.type === 'admitted');
+          assert.ok(other >= 0 && frame > other, `waiting parent held the compute lane: ${detail}`);
+        }
+        assert.ok([...counts.keys()].some((path) => path.startsWith('/runtime/chunks/')));
+        free(r, 'service-parent');
+      } catch (error) {
+        await keep('service-parent');
+        throw error;
+      }
+    },
+  );
+}
+
+test(
+  'operation-service: file cancellation leaves the next CPU jobs running',
+  { timeout: 600_000 },
+  async () => {
+    try {
+      const r = await call<
+        {
+          statuses: string[];
+          first: string;
+          trace: { type: string; id: string }[];
+        } & Settled
+      >('serviceFileCancelJourney');
+      const detail = JSON.stringify(r.trace);
+      assert.deepEqual(r.statuses, ['cancelled', 'completed', 'completed'], detail);
+      const first = r.trace.filter((e) => e.id === r.first);
+      assert.equal(first.filter((e) => e.type === 'settled').length, 1, detail);
+      assert.ok(
+        first.some((e) => e.type === 'compute-ready'),
+        detail,
+      );
+      assert.equal(
+        first.some((e) => e.type === 'file-ready'),
+        false,
+        detail,
+      );
+      free(r, 'service-file-cancel');
+    } catch (error) {
+      await keep('service-file-cancel');
+      throw error;
+    }
+  },
+);
+
 // A real control-written IndexedDB session is read on the same origin by the typed retention and bridge.
 test(
   'control-written retention restores through the port on the same origin',
