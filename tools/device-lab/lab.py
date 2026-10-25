@@ -708,7 +708,7 @@ def _terminate(signum, frame):
 
 
 @contextmanager
-def lab_lock(cells):
+def lab_lock(cells, *, state_dir=None):
     """Per-device lab locks: the phone is one physical device, so phone runs serialize against phone
     runs; eris browser cells serialize only against other eris runs (operator, 25 October 2026: a CI
     eris cell or a second pane never waits behind an unrelated device's session). Locks are taken in
@@ -722,11 +722,13 @@ def lab_lock(cells):
     if unknown:
         raise SystemExit(f"unknown cell(s) {', '.join(unknown)}; cells are {', '.join(CELLS)}")
     devices = sorted({socket.gethostname().split('.')[0] if CELLS[c][0] == 'desktop' else PHONE_LEASE for c in cells})
-    STATE.parent.mkdir(parents=True, exist_ok=True)
+    # Tests exercise real flock files in a temporary directory, never the live device leases.
+    lock_dir = Path(state_dir) if state_dir is not None else STATE.parent
+    lock_dir.mkdir(parents=True, exist_ok=True)
     held = []
     try:
         for device in devices:
-            lock = open(STATE.parent / f'lab-{device}.lock', 'w')
+            lock = open(lock_dir / f'lab-{device}.lock', 'w')
             held.append(lock)
             deadline = time.time() + wait_s
             while True:
