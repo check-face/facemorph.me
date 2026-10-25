@@ -311,12 +311,8 @@ export async function controllerFoundationJourney(
     } else {
       if (row === 'words.generate-cpu') record('01-arrived');
       store.dispatch(msg('Edit', 'face-2', row === 'names.exact-text' ? 'hello' : 'parity sample'));
-      if (row === 'names.exact-text')
-        await until(store, () =>
-          store
-            .getState()
-            .Previews.some((preview) => preview.id === 'face-2' && preview.value === 'hello'),
-        );
+      // fm-25um: Edit keeps the literal value and issues no preview request.
+      // The recorded comparison checks the declared preview delta explicitly.
       record(row === 'names.exact-text' ? '01-typed' : '02-typed');
       await generate(row === 'names.exact-text' ? '02-generated' : '03-generated');
     }

@@ -240,6 +240,11 @@ const harness = {
     return { checks, storage };
   },
   downloads: () => downloads.slice(-1)[0] ?? null,
+  reportStatus: () => ({
+    staged: f.stagedReportCount(),
+    reference: f.reportReference(),
+    answered: f.consentAnswered(),
+  }),
   async reports() {
     f.setDebug(true, 'checkbox');
     await f.execute(request('face', 'r', [input('r', 'seed', '7')]));

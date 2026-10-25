@@ -25,6 +25,12 @@ test('recorded seed edit replays exactly on desktop and phone', () => {
     );
   }
 });
+test('switching to seed keeps literal text, including a date; it never strips digits into another seed', () => {
+  const prior = { ...state, Inputs: [{ ...state.Inputs[0]!, value: '2026-10-24' }] };
+  const next = inputs(msg('Mode', 'face-1', 'seed'), prior)!;
+  assert.equal(next.state.Inputs[0]!.value, '2026-10-24');
+  assert.deepEqual(reduce(msg('RunFace', 'face-1'), next.state)!.effects, []);
+});
 test('remove of the last face is a no-op; queued removal drops only its job and preserves effect order', () => {
   const last = { ...state, Inputs: state.Inputs.slice(0, 1) };
   assert.equal(inputs(msg('Remove', 'face-1'), last)!.state, last);

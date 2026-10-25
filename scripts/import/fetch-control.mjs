@@ -12,7 +12,10 @@ import { fileURLToPath } from 'node:url';
 import { line, options, sha256 } from '../inventory/lib.mjs';
 import { readControl, storeFindings, unzip } from './control.mjs';
 
-// Returns {dir, record, findings}; throws when the control cannot be trusted, so callers stop at once.
+/**
+ * Returns {dir, record, findings}; throws when the control cannot be trusted, so callers stop at once.
+ * @param {{ dest?: string, store?: string, record?: ReturnType<typeof readControl>, log?: (value: unknown) => void }} [options]
+ */
 export async function fetchControl({ dest, store, record = readControl(), log = () => {} } = {}) {
   const findings = [];
   let dir = store && resolve(store);

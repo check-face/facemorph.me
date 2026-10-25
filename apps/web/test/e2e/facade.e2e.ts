@@ -33,6 +33,7 @@ import { press } from '../support/operate.ts';
 import { build } from 'vite';
 import { controlRows, fixture, verifyControl } from '../controller/control.ts';
 import { replayFirstVisit, replayRows, type Replayers } from '../controller/replay.ts';
+import { fetchControl } from '../../../../scripts/import/fetch-control.mjs';
 
 const app = fileURLToPath(new URL('../../', import.meta.url));
 const repo = fileURLToPath(new URL('../../../../', import.meta.url));
@@ -356,11 +357,26 @@ test(
   { timeout: 300_000 },
   async () => {
     const r = await call<{ staged: number; reference: string; answered: boolean }>('reports');
+    // execute settles compute before the telemetry POST settles. Observe its real
+    // delivery state rather than requiring a reference in that same microtask.
+    await page.waitForFunction(
+      () => {
+        const harness = (
+          window as unknown as {
+            harness: { reportStatus(): { reference: string } };
+          }
+        ).harness;
+        return harness.reportStatus().reference !== '';
+      },
+      null,
+      { timeout: 10000 },
+    );
+    const delivered = await call<typeof r>('reportStatus');
     log(
       `reports: ${JSON.stringify(r)} external=${[...counts.keys()].filter((k) => k.startsWith('external:')).join(',')}`,
     );
     assert.equal(r.answered, true);
-    assert.ok(r.staged > 0 || r.reference !== '', 'nothing staged or referenced');
+    assert.ok(delivered.staged > 0 || delivered.reference !== '', 'nothing staged or referenced');
     assert.deepEqual(pageErrors, [], 'uncaught page errors');
     pageErrors = [];
   },
@@ -513,7 +529,7 @@ test(
             `${row}/${device}/${observation.file}.json`,
           ).model;
           for (const [key, value] of Object.entries(observation.model)) {
-            const recorded =
+            let recorded =
               key === 'Faces'
                 ? (expected.Faces as Record<string, unknown>[]).map(
                     ({ id, raw, label, sourceMode, sourceFile }) => ({
@@ -527,6 +543,47 @@ test(
                 : key === 'VideoUrl'
                   ? Boolean(expected.VideoUrl)
                   : expected[key];
+            if (
+              row === 'seed.generate' &&
+              observation.file === '01-seed-mode' &&
+              key === 'Inputs'
+            ) {
+              // fm-25um explicitly retires digit stripping. Only this declared
+              // transition differs; every other recorded field/step stays exact.
+              const inputs = recorded as { id: string; mode: string; value: string }[];
+              const seed = inputs.find((input) => input.id === 'face-2');
+              assert.equal(seed?.mode, 'seed');
+              assert.equal(seed.value, '20261024');
+              recorded = inputs.map((input) =>
+                input === seed ? { ...input, value: '2026-10-24' } : input,
+              );
+            }
+            if (
+              key === 'Previews' &&
+              ((row === 'seed.generate' && observation.file === '03-generated-0') ||
+                (row === 'names.exact-text' &&
+                  ['01-typed', '02-generated'].includes(observation.file)))
+            ) {
+              // fm-25um removes per-keystroke preview requests. Name just the
+              // three old records affected; retain every other preview check.
+              const previews = recorded as {
+                id: string;
+                mode: string;
+                value: string;
+                url: string;
+              }[];
+              const old = previews.find((preview) => preview.id === 'face-2');
+              assert.deepEqual(old, {
+                id: 'face-2',
+                mode: row === 'seed.generate' ? 'seed' : 'text',
+                value: row === 'seed.generate' ? '0' : 'hello',
+                url:
+                  row === 'seed.generate'
+                    ? 'https://facemorph-seed-gallery.cdilga.workers.dev/outputImages/s0/0/s0_1024.webp'
+                    : '/preview/hello-1024.webp',
+              });
+              recorded = previews.filter((preview) => preview !== old);
+            }
             assert.deepEqual(value, recorded, `${row}/${device}/${observation.file}: ${key}`);
           }
         }
@@ -574,7 +631,6 @@ test(
         'invalidateFace',
         'invalidateMorph',
         'invalidatePhotoSelections',
-        'rememberSourcePhoto',
         'focusCropArea',
         'cancelPhotoRun',
         'revokeUrl',
@@ -734,122 +790,130 @@ test(
 );
 
 // A real control-written IndexedDB session is read on the same origin by the typed retention and bridge.
-test('control-written retention restores through the port on the same origin', async () => {
-  execFileSync(process.execPath, [join(repo, 'scripts/import/build-next.mjs'), '--check'], {
-    stdio: 'pipe',
-  });
-  const control = async (route: Route) => {
-    const path = new URL(route.request().url()).pathname;
-    const file = join(repo, 'deploy-next', path === '/' ? 'index.html' : path);
-    if (path.startsWith('/runtime/') || !existsSync(file) || !statSync(file).isFile())
-      return route.fallback();
-    return route.fulfill({
-      status: 200,
-      body: readFileSync(file),
-      headers: {
-        'content-type': TYPES[extname(file)] ?? 'application/octet-stream',
-        'cross-origin-opener-policy': 'same-origin',
-        'cross-origin-embedder-policy': 'require-corp',
-      },
-    });
-  };
-  await context.route(`${ORIGIN}/**`, control);
-  try {
-    await page.goto(`${ORIGIN}/?testing`);
-    await page.locator('section.next-face').first().waitFor();
-    // Answer the nonblocking questions before operating controls under them.
-    for (const control of [
-      page.locator('.next-model-toast').getByRole('button', { name: 'Not now', exact: true }),
-      page.locator('.next-invite').getByRole('button', { name: 'Not now', exact: true }),
-    ]) {
+test(
+  'control-written retention restores through the port on the same origin',
+  { timeout: 600000 },
+  async (t) => {
+    const scratch = mkdtempSync(join(tmpdir(), 'facade-retention-control-'));
+    t.after(() => rmSync(scratch, { recursive: true, force: true }));
+    const cached = join(repo, '.cache/control/tree');
+    const { dir: controlDir } = await fetchControl(
+      existsSync(cached) ? { store: cached } : { dest: scratch },
+    );
+    const control = async (route: Route) => {
+      const path = new URL(route.request().url()).pathname;
+      const file = join(controlDir, 'deploy-next', path === '/' ? 'index.html' : path);
+      if (path.startsWith('/runtime/') || !existsSync(file) || !statSync(file).isFile())
+        return route.fallback();
+      return route.fulfill({
+        status: 200,
+        body: readFileSync(file),
+        headers: {
+          'content-type': TYPES[extname(file)] ?? 'application/octet-stream',
+          'cross-origin-opener-policy': 'same-origin',
+          'cross-origin-embedder-policy': 'require-corp',
+        },
+      });
+    };
+    await context.route(`${ORIGIN}/**`, control);
+    try {
+      await page.goto(`${ORIGIN}/?testing`);
+      await page.locator('section.next-face').first().waitFor();
+      // Answer the nonblocking questions before operating controls under them.
+      for (const control of [
+        page.locator('.next-model-toast').getByRole('button', { name: 'Not now', exact: true }),
+        page.locator('.next-invite').getByRole('button', { name: 'Not now', exact: true }),
+      ]) {
+        if (
+          await control.waitFor({ timeout: 10000 }).then(
+            () => true,
+            () => false,
+          )
+        )
+          assert.ok((await press(page, control)).inside);
+      }
+      assert.ok(
+        (await press(page, page.getByRole('button', { name: 'More options', exact: true }))).inside,
+      );
+      assert.ok(
+        (await press(page, page.locator('summary').filter({ hasText: /^Advanced$/ }))).inside,
+      );
+      await page.getByLabel('Processing mode').selectOption('cpu');
+      const face = page.locator('section.next-face').first();
+      const field = face.locator('.next-field input');
+      assert.ok((await press(page, field)).inside);
+      await page.keyboard.press('ControlOrMeta+A');
+      await page.keyboard.type('control retention compatibility', { delay: 10 });
+      assert.ok((await press(page, face.locator('.next-face-generate'))).inside);
+      const gate = page.locator('.next-download-accept');
       if (
-        await control.waitFor({ timeout: 10000 }).then(
+        await gate.waitFor({ timeout: 10000 }).then(
           () => true,
           () => false,
         )
       )
-        assert.ok((await press(page, control)).inside);
-    }
-    assert.ok(
-      (await press(page, page.getByRole('button', { name: 'More options', exact: true }))).inside,
-    );
-    assert.ok(
-      (await press(page, page.locator('summary').filter({ hasText: /^Advanced$/ }))).inside,
-    );
-    await page.getByLabel('Processing mode').selectOption('cpu');
-    const face = page.locator('section.next-face').first();
-    const field = face.locator('.next-field input');
-    assert.ok((await press(page, field)).inside);
-    await page.keyboard.press('ControlOrMeta+A');
-    await page.keyboard.type('control retention compatibility', { delay: 10 });
-    assert.ok((await press(page, face.locator('.next-face-generate'))).inside);
-    const gate = page.locator('.next-download-accept');
-    if (
-      await gate.waitFor({ timeout: 10000 }).then(
-        () => true,
-        () => false,
-      )
-    )
-      assert.ok((await press(page, gate)).inside);
-    await page.waitForFunction(
-      () =>
-        document.querySelector('section.next-face')?.getAttribute('data-next-state') === 'filled' &&
-        document.querySelector('.next-product')?.getAttribute('data-next-busy') === 'false',
-      null,
-      { timeout: 300000 },
-    );
-    assert.match((await page.locator('.next-route-caption').textContent()) ?? '', /CPU/);
-    await page.waitForFunction(
-      async () => {
-        const db = await new Promise<IDBDatabase>((resolve, reject) => {
-          const q = indexedDB.open('checkface-originals-v1');
-          q.onsuccess = () => resolve(q.result);
-          q.onerror = () => reject(q.error);
-        });
-        try {
-          return await new Promise<boolean>((resolve, reject) => {
-            const q = db
-              .transaction('originals')
-              .objectStore('originals')
-              .get('last-generated-session-v2');
-            q.onsuccess = () => resolve(q.result?.faces?.length > 0);
+        assert.ok((await press(page, gate)).inside);
+      await page.waitForFunction(
+        () =>
+          document.querySelector('section.next-face')?.getAttribute('data-next-state') ===
+            'filled' &&
+          document.querySelector('.next-product')?.getAttribute('data-next-busy') === 'false',
+        null,
+        { timeout: 300000 },
+      );
+      assert.match((await page.locator('.next-route-caption').textContent()) ?? '', /CPU/);
+      await page.waitForFunction(
+        async () => {
+          const db = await new Promise<IDBDatabase>((resolve, reject) => {
+            const q = indexedDB.open('checkface-originals-v1');
+            q.onsuccess = () => resolve(q.result);
             q.onerror = () => reject(q.error);
           });
-        } finally {
-          db.close();
-        }
-      },
-      null,
-      { timeout: 30000 },
+          try {
+            return await new Promise<boolean>((resolve, reject) => {
+              const q = db
+                .transaction('originals')
+                .objectStore('originals')
+                .get('last-generated-session-v2');
+              q.onsuccess = () => resolve(q.result?.faces?.length > 0);
+              q.onerror = () => reject(q.error);
+            });
+          } finally {
+            db.close();
+          }
+        },
+        null,
+        { timeout: 30000 },
+      );
+      await page.screenshot({ path: join(results, 'control-written-session.png') });
+      await context.storageState({
+        path: join(results, 'control-written-session-storage.json'),
+        indexedDB: true,
+      });
+    } finally {
+      await context.unroute(`${ORIGIN}/**`, control);
+    }
+    await page.goto(`${ORIGIN}/`);
+    await page.waitForFunction('window.harnessReady');
+    const restored = await call<Out>('restore');
+    assert.equal(restored.restored, true);
+    assert.equal(restored.faces.length, 1);
+    assert.equal(restored.faces[0]?.id, 'face-1');
+    assert.equal(restored.errorMessage, '');
+    const facts = await call<{
+      checks: {
+        id: string;
+        modelMatches: boolean;
+        noiseMatches: boolean;
+        generation: string;
+        expected: string;
+      }[];
+      storage: { rawFaces: number };
+    }>('retentionFacts');
+    assert.equal(facts.storage.rawFaces, 1);
+    assert.ok(
+      facts.checks.every((f) => f.modelMatches && f.noiseMatches && f.generation === f.expected),
     );
-    await page.screenshot({ path: join(results, 'control-written-session.png') });
-    await context.storageState({
-      path: join(results, 'control-written-session-storage.json'),
-      indexedDB: true,
-    });
-  } finally {
-    await context.unroute(`${ORIGIN}/**`, control);
-  }
-  await page.goto(`${ORIGIN}/`);
-  await page.waitForFunction('window.harnessReady');
-  const restored = await call<Out>('restore');
-  assert.equal(restored.restored, true);
-  assert.equal(restored.faces.length, 1);
-  assert.equal(restored.faces[0]?.id, 'face-1');
-  assert.equal(restored.errorMessage, '');
-  const facts = await call<{
-    checks: {
-      id: string;
-      modelMatches: boolean;
-      noiseMatches: boolean;
-      generation: string;
-      expected: string;
-    }[];
-    storage: { rawFaces: number };
-  }>('retentionFacts');
-  assert.equal(facts.storage.rawFaces, 1);
-  assert.ok(
-    facts.checks.every((f) => f.modelMatches && f.noiseMatches && f.generation === f.expected),
-  );
-  log(`control-written session restored by port: ${JSON.stringify(facts)}`);
-});
+    log(`control-written session restored by port: ${JSON.stringify(facts)}`);
+  },
+);
