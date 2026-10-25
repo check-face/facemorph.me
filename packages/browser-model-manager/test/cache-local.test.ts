@@ -648,6 +648,64 @@ if (engine === 'webkit')
   );
 
 test(
+  `${engine} read-only shard inventory leaves an absent namespace untouched and sees later writes`,
+  { skip: NO_BROWSER },
+  async () => {
+    const s = await session('readonly-inventory');
+    const digest = sha(new Uint8Array([1, 2, 3, 4]));
+    try {
+      await s.page.evaluate(() => import(String('/pkg/index.js')));
+      record.step(s.rec, 'local:readonly-inventory');
+      const out = await s.page.evaluate(
+        async (asset) => {
+          const m = await import(String('/pkg/index.js'));
+          const root = await navigator.storage.getDirectory();
+          const names = async (directory: FileSystemDirectoryHandle) => {
+            const result: string[] = [];
+            for await (const name of directory.keys()) result.push(name);
+            return result.sort();
+          };
+          const before = await names(root);
+          const absent = await m.openShardStore({ readOnly: true });
+          const afterAbsent = await names(root);
+          const writer = await m.openShardStore();
+          if (!writer) throw new Error('The real OPFS writer is required');
+          const bytes = new Uint8Array([1, 2, 3, 4]);
+          await writer.write(asset.sha256, bytes);
+          const directory = await root.getDirectoryHandle('checkface-model-shards-v1');
+          const written = await names(directory);
+          const reader = await m.openShardStore({ readOnly: true });
+          if (!reader) throw new Error('Read-only inventory must find the writer namespace');
+          const read = await reader.read(asset.sha256, bytes.byteLength);
+          return {
+            before,
+            absent: absent === null,
+            afterAbsent,
+            written,
+            afterRead: await names(directory),
+            read: read ? [...read] : null,
+          };
+        },
+        { sha256: digest },
+      );
+      assert.deepEqual(out.before, []);
+      assert.equal(out.absent, true, 'read-only opening cannot create a missing model namespace');
+      assert.deepEqual(out.afterAbsent, [], 'read-only inventory must not write a directory');
+      assert.deepEqual(out.written, [digest], 'writer probe is removed');
+      assert.deepEqual(out.afterRead, out.written, 'reader adds no probe or replacement files');
+      assert.deepEqual(out.read, [1, 2, 3, 4]);
+      await s.settled();
+      quiet(s.rec, 'local:readonly-inventory');
+    } catch (error) {
+      await s.capture();
+      throw error;
+    } finally {
+      await s.context.close();
+    }
+  },
+);
+
+test(
   `${engine} constructing the cache and reading status and presence issue zero requests`,
   { skip: NO_BROWSER },
   async () => {

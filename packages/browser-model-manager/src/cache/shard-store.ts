@@ -185,7 +185,7 @@ export async function openShardStore({
   try {
     const dir = await (
       await storage.getDirectory()
-    ).getDirectoryHandle(SHARD_DIRECTORY, { create: true });
+    ).getDirectoryHandle(SHARD_DIRECTORY, { create: !readOnly });
     const store = createShardStore(dir);
     // Inventory on the main thread must see worker-written shards even on Safari, where
     // only workers can obtain synchronous write handles. It never acquires or repairs bytes.
