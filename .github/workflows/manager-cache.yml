@@ -29,7 +29,7 @@ jobs:
       - name: Install the selected real browser
         run: npx playwright install ${{ matrix.engine }}
       - run: npm run build -w packages/stylegan-js -w packages/browser-model-manager
-      - name: Full package once; cache and cross-tab cases in every selected engine
+      - name: Full package once; engine-specific components in every selected browser
         uses: ./.github/actions/run-command
         env:
           FACEMORPH_ISOLATE_TEST_NETWORK: '1'
@@ -43,7 +43,7 @@ jobs:
             else
               # Other package files run Node ORT or explicitly launch Chromium, independent
               # of this matrix value. Keep those in the full suite, without repeating them.
-              node packages/browser-model-manager/test/run.mjs packages/browser-model-manager/test/cache-local.test.ts packages/browser-model-manager/test/handles-tabs.test.ts packages/browser-model-manager/test/acquisition.test.ts
+              node packages/browser-model-manager/test/run.mjs packages/browser-model-manager/test/cache-local.test.ts packages/browser-model-manager/test/handles-tabs.test.ts packages/browser-model-manager/test/acquisition.test.ts packages/browser-model-manager/test/worker-storage.test.ts
             fi
       - name: The candidate's model-cache.test.mjs through the shim, expectations unchanged
         working-directory: apps/web
