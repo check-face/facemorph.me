@@ -170,7 +170,14 @@ type Page = {
   goto(u: string): Promise<unknown>;
   evaluate<T, A>(fn: (a: A) => Promise<T> | T, arg: A): Promise<T>;
 };
-type Context = { newPage(): Promise<Page>; close(): Promise<void> };
+type Context = {
+  newPage(): Promise<Page>;
+  close(): Promise<void>;
+  on(
+    event: 'requestfailed',
+    listener: (request: { url(): string; failure(): { errorText: string } | null }) => void,
+  ): void;
+};
 type Browser = { newContext(o: object): Promise<Context>; close(): Promise<void> };
 const { chromium } = createRequire(join(REPO, 'apps/web/package.json'))('playwright') as {
   chromium: { launch(o: object): Promise<Browser> };
@@ -187,6 +194,14 @@ test.after(async () => {
 
 async function session() {
   const context = await browser!.newContext({ ignoreHTTPSErrors: true });
+  context.on('requestfailed', (request) => {
+    if (new URL(request.url()).pathname.startsWith('/pkg/'))
+      console.error(
+        'release-consistency module request failed',
+        request.url(),
+        request.failure()?.errorText,
+      );
+  });
   const att = helper.attachPlaywright(context, hostMap);
   const page = await context.newPage();
   await page.goto(`${APP}/`);

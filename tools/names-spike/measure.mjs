@@ -470,6 +470,9 @@ async function main() {
         ? browser
         : await pw.chromium.launch({ args: ['--ignore-certificate-errors'] });
     const builder = await (await builderBrowser.newContext({ ignoreHTTPSErrors: true })).newPage();
+    builder.on('requestfailed', (request) =>
+      log('builder request failed', request.url(), request.failure()?.errorText),
+    );
     await builder.goto(`${origin}/r/build/blank.html`);
     for (const alt of alternatives.filter((a) => a.startsWith('atlas-'))) {
       const k = Number(alt.split('-')[1]);
