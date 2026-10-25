@@ -1,0 +1,126 @@
+// A recording, manually settled OperationBridge for operation-service tests: every provider call is
+// pending until the test resolves it, so each cancellation boundary can be held open and observed.
+import type { InputRevision } from '../contracts/inputs.ts';
+import type { OperationBridge } from './bridge-service.ts';
+import type { OperationEvent, OperationRequest, SourceSnapshot } from './service.ts';
+import type { Output, Progress, Request } from '../../shell/facade/records.ts';
+
+export interface PendingCall<T> {
+  readonly resolve: (value: T) => void;
+  readonly reject: (error: Error) => void;
+}
+export interface Execution extends PendingCall<Output> {
+  readonly request: Request;
+}
+export interface FilePreparation extends PendingCall<Output> {
+  readonly id: string;
+}
+
+export function output(ids: readonly string[] = [], message = ''): Output {
+  return {
+    faces: ids.map((id) => ({
+      id,
+      raw: true,
+      url: `blob:${id}`,
+      label: id,
+      sourceMode: 'text',
+      sourceFile: null,
+    })),
+    videoUrl: '',
+    projectJson: '',
+    message,
+    errorMessage: '',
+    restored: false,
+    inputs: [],
+    kind: '',
+    width: 0,
+    pinch: false,
+    frames: 0,
+    fps: 0,
+    photoChoices: null,
+    cropFace: null,
+    refusal: null,
+  };
+}
+/** What the real bridge resolves with after `cancel()` aborts a job. */
+export const cancelledOutput = (): Output =>
+  output([], 'Cancelled. Your completed faces are still available.');
+
+export function fakeBridge() {
+  const listeners = new Set<(progress: Progress) => void>();
+  const calls: string[] = [];
+  const executions: Execution[] = [];
+  const files: FilePreparation[] = [];
+  const bridge: OperationBridge = {
+    subscribe(callback) {
+      listeners.add(callback);
+      return () => {
+        listeners.delete(callback);
+      };
+    },
+    queueFace: (id) => void calls.push(`queueFace:${id}`),
+    cancelQueuedFace: (id) => void calls.push(`cancelQueuedFace:${id}`),
+    cancel: () => void calls.push('cancel'),
+    cancelPhotoRun: () => void calls.push('cancelPhotoRun'),
+    importProject: () => Promise.reject(Error('importProject is not used by these tests')),
+    execute(request) {
+      calls.push(`execute:${request.action}:${request.target ?? ''}`);
+      return new Promise((resolve, reject) => executions.push({ request, resolve, reject }));
+    },
+    rememberView: () => {},
+    prepareFaceFile(id) {
+      calls.push(`prepareFaceFile:${id}`);
+      return new Promise((resolve, reject) => files.push({ id, resolve, reject }));
+    },
+    invalidateFace: (id) => void calls.push(`invalidateFace:${id}`),
+    invalidateMorph: () => void calls.push('invalidateMorph'),
+  };
+  return {
+    bridge,
+    calls,
+    executions,
+    files,
+    /** Emits a progress event the way the runtime does for the job in flight. */
+    progress(jobId: number, stage: string, text = '') {
+      for (const listener of listeners) listener({ jobId, stage, text, fraction: 0 });
+    },
+  };
+}
+
+/** Lets queued microtasks and settled promises run. */
+export const flush = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
+
+export const route = {
+  requested: 'cpu',
+  fallbackScope: 'cpu-once',
+  runtimeSha256: 'runtime',
+  modelSha256: 'model',
+} as const;
+export const settings = { kind: 'linear', width: 1, pinch: false, frames: 4, fps: 16 } as const;
+export function source(slot: string, value = slot, revision = 1): SourceSnapshot {
+  return {
+    slot,
+    revision: revision as InputRevision,
+    input: { id: slot, mode: 'text', value, file: null },
+  };
+}
+export function face(slot: string, value = slot, revision = 1) {
+  return {
+    kind: 'face',
+    source: source(slot, value, revision),
+    route,
+    settings,
+  } satisfies Extract<OperationRequest, { kind: 'face' }>;
+}
+export function morph(...slots: readonly string[]) {
+  return {
+    kind: 'morph',
+    sources: slots.map((slot) => source(slot)),
+    route,
+    settings,
+  } satisfies Extract<OperationRequest, { kind: 'morph' }>;
+}
+/** The event types one request received, in order. */
+export function eventsFor(events: readonly OperationEvent[], requestId: string): string[] {
+  return events.filter((e) => e.intent.requestId === requestId).map((e) => e.type);
+}

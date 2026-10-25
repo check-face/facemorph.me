@@ -22,6 +22,21 @@ import type { Output, Progress } from '../../shell/facade/records.ts';
 import * as facade from '../../shell/facade/bridge.ts';
 
 type Bridge = typeof import('../../shell/facade/bridge.ts');
+/** The bridge calls this boundary makes; tests supply a recording implementation. */
+export type OperationBridge = Pick<
+  Bridge,
+  | 'subscribe'
+  | 'queueFace'
+  | 'cancelQueuedFace'
+  | 'cancel'
+  | 'cancelPhotoRun'
+  | 'importProject'
+  | 'execute'
+  | 'rememberView'
+  | 'prepareFaceFile'
+  | 'invalidateFace'
+  | 'invalidateMorph'
+>;
 type EventPayload<E = OperationEvent> = E extends OperationEvent
   ? Omit<E, 'intent' | 'provider'>
   : never;
@@ -59,7 +74,9 @@ export function requestNext(jobs: readonly ScheduledJob[], state: SchedulingStat
 }
 
 let jobSequence = 0;
-export function createOperationService(): OperationService {
+export function createOperationService(
+  options: { readonly bridge?: OperationBridge } = {},
+): OperationService {
   const registry = new IntentRegistry<Output>();
   const pending = new Map<RequestId, Pending>();
   const works = new Map<number, Work>();
@@ -70,8 +87,8 @@ export function createOperationService(): OperationService {
   let active: Work | undefined;
   let disposed = false;
   let disposing: Promise<void> | undefined;
-  const bridge = facade;
-  let loading: Promise<Bridge> | undefined;
+  const bridge: OperationBridge = options.bridge ?? facade;
+  let loading: Promise<OperationBridge> | undefined;
   let unsubscribe: (() => void) | undefined;
   let order = 0;
 
@@ -128,7 +145,7 @@ export function createOperationService(): OperationService {
       emit(item, { type: 'progress', progress: p });
     }
   }
-  async function getBridge(): Promise<Bridge> {
+  async function getBridge(): Promise<OperationBridge> {
     return (loading ??= Promise.resolve(bridge).then((b) => {
       if (!disposed) {
         unsubscribe = b.subscribe(progress);
