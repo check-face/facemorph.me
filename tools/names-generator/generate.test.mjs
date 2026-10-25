@@ -233,7 +233,7 @@ test(
     try {
       await assert.rejects(
         openHarness(pw, { origin, route: 'cpu', chromium: CHROMIUM, profile, hosts: {} }),
-        /Timeout.*exceeded/,
+        /Harness entry module \/src\/Next\/.* returned HTTP 404/,
       );
       // A second real launch can use the same profile only after the failed
       // startup closed its context and released Chromium's singleton lock.

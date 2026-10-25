@@ -181,12 +181,31 @@ export async function openHarness(pw, { origin, route, chromium, profile, hosts 
   page.on('requestfailed', (request) =>
     console.error('names harness request failed:', request.url(), request.failure()?.errorText),
   );
+  const startupFailure = Promise.withResolvers();
+  const moduleResponse = (response) => {
+    const url = new URL(response.url());
+    if (url.origin === origin && url.pathname.startsWith('/src/Next/') && response.status() >= 400)
+      startupFailure.reject(
+        new Error(`Harness entry module ${url.pathname} returned HTTP ${response.status()}`),
+      );
+  };
+  page.on('response', moduleResponse);
   try {
-    await page.goto(`${origin}/names-generator.html`);
-    // An entry-module import failure never sets harnessReady. Keep the normal
-    // Playwright startup deadline; an unbounded wait hid this behind the outer
-    // 15-minute test timeout and retained the browser/server on startup errors.
-    await page.waitForFunction(() => window.harnessReady === true);
+    // A real failed static import cannot set harnessReady. Report the HTTP error
+    // immediately rather than spending another full readiness timeout after goto.
+    const deadline = Date.now() + 30_000;
+    await Promise.race([
+      startupFailure.promise,
+      (async () => {
+        await page.goto(`${origin}/names-generator.html`, {
+          timeout: Math.max(1, deadline - Date.now()),
+        });
+        await page.waitForFunction(() => window.harnessReady === true, null, {
+          timeout: Math.max(1, deadline - Date.now()),
+        });
+      })(),
+    ]);
+    page.off('response', moduleResponse);
     if (gpu) {
       const adapter = await page.evaluate(async () => {
         for (const end = performance.now() + 15000; ;) {
@@ -214,6 +233,7 @@ export async function openHarness(pw, { origin, route, chromium, profile, hosts 
     const setup = await page.evaluate((r) => window.setup(r), route);
     return { context, page, setup };
   } catch (error) {
+    page.off('response', moduleResponse);
     await context.close();
     throw error;
   }
