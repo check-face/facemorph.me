@@ -36,6 +36,39 @@ test(
     const browser = await chromium.launch({ args: ['--disable-features=WebGPU'] });
     mkdirSync(results, { recursive: true });
     try {
+      // A real recovery-bearing WebP from this runtime: a seed face generated on the CPU and saved,
+      // in its own context so its model requests stay outside the cells' recordings.
+      const saved = join(results, 'recovery-source.webp');
+      {
+        const context = await browser.newContext({ acceptDownloads: true });
+        const page = await context.newPage();
+        await page.goto(`${site.origin}/?testing`);
+        const second = page.locator('[data-next-face]').nth(1);
+        await second.waitFor();
+        await page.getByRole('button', { name: 'More options' }).click(); // setup
+        await page.getByText('Advanced', { exact: true }).click(); // setup
+        await page.getByLabel('Processing mode').selectOption('cpu');
+        await second.locator('.next-input-row .next-face-generate').click(); // setup
+        const consent = page.locator('.next-download-accept');
+        if (
+          await consent.waitFor({ timeout: 10_000 }).then(
+            () => true,
+            () => false,
+          )
+        )
+          await consent.click();
+        await page.waitForFunction(
+          () =>
+            document.querySelectorAll('[data-next-face]')[1]?.getAttribute('data-next-state') ===
+            'filled',
+          null,
+          { timeout: 180_000 },
+        );
+        const download = page.waitForEvent('download');
+        await second.getByRole('button', { name: 'Save image', exact: true }).click(); // setup
+        await (await download).saveAs(saved);
+        await context.close();
+      }
       for (const width of [1280, 390])
         for (const colorScheme of ['light', 'dark'] as const) {
           const touch = width === 390;
@@ -514,6 +547,20 @@ test(
             await dismiss('drop-on-background-empty');
             await hit(tiles.nth(1).getByRole('button', { name: /^Remove/ }));
             await tiles.nth(1).waitFor({ state: 'detached' });
+            noModels();
+
+            // A recovery-bearing WebP chosen from the card installs the saved face with no model and
+            // no crop or source dialog.
+            await choose([saved]);
+            await page.waitForFunction(
+              () =>
+                document.querySelector('[data-next-face]')?.getAttribute('data-next-state') ===
+                'project',
+            );
+            await tiles.first().locator('.next-face-img').waitFor();
+            assert.equal(await page.getByRole('dialog').count(), 0);
+            assert.equal(await tiles.count(), 1);
+            await shot('recovered-webp');
             noModels();
 
             // Source ownership at 2 of 3 and 64 of 64. By-name additions only arrange the input state.
