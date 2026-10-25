@@ -93,6 +93,14 @@
       "disposition": "compares a link's hostname with github.com and names no owner; no edit on rename"
     },
     {
+      "id": "monorepo-dialog-github-host-check",
+      "repo": "facemorph.me",
+      "paths": ["apps/web/test/e2e/dialogs.e2e.ts"],
+      "target": "^/$",
+      "class": "active-link",
+      "disposition": "generic GitHub host route/assertions name no owner; repository-specific links still use the normal owner rules"
+    },
+    {
       "id": "monorepo-active",
       "repo": "facemorph.me",
       "target": "^check-face/",

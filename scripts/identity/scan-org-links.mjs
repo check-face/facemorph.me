@@ -274,5 +274,6 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   console.log(
     JSON.stringify({ event: 'scan-done', scanned, hits: results.length, counts, byRepo }),
   );
-  process.exit(counts.unclassified ? 1 : 0);
+  // Let piped stdout drain so callers always receive the final scan summary.
+  process.exitCode = counts.unclassified ? 1 : 0;
 }
