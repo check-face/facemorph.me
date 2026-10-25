@@ -92,7 +92,7 @@ def main(argv=None):
                 ws = m.group(1)
         if ws is None:
             raise SystemExit('Chromium did not report its DevTools endpoint on the chosen port')
-        host_map = {'version': 1, 'rules': [{'host': f'127.0.0.1:{site_port}', 'class': 'app'}]}
+        host_map = intercept.bindOrigins(intercept.DEFAULT_HOST_MAP, {'app': [origin]})
         env = dict(os.environ, BU_NAME=name, BU_CDP_WS=ws, NEXT_ARTIFACT_ORIGIN=f'{origin}/',
                    INTERCEPT_DIR=str(REPO / 'scripts' / 'ci' / 'intercept'), HOST_MAP=json.dumps(host_map))
         env.pop('BU_CDP_URL', None)

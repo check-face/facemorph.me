@@ -63,6 +63,8 @@ class Vectors(unittest.TestCase):
         self.assertEqual(intercept.classify('http://127.0.0.1:8443/runtime/manifest.json', run), 'app')
         self.assertEqual(intercept.classify('https://models.preview.example/a.bin', run), 'model-host')
         self.assertEqual(intercept.classify('https://models.facemorph.me/a.bin', run), 'model-host')
+        self.assertEqual(intercept.classify('https://facemorph-seed-gallery.cdilga.workers.dev/preview/42.webp', run), 'names-host')
+        self.assertEqual(intercept.classify('https://unrelated.cdilga.workers.dev/preview/42.webp', run), 'third-party')
         self.assertEqual(intercept.classify('http://127.0.0.1:9000/x', run), 'third-party')
 
     def test_one_json_line_per_primitive(self):
