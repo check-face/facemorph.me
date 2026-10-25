@@ -1127,10 +1127,10 @@
       "class": "temporary-root",
       "temporary": true,
       "ported": {
-        "sha256": "222d4128043084f1b04c8b6f20a2a2b9ce2ed124aa2f98ab5506b2886993cdc9",
-        "bytes": 38740,
+        "sha256": "0977e0d3ff0d352e5744c17ddf817eac1610727a149c9036a94b48e519c3db66",
+        "bytes": 39050,
         "bead": "fm-aa8",
-        "reason": "Preserve typed project-codec checks; adapt provider and tile controls for WebGL/filename retirement, retain crop in its mode menu, and use the existing CDP interceptor for worker evidence under no-referrer production headers."
+        "reason": "Preserve typed project-codec checks; adapt provider and tile controls for WebGL/filename retirement, retain crop in its mode menu, and use the existing CDP interceptor for worker evidence under no-referrer production headers. Schedule initial navigation and pump events within the unchanged document-load deadline, avoiding the shorter synchronous harness IPC timeout."
       }
     },
     {

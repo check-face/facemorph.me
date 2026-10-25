@@ -180,7 +180,10 @@ def stage_preflight():
   from browser_harness.helpers import _send
   network=intercept.attach_cdp(cdp,drain_events,json.loads(os.environ['NETWORK_HOST_MAP']),page_session=_send({'meta':'session'}).get('session_id'),page_target=current_tab()['targetId'])
   intercept.step(network.rec,'journey')
- goto_url('https://next.facemorph.me/');wait_for_load()
+ # Page.navigate can outlive browser-harness's 5s synchronous IPC deadline under CI load.
+ # Schedule navigation, then keep draining target/network events within the existing 15s load bound.
+ js("setTimeout(()=>{location.href='https://next.facemorph.me/';},0);0")
+ wait(lambda:js("location.href==='https://next.facemorph.me/'&&document.readyState==='complete'"),15)
  wait(idle,60);assert js('crossOriginIsolated'), 'Production isolation headers missing'
  # The trial-phase reporting question appears on every fresh profile. "Ask me later" closes it
  # without answering, so the harness neither consents nor declines on anyone's behalf, and the
