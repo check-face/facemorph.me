@@ -130,7 +130,7 @@ export function contractOf(dom) {
   return out;
 }
 
-// fm-25um's declared arrival changes, applied to the retained layout only. The new
+// fm-25um/fm-fy2.17.1's declared arrival changes, applied to the retained layout only. The new
 // layout is compared as-is, so a missing/misplaced action or changed label still fails.
 // Frozen goldens remain untouched; all unrelated first-visit entries compare exactly.
 export function arrivalTileContract(entries) {
@@ -174,7 +174,9 @@ export function arrivalTileContract(entries) {
         e.attrs.type === 'file' &&
         e.attrs['aria-label'] === 'Choose photo'
       ) {
-        changed.push({ ...e, attrs: { ...e.attrs, 'aria-label': 'Encode image' } });
+        // The chooser now lives in the Encode source dialog. first-visit operates
+        // that actual dialog and checks its chooser before returning to the tile.
+        continue;
       } else if (
         e.tag === 'button' &&
         e.next.length === 1 &&

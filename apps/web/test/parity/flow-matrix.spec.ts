@@ -139,6 +139,7 @@ function recorder(page: Page, info: TestInfo, rowId: string) {
 // ---------------------------------------------------------------- parity rows (independent)
 
 test('first-visit', async ({ page, context }, info) => {
+  test.setTimeout(90_000); // This arrival/source-dialog check performs no inference.
   annotate(info, row('first-visit'));
   const runtime: string[] = [];
   context.on('request', (req) => {
@@ -157,6 +158,39 @@ test('first-visit', async ({ page, context }, info) => {
   await expect(tile(page, 0).locator('.next-field input')).toHaveValue('hello');
   await expect(tile(page, 1).locator('.next-field input')).toHaveValue(/^\d{4}-\d{2}-\d{2}$/);
   await expect(page.locator('.next-primary-action')).toBeEnabled();
+  if ((await tile(page, 0).locator('input[type=file]').count()) === 0) {
+    // The declared Encode source step replaces the old hidden per-tile chooser.
+    // Exercise its real entry/chooser/Cancel rather than dropping photo reachability
+    // from the arrival contract when projecting the retained DOM.
+    await dismissToasts(page, info);
+    expect(
+      (
+        await press(page, tile(page, 0).getByRole('button', { name: 'Change mode', exact: true }), {
+          touch: touch(info),
+        })
+      ).inside,
+    ).toBe(true);
+    expect(
+      (
+        await press(page, page.getByRole('menuitem', { name: 'Encode image', exact: true }), {
+          touch: touch(info),
+        })
+      ).inside,
+    ).toBe(true);
+    const source = page.getByRole('dialog', { name: 'Encode an image', exact: true });
+    await expect(source).toBeVisible();
+    await expect(source.getByRole('button', { name: 'Choose image', exact: true })).toBeVisible();
+    await expect(source.locator('input[type=file]')).toHaveAttribute('accept', 'image/*,video/mp4');
+    expect(
+      (
+        await press(page, source.getByRole('button', { name: 'CANCEL', exact: true }), {
+          touch: touch(info),
+        })
+      ).inside,
+    ).toBe(true);
+    await expect(source).toHaveCount(0);
+    await expect(tile(page, 0).locator('.next-field input')).toHaveValue('hello');
+  }
   await page.waitForTimeout(3000); // anything an arrival would fetch has had time to start
   expect(runtime, 'no model bytes are fetched on arrival').toEqual([]);
   await shot(page, info, 'first-visit');
