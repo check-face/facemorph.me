@@ -1,7 +1,9 @@
 name: device-lab
-# Four cells of the same end-to-end journeys (tools/device-lab/lab.py): eris-webgpu, eris-cpu
-# (desktop Chromium on eris, RTX 2080 SUPER) and phone-webgpu, phone-cpu (Chrome on the
-# USB-connected Huawei P30 Pro). Runs on the self-hosted runner `eris-device-lab` only.
+# Two cells of the same end-to-end journeys (tools/device-lab/lab.py): eris-webgpu, eris-cpu
+# (desktop Chromium on eris, RTX 2080 SUPER). Runs on the self-hosted runner `eris-device-lab` only.
+# The physical phone (USB P30 Pro) never runs in CI (operator, 25 October 2026): agents run
+# `lab.py matrix` locally against candidate builds during development, and against the deployed
+# release at handover (fm-s3o).
 #
 # - On demand: agents (or the operator) dispatch it when a run is useful; no schedule.
 # - Best effort: release validation and post-deploy checks may call it (workflow_call); it never gates
@@ -15,7 +17,7 @@ on:
         default: https://next.facemorph.me/
       cells:
         description: Comma-separated cells
-        default: eris-webgpu,eris-cpu,phone-webgpu,phone-cpu
+        default: eris-webgpu,eris-cpu
       journey:
         description: Journeys
         default: cold-face,warm-face,morph
@@ -47,7 +49,7 @@ on:
         default: ''
       cells:
         type: string
-        default: eris-webgpu,eris-cpu,phone-webgpu,phone-cpu
+        default: eris-webgpu,eris-cpu
       journey:
         type: string
         default: cold-face,warm-face,morph
@@ -68,10 +70,8 @@ jobs:
           repository: check-face/facemorph.me
           ref: main
           path: lab
-          # lab.py takes the machine's device lease through autoresearch/lease.py.
           sparse-checkout: |
             /tools/device-lab/
-            /autoresearch/lease.py
           sparse-checkout-cone-mode: false
       - name: Check out classic (qualification server) for an artifact run
         if: inputs.artifact_name != ''
@@ -98,7 +98,7 @@ jobs:
           CLASSIC_CHECKOUT: ${{ github.workspace }}/classic
           LABEL: ${{ inputs.label || (inputs.artifact_name != '' && format('gate-{0}', inputs.artifact_name)) || 'on-demand' }}
           URL: ${{ inputs.url || 'https://next.facemorph.me/' }}
-          CELLS: ${{ inputs.cells || 'eris-webgpu,eris-cpu,phone-webgpu,phone-cpu' }}
+          CELLS: ${{ inputs.cells || 'eris-webgpu,eris-cpu' }}
           JOURNEY: ${{ inputs.journey || 'cold-face,warm-face,morph' }}
           ARTIFACT_NAME: ${{ inputs.artifact_name }}
           RUNTIME_SHA: ${{ inputs.runtime_sha }}

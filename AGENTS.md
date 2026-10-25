@@ -92,10 +92,26 @@ The original plan and supplied crop screenshots are locked local references link
 from `PLAN.md`. Preserve their bytes and follow the original crop design plus explicit
 operator revisions.
 
-Device lab and releases (24 October 2026): `tools/device-lab/` runs the end-to-end journeys on eris
-(WebGPU, CPU) and the USB P30 Pro (WebGPU via debug flags, CPU), on demand when a bead needs device
-evidence (`lab.py qualify --run <id>` for a candidate build). It is best effort: an unavailable
-device or runner never blocks anything; runs queue, and missing cells are recorded as untested. A real
+Device lab and releases (operator revision, 25 October 2026): `tools/device-lab/` runs the
+end-to-end journeys on demand when a bead needs device evidence (`lab.py qualify --run <id>` for a
+candidate build). Resource policy, three classes:
+
+- **Correctness work** — CI lanes, builds, unit and browser-matrix tests, lab journeys that assert
+  pass/fail: no lock, no exclusivity, on eris's full CPU and GPU alongside everything else. Slow
+  under load is fine; nobody waits on anybody.
+- **GPU timing runs** — anything that measures milliseconds (research benches, strictly-not-worse
+  pairs): run through `autoresearch/run.py --exclusive gpu-timing`, which holds a machine-wide
+  flock shared by CI and local runs, so two timing runs never overlap. It waits at most `--wait`
+  seconds (CI default 1800) and exits 75 (busy) rather than ever blocking a correctness job; record
+  contention or defer honestly. No correctness job ever sets or waits on this lock.
+- **The physical phone (USB P30 Pro) never runs in CI** (operator, 25 October 2026). Agents run
+  `lab.py matrix` locally against candidate builds during development; at handover the release bead
+  runs the phone and eris against the deployed next.facemorph.me release (`lab.py matrix --url
+  https://next.facemorph.me`). CI covers phones via the hosted Android emulator and iOS Simulator
+  lanes only.
+
+It is best effort: an unavailable device or runner never blocks anything; runs queue, and missing
+cells are recorded as untested. A real
 failure passes beads back. The new app deploys to next.facemorph.me only when the full release bead set
 is ready: the agent taking the release bead validates everything locally, then deploys. Nothing here
 ever stops new work being picked up. Build, test and validate locally as you go (eris, triton, the
@@ -132,7 +148,8 @@ until a later lab run covering it, or the release bead's full validation, settle
 
 Prefer the self-hosted runners (eris `device-lab`, triton on the `tank` pool) over hosted minutes.
 The phone's Frigate camera stays held off until the operator asks for it back. The ordering edges
-serialize shared-file edits and the lab lock serializes the devices.
+serialize shared-file edits; there is no machine-wide device lock (operator, 25 October 2026) —
+only GPU timing runs exclude each other.
 
 
 ## Swarm method (Jeffrey Emanuel's, adopted whole; operator, 25 October 2026)

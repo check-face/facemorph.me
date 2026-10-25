@@ -1,10 +1,12 @@
 name: release-gate
 # fm-5klw: everything a deploy of one exact artifact needs. The hosted lanes (hosted-lanes.yml:
-# macOS, Windows, Android emulator, iOS Simulator) and the four device-lab cells (device-lab.yml:
-# eris-webgpu, eris-cpu, phone-webgpu, phone-cpu) run the same journeys against that artifact; the
+# macOS, Windows, Android emulator, iOS Simulator) and the eris device-lab cells (device-lab.yml:
+# eris-webgpu, eris-cpu) run the same journeys against that artifact; the
 # `gate` job passes only when both succeed. The deploy job (fm-6fx6) calls this workflow and
-# `needs` its gate, so a failure in any lane or cell blocks the deploy. The device lab queues for
-# its runner and lock like any other run; the release manager records an unavailable cell as
+# `needs` its gate, so a failure in any lane or cell blocks the deploy. The physical phone never
+# runs in CI (operator, 25 October 2026): it verifies candidates locally during development and the
+# deployed release at handover (fm-s3o). The device lab shares the runner with everything else —
+# correctness journeys take no lock; the release manager records an unavailable cell as
 # untested (PLAN.md, device lab, deploy gates and CI policy).
 on:
   workflow_dispatch:
@@ -46,7 +48,7 @@ jobs:
       artifact_run: ${{ inputs.artifact_run }}
       artifact_name: ${{ inputs.artifact_name }}
       runtime_sha: ${{ inputs.runtime_sha }}
-      cells: eris-webgpu,eris-cpu,phone-webgpu,phone-cpu
+      cells: eris-webgpu,eris-cpu
       journey: cold-face,warm-face,morph
       label: gate-${{ inputs.artifact_name }}
   gate:
