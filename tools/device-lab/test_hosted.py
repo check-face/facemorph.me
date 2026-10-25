@@ -72,10 +72,9 @@ class Availability(unittest.TestCase):
         jobs[0].update(status='in_progress', runner_name='')
         self.assertEqual(hosted_outcomes(jobs, [], queue_expired=True)[0]['status'], 'pending')
 
-    def test_no_jobs_is_unknown_unless_the_correlated_workflow_stays_queued(self):
+    def test_no_jobs_remains_unknown_not_runner_unavailability(self):
         self.assertEqual({r['status'] for r in hosted_outcomes([], [], queue_expired=True)}, {'fail'})
-        self.assertEqual({r['status'] for r in hosted_outcomes([], [], queue_expired=True, run_queued=True)}, {'untested'})
-        self.assertEqual({r['status'] for r in hosted_outcomes([], [], queue_expired=True, run_queued=True, run_completed=True)}, {'fail'})
+        self.assertEqual({r['status'] for r in hosted_outcomes([], [], queue_expired=True, run_completed=True)}, {'fail'})
 
     def test_missing_simulator_is_untested_but_incomplete_journeys_fail(self):
         reports = self.reports()

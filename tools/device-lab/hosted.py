@@ -383,11 +383,26 @@ IOS_JOURNEYS = r"""
       const btn = [...document.querySelectorAll('button')].find(b => b.textContent.trim() === 'Create morph');
       if (!btn) throw Error('no Create morph button');
       click(btn);
-      await wait(() => { const v = document.querySelector(S.video); return !!v && v.readyState >= 2 && v.duration > 0; }, 1800000, 'a playable morph video');
-      await post({stage: 'morph', ok: true, result: {videoS: +((performance.now() - t0) / 1000).toFixed(2)}, done: true});
+      const end = Date.now() + 1800000;
+      await wait(() => !!document.querySelector(S.video)?.src, end - Date.now(), 'the encoded morph file');
+      const video = document.querySelector(S.video);
+      // Mobile Safari may leave a completed local Blob unbuffered until it is
+      // requested. Exercise its real media loader; do not fabricate readiness.
+      video.scrollIntoView({block: 'center'});
+      video.load();
+      await wait(() => {
+        if (video.error) throw Error('morph media error ' + video.error.code + ': ' + video.error.message);
+        return video.readyState >= 2 && video.duration > 0;
+      }, Math.max(1, end - Date.now()), 'a playable morph video');
+      await post({stage: 'morph', ok: true, result: {videoS: +((performance.now() - t0) / 1000).toFixed(2),
+        duration: video.duration, width: video.videoWidth, height: video.videoHeight, readyState: video.readyState}, done: true});
     }
   } catch (e) {
-    await post({stage: doing, ok: false, error: String(e && e.message || e).slice(0, 400), done: true});
+    const v = document.querySelector(S.video);
+    await post({stage: doing, ok: false, error: String(e && e.message || e).slice(0, 400),
+      media: v ? {readyState:v.readyState, networkState:v.networkState, error:v.error?.code,
+        duration:Number.isFinite(v.duration)?v.duration:null, width:v.videoWidth, height:v.videoHeight,
+        sourceAssigned:!!v.src, paused:v.paused, hidden:document.hidden} : null, done: true});
   }
 })();
 </script>
@@ -401,11 +416,13 @@ def cmd_ios(args):
 
     def on_post(msg):
         stages.append(msg)
-        lab.log('ios_stage', stage=msg.get('stage'), ok=msg.get('ok'), error=msg.get('error'))
+        lab.log('ios_stage', stage=msg.get('stage'), ok=msg.get('ok'), error=msg.get('error'), media=msg.get('media'))
         if msg.get('ok'):
             rec[msg['stage']] = msg['result']
         else:
             rec['error'] = f"{msg.get('stage')}: {msg.get('error')}"
+            if 'media' in msg:
+                rec['media'] = msg['media']
         if msg.get('userAgent'):
             report['userAgent'] = msg['userAgent']
         if msg.get('done'):
@@ -488,7 +505,7 @@ def runner_unavailable_reason(job, annotations):
     return None
 
 
-def hosted_outcomes(jobs, reports, *, queue_expired=False, run_completed=False, run_queued=False, unavailable=None):
+def hosted_outcomes(jobs, reports, *, queue_expired=False, run_completed=False, unavailable=None):
     """Pure policy over actual API job fields and lane reports. Missing evidence fails
     closed, except a lane still awaiting a runner after the bounded queue attempt.
     Any executed failure wins over an unavailable report or another lane's pass."""
@@ -501,8 +518,6 @@ def hosted_outcomes(jobs, reports, *, queue_expired=False, run_completed=False, 
         job = matches[0] if len(matches) == 1 else None
         report = found[0] if len(found) == 1 else None
         status, reason = 'fail', 'missing or ambiguous job/report evidence'
-        if not matches and not found and queue_expired and run_queued and not run_completed:
-            status, reason = 'untested', 'hosted workflow remained queued without allocating its jobs within the bounded attempt'
         if job:
             failures = [s['name'] for s in job.get('steps', []) if s.get('conclusion') in ('failure', 'timed_out', 'cancelled')]
             if not job.get('steps') and (unavailable or {}).get(job.get('id')):
@@ -571,12 +586,12 @@ def cmd_release(args):
                 inspected.add(job['id'])
         elapsed = time.monotonic() - start
         rows = hosted_outcomes(jobs, [], queue_expired=elapsed >= args.queue_seconds,
-                               run_completed=run['status'] == 'completed', run_queued=run['status'] == 'queued', unavailable=unavailable)
+                               run_completed=run['status'] == 'completed', unavailable=unavailable)
         # Missing reports become decisive only after their jobs finish; the API is
         # authoritative for which tests have actually started, not a guessed delay.
         waiting = any(r['status'] == 'pending' for r in rows)
         unknown = any(r['job'] is None and r['status'] != 'untested' for r in rows)
-        if run['status'] == 'completed' or (not waiting and not unknown and elapsed >= args.queue_seconds):
+        if run['status'] == 'completed' or (elapsed >= args.queue_seconds and (unknown or not waiting)):
             break
         if elapsed >= args.timeout_seconds:
             raise TimeoutError(f'hosted attempt did not finish within {args.timeout_seconds}s: {url}')
@@ -589,7 +604,7 @@ def cmd_release(args):
     reports = [json.loads(p.read_text()) for p in out.glob('lane-*/*.json')]
     reports = [r for r in reports if isinstance(r, dict) and 'lane' in r and 'runs' in r]
     rows = hosted_outcomes(jobs, reports, queue_expired=elapsed >= args.queue_seconds,
-                           run_completed=run['status'] == 'completed', run_queued=run['status'] == 'queued', unavailable=unavailable)
+                           run_completed=run['status'] == 'completed', unavailable=unavailable)
     report = {'run': run_id, 'url': url, 'artifactDigest': args.artifact_digest, 'inputs': inputs, 'lanes': rows,
               'ok': all(r['status'] in ('pass', 'untested') for r in rows)}
     (out / 'hosted-release.json').write_text(json.dumps(report, indent=2))
