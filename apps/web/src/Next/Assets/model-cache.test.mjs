@@ -287,18 +287,27 @@ test('read-ahead hands the store network-sized pieces, never a whole chunk (Fire
   assert.ok(seen.length >= 3 * 3, 'progress can move in pieces, not chunk-sized steps');
 });
 test('a corrupt chunk under read-ahead aborts the other downloads and commits nothing', async () => {
-  const parts = pieces(5), signals = [];
+  const parts = pieces(5), completed = [], signals = [];
+  let siblingStarted;
+  const sibling = new Promise(resolve => { siblingStarted = resolve; });
   const f = fixture(async (url, init) => {
-    signals.push(init.signal); const i = Number(url.split('-')[1]);
+    const i = Number(url.split('-')[1]);
+    if (i < 4) completed.push(init.signal);
     if (i < 3) return new Response(parts[i]);
-    if (i === 3) return new Response(new Uint8Array(parts[i].length));
+    // Corruption must be discovered while a sibling really is pending, independent of digest scheduling.
+    if (i === 3) { await sibling; return new Response(new Uint8Array(parts[i].length)); }
+    signals.push(init.signal);
+    siblingStarted();
     return new Response(new ReadableStream({ start(controller) { init.signal.addEventListener('abort', () => controller.error(init.signal.reason), { once: true }); } }));
   });
   const cache = createModelCache({ ...f.options, readAhead: 4 });
   await assert.rejects(cache.acquire(chunkAsset(parts)), /integrity|abort/i);
   await pause();
   assert.equal(f.assetEntries().length, 0);
-  assert.ok(signals.length >= 2 && signals.every(signal => signal.aborted), 'every download still in flight was cancelled');
+  assert.equal(signals.length, 1, 'a sibling download was still in flight when corruption was detected');
+  assert.ok(signals.every(signal => signal.aborted), 'every download still in flight was cancelled');
+  assert.equal(completed.length, 4);
+  assert.ok(completed.every(signal => !signal.aborted), 'fully consumed responses are not cancelled');
 });
 test('readAhead is validated', () => {
   const f = fixture();

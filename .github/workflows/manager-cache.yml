@@ -43,7 +43,7 @@ jobs:
             else
               # Other package files run Node ORT or explicitly launch Chromium, independent
               # of this matrix value. Keep those in the full suite, without repeating them.
-              node packages/browser-model-manager/test/run.mjs packages/browser-model-manager/test/cache-local.test.ts packages/browser-model-manager/test/handles-tabs.test.ts
+              node packages/browser-model-manager/test/run.mjs packages/browser-model-manager/test/cache-local.test.ts packages/browser-model-manager/test/handles-tabs.test.ts packages/browser-model-manager/test/acquisition.test.ts
             fi
       - name: The candidate's model-cache.test.mjs through the shim, expectations unchanged
         working-directory: apps/web

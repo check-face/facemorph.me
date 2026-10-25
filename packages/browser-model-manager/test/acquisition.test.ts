@@ -1,21 +1,22 @@
-// Acquisition primitives (fm-fr9s), in real Chromium against real local https servers with a fault switch: grant
+// Acquisition primitives (fm-fr9s/fm-fy2.13), in the selected real browser against local https servers with a fault switch: grant
 // enforcement (no request without a grant, scope, bytes that never inflate), shared fetch ownership and transfer,
 // the retry schedule on real timers with alternate-origin alternation, no alternate configured means no other
 // origin, priority classes and the aggregate slot budget across real workers (Web Locks), digest deduplication,
 // output-cache-first, and the stall bound and silence deadline. Every claim about the network is read from the
-// servers' own request logs (and, for "nothing at all", from the interception helper by host class). A host where
-// Chromium cannot start reports these cases untested.
+// servers' own request logs (and, for "nothing at all", from the interception helper by host class). An unavailable
+// selected engine is reported untested; the matrix requires its engine to start.
 /// <reference lib="dom" />
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { mkdtempSync, readFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer, type Server } from 'node:https';
-import { createRequire } from 'node:module';
 import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
 import { extname, join, normalize } from 'node:path';
 import test from 'node:test';
+import type { Page } from 'playwright';
+import { componentBrowser } from './support/browser.ts';
 
 const PKG = new URL('..', import.meta.url).pathname;
 const REPO = new URL('../../..', import.meta.url).pathname;
@@ -281,37 +282,47 @@ const requestsFor = (paths: string[], from = 0) =>
 
 // ---------------------------------------------------------------- browser
 
-type Page = {
-  goto(u: string): Promise<unknown>;
-  evaluate<T, A>(fn: (a: A) => Promise<T> | T, arg: A): Promise<T>;
-};
-type Context = { newPage(): Promise<Page>; close(): Promise<void> };
-type Browser = { newContext(o: object): Promise<Context>; close(): Promise<void> };
-const { chromium } = createRequire(join(REPO, 'apps/web/package.json'))('playwright') as {
-  chromium: { launch(o: object): Promise<Browser> };
-};
-const browser = await chromium
-  .launch({ executablePath: process.env['CHROMIUM_PATH'] })
-  .catch(() => null);
-const NO_BROWSER = browser ? false : 'untested: Chromium does not start here';
+const { engine, browser, newContext, unavailable: NO_BROWSER } = await componentBrowser();
+let sessionId = 0;
 test.after(async () => {
   await browser?.close();
-  for (const s of [app, primary, alternate]) s.close();
+  await Promise.all(
+    [app, primary, alternate].map(
+      (server) => new Promise<void>((resolve) => server.close(() => resolve())),
+    ),
+  );
+  rmSync(work, { recursive: true, force: true });
 });
 
 async function session() {
-  const context = await browser!.newContext({ ignoreHTTPSErrors: true });
+  const context = await newContext!({ ignoreHTTPSErrors: true });
+  await context.tracing.start({ screenshots: true, snapshots: true });
+  const name = `acquisition-${++sessionId}`;
   const att = helper.attachPlaywright(context, hostMap);
   const page = await context.newPage();
   await page.goto(`${APP}/`);
   await page.evaluate(() => import(String('/pkg/index.js')), undefined);
-  return { context, page, rec: att.rec, settled: () => att.settled() };
+  return {
+    context,
+    page,
+    rec: att.rec,
+    settled: () => att.settled(),
+    async capture() {
+      const dir = join(REPO, 'test-results/manager-cache', engine);
+      mkdirSync(dir, { recursive: true });
+      writeFileSync(join(dir, `${name}-network.json`), JSON.stringify(att.rec));
+      await Promise.allSettled([
+        page.screenshot({ path: join(dir, `${name}.png`) }),
+        context.tracing.stop({ path: join(dir, `${name}.zip`) }),
+      ]);
+    },
+  };
 }
 
 // ---------------------------------------------------------------- grants
 
 test(
-  'no request without a grant: a missing grant, an owner it does not name, a digest or size outside it',
+  `${engine}: no request without a grant: a missing grant, an owner it does not name, a digest or size outside it`,
   { skip: NO_BROWSER },
   async () => {
     const X = asset('nogrant', 2, 1);
@@ -368,6 +379,9 @@ test(
         0,
         'no model request of any kind',
       );
+    } catch (error) {
+      await s.capture();
+      throw error;
     } finally {
       await s.context.close();
     }
@@ -375,7 +389,7 @@ test(
 );
 
 test(
-  'grant bytes never inflate: a corrupt stored chunk is refetched only under a grant that still covers it',
+  `${engine}: grant bytes never inflate: a corrupt stored chunk is refetched only under a grant that still covers it`,
   { skip: NO_BROWSER },
   async () => {
     const X = asset('exact', 3, 3);
@@ -471,6 +485,9 @@ test(
         0,
         'the second attempt fetched the rest within what was approved',
       );
+    } catch (error) {
+      await s.capture();
+      throw error;
     } finally {
       faults.clear();
       await s.context.close();
@@ -479,7 +496,7 @@ test(
 );
 
 test(
-  'a refused grant gives its slot back: Cache Storage, one slot, refused then covered',
+  `${engine}: a refused grant gives its slot back: Cache Storage, one slot, refused then covered`,
   { skip: NO_BROWSER, timeout: 30_000 },
   async () => {
     const P = asset('plain-refused', 0, 24);
@@ -519,6 +536,9 @@ test(
         [200],
         'the refused attempt made no request',
       );
+    } catch (error) {
+      await s.capture();
+      throw error;
     } finally {
       await s.context.close();
     }
@@ -528,7 +548,7 @@ test(
 // ---------------------------------------------------------------- shared fetch ownership
 
 test(
-  'two owners share one fetch; the first leaving hands it on; the last leaving stops it; verified chunks are kept',
+  `${engine}: two owners share one fetch; the first leaving hands it on; the last leaving stops it; verified chunks are kept`,
   { skip: NO_BROWSER },
   async () => {
     const S = asset('shared', 5, 5);
@@ -638,6 +658,9 @@ test(
         'c fetched exactly the chunks that were not kept',
       );
       assert.equal(remainingC, S.size - byC.length * CHUNK, 'c paid for exactly those chunks');
+    } catch (error) {
+      await s.capture();
+      throw error;
     } finally {
       faults.clear();
       await s.context.close();
@@ -681,7 +704,7 @@ function assertSchedule(entries: Logged[], delays: number[]) {
 }
 
 test(
-  'a transient 500 is retried on the 1, 4, 10 s schedule and recovers; with no alternate configured, nothing leaves the primary origin',
+  `${engine}: a transient 500 is retried on the 1, 4, 10 s schedule and recovers; with no alternate configured, nothing leaves the primary origin`,
   { skip: NO_BROWSER, timeout: 60_000 },
   async () => {
     const R = asset('flaky', 0, 6);
@@ -708,6 +731,9 @@ test(
         0,
         'zero requests to any other origin',
       );
+    } catch (error) {
+      await s.capture();
+      throw error;
     } finally {
       faults.clear();
       await s.context.close();
@@ -716,7 +742,7 @@ test(
 );
 
 test(
-  'retries alternate between the primary and the alternate origin in the candidate order, inside the grant',
+  `${engine}: retries alternate between the primary and the alternate origin in the candidate order, inside the grant`,
   { skip: NO_BROWSER, timeout: 60_000 },
   async () => {
     const R = asset('mirrored', 0, 7);
@@ -742,6 +768,9 @@ test(
         ],
       );
       assertSchedule(tries, [1000, 4000, 10000]);
+    } catch (error) {
+      await s.capture();
+      throw error;
     } finally {
       faults.clear();
       await s.context.close();
@@ -752,7 +781,7 @@ test(
 // ---------------------------------------------------------------- priority, aggregate budget, deduplication
 
 test(
-  'foreground-required work outranks optional preparation for the next free slot',
+  engine + ': ' + 'foreground-required work outranks optional preparation for the next free slot',
   { skip: NO_BROWSER },
   async () => {
     const O = asset('optional', 3, 8);
@@ -789,6 +818,9 @@ test(
       );
       const order = requestsFor([...O.parts, ...F.parts], from).map((l) => l.path);
       assert.deepEqual(order, [O.parts[0], F.parts[0], F.parts[1], O.parts[1], O.parts[2]]);
+    } catch (error) {
+      await s.capture();
+      throw error;
     } finally {
       faults.clear();
       await s.context.close();
@@ -797,7 +829,7 @@ test(
 );
 
 test(
-  'the aggregate budget holds across workers, and an identical digest is fetched once',
+  `${engine}: the aggregate budget holds across workers, and an identical digest is fetched once`,
   { skip: NO_BROWSER, timeout: 60_000 },
   async () => {
     const W = [asset('w0', 3, 10), asset('w1', 3, 11), asset('w2', 3, 12)];
@@ -808,18 +840,24 @@ test(
     const s = await session();
     try {
       // Three module workers with read-ahead 2 each: alone they would hold six chunks.
+      // Keep the same cohort for the control, bounded and duplicate phases. Rebooting every worker
+      // between phases made Firefox spend the budget on module loading and OPFS teardown under load.
       const run = (jobs: { assets: AssetInput[]; owner: string }[], slots = 2) =>
         s.page.evaluate(
           async ({ jobs, grants, slots }) => {
+            const state = window as unknown as { acquisitionWorkers?: Worker[] };
+            const workers = (state.acquisitionWorkers ??= []);
             const results = await Promise.all(
               jobs.map(
                 (job, i) =>
-                  new Promise<{ ok: boolean; message?: string }>((resolve) => {
-                    const worker = new Worker('/worker.js', { type: 'module' });
+                  new Promise<{ ok: boolean; message?: string }>((resolve, reject) => {
+                    const worker = (workers[i] ??= new Worker('/worker.js', { type: 'module' }));
                     worker.onmessage = ({ data }) => {
-                      worker.terminate();
                       resolve(data);
                     };
+                    worker.onerror = (error) => reject(new Error(`worker ${i}: ${error.message}`));
+                    worker.onmessageerror = () =>
+                      reject(new Error(`worker ${i}: unreadable result`));
                     worker.postMessage({
                       assets: job.assets,
                       grant: grants[i],
@@ -837,9 +875,13 @@ test(
       // Control: with six slots the same load does put more than two chunks in flight, so the bound below is the
       // slots' doing and the measurement can see a breach.
       maxInFlight = inFlight;
-      await run(
+      const control = await run(
         C.map((a, i) => ({ assets: [descriptor(a)], owner: `face:c${i}` })),
         6,
+      );
+      assert.deepEqual(
+        control,
+        C.map(() => ({ ok: true })),
       );
       assert.ok(maxInFlight > 2, `control: ${maxInFlight} in flight with six slots`);
 
@@ -876,6 +918,9 @@ test(
         [...D.parts].sort(),
         'each chunk fetched once',
       );
+    } catch (error) {
+      await s.capture();
+      throw error;
     } finally {
       faults.clear();
       await s.context.close();
@@ -884,7 +929,7 @@ test(
 );
 
 test(
-  'across workers, optional work takes no slot while foreground work waits in another worker',
+  `${engine}: across workers, optional work takes no slot while foreground work waits in another worker`,
   { skip: NO_BROWSER, timeout: 60_000 },
   async () => {
     // The page holds both slots: SA1 for about 1.2 s, SA2 for about 0.6 s. Worker C asks for foreground F and worker
@@ -944,6 +989,9 @@ test(
         at(O).start >= at(SA1).end - 50 || at(O).start >= at(F).end - 50,
         'optional waited for a slot no one else wanted',
       );
+    } catch (error) {
+      await s.capture();
+      throw error;
     } finally {
       faults.clear();
       await s.context.close();
@@ -954,7 +1002,7 @@ test(
 // ---------------------------------------------------------------- output cache first
 
 test(
-  'an output-cache hit issues zero downloads; a miss acquires under the grant',
+  engine + ': ' + 'an output-cache hit issues zero downloads; a miss acquires under the grant',
   { skip: NO_BROWSER },
   async () => {
     const X = asset('output', 2, 14);
@@ -994,6 +1042,9 @@ test(
         X.parts.toSorted(),
         'only the miss downloaded',
       );
+    } catch (error) {
+      await s.capture();
+      throw error;
     } finally {
       await s.context.close();
     }
@@ -1003,7 +1054,7 @@ test(
 // ---------------------------------------------------------------- stall bound and silence deadline
 
 test(
-  'a chunk silent mid-body is abandoned and retried on a fresh request; a slow but steady asset outlives the deadline',
+  `${engine}: a chunk silent mid-body is abandoned and retried on a fresh request; a slow but steady asset outlives the deadline`,
   { skip: NO_BROWSER, timeout: 60_000 },
   async () => {
     const T = asset('silent', 2, 15);
@@ -1037,6 +1088,9 @@ test(
         retryDelaysMs: [],
       });
       assert.deepEqual(steady, { ok: true, remaining: 0, message: '' });
+    } catch (error) {
+      await s.capture();
+      throw error;
     } finally {
       faults.clear();
       await s.context.close();
