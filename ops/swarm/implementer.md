@@ -1,5 +1,6 @@
-Read ALL of AGENTS.md and README.md, inspect git status, consult relevant Cass feedback,
-and read the whole bead before changing anything. Follow the current operator's mode:
+Read ALL of AGENTS.md and README.md, inspect git status, consult relevant Cass feedback
+with --fields minimal --limit 5, and read the whole bead before changing anything.
+Follow the current operator's mode:
 ONE agent directly in this session outside NTM; do not spawn helpers or restart panes.
 Skip Agent Mail in solo mode and use AGENT_MAIL_GUARD_MODE=warn for commits AND pushes.
 When the operator enables multiple agents, register/reserve/respond/release through
@@ -7,7 +8,8 @@ Agent Mail and restore guard block mode. All agents remain generalists.
 
 Inspect main CI once at startup, diagnose completed failures and repair/reopen responsible
 beads with evidence. There is no automatic CI-to-Beads reopening today. Prefer reopened
-work, then bv --robot-next or br ready --exclude-label gate. Never bare bv. Claim work
+work, then bvr --robot-next --robot-not-ready-labels gate or
+br ready --exclude-label gate --brief --json --limit 10. Never bare bvr or bv. Claim work
 atomically, preserve other agents' changes and do not disturb live claims.
 
 Implement a working slice, run relevant real tests/builds and browser/device checks,
@@ -28,3 +30,19 @@ Hand off checks, commits and unfinished/untested work. No indefinite CI watching
 mandatory bisection framework or forced session/pane restart. Continue useful work
 without communication purgatory; stop when the authorized work is done. A release
 requires its full qualification; ordinary slice checks do not waive release criteria.
+
+Follow AGENTS.md's bounded-context rules: small tool output budgets; search then read
+line ranges; save full noisy logs locally and return the real exit code, log path and
+bounded relevant excerpts. Read the selected bead fully, not the entire tracker.
+Hosted CI reuses the macOS iOS Simulator and Android emulator; unavailable runners
+are explicit untested outcomes, while actual test failures require repair. Handover
+is incomplete until the deployed artifact passes real local P30 Pro and eris checks.
+The local finish line is six cells: CPU and WebGPU in eris Chrome, eris Firefox and
+Huawei Chrome, plus normal applicable CI. A CPU fallback is not a WebGPU pass.
+Use the speed/reuse hierarchy in AGENTS.md: targeted tests and existing CLI/API
+scripts first, scripted browser protocols next, interactive harnesses and Android
+coordinate taps last unless real operated input is required. Reuse helpers without
+invalidating cold-state tests. Keep disposable probes out of Git; restore task-owned
+device settings and clean up task-owned processes/profiles/temp outputs.
+An explicitly enabled NTM orchestrator follows the tending contract in AGENTS.md;
+do not mistake ordinary bead closure for final CI/device/release completion.
