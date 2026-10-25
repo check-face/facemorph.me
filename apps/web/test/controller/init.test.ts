@@ -50,3 +50,17 @@ test('a control digest mismatch refuses replay', () => {
     /digest mismatch/,
   );
 });
+test('legacy text/seed/guid link keys are ignored: the arrival is the plain page and nothing keeps them', () => {
+  const plain = init(facts);
+  const keys = ['from_value', 'to_value', 'from_seed', 'to_seed', 'from_guid', 'to_guid'];
+  const urls = [
+    ...keys.map((key) => `https://next.facemorph.me/?${key}=legacy-${key}`),
+    `https://next.facemorph.me/?${keys.map((key) => `${key}=legacy-${key}`).join('&')}`,
+    'https://next.facemorph.me/?from_seed=42&to_value=Hello%20World',
+  ];
+  for (const url of urls) {
+    const arrived = init({ ...facts, url });
+    assert.deepEqual(arrived, plain, url);
+    assert.doesNotMatch(JSON.stringify(arrived), /legacy-|from_|to_|Hello World/, url);
+  }
+});
