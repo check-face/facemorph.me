@@ -20,6 +20,62 @@ REPO = ROOT.parents[1]
 EXPECTED = {'worker-module-hash', 'integrity-rejection', 'cancel-partial-retry',
             'concurrent-download-dedup', 'corrupt-cache-repair',
             'png-1024-roundtrip', 'portrait-exif-crop', 'reload-retained-offline'}
+MANAGER_CASES = {'no-grant', 'cold', 'model-cached', 'output-cached',
+                 'missing-local', 'corrupt-local', 'cancel', 'leased-eviction',
+                 'quota', 'loaded-handle-disposal', 'cross-tab'}
+MANAGER_EXPECTED = {f'{backend}.{case}' for backend in ('opfs', 'cache-storage')
+                    for case in MANAGER_CASES} | {'worker.native-sync-handles'}
+
+
+def manager_matrix_valid(report):
+    rows = report.get('managerMatrix')
+    capabilities = report.get('managerCapabilities')
+    if (not isinstance(rows, list) or len(rows) != len(MANAGER_EXPECTED)
+            or not isinstance(capabilities, dict)
+            or any(type(capabilities.get(key)) is not bool
+                   for key in ('opfs', 'cacheStorage', 'workerSync'))
+            or any(not isinstance(row, dict) or not isinstance(row.get('id'), str) for row in rows)
+            or {row.get('id') for row in rows} != MANAGER_EXPECTED):
+        return False
+    for row in rows:
+        backend, case = row['id'].split('.', 1)
+        network = row.get('network')
+        if (row.get('backend') != backend or not isinstance(row.get('lane'), str)
+                or not row['lane'].strip() or row.get('error')
+                or row.get('status') not in ('pass', 'untested')
+                or not isinstance(network, dict)
+                or network.get('measurement') != 'native-server-ledger'
+                or network.get('hostSeparation') is not False
+                or any(type(network.get(key)) is not int or network[key] < 0
+                       for key in ('requests', 'bytes'))
+                or not isinstance(network.get('paths'), list)
+                or any(not isinstance(path, str) for path in network['paths'])
+                or len(network['paths']) != network['requests']):
+            return False
+        if row['status'] == 'untested':
+            reason = row.get('reason')
+            reason_code = row.get('reasonCode')
+            absent = {
+                'opfs': ('native-opfs-unavailable', 'opfs'),
+                'cache-storage': ('native-cache-storage-unavailable', 'cacheStorage'),
+                'worker': ('native-worker-sync-unavailable', 'workerSync'),
+            }[backend]
+            allowed = {absent[0]} if capabilities[absent[1]] is False else set()
+            if case == 'quota':
+                allowed.add('native-quota-control-unavailable')
+            elif case == 'loaded-handle-disposal':
+                allowed.add('loaded-runtime-unavailable')
+            elif case == 'cross-tab':
+                allowed.add('second-tab-unavailable')
+            if (reason_code not in allowed or not isinstance(reason, str) or not reason.strip()
+                    or network['requests'] != 0 or network['bytes'] != 0):
+                return False
+        elif case in ('cold', 'cancel'):
+            if network['requests'] < 1 or network['bytes'] < 1:
+                return False
+        elif network['requests'] != 0 or network['bytes'] != 0:
+            return False
+    return True
 
 
 def assess(report, run_id):
@@ -31,8 +87,10 @@ def assess(report, run_id):
             and report.get('inferenceExecuted') is False and report.get('e4eExecuted') is False
             and report.get('evidenceLevel') == 'browser-component'
             and isinstance(rows, list) and len(rows) == len(EXPECTED)
-            and all(isinstance(row, dict) and row.get('passed') is True for row in rows)
-            and {row.get('id') for row in rows} == EXPECTED)
+            and all(isinstance(row, dict) and isinstance(row.get('id'), str)
+                    and row.get('passed') is True for row in rows)
+            and {row.get('id') for row in rows} == EXPECTED
+            and manager_matrix_valid(report))
 
 
 def command(*args, check=True, timeout=90):
@@ -77,6 +135,8 @@ def main():
     run_id = str(uuid.uuid4())
     evidence = {'runId': run_id, 'executionEnvironment': {'android':'android-emulator','ios':'ios-simulator','desktop':'desktop-component-only'}[args.platform],
                 'physicalDeviceQualified': False, 'inferenceQualified': False, 'photoWorkflowQualified': False,
+                'networkObservation': 'model fixture endpoint ledger on the app TLS origin; no host separation or complete external-request interception',
+                'traceAvailability': 'untested: native mobile controller records browser reports/screenshots/logs; no browser trace API',
                 'sourceCommit': command('git', '-C', str(ROOT), 'rev-parse', 'HEAD'),
                 'sourceSha256': {str(p.relative_to(ROOT)): hashlib.sha256(p.read_bytes()).hexdigest()
                                  for folder in ['tests/mobile', 'src/Next/Assets', 'src/Next/photo']
@@ -84,7 +144,17 @@ def main():
                 'runnerImage': os.environ.get('ImageVersion'), 'completed': False}
     state = {'report': None}
     requests = {}
+    transfers = []
     requests_lock = threading.Lock()
+
+    def ledger():
+        # Body writes accepted by this server's socket, not a claim about bytes the
+        # browser consumed. The fixture and app use the same TLS origin.
+        with requests_lock:
+            return {'version': 1,
+                    'classification': 'resource-endpoint (same origin; no host separation)',
+                    'bodyBytesMeaning': 'successful socket body writes; not browser-received bytes',
+                    'transfers': [dict(row) for row in transfers]}
 
     class Handler(SimpleHTTPRequestHandler):
         def log_message(self, *args):
@@ -100,30 +170,50 @@ def main():
             path = urlsplit(self.path).path
             if path.startswith('/fixture/'):
                 name = path.removeprefix('/fixture/')
+                transfer = None
                 if name == 'stats':
                     with requests_lock:
                         body = json.dumps(requests).encode()
+                elif name == 'ledger':
+                    body = json.dumps(ledger()).encode()
                 elif name in ('good', 'bad', 'slow', 'offline'):
+                    body = b'abd' if name == 'bad' else b'abc'
                     with requests_lock:
                         requests[name] = requests.get(name, 0) + 1
-                    body = b'abd' if name == 'bad' else b'abc'
+                        transfer = {'id': len(transfers), 'path': path, 'url': self.path,
+                                    'resourceClass': 'model-fixture',
+                                    'status': 410 if name == 'offline' else 200,
+                                    'expectedBytes': len(body), 'bytes': 0,
+                                    'finished': False, 'aborted': False}
+                        transfers.append(transfer)
                 else:
                     self.send_error(404); return
-                self.send_response(410 if name == 'offline' else 200)
-                self.send_header('Content-Type', 'application/json' if name == 'stats' else 'application/octet-stream')
-                self.send_header('Content-Length', str(len(body)))
-                self.end_headers()
+                def write_body(part):
+                    written = self.wfile.write(part)
+                    if transfer is not None:
+                        with requests_lock:
+                            transfer['bytes'] += written
                 try:
+                    self.send_response(410 if name == 'offline' else 200)
+                    self.send_header('Content-Type', 'application/json' if name in ('stats', 'ledger') else 'application/octet-stream')
+                    self.send_header('Content-Length', str(len(body)))
+                    self.end_headers()
                     if name == 'slow':
-                        self.wfile.write(body[:1]); self.wfile.flush()
+                        write_body(body[:1]); self.wfile.flush()
                         with requests_lock:
                             requests['slowStarted'] = True
                         time.sleep(1)
-                        self.wfile.write(body[1:])
+                        write_body(body[1:])
                     else:
-                        self.wfile.write(body)
-                except (BrokenPipeError, ConnectionResetError):
-                    pass
+                        write_body(body)
+                    self.wfile.flush()
+                    if transfer is not None:
+                        with requests_lock:
+                            transfer['finished'] = transfer['bytes'] == transfer['expectedBytes']
+                except OSError:
+                    if transfer is not None:
+                        with requests_lock:
+                            transfer['aborted'] = True
                 return
             mounts = json.loads((ROOT/'tests/mobile/mounts.json').read_text())
             prefix = next((prefix for prefix in mounts if path.startswith(prefix)), None)
@@ -166,6 +256,7 @@ def main():
             '-keyout', str(key), '-out', str(cert), '-subj', '/CN=localhost',
             '-addext', 'subjectAltName=DNS:localhost,IP:127.0.0.1')
     server = ThreadingHTTPServer(('127.0.0.1', args.port), functools.partial(Handler, directory=str(ROOT)))
+    args.port = server.server_address[1]
     tls = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
     tls.load_cert_chain(cert, key)
     server.socket = tls.wrap_socket(server.socket, server_side=True)
@@ -238,6 +329,7 @@ def main():
             server.shutdown(); server.server_close()
             certificate_dir.cleanup()
             evidence['fixtureRequests'] = requests
+            evidence['fixtureLedger'] = ledger()
             evidence['tls'] = 'ephemeral localhost certificate; iOS Simulator trusts this root, Android emulator explicitly ignores certificate errors'
             evidence['componentPackageSha256'] = {str(p.relative_to(REPO)):hashlib.sha256(p.read_bytes()).hexdigest() for p in (REPO/'packages/browser-model-manager/dist').rglob('*.js')}
             (args.output/'host.json').write_text(json.dumps(evidence, indent=2))

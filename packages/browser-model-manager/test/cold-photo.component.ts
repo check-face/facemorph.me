@@ -306,7 +306,7 @@ test(
           const grant = {
             manifestSha256: manifestSha,
             route: 'cpu',
-            purpose: 'cold-photo-component',
+            purpose: 'prepare-encoder',
             owners: ['face:cold-photo'],
             remainingBytes: units.reduce((n, unit) => n + unit.size, 0),
             assets: units.map((unit) => ({

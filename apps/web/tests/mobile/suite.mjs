@@ -1,6 +1,7 @@
 import {createBrowserModelCache, MODEL_CACHE_NAME} from '/packages/browser-model-manager/cache/model-cache.js';
 import {decodeBounded,cropPhoto} from '/src/Next/photo/crop.mjs';
 import {openShardStore} from '/packages/browser-model-manager/cache/shard-store.js';
+import {runManagerMatrix} from './manager-matrix.mjs';
 
 const runId = new URLSearchParams(location.search).get('run');
 const storageKey = `mobile-ci-${runId}`;
@@ -43,6 +44,7 @@ try {
       check(await (await handle.open()).text()==='abc','Retained bytes changed');
     });
     sessionStorage.removeItem(storageKey);
+    const matrix=await runManagerMatrix(runId);report.managerMatrix=matrix.rows;report.managerCapabilities=matrix.capabilities;
     report.completed=true;await submit();
   } else {
     // Only fixture identities on a dedicated ephemeral CI origin are removed.
