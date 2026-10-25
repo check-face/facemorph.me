@@ -1,6 +1,16 @@
 // fm-25um: operated controls in the identified, composed application, with real CPU synthesis.
 import assert from 'node:assert/strict';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
+import { tmpdir } from 'node:os';
 import { createHash } from 'node:crypto';
 import { resolve, join } from 'node:path';
 import test from 'node:test';
@@ -572,6 +582,199 @@ test(
     } finally {
       await browser.close();
       await site.stop();
+    }
+  },
+);
+
+test(
+  'photo encoding genuinely refused: every photo entry reads Open saved image and a saved image opens and saves',
+  { timeout: 600_000 },
+  async (t) => {
+    if (!existsSync(join(runtime, 'manifest.json'))) {
+      const reason = `untested: no acquired runtime at ${runtime}; owner fm-25um; run on the runtime lane`;
+      if (process.env['FACEMORPH_REQUIRE_RUNTIME'] === '1') throw Error(reason);
+      t.skip(reason);
+      return;
+    }
+    // The same verified runtime with the encoder not delivered: its manifest names no encoder and the
+    // encoder files are absent from the server, so admission refuses photo encoding (encoder-not-delivered).
+    const manifest = JSON.parse(readFileSync(join(runtime, 'manifest.json'), 'utf8'));
+    const encoderDir = String(manifest.encoder?.url ?? '')
+      .split('/')
+      .at(-2);
+    delete manifest.encoder;
+    delete manifest.encoderStream;
+    const refused = mkdtempSync(join(tmpdir(), 'fm-refused-encoder-'));
+    for (const entry of readdirSync(runtime))
+      if (!['manifest.json', 'assets', 'encoder-stream'].includes(entry))
+        symlinkSync(join(runtime, entry), join(refused, entry));
+    mkdirSync(join(refused, 'assets'));
+    for (const entry of readdirSync(join(runtime, 'assets')))
+      if (entry !== encoderDir)
+        symlinkSync(join(runtime, 'assets', entry), join(refused, 'assets', entry));
+    writeFileSync(join(refused, 'manifest.json'), JSON.stringify(manifest));
+    const artifact = readIdentity(REPO);
+    assert.deepEqual(artifact.findings, []);
+    const browser = await chromium.launch({ args: [...chromiumArgs, '--disable-features=WebGPU'] });
+    mkdirSync(results, { recursive: true });
+    // A real saved image first, generated on the CPU with the full runtime this artifact is pinned to.
+    const saved = join(results, 'refused-source.webp');
+    const full = await startControl({
+      runtime,
+      artifact: resolve(REPO, 'deploy-next'),
+      source: artifact.identity.deploySource.buildId,
+    });
+    try {
+      const context = await browser.newContext({ ignoreHTTPSErrors: true, acceptDownloads: true });
+      const page = await context.newPage();
+      await page.goto(ORIGIN);
+      const second = page.locator('section.next-face').nth(1);
+      await second.waitFor();
+      await page.getByRole('button', { name: 'More options' }).click(); // setup
+      await page.getByText('Advanced', { exact: true }).click(); // setup
+      await page.getByLabel('Processing mode').selectOption('cpu');
+      await second.locator('.next-input-row .next-face-generate').click(); // setup
+      const consent = page.locator('.next-download-accept');
+      if (
+        await consent.waitFor({ timeout: 10_000 }).then(
+          () => true,
+          () => false,
+        )
+      )
+        await consent.click();
+      await page.waitForFunction(
+        () =>
+          document.querySelectorAll('section.next-face')[1]?.getAttribute('data-next-state') ===
+          'filled',
+        null,
+        { timeout: 180_000 },
+      );
+      const download = page.waitForEvent('download');
+      await second.getByRole('button', { name: 'Save image', exact: true }).click(); // setup
+      await (await download).saveAs(saved);
+      await context.close();
+    } finally {
+      await full.stop();
+    }
+    const site = await startControl({
+      runtime: refused,
+      artifact: resolve(REPO, 'deploy-next'),
+      source: artifact.identity.deploySource.buildId,
+    });
+    try {
+      for (const [name, width, touch] of [
+        ['desktop', 1280, false],
+        ['phone', 390, true],
+      ] as const) {
+        const context = await browser.newContext({
+          ...(touch ? devices['iPhone 13'] : {}),
+          viewport: { width, height: 900 },
+          hasTouch: touch,
+          isMobile: touch,
+          ignoreHTTPSErrors: true,
+          acceptDownloads: true,
+        });
+        await context.addInitScript(INSTALL_HOOK);
+        const page = await context.newPage();
+        const errors: string[] = [];
+        const modelRequests: string[] = [];
+        page.on('pageerror', (error) => errors.push(error.message));
+        page.on('request', (request) => {
+          const path = new URL(request.url()).pathname;
+          if (/^\/runtime\/(assets|chunks|encoder-stream|photo)\//.test(path))
+            modelRequests.push(path);
+        });
+        const operate = async (control: Locator) =>
+          assert.ok((await press(page, control, { touch })).inside);
+        const shot = (caseName: string) =>
+          page.screenshot({
+            path: join(results, `${name}-refused-${caseName}.png`),
+            fullPage: true,
+          });
+        try {
+          await page.goto(ORIGIN);
+          const tiles = page.locator('section.next-face');
+          await tiles.nth(1).waitFor();
+          await page.waitForFunction(() => {
+            const downloads = (
+              window as unknown as {
+                __elmish: { model: { Downloads: { known: boolean; photoAvailable: boolean } } };
+              }
+            ).__elmish.model.Downloads;
+            return downloads.known && !downloads.photoAvailable;
+          });
+          for (const control of [
+            page.locator('.next-model-toast').getByRole('button', { name: 'Not now' }),
+            page.getByRole('button', { name: 'Ask me later' }),
+          ])
+            if (
+              await control.waitFor({ timeout: 5000 }).then(
+                () => true,
+                () => false,
+              )
+            )
+              await operate(control);
+          // Every photo entry: each face's menu and an empty card.
+          await operate(page.getByRole('button', { name: 'Add face', exact: true }));
+          await tiles.nth(2).waitFor();
+          const empty = tiles.nth(2).locator('.next-face-image .next-face-empty');
+          assert.equal((await empty.innerText()).trim(), 'Open saved image');
+          assert.equal(await empty.getAttribute('aria-label'), 'Open saved image');
+          for (let index = 0; index < 3; index += 1) {
+            await operate(tiles.nth(index).getByRole('button', { name: 'Change mode' }));
+            assert.equal(
+              await page.getByRole('menuitem', { name: 'Open saved image', exact: true }).count(),
+              1,
+            );
+            assert.equal(await page.getByRole('menuitem', { name: 'Encode image' }).count(), 0);
+            await page.keyboard.press('Escape');
+            await page.getByRole('menu').waitFor({ state: 'hidden' });
+          }
+          assert.equal(
+            await page.getByText('Encode image', { exact: true }).filter({ visible: true }).count(),
+            0,
+            'no visible Encode image entry anywhere',
+          );
+          await shot('entries');
+          // The saved image opens through the empty card's chooser and installs without any model.
+          const before = modelRequests.length;
+          const chooser = page.waitForEvent('filechooser');
+          await operate(empty);
+          await (await chooser).setFiles(saved);
+          await page.waitForFunction(
+            () =>
+              document.querySelectorAll('section.next-face')[2]?.getAttribute('data-next-state') ===
+              'project',
+          );
+          await page.locator('section.next-face').nth(2).locator('.next-face-img').waitFor();
+          assert.equal(
+            await page.getByRole('dialog').count(),
+            0,
+            'a recovered still opens no crop',
+          );
+          assert.deepEqual(modelRequests.slice(before), [], 'recovery fetches no model');
+          await shot('opened');
+          const download = page.waitForEvent('download');
+          await operate(tiles.nth(2).getByRole('button', { name: 'Save image', exact: true }));
+          const file = await download;
+          const out = join(
+            results,
+            `${name}-refused-saved.${file.suggestedFilename().split('.').at(-1)}`,
+          );
+          await file.saveAs(out);
+          assert.ok(readFileSync(out).length > 10_000, 'the reopened face saves a real image file');
+          assert.deepEqual(errors, []);
+        } catch (error) {
+          await shot('failure').catch(() => {});
+          throw error;
+        } finally {
+          await context.close();
+        }
+      }
+    } finally {
+      await browser.close();
+      await site.stop();
+      rmSync(refused, { recursive: true, force: true });
     }
   },
 );
