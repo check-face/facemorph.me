@@ -302,7 +302,9 @@ def attach_cdp(cdp, drain_events, host_map=None, page_session=None, page_target=
     att.page_session = page_session
     drain_events()  # earlier events belong to no step of this record
     att._enable(page_session)
-    workers = [{'type': 'worker'}, {'type': 'shared_worker'}, {'type': 'service_worker'}]
+    # TargetFilter includes unmatched targets unless an excluding final entry is supplied. Pausing a
+    # newly attached page here deadlocks Page.navigate before the caller can drain worker events.
+    workers = [{'type': 'worker'}, {'type': 'shared_worker'}, {'type': 'service_worker'}, {'exclude': True}]
     if page_target:
         att.cdp('Target.autoAttachRelated', targetId=page_target, waitForDebuggerOnStart=True, filter=workers)
     else:

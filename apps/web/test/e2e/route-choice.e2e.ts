@@ -70,6 +70,17 @@ function assetsOf(value: unknown, out: { path: string; sha256: string }[] = []) 
   return out;
 }
 
+/** Chunked assets travel as their chunks; their aggregate digest has no separate request. */
+function transferredDigests(value: unknown): string[] {
+  if (Array.isArray(value)) return value.flatMap(transferredDigests);
+  if (!value || typeof value !== 'object') return [];
+  const asset = value as Record<string, unknown>;
+  if (Array.isArray(asset['chunks'])) return transferredDigests(asset['chunks']);
+  if (typeof asset['url'] === 'string' && typeof asset['sha256'] === 'string')
+    return [asset['sha256']];
+  return Object.values(asset).flatMap(transferredDigests);
+}
+
 let bundleDir = '';
 let manifest: Manifest;
 let gpuAssets = new Map<string, string>();
@@ -571,8 +582,9 @@ for (const [name, userAgent, engine] of [
       assert.ok(maxRgb <= 1 && maxFloat <= 0.002);
       assert.equal(s.cpuRequests(), 0);
       const expected = new Set(
-        (engine === 'direct' ? assetsOf(manifest.webgl) : assetsOf(manifest.webgpu)).map(
-          (a) => a.sha256,
+        transferredDigests(
+          // The retired WebGL module stays in the manifest for its shared coefficient assets.
+          engine === 'direct' ? (manifest.webgl as Json)['assets'] : manifest.webgpu,
         ),
       );
       assert.ok(digests.length > 0);

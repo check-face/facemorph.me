@@ -39,7 +39,7 @@ const rowLines = (path) =>
     : [];
 
 // Run the generator; resolves with its exit and log lines. onTick may kill it.
-function generate(args, onTick, script = 'generate.mjs') {
+function generate(args, onTick, script = 'generate.mjs', signal) {
   return new Promise((resolve, reject) => {
     const p = spawn(
       process.execPath,
@@ -50,8 +50,20 @@ function generate(args, onTick, script = 'generate.mjs') {
         `--chromium=${CHROMIUM}`,
         `--cache=${CACHE}`,
       ],
-      { stdio: ['ignore', 'pipe', 'pipe'] },
+      { stdio: ['ignore', 'pipe', 'pipe'], detached: process.platform !== 'win32' },
     );
+    // Killing only Node leaves Playwright's driver/browser holding its pipes and persistent profile.
+    // Terminate the whole test-owned group, including when the test deadline aborts the run.
+    const stop = () => {
+      try {
+        if (process.platform === 'win32') p.kill('SIGKILL');
+        else process.kill(-p.pid, 'SIGKILL');
+      } catch (e) {
+        if (e.code !== 'ESRCH') throw e;
+      }
+    };
+    signal?.addEventListener('abort', stop, { once: true });
+    if (signal?.aborted) stop();
     let out = '';
     let err = '';
     p.stdout.on('data', (d) => {
@@ -60,13 +72,14 @@ function generate(args, onTick, script = 'generate.mjs') {
     p.stderr.on('data', (d) => {
       err += d;
     });
-    const tick = onTick && setInterval(() => onTick(p), 100);
+    const tick = onTick && setInterval(() => onTick(p, stop), 100);
     p.on('error', reject);
-    p.on('close', (code, signal) => {
+    p.on('close', (code, exitSignal) => {
       if (tick) clearInterval(tick);
+      signal?.removeEventListener('abort', stop);
       resolve({
         code,
-        signal,
+        signal: exitSignal,
         err,
         lines: out
           .split('\n')
@@ -80,7 +93,8 @@ function generate(args, onTick, script = 'generate.mjs') {
 test(
   'a killed run resumes without regenerating any valid row; a corrupted file is regenerated alone; zero API requests',
   { skip, timeout: 900_000 },
-  async () => {
+  async (t) => {
+    const run = (args, onTick, script) => generate(args, onTick, script, t.signal);
     const dir = mkdtempSync(join(tmpdir(), 'fm-a40f-'));
     try {
       const catalogue = await (await fetch(`${CATALOGUE}/catalogue.json`)).json();
@@ -111,8 +125,8 @@ test(
       ];
 
       // First run: SIGKILL as soon as one row is in the manifest.
-      const first = await generate(args, (p) => {
-        if (rowLines(manifest).length >= 1 && p.exitCode === null) p.kill('SIGKILL');
+      const first = await run(args, (p, stop) => {
+        if (rowLines(manifest).length >= 1 && p.exitCode === null) stop();
       });
       const before = rowLines(manifest);
       assert.ok(before.length >= 1, first.err);
@@ -123,7 +137,7 @@ test(
       }));
 
       // Resumed run: plans every row written before the kill as reused and finishes the rest.
-      const second = await generate(args);
+      const second = await run(args);
       assert.equal(second.code, 0, second.err);
       const planned = second.lines.find((l) => l.event === 'plan');
       assert.equal(planned.reuse, kept.length);
@@ -151,7 +165,7 @@ test(
       const bytes = readFileSync(join(out, victim.file));
       bytes[bytes.length >> 1] ^= 1;
       writeFileSync(join(out, victim.file), bytes);
-      const third = await generate(args);
+      const third = await run(args);
       assert.equal(third.code, 0, third.err);
       assert.deepEqual(
         (({ reuse, generate: g }) => ({ reuse, g }))(third.lines.find((l) => l.event === 'plan')),
@@ -169,7 +183,7 @@ test(
 
       // Acceptance 3 on these rows: typing each name in a fresh profile gives the catalogue file's latent and
       // identity exactly, and the catalogue latent's synthesis matches within the frozen tolerance.
-      const sample = await generate([`--out=${out}`, '--samples=2'], null, 'sample-check.mjs');
+      const sample = await run([`--out=${out}`, '--samples=2'], null, 'sample-check.mjs');
       assert.equal(sample.code, 0, sample.err);
       const rowsChecked = sample.lines.filter((l) => l.event === 'row');
       assert.deepEqual(
@@ -188,7 +202,7 @@ test(
         join(planted, 'manifest.jsonl'),
         readFileSync(manifest, 'utf8').replace(`"value":"${NAMES[1]}"`, `"value":"${NAMES[0]}"`),
       );
-      const wrong = await generate([`--out=${planted}`, '--samples=2'], null, 'sample-check.mjs');
+      const wrong = await run([`--out=${planted}`, '--samples=2'], null, 'sample-check.mjs');
       assert.equal(wrong.code, 1);
       assert.ok(
         wrong.lines.some(

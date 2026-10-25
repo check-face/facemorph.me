@@ -162,7 +162,7 @@ test(
     await page.goto(`https://127.0.0.1:${appPort}/`);
     const acquire = (fresh: boolean) =>
       page.evaluate(
-        async ({ input, primary, mirror, fresh }) => {
+        async ({ input, mirror, fresh }) => {
           const m = await import(String('/pkg/index.js'));
           if (fresh) for (const name of await caches.keys()) await caches.delete(name);
           if (fresh)
@@ -173,15 +173,23 @@ test(
               .catch(() => {});
           const cache = await m.createBrowserModelCache({
             retryDelaysMs: [0, 0, 0],
-            mirrorOf: (url: string) =>
-              url.startsWith(primary) ? url.replace(primary, mirror) : undefined,
+            alternateOrigins: [mirror],
           });
-          const b = await (await cache.acquire(input)).bytes();
+          const grant = {
+            manifestSha256: 'staging-qualification',
+            route: 'cpu',
+            purpose: 'generate',
+            assets: [{ sha256: input.sha256, bytes: input.size, priority: 'foreground-required' }],
+            remainingBytes: input.size * 8,
+            owners: ['face:staging'],
+          };
+          const handle = await cache.acquire(input, { grant, owner: 'face:staging' });
+          const b = await handle.bytes();
           return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', b)), (x) =>
             x.toString(16).padStart(2, '0'),
           ).join('');
         },
-        { input, primary: PRIMARY, mirror: MIRROR!, fresh },
+        { input, mirror: MIRROR!, fresh },
       );
     try {
       record.step(att.rec, 'primary');
