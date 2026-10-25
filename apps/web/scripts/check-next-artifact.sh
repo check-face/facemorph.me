@@ -29,14 +29,16 @@ PHOTO_SELECTOR='.next-face button[aria-label="Change mode"]' if DESTINATION else
 PHOTO_OFFSET=0 if DESTINATION else 1
 def state():
     return json.loads(js("JSON.stringify({tiles:document.querySelectorAll('.next-face').length,photoControls:document.querySelectorAll(%s).length,helloPreview:(()=>{const i=document.querySelector('[data-next-face=\"face-1\"] img[data-public-preview=\"true\"]');return !!i&&i.complete&&i.naturalWidth===1024&&i.naturalHeight===1024;})(),generate:document.querySelectorAll('.next-face-generate').length===2,pattern:document.querySelector('select[aria-label=\"Morph shape\"]')?.value,errors:document.querySelector('.next-error')?.innerText||''})" % json.dumps(PHOTO_SELECTOR)))
-def until(predicate, timeout=15):
+def until(predicate, timeout=15, what='the UI condition'):
     deadline=time.monotonic()+timeout
     last=None
     while time.monotonic()<deadline:
         last=state()
         if predicate(last): return last
         time.sleep(.1)
-    raise AssertionError(f'UI condition timed out: {last}')
+    # Name the awaited condition and what was open, not only the general snapshot.
+    shown=js("JSON.stringify([...document.querySelectorAll('[role=dialog],[role=menu],dialog[open]')].map(e=>e.className||e.tagName))")
+    raise AssertionError(f'timed out after {timeout}s waiting for {what}: state={last} open={shown}')
 result={'passed':False,'artifactKind':os.environ.get('NEXT_ARTIFACT_KIND','control'),'scope':'Exact compiled artifact startup and face controls only; no inference, photo generation or physical-device qualification'}
 try:
     new_tab(os.environ.get('NEXT_ARTIFACT_ORIGIN','http://127.0.0.1:8080/'))
@@ -45,16 +47,16 @@ try:
     # Close the trial-phase reporting toast without answering it; it would cover coordinate clicks.
     time.sleep(1)
     result['consentToastShown']=bool(js('(()=>{const b=document.querySelector(\'.next-consent-toast button[aria-label="Ask me later"]\');if(b)b.click();return !!b;})()'))
-    initial=until(lambda s:s['tiles']==2 and s['photoControls']==2-PHOTO_OFFSET and s['helloPreview'] and s['generate'])
+    initial=until(lambda s:s['tiles']==2 and s['photoControls']==2-PHOTO_OFFSET and s['helloPreview'] and s['generate'],what='the initial two tiles')
     if DESTINATION:
         click('button','Change mode')
         click('menuitem','Encode image')
-        until(lambda s:js("!!document.querySelector('.next-encode-source input[type=file]')"))
+        until(lambda s:js("!!document.querySelector('.next-encode-source input[type=file]')"),what='the Encode source dialog after Encode image')
         accept=js("document.querySelector('.next-encode-source input[type=file]').accept")
         assert accept=='image/*,video/mp4', accept
         result['encodeSource']={'opened':True,'accept':accept}
         click('button','Cancel')
-        until(lambda s:not js("!!document.querySelector('.next-encode-dialog')"))
+        until(lambda s:not js("!!document.querySelector('.next-encode-dialog')"),what='the Encode dialog to close')
     assert not js("document.querySelector('.next-tagline a, .next-tagline button')"), 'Tagline must not replace an implicitly selected face'
     click('button','More options')
     until(lambda s:js("!!document.querySelector('.next-overflow')"))
