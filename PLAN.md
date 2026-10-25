@@ -1936,7 +1936,7 @@ or after the changes consistently, not combine a rewrite with untracked UX drift
 | Download consent modal | For missing assets, offer Generate and encode (recommended when eligible) and Generate, with purpose-specific missing bytes and concise download/use-time ranges or honest unknowns. Download and continue authorizes the selected bundle; Cancel starts nothing. Keep setup details secondary, then overlap approved acquisition with photo selection/review. No proactive offer toast or arrival download. Cached results remain usable. |
 | Retire WebGL execution only | Preserve CPU preferences/ordering, GPU-failure CPU fallback and mobile optimizations. Remove WebGL execution after mapped dependency checks; migrate an old WebGL preference explicitly to a supported recommendation. Keep shared coefficients, successful-slow-route policy, bounded fallback/retry and required WASM helpers. |
 | Move Browse Names into burger menu | Move the separate names adornment into that face field's existing burger/mode menu. Bind the originating stable face ID; no global selected-face mechanism. Names enter [static names and picker](#static-names-and-picker)'s new verified static-result path rather than inference or Generate. |
-| Generate inside an empty image tile | For eligible unfinished text/seed inputs; typing clears the displayed result. Retry unchanged input after failure/cancellation. A valid static-name selection already has a result and needs no Generate; editing its filled text field follows normal text generation. No photo Generate. |
+| Generate inline beside the textbox | For eligible unfinished text/seed inputs; typing clears the displayed result. Retry unchanged input after failure/cancellation. A valid static-name selection already has a result and needs no Generate; editing its filled text field follows normal text generation. No photo Generate. |
 | Rename Upload image to Encode image | Photo-encoding labels/entry points use the new action. Where photo encoding is genuinely unavailable, that same file-menu entry says Open saved image for its remaining recovery-only purpose; no duplicate control. |
 | Paste image into text field | Pasted image follows exactly the same selection/crop/consent/encoding flow as file-dialog input; typed text/seed input behavior remains. |
 | Remove duplicate filename line | The field may show the filename; no separate caption repeats it below. |
@@ -2195,8 +2195,8 @@ inspection, choosing faces and adjusting crops. A separately approved photo-setu
 intent may start before the source picker; file/drop/paste recovery entry still
 inspects metadata first and never needs model consent merely to reopen a result.
 Before a source is chosen, offer this optional setup through one compact **Prepare
-encoder** action beside the existing Choose image control in the Encode image
-modal, only when eligible required assets are missing. It opens the same bundle
+encoder** action in the owning face card beside its image chooser, only when
+eligible required assets are missing. Do not add a source-only Encode modal. It opens the same bundle
 consent; Choose image remains usable directly. After a fresh source is inspected,
 use that consent automatically where prerequisites are missing. This is contextual
 preparation inside the existing flow, not a new page-wide download action.
@@ -2205,7 +2205,7 @@ the approved input/order and queues encoding; it need not wait for downloads to 
 The selected generator's readiness permits a requested face while unrelated approved
 photo assets remain in flight; a face does not wait for the entire two-model bundle.
 
-Keep setup progress and Cancel setup in the crop/source modal's existing status/footer,
+Keep setup progress and Cancel setup in the owning face card or crop modal's existing status/footer,
 then the owning tile after OK; if a result becomes ready before optional preparation
 finishes, its actions work while the same compact status retains cancellation. No
 extra offer toast, permanent download panel or modal covering crop review. Approval
@@ -2594,10 +2594,12 @@ does not recrop. Static-name acquisition may show loading/Retry for the selected
 “instant” excludes synthesis, not network failure. A reloaded photo with lost retry
 pixels needs Choose image again. Eligibility means no valid result for the current
 revision, rather than a string different from the last attempt. Include keyboard/
-Enter activation and seed validation. Generate and the candidate's empty-tile
-photo-click behavior cannot share one click target: keep source-menu/drop photo
-entry when Generate is in the tile. A historic initial preview is display-only:
-keep the action inside that tile; Morph may generate its unfinished text but cannot
+Enter activation and seed validation. Keep Generate/Cancel/Cancelling/Retry inline
+beside the textbox, with the face image reserved for direct choose/drop/paste photo
+entry. Open the native chooser directly from that card, without an empty Encode
+source modal; show the existing crop confirmation/adjustment dialog after source
+inspection when needed. A historic initial preview is display-only:
+keep the operation control beside the textbox; Morph may generate its unfinished text but cannot
 use preview pixels as a verified input, and Save waits for a verified current result. No extra preview badge or onboarding is needed. Completed-result
 Share/Save stays outside this operation slot.
 
@@ -3802,7 +3804,7 @@ work. Where a section already settles an item, it governs.
 | Application staging, promotion, collector, catalogue pipeline | Application deploy and collector re-homing |
 | Native desktop retirement (named in five sections) | Provider simplification removes native dispatch code, links and guidance and re-homes the artifact verifier in one checked revision right after the first destination build, as candidate import already says. The three `desktop-*.yml` workflows exist only in classic and are never imported, so there is nothing to remove from them here; retiring classic's copies is a classic wind-down step, run automatically. Import only retains the dependencies until then; inventory only lists them; organization rename does not touch them. |
 | API-free names pipeline: preview snapshot, result generator, workflow home | Domain handover owns the one-time snapshot of the published previews and latents before the API stops. Static names owns the generator, which never calls the API. Application deploy and collector re-homing owns where the staging and publication workflow runs. |
-| "Prepare encoder" action in the Encode image modal | Acquisition consent owns the action, its grant and Cancel semantics; Face controls renders the entry beside Choose image |
+| "Prepare encoder" action in the owning face card | Acquisition consent owns the action, its grant and Cancel semantics; Face controls renders the contextual entry beside the card image chooser, without a source-only modal |
 | Browse Names in each face's menu | Face controls owns the menu entry and stable-ID capture; Static names owns the modal and result consumption |
 | Morph: frame-budget check, production, MP4-availability probe | Morph pipeline; parent-intent scheduling is the operation controller; button, progress and Cancel presentation is Face controls |
 | Mixed recovered-still and photo batch | Face controls (batch UI), using Media and recovery's recovery reader |
@@ -5189,6 +5191,7 @@ history retains their provenance.
 
 | Date | Decision |
 | --- | --- |
+| 26 Oct | Operator correction to face entry/placement: Generate belongs inline beside its textbox, preserving disabling, Cancel, Cancelling, Retry and per-slot semantics. Image choose/drop/paste and encoding belong in the face card as in the classic candidate; remove the extra empty Encode an image / Choose image source modal. Crop confirmation/adjustment may still occur for each fresh photo and keeps the locked crop design, consent, ordered selection, recovery dispatch and cancellation requirements. This corrects conflicting earlier plan/bead placement; it is not a waiver of behavioural acceptance. |
 | 26 Oct | P30 Pro is ready for any agent to use, and optional disposable build compute is available under local workspace guidance. The GitHub org rename to `facemorph-me` is unblocked by the provided owner login; the github.com API cannot rename an organization (PATCH `login` is silently ignored), so the operator performs the one-click Settings rename, with the prepared cutover already pushed (de17922: area workflow refs and inventory defaults) and the post-rename checks, local remotes and the remaining active-link sweep run by agents immediately after. |
 | 26 Oct | Resume the existing NTM swarm with one Claude Opus medium and one GPT-6.1-Sol high. Subsequent operator clarification: replace duplicated process instructions with a concise delivery goal; use Beads for scope/acceptance and CASS for history. Maximise coding, proportionate local testing and completed work, keep taking beads while CI runs, and hand back new attributable failures to one owner without re-fixing old failures predating landed repairs. Aim for rapid completion (operator target: 50 beads in two hours), without splitting tasks or weakening acceptance to inflate the count. Fresh worker contexts are explicitly requested. |
 | 25 Oct | API-retirement / production-notice decision deferred to 26 Oct by the operator. Legacy production keeps announcing the fixed 25 Oct retirement date until the operator rules; delivery work must not change retirement timing or the notice copy before then. |
