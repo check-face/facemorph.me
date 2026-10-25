@@ -141,6 +141,10 @@ test(
             await page.waitForTimeout(300);
             assert.equal(await page.getByRole('dialog').count(), 0);
             assert.equal(await field.inputValue(), before);
+            assert.ok(
+              await tiles.first().evaluate((el) => el.contains(document.activeElement)),
+              `focus stays on the invoking card: ${await page.evaluate(() => document.activeElement?.outerHTML.slice(0, 120))}`,
+            );
             await page.locator('.next-connector-add').last().click(); // setup: one empty face
             const card = tiles.nth(1).locator('.next-face-image').getByRole('button', {
               name: 'Encode image',
@@ -149,7 +153,17 @@ test(
             const cardChooser = page.waitForEvent('filechooser');
             await hit(card);
             await shot('card-entry');
-            await (await cardChooser).setFiles([]);
+            const cardEvent = await cardChooser;
+            assert.equal(
+              await cardEvent
+                .element()
+                .evaluate((el) =>
+                  (el as Element).closest('[data-next-face]')?.getAttribute('data-next-face'),
+                ),
+              await tiles.nth(1).getAttribute('data-next-face'),
+              'the empty card opens its own chooser',
+            );
+            await cardEvent.setFiles([]);
             await page.waitForTimeout(300);
             assert.equal(await page.getByRole('dialog').count(), 0);
             await hit(tiles.nth(1).getByRole('button', { name: /^Remove/ }));
