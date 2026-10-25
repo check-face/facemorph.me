@@ -188,13 +188,48 @@ test(
               assert.equal(await cropOwner(), firstId);
               assert.equal(await page.getByRole('dialog').count(), 1);
               await shot(`confirmation-${exit}`);
-              for (let step = 0; step < 6; step += 1) {
+              // Tab order is the visual order (rows top to bottom, then left to right) and wraps
+              // inside the modal: two full cycles visit exactly that sequence.
+              const visual = await dialog.evaluate((root) =>
+                [
+                  ...root.querySelectorAll<HTMLElement>(
+                    'button:not(:disabled),a[href],input:not([type=hidden]),[tabindex]:not([tabindex="-1"])',
+                  ),
+                ]
+                  .filter((el) => el.tabIndex >= 0 && el.getClientRects().length > 0)
+                  .map((el) => {
+                    const r = el.getBoundingClientRect();
+                    return {
+                      top: r.top,
+                      left: r.left,
+                      key: el.getAttribute('aria-label') || el.textContent!.trim(),
+                    };
+                  })
+                  .sort((a, b) => (Math.abs(a.top - b.top) > 8 ? a.top - b.top : a.left - b.left))
+                  .map((item) => item.key),
+              );
+              assert.ok(visual.length >= 3, `focusable controls: ${visual.join(' | ')}`);
+              const visited: string[] = [];
+              for (let step = 0; step < visual.length * 2; step += 1) {
                 await page.keyboard.press('Tab');
                 assert.ok(
                   await dialog.evaluate((el) => el.contains(document.activeElement)),
                   'Tab never leaves the modal',
                 );
+                visited.push(
+                  await page.evaluate(() => {
+                    const el = document.activeElement as HTMLElement;
+                    return el.getAttribute('aria-label') || el.textContent!.trim();
+                  }),
+                );
               }
+              const start = visual.indexOf(visited[0]!);
+              assert.ok(start >= 0, `focus began on a listed control: ${visited[0]}`);
+              assert.deepEqual(
+                visited,
+                [...visual, ...visual, ...visual].slice(start, start + visual.length * 2),
+                'Tab follows visual order',
+              );
               assert.equal(
                 await page
                   .locator('header')
@@ -284,6 +319,49 @@ test(
                 .evaluate((el) => getComputedStyle(el).backgroundColor),
               'rgb(63, 81, 181)',
             );
+            assert.equal(
+              await dialog
+                .locator('.next-encode-cancel')
+                .evaluate((el) => getComputedStyle(el).backgroundColor),
+              'rgb(224, 224, 224)',
+            );
+            // WCAG contrast of every text element against its painted background.
+            const contrast = await dialog.evaluate((root) => {
+              const rgb = (value: string) => value.match(/[\d.]+/g)!.map(Number);
+              const luminance = ([r, g, b]: number[]) =>
+                [r!, g!, b!]
+                  .map((c) => c / 255)
+                  .map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4))
+                  .reduce((sum, c, i) => sum + c * [0.2126, 0.7152, 0.0722][i]!, 0);
+              const background = (el: Element | null): number[] => {
+                for (; el; el = el.parentElement) {
+                  const c = rgb(getComputedStyle(el).backgroundColor);
+                  if (c.length < 4 || c[3]! > 0) return c;
+                }
+                return [255, 255, 255];
+              };
+              return Object.fromEntries(
+                [
+                  '.next-encode-header h2',
+                  '.next-encode-adjust',
+                  '.next-encode-explanation',
+                  '.next-encode-cancel',
+                  '.next-encode-ok',
+                ].map((selector) => {
+                  const el = root.querySelector(selector)!;
+                  const [a, b] = [
+                    luminance(rgb(getComputedStyle(el).color)),
+                    luminance(background(el)),
+                  ];
+                  return [selector, (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05)];
+                }),
+              );
+            });
+            for (const [selector, ratio] of Object.entries(contrast))
+              assert.ok(
+                ratio >= 4.5,
+                `${width}/${colorScheme} ${selector} contrast ${ratio.toFixed(2)}`,
+              );
             await hit(dialog.getByRole('button', { name: 'ADJUST CROP', exact: true }));
             await dialog.getByRole('application', { name: 'Crop area' }).waitFor();
             const offset = () =>
