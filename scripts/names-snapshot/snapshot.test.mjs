@@ -192,7 +192,8 @@ before(async () => {
   rows = plant();
   if (!docker) return;
   // Data on a sized tmpfs: SeaweedFS refuses volume writes when the host disk reports no free space, and
-  // the volume count and size are explicit so tmpfs free space cannot shrink them to nothing.
+  // Seaweed allocates volumes in batches per bucket. A 64 MiB volume exhausted this 512 MiB
+  // tmpfs across the suite, even for tiny objects; 1 MiB holds each test dataset with headroom.
   container = execFileSync(
     'docker',
     [
@@ -209,7 +210,7 @@ before(async () => {
       '-dir=/data',
       '-ip.bind=0.0.0.0',
       '-volume.max=200',
-      '-master.volumeSizeLimitMB=64',
+      '-master.volumeSizeLimitMB=1',
     ],
     { encoding: 'utf8' },
   ).trim();
@@ -241,16 +242,23 @@ after(() => {
   catOrigin.server.close();
   if (container) {
     try {
+      const logs = spawnSync('docker', ['logs', container], { encoding: 'utf8' });
+      const serverLog = (logs.stdout ?? '') + (logs.stderr ?? '');
       const evidence = process.env['SNAPSHOT_EVIDENCE_DIR'];
       if (evidence) {
         mkdirSync(evidence, { recursive: true });
-        const logs = spawnSync('docker', ['logs', container], { encoding: 'utf8' });
-        writeFileSync(join(evidence, 'seaweed.log'), (logs.stdout ?? '') + (logs.stderr ?? ''));
+        writeFileSync(join(evidence, 'seaweed.log'), serverLog);
         writeFileSync(
           join(evidence, 'storage.txt'),
           execFileSync('docker', ['exec', container, 'df', '-h', '/data']),
         );
       }
+      assert.equal(logs.status, 0, 'SeaweedFS logs must be observable');
+      assert.doesNotMatch(
+        serverLog,
+        /no space left on device/i,
+        'Snapshot test server exhausted its tmpfs',
+      );
     } finally {
       execFileSync('docker', ['rm', '-f', container], { stdio: 'ignore' });
     }
