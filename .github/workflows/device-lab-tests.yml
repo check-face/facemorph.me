@@ -19,4 +19,4 @@ jobs:
         working-directory: tools/device-lab
         env:
           GH_TOKEN: ${{ github.token }}
-        run: python3 -m unittest -v test_lab_range test_hosted test_download
+        run: python3 -m unittest -v test_lab_range test_hosted test_download test_lab_lock

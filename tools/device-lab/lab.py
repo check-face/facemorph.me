@@ -23,7 +23,7 @@ elementFromPoint that the element there is the intended control. Analytics and t
 statistics are kept clean: every page gets navigator.globalPrivacyControl = true before load.
 Results: out/<timestamp>-<label>/report.json plus screenshots.
 """
-import argparse, json, os, re, subprocess, sys, threading, time
+import argparse, json, os, re, socket, subprocess, sys, threading, time
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
@@ -32,8 +32,6 @@ ADB = os.environ.get('ADB', str(Path.home() / 'Android/Sdk/platform-tools/adb'))
 SERIAL = os.environ.get('ANDROID_SERIAL', 'DUM0220115002146')
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parents[1]
-sys.path.insert(0, str(REPO / 'autoresearch'))
-import lease  # noqa: E402  (host name)
 CHROMIUM = os.environ.get('CHROMIUM', '/usr/bin/chromium')
 CLASSIC = Path(os.environ.get('CLASSIC_CHECKOUT', HERE.parents[2] / 'facemorph.me-classic'))
 ORIGIN_HOST = 'next.facemorph.me'
@@ -46,7 +44,7 @@ CHROME_FLAGS_FILE = '/data/local/tmp/chrome-command-line'
 PHONE_WEBGPU_FLAGS = ['--enable-unsafe-webgpu', '--ignore-gpu-blocklist']
 CELLS = {'eris-webgpu': ('desktop', True), 'eris-cpu': ('desktop', False),
          'phone-webgpu': ('phone', True), 'phone-cpu': ('phone', False)}
-PHONE_LEASE = 'p30pro'  # the phone's device lease; desktop cells take this machine's
+PHONE_LEASE = 'p30pro'  # the phone, for the devices a session reports
 CHROME = 'com.android.chrome'
 WEBCAM, WATCHDOG = 'com.pas.webcam', 'dev.dilger.camera.watchdog'
 CDP_PORT = 9222
@@ -700,27 +698,43 @@ def _terminate(signum, frame):
 
 @contextmanager
 def lab_lock(cells):
-    """One lab session at a time (lab.lock): the phone is one physical device two sessions cannot drive at once.
-    The machine-wide device lease is gone (operator, 25 October 2026); research and CI no longer queue here. A
-    second session waits its turn instead of failing: LAB_LOCK_WAIT seconds in all, default one hour."""
+    """Per-device lab locks: the phone is one physical device, so phone runs serialize against phone
+    runs; eris browser cells serialize only against other eris runs (operator, 25 October 2026: a CI
+    eris cell or a second pane never waits behind an unrelated device's session). Locks are taken in
+    sorted device order, so concurrent mixed runs cannot deadlock. LAB_LOCK_WAIT (default 300 s)
+    bounds each wait; past it the run exits 75 (busy) and the caller defers honestly — the lock is
+    never a long block. The machine-wide device lease is gone (operator, 25 October 2026); research
+    and CI no longer queue here."""
     import fcntl
-    end = time.time() + float(os.environ.get('LAB_LOCK_WAIT', '3600'))
+    wait_s = float(os.environ.get('LAB_LOCK_WAIT', '300'))
     unknown = [c for c in cells if c not in CELLS]
     if unknown:
         raise SystemExit(f"unknown cell(s) {', '.join(unknown)}; cells are {', '.join(CELLS)}")
-    devices = sorted({lease.host() if CELLS[c][0] == 'desktop' else PHONE_LEASE for c in cells})
+    devices = sorted({socket.gethostname().split('.')[0] if CELLS[c][0] == 'desktop' else PHONE_LEASE for c in cells})
     STATE.parent.mkdir(parents=True, exist_ok=True)
-    with open(STATE.parent / 'lab.lock', 'w') as lock:
-        while True:
-            try:
-                fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
-                break
-            except BlockingIOError:
-                if time.time() > end:
-                    raise SystemExit('another device-lab session still holds the devices')
-                log('waiting_for_device_lock')
-                time.sleep(30)
+    held = []
+    try:
+        for device in devices:
+            lock = open(STATE.parent / f'lab-{device}.lock', 'w')
+            held.append(lock)
+            deadline = time.time() + wait_s
+            while True:
+                try:
+                    fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                    break
+                except BlockingIOError:
+                    if time.time() >= deadline:
+                        print(f'device lab busy: lab-{device}.lock still held after {wait_s:.0f} s', file=sys.stderr)
+                        raise SystemExit(75)
+                    log('waiting_for_device_lock', device=device)
+                    time.sleep(15)
         yield devices
+    finally:
+        for h in held:
+            try:
+                fcntl.flock(h, fcntl.LOCK_UN)
+            finally:
+                h.close()
 
 
 def run_journeys(dev, args, cell, gpu, out, report, memory=None):

@@ -112,7 +112,9 @@ candidate build). Resource policy, three classes:
   `lab.py matrix` locally against candidate builds during development; at handover the release bead
   runs the phone and eris against the deployed next.facemorph.me release (`lab.py matrix --url
   https://next.facemorph.me`). CI covers phones via the hosted Android emulator and iOS Simulator
-  lanes only.
+  lanes only. The phone is one physical device: per-device locks in `lab.py` serialize phone runs
+  against phone runs only — eris cells and CI never wait behind a phone session, and a blocked run
+  exits 75 (busy) after a bounded wait instead of queueing.
 
 **Journey suite (operator, 25 October 2026).** The end-to-end scenarios are a fixed, named,
 budgeted registry — not an accreting suite. Today: `cold-face`, `warm-face`, `morph`. The
