@@ -14,6 +14,16 @@
   ],
   "rules": [
     {
+      "id": "hosted-github-api-root",
+      "repo": "facemorph.me",
+      "paths": ["tools/device-lab/hosted.py"],
+      "kind": "url",
+      "target": "^/$",
+      "line": "https://api\\.github\\.com/",
+      "class": "external",
+      "disposition": "leave: GitHub REST API hostname has no organisation identity; repository paths come from explicit release inputs"
+    },
+    {
       "id": "origin-remote",
       "paths": [".git/config"],
       "class": "active-link",
