@@ -2,7 +2,7 @@ name: GPU lane benchmark
 # fm-wzy: classic's next-gpu-lane.yml ("GPU lane benchmark", job webgpu-benchmark) carried over. The operator's
 # compute direction (24 October): eris and triton carry every self-hosted lane and nothing waits on TrueNAS, so it
 # runs on eris's RTX 2080 SUPER (triton has CPU/Docker capacity, but its Ubuntu 20.04 browser/GPU stack remains
-# unqualified: docs/dev/workers.md). Classic's driver (apps/web/scripts/next-gpu-benchmark.py) runs unedited under
+# unqualified: docs/dev/workers.md). Classic's driver (apps/web/scripts/next-gpu-benchmark.py), with bounded CDP startup, runs under
 # browser-harness 0.1.8 in pinned Chrome for Testing, wrapped by scripts/ci/gpu-lane/lane.mjs and the eris
 # GPU timing lock. The report gives nvidia-smi, the in-page adapter and the product's webgpu canaries (RGB <= 1,
 # raw float <= 0.002) before any timing; a software adapter is the named failure "software adapter" with no

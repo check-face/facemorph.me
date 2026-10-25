@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // GPU lane (fm-wzy), carried over from classic's next-gpu-lane.yml onto eris's RTX 2080 SUPER. Runs classic's own
-// driver (apps/web/scripts/next-gpu-benchmark.py, unedited) through browser-harness 0.1.8 against a Chrome with
+// driver (apps/web/scripts/next-gpu-benchmark.py, with bounded CDP startup) through browser-harness 0.1.8 against a Chrome with
 // WebGPU on Vulkan via ANGLE, and reports, in this order: the host GPU (nvidia-smi), the in-page adapter, the
 // product's own synthesis canary results for the webgpu route (RGB <= 1, sampled raw float <= 0.002), and only
 // then the per-face timings. Named failures: "software adapter" (llvmpipe, SwiftShader, a fallback adapter; no
@@ -86,15 +86,10 @@ function harness(script, env, timeoutMs) {
 }
 
 const CANARY_READOUT = `
-import json, os, time
-origin = os.environ['LANE_ORIGIN']
-new_tab('about:blank')
-js('setTimeout(()=>{location.href=%s;},0);0' % json.dumps(origin))
-deadline = time.monotonic() + 30
-while not js('location.href===%s&&document.readyState==="complete"' % json.dumps(origin)):
-  if time.monotonic() >= deadline:
-    raise TimeoutError('Canary readout document did not load')
-  time.sleep(.25)
+import json, os
+# The benchmark's loaded tab owns these caches. A second navigation introduces
+# another renderer-startup race and is unnecessary for reading its qualification.
+assert js('new URL(location.href).origin') == js('new URL(%s).origin' % json.dumps(os.environ['LANE_ORIGIN']))
 print('CANARIES ' + json.dumps(js("""(async()=>{const c=await caches.open('checkface-model-blobs-v1');const out=[];
   for(const r of await c.keys()){if(!r.url.includes('canary-qualification'))continue;
     const j=await (await c.match(r)).json().catch(()=>null);if(j)out.push({provider:j.provider,manifestSha256:j.manifestSha256,checks:j.checks});}

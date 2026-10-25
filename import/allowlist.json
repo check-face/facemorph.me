@@ -1163,10 +1163,10 @@
       "class": "temporary-root",
       "temporary": true,
       "ported": {
-        "sha256": "1165d63008eff152620f2a84070a354e13f9a8c87872f160c73eebe9d497e2d6",
-        "bytes": 11668,
+        "sha256": "95383e97fda50e1474fb9d3647295b603c549550c9ce9f33bd55c22b3b70fbfc",
+        "bytes": 12143,
         "bead": "fm-wzy",
-        "reason": "Navigate asynchronously while polling document readiness so the browser harness event pump does not hit its synchronous IPC deadline before GPU admission."
+        "reason": "Await the browser load event without renderer evaluations during navigation, then retain document readiness, hardware adapter, route, canary and timing assertions; fm-wzy repairs main40182116464 startup IPC timeout."
       }
     },
     {

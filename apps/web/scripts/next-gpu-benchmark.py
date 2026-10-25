@@ -77,10 +77,19 @@ def wait(check, seconds, what):
 origin = os.environ.get('GPU_BENCH_URL', 'https://next.facemorph.me/')
 new_tab('about:blank')
 origin = js('new URL(%s).href' % json.dumps(origin))
-# Page.navigate can exceed browser-harness's synchronous IPC deadline while
-# Chrome starts the document. Return before navigating and poll the real page,
-# as the CPU journey does, rather than blocking the harness's event pump.
+# Both Page.navigate and renderer evaluations can exceed the harness's five-second
+# IPC deadline during startup. Await the browser's actual load event before
+# querying the document; draining events never waits on the navigating renderer.
+session = cdp('Target.attachToTarget', targetId=current_tab()['targetId'], flatten=True)['sessionId']
+cdp('Page.enable', session_id=session)
+drain_events()
 js('setTimeout(()=>{location.href=%s;},0);0' % json.dumps(origin))
+deadline = time.monotonic() + 90
+while not any(event.get('method') == 'Page.loadEventFired' and event.get('session_id') == session
+              for event in drain_events()):
+    if time.monotonic() >= deadline:
+        raise TimeoutError('The benchmark document did not finish loading')
+    time.sleep(.25)
 wait(lambda: q('location.href===%s&&document.readyState==="complete"' % json.dumps(origin)),
      30, 'the benchmark document to load')
 # Close the trial-phase reporting toast without answering it.
