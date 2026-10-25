@@ -1,6 +1,9 @@
 // The page the facade harness drives (fm-pia9): the typed facade over the real candidate bridge, its runtime and
 // ort-worker, bundled by Vite. Every step returns the facade's typed records; nothing here replaces bridge behaviour.
 import * as f from '../../../shell/facade/bridge.ts';
+import { readSession } from '../../../src/Next/last-result.mjs';
+import { generationIdentity } from '../../../src/Next/browser/identity.mjs';
+import { digest, openOriginals } from '../../../src/Next/browser/originals.mjs';
 
 const progress: f.Progress[] = [];
 const downloads: f.Downloads[] = [];
@@ -21,7 +24,7 @@ const input = (
   value: string,
   file: Blob | null = null,
 ): f.Input => ({ id, mode, value, file });
-const request = (action: f.Action, target: string, inputs: f.Input[], frames = 2): f.Request => ({
+const request = (action: f.Action, target: string, inputs: f.Input[], frames = 8): f.Request => ({
   jobId: ++job,
   action,
   target,
@@ -83,20 +86,62 @@ const harness = {
   },
   save: (id: string) => f.saveMedia(id),
   async morph(a: string, b: string) {
-    const out = await f.execute(
-      request('morph', '', [input(a, 'text', a), input(b, 'text', b)], 2),
-    );
+    const options = request('morph', '', [input(a, 'text', a), input(b, 'text', b)], 8);
+    f.rememberView(options);
+    const out = await f.execute(options);
     const planned = f.plannedFrames({
       inputs: [input(a, 'text', a), input(b, 'text', b)],
       kind: 'linear',
       width: 1,
       pinch: false,
-      frames: 2,
+      frames: 8,
       fps: 16,
     });
     return { out, planned, ...settled() };
   },
   restore: () => f.restoreLastResult(),
+  async retained() {
+    const session: unknown = await readSession();
+    return Boolean(
+      session &&
+      typeof session === 'object' &&
+      'faces' in session &&
+      Array.isArray(session.faces) &&
+      session.faces.length > 0,
+    );
+  },
+  async retentionFacts() {
+    const field = (value: unknown, key: string): unknown =>
+      value && typeof value === 'object' ? Reflect.get(value, key) : undefined;
+    const session: unknown = await readSession();
+    const manifest: unknown = await (await fetch('/runtime/manifest.json')).json();
+    const faces: unknown = field(session, 'faces');
+    const store = await openOriginals();
+    const raw: unknown = await store.get('last-generated-session-v2');
+    store.close();
+    const rawFaces = field(raw, 'faces');
+    const storage = {
+      rawFaces: Array.isArray(rawFaces) ? rawFaces.length : null,
+      settings: field(raw, 'settings'),
+    };
+    if (!Array.isArray(faces)) return { faces: null, storage };
+    const checks = await Promise.all(
+      faces.map(async (face: unknown) => {
+        const result = field(face, 'result');
+        const provenance = field(result, 'provenance');
+        const kind = field(face, 'generationKind');
+        return {
+          id: field(face, 'id'),
+          kind,
+          modelMatches: field(provenance, 'modelSha256') === field(manifest, 'modelSourceSha256'),
+          noiseMatches: field(provenance, 'noiseSha256') === field(manifest, 'noiseSha256'),
+          generation: field(result, 'generationSha256'),
+          expected: await digest(JSON.stringify(generationIdentity(manifest, kind))),
+        };
+      }),
+    );
+    return { checks, storage };
+  },
   downloads: () => downloads.slice(-1)[0] ?? null,
   async reports() {
     f.setDebug(true, 'checkbox');

@@ -25,6 +25,32 @@ jobs:
       - run: npm run check:inventory
       - name: Every name the UI and the typed facade take from a bridge module is exported there (fm-pia9)
         run: node scripts/check-bridge-imports.mjs
+  facade:
+    runs-on: [self-hosted, eris]
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: ./.github/actions/setup-workspace
+      - uses: ./.github/actions/setup-playwright
+        with:
+          browsers: chromium
+      - run: npm run build -w packages/stylegan-js -w packages/browser-model-manager
+      - name: Typed facade through the real CPU bridge and the pinned runtime
+        working-directory: apps/web
+        env:
+          FACEMORPH_REQUIRE_RUNTIME: '1'
+        run: |
+          export FACEMORPH_RUNTIME_DIR="$HOME/.cache/facemorph-device-lab/runtime-public"
+          node --test --test-timeout=1200000 test/e2e/facade.e2e.ts
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: facade-failure-${{ github.run_id }}
+          path: apps/web/test-results/facade/
+          if-no-files-found: ignore
   # The built shell in the Ubuntu 24.04 browser cells of apps/web/browser-matrix.json (Playwright Chromium,
   # Firefox and WebKit): control goldens at the shell rows, operated links at desktop and phone width (mouse
   # and touch), and every emitted worker loading. Screenshots are kept as an artifact.

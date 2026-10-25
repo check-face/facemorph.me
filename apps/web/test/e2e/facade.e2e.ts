@@ -6,24 +6,34 @@
 // the lane is free again afterwards. Without the runtime every step is reported untested.
 //   node --test test/e2e/facade.e2e.ts   (under the eris browser-cpu lease)
 import assert from 'node:assert/strict';
-import { createHash } from 'node:crypto';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import {
+  closeSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  openSync,
+  readFileSync,
+  rmSync,
+  statSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { extname, join } from 'node:path';
-import base, { after, before } from 'node:test';
+import base, { after, afterEach, before, beforeEach } from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { chromium, type Browser, type BrowserContext, type Page } from 'playwright';
+import { chromium, type Browser, type BrowserContext, type Page, type Worker } from 'playwright';
 import { build } from 'vite';
 
 const app = fileURLToPath(new URL('../../', import.meta.url));
 const repo = fileURLToPath(new URL('../../../../', import.meta.url));
-const RUNTIME = join(repo, '.cache/runtime');
+const RUNTIME = process.env['FACEMORPH_RUNTIME_DIR'] ?? join(repo, '.cache/runtime');
 const PHOTO = join(repo, 'tests/crop/fixtures/non-square.jpg');
 const ORIGIN = 'https://next.facemorph.me';
 const results = join(app, 'test-results/facade');
 const UNTESTED = existsSync(join(RUNTIME, 'manifest.json'))
   ? null
-  : 'untested: no acquired runtime at .cache/runtime';
+  : `untested: no acquired runtime at ${RUNTIME}`;
+if (UNTESTED && process.env['FACEMORPH_REQUIRE_RUNTIME'] === '1') throw new Error(UNTESTED);
 const test = ((name: string, ...rest: unknown[]) =>
   UNTESTED
     ? base(name, { skip: UNTESTED }, () => {})
@@ -44,42 +54,36 @@ let context: BrowserContext;
 let page: Page;
 const counts = new Map<string, number>();
 let pageErrors: string[] = [];
+const liveWorkers = new Set<Worker>();
+let workersStarted = 0;
+let workersClosed = 0;
 
 /** Every runtime file the manifest names must be on disk at its pinned digest before anything is served. */
-function verifiedRuntime(): number {
-  const manifest = readFileSync(join(RUNTIME, 'manifest.json'), 'utf8');
-  let checked = 0;
-  const walk = (v: unknown): void => {
-    if (!v || typeof v !== 'object') return;
-    const o = v as Record<string, unknown>;
-    if (
-      typeof o['sha256'] === 'string' &&
-      typeof o['url'] === 'string' &&
-      typeof o['size'] === 'number'
-    ) {
-      const path = join(RUNTIME, new URL(o['url']).pathname.slice('/runtime/'.length));
-      if (
-        existsSync(path) &&
-        statSync(path).size === o['size'] &&
-        statSync(path).size < 64 * 1024 * 1024
-      ) {
-        assert.equal(
-          createHash('sha256').update(readFileSync(path)).digest('hex'),
-          o['sha256'],
-          `${path} differs from its pin`,
-        );
-        checked++;
-      }
-      return;
-    }
-    for (const x of Object.values(o)) walk(x);
-  };
-  walk(JSON.parse(manifest));
-  return checked;
+function verifiedRuntime(): void {
+  // Reuse the complete acquisition inventory, including chunks and nested photo/encoder assets.
+  // A manifest-only walk previously skipped missing files, chunked assets and files above 64 MiB.
+  mkdirSync(results, { recursive: true });
+  const report = join(results, 'runtime-pins.jsonl');
+  const output = openSync(report, 'w');
+  try {
+    execFileSync(
+      process.execPath,
+      [join(repo, 'scripts/runtime/check-pins.mjs'), '--runtime', RUNTIME],
+      {
+        stdio: ['ignore', output, 'pipe'],
+        timeout: 120_000,
+      },
+    );
+  } finally {
+    closeSync(output);
+  }
+  log(`runtime pins: ${readFileSync(report, 'utf8').trim().split('\n').at(-1)}`);
 }
 
 async function open(): Promise<void> {
   context = await browser.newContext({ acceptDownloads: true });
+  // Keep action/screenshot traces without copying the entire model download into each failure archive.
+  await context.tracing.start({ screenshots: true, snapshots: false, sources: true });
   await context.route(`${ORIGIN}/**`, async (route) => {
     const path = new URL(route.request().url()).pathname;
     counts.set(path, (counts.get(path) ?? 0) + 1);
@@ -112,6 +116,14 @@ async function open(): Promise<void> {
     },
   );
   page = await context.newPage();
+  page.on('worker', (worker) => {
+    workersStarted++;
+    liveWorkers.add(worker);
+    worker.on('close', () => {
+      workersClosed++;
+      liveWorkers.delete(worker);
+    });
+  });
   page.on('pageerror', (e) => pageErrors.push(e.message));
   await load();
 }
@@ -134,7 +146,7 @@ const call = <T>(fn: string, ...args: unknown[]): Promise<T> =>
 
 before(async () => {
   if (UNTESTED) return;
-  log(`runtime files verified against their pins: ${verifiedRuntime()}`);
+  verifiedRuntime();
   bundleDir = mkdtempSync(join(tmpdir(), 'facade-'));
   await build({
     root: join(app, 'test/e2e/facade'),
@@ -152,6 +164,18 @@ after(async () => {
   await browser?.close();
   if (bundleDir) rmSync(bundleDir, { recursive: true, force: true });
 });
+beforeEach(async () => {
+  if (!UNTESTED) await context.tracing.startChunk();
+});
+afterEach(async (t) => {
+  if (UNTESTED || !context) return;
+  log(
+    `worker inventory ${t.name}: live=${liveWorkers.size} started=${workersStarted} closed=${workersClosed}`,
+  );
+  const name = t.name.replace(/[^a-z0-9]+/gi, '-').slice(0, 100);
+  if (!t.passed) await keep(name);
+  await context.tracing.stopChunk(t.passed ? {} : { path: join(results, `${name}-trace.zip`) });
+});
 
 interface Out {
   faces: { id: string; url: string; raw: boolean; label: string }[];
@@ -167,6 +191,9 @@ interface Settled {
 }
 const free = (s: Settled, what: string) => {
   assert.deepEqual(s.invalid, [], `${what}: a bridge payload failed the facade's reader`);
+  log(
+    `settled ${what}: workers=${liveWorkers.size} started=${workersStarted} closed=${workersClosed}`,
+  );
 };
 const keep = async (name: string) => {
   mkdirSync(results, { recursive: true });
@@ -200,6 +227,15 @@ test(
   'cancel-mid-run: the cancelled face has no late result and the lane makes the next face',
   { timeout: 600_000 },
   async () => {
+    // Completed-file encoding may continue when a later compute job is cancelled.
+    const previousWorkers = [...liveWorkers].filter((worker) =>
+      /\/ort-worker[-.]/.test(worker.url()),
+    );
+    assert.ok(
+      previousWorkers.length > 0,
+      `no compute worker: ${[...liveWorkers].map((worker) => worker.url()).join(', ')}`,
+    );
+    const closedBefore = workersClosed;
     const r = await call<{ cancelled: Out; after: Out; late: string[] } & Settled>('cancelMidRun');
     log(`cancel: "${r.cancelled.message}" then "${r.after.message}"`);
     assert.match(r.cancelled.message, /Cancelled/);
@@ -208,6 +244,11 @@ test(
     assert.ok(
       r.after.faces.some((f) => f.id === 'd'),
       'the lane did not recover after the cancel',
+    );
+    assert.ok(workersClosed > closedBefore, 'cancel did not close a real worker');
+    assert.ok(
+      previousWorkers.every((worker) => !liveWorkers.has(worker)),
+      'a cancelled compute worker survived',
     );
     free(r, 'cancel');
   },
@@ -255,9 +296,22 @@ test(
   'restore-last: after a reload the faces come back as a typed Output',
   { timeout: 300_000 },
   async () => {
+    // execute() settles compute before the asynchronous session writer finishes. Observe real durable storage.
+    const deadline = Date.now() + 60_000;
+    let retained = await call<boolean>('retained');
+    while (!retained && Date.now() < deadline) {
+      await page.waitForTimeout(100);
+      retained = await call<boolean>('retained');
+    }
+    assert.equal(
+      retained,
+      true,
+      `session not retained: ${JSON.stringify(await call('retentionFacts'))}`,
+    );
     await load();
     const out = await call<Out | null>('restore');
     log(`restore: ${out?.message ?? 'null'} faces=${out?.faces.length ?? 0}`);
+    if (!out) log(`retention: ${JSON.stringify(await call('retentionFacts'))}`);
     assert.ok(out, 'nothing restored');
     assert.equal(out.restored, true);
     assert.ok(out.faces.length > 0);
