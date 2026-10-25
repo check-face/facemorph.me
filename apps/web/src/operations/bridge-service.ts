@@ -3,10 +3,12 @@
 import type { ComputeRoute } from '@facemorph/stylegan-js';
 import { nextScheduled } from '../Next/scheduler.mjs';
 import { IntentRegistry } from './intents.ts';
+import { morphFrameFailure } from './morph-budget.ts';
 import {
   sources,
   type CancelTarget,
   type OperationEvent,
+  type OperationFailure,
   type OperationHandle,
   type OperationRequest,
   type OperationService,
@@ -29,6 +31,7 @@ interface Pending {
   provider: ComputeRoute | null;
   cancelled: boolean;
   phase: 'queued' | 'compute' | 'file';
+  readonly refusal: OperationFailure | undefined;
 }
 
 /** The same public scheduling seam used by the service, callable with plain descriptors before a browser exists. */
@@ -204,6 +207,13 @@ export function createOperationService(): OperationService {
     }
   }
   function pump(): void {
+    // Refuse before any provider/bridge work, even when another operation is busy
+    // or Morph is blocked on dependencies/consent. No selection is truncated.
+    for (const item of pending.values()) {
+      if (!item.refusal) continue;
+      registry.fail(item.handle.requestId);
+      finish(item, { status: 'failed', cause: item.refusal });
+    }
     if (active || disposed) return;
     const items = [...pending.values()];
     const descriptors = items.map(({ handle: { request }, phase }) =>
@@ -240,6 +250,7 @@ export function createOperationService(): OperationService {
       provider: null,
       cancelled: false,
       phase: 'queued',
+      refusal: morphFrameFailure(intent.request),
     };
     pending.set(intent.requestId, item);
     if (intent.request.kind === 'face') {

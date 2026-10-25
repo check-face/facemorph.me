@@ -55,6 +55,12 @@ export interface IntentSnapshot {
 }
 export type OperationFailure =
   | { readonly kind: 'admission'; readonly refusal: Refusal }
+  | {
+      readonly kind: 'morph-frames';
+      readonly reason: 'over-budget' | 'invalid-settings';
+      readonly message: string;
+      readonly recovery: 'shorten-morph' | 'adjust-frames';
+    }
   | { readonly kind: 'operation'; readonly message: string };
 interface EventIdentity {
   readonly intent: IntentSnapshot;
