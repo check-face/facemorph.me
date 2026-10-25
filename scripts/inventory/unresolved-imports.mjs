@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Lists every module specifier in the imported closure that does not resolve inside it, and compares the
-// list with import/allowlist.json `unresolved_imports` (expected: exactly the bridge's Fable import).
+// list with import/allowlist.json `unresolved_imports` (empty after the ProjectJson bridge swap).
 // Static imports and re-exports come from V8's own module parser (vm.SourceTextModule); dynamic
 // `import('…')`, `new Worker(new URL('…', import.meta.url))`, CommonJS `require('…')`, SCSS
 // `@import`/`@use` and HTML `<script>` with literal specifiers are read by pattern. A page listed in the
@@ -186,6 +186,8 @@ export function unresolvedImports(files, packages, pages = {}, outside = () => f
 function walk(root, dir = root, out = new Map()) {
   for (const entry of readdirSync(dir)) {
     if (entry === 'node_modules' || entry === '.git') continue;
+    // This is a source-closure scan. Vite output has its own served root and cannot be resolved from apps/web.
+    if (dir === root && (entry === 'dist' || entry === 'test-results')) continue;
     const path = join(dir, entry);
     if (statSync(path).isDirectory()) walk(root, path, out);
     else

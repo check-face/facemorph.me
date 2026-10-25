@@ -32,6 +32,23 @@ function fixture(files, { pages = {}, expected = [] } = {}) {
   return (...extra) => run(SCRIPT, ['--root', root, '--allowlist', allowlist, ...extra]);
 }
 
+test('generated output does not change the source scan; nested source directories still count', () => {
+  const output = {
+    'src/a.mjs': 'export const a = 1;',
+    'dist/index.html': '<script src="/assets/generated.js"></script>',
+    'test-results/report.html': '<script src="/report.js"></script>',
+  };
+  const clean = fixture(output)('--expect-none');
+  assert.equal(clean.status, 0, JSON.stringify(clean.lines));
+  const broken = fixture({
+    ...output,
+    'src/dist/a.mjs': "import './missing.mjs';",
+  })('--expect-none');
+  assert.equal(broken.status, 1);
+  assert.equal(broken.summary.unresolved, 1);
+  assert.equal(broken.lines.find((line) => line.importer)?.importer, 'apps/web/src/dist/a.mjs');
+});
+
 const RESOLVED = {
   'src/a.mjs': [
     "import {b} from './b.mjs';",
