@@ -62,3 +62,37 @@ Tests: `node --test scripts/names-publish/publish.test.mjs`. Set
 local pointer switch. These tests use planted file inputs and real envelopes/HTTP, not inference
 evidence. A task-owned staging directory is retained under `/tmp/facemorph-names-publish-*` for
 inspection; it can be removed after publication evidence is recorded.
+
+## API-free materialization
+
+`materialize.py` now stages the same checked generator output through the shared
+publisher; it no longer fetches missing previews or generates a separate latent catalogue.
+Restore the verified selection with the snapshot command above and finish the static
+names generator first. Every result must have the generator's exact latent identity,
+reference-latent check and synthesis check; incomplete or corrupt input fails.
+
+```sh
+python3 hosting/gallery/materialize.py \
+  --generated="$HOME/.cache/facemorph-names-generator/out" \
+  --legacy="$HOME/.cache/facemorph-names-generator/snapshot/facemorph-name-catalogue.cdilga.workers.dev" \
+  --origin=https://facemorph-name-catalogue.cdilga.workers.dev \
+  --output=/tmp/facemorph-catalogue-stage
+```
+
+The default executes the installed `cf deploy --dry-run` for both publication phases.
+`--check` validates and stages while comparing the retained static catalogue, without
+running `cf`. Only `--publish` deploys. `--previous` optionally selects the local
+retained-publication cache. The output directory must be new or contain identical
+immutable files from the same staging run.
+
+Configured catalogue/producer URLs and the publication origin are checked before
+network access. Retired API hosts and their subdomains are refused, including mixed
+case, a trailing DNS dot and scheme-relative URLs. Publication reads reject redirects
+before contacting the target. All downloads therefore remain static-object reads.
+The generator, snapshot restoration and publisher retain their separate integrity checks.
+
+Run `node --test hosting/gallery/materialize.test.mjs` for actual local TLS staging,
+API-input refusal before any socket opens and redirect refusal. Set
+`MATERIALIZE_CF_DRY_RUN=1` to also execute both installed `cf` dry-run phases. The test
+records real socket host classes and bytes; these are pipeline checks, not inference
+or deployed-publication evidence.

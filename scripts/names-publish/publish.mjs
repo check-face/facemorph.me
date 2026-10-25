@@ -21,6 +21,7 @@ import {
   LATENT_TOLERANCE,
   sampleRows,
   sha256,
+  isApiHost,
 } from '../../tools/names-generator/lib.mjs';
 import { recoverEnvelope } from '../../apps/web/src/Next/image-envelope.mjs';
 import { limitFindings } from '../../packages/cloudflare-model-host/src/limits.ts';
@@ -30,6 +31,35 @@ const REPO = fileURLToPath(new URL('../..', import.meta.url));
 export const POINTER = 'catalogue-v2.json';
 export const INVENTORY = 'publication.json';
 const json = (value) => Buffer.from(JSON.stringify(value) + '\n');
+// Inputs may retain historical static URLs, but retirement must never make publication
+// depend on the API. Normalize through URL (including mixed case and trailing dots).
+export function staticUrl(value, base) {
+  const url = new URL(value, base);
+  if (
+    !['https:', 'http:'].includes(url.protocol) ||
+    url.username ||
+    url.password ||
+    isApiHost(url.hostname.toLowerCase().replace(/\.$/, ''))
+  )
+    throw Error(`Catalogue input is not a static URL: ${url.origin}`);
+  return url;
+}
+export function checkInputUrls(value, base, key = '') {
+  if (typeof value === 'string') {
+    if (/^(?:https?:)?\/\//i.test(value) || /(?:url|origin)$/i.test(key)) staticUrl(value, base);
+  } else if (Array.isArray(value)) {
+    for (const child of value) checkInputUrls(child, base, key);
+  } else if (value && typeof value === 'object') {
+    for (const [name, child] of Object.entries(value)) checkInputUrls(child, base, name);
+  }
+}
+function checkProducerUrls(generated, legacy, origin) {
+  checkInputUrls(JSON.parse(readFileSync(join(legacy, 'catalogue.json'))), origin);
+  for (const line of readFileSync(join(generated, 'manifest.jsonl'), 'utf8')
+    .split('\n')
+    .filter(Boolean))
+    checkInputUrls(JSON.parse(line), origin);
+}
 const safePath = (path) =>
   typeof path === 'string' &&
   !path.startsWith('/') &&
@@ -91,6 +121,7 @@ export async function prepare({
 }) {
   const original = readFileSync(join(legacy, 'catalogue.json'));
   const catalogue = JSON.parse(original);
+  checkProducerUrls(generated, legacy, 'https://catalogue.invalid/');
   const expected = catalogueRows(catalogue);
   const text = readFileSync(join(generated, 'manifest.jsonl'), 'utf8');
   for (const line of text.split('\n').filter(Boolean)) JSON.parse(line); // Publication refuses a partial final line.
@@ -195,7 +226,14 @@ export async function prepare({
 export async function getPublished(url, { optional = false } = {}) {
   // These reads are idempotent. Reuse the snapshot's bounded transport retries
   // for an idle connection reset, while keeping 404 and integrity failures final.
-  const result = await fetchSource(url, { attempts: 3, timeoutMs: 120_000, cache: 'no-store' });
+  // A redirect is not a static-object identity. Refuse it before sending any target
+  // request, including a redirect back to a retired API host.
+  const result = await fetchSource(staticUrl(url), {
+    attempts: 3,
+    timeoutMs: 120_000,
+    cache: 'no-store',
+    redirect: 'error',
+  });
   if (result.status === 'missing' && optional) return null;
   if (result.status !== 'ok')
     throw Error(
@@ -296,12 +334,17 @@ export async function main(argv) {
       .map((a) => a.replace(/^--/, '').split(/=(.*)/s).slice(0, 2))
       .map(([k, v]) => [k, v ?? true]),
   );
+  for (const flag of ['check', 'publish'])
+    if (args[flag] !== undefined && args[flag] !== true)
+      throw Error(`Use --${flag} without a value`);
+  if (args.check && args.publish) throw Error('Choose --check or --publish');
   if (!args.generated || !args.legacy || !args.origin)
     throw Error(
       'Required: --generated=<dir> --legacy=<verified snapshot host dir> --origin=<url> [--publish]',
     );
-  const origin = new URL(args.origin);
+  const origin = staticUrl(args.origin);
   if (origin.protocol !== 'https:') throw Error('Publication origin must use HTTPS');
+  checkProducerUrls(resolve(args.generated), resolve(args.legacy), origin);
   const previous = await retainPrevious(origin, resolve(args.previous ?? '.cache/names-previous'));
   const before = await getPublished(new URL('catalogue.json', origin));
   if (!before.equals(readFileSync(join(args.legacy, 'catalogue.json'))))
@@ -310,6 +353,7 @@ export async function main(argv) {
     generated: resolve(args.generated),
     legacy: resolve(args.legacy),
     previous,
+    ...(args.out ? { out: resolve(args.out) } : {}),
   });
   console.log(JSON.stringify({ event: 'validated', ...prepared.summary }));
   if (args.check) return prepared;

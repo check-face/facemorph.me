@@ -80,7 +80,11 @@
       "extra": [
         "packages/cloudflare-model-host/**",
         "packages/browser-model-manager/**",
-        "scripts/packages/**"
+        "scripts/packages/**",
+        "hosting/next-cloudflare/**",
+        "hosting/gallery/**",
+        "scripts/names-publish/**",
+        "scripts/names-snapshot/**"
       ]
     },
     "contracts-m1": {

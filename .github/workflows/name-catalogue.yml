@@ -18,7 +18,7 @@ jobs:
       - uses: ./.github/actions/setup-workspace
         with:
           directory: scripts/names-snapshot
-      - run: node --test scripts/names-publish/publish.test.mjs scripts/names-snapshot/local.test.mjs
+      - run: node --test scripts/names-publish/publish.test.mjs scripts/names-snapshot/local.test.mjs hosting/gallery/materialize.test.mjs
   publish:
     needs: test
     # The producer needs qualified Chromium/WebGPU and the pinned classic source, available on eris.

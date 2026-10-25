@@ -1,3 +1,4 @@
+import {collectorEndpoint} from '../../../../hosting/next-cloudflare/environment.mjs';
 // The testing link invites reporting prominently; it must never enable or send anything by itself.
 import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs/promises';import vm from 'node:vm';import {webcrypto} from 'node:crypto';
 const read=n=>fs.readFile(new URL(n,import.meta.url),'utf8');
@@ -5,7 +6,7 @@ const plain=s=>s.replace(/^import .*;\n/gm,'').replaceAll('export ','').replaceA
 
 test('Opening the testing link uploads nothing until the tester agrees',async()=>{
  const source=plain(await read('reporting.mjs')),posts=[],stored=new Map();
- const ctx=vm.createContext({AbortController,crypto:webcrypto,Date,performance:{now:()=>0},setTimeout:()=>1,clearTimeout(){},
+ const ctx=vm.createContext({collectorEndpoint,AbortController,crypto:webcrypto,Date,performance:{now:()=>0},setTimeout:()=>1,clearTimeout(){},
   localStorage:{getItem:k=>stored.get(k),setItem:(k,v)=>stored.set(k,v),removeItem:k=>stored.delete(k)},
   navigator:{userAgent:'Safari iPhone',platform:'iPhone',language:'en-AU'},
   window:{dispatchEvent(){}},CustomEvent:class{constructor(t,{detail}){this.detail=detail;}},

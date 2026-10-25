@@ -959,7 +959,13 @@
       "sha256": "f81fb5b47ec537f42d088f724529ea21e132798cf1f9b94ed6ad92a62dfb1f23",
       "bytes": 4952,
       "class": "temporary-root",
-      "temporary": true
+      "temporary": true,
+      "ported": {
+        "sha256": "131cc4219b0e5a79f4c87a126839657d90e8b004215993d7e5e505ce615226df",
+        "bytes": 149,
+        "bead": "fm-a0c1",
+        "reason": "Re-export the sole collector allowlist after re-homing; imported client tests use the identical validation function."
+      }
     },
     {
       "source": "hosting/next-static/catalogue.json",
@@ -1592,10 +1598,10 @@
       "bytes": 23533,
       "class": "src-next",
       "ported": {
-        "sha256": "718cedac53d24e4a993509b9ef0ee9d6ebf336eb6807105cc2cfb5b5ff7b1baf",
-        "bytes": 23665,
-        "bead": "fm-in6a",
-        "reason": "Preserve unchanged Morph endpoints and their face/file ownership; update the inherited URL expectation to match, verified by real operation-service CPU browser tests (fm-in6a)."
+        "sha256": "545dfe3444ef6372192f9213196ec04b9f8ef48f5a3454b25ee35e4437dc7400",
+        "bytes": 23806,
+        "bead": "fm-a0c1",
+        "reason": "Supply the real shared endpoint selector to the existing VM harness after reporter gained that import."
       }
     },
     {
@@ -1705,7 +1711,13 @@
       "destination": "apps/web/src/Next/logging.test.mjs",
       "sha256": "b15d79b49dcf822b81ca6446f95badc6d07f39eaf0eed908f21960b0f52c7870",
       "bytes": 6150,
-      "class": "src-next"
+      "class": "src-next",
+      "ported": {
+        "sha256": "063bdaaf105a496d7b69ca705725cd81e51635a478d0be525a93495b9d191bf0",
+        "bytes": 6255,
+        "bead": "fm-a0c1",
+        "reason": "Supply the real shared endpoint selector to the existing VM harness after reporter gained that import."
+      }
     },
     {
       "source": "src/Next/media.mjs",
@@ -1889,7 +1901,13 @@
       "destination": "apps/web/src/Next/reporting.mjs",
       "sha256": "b9a2d088f4d5a7f8291875111a56e8905ea22bb6294b3c0f229767c3cf78162f",
       "bytes": 21782,
-      "class": "src-next"
+      "class": "src-next",
+      "ported": {
+        "sha256": "9a4cc357704ceb6c4b3e25242a745c44138a0c90729b936d13a634a273091975",
+        "bytes": 21900,
+        "bead": "fm-a0c1",
+        "reason": "Read the collector endpoint from shared per-environment bindings; preserve next endpoint and consented bounded reporting."
+      }
     },
     {
       "source": "src/Next/reporting.test.mjs",
@@ -1910,7 +1928,13 @@
       "destination": "apps/web/src/Next/route-report.test.mjs",
       "sha256": "7b862764bd75df5d105273664b18067788345f941b2567a669979b3d270bf0e1",
       "bytes": 2608,
-      "class": "src-next"
+      "class": "src-next",
+      "ported": {
+        "sha256": "5371d6b83c7bb1a742229d676de095721ef28535448195e30a448f5613ff7413",
+        "bytes": 2713,
+        "bead": "fm-a0c1",
+        "reason": "Supply the real shared endpoint selector to the existing VM harness after reporter gained that import."
+      }
     },
     {
       "source": "src/Next/scheduler.mjs",
@@ -1965,7 +1989,13 @@
       "destination": "apps/web/src/Next/testing-link.test.mjs",
       "sha256": "46813e5dab070058e2dc5ac76b0c77c28317cebbd2960ec78a5c69a56d34f766",
       "bytes": 1968,
-      "class": "src-next"
+      "class": "src-next",
+      "ported": {
+        "sha256": "a23c3efee912c9f701297435565139e97129ef5f972ec0732edf80aa663e8371",
+        "bytes": 2073,
+        "bead": "fm-a0c1",
+        "reason": "Supply the real shared endpoint selector to the existing VM harness after reporter gained that import."
+      }
     },
     {
       "source": "src/Next/usage-stats.mjs",

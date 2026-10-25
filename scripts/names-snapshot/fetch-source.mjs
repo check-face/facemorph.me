@@ -1,7 +1,7 @@
 // Fetch one source object, retrying network errors and 5xx. A 404 is final: missing.
 export async function fetchSource(
   url,
-  { attempts = 3, timeoutMs = 60_000, cache = 'default' } = {},
+  { attempts = 3, timeoutMs = 60_000, cache = 'default', redirect = 'follow' } = {},
 ) {
   let last;
   for (let i = 0; i < attempts; i++) {
@@ -9,6 +9,7 @@ export async function fetchSource(
     try {
       const res = await fetch(url, {
         cache,
+        redirect,
         signal: AbortSignal.timeout(timeoutMs),
         headers: { 'user-agent': 'FaceMorph-names-snapshot/1' },
       });

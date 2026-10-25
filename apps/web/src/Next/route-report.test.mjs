@@ -2,12 +2,13 @@
 // must say what the browser offered and what happened to the route that was tried.
 import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs/promises';import vm from 'node:vm';import {webcrypto} from 'node:crypto';
 import {checkedEvent} from '../../hosting/next-cloudflare/validation.mjs';
+import {collectorEndpoint} from '../../../../hosting/next-cloudflare/environment.mjs';
 const read=n=>fs.readFile(new URL(n,import.meta.url),'utf8');
 const plain=s=>s.replace(/^import .*;\n/gm,'').replaceAll('export ','').replaceAll('import.meta.url',JSON.stringify(import.meta.url));
 
 test('Route facts reach the collector and survive its allowlist',async()=>{
  const source=plain(await read('reporting.mjs')),posts=[];
- const ctx=vm.createContext({AbortController,crypto:webcrypto,Date,performance:{now:()=>5},setTimeout:()=>1,clearTimeout(){},
+ const ctx=vm.createContext({collectorEndpoint,AbortController,crypto:webcrypto,Date,performance:{now:()=>5},setTimeout:()=>1,clearTimeout(){},
   localStorage:{getItem:()=>null,setItem(){},removeItem(){}},
   navigator:{userAgent:'Chrome/153 Android',platform:'Linux armv8l',language:'en-AU'},
   window:{dispatchEvent(){}},CustomEvent:class{constructor(t,{detail}){this.detail=detail;}},

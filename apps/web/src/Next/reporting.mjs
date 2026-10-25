@@ -1,9 +1,10 @@
+import {collectorEndpoint} from '../../../../hosting/next-cloudflare/environment.mjs';
 // An allowlist, not arbitrary error/string serialization. No pre-consent backlog.
 const allowedStages=new Set(['asset-acquisition','runtime-loading','model-loading','model-loaded','mapping-loading','mapping','canary','synthesis','synthesis-complete','alignment','alignment-complete','encoder-loading','encoder-loaded','encoder-correctness-check','encoder-correctness-complete','encoding','encoding-complete','mapping-complete','original-cache-hit','original-cached','original-cache-invalid','cache-unavailable','fallback-cpu','codec-loading','face','morph','export','route-admitted','photo-select','photo-preview','photo-crop','photo-align','photo-encode','storage','cache-trouble']);
 const TERMINAL=new Set(['completed','cancelled','failed','interrupted']);
 let bundle,provider,device=null,consented=false,basis=null,session=null,run=null,started=0;
 let runAction,jobEnded=null;
-/** One listener for how a job ended, closed vocabularies only. Product analytics registers here; this file imports nothing. */
+/** One listener for how a job ended, closed vocabularies only. Product analytics registers here; the collector endpoint comes from environment bindings. */
 export function onJobEnd(listener){jobEnded=typeof listener==='function'?listener:null;}
 let aborters=new Set(),pendingStart=null,finished=false,interrupted=false,tally=null,persisted=true;
 // One clock per stage name. A single shared clock dropped exactly the bursty boundaries the
@@ -195,7 +196,7 @@ async function deliver(items,once=null){
   // The batch carries its identity once; per-event fields stay exactly as they were.
   const body={schemaVersion:1,session:sendingSession,run:lead.run,...(once||!device?{}:{device}),consent:once?'once':basis||'legacy',provider:lead.provider,bundle:lead.bundle,
    events:items.map(item=>({...item.payload,...(item.run!==lead.run?{run:item.run}:{}),...(item.provider!==lead.provider?{provider:item.provider}:{})}))};
-  const response=await fetch('https://next.facemorph.me/diagnostics/events',{method:'POST',credentials:'omit',keepalive:terminal,headers:{'Content-Type':'application/json','X-Facemorph-Diagnostics-Consent':'session-v1'},signal:controller.signal,body:JSON.stringify(body)});
+  const response=await fetch(collectorEndpoint(globalThis.location?.hostname),{method:'POST',credentials:'omit',keepalive:terminal,headers:{'Content-Type':'application/json','X-Facemorph-Diagnostics-Consent':'session-v1'},signal:controller.signal,body:JSON.stringify(body)});
   if(live())for(const item of items)account(item,response.ok,!!once);
   if(!response.ok&&!once&&live())requeue(items);
  }catch{if(live()){for(const item of items)account(item,false,!!once);if(!once)requeue(items);}}

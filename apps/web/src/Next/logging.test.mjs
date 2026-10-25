@@ -2,11 +2,12 @@
 // forwarding an error's own text, which can carry a path, a URL or something the user typed.
 import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs/promises';import vm from 'node:vm';import {webcrypto} from 'node:crypto';
 import {checkedEvent} from '../../hosting/next-cloudflare/validation.mjs';
+import {collectorEndpoint} from '../../../../hosting/next-cloudflare/environment.mjs';
 const read=n=>fs.readFile(new URL(n,import.meta.url),'utf8');
 const plain=s=>s.replace(/^import .*;\n/gm,'').replaceAll('export ','').replaceAll('import.meta.url',JSON.stringify(import.meta.url));
 
 function context(posts){
- return vm.createContext({AbortController,crypto:webcrypto,Date,performance:{now:()=>7},setTimeout:()=>1,clearTimeout(){},
+ return vm.createContext({collectorEndpoint,AbortController,crypto:webcrypto,Date,performance:{now:()=>7},setTimeout:()=>1,clearTimeout(){},
   localStorage:{getItem:()=>null,setItem(){},removeItem(){}},
   crossOriginIsolated:true,
   navigator:{userAgent:'Chrome/153 Android',platform:'Linux armv8l',language:'en-AU',hardwareConcurrency:8,deviceMemory:12},
