@@ -15,7 +15,10 @@ jobs:
         with:
           node-version: '24'
       - uses: ./.github/actions/setup-workspace
-      - run: node --test scripts/names-publish/publish.test.mjs
+      - uses: ./.github/actions/setup-workspace
+        with:
+          directory: scripts/names-snapshot
+      - run: node --test scripts/names-publish/publish.test.mjs scripts/names-snapshot/local.test.mjs
   publish:
     needs: test
     # The producer needs qualified Chromium/WebGPU and the pinned classic source, available on eris.
@@ -45,12 +48,13 @@ jobs:
           directory: hosting/gallery
       - name: Make the installed cf available to snapshot token commands
         run: echo "$GITHUB_WORKSPACE/node_modules/.bin" >> "$GITHUB_PATH"
-      - name: Restore immutable snapshot and resume checked generator output
+      - name: Verify provisioned immutable snapshot and resume checked generator output
         run: |
           set -euo pipefail
           cache="$HOME/.cache/facemorph-names-generator"
-          # The snapshot restorer verifies every object's pinned size and hash, using only R2.
-          node scripts/names-snapshot/restore.mjs --out="$cache/snapshot" --all --mint-r2="$CLOUDFLARE_ACCOUNT_ID"
+          # Provision this eris input once via the documented R2 restore command. CI verifies every
+          # pinned byte without an administrator token; missing/corrupt input fails before publication.
+          node scripts/names-snapshot/restore.mjs --out="$cache/snapshot" --all --check-local
           python3 autoresearch/run.py --timeout 7200 -- node tools/names-generator/generate.mjs \
             --catalogue="$cache/snapshot/facemorph-name-catalogue.cdilga.workers.dev/catalogue.json" \
             --latents="$cache/snapshot" --out="$cache/out"

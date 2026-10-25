@@ -33,7 +33,10 @@ a published name without accepting silent mapping fallback.
 ## Recovery-bearing catalogue publication
 
 `.github/workflows/name-catalogue.yml` consumes the checked names generator manifest and result
-files, restored from the snapshot and resumed on eris. No retiring API is used. The publisher
+files, resumed on eris. Provision its snapshot once using the R2 restore command in
+`tools/names-generator/README.md`; CI checks every cached file against the committed snapshot
+manifest with `restore.mjs --check-local`, without administrator token permissions or network
+access. Missing or corrupted snapshot inputs fail before publication. No retiring API is used. The publisher
 checks every result's file, image, latent and model/generation identity before deploying anything.
 It keeps the legacy tree byte-identical and all earlier published immutable manifests/results.
 

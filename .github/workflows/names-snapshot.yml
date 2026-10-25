@@ -20,4 +20,4 @@ jobs:
         with:
           directory: scripts/names-snapshot
       - run: docker info --format '{{.ServerVersion}}'
-      - run: node --test plan.test.mjs snapshot.test.mjs
+      - run: node --test plan.test.mjs local.test.mjs snapshot.test.mjs

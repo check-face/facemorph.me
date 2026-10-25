@@ -23,6 +23,34 @@ import {
 
 export const EXIT = { restored: 0, incomplete: 21, usage: 2 };
 
+/** Validate a provisioned snapshot without credentials or network I/O (publication CI). */
+export function checkLocal(rows, out) {
+  const report = {
+    selected: rows.length,
+    restored: 0,
+    bytes: 0,
+    absent: [],
+    mismatch: [],
+    unknownNames: rows.unknown ?? [],
+  };
+  for (const row of rows) {
+    let bytes;
+    try {
+      bytes = readFileSync(join(out, keyOf(row.url)));
+    } catch (error) {
+      if (error.code !== 'ENOENT') throw error;
+      report.absent.push(row.url);
+      continue;
+    }
+    if (bytes.length !== row.bytes || sha256(bytes) !== row.sha256) report.mismatch.push(row.url);
+    else {
+      report.restored++;
+      report.bytes += bytes.length;
+    }
+  }
+  return { ...report, complete: report.restored === rows.length && !report.unknownNames.length };
+}
+
 // Rows for the requested public names (exact lowercase values), every name-th row for a sample, or all.
 export function select(rows, { names, sample, all } = {}) {
   if (all) return rows;
@@ -95,19 +123,23 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     sample: a.sample && Number(a.sample),
     all: a.all,
   });
-  const { client, token } = await clientFromArgs(a, bucket, false);
   let report;
-  try {
-    report = await restore({ rows, client, bucket, out: resolve(a.out) });
-  } finally {
-    if (token)
-      console.log(
-        JSON.stringify({ event: 'token', revoked: revokeR2Token(token), expires: token.expires }),
-      );
+  if (a['check-local']) report = checkLocal(rows, resolve(a.out));
+  else {
+    const { client, token } = await clientFromArgs(a, bucket, false);
+    try {
+      report = await restore({ rows, client, bucket, out: resolve(a.out) });
+    } finally {
+      if (token)
+        console.log(
+          JSON.stringify({ event: 'token', revoked: revokeR2Token(token), expires: token.expires }),
+        );
+    }
   }
   console.log(
     JSON.stringify({
       event: 'restore',
+      localOnly: !!a['check-local'],
       complete: report.complete,
       selected: report.selected,
       restored: report.restored,
