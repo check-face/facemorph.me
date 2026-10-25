@@ -155,6 +155,17 @@ uv run --with playwright python download.py --cells eris-cpu --throttle-kbps 300
   a phone run never holds up an eris cell. CI does not use the physical phone.
 - Implemented journey names are cold-face, warm-face, morph and operated. Unknown names
   fail. Frozen per-cell wall-clock budgets are not implemented yet; do not claim them.
+- `release-gate.yml` verifies the artifact, then `hosted.py release` dispatches a
+  correlated `hosted-lanes.yml` attempt. A five-minute queue budget bounds runner
+  availability; started jobs have to finish within the overall 100-minute budget.
+  Unallocated hosted runners and explicit provider notices of retired images or
+  unavailable billing capacity are **untested**, with reasons. A missing requested
+  Simulator is also untested; failed setup, execution, cancellation, missing reports
+  on completed jobs and incomplete journeys still block. No blanket failure exemption.
+  The supervisor saves the exact attempt URL, artifact digest and each lane outcome
+  in `hosted-release.json`. Queued attempts are never cancelled: check their linked
+  results before handover and repair any later executed failures. Hosted availability
+  never waives the six local Chrome/Firefox/Huawei CPU/WebGPU cells.
 
 ## How it works
 

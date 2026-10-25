@@ -3,7 +3,7 @@ artifact against the live runtime manifest (python3 -m unittest test_hosted, fro
 import hashlib, json, tempfile, unittest, urllib.error, urllib.request
 from pathlib import Path
 
-from hosted import ArtifactServer, OriginStorage, manifest_sha, summarise
+from hosted import ArtifactServer, HOSTED_LANES, OriginStorage, hosted_outcomes, manifest_sha, runner_unavailable_reason, summarise
 
 RUN = {'cold': {'route': 'Ready · this device’s CPU.', 'faceS': 22.2}, 'warm': {'route': 'Ready · this device’s CPU.', 'faceS': 16.7},
        'morph': {'videoS': 57.5}, 'ok': True}
@@ -31,6 +31,81 @@ class Summary(unittest.TestCase):
             OriginStorage(None).send('Storage.clearDataForOrigin', {'origin': 'http://localhost:1', 'storageTypes': 'all'})
         with self.assertRaises(NotImplementedError):
             OriginStorage(None).send('Network.clearBrowserCache', {})
+
+    def test_unavailable_report_is_explicit_and_not_a_pass(self):
+        table = summarise([{'lane': 'ios-simulator-safari', 'status': 'untested', 'reason': 'runtime absent', 'ok': False, 'runs': []}])
+        self.assertIn('| untested: runtime absent | not run | not run |', table)
+
+
+class Availability(unittest.TestCase):
+    def jobs(self):
+        return [{'id': i + 1, 'name': lane, 'status': 'completed', 'conclusion': 'success',
+                 'steps': [{'name': 'Journeys', 'conclusion': 'success'}], 'runner_name': 'hosted'}
+                for i, lane in enumerate(HOSTED_LANES)]
+
+    def reports(self):
+        return [{'lane': lane, 'ok': True, 'runs': [RUN]} for lane in HOSTED_LANES]
+
+    def test_success_requires_every_executed_lane_report(self):
+        self.assertEqual({r['status'] for r in hosted_outcomes(self.jobs(), self.reports())}, {'pass'})
+        rows = hosted_outcomes(self.jobs(), self.reports()[:-1], queue_expired=True)
+        self.assertEqual(rows[-1]['status'], 'fail')
+        self.assertIn('missing', rows[-1]['reason'])
+
+    def test_failure_wins_over_passing_or_unavailable_report(self):
+        for verdict in ('failure', 'cancelled', 'timed_out', 'startup_failure', 'action_required'):
+            jobs = self.jobs()
+            jobs[0]['conclusion'] = verdict
+            self.assertEqual(hosted_outcomes(jobs, self.reports())[0]['status'], 'fail')
+        jobs, reports = self.jobs(), self.reports()
+        jobs[0]['steps'][0]['conclusion'] = 'failure'
+        reports[0] = {'lane': HOSTED_LANES[0], 'ok': False, 'status': 'untested', 'reason': 'unavailable', 'runs': []}
+        self.assertEqual(hosted_outcomes(jobs, reports)[0]['status'], 'fail')
+
+    def test_only_an_unallocated_queued_job_can_expire_as_unavailable(self):
+        jobs = self.jobs()
+        jobs[0].update(status='queued', conclusion=None, runner_name='', steps=[])
+        self.assertEqual(hosted_outcomes(jobs, [])[0]['status'], 'pending')
+        self.assertEqual(hosted_outcomes(jobs, [], queue_expired=True)[0]['status'], 'untested')
+        jobs[0]['runner_name'] = 'allocated'
+        self.assertEqual(hosted_outcomes(jobs, [], queue_expired=True)[0]['status'], 'pending')
+        jobs[0].update(status='in_progress', runner_name='')
+        self.assertEqual(hosted_outcomes(jobs, [], queue_expired=True)[0]['status'], 'pending')
+
+    def test_no_jobs_is_unknown_unless_the_correlated_workflow_stays_queued(self):
+        self.assertEqual({r['status'] for r in hosted_outcomes([], [], queue_expired=True)}, {'fail'})
+        self.assertEqual({r['status'] for r in hosted_outcomes([], [], queue_expired=True, run_queued=True)}, {'untested'})
+        self.assertEqual({r['status'] for r in hosted_outcomes([], [], queue_expired=True, run_queued=True, run_completed=True)}, {'fail'})
+
+    def test_missing_simulator_is_untested_but_incomplete_journeys_fail(self):
+        reports = self.reports()
+        reports[-1] = {'lane': HOSTED_LANES[-1], 'ok': False, 'status': 'untested', 'reason': 'runtime absent', 'runs': []}
+        self.assertEqual(hosted_outcomes(self.jobs(), reports)[-1]['status'], 'untested')
+        reports[-1]['runs'] = [{'ok': False}]
+        self.assertEqual(hosted_outcomes(self.jobs(), reports)[-1]['status'], 'fail')
+
+    def test_duplicate_reports_or_jobs_are_not_success(self):
+        self.assertEqual(hosted_outcomes(self.jobs(), self.reports() + self.reports()[:1])[0]['status'], 'fail')
+        self.assertEqual(hosted_outcomes(self.jobs() + self.jobs()[:1], self.reports())[0]['status'], 'fail')
+
+    def test_terminal_unavailability_needs_provider_evidence_and_no_executed_steps(self):
+        jobs = self.jobs()
+        jobs[0].update(conclusion='startup_failure', steps=[])
+        note = [{'message': 'The runner image macos-13 is no longer supported.'}]
+        reason = runner_unavailable_reason(jobs[0], note)
+        self.assertIsNotNone(reason)
+        self.assertEqual(hosted_outcomes(jobs, [], unavailable={1: reason})[0]['status'], 'untested')
+        self.assertIsNone(runner_unavailable_reason(jobs[0], [{'message': 'Runner failed unexpectedly'}]))
+        jobs[0]['steps'] = [{'name': 'Journeys', 'conclusion': 'failure'}]
+        self.assertIsNone(runner_unavailable_reason(jobs[0], note))
+        self.assertEqual(hosted_outcomes(jobs, [], unavailable={1: reason})[0]['status'], 'fail')
+
+    def test_old_job_names_still_match_actual_historical_runs(self):
+        jobs = self.jobs()
+        jobs[0]['name'] = 'desktop (macos-15, webkit, macos-webkit, webkit)'
+        jobs[2]['name'] = 'desktop (macos-15, chrome, macos-chrome)'
+        jobs[-2]['name'], jobs[-1]['name'] = 'android', 'ios'
+        self.assertEqual({r['status'] for r in hosted_outcomes(jobs, self.reports())}, {'pass'})
 
 
 class Server(unittest.TestCase):

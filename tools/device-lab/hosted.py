@@ -25,7 +25,7 @@ records the route it used, and a lane fails when a journey fails. The iOS Simula
 over a debugging protocol, so its lane injects the journeys into the served page, which reports back
 (classic scripts/next-ios-sim.py does the same for one face); its clicks are synthetic.
 """
-import argparse, hashlib, http.server, json, mimetypes, platform, re, socketserver, subprocess, sys
+import argparse, hashlib, http.server, json, mimetypes, platform, re, socketserver, subprocess, sys, uuid
 import threading, time, types, urllib.request
 from pathlib import Path
 
@@ -43,6 +43,8 @@ import lab  # noqa: E402
 
 ORIGIN = 'https://next.facemorph.me'
 CHANNELS = {'chrome': 'chromium', 'msedge': 'chromium', 'chromium': 'chromium', 'firefox': 'firefox', 'webkit': 'webkit'}
+HOSTED_LANES = ('macos-webkit', 'macos-firefox', 'macos-chrome', 'windows-chrome',
+                'windows-msedge', 'android-emulator-chrome', 'ios-simulator-safari')
 mimetypes.add_type('text/javascript', '.mjs')
 mimetypes.add_type('application/wasm', '.wasm')
 mimetypes.add_type('image/webp', '.webp')
@@ -415,7 +417,10 @@ def cmd_ios(args):
 
         devices = json.loads(sim('list', 'devices', 'available', '--json').stdout)['devices']
         match = next((d for group in devices.values() for d in group if d['name'] == args.device), None)
-        assert match, f'no available Simulator named {args.device!r}'
+        if not match:
+            report.update(status='untested', ok=False, reason=f'no available Simulator named {args.device!r}')
+            (out / f'{args.lane}.json').write_text(json.dumps(report, indent=2))
+            return 0  # explicit unavailable evidence; never a passing journey
         udid = match['udid']
         if match['state'] != 'Booted':
             assert sim('boot', udid).returncode == 0
@@ -447,7 +452,9 @@ def summarise(reports, expect=()):
     for r in sorted(reports, key=lambda r: r['lane']):
         run = r['runs'][-1] if r.get('runs') else {}
         cell = lambda j: f"{run[j]['route'] or 'no route shown'}, {run[j]['faceS']}" if isinstance(run.get(j), dict) else 'not run'
-        result = 'pass' if r.get('ok') else f"fail: {run.get('error', 'no run')}".replace('\n', ' ').replace('|', '/')[:160]
+        result = ('untested: ' + r['reason'] if r.get('status') == 'untested' and r.get('reason') and not r.get('ok')
+                  else 'pass' if r.get('ok') else f"fail: {run.get('error', 'no run')}")
+        result = result.replace('\n', ' ').replace('|', '/')[:160]
         morph = run['morph']['videoS'] if isinstance(run.get('morph'), dict) else 'not run'
         agent = (r.get('userAgent') or r.get('browser') or '')[:90]
         rows.append(f"| {r['lane']} | {result} | {cell('cold')} | {cell('warm')} | {morph} | {agent} |")
@@ -459,7 +466,134 @@ def cmd_summary(args):
     reports = [r for r in reports if isinstance(r, dict) and 'lane' in r and 'runs' in r]
     expect = [l for l in args.expect.split(',') if l]
     print(summarise(reports, expect), end='')
-    return 0 if reports and all(r.get('ok') for r in reports) and {r['lane'] for r in reports} >= set(expect) else 1
+    return 0 if reports and all(r.get('ok') or (r.get('status') == 'untested' and r.get('reason')) for r in reports) and {r['lane'] for r in reports} >= set(expect) else 1
+
+
+def runner_unavailable_reason(job, annotations):
+    """Only an explicit provider notice on a job with no executed steps establishes
+    a terminal runner-availability failure. Generic startup/test errors still fail."""
+    if job.get('steps') or job.get('conclusion') not in ('failure', 'startup_failure'):
+        return None
+    for annotation in annotations:
+        message = annotation.get('message', '')
+        if (re.search(r'job was not started because.*(?:spending limit|account payments)', message, re.I | re.S)
+            or re.search(r'runner image.*(?:has been removed|is retired|is no longer supported)', message, re.I | re.S)):
+            return message.strip()
+    return None
+
+
+def hosted_outcomes(jobs, reports, *, queue_expired=False, run_completed=False, run_queued=False, unavailable=None):
+    """Pure policy over actual API job fields and lane reports. Missing evidence fails
+    closed, except a lane still awaiting a runner after the bounded queue attempt.
+    Any executed failure wins over an unavailable report or another lane's pass."""
+    rows = []
+    for lane in HOSTED_LANES:
+        matches = [j for j in jobs if lane in re.split(r'[\s(),]+', j['name'])
+                   or (lane == 'android-emulator-chrome' and j['name'] == 'android')
+                   or (lane == 'ios-simulator-safari' and j['name'] == 'ios')]
+        found = [r for r in reports if r.get('lane') == lane]
+        job = matches[0] if len(matches) == 1 else None
+        report = found[0] if len(found) == 1 else None
+        status, reason = 'fail', 'missing or ambiguous job/report evidence'
+        if not matches and not found and queue_expired and run_queued and not run_completed:
+            status, reason = 'untested', 'hosted workflow remained queued without allocating its jobs within the bounded attempt'
+        if job:
+            failures = [s['name'] for s in job.get('steps', []) if s.get('conclusion') in ('failure', 'timed_out', 'cancelled')]
+            if not job.get('steps') and (unavailable or {}).get(job.get('id')):
+                status, reason = 'untested', unavailable[job['id']]
+            elif failures or job.get('conclusion') in ('failure', 'timed_out', 'cancelled', 'startup_failure', 'action_required'):
+                reason = 'executed job failed: ' + (', '.join(failures) or str(job.get('conclusion')))
+            elif (queue_expired and not run_completed and job.get('status') == 'queued'
+                  and not job.get('runner_name') and not job.get('steps')):
+                status, reason = 'untested', 'no hosted runner allocated within the bounded queue attempt'
+            elif job.get('status') != 'completed':
+                status, reason = 'pending', 'allocated or running lane has not finished'
+            elif job.get('conclusion') == 'success' and report:
+                if report.get('status') == 'untested' and report.get('reason') and not report.get('ok') and not report.get('runs'):
+                    status, reason = 'untested', report['reason']
+                elif report.get('ok') and report.get('runs') and all(r.get('ok') for r in report['runs']):
+                    status, reason = 'pass', 'requested journeys reported complete'
+                else:
+                    reason = 'lane reported a failed or incomplete journey'
+        rows.append({'lane': lane, 'status': status, 'reason': reason, 'job': job.get('id') if job else None})
+    return rows
+
+
+def github_api(path, payload=None):
+    command = ['gh', 'api', path]
+    if payload is not None:
+        command += ['--method', 'POST', '--input', '-']
+    result = subprocess.run(command, input=json.dumps(payload) if payload is not None else None,
+                            capture_output=True, text=True, check=True, timeout=60)
+    return json.loads(result.stdout) if result.stdout.strip() else None
+
+
+def cmd_release(args):
+    """Dispatch hosted work separately so a runner that never starts cannot hold the
+    reusable release workflow forever. Never cancel a run. Started tests must finish
+    successfully; a bounded queue absence is untested, and late work stays linked."""
+    out = Path(args.out)
+    out.mkdir(parents=True, exist_ok=True)
+    inputs = json.loads(Path(args.inputs).read_text())
+    inputs['qualification_id'] = 'release-' + uuid.uuid4().hex
+    root = f'repos/{args.repository}'
+    github_api(root + '/actions/workflows/hosted-lanes.yml/dispatches', {'ref': args.ref, 'inputs': inputs})
+    start = time.monotonic()
+    run = None
+    while time.monotonic() - start < args.queue_seconds:
+        listing = github_api(root + '/actions/workflows/hosted-lanes.yml/runs?event=workflow_dispatch&per_page=100')
+        run = next((r for r in listing['workflow_runs'] if r['display_title'] == 'hosted-' + inputs['qualification_id']), None)
+        if run:
+            break
+        time.sleep(10)
+    if not run:
+        raise RuntimeError('dispatch was accepted but no correlated workflow run was found; availability is unknown')
+    run_id = run['id']
+    url = run['html_url']
+    print('Hosted attempt: ' + url, flush=True)
+    unavailable, inspected = {}, set()
+    while True:
+        run = github_api(root + f'/actions/runs/{run_id}')
+        jobs = github_api(root + f'/actions/runs/{run_id}/jobs?per_page=100')['jobs']
+        for job in jobs:
+            if job['id'] not in inspected and not job.get('steps') and job.get('conclusion') in ('failure', 'startup_failure'):
+                check = job.get('check_run_url')
+                annotations = github_api(check.replace('https://api.github.com/', '', 1) + '/annotations?per_page=100') if check else []
+                reason = runner_unavailable_reason(job, annotations)
+                if reason:
+                    unavailable[job['id']] = reason
+                inspected.add(job['id'])
+        elapsed = time.monotonic() - start
+        rows = hosted_outcomes(jobs, [], queue_expired=elapsed >= args.queue_seconds,
+                               run_completed=run['status'] == 'completed', run_queued=run['status'] == 'queued', unavailable=unavailable)
+        # Missing reports become decisive only after their jobs finish; the API is
+        # authoritative for which tests have actually started, not a guessed delay.
+        waiting = any(r['status'] == 'pending' for r in rows)
+        unknown = any(r['job'] is None and r['status'] != 'untested' for r in rows)
+        if run['status'] == 'completed' or (not waiting and not unknown and elapsed >= args.queue_seconds):
+            break
+        if elapsed >= args.timeout_seconds:
+            raise TimeoutError(f'hosted attempt did not finish within {args.timeout_seconds}s: {url}')
+        time.sleep(15)
+    artifacts = github_api(root + f'/actions/runs/{run_id}/artifacts?per_page=100')['artifacts']
+    for artifact in artifacts:
+        if artifact['name'].startswith('lane-') and not artifact['expired']:
+            subprocess.run(['gh', 'run', 'download', str(run_id), '--repo', args.repository,
+                            '--name', artifact['name'], '--dir', str(out / artifact['name'])], check=True, timeout=120)
+    reports = [json.loads(p.read_text()) for p in out.glob('lane-*/*.json')]
+    reports = [r for r in reports if isinstance(r, dict) and 'lane' in r and 'runs' in r]
+    rows = hosted_outcomes(jobs, reports, queue_expired=elapsed >= args.queue_seconds,
+                           run_completed=run['status'] == 'completed', run_queued=run['status'] == 'queued', unavailable=unavailable)
+    report = {'run': run_id, 'url': url, 'artifactDigest': args.artifact_digest, 'inputs': inputs, 'lanes': rows,
+              'ok': all(r['status'] in ('pass', 'untested') for r in rows)}
+    (out / 'hosted-release.json').write_text(json.dumps(report, indent=2))
+    print(summarise(reports), end='')
+    print('\n| Hosted lane | Qualification | Reason |\n| --- | --- | --- |')
+    for row in rows:
+        print(f"| {row['lane']} | {row['status']} | {row['reason'].replace('|', '/')} |")
+    print('\nUntested hosted lanes are unavailable evidence, never passes. Six local cells remain required.\n'
+          'Late queued work is not cancelled; inspect the linked attempt before handover and repair executed failures.')
+    return 0 if report['ok'] else 1
 
 
 def main():
@@ -482,10 +616,18 @@ def main():
     s = sub.add_parser('summary')
     s.add_argument('dir')
     s.add_argument('--expect', default='', help='comma-separated lanes that must have reported')
+    s = sub.add_parser('release')
+    s.add_argument('--repository', required=True)
+    s.add_argument('--ref', default='main')
+    s.add_argument('--inputs', required=True)
+    s.add_argument('--artifact-digest', required=True)
+    s.add_argument('--out', required=True)
+    s.add_argument('--queue-seconds', type=int, default=300)
+    s.add_argument('--timeout-seconds', type=int, default=6000)
     args = p.parse_args()
     if args.cmd == 'ios':
         args.journey_stages = ['cold', 'warm', 'morph']
-    sys.exit({'browser': cmd_browser, 'android': cmd_android, 'ios': cmd_ios, 'summary': cmd_summary}[args.cmd](args))
+    sys.exit({'browser': cmd_browser, 'android': cmd_android, 'ios': cmd_ios, 'summary': cmd_summary, 'release': cmd_release}[args.cmd](args))
 
 
 if __name__ == '__main__':

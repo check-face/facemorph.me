@@ -1,12 +1,17 @@
 name: hosted-lanes
+run-name: hosted-${{ inputs.qualification_id || inputs.artifact_name }}
 # fm-5klw: the device lab's journeys (cold face, warm face, morph to a playable video) on hosted
 # platforms, against one exact artifact, each lane reporting the route it used
 # (tools/device-lab/hosted.py): macOS WebKit/Firefox/Chrome, Windows Chrome/Edge, Chrome in the
 # Android emulator and Safari in the iOS Simulator. Part of release validation with the device-lab
-# cells (release-gate.yml); `summary` fails when any lane fails or never reports.
+# cells (release-gate.yml). Its bounded supervisor distinguishes an unallocated
+# hosted runner from executed failures; missing reports on executed jobs still fail.
 on:
   workflow_dispatch:
     inputs:
+      qualification_id:
+        description: Correlates one bounded release attempt
+        required: false
       artifact_source_repo_id:
         required: true
         description: Numeric source repository ID
@@ -27,6 +32,9 @@ on:
         default: d9e37e50a436e9fb7c0c7f973e70adee353c808f48c6a51fa5a9186f1c650a5c
   workflow_call:
     inputs:
+      qualification_id:
+        type: string
+        required: false
       artifact_source_repo_id:
         type: string
         required: true
@@ -58,6 +66,7 @@ env:
   LANES: macos-webkit,macos-firefox,macos-chrome,windows-chrome,windows-msedge,android-emulator-chrome,ios-simulator-safari
 jobs:
   desktop:
+    name: ${{ matrix.lane }}
     strategy:
       fail-fast: false
       matrix:
@@ -102,6 +111,7 @@ jobs:
           if-no-files-found: warn
           retention-days: 30
   android:
+    name: android-emulator-chrome
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     steps:
@@ -149,6 +159,7 @@ jobs:
           if-no-files-found: warn
           retention-days: 30
   ios:
+    name: ios-simulator-safari
     runs-on: macos-15
     timeout-minutes: 90
     steps:
@@ -182,7 +193,8 @@ jobs:
   summary:
     needs: [desktop, android, ios]
     if: always()
-    runs-on: ubuntu-24.04
+    runs-on: [self-hosted, linux-x64]
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
