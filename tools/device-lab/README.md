@@ -1,8 +1,21 @@
 # Device lab
 
-The same end-to-end journeys on four cells, with no human in the loop. Agents run it on demand whenever their work
-needs it, including on candidate builds before anything reaches next.facemorph.me. It is best effort: an unavailable
-device never blocks a deploy or new work (PLAN.md "Device lab, deploy gates and CI policy"). There is no schedule.
+The implemented harness runs the same end-to-end journeys on four cells, with no human in the loop.
+Agents run it on demand for affected work, including candidate builds. Unavailable hardware does not block
+ordinary development; it is recorded untested. There is no schedule.
+
+**Release target (operator, 25 October 2026): six local cells**, CPU and WebGPU in Chrome on Linux eris,
+Firefox on Linux eris, and Chrome on the actual Huawei P30 Pro, against the deployed next.facemorph.me
+artifact, plus normal applicable CI. Missing local evidence leaves handover incomplete. The four-cell
+table below describes current implementation, not completion of that gate: eris Firefox is not implemented
+and eris currently uses Chromium. Record the actual executable/version; do not silently substitute it for
+required browser evidence. Hosted iOS Simulator/Android emulator lanes are additional, best effort for
+runner availability; a real executed test failure requires repair.
+
+During iteration, reuse existing scripts and direct browser-protocol helpers before interactive harnesses
+or coordinate taps. Use actual input where the journey tests operated controls; scripts must not bypass
+that contract. Reuse warm setup only when the case permits it. Disposable probes stay outside Git, and
+task-owned servers, profiles, ADB mappings and device flags are cleaned up/restored after use.
 
 | Cell | Device | Route it must take |
 | --- | --- | --- |
