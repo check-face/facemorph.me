@@ -8,20 +8,24 @@ browser-harness <<'PY'
 import json,time,os
 from pathlib import Path
 def click(role,name):
-    nodes=cdp('Accessibility.getFullAXTree')['nodes']
-    # 'Remove' buttons carry the face name (Remove <face>) and FancyButton renders uppercase in
-    # the AX tree, so fall back to a case-insensitive/prefix match before giving up.
-    item=next((n for n in nodes if n.get('role',{}).get('value')==role and n.get('name',{}).get('value')==name),None)
-    if item is None and name=='Remove':
-        item=next(n for n in nodes if n.get('role',{}).get('value')==role and n.get('name',{}).get('value','').lower().startswith('remove'))
-    if item is None:
-        item=next((n for n in nodes if n.get('role',{}).get('value')==role and n.get('name',{}).get('value','').lower()==name.lower()),None)
-    if item is None:raise StopIteration(name)
-    ident=item['backendDOMNodeId'];cdp('DOM.scrollIntoViewIfNeeded',backendNodeId=ident)
-    q=cdp('DOM.getBoxModel',backendNodeId=ident)['model']['content'];click_at_xy(sum(q[0::2])/4,sum(q[1::2])/4)
+    deadline=time.monotonic()+10
+    while time.monotonic()<deadline:
+        nodes=cdp('Accessibility.getFullAXTree')['nodes']
+        matching=[n for n in nodes if n.get('role',{}).get('value')==role and n.get('name',{}).get('value','').lower()==name.lower()]
+        if not matching and name=='Remove':
+            matching=[n for n in nodes if n.get('role',{}).get('value')==role and n.get('name',{}).get('value','').lower().startswith('remove')]
+        if matching:
+            ident=matching[0]['backendDOMNodeId'];cdp('DOM.scrollIntoViewIfNeeded',backendNodeId=ident)
+            q=cdp('DOM.getBoxModel',backendNodeId=ident)['model']['content'];x,y=sum(q[0::2])/4,sum(q[1::2])/4
+            hit=js("(()=>{const e=document.elementFromPoint(%f,%f)?.closest('button,[role=menuitem]');const name=e?.getAttribute('aria-label')||e?.textContent||'';return name.trim().toLowerCase()===%s;})()"%(x,y,json.dumps(name.lower())))
+            if hit:click_at_xy(x,y);return
+        time.sleep(.1)
+    raise AssertionError('No visible pointer hit for '+role+' '+name)
+
 DESTINATION=os.environ.get('NEXT_ARTIFACT_KIND')=='destination'
-# Text tiles now show the Generate hint; each destination tile retains its named file chooser.
-PHOTO_SELECTOR='input[type=file][aria-label="Encode image"]' if DESTINATION else 'button[aria-label="Choose photo"]'
+# Destination photo entry lives in each tile's mode menu; the chooser belongs
+# to the source dialog. Count the entry controls and actually open that dialog.
+PHOTO_SELECTOR='.next-face button[aria-label="Change mode"]' if DESTINATION else 'button[aria-label="Choose photo"]'
 PHOTO_OFFSET=0 if DESTINATION else 1
 def state():
     return json.loads(js("JSON.stringify({tiles:document.querySelectorAll('.next-face').length,photoControls:document.querySelectorAll(%s).length,helloPreview:(()=>{const i=document.querySelector('[data-next-face=\"face-1\"] img[data-public-preview=\"true\"]');return !!i&&i.complete&&i.naturalWidth===1024&&i.naturalHeight===1024;})(),generate:document.querySelectorAll('.next-face-generate').length===2,pattern:document.querySelector('select[aria-label=\"Morph shape\"]')?.value,errors:document.querySelector('.next-error')?.innerText||''})" % json.dumps(PHOTO_SELECTOR)))
@@ -42,6 +46,15 @@ try:
     time.sleep(1)
     result['consentToastShown']=bool(js('(()=>{const b=document.querySelector(\'.next-consent-toast button[aria-label="Ask me later"]\');if(b)b.click();return !!b;})()'))
     initial=until(lambda s:s['tiles']==2 and s['photoControls']==2-PHOTO_OFFSET and s['helloPreview'] and s['generate'])
+    if DESTINATION:
+        click('button','Change mode')
+        click('menuitem','Encode image')
+        until(lambda s:js("!!document.querySelector('.next-encode-source input[type=file]')"))
+        accept=js("document.querySelector('.next-encode-source input[type=file]').accept")
+        assert accept=='image/*,video/mp4', accept
+        result['encodeSource']={'opened':True,'accept':accept}
+        click('button','Cancel')
+        until(lambda s:not js("!!document.querySelector('.next-encode-dialog')"))
     assert not js("document.querySelector('.next-tagline a, .next-tagline button')"), 'Tagline must not replace an implicitly selected face'
     click('button','More options')
     until(lambda s:js("!!document.querySelector('.next-overflow')"))

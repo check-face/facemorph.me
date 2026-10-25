@@ -1053,10 +1053,10 @@
       "class": "temporary-root",
       "temporary": true,
       "ported": {
-        "sha256": "f46265cad8a8863d79899ad2297537536245aa6e0da232a963fc871042f02d16",
-        "bytes": 8227,
-        "bead": "fm-zz2i",
-        "reason": "the Processing mode select is found by accessible name through build/provider-probe.js (no .next-advanced), routes expected by artifact label from build/provider-routes.json, providerLocation recorded; Vite destination integration: shared production headers and native dynamic-import directives; compiled artifact identity. Verify named per-tile Encode image chooser after text placeholder retirement; retain classic selector on the frozen control (fm-aa8)."
+        "sha256": "335c313d2ad175279d67fb102444e3b074fef88480a24bcea0ce5a5cad7c5509",
+        "bytes": 8924,
+        "bead": "fm-aa8",
+        "reason": "the Processing mode select is found by accessible name through build/provider-probe.js (no .next-advanced), routes expected by artifact label from build/provider-routes.json, providerLocation recorded; Vite destination integration: shared production headers and native dynamic-import directives; compiled artifact identity. Operate Encode image through the tile mode menu and source dialog after chooser relocation; verify real pointer landing past closing dialog backdrops. Retain classic selector on the frozen control (fm-aa8, main40186175762)."
       }
     },
     {
