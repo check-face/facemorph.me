@@ -24,7 +24,7 @@ import {
 } from '../../tools/names-generator/lib.mjs';
 import { recoverEnvelope } from '../../apps/web/src/Next/image-envelope.mjs';
 import { limitFindings } from '../../packages/cloudflare-model-host/src/limits.ts';
-import { fetchSource } from '../names-snapshot/snapshot.mjs';
+import { fetchSource } from '../names-snapshot/fetch-source.mjs';
 
 const REPO = fileURLToPath(new URL('../..', import.meta.url));
 export const POINTER = 'catalogue-v2.json';
