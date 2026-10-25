@@ -4,6 +4,7 @@
 // Approve, the early variant failing, a window without data failing, fromCache 'untested', and a screenshot kept
 // on failure. Each run writes its per-assertion JSONL log (INTERCEPT_LOG_DIR, default a temporary directory).
 import assert from 'node:assert/strict';
+import type { ChildProcess } from 'node:child_process';
 import { existsSync, mkdtempSync, readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
@@ -100,12 +101,45 @@ test('each primitive logs one JSON line with primitive, host class, window, coun
 
 const { chromium } = createRequire(join(REPO, 'apps/web/package.json'))('playwright') as {
   chromium: {
-    launch(o?: object): Promise<{
+    executablePath(): string;
+    launchServer(o?: object): Promise<BrowserServer>;
+    connect(
+      endpoint: string,
+      o?: object,
+    ): Promise<{
       newContext(o?: object): Promise<{ newPage(): Promise<Page> } & object>;
       close(): Promise<void>;
     }>;
   };
 };
+interface BrowserServer {
+  wsEndpoint(): string;
+  process(): ChildProcess;
+  close(): Promise<void>;
+}
+
+// Keep shutdown failure visible and kill only this test's browser process. A browser
+// that stops answering must not consume the entire CI job before printing results.
+async function closeBrowser(server: BrowserServer) {
+  let deadline: ReturnType<typeof setTimeout> | undefined;
+  try {
+    await Promise.race([
+      server.close(),
+      new Promise<never>((_, reject) => {
+        deadline = setTimeout(() => {
+          server.process().kill('SIGKILL');
+          reject(new Error('Chromium shutdown exceeded 5 seconds; owned process killed'));
+        }, 5_000);
+      }),
+    ]);
+  } catch (error) {
+    server.process().kill('SIGKILL');
+    throw error;
+  } finally {
+    clearTimeout(deadline);
+  }
+}
+
 interface Page {
   goto(u: string): Promise<unknown>;
   click(s: string): Promise<void>;
@@ -115,8 +149,16 @@ interface Page {
 
 async function journey(early: boolean, logDir: string) {
   const f = await startFixture();
-  const browser = await chromium.launch({ executablePath: process.env['CHROMIUM_PATH'] });
+  let server: BrowserServer | undefined;
+  let lifetime: ReturnType<typeof setTimeout> | undefined;
   try {
+    server = await chromium.launchServer({
+      executablePath: process.env['CHROMIUM_PATH'],
+      timeout: 30_000,
+    });
+    const owned = server.process();
+    lifetime = setTimeout(() => owned.kill('SIGKILL'), 90_000);
+    const browser = await chromium.connect(server.wsEndpoint(), { timeout: 30_000 });
     const context = await browser.newContext({ serviceWorkers: 'allow' });
     const att = attachPlaywright(context as never, f.hostMap);
     const page = await context.newPage();
@@ -138,17 +180,41 @@ async function journey(early: boolean, logDir: string) {
     const shot = await keepOnFailure(verdicts, page, join(logDir, early ? 'early' : 'approved'));
     return { rec: att.rec, verdicts, shot };
   } finally {
-    await browser.close();
-    await f.stop();
+    try {
+      if (server) await closeBrowser(server);
+    } finally {
+      clearTimeout(lifetime);
+      await f.stop();
+    }
   }
 }
 
 const logDir = process.env['INTERCEPT_LOG_DIR'] ?? mkdtempSync(join(tmpdir(), 'intercept-log-'));
-// A host where Playwright's Chromium cannot start (triton's Ubuntu 20.04) reports these cases untested; ci-shared
-// runs them on eris.
-const NO_BROWSER = await chromium.launch({ executablePath: process.env['CHROMIUM_PATH'] }).then(
-  (b) => b.close().then(() => false),
-  (e: Error) => `untested: Chromium does not start here (${e.message.split('\n')[0]})`,
+// Missing browser installations are explicitly untested; launch/shutdown failures
+// of an installed browser fail the test instead of silently skipping CI coverage.
+const NO_BROWSER = existsSync(process.env['CHROMIUM_PATH'] ?? chromium.executablePath())
+  ? false
+  : 'untested: Chromium executable is not installed';
+
+test(
+  'an unresponsive owned Chromium is killed and shutdown reports failure',
+  { skip: NO_BROWSER },
+  async () => {
+    const server = await chromium.launchServer({
+      executablePath: process.env['CHROMIUM_PATH'],
+      timeout: 30_000,
+    });
+    const child = server.process();
+    const exited = new Promise<void>((resolve) => child.once('exit', () => resolve()));
+    try {
+      assert.equal(child.kill('SIGSTOP'), true);
+      await assert.rejects(closeBrowser(server), /shutdown exceeded 5 seconds/);
+      await exited;
+      assert.equal(child.signalCode, 'SIGKILL');
+    } finally {
+      if (child.exitCode === null && child.signalCode === null) child.kill('SIGKILL');
+    }
+  },
 );
 
 test(
