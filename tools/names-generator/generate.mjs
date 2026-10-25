@@ -176,7 +176,16 @@ export async function openHarness(pw, { origin, route, chromium, profile, hosts 
     viewport: { width: 640, height: 480 },
   });
   recordRequests(context, hosts);
-  const page = context.pages()[0] ?? (await context.newPage());
+  // launchPersistentContext's initial blank tab can still be navigating when it
+  // is handed back. Use a new, initialized page for the harness startup instead
+  // of competing with that browser-owned navigation after a long resume run.
+  let page;
+  try {
+    page = await context.newPage();
+  } catch (error) {
+    await context.close();
+    throw error;
+  }
   page.on('pageerror', (error) => console.error('names harness page error:', error.message));
   page.on('requestfailed', (request) =>
     console.error('names harness request failed:', request.url(), request.failure()?.errorText),
@@ -199,6 +208,7 @@ export async function openHarness(pw, { origin, route, chromium, profile, hosts 
       (async () => {
         await page.goto(`${origin}/names-generator.html`, {
           timeout: Math.max(1, deadline - Date.now()),
+          waitUntil: 'commit',
         });
         await page.waitForFunction(() => window.harnessReady === true, null, {
           timeout: Math.max(1, deadline - Date.now()),
