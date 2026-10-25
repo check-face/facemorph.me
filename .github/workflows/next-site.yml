@@ -95,7 +95,9 @@ jobs:
       - name: No third-party runtime dependencies
         run: node apps/web/scripts/check-no-third-party.mjs deploy-next
       - name: The site lane's own checks are tested (retired-host scan fixtures, runtime refusal, inference verdict)
-        run: node --test scripts/ci/site/site.test.mjs
+        run: |
+          node --test scripts/ci/site/site.test.mjs
+          python3 scripts/ci/site/test_compiled_ui.py
       - name: No retired hosts in the destination artifact
         run: node scripts/ci/site/retired-hosts.mjs deploy-next --summary "$GITHUB_STEP_SUMMARY"
       - name: Record exact bytes for promotion
