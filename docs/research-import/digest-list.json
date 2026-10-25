@@ -1,7 +1,7 @@
 {
  "bead": "fm-86u",
  "snapshot": {
-  "repository": "check-face/facemorph.me-classic",
+  "repository": "facemorph-me/facemorph.me-classic",
   "branch": "candidate/next-delivery-20260916",
   "commit": "b2d945a8c7f0ff9f382fbfefaecc2651943077a3",
   "tree": "5ce00f787c1a51c70daaeb99f0dd517afce0df15",

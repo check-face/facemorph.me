@@ -1313,7 +1313,7 @@ def main():
     common(r, 'cold-face,warm-face')
     q = sub.add_parser('qualify', help='fetch a candidate build by CI run id and run the matrix on it (any agent, any time, before deploying)')
     q.add_argument('--run', required=True, help='GitHub Actions run id of the build (classic: New site artifact)')
-    q.add_argument('--repo', default='check-face/facemorph.me-classic')
+    q.add_argument('--repo', default='facemorph-me/facemorph.me-classic')
     q.add_argument('--runtime-sha', default='d9e37e50a436e9fb7c0c7f973e70adee353c808f48c6a51fa5a9186f1c650a5c')
     q.add_argument('--cells', default=','.join(CELLS))
     q.add_argument('--artifact-digest')

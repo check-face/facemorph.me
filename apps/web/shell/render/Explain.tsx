@@ -187,8 +187,8 @@ export function Explain({ route = '', reference = '' }: { route?: string; refere
         <summary>{'Is there an API I can self-host?'}</summary>
         <p>
           {'Yes. The server source is at '}
-          <a href={'https://github.com/check-face/checkface'}>
-            {'github.com/check-face/checkface'}
+          <a href={'https://github.com/facemorph-me/checkface'}>
+            {'github.com/facemorph-me/checkface'}
           </a>
           {' with setup instructions in its README'}
           {'.'}

@@ -576,7 +576,7 @@ export function sourceVersion(){
  const [commit,dirty]=sha.split('-');
  return /^[0-9a-f]{40}$/.test(commit)?commit.slice(0,7)+(dirty?'+':''):'local';
 }
-const ISSUE_REPO='https://github.com/check-face/facemorph.me/issues/new';
+const ISSUE_REPO='https://github.com/facemorph-me/facemorph.me/issues/new';
 export function issueUrl(route){
  const status=diagnostics.status(),reference=status.enabled||status.once?status.reference||'':'';
  const version=sourceVersion(),device=String(globalThis.navigator?.userAgent||'').slice(0,300),path=String(globalThis.location?.pathname||'/');

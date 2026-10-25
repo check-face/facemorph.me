@@ -377,6 +377,62 @@ test(
             assert.equal(await field.inputValue(), before);
             noModels();
 
+            // Drop (fm-25um): a synthetic DataTransfer carrying a real JPEG, dispatched at a visible
+            // point to whatever element is there. A tile binds itself; the background takes the first
+            // empty face, else appends one.
+            const dropAt = async (target: Locator) => {
+              await target.scrollIntoViewIfNeeded();
+              const box = await target.boundingBox();
+              assert.ok(box);
+              return page.evaluate(
+                async ([x, y]: readonly [number, number]) => {
+                  const bytes = await (await fetch('/crop-inputs/non-square.jpg')).blob();
+                  const data = new DataTransfer();
+                  data.items.add(new File([bytes], 'dropped.jpg', { type: 'image/jpeg' }));
+                  const at = document.elementFromPoint(x, y)!;
+                  const init = { bubbles: true, cancelable: true, clientX: x, clientY: y };
+                  at.dispatchEvent(new DragEvent('dragover', { ...init, dataTransfer: data }));
+                  at.dispatchEvent(new DragEvent('drop', { ...init, dataTransfer: data }));
+                  return at.closest('[data-next-face]')?.getAttribute('data-next-face') ?? null;
+                },
+                [box.x + box.width / 2, box.y + box.height / 2] as const,
+              );
+            };
+            const cropOwner = async () => {
+              await dialog.locator('.next-encode-preview img').waitFor();
+              return page.evaluate(
+                () =>
+                  (window as unknown as { __elmish: { model: { Crop: { faceId: string } } } })
+                    .__elmish.model.Crop.faceId,
+              );
+            };
+            const dismiss = async (name: string) => {
+              await shot(name);
+              await hit(dialog.getByRole('button', { name: 'CANCEL', exact: true }));
+              await dialog.waitFor({ state: 'detached' });
+            };
+            const firstId = await tiles.first().getAttribute('data-next-face');
+            assert.equal(await dropAt(tiles.first().locator('.next-face-image')), firstId);
+            assert.equal(await cropOwner(), firstId);
+            assert.equal(await tiles.count(), 1);
+            await dismiss('drop-on-tile');
+            // Every face has words: a background drop appends one face and binds it.
+            const background = page.getByRole('heading', { name: 'What is this?' });
+            assert.equal(await dropAt(background), null);
+            const appended = await cropOwner();
+            assert.equal(await tiles.count(), 2);
+            assert.equal(appended, await tiles.nth(1).getAttribute('data-next-face'));
+            assert.equal(await field.inputValue(), before);
+            await dismiss('drop-on-background-append');
+            // That face is still empty, so the next background drop takes it instead of appending.
+            assert.equal(await dropAt(background), null);
+            assert.equal(await cropOwner(), appended);
+            assert.equal(await tiles.count(), 2);
+            await dismiss('drop-on-background-empty');
+            await hit(tiles.nth(1).getByRole('button', { name: /^Remove/ }));
+            await tiles.nth(1).waitFor({ state: 'detached' });
+            noModels();
+
             // Source ownership at 2 of 3 and 64 of 64. By-name additions only arrange the input state.
             while ((await tiles.count()) < 3)
               await page.locator('.next-connector-add').last().click();

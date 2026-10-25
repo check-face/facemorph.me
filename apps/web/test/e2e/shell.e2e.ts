@@ -47,7 +47,7 @@ const CASES = [
   {
     id: 'strip-issue',
     selector: 'aside.next-preview-strip a[target="_blank"]',
-    href: /^https:\/\/github\.com\/check-face\/facemorph\.me\/issues\/new\?template=next-facemorph\.yml&/,
+    href: /^https:\/\/github\.com\/facemorph-me\/facemorph\.me\/issues\/new\?template=next-facemorph\.yml&/,
   },
   {
     id: 'header-home',
@@ -61,13 +61,13 @@ const CASES = [
   },
   {
     id: 'footer-source',
-    selector: 'footer.next-footer a[href="https://github.com/check-face/facemorph.me"]',
-    href: /^https:\/\/github\.com\/check-face\/facemorph\.me$/,
+    selector: 'footer.next-footer a[href="https://github.com/facemorph-me/facemorph.me"]',
+    href: /^https:\/\/github\.com\/facemorph-me\/facemorph\.me$/,
   },
   {
     id: 'footer-issue',
     selector: 'footer.next-footer a[target="_blank"]',
-    href: /^https:\/\/github\.com\/check-face\/facemorph\.me\/issues\/new\?template=next-facemorph\.yml&/,
+    href: /^https:\/\/github\.com\/facemorph-me\/facemorph\.me\/issues\/new\?template=next-facemorph\.yml&/,
   },
 ] as const;
 

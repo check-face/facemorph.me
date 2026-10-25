@@ -31,7 +31,7 @@ export function controlIdentity(record, assembledBy) {
       files: record.files.length,
     },
     assembledBy: {
-      repository: 'check-face/facemorph.me',
+      repository: 'facemorph-me/facemorph.me',
       commit: assembledBy,
       role: 'fetched and verified the control; built nothing',
     },
@@ -64,7 +64,7 @@ export function identityFindings(dir, identity, record = readControl()) {
       });
   } else if (identity?.kind === 'destination') {
     if (
-      identity.deploySource?.repository !== 'check-face/facemorph.me' ||
+      identity.deploySource?.repository !== 'facemorph-me/facemorph.me' ||
       !/^[a-f0-9]{40}$/.test(identity.deploySource?.commit ?? '') ||
       identity.label !== 'destination' ||
       !/^[a-f0-9]{64}$/.test(identity.deploySource?.sourceTreeSha256 ?? '') ||
@@ -151,7 +151,7 @@ export function stageBuilt({ out, built, source, record = readControl() }) {
     schema: IDENTITY_SCHEMA,
     kind: 'destination',
     label: 'destination',
-    deploySource: { repository: 'check-face/facemorph.me', ...source },
+    deploySource: { repository: 'facemorph-me/facemorph.me', ...source },
     importedFrom: {
       repository: record.source.repository,
       commit: record.source.commit,

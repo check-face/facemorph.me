@@ -6,7 +6,7 @@ surface, not just the fact. Nothing here is created on demand — it is what the
 | Evidence | Producer | Lives at | See it from your phone |
 | --- | --- | --- | --- |
 | Bead state, acceptance ticks, close reasons, failure passbacks | `br` | `.beads/issues.jsonl` (Git history = time travel) | https://beads.dilger.dev (Cloudflare Access) |
-| CI runs, lane conclusions, job logs, summary artifacts | `main.yml` + lane workflows | GitHub Actions | GitHub app → check-face/facemorph.me → Actions; or `gh run list/watch/download` |
+| CI runs, lane conclusions, job logs, summary artifacts | `main.yml` + lane workflows | GitHub Actions | GitHub app → facemorph-me/facemorph.me → Actions; or `gh run list/watch/download` |
 | Device-lab runs (journey verdicts, `summary.md`, `report.json`, per-cell `<cell>-last.png` end-state screenshots, `fail-N` frame sequences, Playwright traces) | `tools/device-lab/lab.py run/matrix/qualify` | `facemorph.me/tools/device-lab/out/<ts>-<label>/` on eris; CI runs upload `summary.*` as workflow artifacts | the snapshot page (below), or `gh run download`, or ssh + `open tools/device-lab/out/<run>/summary.md` |
 | Research runs, timings, ledgers | `autoresearch/run.py`, rounds | `autoresearch/state/<run-id>/`, `autoresearch/results.tsv`, `~/Work/runs/` (raw, nonportable) | ssh; results.tsv diffs in Git |
 | Deploy receipts (artifact digest, live-byte checks, cutover annotations) | deploy workflows, `scripts/delivery/` | workflow summaries, `scripts/delivery/runbook.json` | GitHub app; runbook.json in Git |

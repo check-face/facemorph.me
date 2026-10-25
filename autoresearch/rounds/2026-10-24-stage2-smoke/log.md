@@ -52,7 +52,7 @@ add no `results.tsv` row.
 - Boundary / samples: control 28 synthesized and 32 written frames, first frame 748 ms, last 3515 ms, 101.7 ms/frame, morph step 3640 ms; candidate (same control) first 559 ms, last 2000 ms, 52.2 ms/frame, morph step 2128 ms. Smoke, not an evaluated sample
 - Correctness / workflow: driver tests 11/11 in the job; playable videos; Save video digests `aee86781…` and `47349d20…`
 - Resources / failures: none; profiles deleted at the end of the run
-- Evidence: `/home/cdilga/Work/runs/facemorph-research/ci-morph-frame-40094483823-1/report.json` (eris); copy in the run's artifact `research-rgba-screen-40094483823` (14 days); https://github.com/check-face/facemorph.me/actions/runs/40094483823
+- Evidence: `/home/cdilga/Work/runs/facemorph-research/ci-morph-frame-40094483823-1/report.json` (eris); copy in the run's artifact `research-rgba-screen-40094483823` (14 days); https://github.com/facemorph-me/facemorph.me/actions/runs/40094483823
 - Conclusion / next action: workflow recorded; path-filter and lease-wrapping follow-ups are carried by fm-7ge and fm-wzy
 
 ### 2026-10-24T12:35:31+00:00 — 20261024T123531Z-75bbd668
@@ -65,5 +65,5 @@ add no `results.tsv` row.
 - Boundary / samples: control ms: new-face-1 16436, new-face-2 2031, first-download 91, repeat-original 97, repeat-download 65, video32 54788, video-download 72, photo-first 39138, photo-next 20711, photo-download 89; candidate (same control): 15160, 1850, 73, 71, 47, 56666, 76, 36712, 21688, 64. Smoke, not an evaluated sample
 - Correctness / workflow: driver tests 11/11 in the job; repeat Save identical; both photos ran the encoder; no page errors
 - Resources / failures: none; profiles deleted at the end of the run
-- Evidence: `/home/cdilga/Work/runs/facemorph-research/ci-built-ui-40094483846-1/report.json` (eris); copy in the run's artifact `research-built-ui-media-40094483846` (14 days); https://github.com/check-face/facemorph.me/actions/runs/40094483846
+- Evidence: `/home/cdilga/Work/runs/facemorph-research/ci-built-ui-40094483846-1/report.json` (eris); copy in the run's artifact `research-built-ui-media-40094483846` (14 days); https://github.com/facemorph-me/facemorph.me/actions/runs/40094483846
 - Conclusion / next action: workflow recorded; neither workflow is a required status (the repository has no branch protection or rulesets on `main`)

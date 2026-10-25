@@ -15,7 +15,7 @@ test('issue context contains coarse classes and public identifiers, never conten
   );
   assert.equal(
     link.origin + link.pathname,
-    'https://github.com/check-face/facemorph.me/issues/new',
+    'https://github.com/facemorph-me/facemorph.me/issues/new',
   );
   assert.equal(link.searchParams.get('device'), 'phone / Chrome');
   assert.equal(link.searchParams.get('version'), 'abcdef0');

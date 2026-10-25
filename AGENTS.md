@@ -68,7 +68,7 @@ No weights or secrets in Git. Cloudflare work uses installed `cf` (`cf cli searc
 then command help), never Wrangler. Add/upgrade dependencies with `npm install <pkg>@latest`
 (caret at latest, no exact pins or hold-backs); lockfiles remain for `npm ci`.
 Integrity digests are not dependency pins. Classic's frozen distribution is exempt.
-Current GitHub owner is check-face; selected future organization is facemorph-me.
+GitHub owner is facemorph-me (renamed from check-face on 26 October 2026).
 
 ## Work loop: operator-enabled swarm
 

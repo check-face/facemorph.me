@@ -42,7 +42,7 @@ const vectors = {
   schema: 'facemorph.project-json-vectors/1',
   bead: 'fm-7s3a',
   source: {
-    repository: 'check-face/facemorph.me-classic',
+    repository: 'facemorph-me/facemorph.me-classic',
     branch: 'candidate/next-delivery-20260916',
     commit: a['source-commit'],
     files: ['src/Next/Contracts.fs', 'src/Next/ProjectJson.fs'],

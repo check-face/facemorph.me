@@ -2,7 +2,7 @@
 
 ## Command
 
-Repository `check-face/facemorph.me`, working directory: the repository root.
+Repository `facemorph-me/facemorph.me`, working directory: the repository root.
 
 ```sh
 npm run build:next             # writes deploy-next/ and its identity files at the root
@@ -35,7 +35,7 @@ Three sibling files are never served: `next-site-SHA256SUMS`, `next-site-source.
 `next-site-identity.json`. All are ignored by Git.
 
 The identity (`facemorph.next-site-identity/1`) has `kind` and `label` **destination**,
-`deploySource` naming check-face/facemorph.me, its commit/build ID, clean/dirty state and
+`deploySource` naming facemorph-me/facemorph.me, its commit/build ID, clean/dirty state and
 source-tree digest, plus `importedFrom` naming the frozen classic import and ZIP digest.
 Its file list records sizes and SHA-256 for the complete artifact. `--check` refuses missing,
 changed or extra files, invalid provenance, and unknown identities. Building refuses to replace

@@ -352,7 +352,7 @@ for (const [engine, type] of Object.entries(engines).filter(
         assert.equal(navigations.length, 1);
         assert.match(
           navigations[0] ?? '',
-          /^https:\/\/github.com\/check-face\/facemorph.me\/issues\/new\?/,
+          /^https:\/\/github.com\/facemorph-me\/facemorph.me\/issues\/new\?/,
         );
         assert.deepEqual(errors, []);
         await context.close();

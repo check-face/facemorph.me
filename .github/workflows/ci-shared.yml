@@ -78,7 +78,7 @@ jobs:
         continue-on-error: true
         uses: ./.github/actions/fetch-artifact
         with:
-          source_repo_id: check-face/facemorph.me-classic
+          source_repo_id: facemorph-me/facemorph.me-classic
           workflow: .github/workflows/next-site.yml
           run_id: '40056009101'
           commit: 551b60726290b2d67a32c62477b2fd964de51f96

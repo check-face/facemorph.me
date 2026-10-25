@@ -4,8 +4,8 @@
 
 export const SITE_NAME = 'facemorph.me';
 export const CONTACT_EMAIL = 'checkfaceml@gmail.com';
-export const GITHUB_REPO = 'check-face/facemorph.me';
-const ISSUE_REPO = 'https://github.com/check-face/facemorph.me/issues/new';
+export const GITHUB_REPO = 'facemorph-me/facemorph.me';
+const ISSUE_REPO = 'https://github.com/facemorph-me/facemorph.me/issues/new';
 
 /** Short commit ('+' when built from a dirty tree), or 'local' for anything that is not a commit. */
 export function sourceVersion(

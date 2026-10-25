@@ -2,7 +2,7 @@
 
 Research optimises the new application and packages in this repository: every wait a person sits through, from first
 load to a saved or shared file, on the first visit and every later one. Since 24 October 2026 (fm-zxj) this is the
-research home. Classic ([facemorph.me-classic](https://github.com/check-face/facemorph.me-classic)) keeps its experiment
+research home. Classic ([facemorph.me-classic](https://github.com/facemorph-me/facemorph.me-classic)) keeps its experiment
 history read-only, and **no new round starts there**.
 
 [PLAN.md](../PLAN.md) and the beads govern release scope; where this guide or an older research document differs, they

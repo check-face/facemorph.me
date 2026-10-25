@@ -34,7 +34,7 @@ test('the destination artifact is served at its digest and the run is tagged wit
   t.after(() => site.close());
   assert.equal(site.tag.digest, digest);
   assert.equal(site.tag.kind, 'destination');
-  assert.equal(identity.deploySource.repository, 'check-face/facemorph.me');
+  assert.equal(identity.deploySource.repository, 'facemorph-me/facemorph.me');
   assert.equal(
     site.tag.source,
     `${identity.deploySource.repository}@${identity.deploySource.commit}`,

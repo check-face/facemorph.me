@@ -5,7 +5,7 @@ from pathlib import Path
 sys.path.insert(0,str(Path(__file__).resolve().parent))
 import webgpu_contract
 REPO=Path(__file__).resolve().parents[2]
-REMOTE='check-face/facemorph.me'
+REMOTE='facemorph-me/facemorph.me'
 def command(*args):return subprocess.check_output(list(args),cwd=REPO,text=True)
 def passed_run(run,path):
     data=json.loads(command('gh','api',f'repos/{REMOTE}/actions/runs/{run}'))

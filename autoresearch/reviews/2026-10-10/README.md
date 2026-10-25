@@ -10,7 +10,7 @@ The [direct RGBA candidate](../../candidates/direct-rgba-media-v1/README.md) pas
 
 Integration needed two fixes: unchanged-input Generate now preserves its prepared
 download, and the download worker receives cloneable recovery identity rather
-than promises in the UI face object. The earlier [repeat-download failure](https://github.com/check-face/facemorph.me/actions/runs/38032536121)
+than promises in the UI face object. The earlier [repeat-download failure](https://github.com/facemorph-me/facemorph.me/actions/runs/38032536121)
 had zero repeated inference but repeated encoding. Corrected `bce3204` passed
 build, compiled UI, full CPU UI and deployment, including real WebP recovery.
 [Live identity](live-bce-identity.json) binds it to `next-995b477854d97c7a` and
@@ -20,7 +20,7 @@ Earlier measurement attempts stopped at artifact upload, restored-field interact
 or a normalized-photo cache shortcut. Pixel-changing variants and explicit encoder
 events corrected the workload. The [1800 s attempt](../../candidates/direct-rgba-media-v1/built-ui-timeout.json)
 completed eight measured visits and part of a ninth, then timed out; it remains
-inconclusive. [Replacement run 38036307932](https://github.com/check-face/facemorph.me/actions/runs/38036307932)
+inconclusive. [Replacement run 38036307932](https://github.com/facemorph-me/facemorph.me/actions/runs/38036307932)
 completed the full unchanged ABBA ×3 comparison within its 3000 s budget. The
 accepted results are below; partial attempts are not merged.
 
@@ -102,14 +102,14 @@ The explicit **GTX 1050 / Chrome 141** [control attempt](../../candidates/direct
 reached processing after its stale selector was fixed, then failed with an invalid
 command buffer before a face. It provides no GPU timing and does not qualify the
 raw candidate. Eris source correctness and Linux CPU UI qualification remain
-separate. Android/iOS component lanes passed. The corrected [iOS product campaign](https://github.com/check-face/facemorph.me/actions/runs/38034719345) also passed: one full-resolution RGBA-canvas face on iPhone 16 Pro Simulator / iOS 18.5, using CPU after no WebGPU adapter was available. The [receipt](../../candidates/direct-rgba-media-v1/ios-qualification.json) records source `549ecdf`, a harness-only follow-up with different bundle identity from live `bce3204`. This is functional simulator evidence, not paired timing, physical-phone speed or photo/download/video/memory qualification.
+separate. Android/iOS component lanes passed. The corrected [iOS product campaign](https://github.com/facemorph-me/facemorph.me/actions/runs/38034719345) also passed: one full-resolution RGBA-canvas face on iPhone 16 Pro Simulator / iOS 18.5, using CPU after no WebGPU adapter was available. The [receipt](../../candidates/direct-rgba-media-v1/ios-qualification.json) records source `549ecdf`, a harness-only follow-up with different bundle identity from live `bce3204`. This is functional simulator evidence, not paired timing, physical-phone speed or photo/download/video/memory qualification.
 
 <details>
 <summary>Earlier 10 October snapshot — older build, retained for audit</summary>
 
 ## Earlier round snapshot: identity and boundaries
 
-Snapshot checked **10 October 2026**: [next.facemorph.me](https://next.facemorph.me/) was deployed from [`b322a26`](https://github.com/check-face/facemorph.me/commit/b322a26858275f0e361127836d0fd1854e868ef9), by [run 37886427733](https://github.com/check-face/facemorph.me/actions/runs/37886427733). Its webpack asset is `app.6f67e921bae679214856.js`; its embedded diagnostic build ID is **`next-2ff6791800ad7dbf`**; runtime manifest SHA-256 is `d9e37e50a436e9fb7c0c7f973e70adee353c808f48c6a51fa5a9186f1c650a5c`. These identify source, bundled bytes, diagnostics and runtime assets respectively; they are different identifiers. [Deployment receipt](deployment.json).
+Snapshot checked **10 October 2026**: [next.facemorph.me](https://next.facemorph.me/) was deployed from [`b322a26`](https://github.com/facemorph-me/facemorph.me/commit/b322a26858275f0e361127836d0fd1854e868ef9), by [run 37886427733](https://github.com/facemorph-me/facemorph.me/actions/runs/37886427733). Its webpack asset is `app.6f67e921bae679214856.js`; its embedded diagnostic build ID is **`next-2ff6791800ad7dbf`**; runtime manifest SHA-256 is `d9e37e50a436e9fb7c0c7f973e70adee353c808f48c6a51fa5a9186f1c650a5c`. These identify source, bundled bytes, diagnostics and runtime assets respectively; they are different identifiers. [Deployment receipt](deployment.json).
 
 Current performance claims require recent actual analytics or consented debug reports matched to build, device/browser, route, workload, cache state and timer boundary. The automated live probe is diagnostic evidence, not normal-user analytics. No matched evidence means **unknown**.
 
@@ -138,7 +138,7 @@ This default loop is not workload-matched to the historical API sequence. It est
 
 Two subsequent cold-process launches using the same isolated profile returned **no WebGPU adapter** before processing started. The probe refused to label them GPU results; neither executed the photo workload. [First refusal](live-eris-photo.json) · [bounded retry](live-eris-photo-retry.json). This raises a returning-process capability/reliability question. It does **not** show that the product's automatic CPU fallback failed: that fallback was not exercised by these GPU-only probes. A fresh October photo/upload/save latency therefore remains unmeasured.
 
-The deployed [CI UI evidence](https://github.com/check-face/facemorph.me/actions/runs/37886427733) does independently cover actual CPU photo/e4e, local crop, repeated-original reuse, named route rejection and a decoded MP4. It establishes those synthetic workflows on Linux Chrome 154, not their phone speed or universal reliability. Project file controls are deliberately hidden; their serialized format is tested separately.
+The deployed [CI UI evidence](https://github.com/facemorph-me/facemorph.me/actions/runs/37886427733) does independently cover actual CPU photo/e4e, local crop, repeated-original reuse, named route rejection and a decoded MP4. It establishes those synthetic workflows on Linux Chrome 154, not their phone speed or universal reliability. Project file controls are deliberately hidden; their serialized format is tested separately.
 
 ## Actual debug-report coverage
 
@@ -156,9 +156,9 @@ Other cohorts include macOS Chromium 154, Windows and Android on older build ide
 
 ## Export and recovery status at the snapshot
 
-**PNG and MP4 latent embedding was absent at the reviewed live snapshot.** BlueHarbor had committed the U-16 implementation in [`f506892`](https://github.com/check-face/facemorph.me/commit/f506892); a source commit does not establish qualified or live behavior. The check at that earlier snapshot referenced `app.6f67e921bae679214856.js`, matching the reviewed deployment [`b322a26`](https://github.com/check-face/facemorph.me/commit/b322a26858275f0e361127836d0fd1854e868ef9) and its [successful deployment run](https://github.com/check-face/facemorph.me/actions/runs/37886427733).
+**PNG and MP4 latent embedding was absent at the reviewed live snapshot.** BlueHarbor had committed the U-16 implementation in [`f506892`](https://github.com/facemorph-me/facemorph.me/commit/f506892); a source commit does not establish qualified or live behavior. The check at that earlier snapshot referenced `app.6f67e921bae679214856.js`, matching the reviewed deployment [`b322a26`](https://github.com/facemorph-me/facemorph.me/commit/b322a26858275f0e361127836d0fd1854e868ef9) and its [successful deployment run](https://github.com/facemorph-me/facemorph.me/actions/runs/37886427733).
 
-At that source, [`saveMedia` / `shareMedia`](https://github.com/check-face/facemorph.me/blob/b322a26858275f0e361127836d0fd1854e868ef9/src/Next/product-bridge.mjs#L303) pass the existing image/video blob directly to file delivery. [`saveFile` / `shareFile`](https://github.com/check-face/facemorph.me/blob/b322a26858275f0e361127836d0fd1854e868ef9/src/Next/media.mjs#L18) do not attach latents or project metadata. The PNG encoder writes image chunks; the video writer returns encoded MP4 bytes without attaching a morph project. Latents/provenance are retained separately in local storage, and the separate JSON project serialization carries morph control latents. That is not embedding in downloaded media. This is a source/export-path check tied to the live asset identity, not a fresh downloaded-file round-trip test.
+At that source, [`saveMedia` / `shareMedia`](https://github.com/facemorph-me/facemorph.me/blob/b322a26858275f0e361127836d0fd1854e868ef9/src/Next/product-bridge.mjs#L303) pass the existing image/video blob directly to file delivery. [`saveFile` / `shareFile`](https://github.com/facemorph-me/facemorph.me/blob/b322a26858275f0e361127836d0fd1854e868ef9/src/Next/media.mjs#L18) do not attach latents or project metadata. The PNG encoder writes image chunks; the video writer returns encoded MP4 bytes without attaching a morph project. Latents/provenance are retained separately in local storage, and the separate JSON project serialization carries morph control latents. That is not embedding in downloaded media. This is a source/export-path check tied to the live asset identity, not a fresh downloaded-file round-trip test.
 
 Embedding is already required by [U-16](../../../docs/round-1-work-order.md) and identified as missing by [R3-22](../../../docs/round-3-plan-review-2026-09-23.md#r3-22--p0--contract--media-metadata-u-16-is-written-into-the-contracts-but-not-implemented-and-it-will-silently-void-an-e2e-gate). That snapshot gap is now closed by qualified and deployed `bce3204`: actual WebP and MP4 downloads carry validated recovery metadata, and Chrome re-upload bypasses processing workers. See the [current qualification](../../candidates/direct-rgba-media-v1/cpu-qualification.json). Physical cold-second-device recovery remains follow-up coverage. The cold second device still needs synthesis; it should bypass photo alignment/e4e. Existing authorization calls for default embedding, with no source photograph or typed value in the export. The delivered e4e gate uses a metadata-free photo fixture to keep true photo processing separate from recovery.
 

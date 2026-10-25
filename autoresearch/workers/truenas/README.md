@@ -6,8 +6,8 @@ This is the first recipe for this repository, and it is **not yet executable**.
 ## Blocker (named, 24 October 2026)
 
 - **No runner for this repository.** The TrueNAS runners `truenas` (labels `truenas, gpu-gtx1050, linux-x64`) and
-  `truenas-gpu` (`truenas, linux-x64, gpu-vulkan`) are registered to `check-face/facemorph.me-classic` only
-  (`gh api repos/check-face/facemorph.me-classic/actions/runners`, both online). This repository's runners are
+  `truenas-gpu` (`truenas, linux-x64, gpu-vulkan`) are registered to `facemorph-me/facemorph.me-classic` only
+  (`gh api repos/facemorph-me/facemorph.me-classic/actions/runners`, both online). This repository's runners are
   `eris-device-lab` and `triton`. Registering them is fm-ip6g, assigned to the operator.
 - **No agent access.** eris has no SSH key accepted by the NAS (`root@` and `truenas_admin@192.168.11.12` refuse
   publickey), so no checkout, Node, browser or timing lock directory on it could be verified. Nothing here assumes them.

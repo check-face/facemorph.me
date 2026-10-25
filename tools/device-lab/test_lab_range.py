@@ -7,7 +7,7 @@ from pathlib import Path
 
 import lab
 
-REPO = 'check-face/facemorph.me'
+REPO = 'facemorph-me/facemorph.me'
 # Three commits on main, each naming a bead: 0ed2053 (fm-aa8), 8dc624c (fm-j16n, fm-aa8), bde6108 (fm-5u9).
 BASE = 'a409c2880965a7891d488e110ebf8d84cca414b2'
 HEAD = 'bde61086bc4df2d33436e41139256058b3eb9821'
@@ -59,9 +59,9 @@ class Record(unittest.TestCase):
     def test_the_tested_commit_is_recorded_per_repository(self):
         path = Path(tempfile.mkdtemp()) / 'qualified.json'
         lab.record_qualified(path, REPO, BASE)
-        lab.record_qualified(path, 'check-face/facemorph.me-classic', '551b60726290b2d67a32c62477b2fd964de51f96')
+        lab.record_qualified(path, 'facemorph-me/facemorph.me-classic', '551b60726290b2d67a32c62477b2fd964de51f96')
         lab.record_qualified(path, REPO, HEAD)
-        self.assertEqual(json.loads(path.read_text()), {REPO: HEAD, 'check-face/facemorph.me-classic':
+        self.assertEqual(json.loads(path.read_text()), {REPO: HEAD, 'facemorph-me/facemorph.me-classic':
                                                         '551b60726290b2d67a32c62477b2fd964de51f96'})
 
 

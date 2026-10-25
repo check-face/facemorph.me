@@ -36,9 +36,9 @@
         {
          "tag": "a",
          "attrs": {
-          "href": "https://github.com/check-face/facemorph.me"
+          "href": "https://github.com/facemorph-me/facemorph.me"
          },
-         "text": "check-face/facemorph.me",
+         "text": "facemorph-me/facemorph.me",
          "children": [
           {
            "tag": "svg",
@@ -57,7 +57,7 @@
         {
          "tag": "a",
          "attrs": {
-          "href": "https://github.com/check-face/facemorph.me/issues/new?template=next-facemorph.yml&labels=next.facemorph.me&title=%5Bnext%5D+ (+body,device,reference,route,version)",
+          "href": "https://github.com/facemorph-me/facemorph.me/issues/new?template=next-facemorph.yml&labels=next.facemorph.me&title=%5Bnext%5D+ (+body,device,reference,route,version)",
           "target": "_blank",
           "rel": "noopener"
          },

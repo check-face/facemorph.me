@@ -18,7 +18,7 @@ The seed gallery is retained unchanged. Cloudflare publication uses the installe
 ## Public-name supplement, 10 October 2026
 
 Published at https://facemorph-name-catalogue.cdilga.workers.dev by
-[run 38029582696](https://github.com/check-face/facemorph.me/actions/runs/38029582696).
+[run 38029582696](https://github.com/facemorph-me/facemorph.me/actions/runs/38029582696).
 All 5,055 public names have pinned W+ assets; the 2,144 missing full-size previews
 are now published. Existing historic full-size previews retain their origin.
 The published catalogue matches the CI artifact and its SHA-256 ledger exactly;
