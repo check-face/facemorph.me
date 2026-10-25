@@ -18,8 +18,10 @@ import { DEFAULT_HOST_MAP } from '../../../scripts/ci/intercept/playwright.ts';
 const dist = fileURLToPath(new URL('../dist/', import.meta.url));
 const PAGE = `<!doctype html><meta charset="utf-8"><title>tab</title><script type="module">
   import * as m from '/handles/index.js';
+  import { openShardStore } from '/cache/shard-store.js';
   const dir = await navigator.storage.getDirectory();
-  const store = { remove: (sha) => dir.removeEntry(sha).catch(() => {}) };
+  const store = await openShardStore();
+  if (!store) throw Error('This cell requires the real model shard store');
   const registry = m.createLeaseRegistry({ locks: navigator.locks });
   const invalidations = [];
   const holder = { invalidated: (cause, error) => invalidations.push({ cause, code: error.code }) };
@@ -27,8 +29,19 @@ const PAGE = `<!doctype html><meta charset="utf-8"><title>tab</title><script typ
   m.listenForDeletions(channel, registry);
   const leases = new Map();
   window.tab = {
-    write: async (sha) => { const w = await (await dir.getFileHandle(sha, { create: true })).createWritable(); await w.write(sha); await w.close(); },
-    has: async (sha) => dir.getFileHandle(sha).then(() => true, () => false),
+    write: (sha) => store.write(sha, new TextEncoder().encode(sha)),
+    has: (sha) => store.has(sha, 64),
+    writeAppRecords: async (sha) => {
+      // App-owned input records deliberately share a digest with model bytes,
+      // but live outside the package's dedicated model directory.
+      for (const suffix of ['', '.recovery']) {
+        const w = await (await dir.getFileHandle(sha + suffix, { create: true })).createWritable();
+        await w.write(suffix ? 'retained recovery record' : 'retained completed export');
+        await w.close();
+      }
+    },
+    appRecords: async (sha) => Promise.all(['', '.recovery'].map(async (suffix) =>
+      (await (await dir.getFileHandle(sha + suffix)).getFile()).text())),
     lease: (sha) => { leases.set(sha, registry.lease([{ sha256: sha, bytes: 64 }], holder)); },
     release: (sha) => { for (const l of leases.get(sha) ?? []) l.release(); leases.delete(sha); },
     evict: (shas) => m.evictUnleased(shas, [store], registry, navigator.locks),
@@ -74,7 +87,7 @@ const call = <T>(page: Page, fn: string, ...args: unknown[]) =>
   );
 
 test(
-  `${engine} a lease in one tab survives eviction in another; deletion there invalidates it, with no request`,
+  `${engine} eviction preserves leased models and app records; cross-tab deletion invalidates without requests`,
   { timeout: 120_000, skip: NO_BROWSER },
   async () => {
     assert.ok(
@@ -97,7 +110,10 @@ test(
         await p.waitForFunction(() => (window as unknown as { ready?: boolean }).ready === true);
       }
       const [x, y, z] = [sha('a'), sha('b'), sha('c')];
-      for (const s of [x, y, z]) await call(a, 'write', s);
+      for (const s of [x, y, z]) {
+        await call(a, 'write', s);
+        await call(a, 'writeAppRecords', s);
+      }
       await call(b, 'lease', x);
       await call(b, 'lease', z);
 
@@ -128,6 +144,12 @@ test(
         { cause: 'cross-tab-deletion', code: 'invalidated' },
       ]);
       assert.equal(await call(a, 'has', x), false);
+      for (const digest of [x, y, z])
+        assert.deepEqual(
+          await call(a, 'appRecords', digest),
+          ['retained completed export', 'retained recovery record'],
+          'eviction and explicit model deletion leave app-owned records byte-for-byte intact',
+        );
       await net.settled();
       for (const cls of ['app', 'model-host', 'third-party'] as const)
         assert.equal(
