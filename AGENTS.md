@@ -111,7 +111,9 @@ while it runs wait, and the next run takes every change pushed since, stacked, d
 green run's head and calls only the lanes those paths select (`scripts/ci/path-filters.json`). Area
 workflows are reusable (`workflow_call`), never push-triggered. CI never gates closing a bead or
 starting the next; a red run is bisected locally on eris and the culprit bead reopens with the
-`reopened` label — breakage you pushed is your next work, not a wait.
+`reopened` label — breakage you pushed is your next work, not a wait. Bead comments written before
+this revision (25 October 2026) that say to close on the first green `main.yml` run are superseded
+by this loop: close on the executed local gates and say so in the close reason.
 Beads enforce this (`.beads/policy.yaml`, no bypass): `br close` refuses while any acceptance item is
 unchecked, so tick each one as you verify it (`br update <id> --check-acceptance <n|text>`). There
 are no close-after waits (operator, 24 October 2026): a check that spans two beads belongs to whichever
@@ -207,11 +209,15 @@ bead boundaries cost orders of magnitude less.
 
 ## Single-agent mode (operator, 25 October 2026, until revoked)
 
-One agent works at a time; no NTM panes are launched. Skip Agent Mail registration, file
-reservations and threads, and the pane-restart machinery; the bead graph plus Git are the only
-coordination surfaces. Everything else — one branch (`main`), gates before push, landing the
-plane, no fakes, no ceremony — applies unchanged. When swarm mode resumes, this section is deleted
-and `ops/swarm/implementer.md` governs panes again.
+One agent works at a time, in a single NTM pane of the `facemorph` session. Skip Agent Mail
+registration, file reservations and threads — the bead graph plus Git are the only coordination
+surfaces — and run commits with the mail guard in warn mode (`AGENT_MAIL_GUARD_MODE=warn`; there
+are no concurrent writers to guard against; never `AGENT_MAIL_BYPASS`). Beads still claimed by a
+name with no live pane (`ntm status facemorph` finds no session) may be taken, with a comment
+saying so. Keep the anti-burn cadence: one bead per session, land the plane, restart the pane
+(`ops/swarm/implementer.md`). Everything else — one branch (`main`), gates before push, no fakes,
+no ceremony — applies unchanged. When swarm mode resumes, this section is deleted, the mail guard
+returns to block mode, and `ops/swarm/implementer.md` governs panes again.
 
 ## Honest Work and Anti-Ceremony (binding for agents and humans alike)
 
