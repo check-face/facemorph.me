@@ -15,20 +15,30 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
-      - run: node --test worker.test.mjs
+          node-version: '24'
       - uses: ./.github/actions/setup-workspace # node_modules for the lockfile, shared on the runner (fm-98po)
         with:
           directory: services/stats
-      - name: Deploy
+      - run: npm test
+      - name: Deploy and set scrape token with cf
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-        run: npx wrangler deploy
-      - name: Set scrape token
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
           STATS_SCRAPE_TOKEN: ${{ secrets.STATS_SCRAPE_TOKEN }}
-        run: printf '%s' "$STATS_SCRAPE_TOKEN" | npx wrangler secret put SCRAPE_TOKEN
+          CF_SEND_TELEMETRY: 'false'
+        run: |
+          set -euo pipefail
+          ./node_modules/.bin/cf auth whoami
+          umask 077
+          stats_secrets=$(mktemp "$RUNNER_TEMP/facemorph-stats-secrets.XXXXXX")
+          trap 'rm -f "$stats_secrets"' EXIT
+          STATS_SECRETS_FILE="$stats_secrets" node --input-type=module <<'JS'
+          import { writeFileSync } from 'node:fs';
+          const value = process.env.STATS_SCRAPE_TOKEN;
+          if (!value) throw Error('STATS_SCRAPE_TOKEN is required');
+          writeFileSync(process.env.STATS_SECRETS_FILE, JSON.stringify({ SCRAPE_TOKEN: value }), { mode: 0o600 });
+          JS
+          npm run deploy -- --secrets-file "$stats_secrets"
       - name: Smoke check
         env:
           STATS_SCRAPE_TOKEN: ${{ secrets.STATS_SCRAPE_TOKEN }}

@@ -3,10 +3,14 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test worker.test.mjs",
-    "deploy": "wrangler deploy"
+    "test": "node --test worker.test.mjs deployment.workerd.mjs",
+    "deploy": "cf deploy",
+    "build": "vite build"
   },
   "devDependencies": {
-    "wrangler": "4.40.0"
+    "@cloudflare/vite-plugin": "^2.0.0-beta.v.4",
+    "cf": "^1.0.0-beta.21",
+    "vite": "^8.3.5",
+    "miniflare": "^4.20260730.0"
   }
 }

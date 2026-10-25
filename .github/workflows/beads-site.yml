@@ -30,17 +30,30 @@ jobs:
         run: bv --export-pages "$RUNNER_TEMP/site" --pages-title "FaceMorph beads" --no-hooks
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
-      - name: Deploy
+          node-version: '24'
+      - uses: ./.github/actions/setup-workspace
+      - name: Check Pages manifest and installed cf deployment arguments
+        env:
+          CF_SEND_TELEMETRY: 'false'
+        run: node --test scripts/hosting/pages-deploy.test.mjs
+      # cf pages deploy explicitly does not support existing Pages projects. The helper
+      # stages immutable Direct Upload assets with this same Pages-only token, then uses
+      # installed cf pages deployments create for project/branch/commit deployment.
+      - name: Deploy using installed cf
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.BEADS_PAGES_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
-        run: npx --yes wrangler@4 pages deploy "$RUNNER_TEMP/site" --project-name beads-dilger-dev --branch main --commit-hash "$GITHUB_SHA"
+          CF_SEND_TELEMETRY: 'false'
+        run: node scripts/hosting/pages-deploy.mjs "$RUNNER_TEMP/site" --project=beads-dilger-dev --branch=main --commit="$GITHUB_SHA" --publish
       # beads.dilger.dev sits behind Cloudflare Access, so check the project's own hostname.
       - name: Smoke check
         run: |
           for i in 1 2 3 4 5 6; do
-            curl -sf https://beads-dilger-dev.pages.dev/ | grep -q 'FaceMorph beads' && exit 0
+            if curl -sf --max-time 30 https://beads-dilger-dev.pages.dev/ -o "$RUNNER_TEMP/beads-smoke.html" \
+              && grep -q 'FaceMorph beads' "$RUNNER_TEMP/beads-smoke.html" \
+              && grep -Fq "$GITHUB_SHA" "$RUNNER_TEMP/beads-smoke.html"; then
+              exit 0
+            fi
             sleep 10
           done
           exit 1

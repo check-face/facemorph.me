@@ -205,10 +205,7 @@ export function checkInstalls(files) {
 // No exact versions (operator, 24 October 2026): every dependency in every package.json is a range, a caret range at
 // the latest release when it is added or upgraded. A bare x.y.z specifier is a pin. PIN_EXEMPT names the only ones
 // left, each with the bead that removes it.
-export const PIN_EXEMPT = {
-  'services/stats/package.json devDependencies wrangler':
-    'fm-oop0 removes Wrangler (Cloudflare work uses the cf CLI)',
-};
+export const PIN_EXEMPT = {};
 const SECTIONS = ['dependencies', 'devDependencies', 'optionalDependencies', 'peerDependencies'];
 export function checkNoPins(manifests, exempt = PIN_EXEMPT) {
   const violations = [];
