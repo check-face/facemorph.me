@@ -43,6 +43,8 @@ jobs:
       - uses: ./.github/actions/setup-workspace
         with:
           directory: hosting/gallery
+      - name: Make the installed cf available to snapshot token commands
+        run: echo "$GITHUB_WORKSPACE/node_modules/.bin" >> "$GITHUB_PATH"
       - name: Restore immutable snapshot and resume checked generator output
         run: |
           set -euo pipefail
