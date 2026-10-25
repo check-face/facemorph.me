@@ -179,7 +179,7 @@ export function checks({ rows }) {
 
   add({
     step: 'Exercise compiled project import and export',
-    command: 'node --test test/project/project-json.test.ts (replaces verify-fable.mjs, fm-stth)',
+    command: 'node --test test/project/project-json.test.ts (typed codec, fm-stth)',
     ...(() => {
       const pj = run(process.execPath, ['--test', 'test/project/project-json.test.ts'], WEB);
       return { ...nodeTestCounts(pj.stdout + pj.stderr), ok: pj.status === 0 };

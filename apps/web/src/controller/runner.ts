@@ -37,6 +37,10 @@ const commands = new Set<Effect['type']>([
   'shareMedia',
   'exportProject',
   'requestNext',
+  'selectPhoto',
+  'previewPhoto',
+  'cropPhoto',
+  'chooseDetectedFace',
 ]);
 export function orderedEffects(effects: readonly Effect[]): readonly Effect[] {
   return [
@@ -64,6 +68,20 @@ export function createController(
       ...(message.type === 'AddAt'
         ? { newFaceId: `face-${crypto.randomUUID().replaceAll('-', '')}` }
         : {}),
+      ...(message.type === 'Photos'
+        ? {
+            newPhotoIds: message.args[1].map(
+              () => `face-${crypto.randomUUID().replaceAll('-', '')}`,
+            ),
+          }
+        : {}),
+      ...(message.type === 'Cropped'
+        ? { photoRevision: facade.photoRevision(message.args[0]) }
+        : message.type === 'CropAccept' && state.Crop
+          ? { photoRevision: facade.photoRevision(state.Crop.faceId) }
+          : message.type === 'ChooseDetected' && state.PhotoChoice
+            ? { photoRevision: facade.photoRevision(state.PhotoChoice.id) }
+            : {}),
       measurements: {
         faceMs: facade.measuredFaceMs(),
         frameMs: facade.measuredFrameMs(),
@@ -223,6 +241,15 @@ export function createController(
         case 'rememberSourcePhoto':
           facade.rememberSourcePhoto(effect.id, effect.file);
           break;
+        case 'focusCropArea':
+          helpers.focusCropArea();
+          break;
+        case 'revokeUrl':
+          helpers.revokeUrl(effect.url);
+          break;
+        case 'cancelPhotoRun':
+          facade.cancelPhotoRun();
+          break;
         case 'openNamesFocus':
           helpers.openNamesFocus();
           break;
@@ -233,6 +260,34 @@ export function createController(
           task(
             facade.loadNames(),
             (names) => store.dispatch(msg('NamesLoaded', names)),
+            (error) => store.dispatch(rejection(effect, error)),
+          );
+          break;
+        case 'selectPhoto':
+          task(
+            facade.selectPhoto({ id: effect.id, files: effect.files }),
+            (selection) => store.dispatch(msg('Photo', effect.id, selection)),
+            (error) => store.dispatch(rejection(effect, error)),
+          );
+          break;
+        case 'previewPhoto':
+          task(
+            facade.previewPhoto(effect.file),
+            (offer) => store.dispatch(msg('Photo', effect.id, { kind: 'crop', offer })),
+            (error) => store.dispatch(rejection(effect, error)),
+          );
+          break;
+        case 'cropPhoto':
+          task(
+            facade.cropPhoto(effect.file, effect.area, effect.options),
+            (file) => store.dispatch(msg('Cropped', effect.id, effect.revision, file)),
+            (error) => store.dispatch(rejection(effect, error)),
+          );
+          break;
+        case 'chooseDetectedFace':
+          task(
+            facade.chooseDetectedFace(effect.choice, effect.index),
+            (file) => store.dispatch(msg('Cropped', effect.id, effect.revision, file)),
             (error) => store.dispatch(rejection(effect, error)),
           );
           break;

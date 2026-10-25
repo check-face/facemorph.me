@@ -343,7 +343,7 @@ def stage_localCrop():
  wait(lambda:len(faces())==2 and all(i['width']==1024 and i['height']==1024 for i in faces()),60)
  save_check('localCrop',{'passed':True,'file':cropped})
 def project_files_shipped():
- # Product.fs keeps project export and open behind `projectFilesVisible`, off since
+ # The retained app keeps project export and open behind `projectFilesVisible`, off since
  # 21 September (operator). The harness asks the artifact in front of it rather than assuming,
  # so the day the flag comes back the stage qualifies it again with no edit here.
  return bool(js("(()=>{const b=[...document.querySelectorAll('button')].find(x=>x.textContent.trim()===%s);return !!b&&!!document.querySelector('%s');})()"%(json.dumps(S['buttons']['exportProject']),S['openProject'])))
@@ -352,10 +352,10 @@ def stage_projectSaveReopen():
   # Neither a pass nor a silent skip. A control that is not on the surface cannot be qualified
   # through the surface, and recording passed:true for it would be exactly the false
   # confirmation this gate exists to prevent. The serialisation itself stays covered:
-  # apps/web/test/project/project-json.test.ts (verify-fable.mjs's cases) round-trips every path kind and latent space against vectors from classic's Fable build
+  # apps/web/test/project/project-json.test.ts round-trips every path kind and latent space against vectors from classic's Fable build
   # (recorded vectors), in the artifact job. promote.py reads shipped:false and stops demanding UI evidence
   # for a feature this artifact does not offer.
-  save_check('projectSaveReopen',{'passed':None,'shipped':False,'reason':'Project export and open are not enabled at the moment — we are not sure what we need them for yet (operator, 22 September). Product.fs projectFilesVisible=false; the ProjectJson round trip stays covered by apps/web/test/project/project-json.test.ts'})
+  save_check('projectSaveReopen',{'passed':None,'shipped':False,'reason':'Project export and open are not enabled at the moment — we are not sure what we need them for yet (operator, 22 September). projectFilesVisible=false; the ProjectJson round trip stays covered by apps/web/test/project/project-json.test.ts'})
   return
  project=download(S['buttons']['exportProject']);parsed=json.loads(project.read_text());assert len(parsed['morph']['controls'])==2 and all(len(c['latent']['values'])==9216 for c in parsed['morph']['controls'])
  upload(S['openProject'],project);time.sleep(.5);wait(idle)

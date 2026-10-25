@@ -1,7 +1,12 @@
 {
   // Browser tests: Node drives real browsers, and the functions they evaluate in the page need DOM types.
   "extends": "./tsconfig.node.json",
-  "compilerOptions": { "lib": ["ES2024", "DOM", "DOM.Iterable"] },
+  "compilerOptions": {
+    "lib": ["ES2024", "DOM", "DOM.Iterable"],
+    "allowJs": true,
+    "checkJs": false,
+    "maxNodeModuleJsDepth": 0
+  },
   "include": ["test/e2e", "test/goldens", "test/support", "test/parity", "test/verify"],
   // The facade harness page imports the shell's facade: checked with it, by test/facade/tsconfig.json.
   "exclude": ["test/e2e/facade"]

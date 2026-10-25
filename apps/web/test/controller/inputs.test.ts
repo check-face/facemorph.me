@@ -78,7 +78,7 @@ test('cached completion belongs to the exact input that requested the check', ()
 test('all 64 frozen messages have explicit ownership; future slices are never silently dropped', () => {
   assert.equal(Object.keys(CASES).length, 64);
   assert.equal(reduce(msg('Cancel'), state)!.state, state);
-  assert.equal(reduce(msg('CropAccept'), state), null);
+  assert.equal(reduce(msg('CropAccept'), state)!.state, state);
   assert.equal(reduce(msg('Provider', 'cpu'), state)!.state.Provider, 'cpu');
   assert.throws(() => reduce(msg('AddAt', 1), state), /fresh face ID/);
   assert.throws(() => reduce(msg('AddAt', 1), state, { newFaceId: 'face-1' }), /fresh face ID/);

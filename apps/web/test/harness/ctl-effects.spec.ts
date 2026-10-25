@@ -46,7 +46,37 @@ export async function controllerRoutingStep(type: Effect['type']) {
   const store = routing.store;
   const view = { ...viewSnapshot(store.getState()), inputs: [probeInput] };
   const jobId = store.getState().JobId + 1;
+  const invalidPhoto = new File(['invalid photo bytes'], 'invalid.jpg', { type: 'image/jpeg' });
   const descriptors: Record<string, Effect> = {
+    selectPhoto: { type: 'selectPhoto', id: probeInput.id, files: [invalidPhoto] },
+    previewPhoto: { type: 'previewPhoto', id: probeInput.id, file: invalidPhoto },
+    cropPhoto: {
+      type: 'cropPhoto',
+      id: probeInput.id,
+      file: invalidPhoto,
+      revision: 1,
+      area: { left: 0, top: 0, width: 1, height: 1 },
+      options: { previewScale: 1, rotation: 0 },
+    },
+    chooseDetectedFace: {
+      type: 'chooseDetectedFace',
+      id: probeInput.id,
+      revision: 1,
+      index: 0,
+      choice: {
+        id: probeInput.id,
+        file: invalidPhoto,
+        boxes: [],
+        url: '',
+        previewWidth: 1,
+        previewHeight: 1,
+        scale: 1,
+      },
+    },
+    revokeUrl: {
+      type: 'revokeUrl',
+      url: type === 'revokeUrl' ? URL.createObjectURL(invalidPhoto) : '',
+    },
     invalidateFace: { type: 'invalidateFace', id: probeInput.id },
     invalidatePhotoSelections: { type: 'invalidatePhotoSelections', id: probeInput.id },
     rememberSourcePhoto: { type: 'rememberSourcePhoto', id: probeInput.id, file: null },
@@ -82,9 +112,12 @@ export async function controllerRoutingStep(type: Effect['type']) {
       Inputs: [probeInput],
       ...(type === 'execute' || type === 'importProject' ? { Busy: true, JobId: jobId } : {}),
       PendingJobs: [],
+      Error: null,
     },
     effects: [effect],
   }));
+  if (['selectPhoto', 'previewPhoto', 'cropPhoto', 'chooseDetectedFace'].includes(type))
+    await until(store, () => Boolean(store.getState().Error));
   if (type === 'execute')
     await until(store, () => store.getState().Stage === 'face' || !store.getState().Busy);
   if (type === 'cancelWork' || type === 'importProject')
@@ -96,9 +129,45 @@ export async function stopControllerRouting() {
   routing = undefined;
 }
 
+function snapshot(store: Store): Record<string, unknown> {
+  const state = store.getState();
+  const fields: (keyof State)[] = [
+    'Inputs',
+    'Busy',
+    'JobId',
+    'Stage',
+    'Status',
+    'Fraction',
+    'Kind',
+    'Width',
+    'Pinch',
+    'Frames',
+    'Fps',
+    'Error',
+    'FailureToast',
+    'ActiveFace',
+    'Warn',
+    'Remaining',
+    'PendingFaces',
+    'PendingJobs',
+    'PendingMorph',
+    'PendingImport',
+    'RunSettings',
+    'Route',
+    'Previews',
+    'Invite',
+    'ConsentPrompt',
+  ];
+  return Object.fromEntries(fields.map((field) => [field, state[field]]));
+}
+
 /** Actual async execution for the recorded jobs rows; snapshots are never fed back as Completed events. */
 export async function controllerGoldenJourney(
-  row: 'retry-unchanged' | 'morph.settings-start-cancel' | 'testing-bulk-generate',
+  row:
+    | 'retry-unchanged'
+    | 'morph.settings-start-cancel'
+    | 'testing-bulk-generate'
+    | 'morph.play-slider',
 ) {
   const controller = createController(
     {
@@ -107,48 +176,19 @@ export async function controllerGoldenJourney(
         row === 'testing-bulk-generate'
           ? 'https://next.facemorph.me/?testing'
           : 'https://next.facemorph.me/',
-      consentAnswered: row === 'morph.settings-start-cancel',
+      consentAnswered: row === 'morph.settings-start-cancel' || row === 'morph.play-slider',
       sliderPreference: false,
       sliderPosition: 1,
     },
     { identity: await identity() },
   );
   const store = controller.store;
-  function snapshot(): Record<string, unknown> {
-    const state = store.getState();
-    const fields: (keyof State)[] = [
-      'Inputs',
-      'Busy',
-      'JobId',
-      'Stage',
-      'Status',
-      'Fraction',
-      'Kind',
-      'Width',
-      'Pinch',
-      'Frames',
-      'Fps',
-      'Error',
-      'FailureToast',
-      'ActiveFace',
-      'Warn',
-      'Remaining',
-      'PendingFaces',
-      'PendingJobs',
-      'PendingMorph',
-      'PendingImport',
-      'RunSettings',
-      'Route',
-      'Previews',
-      'Invite',
-      'ConsentPrompt',
-    ];
-    return Object.fromEntries(fields.map((field) => [field, state[field]]));
-  }
+
   try {
     if (row === 'retry-unchanged') store.dispatch(msg('Edit', 'face-2', 'parity sample'));
     store.dispatch(msg('DownloadNow', false));
-    if (row === 'morph.settings-start-cancel') store.dispatch(msg('Frames', 8));
+    if (row === 'morph.settings-start-cancel' || row === 'morph.play-slider')
+      store.dispatch(msg('Frames', 8));
     const action =
       row === 'retry-unchanged'
         ? msg('RunFace', 'face-2')
@@ -161,14 +201,33 @@ export async function controllerGoldenJourney(
       await running;
       store.dispatch(msg('Cancel'));
       await until(store, () => !store.getState().Busy);
-      cancelled = snapshot();
+      cancelled = snapshot(store);
       store.dispatch(row === 'retry-unchanged' ? msg('Retry') : action);
     } else store.dispatch(action);
     await settled(store);
+    const slider: Record<string, unknown>[] = [];
+    if (row === 'morph.play-slider') {
+      store.dispatch(msg('UseSliderToggle', true));
+      await until(store, () => store.getState().SliderFrames !== null);
+      slider.push({
+        ...snapshot(store),
+        UseSlider: true,
+        SliderFrame: store.getState().SliderFrame,
+        frameCount: store.getState().SliderFrames!.length,
+      });
+      store.dispatch(msg('SliderFrameSet', store.getState().SliderFrames!.length));
+      slider.push({
+        ...snapshot(store),
+        UseSlider: true,
+        SliderFrame: store.getState().SliderFrame,
+        frameCount: store.getState().SliderFrames!.length,
+      });
+    }
     const state = store.getState();
     return {
+      slider,
       cancelled,
-      completed: snapshot(),
+      completed: snapshot(store),
       faces: state.Faces.map(({ id, raw, label, sourceMode, sourceFile }) => ({
         id,
         raw,
@@ -183,12 +242,97 @@ export async function controllerGoldenJourney(
   }
 }
 
-function until(store: Store, accept: () => boolean): Promise<void> {
+export async function controllerFoundationJourney(
+  row: 'words.generate-cpu' | 'seed.generate' | 'names.exact-text',
+) {
+  const controller = createController(
+    {
+      today: row === 'seed.generate' ? '2026-10-24' : '<today>',
+      url: 'https://next.facemorph.me/',
+      consentAnswered: false,
+      sliderPreference: false,
+      sliderPosition: 1,
+    },
+    { identity: await identity() },
+  );
+  const store = controller.store;
+  const observations: { file: string; model: Record<string, unknown> }[] = [];
+  function record(file: string) {
+    const state = store.getState();
+    observations.push({
+      file,
+      model: {
+        ...snapshot(store),
+        Faces: state.Faces.map(({ id, raw, label, sourceMode, sourceFile }) => ({
+          id,
+          raw,
+          label,
+          sourceMode,
+          sourceFile,
+        })),
+        VideoUrl: Boolean(state.VideoUrl),
+      },
+    });
+  }
+  async function generate(file: string) {
+    const previous = store.getState().JobId;
+    store.dispatch(msg('RunFace', 'face-2'));
+    await until(
+      store,
+      () =>
+        store.getState().Gate !== null ||
+        store.getState().JobId > previous ||
+        Boolean(store.getState().Error),
+    );
+    if (store.getState().Gate) store.dispatch(msg('GateAccept'));
+    await until(store, () => store.getState().JobId > previous || Boolean(store.getState().Error));
+    await settled(store);
+    record(file);
+  }
+  try {
+    await until(store, () => store.getState().Downloads.known);
+    if (row === 'seed.generate') {
+      store.dispatch(msg('Mode', 'face-2', 'seed'));
+      record('01-seed-mode');
+      for (const [value, typed, done] of [
+        ['0', '02-typed-0', '03-generated-0'],
+        ['4294967295', '04-typed-4294967295', '05-generated-4294967295'],
+      ]) {
+        store.dispatch(msg('Edit', 'face-2', value!));
+        await until(
+          store,
+          () =>
+            !store
+              .getState()
+              .Previews.some((preview) => preview.id === 'face-2' && preview.value !== value),
+        );
+        record(typed!);
+        await generate(done!);
+      }
+    } else {
+      if (row === 'words.generate-cpu') record('01-arrived');
+      store.dispatch(msg('Edit', 'face-2', row === 'names.exact-text' ? 'hello' : 'parity sample'));
+      if (row === 'names.exact-text')
+        await until(store, () =>
+          store
+            .getState()
+            .Previews.some((preview) => preview.id === 'face-2' && preview.value === 'hello'),
+        );
+      record(row === 'names.exact-text' ? '01-typed' : '02-typed');
+      await generate(row === 'names.exact-text' ? '02-generated' : '03-generated');
+    }
+    return observations;
+  } finally {
+    await controller.dispose();
+  }
+}
+
+function until(store: Store, accept: () => boolean, budget = 15_000): Promise<void> {
   return new Promise((resolve, reject) => {
     const timeout = setTimeout(() => {
       off();
       reject(new Error('Controller transition did not arrive'));
-    }, 15_000);
+    }, budget);
     const off = store.subscribe(() => {
       if (!accept()) return;
       clearTimeout(timeout);
@@ -201,6 +345,123 @@ function until(store: Store, accept: () => boolean): Promise<void> {
       resolve();
     }
   });
+}
+
+export async function controllerPhotoJourney() {
+  const controller = createController(
+    {
+      today: '2026-10-25',
+      url: 'https://next.facemorph.me/',
+      consentAnswered: true,
+      sliderPreference: false,
+      sliderPosition: 1,
+    },
+    { identity: await identity() },
+  );
+  const store = controller.store;
+  try {
+    store.dispatch(msg('Provider', 'cpu'));
+    await until(store, () => store.getState().Downloads.known);
+    store.dispatch(
+      msg('PickPhoto', 'face-1', [new File(['bad'], 'unreadable.jpg', { type: 'image/jpeg' })]),
+    );
+    await until(store, () => Boolean(store.getState().Error));
+    const rejectionMessage = store.getState().Error;
+    const rejectionClearedPreparing = !store.getState().PreparingFaces.has('face-1');
+    store.dispatch(msg('DismissError'));
+    const bytes = await (await fetch('/photo.jpg')).blob();
+    const file = new File([bytes], 'photo.jpg', { type: 'image/jpeg' });
+    for (const id of ['face-1', 'face-2']) {
+      store.dispatch(msg('PickPhoto', id, [file]));
+      await until(store, () => store.getState().Gate !== null || Boolean(store.getState().Error));
+      if (store.getState().Error) throw new Error(store.getState().Error!);
+      store.dispatch(msg('GateCancel'));
+      store.dispatch(msg('RequestCrop', id));
+      await until(
+        store,
+        () =>
+          store.getState().Crop?.faceId === id ||
+          store.getState().CropQueue.some((choice) => choice.faceId === id),
+      );
+    }
+    const firstUrl = store.getState().Crop!.url;
+    const queued = store.getState().CropQueue.map((choice) => choice.faceId);
+    store.dispatch(msg('CropCancel'));
+    let cancelledUrlReleased = false;
+    try {
+      await fetch(firstUrl);
+    } catch {
+      cancelledUrlReleased = true;
+    }
+    const nextShown = store.getState().Crop?.faceId;
+    store.dispatch(msg('CropZoom', 1.5));
+    store.dispatch(msg('CropPan', 4, 2));
+    store.dispatch(msg('CropPan', -4, -2));
+    store.dispatch(msg('CropZoom', 1));
+    for (let turns = 0; turns < 4; turns++) store.dispatch(msg('CropRotate'));
+    store.dispatch(msg('DownloadNow', true));
+    store.dispatch(msg('CropAccept'));
+    await until(
+      store,
+      () =>
+        store.getState().Faces.some((face) => face.id === 'face-2') ||
+        Boolean(store.getState().Error),
+      600_000,
+    );
+    const state = store.getState();
+    if (state.Error) throw new Error(state.Error);
+    const face = state.Faces.find((face) => face.id === 'face-2');
+    return {
+      rejectionMessage,
+      rejectionClearedPreparing,
+      queued,
+      cancelledUrlReleased,
+      nextShown,
+      encoded: face?.raw === true,
+      sourceMode: face?.sourceMode,
+      route: state.Route,
+      hasCrop: state.Crop !== null,
+      preparing: state.PreparingFaces.size,
+    };
+  } finally {
+    await controller.dispose();
+  }
+}
+export async function controllerRecoveryJourney(bytes: readonly number[]) {
+  const controller = createController(
+    {
+      today: '2026-10-25',
+      url: 'https://next.facemorph.me/',
+      consentAnswered: true,
+      sliderPreference: false,
+      sliderPosition: 1,
+    },
+    { identity: await identity() },
+  );
+  const store = controller.store;
+  try {
+    store.dispatch(
+      msg('PickPhoto', 'face-1', [
+        new File([Uint8Array.from(bytes)], 'saved.webp', { type: 'image/webp' }),
+      ]),
+    );
+    await until(
+      store,
+      () => store.getState().Inputs[0]?.mode === 'project' || Boolean(store.getState().Error),
+    );
+    const state = store.getState();
+    if (state.Error) throw new Error(state.Error);
+    return {
+      id: state.Inputs[0]?.id,
+      mode: state.Inputs[0]?.mode,
+      jobId: state.JobId,
+      busy: state.Busy,
+      hasFace: state.Faces.some((face) => face.id === 'face-1'),
+      preparing: state.PreparingFaces.size,
+    };
+  } finally {
+    await controller.dispose();
+  }
 }
 
 function settled(store: Store): Promise<void> {

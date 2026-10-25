@@ -165,6 +165,7 @@ export const invalidatePhotoSelections = (id: string): void => void invalidatePh
 export const focusCropArea = (): void => void focusCropAreaJs();
 export const openNamesFocus = (): void => void openNamesFocusJs();
 export const closeNamesFocus = (): void => void closeNamesFocusJs();
+export const revokeUrl = (url: string): void => URL.revokeObjectURL(url);
 /** Escape closes the names dialog; Tab keeps focus inside it. */
 export const namesKey = (
   event: { key: string; preventDefault(): void; shiftKey: boolean; currentTarget: Element },

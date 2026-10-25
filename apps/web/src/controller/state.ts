@@ -62,7 +62,7 @@ export interface State {
   readonly SliderFrame: number;
   readonly Warn: string | null;
   readonly Overflow: boolean;
-  readonly PhotoQueue: readonly (readonly [string, Blob])[];
+  readonly PhotoQueue: readonly (readonly [string, File])[];
   readonly PendingFaces: readonly string[];
   readonly PendingJobs: readonly Msg[];
   readonly PendingMorph: boolean;

@@ -164,7 +164,9 @@ export function createOperationService(): OperationService {
         emit(item, { type: 'compute-ready', output });
         // Bridge file readiness is separate from raw display readiness. Its save path awaits encoding.
         const prepared =
-          request.kind === 'face' ? await b.prepareFaceFile(request.source.slot) : output;
+          request.kind === 'face' && !output.photoChoices && !output.cropFace
+            ? await b.prepareFaceFile(request.source.slot)
+            : output;
         if (!item.cancelled && !disposed && registry.current(item.handle)) {
           registry.complete(item.handle.requestId, prepared);
           emit(item, { type: 'file-ready', output: prepared });

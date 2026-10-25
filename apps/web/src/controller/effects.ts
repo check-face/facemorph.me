@@ -1,6 +1,8 @@
 // Descriptions, not callbacks. Input-bearing operations resolve their slot at the synchronous dispatch boundary.
 import { msg, type ConsentBasis, type Msg } from './msg.ts';
 import type { State, Input, Request } from './state.ts';
+import type { DetectedFaces } from '../../shell/facade/records.ts';
+import type { CropRect } from '../../shell/facade/helpers.ts';
 export interface ViewSnapshot {
   readonly inputs: readonly Input[];
   readonly kind: State['Kind'];
@@ -37,6 +39,7 @@ export type EverydayEffect =
 /** Private execution descriptors stay in memory; none is a diagnostic/report payload. */
 export type Effect =
   | EverydayEffect
+  | PhotoEffect
   | { readonly type: 'dispatch'; readonly message: Msg }
   | { readonly type: 'rememberView' | 'exportProject'; readonly view: ViewSnapshot }
   | { readonly type: 'execute'; readonly request: Request }
@@ -53,6 +56,27 @@ export type Effect =
   | { readonly type: 'cancelWork' | 'requestNext' }
   | { readonly type: 'queueFace'; readonly id: string; readonly depth: number }
   | { readonly type: 'cancelQueuedFace' | 'saveMedia' | 'shareMedia'; readonly id: string };
+export type PhotoEffect =
+  | { readonly type: 'focusCropArea' | 'cancelPhotoRun' }
+  | { readonly type: 'revokeUrl'; readonly url: string }
+  | { readonly type: 'rememberSourcePhoto'; readonly id: string; readonly file: Blob }
+  | { readonly type: 'selectPhoto'; readonly id: string; readonly files: readonly File[] }
+  | { readonly type: 'previewPhoto'; readonly id: string; readonly file: Blob }
+  | {
+      readonly type: 'cropPhoto';
+      readonly id: string;
+      readonly revision: number;
+      readonly file: Blob;
+      readonly area: CropRect;
+      readonly options: { readonly previewScale: number; readonly rotation: number };
+    }
+  | {
+      readonly type: 'chooseDetectedFace';
+      readonly id: string;
+      readonly revision: number;
+      readonly choice: DetectedFaces;
+      readonly index: number;
+    };
 export interface Transition {
   readonly state: State;
   readonly effects: readonly Effect[];
@@ -82,6 +106,11 @@ export function rejection(effect: Effect, error: unknown, input?: Input): Msg {
     case 'loadNames':
     case 'exportProject':
       return msg('Notice', text);
+    case 'selectPhoto':
+    case 'previewPhoto':
+    case 'cropPhoto':
+    case 'chooseDetectedFace':
+      return msg('PhotoFailed', effect.id, text);
     default:
       throw new Error(`Effect ${effect.type} has no promise rejection mapping`);
   }

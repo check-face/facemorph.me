@@ -4,7 +4,7 @@
 //
 // Until the rendering port, the artifact IS the pinned control: classic's candidate build, fetched from this
 // repository's release asset and verified file by file (fetch-control.mjs). This script never bundles the
-// imported source (the bridge still imports the absent ./ProjectJson.fs.js). next-site-identity.json, beside
+// edited monorepo source. next-site-identity.json, beside
 // deploy-next/ so it is never served, labels it: the deploy source is classic's commit; this repository's
 // commit is recorded only as the one that assembled it.
 //   node scripts/import/build-next.mjs [--out <dir>] [--store <unpacked control>]

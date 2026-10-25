@@ -240,13 +240,13 @@ try{
  });
 
  await stage('projectSaveReopen',async()=>{
-  // Project export and open sit behind `projectFilesVisible` in Product.fs, off since 21 September
+  // Project export and open sit behind `projectFilesVisible` in the retained app, off since 21 September
   // (operator), so the control is not on the surface. Calling that a pass would be the false confirmation
   // this lane exists to prevent. This reads the DOM today; it reads the TS flag from the project-JSON port
   // once that port exists. The stage qualifies itself again the day the control returns.
   const exportButton=page.getByRole('button',{name:'Export project',exact:true});
   if(!await page.locator('input[aria-label="Open project"]').count()||!await exportButton.count())
-   return {notShipped:true,skipped:'Project export and open are not in this artifact (Product.fs projectFilesVisible=false); ProjectJson round-trip is covered by apps/web/test/project/project-json.test.ts'};
+   return {notShipped:true,skipped:'Project export and open are not in this artifact (projectFilesVisible=false); ProjectJson round-trip is covered by apps/web/test/project/project-json.test.ts'};
   const file=await download(exportButton.first());
   const parsed=JSON.parse(await fs.readFile(file,'utf8'));
   if(parsed.morph.controls.length!==2||!parsed.morph.controls.every(c=>c.latent.values.length===9216))throw Error('Exported project does not carry two W+ latents');

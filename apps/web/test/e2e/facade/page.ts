@@ -14,6 +14,9 @@ import {
   controllerRoutingStep,
   stopControllerRouting,
   controllerGoldenJourney,
+  controllerFoundationJourney,
+  controllerPhotoJourney,
+  controllerRecoveryJourney,
 } from '../../harness/ctl-effects.spec.ts';
 
 const progress: f.Progress[] = [];
@@ -60,6 +63,9 @@ const harness = {
   controllerRoutingStep,
   stopControllerRouting,
   controllerGoldenJourney,
+  controllerFoundationJourney,
+  controllerPhotoJourney,
+  controllerRecoveryJourney,
   async serviceJourney() {
     const service = createOperationService();
     const events: { type: OperationEvent['type']; provider: string | null; attempt: string }[] = [];

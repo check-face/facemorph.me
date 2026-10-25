@@ -1,3 +1,10 @@
+import assert from 'node:assert/strict';
+import { init } from '../../src/controller/init.ts';
+import { msg } from '../../src/controller/msg.ts';
+import { reduce } from '../../src/controller/reducers/index.ts';
+import type { State } from '../../src/controller/state.ts';
+import type { Downloads } from '../../shell/facade/records.ts';
+import { fixture, compareFields } from './scaffold.ts';
 // Shared controller replay report. Only a completed replayer can call a parity row passed.
 // The control recorder captured snapshots, not the private Elmish Msg stream; missing events
 // remain untested rather than being manufactured from the next expected model.
@@ -36,4 +43,25 @@ export function replayRows(replayers: Replayers): readonly ReplayResult[] {
       };
     }
   });
+}
+
+export function replayFirstVisit(): void {
+  for (const device of ['desktop', 'phone']) {
+    const recorded = fixture(`first-visit/${device}/01-arrived.json`).model;
+    const initial = init({
+      today: '<today>',
+      url: 'https://next.facemorph.me/',
+      consentAnswered: false,
+      sliderPreference: false,
+      sliderPosition: 1,
+    });
+    assert.deepEqual(
+      initial.effects.map((effect) => effect.type),
+      ['restoreLastResult', 'subscribe', 'subscribeDownloads'],
+    );
+    // The arrival recording contains the actual inventory event. It contains no compute result.
+    const next = reduce(msg('DownloadsChanged', recorded.Downloads as Downloads), initial.state)!;
+    compareFields(next, recorded, Object.keys(initial.state) as (keyof State)[]);
+    assert.equal(next.state.Gate, null);
+  }
 }

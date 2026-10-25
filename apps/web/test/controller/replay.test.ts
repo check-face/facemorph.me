@@ -1,42 +1,17 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { init } from '../../src/controller/init.ts';
 import { msg } from '../../src/controller/msg.ts';
 import { reduce } from '../../src/controller/reducers/index.ts';
 import { cancelled } from '../../src/controller/reducers/jobs.ts';
-import type { State } from '../../src/controller/state.ts';
-import type { Downloads } from '../../shell/facade/records.ts';
 import { compareFields, fixture, fromGolden } from './scaffold.ts';
-import { replayRows } from './replay.ts';
+import { replayFirstVisit, replayRows } from './replay.ts';
 
 test('all golden rows have explicit controller replay verdicts, with exact checks on available transitions', (t) => {
   const results = replayRows({
     'consent.approve-refuse': () => {
       throw new Error('A declared change must never execute a frozen-parity assertion');
     },
-    'first-visit': () => {
-      for (const device of ['desktop', 'phone']) {
-        const recorded = fixture(`first-visit/${device}/01-arrived.json`).model;
-        const initial = init({
-          today: '<today>',
-          url: 'https://next.facemorph.me/',
-          consentAnswered: false,
-          sliderPreference: false,
-          sliderPosition: 1,
-        });
-        assert.deepEqual(
-          initial.effects.map((effect) => effect.type),
-          ['restoreLastResult', 'subscribe', 'subscribeDownloads'],
-        );
-        // The arrival recording contains the actual inventory event. It contains no compute result.
-        const next = reduce(
-          msg('DownloadsChanged', recorded.Downloads as Downloads),
-          initial.state,
-        )!;
-        compareFields(next, recorded, Object.keys(initial.state) as (keyof State)[]);
-        assert.equal(next.state.Gate, null);
-      }
-    },
+    'first-visit': replayFirstVisit,
     'retry-unchanged': () => {
       for (const device of ['desktop', 'phone']) {
         const running = fromGolden(fixture(`retry-unchanged/${device}/01-running.json`).model);

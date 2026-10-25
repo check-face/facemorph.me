@@ -1,6 +1,6 @@
 // The typed facade against the real candidate bridge, runtime and worker (fm-pia9). The page (facade/page.ts) is
 // bundled by Vite and served at the production origin; the model files are the acquired runtime under
-// .cache/runtime (digest-checked against its manifest before serving), so no request leaves the machine. Playwright
+// .cache/runtime (digest-checked against its manifest before serving), so inference stays local; golden replay may load real project-owned gallery previews. Playwright
 // Chromium, CPU route. Steps: a name, a seed, cancel mid-run, photo select/crop/encode, save a face, a short morph,
 // restore after reload, the downloads subscription and report staging. Each step checks the typed records and that
 // the lane is free again afterwards. Without the runtime every step is reported untested.
@@ -23,8 +23,8 @@ import base, { after, afterEach, before, beforeEach } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { chromium, type Browser, type BrowserContext, type Page, type Worker } from 'playwright';
 import { build } from 'vite';
-import { fixture, verifyControl } from '../controller/control.ts';
-import { replayRows, type Replayers } from '../controller/replay.ts';
+import { controlRows, fixture, verifyControl } from '../controller/control.ts';
+import { replayFirstVisit, replayRows, type Replayers } from '../controller/replay.ts';
 
 const app = fileURLToPath(new URL('../../', import.meta.url));
 const repo = fileURLToPath(new URL('../../../../', import.meta.url));
@@ -82,7 +82,7 @@ function verifiedRuntime(): void {
   log(`runtime pins: ${readFileSync(report, 'utf8').trim().split('\n').at(-1)}`);
 }
 
-async function open(): Promise<void> {
+async function open(publicGallery = false): Promise<void> {
   context = await browser.newContext({ acceptDownloads: true });
   // Keep action/screenshot traces without copying the entire model download into each failure archive.
   await context.tracing.start({ screenshots: true, snapshots: false, sources: true });
@@ -90,11 +90,15 @@ async function open(): Promise<void> {
     const path = new URL(route.request().url()).pathname;
     counts.set(path, (counts.get(path) ?? 0) + 1);
     const file =
-      path === '/photo.jpg'
-        ? PHOTO
-        : path.startsWith('/runtime/')
-          ? join(RUNTIME, path.slice('/runtime/'.length))
-          : join(bundleDir, path === '/' ? 'index.html' : path);
+      path === '/preview/hello-1024.webp'
+        ? join(app, 'src/public/preview/hello-1024.webp')
+        : path === '/catalogue.json'
+          ? join(app, 'hosting/next-static/catalogue.json')
+          : path === '/photo.jpg'
+            ? PHOTO
+            : path.startsWith('/runtime/')
+              ? join(RUNTIME, path.slice('/runtime/'.length))
+              : join(bundleDir, path === '/' ? 'index.html' : path);
     if (!existsSync(file) || !statSync(file).isFile())
       return route.fulfill({ status: 404, body: 'not found' });
     return route.fulfill({
@@ -113,6 +117,11 @@ async function open(): Promise<void> {
   await context.route(
     (url) => !url.href.startsWith(ORIGIN),
     (route) => {
+      if (
+        publicGallery &&
+        new URL(route.request().url()).hostname === 'facemorph-seed-gallery.cdilga.workers.dev'
+      )
+        return route.continue();
       counts.set(`external:${new URL(route.request().url()).host}`, 1);
       return route.abort();
     },
@@ -351,26 +360,96 @@ test(
 
 // This is the operation boundary over the real facade/runtime, not a service double.
 test(
+  'controller-photo: real queued crops, CPU encode and recovery-bearing Save/reopen',
+  { timeout: 900_000 },
+  async () => {
+    await context.close();
+    await open();
+    const result = await call<{
+      rejectionMessage: string;
+      rejectionClearedPreparing: boolean;
+      queued: string[];
+      cancelledUrlReleased: boolean;
+      nextShown: string;
+      encoded: boolean;
+      sourceMode: string;
+      route: string;
+      hasCrop: boolean;
+      preparing: number;
+    }>('controllerPhotoJourney');
+    assert.equal(result.rejectionMessage, 'Choose a photo.');
+    assert.equal(result.rejectionClearedPreparing, true);
+    assert.deepEqual(result.queued, ['face-2']);
+    assert.equal(result.cancelledUrlReleased, true);
+    assert.equal(result.nextShown, 'face-2');
+    assert.equal(result.encoded, true);
+    assert.equal(result.sourceMode, 'photo');
+    assert.equal(result.route, 'cpu');
+    assert.equal(result.hasCrop, false);
+    assert.equal(result.preparing, 0);
+    const ready = page.waitForEvent('download', { timeout: 60_000 });
+    await call('save', 'face-2');
+    const download = await ready;
+    const path = await download.path();
+    assert.ok(path, 'real Save download missing');
+    const recovered = await call<{
+      id: string;
+      mode: string;
+      jobId: number;
+      busy: boolean;
+      hasFace: boolean;
+      preparing: number;
+    }>('controllerRecoveryJourney', Array.from(readFileSync(path)));
+    assert.deepEqual(recovered, {
+      id: 'face-1',
+      mode: 'project',
+      jobId: 0,
+      busy: false,
+      hasFace: true,
+      preparing: 0,
+    });
+  },
+);
+test(
   'controller: recorded job journeys replay with actual CPU execution',
   { timeout: 600_000 },
   async () => {
     verifyControl();
-    const replayed: Record<string, Replayers[string]> = {};
+    const replayed: Record<string, Replayers[string]> = { 'first-visit': replayFirstVisit };
     for (const row of [
       'retry-unchanged',
       'morph.settings-start-cancel',
       'testing-bulk-generate',
+      'morph.play-slider',
     ] as const) {
       // Control rows were recorded in separate contexts. Preserve that isolation so retained
       // bridge faces from an earlier row cannot change this row's insertion order or restore.
       await context.close();
-      await open();
+      await open(true);
       const actual = await call<{
+        slider: Record<string, unknown>[];
         cancelled: Record<string, unknown> | null;
         completed: Record<string, unknown>;
         faces: Record<string, unknown>[];
         video: boolean;
       }>('controllerGoldenJourney', row);
+      if (row === 'morph.play-slider') {
+        for (const device of ['desktop', 'phone']) {
+          for (const [i, observed] of actual.slider.entries()) {
+            const expected: Record<string, unknown> = fixture(
+              `${row}/${device}/${i === 0 ? '01-slider' : '02-scrubbed-to-end'}.json`,
+            ).model;
+            for (const [key, value] of Object.entries(observed))
+              assert.deepEqual(
+                value,
+                key === 'frameCount' ? (expected.SliderFrames as unknown[]).length : expected[key],
+                `${row}/${device}: ${key}`,
+              );
+          }
+        }
+        replayed[row] = () => {};
+        continue;
+      }
       const files =
         row === 'retry-unchanged'
           ? ['02-cancelled', '03-retried']
@@ -381,11 +460,13 @@ test(
         for (const [i, observed] of [actual.cancelled, actual.completed].entries()) {
           const file = files[i];
           if (!file || !observed) continue;
-          const expected = fixture(`${row}/${device}/${file}.json`).model;
+          const expected: Record<string, unknown> = fixture(`${row}/${device}/${file}.json`).model;
           for (const [key, value] of Object.entries(observed))
             assert.deepEqual(value, expected[key], `${row}/${device}/${file}: ${key}`);
         }
-        const expected = fixture(`${row}/${device}/${files[1]}.json`).model;
+        const expected: Record<string, unknown> = fixture(
+          `${row}/${device}/${files[1]}.json`,
+        ).model;
         assert.deepEqual(
           actual.faces,
           (expected.Faces as Record<string, unknown>[]).map(
@@ -411,7 +492,49 @@ test(
       );
       replayed[row] = () => {};
     }
-    for (const verdict of replayRows(replayed)) log(JSON.stringify(verdict));
+    for (const row of ['words.generate-cpu', 'seed.generate', 'names.exact-text']) {
+      await context.close();
+      await open(true);
+      const observations = await call<{ file: string; model: Record<string, unknown> }[]>(
+        'controllerFoundationJourney',
+        row,
+      );
+      for (const device of ['desktop', 'phone']) {
+        for (const observation of observations) {
+          const expected: Record<string, unknown> = fixture(
+            `${row}/${device}/${observation.file}.json`,
+          ).model;
+          for (const [key, value] of Object.entries(observation.model)) {
+            const recorded =
+              key === 'Faces'
+                ? (expected.Faces as Record<string, unknown>[]).map(
+                    ({ id, raw, label, sourceMode, sourceFile }) => ({
+                      id,
+                      raw,
+                      label,
+                      sourceMode,
+                      sourceFile,
+                    }),
+                  )
+                : key === 'VideoUrl'
+                  ? Boolean(expected.VideoUrl)
+                  : expected[key];
+            assert.deepEqual(value, recorded, `${row}/${device}/${observation.file}: ${key}`);
+          }
+        }
+      }
+      replayed[row] = () => {};
+    }
+    const verdicts = replayRows(replayed);
+    for (const verdict of verdicts) log(JSON.stringify(verdict));
+    for (const row of controlRows().filter(
+      (row) => row.freeze === 'parity' && Object.keys(row.files ?? {}).length > 0,
+    ))
+      assert.equal(
+        verdicts.find((verdict) => verdict.row === row.id)?.status,
+        'passed',
+        `${row.id}: recorded parity row must execute`,
+      );
   },
 );
 test(
@@ -444,6 +567,13 @@ test(
         'invalidateMorph',
         'invalidatePhotoSelections',
         'rememberSourcePhoto',
+        'focusCropArea',
+        'cancelPhotoRun',
+        'revokeUrl',
+        'selectPhoto',
+        'previewPhoto',
+        'cropPhoto',
+        'chooseDetectedFace',
         'openNamesFocus',
         'closeNamesFocus',
         'loadNames',

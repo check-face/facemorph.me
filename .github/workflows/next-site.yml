@@ -72,12 +72,8 @@ jobs:
           set -euo pipefail
           # classic's 37 named files at their destination paths; hosting/next-mirror/worker.test.mjs moves with the
           # mirror Worker to packages/cloudflare-model-host (model-hosting extraction) and runs there.
-          (cd apps/web && node --test src/Next/image-encoder.test.mjs src/Next/scheduler.test.mjs src/Next/recovery-metadata.test.mjs src/Next/infill.test.mjs src/Next/last-result.test.mjs src/Next/analytics.test.mjs src/Next/usage-stats.test.mjs src/Next/video-worker.test.mjs src/Next/browser/route-priors.test.mjs src/Next/Assets/model-cache.test.mjs src/Next/browser/runtime.test.mjs src/Next/browser/mobile-runtime.test.mjs src/Next/browser/originals.test.mjs src/Next/browser/webgpu-engine.test.mjs src/Next/browser/canary-qualification.test.mjs src/Next/browser/acquisition-budget.test.mjs src/Next/browser/fused-resample.test.mjs src/Next/media.test.mjs src/Next/morph-frames.test.mjs src/Next/fresh-review.test.mjs src/Next/browser/encoder-preflight.test.mjs src/Next/photo/crop-view.test.mjs src/Next/estimate.test.mjs src/Next/testing-link.test.mjs src/Next/route-choice.test.mjs src/Next/route-report.test.mjs src/Next/reporting.test.mjs src/Next/stage-labels.test.mjs src/Next/storage-request.test.mjs src/Next/model-inventory.test.mjs src/Next/logging.test.mjs src/Next/public-previews.test.mjs)
-          # Two classic assertions read the F# specification (src/Next/Product.fs), which is not imported
-          # (import/allowlist.json): not applicable until the controller port (fm-j16n) re-points them at its TS reducer.
-          (cd apps/web && node --test --test-skip-pattern='^the multiple-faces sentence is shared, not duplicated$' src/Next/photo-selection.test.mjs)
-          echo "- crop-queue.test.mjs (pins the crop queue in Product.fs) - not-applicable until the controller port (fm-j16n)" | tee -a "$GITHUB_STEP_SUMMARY"
-          echo "- photo-selection.test.mjs 'the multiple-faces sentence is shared, not duplicated' (its Product.fs half) - not-applicable until the controller port (fm-j16n); the file's other tests run" | tee -a "$GITHUB_STEP_SUMMARY"
+          (cd apps/web && node --test src/Next/image-encoder.test.mjs src/Next/crop-queue.test.mjs src/Next/scheduler.test.mjs src/Next/recovery-metadata.test.mjs src/Next/infill.test.mjs src/Next/last-result.test.mjs src/Next/analytics.test.mjs src/Next/usage-stats.test.mjs src/Next/video-worker.test.mjs src/Next/browser/route-priors.test.mjs src/Next/Assets/model-cache.test.mjs src/Next/browser/runtime.test.mjs src/Next/browser/mobile-runtime.test.mjs src/Next/browser/originals.test.mjs src/Next/browser/webgpu-engine.test.mjs src/Next/browser/canary-qualification.test.mjs src/Next/browser/acquisition-budget.test.mjs src/Next/browser/fused-resample.test.mjs src/Next/media.test.mjs src/Next/morph-frames.test.mjs src/Next/fresh-review.test.mjs src/Next/browser/encoder-preflight.test.mjs src/Next/photo/crop-view.test.mjs src/Next/estimate.test.mjs src/Next/testing-link.test.mjs src/Next/route-choice.test.mjs src/Next/route-report.test.mjs src/Next/reporting.test.mjs src/Next/stage-labels.test.mjs src/Next/storage-request.test.mjs src/Next/model-inventory.test.mjs src/Next/logging.test.mjs src/Next/public-previews.test.mjs)
+          (cd apps/web && node --test src/Next/photo-selection.test.mjs)
           node --test hosting/next-static/analytics.test.mjs hosting/next-cloudflare/worker.test.mjs
           if [ -f packages/cloudflare-model-host/test/next-mirror-worker.test.mjs ]; then node --test packages/cloudflare-model-host/test/next-mirror-worker.test.mjs
           else echo "- hosting/next-mirror/worker.test.mjs: moves with the mirror Worker to packages/cloudflare-model-host (model-hosting extraction); not run here until it lands" | tee -a "$GITHUB_STEP_SUMMARY"; fi
@@ -95,7 +91,7 @@ jobs:
         run: npm run build:next && npm run build:next -- --check
       - name: Historic hello preview is included byte for byte
         run: cmp apps/web/src/public/preview/hello-1024.webp deploy-next/preview/hello-1024.webp
-      - name: Exercise compiled project import and export (project-json.test.ts, in place of verify-fable.mjs, fm-stth)
+      - name: Exercise typed project import and export (project-json.test.ts, fm-stth)
         run: node --test apps/web/test/project/project-json.test.ts
       - name: No third-party runtime dependencies
         run: node apps/web/scripts/check-no-third-party.mjs deploy-next
