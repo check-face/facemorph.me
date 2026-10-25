@@ -110,5 +110,54 @@ buildId:'test-input',sourceTreeSha256:'b'.repeat(64),sourceTreeClean:true}});"""
                 lab.artifact_evidence(artifact)
 
 
+class Registry(unittest.TestCase):
+    """journeys.json is the authoritative list; budgets are enforced from it."""
+
+    def test_registry_names_the_runnable_and_pending_journeys(self):
+        self.assertEqual(lab.JOURNEYS, {'cold-face', 'warm-face', 'morph', 'operated'})
+        for name, entry in lab.REGISTRY.items():
+            with self.subTest(name=name):
+                self.assertTrue(entry['flow'])
+                if not entry['implemented']:
+                    self.assertRegex(entry['owner'], r'^fm-')
+
+    def test_pending_journey_refused_with_its_owner(self):
+        with self.assertRaisesRegex(ValueError, r'pending journey.*photo-face \(fm-ejwq\)'):
+            lab.validate_journeys('warm-face,photo-face')
+
+    def with_budget(self, journey, cell, seconds):
+        original = lab.REGISTRY[journey].get('budgetsS', {})
+        lab.REGISTRY[journey]['budgetsS'] = {**original, cell: seconds}
+        self.addCleanup(lambda: lab.REGISTRY[journey].__setitem__('budgetsS', original))
+
+    def test_over_budget_journey_fails_the_evidence_with_the_breach_named(self):
+        self.with_budget('warm-face', 'eris-cpu', 20)
+        report = Evidence.report(self)
+        report['runs'][0]['durationsS'] = {'warm-face': 19.0}
+        self.assertEqual(lab.report_findings(report, ['warm-face'], 'a' * 64), [])
+        report['runs'][0]['durationsS'] = {'warm-face': 31.4}
+        self.assertEqual(lab.report_findings(report, ['warm-face'], 'a' * 64),
+                         ['warm-face took 31.4s on eris-cpu, over its 20s budget'])
+
+    def test_unregistered_journey_in_a_report_is_named(self):
+        report = Evidence.report(self)
+        report['runs'][0]['durationsS'] = {'warm-face': 5.0, 'mystery': 1.0}
+        self.assertIn('journey mystery is not in the registry',
+                      lab.report_findings(report, ['warm-face'], 'a' * 64))
+
+    def test_summary_prints_duration_versus_budget(self):
+        self.with_budget('warm-face', 'eris-cpu', 20)
+        report = {**Evidence.report(self), 'ok': True}
+        warm = {**report['runs'][0]['warm'], 'faceS': 9.0}
+        report['runs'] = [{'ok': True, 'warm': warm, 'durationsS': {'warm-face': 12.0}},
+                          {'ok': True, 'warm': warm, 'durationsS': {'warm-face': 14.0, 'morph': 70.0},
+                           'morph': {'videoS': 70.0, 'route': 'Ready', 'url': 'https://localhost/'}}]
+        with tempfile.TemporaryDirectory() as tmp:
+            lab.summarise([report], Path(tmp), 'budget check')
+            text = (Path(tmp) / 'summary.md').read_text()
+        self.assertIn('| eris-cpu | warm-face | 12s/14s | 20s | within budget |', text)
+        self.assertIn('| eris-cpu | morph | 70s | – | unbudgeted |', text)
+
+
 if __name__ == '__main__':
     unittest.main()

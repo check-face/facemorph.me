@@ -47,7 +47,9 @@ CELLS = {'eris-webgpu': ('desktop', True), 'eris-cpu': ('desktop', False),
          'eris-firefox-webgpu': ('desktop', True), 'eris-firefox-cpu': ('desktop', False),
          'phone-webgpu': ('phone', True), 'phone-cpu': ('phone', False)}
 PHONE_LEASE = 'p30pro'  # the phone, for the devices a session reports
-JOURNEYS = frozenset(('cold-face', 'warm-face', 'morph', 'operated'))
+# The authoritative journey list and per-cell budgets (fm-journey-registry-5cpg).
+REGISTRY = json.loads((HERE / 'journeys.json').read_text())['journeys']
+JOURNEYS = frozenset(name for name, entry in REGISTRY.items() if entry.get('implemented'))
 
 
 class Untested(RuntimeError):
@@ -86,10 +88,46 @@ console.log(JSON.stringify(identity));"""
 
 def validate_journeys(value):
     names = value.split(',')
-    unknown = set(names) - JOURNEYS
+    unknown = set(names) - set(REGISTRY)
     if unknown:
-        raise ValueError('unknown journey: ' + ', '.join(sorted(unknown)))
+        raise ValueError('unknown journey (not in journeys.json): ' + ', '.join(sorted(unknown)))
+    pending = [n for n in names if n not in JOURNEYS]
+    if pending:
+        raise ValueError('pending journey, not implemented yet: ' +
+                         ', '.join(f"{n} ({REGISTRY[n].get('owner', 'unowned')})" for n in pending))
     return names
+
+
+def budget_findings(cell, runs):
+    """Each executed journey's wall-clock duration against its frozen budget for this cell."""
+    findings = []
+    for run in runs:
+        for journey, seconds in (run.get('durationsS') or {}).items():
+            entry = REGISTRY.get(journey)
+            if not entry or not entry.get('implemented'):
+                findings.append(f'journey {journey} is not in the registry')
+                continue
+            budget = (entry.get('budgetsS') or {}).get(cell)
+            if budget is not None and seconds > budget:
+                findings.append(f'{journey} took {seconds:.1f}s on {cell}, over its {budget}s budget')
+    return findings
+
+
+def budget_rows(reports):
+    """Markdown rows: every executed journey's durations against its budget, or unbudgeted."""
+    rows = []
+    for r in reports:
+        seen = {}
+        for run in r.get('runs') or []:
+            for journey, seconds in (run.get('durationsS') or {}).items():
+                seen.setdefault(journey, []).append(seconds)
+        for journey, durations in seen.items():
+            budget = ((REGISTRY.get(journey) or {}).get('budgetsS') or {}).get(r['cell'])
+            verdict = ('unbudgeted' if budget is None else
+                       'over budget' if max(durations) > budget else 'within budget')
+            shown = '/'.join(f'{s:.0f}s' for s in durations)
+            rows.append(f"| {r['cell']} | {journey} | {shown} | {'–' if budget is None else f'{budget}s'} | {verdict} |")
+    return rows
 
 
 CHROME = 'com.android.chrome'
@@ -895,6 +933,7 @@ def run_journeys(dev, args, cell, gpu, out, report, memory=None):
             dev.ctx.tracing.start(screenshots=True, snapshots=True)
         try:
             for j in validate_journeys(args.journey):
+                started = time.monotonic()
                 if j == 'cold-face':
                     rec['cold'] = journey_face(dev, args.url, True, f'lab{i}cold', gpu)
                 elif j == 'warm-face':
@@ -903,7 +942,8 @@ def run_journeys(dev, args, cell, gpu, out, report, memory=None):
                     rec['morph'] = journey_morph(dev, gpu)
                 elif j == 'operated':
                     rec['operated'] = journey_operated(dev, cell)
-                log('journey_done', cell=cell, iteration=i + 1, journey=j)
+                rec.setdefault('durationsS', {})[j] = round(time.monotonic() - started, 1)
+                log('journey_done', cell=cell, iteration=i + 1, journey=j, seconds=rec['durationsS'][j])
                 report['url'] = dev.page.url
             rec['ok'] = True
         except Exception as e:
@@ -985,7 +1025,7 @@ def report_findings(report, journeys, digest=None):
                     findings.append(str(e))
             elif not result.get('steps') or not all(s.get('ok') for s in result['steps']):
                 findings.append('operated steps failed or missing')
-    return findings
+    return findings + budget_findings(cell, runs)
 
 
 def run_cell(cell, args, out, report=None):
@@ -1155,6 +1195,9 @@ def summarise(reports, out, title, beads=()):
         return f"| {r['cell']} | {res} | {fmt('cold', 'faceS')} | {fmt('warm', 'faceS')} | {fmt('morph', 'videoS')} | {route} | {err[:120]} |"
     md = [f'## {title}', '', '| Cell | Result | Cold face | Warm face | Morph video | Route | Error |', '|---|---|---|---|---|---|---|']
     md += [cellrow(r) for r in reports]
+    budgets = budget_rows(reports)
+    if budgets:
+        md += ['', '| Cell | Journey | Duration | Budget | Verdict |', '|---|---|---|---|---|'] + budgets
     for r in reports:
         browser = r.get('browser') or {}
         artifact = r.get('artifact') or {}

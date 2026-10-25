@@ -510,12 +510,32 @@ def cmd_ios(args):
     return finish(report, out)
 
 
+# The authoritative journey registry (fm-journey-registry-5cpg); hosted lanes have no frozen budgets yet.
+REGISTRY = json.loads((HERE / 'journeys.json').read_text())['journeys']
+TIMED = (('cold', 'cold-face', 'faceS'), ('warm', 'warm-face', 'faceS'), ('morph', 'morph', 'videoS'))
+
+
+def budget_cell(report, run):
+    """Each executed journey's duration against its registry budget for this lane."""
+    if report.get('status') == 'untested' and not report.get('ok'):
+        return 'untested'
+    parts = []
+    for key, journey, field in TIMED:
+        if not isinstance(run.get(key), dict) or not isinstance(run[key].get(field), (int, float)):
+            continue
+        seconds = run[key][field]
+        budget = ((REGISTRY.get(journey) or {}).get('budgetsS') or {}).get(report['lane'])
+        verdict = 'unbudgeted' if budget is None else f"{'over' if seconds > budget else 'within'} {budget}s"
+        parts.append(f'{journey} {seconds:.0f}s ({verdict})')
+    return '; '.join(parts) or 'no timed journey'
+
+
 def summarise(reports, expect=()):
     """Markdown rows, one per lane: outcome, routes and times as reported, nothing inferred. An
     expected lane with no report is a failed row, never a missing one."""
     seen = {r['lane'] for r in reports}
     reports = list(reports) + [{'lane': l, 'ok': False, 'runs': [{'error': 'no report (the lane did not finish)'}]} for l in expect if l not in seen]
-    rows = ['| Lane | Result | Cold face (route, s) | Warm face (route, s) | Morph s | Browser |', '| --- | --- | --- | --- | --- | --- |']
+    rows = ['| Lane | Result | Cold face (route, s) | Warm face (route, s) | Morph s | Duration vs budget | Browser |', '| --- | --- | --- | --- | --- | --- | --- |']
     for r in sorted(reports, key=lambda r: r['lane']):
         run = r['runs'][-1] if r.get('runs') else {}
         cell = lambda j: f"{run[j]['route'] or 'no route shown'}, {run[j]['faceS']}" if isinstance(run.get(j), dict) else 'not run'
@@ -524,7 +544,7 @@ def summarise(reports, expect=()):
         result = result.replace('\n', ' ').replace('|', '/')[:160]
         morph = run['morph']['videoS'] if isinstance(run.get('morph'), dict) else 'not run'
         agent = (r.get('userAgent') or r.get('browser') or '')[:90]
-        rows.append(f"| {r['lane']} | {result} | {cell('cold')} | {cell('warm')} | {morph} | {agent} |")
+        rows.append(f"| {r['lane']} | {result} | {cell('cold')} | {cell('warm')} | {morph} | {budget_cell(r, run)} | {agent} |")
     return '\n'.join(rows) + '\n'
 
 

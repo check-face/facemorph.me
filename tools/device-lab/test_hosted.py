@@ -35,6 +35,11 @@ class Summary(unittest.TestCase):
     def test_unavailable_report_is_explicit_and_not_a_pass(self):
         table = summarise([{'lane': 'ios-simulator-safari', 'status': 'untested', 'reason': 'runtime absent', 'ok': False, 'runs': []}])
         self.assertIn('| untested: runtime absent | not run | not run |', table)
+        self.assertIn('| not run | untested |', table, 'no duration or budget is claimed for it')
+
+    def test_duration_versus_budget_for_executed_journeys(self):
+        table = summarise([{'lane': 'macos-webkit', 'ok': True, 'runs': [RUN]}])
+        self.assertIn('cold-face 22s (unbudgeted); warm-face 17s (unbudgeted); morph 58s (unbudgeted)', table)
 
 
 class Availability(unittest.TestCase):

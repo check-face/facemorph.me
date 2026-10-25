@@ -1,0 +1,41 @@
+{
+  "schema": 1,
+  "about": "The authoritative device-lab journey list (fm-journey-registry-5cpg). lab.py runs only implemented journeys named here and fails a summary when a run exceeds its cell budget. Budgets are wall-clock seconds per journey, measured once with `lab.py run --repeat 3` per cell and frozen at 1.5 x the slowest run, rounded up to 5 s. Changing a budget or adding a journey is a reviewed diff to this file with a bead naming the flow; a cell without a measured budget reports its duration as unbudgeted.",
+  "journeys": {
+    "cold-face": {
+      "implemented": true,
+      "flow": "First face on a fresh profile: arrival, consented model download, CPU/WebGPU admission and one generated face (PLAN.md#device-lab-deploy-gates-and-ci-policy-operator-24-october-2026).",
+      "budgetsS": {}
+    },
+    "warm-face": {
+      "implemented": true,
+      "flow": "A face with the models already cached: generate on the admitted route, no download (PLAN.md#device-lab-deploy-gates-and-ci-policy-operator-24-october-2026).",
+      "budgetsS": {}
+    },
+    "morph": {
+      "implemented": true,
+      "flow": "Create Morph from two generated faces through to a playable MP4 (PLAN.md#ui-flow-matrix-and-open-journey-contracts).",
+      "budgetsS": {}
+    },
+    "operated": {
+      "implemented": true,
+      "flow": "Operated-input contract on the defect-1 regression fixture: real taps/clicks press visible controls and refuse covered, clipped and off-screen ones (fm-48bj).",
+      "budgetsS": {}
+    },
+    "photo-face": {
+      "implemented": false,
+      "owner": "fm-ejwq",
+      "flow": "Choose a photo from a face card, confirm the crop, encode with e4e and add the face."
+    },
+    "export": {
+      "implemented": false,
+      "owner": "fm-qh1s",
+      "flow": "Save and share a face image and the morph MP4 with recovery metadata (fm-y2jb, fm-qh1s)."
+    },
+    "blend": {
+      "implemented": false,
+      "owner": "fm-ve73",
+      "flow": "Blend view: weighted slots, one blend synthesis and its export."
+    }
+  }
+}
