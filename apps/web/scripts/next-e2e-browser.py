@@ -419,7 +419,7 @@ def stage_sessionRestore():
  saved=q('window.__ciSavedSession');assert saved['faces']==2 and saved['compressed'], saved
  js("[...document.querySelectorAll('label')].find(l=>l.textContent.includes('Use Slider')).querySelector('input').click()")
  wait(lambda:js("!!document.querySelector('.next-slider-control')"),60)
- js("document.querySelector('.next-slider-control [role=slider]').focus()")
+ js("document.querySelector('.next-slider-control input[type=range]').focus()")
  cdp('Input.dispatchKeyEvent',type='keyDown',key='ArrowRight',code='ArrowRight',windowsVirtualKeyCode=39)
  cdp('Input.dispatchKeyEvent',type='keyUp',key='ArrowRight',code='ArrowRight',windowsVirtualKeyCode=39)
  preference=q("JSON.parse(localStorage.getItem('facemorph-slider-v1'))")

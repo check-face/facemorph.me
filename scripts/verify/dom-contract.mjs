@@ -130,6 +130,87 @@ export function contractOf(dom) {
   return out;
 }
 
+// fm-25um's declared arrival changes, applied to the retained layout only. The new
+// layout is compared as-is, so a missing/misplaced action or changed label still fails.
+// Frozen goldens remain untouched; all unrelated first-visit entries compare exactly.
+export function arrivalTileContract(entries) {
+  const out = [];
+  for (let i = 0; i < entries.length; i++) {
+    if (!entries[i].next.includes('next-face')) {
+      out.push(entries[i]);
+      continue;
+    }
+    const end = entries.findIndex((e, j) => j > i && e.next.includes('next-face-actions'));
+    if (end < 0) {
+      out.push(entries[i]);
+      continue;
+    }
+    const face = entries.slice(i, end);
+    const action = face.find(
+      (e) =>
+        e.tag === 'button' &&
+        e.next.length === 1 &&
+        e.next[0] === 'next-face-generate' &&
+        e.text === 'Generate',
+    );
+    if (!action || face.some((e) => e.next.includes('next-face-operation'))) {
+      out.push(...face);
+      i = end - 1;
+      continue;
+    }
+    const changed = [];
+    for (let j = 0; j < face.length; j++) {
+      const e = face[j];
+      if (e === action) continue;
+      if (
+        e.next.length === 1 &&
+        e.next[0] === 'next-sr' &&
+        e.text === 'Cached preview' &&
+        !Object.keys(e.attrs).length
+      )
+        continue;
+      if (
+        e.tag === 'input' &&
+        e.attrs.type === 'file' &&
+        e.attrs['aria-label'] === 'Choose photo'
+      ) {
+        changed.push({ ...e, attrs: { ...e.attrs, 'aria-label': 'Encode image' } });
+      } else if (
+        e.tag === 'button' &&
+        e.next.length === 1 &&
+        e.next[0] === 'next-face-empty' &&
+        e.attrs['aria-label'] === 'Choose photo' &&
+        e.text === 'Drop a photo, or tap to choose'
+      ) {
+        changed.push({
+          region: e.region,
+          next: ['next-face-hint'],
+          attrs: {},
+          text: 'Press Generate to make this face',
+        });
+        const icon = face[j + 1];
+        if (
+          icon &&
+          !icon.tag &&
+          !icon.next.length &&
+          !icon.text &&
+          JSON.stringify(icon.attrs) === '{"aria-hidden":"true"}'
+        )
+          j++;
+      } else changed.push(e);
+    }
+    const at = changed.findIndex(
+      (e) => e.next.includes('next-face-close') || e.next.includes('next-input-row'),
+    );
+    if (at >= 0)
+      changed.splice(at, 0, { ...action, next: ['next-face-generate', 'next-face-operation'] });
+    else changed.push(action);
+    out.push(...changed);
+    i = end - 1;
+  }
+  return out;
+}
+
 const key = (e) => JSON.stringify(e);
 
 /**
@@ -207,9 +288,11 @@ export function gradeRow(row, controlSteps, subjectSteps) {
       control: names(controlSteps),
       subject: names(subjectSteps),
     };
+  const contract = (dom) =>
+    row.rowId === 'first-visit' ? arrivalTileContract(contractOf(dom)) : contractOf(dom);
   const steps = controlSteps.map((c, i) => ({
     step: c.step,
-    diffs: diffContracts(contractOf(c.dom), contractOf(subjectSteps[i].dom)),
+    diffs: diffContracts(contract(c.dom), contract(subjectSteps[i].dom)),
   }));
   const failing = steps.filter((s) => s.diffs.length);
   return failing.length

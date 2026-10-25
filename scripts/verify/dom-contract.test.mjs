@@ -28,6 +28,66 @@ const face = (label, text = 'Generate', disabled = false) => ({
   ],
 });
 
+test('declared arrival tile changes retain checks on labels, action presence, placement and disabled state', () => {
+  const input = (label) => ({ tag: 'input', attrs: { type: 'file', 'aria-label': label } });
+  const action = {
+    tag: 'button',
+    classes: ['next-face-generate'],
+    attrs: { type: 'button', 'aria-label': 'Generate Morph from' },
+    text: 'Generate',
+  };
+  const close = {
+    tag: 'button',
+    classes: ['next-face-close'],
+    attrs: { type: 'button', 'aria-label': 'Remove Morph from' },
+  };
+  const field = { tag: 'div', classes: ['next-input-row'], text: 'Morph from' };
+  const actions = { tag: 'div', classes: ['next-face-actions'] };
+  const image = (children) => ({ tag: 'div', classes: ['next-face-image'], children });
+  const dom = (children) => ({ faces: [{ tag: 'section', classes: ['next-face'], children }] });
+  const legacy = dom([
+    input('Choose photo'),
+    image([{ tag: 'span', classes: ['next-sr'], text: 'Cached preview' }, close]),
+    field,
+    action,
+    actions,
+  ]);
+  const current = dom([
+    input('Encode image'),
+    image([{ ...action, classes: ['next-face-generate', 'next-face-operation'] }, close]),
+    field,
+    actions,
+  ]);
+  const grade = (subject) =>
+    gradeRow(
+      { rowId: 'first-visit', tag: 'parity' },
+      [{ step: 'arrived', dom: legacy }],
+      [{ step: 'arrived', dom: subject }],
+    ).verdict;
+  assert.equal(grade(current), 'passed');
+  for (const mutate of [
+    (d) => {
+      d.faces[0].children[1].children.shift();
+    },
+    (d) => {
+      d.faces[0].children[1].children[0].attrs['aria-label'] = 'Generate the wrong face';
+    },
+    (d) => {
+      d.faces[0].children[1].children[0].attrs.disabled = '';
+    },
+    (d) => {
+      d.faces[0].children.push(d.faces[0].children[1].children.shift());
+    },
+    (d) => {
+      d.faces[0].children[2].text = 'Morph form';
+    },
+  ]) {
+    const changed = structuredClone(current);
+    mutate(changed);
+    assert.equal(grade(changed), 'failed');
+  }
+});
+
 test('the contract keeps next- classes, ARIA, text and interactive tags, and drops wrappers and generated classes', () => {
   const c = contractOf({ faces: [face('Generate Morph from')] });
   assert.deepEqual(c, [
