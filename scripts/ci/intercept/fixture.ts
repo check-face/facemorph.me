@@ -61,7 +61,16 @@ export async function startFixture(): Promise<Fixture> {
       });
       res.end(body);
     };
-    if (path === '/') return send('text/html', PAGE);
+    if (path === '/') {
+      // A real delayed response exercises navigation past browser-harness's 5 s
+      // command socket limit while the driver keeps draining worker attach events.
+      const delay = Number(new URL(req.url ?? '/', 'http://x').searchParams.get('delay') ?? 0);
+      if (delay > 0 && delay <= 10_000) {
+        setTimeout(() => send('text/html', PAGE), delay);
+        return;
+      }
+      return send('text/html', PAGE);
+    }
     if (path === '/worker.js') return send('text/javascript', WORKER);
     if (path === '/sw.js') return send('text/javascript', SW);
     // Streamed in two writes with no Content-Length: its bytes are known only when the request finishes.

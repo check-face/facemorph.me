@@ -9,7 +9,11 @@ Runtime.consoleAPICalled and Log.entryAdded. Inside a browser-harness script:
 
     import sys; sys.path.insert(0, '<repo>/scripts/ci/intercept'); import intercept
     att = intercept.attach_cdp(cdp, drain_events, host_map)
-    intercept.step(att.rec, 'load'); goto_url(url); ...; att.collect()
+    intercept.step(att.rec, 'load')
+    js(f'setTimeout(() => location.assign({json.dumps(url)}), 0); 0')
+    # Poll browser-level current_tab() metadata while calling att.collect().
+    # Blocking Page.navigate/Runtime.evaluate may wait on paused worker targets.
+    ...; att.collect()
     intercept.assertNoRequests(att.rec, 'model-host', {'toStep': 'load'})
 """
 import json

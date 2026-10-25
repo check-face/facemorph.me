@@ -98,7 +98,7 @@ def stop_daemon(name):
             os.kill(int(pid), signal.SIGTERM)
 
 
-def journey(early):
+def journey(early, navigation_delay=0):
     fixture = subprocess.Popen(['node', str(HERE / 'fixture.ts')], stdout=subprocess.PIPE, text=True)
     profile = tempfile.mkdtemp(prefix='intercept-cdp-')
     port = free_port()
@@ -108,6 +108,11 @@ def journey(early):
     name = f'intercept-{os.getpid()}-{"early" if early else "approved"}'
     try:
         info = fixture.stdout.readline()
+        if navigation_delay:
+            delayed = json.loads(info)
+            for key in ('page', 'early'):
+                delayed[key] += f'&delay={navigation_delay}'
+            info = json.dumps(delayed)
         ws, end = None, time.time() + 30
         while ws is None and time.time() < end:
             m = re.search(r'DevTools listening on (ws://127\.0\.0\.1:(\d+)/\S+)', chrome.stderr.readline())
@@ -152,6 +157,12 @@ AVAILABLE = os.path.exists(HARNESS) and os.path.exists(CHROMIUM) and shutil.whic
 
 @unittest.skipUnless(AVAILABLE, 'untested: browser-harness, Chromium or Node missing')
 class CdpHelper(unittest.TestCase):
+    def test_slow_navigation_keeps_collecting_real_worker_events(self):
+        r = journey(False, navigation_delay=6500)
+        self.assertEqual([v['verdict'] for v in r['verdicts']], ['pass', 'pass', 'pass', 'pass', 'fail'])
+        self.assertTrue(any(q['initiator'] == 'worker' for q in r['record']['requests']))
+        self.assertTrue(any(q['initiator'] == 'service-worker' for q in r['record']['requests']))
+
     def test_fixture_page_attribution_failures_console_and_the_approved_model(self):
         r = journey(False)
         rec = r['record']

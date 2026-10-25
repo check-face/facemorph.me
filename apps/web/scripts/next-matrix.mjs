@@ -206,6 +206,9 @@ try{
  await stage('photoE4e',async()=>{
   const from=await mark();
   await tile(1).locator('input[aria-label="Choose photo"]').setInputFiles({name:'next-matrix-photo.webp',mimeType:'image/webp',buffer:photo});
+  // Photo mode is set while selection/encoding is still pending. Wait for the
+  // actual reconstruction, not the earlier input-state transition.
+  await tile(1).locator('.next-face-image img:not([data-public-preview]), .next-face-image canvas[data-face-drawn="true"]').waitFor({timeout:stageTimeout});
   await settled(1,'photo');
   const events=await eventsSince(from);
   if(!encoderRan(events))throw Error(`The photo did not run the encoder; worker events: ${JSON.stringify(events.map(e=>e.posted||e.stage).filter(Boolean))}`);

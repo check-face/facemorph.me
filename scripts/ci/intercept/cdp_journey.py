@@ -21,22 +21,28 @@ att = intercept.attach_cdp(cdp, drain_events, fixture['hostMap'], page_session=s
                            page_target=current_tab()['targetId'])
 
 
-def until(expr, timeout=30):
+def until_title(title, timeout=30):
     end = time.time() + timeout
     while time.time() < end:
         att.collect()
-        if js(expr):
+        # Target metadata comes from the browser process. Runtime.evaluate can
+        # itself wait for the navigating renderer while workers need collect().
+        if current_tab()['title'].removeprefix('🐴 ') == title:
             return True
         time.sleep(0.1)
-    raise RuntimeError('timeout waiting for ' + expr)
+    raise RuntimeError('timeout waiting for page title ' + title)
 
 
 intercept.step(att.rec, 'load')
-goto_url(fixture['early'] if early else fixture['page'])
-until("document.title === 'ready'")
+# Workers pause until collect() enables their domains and resumes them. A blocking
+# Page.navigate can wait on those same workers before returning, leaving nobody to
+# drain their attach events. Schedule real navigation, then keep draining below.
+url = fixture['early'] if early else fixture['page']
+js(f'setTimeout(() => location.assign({json.dumps(url)}), 0); 0')
+until_title('ready')
 intercept.step(att.rec, 'approve')
 js("document.getElementById('approve').click()")
-until("document.title === 'approved'")
+until_title('approved')
 att.settled()
 log = intercept.file_log(os.path.join(log_dir, f"cdp-{'early' if early else 'approved'}.jsonl"))
 verdicts = [
