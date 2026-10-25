@@ -97,6 +97,25 @@ jobs:
       - run: python -m pip install --quiet --upgrade playwright
       - if: matrix.install != ''
         run: python -m playwright install --with-deps ${{ matrix.install }}
+      - name: Manager component dependencies on macOS
+        if: matrix.browser == 'webkit' || matrix.browser == 'firefox'
+        uses: ./.github/actions/setup-workspace
+      - name: Build manager components on macOS
+        if: matrix.browser == 'webkit' || matrix.browser == 'firefox'
+        run: |
+          npm run build -w packages/stylegan-js -w packages/browser-model-manager
+          npx playwright install ${{ matrix.browser }}
+      - name: Native manager components on ${{ matrix.lane }}
+        if: matrix.browser == 'webkit' || matrix.browser == 'firefox'
+        uses: ./.github/actions/run-command
+        env:
+          FACEMORPH_MANAGER_ENGINE: ${{ matrix.browser }}
+          FACEMORPH_REQUIRE_MANAGER_BROWSER: '1'
+          FACEMORPH_ISOLATE_TEST_NETWORK: '0'
+        with:
+          timeout: '900'
+          # The Linux-only netlink namespace wrapper stays disabled on these macOS runners.
+          command: node packages/browser-model-manager/test/run.mjs packages/browser-model-manager/test/cache-local.test.ts packages/browser-model-manager/test/handles-tabs.test.ts packages/browser-model-manager/test/acquisition.test.ts packages/browser-model-manager/test/worker-storage.test.ts packages/browser-model-manager/test/storage-permission.test.ts packages/browser-model-manager/test/uncached-browser.test.ts
       - name: Journeys on ${{ matrix.lane }}
         working-directory: tools/device-lab
         run: python hosted.py browser --lane ${{ matrix.lane }} --browser ${{ matrix.browser }} --artifact ../../artifact/deploy-next --runtime-sha ${{ inputs.runtime_sha }} --out ../../lane
@@ -108,6 +127,7 @@ jobs:
             lane/*.json
             lane/*.png
             lane/*.zip
+            test-results/manager-cache/
           if-no-files-found: warn
           retention-days: 30
   android:
