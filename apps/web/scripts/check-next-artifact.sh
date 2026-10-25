@@ -19,8 +19,12 @@ def click(role,name):
     if item is None:raise StopIteration(name)
     ident=item['backendDOMNodeId'];cdp('DOM.scrollIntoViewIfNeeded',backendNodeId=ident)
     q=cdp('DOM.getBoxModel',backendNodeId=ident)['model']['content'];click_at_xy(sum(q[0::2])/4,sum(q[1::2])/4)
+DESTINATION=os.environ.get('NEXT_ARTIFACT_KIND')=='destination'
+# Text tiles now show the Generate hint; each destination tile retains its named file chooser.
+PHOTO_SELECTOR='input[type=file][aria-label="Encode image"]' if DESTINATION else 'button[aria-label="Choose photo"]'
+PHOTO_OFFSET=0 if DESTINATION else 1
 def state():
-    return json.loads(js("JSON.stringify({tiles:document.querySelectorAll('.next-face').length,photoButtons:document.querySelectorAll('button[aria-label=\"Choose photo\"]').length,helloPreview:(()=>{const i=document.querySelector('[data-next-face=\"face-1\"] img[data-public-preview=\"true\"]');return !!i&&i.complete&&i.naturalWidth===1024&&i.naturalHeight===1024;})(),generate:document.querySelectorAll('.next-face-generate').length===2,pattern:document.querySelector('select[aria-label=\"Morph shape\"]')?.value,errors:document.querySelector('.next-error')?.innerText||''})"))
+    return json.loads(js("JSON.stringify({tiles:document.querySelectorAll('.next-face').length,photoControls:document.querySelectorAll(%s).length,helloPreview:(()=>{const i=document.querySelector('[data-next-face=\"face-1\"] img[data-public-preview=\"true\"]');return !!i&&i.complete&&i.naturalWidth===1024&&i.naturalHeight===1024;})(),generate:document.querySelectorAll('.next-face-generate').length===2,pattern:document.querySelector('select[aria-label=\"Morph shape\"]')?.value,errors:document.querySelector('.next-error')?.innerText||''})" % json.dumps(PHOTO_SELECTOR)))
 def until(predicate, timeout=15):
     deadline=time.monotonic()+timeout
     last=None
@@ -37,7 +41,7 @@ try:
     # Close the trial-phase reporting toast without answering it; it would cover coordinate clicks.
     time.sleep(1)
     result['consentToastShown']=bool(js('(()=>{const b=document.querySelector(\'.next-consent-toast button[aria-label="Ask me later"]\');if(b)b.click();return !!b;})()'))
-    initial=until(lambda s:s['tiles']==2 and s['photoButtons']==1 and s['helloPreview'] and s['generate'])
+    initial=until(lambda s:s['tiles']==2 and s['photoControls']==2-PHOTO_OFFSET and s['helloPreview'] and s['generate'])
     assert not js("document.querySelector('.next-tagline a, .next-tagline button')"), 'Tagline must not replace an implicitly selected face'
     click('button','More options')
     until(lambda s:js("!!document.querySelector('.next-overflow')"))
@@ -57,10 +61,10 @@ try:
     assert initial['pinch'] is True, initial
     result['initial']=initial
     click('button','Add face')
-    result['afterAdd']=until(lambda s:s['tiles']==3 and s['photoButtons']==2)
+    result['afterAdd']=until(lambda s:s['tiles']==3 and s['photoControls']==3-PHOTO_OFFSET)
     assert js("[...document.querySelectorAll('.next-face-generate')].at(-1).disabled"), 'Empty face must retain a disabled Generate button'
     click('button','Remove Face 3')
-    result['afterRemove']=until(lambda s:s['tiles']==2 and s['photoButtons']==1)
+    result['afterRemove']=until(lambda s:s['tiles']==2 and s['photoControls']==2-PHOTO_OFFSET)
     assert not result['afterRemove']['errors'], result['afterRemove']
     click('button','Browse names')
     deadline=time.monotonic()+10

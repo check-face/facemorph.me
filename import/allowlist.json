@@ -1053,10 +1053,10 @@
       "class": "temporary-root",
       "temporary": true,
       "ported": {
-        "sha256": "3b7097ff7560fddd5f8e5e48ee9a74e1261f7bffd3b4a0ac89d040fb99707e8c",
-        "bytes": 7877,
+        "sha256": "f46265cad8a8863d79899ad2297537536245aa6e0da232a963fc871042f02d16",
+        "bytes": 8227,
         "bead": "fm-zz2i",
-        "reason": "the Processing mode select is found by accessible name through build/provider-probe.js (no .next-advanced), routes expected by artifact label from build/provider-routes.json, providerLocation recorded; Vite destination integration: shared production headers and native dynamic-import directives; compiled artifact identity."
+        "reason": "the Processing mode select is found by accessible name through build/provider-probe.js (no .next-advanced), routes expected by artifact label from build/provider-routes.json, providerLocation recorded; Vite destination integration: shared production headers and native dynamic-import directives; compiled artifact identity. Verify named per-tile Encode image chooser after text placeholder retirement; retain classic selector on the frozen control (fm-aa8)."
       }
     },
     {
