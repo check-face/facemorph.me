@@ -22,8 +22,8 @@ local cells, against the same release artifact, plus normal applicable CI:
 Missing local evidence or CPU fallback in a WebGPU cell is not a pass. Hosted CI
 also reuses the iOS Simulator on macOS and Android emulator; unavailable hosted
 runners are explicitly untested, while real executed failures require repair.
-The current lab has four Chromium/Huawei cells; eris Firefox support and the full
-six-cell gate remain implementation work. Production promotion is a separate decision.
+All six local adapters exist; adapter support alone is not release qualification.
+The release Beads track remaining exact-artifact evidence. Production promotion is separate.
 
 **https://next.facemorph.me still comes from classic's candidate branch**, in
 [facemorph.me-classic](https://github.com/check-face/facemorph.me-classic).
@@ -57,37 +57,9 @@ Vite destination into deploy-next with this repository's source identity**. See
 [build details](docs/dev/build-next.md). Classic comparisons fetch an independent, hash-verified control;
 control tests validate the harness/control, not feature migration. Use verified external runtime assets for inference checks.
 
-Work directly on main, validate locally in proportion to the change, then push.
-Versioned hooks check format/lint of staged/pushed content; agents run relevant
-builds/tests and local browser/device checks themselves. CI runs one workflow at a
-time, finishes running work, and replaces only the pending run with the newest push.
-The YAML queue and path filters are the authority; no parallel local workflow engine.
-Inspect CI at startup and before each next bead; repair observed failures through Beads before new work. Automatic CI
-reopening is not implemented. See AGENTS.md for commands and honest coverage limits.
-
-The operator enabled the existing NTM swarm on 26 October, adding one Claude Opus
-worker at medium effort. Use Agent Mail reservations and guard block mode; preserve
-existing dirty changes. After each validated slice, check CI first, then claim and
-implement the next useful ready unowned bead without waiting for another prompt.
-Recover abandoned claims from current process/mail/reservation evidence and record
-the handoff. See AGENTS.md for the continuation and tending contract.
-The [device lab](tools/device-lab/README.md) provides local phone/eris validation;
-physical phones never run in CI. Correctness work shares compute, timing alone uses
-exclusive measurement locks. Research and release qualification have stronger
-requirements than ordinary slices.
-
-Choose work with `br ready --exclude-label gate --brief --json --limit 10` or
-`bvr --robot-next --robot-not-ready-labels gate`; never run bare `bvr`/`bv` in an
-agent session. AGENTS.md defines bounded file/log reads and tool output budgets.
-Hosted CI reuses the macOS iOS Simulator and Android emulator, best effort when
-runners are unavailable; real test failures require repair. Candidate handover is
-complete only after post-deploy checks pass on the actual P30 Pro and eris.
-
-Iterate with the fastest sufficient tools: targeted search/tests, existing CLI/API
-scripts, then scripted browser checks; interactive harnesses and Android coordinate
-taps are last resorts unless real input is the behavior being tested. Reuse existing
-helpers and environments. Keep disposable probes outside Git and clean up task-owned
-processes, profiles, device settings and temporary outputs; preserve required evidence.
+Agent working instructions live only in [AGENTS.md](AGENTS.md). Use the existing
+[device lab](tools/device-lab/README.md) for local browser/phone validation and CASS
+for session history. Beads hold current scope, acceptance and executed evidence.
 
 Execution records are `.beads/issues.jsonl`, published at https://beads.dilger.dev.
 Current GitHub owner is check-face; selected future organization is facemorph-me.
