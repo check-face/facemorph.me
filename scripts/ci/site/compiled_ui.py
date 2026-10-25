@@ -79,7 +79,7 @@ def main(argv=None):
     server = subprocess.Popen([sys.executable, '-m', 'http.server', str(site_port), '--bind', '127.0.0.1',
                                '--directory', a.artifact], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     profile = tempfile.mkdtemp(prefix='compiled-ui-')
-    chrome = subprocess.Popen([CHROMIUM, '--headless=new', '--no-sandbox', '--disable-gpu',
+    chrome = subprocess.Popen([CHROMIUM, '--headless=new', '--no-sandbox', '--disable-gpu', '--disable-extensions',
                                f'--remote-debugging-port={cdp_port}', f'--user-data-dir={profile}', 'about:blank'],
                               stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
     name = f'compiled-ui-{os.getpid()}'
