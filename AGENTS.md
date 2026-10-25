@@ -99,11 +99,15 @@ candidate build). Resource policy, three classes:
 - **Correctness work** — CI lanes, builds, unit and browser-matrix tests, lab journeys that assert
   pass/fail: no lock, no exclusivity, on eris's full CPU and GPU alongside everything else. Slow
   under load is fine; nobody waits on anybody.
-- **GPU timing runs** — anything that measures milliseconds (research benches, strictly-not-worse
-  pairs): run through `autoresearch/run.py --exclusive gpu-timing`, which holds a machine-wide
+- **GPU timing runs** — anything that measures milliseconds: run through
+  `autoresearch/run.py --exclusive gpu-timing`, which holds a machine-wide
   flock shared by CI and local runs, so two timing runs never overlap. It waits at most `--wait`
   seconds (CI default 1800) and exits 75 (busy) rather than ever blocking a correctness job; record
-  contention or defer honestly. No correctness job ever sets or waits on this lock.
+  contention or defer honestly. No correctness job ever sets or waits on this lock. Rare by design:
+  in this bead graph only the strictly-not-worse paired gate (`fm-mc27`), the checker calibration
+  (`fm-g019`) and a research campaign time anything. GPU *correctness* lanes (`next-gpu-lane`,
+  device-lab eris cells) need eris's GPU but never exclusivity — they run unlocked alongside
+  everything else.
 - **The physical phone (USB P30 Pro) never runs in CI** (operator, 25 October 2026). Agents run
   `lab.py matrix` locally against candidate builds during development; at handover the release bead
   runs the phone and eris against the deployed next.facemorph.me release (`lab.py matrix --url
