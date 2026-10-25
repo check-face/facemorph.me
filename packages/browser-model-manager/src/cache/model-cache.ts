@@ -332,6 +332,207 @@ function validateOrigins(origins: readonly string[]): readonly string[] {
   }
   return Object.freeze([...origins]);
 }
+
+/** Explicit download for immediate execution when durable model storage cannot be used.
+ * This does not populate a cache or manufacture a local reader/asset handle.
+ */
+export type UncachedAcquireOptions = Pick<
+  ModelCacheOptions,
+  'fetcher' | 'timeoutMs' | 'stallMs' | 'retryDelaysMs' | 'alternateOrigins' | 'slots' | 'report'
+>;
+
+// Opaque origins cannot use Web Locks. Serialize the bounded chunk workspace in this realm
+// when the browser cannot provide cross-realm coordination, rather than admitting every caller.
+const localUncachedSlots: AcquisitionSlots = (() => {
+  let busy = false;
+  const waiting: {
+    signal: AbortSignal;
+    resolve(release: () => void): void;
+    reject(reason: unknown): void;
+    cancel(): void;
+  }[] = [];
+  const pump = () => {
+    if (busy) return;
+    const next = waiting.shift();
+    if (!next) return;
+    next.signal.removeEventListener('abort', next.cancel);
+    if (next.signal.aborted) {
+      next.reject(next.signal.reason || aborted());
+      pump();
+      return;
+    }
+    busy = true;
+    let released = false;
+    next.resolve(() => {
+      if (released) return;
+      released = true;
+      busy = false;
+      pump();
+    });
+  };
+  return {
+    count: 1,
+    take(_priority, signal) {
+      check(signal);
+      return new Promise((resolve, reject) => {
+        const next = {
+          signal,
+          resolve,
+          reject,
+          cancel() {
+            const at = waiting.indexOf(next);
+            if (at >= 0) waiting.splice(at, 1);
+            reject(signal.reason || aborted());
+          },
+        };
+        signal.addEventListener('abort', next.cancel, { once: true });
+        waiting.push(next);
+        pump();
+      });
+    },
+  };
+})();
+
+function uncachedBrowserSlots(): AcquisitionSlots {
+  try {
+    const locks = browserGlobals.navigator?.locks as SlotLocks | undefined;
+    if (!locks) return localUncachedSlots;
+    const native = createAcquisitionSlots({
+      locks,
+      count: slotCount(
+        acquisitionMemoryClass(
+          (browserGlobals.navigator as { deviceMemory?: number } | undefined)?.deviceMemory,
+        ),
+      ),
+    });
+    return {
+      count: native.count,
+      async take(priority, signal) {
+        try {
+          return await native.take(priority, signal);
+        } catch (error) {
+          check(signal);
+          if ((error as { name?: string })?.name !== 'SecurityError') throw error;
+          return localUncachedSlots.take(priority, signal);
+        }
+      },
+    };
+  } catch (error) {
+    if ((error as { name?: string })?.name !== 'SecurityError') throw error;
+    return localUncachedSlots;
+  }
+}
+
+/** Returns one verified asset without reading or writing any persistent storage.
+ * The caller owns its lifetime. Explicit JS model buffers are one final buffer plus one
+ * sequential verified chunk, never an asset map or the encoder's complete shard set. Platform
+ * SHA-256 may additionally use native workspace for its input (a whole unchunked asset).
+ * All bytes, including
+ * failed attempts, spend the supplied grant; a cache failure does not replenish that grant.
+ */
+export async function acquireUncachedBytes(
+  input: AssetInput,
+  options: AcquireOptions,
+  {
+    fetcher = globalThis.fetch,
+    timeoutMs = 300000,
+    stallMs = CHUNK_STALL_MS,
+    retryDelaysMs = CHUNK_RETRY_DELAYS_MS,
+    alternateOrigins = [],
+    slots = uncachedBrowserSlots(),
+    report = () => {},
+  }: UncachedAcquireOptions = {},
+): Promise<Uint8Array<ArrayBuffer>> {
+  const asset = validateAsset(input);
+  const { grant, owner, signal } = options ?? ({} as Partial<AcquireOptions>);
+  const permission = grantAsset(grant, owner, asset.sha256, asset.size);
+  check(signal);
+  if (!Number.isFinite(timeoutMs) || timeoutMs <= 0 || !Number.isFinite(stallMs) || stallMs <= 0)
+    throw new TypeError('Invalid uncached acquisition settings');
+  const alternates = validateOrigins(alternateOrigins);
+  const controller = new AbortController();
+  const relay = () => controller.abort(signal?.reason || aborted());
+  signal?.addEventListener('abort', relay, { once: true });
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const alive = () => {
+    clearTimeout(timer);
+    timer = setTimeout(
+      () => controller.abort(new DOMException('Asset acquisition timed out', 'TimeoutError')),
+      timeoutMs,
+    );
+  };
+  const emit = (event: CacheEvent) => {
+    try {
+      report(event);
+    } catch {
+      /* observers cannot break acquisition */
+    }
+  };
+  const transfer: Transfer = { payer: () => grant!, priority: () => permission.priority, alive };
+  let completed = 0;
+  const download: Download = async (part, attemptSignal) => {
+    const response = await fetcher(part.url, {
+      signal: attemptSignal,
+      credentials: 'omit',
+      cache: 'default',
+      mode: 'cors',
+    });
+    check(attemptSignal);
+    if (!response.ok || response.status !== 200 || response.type === 'opaque')
+      throw downloadRefused(response);
+    return response.body
+      ? counted(response.body, part, (event) =>
+          emit({
+            ...event,
+            sha256: asset.sha256,
+            loaded: completed + Number(event['loaded']),
+            bytes: asset.size,
+          }),
+        )
+      : null;
+  };
+  try {
+    emit({ status: 'downloading', sha256: asset.sha256 });
+    const out = asset.chunks ? new Uint8Array(asset.size) : null;
+    const parentHash = asset.chunks ? new Sha256() : null;
+    for (const part of asset.chunks ?? [asset]) {
+      const release = slots ? await slots.take(permission.priority, controller.signal) : () => {};
+      try {
+        check(controller.signal);
+        alive();
+        const bytes = await fetchVerifiedChunk(
+          part,
+          download,
+          controller.signal,
+          transfer,
+          retryDelaysMs,
+          alternates,
+          stallMs,
+        );
+        if (!out) {
+          emit({ status: 'verified', sha256: asset.sha256, bytes: asset.size });
+          return bytes;
+        }
+        out.set(bytes, completed);
+        parentHash!.update(bytes);
+        completed += bytes.byteLength;
+        emit({ status: 'progress', sha256: asset.sha256, loaded: completed, bytes: asset.size });
+      } finally {
+        clearTimeout(timer);
+        release();
+      }
+    }
+    check(controller.signal);
+    if (!out || completed !== asset.size || parentHash!.hex() !== asset.sha256)
+      throw new Error('Asset integrity mismatch');
+    check(controller.signal);
+    emit({ status: 'verified', sha256: asset.sha256, bytes: asset.size });
+    return out;
+  } finally {
+    clearTimeout(timer);
+    signal?.removeEventListener('abort', relay);
+  }
+}
 // Runs with backpressure; errors before EOF prevent Cache.put from committing.
 function verifiedStream(
   body: ReadableStream<Uint8Array> | null,

@@ -1,7 +1,7 @@
 import {createWebGpuSession} from './webgpu-engine.mjs';
 import {createDirectWebGpuSession} from './webgpu-direct.mjs';
 import {encodeRgbaPng} from './png.mjs';
-import {createBrowserModelCache} from '../Assets/model-cache.mjs';
+import {createModelSource} from './model-source.mjs';
 import {inputLatent,truncate,requireLatent,rgba1024} from './identity.mjs';
 import {qualifyEncoderReference} from './encoder-preflight.mjs';
 import {createAcquisitionBudget,collectAssets} from './acquisition-budget.mjs';
@@ -60,6 +60,8 @@ const cacheReport=event=>{
  }
  budget.cacheEvent(event);
 };
+const modelSource=()=>createModelSource({report:cacheReport,readAhead,alternateOrigins:modelAlternateOrigins(self.location.hostname)},
+ ()=>{shedShards();report(currentId,'cache-unavailable-detail');});
 const planAsset=budget.planAsset;
 // Settle the denominator before bytes move: what is already on this device is not a download.
 const probePlanned=()=>budget.probe(asset=>cache.has(asset));
@@ -110,7 +112,7 @@ async function photoAssets(){
  const descriptor=manifest.encoderStream;
  if(descriptor){
   add(descriptor);
-  try{add(admitDescriptor(JSON.parse(new TextDecoder().decode(await bytes(descriptor,currentId)))));}
+  try{add(admitDescriptor(JSON.parse(new TextDecoder().decode(await bytes(descriptor,currentId,false,{allowUncached:false})))));}
   catch{/* the descriptor is unreadable offline; the real run will report it properly */}
  }
  return ordered;
@@ -152,7 +154,7 @@ function touchResidency(){
  if(residency.timer)clearTimeout(residency.timer);
  residency.timer=residency.held?setTimeout(shedShards,RESIDENT_IDLE_MS):null;
 }
-async function bytes(asset,id,retainable=false){
+async function bytes(asset,id,retainable=false,{allowUncached=true}={}){
  if(retainable){
   const held=residency.bytes.get(asset.sha256);
   // A detached buffer reads as zero length: never hand back something ORT may have taken.
@@ -162,12 +164,12 @@ async function bytes(asset,id,retainable=false){
   }
   if(held)residency.held-=held.byteLength,residency.bytes.delete(asset.sha256);
  }
- cache ||= await createBrowserModelCache({report:cacheReport,readAhead,alternateOrigins:modelAlternateOrigins(self.location.hostname)});
+ cache ||= await modelSource();
  planAsset(asset);await probePlanned();budget.progress(false);
- const handle=await cache.acquire(asset,acquireOptions());const out=await handle.bytes();
- budget.cacheEvent({status:'saved',sha256:asset.sha256,bytes:asset.size});
+ const out=await cache.bytes(asset,acquireOptions(),{allowUncached});
+ budget.cacheEvent({status:'verified',sha256:asset.sha256,bytes:asset.size});
  budget.progress(false);
- if(retainable){
+ if(retainable&&!cache.uncached){
   residency.budget=residencyBudget();
   if(residency.held+out.byteLength<=residency.budget){
    residency.bytes.set(asset.sha256,out);residency.held+=out.byteLength;touchResidency();
@@ -195,8 +197,10 @@ async function floats(asset,id){const b=await bytes(asset,id);return new Float32
  * acquisition problem in the user's words and drops the route on the evidence.
  */
 async function prefetchRoute(id,scope='route'){
- cache ||= await createBrowserModelCache({report:cacheReport,readAhead,alternateOrigins:modelAlternateOrigins(self.location.hostname)});
+ cache ||= await modelSource();
+ if(cache.uncached)return {provider,scope,assets:0,acquired:0,...budget.totals()};
  const list=scope==='photo'?await photoAssets():routeAssets();
+ if(cache.uncached)return {provider,scope,assets:0,acquired:0,...budget.totals()};
  if(scope==='photo')planAsset(list);else planRoute();
  await probePlanned();budget.progress(false);
  let assets=0,acquired=0;
@@ -274,7 +278,7 @@ async function load(id){if(synthesis||webgpu)return;
  // which is the cost the holding exists to avoid. A device is only told to hold when it has the
  // room for both.
  if(residency.mode!=='on')await releaseEncoder();
- cache ||= await createBrowserModelCache({report:cacheReport,readAhead,alternateOrigins:modelAlternateOrigins(self.location.hostname)});planRoute();await probePlanned();noise={};for(const item of manifest.noise)noise[item.name]=await floats(item,id);
+ cache ||= await modelSource();planRoute();await probePlanned();noise={};for(const item of manifest.noise)noise[item.name]=await floats(item,id);
  report(id,'model-loading');const started=performance.now();
  if(provider==='webgpu'&&gpuEngine==='direct'){if(!manifest.webgl)throw Error('WebGPU direct bundle unavailable');warmMapping();webgpu=await createDirectWebGpuSession({config:manifest.webgl,noiseManifest:manifest.noise,bytes:asset=>bytes(asset,currentId),progress:stage=>report(currentId,stage)});}
  else if(provider==='webgpu'){if(!manifest.webgpu)throw Error('WebGPU bundle unavailable');warmMapping();webgpu=await createWebGpuSession({config:manifest.webgpu,noiseManifest:manifest.noise,bytes:asset=>bytes(asset,currentId),progress:stage=>report(currentId,stage)});}
@@ -353,7 +357,7 @@ async function mappingFor(z,id){await load(id);if(mappingReady)await mappingRead
 let fullQualify=false,forceCanaryFail=false;
 async function ensureQualification(id){
  if(qualification)return qualification;
- cache ||= await createBrowserModelCache({report:cacheReport,readAhead,alternateOrigins:modelAlternateOrigins(self.location.hostname)});
+ cache ||= await modelSource();
  qualification=createCanaryQualification({manifest,manifestSha256,provider,bundle:provider==='webgpu'?gpuBundle():manifest.synthesis,records:cache.records,acquireBytes:asset=>bytes(asset,id),runSynthesis:(values,noiseMode)=>run(values,id,noiseMode),full:fullQualify,forceFail:forceCanaryFail});
  await qualification.adopt();
  return qualification;
@@ -412,7 +416,7 @@ self.onmessage=({data})=>{
  if(residency.mode==='off')shedShards();
  // Sequential residency, unchanged in its peak: synthesis goes before the encoder is acquired.
  await synthesis?.release();synthesis=null;await webgpu?.dispose();webgpu=null;await mapping?.release();mapping=null;mappingReady=null;noise=null;
- cache ||= await createBrowserModelCache({report:cacheReport,readAhead,alternateOrigins:modelAlternateOrigins(self.location.hostname)});
+ cache ||= await modelSource();
  // The encoder is the largest thing this device will fetch. Budget for it before the first
  // byte arrives, so the bar measures the wait the user is actually in for.
  planAsset(manifest.encoderStream||manifest.encoder);await probePlanned();

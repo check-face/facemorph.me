@@ -120,10 +120,9 @@ export const STAGE_LABELS = {
   // not have needed, and they are told so rather than shown a present participle.
   'original-cache-invalid': 'A saved face failed its checksum, so it is being generated again.',
   'cache-unavailable': 'Generated successfully; device storage is unavailable.',
-  // The cache refused, lost or repaired an asset. Diagnostics-only: the interface already speaks
-  // about acquisition, and a visitor cannot act on a storage status mid-download. It exists so a
-  // report can say why a gigabyte was fetched twice instead of leaving it to inference.
-  'cache-unavailable-detail': 'Device storage had trouble holding the model files.'
+  // The worker continues with verified transient bytes when durable model storage refuses.
+  // Explain the changed behavior before acquisition resumes.
+  'cache-unavailable-detail': 'Device storage is unavailable. Continuing without saving model files.'
 };
 
 const MB = 1024 * 1024;

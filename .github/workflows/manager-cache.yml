@@ -43,11 +43,11 @@ jobs:
             else
               # Other package files run Node ORT or explicitly launch Chromium, independent
               # of this matrix value. Keep those in the full suite, without repeating them.
-              node packages/browser-model-manager/test/run.mjs packages/browser-model-manager/test/cache-local.test.ts packages/browser-model-manager/test/handles-tabs.test.ts packages/browser-model-manager/test/acquisition.test.ts packages/browser-model-manager/test/worker-storage.test.ts packages/browser-model-manager/test/storage-permission.test.ts
+              node packages/browser-model-manager/test/run.mjs packages/browser-model-manager/test/cache-local.test.ts packages/browser-model-manager/test/handles-tabs.test.ts packages/browser-model-manager/test/acquisition.test.ts packages/browser-model-manager/test/worker-storage.test.ts packages/browser-model-manager/test/storage-permission.test.ts packages/browser-model-manager/test/uncached-browser.test.ts
             fi
-      - name: The candidate's model-cache.test.mjs through the shim, expectations unchanged
+      - name: Candidate cache shim and worker source regressions
         working-directory: apps/web
-        run: node --test src/Next/Assets/model-cache.test.mjs
+        run: node --test src/Next/Assets/model-cache.test.mjs src/Next/browser/model-source.test.mjs
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
