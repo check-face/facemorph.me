@@ -1199,10 +1199,10 @@
       "class": "temporary-root",
       "temporary": true,
       "ported": {
-        "sha256": "d50c88dcfcb933056d9c2e1b3a8537cb333163b54d25d4fdbe8da48346853722",
-        "bytes": 21238,
-        "bead": "fm-j16n",
-        "reason": "repaired harness: stage verdicts in next-matrix-stages.mjs (classic stage list, not-shipped never a pass), project round trip covered by project-json.test.ts; Photo/crop source assertions now execute typed reducers; active check descriptions reference the retained artifact and typed codec."
+        "sha256": "4dab0d03824a7ba653cba01fa5f60cdd5e8cfa90505230dd1881abfe678aaefa",
+        "bytes": 21542,
+        "bead": "fm-pud",
+        "reason": "repaired harness: stage verdicts in next-matrix-stages.mjs (classic stage list, not-shipped never a pass), project round trip covered by project-json.test.ts; Photo/crop source assertions now execute typed reducers; active check descriptions reference the retained artifact and typed codec.; Wait for actual photo reconstruction before asserting encoder completion; retained-control matrix144 evidence."
       }
     },
     {
@@ -1590,7 +1590,13 @@
       "destination": "apps/web/src/Next/fresh-review.test.mjs",
       "sha256": "a963ac3e00e9ea27eace3246a269c2254ad10b5641093267d9a9f13c31ffbdd4",
       "bytes": 23533,
-      "class": "src-next"
+      "class": "src-next",
+      "ported": {
+        "sha256": "718cedac53d24e4a993509b9ef0ee9d6ebf336eb6807105cc2cfb5b5ff7b1baf",
+        "bytes": 23665,
+        "bead": "fm-in6a",
+        "reason": "Preserve unchanged Morph endpoints and their face/file ownership; update the inherited URL expectation to match, verified by real operation-service CPU browser tests (fm-in6a)."
+      }
     },
     {
       "source": "src/Next/geometry/README.md",
@@ -1824,10 +1830,10 @@
       "bytes": 54317,
       "class": "src-next",
       "ported": {
-        "sha256": "d1182295fd53b90f59f83d077157de65d9aaa7b9e0c08efd81ec54a7518d3563",
-        "bytes": 56013,
-        "bead": "fm-v80g",
-        "reason": "ProjectJson imported from project/bridge-result.ts (fm-stth, one line); Morph admitted on its own and refusals returned with reasonKey/text/helpAnchor (fm-lt2p); revision-owned operation cancellation, compute/file readiness and bounded route snapshots (fm-0y24); downloads subscription returns its disposer (fm-v80g)"
+        "sha256": "31d6897b0aaaa12ca4902dc952ec65a9e6d2860b43f7fc611dd969b8798e8932",
+        "bytes": 56249,
+        "bead": "fm-in6a",
+        "reason": "ProjectJson imported from project/bridge-result.ts (fm-stth, one line); Morph admitted on its own and refusals returned with reasonKey/text/helpAnchor (fm-lt2p); revision-owned operation cancellation, compute/file readiness and bounded route snapshots (fm-0y24); downloads subscription returns its disposer (fm-v80g); Preserve unchanged Morph endpoints and their face/file ownership; update the inherited URL expectation to match, verified by real operation-service CPU browser tests (fm-in6a)."
       }
     },
     {
@@ -1837,10 +1843,10 @@
       "bytes": 23028,
       "class": "src-next",
       "ported": {
-        "sha256": "0122b568d844ccfe21529970def78bf8fbb98f375edb98a1eebbd4d4cb2a7bea",
-        "bytes": 23454,
-        "bead": "fm-25um",
-        "reason": "Retain crop and names rendering repairs; place the single tile operation action inside the face image and retire hold-to-compare styling."
+        "sha256": "f5a219bab3e4ea8d809d1bb6cb3d7988822baf6542c8e5ea9e070ec601c45023",
+        "bytes": 25820,
+        "bead": "fm-fy2.17.1",
+        "reason": "Retain crop and names rendering repairs; place the single tile operation action inside the face image and retire hold-to-compare styling.; Encode source and crop-confirmation modal styles landed in ae6a3fd; preserve existing tile/product styling."
       }
     },
     {
