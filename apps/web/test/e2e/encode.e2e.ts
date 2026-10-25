@@ -245,6 +245,7 @@ test(
               await dialog.waitFor({ state: 'detached' });
               assert.ok(await burger.evaluate((el) => el === document.activeElement));
               assert.equal(await field.inputValue(), before);
+              assert.equal(await tiles.count(), 1, 'no new keypoint');
               noModels();
             }
 
