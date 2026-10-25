@@ -213,6 +213,8 @@ export interface Request {
   readonly frames: number;
   readonly fps: number;
   readonly provider: RequestedProvider;
+  /** Runtime identity is the SHA-256 of the selected runtime manifest bytes. */
+  readonly routeSnapshot?: import('../../src/contracts/scheduler.ts').RouteSnapshot;
 }
 
 export const DOWNLOAD_PHASES = ['idle', 'downloading', 'done', 'failed'] as const;

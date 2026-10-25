@@ -10,6 +10,7 @@ export class RemovedRouteError extends Error{constructor(route='webgl'){super('W
 const abortError=()=>new DOMException('Generation cancelled','AbortError');
 /** One foreground operation, one worker, explicit route qualification. */
 export function createBrowserRuntime({manifest: suppliedManifest, manifestSha256:suppliedManifestSha256, manifestUrl='/runtime/manifest.json',onProgress=()=>{},alignPhoto,preferredRoute='auto',workerFactory=()=>new Worker(new URL('./ort-worker.mjs',import.meta.url),{type:'module'}),imageEncoderFactory=()=>createImageEncoder(),stallMs=300000}={}){
+ let fallbackScope='cpu-once';
  const failedRoutes=new Set();let interruptedRoute,imageEncoder;
  // A reload/background interruption does not prove route failure. Retain its observation,
  // but only an actual admission/inference error may exclude a route (operator, 10 October).
@@ -237,7 +238,8 @@ export function createBrowserRuntime({manifest: suppliedManifest, manifestSha256
   const {decision,caps,ev}=await admissionFor('face',preferredRoute,progress);
   if(decision.status==='refused')throw new AdmissionRefused(decision);
   // Automatic keeps the candidate's ordering, filtered to the routes the policy admits here.
-  const candidates=preferredRoute==='auto'?orderedRoutes().filter(r=>decide('face',r,caps,ev).status==='admitted'):[preferredRoute];
+  const eligible=preferredRoute==='auto'?orderedRoutes().filter(r=>decide('face',r,caps,ev).status==='admitted'):[preferredRoute];
+  const candidates=fallbackScope==='none'?eligible.slice(0,1):eligible;
   let lastError;
   for(let i=0;i<candidates.length;i++){
    const next=candidates[i];
@@ -272,8 +274,8 @@ export function createBrowserRuntime({manifest: suppliedManifest, manifestSha256
    try{requireLatent(saved.values);if(saved.imageSha256===await digest(await saved.blob.arrayBuffer())&&saved.latentSha256===await digest(saved.values)){if(signal.aborted)throw signal.reason;emit({stage:'original-cache-hit'},progress);return {...saved,cached:true,cacheKey:key,generationKind:keyData.kind};}}
    catch(error){if(signal.aborted)throw error;emit({stage:'original-cache-invalid'},progress);}
   }
-  await beforeAdmission();if(!validated)await admit(progress,signal);if(signal.aborted)throw signal.reason;
-  let result;try{result=await produce();}catch(error){if(signal.aborted)throw signal.reason;if(route==='cpu'||preferredRoute!=='auto'||!['generate','synthesize'].includes(error.failedOperation))throw error;failRoute(route);noteGpuFailure(error);stop();if(chooseRoute()==='cpu')emit({stage:'fallback-cpu'},progress);await admit(progress,signal);result=await produce();}
+  await beforeAdmission();if(!validated)await admit(progress,signal);else announce(progress);if(signal.aborted)throw signal.reason;
+  let result;try{result=await produce();}catch(error){if(signal.aborted)throw signal.reason;if(fallbackScope==='none'||route==='cpu'||preferredRoute!=='auto'||!['generate','synthesize'].includes(error.failedOperation))throw error;failRoute(route);noteGpuFailure(error);stop();if(chooseRoute()==='cpu')emit({stage:'fallback-cpu'},progress);await admit(progress,signal);result=await produce();}
   if(signal.aborted)throw signal.reason;
   const rgba=result.rgba;delete result.rgba;
   const value={...result,cacheKey:key,generationKind:keyData.kind,generationSha256,latentSha256:await digest(result.values),latent:{space:result.space,shape:[18,512],values:result.values},width:1024,height:1024,cached:false,provenance:{bundleVersion:manifest.bundleVersion,manifestSha256:manifestHash,modelSha256:manifest.modelSourceSha256,noiseSha256:manifest.noiseSha256,provider:route==='webgpu'?'webgpu':'wasm',mappingProvider:keyData.kind==='seed'?'wasm':null,route,truncationPsi:keyData.kind==='seed'?.7:null,truncationCutoff:keyData.kind==='seed'?8:null,createdAt:new Date().toISOString()}};
@@ -399,11 +401,12 @@ export function createBrowserRuntime({manifest: suppliedManifest, manifestSha256
  plan,
  /** The policy's answer for one operation on this browser, with its typed event (fm-lt2p); fetches no model. */
  admission:(operation,requested=preferredRoute)=>admissionFor(operation,requested).then(r=>r.decision),
+ setFallbackScope:(scope)=>{if(active)throw Error('Cannot change fallback scope during generation.');if(!['none','cpu-once'].includes(scope))throw Error('Invalid fallback scope');fallbackScope=scope;},
  setPreferredRoute:(requested)=>{if(active)throw Error('Cannot change processing mode during generation.');if(requested==='webgl')throw new RemovedRouteError();if(!['auto','cpu','webgpu'].includes(requested))throw Error('Invalid preferred inference route');if(preferredRoute!==requested){stop();preferredRoute=requested;}},
  qualify:(requestedRoute='cpu',options={})=>afterDelivery(operation(async progress=>{if(requestedRoute==='webgl')throw new RemovedRouteError();if(!['cpu','webgpu'].includes(requestedRoute))throw Error('Choose CPU or WebGPU.');if(route!==requestedRoute)stop();route=requestedRoute;await start(progress);const result=await send('qualify',{},progress);acceptQualification(result);return result;},options)),
  generate:(request,options={})=>afterDelivery(operation(async(progress,signal)=>{const {identity}=await inputLatent(request.mode,request.value);return cachedGenerate({kind:'seed',identity},async()=>{await start(progress);return send('generate',{mode:request.mode,value:request.value,raw:options.raw===true},progress,ACQUIRE_STALL);},progress,signal);},{...request,...options})),
  synthesize:(latent,options={})=>afterDelivery(operation(async(progress,signal)=>{if(latent.space!=='w-plus'||JSON.stringify(latent.shape)!=='[1,18,512]')throw Error('Only explicit W+ [1,18,512] is accepted.');const values=requireLatent(latent.values);
- if(options.raw===true&&options.persist===false){await config();if(!validated)await admit(progress,signal);await start(progress);return send('synthesize',{values,raw:true},progress);}
+ if(options.raw===true&&options.persist===false){await config();if(!validated)await admit(progress,signal);else announce(progress);await start(progress);return send('synthesize',{values,raw:true},progress);}
  return cachedGenerate({kind:'latent',sha256:await digest(values)},async()=>{await start(progress);return send('synthesize',{values,raw:options.raw===true},progress);},progress,signal,options.persist!==false);},options)),
  /**
   * Morph frames: up to 64 explicit W+ latents as one operation, each delivered in order through
@@ -416,12 +419,12 @@ export function createBrowserRuntime({manifest: suppliedManifest, manifestSha256
  synthesizeFrames:(latents,options={})=>afterDelivery(operation(async(progress,signal)=>{
   if(!Array.isArray(latents)||!latents.length||latents.length>64)throw Error('Choose 1 to 64 frames per batch.');
   const list=latents.map(latent=>{if(latent.space!=='w-plus'||JSON.stringify(latent.shape)!=='[1,18,512]')throw Error('Only explicit W+ [1,18,512] is accepted.');return requireLatent(latent.values);});
-  await config();if(!validated)await admit(progress,signal);if(signal.aborted)throw signal.reason;
+  await config();if(!validated)await admit(progress,signal);else announce(progress);if(signal.aborted)throw signal.reason;
   let delivered=0;
   const produce=async()=>{await start(progress);const offset=delivered;
    await send('synthesize-frames',{frames:list.slice(offset),raw:options.raw===true},progress,stallMs,(index,blob,rgba)=>{const at=offset+index;if(at!==delivered||signal.aborted)return;delivered++;emit({stage:'transient-frame'},progress);return options.onFrame?.(at,{blob,rgba,width:1024,height:1024,values:list[at],space:'w-plus',shape:[1,18,512]});});};
   try{await produce();}
-  catch(error){if(signal.aborted)throw signal.reason;if(route==='cpu'||preferredRoute!=='auto'||error.failedOperation!=='synthesize-frames')throw error;failRoute(route);noteGpuFailure(error);stop();if(chooseRoute()==='cpu')emit({stage:'fallback-cpu'},progress);await admit(progress,signal);await produce();}
+  catch(error){if(signal.aborted)throw signal.reason;if(fallbackScope==='none'||route==='cpu'||preferredRoute!=='auto'||error.failedOperation!=='synthesize-frames')throw error;failRoute(route);noteGpuFailure(error);stop();if(chooseRoute()==='cpu')emit({stage:'fallback-cpu'},progress);await admit(progress,signal);await produce();}
   if(signal.aborted)throw signal.reason;
   return {frames:delivered};
  },options)),

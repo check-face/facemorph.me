@@ -27,7 +27,8 @@ or a runner label is not inference evidence; the adapter column is what a real b
 - **triton**: builds, gates, unit and package tests. The disk-full inventory above is
   historical; a read-only SSH check on 25 October found 61 GB free on root and
   3.1 TB free in `/mnt/unit/gh-runners` on tank. Runner workspaces, TMPDIR and
-  npm/uv/browser caches remain on that pool.
+  npm/uv/browser caches remain on that pool. Workerd also requires newer glibc
+  than Triton's 2.31; its deploy/runtime tests run in the eris hosting lane.
   Four triton runners and five eris runners were online. Ubuntu 20.04 still cannot
   run the current Playwright browser stack.
 - **TrueNAS**: optional (fm-ip6g); nothing waits on it.

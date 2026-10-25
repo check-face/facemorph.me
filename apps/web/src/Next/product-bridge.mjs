@@ -29,7 +29,9 @@ export {galleryTextUrl,gallerySeedUrl,publicPreview} from './public-previews.mjs
 // here so the UI has exactly one integration point. Guarded so stripped-import test harnesses
 // (which leave the identifier undefined) skip the install instead of crashing module load.
 if(typeof frameStoreGet!=='undefined'&&typeof window!=='undefined'&&!window.__nextFrames)window.__nextFrames={get:typeof frameStoreGetDisplay==='function'?frameStoreGetDisplay:frameStoreGet};
-let listener=()=>{},runtime,manifest,active,writer,currentJob=0,project=null,video=null;
+const listeners=new Set();
+const listener=event=>{for(const callback of listeners)callback(event);};
+let runtime,manifest,runtimeIdentity,active,writer,currentJob=0,project=null,video=null;
 const faces=new Map(),urls=new Map(),faceRevisions=new Map();
 let morphRevision=0;
 export function invalidateMorph(){morphRevision++;video=null;project=null;const url=urls.get('video');if(url)URL.revokeObjectURL(url);urls.delete('video');clearLiveFrames();retainSession();}
@@ -111,7 +113,7 @@ function canonicalProject(value){const decoded=decode(typeof value==='string'?va
 async function engine(){
  if(runtime)return runtime;
  const response=await fetch('/runtime/manifest.json',{cache:'no-cache',signal:active?.signal});if(!response.ok)throw Error('Model setup is unavailable. Please try again shortly.');const raw=await response.arrayBuffer();if(raw.byteLength>4*1024*1024)throw Error('Model manifest is too large.');manifest=JSON.parse(new TextDecoder().decode(raw));const manifestSha256=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',raw)),x=>x.toString(16).padStart(2,'0')).join('');
- diagnostics.bundle(manifestSha256);
+ runtimeIdentity=manifestSha256;diagnostics.bundle(manifestSha256);
  // The browser adapter rejects missing photo support rather than silently using a server.
  const photoAligner=manifest.photo?createPhotoAligner({manifestUrl:manifest.photo.manifestUrl,workerFactory:()=>new Worker(new URL('./photo/selection-worker.mjs',import.meta.url),{type:'module'})}):null;
  const alignPhoto=photoAligner?async(blob,options)=>{const prepared=await photoAligner(blob,options);if(prepared.provenance?.preprocessingSha256!==manifest.alignmentSha256)throw Error('Photo processing files changed. Reload before trying again.');return prepared;}:undefined;
@@ -198,6 +200,8 @@ async function register(id,result,label){
  if(face.blob)replaceUrl(id,face.blob);
  else {const old=urls.get(id);if(old)URL.revokeObjectURL(old);urls.delete(id);}
 }
+/** Await the real encoder; never publish a prepared file into a replacement face. */
+export async function prepareFaceFile(id){const face=faces.get(id);if(!face)throw Error('Generate a result first.');const complete=await readyFace(face);if(faces.get(id)!==face)throw superseded();if(!urls.has(id))replaceUrl(id,complete.blob);return snapshot('Face ready to save.');}
 export function drawFace(canvas,id){
  if(!canvas)return;const face=faces.get(id);if(!face)return;
  if(canvas.__faceResult===face&&canvas.dataset?.faceDrawn==='true')return;canvas.__faceResult=face;
@@ -235,9 +239,11 @@ async function commit(next,nextProject,replace=false){
 }
 /** Saved settings with a removed WebGL preference read as Automatic; every other value is kept as saved. */
 export function migrateRoutePreference(settings){return settings&&settings.provider==='webgl'?{...settings,provider:'auto'}:settings;}
-async function admission(provider){
+async function admission(provider,snapshot){
  const service=await engine();
  if(!['auto','cpu','webgpu'].includes(provider))throw Error('Choose a supported processing mode.');
+ if(snapshot&&(snapshot.runtimeSha256!==runtimeIdentity||snapshot.modelSha256!==manifest.modelSourceSha256))throw Error('Model setup changed after this request. Reload before trying again.');
+ service.setFallbackScope(snapshot?.fallbackScope??'cpu-once');
  service.setPreferredRoute(provider);
 }
 // Issue #28 and operator, 23 September: nothing downloads until the visitor asks, through the
@@ -294,7 +300,7 @@ async function pumpDownloads(){
  await refreshInventory();
  downloads.phase=downloads.routeReady?'done':'idle';announceDownloads();
 }
-export function subscribe(callback){listener=callback;window.addEventListener('facemorph-report-status',({detail})=>callback({jobId:currentJob,stage:'diagnostics-'+detail.status,text:detail.reference||'',fraction:0}));diagnostics.restore();warmUp();requestAnimationFrame(()=>analytics.milestone?.('usable-ui'));}
+export function subscribe(callback){listeners.add(callback);const report=({detail})=>callback({jobId:currentJob,stage:'diagnostics-'+detail.status,text:detail.reference||'',fraction:0});window.addEventListener('facemorph-report-status',report);diagnostics.restore();warmUp();requestAnimationFrame(()=>analytics.milestone?.('usable-ui'));return()=>{listeners.delete(callback);window.removeEventListener('facemorph-report-status',report);};}
 export async function execute(request){
  if(active)throw Error('Another job is still stopping.');active=new AbortController();currentJob=request.jobId;closePhotoRun('completed');diagnostics.start(request.action,request.provider);reportStorage();
  const revisions=new Map(request.inputs.map(item=>[item.id,revisionOf(item.id)]));
@@ -302,7 +308,7 @@ export async function execute(request){
  jobCounts.facesDone=0;jobCounts.facesTotal=request.action==='face'?1:request.inputs.length;jobCounts.framesDone=0;jobCounts.framesTotal=0;jobCounts.videoFramesDone=0;jobCounts.videoFramesTotal=0;
  analytics.jobStarted({action:request.action,provider:request.provider||'auto',warm:downloads.routeReady,target:request.target||'morph'});
  try{
-  await admission(request.provider);
+  await admission(request.provider,request.routeSnapshot);
   // Morph is admitted on its own (fm-lt2p): faces being admitted says nothing about the video codec.
   if(request.action==='morph'){const decision=await (await engine()).admission?.('morph',request.provider);if(decision?.status==='refused')throw new AdmissionRefused(decision);}
   // Per-face generate (U-03): work only the one face asked for, so no other face emits a
@@ -438,7 +444,7 @@ export async function importProject(request){
   jobCounts.facesTotal=imported.morph.controls.length;
   if(imported.modelSha256!==manifest.modelSourceSha256||imported.noiseSha256!==manifest.noiseSha256)throw Error('This project needs a different model bundle. Its saved file has not been changed.');
   if(imported.morph.controls.some(x=>x.latent.space!=='w-plus'))throw Error('This generation bundle requires a W+ project.');
-  await admission(request.provider||'auto');const next=new Map();
+  await admission(request.provider||'auto',request.routeSnapshot);const next=new Map();
   for(const control of imported.morph.controls){checked();const result=await service.synthesize({...control.latent,shape:[1,18,512],values:Float32Array.from(control.latent.values)},{signal:active.signal});next.set(control.visitId,{...result,label:'Project face'});}
   checked();await commit(next,imported,true);diagnostics.finish('completed');analytics.exported({kind:'project',method:'open',outcome:'completed'});return snapshot('Project opened.',true);
  }catch(error){diagnostics.finish(error?.name==='AbortError'?'cancelled':'failed',error,{stage:lastStage});analytics.exported({kind:'project',method:'open',outcome:error?.name==='AbortError'?'cancelled':'failed'});throw error;}

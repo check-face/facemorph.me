@@ -51,8 +51,8 @@ export async function execute(request: Request): Promise<Output> {
 export function subscribe(
   callback: (progress: Progress) => void,
   onInvalid: (error: FacadeError) => void = report,
-): void {
-  bridge.subscribe((value: unknown) => {
+): () => void {
+  return bridge.subscribe((value: unknown) => {
     let progress: Progress;
     try {
       progress = readProgress(value);
@@ -99,6 +99,9 @@ export async function sliderFrames(): Promise<readonly string[] | null> {
 
 // ---- faces ---------------------------------------------------------------------------------------------------------
 
+export async function prepareFaceFile(id: string): Promise<Output> {
+  return readOutput(await bridge.prepareFaceFile(id));
+}
 export const drawFace = (canvas: HTMLCanvasElement, id: string): void =>
   bridge.drawFace(canvas, id);
 export const invalidateFace = (id: string): void => bridge.invalidateFace(id);
@@ -190,6 +193,9 @@ export async function exportProject(options: MorphSettings | null): Promise<stri
 export async function importProject(request: {
   readonly file: Blob;
   readonly inputs?: readonly Input[];
+  readonly jobId?: number;
+  readonly provider?: 'auto' | 'cpu' | 'webgpu';
+  readonly routeSnapshot?: import('../../src/contracts/scheduler.ts').RouteSnapshot;
 }): Promise<Output> {
   return readOutput(await bridge.importProject(request));
 }

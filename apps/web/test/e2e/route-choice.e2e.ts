@@ -476,6 +476,15 @@ test('(a) Auto with an admitted WebGPU adapter runs WebGPU', gpu, async () => {
     assert.ok(s.gpuRequests() > 0);
     assert.equal(s.cpuRequests(), 0, 'the CPU bundle was fetched although WebGPU was admitted');
     assert.ok(s.adapterCalls() >= 1);
+    const count = events.length;
+    const warm = await s.harness<Outcome>('synthesize');
+    assert.equal(warm.ok, true, JSON.stringify(warm.error));
+    const warmEvents = (await s.harness<Event[]>('events')).slice(count);
+    assert.ok(
+      warmEvents.some((e) => e.stage === 'route-admitted' && e.provider === 'webgpu'),
+      'warm reuse did not report its actual GPU provider',
+    );
+    assert.equal(s.cpuRequests(), 0);
     await s.harness('dispose');
   } finally {
     await s.close();
@@ -597,3 +606,39 @@ for (const [name, userAgent, engine] of [
     }
   });
 }
+
+// The operation snapshot may prohibit failure fallback while retaining Automatic's initial route choice.
+test(
+  'operation snapshot with no fallback never silently runs CPU after WebGPU canary failure',
+  gpu,
+  async () => {
+    const s = await open('gpu');
+    try {
+      await s.harness('create', {
+        preferredRoute: 'auto',
+        failWebgpuCanary: true,
+        fullQualify: false,
+      });
+      await s.harness('setFallbackScope', 'none');
+      const r = await s.harness<Outcome>('synthesize');
+      const events = await s.harness<Event[]>('events');
+      assert.equal(r.ok, false, 'the planted real GPU canary failure must refuse');
+      assert.ok(
+        events.some(
+          (e) =>
+            e.stage === 'route-rejected' ||
+            (e.stage === 'route-admitted' && e.provider === 'webgpu'),
+        ),
+      );
+      assert.equal(
+        events.some((e) => e.stage === 'fallback-cpu'),
+        false,
+      );
+      assert.equal(s.cpuRequests(), 0, 'CPU synthesis was acquired outside the approved scope');
+      assert.ok(s.gpuRequests() > 0, 'no real GPU assets used');
+      await s.harness('dispose');
+    } finally {
+      await s.close();
+    }
+  },
+);

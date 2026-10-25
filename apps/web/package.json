@@ -10,8 +10,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "typecheck": "tsc -p tsconfig.json && tsc -p test/facade/tsconfig.json && tsc -p tsconfig.node.json && tsc -p tsconfig.e2e.json && tsc -p src/contracts && tsc -p src/contracts/tsconfig.test.json && tsc -p src/project/tsconfig.test.json",
-    "test": "node --test test/build/*.test.ts test/contracts/*.test.ts test/media/*.test.ts test/admission/*.test.ts test/project/*.test.ts test/facade/*.test.ts",
+    "typecheck": "tsc -p tsconfig.json && tsc -p test/facade/tsconfig.json && tsc -p tsconfig.node.json && tsc -p tsconfig.e2e.json && tsc -p src/contracts && tsc -p src/contracts/tsconfig.test.json && tsc -p src/project/tsconfig.test.json && tsc -p src/operations/tsconfig.test.json",
+    "test": "node --test test/build/*.test.ts test/contracts/*.test.ts test/media/*.test.ts test/admission/*.test.ts test/project/*.test.ts test/facade/*.test.ts src/operations/*.test.ts",
     "check:inventory": "node build/check-inventory.ts",
     "test:e2e": "node --test --test-timeout=300000 test/e2e/*.e2e.ts"
   },

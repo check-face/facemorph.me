@@ -1,6 +1,9 @@
 // The page the facade harness drives (fm-pia9): the typed facade over the real candidate bridge, its runtime and
 // ort-worker, bundled by Vite. Every step returns the facade's typed records; nothing here replaces bridge behaviour.
 import * as f from '../../../shell/facade/bridge.ts';
+import { createOperationService } from '../../../src/operations/bridge-service.ts';
+import type { OperationEvent, SourceSnapshot } from '../../../src/operations/service.ts';
+import type { InputRevision } from '../../../src/contracts/inputs.ts';
 import { readSession } from '../../../src/Next/last-result.mjs';
 import { generationIdentity } from '../../../src/Next/browser/identity.mjs';
 import { digest, openOriginals } from '../../../src/Next/browser/originals.mjs';
@@ -43,6 +46,80 @@ const settled = () => ({
 });
 
 const harness = {
+  async serviceJourney() {
+    const service = createOperationService();
+    const events: { type: OperationEvent['type']; provider: string | null; attempt: string }[] = [];
+    service.subscribe((e) =>
+      events.push({ type: e.type, provider: e.provider, attempt: e.intent.attemptId }),
+    );
+    try {
+      const bytes = await (await fetch('/runtime/manifest.json')).arrayBuffer();
+      const manifest = JSON.parse(new TextDecoder().decode(bytes)) as { modelSourceSha256: string };
+      const hash = [...new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))]
+        .map((v) => v.toString(16).padStart(2, '0'))
+        .join('');
+      const route = {
+        requested: 'cpu',
+        fallbackScope: 'none',
+        runtimeSha256: hash,
+        modelSha256: manifest.modelSourceSha256,
+      } as const;
+      const settings = { kind: 'linear', width: 1, pinch: false, frames: 8, fps: 16 } as const;
+      const source = (slot: string, value: string): SourceSnapshot => ({
+        slot,
+        revision: 1 as InputRevision,
+        input: input(slot, 'text', value),
+      });
+      const a = source('service-a', 'charlotte'),
+        b = source('service-b', 'chris');
+      const first = service.requestFace({ kind: 'face', source: a, settings, route });
+      const second = service.requestFace({ kind: 'face', source: b, settings, route });
+      const morph = service.requestMorph({ kind: 'morph', sources: [a, b], settings, route });
+      const results = await Promise.all([first.done, second.done, morph.done]);
+      const completedEvents = [...events];
+      const wrongIdentity = await service.requestFace({
+        kind: 'face',
+        source: a,
+        settings,
+        route: { ...route, runtimeSha256: '0'.repeat(64) },
+      }).done;
+      const removeEvents: string[] = [];
+      const off = service.subscribe((event) => {
+        if (
+          event.intent.request.kind !== 'face' ||
+          event.intent.request.source.slot !== 'service-remove'
+        )
+          return;
+        removeEvents.push(event.type);
+        if (event.type === 'progress' && event.progress.stage === 'route-admitted')
+          service.remove('service-remove');
+      });
+      const removed = service.requestFace({
+        kind: 'face',
+        source: source('service-remove', 'remove this active face'),
+        settings,
+        route,
+      });
+      const afterRemove = service.requestFace({
+        kind: 'face',
+        source: source('service-after', 'charlotte'),
+        settings,
+        route,
+      });
+      const removal = await Promise.all([removed.done, afterRemove.done]);
+      off();
+      return {
+        results,
+        events: completedEvents,
+        wrongIdentity,
+        removal,
+        removeEvents,
+        ...settled(),
+      };
+    } finally {
+      await service.dispose();
+    }
+  },
   async face(id: string, mode: 'text' | 'seed', value: string) {
     const out = await f.execute(request('face', id, [input(id, mode, value)]));
     return { out, ...settled() };

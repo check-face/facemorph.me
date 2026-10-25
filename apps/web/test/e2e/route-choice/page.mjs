@@ -61,6 +61,9 @@ window.harness = {
       },
     });
   },
+  setFallbackScope(scope) {
+    runtime.setFallbackScope(scope);
+  },
   /** One automatic or explicit intent: a raw synthesis of the first canary latent. */
   async synthesize() {
     try {

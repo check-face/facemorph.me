@@ -346,3 +346,57 @@ test(
     pageErrors = [];
   },
 );
+
+// This is the operation boundary over the real facade/runtime, not a service double.
+test(
+  'operation-service: queued CPU faces and a morph complete with scoped lifecycle events',
+  { timeout: 600_000 },
+  async () => {
+    try {
+      const r = await call<
+        {
+          results: { status: string; output?: Out }[];
+          wrongIdentity: { status: string; cause?: { message: string } };
+          removal: { status: string; output?: Out }[];
+          removeEvents: string[];
+          events: { type: string; provider: string | null; attempt: string }[];
+        } & Settled
+      >('serviceJourney');
+      assert.deepEqual(
+        r.results.map((x) => x.status),
+        ['completed', 'completed', 'completed'],
+      );
+      assert.ok(r.results[2]?.output?.videoUrl);
+      assert.equal(r.wrongIdentity.status, 'failed');
+      assert.match(r.wrongIdentity.cause?.message ?? '', /Model setup changed/);
+      assert.deepEqual(
+        r.removal.map((x) => x.status),
+        ['cancelled', 'completed'],
+      );
+      assert.ok(r.removeEvents.includes('admitted'));
+      assert.ok(r.removeEvents.includes('progress'));
+      assert.ok(r.removeEvents.includes('cancelled'));
+      assert.equal(r.removeEvents.includes('compute-ready'), false);
+      assert.equal(r.removeEvents.includes('file-ready'), false);
+      assert.ok(!r.removal[1]?.output?.faces.some((f) => f.id === 'service-remove'));
+      const attempts = [...new Set(r.events.map((e) => e.attempt))];
+      assert.equal(attempts.length, 3);
+      for (const attempt of attempts) {
+        const events = r.events.filter((e) => e.attempt === attempt);
+        assert.equal(events[0]?.type, 'queued');
+        assert.equal(events.at(-1)?.type, 'settled');
+        assert.ok(events.some((e) => e.type === 'compute-ready'));
+        assert.ok(events.some((e) => e.type === 'file-ready'));
+        assert.ok(events.filter((e) => e.type === 'admitted').every((e) => e.provider === 'cpu'));
+      }
+      assert.ok(
+        r.events.some((e) => e.type === 'admitted' && e.provider === 'cpu'),
+        'no actual CPU admission observed',
+      );
+      free(r, 'operation-service');
+    } catch (error) {
+      await keep('operation-service');
+      throw error;
+    }
+  },
+);

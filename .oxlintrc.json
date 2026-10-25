@@ -18,6 +18,7 @@
     "**/*.md",
     ".beads/**",
     "apps/web/src/**",
+    "!apps/web/src/operations/**",
     "apps/web/desktop/**",
     "apps/web/photo-runtime/**",
     "apps/web/scripts/**",
