@@ -305,14 +305,16 @@ async function fetchChunkOnce(
     } catch (error) {
       void reader.cancel(error).catch(() => {});
       throw error;
+    } finally {
+      reader.releaseLock();
     }
   } catch (error) {
+    attempt.abort(error); // stop unfinished I/O on failure, not a fully consumed response
     check(signal); // the caller's own cancellation wins over anything below
     throw attempt.signal.reason === stall ? stall : error;
   } finally {
     clearTimeout(timer);
     signal.removeEventListener('abort', relay);
-    attempt.abort(aborted()); // released either way
     charge.settle();
   }
   if (at !== part.size) throw new Error('Asset integrity mismatch');

@@ -25,7 +25,14 @@ const sha = (b: Uint8Array | string) => createHash('sha256').update(b).digest('h
 
 interface Recorded {
   steps: { name: string }[];
-  requests: { step: number; url: string; hostClass: string }[];
+  requests: {
+    step: number;
+    url: string;
+    hostClass: string;
+    bytes: number | null;
+    status: number | null;
+    failed: boolean;
+  }[];
 }
 interface Helper {
   attachPlaywright(target: unknown, map: unknown): { rec: Recorded; settled(): Promise<void> };
@@ -314,6 +321,141 @@ const tamper = (
 
 for (const backend of ['opfs', 'cache-storage'] as const) {
   const name = backend === 'opfs' ? 'readShards (OPFS)' : 'openVerified (Cache Storage)';
+
+  test(`${engine} ${backend} action cache cells`, { skip: NO_BROWSER }, async (t) => {
+    const s = await session(`${backend}-action-cells`);
+    const output = { id: 'completed-result', sha256: ASSETS.plain.sha256 };
+    const cell = (name: string, run: () => Promise<void>) =>
+      t.test(name, async () => {
+        try {
+          await run();
+        } catch (error) {
+          await s.capture();
+          throw error;
+        }
+      });
+    try {
+      await s.page.evaluate(() => import(String('/pkg/index.js')));
+      // These are component inputs, not evidence of synthesis. Use an app-owned Cache
+      // Storage entry for the completed output, separate from either model backend.
+      const action = (remainingBytes: number, authorized = true) =>
+        s.page.evaluate(
+          async ({ backend, asset, remainingBytes, authorized }) => {
+            const m = await import(String('/pkg/index.js'));
+            const cache = await m.createBrowserModelCache(
+              backend === 'opfs' ? {} : { shards: null },
+            );
+            const outputs = await caches.open('manager-test-app-outputs');
+            const result = await m.satisfyAction(
+              async () => (await outputs.match('/completed-result'))?.json(),
+              () =>
+                cache.acquire(asset, {
+                  owner: 'face:cache-cells',
+                  grant: {
+                    manifestSha256: 'action-cache-cells',
+                    route: 'cpu',
+                    purpose: 'generate',
+                    assets: [
+                      {
+                        sha256: asset.sha256,
+                        bytes: asset.size,
+                        priority: 'foreground-required',
+                      },
+                    ],
+                    owners: authorized ? ['face:cache-cells'] : [],
+                    remainingBytes,
+                  },
+                }),
+            );
+            if (result.from === 'output-cache') return result;
+            const read = await cache.local.read(asset);
+            if (!read.ok) throw new Error(JSON.stringify(read.error));
+            return {
+              from: result.from,
+              sha256: Array.from(
+                new Uint8Array(await crypto.subtle.digest('SHA-256', read.value)),
+                (x) => x.toString(16).padStart(2, '0'),
+              ).join(''),
+              size: read.value.byteLength,
+            };
+          },
+          { backend, asset: ASSETS.chunked, remainingBytes, authorized },
+        );
+      const modelResult = {
+        from: 'model',
+        sha256: ASSETS.chunked.sha256,
+        size: ASSETS.chunked.size,
+      };
+      await cell('cold: output miss acquires exact pinned model chunks', async () => {
+        record.step(s.rec, 'action:cold');
+        assert.deepEqual(await action(ASSETS.chunked.size), modelResult);
+        await s.settled();
+        const requests = s.rec.requests.filter((r) => r.hostClass === 'model-host');
+        assert.deepEqual(
+          requests.map((r) => r.url).sort(),
+          ASSETS.chunked.chunks.map((part) => part.url).sort(),
+          'cold action downloads each chunk exactly once',
+        );
+        assert.ok(
+          requests.every((r) => r.bytes !== null),
+          'every response byte count is observed',
+        );
+        assert.ok(
+          requests.every((r) => r.status === 200 && !r.failed),
+          `successfully consumed chunks must complete their HTTP requests without cancellation: ${JSON.stringify(requests)}`,
+        );
+        assert.equal(
+          requests.reduce((sum, r) => sum + r.bytes!, 0),
+          ASSETS.chunked.size,
+          'cold transfer bytes equal the pinned model size',
+        );
+      });
+      await cell('model-cached: reload uses verified model bytes with zero requests', async () => {
+        await s.page.reload();
+        await s.page.evaluate(() => import(String('/pkg/index.js')));
+        record.step(s.rec, 'action:model-cached');
+        // No transfer budget remains. A hidden re-download would refuse the action.
+        assert.deepEqual(await action(0), modelResult);
+        await s.settled();
+        quiet(s.rec, 'action:model-cached');
+      });
+      await cell(
+        'output-cached: reload without models or grant uses output with zero requests',
+        async () => {
+          await s.page.evaluate(async (output) => {
+            const outputs = await caches.open('manager-test-app-outputs');
+            await outputs.put('/completed-result', new Response(JSON.stringify(output)));
+          }, output);
+          for (const part of backend === 'opfs' ? ASSETS.chunked.chunks : [ASSETS.chunked])
+            await tamper(s.page, backend, 'remove', part, ASSETS.chunked.sha256);
+          await s.page.reload();
+          assert.deepEqual(await readIn(s.page, backend, ASSETS.chunked), {
+            ok: false,
+            code: 'cache-miss',
+          });
+          record.step(s.rec, 'action:output-cached');
+          // Revoked ownership makes reaching model acquisition a hard failure even
+          // before I/O. Output reuse must precede model admission and grant checks.
+          assert.deepEqual(await action(0, false), { from: 'output-cache', output });
+          await s.settled();
+          quiet(s.rec, 'action:output-cached');
+          await s.page.evaluate(async () => {
+            const outputs = await caches.open('manager-test-app-outputs');
+            await outputs.delete('/completed-result');
+          });
+          record.step(s.rec, 'action:no-output-no-grant');
+          await assert.rejects(action(0, false), /owner-not-in-grant/);
+          await s.settled();
+          quiet(s.rec, 'action:no-output-no-grant');
+        },
+      );
+    } catch (error) {
+      await s.capture();
+      throw error;
+    } finally {
+      await s.context.close();
+    }
+  });
 
   test(
     `${engine} ${name}, allowRepair:false: verified bytes, then typed miss, corruption and eviction, no request`,
