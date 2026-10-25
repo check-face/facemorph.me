@@ -985,9 +985,13 @@ test(
         { x: descriptor(X), g: grant(['face:emma'], [X], X.size) },
       );
       assert.deepEqual(out, { hit: 'output-cache', afterHit: false, miss: 'model' });
+      // Chunks are acquired concurrently; HTTP arrival order is not asset order.
+      // Compare the exact multiset so extra, missing or repeated requests still fail.
       assert.deepEqual(
-        requestsFor(X.parts, from).map((l) => l.path),
-        X.parts,
+        requestsFor(X.parts, from)
+          .map((l) => l.path)
+          .toSorted(),
+        X.parts.toSorted(),
         'only the miss downloaded',
       );
     } finally {
