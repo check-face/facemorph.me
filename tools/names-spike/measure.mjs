@@ -473,7 +473,9 @@ async function main() {
     builder.on('requestfailed', (request) =>
       log('builder request failed', request.url(), request.failure()?.errorText),
     );
-    await builder.goto(`${origin}/r/build/blank.html`);
+    // Atlas/result construction is preparation, before measured HTTP journeys. Feed the
+    // verified input bytes directly: host Docker interface changes can abort localhost fetches
+    // with ERR_NETWORK_CHANGED, despite no change to the inputs or the measurement origin.
     for (const alt of alternatives.filter((a) => a.startsWith('atlas-'))) {
       const k = Number(alt.split('-')[1]);
       const { cols, rows: gridRows } = shapes.atlasGrid(k);
@@ -482,7 +484,9 @@ async function main() {
       for (let at = 0; at < previewRows.length; at += k * 8) {
         const batch = [];
         for (let p = at; p < Math.min(previewRows.length, at + k * 8); p += k)
-          batch.push(previewRows.slice(p, p + k).map((r) => r.id));
+          batch.push(
+            previewRows.slice(p, p + k).map((r) => previewById.get(r.id).toString('base64')),
+          );
         const built = await builder.evaluate(buildAtlases, {
           batch,
           cols,
@@ -512,7 +516,9 @@ async function main() {
         `${alt}: ${bytes.length} atlases, ${atlasStats[alt].bytes} bytes, PSNR ${atlasStats[alt].psnr.toFixed(1)} dB vs the original previews`,
       );
     }
-    const webpSizes = await builder.evaluate(encodeResults, { ids: sampleRows.map((r) => r.id) });
+    const webpSizes = await builder.evaluate(encodeResults, {
+      images: sampleRows.map((r) => fullById.get(r.id).toString('base64')),
+    });
     const chunks = latents.map((latent) =>
       envelopeChunkBytes({
         latent,
@@ -795,13 +801,15 @@ export function summaryMarkdown(r) {
 
 async function buildAtlases({ batch, cols, rows, quality }) {
   const out = [];
-  for (const ids of batch) {
+  for (const images of batch) {
     const canvas = new OffscreenCanvas(cols * 200, rows * 200);
     const ctx = canvas.getContext('2d', { willReadFrequently: true });
     const originals = [];
-    for (let j = 0; j < ids.length; j++) {
-      const bitmap = await createImageBitmap(await (await fetch(`previews/${ids[j]}.jpg`)).blob());
+    for (let j = 0; j < images.length; j++) {
+      const bytes = Uint8Array.from(atob(images[j]), (c) => c.charCodeAt(0));
+      const bitmap = await createImageBitmap(new Blob([bytes], { type: 'image/jpeg' }));
       ctx.drawImage(bitmap, (j % cols) * 200, Math.floor(j / cols) * 200, 200, 200);
+      bitmap.close();
       originals.push(ctx.getImageData((j % cols) * 200, Math.floor(j / cols) * 200, 200, 200).data);
     }
     const blob = await canvas.convertToBlob({ type: 'image/jpeg', quality });
@@ -834,18 +842,15 @@ async function buildAtlases({ batch, cols, rows, quality }) {
 }
 
 /** WebP at the product's default export quality (0.8), from historic 1,024 px faces: the result size class. */
-async function encodeResults({ ids }) {
+async function encodeResults({ images }) {
   const canvas = new OffscreenCanvas(1024, 1024);
   const ctx = canvas.getContext('2d');
   const sizes = [];
-  for (const id of ids) {
-    ctx.drawImage(
-      await createImageBitmap(await (await fetch(`full/${id}.webp`)).blob()),
-      0,
-      0,
-      1024,
-      1024,
-    );
+  for (const image of images) {
+    const bytes = Uint8Array.from(atob(image), (c) => c.charCodeAt(0));
+    const bitmap = await createImageBitmap(new Blob([bytes], { type: 'image/webp' }));
+    ctx.drawImage(bitmap, 0, 0, 1024, 1024);
+    bitmap.close();
     sizes.push((await canvas.convertToBlob({ type: 'image/webp', quality: 0.8 })).size);
   }
   return sizes;

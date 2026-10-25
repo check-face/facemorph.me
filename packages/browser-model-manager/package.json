@@ -24,7 +24,7 @@
   "scripts": {
     "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.test.json",
     "build": "tsc -p tsconfig.build.json",
-    "test": "node --test test/*.test.ts"
+    "test": "node test/run.mjs test/*.test.ts"
   },
   "devDependencies": {
     "onnxruntime-web": "^1.30.0"

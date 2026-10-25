@@ -22,8 +22,12 @@ jobs:
       - run: npm run build -w packages/stylegan-js -w packages/browser-model-manager
       - name: Package tests (browser cases in real Chromium), with a bounded runner
         uses: ./.github/actions/run-command
+        env:
+          FACEMORPH_ISOLATE_TEST_NETWORK: '1'
         with:
           timeout: '900'
+          # Every test origin is local. Isolate netlink notifications from concurrent Docker jobs:
+          # veth address changes otherwise abort Chromium's localhost module fetches.
           command: npm test -w packages/browser-model-manager
       - name: The candidate's model-cache.test.mjs through the shim, expectations unchanged
         working-directory: apps/web
