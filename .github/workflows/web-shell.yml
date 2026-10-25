@@ -89,6 +89,46 @@ jobs:
           name: facade-failure-${{ github.run_id }}
           path: apps/web/test-results/facade/
           if-no-files-found: ignore
+  # The hosted e2e cells have no runtime and report Encode untested; here it runs with the pinned runtime on the
+  # same canonical artifact bytes (fm-fy2.17.1).
+  encode:
+    runs-on: [self-hosted, eris]
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: ./.github/actions/setup-workspace
+      - uses: ./.github/actions/setup-playwright
+        with:
+          browsers: chromium
+      - name: Verify the canonical site artifact
+        uses: ./.github/actions/fetch-artifact
+        with:
+          source_repo_id: ${{ github.repository_id }}
+          workflow: ${{ inputs.artifact_workflow }}
+          run_id: ${{ inputs.artifact_run }}
+          commit: ${{ inputs.artifact_commit }}
+          artifact_name: ${{ inputs.artifact_name }}
+          out: .cache/canonical-site
+      - name: Use those exact bytes for the Encode fixture
+        run: |
+          mkdir -p apps/web/dist
+          cp -R .cache/canonical-site/deploy-next/. apps/web/dist/
+      - name: Encode source and crop confirmation with the pinned runtime
+        working-directory: apps/web
+        env:
+          FACEMORPH_REQUIRE_RUNTIME: '1'
+        run: |
+          export FACEMORPH_RUNTIME_DIR="$HOME/.cache/facemorph-device-lab/runtime-public"
+          node --test --test-timeout=300000 test/e2e/encode.e2e.ts
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: encode-failure-${{ github.run_id }}
+          path: apps/web/test-results/encode/
+          if-no-files-found: ignore
   # The built shell in the Ubuntu 24.04 browser cells of apps/web/browser-matrix.json (Playwright Chromium,
   # Firefox and WebKit): control goldens at the shell rows, operated links at desktop and phone width (mouse
   # and touch), and every emitted worker loading. Screenshots are kept as an artifact.
