@@ -298,6 +298,23 @@ test(
           await page.keyboard.insertText('c');
           assert.notEqual(await tile.getAttribute('data-next-state'), 'filled');
           assert.equal(await tile.locator('.next-input-row .next-face-generate').count(), 1);
+          {
+            // Inline beside the textbox: to its right, on the same line.
+            const fieldBox = await tile.locator('.next-field .MuiOutlinedInput-root').boundingBox();
+            const actionBox = await tile
+              .locator('.next-input-row .next-face-generate')
+              .boundingBox();
+            assert.ok(fieldBox && actionBox);
+            assert.ok(
+              actionBox.x >= fieldBox.x + fieldBox.width - 1,
+              'Generate sits right of the field',
+            );
+            assert.ok(
+              actionBox.y < fieldBox.y + fieldBox.height &&
+                actionBox.y + actionBox.height > fieldBox.y,
+              'Generate shares the field line',
+            );
+          }
           await page.keyboard.insertText('ancel this exact input');
           assert.equal(await field.inputValue(), 'cancel this exact input');
           assert.equal(modelRequests.length, beforeEdit, 'editing makes no model requests');
