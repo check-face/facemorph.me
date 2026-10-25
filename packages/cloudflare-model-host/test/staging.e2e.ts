@@ -4,11 +4,11 @@
 // front of the real origin (a proxy, not a stand-in: it forwards every byte); the mirror is the real Worker.
 // Requests are recorded by host class through the interception helper. Needs the deployed origins and a network:
 //   STAGING_ORIGIN=https://<origin> STAGING_MIRROR=https://<mirror> npm run test:staging -w packages/cloudflare-model-host
-// Without them, or where Chromium cannot start, the cases report untested.
+// Without configured origins the cases report untested; a configured run requires Chromium to start.
 /// <reference lib="dom" />
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, readFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer, type Server } from 'node:https';
 import { createRequire } from 'node:module';
 import type { AddressInfo } from 'node:net';
@@ -36,9 +36,14 @@ const record = (await import(join(REPO, 'scripts/ci/intercept/record.ts'))) as {
 type Page = {
   goto(u: string): Promise<unknown>;
   evaluate<T, A>(fn: (a: A) => Promise<T>, arg: A): Promise<T>;
+  screenshot(o: { path: string; fullPage: boolean }): Promise<unknown>;
 };
 type Browser = {
-  newContext(o: object): Promise<{ newPage(): Promise<Page>; close(): Promise<void> }>;
+  newContext(o: object): Promise<{
+    newPage(): Promise<Page>;
+    close(): Promise<void>;
+    tracing: { start(o: object): Promise<void>; stop(o?: { path: string }): Promise<void> };
+  }>;
   close(): Promise<void>;
 };
 const { chromium } = createRequire(join(REPO, 'apps/web/package.json'))('playwright') as {
@@ -47,10 +52,12 @@ const { chromium } = createRequire(join(REPO, 'apps/web/package.json'))('playwri
 
 const untested =
   !ORIGIN || !MIRROR ? 'untested: STAGING_ORIGIN and STAGING_MIRROR are not set' : false;
-const browser = untested ? null : await chromium.launch({}).catch(() => null);
-const skip = untested || (browser ? false : 'untested: Chromium does not start here');
+const browser = untested ? null : await chromium.launch({});
+const skip = untested;
 
 const work = mkdtempSync(join(tmpdir(), 'staging-e2e-'));
+const evidence = process.env['STAGING_OUT'] ?? join(work, 'failure');
+let failed = false;
 let app: Server | undefined;
 let proxy: Server | undefined;
 const fault = { primary500: false };
@@ -58,11 +65,12 @@ test.after(async () => {
   await browser?.close();
   app?.close();
   proxy?.close();
+  if (!failed || process.env['STAGING_OUT']) rmSync(work, { recursive: true, force: true });
 });
 
 test(
   'the manager loads a chunked asset from the test origin, and from the test mirror when the primary answers 500',
-  { skip },
+  { skip, timeout: 180_000 },
   async () => {
     execFileSync(
       'openssl',
@@ -157,9 +165,9 @@ test(
     };
 
     const context = await browser!.newContext({ ignoreHTTPSErrors: true });
+    await context.tracing.start({ screenshots: true, snapshots: true, sources: true });
     const att = helper.attachPlaywright(context, hostMap);
     const page = await context.newPage();
-    await page.goto(`https://127.0.0.1:${appPort}/`);
     const acquire = (fresh: boolean) =>
       page.evaluate(
         async ({ input, mirror, fresh }) => {
@@ -192,6 +200,7 @@ test(
         { input, mirror: MIRROR!, fresh },
       );
     try {
+      await page.goto(`https://127.0.0.1:${appPort}/`);
       record.step(att.rec, 'primary');
       assert.equal(await acquire(true), chunked.sha256, 'loaded and verified from the test origin');
       fault.primary500 = true;
@@ -229,6 +238,17 @@ test(
         chunked.chunks!.length,
         'every chunk came from the mirror',
       );
+      await context.tracing.stop();
+    } catch (error) {
+      failed = true;
+      mkdirSync(evidence, { recursive: true });
+      writeFileSync(join(evidence, 'requests.json'), JSON.stringify(att.rec, null, 2));
+      await page
+        .screenshot({ path: join(evidence, 'failure.png'), fullPage: true })
+        .catch(() => {});
+      await context.tracing.stop({ path: join(evidence, 'trace.zip') }).catch(() => {});
+      console.error(`Staging failure evidence: ${evidence}`);
+      throw error;
     } finally {
       fault.primary500 = false;
       await context.close();

@@ -27,6 +27,18 @@ jobs:
       # workerd needs glibc 2.32+, which eris has and triton (npm test in scaffold) does not (fm-fy2.14).
       - name: The mirror Worker in workerd, against a real local upstream
         run: npm run test:workerd -w packages/cloudflare-model-host
+      - name: Manager acquisition and forced-500 fallback on the deployed test origins
+        env:
+          STAGING_ORIGIN: https://facemorph-model-staging.cdilga.workers.dev
+          STAGING_MIRROR: https://facemorph-model-staging-mirror.cdilga.workers.dev
+          STAGING_OUT: ${{ github.workspace }}/test-results/model-staging
+        run: npm run test:staging -w packages/cloudflare-model-host
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: model-staging-failure-${{ github.run_id }}
+          path: test-results/model-staging
+          if-no-files-found: ignore
       - name: package-tarball-content-scan self-test
         run: node --test scripts/packages/check-tarball-contents.test.mjs
       - name: Scan the packed cloudflare-model-host tarball

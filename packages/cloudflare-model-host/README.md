@@ -19,6 +19,10 @@ extracted from classic `hosting/next/prepare-runtime.py` (chunking and manifest 
 - **Verify:** `facemorph-model-host verify --root <dir> --base <https url> [--plan workers-free|workers-paid]`. Each
   asset is read back by its URL path, a chunked one through its chunks, and must reproduce its digest and size.
   Every file must fit the per-file limit and the plan's file count.
+- **Qualify an origin:** `facemorph-model-host qualify-origin --root <dir> --origin <url> --base-path /runtime/
+  --immutable assets/,chunks/ --mutable manifest.json [--reference <qualified-manifest.json>]`. Reads every served
+  file and checks its bytes, headers, chunk reconstruction and the manager's manifest contract. The optional
+  reference requires the served set to retain the qualified engine's exact asset digests. It publishes nothing.
 - **Publish:** `facemorph-model-host publish --root <dir> --target <target.json> [--publish]`. This is a dry run unless
   `--publish` is given: it reads only, then reports each file it would write. The model terms are checked first
   (below). A target is

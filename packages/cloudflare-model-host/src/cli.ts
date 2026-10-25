@@ -19,11 +19,12 @@ import { deployMirror } from './mirror/deploy.ts';
 import { deployModelOrigin } from './origin-deploy.ts';
 import { warm } from './mirror/warm.ts';
 import { publishRoot, type Target } from './publish.ts';
+import { qualifyOrigin } from './qualify.ts';
 import { stage, StageError } from './stage.ts';
 import { verifyRoot } from './verify.ts';
 
 const USAGE =
-  'usage: facemorph-model-host <stage|verify|publish|warm|mirror-deploy|origin-deploy> [options] (see the package README)';
+  'usage: facemorph-model-host <stage|verify|qualify-origin|publish|warm|mirror-deploy|origin-deploy> [options] (see the package README)';
 
 export async function main(argv: readonly string[]): Promise<number> {
   const [command, ...rest] = argv;
@@ -37,6 +38,7 @@ export async function main(argv: readonly string[]): Promise<number> {
         base: { type: 'string' },
         'from-base': { type: 'string' },
         manifest: { type: 'string' },
+        reference: { type: 'string' },
         'dry-run': { type: 'boolean' },
         root: { type: 'string' },
         plan: { type: 'string' },
@@ -93,6 +95,21 @@ export async function main(argv: readonly string[]): Promise<number> {
         bytes: r.files.reduce((n, f) => n + f.bytes, 0),
       });
       return 0;
+    }
+    if (command === 'qualify-origin') {
+      if (!need('root', 'origin', 'immutable', 'mutable')) return 2;
+      const basePath = str('base-path');
+      const reference = str('reference');
+      const report = await qualifyOrigin({
+        root: str('root')!,
+        origin: str('origin')!,
+        immutable: str('immutable')!.split(',').filter(Boolean),
+        mutable: str('mutable')!.split(',').filter(Boolean),
+        ...(basePath ? { basePath } : {}),
+        ...(reference ? { reference: JSON.parse(readFileSync(reference, 'utf8')) as unknown } : {}),
+      });
+      print(report);
+      return report.ok ? 0 : 1;
     }
     if (command === 'verify') {
       if (!need('root', 'base')) return 2;
