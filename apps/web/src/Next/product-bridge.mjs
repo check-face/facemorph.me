@@ -243,7 +243,10 @@ async function admission(provider,snapshot){
  const service=await engine();
  if(!['auto','cpu','webgpu'].includes(provider))throw Error('Choose a supported processing mode.');
  if(snapshot&&(snapshot.runtimeSha256!==runtimeIdentity||snapshot.modelSha256!==manifest.modelSourceSha256))throw Error('Model setup changed after this request. Reload before trying again.');
- service.setFallbackScope(snapshot?.fallbackScope??'cpu-once');
+ // Legacy bridge callers have no route snapshot. An explicit snapshot, however, must never
+ // silently lose its fallback policy when supplied to a runtime without that capability.
+ if(snapshot&&typeof service.setFallbackScope!=='function')throw Error('This runtime cannot enforce the requested fallback policy.');
+ service.setFallbackScope?.(snapshot?.fallbackScope??'cpu-once');
  service.setPreferredRoute(provider);
 }
 // Issue #28 and operator, 23 September: nothing downloads until the visitor asks, through the
