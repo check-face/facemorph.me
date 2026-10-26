@@ -21,7 +21,9 @@ test('the real scheduler skips blocked faces and a blocked morph, preserving rem
   assert.equal(requestNext(plan.jobs, plan.options), 2);
   const selected = scheduled(queued, 2);
   assert.deepEqual(selected.state.PendingJobs, queued.PendingJobs.slice(0, 2));
-  assert.deepEqual(selected.effects, [{ type: 'dispatch', message: msg('RunFace', 'face-2') }]);
+  assert.deepEqual(selected.effects, [
+    { type: 'dispatch', message: msg('RunFace', 'face-2'), continuation: true },
+  ]);
   assert.equal(scheduled(queued, -1).state, queued);
 });
 test('scheduling prunes removed targets and preserves commands before continuation', () => {

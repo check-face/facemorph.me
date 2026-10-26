@@ -175,6 +175,8 @@ export function jobs(message: Msg, state: State, facts: JobFacts = {}): Transiti
           },
           [{ type: 'openNamesFocus' }],
         );
+      if (result.cropFace && !state.Inputs.some((input) => input.id === result.cropFace))
+        return cancelled(state, id);
       if (result.cropFace)
         return schedule(
           {
@@ -185,7 +187,7 @@ export function jobs(message: Msg, state: State, facts: JobFacts = {}): Transiti
             Fraction: 0,
             PreparingFaces: new Set([...state.PreparingFaces, result.cropFace]),
           },
-          [{ type: 'dispatch', message: msg('RequestCrop', result.cropFace) }],
+          [{ type: 'dispatch', message: msg('RequestCrop', result.cropFace), continuation: true }],
         );
       const output = result.restored ? restored(state, result, false) : state;
       return schedule(
@@ -238,7 +240,9 @@ export function jobs(message: Msg, state: State, facts: JobFacts = {}): Transiti
           effects: [],
         };
       }
-      if (error === facts.multipleFacesMessage && state.ActiveFace !== null)
+      if (error === facts.multipleFacesMessage && state.ActiveFace !== null) {
+        if (!state.Inputs.some((input) => input.id === state.ActiveFace))
+          return cancelled(state, id);
         return {
           state: {
             ...state,
@@ -251,8 +255,11 @@ export function jobs(message: Msg, state: State, facts: JobFacts = {}): Transiti
             Remaining: '',
             ActiveFace: null,
           },
-          effects: [{ type: 'dispatch', message: msg('RequestCrop', state.ActiveFace) }],
+          effects: [
+            { type: 'dispatch', message: msg('RequestCrop', state.ActiveFace), continuation: true },
+          ],
         };
+      }
       return schedule({
         ...state,
         Busy: false,

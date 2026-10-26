@@ -248,7 +248,13 @@ function acceptPhoto(input: State, id: string, file: Blob, fromCrop: boolean): T
         },
         effects: queued.effects,
       }
-    : { ...queued, effects: [...queued.effects, { type: 'dispatch', message: runFace(id) }] };
+    : {
+        ...queued,
+        effects: [
+          ...queued.effects,
+          { type: 'dispatch', message: runFace(id), continuation: true },
+        ],
+      };
 }
 export function photo(message: Msg, state: State, facts: PhotoFacts = {}): Transition | null {
   switch (message.type) {
@@ -272,7 +278,9 @@ export function photo(message: Msg, state: State, facts: PhotoFacts = {}): Trans
     }
     case 'Cropped': {
       const [id, at, file] = message.args;
-      return at !== revision(facts) ? unchanged(state) : acceptPhoto(state, id, file, true);
+      return at !== revision(facts) || !state.Inputs.some((input) => input.id === id)
+        ? unchanged(state)
+        : acceptPhoto(state, id, file, true);
     }
     case 'PhotoRefused':
     case 'PhotoFailed': {

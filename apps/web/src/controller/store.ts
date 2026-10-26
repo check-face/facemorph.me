@@ -5,7 +5,7 @@ import { reduce, type ControllerFacts } from './reducers/index.ts';
 
 export interface Store {
   getState(): State;
-  dispatch(message: Msg): void;
+  dispatch(message: Msg, options?: { readonly continuation?: boolean }): void;
   /** Message notifications carry their type; internal runner updates have no message type. */
   subscribe(listener: (messageType?: Msg['type']) => void): () => void;
   /** Internal runner transitions use the same FIFO as messages; they can never re-enter dispatch. */
@@ -57,9 +57,12 @@ export function createStore(initial: State, options: StoreOptions = {}): Store {
   return {
     getState: () => state,
     update,
-    dispatch(message) {
+    dispatch(message, dispatchOptions) {
       update((current) => {
-        const next = reduce(message, current, options.facts?.(message, current));
+        const next = reduce(message, current, {
+          ...options.facts?.(message, current),
+          ...(dispatchOptions?.continuation ? { continuation: true } : {}),
+        });
         if (next === null)
           throw new Error(`Controller reducer is not implemented: ${message.type}`);
         return next;

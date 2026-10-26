@@ -41,7 +41,7 @@ export type EverydayEffect =
 export type Effect =
   | EverydayEffect
   | PhotoEffect
-  | { readonly type: 'dispatch'; readonly message: Msg }
+  | { readonly type: 'dispatch'; readonly message: Msg; readonly continuation?: boolean }
   | { readonly type: 'rememberView' | 'exportProject'; readonly view: ViewSnapshot }
   | { readonly type: 'execute'; readonly request: Request }
   | {

@@ -92,7 +92,7 @@ export function gate(message: Msg, state: State): Transition | null {
       )
         return {
           state: queuedPreparation({ ...next, Gate: null }),
-          effects: [{ type: 'dispatch', message: state.Gate[1] }],
+          effects: [{ type: 'dispatch', message: state.Gate[1], continuation: true }],
         };
       return { state: next, effects: [] };
     }

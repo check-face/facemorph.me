@@ -116,7 +116,7 @@ test('accepted photo queues behind a real run but clears cropping-owned Busy', (
   assert.equal(own.state.Inputs[0]?.file, image);
   assert.deepEqual(own.effects, [
     { type: 'invalidateFace', id: 'face-1' },
-    { type: 'dispatch', message: msg('RunFace', 'face-1') },
+    { type: 'dispatch', message: msg('RunFace', 'face-1'), continuation: true },
   ]);
 });
 test('a three-file drop uses an empty tile first then appends in drop order', () => {
@@ -197,7 +197,9 @@ test('the actual shared multiple-face error requests a crop through composed red
     { multipleFacesMessage: MULTIPLE_FACES_MESSAGE },
   )!;
   assert.equal(next.state.Error, null);
-  assert.deepEqual(next.effects, [{ type: 'dispatch', message: msg('RequestCrop', 'face-1') }]);
+  assert.deepEqual(next.effects, [
+    { type: 'dispatch', message: msg('RequestCrop', 'face-1'), continuation: true },
+  ]);
 });
 test('photo promise rejections map to PhotoFailed with the original slot and error', () => {
   const image = file('bad.jpg'),

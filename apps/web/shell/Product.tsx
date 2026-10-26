@@ -1,5 +1,5 @@
 // The mounted application: one controller owns effects and state; views dispatch typed messages only.
-import { useMemo, useSyncExternalStore } from 'react';
+import { useEffect, useMemo, useSyncExternalStore } from 'react';
 import { frameSubscription } from './react-subscription.ts';
 import type { Store } from '../src/controller/store.ts';
 import { msg } from '../src/controller/msg.ts';
@@ -15,6 +15,7 @@ import { describeMeasuredMs, describeMs } from './facade/helpers.ts';
 import { Shell } from './Shell.tsx';
 import { FaceTile } from './render/FaceTile.tsx';
 import { FacesLayout } from './render/FacesLayout.tsx';
+import { createUndoCanvas } from './render/undo-canvas.ts';
 import { MorphSlot } from './render/MorphSlot.tsx';
 import { ProviderSelector } from './render/ProviderSelector.tsx';
 import { VideoSlot } from './render/VideoSlot.tsx';
@@ -33,6 +34,11 @@ export function Product({ store }: { store: Store }) {
     [store],
   );
   const s = useSyncExternalStore(subscribe, store.getState);
+  const undoCanvas = useMemo(() => createUndoCanvas(), []);
+  useEffect(() => {
+    if (!s.Undo) undoCanvas.release();
+  }, [s.Undo, undoCanvas]);
+  useEffect(() => () => undoCanvas.release(), [undoCanvas]);
   const dispatch = store.dispatch;
   const settings = {
     inputs: s.Inputs,
@@ -104,7 +110,18 @@ export function Product({ store }: { store: Store }) {
         inputs={s.Inputs}
         onAddAt={(at) => dispatch(msg('AddAt', at))}
         undo={s.Undo}
-        onUndo={() => dispatch(msg('Undo'))}
+        onUndo={() => {
+          if (s.Inputs.length <= 2)
+            for (const input of s.Inputs)
+              undoCanvas.retain(
+                input.id,
+                facade.exportResultRevision(input.id),
+                document.querySelector<HTMLCanvasElement>(
+                  `[data-next-face="${CSS.escape(input.id)}"] canvas.next-face-img`,
+                ),
+              );
+          dispatch(msg('Undo'));
+        }}
         tile={(item, _index, label) => (
           <FaceTile
             key={item.id}
@@ -146,7 +163,19 @@ export function Product({ store }: { store: Store }) {
             onPhotos={(files) => dispatch(msg('Photos', item.id, files))}
             onRun={() => dispatch(msg('RunFace', item.id))}
             onCancel={() => dispatch(msg('CancelFace', item.id))}
-            onRemove={() => dispatch(msg('Remove', item.id))}
+            onRemove={() => {
+              undoCanvas.release();
+              // At these boundaries the layout also remounts the remaining siblings.
+              for (const id of s.Inputs.length <= 3 ? s.Inputs.map((input) => input.id) : [item.id])
+                undoCanvas.retain(
+                  id,
+                  facade.exportResultRevision(id),
+                  document.querySelector<HTMLCanvasElement>(
+                    `[data-next-face="${CSS.escape(id)}"] canvas.next-face-img`,
+                  ),
+                );
+              dispatch(msg('Remove', item.id));
+            }}
             onShare={() => dispatch(msg('Share', item.id))}
             onSave={() => dispatch(msg('Save', item.id))}
             resultRevision={facade.exportResultRevision(item.id)}
@@ -163,7 +192,8 @@ export function Product({ store }: { store: Store }) {
             held={s.Held?.get(item.id)}
             onUseAsPhoto={() => dispatch(msg('UseAsPhoto', item.id))}
             drawFace={(canvas, id) => {
-              if (canvas) facade.drawFace(canvas, id);
+              if (canvas && !undoCanvas.draw(canvas, id, facade.exportResultRevision(id)))
+                facade.drawFace(canvas, id);
             }}
             displayMilestone={facade.displayMilestone}
           />

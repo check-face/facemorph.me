@@ -53,7 +53,7 @@ test('unknown inventory asks; the question resolves itself when the device alrea
   const resolved = reduce(msg('DownloadsChanged', ready), asked)!;
   assert.equal(resolved.state.Gate, null);
   assert.equal(resolved.state.DownloadConsent.size, 0);
-  assert.deepEqual(resolved.effects, [{ type: 'dispatch', message: run }]);
+  assert.deepEqual(resolved.effects, [{ type: 'dispatch', message: run, continuation: true }]);
   // It arrives with something missing: the question stays open, now with its size.
   const missing = { ...initial.Downloads, known: true, routeReady: false, routeBytes: 62_000_000 };
   const still = reduce(msg('DownloadsChanged', missing), asked)!;
@@ -140,5 +140,7 @@ test('a card decision never cancels independent page preparation or gets replace
     unknown,
   )!;
   assert.deepEqual(resolvedByCache.state.Gate, ['photo', msg('DownloadNow', true)]);
-  assert.deepEqual(resolvedByCache.effects, [{ type: 'dispatch', message: pending }]);
+  assert.deepEqual(resolvedByCache.effects, [
+    { type: 'dispatch', message: pending, continuation: true },
+  ]);
 });

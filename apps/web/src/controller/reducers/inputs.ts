@@ -126,7 +126,7 @@ export function inputs(message: Msg, state: State, facts: InputFacts = {}): Tran
         };
       return {
         state: { ...state, CachedFaces: new Set([...state.CachedFaces, item.id]) },
-        effects: [{ type: 'dispatch', message: msg('RunFace', item.id) }],
+        effects: [{ type: 'dispatch', message: msg('RunFace', item.id), continuation: true }],
       };
     }
     case 'Provider':

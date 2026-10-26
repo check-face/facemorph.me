@@ -9,6 +9,9 @@ import { NEXT_ACTIONS, UNDO_MS } from '../../src/controller/reducers/undo.ts';
 import type { Effect } from '../../src/controller/effects.ts';
 import type { Face, State } from '../../src/controller/state.ts';
 import { recovered, state as initial } from './photo-inputs.ts';
+import { createStore } from '../../src/controller/store.ts';
+import { cancelled } from '../../src/controller/reducers/jobs.ts';
+import { scheduled } from '../../src/controller/reducers/schedule.ts';
 
 const base: State = {
   ...initial,
@@ -189,4 +192,66 @@ test('Create Morph excludes the hidden face during the Undo window', () => {
   const sent = execute?.request.inputs ?? run.state.RunInputs;
   assert.ok(sent.length > 0);
   assert.ok(!sent.some((i) => i.id === 'f-1'));
+});
+
+test('automatic sibling continuation preserves Remove Undo; a subsequent user action commits it once', () => {
+  for (const routeReady of [true, false]) {
+    const effects: Effect[] = [];
+    const store = createStore(
+      project(3, {
+        Downloads: { ...base.Downloads, routeReady },
+        Busy: true,
+        JobId: 9,
+        ActiveFace: 'f-1',
+        Stage: 'face',
+        PendingFaces: ['f-2'],
+        PendingJobs: [msg('RunFace', 'f-2')],
+        Faces: [face('f-0')],
+      }),
+      {
+        runEffects(batch) {
+          effects.push(...batch);
+          for (const effect of batch) {
+            if (effect.type === 'requestNext') store.update((s) => scheduled(s, 0));
+            if (effect.type === 'dispatch')
+              store.dispatch(effect.message, 'continuation' in effect ? effect : undefined);
+            if (effect.type === 'checkCachedFace')
+              store.dispatch(msg('CachedFaceChecked', effect.input, true));
+          }
+        },
+      },
+    );
+    store.dispatch(msg('Remove', 'f-1'));
+    const notice = store.getState().Undo;
+    assert.ok(notice);
+    store.update((s) => cancelled(s, 9));
+    assert.equal(store.getState().ActiveFace, 'f-2', 'the sibling really starts');
+    assert.equal(store.getState().Undo, notice, 'queued work is not a new user action');
+    assert.deepEqual(invalidations(effects), []);
+    store.dispatch(msg('Edit', 'f-0', 'new words'));
+    assert.equal(store.getState().Undo, undefined);
+    assert.equal(invalidations(effects).filter((id) => id === 'f-1').length, 1);
+    store.dispatch(msg('UndoExpired', notice.seq));
+    assert.equal(invalidations(effects).filter((id) => id === 'f-1').length, 1);
+    store.dispose();
+  }
+});
+
+test('automatic readiness after Remove preserves Undo through a pending queued action', () => {
+  const removed = step(project(3), msg('Remove', 'f-1')).state;
+  const ready = step(
+    {
+      ...removed,
+      Downloads: { ...base.Downloads, known: false },
+      Gate: ['route', msg('RunFace', 'f-2')],
+      Faces: [face('f-0')],
+    },
+    msg('DownloadsChanged', base.Downloads),
+  );
+  const resume = ready.effects.find((effect) => effect.type === 'dispatch');
+  assert.ok(resume && 'continuation' in resume && resume.continuation);
+  const continued = reduce(resume.message, ready.state, { continuation: resume.continuation })!;
+  assert.equal(continued.state.ActiveFace, 'f-2');
+  assert.equal(continued.state.Undo, removed.Undo);
+  assert.deepEqual(invalidations([...ready.effects, ...continued.effects]), []);
 });

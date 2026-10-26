@@ -744,7 +744,7 @@ export function createController(
           facade.rememberView(effect.view);
           break;
         case 'dispatch':
-          store.dispatch(effect.message);
+          store.dispatch(effect.message, 'continuation' in effect ? effect : undefined);
           break;
         case 'checkCachedFace':
           photoTask(
