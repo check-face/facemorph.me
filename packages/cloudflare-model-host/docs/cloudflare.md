@@ -92,17 +92,20 @@ The dry run builds the Worker with its bindings and needs no account:
 <!-- docs-test: cloudflare-dry-run -->
 ```sh
 npx facemorph-model-host mirror-deploy --worker my-model-mirror --bucket my-model-mirror \
-  --upstream "$MODEL_ORIGIN/" --prefixes models/my-model-v1/chunks/ --workers-dev
+  --upstream "$MODEL_ORIGIN/" --prefixes models/my-model-v1/chunks/ --workers-dev --site my-model-origin
 ```
 
-To deploy it, create the bucket and add `--publish`. **This changes your Cloudflare account.** When the upstream is a
-Worker in the same account, `--site <worker>` fetches through a service binding instead of the public origin.
+To deploy it, create the bucket and add `--publish`. **This changes your Cloudflare account.** The origin here is a
+Worker in the same account, so `--site my-model-origin` binds it as a service and the mirror fetches through that
+binding: a Worker's public fetch to another Worker on the same account's `workers.dev` returns 404, and without
+`--site` every mirrored path would fail (seen in a live run on 26 October 2026). Leave `--site` out when the upstream
+is a host outside your account.
 
 <!-- docs-test: needs-test-origin -->
 ```sh
 npx cf r2 buckets create --name my-model-mirror
 npx facemorph-model-host mirror-deploy --worker my-model-mirror --bucket my-model-mirror \
-  --upstream "$MODEL_ORIGIN/" --prefixes models/my-model-v1/chunks/ --workers-dev --publish
+  --upstream "$MODEL_ORIGIN/" --prefixes models/my-model-v1/chunks/ --workers-dev --site my-model-origin --publish
 ```
 
 ### Warm the mirror
