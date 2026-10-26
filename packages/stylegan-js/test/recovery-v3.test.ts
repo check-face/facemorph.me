@@ -163,6 +163,18 @@ function rewrite(saved: Uint8Array, edit: (record: Record<string, unknown>) => v
   );
 }
 
+test('schema 1 seed written as the bridge held it (decimal text) reads as the number; other text is damage', () => {
+  // The candidate's bridge passed the seed field's text to decorateImage (face.source.value), so a schema-1
+  // still carries "seed":"42" as often as 42 (fm-fy2.7).
+  const v1 = vector('stills/recovery-v1.png');
+  const exact = parsed(readRecovery(v1));
+  const text = parsed(readRecovery(rewrite(v1, (rec) => (rec.seed = '42'))));
+  assert.equal(text.seed, 42);
+  assert.ok(bytesOf(text.latent.values).equals(bytesOf(exact.latent.values)));
+  for (const bad of ['042', '-1', '4294967296', '1e3', ' 42', 'x'])
+    assert.equal(readRecovery(rewrite(v1, (rec) => (rec.seed = bad))).kind, 'damaged', bad);
+});
+
 test('unsupported versions are a typed incompatible-schema result carrying the claimed version', () => {
   const saved = embedRecoveryV3(ffhqBase(), meta(FFHQ_1024_DESCRIPTOR));
   for (const version of [4, 9, 0, '3', null]) {

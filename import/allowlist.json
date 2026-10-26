@@ -1670,7 +1670,13 @@
       "destination": "apps/web/src/Next/image-envelope.mjs",
       "sha256": "cb24e02f00637987c125efbef592904f3dab1d249d5e2ee6132d858fd8ad8ee2",
       "bytes": 8726,
-      "class": "src-next"
+      "class": "src-next",
+      "ported": {
+        "sha256": "0ba1913281c929c9304c4eca85d3a4f5df4f5961c97044ef519ab905dadc68ea",
+        "bytes": 3721,
+        "bead": "fm-fy2.7",
+        "reason": "The envelope is the package's (fm-fzzd) through src/media/recovery-files.ts: a shipped model's face is written as schema 3, any other identity as schema 2; reads schema 3 and 2, schema 1 reported legacy; export names and the full1024/single-envelope/identity rules kept"
+      }
     },
     {
       "source": "src/Next/infill.mjs",

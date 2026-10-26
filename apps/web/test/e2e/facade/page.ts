@@ -280,6 +280,26 @@ const harness = {
     return { selection: selection.kind, out, ...settled() };
   },
   save: (id: string) => f.saveMedia(id),
+  /** A saved file through the bridge's file entry (fm-fy2.7): what it installs and whether any job ran. */
+  async reopenSaved(id: string, bytes: number[], name: string, type: string) {
+    const before = progress.length;
+    const file = new File([Uint8Array.from(bytes)], name, { type });
+    try {
+      const selection = await f.selectPhoto({ id, files: [file] });
+      return {
+        kind: selection.kind,
+        faces:
+          selection.kind === 'recovered'
+            ? selection.output.faces.map((x) => ({ id: x.id, label: x.label, url: x.url !== '' }))
+            : [],
+        message: selection.kind === 'recovered' ? selection.output.message : '',
+        jobEvents: progress.length - before,
+        ...settled(),
+      };
+    } catch (error) {
+      return { error: (error as Error).message, jobEvents: progress.length - before };
+    }
+  },
   async morph(a: string, b: string) {
     const options = request('morph', '', [input(a, 'text', a), input(b, 'text', b)], 8);
     f.rememberView(options);

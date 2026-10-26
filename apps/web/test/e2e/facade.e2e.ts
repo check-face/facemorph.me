@@ -34,6 +34,10 @@ import { build } from 'vite';
 import { controlRows, fixture, verifyControl } from '../controller/control.ts';
 import { replayFirstVisit, replayRows, type Replayers } from '../controller/replay.ts';
 import { fetchControl } from '../../../../scripts/import/fetch-control.mjs';
+import { createHash } from 'node:crypto';
+import { crc32 } from 'node:zlib';
+import { embedRecovery as embedSchema2, readRecovery } from '@facemorph/stylegan-js';
+import { generationIdentity } from '../../src/Next/browser/identity.mjs';
 
 const app = fileURLToPath(new URL('../../', import.meta.url));
 const repo = fileURLToPath(new URL('../../../../', import.meta.url));
@@ -454,6 +458,146 @@ test(
       hasFace: true,
       preparing: 0,
     });
+  },
+);
+const sha256 = (b: Uint8Array | string) => createHash('sha256').update(b).digest('hex');
+/** The candidate's schema-1 PNG record (classic a42829b recovery-metadata.mjs decorateImage), seed as the bridge
+ * held it: the seed field's text. */
+function schema1Png(
+  png: Uint8Array,
+  r: { latent: Float32Array; seed: string } & Record<string, unknown>,
+) {
+  const raw = Buffer.from(r.latent.buffer, r.latent.byteOffset, r.latent.byteLength);
+  const record = {
+    schema: 1,
+    kind: 'facemorph-image-v1',
+    seed: r.seed,
+    latent: { space: 'w-plus', shape: [18, 512], values: Array.from(r.latent) },
+    provenance: r['provenance'],
+    generationKind: r['generationKind'],
+    generationSha256: r['generationSha256'],
+    imageSha256: sha256(png),
+    latentSha256: sha256(raw),
+  };
+  const data = Buffer.concat([Buffer.from('FaceMorph\0'), Buffer.from(JSON.stringify(record))]);
+  const chunk = Buffer.alloc(data.length + 12);
+  chunk.writeUInt32BE(data.length, 0);
+  chunk.write('tEXt', 4);
+  data.copy(chunk, 8);
+  chunk.writeUInt32BE(crc32(chunk.subarray(4, chunk.length - 4)), chunk.length - 4);
+  const iend = png.length - 12;
+  return new Uint8Array(Buffer.concat([png.subarray(0, iend), chunk, png.subarray(iend)]));
+}
+
+test(
+  'file-entry: earlier saved stills (schema 1 PNG, schema 2 PNG and WebP) reopen without inference; Save keeps the exact latent and model',
+  { timeout: 300_000 },
+  async () => {
+    await context.close();
+    await open();
+    const manifestBytes = readFileSync(join(RUNTIME, 'manifest.json'));
+    const m = JSON.parse(manifestBytes.toString('utf8'));
+    const identity = {
+      provenance: {
+        bundleVersion: m.bundleVersion,
+        manifestSha256: sha256(manifestBytes),
+        modelSha256: m.modelSourceSha256,
+        noiseSha256: m.noiseSha256,
+        route: 'cpu',
+        truncationPsi: 0.7,
+      },
+      generationKind: 'seed' as const,
+      generationSha256: sha256(JSON.stringify(generationIdentity(m, 'seed'))),
+    };
+    const fixture = (name: string) => {
+      const r = readRecovery(
+        new Uint8Array(readFileSync(join(app, 'test/fixtures/verify/stills', name))),
+      );
+      if (r.kind !== 'parsed') throw new Error(`fixture ${name}: ${r.kind}`);
+      return r.recovered;
+    };
+    const png = fixture('recovery-v2.png'),
+      webp = fixture('recovery-v2.webp');
+    const latent = png.latent.values;
+    const v2 = (base: typeof png) =>
+      embedSchema2(base.baseImage, {
+        ...identity,
+        latent: { space: 'w-plus', shape: [18, 512], values: latent },
+        seed: 42,
+      });
+    const files = [
+      [
+        'saved-v1.png',
+        'image/png',
+        schema1Png(png.baseImage, { ...identity, latent, seed: '42' }),
+        1,
+      ],
+      ['saved-v2.png', 'image/png', v2(png), 2],
+      ['saved-v2.webp', 'image/webp', v2(webp), 2],
+    ] as const;
+    let ortStarted = 0;
+    page.on('worker', (w) => {
+      if (/ort-worker/.test(w.url())) ortStarted++;
+    });
+    for (const [index, [name, type, bytes, schema]] of files.entries()) {
+      assert.equal(
+        (readRecovery(bytes) as { recovered: { schemaVersion: number } }).recovered.schemaVersion,
+        schema,
+      );
+      const id = `saved-${index + 1}`;
+      const out = await call<{
+        kind?: string;
+        error?: string;
+        faces: { id: string; label: string; url: boolean }[];
+        message: string;
+        jobEvents: number;
+        invalid: string[];
+      }>('reopenSaved', id, Array.from(bytes), name, type);
+      log(`reopen ${name}: ${JSON.stringify(out)}`);
+      assert.equal(out.error, undefined, `${name}: ${out.error}`);
+      assert.equal(out.kind, 'recovered', name);
+      assert.equal(out.message, 'Saved face recovered without photo encoding.');
+      assert.ok(
+        out.faces.some((f) => f.id === id && f.url && f.label === 'Saved face'),
+        name,
+      );
+      assert.equal(out.jobEvents, 0, `${name}: no job ran`);
+      assert.deepEqual(out.invalid, []);
+      const ready = page.waitForEvent('download', { timeout: 60_000 });
+      await call('save', id);
+      const path = await (await ready).path();
+      const saved = readRecovery(new Uint8Array(readFileSync(path)));
+      assert.equal(saved.kind, 'parsed', `${name}: Save after reopening carries recovery`);
+      if (saved.kind !== 'parsed') return;
+      const r = saved.recovered;
+      log(`save after ${name}: schema ${r.schemaVersion} ${r.mime} ${r.width}x${r.height}`);
+      assert.equal(r.schemaVersion, 3, `${name}: Save writes schema 3`);
+      assert.deepEqual([r.width, r.height], [1024, 1024]);
+      assert.ok(
+        Buffer.from(r.latent.values.buffer).equals(
+          Buffer.from(latent.buffer, latent.byteOffset, latent.byteLength),
+        ),
+        `${name}: exact latent`,
+      );
+      assert.equal(r.provenance.modelSha256, m.modelSourceSha256);
+      assert.equal(r.provenance.noiseSha256, m.noiseSha256);
+      assert.equal(r.model?.modelSha256, m.modelSourceSha256);
+      assert.equal(r.model?.name, 'stylegan2-ffhq-config-f');
+      assert.deepEqual(r.model?.latent, { space: 'w-plus', layers: 18, width: 512 });
+      assert.equal(r.generationSha256, identity.generationSha256);
+    }
+    assert.equal(ortStarted, 0, 'reopening and saving started no inference worker');
+    // A file from another checkpoint is refused at the entry, never installed.
+    const other = readFileSync(join(app, 'test/fixtures/verify/stills/model-mismatch-v2.png'));
+    const refused = await call<{ error?: string; jobEvents: number }>(
+      'reopenSaved',
+      'saved-other',
+      Array.from(other),
+      'other.png',
+      'image/png',
+    );
+    assert.equal(refused.error, 'This saved face uses a different model.');
+    assert.equal(refused.jobEvents, 0);
   },
 );
 test(

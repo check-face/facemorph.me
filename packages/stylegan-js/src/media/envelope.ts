@@ -413,7 +413,11 @@ function readSchema1(bytes: Uint8Array): StillRecoveryResult | null {
       detail: 'image or latent integrity hash mismatch',
     };
   const kind = record.generationKind;
-  const seed = record.seed;
+  // The candidate's decorateImage wrote the seed as the bridge held it: a number, or the seed field's decimal text.
+  const seed =
+    typeof record.seed === 'string' && /^(0|[1-9][0-9]{0,9})$/.test(record.seed)
+      ? Number(record.seed)
+      : record.seed;
   if (
     seed !== undefined &&
     (!Number.isSafeInteger(seed) || (seed as number) < 0 || (seed as number) > 4294967295)
