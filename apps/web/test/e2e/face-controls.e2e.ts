@@ -106,7 +106,6 @@ test(
               await operate(control);
           }
           await operate(page.getByRole('button', { name: 'More options' }));
-          await operate(page.getByText('Advanced', { exact: true }));
           await page.getByLabel('Processing mode').selectOption('cpu');
           const tile = page.locator('section.next-face').nth(1);
           const field = tile.locator('.next-field input');
@@ -653,7 +652,6 @@ test(
       const second = page.locator('section.next-face').nth(1);
       await second.waitFor();
       await page.getByRole('button', { name: 'More options' }).click(); // setup
-      await page.getByText('Advanced', { exact: true }).click(); // setup
       await page.getByLabel('Processing mode').selectOption('cpu');
       await second.locator('.next-input-row .next-face-generate').click(); // setup
       const consent = page.locator('.next-download-accept');

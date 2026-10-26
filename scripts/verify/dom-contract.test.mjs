@@ -23,6 +23,7 @@ import {
   tileStatesContract,
   videoFormatContract,
   modelSizeContract,
+  providerSelectorContract,
 } from './dom-contract.mjs';
 
 const face = (label, text = 'Generate', disabled = false) => ({
@@ -599,4 +600,32 @@ test('the declared face-model size change replaces only that figure (fm-qrfz)', 
     [toast('Download · 149 MB')],
     'only the button carries the size',
   );
+});
+
+test("the declared selector move drops the control's Advanced block and adds the row above the faces (fm-5kpx)", () => {
+  const e = (region, text, extra = {}) => ({ region, next: [], attrs: {}, text, ...extra });
+  const control = [
+    e('faces', '', { next: ['next-faces'] }),
+    e('faces', 'Morph from'),
+    { region: 'faces', next: ['next-advanced'], attrs: {}, text: '' },
+    e('faces', 'Advanced'),
+    e('faces', 'Processing mode'),
+    {
+      region: 'faces',
+      tag: 'select',
+      next: [],
+      attrs: { 'aria-label': 'Processing mode' },
+      text: '',
+    },
+    e('faces', 'Leave processing on automatic unless you are comparing routes.'),
+    e('faces', 'Create morph'),
+  ];
+  const out = providerSelectorContract(control);
+  assert.equal(out.filter((x) => x.next.includes('next-advanced')).length, 0, 'no Advanced block');
+  assert.ok(
+    out.some((x) => x.text === 'Create morph'),
+    'what follows the block stays',
+  );
+  assert.equal(out[1].next[0], 'next-provider-row', 'the row follows the first faces entry');
+  assert.deepEqual(providerSelectorContract(out), out, 'a page that has the row is unchanged');
 });

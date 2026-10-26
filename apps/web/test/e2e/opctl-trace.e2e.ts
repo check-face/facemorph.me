@@ -82,7 +82,6 @@ test(
         )
           await control.click(); // setup
       await page.getByRole('button', { name: 'More options' }).click(); // setup
-      await page.getByText('Advanced', { exact: true }).click(); // setup
       await page.getByLabel('Processing mode').selectOption('cpu');
       const slot = (index: number) =>
         tiles.nth(index).locator('.next-input-row .next-face-generate');

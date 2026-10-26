@@ -627,7 +627,6 @@ test(
 
 async function cpuMode(page: Page) {
   await page.getByRole('button', { name: 'More options' }).click(); // setup
-  await page.getByText('Advanced', { exact: true }).click(); // setup
   await page.getByLabel('Processing mode').selectOption('cpu'); // setup
 }
 

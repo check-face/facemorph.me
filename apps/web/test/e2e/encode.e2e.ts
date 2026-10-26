@@ -48,7 +48,6 @@ test(
         const second = page.locator('[data-next-face]').nth(1);
         await second.waitFor();
         await page.getByRole('button', { name: 'More options' }).click(); // setup
-        await page.getByText('Advanced', { exact: true }).click(); // setup
         await page.getByLabel('Processing mode').selectOption('cpu');
         await second.locator('.next-input-row .next-face-generate').click(); // setup
         const consent = page.locator('.next-download-accept');

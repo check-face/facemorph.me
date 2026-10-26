@@ -10,6 +10,7 @@ import '../src/style.scss';
 import { FaceTile } from './render/FaceTile.tsx';
 import { FacesLayout } from './render/FacesLayout.tsx';
 import { MorphSlot, type MorphSettings } from './render/MorphSlot.tsx';
+import { ProviderSelector } from './render/ProviderSelector.tsx';
 import { VideoSlot } from './render/VideoSlot.tsx';
 import type { FaceMode, Input } from './render/types.ts';
 import { Shell } from './Shell.tsx';
@@ -64,6 +65,11 @@ function RenderCheck() {
   );
   return (
     <Shell faces={inputs.length}>
+      <ProviderSelector
+        provider={settings.provider}
+        busy={busy}
+        onProvider={(provider) => setSettings((s) => ({ ...s, provider }))}
+      />
       <FacesLayout
         inputs={inputs}
         tile={tile}

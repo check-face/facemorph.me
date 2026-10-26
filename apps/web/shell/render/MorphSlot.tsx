@@ -203,28 +203,6 @@ function Overflow(p: MorphSlotProps & { readonly custom: Custom }) {
         }
         label="Pinch centre"
       />
-      <details className="next-advanced">
-        <summary>Advanced</summary>
-        <label className="next-overflow-field">
-          <span>Processing mode</span>
-          <select
-            value={p.provider}
-            disabled={p.busy}
-            aria-label="Processing mode"
-            onChange={(e) => p.onSettings({ provider: e.target.value as Provider })}
-          >
-            {PROVIDERS.map(([key, text]) => (
-              <option key={key} value={key}>
-                {text}
-              </option>
-            ))}
-          </select>
-        </label>
-        <p>
-          Leave processing on automatic unless you are comparing routes. Forced routes still need to
-          pass this device’s checks.
-        </p>
-      </details>
     </div>
   );
 }

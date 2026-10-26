@@ -1,6 +1,6 @@
 // The rendering port's morph and video slots in the real shell (dist/render-check.html, plain state, no
 // controller) in real Chromium, Firefox and WebKit at desktop (mouse) and phone (touch) width: Create morph and
-// its reason at one face, More options with shape, length, pinch and the Advanced processing mode (Automatic,
+// its reason at one face, More options with shape, length and pinch, the processing mode above the faces (Automatic,
 // CPU, WebGPU), playing a finished morph, Use Slider and scrubbing, the slider position surviving hide and show,
 // and frames not yet stored. Each control is pressed at its visible centre after elementFromPoint shows it is
 // there; a native select's choice is made by name once it has been pressed (its list is not page DOM).
@@ -141,9 +141,18 @@ for (const [engine, type] of Object.entries(ENGINES).filter(([e]) => !only || on
         assert.equal(await pinch.isChecked(), true);
         assert.ok((await press(page, pinch, { touch })).inside, `${at}: Pinch centre`);
         assert.equal(await pinch.isChecked(), false, `${at}: pinch toggled by the press`);
+        // The processing selector sits above the faces (fm-5kpx), not under More options.
+        assert.equal(await page.locator('.next-advanced').count(), 0, `${at}: no Advanced section`);
+        const processing = page.getByLabel('Processing mode');
+        assert.ok((await press(page, processing, { touch })).inside, `${at}: Processing mode`);
+        await page.keyboard.press('Escape'); // close the native list the press opened
+        const [above, faces] = await Promise.all([
+          processing.boundingBox(),
+          page.locator('section.next-face').first().boundingBox(),
+        ]);
         assert.ok(
-          (await press(page, page.locator('.next-advanced summary'), { touch })).inside,
-          `${at}: Advanced`,
+          above && faces && above.y + above.height <= faces.y,
+          `${at}: above the first face`,
         );
         assert.deepEqual(
           await page

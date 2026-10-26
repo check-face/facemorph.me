@@ -56,7 +56,6 @@ test('a morph completes in Firefox with a playable MP4', { timeout: 1_800_000 },
       )
         await control.click(); // setup
     await page.getByRole('button', { name: 'More options' }).click(); // setup
-    await page.getByText('Advanced', { exact: true }).click(); // setup
     await page.getByLabel('Processing mode').selectOption('cpu');
     await tiles.nth(0).locator('.next-input-row .next-face-generate').click();
     const consent = page.locator('.next-download-accept');

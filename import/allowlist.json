@@ -1139,10 +1139,10 @@
       "class": "temporary-root",
       "temporary": true,
       "ported": {
-        "sha256": "055776f0e031bcc97d2f816e5177d855a2082ad0f7dc38a50cef4d6b3c715dc3",
-        "bytes": 44320,
-        "bead": "fm-5klw",
-        "reason": "Preserve typed project-codec checks; adapt provider and tile controls for WebGL/filename retirement, retain crop in its mode menu, and use the existing CDP interceptor for worker evidence under no-referrer production headers. Schedule initial navigation and pump events within the unchanged document-load deadline, avoiding the shorter synchronous harness IPC timeout. Adapt the declared Encode source/confirmation/editor flow through real pointer hits while retaining CPU/e4e/crop/export/restore and network assertions (main40183901932 preflight repair). (fm-aa8); real-ui-cpu operates the card chooser, not the removed Encode source dialog (b8640b7) (fm-aa8); the synthetic-photo journey proves e4e by its encode-aligned request, since a confirmed crop starts no detector worker; real-ui-cpu presses a control only once its box is the same on two samples 0.5 s apart, so a press never lands on the backdrop of a menu still growing in (run 40336921863 preflight)"
+        "sha256": "1d7a715fd3f90e27cecdeeeff8a57c7bad9965353cfb7092c41d10fd79b187ee",
+        "bytes": 44408,
+        "bead": "fm-5kpx",
+        "reason": "Preserve typed project-codec checks; adapt provider and tile controls for WebGL/filename retirement, retain crop in its mode menu, and use the existing CDP interceptor for worker evidence under no-referrer production headers. Schedule initial navigation and pump events within the unchanged document-load deadline, avoiding the shorter synchronous harness IPC timeout. Adapt the declared Encode source/confirmation/editor flow through real pointer hits while retaining CPU/e4e/crop/export/restore and network assertions (main40183901932 preflight repair). (fm-aa8); real-ui-cpu operates the card chooser, not the removed Encode source dialog (b8640b7) (fm-aa8); the synthetic-photo journey proves e4e by its encode-aligned request, since a confirmed crop starts no detector worker; real-ui-cpu presses a control only once its box is the same on two samples 0.5 s apart, so a press never lands on the backdrop of a menu still growing in (run 40336921863 preflight); the processing selector moves above the faces; harnesses open .next-advanced only where it exists (the control), and the selector row is styled"
       }
     },
     {
@@ -1175,10 +1175,10 @@
       "class": "temporary-root",
       "temporary": true,
       "ported": {
-        "sha256": "95383e97fda50e1474fb9d3647295b603c549550c9ce9f33bd55c22b3b70fbfc",
-        "bytes": 12143,
-        "bead": "fm-wzy",
-        "reason": "Await the browser load event without renderer evaluations during navigation, then retain document readiness, hardware adapter, route, canary and timing assertions; fm-wzy repairs main40182116464 startup IPC timeout."
+        "sha256": "e431eb1232705eb741b8d516a710e7b6ca5369f536f6cdcb8cc6e4723b9d419f",
+        "bytes": 12187,
+        "bead": "fm-5kpx",
+        "reason": "Await the browser load event without renderer evaluations during navigation, then retain document readiness, hardware adapter, route, canary and timing assertions; fm-wzy repairs main40182116464 startup IPC timeout.; the processing selector moves above the faces; harnesses open .next-advanced only where it exists (the control), and the selector row is styled"
       }
     },
     {
@@ -1211,10 +1211,10 @@
       "class": "temporary-root",
       "temporary": true,
       "ported": {
-        "sha256": "7badb1a84b88e49a1e753ad614df2bc1e576bf5eab232e9659e4fcefcc5426e0",
-        "bytes": 22007,
-        "bead": "fm-r4a",
-        "reason": "repaired harness: stage verdicts in next-matrix-stages.mjs (classic stage list, not-shipped never a pass), project round trip covered by project-json.test.ts; Photo/crop source assertions now execute typed reducers; active check descriptions reference the retained artifact and typed codec.; Wait for actual photo reconstruction before asserting encoder completion; retained-control matrix144 evidence. Exact candidate artifact mode uses a job-owned production-origin CONNECT proxy on Chromium, Firefox and WebKit; retained stage list and verdicts unchanged."
+        "sha256": "7646016f54484a81bb9ed575307f4b078159a9133cbae48979399409253d714b",
+        "bytes": 22116,
+        "bead": "fm-5kpx",
+        "reason": "repaired harness: stage verdicts in next-matrix-stages.mjs (classic stage list, not-shipped never a pass), project round trip covered by project-json.test.ts; Photo/crop source assertions now execute typed reducers; active check descriptions reference the retained artifact and typed codec.; Wait for actual photo reconstruction before asserting encoder completion; retained-control matrix144 evidence. Exact candidate artifact mode uses a job-owned production-origin CONNECT proxy on Chromium, Firefox and WebKit; retained stage list and verdicts unchanged.; the processing selector moves above the faces; harnesses open .next-advanced only where it exists (the control), and the selector row is styled"
       }
     },
     {
@@ -1970,10 +1970,10 @@
       "bytes": 23028,
       "class": "src-next",
       "ported": {
-        "sha256": "356d3c83569fc492c1abb0c1e6666028529feae4db6a8741dc8fb53855cab55b",
-        "bytes": 28582,
-        "bead": "fm-36ag",
-        "reason": "Retain crop and names rendering repairs; place the single tile operation action inside the face image and retire hold-to-compare styling.; Encode source and crop-confirmation modal styles landed in ae6a3fd; preserve existing tile/product styling. (fm-fy2.17.1); Face card is the photo entry with Generate beside the field (c397da4, fm-25um fm-fy2.17.1); legacy fullscreen gapless names grid styles (07ac969, fm-96if); debug-report disclosure, privacy request list and in-page first-visit prompt styles (fm-szbf); Custom frames per face (2 up to the 4,096-frame budget, odd counts included) and a Full quality video choice; 512 × 512 stays the default (36b3236)"
+        "sha256": "f788bd41c6f401588a70a36b8b3c5fd316305b8c5d9ae9da91bca4d1e6e31373",
+        "bytes": 29320,
+        "bead": "fm-5kpx",
+        "reason": "Retain crop and names rendering repairs; place the single tile operation action inside the face image and retire hold-to-compare styling.; Encode source and crop-confirmation modal styles landed in ae6a3fd; preserve existing tile/product styling. (fm-fy2.17.1); Face card is the photo entry with Generate beside the field (c397da4, fm-25um fm-fy2.17.1); legacy fullscreen gapless names grid styles (07ac969, fm-96if); debug-report disclosure, privacy request list and in-page first-visit prompt styles (fm-szbf); Custom frames per face (2 up to the 4,096-frame budget, odd counts included) and a Full quality video choice; 512 × 512 stays the default (36b3236); the processing selector moves above the faces; harnesses open .next-advanced only where it exists (the control), and the selector row is styled"
       }
     },
     {

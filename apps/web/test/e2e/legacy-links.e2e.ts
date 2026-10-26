@@ -133,7 +133,6 @@ async function exportIsClean(page: Page, touch: boolean): Promise<void> {
     )
       await operate(control);
   await operate(page.getByRole('button', { name: 'More options' }));
-  await operate(page.getByText('Advanced', { exact: true }));
   await page.getByLabel('Processing mode').selectOption('cpu');
   const tile = page.locator('section.next-face').nth(1);
   await operate(tile.locator('.next-input-row .next-face-generate'));

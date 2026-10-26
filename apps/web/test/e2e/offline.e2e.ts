@@ -55,7 +55,6 @@ test(
         )
           await control.click(); // setup
       await page.getByRole('button', { name: 'More options' }).click(); // setup
-      await page.getByText('Advanced', { exact: true }).click(); // setup
       await page.getByLabel('Processing mode').selectOption('cpu');
       const generate = async (index: number, words: string) => {
         const field = tiles.nth(index).locator('.next-field input');
@@ -145,7 +144,6 @@ test(
         )
           await control.click(); // setup
       await page.getByRole('button', { name: 'More options' }).click(); // setup
-      await page.getByText('Advanced', { exact: true }).click(); // setup
       await page.getByLabel('Processing mode').selectOption('cpu');
       await context.setOffline(true);
       await tiles.nth(1).locator('.next-field input').fill('missing assets offline');

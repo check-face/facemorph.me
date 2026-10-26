@@ -217,7 +217,6 @@ test(
           )
             await toast.click(); // setup
           await page.getByRole('button', { name: 'More options' }).click(); // setup
-          await page.getByText('Advanced', { exact: true }).click(); // setup
           await page.getByLabel('Processing mode').selectOption('cpu'); // setup
           // Setup: the face count.
           if (n === 1)
@@ -538,7 +537,6 @@ async function cpuSetup(page: Page) {
   )
     await toast.click(); // setup
   await page.getByRole('button', { name: 'More options' }).click(); // setup
-  await page.getByText('Advanced', { exact: true }).click(); // setup
   await page.getByLabel('Processing mode').selectOption('cpu'); // setup
 }
 

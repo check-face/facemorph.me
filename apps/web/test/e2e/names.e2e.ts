@@ -674,7 +674,6 @@ test(
       ctx.on('request', (r) => urls.push(r.url()));
       await openApp(page, ORIGIN);
       await operate(page, page.getByRole('button', { name: 'More options' }), false);
-      await operate(page, page.getByText('Advanced', { exact: true }), false);
       await page.getByLabel('Processing mode').selectOption('cpu'); // setup
       const dialog = await openNames(page, false, 1);
       await loadedTiles(dialog);

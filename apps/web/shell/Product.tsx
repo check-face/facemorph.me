@@ -10,6 +10,7 @@ import { Shell } from './Shell.tsx';
 import { FaceTile } from './render/FaceTile.tsx';
 import { FacesLayout } from './render/FacesLayout.tsx';
 import { MorphSlot } from './render/MorphSlot.tsx';
+import { ProviderSelector } from './render/ProviderSelector.tsx';
 import { VideoSlot } from './render/VideoSlot.tsx';
 import { NamesDialog, DetectedDialog, CropDialog, DownloadDialog } from './render/Dialogs.tsx';
 import { Support, TestingInvite } from './render/Support.tsx';
@@ -58,8 +59,8 @@ export function Product({ store }: { store: Store }) {
               </p>
               <p>
                 You can keep using the page while work is queued. Try a shorter morph, or compare
-                available processing routes under More options → Advanced. A capable desktop browser
-                may help if you are using a phone.
+                available processing routes with the Processing control above the faces. A capable
+                desktop browser may help if you are using a phone.
               </p>
             </div>
           )}
@@ -76,6 +77,11 @@ export function Product({ store }: { store: Store }) {
         </>
       }
     >
+      <ProviderSelector
+        provider={s.Provider}
+        busy={s.Busy}
+        onProvider={(provider) => dispatch(msg('Provider', provider))}
+      />
       <FacesLayout
         inputs={s.Inputs}
         onAddAt={(at) => dispatch(msg('AddAt', at))}

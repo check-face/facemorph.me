@@ -143,7 +143,7 @@ def faces():
  return q("[...document.querySelectorAll('%s')].map(i=>{const r=i.getBoundingClientRect(),t=i.closest('.next-face-image').getBoundingClientRect();return {width:i.naturalWidth||i.width,height:i.naturalHeight||i.height,url:i.src||'canvas:rgba',renderedWidth:r.width,renderedHeight:r.height,fitsTile:r.width>0&&r.height>0&&Math.abs(r.width-t.width)<=1&&Math.abs(r.height-t.height)<=1&&Math.abs(r.left-t.left)<=1&&Math.abs(r.top-t.top)<=1};})"%S['faceImage'])
 def select_mode(value):
  if not js("!!document.querySelector('select[aria-label=\"Processing mode\"]')"):click('More options')
- js("document.querySelector('.next-advanced').open=true")
+ js("document.querySelector('.next-advanced')&&(document.querySelector('.next-advanced').open=true)")
  js("(()=>{const s=document.querySelector('%s');Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype,'value').set.call(s,'%s');s.dispatchEvent(new Event('change',{bubbles:true}));})()"%(S['processingMode'],value))
  deadline=time.monotonic()+10
  while time.monotonic()<deadline:
@@ -225,7 +225,7 @@ def stage_preflight():
  js("window.__ciLogs=[];['log','warn','error','info'].forEach(k=>{const o=console[k].bind(console);console[k]=(...a)=>{try{window.__ciLogs.push(k+': '+a.map(x=>typeof x==='string'?x:JSON.stringify(x)).join(' ').slice(0,300));if(window.__ciLogs.length>40)window.__ciLogs.shift();}catch(e){}};});")
  js("window.__ciBusyChanges=0;window.__ciBusyObserver=new MutationObserver(()=>{window.__ciBusyChanges++;});window.__ciBusyObserver.observe(document.querySelector('.next-status'),{subtree:true,attributes:true,childList:true,characterData:true});window.__ciBusyChanges++;")
  click('More options')
- js("document.querySelector('.next-advanced').open=true")
+ js("document.querySelector('.next-advanced')&&(document.querySelector('.next-advanced').open=true)")
  state=q("({tiles:document.querySelectorAll('.next-face').length,photos:document.querySelectorAll('%s').length,words:!!document.querySelector('%s'),generate:[...document.querySelectorAll('button')].some(b=>b.classList.contains('next-face-generate')&&b.textContent==='Generate'),modeOptions:[...document.querySelectorAll('%s option')].map(o=>o.value),error:(document.querySelector('%s')?.innerText||'')})"%(S['choosePhoto'],S['faceTextInputs'],S['processingMode'],S['error']))
  assert state['tiles']==2 and state['words'] and state['generate'],state
  assert state['photos']==2,state

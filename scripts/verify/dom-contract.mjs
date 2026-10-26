@@ -382,6 +382,65 @@ export const progressContract = (entries) =>
       : e,
   );
 
+// fm-5kpx's declared change: the processing selector moves from More options › Advanced to one row above the faces.
+// The control's Advanced block (the details, its select and its note) goes, and where a page lacks the row (the
+// control) the row's entries are added after the first faces entry. Its operation is covered by morph.e2e.ts and
+// every runtime e2e that chooses CPU through it.
+// Entries keep the recorded key order (region, tag, next, attrs, text): the comparison is by serialised entry.
+const faces = (attrs, text, tag) => ({
+  region: 'faces',
+  ...(tag ? { tag } : {}),
+  next: [],
+  attrs,
+  text,
+});
+const PROVIDER_ROW = [
+  {
+    region: 'faces',
+    next: ['next-provider-row'],
+    attrs: { 'aria-label': 'Processing', role: 'group' },
+    text: '',
+  },
+  { region: 'faces', next: ['next-provider-field'], attrs: {}, text: '' },
+  faces({}, 'Processing'),
+  faces({ 'aria-label': 'Processing mode' }, '', 'select'),
+  faces({}, 'Automatic processing'),
+  faces({}, 'CPU'),
+  faces({}, 'WebGPU'),
+  {
+    region: 'faces',
+    next: ['next-provider-note'],
+    attrs: {},
+    text: 'Leave processing on automatic unless you are comparing routes. Forced routes still need to pass this device’s checks. ·',
+  },
+  faces({}, 'Using a computer', 'a'),
+  faces({}, 'Supported browsers', 'a'),
+];
+export function providerSelectorContract(entries) {
+  const out = [];
+  let skip = null;
+  for (const e of entries) {
+    if (skip === null && e.next.includes('next-advanced')) {
+      skip = e.region;
+      continue;
+    }
+    if (skip !== null) {
+      if (
+        e.region === skip &&
+        !(typeof e.text === 'string' && e.text.startsWith('Leave processing on automatic'))
+      )
+        continue;
+      const note = e.region === skip;
+      skip = null;
+      if (note) continue;
+    }
+    out.push(e);
+  }
+  if (out.some((e) => e.next.includes('next-provider-row'))) return out;
+  const at = out.findIndex((e) => e.region === 'faces');
+  return at < 0 ? out : [...out.slice(0, at + 1), ...PROVIDER_ROW, ...out.slice(at + 1)];
+}
+
 // fm-qrfz's declared change: the face model's size counts the correctness canaries and sample indices the worker
 // fetches before the first face (model-inventory.mjs routeAssets), so for the same pinned runtime the subject shows
 // about 10 MB more than the control. Only that figure is replaced, on both sides; its value is pinned against the
@@ -679,6 +738,7 @@ export function gradeRow(row, controlSteps, subjectSteps) {
     seedFieldContract, // fm-25um
     runningCancelContract, // fm-25um
     modelSizeContract, // fm-qrfz
+    providerSelectorContract, // fm-5kpx
   ];
   const contract = (dom, step) =>
     [...declared, ...[DECLARED_STEPS[`${row.rowId}/${step}`] ?? []].flat()].reduce(
