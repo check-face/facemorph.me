@@ -45,15 +45,43 @@ export function muxMp4(samples,avcC,trackWidth,trackHeight,trackFps){
  const moov=box('moov',
   fullBox('mvhd',0,0,u32(0),u32(0),u32(1000),u32(durationMs),u32(0x10000),u16(0x100),u16(0),u32(0),u32(0),MATRIX(),u32(0),u32(0),u32(0),u32(0),u32(0),u32(0),u32(2)),
   box('trak',
-   fullBox('tkhd',0,3,u32(0),u32(0),u32(1),u32(0),u32(durationMs),u32(0),u32(0),u16(0),u16(0),u16(0),u32(0),MATRIX(),u32(trackWidth*65536),u32(trackHeight*65536)),
+   fullBox('tkhd',0,3,u32(0),u32(0),u32(1),u32(0),u32(durationMs),u32(0),u32(0),u16(0),u16(0),u16(0),u16(0),MATRIX(),u32(trackWidth*65536),u32(trackHeight*65536)),
    box('mdia',
     fullBox('mdhd',0,0,u32(0),u32(0),u32(timescale),u32(times.at(-1)+nominal),u16(0x55c4),u16(0)),
     fullBox('hdlr',0,0,u32(0),type('vide'),u32(0),u32(0),u32(0),concat(type('VideoHandler'),new Uint8Array(1))),
-    box('minf',fullBox('vmhd',0,1,u16(0),u16(0),u16(0),u16(0)),fullBox('dref',0,0,u32(1),fullBox('url ',0,1)),stbl))));
+    box('minf',fullBox('vmhd',0,1,u16(0),u16(0),u16(0),u16(0)),box('dinf',fullBox('dref',0,0,u32(1),fullBox('url ',0,1))),stbl))));
  // stco is the last box written, so the chunk offset is its final word: ftyp + moov + mdat header.
  new DataView(moov.buffer).setUint32(moov.length-4,ftyp.length+moov.length+8);
  const mdat=concat(u32(8+samples.reduce((n,s)=>n+s.size,0)),type('mdat'),...samples.map(s=>s.data));
  return concat(ftyp,moov,mdat);
+}
+/**
+ * The avcC to mux. Firefox's encoder writes each SPS/PPS into decoderConfig.description with its NAL
+ * header byte doubled (67 67 42 …): Firefox itself decodes from the in-band sets, but other players
+ * receiving the shared file read a corrupt SPS (ffmpeg: "sps_id 1 out of range"). The key chunk
+ * carries the correct parameter sets in band. When the key chunk's
+ * in-band SPS/PPS differ from the description's, the avcC is rebuilt from them; a description that
+ * matches, or a stream without in-band sets (Chromium), is used unchanged.
+ */
+export function avcDecoderConfig(description,key){
+ const avcC=description instanceof ArrayBuffer?new Uint8Array(description):new Uint8Array(description.buffer,description.byteOffset,description.byteLength);
+ const data=key?.data;if(!data||avcC.length<7)return avcC;
+ const lengthSize=(avcC[4]&3)+1,sps=[],pps=[];
+ for(let at=0;at<data.length;){
+  if(at+lengthSize>data.length)return avcC;
+  let n=0;for(let i=0;i<lengthSize;i++)n=n*256+data[at+i];at+=lengthSize;
+  if(!n||at+n>data.length)return avcC;
+  const nal=data.subarray(at,at+n),kind=nal[0]&31;at+=n;
+  if(kind===7)sps.push(nal);else if(kind===8)pps.push(nal);
+ }
+ // High-profile avcC carries extension fields this baseline rebuild does not write.
+ if(!sps.length||!pps.length||sps[0].length<4||[100,110,122,144].includes(sps[0][1]))return avcC;
+ const listed=[];
+ try{let at=5;for(const mask of [31,255]){const n=avcC[at++]&mask;for(let i=0;i<n;i++){const len=avcC[at]<<8|avcC[at+1];at+=2;if(at+len>avcC.length)throw Error();listed.push(avcC.subarray(at,at+len));at+=len;}}}catch{listed.length=0;}
+ const inBand=[...sps,...pps],same=(a,b)=>a.length===b.length&&a.every((x,i)=>x===b[i]);
+ if(listed.length===inBand.length&&listed.every((set,i)=>same(set,inBand[i])))return avcC;
+ const sets=list=>list.flatMap(nal=>[u16(nal.length),nal]);
+ return concat(Uint8Array.of(1,sps[0][1],sps[0][2],sps[0][3],0xfc|(lengthSize-1),0xe0|sps.length),...sets(sps),Uint8Array.of(pps.length),...sets(pps));
 }
 const ftyp=box('ftyp',type('isom'),u32(512),type('isom'),type('iso2'),type('avc1'),type('mp41'));
 async function bytes(asset,cache,grant){const h=await cache.acquire(asset,{grant,owner:BRIDGE_OWNER});return h.bytes();}
@@ -118,7 +146,7 @@ self.onmessage=async({data})=>{currentId=data.id;try{
     if(encError)throw Error(encError);
     await enc.flush();
     if(!description)throw Error('The video encoder did not provide a decodable stream.');
-    result=muxMp4(chunks,description,width,height,fps);
+    result=muxMp4(chunks,avcDecoderConfig(description,chunks.find(chunk=>chunk.type==='key')),width,height,fps);
    }finally{try{enc.close();}catch{} enc=null;}
   }else{
    if(!count)throw Error('No frames to export.');

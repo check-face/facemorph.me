@@ -4,7 +4,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 globalThis.self = globalThis;
-const { muxMp4 } = await import('./video-worker.mjs');
+const { muxMp4, avcDecoderConfig } = await import('./video-worker.mjs');
 const AVC_C = Uint8Array.from([1, 100, 0, 31, 255, 225, 0, 20, 103, 100, 0, 31, 172, 217, 192, 80, 5, 187, 23, 138, 17, 177, 194, 244, 192, 68, 0, 0, 3, 0, 4, 0, 0, 3, 0, 242, 200, 120, 107]);
 const sample = (index, type) => ({ type, timestamp: index * 62500, duration: 62500, size: 4, data: Uint8Array.from([0, 0, 0, 1 + index]) });
 function boxAt(data, name, from = 0) {
@@ -26,4 +26,32 @@ test('sync samples list exactly the keyframe chunks', () => {
  assert.equal(count, 1, 'one keyframe expected');
  const entry = (mp4[at + 12] << 24) | (mp4[at + 13] << 16) | (mp4[at + 14] << 8) | mp4[at + 15];
  assert.equal(entry, 1, 'the keyframe is the first sample');
+});
+const u32At = (data, at) => ((data[at] << 24) | (data[at + 1] << 16) | (data[at + 2] << 8) | data[at + 3]) >>> 0;
+// fm-qa3q: Firefox's MP4 demuxer refused every file this muxer wrote ("Parse MP4 metadata failed"),
+// Chromium-encoded ones included: tkhd carried two stray bytes and dref sat outside its dinf.
+test('track header has its specified size and the data reference sits inside dinf', () => {
+ const mp4 = muxMp4([sample(0, 'key'), sample(1, 'delta')], AVC_C, 512, 512, 16);
+ const tkhd = boxAt(mp4, 'tkhd');
+ assert.equal(u32At(mp4, tkhd - 4), 92, 'a version 0 tkhd is 92 bytes');
+ assert.equal(u32At(mp4, tkhd + 4 + 76), 512 * 65536, 'width is the 16.16 field at its specified offset');
+ const minf = boxAt(mp4, 'minf'), dinf = boxAt(mp4, 'dinf'), dref = boxAt(mp4, 'dref');
+ assert.ok(minf !== -1 && dinf > minf && dref === dinf + 8, 'minf > dinf > dref');
+ assert.equal(u32At(mp4, dinf - 4), 8 + u32At(mp4, dref - 4), 'dinf holds exactly the dref');
+});
+// Firefox's encoder doubles each parameter set's NAL header byte in decoderConfig.description; the
+// key chunk carries the correct SPS/PPS in band, so the avcC is rebuilt from those.
+const SPS = [0x67, 0x42, 0xc0, 0x2a, 0xd9, 0x00, 0x40], PPS = [0x68, 0xcb, 0x8c, 0xb2];
+const nal = (bytes) => [0, 0, 0, bytes.length, ...bytes];
+const keyChunk = (...nals) => ({ type: 'key', data: Uint8Array.from(nals.flat()) });
+test('a description whose parameter sets differ from the in-band ones is rebuilt from the key chunk', () => {
+ const firefox = Uint8Array.from([1, 0x42, 0xc0, 0x2a, 3, 1, 0, SPS.length + 1, 0x67, ...SPS, 1, 0, PPS.length + 1, 0x68, ...PPS]);
+ const fixed = avcDecoderConfig(firefox.buffer, keyChunk(nal(SPS), nal(PPS), nal([0x65, 0x88, 0x84])));
+ assert.deepEqual([...fixed], [1, 0x42, 0xc0, 0x2a, 0xff, 0xe1, 0, SPS.length, ...SPS, 1, 0, PPS.length, ...PPS]);
+});
+test('a matching description, or a stream without in-band sets, is muxed unchanged', () => {
+ const good = Uint8Array.from([1, 0x42, 0xc0, 0x2a, 0xff, 0xe1, 0, SPS.length, ...SPS, 1, 0, PPS.length, ...PPS]);
+ assert.deepEqual([...avcDecoderConfig(good.buffer, keyChunk(nal(SPS), nal(PPS), nal([0x65, 1])))], [...good]);
+ assert.deepEqual([...avcDecoderConfig(AVC_C, keyChunk(nal([0x65, 0x88, 0x84])))], [...AVC_C]);
+ assert.deepEqual([...avcDecoderConfig(AVC_C, undefined)], [...AVC_C]);
 });
