@@ -43,13 +43,15 @@ export function createExportFiles({maxBytes=PREPARED_FILE_MAX_BYTES}={}){
  };
  return {
   /**
-   * The still for a face: WebP at the policy quality, PNG where this browser does not encode WebP.
-   * `encode()` returns the decorated file's Blob; it runs only when no prepared file exists.
+   * The still for a face: WebP at the policy quality, PNG where this browser does not encode WebP, or PNG
+   * when `format` is 'png' (the explicit lossless choice). `encode(format)` returns the decorated file's Blob
+   * for that format; it runs only when no prepared file exists for it, so a format switch prepares only it.
    */
-  async face(target,face,{encode,modelIdentity,current=()=>true}){
+  async face(target,face,{encode,format,modelIdentity,current=()=>true}){
+   if(format!==undefined&&format!=='webp'&&format!=='png')throw Error('Choose WebP or PNG.');
    const store=storeFor(target,face),revision=store.currentRevision();
-   let settings=stillSettings({webpEncodes}),encoded;
-   const once=async()=>(encoded??=await encode());
+   let settings=stillSettings({webpEncodes,lossless:format==='png'}),encoded;
+   const once=async()=>(encoded??=await encode(settings.format));
    let outcome=await store.prepare(settings.format,optionsOf(settings),async()=>bytesOf(await once()),{pin:true,revision});
    if(outcome.status==='type-mismatch'&&settings.format==='webp'&&(await once()).type==='image/png'){
     // This browser fell back to PNG: that is the file, under PNG's name and type.

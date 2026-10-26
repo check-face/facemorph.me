@@ -16,6 +16,7 @@ import {
   readFileSync,
   rmSync,
   statSync,
+  writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { extname, join } from 'node:path';
@@ -644,6 +645,172 @@ test(
     assert.equal(reopened.error, undefined, String(reopened.error));
     assert.equal(reopened.kind, 'project');
     assert.equal(reopened.jobEvents, 0);
+  },
+);
+
+interface Timed {
+  ms: number;
+  message: string;
+  stats: { encodes: number; known: number; webpEncodes: boolean };
+  progressEvents: number;
+  urls: string[];
+}
+test(
+  'save-matrix: WebP default, PNG pixel-exact, MP4 with its resolution; repeat Save reuses name and bytes; a format switch prepares only that format',
+  { timeout: 1_200_000 },
+  async () => {
+    await context.close();
+    await open();
+    pageErrors = [];
+    let ortStarted = 0;
+    const made = await call<{ out: Out } & Settled>('face', 'sm-a', 'seed', '831');
+    assert.equal(made.out.errorMessage, '', made.out.errorMessage);
+    page.on('worker', (w) => {
+      if (/ort-worker/.test(w.url())) ortStarted++;
+    });
+    const rows: Record<string, unknown>[] = [];
+    const urls: string[] = [];
+    const save = async (id: string, format?: 'webp' | 'png') => {
+      const ready = page.waitForEvent('download', { timeout: 120_000 });
+      const timed = await call<Timed>('saveTimed', id, format);
+      const download = await ready;
+      const bytes = new Uint8Array(readFileSync((await download.path())!));
+      urls.push(...timed.urls);
+      return { ...timed, bytes, name: download.suggestedFilename(), sha: sha256(bytes) };
+    };
+    const progressAfterFace = made.progressEvents;
+    const webp1 = await save('sm-a');
+    const webp2 = await save('sm-a');
+    const png1 = await save('sm-a', 'png');
+    const png2 = await save('sm-a', 'png');
+    const webp3 = await save('sm-a', 'webp');
+    for (const [label, r] of [
+      ['webp first', webp1],
+      ['webp repeat', webp2],
+      ['png first', png1],
+      ['png repeat', png2],
+      ['webp after png', webp3],
+    ] as const)
+      rows.push({
+        format: label,
+        bytes: r.bytes.length,
+        ms: Math.round(r.ms),
+        encodes: r.stats.encodes,
+        name: r.name,
+      });
+    // WebP default: 1024 x 1024 with exact recovery.
+    const w = readRecovery(webp1.bytes);
+    assert.equal(w.kind, 'parsed');
+    if (w.kind !== 'parsed') return;
+    assert.equal(w.recovered.mime, 'image/webp');
+    assert.deepEqual([w.recovered.width, w.recovered.height], [1024, 1024]);
+    assert.equal(w.recovered.schemaVersion, 3);
+    assert.match(webp1.name, /\.webp$/);
+    // Repeat Save: same name and bytes, no encode.
+    assert.equal(webp2.name, webp1.name);
+    assert.equal(webp2.sha, webp1.sha);
+    assert.equal(webp2.stats.encodes, webp1.stats.encodes, 'repeat WebP Save encodes nothing');
+    // A format switch prepares only PNG, with no inference.
+    assert.equal(png1.stats.encodes, webp1.stats.encodes + 1, 'PNG prepares one file');
+    assert.match(png1.name, /\.png$/);
+    assert.equal(png2.sha, png1.sha);
+    assert.equal(png2.name, png1.name);
+    assert.equal(png2.stats.encodes, png1.stats.encodes);
+    assert.equal(webp3.sha, webp1.sha, 'switching back hands over the prepared WebP');
+    assert.equal(webp3.name, webp1.name);
+    assert.equal(webp3.stats.encodes, png1.stats.encodes, 'switching back encodes nothing');
+    for (const r of [webp1, webp2, png1, png2, webp3])
+      assert.equal(r.progressEvents, progressAfterFace, 'no job progress: no inference');
+    assert.equal(ortStarted, 0, 'no inference worker started by Save');
+    // PNG: pixel-exact to the prepared pixels, and the same recovery as the WebP.
+    const p = readRecovery(png1.bytes);
+    assert.equal(p.kind, 'parsed');
+    if (p.kind !== 'parsed') return;
+    assert.equal(p.recovered.mime, 'image/png');
+    assert.ok(
+      Buffer.from(p.recovered.latent.values.buffer).equals(
+        Buffer.from(w.recovered.latent.values.buffer),
+      ),
+    );
+    assert.equal(p.recovered.generationSha256, w.recovered.generationSha256);
+    const exact = await call<{ length: number; differing: number; maxDiff: number }>(
+      'stillMatchesFace',
+      'sm-a',
+      Array.from(png1.bytes),
+      'image/png',
+    );
+    log(`png vs prepared pixels: ${JSON.stringify(exact)}`);
+    assert.deepEqual(exact, { length: 1024 * 1024 * 4, differing: 0, maxDiff: 0 });
+    // Exact recovery: the saved WebP reopens through the file entry with the same latent (no inference).
+    const reopened = await call<{ kind?: string; jobEvents: number; error?: string }>(
+      'reopenSaved',
+      'sm-reopened',
+      Array.from(webp1.bytes),
+      webp1.name,
+      'image/webp',
+    );
+    assert.equal(reopened.kind, 'recovered', String(reopened.error));
+    assert.equal(reopened.jobEvents, 0);
+    const again = await save('sm-reopened', 'png');
+    const a = readRecovery(again.bytes);
+    assert.equal(a.kind, 'parsed');
+    if (a.kind !== 'parsed') return;
+    assert.ok(
+      Buffer.from(a.recovered.latent.values.buffer).equals(
+        Buffer.from(w.recovered.latent.values.buffer),
+      ),
+      'reopened WebP keeps the exact latent',
+    );
+    // MP4: unchanged policy settings, resolution reported in the project; repeat Save reuses the file.
+    const morph = await call<{ out: Out } & Settled>('morph', 'sm-a', 'sm-b');
+    assert.equal(morph.out.errorMessage, '', morph.out.errorMessage);
+    const mp41 = await save('video');
+    const mp42 = await save('video');
+    const v = readMp4Project(mp41.bytes);
+    assert.equal(v.kind, 'parsed');
+    if (v.kind !== 'parsed' || v.project.schemaVersion !== 2)
+      throw new Error('MP4 project is not schema 2');
+    assert.equal(v.video.codec, 'avc1');
+    assert.deepEqual(
+      [v.project.video.width, v.project.video.height],
+      [v.video.width, v.video.height],
+    );
+    assert.ok([1024, 512].includes(v.video.width));
+    assert.equal(v.project.morph.framesPerSecond, 16);
+    assert.equal(mp42.sha, mp41.sha);
+    assert.equal(mp42.name, mp41.name);
+    assert.equal(mp42.stats.encodes, mp41.stats.encodes, 'repeat MP4 Save encodes nothing');
+    rows.push(
+      {
+        format: 'mp4 first',
+        bytes: mp41.bytes.length,
+        ms: Math.round(mp41.ms),
+        encodes: mp41.stats.encodes,
+        name: mp41.name,
+        video: v.project.video,
+      },
+      {
+        format: 'mp4 repeat',
+        bytes: mp42.bytes.length,
+        ms: Math.round(mp42.ms),
+        encodes: mp42.stats.encodes,
+        name: mp42.name,
+      },
+    );
+    // Cleanup: every Save's object URL is revoked (media.mjs revokes 60 s after the click); no rejection left over.
+    await page.waitForTimeout(61_000);
+    const facts = await call<{ revoked: number; total: number; unhandled: number }>(
+      'urlFacts',
+      urls,
+    );
+    log(`object urls: ${JSON.stringify(facts)}`);
+    assert.equal(facts.total, 8, 'each of the 8 Saves made one object URL');
+    assert.equal(facts.revoked, facts.total, 'every Save object URL was revoked');
+    assert.equal(facts.unhandled, 0, 'no unhandled promise rejection');
+    assert.deepEqual(pageErrors, []);
+    mkdirSync(results, { recursive: true });
+    writeFileSync(join(results, 'save-matrix.json'), JSON.stringify(rows, null, 2) + '\n');
+    for (const row of rows) log(`save-matrix ${JSON.stringify(row)}`);
   },
 );
 

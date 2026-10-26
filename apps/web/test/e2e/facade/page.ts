@@ -35,6 +35,35 @@ f.subscribeDownloads(
   (e) => invalid.push(e.message),
 );
 let job = 0;
+// Object URLs and unhandled rejections, for the Save matrix's cleanup checks (fm-ykfa).
+const createdUrls: string[] = [];
+const revokedUrls = new Set<string>();
+let unhandled = 0;
+{
+  const create = URL.createObjectURL.bind(URL),
+    revoke = URL.revokeObjectURL.bind(URL);
+  URL.createObjectURL = (o: Blob | MediaSource) => {
+    const url = create(o);
+    createdUrls.push(url);
+    return url;
+  };
+  URL.revokeObjectURL = (url: string) => {
+    revokedUrls.add(url);
+    revoke(url);
+  };
+  window.addEventListener('unhandledrejection', () => unhandled++);
+}
+async function rgbaOf(blob: Blob): Promise<Uint8ClampedArray> {
+  const bitmap = await createImageBitmap(blob, {
+    colorSpaceConversion: 'none',
+    premultiplyAlpha: 'none',
+  });
+  const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
+  const ctx = canvas.getContext('2d')!;
+  ctx.drawImage(bitmap, 0, 0);
+  bitmap.close();
+  return ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+}
 
 const input = (
   id: string,
@@ -280,6 +309,46 @@ const harness = {
     return { selection: selection.kind, out, ...settled() };
   },
   save: (id: string) => f.saveMedia(id),
+  /** One Save with its wall time, the prepared-file counters and the job progress count after it (fm-ykfa). */
+  async saveTimed(id: string, format?: f.StillFormat) {
+    const urlsBefore = createdUrls.length;
+    const began = performance.now();
+    const message = await f.saveMedia(id, format ? { format } : undefined);
+    return {
+      ms: performance.now() - began,
+      message,
+      stats: f.exportStats(),
+      progressEvents: progress.length,
+      urls: createdUrls.slice(urlsBefore),
+    };
+  },
+  urlFacts: (urls: string[]) => ({
+    revoked: urls.filter((u) => revokedUrls.has(u)).length,
+    total: urls.length,
+    unhandled,
+  }),
+  /** Whether a saved still's decoded pixels equal the face as the bridge paints it (its prepared pixels). */
+  async stillMatchesFace(id: string, bytes: number[], type: string) {
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = 1024;
+    document.body.append(canvas);
+    f.drawFace(canvas, id);
+    const deadline = performance.now() + 30_000;
+    while (canvas.dataset['faceDrawn'] !== 'true' && performance.now() < deadline)
+      await new Promise((r) => setTimeout(r, 20));
+    canvas.remove();
+    if (canvas.dataset['faceDrawn'] !== 'true') return { length: 0, differing: -1, maxDiff: -1 };
+    const painted = canvas.getContext('2d')!.getImageData(0, 0, 1024, 1024).data;
+    const saved = await rgbaOf(new Blob([Uint8Array.from(bytes)], { type }));
+    let differing = 0,
+      maxDiff = 0;
+    for (let i = 0; i < painted.length; i++) {
+      const d = Math.abs(painted[i]! - saved[i]!);
+      if (d) differing++;
+      if (d > maxDiff) maxDiff = d;
+    }
+    return { length: saved.length, differing, maxDiff };
+  },
   /** A saved file through the bridge's file entry (fm-fy2.7): what it installs and whether any job ran. */
   async reopenSaved(id: string, bytes: number[], name: string, type: string) {
     const before = progress.length;

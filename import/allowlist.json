@@ -1866,10 +1866,10 @@
       "bytes": 54317,
       "class": "src-next",
       "ported": {
-        "sha256": "62594d9cfd5a6f04968fbef4c0cafc3375b170d4e04ac7a51c8d7b2328452c85",
-        "bytes": 59290,
+        "sha256": "87f5b36a4d55e78c931f5eeca328eed029e718914a2fe39121d5af88145551b4",
+        "bytes": 60244,
         "bead": "fm-25um",
-        "reason": "ProjectJson imported from project/bridge-result.ts (fm-stth, one line); Morph admitted on its own and refusals returned with reasonKey/text/helpAnchor (fm-lt2p); revision-owned operation cancellation, compute/file readiness and bounded route snapshots (fm-0y24); downloads subscription returns its disposer (fm-v80g); Preserve unchanged Morph endpoints and their face/file ownership; update the inherited URL expectation to match, verified by real operation-service CPU browser tests (fm-in6a).; Issue link follows the org rename (9e39feb, fm-rur); a damaged saved image is one plain message with the parser reason as cause (cc8ea5e, fm-25um); weighted blend action as one W+ sum and one synthesis (3dd0238, fm-in6a); Expected photo refusals are tagged PhotoRefusal and stay error-area-only; unexpected failures keep the report ask (c0a65fb, operator 26 October, repairing fm-25um c397da4); saved projects carry the video writer's encoder choice; the file entry checks the recovered generator record/shape and skips the seed-identity check for a recipe-checked blend (fm-fy2.7)"
+        "reason": "ProjectJson imported from project/bridge-result.ts (fm-stth, one line); Morph admitted on its own and refusals returned with reasonKey/text/helpAnchor (fm-lt2p); revision-owned operation cancellation, compute/file readiness and bounded route snapshots (fm-0y24); downloads subscription returns its disposer (fm-v80g); Preserve unchanged Morph endpoints and their face/file ownership; update the inherited URL expectation to match, verified by real operation-service CPU browser tests (fm-in6a).; Issue link follows the org rename (9e39feb, fm-rur); a damaged saved image is one plain message with the parser reason as cause (cc8ea5e, fm-25um); weighted blend action as one W+ sum and one synthesis (3dd0238, fm-in6a); Expected photo refusals are tagged PhotoRefusal and stay error-area-only; unexpected failures keep the report ask (c0a65fb, operator 26 October, repairing fm-25um c397da4); saved projects carry the video writer's encoder choice; the file entry checks the recovered generator record/shape and skips the seed-identity check for a recipe-checked blend (fm-fy2.7); saveMedia/shareMedia take {format:'webp'|'png'}; the PNG is the face's synthesized pixels while held, else its decoded original; exportStats exposes the prepared-file counters (fm-ykfa)"
       }
     },
     {
@@ -1925,10 +1925,10 @@
       "bytes": 6309,
       "class": "src-next",
       "ported": {
-        "sha256": "9fb0a38372736a6145364329d06ab6659a277bc8478fb69cfea78051c584d4c2",
-        "bytes": 3690,
+        "sha256": "81ec066e9e04e877af293d014f8f4ff42d666ecac8094d5ceb2dbeea5feacdd4",
+        "bytes": 4051,
         "bead": "fm-fy2.7",
-        "reason": "Recovery reads and writes are the package schema core through src/media/recovery-files.ts (fm-fy2.7): stills schema 3 written, 3/2/1 read with typed errors; MP4 project schema 2 with the writer's route, schema-1 project MP4 still read"
+        "reason": "Recovery reads and writes are the package schema core through src/media/recovery-files.ts (fm-fy2.7): stills schema 3 written, 3/2/1 read with typed errors; MP4 project schema 2 with the writer's route, schema-1 project MP4 still read; downloadImage {format:'png', rgba} for the explicit lossless still (fm-ykfa)"
       }
     },
     {

@@ -203,11 +203,35 @@ export const MULTIPLE_FACES_MESSAGE: string = readString(multipleFacesJs, 'MULTI
 // ---- results and projects ------------------------------------------------------------------------------------------
 
 /** 'video' or a face id. Settles with the sentence to show. */
-export async function saveMedia(id: string): Promise<string> {
-  return readString(await bridge.saveMedia(id), 'saveMedia');
+export type StillFormat = 'webp' | 'png';
+/** `format`: a face's still as WebP (the default) or PNG (lossless); a morph is always MP4. */
+export async function saveMedia(
+  id: string,
+  options?: { readonly format?: StillFormat },
+): Promise<string> {
+  return readString(await bridge.saveMedia(id, options), 'saveMedia');
 }
-export async function shareMedia(id: string): Promise<string> {
-  return readString(await bridge.shareMedia(id), 'shareMedia');
+export async function shareMedia(
+  id: string,
+  options?: { readonly format?: StillFormat },
+): Promise<string> {
+  return readString(await bridge.shareMedia(id, options), 'shareMedia');
+}
+/** Prepared-file counters: encodes into the store this session (a repeat Save or Share adds none). */
+export function exportStats(): {
+  readonly encodes: number;
+  readonly known: number;
+  readonly webpEncodes: boolean;
+} {
+  const s: unknown = bridge.exportStats();
+  const field = (k: string): unknown =>
+    s && typeof s === 'object' ? Reflect.get(s, k) : undefined;
+  const encodes = field('encodes'),
+    known = field('known'),
+    webpEncodes = field('webpEncodes');
+  if (typeof encodes !== 'number' || typeof known !== 'number' || typeof webpEncodes !== 'boolean')
+    throw new TypeError('exportStats: not export counters');
+  return { encodes, known, webpEncodes };
 }
 export async function exportProject(options: MorphSettings | null): Promise<string> {
   return readString(

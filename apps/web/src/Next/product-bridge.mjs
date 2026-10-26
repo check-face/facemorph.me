@@ -444,7 +444,8 @@ export function cancel(){active?.abort();writer?.dispose();runtime?.cancel();}
 const kindOf=id=>id==='video'?'video':'image';
 function reported(kind,method,work){analytics.exported({kind,method,outcome:'ready'});const began=now();return Promise.resolve().then(()=>typeof work==='function'?work():work).then(result=>{const text=String(result||'');const cancelled=/cancelled/i.test(text),fallback=method==='share'&&/download|save/i.test(text);analytics.exported({kind,method,outcome:cancelled?'cancelled':'completed',durationMs:now()-began,fallback});return result;},error=>{analytics.exported({kind,method,outcome:error?.name==='AbortError'?'cancelled':'failed',durationMs:now()-began});throw error;});}
 /** The file Save and Share hand over: prepared once per result and format, named from its export identity. */
-async function exportFile(id){
+/** `format` 'png' is the explicit lossless still (fm-ykfa); otherwise the policy's WebP (PNG where WebP is unavailable). */
+async function exportFile(id,format){
  if(id==='video'){
   const saved=video,savedProject=project;if(!saved)throw Error('Create a morph first.');
   const morph=savedProject?.morph,endpoints=(morph?.controls||[]).map(control=>({...faces.get(control.visitId),latent:control.latent}));
@@ -452,11 +453,19 @@ async function exportFile(id){
    morph:morph&&{mode:morph.kind,settings:{width:morph.width,pinchCenter:morph.pinchCenter??null,framesPerSegment:morph.framesPerSegment,framesPerSecond:morph.framesPerSecond}}});
  }
  const face=faces.get(id);if(!face)throw Error('Generate a result first.');
- const encode=async()=>{face.downloadReady??=(async()=>{const result=await readyFace(face);return (typeof downloadImage==='function'?downloadImage:decorateImage)(result,face.source?.mode==='seed'?face.source.value:undefined);})();try{return await face.downloadReady;}catch(error){face.downloadReady=null;throw error;}};
- return exportFilesOf().face(id,face,{encode,modelIdentity:runtimeIdentity,current:()=>faces.get(id)===face});
+ const seed=face.source?.mode==='seed'?face.source.value:undefined;
+ // The PNG holds the face's own pixels: the synthesized RGBA while this tab still has it, else its canonical PNG
+ // as made, else the lossless encode of its decoded original.
+ const png=async()=>{const result=await readyFace(face),rgba=face.pixels?.rgba;
+  if(rgba instanceof ArrayBuffer&&rgba.byteLength===1024*1024*4)return downloadImage(result,seed,{format:'png',rgba:rgba.slice(0)});
+  return result.blob.type==='image/png'?decorateImage(result,seed):downloadImage(result,seed,{format:'png'});};
+ const encode=async chosen=>{if(chosen==='png')return png();face.downloadReady??=(async()=>{const result=await readyFace(face);return (typeof downloadImage==='function'?downloadImage:decorateImage)(result,seed);})();try{return await face.downloadReady;}catch(error){face.downloadReady=null;throw error;}};
+ return exportFilesOf().face(id,face,{encode,format,modelIdentity:runtimeIdentity,current:()=>faces.get(id)===face});
 }
-export async function saveMedia(id){return reported(kindOf(id),'save',async()=>{const file=await exportFile(id);return saveFile(file.blob,file.filename);});}
-export async function shareMedia(id){return reported(kindOf(id),'share',async()=>{const file=await exportFile(id);return shareFile(file.blob,file.filename);});}
+export async function saveMedia(id,options){return reported(kindOf(id),'save',async()=>{const file=await exportFile(id,options?.format);return saveFile(file.blob,file.filename);});}
+export async function shareMedia(id,options){return reported(kindOf(id),'share',async()=>{const file=await exportFile(id,options?.format);return shareFile(file.blob,file.filename);});}
+/** Prepared-file counters (fm-ykfa): encodes into the store this session; a repeat Save adds none. */
+export function exportStats(){return exportFiles?exportFiles.stats():{encodes:0,known:0,webpEncodes:true};}
 export async function exportProject(options){
  if(!project)throw Error('Generate or open a project first.');
  let selected=project;

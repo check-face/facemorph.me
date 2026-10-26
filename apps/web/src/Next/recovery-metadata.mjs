@@ -35,15 +35,18 @@ export async function recoverVideoProject(file){
 
 // New WebP originals are reused directly; legacy PNG originals remain readable.
 // Encoding and compact metadata stay in a bounded worker; WebP absence keeps PNG recovery.
-export async function downloadImage(result,seed){
- if(result.blob.type==='image/webp')return (await embedRecovery(result.blob,result,{seed:seedOf(seed)})).blob;
+// `format` 'png' is the lossless still: from `rgba` (the face's synthesized pixels, while the tab still holds
+// them) or else from the decoded original, so the PNG is exactly the pixels it was prepared from.
+export async function downloadImage(result,seed,{format='webp',rgba}={}){
+ if(format==='webp'&&result.blob.type==='image/webp')return (await embedRecovery(result.blob,result,{seed:seedOf(seed)})).blob;
  const encoder=createImageEncoder();
  try{
   const slot=await encoder.acquire(1024*1024*4);
   // A displayed face also carries UI state and deferred file/download promises.
   // Only the recovery identity belongs across the worker boundary.
   const identity={latent:result.latent,provenance:result.provenance,generationKind:result.generationKind,generationSha256:result.generationSha256};
-  const output=await encoder.encode(slot,{blob:result.blob,format:'webp',quality:WEBP_QUALITY,recovery:{result:identity,seed:seedOf(seed)}});
+  const recovery={result:identity,seed:seedOf(seed)};
+  const output=await encoder.encode(slot,format==='png'?(rgba?{rgba,format:'png',recovery}:{blob:result.blob,format:'png',recovery}):{blob:result.blob,format:'webp',quality:WEBP_QUALITY,recovery});
   return output.blob;
  }catch(error){
   if(result.blob.type==='image/png')return decorateImage(result,seed);

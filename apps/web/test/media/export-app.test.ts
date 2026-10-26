@@ -250,3 +250,28 @@ test('prepared export: the morph video is named from its faces and mode and prep
   });
   assert.match(restored.filename, new RegExp(`^morph-${SUFFIX}\\.mp4$`));
 });
+
+test('prepared export: the explicit PNG prepares only PNG; switching back hands over the prepared WebP (fm-ykfa)', async () => {
+  const files = createExportFiles();
+  const emma = face('text', 'Emma');
+  const asked: string[] = [];
+  const encode = async (format: string) => (
+    asked.push(format),
+    format === 'png'
+      ? new Blob([PNG], { type: 'image/png' })
+      : new Blob([WEBP], { type: 'image/webp' })
+  );
+  const webp = await files.face('a', emma, { encode });
+  const png = await files.face('a', emma, { encode, format: 'png' });
+  const pngAgain = await files.face('a', emma, { encode, format: 'png' });
+  const back = await files.face('a', emma, { encode, format: 'webp' });
+  assert.deepEqual(asked, ['webp', 'png'], 'one encode per format, only for the format asked');
+  assert.equal(files.stats().encodes, 2);
+  assert.equal(png.mime, 'image/png');
+  assert.match(png.filename, new RegExp(`^emma-${SUFFIX}\\.png$`));
+  assert.equal(pngAgain.blob, png.blob);
+  assert.equal(pngAgain.filename, png.filename);
+  assert.equal(back.blob, webp.blob);
+  assert.equal(back.filename, webp.filename);
+  await assert.rejects(files.face('a', emma, { encode, format: 'gif' }), /WebP or PNG/);
+});
