@@ -26,10 +26,15 @@ test('no WebGL execution path remains in the runtime, worker, route selection or
   assert.doesNotMatch(runtime, /\['auto','cpu','webgl','webgpu'\]|'webgl'\]:\[\]/);
   // manifest.webgl stays: the direct WebGPU engine's coefficient bundle and canary identity.
   assert.match(worker, /gpuEngine==='direct'\?manifest\.webgl:manifest\.webgpu/);
-  // The direct engine is stylegan-js's (fm-7f2o); the worker still refuses a bundle without manifest.webgl.
+  // The direct engine is stylegan-js's (fm-7f2o), loaded on a WebGPU route only (fm-s0vi); the worker still refuses a
+  // bundle without manifest.webgl.
   assert.match(
     worker,
-    /if\(!manifest\.webgl\)throw Error\('WebGPU direct bundle unavailable'\);generator=await loadDirectWebGpuGenerator\(\{reader,manifest,/,
+    /if\(!manifest\.webgl\)throw Error\('WebGPU direct bundle unavailable'\);generator=await \(await webgpuLoaders\(\)\)\.loadDirectWebGpuGenerator\(\{reader,manifest,/,
+  );
+  assert.match(
+    worker,
+    /const webgpuLoaders=\(\)=>import\('@facemorph\/stylegan-js\/engine\/webgpu'\);/,
   );
   assert.match(worker, /if\(!\['wasm','webgpu'\]\.includes\(request\.provider\)\)throw/);
 });
