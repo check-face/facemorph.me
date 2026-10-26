@@ -66,6 +66,22 @@ labels rather than reserving the whole host for one check.
 The main workflow still finishes its running revision before taking the newest
 pending revision; it can execute independent jobs within that revision in parallel.
 
+The dedicated `fmci` container keeps runner IPC alive independently of login sessions.
+Its GitHub runner services use UID 1001 (`runner`) without a PAM session. With logind's
+default `RemoveIPC=yes`, ending a temporary `su - runner` session removed active jobs'
+`/dev/shm` compiled modules, browser profiles and trace files after the 10-second user
+stop delay. The 27 October repair is `/etc/systemd/logind.conf.d/60-facemorph-runner.conf`:
+
+```ini
+[Login]
+RemoveIPC=no
+```
+
+`systemctl reload systemd-logind` applied the policy to the running container.
+`busctl get-property org.freedesktop.login1 /org/freedesktop/login1 org.freedesktop.login1.Manager RemoveIPC`
+reports `b false`. A UID-1001 `/dev/shm` canary survived runner logout and the full
+stop delay. Include this policy when rebuilding the service-runner container.
+
 The pool includes scaffold build/typecheck/test/pack, package contracts, web-shell
 builds, import/inventory/identity checks, diagnostics Docker tests, native-retirement checks and
 the artifact lookup job. The site artifact build uses its reserved runner; tracker publication
