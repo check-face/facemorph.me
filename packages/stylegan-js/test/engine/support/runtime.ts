@@ -2,7 +2,9 @@
 // FACEMORPH_RUNTIME_CACHE to override), read through a verifying local reader as the manager's verified reads do:
 // each chunk's and the whole asset's size and SHA-256 are checked on every read, a missing file is a cache miss, a
 // wrong one is corrupt, and nothing is fetched. `root` lets a test read a planted copy (a corrupted asset is an input
-// file, not a fake). Where the pinned runtime is not acquired, the model tests report untested.
+// file, not a fake). Where the default pinned runtime is not acquired, the model tests report untested.
+// Staged qualification supplies FACEMORPH_RUNTIME_SHA256 with FACEMORPH_RUNTIME_CACHE; an explicitly requested
+// runtime must match that digest or fail, so a broken candidate cannot silently turn into skipped model tests.
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
@@ -26,12 +28,29 @@ export const pathOf = (at: { url?: string; file?: string }, root = RUNTIME) =>
 /** The runtime manifest as read; tests narrow it to the fields they use. */
 export type RuntimeManifest = Record<string, unknown>;
 
-export function acquiredManifest(): { manifest: RuntimeManifest; sha256: string } | null {
-  const path = join(RUNTIME, 'manifest.json');
-  if (!existsSync(path)) return null;
+export function acquiredManifest(
+  root = RUNTIME,
+  requestedSha256 = process.env['FACEMORPH_RUNTIME_SHA256'],
+): { manifest: RuntimeManifest; sha256: string } | null {
+  const expected = requestedSha256 ?? PINNED_MANIFEST_SHA256;
+  if (!/^[a-f0-9]{64}$/.test(expected))
+    throw Error('FACEMORPH_RUNTIME_SHA256 must be a lowercase SHA-256 digest');
+  const path = join(root, 'manifest.json');
+  if (!existsSync(path)) {
+    if (requestedSha256 !== undefined)
+      throw Error(`Requested runtime manifest is missing: ${path}`);
+    return null;
+  }
   const bytes = readFileSync(path);
-  if (sha256(bytes) !== PINNED_MANIFEST_SHA256) return null;
-  return { manifest: JSON.parse(bytes.toString('utf8')), sha256: PINNED_MANIFEST_SHA256 };
+  const actual = sha256(bytes);
+  if (actual !== expected) {
+    if (requestedSha256 !== undefined)
+      throw Error(
+        `Requested runtime manifest SHA-256 mismatch: expected ${expected}, got ${actual}`,
+      );
+    return null;
+  }
+  return { manifest: JSON.parse(bytes.toString('utf8')), sha256: actual };
 }
 
 export function runtimeReader(root = RUNTIME, reads: string[] = []): LocalAssetReader {

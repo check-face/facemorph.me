@@ -7,10 +7,12 @@ import test, { type TestContext } from 'node:test';
 import {
   composeManifest,
   generateOverlay,
+  ORT_BUILD_FILES,
   ORT_FILES,
   validateOverlay,
   verifyOverlay,
   type OrtMirrorOverlay,
+  type OrtGpuBuild,
 } from './ort-mirror.ts';
 
 const lock = {
@@ -29,7 +31,7 @@ const control = () =>
     ),
   );
 
-function fixture(t: TestContext): string {
+function fixture(t: TestContext, gpuBuild: OrtGpuBuild = 'webgpu'): string {
   const root = mkdtempSync(join(tmpdir(), 'facemorph-ort-overlay-'));
   t.after(() => rmSync(root, { recursive: true, force: true }));
   const dist = join(root, 'dist');
@@ -38,7 +40,7 @@ function fixture(t: TestContext): string {
     join(root, 'package.json'),
     JSON.stringify({ name: 'onnxruntime-web', version: lock.version }),
   );
-  for (const [index, file] of ORT_FILES.entries())
+  for (const [index, file] of ORT_BUILD_FILES[gpuBuild].entries())
     writeFileSync(
       join(dist, file),
       file.endsWith('.wasm')
@@ -49,9 +51,9 @@ function fixture(t: TestContext): string {
 }
 
 test('six actual fixture files yield reproducible immutable WASM/JSEP destinations', (t) => {
-  const dist = fixture(t);
-  const overlay = generateOverlay(dist, lock);
-  assert.deepEqual(generateOverlay(dist, lock), overlay);
+  const dist = fixture(t, 'jsep');
+  const overlay = generateOverlay(dist, lock, 'jsep');
+  assert.deepEqual(generateOverlay(dist, lock, 'jsep'), overlay);
   assert.deepEqual(verifyOverlay(dist, overlay), overlay);
   assert.deepEqual(overlay.npm, {
     package: 'onnxruntime-web',
@@ -59,9 +61,14 @@ test('six actual fixture files yield reproducible immutable WASM/JSEP destinatio
     integrity: lock.integrity,
   });
   assert.equal(overlay.gpuBuild, 'jsep');
+  // Captured from the pre-native implementation: recorded JSEP bundle identities stay valid.
+  assert.equal(
+    overlay.bundleSha256,
+    '92a9a16f5baaeafc7b31e570fb10cca5c67b55fbaa5d6911945b62319bb36268',
+  );
   assert.deepEqual(
     overlay.files.map((file) => file.file),
-    ORT_FILES,
+    ORT_BUILD_FILES.jsep,
   );
   for (const row of overlay.files) {
     const bytes = readFileSync(join(dist, row.file));
@@ -69,9 +76,9 @@ test('six actual fixture files yield reproducible immutable WASM/JSEP destinatio
     assert.equal(row.sha256, createHash('sha256').update(bytes).digest('hex'));
     assert.equal(row.path, `assets/${overlay.bundleSha256}/${row.file}`);
   }
-  const file = ORT_FILES[4];
+  const file = ORT_BUILD_FILES.jsep[4];
   writeFileSync(join(dist, file), '// next release bytes\n');
-  const changed = generateOverlay(dist, lock);
+  const changed = generateOverlay(dist, lock, 'jsep');
   assert.notEqual(changed.bundleSha256, overlay.bundleSha256);
   assert.ok(changed.files.every((row, index) => row.path !== overlay.files[index]!.path));
 });
@@ -79,7 +86,7 @@ test('six actual fixture files yield reproducible immutable WASM/JSEP destinatio
 test('composition preserves every model, reference and unrelated field in the real control', (t) => {
   const original = control();
   const snapshot = structuredClone(original);
-  const overlay = generateOverlay(fixture(t), lock);
+  const overlay = generateOverlay(fixture(t, 'jsep'), lock, 'jsep');
   const overlaySnapshot = structuredClone(overlay);
   const composed = composeManifest(original, overlay, 'https://next.facemorph.me');
   const runtime = composed['runtime'] as typeof original.runtime;
@@ -116,6 +123,87 @@ test('composition preserves every model, reference and unrelated field in the re
   assert.deepEqual(overlay, overlaySnapshot);
 });
 
+for (const gpuBuild of ['webgpu', 'jspi'] as const)
+  test(`${gpuBuild} stages its exact six pinned files and composes the native EP without changing models`, (t) => {
+    const dist = fixture(t, gpuBuild);
+    const overlay = generateOverlay(dist, lock, gpuBuild);
+    assert.equal(overlay.gpuBuild, gpuBuild);
+    assert.equal(overlay.files.length, 6);
+    assert.deepEqual(
+      overlay.files.map((file) => file.file),
+      ORT_BUILD_FILES[gpuBuild],
+    );
+    assert.deepEqual(
+      overlay.files.slice(3).map((file) => file.file),
+      gpuBuild === 'webgpu'
+        ? [
+            'ort.webgpu.min.mjs',
+            'ort-wasm-simd-threaded.asyncify.mjs',
+            'ort-wasm-simd-threaded.asyncify.wasm',
+          ]
+        : [
+            'ort.jspi.min.mjs',
+            'ort-wasm-simd-threaded.jspi.mjs',
+            'ort-wasm-simd-threaded.jspi.wasm',
+          ],
+    );
+    assert.deepEqual(verifyOverlay(dist, overlay), overlay);
+    if (gpuBuild === 'webgpu') {
+      assert.deepEqual(generateOverlay(dist, lock), overlay);
+      assert.deepEqual(ORT_FILES, ORT_BUILD_FILES.webgpu);
+    }
+    const original = control();
+    const composed = composeManifest(original, overlay, 'https://next.facemorph.me');
+    const runtime = composed['runtime'] as typeof original.runtime;
+    const webgpu = composed['webgpu'] as typeof original.webgpu;
+    assert.equal(runtime.version, lock.version);
+    assert.equal(webgpu.runtime.version, lock.version);
+    assert.equal(runtime.moduleUrl, runtime.assets[0].url);
+    for (const [index, asset] of [
+      ...runtime.assets,
+      webgpu.runtime.module,
+      webgpu.runtime.factory,
+      webgpu.runtime.wasm,
+    ].entries()) {
+      const row = overlay.files[index]!;
+      assert.deepEqual(asset, {
+        url: `https://next.facemorph.me/runtime/${row.path}`,
+        sha256: row.sha256,
+        size: row.size,
+      });
+    }
+    const retained = structuredClone(composed);
+    retained['runtime'] = original.runtime;
+    (retained['webgpu'] as typeof original.webgpu).runtime = original.webgpu.runtime;
+    assert.deepEqual(retained, original);
+    assert.doesNotMatch(JSON.stringify(composed.webgpu), /\.jsep\./);
+    // A native build cannot be silently relabelled or transplanted under another bundle digest.
+    for (const otherBuild of Object.keys(ORT_BUILD_FILES) as OrtGpuBuild[]) {
+      if (otherBuild === gpuBuild) continue;
+      assert.throws(() => validateOverlay({ ...overlay, gpuBuild: otherBuild }), /filename/);
+      const other = generateOverlay(fixture(t, otherBuild), lock, otherBuild);
+      assert.notEqual(other.bundleSha256, overlay.bundleSha256);
+      const transplanted = {
+        ...other,
+        bundleSha256: overlay.bundleSha256,
+        files: other.files.map((row) => ({
+          ...row,
+          path: `assets/${overlay.bundleSha256}/${row.file}`,
+        })),
+      };
+      assert.throws(() => validateOverlay(transplanted), /bundle digest/);
+    }
+  });
+
+test('native staging is the default and never substitutes JSEP files or an unknown build', (t) => {
+  const legacy = fixture(t, 'jsep');
+  assert.throws(() => generateOverlay(legacy, lock), /ENOENT/);
+  assert.throws(
+    () => generateOverlay(legacy, lock, 'unknown' as OrtGpuBuild),
+    /unsupported GPU build/,
+  );
+});
+
 test('lock provenance rejects unstable versions, foreign releases and malformed integrity', (t) => {
   const dist = fixture(t);
   for (const version of ['1.30.0-rc.1', 'latest', '^1.30.0', '01.30.0', '', '1.30'])
@@ -150,9 +238,9 @@ test('recorded overlay metadata cannot introduce invalid paths, assets or tamper
       },
     ],
     [
-      'native EP',
+      'mismatched GPU build',
       (row) => {
-        row.gpuBuild = 'webgpu';
+        row.gpuBuild = 'jsep';
       },
     ],
     [
@@ -194,7 +282,7 @@ test('recorded overlay metadata cannot introduce invalid paths, assets or tamper
     [
       'filename',
       (row) => {
-        row.files[3].file = 'ort.webgpu.min.mjs';
+        row.files[3].file = 'ort.min.mjs';
       },
     ],
     [

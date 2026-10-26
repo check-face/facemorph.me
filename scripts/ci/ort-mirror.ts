@@ -1,21 +1,42 @@
-// fm-r4a: a destination overlay for npm ORT's six WASM/JSEP assets. The historical
+// fm-r4a/fm-qeh: a destination overlay for npm ORT's six WASM/GPU assets. The historical
 // control stays immutable. This records lockfile provenance, not a tarball-integrity
 // attestation: npm must verify the lock integrity when installing the supplied dist.
 import { createHash } from 'node:crypto';
 import { lstatSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 
-export const ORT_FILES = [
+const WASM_FILES = [
   'ort.wasm.min.mjs',
   'ort-wasm-simd-threaded.mjs',
   'ort-wasm-simd-threaded.wasm',
-  'ort.min.mjs',
-  'ort-wasm-simd-threaded.jsep.mjs',
-  'ort-wasm-simd-threaded.jsep.wasm',
 ] as const;
 
+export const ORT_BUILD_FILES = {
+  jsep: [
+    ...WASM_FILES,
+    'ort.min.mjs',
+    'ort-wasm-simd-threaded.jsep.mjs',
+    'ort-wasm-simd-threaded.jsep.wasm',
+  ],
+  webgpu: [
+    ...WASM_FILES,
+    'ort.webgpu.min.mjs',
+    'ort-wasm-simd-threaded.asyncify.mjs',
+    'ort-wasm-simd-threaded.asyncify.wasm',
+  ],
+  jspi: [
+    ...WASM_FILES,
+    'ort.jspi.min.mjs',
+    'ort-wasm-simd-threaded.jspi.mjs',
+    'ort-wasm-simd-threaded.jspi.wasm',
+  ],
+} as const;
+export type OrtGpuBuild = keyof typeof ORT_BUILD_FILES;
+/** New overlays stage the native WebGPU EP. Historical JSEP overlays retain their own file set. */
+export const ORT_FILES = ORT_BUILD_FILES.webgpu;
+
 export interface OrtMirrorFile {
-  readonly file: (typeof ORT_FILES)[number];
+  readonly file: (typeof ORT_BUILD_FILES)[OrtGpuBuild][number];
   readonly path: string;
   readonly sha256: string;
   readonly size: number;
@@ -29,7 +50,7 @@ export interface OrtMirrorOverlay {
     readonly url: string;
     readonly integrity: string;
   };
-  readonly gpuBuild: 'jsep';
+  readonly gpuBuild: OrtGpuBuild;
   readonly bundleSha256: string;
   readonly files: readonly OrtMirrorFile[];
 }
@@ -68,37 +89,44 @@ function provenance(version: unknown, url: unknown, integrity: unknown): OrtMirr
 function bundleDigest(
   version: string,
   npm: OrtMirrorOverlay['npm'],
+  gpuBuild: OrtGpuBuild,
   files: readonly Pick<OrtMirrorFile, 'file' | 'sha256' | 'size'>[],
 ): string {
   return digest(
     JSON.stringify({
       version,
       npm,
-      gpuBuild: 'jsep',
+      gpuBuild,
       files: files.map(({ file, sha256, size }) => ({ file, sha256, size })),
     }),
   );
 }
 
-/** Reject arbitrary paths, extra assets, native asyncify, and altered bundle metadata. */
+function buildName(value: unknown): OrtGpuBuild {
+  if (value !== 'jsep' && value !== 'webgpu' && value !== 'jspi') fail('unsupported GPU build');
+  return value as OrtGpuBuild;
+}
+
+/** Reject arbitrary paths, extra assets, mismatched GPU builds, and altered bundle metadata. */
 export function validateOverlay(input: unknown): OrtMirrorOverlay {
   const overlay = object(input, 'overlay');
   keys(overlay, ['schema', 'version', 'npm', 'gpuBuild', 'bundleSha256', 'files'], 'overlay');
-  if (overlay['schema'] !== 'facemorph.ort-mirror/1' || overlay['gpuBuild'] !== 'jsep')
-    fail('unsupported overlay schema or GPU build');
+  if (overlay['schema'] !== 'facemorph.ort-mirror/1') fail('unsupported overlay schema');
+  const gpuBuild = buildName(overlay['gpuBuild']);
+  const expectedFiles = ORT_BUILD_FILES[gpuBuild];
   const npm = object(overlay['npm'], 'npm');
   keys(npm, ['package', 'url', 'integrity'], 'npm');
   if (npm['package'] !== 'onnxruntime-web') fail('unexpected npm package');
   const source = provenance(overlay['version'], npm['url'], npm['integrity']);
   if (typeof overlay['bundleSha256'] !== 'string' || !SHA256.test(overlay['bundleSha256']))
     fail('invalid bundle digest');
-  if (!Array.isArray(overlay['files']) || overlay['files'].length !== ORT_FILES.length)
-    fail('exactly six WASM/JSEP files are required');
+  if (!Array.isArray(overlay['files']) || overlay['files'].length !== expectedFiles.length)
+    fail('exactly six WASM/GPU files are required');
   const files = (overlay['files'] as unknown[]).map((inputFile, index) => {
     const file = object(inputFile, 'file');
     keys(file, ['file', 'path', 'sha256', 'size'], 'file');
-    if (file['file'] !== ORT_FILES[index]) fail('unexpected or reordered ORT filename');
-    if (file['path'] !== `assets/${overlay['bundleSha256']}/${ORT_FILES[index]}`)
+    if (file['file'] !== expectedFiles[index]) fail('unexpected or reordered ORT filename');
+    if (file['path'] !== `assets/${overlay['bundleSha256']}/${expectedFiles[index]}`)
       fail('file path must be the immutable bundle destination');
     if (typeof file['sha256'] !== 'string' || !SHA256.test(file['sha256']))
       fail('invalid file digest');
@@ -106,7 +134,9 @@ export function validateOverlay(input: unknown): OrtMirrorOverlay {
       fail('invalid file size');
     return file as unknown as OrtMirrorFile;
   });
-  if (bundleDigest(overlay['version'] as string, source, files) !== overlay['bundleSha256'])
+  if (
+    bundleDigest(overlay['version'] as string, source, gpuBuild, files) !== overlay['bundleSha256']
+  )
     fail('bundle digest does not match its provenance and files');
   return structuredClone(input) as OrtMirrorOverlay;
 }
@@ -129,21 +159,25 @@ function fileBytes(dist: string, file: string): Buffer {
 }
 
 /** dist is the installed package's dist directory; lock is its package-lock entry. */
-export function generateOverlay(dist: string, lockInput: unknown): OrtMirrorOverlay {
+export function generateOverlay(
+  dist: string,
+  lockInput: unknown,
+  gpuBuild: OrtGpuBuild = 'webgpu',
+): OrtMirrorOverlay {
   const lock = object(lockInput, 'lock entry');
   const npm = provenance(lock['version'], lock['resolved'], lock['integrity']);
   const version = lock['version'] as string;
   installed(dist, version);
-  const rows = ORT_FILES.map((file) => {
+  const rows = ORT_BUILD_FILES[buildName(gpuBuild)].map((file) => {
     const bytes = fileBytes(dist, file);
     return { file, sha256: digest(bytes), size: bytes.length };
   });
-  const bundleSha256 = bundleDigest(version, npm, rows);
+  const bundleSha256 = bundleDigest(version, npm, gpuBuild, rows);
   return validateOverlay({
     schema: 'facemorph.ort-mirror/1',
     version,
     npm,
-    gpuBuild: 'jsep',
+    gpuBuild,
     bundleSha256,
     files: rows.map((row) => ({ ...row, path: `assets/${bundleSha256}/${row.file}` })),
   });
