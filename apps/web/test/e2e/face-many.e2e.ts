@@ -3,7 +3,7 @@
 // fixture (support/face-fixture.ts); every graded control is pressed by real pointer or touch tap at its visible
 // position after elementFromPoint shows it there (support/operate.ts). Screenshots in test-results/face-many/.
 //
-// Cases (FACE_MANY_CASES=matrix,dark,many,style,keyboard,virtual,height,admission,generate selects some):
+// Cases (FACE_MANY_CASES=matrix,frames,dark,many,style,keyboard,virtual,height,admission,generate selects some):
 //   matrix    counts GRID_COUNTS x every sweep width and built breakpoint +/-1 px (touch at or below 599 px):
 //             no page-level sideways scroll, no hidden scrolling surface but the strip, a cue while a face is
 //             outside the strip; every face reached by real wheel (desktop) or swipe (touch) with its image,
@@ -42,6 +42,7 @@ import {
 import { startControl, chromiumArgs, ORIGIN, REPO } from '../parity/control-server.ts';
 import { readIdentity } from '../../../../scripts/import/build-next.mjs';
 import { press } from '../support/operate.ts';
+import { corners } from '../support/rendered-frame.ts';
 import {
   STORE_HOOK,
   faceList,
@@ -63,7 +64,7 @@ const MODEL = /^\/runtime\/(assets|chunks|encoder-stream|photo)\//;
 const CASES = new Set(
   (
     process.env['FACE_MANY_CASES'] ??
-    'matrix,dark,many,style,keyboard,virtual,height,admission,generate'
+    'matrix,frames,dark,many,style,keyboard,virtual,height,admission,generate'
   ).split(','),
 );
 const ONLY_WIDTHS = process.env['FACE_MANY_WIDTHS']?.split(',').map(Number);
@@ -180,6 +181,7 @@ interface FaceBoxes {
   index: number;
   inView: boolean;
   hits: { image: boolean; field: boolean; action: boolean; remove: boolean | null };
+  misses: unknown[];
   remove: { inside: boolean; corners: boolean; overlaps: string[] } | null;
 }
 
@@ -230,15 +232,44 @@ const visibleFaces = (page: Page, touch: boolean) =>
         index: ids.indexOf(id),
         inView,
         hits: { image: false, field: false, action: false, remove: close ? false : null },
+        misses: [],
         remove: null,
       };
       if (inView) {
+        const checkedHit = (el: Element, x: number, y: number, part: string) => {
+          const ok = hit(el, x, y);
+          if (!ok)
+            face.misses.push({
+              part,
+              x,
+              y,
+              rect: el.getBoundingClientRect().toJSON(),
+              stack: document
+                .elementsFromPoint(x, y)
+                .slice(0, 5)
+                .map((n) => n.outerHTML.slice(0, 240)),
+              strip: clip?.toJSON(),
+              scroll: { x: scrollX, y: scrollY, left: strip?.scrollLeft, top: strip?.scrollTop },
+              viewport: { left: visualViewport?.offsetLeft, top: visualViewport?.offsetTop },
+              focused: document.activeElement?.outerHTML.slice(0, 240),
+              tooltips: [...document.querySelectorAll('[role=tooltip]')].map((n) => ({
+                text: n.textContent,
+                rect: n.getBoundingClientRect().toJSON(),
+              })),
+            });
+          return ok;
+        };
+        const checkedCentre = (el: Element | null, part: string) => {
+          if (!el) return false;
+          const r = el.getBoundingClientRect();
+          return checkedHit(el, r.left + r.width / 2, r.top + r.height / 2, part);
+        };
         // The image's centre may be the empty-face prompt or the hint inside it: any element of the image box.
         face.hits = {
-          image: centre(image),
-          field: centre(field),
-          action: action ? centre(action) : true,
-          remove: close ? centre(close) : null,
+          image: checkedCentre(image, 'image'),
+          field: checkedCentre(field, 'field'),
+          action: action ? checkedCentre(action, 'action') : true,
+          remove: close ? checkedCentre(close, 'remove') : null,
         };
         if (close) {
           const r = close.getBoundingClientRect();
@@ -259,7 +290,11 @@ const visibleFaces = (page: Page, touch: boolean) =>
               r.bottom <= box.bottom + 0.5 &&
               r.width >= 44 &&
               r.height >= 44,
-            corners: touchWidth ? corners.every(([x, y]) => hit(close, x!, y!)) : true,
+            corners: touchWidth
+              ? corners
+                  .map(([x, y], i) => checkedHit(close, x!, y!, `remove-corner-${i}`))
+                  .every(Boolean)
+              : true,
             overlaps: controls
               .filter((c) => c !== close && !close.contains(c) && !c.contains(close))
               .filter((c) => {
@@ -375,6 +410,7 @@ async function visitAll(s: Session, count: number, label: string): Promise<Visit
       else connectorsHit++;
     }
     for (const f of v.faces.filter((x) => x.inView && !seen.has(x.id))) {
+      const before = problems.length;
       seen.add(f.id);
       const at = `${label} face ${f.index + 1}`;
       if (!f.hits.image) problems.push(`${at}: image not hit`);
@@ -386,6 +422,14 @@ async function visitAll(s: Session, count: number, label: string): Promise<Visit
         if (!f.remove?.corners) problems.push(`${at}: a 44x44 corner is not Remove`);
         if (f.remove?.overlaps.length) problems.push(`${at}: overlapped by ${f.remove.overlaps}`);
       } else if (f.hits.remove !== null) problems.push(`${at}: the only face offers Remove`);
+      if (problems.length > before) {
+        const rows = (evidence['hitFailures'] ?? []) as unknown[];
+        rows.push({ label, face: f });
+        record('hitFailures', rows);
+        await page.screenshot({
+          path: join(results, `hit-${count}-${page.viewportSize()!.width}-${f.index + 1}.png`),
+        });
+      }
     }
     const outside = v.strip && v.faces.some((f) => !f.inView);
     if (v.strip && (outside || count > v.faces.length) && !v.cueVisible)
@@ -574,6 +618,22 @@ test(
                     );
                   if (o.hidden.length)
                     failures.push(`${label}: hidden scrolling surfaces ${o.hidden.join('; ')}`);
+                  if (touch && count > 4) {
+                    const compact = await s.page.locator('section.next-face').evaluateAll((faces) =>
+                      faces.map((face) => {
+                        const image = face
+                          .querySelector('.next-face-image')!
+                          .getBoundingClientRect();
+                        const card = face.getBoundingClientRect();
+                        return image.width > 0 && image.width <= card.width / 2;
+                      }),
+                    );
+                    assert.ok(
+                      compact.length > 0 && compact.every(Boolean),
+                      `${label}: compact thumbnails`,
+                    );
+                    cell['compact'] = true;
+                  }
                   const v = await visitAll(s, count, label);
                   cell['visit'] = {
                     verified: v.verified,
@@ -616,6 +676,52 @@ test(
               }
             }
             assert.deepEqual(s.errors, [], 'no page errors');
+            await s.context.close();
+          }
+        });
+
+      if (CASES.has('frames'))
+        await t.test('full preview frames in compact and desktop tiles', async () => {
+          const rows: unknown[] = [];
+          for (const [width, touch] of [
+            [390, true],
+            [1280, false],
+          ] as const) {
+            const s = await open(browser, width, touch);
+            const faces = await setFaces(s.page, 8);
+            // Controller fixture only: each card renders the shipped decoded 1024px hello preview.
+            await s.page.evaluate(
+              (ids) => {
+                const store = (window as unknown as { __fmStore: { dispatch(m: unknown): void } })
+                  .__fmStore;
+                for (const id of ids) {
+                  store.dispatch({ type: 'Edit', args: [id, 'hello'] });
+                  store.dispatch({ type: 'Mode', args: [id, 'text'] });
+                }
+              },
+              faces.map((f) => f.id),
+            );
+            await s.page.waitForFunction(() => {
+              const images = [
+                ...document.querySelectorAll<HTMLImageElement>('section.next-face img'),
+              ];
+              return (
+                images.length === 8 &&
+                images.every(
+                  (img) => img.complete && img.naturalWidth === 1024 && img.naturalHeight === 1024,
+                )
+              );
+            });
+            for (let i = 0; i < faces.length; i++) {
+              await reach(s, i);
+              const media = s.page.locator(`[data-next-face="${faces[i]!.id}"] img`);
+              const points = await corners(s.page, media);
+              assert.equal(points.length, 4);
+              rows.push({ width, face: i + 1, corners: points });
+              record('frames', rows);
+            }
+            assert.deepEqual(s.models, [], 'preview frames need no model transfer');
+            await s.page.screenshot({ path: join(results, `frames-${width}.png`) });
             await s.context.close();
           }
         });
