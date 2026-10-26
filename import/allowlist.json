@@ -1525,10 +1525,10 @@
       "bytes": 37783,
       "class": "src-next",
       "ported": {
-        "sha256": "5bb195261cb07d5a8228fb4bf33c1eb283012596c7e448388ce8c35c82ed0d8d",
-        "bytes": 45094,
-        "bead": "fm-dmlz",
-        "reason": "WebGL execution removed (fm-x6h5); per-operation admission through admission/route-admission.ts before any worker or model request, photo encoding admitted by capability instead of user-agent labels (fm-lt2p); route snapshot selects bounded fallback scope and forwards cancellation signal (fm-0y24); Save/Share hand over prepared files named by export identity; encoder figures from the export policy (6915a98); directSupported comes from the stylegan-js engine (routes.ts) with the direct engine itself; admits the runtime manifest pointer (runtime-manifest.mjs) before replacing the active runtime; a refused pointer leaves the next attempt free to fetch again; crop.fix: a confirmed crop goes to e4e directly (no detector after OK); detector outcomes are typed (faceDetection/code), not matched on text; crop limits come from the stylegan-js crop policy; compute.photo-descriptor: the worker encodes through the package's streamed encoder after acquiring every shard; dimensions come from the shipped descriptor"
+        "sha256": "6a9b1c34531aba72297c905d1e8582db760b996c740593bc561494e394fa11fa",
+        "bytes": 45124,
+        "bead": "fm-ioap",
+        "reason": "WebGL execution removed (fm-x6h5); per-operation admission through admission/route-admission.ts before any worker or model request, photo encoding admitted by capability instead of user-agent labels (fm-lt2p); route snapshot selects bounded fallback scope and forwards cancellation signal (fm-0y24); Save/Share hand over prepared files named by export identity; encoder figures from the export policy (6915a98); directSupported comes from the stylegan-js engine (routes.ts) with the direct engine itself; admits the runtime manifest pointer (runtime-manifest.mjs) before replacing the active runtime; a refused pointer leaves the next attempt free to fetch again; crop.fix: a confirmed crop goes to e4e directly (no detector after OK); detector outcomes are typed (faceDetection/code), not matched on text; crop limits come from the stylegan-js crop policy; compute.photo-descriptor: the worker encodes through the package's streamed encoder after acquiring every shard; dimensions come from the shipped descriptor; runtime options keep their supplied manifest type: three explicit =undefined defaults for the typecheck (ddcffa4)"
       }
     },
     {
@@ -1654,10 +1654,10 @@
       "bytes": 5007,
       "class": "src-next",
       "ported": {
-        "sha256": "21a92838553ffcadc9a0b0f301d6529619a28324d5d2f8586042d317d6711b4a",
-        "bytes": 4965,
-        "bead": "fm-be10",
-        "reason": "Native retirement: no longer describes the module as shared with desktop packages"
+        "sha256": "77178c336cf0eb9ecc7933e3900b9dc4a519282637de1e761b6289fa1653d600",
+        "bytes": 5013,
+        "bead": "fm-36ag",
+        "reason": "Native retirement: no longer describes the module as shared with desktop packages; Custom frames per face (2 up to the 4,096-frame budget, odd counts included) and a Full quality video choice; 512 × 512 stays the default (36b3236)"
       }
     },
     {
@@ -1665,7 +1665,13 @@
       "destination": "apps/web/src/Next/geometry/latent-path.mjs",
       "sha256": "ebe480c62a5f5bdd12cea75bf2d00a2876b4dd0f83290dcbbca7718abb5e4dd8",
       "bytes": 9689,
-      "class": "src-next"
+      "class": "src-next",
+      "ported": {
+        "sha256": "1e026776579a0ee97c996456705cf0fc47663105f49965b5db1c11d8c5766868",
+        "bytes": 9669,
+        "bead": "fm-36ag",
+        "reason": "Custom frames per face (2 up to the 4,096-frame budget, odd counts included) and a Full quality video choice; 512 × 512 stays the default (36b3236)"
+      }
     },
     {
       "source": "src/Next/geometry/reference/shape-explorer.html",
@@ -1679,7 +1685,13 @@
       "destination": "apps/web/src/Next/geometry/verify.mjs",
       "sha256": "d921bf04722d9bc3b9a47841c5f9372a090fddf85741fe534eb051beebd0057f",
       "bytes": 8649,
-      "class": "src-next"
+      "class": "src-next",
+      "ported": {
+        "sha256": "9c1c2d004f7b714cd984d60066298126a52d9668a2824df1b5ad7ec1e9df19b1",
+        "bytes": 8803,
+        "bead": "fm-36ag",
+        "reason": "Custom frames per face (2 up to the 4,096-frame budget, odd counts included) and a Full quality video choice; 512 × 512 stays the default (36b3236)"
+      }
     },
     {
       "source": "src/Next/image-encoder-worker.mjs",
@@ -1761,10 +1773,10 @@
       "bytes": 5657,
       "class": "src-next",
       "ported": {
-        "sha256": "73d29286c5cb47c09291e90134e1d6a14ac2fef374a08f7d28eaf7745c0c5664",
-        "bytes": 4267,
-        "bead": "fm-7ahg",
-        "reason": "Retains integrity/format/budget decisions; actual browser IndexedDB/localStorage/quota/reload and control-written restore replace former fake storage tests (test/media/session-storage.test.ts and test/e2e/facade.e2e.ts)."
+        "sha256": "60fbb3e3210243105f204d05438de0cb7a2389504111b578081788df14bf0f6b",
+        "bytes": 5129,
+        "bead": "fm-36ag",
+        "reason": "Retains integrity/format/budget decisions; actual browser IndexedDB/localStorage/quota/reload and control-written restore replace former fake storage tests (test/media/session-storage.test.ts and test/e2e/facade.e2e.ts).; Custom frames per face (2 up to the 4,096-frame budget, odd counts included) and a Full quality video choice; 512 × 512 stays the default (36b3236)"
       }
     },
     {
@@ -1787,10 +1799,10 @@
       "bytes": 13197,
       "class": "src-next",
       "ported": {
-        "sha256": "501e7c3a66148c368e64dce2af679e2487421250be1013d97aa02c5d248c144b",
-        "bytes": 13053,
-        "bead": "fm-eeki",
-        "reason": "Native retirement: saveFile drops the Tauri native_save_media branch; downloads are the browser path; Save/Share hand over prepared files named by export identity; encoder figures from the export policy (6915a98)"
+        "sha256": "0f1eea054d5f4a419ca029d69f2dd4dc8c8e5e9c1497c35f966beb9c66f528ea",
+        "bytes": 13519,
+        "bead": "fm-36ag",
+        "reason": "Native retirement: saveFile drops the Tauri native_save_media branch; downloads are the browser path; Save/Share hand over prepared files named by export identity; encoder figures from the export policy (6915a98); Custom frames per face (2 up to the 4,096-frame budget, odd counts included) and a Full quality video choice; 512 × 512 stays the default (36b3236)"
       }
     },
     {
@@ -1798,7 +1810,13 @@
       "destination": "apps/web/src/Next/media.test.mjs",
       "sha256": "f64c2adb97bc71b452c89adcfdca0e076aa2dd668bd5369bdc37e736c48e03ee",
       "bytes": 18327,
-      "class": "src-next"
+      "class": "src-next",
+      "ported": {
+        "sha256": "7adf908c3d16d96d89b6da2e8d47863de12247bdf3ec87ee8977145631d973b1",
+        "bytes": 19085,
+        "bead": "fm-36ag",
+        "reason": "Custom frames per face (2 up to the 4,096-frame budget, odd counts included) and a Full quality video choice; 512 × 512 stays the default (36b3236)"
+      }
     },
     {
       "source": "src/Next/model-inventory.mjs",
@@ -1934,10 +1952,10 @@
       "bytes": 23028,
       "class": "src-next",
       "ported": {
-        "sha256": "9285ef6f295afdbbc885473be70a1aac2af5b66aa2fe9f4b7ed7fa9500fd5917",
-        "bytes": 27867,
-        "bead": "fm-szbf",
-        "reason": "Retain crop and names rendering repairs; place the single tile operation action inside the face image and retire hold-to-compare styling.; Encode source and crop-confirmation modal styles landed in ae6a3fd; preserve existing tile/product styling. (fm-fy2.17.1); Face card is the photo entry with Generate beside the field (c397da4, fm-25um fm-fy2.17.1); legacy fullscreen gapless names grid styles (07ac969, fm-96if); debug-report disclosure, privacy request list and in-page first-visit prompt styles (fm-szbf)"
+        "sha256": "356d3c83569fc492c1abb0c1e6666028529feae4db6a8741dc8fb53855cab55b",
+        "bytes": 28582,
+        "bead": "fm-36ag",
+        "reason": "Retain crop and names rendering repairs; place the single tile operation action inside the face image and retire hold-to-compare styling.; Encode source and crop-confirmation modal styles landed in ae6a3fd; preserve existing tile/product styling. (fm-fy2.17.1); Face card is the photo entry with Generate beside the field (c397da4, fm-25um fm-fy2.17.1); legacy fullscreen gapless names grid styles (07ac969, fm-96if); debug-report disclosure, privacy request list and in-page first-visit prompt styles (fm-szbf); Custom frames per face (2 up to the 4,096-frame budget, odd counts included) and a Full quality video choice; 512 × 512 stays the default (36b3236)"
       }
     },
     {
@@ -1980,10 +1998,10 @@
       "bytes": 6309,
       "class": "src-next",
       "ported": {
-        "sha256": "81ec066e9e04e877af293d014f8f4ff42d666ecac8094d5ceb2dbeea5feacdd4",
-        "bytes": 4051,
-        "bead": "fm-fy2.7",
-        "reason": "Recovery reads and writes are the package schema core through src/media/recovery-files.ts (fm-fy2.7): stills schema 3 written, 3/2/1 read with typed errors; MP4 project schema 2 with the writer's route, schema-1 project MP4 still read; downloadImage {format:'png', rgba} for the explicit lossless still (fm-ykfa)"
+        "sha256": "62c963d6d3d3407922d9b75a3cc9bebd2eb71eaf2cd9fcb9b76b39bec1bfd828",
+        "bytes": 4075,
+        "bead": "fm-36ag",
+        "reason": "Recovery reads and writes are the package schema core through src/media/recovery-files.ts (fm-fy2.7): stills schema 3 written, 3/2/1 read with typed errors; MP4 project schema 2 with the writer's route, schema-1 project MP4 still read; downloadImage {format:'png', rgba} for the explicit lossless still (fm-ykfa); Custom frames per face (2 up to the 4,096-frame budget, odd counts included) and a Full quality video choice; 512 × 512 stays the default (36b3236)"
       }
     },
     {
@@ -2146,10 +2164,10 @@
       "bytes": 10432,
       "class": "src-next",
       "ported": {
-        "sha256": "2db7bdab8ba05828d5eee88c481a8c772626ad544e48132b2fa258e361495357",
-        "bytes": 10590,
-        "bead": "fm-zz2i",
-        "reason": "acquires the codec under a grant for exactly the codec assets (bridge-grant.mjs); Vite destination integration: shared production headers and native dynamic-import directives; compiled artifact identity."
+        "sha256": "00e8a1dce51bd5e5c1541a921ec9da8d6b7abd0ac8638efa51b37f0eb3c367c0",
+        "bytes": 13051,
+        "bead": "fm-qa3q",
+        "reason": "acquires the codec under a grant for exactly the codec assets (bridge-grant.mjs); Vite destination integration: shared production headers and native dynamic-import directives; compiled artifact identity.; Firefox WebCodecs: flush when encoder output lags accepted frames; the muxer writes an MP4 Firefox can open (tkhd reserved u16, dref inside dinf) and rebuilds avcC from in-band SPS/PPS when they differ (6f11b8b, 85d9ff8)"
       }
     },
     {
@@ -2157,7 +2175,13 @@
       "destination": "apps/web/src/Next/video-worker.test.mjs",
       "sha256": "4b63eecbf5ac15809a404af0804b05091dbcfb3a1b1b7f38c8a8424b4b0c5203",
       "bytes": 2093,
-      "class": "src-next"
+      "class": "src-next",
+      "ported": {
+        "sha256": "c6885b5601bd0b46ed111dfa37a5959f8d3309f728d7709e86a3cb7376eac44e",
+        "bytes": 4451,
+        "bead": "fm-qa3q",
+        "reason": "muxer tests for the Firefox-openable MP4 layout and in-band avcC rebuild (85d9ff8)"
+      }
     },
     {
       "source": "src/index.html",
