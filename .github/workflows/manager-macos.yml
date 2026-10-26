@@ -21,15 +21,28 @@ on:
         description: Test files (default is the hosted-lanes set)
         type: string
         default: ''
+      repeat:
+        description: Independent macOS jobs running the same set (JSON list of labels)
+        type: string
+        default: '[1]'
+      watch:
+        description: Seconds before a watchdog dumps processes, Node reports and stops a stuck run
+        type: string
+        default: '300'
+      debug:
+        description: DEBUG value for Playwright logging (e.g. pw:api,pw:browser)
+        type: string
+        default: ''
 permissions:
   contents: read
-concurrency:
-  group: manager-macos-${{ inputs.engine }}
-  cancel-in-progress: false
 jobs:
   manager:
-    name: manager-macos-${{ inputs.engine }}
+    name: manager-macos-${{ inputs.engine }}-${{ matrix.run }}
     runs-on: macos-15
+    strategy:
+      fail-fast: false
+      matrix:
+        run: ${{ fromJSON(inputs.repeat) }}
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
@@ -83,11 +96,38 @@ jobs:
           FACEMORPH_ISOLATE_TEST_NETWORK: '0'
           ARGS: ${{ inputs.args }}
           FILES: ${{ inputs.files }}
-        run: node packages/browser-model-manager/test/run.mjs $ARGS ${FILES:-packages/browser-model-manager/test/cache-local.test.ts packages/browser-model-manager/test/handles-tabs.test.ts packages/browser-model-manager/test/acquisition.test.ts packages/browser-model-manager/test/worker-storage.test.ts packages/browser-model-manager/test/storage-permission.test.ts packages/browser-model-manager/test/uncached-browser.test.ts}
+          WATCH: ${{ inputs.watch }}
+          DEBUG: ${{ inputs.debug }}
+        run: |
+          reports="$PWD/test-results/manager-cache/node-reports"
+          mkdir -p "$reports"
+          export NODE_OPTIONS="--report-on-signal --report-signal=SIGUSR2 --report-directory=$reports"
+          node packages/browser-model-manager/test/run.mjs $ARGS ${FILES:-packages/browser-model-manager/test/cache-local.test.ts packages/browser-model-manager/test/handles-tabs.test.ts packages/browser-model-manager/test/acquisition.test.ts packages/browser-model-manager/test/worker-storage.test.ts packages/browser-model-manager/test/storage-permission.test.ts packages/browser-model-manager/test/uncached-browser.test.ts} &
+          pid=$!
+          (
+            sleep "$WATCH"
+            kill -0 "$pid" 2>/dev/null || exit 0
+            echo "::group::watchdog after ${WATCH}s"
+            ps -axo pid,ppid,etime,stat,command | grep -Ei 'node|webkit|playwright|MiniBrowser' | grep -v grep | cut -c1-400
+            for p in $(pgrep -f 'node.*test\.ts'); do kill -USR2 "$p"; done
+            sleep 5
+            for f in "$reports"/*.json; do
+              node -e 'const r=require(process.argv[1]);console.log("== report pid",r.header.processId,r.header.commandLine.slice(-1)[0]);console.log("js:",JSON.stringify(r.javascriptStack));for(const h of r.libuv)if(h.is_active)console.log("handle",h.type,h.localEndpoint?JSON.stringify(h.localEndpoint):"",h.remoteEndpoint?JSON.stringify(h.remoteEndpoint):"",h.pid??"")' "$f"
+            done
+            for p in $(pgrep -f 'Playwright.app/Contents/MacOS/Playwright|WebKit.WebContent|WebKit.Networking'); do
+              echo "== sample $p $(ps -o command= -p $p | cut -c1-120)"
+              sample "$p" 3 -mayDie -file "$reports/sample-$p.txt" >/dev/null 2>&1
+              sed -n '/Sort by top of stack/,/Binary Images/p' "$reports/sample-$p.txt" | head -25
+              grep -nE 'Thread_[0-9]+.*main-thread' -A60 "$reports/sample-$p.txt" | grep -vE '\?\?\?' | head -60
+            done
+            echo "::endgroup::"
+            pkill -TERM -f "node.*test" || true
+          ) &
+          wait "$pid"
       - uses: actions/upload-artifact@v4
         if: failure() || cancelled()
         with:
-          name: manager-macos-${{ inputs.engine }}
+          name: manager-macos-${{ inputs.engine }}-${{ matrix.run }}
           path: test-results/manager-cache/
           if-no-files-found: warn
           retention-days: 7

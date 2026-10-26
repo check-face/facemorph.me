@@ -147,6 +147,8 @@ export function createAcquisitionSlots({
           return release;
         }
       }
+    // A cancellation during the lookups above has already fired, so the queue's relay would never see it.
+    if (w.signal.aborted) throw w.signal.reason ?? aborted();
     if (required) return queueOnAll(w);
     await new Promise<void>((resolve, reject) => {
       const timer = setTimeout(() => {
@@ -175,8 +177,14 @@ export function createAcquisitionSlots({
           current = null;
           if (!release) continue;
           waiting.splice(waiting.indexOf(w), 1);
-          if (w.signal.aborted) release();
-          else w.resolve(release);
+          // Cancelled while its attempt was in flight (the abort listener leaves the current waiter to the attempt):
+          // the slot goes back and the caller is told. Releasing without rejecting left the take pending forever,
+          // and with it the whole acquisition (hosted macOS WebKit, fm-fy2.13: a sibling chunk's reset aborted a lane
+          // whose `ifAvailable` lookup then found a free slot).
+          if (w.signal.aborted) {
+            release();
+            w.reject(w.signal.reason ?? aborted());
+          } else w.resolve(release);
         } catch (error) {
           current = null;
           const at = waiting.indexOf(w);
