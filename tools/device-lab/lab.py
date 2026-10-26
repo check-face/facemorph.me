@@ -977,14 +977,25 @@ def run_journeys(dev, args, cell, gpu, out, report, memory=None):
                 chrome_front()
             log('journey_failed', cell=cell, iteration=i + 1, error=rec['error'])
         finally:
+            # Action completion and budget qualification are separate: preserve rec.ok,
+            # but keep diagnostics before report_findings later rejects an over-budget run.
+            budget_errors = budget_findings(cell, [rec])
+            retain_diagnostics = not rec.get('ok') or bool(budget_errors)
+            if budget_errors:
+                rec['budgetBreaches'] = budget_errors
+                if rec.get('ok'):
+                    try:
+                        dev.screenshot(out / f'{cell}-fail-{i + 1}.png')
+                    except Exception as screenshot_error:
+                        rec['screenshotError'] = str(screenshot_error)[:200]
             if rec_proc:
                 rec_proc.stop.set()
                 rec_proc.join(10)
-                if not rec.get('ok'):
+                if retain_diagnostics:
                     rec['frames'] = rec_proc.dump(out / f'{cell}-fail-{i + 1}-frames')
             elif hasattr(dev, 'ctx'):
                 try:
-                    dev.ctx.tracing.stop(path=str(out / f'{cell}-trace-{i + 1}.zip') if not rec.get('ok') else None)
+                    dev.ctx.tracing.stop(path=str(out / f'{cell}-trace-{i + 1}.zip') if retain_diagnostics else None)
                 except Exception:
                     pass
             if mem:
