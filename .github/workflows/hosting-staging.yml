@@ -11,6 +11,9 @@ jobs:
   staging:
     runs-on: [self-hosted, eris]
     timeout-minutes: 90
+    # The hosting tests run promote.py/stage.py from the checkout; bytecode caches would land in hosting/.
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
     steps:
       - uses: actions/checkout@v4
       - name: Classic, read from Git objects only

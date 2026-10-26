@@ -24,7 +24,10 @@ def copy_tree(src,dst):
         # The runtime is immutable and content-addressed, and staging only ever reads it, so a
         # hard link publishes the identical bytes without a second copy. A full copy of the
         # runtime is several gigabytes and staging used to spend that on every promotion. Falls
-        # back to copying across filesystems, where linking is not possible.
+        # back to copying across filesystems, where linking is not possible. A path already staged
+        # (the runtime's own notices, overlaid by next/notices) is detached first: copying onto it
+        # would write through its hard link into the acquired runtime cache.
+        dest.unlink(missing_ok=True)
         try:
             os.link(item,dest)
         except OSError:

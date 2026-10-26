@@ -64,22 +64,48 @@ export function compareTrees(a, b) {
   return out;
 }
 
-/** The one declared migration from frozen staging: the shared production header policy.
- * Every other path/byte remains compared to classic. A wrong candidate header still fails.
+/** The notices a later bead ported (hosting/PROVENANCE.json `ported` records under hosting/next/notices/), as
+ * the staged runtime/notices/ path with the frozen and the ported digest and size. stage.py copies these over the
+ * runtime's own notices, so classic's staging carries the frozen bytes and this clone's the ported ones. */
+export function portedNotices(provenance = readJson(join(REPO, 'hosting/PROVENANCE.json'))) {
+  const prefix = 'hosting/next/notices/';
+  return provenance.files
+    .filter((f) => f.path.startsWith(prefix) && f.ported?.sha256)
+    .map((f) => ({
+      path: 'runtime/notices/' + f.path.slice(prefix.length),
+      classic: f.sha256,
+      sha256: f.ported.sha256,
+      size: f.ported.bytes,
+      bead: f.ported.bead,
+    }));
+}
+
+/** The declared migrations from frozen staging: the shared production header policy (fm-zz2i) and each notice a
+ * bead ported (portedNotices). Every other path/byte remains compared to classic. A wrong candidate header or
+ * notice still fails, and so does a classic record whose notice is not the frozen bytes the port replaced.
  */
-export function publicationReference(other) {
+export function publicationReference(other, notices = portedNotices()) {
   if (!/^[a-f0-9]{40}$/.test(other.classicCommit ?? '')) return other;
   const bytes = Buffer.from(headersText());
   const header = other.files.find((f) => f.path === '_headers');
   if (!header || header.sha256 !== other.fields.headersSha256)
     throw Error('Classic staging reference has no consistent header record');
-  const files = other.files.map((f) =>
-    f.path === '_headers' ? { ...f, size: bytes.length, sha256: sha256(bytes) } : f,
-  );
+  const ports = new Map(notices.map((n) => [n.path, n]));
+  const noticeMigration = [];
+  const files = other.files.map((f) => {
+    if (f.path === '_headers') return { ...f, size: bytes.length, sha256: sha256(bytes) };
+    const port = ports.get(f.path);
+    if (!port) return f;
+    if (f.sha256 !== port.classic)
+      throw Error(`Classic staging reference ${f.path} is not the frozen notice its port replaced`);
+    noticeMigration.push({ path: f.path, classic: f.sha256, ported: port.sha256, bead: port.bead });
+    return { ...f, size: port.size, sha256: port.sha256 };
+  });
   return {
     ...other,
     files,
     headerMigration: { classic: header.sha256, production: sha256(bytes), bead: 'fm-zz2i' },
+    ...(noticeMigration.length ? { noticeMigration } : {}),
     fields: {
       ...other.fields,
       bytes: files.reduce((n, f) => n + f.size, 0),
@@ -178,6 +204,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     if (opts.compare) {
       const other = publicationReference(JSON.parse(readFileSync(opts.compare, 'utf8')));
       if (other.headerMigration) line({ headerMigration: other.headerMigration });
+      for (const m of other.noticeMigration ?? []) line({ noticeMigration: m });
       const diffs = compareTrees(staged, other.files);
       for (const d of diffs) line(d);
       const fieldDiffs = Object.keys(fields).filter((k) => fields[k] !== other.fields[k]);

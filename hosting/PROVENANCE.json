@@ -174,10 +174,10 @@
       "size": 2768,
       "sha256": "6eb443c393f4accaecfff18a81cbb7b4c13ad005c7b4a145509a77fd4649891a",
       "ported": {
-        "sha256": "8e9bb189e987d83f0ab0fbf6a4fa2516e745d08062541ab81d766b23e8c1f505",
-        "bytes": 2446,
+        "sha256": "47331457aa7cf807a03bd237effe5f1870ab368400ceed3a739d20f784bf3608",
+        "bytes": 2681,
         "bead": "fm-zz2i",
-        "reason": "Consume the one production header policy and SPA fallback redirects for the Vite destination. Detach generated publication files before writing to preserve hard-linked input bytes."
+        "reason": "Consume the one production header policy and SPA fallback redirects for the Vite destination. Detach generated publication files before writing to preserve hard-linked input bytes. Detach any already-staged path before linking or copying onto it, so the next/notices overlay (ported in fm-gbdt) never writes through a hard link into the acquired runtime cache."
       }
     },
     {

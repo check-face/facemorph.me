@@ -37,11 +37,17 @@ export function scanFiles(files) {
   return out;
 }
 
-function walk(dir, root, out = []) {
+// Python bytecode caches: written beside any imported module a test or the promote/stage scripts run
+// (promote.py imports webgpu_contract), ignored by .gitignore, and never shipped (the site deploys only the
+// staged public/ tree). They are build by-products, not hosting/ content, so the walk leaves them out.
+export const BYPRODUCT_DIRS = new Set(['__pycache__']);
+
+export function walk(dir, root, out = []) {
   for (const name of readdirSync(dir)) {
     const p = join(dir, name);
-    if (statSync(p).isDirectory()) walk(p, root, out);
-    else out.push({ path: relative(root, p).split('\\').join('/'), bytes: readFileSync(p) });
+    if (statSync(p).isDirectory()) {
+      if (!BYPRODUCT_DIRS.has(name)) walk(p, root, out);
+    } else out.push({ path: relative(root, p).split('\\').join('/'), bytes: readFileSync(p) });
   }
   return out;
 }

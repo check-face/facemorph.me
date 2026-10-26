@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { mkdtempSync, writeFileSync, readFileSync, mkdirSync, rmSync } from 'node:fs';
+import { linkSync, mkdtempSync, writeFileSync, readFileSync, mkdirSync, rmSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { headersText } from './headers.mjs';
-import { compareTrees, publicationReference, treeDigest } from './stage.mjs';
+import { compareTrees, portedNotices, publicationReference, treeDigest } from './stage.mjs';
 import { headersFor } from './headers.mjs';
 import { responseFindings, checkResponses } from './check-headers.mjs';
 import { serve } from '../../apps/web/test/support/serve.ts';
@@ -46,6 +46,44 @@ test('real staging never overwrites hard-linked frontend publication inputs', ()
     assert.equal(
       readFileSync(join(root, 'public/names/index.html'), 'utf8'),
       originals['index.html'],
+    );
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('the next/notices overlay never writes through a hard link into the acquired runtime', () => {
+  const root = mkdtempSync(join(tmpdir(), 'fm-stage-notices-'));
+  try {
+    const frontend = join(root, 'frontend');
+    const runtime = join(root, 'runtime');
+    const store = join(root, 'store');
+    mkdirSync(frontend);
+    mkdirSync(join(runtime, 'notices'), { recursive: true });
+    mkdirSync(store);
+    writeFileSync(join(frontend, 'index.html'), '<html>candidate</html>');
+    // The acquired notice, hard-linked as a content-addressed mirror links it.
+    const frozen = '<html>frozen notice</html>';
+    writeFileSync(join(store, 'notice'), frozen);
+    linkSync(join(store, 'notice'), join(runtime, 'notices/index.html'));
+    writeFileSync(join(root, 'catalogue.json'), '{}');
+    execFileSync('python3', [
+      'hosting/next-static/stage.py',
+      '--runtime',
+      runtime,
+      '--frontend',
+      frontend,
+      '--catalogue',
+      join(root, 'catalogue.json'),
+      '--output',
+      join(root, 'public'),
+    ]);
+    assert.equal(readFileSync(join(runtime, 'notices/index.html'), 'utf8'), frozen);
+    assert.equal(readFileSync(join(store, 'notice'), 'utf8'), frozen);
+    assert.ok(
+      readFileSync(join(root, 'public/runtime/notices/index.html')).equals(
+        readFileSync('hosting/next/notices/index.html'),
+      ),
     );
   } finally {
     rmSync(root, { recursive: true, force: true });
@@ -134,4 +172,54 @@ test('classic staging comparison changes only to the exact production header pol
     ),
   );
   assert.throws(() => publicationReference({ ...before, files: [app] }), /header record/);
+});
+
+test('classic staging comparison takes each ported notice exactly, and nothing else', () => {
+  const file = (path, text) => ({
+    path,
+    size: Buffer.byteLength(text),
+    sha256: sha256(Buffer.from(text)),
+  });
+  const header = file('_headers', 'old');
+  const frozen = file('runtime/notices/index.html', 'frozen');
+  const other = file('runtime/notices/e4e-MIT.txt', 'mit');
+  const ported = file('runtime/notices/index.html', 'ported notice');
+  const notices = [
+    {
+      path: frozen.path,
+      classic: frozen.sha256,
+      sha256: ported.sha256,
+      size: ported.size,
+      bead: 'fm-x',
+    },
+  ];
+  const before = {
+    classicCommit: 'f'.repeat(40),
+    files: [header, frozen, other],
+    fields: { headersSha256: header.sha256 },
+  };
+  const target = publicationReference(before, notices);
+  const h = file('_headers', headersText());
+  assert.deepEqual(compareTrees([h, ported, other], target.files), []);
+  assert.deepEqual(target.noticeMigration, [
+    { path: frozen.path, classic: frozen.sha256, ported: ported.sha256, bead: 'fm-x' },
+  ]);
+  assert.equal(target.fields.bytes, h.size + ported.size + other.size);
+  // The frozen notice staged unchanged, or another notice changed, still differs.
+  assert.ok(compareTrees([h, frozen, other], target.files).some((d) => d.path === frozen.path));
+  assert.ok(
+    compareTrees([h, ported, file(other.path, 'changed')], target.files).some(
+      (d) => d.path === other.path,
+    ),
+  );
+  // A classic record that is not the frozen notice the port replaced is refused.
+  assert.throws(
+    () =>
+      publicationReference({ ...before, files: [header, file(frozen.path, 'x'), other] }, notices),
+    /not the frozen notice/,
+  );
+  // The repository's provenance declares the fm-gbdt notice port.
+  const real = portedNotices();
+  assert.ok(real.some((n) => n.path === 'runtime/notices/index.html' && n.bead === 'fm-gbdt'));
+  assert.ok(real.every((n) => /^[0-9a-f]{64}$/.test(n.sha256) && n.classic !== n.sha256));
 });

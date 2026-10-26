@@ -1,8 +1,11 @@
 // The hosting import plan and the hosting scan (fm-8tyu), with plain values.
 import assert from 'node:assert/strict';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import test from 'node:test';
 import { plan, portedRecords, SIZE_LIMIT } from './import-hosting.mjs';
-import { scanFiles } from './scan-hosting.mjs';
+import { scanFiles, walk } from './scan-hosting.mjs';
 
 const rows = [
   { path: 'hosting/next-static/stage.py', destination: 'hosting/' },
@@ -117,4 +120,28 @@ test('a deliberately removed file is ported as removed with its bead and reason,
     problems.map((p) => p.path),
     ['hosting/b.toml', 'hosting/c.toml', 'hosting/d.toml'],
   );
+});
+
+test('the scan walk leaves out Python bytecode caches but still sees bytecode or state anywhere else', () => {
+  const root = mkdtempSync(join(tmpdir(), 'fm-scan-'));
+  try {
+    const put = (p) => {
+      mkdirSync(join(root, p, '..'), { recursive: true });
+      writeFileSync(join(root, p), 'x');
+    };
+    put('hosting/next-static/webgpu_contract.py');
+    put('hosting/next-static/__pycache__/webgpu_contract.cpython-314.pyc');
+    put('hosting/next-static/webgpu_contract.pyc');
+    put('hosting/next-cloudflare/.wrangler/state/x.sqlite');
+    const paths = walk(join(root, 'hosting'), root)
+      .map((f) => f.path)
+      .sort();
+    assert.deepEqual(paths, [
+      'hosting/next-cloudflare/.wrangler/state/x.sqlite',
+      'hosting/next-static/webgpu_contract.py',
+      'hosting/next-static/webgpu_contract.pyc',
+    ]);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
 });
