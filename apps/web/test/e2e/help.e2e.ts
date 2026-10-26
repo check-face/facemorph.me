@@ -15,7 +15,7 @@ import { startControl, chromiumArgs, ORIGIN, REPO } from '../parity/control-serv
 import { readIdentity } from '../../../../scripts/import/build-next.mjs';
 import { press } from '../support/operate.ts';
 import { reason, type ReasonKey } from '../../src/admission/route-admission.ts';
-import { NOTICES_HREF, helpTopics } from '../../shell/render/help.ts';
+import { FORMATS_HREF, NOTICES_HREF, helpTopics } from '../../shell/render/help.ts';
 
 const runtime = process.env['FACEMORPH_RUNTIME_DIR'] ?? join(REPO, '.cache/runtime');
 const results = join(REPO, 'apps/web/test-results/help');
@@ -161,6 +161,15 @@ test(
             await page.locator('.next-product').innerText(),
             /download (the|our) (desktop |native )?app|install (the|our) (desktop|native) app/i,
           );
+
+          // The saved-file format reference (fm-fy2.7): open Keep your originals, press its link.
+          const originals = page.locator('details#help-keep-originals');
+          await operate(originals.locator('summary'));
+          const formats = originals.getByRole('link', { name: 'saved file formats' });
+          await formats.scrollIntoViewIfNeeded();
+          await shot('help-formats-link');
+          const fromFormats = await operate(formats, false);
+          assert.equal(fromFormats.href, FORMATS_HREF);
 
           // The Help licence link: open its topic (a person taps the summary), press the link.
           const licences = page.locator('details#help-licences');
