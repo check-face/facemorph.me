@@ -178,7 +178,7 @@ jobs:
         env:
           FACEMORPH_REQUIRE_RUNTIME: '1'
         run: |
-          node --test --test-timeout=1200000 test/e2e/encode.e2e.ts test/e2e/face-controls.e2e.ts test/e2e/legacy-links.e2e.ts test/e2e/manifest-admission.e2e.ts test/e2e/export-files.e2e.ts test/e2e/result-actions.e2e.ts test/e2e/morph-output.e2e.ts test/e2e/opctl-trace.e2e.ts test/e2e/offline.e2e.ts test/e2e/still-entry.e2e.ts
+          node --test --test-timeout=1200000 test/e2e/encode.e2e.ts test/e2e/face-controls.e2e.ts test/e2e/react-subscription.e2e.ts test/e2e/tooltip-hits.e2e.ts test/e2e/legacy-links.e2e.ts test/e2e/manifest-admission.e2e.ts test/e2e/export-files.e2e.ts test/e2e/result-actions.e2e.ts test/e2e/morph-output.e2e.ts test/e2e/opctl-trace.e2e.ts test/e2e/offline.e2e.ts test/e2e/still-entry.e2e.ts
       - uses: actions/upload-artifact@v4
         if: always()
         with:
