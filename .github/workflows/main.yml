@@ -238,6 +238,7 @@ jobs:
     uses: ./.github/workflows/package-gates.yml
     permissions:
       contents: read
+      actions: read
     secrets: inherit
   parity-harness:
     needs: changes
