@@ -90,7 +90,9 @@ test('dependency qualification retains main serialization and exact candidate pr
   assert.equal(call.with.artifact_run, '${{ github.run_id }}');
   assert.equal(call.with.artifact_workflow, '.github/workflows/main.yml');
   assert.match(main.jobs['dependency-policy'].name, /dependency-currency/);
-  assert.match(main.jobs['next-deploy'].if, /github.event_name == 'push'/);
+  assert.match(main.jobs['next-deploy'].if, /github.event_name == 'workflow_dispatch'/);
+  assert.match(main.jobs['next-deploy'].if, /inputs.dependency_group == ''/);
+  assert.match(main.jobs['next-deploy'].if, /needs\.pre-deploy\.result == 'success'/);
 });
 
 test('mandatory policy rejection stops costly fanout without a cycle or an independent bypass', () => {
