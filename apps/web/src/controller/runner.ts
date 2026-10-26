@@ -25,6 +25,7 @@ import { classifyStills, isHeld, stillLog } from '../media/still-entry.ts';
 import { saveFile, shareFile } from '../Next/media.mjs';
 import type { ClassifiedStill } from './msg.ts';
 import { subscribeProgress, subscribeDownloads } from './subscriptions.ts';
+import { storedSize } from '../../shell/session/app-storage.ts';
 
 export interface RuntimeIdentity {
   readonly runtimeSha256: string;
@@ -153,8 +154,20 @@ export function createController(
   const identity = Object.freeze({ ...options.identity });
   let arrivalRevision = 0;
   let disposed = false;
+  // The stored session's bytes as last measured, for admission's stored-session budget (fm-id4c); measured at
+  // start and after each completed job, 0 while unknown or where the browser keeps nothing.
+  let storedSessionBytes = 0;
+  const measureStored = () =>
+    void storedSize().then(
+      (size) => (storedSessionBytes = size.session),
+      () => {},
+    );
+  measureStored();
   const store = createStore(initial.state, {
     facts: (message, state) => ({
+      ...(['AddAt', 'Photos', 'PickPhoto', 'Classified'].includes(message.type)
+        ? { storedSessionBytes }
+        : {}),
       ...(message.type === 'AddAt'
         ? { newFaceId: `face-${crypto.randomUUID().replaceAll('-', '')}` }
         : {}),
@@ -241,6 +254,7 @@ export function createController(
       if (event.type === 'compute-ready' && final) {
         committed = true;
         store.dispatch(msg('Completed', jobId, event.output));
+        measureStored();
       }
     });
     try {
