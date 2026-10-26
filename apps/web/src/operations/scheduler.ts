@@ -94,10 +94,13 @@ export interface GovernorTraceEvent {
     | 'permit-acquire'
     | 'permit-release'
     | 'reservation-acquire'
-    | 'reservation-release';
+    | 'reservation-release'
+    | 'lease-phase';
   readonly jobId: string;
   readonly context: ProviderContextId;
   readonly residency: Residency;
+  /** For 'lease-phase': the phase the lease entered, traced once per phase (fm-8w99: a morph's frame production). */
+  readonly phase?: AdmittedPhase;
 }
 
 export function createGovernor(options: {
@@ -106,12 +109,13 @@ export function createGovernor(options: {
   readonly limits?: GovernorLimits;
   readonly trace?: (event: GovernorTraceEvent) => void;
 }) {
-  const trace = (type: GovernorTraceEvent['type'], held: Held) =>
+  const trace = (type: GovernorTraceEvent['type'], held: Held, phase?: AdmittedPhase) =>
     options.trace?.({
       type,
       jobId: held.reservation.jobId,
       context: held.context,
       residency: held.reservation.residency,
+      ...(phase ? { phase } : {}),
     });
   const limits = options.limits ?? contractLimits();
   const queue: Waiter[] = [];
@@ -175,6 +179,7 @@ export function createGovernor(options: {
       phases,
       phase(name) {
         if (settled) throw new Error('A settled lease admits no further phase');
+        if (!phases.includes(name)) trace('lease-phase', entry, name);
         phases.push(name);
       },
       async settle() {

@@ -30,6 +30,13 @@
     "residency": "generator"
   },
   {
+    "type": "lease-phase",
+    "jobId": "J1",
+    "context": "cpu:runtime",
+    "residency": "generator",
+    "phase": "inference"
+  },
+  {
     "type": "provider-actual",
     "jobId": "J1",
     "provider": "cpu"
@@ -93,6 +100,13 @@
     "residency": "generator"
   },
   {
+    "type": "lease-phase",
+    "jobId": "J2",
+    "context": "cpu:runtime",
+    "residency": "generator",
+    "phase": "inference"
+  },
+  {
     "type": "provider-actual",
     "jobId": "J2",
     "provider": "cpu"
@@ -149,6 +163,13 @@
     "jobId": "J3",
     "context": "cpu:runtime",
     "residency": "generator"
+  },
+  {
+    "type": "lease-phase",
+    "jobId": "J3",
+    "context": "cpu:runtime",
+    "residency": "generator",
+    "phase": "inference"
   },
   {
     "type": "provider-actual",
@@ -224,6 +245,13 @@
     "residency": "generator"
   },
   {
+    "type": "lease-phase",
+    "jobId": "J4",
+    "context": "cpu:runtime",
+    "residency": "generator",
+    "phase": "inference"
+  },
+  {
     "type": "permit-release",
     "jobId": "J4",
     "context": "cpu:runtime",
@@ -253,6 +281,13 @@
     "residency": "generator"
   },
   {
+    "type": "lease-phase",
+    "jobId": "J5",
+    "context": "cpu:runtime",
+    "residency": "generator",
+    "phase": "inference"
+  },
+  {
     "type": "permit-release",
     "jobId": "J5",
     "context": "cpu:runtime",
@@ -280,6 +315,13 @@
     "jobId": "J6",
     "context": "cpu:runtime",
     "residency": "generator"
+  },
+  {
+    "type": "lease-phase",
+    "jobId": "J6",
+    "context": "cpu:runtime",
+    "residency": "generator",
+    "phase": "inference"
   },
   {
     "type": "provider-actual",
@@ -314,6 +356,13 @@
     "jobId": "J7",
     "context": "cpu:runtime",
     "residency": "generator"
+  },
+  {
+    "type": "lease-phase",
+    "jobId": "J7",
+    "context": "cpu:runtime",
+    "residency": "generator",
+    "phase": "inference"
   },
   {
     "type": "provider-actual",

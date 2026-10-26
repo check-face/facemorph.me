@@ -164,6 +164,31 @@ test('admission covers runtime init, session load and canary, not just inference
   assert.throws(() => lease.phase('inference'), /settled lease/);
 });
 
+test('each phase a lease enters is traced once, inside its permit (fm-8w99: a morph lease shows frame production)', async () => {
+  const events: { type: string; jobId: string; phase?: string }[] = [];
+  const g = createGovernor({
+    policy: { memory: 'ample' },
+    limits,
+    hooks: { releaseWarm() {}, terminateWorkers() {} },
+    trace: (event) => events.push(event),
+  });
+  const lease = await g.request(job('morph-1', 'morph-frames', 4));
+  for (const phase of ['runtime-init', 'inference', 'inference', 'inference'] as const)
+    lease.phase(phase);
+  await lease.settle();
+  assert.deepEqual(
+    events.map((e) => (e.phase ? `${e.type}:${e.phase}` : e.type)),
+    [
+      'reservation-acquire',
+      'permit-acquire',
+      'lease-phase:runtime-init',
+      'lease-phase:inference',
+      'permit-release',
+    ],
+  );
+  assert.ok(events.every((e) => e.jobId === 'morph-1'));
+});
+
 test('waiting job holds no permit or reservation', async () => {
   const { g } = governor();
   const lease = await g.request(job('face-1', 'face-synthesis', 4));
