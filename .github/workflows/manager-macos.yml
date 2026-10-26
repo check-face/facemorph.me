@@ -1,0 +1,83 @@
+name: manager-macos
+# Dispatch-only fast iteration for the browser-model-manager's native component cells on hosted macOS (fm-fy2.13).
+# The same command and env as hosted-lanes' "Native manager components" step, without the journey artifact.
+on:
+  workflow_dispatch:
+    inputs:
+      engine:
+        description: Playwright engine
+        type: choice
+        options: [webkit, firefox]
+        default: webkit
+      probe:
+        description: Also print where a persistent WebKit profile keeps OPFS data
+        type: boolean
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: manager-macos-${{ inputs.engine }}
+  cancel-in-progress: false
+jobs:
+  manager:
+    name: manager-macos-${{ inputs.engine }}
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: ./.github/actions/setup-workspace
+      - run: |
+          npm run build -w packages/stylegan-js -w packages/browser-model-manager
+          npx playwright install ${{ inputs.engine }}
+      - name: OPFS location probe
+        if: inputs.probe && inputs.engine == 'webkit'
+        run: |
+          cat > "$RUNNER_TEMP/probe.mjs" <<'EOF'
+          import { createRequire } from 'node:module';
+          import { mkdtempSync } from 'node:fs';
+          import { tmpdir } from 'node:os';
+          import { join } from 'node:path';
+          import { createServer } from 'node:http';
+          const { webkit } = createRequire(join(process.cwd(), 'apps/web/package.json'))('playwright');
+          const server = createServer((_, res) => res.end('<!doctype html><title>p</title>'));
+          await new Promise((r) => server.listen(0, '127.0.0.1', r));
+          const url = `http://localhost:${server.address().port}/`;
+          for (const label of ['first', 'second']) {
+            const profile = mkdtempSync(join(tmpdir(), 'probe-webkit-'));
+            const ctx = await webkit.launchPersistentContext(profile);
+            const page = await ctx.newPage();
+            await page.goto(url);
+            const seen = await page.evaluate(async (label) => {
+              const root = await navigator.storage.getDirectory();
+              const names = [];
+              for await (const [n] of root.entries()) names.push(n);
+              const h = await root.getFileHandle(`marker-${label}`, { create: true });
+              const w = await h.createWritable();
+              await w.write(new Uint8Array(1234));
+              await w.close();
+              return names;
+            }, label);
+            console.log(`${label} profile=${profile} saw before write: ${JSON.stringify(seen)}`);
+            await ctx.close();
+          }
+          server.close();
+          EOF
+          node "$RUNNER_TEMP/probe.mjs"
+          echo '--- files named or dirs holding OPFS data modified in the last 10 minutes'
+          find "$HOME/Library" "${TMPDIR:-/tmp}" -mmin -10 \( -ipath '*FileSystem*' -o -ipath '*WebsiteData*' -o -ipath '*Origins*' -o -ipath '*probe-webkit*' \) 2>/dev/null | head -60
+      - name: Native manager components on macos-${{ inputs.engine }}
+        env:
+          FACEMORPH_MANAGER_ENGINE: ${{ inputs.engine }}
+          FACEMORPH_REQUIRE_MANAGER_BROWSER: '1'
+          FACEMORPH_ISOLATE_TEST_NETWORK: '0'
+        run: node packages/browser-model-manager/test/run.mjs packages/browser-model-manager/test/cache-local.test.ts packages/browser-model-manager/test/handles-tabs.test.ts packages/browser-model-manager/test/acquisition.test.ts packages/browser-model-manager/test/worker-storage.test.ts packages/browser-model-manager/test/storage-permission.test.ts packages/browser-model-manager/test/uncached-browser.test.ts
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: manager-macos-${{ inputs.engine }}
+          path: test-results/manager-cache/
+          if-no-files-found: warn
+          retention-days: 7
