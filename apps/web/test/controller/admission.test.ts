@@ -9,6 +9,7 @@ import {
   admitTo,
   refusalMessage,
   retainedPhotoBytes,
+  retirePhotoRunInputs,
   type AdmissionBudget,
 } from '../../src/controller/admission.ts';
 import { lookupCeiling } from '../../src/contracts/ceilings.ts';
@@ -124,6 +125,185 @@ test('retained photo bytes count each held Blob once, and leave out the face bei
   };
   assert.equal(admitTo(full, { files: [sized(1)] }).ok, false);
   assert.equal(admitTo(full, { files: [sized(PHOTO - 37)], replacing: 'one' }).ok, true);
+});
+
+test('admission unions duplicate incoming, pending and installed Blob identities', () => {
+  const file = sized(PHOTO);
+  const full: State = { ...state, Inputs: [{ ...state.Inputs[0]!, file }] };
+  assert.deepEqual(
+    admit({ retainedPhotoBytes: 0, storedSessionBytes: 0 }, { files: [file, file] }),
+    { ok: true },
+  );
+  assert.deepEqual(admitTo(full, { files: [file, file] }, { pendingPhotoFiles: [file, file] }), {
+    ok: true,
+  });
+  const extra = sized(1);
+  const no = admitTo(full, { files: [extra], replacing: 'face-1' }, { pendingPhotoFiles: [file] });
+  assert.ok(!no.ok);
+  assert.equal(no.requested, PHOTO + 1, 'replacing cannot discount a still-running old file');
+});
+
+test('detected choices, hidden Undo inputs, run snapshots and crop input snapshots stay counted', () => {
+  const a = sized(11),
+    b = sized(13),
+    c = sized(17),
+    d = sized(19),
+    e = sized(23);
+  const input = { ...state.Inputs[0]!, file: a };
+  const rich: State = {
+    ...state,
+    Inputs: [input],
+    RunInputs: [{ ...input, file: b }],
+    PhotoChoice: {
+      id: input.id,
+      file: c,
+      boxes: [],
+      url: '',
+      previewWidth: 1,
+      previewHeight: 1,
+      scale: 1,
+    },
+    Undo: {
+      seq: 1,
+      kind: 'remove',
+      index: 0,
+      hidden: [{ index: 0, input: { ...input, file: d } }],
+      faces: [],
+      placeholders: [],
+    },
+    Crop: {
+      faceId: input.id,
+      file: a,
+      input: { ...input, file: e },
+      url: '',
+      scale: 1,
+      view: { ...state.Crop?.view } as NonNullable<State['Crop']>['view'],
+    },
+  };
+  assert.equal(retainedPhotoBytes(rich), 83);
+  assert.equal(retainedPhotoBytes(rich, input.id), 72, 'only installed target bytes are excluded');
+  assert.equal(
+    retainedPhotoBytes({
+      ...rich,
+      RunInputs: [input],
+      PhotoChoice: { ...rich.PhotoChoice!, file: a },
+      Undo: { ...rich.Undo!, hidden: [{ index: 0, input }] },
+      Crop: null,
+    }),
+    11,
+    'snapshots of the same Blob are not extra bytes',
+  );
+});
+
+test('committed removal, Start over and mode changes release obsolete idle run-photo references', () => {
+  const file = sized(80 * 2 ** 20);
+  const input = { ...state.Inputs[0]!, mode: 'photo' as const, file };
+  const completed: State = {
+    ...state,
+    Inputs: [input, state.Inputs[1]!],
+    RunInputs: [input],
+    RunSettings: 'completed snapshot',
+  };
+  const removed = reduce(msg('Remove', input.id), completed)!.state;
+  assert.deepEqual(removed.RunInputs, [], 'obsolete cache snapshot is physically released');
+  assert.equal(
+    removed.RunSettings,
+    '',
+    'retired snapshot cannot accidentally match cached settings',
+  );
+  assert.equal(retainedPhotoBytes(removed), file.size, 'Undo still owns the original');
+  const expired = reduce(msg('UndoExpired', removed.Undo!.seq), removed)!.state;
+  assert.equal(retainedPhotoBytes(expired), 0);
+  assert.equal(
+    admitTo(expired, { files: [sized(60 * 2 ** 20)] }).ok,
+    true,
+    'removal makes room for another photo',
+  );
+  const reset = reduce(msg('StartOver'), completed, { startOverIds: ['new-a', 'new-b'] })!.state;
+  assert.deepEqual(reset.RunInputs, []);
+  assert.equal(retainedPhotoBytes(reset), file.size, 'Start over Undo owns the source');
+  assert.equal(retainedPhotoBytes(reduce(msg('UndoExpired', reset.Undo!.seq), reset)!.state), 0);
+  const changed = reduce(msg('Mode', input.id, 'text'), completed)!.state;
+  assert.deepEqual(changed.RunInputs, []);
+  assert.equal(retainedPhotoBytes(changed), 0);
+});
+
+test('idle replacement retires its run snapshot, while active snapshots and task reservations remain charged', () => {
+  const old = sized(80 * 2 ** 20),
+    replacement = sized(80 * 2 ** 20);
+  const input = { ...state.Inputs[0]!, mode: 'photo' as const, file: old };
+  const completed: State = {
+    ...state,
+    Inputs: [input, state.Inputs[1]!],
+    RunInputs: [input],
+    RunSettings: 'completed snapshot',
+  };
+  for (const message of [
+    msg('PickPhoto', input.id, [replacement]),
+    msg('Photos', input.id, [replacement]),
+  ]) {
+    const next = reduce(message, completed)!;
+    assert.deepEqual(next.state.RunInputs, []);
+    assert.ok(
+      next.effects.some((effect) => effect.type === 'classifyStills'),
+      'same-size replacement remains admitted',
+    );
+    const busy = { ...completed, Busy: true };
+    const refused = reduce(message, busy, { pendingPhotoFiles: [old] })!;
+    assert.equal(refused.state.RunInputs, busy.RunInputs);
+    assert.ok(
+      refused.effects.some((effect) => effect.type === 'admissionRefused'),
+      'running old photo still owns its bytes',
+    );
+  }
+  const detached = { ...completed, Inputs: [state.Inputs[1]!], Busy: true };
+  assert.equal(retirePhotoRunInputs(detached), detached, 'running snapshot survives a removal');
+  const settled = retirePhotoRunInputs({ ...detached, Busy: false });
+  assert.deepEqual(settled.RunInputs, []);
+  assert.equal(
+    admitTo(settled, { files: [sized(60 * 2 ** 20)] }, { pendingPhotoFiles: [old] }).ok,
+    false,
+    'controller settlement cannot release a still-running task',
+  );
+});
+
+test('photo and session refusals preserve a valid idle retry snapshot and settings', () => {
+  const file = sized(80 * 2 ** 20);
+  const input = { ...state.Inputs[0]!, mode: 'photo' as const, file };
+  const failed: State = {
+    ...state,
+    Inputs: [input, state.Inputs[1]!],
+    RunInputs: [input],
+    RunSettings: 'retry settings',
+    Error: 'retry this photo',
+    LastRun: msg('RunFace', input.id),
+  };
+  const retry = (current: State) =>
+    Boolean(
+      current.LastRun?.type === 'RunFace' &&
+      current.LastRun.args[0] === input.id &&
+      current.RunInputs.some(
+        (previous) =>
+          previous.id === input.id &&
+          previous.mode === input.mode &&
+          previous.value === input.value &&
+          previous.file === input.file,
+      ),
+    );
+  for (const [files, facts] of [
+    [[sized(PHOTO + 1)], {}],
+    [[sized(80 * 2 ** 20)], { storedSessionBytes: SESSION + 1 }],
+  ] as const) {
+    for (const message of [msg('PickPhoto', input.id, files), msg('Photos', input.id, files)]) {
+      const next = reduce(message, failed, facts)!;
+      assert.ok(next.effects.some((effect) => effect.type === 'admissionRefused'));
+      assert.equal(next.state.Inputs, failed.Inputs);
+      assert.equal(next.state.RunInputs, failed.RunInputs, 'refusal keeps the same snapshot array');
+      assert.equal(next.state.RunSettings, failed.RunSettings);
+      assert.equal(retry(failed), true);
+      assert.equal(retry(next.state), retry(failed), 'refusal cannot change Retry into Generate');
+    }
+  }
 });
 
 test('AddAt beyond 64: the 65th and 151st faces are added at their position', () => {

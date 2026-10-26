@@ -18,6 +18,8 @@ export type AdmissionBudget = Extract<
 export interface AdmissionFacts {
   /** Bytes the stored session holds now (the face results it would keep); 0 when unknown. */
   readonly storedSessionBytes?: number;
+  /** Files still owned by asynchronous photo work, including superseded work until it settles. */
+  readonly pendingPhotoFiles?: readonly Blob[];
 }
 
 export interface AdmissionRequest {
@@ -60,9 +62,10 @@ export function refusalMessage(budget: AdmissionBudget, limit: number): string {
 
 /**
  * The photo-input bytes the controller retains: each face's photo or held still, the queued photos and the
- * crop choices, each Blob once. `except` leaves out the files of a face the request replaces.
+ * crop choices and retained snapshots, each Blob once. `except` leaves out the installed files of a face
+ * the request replaces; independent snapshots still retain their files.
  */
-export function retainedPhotoBytes(state: State, except: string | null = null): number {
+function retainedPhotos(state: State, except: string | null): Set<Blob> {
   const blobs = new Set<Blob>();
   const keep = (id: string, file: Blob | null | undefined) => {
     if (file && id !== except) blobs.add(file);
@@ -71,15 +74,40 @@ export function retainedPhotoBytes(state: State, except: string | null = null): 
   for (const [id, held] of state.Held ?? []) keep(id, held.file);
   for (const [id, file] of state.PhotoQueue) keep(id, file);
   for (const choice of [state.Crop, ...state.CropQueue])
-    if (choice) keep(choice.faceId, choice.file);
+    if (choice) {
+      keep(choice.faceId, choice.file);
+      // The crop also captures the previous input to reject a replaced proposal.
+      if (choice.input?.file) blobs.add(choice.input.file);
+    }
+  if (state.PhotoChoice) blobs.add(state.PhotoChoice.file);
+  // These snapshots remain live independently of the currently installed face.
+  for (const { input } of state.Undo?.hidden ?? []) if (input.file) blobs.add(input.file);
+  for (const input of state.RunInputs) if (input.file) blobs.add(input.file);
+  return blobs;
+}
+
+export function retainedPhotoBytes(state: State, except: string | null = null): number {
   let bytes = 0;
-  for (const blob of blobs) bytes += blob.size;
+  for (const blob of retainedPhotos(state, except)) bytes += blob.size;
   return bytes;
+}
+
+/** An idle run snapshot with a removed/replaced photo cannot describe the current project. A new selection
+ * may also retire its target's idle cache snapshot before admission. Release strong references and the
+ * settings key together; running requests retain their own task reservations. */
+export function retirePhotoRunInputs(state: State, replacing: string | null = null): State {
+  if (state.Busy || !state.RunInputs.some((input) => input.file)) return state;
+  const installed = new Set(
+    state.Inputs.flatMap((input) => (input.file && input.id !== replacing ? [input.file] : [])),
+  );
+  return state.RunInputs.some((input) => input.file && !installed.has(input.file))
+    ? { ...state, RunInputs: [], RunSettings: '' }
+    : state;
 }
 
 /** Checks a request against the current usage. Pure: budgets only, never a count of faces. */
 export function admit(usage: AdmissionUsage, request: AdmissionRequest): Admission {
-  const incoming = request.files.reduce((n, file) => n + file.size, 0);
+  const incoming = [...new Set(request.files)].reduce((n, file) => n + file.size, 0);
   const checks: readonly (readonly [AdmissionBudget, number])[] = [
     ['BATCH_RETAINED_INPUT_BYTES', usage.retainedPhotoBytes + incoming],
     ['STORED_SESSION_BYTES', usage.storedSessionBytes + (request.sessionBytes ?? 0)],
@@ -100,12 +128,18 @@ export function admitTo(
   request: AdmissionRequest,
   facts: AdmissionFacts = {},
 ): Admission {
+  const retained = retainedPhotos(state, request.replacing ?? null);
+  // A task can still own an old file of the replaced face. Never discount that live reference.
+  for (const file of facts.pendingPhotoFiles ?? []) retained.add(file);
+  for (const file of request.files) retained.add(file);
+  let retainedPhotoBytes = 0;
+  for (const file of retained) retainedPhotoBytes += file.size;
   return admit(
     {
-      retainedPhotoBytes: retainedPhotoBytes(state, request.replacing ?? null),
+      retainedPhotoBytes,
       storedSessionBytes: facts.storedSessionBytes ?? 0,
     },
-    request,
+    { ...request, files: [] },
   );
 }
 
