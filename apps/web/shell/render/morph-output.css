@@ -1,0 +1,24 @@
+.next-progress-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: min(100%, 420px);
+  margin: 0.4rem auto;
+}
+
+.next-progress-row .next-progress {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+}
+
+.next-morph-slot .next-primary-action.Mui-disabled {
+  background-image: none;
+  animation: none;
+  opacity: 0.55;
+  box-shadow: none;
+}
+
+.next-morph-reason {
+  font-size: 0.9rem;
+}

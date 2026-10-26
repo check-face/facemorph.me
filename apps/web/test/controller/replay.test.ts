@@ -23,17 +23,21 @@ test('all golden rows have explicit controller replay verdicts, with exact check
           'Busy',
           'Stage',
           'Status',
-          'Fraction',
           'Error',
           'FailureToast',
           'ActiveFace',
           'Warn',
           'Remaining',
         ]);
+        // fm-j4i8 retires only classic's cancelled=complete fraction; every other
+        // recorded cancellation field above remains an exact control comparison.
+        assert.equal(fixture(`retry-unchanged/${device}/02-cancelled.json`).model.Fraction, 1);
+        assert.equal(stopped.state.Fraction, cancel.state.Fraction);
+        assert.ok(stopped.state.Fraction < 1, 'a cancelled attempt never claims completion');
         const retry = reduce(msg('Retry'), stopped.state)!;
         assert.deepEqual(retry.effects, [{ type: 'dispatch', message: running.LastRun }]);
       }
-      return 'Cancel/settlement/retry effects match desktop and phone; final successful retry lacks recorded Msg/output events. Real CPU execution is tested separately.';
+      return 'Cancel/settlement/retry effects match desktop and phone except the declared fm-j4i8 preserved partial fraction; final successful retry lacks recorded Msg/output events. Real CPU execution is tested separately.';
     },
     'morph.settings-start-cancel': () => {
       for (const device of ['desktop', 'phone']) {
@@ -59,10 +63,20 @@ test('all golden rows have explicit controller replay verdicts, with exact check
         compareFields(
           stop,
           fixture(`morph.settings-start-cancel/${device}/03-cancelled.json`).model,
-          ['Busy', 'Stage', 'Status', 'Fraction', 'Error', 'ActiveFace'],
+          ['Busy', 'Stage', 'Status', 'Error', 'ActiveFace'],
+        );
+        assert.equal(
+          fixture(`morph.settings-start-cancel/${device}/03-cancelled.json`).model.Fraction,
+          1,
+        );
+        assert.equal(start.state.Fraction, -1, 'unknown frame cost starts indeterminate');
+        assert.equal(
+          stop.state.Fraction,
+          start.state.Fraction,
+          'cancellation retains actual progress',
         );
       }
-      return 'Start/cancel match both devices; final video snapshot has no recorded completion event. Real short CPU morph is tested separately.';
+      return 'Start/cancel match both devices except the declared fm-j4i8 preserved partial fraction; final video snapshot has no recorded completion event. Real short CPU morph is tested separately.';
     },
   });
   for (const result of results) t.diagnostic(JSON.stringify(result));

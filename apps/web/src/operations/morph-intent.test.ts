@@ -178,7 +178,13 @@ test('morph-intent.late-completion-rejected', async () => {
   fake.executions[2]!.resolve({ ...output(), videoUrl: 'blob:old-video' });
   assert.deepEqual(await older.done, { status: 'superseded' });
   await flush();
-  assert.deepEqual(eventsFor(events, older.requestId), ['queued', 'cancelled', 'settled']);
+  assert.deepEqual(eventsFor(events, older.requestId), [
+    'queued',
+    'dependency-ready',
+    'dependency-ready',
+    'cancelled',
+    'settled',
+  ]);
   await computeAll(fake, 3);
   const result = await newer.done;
   assert.equal(result.status, 'completed');

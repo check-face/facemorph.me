@@ -3,7 +3,12 @@ import { useSyncExternalStore } from 'react';
 import type { Store } from '../src/controller/store.ts';
 import { msg } from '../src/controller/msg.ts';
 import { rememberVideoQuality } from '../src/controller/preferences.ts';
-import { estimate, isSlowDevice, perFrameText } from '../src/controller/derived.ts';
+import {
+  estimate,
+  faceInputProblem,
+  isSlowDevice,
+  perFrameText,
+} from '../src/controller/derived.ts';
 import * as facade from './facade/bridge.ts';
 import { describeMeasuredMs, describeMs } from './facade/helpers.ts';
 import { Shell } from './Shell.tsx';
@@ -33,6 +38,8 @@ export function Product({ store }: { store: Store }) {
     plannedFrames: facade.plannedFrames(settings),
   };
   const prediction = estimate(s, measurements);
+  const morphRemembered = s.LastRun?.type === 'Run' && s.LastRun.args[0] === 'morph';
+  const invalidFace = s.Inputs.findIndex((input) => faceInputProblem(input));
   return (
     <Shell
       busy={s.Busy}
@@ -159,6 +166,19 @@ export function Product({ store }: { store: Store }) {
             faces={s.Inputs.length}
             busy={s.Busy}
             accepting={s.Accepting === true}
+            morphActive={s.Busy && morphRemembered}
+            awaitingDecision={s.Gate?.[1].type === 'Run' && s.Gate[1].args[0] === 'morph'}
+            inputProblem={
+              invalidFace < 0
+                ? ''
+                : `Face ${invalidFace + 1}: ${faceInputProblem(s.Inputs[invalidFace]!)}`
+            }
+            retry={
+              morphRemembered &&
+              (s.Stage === 'error' ||
+                s.Status === 'Cancelled. Your completed faces are still available.')
+            }
+            onRetry={() => dispatch(msg('Retry'))}
             stage={s.Stage}
             pendingMorph={s.PendingMorph}
             overflow={s.Overflow}
@@ -198,6 +218,7 @@ export function Product({ store }: { store: Store }) {
         videoSlot={
           <VideoSlot
             videoUrl={s.VideoUrl}
+            disclosure={s.Disclosure ?? ''}
             poster={s.Faces[0]?.url}
             useSlider={s.UseSlider}
             sliderFrames={s.SliderFrames}

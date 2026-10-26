@@ -270,10 +270,12 @@ for (const [engine, type] of Object.entries(ENGINES).filter(([e]) => !only || on
         await press(page, page.getByLabel('Use Slider'), { touch });
         await scrubToEnd(page, touch, at);
         await page.getByText('This frame is still queued.').waitFor();
-        // No retained frames at all: the slider says why it has nothing to scrub.
+        // No retained frames at all: retain the usable player instead of a blank slider.
         await page.goto(`${site.origin}/render-check.html?faces=2&video=/fixtures/morph/morph.mp4`);
-        await press(page, page.getByLabel('Use Slider'), { touch });
-        await page.locator('.next-slider-empty').waitFor();
+        await video.waitFor();
+        assert.ok(await page.getByLabel('Use Slider').isDisabled(), `${at}: no empty scrub mode`);
+        assert.equal(await page.locator('.next-slider canvas').count(), 0);
+        assert.equal(await video.getAttribute('controls'), '');
         await shot(page, `${engine}-${width}-no-frames`);
 
         assert.deepEqual(errors, [], `${at}: page errors`);

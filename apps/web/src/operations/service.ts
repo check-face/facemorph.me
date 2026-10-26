@@ -127,6 +127,12 @@ export type OperationEvent = EventIdentity &
         readonly width: number;
       }
     | { readonly type: 'compute-ready'; readonly output: Output }
+    | {
+        /** A prerequisite face is computed; publish it without completing the parent or waiting for its file. */
+        readonly type: 'dependency-ready';
+        readonly slot: string;
+        readonly output: Output;
+      }
     | { readonly type: 'file-ready'; readonly output: Output }
     | { readonly type: 'failed'; readonly cause: OperationFailure }
     | { readonly type: 'cancelled' }

@@ -85,6 +85,7 @@ export interface VideoSlotProps {
   readonly onSave: () => void;
   readonly resultFiles?: ResultFiles | undefined;
   readonly onNotice?: ((message: string) => void) | undefined;
+  readonly disclosure?: string | undefined;
 }
 
 export function VideoSlot(p: VideoSlotProps) {
@@ -105,20 +106,13 @@ export function VideoSlot(p: VideoSlotProps) {
     };
   }, [p.videoUrl]);
   if (p.videoUrl === '') return <div className="next-video-slot" />;
-  const showSlider = p.useSlider || (p.busy && p.sliderFrames !== null);
-  const slider = !p.useSlider ? null : p.sliderFrames ? (
-    <MorphSlider
-      frames={p.sliderFrames}
-      dim={p.videoDim}
-      frame={p.sliderFrame}
-      onFrame={p.onSliderFrame}
-    />
-  ) : (
-    <p className="next-slider-empty" role="note">
-      This morph's frames are not saved on this device yet, so the slider has nothing to scrub.
-      Generate the morph again once frame storage is on.
-    </p>
-  );
+  const frames = p.sliderFrames ?? [];
+  const framesAvailable = frames.length > 0;
+  // A restored video remains playable when its optional scrub frames were evicted.
+  const showSlider = framesAvailable && (p.useSlider || p.busy);
+  const slider = showSlider ? (
+    <MorphSlider frames={frames} dim={p.videoDim} frame={p.sliderFrame} onFrame={p.onSliderFrame} />
+  ) : null;
   return (
     <div className="next-video-slot">
       {!showSlider && (
@@ -141,11 +135,21 @@ export function VideoSlot(p: VideoSlotProps) {
       )}
       <FormControlLabel
         control={
-          <Checkbox checked={p.useSlider} onChange={(e) => p.onUseSlider(e.target.checked)} />
+          <Checkbox
+            checked={showSlider}
+            disabled={!framesAvailable}
+            onChange={(e) => p.onUseSlider(e.target.checked)}
+          />
         }
         label="Use Slider"
       />
+      {p.useSlider && !framesAvailable && (
+        <p className="next-slider-empty" role="note">
+          The scrub frames are not saved here. Your video is ready to play.
+        </p>
+      )}
       {showSlider && slider}
+      {p.disclosure && <p className="next-video-disclosure">{p.disclosure}</p>}
       <div className="next-actions">
         {/* The actual encoded resolution, read from the video itself (fm-fy2.9: 512 is never hidden). */}
         {!p.resultFiles && size && size.url === p.videoUrl && size.w > 0 && (

@@ -80,6 +80,19 @@ for (const [name, total, order] of [
   test(`morph line and bar through the operation service: ${name}`, async () => {
     const { events, all, result } = await render(total, order);
     assert.equal(result.status, 'completed');
+    assert.ok(
+      events.every((event) => !('loaded' in event.progress) && !('total' in event.progress)),
+      'actual facade notifications contain no raw units; the separate job counter drives the bar',
+    );
+    const duringFrames = events.filter((event) => event.progress.stage === 'morph');
+    assert.ok(
+      duringFrames.every((event) => event.action.fraction !== null),
+      'the real frame total makes frame progress determinate',
+    );
+    assert.ok(
+      new Set(duringFrames.map((event) => event.action.fraction)).size > 1,
+      'the whole-action bar advances while real frames finish',
+    );
     // The line: only the frame counter, then MP4 preparation.
     const lines = events.map((e) => e.line).filter((line): line is string => line !== null);
     const counted = lines.filter((line) => line.startsWith('Generating'));

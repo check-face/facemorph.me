@@ -3,7 +3,12 @@
 import type { InputRevision } from '../contracts/inputs.ts';
 import { createOperationService, type OperationBridge } from './bridge-service.ts';
 import type { OperationEvent, OperationRequest, SourceSnapshot } from './service.ts';
-import type { Output, Progress, Request } from '../../shell/facade/records.ts';
+import {
+  readProgress,
+  type Output,
+  type Progress,
+  type Request,
+} from '../../shell/facade/records.ts';
 
 export interface PendingCall<T> {
   readonly resolve: (value: T) => void;
@@ -51,7 +56,17 @@ export function fakeBridge() {
   const calls: string[] = [];
   const executions: Execution[] = [];
   const files: FilePreparation[] = [];
+  let framesDone = 0,
+    framesTotal = 0;
   const bridge: OperationBridge = {
+    jobProgress: () => ({
+      facesDone: 0,
+      facesTotal: 0,
+      framesDone,
+      framesTotal,
+      videoFramesDone: 0,
+      videoFramesTotal: 0,
+    }),
     subscribe(callback) {
       listeners.add(callback);
       return () => {
@@ -82,8 +97,14 @@ export function fakeBridge() {
     files,
     /** Emits a progress event the way the runtime does for the job in flight. */
     progress(jobId: number, stage: string, text = '', extra: Record<string, number> = {}) {
+      if (stage === 'morph') {
+        framesDone = extra['loaded'] ?? framesDone;
+        framesTotal = extra['total'] ?? framesTotal;
+      }
+      // Cross the same decoder as the real facade: raw loaded/total are not
+      // public Progress fields. Whole-action progress must use jobProgress().
       for (const listener of listeners)
-        listener({ jobId, stage, text, fraction: 0, ...extra } as Progress);
+        listener(readProgress({ jobId, stage, text, fraction: 0, ...extra }));
     },
   };
 }

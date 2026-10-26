@@ -1,11 +1,11 @@
-// Release gate (operator, 21 September; resolution adopted 23 September, round-3 R3-03):
-// while a morph renders, the status line reads "Generating X / Y images" and nothing else.
-// X counts finished frames, so it never decreases whatever order frames are made in.
-// Estimates belong on the separate line beneath it. "Encoding" is banned from the line.
+// fm-j4i8: one whole-action bar spans prerequisite faces, frames and the usable MP4.
+// The frame counter is secondary and monotonic; MP4 preparation remains visible.
+// The built-app DOM/attempt/cancellation checks run in test/e2e/morph-output.e2e.ts.
 // The bridge-source cases (MORPH_SPOKEN_STAGES, the morph-only gate, counter-only morph text, the
 // export stage) moved to behavioural tests through the operation service in
-// src/operations/progress-copy.test.ts (fm-vbj7). Only the counter cases remain here.
+// src/operations/progress-copy.test.ts (fm-vbj7). Counter and whole-action phase cases remain here.
 import { createFrameCounter, morphCounter } from '../src/Next/stage-labels.mjs';
+import { createActionProgress } from '../src/operations/progress.ts';
 
 const problems = [];
 
@@ -40,9 +40,25 @@ for (const [name, total, order] of [
 }
 if (morphCounter(3, 26) !== 'Generating 3 / 26 images') problems.push('morphCounter wording changed.');
 
+const bar = createActionProgress('progress-copy-gate', [
+  { kind: 'prepare', unit: 'steps', weight: 2, total: 2 },
+  { kind: 'frames', unit: 'frames', weight: 6, total: 26 },
+  { kind: 'file', unit: 'steps', weight: 2, total: 1 },
+]);
+const fractions = [bar.snapshot().fraction];
+for (const phase of ['prepare', 'frames', 'file']) {
+  fractions.push(bar.finish(phase).fraction);
+  if (bar.snapshot().complete || bar.snapshot().fraction === 1)
+    problems.push(`${phase}: the bar claimed completion before the usable MP4`);
+}
+fractions.push(bar.fileReady().fraction);
+for (let i = 1; i < fractions.length; i++)
+  if (fractions[i] < fractions[i - 1]) problems.push('The whole-action bar reset between phases.');
+if (fractions.at(-1) !== 1) problems.push('The usable MP4 did not complete the bar.');
+
 if (problems.length) {
   console.error('The morph progress line does not meet its release gate:\n');
   for (const problem of problems) console.error('  - ' + problem);
   process.exit(1);
 }
-console.log(JSON.stringify({ morphProgressLine: 'Generating X / Y images', monotonic: true, gate: 'src/operations/progress-copy.test.ts' }));
+console.log(JSON.stringify({ primary: 'one whole-action monotonic bar', secondary: 'Generating X / Y images', completion: 'usable MP4', fractions, monotonic: true, gate: 'test/e2e/morph-output.e2e.ts' }));

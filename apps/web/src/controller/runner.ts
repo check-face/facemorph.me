@@ -257,14 +257,60 @@ export function createController(
     const off = service.subscribe((event) => {
       if (disposed || event.intent.requestId !== handle.requestId) return;
       if (event.type === 'progress')
-        store.dispatch(msg('Progressed', { ...event.progress, jobId }));
+        store.dispatch(
+          msg('Progressed', {
+            ...event.progress,
+            jobId,
+            fraction: event.action.fraction ?? -1,
+            text:
+              event.intent.request.kind === 'morph'
+                ? (event.line ?? store.getState().Status)
+                : event.progress.text,
+          }),
+        );
+      if (event.type === 'dependency-ready')
+        update((current) => {
+          const request = event.intent.request;
+          const expected =
+            'sources' in request
+              ? request.sources.find((source) => source.slot === event.slot)?.input
+              : undefined;
+          const input = current.Inputs.find((input) => input.id === event.slot);
+          const face = event.output.faces.find((face) => face.id === event.slot);
+          if (
+            current.JobId !== jobId ||
+            !current.Busy ||
+            !face ||
+            !input ||
+            !expected ||
+            input.mode !== expected.mode ||
+            input.value !== expected.value ||
+            input.file !== expected.file
+          )
+            return unchanged(current);
+          return {
+            state: {
+              ...current,
+              Faces: [...current.Faces.filter((face) => face.id !== event.slot), face],
+              ActiveFace: current.ActiveFace === event.slot ? null : current.ActiveFace,
+            },
+            effects: [],
+          };
+        });
       if (event.type === 'disclosure')
         update((current) =>
           current.JobId === jobId
             ? { state: { ...current, Status: event.text, Disclosure: event.text }, effects: [] }
             : unchanged(current),
         );
-      if (event.type === 'compute-ready' && final) {
+      if (
+        final &&
+        !committed &&
+        'output' in event &&
+        (event.intent.request.kind === 'morph'
+          ? event.type === 'file-ready'
+          : event.type === 'compute-ready')
+      ) {
         committed = true;
         store.dispatch(msg('Completed', jobId, event.output));
         measureStored();
@@ -290,7 +336,15 @@ export function createController(
           msg(
             'Failed',
             jobId,
-            result.cause.kind === 'admission' ? result.cause.refusal.text : result.cause.message,
+            result.cause.kind === 'admission'
+              ? result.cause.refusal.text
+              : handle.request.kind === 'morph' &&
+                  result.cause.kind === 'operation' &&
+                  !/not covered by an approved download|needs more data than was approved/.test(
+                    result.cause.message,
+                  )
+                ? 'This morph could not finish. Your completed faces are still ready. Retry, or reduce Length in More options.'
+                : result.cause.message,
           ),
         );
       } else if (!committed) update((current) => cancelled(current, jobId));

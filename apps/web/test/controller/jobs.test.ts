@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { init } from '../../src/controller/init.ts';
 import { msg } from '../../src/controller/msg.ts';
 import { reduce } from '../../src/controller/reducers/index.ts';
+import { cancelled as settleCancelled } from '../../src/controller/reducers/jobs.ts';
 import type { Output } from '../../src/controller/state.ts';
 const initial = init({
   today: '<today>',
@@ -76,6 +77,17 @@ test('Cancel changes spoken state; Retry without a remembered run clears only th
   assert.equal(retry.state.Error, null);
   assert.equal(retry.state.FailureToast, false);
   assert.deepEqual(retry.effects, []);
+});
+test('cancelled and failed morphs preserve unfinished progress; the failure belongs beside Morph', () => {
+  const run = reduce(msg('Run', 'morph'), state)!.state;
+  const partial = { ...run, Fraction: 0.625 };
+  const stopped = settleCancelled(partial, run.JobId).state;
+  assert.equal(stopped.Fraction, 0.625, 'cancellation cannot claim complete');
+  assert.equal(stopped.Faces, partial.Faces);
+  const failed = reduce(msg('Failed', run.JobId, 'Retry this morph.'), partial)!.state;
+  assert.equal(failed.Fraction, 0.625, 'failure cannot reset the attempt');
+  assert.equal(failed.Status, 'Retry this morph.');
+  assert.equal(failed.Error, failed.Status, 'diagnostics retain the same failure');
 });
 test('report/route events remain global, with normal progress retaining its active face ID', () => {
   const busy = { ...state, Busy: true, JobId: 2 };

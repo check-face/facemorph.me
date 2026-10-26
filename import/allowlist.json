@@ -1081,10 +1081,10 @@
       "class": "temporary-root",
       "temporary": true,
       "ported": {
-        "sha256": "1e3b20dabb54160a59234b5ef6d4f9f74f9e4c1c730f3c633d01822e6d90117d",
-        "bytes": 2480,
-        "bead": "fm-vbj7",
-        "reason": "The bridge-source cases moved to behavioural tests through the operation service (src/operations/progress-copy.test.ts); only the counter cases remain (dea926c)"
+        "sha256": "37609628efffc4b6c061b24c5448bbe976ae79d23a2248242d2e8f9ff4361ee1",
+        "bytes": 3325,
+        "bead": "fm-j4i8",
+        "reason": "Check whole-action monotonic progress across prerequisite faces, frames and usable MP4; retain secondary frame-counter cases and require the same-revision operated DOM proof in morph-output.e2e.ts."
       }
     },
     {
