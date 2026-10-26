@@ -19,6 +19,10 @@ npm run build:next      # deploy-next/ (docs/dev/build-next.md)
 
 To fix rather than check, run `npm run format` and `npm run lint:fix`.
 
+Run these from the repository root. `npm test` and `build:next` fetch the pinned classic control from GitHub's API
+(scripts/import/fetch-control.mjs); when the anonymous rate limit is spent (a 403), export a token first, for example
+`export GITHUB_TOKEN=$(gh auth token)`. On 26 October 2026 this whole sequence passed in a fresh clone of 759ec1d.
+
 ## Dependencies
 
 Every dependency is a caret range at its latest release (`npm install <pkg>@latest`), never an exact pin or a
