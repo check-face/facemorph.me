@@ -20,3 +20,21 @@ export { encodeVp8lWebp, WEBP_LOSSLESS_MAX_EDGE } from './media/webp-lossless.ts
 export * from './contracts/descriptor.ts';
 export * from './blend/blend.ts';
 export * from './blend/recipe.ts';
+// Morph orchestration (fm-suaa) and the descriptor-driven latent path, as the app's bridge consumes them (fm-ioap).
+export * from './morph/latent-path.ts';
+export * from './morph/infill.ts';
+export {
+  renderMorph,
+  selectBranch,
+  FRAME_WINDOW,
+  SPARSE_ANCHORS,
+  type MorphImage,
+  type MorphFrame,
+  type MorphPath,
+  type MorphLatent,
+  type MorphFrameSource,
+  type MorphWriter,
+  type MorphFrameStore,
+  type MorphSettlement,
+  type RenderMorphOptions,
+} from './morph/render.ts';

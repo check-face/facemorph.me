@@ -475,6 +475,44 @@ const harness = {
     });
     return { out, planned, ...settled() };
   },
+  /**
+   * morph.render (fm-ioap): a closed two-face pairwise ellipse, 16 frames per segment (32 frames) at 16 FPS, through
+   * the bridge's renderMorph path. Returns the MP4's bytes (base64) so the runner decodes and counts its frames.
+   * With `cancelAfter`, the morph is cancelled once that many frames are displayable, and nothing is returned.
+   */
+  async morphVideo(a: string, b: string, cancelAfter = 0) {
+    const inputs = [input(a, 'text', a), input(b, 'text', b)];
+    const options = { ...request('morph', '', inputs, 16), kind: 'pairwise-ellipse' as const };
+    f.rememberView(options);
+    const planned = f.plannedFrames({
+      inputs,
+      kind: 'pairwise-ellipse',
+      width: 1,
+      pinch: false,
+      frames: 16,
+      fps: 16,
+    });
+    const before = progress.length;
+    const running = f.execute(options);
+    if (cancelAfter) {
+      const deadline = Date.now() + 600_000;
+      const shown = () =>
+        progress.slice(before).filter((p) => p.stage === 'frames-available').length;
+      while (shown() < cancelAfter && Date.now() < deadline)
+        await new Promise((r) => setTimeout(r, 20));
+      f.cancel();
+    }
+    const out = await running;
+    let video: string | null = null;
+    if (out.videoUrl) {
+      const bytes = new Uint8Array(await (await fetch(out.videoUrl)).arrayBuffer());
+      let text = '';
+      for (let i = 0; i < bytes.length; i += 0x8000)
+        text += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+      video = btoa(text);
+    }
+    return { out, planned, video, ...settled() };
+  },
   restore: () => f.restoreLastResult(),
   async retained() {
     const session: unknown = await readSession();

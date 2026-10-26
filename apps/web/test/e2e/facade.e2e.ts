@@ -490,6 +490,55 @@ test(
 );
 
 test(
+  'morph-render: a 32-frame 16 FPS morph through renderMorph is a complete MP4 of 32 decoded frames; a cancelled one offers no video',
+  { timeout: 1_800_000 },
+  async () => {
+    type Morphed = { out: Out; planned: number | null; video: string | null } & Settled;
+    const done = await call<Morphed>('morphVideo', 'morph one', 'morph two');
+    assert.equal(done.out.errorMessage, '', done.out.errorMessage);
+    // The bridge's own path total for a closed two-face path at 16 per segment, and every frame counted done.
+    const job = done.job as unknown as { framesTotal: number; framesDone: number };
+    assert.deepEqual([job.framesTotal, job.framesDone], [32, 32]);
+    assert.ok(done.video, 'no video');
+    const file = join(results, 'morph-render.mp4');
+    mkdirSync(results, { recursive: true });
+    writeFileSync(file, Buffer.from(done.video, 'base64'));
+    const probe = JSON.parse(
+      execFileSync(
+        'ffprobe',
+        [
+          '-v',
+          'error',
+          '-count_frames',
+          '-select_streams',
+          'v:0',
+          '-show_entries',
+          'stream=nb_read_frames,r_frame_rate,width,height',
+          '-of',
+          'json',
+          file,
+        ],
+        { encoding: 'utf8' },
+      ),
+    ) as {
+      streams: { nb_read_frames: string; r_frame_rate: string; width: number; height: number }[];
+    };
+    const stream = probe.streams[0]!;
+    log(
+      `morph-render: decoded ${stream.nb_read_frames} frames at ${stream.r_frame_rate}, ${stream.width}x${stream.height}`,
+    );
+    assert.equal(Number(stream.nb_read_frames), 32, 'decoded frames equal totalFrames');
+    assert.equal(stream.r_frame_rate, '16/1');
+    // A different morph (new words, so no cached frames), cancelled after three frames are on screen.
+    const cancelled = await call<Morphed>('morphVideo', 'cancel one', 'cancel two', 3);
+    log(`morph-render cancel: "${cancelled.out.message}" video=${Boolean(cancelled.out.videoUrl)}`);
+    assert.equal(cancelled.out.videoUrl, '', 'a cancelled morph offers no video');
+    assert.equal(cancelled.video, null);
+    assert.match(cancelled.out.message, /Cancelled/);
+  },
+);
+
+test(
   'downloads-subscription: the model inventory arrives as a typed Downloads record',
   { timeout: 120_000 },
   async () => {

@@ -26,6 +26,7 @@ if(typeof recordUsage==='function')analytics.setStatsSink?.(recordUsage);
 analytics.start();analytics.observeVitals?.();
 import {labelFor,loadedBytes,createFrameCounter} from './stage-labels.mjs';
 import {infillFrames} from './infill.mjs';
+import {renderMorph} from '@facemorph/stylegan-js';
 import {frameStoreKey,frameStoreGet,frameStoreGetDisplay,frameStoreGetOne} from './morph-frames.mjs';
 import {selectPhoto} from './photo-selection.mjs';
 import {refusal} from './photo/refusal.mjs';
@@ -374,74 +375,33 @@ export async function execute(request){
    const framesKey=await morphFramesKey();clearLiveFrames();liveFrameKey=framesKey;liveFrames=Array(path.totalFrames).fill('');
    const stored=framesKey?await frameStoreGet(framesKey).catch(()=>null):null;analytics.operationResult?.('frame-cache',stored?'hit':'miss');
    writer=videoWriter({codec:manifest.codec,fps:project.morph.framesPerSecond,quality:request.quality==='full'?'full':'standard',signal:active.signal,onProgress:progress,framesKey,totalFrames:path.totalFrames});const videoChoice=await writer.initialize();
-   const counter=createFrameCounter(path.totalFrames);let directEncoded=false;
-   if(stored&&stored.length===path.totalFrames){
-    liveFrames=stored.map(blob=>URL.createObjectURL(blob));
-    for(const frame of path.frames()){checked();await writer.add(stored[frame.index],frame.index);jobCounts.framesDone=frame.index+1;}
-   }else if(writer.addRaw&&runtime.synthesizeFrames&&typeof OffscreenCanvas==='function'){
-    // Sparse anchors land first; all remaining frames stream in presentation order.
-    // Waiting for an ordered frame while producing a full sparse window would deadlock.
-    directEncoded=true;
-    const first=counter.start();progress({stage:'morph',text:first.text,loaded:first.done,total:path.totalFrames});
-    const anchors=new Set();
-    const publish=async(index,display)=>{checked();if(renderToken!==morphRevision)throw superseded();liveFrames[index]=URL.createObjectURL(display);listener({jobId:currentJob,stage:'frames-available',text:'',fraction:0});const finished=counter.complete(index);jobCounts.framesDone=finished.done;progress({stage:'morph',text:finished.text,loaded:finished.done,total:path.totalFrames});};
-    // Two endpoints plus two midpoints for a usual two-face morph; bounded independently of duration.
-    for(const frame of infillFrames(path,project.morph)){
-     if(anchors.size>=4)break;checked();
-     const saved=frame.visitId?faces.get(frame.visitId):null;
-     const output=saved?await readyFace(saved):await runtime.synthesize({space:'w-plus',shape:[1,...W_SHAPE],values:Float32Array.from(frame.values)},{signal:active.signal,persist:false,raw:true});
-     const display=output.rgba?await writer.retainRaw(output,frame.index):await writer.retain(output.blob,frame.index);
-     anchors.add(frame.index);await publish(frame.index,display);
-    }
-    const iterator=path.frames()[Symbol.iterator]();
-    for(let window=[];;window=[]){
-     for(let item;window.length<FRAME_WINDOW&&!(item=iterator.next()).done;)window.push(item.value);
-     if(!window.length)break;checked();const ready=new Map();
-     for(const frame of window)if(anchors.has(frame.index)){const blob=await frameStoreGetOne(framesKey,frame.index);if(!blob)throw Error('A preview frame is unavailable.');ready.set(frame.index,{blob});}
-     const todo=window.filter(frame=>!anchors.has(frame.index));let cursor=0,chain=Promise.resolve();
-     const drain=async()=>{for(;cursor<window.length;cursor++){checked();if(renderToken!==morphRevision)throw superseded();const frame=window[cursor],output=ready.get(frame.index);if(!output)return;ready.delete(frame.index);if(output.rgba){const display=await writer.addRaw(output,frame.index);await publish(frame.index,display);}else await writer.add(output.blob,frame.index);}};
-     if(todo.length)await runtime.synthesizeFrames(todo.map(frame=>({space:'w-plus',shape:[1,...W_SHAPE],values:Float32Array.from(frame.values)})),{signal:active.signal,raw:true,onFrame:(at,output)=>{ready.set(todo[at].index,output);chain=chain.then(drain);return chain;}});
-     await (chain=chain.then(drain));if(cursor<window.length)throw Error('Some morph frames were not produced. Your faces are saved.');
-    }
-   }else{
-    const first=counter.start();progress({stage:'morph',text:first.text,loaded:first.done,total:path.totalFrames});
-    const add=async(blob,index)=>{
-     checked();if(renderToken!==morphRevision)throw superseded();
-     if(writer.retain){const display=await writer.retain(blob,index);liveFrames[index]=URL.createObjectURL(display);listener({jobId:currentJob,stage:'frames-available',text:'',fraction:0});}
-     else await writer.add(blob,index);
-     const finished=counter.complete(index);jobCounts.framesDone=finished.done;
-     progress({stage:'morph',text:finished.text,loaded:finished.done,total:path.totalFrames});
-    };
-    // The frame's own cost is reported by the runtime as synthesis-complete and recorded in
-    // progress(); timing the call here would fold acquisition and storage into a per-frame figure.
-    if(typeof runtime.synthesizeFrames==='function'){
-     // Windows of frames go to the runtime as one request, so the worker can keep the GPU busy
-     // while it encodes the previous frame; each frame still reaches the writer in order, the
-     // saved endpoint faces in their places. A window bounds the latents in flight and the PNGs
-     // that could queue here if the writer fell behind.
-     const iterator=(writer.retain?infillFrames(path,project.morph):path.frames())[Symbol.iterator]();
-     for(let window=[];;window=[]){
-      for(let item;window.length<FRAME_WINDOW&&!(item=iterator.next()).done;)window.push(item.value);
-      if(!window.length)break;
-      checked();
-      const todo=window.filter(frame=>!(frame.visitId&&faces.get(frame.visitId))),ready=new Map();let cursor=0,chain=Promise.resolve();
-      const drain=async()=>{for(;cursor<window.length;cursor++){checked();const frame=window[cursor],output=(frame.visitId&&faces.get(frame.visitId))||ready.get(frame.index);if(!output)return;ready.delete(frame.index);await add((await readyFace(output)).blob,frame.index);}};
-      if(todo.length)await runtime.synthesizeFrames(todo.map(frame=>({space:'w-plus',shape:[1,...W_SHAPE],values:Float32Array.from(frame.values)})),{signal:active.signal,onFrame:(at,output)=>{ready.set(todo[at].index,output);chain=chain.then(drain);chain.catch(()=>{});}});
-      await (chain=chain.then(drain));
-      if(cursor<window.length)throw Error('Some morph frames were not produced. Your faces are saved.');
-     }
-    }else for(const frame of (writer.retain?infillFrames(path,project.morph):path.frames())){
-     checked();
-     const saved=frame.visitId?faces.get(frame.visitId):null;
-     const output=saved||await runtime.synthesize({space:'w-plus',shape:[1,...W_SHAPE],values:Float32Array.from(frame.values)},{signal:active.signal,persist:false});
-     await add((await readyFace(output)).blob,frame.index);
-    }}
-   const videoBegan=now();
-   if(writer.retain&&!stored&&!directEncoded){
-    progress({stage:'export',text:'Encoding your video…'});
-    for(let index=0;index<path.totalFrames;index++){checked();const blob=await frameStoreGetOne(framesKey,index);if(!blob)throw Error('A morph frame is unavailable. Your faces are saved.');await writer.add(blob,index);}
-   }
-   progress({stage:'export',text:'Finishing your video…'});const finished=await writer.finish();recordUnit(videoTimings,(now()-videoBegan)/path.totalFrames);analytics.stageDuration?.('export',now()-videoBegan);writer=null;if(renderToken!==morphRevision||request.inputs.some(item=>revisionOf(item.id)!==revisions.get(item.id)))throw superseded();video=finished;if(videoChoice)videoRoutes.set(finished,videoChoice);replaceUrl('video',video);
+   // morph.render (fm-ioap): stylegan-js renderMorph owns the frame production, the branch choice, ordered delivery
+   // and the settle status; the bridge keeps display URLs, the frame counter, progress copy and supersession.
+   const counter=createFrameCounter(path.totalFrames),first=counter.start();
+   if(stored&&stored.length===path.totalFrames)liveFrames=stored.map(blob=>URL.createObjectURL(blob));
+   else progress({stage:'morph',text:first.text,loaded:first.done,total:path.totalFrames});
+   const current=()=>renderToken===morphRevision;
+   const signal={get aborted(){return active.signal.aborted||!current();},addEventListener:(...a)=>active.signal.addEventListener(...a),removeEventListener:(...a)=>active.signal.removeEventListener(...a)};
+   const counted=index=>{const finished=counter.complete(index);jobCounts.framesDone=finished.done;progress({stage:'morph',text:finished.text,loaded:finished.done,total:path.totalFrames});};
+   // Raw frames need OffscreenCanvas to become display images; without it the writer is offered as a blob writer.
+   const morphWriter=typeof OffscreenCanvas==='function'?writer:{add:(blob,index)=>writer.add(blob,index),retain:writer.retain&&((blob,index)=>writer.retain(blob,index)),finish:()=>writer.finish(),dispose:()=>writer.dispose()};
+   const blobFrame=async output=>output.rgba?output:readyFace(output);
+   let exporting=false,videoBegan=now();
+   const settled=await renderMorph({path,canonical:()=>infillFrames(path,project.morph),writer:morphWriter,store:framesKey?{get:frameStoreGet,getOne:frameStoreGetOne}:undefined,framesKey,signal,window:FRAME_WINDOW,
+    source:{
+     synthesize:async(latent,{raw})=>blobFrame(await runtime.synthesize(latent,{signal:active.signal,persist:false,raw})),
+     synthesizeFrames:typeof runtime.synthesizeFrames==='function'?(latents,{raw,onFrame})=>runtime.synthesizeFrames(latents,{signal:active.signal,raw,onFrame:(at,output)=>blobFrame(output).then(frame=>onFrame(at,frame))}):undefined},
+    endpoint:async visitId=>{const saved=faces.get(visitId);return saved?readyFace(saved):null;},
+    onDisplay:(index,display)=>{if(!current())return;liveFrames[index]=URL.createObjectURL(display);listener({jobId:currentJob,stage:'frames-available',text:'',fraction:0});counted(index);},
+    onProgress:({stage,done,total})=>{
+     if(stage==='export'){videoBegan=now();progress({stage:'export',text:done<total?'Encoding your video…':'Finishing your video…'});exporting=done<total;return;}
+     if(!exporting&&done>0)counted(done-1);}});
+   writer=null;
+   if(!current()||request.inputs.some(item=>revisionOf(item.id)!==revisions.get(item.id)))throw superseded();
+   if(settled.status==='cancelled')throw new DOMException('Morph cancelled','AbortError');
+   if(settled.status!=='complete'){const message=settled.error.message;throw Error(/Your faces are saved/.test(message)?message:`${message} Your faces are saved.`);}
+   const finished=settled.video;recordUnit(videoTimings,(now()-videoBegan)/path.totalFrames);analytics.stageDuration?.('export',now()-videoBegan);
+   video=finished;if(videoChoice)videoRoutes.set(finished,videoChoice);replaceUrl('video',video);
   }
   rememberView(request);retainSession();
   diagnostics.finish('completed');return snapshot();
