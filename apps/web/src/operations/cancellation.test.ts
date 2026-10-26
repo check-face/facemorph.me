@@ -235,3 +235,38 @@ test('Cancel is distinct from Hide', async () => {
   assert.equal((await handle.done).status, 'completed');
   await service.dispose();
 });
+
+test('offline, a job missing its files settles with a typed failure and Retry, not "engine stopped"', async () => {
+  const fake = fakeBridge();
+  let online = false;
+  const service = createOperationService({ bridge: fake.bridge, online: () => online });
+  const events: OperationEvent[] = [];
+  service.subscribe((event) => events.push(event));
+  const handle = service.requestFace(face('a'));
+  await flush();
+  fake.executions[0]!.resolve({
+    ...output(),
+    errorMessage: 'The local generation engine stopped.',
+  });
+  const result = await handle.done;
+  assert.equal(result.status, 'failed');
+  if (result.status !== 'failed' || result.cause.kind !== 'offline')
+    assert.fail('expected a typed offline failure');
+  assert.equal(result.cause.recovery, 'retry');
+  assert.doesNotMatch(result.cause.message, /engine stopped/i);
+  assert.equal(terminal(eventsFor(events, handle.requestId)).join(), 'failed,settled');
+  // Back online, Retry is the same input as a new attempt and is not typed as offline.
+  online = true;
+  const again = service.retry('a');
+  await flush();
+  fake.executions[1]!.resolve({
+    ...output(),
+    errorMessage: 'The local generation engine stopped.',
+  });
+  const second = await again.done;
+  assert.ok(
+    second.status === 'failed' && second.cause.kind === 'operation',
+    'online failures keep their own cause',
+  );
+  await service.dispose();
+});

@@ -70,6 +70,12 @@ export type OperationFailure =
       readonly recovery: 'shorten-morph' | 'adjust-frames' | 'select-faces';
     }
   | {
+      /** The device is offline and this job needs files that are not on it yet (defect 15). */
+      readonly kind: 'offline';
+      readonly message: string;
+      readonly recovery: 'retry';
+    }
+  | {
       readonly kind: 'blend-weights';
       readonly message: string;
       readonly recovery: 'adjust-weights';

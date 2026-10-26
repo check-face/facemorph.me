@@ -171,9 +171,19 @@ const heavyOp = (request: OperationRequest): HeavyOp =>
 const contextOf = (request: OperationRequest): ProviderContextId =>
   `${request.route.requested === 'webgpu' ? 'webgpu' : 'cpu'}:${request.route.runtimeSha256}`;
 
+/** What an offline job that needed missing files says: what still works, and that Retry will finish it. */
+export const OFFLINE_MISSING_ASSETS =
+  "You're offline, and this face needs model files that aren't on this device yet. Faces you've finished and saved files still work. Reconnect, then try again.";
+
 export function createOperationService(
-  options: { readonly bridge?: OperationBridge; readonly governor?: Governor } = {},
+  options: {
+    readonly bridge?: OperationBridge;
+    readonly governor?: Governor;
+    /** Whether the browser reports a network; offline failures are typed rather than passed through. */
+    readonly online?: () => boolean;
+  } = {},
 ): OperationService {
+  const online = options.online ?? (() => globalThis.navigator?.onLine !== false);
   // Residency bytes stay symbolic (zero) until the contracts decode measurement supplies them; the
   // runtime keeps its own warm-model policy, so release hooks have nothing further to do here yet.
   const governor =
@@ -581,21 +591,26 @@ export function createOperationService(
       }
     } catch (error) {
       const failedOwners = [...work.owners];
+      // Offline, a job that fails is one whose files are not all on this device: a typed failure
+      // with Retry, never the runtime's generic "engine stopped" (defect 15).
+      const offline = !online();
       for (const [item, role] of failedOwners)
         fail(
           item,
-          role === 'dependency' && work.request.kind === 'face'
-            ? {
-                kind: 'dependency',
-                slot: work.request.source.slot,
-                recovery: 'retry-face',
-                message:
-                  'A selected face could not finish. Retry that face, then create the morph again.',
-              }
-            : {
-                kind: 'operation',
-                message: error instanceof Error ? error.message : String(error),
-              },
+          offline
+            ? { kind: 'offline', message: OFFLINE_MISSING_ASSETS, recovery: 'retry' }
+            : role === 'dependency' && work.request.kind === 'face'
+              ? {
+                  kind: 'dependency',
+                  slot: work.request.source.slot,
+                  recovery: 'retry-face',
+                  message:
+                    'A selected face could not finish. Retry that face, then create the morph again.',
+                }
+              : {
+                  kind: 'operation',
+                  message: error instanceof Error ? error.message : String(error),
+                },
         );
     } finally {
       await settleLease(work);
