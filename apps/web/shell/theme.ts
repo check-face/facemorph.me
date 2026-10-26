@@ -29,6 +29,8 @@ export function appTheme(dark: boolean): Theme {
       subtitle1: { fontFamily: headings },
       body2: { fontSize: '1rem' },
     },
+    // These tooltips contain labels only. An open touch popper must not intercept another face's controls.
+    components: { MuiTooltip: { defaultProps: { disableInteractive: true } } },
   });
 }
 

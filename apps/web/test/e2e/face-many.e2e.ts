@@ -59,7 +59,9 @@ import {
 
 const runtime = process.env['FACEMORPH_RUNTIME_DIR'] ?? join(REPO, '.cache/runtime');
 const out = resolve(process.env['FACEMORPH_DEPLOY_OUT'] ?? REPO);
-const results = join(REPO, 'apps/web/test-results/face-many');
+const results = resolve(
+  process.env['FACE_MANY_RESULTS'] ?? join(REPO, 'apps/web/test-results/face-many'),
+);
 const MODEL = /^\/runtime\/(assets|chunks|encoder-stream|photo)\//;
 const CASES = new Set(
   (
