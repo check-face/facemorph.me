@@ -184,7 +184,7 @@ export function Explain({ route = '', reference = '' }: { route?: string; refere
         </p>
         <p>
           {
-            'Completed generated faces are cached on this device when storage is available, and your last faces can be restored when you come back. Reloading in the same tab tries to bring back the words, seeds or photo file names you used as well; that is best effort, so in a new tab, or when the browser keeps nothing, a face comes back as "Restored face". Words and file names are never saved past this tab, and source photos are kept only in the current tab.'
+            'Completed generated faces are cached on this device when storage is available, and your last faces can be restored when you come back. Reloading in the same tab tries to bring back the words, seeds or photo file names you used as well; that is best effort, so in a new tab, or when the browser keeps nothing, a face comes back as "Restored face". Words and file names are never saved past this tab, and source photos are kept only in the current tab. The line above Help shows how much is saved for your faces; Clear removes the saved faces, the last session and the words kept in this tab.'
           }
         </p>
         <p>{'This page makes these requests, and no others:'}</p>
