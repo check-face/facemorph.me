@@ -20,6 +20,7 @@ import type { AddressInfo } from 'node:net';
 import { homedir, tmpdir } from 'node:os';
 import { extname, join, resolve } from 'node:path';
 import test from 'node:test';
+import { ACQUISITION_CHUNK_MAX_BYTES } from '../src/contracts/budgets.ts';
 import { componentBrowser } from './support/browser.ts';
 
 const REPO = new URL('../../..', import.meta.url).pathname;
@@ -50,6 +51,8 @@ interface Snapshot {
   payloadBytes: number;
   usage: number | null;
   quota: number | null;
+  opfs: { sha256: string; size: number }[] | null;
+  cacheStorage: { sha256: string; size: number }[] | null;
 }
 interface LocalCache {
   local: {
@@ -117,6 +120,19 @@ test(
       ).values(),
     ];
     for (const unit of units) assert.ok(existsSync(pathOf(unit)), `real input exists: ${unit.url}`);
+    assert.equal(ACQUISITION_CHUNK_MAX_BYTES, 16 * 1024 * 1024);
+    const opfsUnits = units.filter((unit) => unit.size <= ACQUISITION_CHUNK_MAX_BYTES);
+    const streamedUnits = units.filter((unit) => unit.size > ACQUISITION_CHUNK_MAX_BYTES);
+    // The pinned 17.1 MB WASM streams through native Cache Storage, above the frozen 16 MiB OPFS write limit.
+    // Account for it explicitly rather than treating every acquired asset as an OPFS file with a trailer.
+    assert.equal(opfsUnits.length, 114);
+    assert.deepEqual(streamedUnits, [config.runtime.wasm]);
+    const opfsPayloadBytes = opfsUnits.reduce((n, unit) => n + unit.size, 0);
+    const streamedPayloadBytes = streamedUnits.reduce((n, unit) => n + unit.size, 0);
+    const identities = (assets: Unit[]) =>
+      assets
+        .map(({ sha256, size }) => ({ sha256, size }))
+        .sort((a, b) => a.sha256.localeCompare(b.sha256));
 
     const { engine, browser, newContext, unavailable } = await componentBrowser();
     if (unavailable) return t.skip(unavailable);
@@ -264,12 +280,41 @@ test(
             const files = committedSizes.size;
             const committedBytes = [...committedSizes.values()].reduce((n, size) => n + size, 0);
             const estimate = await navigator.storage.estimate();
+            const cacheStorage: { sha256: string; size: number }[] = [];
+            if (inventory) {
+              const blobs = await caches.open(m.MODEL_CACHE_NAME);
+              for (const request of await blobs.keys()) {
+                const response = await blobs.match(request);
+                if (!response) throw new Error('native Cache Storage entry disappeared');
+                const bytes = await response.arrayBuffer();
+                const hash = Array.from(
+                  new Uint8Array(await crypto.subtle.digest('SHA-256', bytes)),
+                  (byte) => byte.toString(16).padStart(2, '0'),
+                ).join('');
+                if (
+                  request.url !==
+                  new URL(`/__checkface_model_blobs__/sha256/${hash}`, location.origin).href
+                )
+                  throw new Error(
+                    'native Cache Storage bytes do not match their content-addressed key',
+                  );
+                cacheStorage.push({ sha256: hash, size: bytes.byteLength });
+              }
+            }
             return {
               files,
               committedBytes,
               payloadBytes: committedBytes - files * m.TRAILER_BYTES,
               usage: estimate.usage ?? null,
               quota: estimate.quota ?? null,
+              opfs: inventory
+                ? [...committedSizes]
+                    .map(([sha256, size]) => ({ sha256, size: size - m.TRAILER_BYTES }))
+                    .sort((a, b) => a.sha256.localeCompare(b.sha256))
+                : null,
+              cacheStorage: inventory
+                ? cacheStorage.sort((a, b) => a.sha256.localeCompare(b.sha256))
+                : null,
             };
           };
           const state: PageState = {
@@ -329,7 +374,7 @@ test(
             final,
             peakCommittedBytes: Math.max(...samples.map((s) => s.committedBytes)),
             peakPayloadBytes: Math.max(...samples.map((s) => s.payloadBytes)),
-            nativeUsagePeak: Math.max(...samples.map((s) => s.usage ?? 0)),
+            nativeUsagePeak: Math.max(final.usage ?? 0, ...samples.map((s) => s.usage ?? 0)),
             grantRemaining: m.grantRemaining(grant),
           };
         },
@@ -338,12 +383,16 @@ test(
       await att.settled();
       const payloadBytes = units.reduce((n, unit) => n + unit.size, 0);
       assert.equal(acquisition.grantRemaining, 0);
-      assert.equal(acquisition.final.files, units.length);
-      assert.equal(acquisition.final.payloadBytes, payloadBytes);
-      assert.equal(acquisition.final.committedBytes, payloadBytes + 48 * units.length);
+      assert.deepEqual(acquisition.final.opfs, identities(opfsUnits));
+      assert.deepEqual(acquisition.final.cacheStorage, identities(streamedUnits));
+      assert.equal(acquisition.final.files + acquisition.final.cacheStorage!.length, units.length);
+      assert.equal(acquisition.final.files, opfsUnits.length);
+      assert.equal(acquisition.final.payloadBytes, opfsPayloadBytes);
+      assert.equal(acquisition.final.committedBytes, opfsPayloadBytes + 48 * opfsUnits.length);
+      assert.equal(acquisition.final.payloadBytes + streamedPayloadBytes, payloadBytes);
       assert.equal(acquisition.peakCommittedBytes, acquisition.final.committedBytes);
-      assert.equal(acquisition.peakPayloadBytes, payloadBytes);
-      assert.equal(acquisition.samples.length, units.length);
+      assert.equal(acquisition.peakPayloadBytes, opfsPayloadBytes);
+      assert.equal(acquisition.samples.length, opfsUnits.length);
       assert.ok(
         acquisition.samples.every((sample) => sample.quota !== null && sample.usage !== null),
       );
@@ -358,7 +407,7 @@ test(
       );
 
       console.info(
-        `# cold-photo acquisition: ${units.length} files; committed ${acquisition.final.committedBytes} bytes; starting real ORT encode`,
+        `# cold-photo acquisition: ${units.length} assets; ${opfsUnits.length} OPFS files/${acquisition.final.committedBytes} committed bytes and ${streamedUnits.length} Cache Storage asset/${streamedPayloadBytes} bytes; starting real ORT encode`,
       );
       record.step(att.rec, 'local-encode');
       const execution = await page.evaluate(async () => {
@@ -514,6 +563,8 @@ test(
         config.steps.reduce((n, step) => n + step.size, 0),
       );
       assert.equal(execution.finalStorage.committedBytes, acquisition.final.committedBytes);
+      assert.deepEqual(execution.finalStorage.opfs, acquisition.final.opfs);
+      assert.deepEqual(execution.finalStorage.cacheStorage, acquisition.final.cacheStorage);
       mkdirSync(evidence, { recursive: true });
       writeFileSync(
         join(evidence, 'result.json'),
@@ -536,7 +587,7 @@ test(
       );
       await context.tracing.stop();
       t.diagnostic(
-        `stored payload ${payloadBytes}, committed peak ${acquisition.peakCommittedBytes}, sampled origin usage peak ${acquisition.nativeUsagePeak}; live managed shards ${execution.lifetime.peakLiveShards}/${execution.lifetime.peakLiveShardBytes} bytes; WASM ${execution.stats.wasmPeakBytes}; max W+ error ${execution.maxWError}`,
+        `OPFS payload ${opfsPayloadBytes}, committed peak ${acquisition.peakCommittedBytes}, Cache Storage payload ${streamedPayloadBytes}, total payload ${payloadBytes}, sampled origin usage peak ${acquisition.nativeUsagePeak}; live managed shards ${execution.lifetime.peakLiveShards}/${execution.lifetime.peakLiveShardBytes} bytes; WASM ${execution.stats.wasmPeakBytes}; max W+ error ${execution.maxWError}`,
       );
     } catch (error) {
       mkdirSync(evidence, { recursive: true });
