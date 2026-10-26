@@ -842,27 +842,65 @@ test(
         return id;
       };
 
-      // The same rectangle confirmed from the confirmation preview (no guide) and through the editor with its
-      // square frame visible (Adjust Crop, Use Crop, unchanged) gives the same tensorDigest.
+      // The guide overlay never reaches the pixels (orchestrator ruling, 27 Oct). The ported editor draws no guide
+      // yet (fm-z0et owns the oval), so the case lays one over the crop area itself: an opaque oval-and-eyes overlay
+      // shown in one confirmation and hidden by CSS in the next, on the same unchanged rectangle (Adjust Crop, Use
+      // Crop). Both, and the plain confirmation preview, must give one tensorDigest.
       await run('guide-visible-hidden', async () => {
         const mark = await d.mark();
+        const guide = (visible: boolean) =>
+          d.page.evaluate((show) => {
+            const area = document.querySelector('.next-crop-view')!;
+            let g = area.querySelector<HTMLElement>('.test-crop-guide');
+            if (!g) {
+              g = document.createElement('div');
+              g.className = 'test-crop-guide';
+              g.setAttribute('aria-hidden', 'true');
+              g.style.cssText =
+                'position:absolute;inset:12%;border:6px solid #fff;border-radius:50%;pointer-events:none;' +
+                'box-shadow:0 0 0 999px rgba(0,0,0,.6);background:radial-gradient(circle at 35% 40%,#f0f 0 6%,transparent 7%),radial-gradient(circle at 65% 40%,#f0f 0 6%,transparent 7%)';
+              area.appendChild(g);
+            }
+            g.style.display = show ? 'block' : 'none';
+            return getComputedStyle(g).display;
+          }, visible);
+        // 1. The plain confirmation preview.
         await d.choose(0, [fx.nonSquare]);
         await d.confirmation();
-        await d.shots('guide-hidden');
+        await d.shots('guide-none');
         await attemptThenCancel();
+        // 2. The editor with the guide overlay visible over the same rectangle.
         await d.choose(0, [fx.nonSquare]);
         await d.confirmation();
         await d.operate(adjustButton());
         await d.dialog.getByRole('application', { name: 'Crop area' }).waitFor();
+        assert.equal(await guide(true), 'block');
         await d.shots('guide-visible');
         await d.operate(useCrop());
         await attemptThenCancel();
+        // 3. The same, with the overlay hidden by CSS.
+        await d.choose(0, [fx.nonSquare]);
+        await d.confirmation();
+        await d.operate(adjustButton());
+        await d.dialog.getByRole('application', { name: 'Crop area' }).waitFor();
+        assert.equal(await guide(false), 'none');
+        await d.shots('guide-hidden');
+        await d.operate(useCrop());
+        await attemptThenCancel();
         const c = await d.since(mark);
-        d.log({ case: 'guide-visible-hidden', ...c });
-        assert.equal(c.e4e, 2);
+        d.log({
+          case: 'guide-visible-hidden',
+          method: 'test overlay in .next-crop-view, shown then display:none',
+          ...c,
+        });
+        assert.equal(c.e4e, 3);
         assert.equal(c.detect, 0);
-        assert.equal(c.tensorDigests.length, 2);
-        assert.equal(c.tensorDigests[0], c.tensorDigests[1], 'same rectangle, same tensorDigest');
+        assert.equal(c.tensorDigests.length, 3);
+        assert.equal(
+          new Set(c.tensorDigests).size,
+          1,
+          'guide shown, hidden or absent: one tensorDigest',
+        );
       });
 
       // All eight EXIF orientations of the same stored pixels: each confirms once and reaches one e4e attempt; the
