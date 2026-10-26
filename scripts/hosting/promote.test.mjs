@@ -28,6 +28,22 @@ const RUN = 4242;
 const CANDIDATE = 'mobile-boundary-bounded-phone';
 const SOURCE_HASH = 'ab'.repeat(32);
 const PUBLISH_HOSTS = /https?:\/\/[^"]*(cloudflare|workers\.dev|facemorph\.me)/;
+const gates = (names) => names.map((name) => ({ name, conclusion: 'success' }));
+const LEGACY_MAIN_GATES = gates([
+  'next-site / artifact',
+  'next-site / compiled-ui',
+  'next-site / qualify / real-ui-cpu',
+]);
+const SPLIT_MAIN_GATES = gates([
+  'next-site-artifact / artifact',
+  'next-site / compiled-ui',
+  'next-site / qualify / real-ui-cpu',
+]);
+const SPLIT_CANDIDATE_GATES = gates([
+  'artifact / artifact',
+  'qualify / compiled-ui',
+  'qualify / qualify / real-ui-cpu',
+]);
 
 let proxy;
 const proxied = [];
@@ -50,7 +66,13 @@ const put = (path, data) => {
 };
 
 /** A planted qualified artifact, its qualification, a runtime and a ledger; returns the paths. */
-function plant({ kernel = {}, ledgerRows, catalogue = '{"names":[]}' } = {}) {
+function plant({
+  kernel = {},
+  ledgerRows,
+  catalogue = '{"names":[]}',
+  jobs = LEGACY_MAIN_GATES,
+  workflow = '.github/workflows/main.yml',
+} = {}) {
   const root = mkdtempSync(join(tmpdir(), 'promote-'));
   const web = join(root, 'fixtures/web');
   put(join(web, 'deploy-next/index.html'), '<!doctype html><title>FaceMorph</title>');
@@ -115,8 +137,8 @@ function plant({ kernel = {}, ledgerRows, catalogue = '{"names":[]}' } = {}) {
 const fs=require('fs'),path=require('path');const a=process.argv.slice(2);
 fs.appendFileSync(${JSON.stringify(log)},JSON.stringify(['gh',...a])+'\\n');
 const repo={id:1,full_name:'facemorph-me/facemorph.me'};
-if(a[0]==='api'&&a.includes('--paginate')){for(const n of ['next-site / artifact','next-site / compiled-ui','next-site / qualify / real-ui-cpu'])console.log(JSON.stringify({name:n,conclusion:'success'}));process.exit(0)}
-if(a[0]==='api'){console.log(JSON.stringify({id:${RUN},path:'.github/workflows/main.yml',head_sha:${JSON.stringify(SHA)},conclusion:null,repository:repo,head_repository:repo}));process.exit(0)}
+if(a[0]==='api'&&a.includes('--paginate')){for(const job of ${JSON.stringify(jobs)})console.log(JSON.stringify(job));process.exit(0)}
+if(a[0]==='api'){console.log(JSON.stringify({id:${RUN},path:${JSON.stringify(workflow)},head_sha:${JSON.stringify(SHA)},conclusion:null,repository:repo,head_repository:repo}));process.exit(0)}
 if(a[0]==='run'&&a[1]==='download'){const n=a[a.indexOf('-n')+1],d=a[a.indexOf('-D')+1];const src=path.join(${JSON.stringify(join(root, 'fixtures'))},n.startsWith('next-site-')?'web':'proof');fs.cpSync(src,d,{recursive:true});process.exit(0)}
 process.exit(97);
 `;
@@ -276,6 +298,73 @@ test('dry run without --publish publishes nothing (intercepted requests show no 
   assert.deepEqual(proxied, []);
   assert.doesNotMatch(JSON.stringify(r.commands), PUBLISH_HOSTS);
   rmSync(p.root, { recursive: true, force: true });
+});
+
+test('split main, split candidate and legacy candidate gate contexts all admit the same dry-run artifact', () => {
+  for (const [workflow, jobs] of [
+    ['.github/workflows/main.yml', SPLIT_MAIN_GATES],
+    ['.github/workflows/next-site.yml', SPLIT_CANDIDATE_GATES],
+    [
+      '.github/workflows/next-site.yml',
+      gates(['artifact', 'compiled-ui', 'qualify / real-ui-cpu']),
+    ],
+  ]) {
+    const p = plant({ workflow, jobs });
+    try {
+      const r = promote(p);
+      assert.equal(r.status, 0, `${workflow}: ${r.stderr} ${JSON.stringify(r.out)}`);
+      assert.equal(r.out.published, false);
+      assert.equal(r.out.source, SHA);
+      assert(r.commands.every((c) => c[0] === 'gh'));
+    } finally {
+      rmSync(p.root, { recursive: true, force: true });
+    }
+  }
+});
+
+test('split contexts still require exactly one successful artifact/UI gate and every qualification success', () => {
+  const invalid = [
+    ...SPLIT_MAIN_GATES.map((_, i) => SPLIT_MAIN_GATES.filter((__, j) => j !== i)),
+    ...SPLIT_MAIN_GATES.map((_, i) =>
+      SPLIT_MAIN_GATES.map((job, j) => (j === i ? { ...job, conclusion: 'failure' } : job)),
+    ),
+    [...SPLIT_MAIN_GATES, { name: 'next-site / qualify / other-device', conclusion: 'failure' }],
+    [...SPLIT_MAIN_GATES, { name: 'next-site / qualify / other-device', conclusion: 'skipped' }],
+    [...SPLIT_MAIN_GATES, { name: 'next-site / qualify / other-device', conclusion: null }],
+    [...SPLIT_MAIN_GATES, SPLIT_MAIN_GATES[0]],
+    [...SPLIT_MAIN_GATES, SPLIT_MAIN_GATES[1]],
+    ...[
+      'unrelated / artifact',
+      'unrelated / next-site-artifact / artifact',
+      'next-site / next-site-artifact / artifact',
+      'next-site-artifact / artifact-extra',
+    ].map((name) => [{ name, conclusion: 'success' }, ...SPLIT_MAIN_GATES.slice(1)]),
+    [
+      SPLIT_MAIN_GATES[0],
+      ...gates(['unrelated / compiled-ui', 'unrelated / qualify / real-ui-cpu']),
+    ],
+    [SPLIT_MAIN_GATES[0], SPLIT_MAIN_GATES[1], ...gates(['unrelated / qualify / real-ui-cpu'])],
+  ];
+  for (const jobs of invalid) {
+    const p = plant({ jobs });
+    try {
+      const r = promote(p);
+      assert.equal(r.status, 1, `${JSON.stringify(jobs)}: ${r.stderr}`);
+      assert.match(r.out.refused, /exact-artifact gates did not all pass/);
+      assert.equal(r.out.published, false);
+      assert.deepEqual(
+        r.commands.map((c) => c.slice(0, 2)),
+        [
+          ['gh', 'api'],
+          ['gh', 'api'],
+        ],
+        'refused before artifact download or publication',
+      );
+      assert(!existsSync(p.work));
+    } finally {
+      rmSync(p.root, { recursive: true, force: true });
+    }
+  }
 });
 
 test('a publish to a classic-owned target is refused before any network call, even when the variable names it', () => {
