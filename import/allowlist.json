@@ -1531,10 +1531,10 @@
       "bytes": 37783,
       "class": "src-next",
       "ported": {
-        "sha256": "8ea1793aa42e036ed110c28d655a42116f784a0dace4596cb35551031f9d361e",
-        "bytes": 52452,
-        "bead": "fm-fy2.8",
-        "reason": "WebGL execution removed (fm-x6h5); per-operation admission through admission/route-admission.ts before any worker or model request, photo encoding admitted by capability instead of user-agent labels (fm-lt2p); route snapshot selects bounded fallback scope and forwards cancellation signal (fm-0y24); Save/Share hand over prepared files named by export identity; encoder figures from the export policy (6915a98); directSupported comes from the stylegan-js engine (routes.ts) with the direct engine itself; admits the runtime manifest pointer (runtime-manifest.mjs) before replacing the active runtime; a refused pointer leaves the next attempt free to fetch again; crop.fix: a confirmed crop goes to e4e directly (no detector after OK); detector outcomes are typed (faceDetection/code), not matched on text; crop limits come from the stylegan-js crop policy; compute.photo-descriptor: the worker encodes through the package's streamed encoder after acquiring every shard; dimensions come from the shipped descriptor; runtime options keep their supplied manifest type: three explicit =undefined defaults for the typecheck (ddcffa4); createBrowserRuntime option types via JSDoc casts (b45f05f); the confirmed-crop encode queue wired into the runtime and bridge: slots, per-slot cancel/retry/remove, real-bridge harness"
+        "sha256": "f5e3ef1d2b811e7ec3fb58f7ee415f9f13e14e200dc1fca87e5dee6bf4b7b833",
+        "bytes": 52825,
+        "bead": "fm-5klw",
+        "reason": "WebGL execution removed (fm-x6h5); per-operation admission through admission/route-admission.ts before any worker or model request, photo encoding admitted by capability instead of user-agent labels (fm-lt2p); route snapshot selects bounded fallback scope and forwards cancellation signal (fm-0y24); Save/Share hand over prepared files named by export identity; encoder figures from the export policy (6915a98); directSupported comes from the stylegan-js engine (routes.ts) with the direct engine itself; admits the runtime manifest pointer (runtime-manifest.mjs) before replacing the active runtime; a refused pointer leaves the next attempt free to fetch again; crop.fix: a confirmed crop goes to e4e directly (no detector after OK); detector outcomes are typed (faceDetection/code), not matched on text; crop limits come from the stylegan-js crop policy; compute.photo-descriptor: the worker encodes through the package's streamed encoder after acquiring every shard; dimensions come from the shipped descriptor; runtime options keep their supplied manifest type: three explicit =undefined defaults for the typecheck (ddcffa4); createBrowserRuntime option types via JSDoc casts (b45f05f); the confirmed-crop encode queue wired into the runtime and bridge: slots, per-slot cancel/retry/remove, real-bridge harness; the stall watchdog counts worker silence: any worker message keeps every pending operation alive, so a background canary preempted by a long morph no longer stops it (fm-5klw)"
       }
     },
     {
@@ -1544,10 +1544,10 @@
       "bytes": 20752,
       "class": "src-next",
       "ported": {
-        "sha256": "5a3eef7e21dfdba59133d5069b6c5cc71d366df459bf8ca486ae3812f878f2f4",
-        "bytes": 21563,
-        "bead": "fm-fy2.14",
-        "reason": "stand-in adapter reports the WebGPU spec default limits; the iPhone-label monolithic-encoder case restated as capability admission (no encoder stream refuses before allocation); admits the runtime manifest pointer (runtime-manifest.mjs) before replacing the active runtime; a refused pointer leaves the next attempt free to fetch again"
+        "sha256": "c64b77dca5d85d63a080885dd7b8203f94da1a733d9e5a15e9ebe18ec9600393",
+        "bytes": 24183,
+        "bead": "fm-5klw",
+        "reason": "stand-in adapter reports the WebGPU spec default limits; the iPhone-label monolithic-encoder case restated as capability admission (no encoder stream refuses before allocation); admits the runtime manifest pointer (runtime-manifest.mjs) before replacing the active runtime; a refused pointer leaves the next attempt free to fetch again; the stall watchdog counts worker silence: any worker message keeps every pending operation alive, so a background canary preempted by a long morph no longer stops it (fm-5klw)"
       }
     },
     {

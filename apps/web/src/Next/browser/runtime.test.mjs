@@ -174,3 +174,28 @@ test('raw frame credit waits for async consumers and rejects their failure witho
  await assert.rejects(runtime.synthesizeFrames([{space:'w-plus',shape:[1,18,512],values:new Float32Array(9216)}],{raw:true,onFrame:async()=>{throw Error('consumer sentinel');}}),/consumer sentinel/);
  }finally{runtime.dispose();}
 });
+// fm-5klw (hosted android-emulator-chrome, runs 40274445309/40259019211/40187435942): the remaining canaries wait on
+// the worker's background lane while a morph runs. The watchdog asks whether the worker has gone quiet, not whether
+// that preempted canary has: frames arriving inside the stall window keep every pending operation alive.
+function preemptingWorker({frames,gapMs,silent=false}){
+ const w={postMessage(message){const send=data=>w.onmessage?.({data:{id:message.id,...data}}),done=result=>queueMicrotask(()=>send({type:'complete',result}));
+  if(message.type==='initialize')return done({provider:message.provider});
+  if(message.type==='qualify'&&message.resume)return; // preempted by the morph: it never reaches the front of the lane
+  if(message.type==='qualify')return done({checks:[{name:'c0',passed:true}],provider:'wasm',deviceValidated:true,partial:true});
+  if(message.type==='generate')return done({blob:new Blob(['mock-canonical-png'],{type:'image/png'}),values:new Float32Array(9216).fill(.25),space:'w-plus',shape:[1,18,512]});
+  if(message.type==='synthesize-frames'){if(silent)return;let i=0;const next=()=>{if(i<frames){send({type:'frame',index:i++,blob:new Blob(['f'],{type:'image/png'})});setTimeout(next,gapMs);}else send({type:'complete',result:{frames}});};setTimeout(next,gapMs);return;}
+  throw Error('unexpected operation '+message.type);},terminate(){}};
+ return w;}
+test('a morph longer than the stall window survives a preempted background canary; a silent worker still stops',async()=>{
+ globalThis.sessionStorage=fakeStorage();
+ const oldIDB=globalThis.indexedDB;globalThis.indexedDB=indexedDbFixture().api;
+ const latents=Array.from({length:8},()=>({space:'w-plus',shape:[1,18,512],values:new Float32Array(9216)}));
+ const morph=async options=>{const runtime=createBrowserRuntime({manifest:testManifest(),manifestSha256:'0'.repeat(64),preferredRoute:'cpu',stallMs:150,workerFactory:()=>preemptingWorker(options)});
+  try{await runtime.generate({mode:'seed',value:'42'});const delivered=[];const result=await runtime.synthesizeFrames(latents,{onFrame:index=>delivered.push(index)});return {result,delivered};}finally{runtime.dispose();}};
+ try{
+  // 8 frames 60 ms apart: 480 ms in all, three stall windows, never 150 ms without a message.
+  const {result,delivered}=await morph({frames:8,gapMs:60});
+  assert.deepEqual(delivered,[0,1,2,3,4,5,6,7]);assert.equal(result.frames,8);
+  await assert.rejects(morph({frames:8,gapMs:60,silent:true}),/stopped responding/,'a worker that says nothing for the stall window is still stopped');
+ }finally{globalThis.indexedDB=oldIDB;}
+});
