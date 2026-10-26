@@ -42,3 +42,10 @@ test('with the descriptor cached, readiness is exact over every shard', async ()
   assert.equal(partial.ready, false);
   assert.equal(partial.total - partial.present, 500);
 });
+
+test('the route set counts the correctness canaries and sample indices the worker fetches before the first face', () => {
+  const withChecks = { ...manifest, canaries: [{ w: asset('p', 7), png: asset('q', 3) }], sampleIndices: asset('r', 2) };
+  const sizes = route => routeAssets(withChecks, route).reduce((sum, a) => sum + a.size, 0);
+  assert.equal(sizes('cpu'), 136 + 7 + 3 + 2);
+  assert.equal(sizes('webgpu'), 216 + 7 + 3 + 2);
+});

@@ -117,6 +117,11 @@ async function serviceRoute() {
 }
 
 const harness = {
+  /**
+   * The person's approval of the downloads these journeys need (the dialog's Download and continue): workers acquire
+   * only what an approval covers or the device already holds (fm-qrfz).
+   */
+  approveDownloads: (): string => f.consentToDownload('photo'),
   controllerJourney,
   controllerTarget,
   startControllerRouting,
@@ -396,15 +401,34 @@ const harness = {
     };
     const crops = [await crop(a, 0), await crop(b, 0.5), await crop(a, 1)];
     const confirmed = crops.length;
-    const events: { type: string; slotId: string; attemptId: string; batchRevision: number }[] = [];
-    const unsubscribe = await subscribeCropSlots(
-      (e: { type: string; slotId: string; attemptId: string; batchRevision: number }) =>
-        events.push({
-          type: e.type,
-          slotId: e.slotId,
-          attemptId: e.attemptId,
-          batchRevision: e.batchRevision,
-        }),
+    const causes = (c: unknown, depth = 0): string[] =>
+      c instanceof Error && depth < 4
+        ? [`${c.name}: ${c.message}`, ...causes((c as { cause?: unknown }).cause, depth + 1)]
+        : [];
+    type SlotEvent = {
+      type: string;
+      slotId: string;
+      attemptId: string;
+      batchRevision: number;
+      kind?: string;
+      message?: string;
+    };
+    const events: SlotEvent[] = [];
+    const unsubscribe = await subscribeCropSlots((e: SlotEvent) =>
+      events.push({
+        type: e.type,
+        slotId: e.slotId,
+        attemptId: e.attemptId,
+        batchRevision: e.batchRevision,
+        // A failed slot says why (its failure kind and message), so a red run explains itself.
+        ...(e.type === 'slot.failed'
+          ? {
+              kind: e.kind,
+              // The queue's sentence, then the error underneath it (a ConfirmedCropError wraps the encoder's).
+              message: [e.message, ...causes((e as { cause?: unknown }).cause)].join(' <- '),
+            }
+          : {}),
+      }),
     );
     const posted: { type: string; crop?: string }[] = [];
     const post = Worker.prototype.postMessage;

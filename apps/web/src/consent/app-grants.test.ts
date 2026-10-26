@@ -1,0 +1,167 @@
+// fm-qrfz: the grants the app hands its workers (src/Next/browser/bridge-grant.mjs), on the pinned runtime manifest.
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import test from 'node:test';
+import {
+  chargeGrant,
+  grantAsset,
+  grantRemaining,
+  GrantRefused,
+} from '../../../../packages/browser-model-manager/src/acquisition/grants.ts';
+import {
+  appGrants as appGrantsJs,
+  BRIDGE_OWNER,
+  chooseGrant,
+  mergeGrants,
+  widenWithin,
+} from '../Next/browser/bridge-grant.mjs';
+import { CHUNK_RETRY_DELAYS_MS } from '../Next/Assets/model-cache.mjs';
+import { routeAssets } from '../Next/model-inventory.mjs';
+
+type Asset = { sha256: string; size: number; url: string };
+// bridge-grant.mjs is plain JS: its grants are AcquisitionGrant-shaped objects (with allowances), or null.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const appGrants = appGrantsJs as (options: object) => Promise<{ approved: any; local: any }>;
+const SHA = 'd9e37e50a436e9fb7c0c7f973e70adee353c808f48c6a51fa5a9186f1c650a5c';
+const manifest = JSON.parse(
+  readFileSync(
+    new URL(`../../../../import/runtime-manifests/control/${SHA}/manifest.json`, import.meta.url),
+    'utf8',
+  ),
+) as Record<string, any>;
+const retries = 1 + CHUNK_RETRY_DELAYS_MS.length;
+const cacheOf = (present: readonly string[] = [], descriptor: unknown = null) => ({
+  has: async (a: Asset) => present.includes(a.sha256),
+  peek: async () => (descriptor === null ? null : { text: async () => JSON.stringify(descriptor) }),
+});
+const sum = (xs: readonly { bytes: number }[]) => xs.reduce((n, a) => n + a.bytes, 0);
+const cpu = routeAssets(manifest, 'cpu', 'ort') as Asset[];
+const stream = manifest['encoderStream'] as Asset;
+
+test('nothing approved and nothing cached: no grant, so every acquisition is refused before a request', async () => {
+  const grants = await appGrants({ manifest, manifestSha256: SHA, cache: cacheOf() });
+  assert.deepEqual(grants, { approved: null, local: null });
+  assert.equal(chooseGrant(grants, cpu[0]), null);
+  assert.throws(
+    () => grantAsset(undefined, BRIDGE_OWNER, cpu[0]!.sha256, cpu[0]!.size),
+    (e: unknown) => e instanceof GrantRefused && e.refusal === 'no-grant',
+  );
+});
+
+test('approving the route covers exactly this route’s assets, with the retry allowance, and nothing of the photo path', async () => {
+  const { approved } = await appGrants({
+    manifest,
+    manifestSha256: SHA,
+    route: 'cpu',
+    approved: new Set(['route']),
+    cache: cacheOf(),
+  });
+  assert.deepEqual(
+    approved!.assets.map((a: { sha256: string }) => a.sha256).sort(),
+    [...new Set(cpu.map((a) => a.sha256))].sort(),
+  );
+  assert.ok(
+    approved!.assets.every((a: { priority: string }) => a.priority === 'synthesis-prerequisite'),
+  );
+  assert.equal(approved!.remainingBytes, sum(approved!.assets) * retries);
+  assert.equal(approved!.purpose, 'generate');
+  const grants = { approved, local: null };
+  assert.equal(
+    chooseGrant(grants, stream),
+    null,
+    'the encoder descriptor needs the photo approval',
+  );
+  const gpuOnly = (routeAssets(manifest, 'webgpu', 'direct') as Asset[]).find(
+    (a) => !cpu.some((c) => c.sha256 === a.sha256),
+  )!;
+  assert.equal(
+    chooseGrant(grants, gpuOnly),
+    null,
+    'another route’s files are a new cost, asked again',
+  );
+});
+
+test('approving a photo before its descriptor is read admits shards against the advertised bytes, never beyond', async () => {
+  const { approved } = await appGrants({
+    manifest,
+    manifestSha256: SHA,
+    route: 'cpu',
+    approved: new Set(['photo']),
+    cache: cacheOf(),
+  });
+  const encoderSize = (manifest['encoder'] as Asset).size;
+  assert.deepEqual(approved!.allowances, [
+    { via: stream.sha256, bytes: encoderSize, priority: 'foreground-required' },
+  ]);
+  assert.ok(chooseGrant({ approved, local: null }, stream), 'the descriptor itself is approved');
+  assert.equal(approved!.remainingBytes, (sum(approved!.assets) + encoderSize) * retries);
+  const shard = (c: string, size: number): Asset => ({
+    sha256: c.repeat(64),
+    size,
+    url: `https://next.facemorph.me/runtime/${c}`,
+  });
+  const descriptor = {
+    steps: [shard('a', encoderSize - 1000), shard('b', 600), shard('c', 600)],
+  };
+  // Spend part of the grant first: widening must keep what is left, not start a new budget.
+  const charge = chargeGrant(approved!, stream.sha256, stream.size);
+  charge.received(stream.size);
+  charge.settle();
+  const left = grantRemaining(approved!);
+  const widened = widenWithin(approved!, stream.sha256, descriptor);
+  assert.equal(grantRemaining(widened), left);
+  assert.ok(chooseGrant({ approved: widened, local: null }, descriptor.steps[0]!));
+  assert.ok(chooseGrant({ approved: widened, local: null }, descriptor.steps[1]!));
+  assert.equal(
+    chooseGrant({ approved: widened, local: null }, descriptor.steps[2]!),
+    null,
+    'the shard past the advertised bytes is asked again',
+  );
+  assert.equal(widened.allowances[0].bytes, 400);
+  assert.equal(
+    widenWithin(approved!, 'f'.repeat(64), descriptor),
+    approved,
+    'another descriptor widens nothing',
+  );
+});
+
+test('cached files the approval does not cover are readable but never fetched', async () => {
+  const cachedGpu = (routeAssets(manifest, 'webgpu', 'direct') as Asset[]).find(
+    (a) => !cpu.some((c) => c.sha256 === a.sha256),
+  )!;
+  const grants = await appGrants({
+    manifest,
+    manifestSha256: SHA,
+    route: 'cpu',
+    approved: new Set(['route']),
+    cache: cacheOf([cpu[0]!.sha256, cachedGpu.sha256]),
+  });
+  assert.deepEqual(
+    grants.local!.assets.map((a: { sha256: string }) => a.sha256),
+    [cachedGpu.sha256],
+    'an approved file is in the approved grant only',
+  );
+  const local = chooseGrant(grants, cachedGpu);
+  assert.equal(local, grants.local);
+  assert.equal(local.remainingBytes, 0);
+  assert.throws(
+    () => chargeGrant(local, cachedGpu.sha256, 1),
+    (e: unknown) => e instanceof GrantRefused && e.refusal === 'revision-required',
+  );
+  assert.equal(chooseGrant(grants, cpu[0]), grants.approved);
+});
+
+test('posting the same grants again keeps their ledgers; a new approval replaces them', async () => {
+  const make = (approved: Set<string>) =>
+    appGrants({ manifest, manifestSha256: SHA, route: 'cpu', approved, cache: cacheOf() });
+  const first = await make(new Set(['route']));
+  const charge = chargeGrant(first.approved!, cpu[0]!.sha256, 10);
+  charge.received(10);
+  charge.settle();
+  const again = mergeGrants(first, structuredClone(await make(new Set(['route']))));
+  assert.equal(again.approved, first.approved, 'the same grant posted again keeps its spent bytes');
+  assert.equal(grantRemaining(again.approved!), grantRemaining(first.approved!));
+  const photo = mergeGrants(first, await make(new Set(['photo'])));
+  assert.notEqual(photo.approved, first.approved);
+  assert.equal(photo.approved!.purpose, 'generate-and-encode');
+});

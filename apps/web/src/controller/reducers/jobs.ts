@@ -8,8 +8,12 @@ import {
   describeDuration,
   type Measurements,
   faceInputProblem,
+  gateScope,
 } from '../derived.ts';
 import { enqueue, without, sameInputs, settingsKey, schedule, runFace } from './schedule.ts';
+
+/** The manager's refusal texts for a file outside every approved grant (acquisition/grants.ts GrantRefused). */
+const GRANT_REFUSAL = /not covered by an approved download|needs more data than was approved/;
 
 export interface JobFacts {
   readonly measurements?: Measurements;
@@ -210,6 +214,30 @@ export function jobs(message: Msg, state: State, facts: JobFacts = {}): Transiti
     case 'Failed': {
       const [id, error] = message.args;
       if (id !== state.JobId) return unchanged(state);
+      // A model file the approval does not cover (packages/browser-model-manager GrantRefused: another route's files,
+      // a shard past the advertised size, an evicted file) is a new cost, so the question is asked again for this run
+      // rather than shown as a failure (fm-qrfz).
+      if (GRANT_REFUSAL.test(error) && state.LastRun) {
+        const asked = { ...state, DownloadConsent: new Set<string>() };
+        const scope =
+          gateScope({ ...asked, Downloads: { ...state.Downloads, known: false } }, state.LastRun) ??
+          'route';
+        return {
+          state: {
+            ...asked,
+            Busy: false,
+            Error: null,
+            Status: '',
+            Stage: 'idle',
+            Fraction: 0,
+            Warn: null,
+            Remaining: '',
+            ActiveFace: null,
+            Gate: [scope, state.LastRun],
+          },
+          effects: [],
+        };
+      }
       if (error === facts.multipleFacesMessage && state.ActiveFace !== null)
         return {
           state: {

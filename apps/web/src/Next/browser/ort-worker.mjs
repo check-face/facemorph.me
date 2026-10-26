@@ -10,7 +10,7 @@ import {createModelSource} from './model-source.mjs';
 import {inputLatent,requireLatent} from './identity.mjs';
 import {qualifyEncoderReference} from './encoder-preflight.mjs';
 import {createAcquisitionBudget,collectAssets} from './acquisition-budget.mjs';
-import {bridgeGrant,widenGrant,BRIDGE_OWNER} from './bridge-grant.mjs';
+import {chooseGrant,mergeGrants,widenWithin,BRIDGE_OWNER} from './bridge-grant.mjs';
 import {modelAlternateOrigins} from '../../contracts/model-origins.ts';
 // Chunks of a model download in flight at once (16 MiB each). Eight gigabytes stated by the device earns four;
 // everything else, including iOS where deviceMemory is undefined, gets two, a 32 MiB window.
@@ -171,7 +171,7 @@ async function bytes(asset,id,retainable=false,{allowUncached=true}={}){
  }
  cache ||= await modelSource();
  planAsset(asset);await probePlanned();budget.progress(false);
- const out=await cache.bytes(asset,acquireOptions(),{allowUncached});
+ const out=await cache.bytes(asset,acquireOptions(asset),{allowUncached});
  budget.cacheEvent({status:'verified',sha256:asset.sha256,bytes:asset.size});
  budget.progress(false);
  if(retainable&&!cache.uncached){
@@ -182,14 +182,13 @@ async function bytes(asset,id,retainable=false,{allowUncached=true}={}){
  }
  return out;}
 
-// One grant per manifest this worker was given (bridge-grant.mjs): the candidate's consented scope.
-let grant=null,grantManifest=null;
-function acquireOptions(){
- if(grantManifest!==manifest){grant=bridgeGrant(manifest,{manifestSha256,route:provider==='webgpu'?'webgpu':'cpu'});grantManifest=manifest;}
- return {grant,owner:BRIDGE_OWNER};
-}
-// The streamed encoder's descriptor (pinned by the manifest's digest, read verified) names its shards.
-function admitDescriptor(config){acquireOptions();grant=widenGrant(grant,config);return config;}
+// The grants the app supplies (bridge-grant.mjs appGrants, fm-qrfz): what the person approved, and what is already
+// verified on this device. An asset in neither has no grant, so the manager refuses it before any request.
+let grants=null;
+function acquireOptions(asset){return {grant:chooseGrant(grants,asset)??undefined,owner:BRIDGE_OWNER};}
+// The streamed encoder's descriptor (pinned by the manifest's digest, read verified) names its shards: they are
+// admitted against the bytes approved for it, never beyond (bridge-grant.mjs widenWithin).
+function admitDescriptor(config){if(grants?.approved)grants={...grants,approved:widenWithin(grants.approved,manifest.encoderStream?.sha256,config)};return config;}
 async function floats(asset,id){const b=await bytes(asset,id);return new Float32Array(b.buffer,b.byteOffset,b.byteLength/4);}
 /**
  * Warm the device's model cache for the route this device would choose, before anything is asked
@@ -211,7 +210,7 @@ async function prefetchRoute(id,scope='route'){
  let assets=0,acquired=0;
  for(const asset of list){
   assets++;
-  try{await cache.acquire(asset,acquireOptions());acquired++;budget.progress(false);}
+  try{await cache.acquire(asset,acquireOptions(asset));acquired++;budget.progress(false);}
   catch{break;} // offline, evicted mid-run, or out of quota: the real run will say so properly
  }
  return {provider,scope,assets,acquired,...budget.totals()};
@@ -249,7 +248,7 @@ async function encodeStream(tensor,id,qualifiedEncoderSha256,confirmedCropId){
  // reads every step from verified local storage and the encode itself issues no request. A device without durable
  // model storage keeps the candidate's bounded behaviour: each shard is read as its step needs it.
  cache ||= await modelSource();
- if(!cache.uncached)for(const step of config.steps){await cache.acquire(step,acquireOptions());budget.progress(false);}
+ if(!cache.uncached)for(const step of config.steps){await cache.acquire(step,acquireOptions(step));budget.progress(false);}
  const local=asset=>cache.uncached?bytes(asset,id,true):cache.has(asset).then(held=>{if(!held)throw Object.assign(Error('An encoder shard left the model cache after it was acquired.'),{code:'cache-miss'});return bytes(asset,id,true);});
  const reader={allowRepair:false,read:asset=>local(asset).then(value=>({ok:true,value}),error=>({ok:false,error:{code:error.code||'local-read',message:String(error.message||error),sha256:asset.sha256}}))};
  // The runtime is the small half: three modules and a wasm binary, none of which are weights.
@@ -398,12 +397,13 @@ function startResumeDrain(id){
  step();
 }
 self.onmessage=({data})=>{
- const {id,type,...request}=data;if(type==='raw-frame-ack'){rawAcks.get(id+':'+request.index)?.();return;}currentId=id;
+ const {id,type,...request}=data;if(type==='raw-frame-ack'){rawAcks.get(id+':'+request.index)?.();return;}
+ if(type==='grants'){grants=mergeGrants(grants,request.grants);return;}currentId=id;
  if(type==='qualify'&&request.resume){startResumeDrain(id);return;}
  foreground.push(async()=>{
   try{
    let result;
-   if(type==='initialize'){if(!['wasm','webgpu'].includes(request.provider))throw Error('Unsupported provider: WebGL execution was removed');manifest=request.manifest;provider=request.provider;gpuEngine=request.gpuEngine==='direct'&&request.provider==='webgpu'?'direct':'ort';manifestSha256=request.manifestSha256;fullQualify=request.fullQualify===true||(!request.hostForcedQualify&&request.webdriver===true);forceCanaryFail=request.forceCanaryFail===true;result={provider};}
+   if(type==='initialize'){if(!['wasm','webgpu'].includes(request.provider))throw Error('Unsupported provider: WebGL execution was removed');if(request.grants)grants=mergeGrants(grants,request.grants);manifest=request.manifest;provider=request.provider;gpuEngine=request.gpuEngine==='direct'&&request.provider==='webgpu'?'direct':'ort';manifestSha256=request.manifestSha256;fullQualify=request.fullQualify===true||(!request.hostForcedQualify&&request.webdriver===true);forceCanaryFail=request.forceCanaryFail===true;result={provider};}
    else if(type==='qualify')result=await qualify(id);else if(type==='prefetch')result=await prefetchRoute(id,request.scope);else if(type==='generate'){const input=await inputLatent(request.mode,request.value),values=await mappingFor(input.values,id);result={...(request.raw===true?{rgba:(await faceRgba(values,id)).buffer,width:SIDE,height:SIDE}:{blob:await faceBlob(values,id)}),values,shape:[...BATCH_W_SHAPE],space:'w-plus',identity:input.identity};}else if(type==='synthesize-frames')result=await synthesizeFrames(request.frames,id,request.raw===true);else if(type==='synthesize'){const values=requireLatent(request.values);result={...(request.raw===true?{rgba:(await faceRgba(values,id)).buffer,width:SIDE,height:SIDE}:{blob:await faceBlob(values,id)}),values,shape:[...BATCH_W_SHAPE],space:'w-plus'};}else if(type==='encode-aligned'){
  // Sequential residency: e4e is released before loading synthesis.
  if(!manifest.encoder&&!manifest.encoderStream)throw Error('The browser encoder bundle is not available.');

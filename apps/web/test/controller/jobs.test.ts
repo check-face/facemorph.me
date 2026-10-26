@@ -118,3 +118,42 @@ test('completion filters removed faces and refuses video for changed morph setti
   assert.equal(next.state.Busy, false);
   assert.equal(next.effects.at(-1)?.type, 'requestNext');
 });
+test('a file outside the approval asks again for the run that needed it; other failures stay failures (fm-qrfz)', () => {
+  const run = msg('Run', 'morph');
+  const running = {
+    ...state,
+    Busy: true,
+    JobId: 7,
+    LastRun: run,
+    DownloadConsent: new Set(['route']),
+  };
+  const refused = reduce(
+    msg(
+      'Failed',
+      7,
+      'Model file 3d27df84fd1b is not covered by an approved download (out-of-scope).',
+    ),
+    running,
+  )!;
+  assert.deepEqual(refused.state.Gate, ['route', run]);
+  assert.equal(
+    refused.state.DownloadConsent.size,
+    0,
+    'the earlier approval no longer covers this run',
+  );
+  assert.equal(refused.state.Busy, false);
+  assert.equal(refused.state.Error, null);
+  assert.deepEqual(refused.effects, []);
+  const over = reduce(
+    msg(
+      'Failed',
+      7,
+      'This download needs more data than was approved. Approve the download again to continue.',
+    ),
+    running,
+  )!;
+  assert.deepEqual(over.state.Gate, ['route', run]);
+  const failed = reduce(msg('Failed', 7, 'The local generation engine stopped.'), running)!;
+  assert.equal(failed.state.Gate, null);
+  assert.equal(failed.state.Error, 'The local generation engine stopped.');
+});

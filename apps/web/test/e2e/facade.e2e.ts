@@ -182,6 +182,10 @@ async function load(): Promise<void> {
   await page.waitForFunction(
     () => (window as unknown as { harnessReady?: boolean }).harnessReady === true,
   );
+  // As the person answering the download question would: workers acquire only what is approved or already held
+  // (fm-qrfz). The grants it builds settle before a test takes its request snapshot.
+  await call('approveDownloads');
+  await page.waitForLoadState('networkidle');
 }
 const call = <T>(fn: string, ...args: unknown[]): Promise<T> =>
   page.evaluate(
@@ -1682,6 +1686,10 @@ test(
     }
     await page.goto(`${ORIGIN}/`);
     await page.waitForFunction('window.harnessReady');
+    // Back on the harness page: the same approval load() gives, so the tests after this one start as they would
+    // after load() (fm-qrfz).
+    await call('approveDownloads');
+    await page.waitForLoadState('networkidle');
     const facts = await call<{
       checks: {
         id: string;
@@ -1724,11 +1732,20 @@ test(
         detections: number;
         finite: boolean;
         sample: { a1: number[] | null; a2: number[] | null; b2: number[] | null };
-        events: { type: string; slotId: string; attemptId: string; batchRevision: number }[];
+        events: {
+          type: string;
+          slotId: string;
+          attemptId: string;
+          batchRevision: number;
+          kind?: string;
+          message?: string;
+        }[];
       } & Partial<Settled>
     >('cropQueue', `${ORIGIN}/photo.jpg`, `${ORIGIN}/no-face.jpg`);
     for (const e of r.events)
-      log(`crop-queue: ${e.type} ${e.slotId} ${e.attemptId} batch ${e.batchRevision}`);
+      log(
+        `crop-queue: ${e.type} ${e.slotId} ${e.attemptId} batch ${e.batchRevision}${e.kind ? ` ${e.kind}: ${e.message}` : ''}`,
+      );
     log(
       `crop-queue: states=${r.states} encoded=${r.encodedCrops.length} derivations=${r.afterRetry.derivations}`,
     );
