@@ -65,6 +65,22 @@ jobs:
           command: |
             export FACEMORPH_RUNTIME_CACHE="$HOME/.cache/facemorph-device-lab/runtime-public"
             node packages/browser-model-manager/test/run.mjs packages/browser-model-manager/test/cold-photo.component.ts
+      - name: Loaded CPU handle release and native leased-file loss
+        uses: ./.github/actions/run-command
+        env:
+          FACEMORPH_ISOLATE_TEST_NETWORK: '1'
+          FACEMORPH_REQUIRE_RUNTIME: '1'
+        with:
+          timeout: '360'
+          command: |
+            export FACEMORPH_RUNTIME_CACHE="$HOME/.cache/facemorph-device-lab/runtime-public"
+            node packages/browser-model-manager/test/run.mjs packages/browser-model-manager/test/loaded-browser.component.ts
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: manager-loaded-${{ matrix.engine }}-${{ github.run_id }}
+          path: test-results/manager-cache/${{ matrix.engine }}/loaded-browser*.json
+          if-no-files-found: ignore
       - uses: actions/upload-artifact@v4
         if: always() && matrix.engine == 'chromium'
         with:
