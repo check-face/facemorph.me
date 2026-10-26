@@ -148,16 +148,16 @@ export function Explain({ route = '', reference = '' }: { route?: string; refere
         </p>
         <p>
           {
-            "FaceMorph's own code is MIT licensed, but the model weights are for non-commercial use under their own licences: "
+            "FaceMorph's own code is MIT licensed, but the model weights are for non-commercial use under their own licences:"
           }
-          {MODEL_LICENCES.map((l, i) => (
-            <span key={l.href}>
-              {i === 0 ? '' : i === MODEL_LICENCES.length - 1 ? ' and ' : ', '}
-              <a href={l.href}>{l.title}</a>
-            </span>
-          ))}
-          {'.'}
         </p>
+        <ul className="next-model-licences">
+          {MODEL_LICENCES.map((l) => (
+            <li key={l.href}>
+              <a href={l.href}>{l.title}</a>
+            </li>
+          ))}
+        </ul>
       </details>
       <details className="next-faq">
         <summary>{'How many faces are possible?'}</summary>
