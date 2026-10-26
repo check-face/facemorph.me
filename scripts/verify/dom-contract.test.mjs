@@ -22,6 +22,7 @@ import {
   seedLiteralContract,
   tileStatesContract,
   videoFormatContract,
+  modelSizeContract,
 } from './dom-contract.mjs';
 
 const face = (label, text = 'Generate', disabled = false) => ({
@@ -552,5 +553,50 @@ test('declared in-action progress (fm-vbj7) reads as the action start only where
   const idle = [E('Ready'), E('Morph to')];
   assert.ok(
     diffContracts(...acquisitionPair(idle, [E('Downloading model files…'), E('Morph to')])).length,
+  );
+});
+
+test('the declared face-model size change replaces only that figure (fm-qrfz)', () => {
+  const toast = (text, tag) => ({
+    region: 'toasts',
+    next: [],
+    attrs: {},
+    text,
+    ...(tag ? { tag } : {}),
+  });
+  const control = [
+    toast(
+      'It needs the face model once (149 MB), and using your own photos needs the photo encoder (1.1 GB).',
+    ),
+    toast('Download · 149 MB', 'button'),
+  ];
+  const subject = [
+    toast(
+      'It needs the face model once (158 MB), and using your own photos needs the photo encoder (1.1 GB).',
+    ),
+    toast('Download · 158 MB', 'button'),
+  ];
+  assert.deepEqual(modelSizeContract(control), modelSizeContract(subject));
+  // The photo encoder's size and every other sentence still differ when they differ.
+  const encoder = [
+    toast(
+      'It needs the face model once (149 MB), and using your own photos needs the photo encoder (1.2 GB).',
+    ),
+  ];
+  assert.notDeepEqual(modelSizeContract([control[0]]), modelSizeContract(encoder));
+  const dialog = {
+    region: 'dialogs',
+    next: [],
+    attrs: {},
+    text: 'Faces are made on this device, so it needs the face model once: 149 MB.',
+  };
+  assert.equal(
+    modelSizeContract([dialog])[0].text,
+    'Faces are made on this device, so it needs the face model once: <face model size>.',
+  );
+  assert.deepEqual(
+    modelSizeContract([toast('Download · 149 MB')]),
+    [toast('Download · 149 MB')],
+    'only the button carries the size',
   );
 });

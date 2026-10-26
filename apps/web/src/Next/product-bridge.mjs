@@ -293,32 +293,46 @@ const wanted=new Set(),downloadListeners=new Set();
 let downloading=null;
 function announceDownloads(){const snapshot={...downloads};for(const callback of downloadListeners){try{callback(snapshot);}catch{}}}
 export function subscribeDownloads(callback){downloadListeners.add(callback);callback({...downloads});return ()=>downloadListeners.delete(callback);}
-// The streamed encoder's descriptor (85 KB, pinned by the manifest's digest) names every shard with its size. It is
-// read as inspection, like the runtime manifest, so the visitor is shown the encoder's real size and the approval
-// covers exactly those files; the manifest's single-file encoder size understated it by about 21 MB (fm-qrfz).
-let descriptorRead=null,descriptorFor=null;
-async function inspectionCache(planned,cache){
- const stream=planned.manifest.encoderStream;
- if(!stream?.url||!stream.sha256)return cache;
- const peek=async asset=>{
-  const held=await cache.peek(asset);if(held||asset.sha256!==stream.sha256)return held;
-  if(descriptorFor!==stream.sha256){descriptorFor=stream.sha256;descriptorRead=(async()=>{
+// The streamed encoder's descriptor (85 KB, pinned by the manifest's digest) names every shard with its size. Once a
+// photo is chosen it is read as inspection, like the runtime manifest, so the photo question shows the encoder's real
+// size and the approval covers exactly those files; the manifest's single-file encoder size understated it by about
+// 21 MB (fm-qrfz). Nothing is read on arrival: until then the inventory and the grants use only what is cached, and
+// both see the same descriptor knowledge, so what is shown and what is granted stay equal.
+let descriptorText=null,descriptorFor=null,descriptorReading=null;
+function inspectDescriptor(manifest){
+ const stream=manifest?.encoderStream;
+ if(!stream?.url||!stream.sha256||descriptorFor===stream.sha256)return descriptorReading??Promise.resolve();
+ descriptorFor=stream.sha256;descriptorText=null;
+ descriptorReading=(async()=>{
+  try{
    const response=await fetch(stream.url,{cache:'no-cache'});if(!response.ok)throw Error('The encoder description is unavailable.');
    const bytes=new Uint8Array(await response.arrayBuffer());
    const hash=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',bytes)),x=>x.toString(16).padStart(2,'0')).join('');
    if(bytes.byteLength!==stream.size||hash!==stream.sha256)throw Error('The encoder description does not match its pin.');
-   return new TextDecoder().decode(bytes);
-  })();}
-  try{const text=await descriptorRead;return {text:async()=>text};}catch{descriptorFor=null;return null;}
+   descriptorText=new TextDecoder().decode(bytes);
+  }catch(error){descriptorFor=null;console.warn('Encoder description unavailable:',error?.message||error);}
+ })();
+ return descriptorReading;
+}
+function inspectionCache(planned,cache){
+ const stream=planned.manifest.encoderStream;
+ if(!stream?.sha256)return cache;
+ const peek=async asset=>{
+  const held=await cache.peek(asset);
+  return held||asset.sha256!==stream.sha256||descriptorFor!==stream.sha256||descriptorText===null?held:{text:async()=>descriptorText};
  };
  return {has:asset=>cache.has(asset),peek};
+}
+/** A photo was chosen: size its encoder exactly before the photo question is asked (fm-qrfz). */
+async function inspectForPhoto(){
+ try{await inspectDescriptor(manifest??(await engine(),manifest));await refreshInventory();await pushGrants();}catch{}
 }
 async function refreshInventory(){
  try{
   const service=await engine();if(!service.plan)return;
   const planned=await service.plan();if(!planned)return;
   const {createBrowserModelCache}=await import('./Assets/model-cache.mjs');
-  const cache=await inspectionCache(planned,await createBrowserModelCache({readOnly:true}));
+  const cache=inspectionCache(planned,await createBrowserModelCache({readOnly:true}));
   const route=await measure(routeAssets(planned.manifest,planned.route,planned.engine),cache);
   const photoList=await photoAssets(planned.manifest,cache);
   const photo=await measure(photoList.assets,cache,photoList.extraBytes||0);
@@ -335,8 +349,10 @@ async function pushGrants(){
  try{
   const service=await engine();if(!service.plan||!service.setGrants)return;
   const planned=await service.plan();if(!planned)return;
+  // Photos are approved: the person chose them, so size the encoder exactly before granting it.
+  if(approvedScopes.has('photo'))await inspectDescriptor(planned.manifest);
   const {createBrowserModelCache}=await import('./Assets/model-cache.mjs');
-  const cache=await inspectionCache(planned,await createBrowserModelCache({readOnly:true}));
+  const cache=inspectionCache(planned,await createBrowserModelCache({readOnly:true}));
   service.setGrants(await appGrants({manifest:planned.manifest,manifestSha256:runtimeIdentity||'',route:planned.route,engine:planned.engine,approved:approvedScopes,cache}));
  }catch(error){console.warn('Model grants unavailable:',error?.message||error);}
 }
@@ -602,6 +618,7 @@ export function warmPhotoTools(){
  engine().catch(()=>{});
 }
 export async function selectPhotoReported(request){
+ void inspectForPhoto();
  const selectionRevision=revisionOf(request.id);
  const file=request.files?.[0];if(file)analytics.operationResult?.('selection','ready',undefined,{size_band:file.size<1024*1024?'small':file.size<8*1024*1024?'medium':'large'});
  const projectText=file?await recoverVideoProject(file):null;if(selectionRevision!==revisionOf(request.id))return null;if(projectText)return {projectFile:new Blob([projectText],{type:'application/json'})};
