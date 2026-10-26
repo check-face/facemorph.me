@@ -11,6 +11,7 @@ import { bindOrigins } from '../verify/artifact.ts';
 import { DEFAULT_HOST_MAP } from '../../../../scripts/ci/intercept/playwright.ts';
 import { step, assertNoRequests } from '../../../../scripts/ci/intercept/record.ts';
 import { StepLog } from '../verify/operated.ts';
+import { assertNoCardPreparation } from '../support/card-setup.ts';
 
 const repo = new URL('../../../../', import.meta.url).pathname;
 const runtime = process.env['FACEMORPH_RUNTIME_DIR'] ?? join(repo, '.cache/runtime');
@@ -186,6 +187,7 @@ test(
             });
             const cardChooser = page.waitForEvent('filechooser');
             await hit(card);
+            await assertNoCardPreparation(page, 'cold: no model, detector or encoder cached');
             await shot('card-entry');
             const cardEvent = await cardChooser;
             assert.equal(
@@ -496,6 +498,7 @@ test(
                 () => false,
               );
               await shot('assets-absent-consent');
+              await assertNoCardPreparation(page, 'cold: encoder and detector absent at consent');
               if (asked) {
                 await hit(gate.getByRole('button', { name: 'Cancel', exact: true }));
                 await gate.waitFor({ state: 'detached' });

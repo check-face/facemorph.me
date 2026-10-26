@@ -22,6 +22,7 @@ import { readIdentity } from '../../../../scripts/import/build-next.mjs';
 import { press } from '../support/operate.ts';
 import { INSTALL_HOOK } from '../parity/elmish-probe.ts';
 import { futureSchemaPng } from '../support/recovery-stills.ts';
+import { assertNoCardPreparation } from '../support/card-setup.ts';
 import {
   headerOnlyPng,
   largeNoisePhoto,
@@ -955,6 +956,10 @@ test(
         await d.shots('triple-ok-running');
         await faceDone(id);
         await d.settled();
+        await assertNoCardPreparation(
+          d.page,
+          'verified: photo encoder downloaded and used (1280 px)',
+        );
         const c = await d.since(mark);
         const m = await readModel(d.page);
         d.log({ case: 'triple-ok', taps: 3, ...c, error: m.Error });
@@ -1191,6 +1196,10 @@ test(
           await p.settled();
           const c = await p.since(mark);
           const m = await readModel(p.page);
+          await assertNoCardPreparation(
+            p.page,
+            'verified: photo encoder downloaded and used (390 px)',
+          );
           await p.shots('phone-adjust-use-ok-result');
           p.log({ case: 'phone-adjust-use-ok', ...c, error: m.Error });
           assert.deepEqual([c.cropOpen, c.cropConfirmed, c.detect, c.e4e], [1, 1, 0, 1]);
