@@ -34,7 +34,7 @@ test('promise failures preserve the candidate message contracts without a servic
     rejection({ type: 'exportProject', view: viewSnapshot(state) }, error),
     msg('Notice', error.message),
   );
-  assert.deepEqual(rejection({ type: 'loadNames' }, error), msg('Notice', error.message));
+  assert.deepEqual(rejection({ type: 'loadNames' }, error), msg('NamesFailed', error.message));
   assert.deepEqual(rejection({ type: 'sliderFrames' }, error), msg('SliderLoaded', null));
   assert.deepEqual(rejection({ type: 'restoreLastResult' }, error), msg('Notice', ''));
   assert.deepEqual(

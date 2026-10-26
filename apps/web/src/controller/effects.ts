@@ -103,6 +103,8 @@ export function rejection(effect: Effect, error: unknown, input?: Input): Msg {
     case 'execute':
       return msg('Failed', effect.request.jobId, text);
     case 'loadNames':
+      // The open picker owns this failure: shown inside the dialog, which stays dismissible.
+      return msg('NamesFailed', text);
     case 'exportProject':
       return msg('Notice', text);
     case 'selectPhoto':

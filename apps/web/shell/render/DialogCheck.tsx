@@ -43,7 +43,7 @@ function initial(): State {
       photoAvailable: true,
     },
     ModelToastHidden: true,
-    ...(query.has('namesFailed') ? { Names: [], Error: 'Names could not be loaded.' } : {}),
+    ...(query.has('namesFailed') ? { Names: [] } : {}),
   };
 }
 
@@ -55,6 +55,13 @@ export function DialogCheck() {
     setState((s) => {
       const transition = reduce(message, s, { photoRevision: 0 });
       if (!transition) throw new Error(`No reducer for ${message.type}`);
+      // No bridge runs here: with ?namesFailed the name-list load answers as a rejected loadNames does.
+      if (query.has('namesFailed') && transition.effects.some((e) => e.type === 'loadNames'))
+        return (
+          reduce(msg('NamesFailed', 'The name gallery is unavailable.'), transition.state, {
+            photoRevision: 0,
+          })?.state ?? transition.state
+        );
       return transition.state;
     });
   }, []);

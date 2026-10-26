@@ -63,6 +63,8 @@ export interface Payloads {
   SliderFrameSet: readonly [number];
   BrowseNames: readonly [string];
   NamesLoaded: readonly [readonly NameFace[]];
+  /** The name list could not be loaded; the open picker shows this inside itself. */
+  NamesFailed: readonly [string];
   SearchNames: readonly [string];
   ChooseName: readonly [string];
   CloseNames: readonly [];

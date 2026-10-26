@@ -30,12 +30,24 @@ export interface Served {
   close(): Promise<void>;
 }
 
-/** `mounts` serves further directories under URL prefixes, e.g. { '/fixtures/': dir }. */
-export async function serve(dir: string, mounts: Record<string, string> = {}): Promise<Served> {
+/**
+ * `mounts` serves further directories under URL prefixes, e.g. { '/fixtures/': dir }. `failures`
+ * answers exact paths with that HTTP status instead of the file, e.g. { '/catalogue.json': 500 }.
+ */
+export async function serve(
+  dir: string,
+  mounts: Record<string, string> = {},
+  failures: Record<string, number> = {},
+): Promise<Served> {
   const requests: string[] = [];
   const server: Server = createServer((req, res) => {
     const path = decodeURIComponent(new URL(req.url ?? '/', 'http://x').pathname);
     requests.push(path);
+    const failure = failures[path];
+    if (failure !== undefined) {
+      res.writeHead(failure, { 'content-type': 'text/plain' }).end('unavailable');
+      return;
+    }
     const mount = Object.keys(mounts).find((prefix) => path.startsWith(prefix));
     const base = mount ? (mounts[mount] as string) : dir;
     const rel = mount ? path.slice(mount.length) : path;

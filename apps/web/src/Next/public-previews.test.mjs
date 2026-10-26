@@ -40,4 +40,7 @@ test('the historic hello face is a pinned site asset, even though it was omitted
  globalThis.fetch=()=>{throw Error('hello preview must not fetch the catalogue or models');};
  globalThis.Image=class {set src(value){this.onload?.();}};
  assert.equal(await publicPreview('text','hello'),'/preview/hello-1024.webp');
+ // fm-96if: a value that cannot have a published picture never fetches the name list.
+ for(const [mode,value] of [['text',''],['seed',''],['seed','3x'],['seed','-1'],['seed','01']])
+  assert.equal(await publicPreview(mode,value),'',`${mode} ${JSON.stringify(value)}`);
 });

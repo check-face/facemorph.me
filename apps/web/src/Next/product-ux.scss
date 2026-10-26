@@ -148,17 +148,31 @@
 .next-crop-zoom { display:flex; align-items:center; gap:.75rem; margin:1rem 0; }
 .next-crop-zoom input { flex:1; }
 .next-name-dialog { position:fixed; inset:0; z-index:1300; background:#0009; display:grid; place-items:center; padding:1rem; }
-.next-name-panel { max-width:1100px; width:100%; max-height:90vh; overflow:auto; }
-// Faces at 100px were unreadable — classic showed names at 200px and you could actually tell the
-// faces apart, which is the entire point of browsing them. The floor rises with the viewport.
-.next-name-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:.75rem; margin:1rem 0; }
-@media (min-width: 700px) { .next-name-grid { grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); } }
-.next-name-choice { padding:0; overflow:hidden; border-radius:6px; }
-/* MUI's button label is an inline flex row, which shrank the face to its 200px intrinsic size
-   inside wider cells; stack it and let the image take the whole cell. */
-.next-name-choice > .MuiButton-label { display:flex; flex-direction:column; align-items:stretch; width:100%; }
-.next-name-choice img { width:100%; height:auto; aspect-ratio:1; object-fit:cover; display:block; }
-.next-name-choice span { display:block; padding:.35rem; }
+// Names picker (fm-96if): the legacy fullscreen, headerless, gapless grid with each name over its
+// face (facemorph-names ImageGrid/LabelledImageButton). Columns, row height and the rendered window
+// are set inline by NamesDialog; the scrim keeps white names at >= 4.5:1 over any face.
+.next-names.next-name-dialog { display:block; padding:0; background:#000; color:#fff; overscroll-behavior:contain; }
+.next-names-scroller { position:absolute; inset:0; overflow-y:auto; overflow-x:hidden; outline:none; overscroll-behavior:contain; }
+.next-names-space { position:relative; width:100%; }
+.next-names .next-name-grid { position:absolute; left:0; right:0; display:grid; gap:0; margin:0; }
+.next-name-choice { position:relative; display:block; margin:0; padding:0; border:0; border-radius:0; overflow:hidden; background:#222; color:#fff; cursor:pointer; font:inherit; }
+.next-name-choice img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block; }
+.next-name-choice::before { content:''; position:absolute; left:0; right:0; bottom:0; height:5.5em; z-index:1; pointer-events:none;
+  background:linear-gradient(to top, rgba(0,0,0,.66) 0, rgba(0,0,0,.62) 2.3em, rgba(0,0,0,.38) 3.3em, rgba(0,0,0,.14) 4.4em, rgba(0,0,0,0) 100%); }
+.next-name-choice span { position:absolute; right:10px; bottom:.15em; z-index:2; max-width:calc(100% - 20px); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  font-size:clamp(1.05rem, 1.6vw + .6rem, 1.6rem); line-height:1.3; color:#fff; text-shadow:2px 2px 0 #000; }
+.next-name-choice:hover { outline:3px solid cornflowerblue; outline-offset:-3px; z-index:3; }
+.next-name-choice:focus-visible { outline:4px solid #ffa63d; outline-offset:-4px; z-index:3; }
+.next-names-status { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1rem; padding:1.5rem; margin:0; text-align:center; font-size:1.1rem; }
+.next-names-status p { margin:0; max-width:32rem; }
+// A small floating Back for touch browsers whose own Back is not on screen. Top-left keeps it off
+// the names, which sit at each face's bottom-right.
+.next-names-back { display:none; }
+@media (hover: none) and (pointer: coarse), (display-mode: standalone) {
+  .next-names-back { position:fixed; top:max(8px, env(safe-area-inset-top)); left:max(8px, env(safe-area-inset-left)); z-index:4; display:inline-flex; align-items:center; gap:.25rem;
+    min-height:40px; padding:0 .8rem; border:1px solid #fff6; border-radius:20px; background:rgba(0,0,0,.72); color:#fff; font:inherit; font-size:.95rem; }
+  .next-names-back:focus-visible { outline:3px solid #ffa63d; outline-offset:2px; }
+}
 
 // --- Wide screens --------------------------------------------------------------------------------
 // N=2, >=1000px: classic's grid verbatim (D-05). Faces cap at 400px so N>=3's fixed 400px
@@ -279,11 +293,6 @@
 .next-face-progress-determinate { animation:none; transform-origin:left; transition:transform .2s; }
 .next-tile-status { display:flex; align-items:center; justify-content:space-between; font-size:.85rem; min-height:1.5rem; }
 .next-name-dialog { padding:0; background:#17181c; color:#fff; }
-.next-name-panel { max-width:none; width:100%; height:100%; max-height:100vh; border:0; }
-.next-product .next-name-panel.box { color:#fff; }
-.next-name-grid { gap:0; }
-.next-name-choice { border-radius:0; }
-.next-name-choice.MuiButton-root { flex-direction:column; align-items:stretch; padding:0; color:inherit; }
 
 .next-face-picker { width:min(90vw,650px); max-height:90vh; overflow:auto; background:#17181c; color:white; padding:1rem; }
 .next-face-picker-image { position:relative; }

@@ -63,42 +63,18 @@ for (const [engine, type] of Object.entries(engines).filter(
         const names = page.getByRole('dialog', { name: 'Browse names' });
         await names.waitFor();
         assert.ok(await names.evaluate((e) => e.contains(document.activeElement)));
-        assert.equal(await names.locator('.next-name-choice').count(), 48);
+        // fm-96if: headerless, searchless, windowed grid; names.e2e.ts qualifies it in depth.
+        const rendered = await names.locator('.next-name-choice').count();
+        assert.ok(rendered > 0 && rendered < 100, `windowed grid renders ${rendered} of 100`);
+        assert.equal(await names.getByRole('textbox').count(), 0);
+        assert.equal(await names.getByRole('heading').count(), 0);
+        for (const label of ['Close', 'Show more'])
+          assert.equal(await names.getByRole('button', { name: label, exact: true }).count(), 0);
         await shot('names');
-        await hit(names.getByRole('button', { name: 'Show more', exact: true }));
-        assert.equal(await names.locator('.next-name-choice').count(), 96);
-        await last(page, 'MoreNames');
-        const search = names.getByRole('textbox', { name: 'Search names' });
-        await hit(search);
-        await page.keyboard.type('no matching name '.repeat(20), { delay: 5 });
-        assert.equal(await names.locator('.next-name-choice').count(), 0);
-        await names.getByRole('status').waitFor();
-        await shot('names-long-empty');
-        await page.keyboard.press('ControlOrMeta+A');
-        await page.keyboard.press('Backspace');
-        if (engine === 'chromium') {
-          await page.evaluate(() => navigator.clipboard.writeText('Charlotte'));
-          await page.keyboard.press('ControlOrMeta+V');
-          await page.waitForFunction(
-            () =>
-              document.querySelector<HTMLInputElement>('[aria-label="Search names"]')?.value ===
-              'Charlotte',
-          );
-          assert.equal(await names.locator('.next-name-choice').count(), 13);
-          await page.keyboard.press('ControlOrMeta+A');
-          await page.keyboard.press('Backspace');
-        }
-        const more = names.getByRole('button', { name: 'Show more', exact: true });
-        await more.focus();
         await page.keyboard.press('Tab');
-        assert.equal(
-          await names
-            .getByRole('button', { name: 'Close', exact: true })
-            .evaluate((e) => e === document.activeElement),
-          true,
-        );
+        assert.ok(await names.evaluate((e) => e.contains(document.activeElement)));
         await page.keyboard.press('Shift+Tab');
-        assert.equal(await more.evaluate((e) => e === document.activeElement), true);
+        assert.ok(await names.evaluate((e) => e.contains(document.activeElement)));
         await page.keyboard.press('Escape');
         await names.waitFor({ state: 'detached' });
         await last(page, 'CloseNames');
@@ -106,10 +82,12 @@ for (const [engine, type] of Object.entries(engines).filter(
         await names.waitFor();
         await page.goBack();
         await names.waitFor({ state: 'detached' });
-        await hit(page.getByRole('button', { name: 'Browse names', exact: true }));
-        await names.waitFor();
-        await hit(names.getByRole('button', { name: 'Close', exact: true }));
-        await names.waitFor({ state: 'detached' });
+        if (touch) {
+          await hit(page.getByRole('button', { name: 'Browse names', exact: true }));
+          await names.waitFor();
+          await hit(names.getByRole('button', { name: 'Back', exact: true }));
+          await names.waitFor({ state: 'detached' });
+        } else assert.equal(await page.locator('.next-names-back').count(), 0);
         await hit(page.getByRole('button', { name: 'Browse names', exact: true }));
         await names.waitFor();
         await hit(names.locator('.next-name-choice').first());
@@ -145,19 +123,25 @@ for (const [engine, type] of Object.entries(engines).filter(
           await open(`nameCount=${count}`);
           await hit(page.getByRole('button', { name: 'Browse names', exact: true }));
           await names.waitFor();
-          assert.equal(await names.locator('.next-name-choice').count(), count);
+          const shown = await names.locator('.next-name-choice').count();
+          if (count <= 3) assert.equal(shown, count);
+          else assert.ok(shown > 0 && shown <= count);
           assert.equal(
-            await names.locator('.next-name-panel').evaluate((e) => getComputedStyle(e).color),
+            await names
+              .locator('.next-name-choice span')
+              .first()
+              .evaluate((e) => getComputedStyle(e).color),
             'rgb(255, 255, 255)',
           );
           await shot(`names-${count}`);
-          await hit(names.getByRole('button', { name: 'Close', exact: true }));
+          if (touch) await hit(names.getByRole('button', { name: 'Back', exact: true }));
+          else await page.keyboard.press('Escape');
           await names.waitFor({ state: 'detached' });
         }
         await open('namesFailed');
         await hit(page.getByRole('button', { name: 'Browse names', exact: true }));
-        await names.getByRole('status').waitFor();
-        assert.match((await names.getByRole('status').textContent()) ?? '', /could not be loaded/);
+        await names.getByRole('alert').waitFor();
+        assert.match((await names.getByRole('alert').textContent()) ?? '', /could not be loaded/);
         await shot('names-load-failed');
         await hit(names.getByRole('button', { name: 'Close', exact: true }));
         await names.waitFor({ state: 'detached' });

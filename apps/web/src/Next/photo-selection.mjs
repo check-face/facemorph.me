@@ -62,6 +62,6 @@ export async function selectPhoto({id,files}){
 /** Moves focus into the crop square so its keyboard controls are usable on open. */
 export function focusCropArea(){requestAnimationFrame(()=>document.querySelector('.next-crop-view')?.focus());}
 let previousFocus;
-export function openNamesFocus(){previousFocus=document.activeElement;requestAnimationFrame(()=>document.querySelector('.next-name-dialog input,.next-name-dialog button')?.focus());}
+export function openNamesFocus(){previousFocus=document.activeElement;requestAnimationFrame(()=>{const dialog=document.querySelector('.next-names');if(dialog&&!dialog.contains(document.activeElement))dialog.querySelector('[data-name-index][tabindex="0"],.next-names-scroller')?.focus({preventScroll:true});});}
 export function closeNamesFocus(){const target=previousFocus;previousFocus=null;requestAnimationFrame(()=>{if(target?.isConnected)target.focus();});}
 export function namesKey(event,close){if(event.key==='Escape'){event.preventDefault();close();return;}if(event.key!=='Tab')return;const items=Array.from(event.currentTarget.querySelectorAll('button:not(:disabled),input:not(:disabled),[tabindex="0"]'));const first=items[0],last=items.at(-1);if(event.shiftKey&&document.activeElement===first){event.preventDefault();last?.focus();}else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first?.focus();}}

@@ -52,6 +52,9 @@ export interface State {
   readonly Names: readonly NameFace[];
   readonly NameQuery: string;
   readonly NameLimit: number;
+  /** Why the name list failed to load, shown inside the open picker. Absent while loading or
+   *  loaded; optional because it is not part of the frozen classic control model. */
+  readonly NamesError?: string;
   readonly Error: string | null;
   readonly DebugStatus: string;
   readonly Debug: boolean;

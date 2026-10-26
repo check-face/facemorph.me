@@ -6,6 +6,7 @@ import {
   useLayoutEffect,
   useRef,
   useState,
+  type KeyboardEvent,
   type ReactNode,
 } from 'react';
 import { cropFrame } from '../facade/helpers.ts';
@@ -147,54 +148,178 @@ function Modal({
   );
 }
 
+/** The legacy names grid's tile floor (facemorph-names ImageGrid: minmax(min(200px, 35vw), 1fr)). */
+export const NAME_TILE = 200;
+/** Rows rendered above and below the visible ones. Live images stay at (visible rows + 1 + 2 * this) * columns. */
+export const NAME_OVERSCAN_ROWS = 2;
+const STEPS: Record<string, (columns: number, page: number) => number> = {
+  ArrowRight: () => 1,
+  ArrowLeft: () => -1,
+  ArrowDown: (columns) => columns,
+  ArrowUp: (columns) => -columns,
+  PageDown: (columns, page) => columns * page,
+  PageUp: (columns, page) => -columns * page,
+  Home: () => -Infinity,
+  End: () => Infinity,
+};
+
+/**
+ * Fullscreen, headerless, gapless names grid with names over the faces (the legacy picker's look).
+ * Only the rows in view (plus a small overscan) are rendered, so scrolling the whole list never
+ * accumulates thousands of images; arrow keys move focus across windows. Escape, browser/host
+ * Back and, on touch browsers, a small floating Back close it; focus returns to the opener.
+ */
 export function NamesDialog({ state, dispatch }: { state: State; dispatch: Dispatch }) {
   if (state.Browse === null) return null;
-  const names = state.Names.filter((n) =>
-    n.name.toLowerCase().includes(state.NameQuery.toLowerCase()),
-  );
+  const close = () => dispatch(msg('CloseNames'));
   return (
-    <Modal
-      label="Browse names"
-      className="next-name-dialog"
-      close={() => dispatch(msg('CloseNames'))}
-    >
-      <div className="next-name-panel box">
-        <div className="next-topline">
-          <h2>Browse names</h2>
-          <Button onClick={() => dispatch(msg('CloseNames'))}>Close</Button>
-        </div>
-        <input
-          className="next-text-input"
-          aria-label="Search names"
-          placeholder="Search names"
-          value={state.NameQuery}
-          onChange={(e) => dispatch(msg('SearchNames', e.target.value))}
-        />
-        <div className="next-name-grid">
-          {names.slice(0, state.NameLimit).map((name) => (
-            <Button
-              key={name.value}
-              className="next-name-choice"
-              onClick={() => dispatch(msg('ChooseName', name.value))}
+    <Modal label="Browse names" className="next-name-dialog next-names" close={close}>
+      <NamesGrid
+        names={state.Names}
+        error={state.NamesError}
+        choose={(value) => dispatch(msg('ChooseName', value))}
+        close={close}
+      />
+    </Modal>
+  );
+}
+
+function NamesGrid({
+  names,
+  error,
+  choose,
+  close,
+}: {
+  names: State['Names'];
+  error: string | undefined;
+  choose: (value: string) => void;
+  close: () => void;
+}) {
+  const scroller = useRef<HTMLDivElement>(null);
+  const [view, setView] = useState(() => ({
+    width: document.documentElement.clientWidth,
+    height: innerHeight,
+    top: 0,
+  }));
+  const [active, setActive] = useState(0);
+  const focusActive = useRef(false);
+  useLayoutEffect(() => {
+    const element = scroller.current;
+    if (!element) return;
+    const measure = () =>
+      setView((v) =>
+        v.width === element.clientWidth && v.height === element.clientHeight
+          ? v
+          : { ...v, width: element.clientWidth, height: element.clientHeight },
+      );
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
+  const columns = Math.max(1, Math.floor(view.width / Math.min(NAME_TILE, 0.35 * innerWidth)));
+  const tile = view.width / columns;
+  const rows = Math.ceil(names.length / columns);
+  const visibleRows = Math.max(1, Math.floor(view.height / tile));
+  const firstRow = Math.max(0, Math.floor(view.top / tile) - NAME_OVERSCAN_ROWS);
+  const lastRow = Math.min(rows, Math.ceil((view.top + view.height) / tile) + NAME_OVERSCAN_ROWS);
+  const first = firstRow * columns;
+  const shown = names.slice(first, Math.min(names.length, lastRow * columns));
+  const tabbable = active >= first && active < first + shown.length ? active : first;
+  useLayoutEffect(() => {
+    const element = scroller.current;
+    if (!element) return;
+    if (focusActive.current) {
+      element.querySelector<HTMLElement>(`[data-name-index="${active}"]`)?.focus({
+        preventScroll: true,
+      });
+      focusActive.current = false;
+    }
+    // A focused face scrolled out of the window unmounts; keep focus (and Escape) in the dialog.
+    const dialog = element.closest('[role="dialog"]');
+    if (dialog && !dialog.contains(document.activeElement)) element.focus({ preventScroll: true });
+  });
+  useEffect(() => {
+    // Names that arrive after opening take focus from the empty grid.
+    if (names.length && document.activeElement === scroller.current) {
+      focusActive.current = true;
+      setActive(0);
+    }
+  }, [names.length]);
+  const move = (event: KeyboardEvent<HTMLDivElement>) => {
+    const step = STEPS[event.key];
+    const element = scroller.current;
+    if (!step || !element || !names.length) return;
+    event.preventDefault();
+    const focused = Number(
+      (document.activeElement as HTMLElement | null)?.dataset['nameIndex'] ?? tabbable,
+    );
+    const next = Math.max(0, Math.min(names.length - 1, focused + step(columns, visibleRows)));
+    const rowTop = Math.floor(next / columns) * tile;
+    let top = element.scrollTop;
+    if (rowTop < top) top = rowTop;
+    else if (rowTop + tile > top + element.clientHeight) top = rowTop + tile - element.clientHeight;
+    element.scrollTop = top;
+    focusActive.current = true;
+    setActive(next);
+    setView((v) => ({ ...v, top: element.scrollTop }));
+  };
+  return (
+    <>
+      <div
+        ref={scroller}
+        className="next-names-scroller"
+        data-overscan-rows={NAME_OVERSCAN_ROWS}
+        tabIndex={-1}
+        onScroll={(e) => {
+          const top = e.currentTarget.scrollTop;
+          setView((v) => (v.top === top ? v : { ...v, top }));
+        }}
+        onKeyDown={move}
+      >
+        {names.length > 0 ? (
+          <div className="next-names-space" style={{ height: rows * tile }}>
+            <div
+              className="next-name-grid"
+              style={{
+                top: firstRow * tile,
+                gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
+                gridAutoRows: `${tile}px`,
+              }}
             >
-              <img src={name.image} alt="" loading="lazy" width={200} height={200} />
-              <span>{name.name}</span>
+              {shown.map((name, offset) => (
+                <button
+                  key={name.value}
+                  type="button"
+                  className="next-name-choice"
+                  data-name-index={first + offset}
+                  tabIndex={first + offset === tabbable ? 0 : -1}
+                  onFocus={() => setActive(first + offset)}
+                  onClick={() => choose(name.value)}
+                >
+                  <img src={name.image} alt="" width={NAME_TILE} height={NAME_TILE} />
+                  <span>{name.name}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : error ? (
+          <div className="next-names-status" role="alert">
+            <p>Names could not be loaded. {error}</p>
+            <Button variant="outlined" color="inherit" onClick={close}>
+              Close
             </Button>
-          ))}
-        </div>
-        {state.Names.length === 0 && (
-          <p role="status">
-            {state.Error
-              ? 'Names could not be loaded. Close this window and try again.'
-              : 'Loading names…'}
+          </div>
+        ) : (
+          <p className="next-names-status" role="status">
+            Loading names…
           </p>
         )}
-        {state.Names.length > 0 && names.length === 0 && (
-          <p role="status">No names match your search.</p>
-        )}
-        <Button onClick={() => dispatch(msg('MoreNames'))}>Show more</Button>
       </div>
-    </Modal>
+      <button type="button" className="next-names-back" aria-label="Back" onClick={close}>
+        <span aria-hidden="true">‹</span> Back
+      </button>
+    </>
   );
 }
 

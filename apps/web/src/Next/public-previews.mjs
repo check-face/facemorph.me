@@ -83,8 +83,15 @@ function imageAvailable(url) {
   });
 }
 
+/**
+ * Request rule (fm-96if): the controller asks for an instant picture only after an explicit act
+ * (a picked name, a mode switch), never per keystroke; see controller/reducers/names.ts. A value
+ * that cannot have a published picture (empty text, a non-numeric seed) asks nothing, so a mode
+ * switch on an empty field does not fetch the name list.
+ */
 export async function publicPreview(mode, value) {
   if (mode !== 'text' && mode !== 'seed') return '';
+  if (mode === 'text' ? !value : !/^(0|[1-9][0-9]*)$/.test(value || '')) return '';
   try {
     const catalogue = mode === 'text' && value === 'hello' ? null : await getPublicCatalogue();
     const url = previewUrl(catalogue, mode, value);

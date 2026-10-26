@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { init } from '../../src/controller/init.ts';
 import { msg } from '../../src/controller/msg.ts';
 import { names } from '../../src/controller/reducers/names.ts';
+import { inputs } from '../../src/controller/reducers/inputs.ts';
 import { compareFields, fixture, fromGolden, replayStatus, verifyControl } from './scaffold.ts';
 before(verifyControl);
 const state = init({
@@ -91,4 +92,35 @@ test('unrecorded names modal journeys are explicitly untested', (t) => {
   assert.equal(changed.status, 'owner-graded');
   assert.match(changed.reason!, /ws-names/);
   t.diagnostic(JSON.stringify(changed));
+});
+test('a failed name list is held for the open picker and cleared by reopening or loading', () => {
+  const opened = names(msg('BrowseNames', 'face-1'), state)!;
+  assert.deepEqual(opened.effects, [{ type: 'openNamesFocus' }, { type: 'loadNames' }]);
+  const failed = names(msg('NamesFailed', 'The name gallery is unavailable.'), opened.state)!;
+  assert.equal(failed.state.NamesError, 'The name gallery is unavailable.');
+  assert.equal(failed.state.Browse, 'face-1', 'the picker stays open to show the failure');
+  assert.deepEqual(failed.effects, []);
+  const closed = names(msg('CloseNames'), failed.state)!;
+  assert.equal(closed.state.Browse, null);
+  const reopened = names(msg('BrowseNames', 'face-1'), closed.state)!;
+  assert.equal('NamesError' in reopened.state, false);
+  assert.deepEqual(reopened.effects, [{ type: 'openNamesFocus' }, { type: 'loadNames' }]);
+  const loaded = names(msg('NamesLoaded', catalogue), failed.state)!.state;
+  assert.equal('NamesError' in loaded, false);
+  assert.equal('NamesError' in state, false, 'not part of the frozen control model');
+});
+test('typing describes no request; only an explicit act describes an instant picture', () => {
+  for (const value of ['3', '38', '389', 'b', 'ba', 'banana']) {
+    const typed = inputs(msg('Edit', 'face-1', value), state)!;
+    assert.deepEqual(
+      typed.effects.filter((e) => e.type === 'publicPreview' || e.type === 'loadNames'),
+      [],
+      value,
+    );
+  }
+  const seed = inputs(msg('Mode', 'face-1', 'seed'), state)!;
+  assert.deepEqual(
+    seed.effects.filter((e) => e.type === 'publicPreview'),
+    [{ type: 'publicPreview', id: 'face-1' }],
+  );
 });

@@ -28,6 +28,7 @@ export const CASES = {
   PinchToggle: inputs,
   BrowseNames: names,
   NamesLoaded: names,
+  NamesFailed: names,
   PreviewLoaded: names,
   SearchNames: names,
   ChooseName: names,
