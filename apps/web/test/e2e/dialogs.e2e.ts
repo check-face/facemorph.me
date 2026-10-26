@@ -107,8 +107,9 @@ for (const [engine, type] of Object.entries(engines).filter(
           await hit(page.getByRole('button', { name: trigger!, exact: true }));
           const modal = page.getByRole('dialog', { name: label!, exact: true });
           await modal.waitFor();
+          // The same focusables the modal's Tab trap cycles, links included (the face-model offer's licence link).
           const controls = modal.locator(
-            'button:not(:disabled), input:not(:disabled), [tabindex="0"]',
+            'a[href], button:not(:disabled), input:not(:disabled), [tabindex="0"]',
           );
           await controls.first().focus();
           await page.keyboard.press('Shift+Tab');
