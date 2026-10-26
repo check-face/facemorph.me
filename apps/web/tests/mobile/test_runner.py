@@ -1,6 +1,7 @@
 import copy
 import importlib.util
 import json
+import shlex
 from pathlib import Path
 import ssl
 import subprocess
@@ -13,7 +14,7 @@ from urllib.request import Request, urlopen
 spec=importlib.util.spec_from_file_location('ios_product',Path(__file__).resolve().parents[2]/'scripts/next-ios-sim.py')
 ios_product=importlib.util.module_from_spec(spec);spec.loader.exec_module(ios_product)
 import unittest
-from run import assess, EXPECTED, MANAGER_EXPECTED, simulator_options
+from run import chrome_intent, assess, EXPECTED, MANAGER_EXPECTED, simulator_options
 
 
 def manager_rows():
@@ -42,6 +43,20 @@ class EvidenceTests(unittest.TestCase):
                            results=[dict(id=name, passed=True) for name in EXPECTED],
                            managerMatrix=manager_rows(),
                            managerCapabilities=dict(opfs=True, cacheStorage=True, workerSync=True))
+
+    def test_android_intent_preserves_backend_query_as_one_shell_argument(self):
+        for backend in ['opfs', 'cache-storage']:
+            url = 'https://127.0.0.1:8765/tests/mobile/manager-loaded.html?run=run123&backend='+backend
+            args = shlex.split(chrome_intent(url))
+            self.assertEqual(args, ['am', 'start', '-W', '-a', 'android.intent.action.VIEW', '-d',
+                                    url, 'com.android.chrome'])
+            # Exercise the native host shell's word expansion, including characters that
+            # would be executable if the URL were merely interpolated or JSON encoded.
+            literal = url+"&literal=$(exit 73);`exit 74`'"
+            suffix = chrome_intent(literal).split(' -d ', 1)[1]
+            words = subprocess.run(['/bin/sh', '-c', 'printf \"%s\\n\" '+suffix],
+                                   capture_output=True, text=True, check=True, timeout=5)
+            self.assertEqual(words.stdout, literal+'\ncom.android.chrome\n')
 
     def test_complete_components_only(self):
         self.assertTrue(assess(self.report, 'test'))

@@ -7,6 +7,7 @@ import json
 import math
 import os
 import re
+import shlex
 from pathlib import Path
 import subprocess
 import threading
@@ -175,12 +176,19 @@ def native_controller(component, endpoint, origin, run_id, output):
     return stdout.strip()
 
 
+def chrome_intent(url):
+    # adb shell joins argv into a shell command. Quote the complete URL so query
+    # separators stay in the intent instead of starting background shell commands.
+    return shlex.join(['am', 'start', '-W', '-a', 'android.intent.action.VIEW', '-d', url,
+                       'com.android.chrome'])
+
+
 def open_chrome(url):
     # A fresh emulator's Chrome can swallow the first VIEW intent behind its first-run promos
     # (main run 40284140320: the notifications sheet over the new-tab page). Record it; only the
     # subsequent browser report may establish success.
-    result = subprocess.run(['adb', 'shell', 'am', 'start', '-W', '-a', 'android.intent.action.VIEW', '-d', url,
-                             'com.android.chrome'], capture_output=True, text=True, timeout=90)
+    result = subprocess.run(['adb', 'shell', chrome_intent(url)],
+                            capture_output=True, text=True, timeout=90)
     return {'returncode': result.returncode, 'stdout': result.stdout, 'stderr': result.stderr}
 
 

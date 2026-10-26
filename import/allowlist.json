@@ -2519,10 +2519,10 @@
       "class": "temporary-root",
       "temporary": true,
       "ported": {
-        "sha256": "d264e92ca1c10be5bda12e801514dfe42719fe083dcf649e8ce86b34da40ef17",
-        "bytes": 38610,
+        "sha256": "47ca8bcc6bd47481d71a17ce6b3742d2ee446ae29d86ee77de755a2d1c06703f",
+        "bytes": 38879,
         "bead": "fm-fy2.13",
-        "reason": "Mobile component runner uses real HTTPS fixture transfers and built manager modules with grants; persistent storage, strict eight-component assessor and Simulator product CPU inference/layout evidence. Shared artifact server/interception helper; no fake fetches; Simulator/emulator labels retained.; Vite destination integration: shared production headers and native dynamic-import directives; compiled artifact identity. (fm-zz2i); Reports the native mobile manager matrix with explicit limits (0cfcd1c) (fm-fy2.13); logs startup phases to stderr and reports them when a cold macOS runner stalls before its HTTPS URL; Android lane grants Chrome notifications and re-sends its URL once (dc46521); native Android CDP supplement proves actual two-tab deletion and lease release without reloading the primary documents (fm-fy2.13); native Safari independent-tab protocol and pinned real CPU/WASM worker lifecycle on OPFS/CacheStorage with explicit inference evidence and zero model transfers after admission (fm-fy2.13)"
+        "reason": "Mobile component runner uses real HTTPS fixture transfers and built manager modules with grants; persistent storage, strict eight-component assessor and Simulator product CPU inference/layout evidence. Shared artifact server/interception helper; no fake fetches; Simulator/emulator labels retained.; Vite destination integration: shared production headers and native dynamic-import directives; compiled artifact identity. (fm-zz2i); Reports the native mobile manager matrix with explicit limits (0cfcd1c) (fm-fy2.13); logs startup phases to stderr and reports them when a cold macOS runner stalls before its HTTPS URL; Android lane grants Chrome notifications and re-sends its URL once (dc46521); native Android CDP supplement proves actual two-tab deletion and lease release without reloading the primary documents (fm-fy2.13); native Safari independent-tab protocol and pinned real CPU/WASM worker lifecycle on OPFS/CacheStorage with explicit inference evidence and zero model transfers after admission (fm-fy2.13); quote Android VIEW intent URL for the native adb shell so backend query separators stay literal (fm-fy2.13)"
       }
     },
     {
@@ -2547,10 +2547,10 @@
       "class": "temporary-root",
       "temporary": true,
       "ported": {
-        "sha256": "ec822ab2fdb6fc547d97dae4282a8d33bc625f54963f8461779adc903a2ebf9e",
-        "bytes": 16197,
+        "sha256": "97ebca411c689cc113661ebd70db7de4c9c4db0cb74e90cb60d657b7b7cbc9fe",
+        "bytes": 17223,
         "bead": "fm-fy2.13",
-        "reason": "Mobile component runner uses real HTTPS fixture transfers and built manager modules with grants; persistent storage, strict eight-component assessor and Simulator product CPU inference/layout evidence. Shared artifact server/interception helper; no fake fetches; Simulator/emulator labels retained. (fm-hlv); Reports the native mobile manager matrix with explicit limits (0cfcd1c) (fm-fy2.13); logs startup phases to stderr and reports them when a cold macOS runner stalls before its HTTPS URL; rejects incomplete quota transfers, missing native reset and wrong typed error in executed Android quota evidence (fm-fy2.13); native Safari independent-tab protocol and pinned real CPU/WASM worker lifecycle on OPFS/CacheStorage with explicit inference evidence and zero model transfers after admission (fm-fy2.13)"
+        "reason": "Mobile component runner uses real HTTPS fixture transfers and built manager modules with grants; persistent storage, strict eight-component assessor and Simulator product CPU inference/layout evidence. Shared artifact server/interception helper; no fake fetches; Simulator/emulator labels retained. (fm-hlv); Reports the native mobile manager matrix with explicit limits (0cfcd1c) (fm-fy2.13); logs startup phases to stderr and reports them when a cold macOS runner stalls before its HTTPS URL; rejects incomplete quota transfers, missing native reset and wrong typed error in executed Android quota evidence (fm-fy2.13); native Safari independent-tab protocol and pinned real CPU/WASM worker lifecycle on OPFS/CacheStorage with explicit inference evidence and zero model transfers after admission (fm-fy2.13); quote Android VIEW intent URL for the native adb shell so backend query separators stay literal (fm-fy2.13)"
       }
     }
   ]
