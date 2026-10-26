@@ -2,6 +2,7 @@
 // On-origin recovery. Storage keys, records, hash checks and byte budgets match last-result.mjs.
 import { openOriginals, digest } from '../../src/Next/browser/originals.mjs';
 import type { MorphKind } from '../facade/records.ts';
+import { keepOnlyWords, rememberWords, type FaceWords } from './session-words.ts';
 
 const KEY = 'last-generated-result-v1';
 const SESSION = 'last-generated-session-v2';
@@ -264,6 +265,38 @@ export async function validateSession(record: unknown): Promise<SessionRecord | 
   };
 }
 
+/** Restored faces' word keys (face id -> latent SHA-256) from the last readSession in this page. */
+const restoredKeys = new Map<string, string>();
+/**
+ * The key a restored face's tab-scoped words are kept under: the retained record's latent SHA-256 for that face,
+ * so words only ever label the very face they were typed for (fm-5hww). Null when this page restored no such face.
+ */
+export const restoredWordsKey = (faceId: string): string | null => restoredKeys.get(faceId) ?? null;
+
+/** The words behind a face the bridge generated: its source, never its pixels; a photo keeps only its file name. */
+function wordsOf(result: unknown): FaceWords | null {
+  const source = object(result) ? result['source'] : null;
+  if (!object(source)) return null;
+  const mode = source['mode'],
+    value = source['value'],
+    file = source['file'];
+  if ((mode === 'text' || mode === 'seed') && typeof value === 'string') return { mode, value };
+  if (mode === 'photo' && file instanceof File && file.name) return { mode, value: file.name };
+  return null;
+}
+/** Tab-scoped words for the record just written: new faces' words kept, words of faces no longer in it dropped. */
+function retainWords(faces: readonly { id: string; result: ResultInput }[]): void {
+  const keep = new Set<string>();
+  for (const face of faces) {
+    const key = face.result.latentSha256;
+    if (!hash(key)) continue;
+    keep.add(`${key}:${face.id}`);
+    const words = wordsOf(face.result);
+    if (words) rememberWords(key, face.id, words);
+  }
+  keepOnlyWords(keep);
+}
+
 export interface SessionInput {
   ids: readonly string[];
   faces: readonly { id: string; result: ResultInput }[];
@@ -310,7 +343,10 @@ export async function rememberSession(
           /* refusal observer must not prevent invalidation */
         }
         store = await openOriginals();
-        if (isCurrent()) await store.put(SESSION, { kind: SESSION, faces: [], ids: [] });
+        if (isCurrent()) {
+          await store.put(SESSION, { kind: SESSION, faces: [], ids: [] });
+          keepOnlyWords(new Set());
+        }
         return false;
       }
       selected.push({
@@ -376,11 +412,15 @@ export async function rememberSession(
       if (!isCurrent()) return false;
       await store.put(SESSION, { ...record, video: null, videoSha256: null });
     }
+    retainWords(faces);
     return true;
   } catch (error) {
     console.warn('Last session write failed:', error instanceof Error ? error.name : 'Error');
     try {
-      if (isCurrent()) await store?.put(SESSION, { kind: SESSION, faces: [], ids: [] });
+      if (isCurrent() && store) {
+        await store.put(SESSION, { kind: SESSION, faces: [], ids: [] });
+        keepOnlyWords(new Set());
+      }
     } catch {
       /* storage unavailable */
     }
@@ -396,7 +436,12 @@ export async function readSession(): Promise<
   try {
     store = await openOriginals();
     const record: unknown = await store.get(SESSION);
-    if (record) return (await validateSession(record)) || { kind: SESSION, faces: [], ids: [] };
+    if (record) {
+      const valid = await validateSession(record);
+      restoredKeys.clear();
+      for (const face of valid?.faces ?? []) restoredKeys.set(face.id, face.result.latentSha256);
+      return valid || { kind: SESSION, faces: [], ids: [] };
+    }
   } catch {
     /* unavailable storage */
   } finally {

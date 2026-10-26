@@ -28,6 +28,14 @@ const SOURCES: Record<string, () => { body: string; type: string }> = {
     body: stripTypeScriptTypes(readFileSync(web('shell/session/retention.ts'), 'utf8')),
     type: 'text/javascript',
   }),
+  '/shell/session/session-words.ts': () => ({
+    body: stripTypeScriptTypes(readFileSync(web('shell/session/session-words.ts'), 'utf8')),
+    type: 'text/javascript',
+  }),
+  '/shell/session/restored-words.ts': () => ({
+    body: stripTypeScriptTypes(readFileSync(web('shell/session/restored-words.ts'), 'utf8')),
+    type: 'text/javascript',
+  }),
   '/src/controller/preferences.ts': () => ({
     body: stripTypeScriptTypes(readFileSync(web('src/controller/preferences.ts'), 'utf8')),
     type: 'text/javascript',
@@ -289,6 +297,119 @@ test('a real IndexedDB quota failure retries the session without video and keeps
           line.includes('Last session write retried without video:') &&
           line.includes('QuotaExceededError'),
       ),
+    );
+  } finally {
+    await l.browser.close();
+  }
+});
+
+test('fm-5hww wiring: saved sessions keep their typed words in this tab only, keyed by face identity; restore puts them in the field', async (t) => {
+  const l = await launch(t);
+  if (!l) return;
+  try {
+    const page = await l.context.newPage();
+    await page.goto(`${ORIGIN}/`);
+    const typed = '  Zoë 🌙  and\ttabs  ';
+    const saved = await page.evaluate<{
+      saved: boolean;
+      keys: string[];
+      strings: string[];
+    }>(`(async () => {
+      const { lr, faces, settings } = await ${FACES(3)};
+      faces[0].result.source = { mode: 'text', value: ${JSON.stringify(typed)}, file: null };
+      faces[1].result.source = { mode: 'seed', value: '4294967295', file: null };
+      faces[2].result.source = { mode: 'photo', value: '', file: new File([new Uint8Array([1, 2, 3])], 'holiday\u202e.jpg', { type: 'image/jpeg' }) };
+      window.__faces = faces;
+      const saved = await lr.rememberSession({ ids: faces.map(f => f.id), faces, settings, project: null, video: null });
+      const db = await new Promise(r => { const q = indexedDB.open('checkface-originals-v1', 1); q.onsuccess = () => r(q.result); });
+      const raw = await new Promise(r => { const q = db.transaction('originals').objectStore('originals').get('last-generated-session-v2'); q.onsuccess = () => r(q.result); });
+      db.close();
+      const strings = []; const walk = v => { if (typeof v === 'string') strings.push(v); else if (v && typeof v === 'object' && !(v instanceof Blob) && !ArrayBuffer.isView(v)) Object.values(v).forEach(walk); };
+      walk(raw);
+      return { saved, keys: Object.keys(sessionStorage), strings };
+    })()`);
+    assert.equal(saved.saved, true);
+    assert.equal(saved.keys.filter((k) => k.startsWith('facemorph-words-v1:')).length, 3);
+    assert.ok(
+      !saved.strings.some((s) => s.includes('Zoë') || s.includes('holiday') || s === '4294967295'),
+      'the IndexedDB record holds no words, seeds or file names',
+    );
+    await page.reload();
+    const back = await page.evaluate<{
+      inputs: { id: string; mode: string; value: string }[];
+      bridge: { mode: string }[];
+      edited: { mode: string }[];
+      late: { mode: string; value: string }[];
+    }>(`(async () => {
+      const lr = await import('${ORIGIN}/last-result.mjs');
+      const rw = await import('${ORIGIN}/shell/session/restored-words.ts');
+      const session = await lr.readSession();
+      const output = { restored: true, inputs: session.ids.map(id => ({ id, mode: 'project', value: 'Restored face', file: null })) };
+      const since = rw.editRevision();
+      const inputs = rw.withRestoredWords(output, since).inputs;
+      const bridge = rw.inputsToBridge(inputs);
+      // An edit to face-0 sends the edited words; face-1, unchanged, still goes to the bridge as restored.
+      const edited = rw.inputsToBridge([{ ...inputs[0], value: inputs[0].value + 'x' }, inputs[1]]);
+      // A restore that lands after an edit keeps the Restored face label.
+      rw.noteEdit();
+      const late = rw.withRestoredWords(output, since).inputs;
+      return { inputs, bridge, edited, late };
+    })()`);
+    assert.deepEqual(
+      back.inputs.map((i) => [i.mode, i.value]),
+      [
+        ['text', typed],
+        ['seed', '4294967295'],
+        ['project', 'holiday.jpg'],
+      ],
+      'same-tab reload: exact typed text, the seed, and only the sanitized photo file name',
+    );
+    assert.deepEqual(
+      back.bridge.map((i) => i.mode),
+      ['project', 'project', 'project'],
+      'unchanged restored faces are not generated again',
+    );
+    assert.deepEqual(
+      back.edited.map((i) => i.mode),
+      ['text', 'project'],
+    );
+    assert.deepEqual(
+      back.late.map((i) => [i.mode, i.value]),
+      [
+        ['project', 'Restored face'],
+        ['project', 'Restored face'],
+        ['project', 'Restored face'],
+      ],
+      'a late restore after an edit is abandoned',
+    );
+    const other = await l.context.newPage();
+    await other.goto(`${ORIGIN}/`);
+    const fresh = await other.evaluate<{ mode: string; value: string }[]>(`(async () => {
+      const lr = await import('${ORIGIN}/last-result.mjs');
+      const rw = await import('${ORIGIN}/shell/session/restored-words.ts');
+      const session = await lr.readSession();
+      const output = { restored: true, inputs: session.ids.map(id => ({ id, mode: 'project', value: 'Restored face', file: null })) };
+      return rw.withRestoredWords(output, rw.editRevision()).inputs;
+    })()`);
+    assert.ok(
+      fresh.every((i) => i.mode === 'project' && i.value === 'Restored face'),
+      'a new tab restores the faces with the Restored face label only',
+    );
+    const pruned = await page.evaluate<{ after: number; refused: number }>(`(async () => {
+      const { lr, faces, settings } = await ${FACES(1)};
+      faces[0].id = 'face-1';
+      faces[0].result.source = { mode: 'text', value: 'replacement', file: null };
+      await lr.rememberSession({ ids: ['face-1'], faces, settings, project: null, video: null });
+      const after = Object.keys(sessionStorage).filter(k => k.startsWith('facemorph-words-v1:')).length;
+      const big = await ${FACES(3, 12 * 1024 * 1024)};
+      big.faces[0].result.source = { mode: 'text', value: 'too big', file: null };
+      await big.lr.rememberSession({ ids: big.faces.map(f => f.id), faces: big.faces, settings, project: null, video: null });
+      return { after, refused: Object.keys(sessionStorage).filter(k => k.startsWith('facemorph-words-v1:')).length };
+    })()`);
+    assert.deepEqual(
+      pruned,
+      { after: 1, refused: 0 },
+      'replaced or refused faces leave no words behind',
     );
   } finally {
     await l.browser.close();

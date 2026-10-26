@@ -2,6 +2,7 @@
 import { useEffect } from 'react';
 import { issueUrl } from '../links.ts';
 import { helpTopics, type Run } from './help.ts';
+import { StoredData } from './StoredData.tsx';
 
 /** Opens the Help topic a same-page link names (a refusal's Help link, a selector link, a shared #anchor). */
 function openTopic(hash: string): void {
@@ -88,6 +89,7 @@ export function Explain({ route = '', reference = '' }: { route?: string; refere
         }
       </p>
       <p>{'All of it runs here, on your device. Your photos and words are never uploaded.'}</p>
+      <StoredData />
       <Help />
       <h3>{'Questions'}</h3>
       <details className="next-faq">
@@ -181,7 +183,7 @@ export function Explain({ route = '', reference = '' }: { route?: string; refere
         </p>
         <p>
           {
-            'Completed generated faces are cached on this device when storage is available. Your last generated face can be restored on return; source photos are kept only in the current tab.'
+            'Completed generated faces are cached on this device when storage is available, and your last faces can be restored when you come back. Reloading in the same tab tries to bring back the words, seeds or photo file names you used as well; that is best effort, so in a new tab, or when the browser keeps nothing, a face comes back as "Restored face". Words and file names are never saved past this tab, and source photos are kept only in the current tab.'
           }
         </p>
         <p>

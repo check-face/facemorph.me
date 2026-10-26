@@ -13,6 +13,15 @@ import {
 import { nextScheduled as nextScheduledJs } from '../../src/Next/scheduler.mjs';
 import { MULTIPLE_FACES_MESSAGE as multipleFacesJs } from '../../src/Next/photo/align-photo.mjs';
 import {
+  editRevision,
+  forgetRestored,
+  inputsToBridge,
+  isRestored,
+  noteEdit,
+  toBridge,
+  withRestoredWords,
+} from '../session/restored-words.ts';
+import {
   FacadeError,
   readBoolean,
   readCroppedFile,
@@ -44,7 +53,7 @@ export * from './records.ts';
 
 /** Runs one job (a face, every face, or a morph) and settles with its Output; failures are in `errorMessage`. */
 export async function execute(request: Request): Promise<Output> {
-  return readOutput(await bridge.execute(request));
+  return readOutput(await bridge.execute({ ...request, inputs: inputsToBridge(request.inputs) }));
 }
 
 /** Progress of the job in flight. A malformed event is dropped and reported, never passed on. */
@@ -83,10 +92,17 @@ export interface MorphSettings {
 }
 /** Frames the settings would render, or null while a face is missing or fewer than two exist. */
 export function plannedFrames(options: MorphSettings): number | null {
-  const v = bridge.plannedFrames(options);
+  const v = bridge.plannedFrames(bridgeSettings(options));
   return v === null || v === undefined ? null : readInteger(v, 'plannedFrames');
 }
-export const rememberView = (options: MorphSettings): void => bridge.rememberView(options);
+export const rememberView = (options: MorphSettings): void =>
+  bridge.rememberView(bridgeSettings(options));
+/** Restored faces whose words came back unchanged reach the bridge as restored faces (fm-5hww). */
+function bridgeSettings(options: MorphSettings): MorphSettings {
+  return Array.isArray(options.inputs)
+    ? { ...options, inputs: inputsToBridge(options.inputs) }
+    : options;
+}
 
 /** Display-size frame URLs of the current morph for the slider, or null when they are not on this device. */
 export async function sliderFrames(): Promise<readonly string[] | null> {
@@ -104,22 +120,31 @@ export async function prepareFaceFile(id: string): Promise<Output> {
 }
 export const drawFace = (canvas: HTMLCanvasElement, id: string): void =>
   bridge.drawFace(canvas, id);
-export const invalidateFace = (id: string): void => bridge.invalidateFace(id);
+export const invalidateFace = (id: string): void => {
+  forgetRestored(id);
+  bridge.invalidateFace(id);
+};
 export const invalidateMorph = (): void => bridge.invalidateMorph();
-export const invalidateArrivalRestore = (): void => bridge.invalidateArrivalRestore();
+export const invalidateArrivalRestore = (): void => {
+  noteEdit();
+  bridge.invalidateArrivalRestore();
+};
 export const queueFace = (id: string, depth: number): void => bridge.queueFace(id, depth);
 export const cancelQueuedFace = (id: string): void => bridge.cancelQueuedFace(id);
 export const displayMilestone = (
   kind: 'preview' | 'generated-visible' | 'restored-visible',
 ): void => bridge.displayMilestone(kind);
 export async function checkCachedFace(item: Input): Promise<boolean> {
-  return readBoolean(await bridge.checkCachedFace(item), 'checkCachedFace');
+  // A restored face is already on screen: it needs no model.
+  if (isRestored(item)) return true;
+  return readBoolean(await bridge.checkCachedFace(toBridge(item)), 'checkCachedFace');
 }
 export const photoRevision = (id: string): number =>
   readInteger(bridge.photoRevision(id), 'photoRevision');
 export async function restoreLastResult(): Promise<Output | null> {
+  const since = editRevision();
   const v = await bridge.restoreLastResult();
-  return v === null || v === undefined ? null : readOutput(v);
+  return v === null || v === undefined ? null : withRestoredWords(readOutput(v), since);
 }
 
 // ---- names and previews --------------------------------------------------------------------------------------------
@@ -185,7 +210,10 @@ export async function shareMedia(id: string): Promise<string> {
   return readString(await bridge.shareMedia(id), 'shareMedia');
 }
 export async function exportProject(options: MorphSettings | null): Promise<string> {
-  return readString(await bridge.exportProject(options ?? {}), 'exportProject');
+  return readString(
+    await bridge.exportProject(options ? bridgeSettings(options) : {}),
+    'exportProject',
+  );
 }
 export async function importProject(request: {
   readonly file: Blob;
@@ -194,7 +222,11 @@ export async function importProject(request: {
   readonly provider?: 'auto' | 'cpu' | 'webgpu';
   readonly routeSnapshot?: import('../../src/contracts/scheduler.ts').RouteSnapshot;
 }): Promise<Output> {
-  return readOutput(await bridge.importProject(request));
+  return readOutput(
+    await bridge.importProject(
+      request.inputs ? { ...request, inputs: inputsToBridge(request.inputs) } : request,
+    ),
+  );
 }
 
 // ---- downloads -----------------------------------------------------------------------------------------------------

@@ -139,6 +139,12 @@ export function helpTopics(entry: string = siteEntry()): readonly HelpTopic[] {
         [
           'Downloaded models and finished faces are kept in browser storage as a convenience, not a promise: the browser may clear them when space runs low, in private windows or when you clear site data. Then they download or generate again.',
         ],
+        [
+          'Your last faces come back when you return. A reload in the same tab also tries to bring back the words, seeds or photo file names you used; that is best effort, and a face that comes back without them shows "Restored face". Words and file names are kept only in this tab, never in saved files.',
+        ],
+        [
+          'The line just above Help shows how much is saved for your faces. Clear removes the saved faces, the last session and the words kept in this tab, and keeps the downloaded models and your slider setting.',
+        ],
       ],
     },
     {

@@ -123,3 +123,22 @@ export function wordsBytes(scope?: { readonly sessionStorage?: Storage }): numbe
   }
   return n;
 }
+
+/**
+ * Keeps only the words of the faces the retained record still holds (`keys`, each `sessionKey:faceId`): a face
+ * that was replaced, removed or refused keeps no words behind it. Returns how many entries went.
+ */
+export function keepOnlyWords(
+  keys: ReadonlySet<string>,
+  scope?: { readonly sessionStorage?: Storage },
+): number {
+  const s = storage(scope);
+  if (!s) return 0;
+  const drop: string[] = [];
+  for (let i = 0; i < s.length; i++) {
+    const k = s.key(i);
+    if (k?.startsWith(WORDS_PREFIX) && !keys.has(k.slice(WORDS_PREFIX.length))) drop.push(k);
+  }
+  for (const k of drop) s.removeItem(k);
+  return drop.length;
+}
