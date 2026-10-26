@@ -13,7 +13,7 @@ on:
   workflow_dispatch:
 jobs:
   check:
-    runs-on: [self-hosted, eris]
+    runs-on: [self-hosted, linux-x64]
     steps:
       - uses: actions/checkout@v4
         with:
@@ -22,6 +22,7 @@ jobs:
         with:
           node-version: '24'
       - uses: ./.github/actions/setup-workspace # node_modules for the lockfile, shared on the runner (fm-98po)
+      - uses: ./.github/actions/setup-runtime
       - name: Unit tests of the checks
         run: >-
           node --test scripts/build/identity.test.mjs scripts/build/check-tests-listed.test.mjs
@@ -49,7 +50,7 @@ jobs:
         run: node scripts/build/identity.mjs --coverage
       - run: npm run build
       - name: Worker graphs against their pins and the qualified runtime
-        run: node scripts/build/identity.mjs --workers apps/web/dist --hosted "$HOME/.cache/facemorph-device-lab/runtime-public"
+        run: node scripts/build/identity.mjs --workers apps/web/dist --hosted "$FACEMORPH_RUNTIME_DIR"
       - name: Artifact identity of the control
         env:
           GITHUB_TOKEN: ${{ github.token }}

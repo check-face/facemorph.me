@@ -20,6 +20,7 @@ import {
   readFileSync,
   renameSync,
   rmSync,
+  statSync,
   writeFileSync,
 } from 'node:fs';
 import { createHash } from 'node:crypto';
@@ -111,7 +112,7 @@ export async function acquire({
       const [row, source] = sources[next++];
       const path = join(cache, row.path);
       const had = fileDigest(path);
-      if (had === row.sha256) {
+      if (had === row.sha256 && (row.bytes == null || statSync(path).size === row.bytes)) {
         result.kept++;
         log({ path: row.path, status: 'kept' });
         continue;

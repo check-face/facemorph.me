@@ -1,0 +1,20 @@
+name: setup-runtime
+description: Complete runtime inventory, verified on cold acquisition and cache hits; no classic checkout.
+runs:
+  using: composite
+  steps:
+    - uses: actions/cache@v4
+      with:
+        path: .cache/ci-runtime
+        key: runtime-pins-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('import/build-inputs.json') }}
+    - name: Acquire every pinned runtime file
+      shell: bash
+      env:
+        ACCEPT_MODEL_TERMS: 'yes'
+      run: node scripts/runtime/acquire-ci.mjs --cache .cache/ci-runtime
+    - name: Verify the runtime worker graph, including cache hits
+      shell: bash
+      run: |
+        node scripts/runtime/check-pins.mjs --runtime .cache/ci-runtime > "$RUNNER_TEMP/runtime-pins.jsonl"
+        tail -1 "$RUNNER_TEMP/runtime-pins.jsonl"
+        echo "FACEMORPH_RUNTIME_DIR=$GITHUB_WORKSPACE/.cache/ci-runtime" >> "$GITHUB_ENV"

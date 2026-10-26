@@ -17,7 +17,7 @@ on:
         type: string
 jobs:
   check:
-    runs-on: [self-hosted, eris]
+    runs-on: [self-hosted, linux-x64]
     env:
       GH_TOKEN: ${{ github.token }}
     steps:

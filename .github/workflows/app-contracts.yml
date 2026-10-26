@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 jobs:
   check:
-    runs-on: [self-hosted, eris]
+    runs-on: [self-hosted, linux-x64]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
