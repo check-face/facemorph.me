@@ -9,6 +9,7 @@ import { chromium, devices, type Locator } from 'playwright';
 import { readIdentity } from '../../../../scripts/import/build-next.mjs';
 import { startControl, chromiumArgs, ORIGIN, REPO } from '../parity/control-server.ts';
 import { press } from '../support/operate.ts';
+import { INSTALL_HOOK } from '../parity/elmish-probe.ts';
 import { typeMatchesBytes } from '../../src/media/export-policy.ts';
 
 const runtime = process.env['FACEMORPH_RUNTIME_DIR'] ?? join(REPO, '.cache/ci-runtime');
@@ -51,6 +52,7 @@ test(
           ignoreHTTPSErrors: true,
           acceptDownloads: true,
         });
+        await context.addInitScript(INSTALL_HOOK);
         await context.addInitScript(() => {
           // Observe real inference dispatches; cached weights alone do not prove zero inference.
           const calls: string[] = [];
@@ -97,6 +99,13 @@ test(
           await page.goto(ORIGIN);
           const tiles = page.locator('section.next-face');
           await tiles.nth(1).waitFor();
+          // Startup inventory can replace the reporting prompt with the model offer. Observe its
+          // actual completion before operating either prompt, so the target cannot vanish mid-press.
+          await page.waitForFunction(
+            () =>
+              (window as unknown as { __elmish?: { model?: { Downloads?: { known: boolean } } } })
+                .__elmish?.model?.Downloads?.known === true,
+          );
           for (const control of [
             page.locator('.next-model-toast').getByRole('button', { name: 'Not now' }),
             page.getByRole('button', { name: 'Ask me later' }),
