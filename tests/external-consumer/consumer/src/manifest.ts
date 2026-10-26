@@ -3,7 +3,7 @@ import {
   MANIFEST_SCHEMA_MAJOR,
   parseModelManifest,
   type ModelManifestV1,
-} from '@facemorph/browser-model-manager';
+} from 'browser-model-manager';
 
 export function checkManifest(json: unknown): ModelManifestV1 | string {
   const r = parseModelManifest(json);

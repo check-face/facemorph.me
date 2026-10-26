@@ -33,7 +33,7 @@ import { packManagerFresh } from '../../stylegan-js/test/support/packed-manager.
 import { packFresh, REPO } from '../../stylegan-js/test/support/packed.ts';
 
 const PKG = join(REPO, 'packages/browser-model-manager');
-const PACKAGE_NAME = '@facemorph/browser-model-manager';
+const PACKAGE_NAME = 'browser-model-manager';
 const README = readFileSync(join(PKG, 'README.md'), 'utf8');
 
 interface Block {
@@ -155,7 +155,11 @@ test('the install block installs the packed tarball into a clean project, and ev
   assert.equal(status, 0, output);
   const ours = run(tsc, ['-p', 'tsconfig.json', '--listFilesOnly'], consumer)
     .split('\n')
-    .filter((f) => f.includes('/node_modules/@facemorph/'));
+    .filter((f) =>
+      /\/node_modules\/(?:stylegan-js|browser-model-manager|cloudflare-model-host|@facemorph\/[\w-]+)\//.test(
+        f,
+      ),
+    );
   assert.ok(ours.some((f) => f.includes(`/${PACKAGE_NAME}/`)));
   assert.deepEqual(
     ours.filter((f) => !f.endsWith('.d.ts')),

@@ -1,10 +1,10 @@
 // A crop the person confirmed with "Use this crop" is encoded as it stands (fm-6ib8, crop.fix). Detection only
 // proposes a crop before OK; after it, the approved pixels get the confirmed-crop policy's single derivation
-// (@facemorph/stylegan-js deriveEncoderInput) and go straight to e4e, with no detector, alignment or warp. The frozen
+// (stylegan-js deriveEncoderInput) and go straight to e4e, with no detector, alignment or warp. The frozen
 // ConfirmedCrop record travels with the cropped File, so the runtime finds it wherever the file goes. The runtime's
 // encode queue (operations/encode-queue.ts, fm-fy2.8) holds the decoded pixels and the derived tensor for each slot,
 // so a retry reuses them rather than deriving again.
-import {createConfirmedCrop,CROP_PREPROCESSING_POLICY_V1} from '@facemorph/stylegan-js';
+import {createConfirmedCrop,CROP_PREPROCESSING_POLICY_V1} from 'stylegan-js';
 import {cropPhoto} from './crop.mjs';
 
 // The closed set of terminal outcomes for an eligible confirmed crop, each with plain recovery text. A cancelled

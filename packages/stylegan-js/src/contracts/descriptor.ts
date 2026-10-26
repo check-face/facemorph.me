@@ -434,7 +434,7 @@ export type DeveloperJourneyStep =
   | {
       readonly step: 4;
       readonly kind: 'install-and-load';
-      readonly packages: readonly ('@facemorph/stylegan-js' | '@facemorph/browser-model-manager')[];
+      readonly packages: readonly ('stylegan-js' | 'browser-model-manager')[];
       readonly load: 'manager-grant' | 'direct';
       readonly descriptor: ModelDescriptor;
     }

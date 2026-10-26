@@ -7,8 +7,8 @@
 // The types are the contract; `schedule` is a pure reference model of the admission rules, so the walkthroughs
 // in test/contracts run as plain-value tests. The operation controller implements the real scheduler.
 
-import type { AssetLease } from '@facemorph/browser-model-manager';
-import type { ComputeRoute } from '@facemorph/stylegan-js';
+import type { AssetLease } from 'browser-model-manager';
+import type { ComputeRoute } from 'stylegan-js';
 
 export const MAX_HEAVY_OPS_PER_PROVIDER_CONTEXT = 1;
 /** One RGBA buffer of the largest accepted source (120 x 1024^2 pixels): 480 MiB. */

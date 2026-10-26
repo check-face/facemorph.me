@@ -1,6 +1,6 @@
 // The developer-hosted example (examples/developer-hosted, fm-19eb) from the packed tarballs in real Chromium on the CPU.
 //
-// @facemorph/browser-model-manager and @facemorph/stylegan-js are built fresh from their sources and `npm pack`ed
+// browser-model-manager and stylegan-js are built fresh from their sources and `npm pack`ed
 // (packages/stylegan-js/test/support/packed.ts, packed-manager.ts), both tarballs are installed offline into a clean
 // project in os.tmpdir() (outside the monorepo), the example is compiled there against the emitted .d.ts only, and its
 // index.html is served as-is over HTTPS with COOP/COEP (an import map onto node_modules; no bundler). A second local
@@ -232,7 +232,11 @@ before(async () => {
   }
   const ours = run(TSC, ['-p', 'tsconfig.json', '--listFilesOnly'], project)
     .split('\n')
-    .filter((f) => f.includes('/node_modules/@facemorph/'));
+    .filter((f) =>
+      /\/node_modules\/(?:stylegan-js|browser-model-manager|cloudflare-model-host|@facemorph\/[\w-]+)\//.test(
+        f,
+      ),
+    );
   compiled = {
     status,
     output: output.trim(),
@@ -310,8 +314,8 @@ test(
   () => {
     assert.ok(compiled);
     assert.equal(compiled.status, 0, compiled.output);
-    assert.ok(compiled.declarations.some((f) => f.includes('/@facemorph/browser-model-manager/')));
-    assert.ok(compiled.declarations.some((f) => f.includes('/@facemorph/stylegan-js/')));
+    assert.ok(compiled.declarations.some((f) => f.includes('/browser-model-manager/')));
+    assert.ok(compiled.declarations.some((f) => f.includes('/stylegan-js/')));
     assert.deepEqual(compiled.sources, []);
   },
 );

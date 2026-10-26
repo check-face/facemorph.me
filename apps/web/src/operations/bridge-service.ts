@@ -1,6 +1,6 @@
 // Serial provider work with intent ownership; file preparation has its own budget.
 // React supplies descriptors/blockers; this boundary owns jobs through settlement.
-import type { ComputeRoute } from '@facemorph/stylegan-js';
+import type { ComputeRoute } from 'stylegan-js';
 import { nextScheduled } from '../Next/scheduler.mjs';
 import { IntentRegistry } from './intents.ts';
 import { morphFrameFailure } from './morph-budget.ts';

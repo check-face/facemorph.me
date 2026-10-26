@@ -1,4 +1,4 @@
-# @facemorph/stylegan-js
+# stylegan-js
 
 StyleGAN2 mapping, synthesis and e4e photo encoding in the browser, with morphs, blends and saved files that
 reopen exactly. It runs a converted StyleGAN2 generator in a web page or worker on the CPU (ONNX Runtime WASM) or
@@ -23,7 +23,7 @@ See also [capabilities](docs/capabilities.md) and [saved file formats](docs/form
 
 <!-- docs-test: install -->
 ```sh
-npm install @facemorph/stylegan-js
+npm install stylegan-js
 ```
 
 The package is ESM only, with `.d.ts` declarations, no runtime dependencies and `"sideEffects": false`. Importing
@@ -40,7 +40,7 @@ references.
 The order of calls is always the same:
 
 1. **Read bytes only through a verifying reader.** `createVerifyingReader` in the example checks each chunk's size
-   and SHA-256 before the engine sees it. With `@facemorph/browser-model-manager`, its verified local reader takes
+   and SHA-256 before the engine sees it. With `browser-model-manager`, its verified local reader takes
    that place.
 2. **Load a generator for one route**: `loadCpuGenerator` (ONNX Runtime WASM), or `loadOrtWebGpuGenerator` /
    `loadDirectWebGpuGenerator` from `./engine/webgpu`.
@@ -71,7 +71,7 @@ back to the CPU never counts as a WebGPU pass.
   runtime manifest; they are read through your verifying reader and imported from those verified bytes.
 - **Workers.** Run the engine in a dedicated worker with `serveEngine(port, engine)` and talk to it from the page
   with `connectEngine(port)`. Bundlers need nothing special: the package has no `new Worker` of its own and no
-  asset URLs. A CPU-only worker should import the WebGPU loaders with `import('@facemorph/stylegan-js/engine/webgpu')`
+  asset URLs. A CPU-only worker should import the WebGPU loaders with `import('stylegan-js/engine/webgpu')`
   so they are bundled into a separate chunk.
 
 ## Resources, cancellation, errors and progress
@@ -121,7 +121,7 @@ Photo-to-latent inversion needs a separately trained encoder compatible with the
 ### Non-face models
 
 Non-face support is **unqualified** until the joint non-face proof passes: converted AFHQ cat loaded through
-`@facemorph/browser-model-manager`, mapped, synthesized, morphed and saved from the packed packages (bead
+`browser-model-manager`, mapped, synthesized, morphed and saved from the packed packages (bead
 `fm-tqub`). This package is extracted from a face app; that is not generic dataset support.
 
 [`examples/non-face`](examples/non-face) loads converted AFHQ cat on the CPU, manager-loaded or caller-loaded, maps
@@ -152,7 +152,7 @@ import {
   readRecovery,
   type LatentTensor,
   type RgbaPixels,
-} from '@facemorph/stylegan-js';
+} from 'stylegan-js';
 
 // In an app these are a face's W+ latent and the RGBA pixels `synthesize` returned for it.
 const d = FFHQ_1024_DESCRIPTOR;
@@ -214,6 +214,15 @@ quality. [Saved file formats](docs/formats.md) gives every format, limit and dam
   or SHA-256; the model host is serving different files from the ones the manifest names.
 - **A saved file does not reopen.** `readRecovery` says why: `missing`, `damaged` (with the reason) or
   `incompatible-schema` (with the version the file claims).
+
+## Related packages
+
+- [browser-model-manager](../browser-model-manager/README.md) asks the person before any download, then acquires,
+  verifies and caches the model files; the engine loads them through its verified local reader.
+- [cloudflare-model-host](../cloudflare-model-host/README.md) stages converted models for any HTTPS static host, with
+  an optional Cloudflare guide.
+- [model-conv](../model-conv/README.md) converts a trusted StyleGAN2 checkpoint into the files this package loads. The
+  [compatibility table](../model-conv/docs/compatibility.md) lists the checkpoints that are qualified.
 
 ## Licence and model weights
 

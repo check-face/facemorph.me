@@ -4,7 +4,7 @@
 // media: shown when its pixels decode, saved as its original bytes, never computed with. Reasons are data, like
 // route-admission refusals. Pure apart from reading the file's bytes: nothing here fetches, and no URL found in
 // a file's metadata is followed.
-import { inspectStill, readRecovery, type StillKind } from '@facemorph/stylegan-js';
+import { inspectStill, readRecovery, type StillKind } from 'stylegan-js';
 import { APP_DESCRIPTORS } from './recovery-files.ts';
 
 /** Why a face holds a file instead of using it: a key, its plain sentence and a Help anchor. */

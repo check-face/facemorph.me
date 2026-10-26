@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -72,7 +72,14 @@ test('queue-cancelled heads retry, but failed gates and completed qualifications
   assert.equal(qualificationAttempted([cancelled, run()], sha), true);
 });
 
-for (const outcome of ['cancelled', 'success', 'active', 'stale-base'] as const)
+for (const outcome of [
+  'cancelled',
+  'success',
+  'active',
+  'stale-base',
+  'failed',
+  'stale-failed',
+] as const)
   test(`dispatch CLI reconciles ${outcome} without replacing another group`, (t) => {
     const scratch = mkdtempSync(join(tmpdir(), 'dependency-controller-queue-'));
     t.after(() => rmSync(scratch, { recursive: true, force: true }));
@@ -84,6 +91,17 @@ for (const outcome of ['cancelled', 'success', 'active', 'stale-base'] as const)
     second.number++;
     second.head.ref = 'dependabot/npm_and_yarn/react-and-ui-hash';
     second.head.sha = 'c'.repeat(40);
+    const stale = outcome === 'stale-base' || outcome === 'stale-failed';
+    const failed = outcome === 'failed' || outcome === 'stale-failed';
+    const branchRuns = [
+      {
+        ...run(),
+        conclusion: outcome === 'cancelled' ? 'cancelled' : failed ? 'failure' : 'success',
+      },
+      ...(failed ? [{ ...run(), id: 41 }] : []),
+    ];
+    const branchJobs = jobs();
+    if (failed) branchJobs[0]!.conclusion = 'failure';
     writeFileSync(
       join(scratch, 'gh'),
       `#!/usr/bin/env node
@@ -91,17 +109,17 @@ const fs = require('node:fs');
 const args = process.argv.slice(2), endpoint = args[3];
 fs.appendFileSync(process.env.PROBE_CALLS, JSON.stringify(args) + '\\n');
 if (args[0] === 'pr' && args[1] === 'merge') process.exit(0);
-const prs = ${JSON.stringify(outcome === 'stale-base' ? [first] : [first, second])};
+const prs = ${JSON.stringify(stale || failed ? [first] : [first, second])};
 let value;
 if (endpoint.endsWith('/pulls?state=open&base=main&per_page=100')) value = prs;
-else if (endpoint.endsWith('/git/ref/heads/main')) value = {object:{sha:${JSON.stringify(outcome === 'stale-base' ? 'd'.repeat(40) : first.base.sha)}}};
+else if (endpoint.endsWith('/git/ref/heads/main')) value = {object:{sha:${JSON.stringify(stale ? 'd'.repeat(40) : first.base.sha)}}};
 else if (endpoint.endsWith('/runs?event=workflow_dispatch&per_page=100'))
   value = {workflow_runs:${JSON.stringify(outcome === 'active' ? [{ ...run(), status: 'pending', conclusion: null }] : [])}};
 else if (endpoint.includes('/files?')) value = [{filename:'package.json'}];
 else if (endpoint.includes('/compare/')) value = {merge_base_commit:{sha:prs[0].base.sha}};
 else if (endpoint.includes('/runs?event=workflow_dispatch&branch='))
-  value = {workflow_runs:[${JSON.stringify({ ...run(), conclusion: outcome === 'cancelled' ? 'cancelled' : 'success' })}]};
-else if (endpoint.endsWith('/jobs?per_page=100&page=1')) value = {jobs:${JSON.stringify(jobs())}};
+  value = {workflow_runs:${JSON.stringify(branchRuns)}};
+else if (endpoint.endsWith('/jobs?per_page=100&page=1')) value = {jobs:${JSON.stringify(branchJobs)}};
 else if (endpoint.endsWith('/dispatches') || endpoint.endsWith('/update-branch')) {
   fs.readFileSync(0, 'utf8');
 } else value = prs.find(pr => endpoint.endsWith('/pulls/' + pr.number));
@@ -124,17 +142,38 @@ else if (!endpoint.endsWith('/dispatches') && !endpoint.endsWith('/update-branch
         },
       },
     );
-    const eventResult = JSON.parse(output);
-    assert.equal(
-      eventResult.event,
+    const events = output
+      .trim()
+      .split('\n')
+      .map((line) => JSON.parse(line));
+    assert.deepEqual(
+      events.map((event) => event.event),
       outcome === 'success'
-        ? 'qualification-reviewed'
+        ? ['qualification-reviewed']
         : outcome === 'active'
-          ? 'qualification-in-flight'
-          : outcome === 'stale-base'
-            ? 'base-update-requested'
-            : 'qualification-dispatched',
+          ? ['qualification-in-flight']
+          : stale
+            ? ['qualification-reviewed', 'base-update-requested']
+            : failed
+              ? ['qualification-reviewed', 'already-qualified-or-running']
+              : ['qualification-dispatched'],
     );
+    const reviews = events.filter((event) => event.event === 'qualification-reviewed');
+    assert.equal(reviews.length, outcome === 'success' || stale || failed ? 1 : 0);
+    if (reviews.length) {
+      assert.equal(reviews[0].run, run().id);
+      assert.deepEqual(reviews[0].problems, [
+        ...(failed
+          ? [
+              'main qualification did not pass',
+              'required check missing, skipped, ambiguous or failed: dependency-currency',
+            ]
+          : []),
+        ...(stale
+          ? ['main advanced beyond the qualified branch; update and requalify before merging']
+          : []),
+      ]);
+    }
     const invoked = readFileSync(calls, 'utf8')
       .trim()
       .split('\n')
@@ -143,6 +182,15 @@ else if (!endpoint.endsWith('/dispatches') && !endpoint.endsWith('/update-branch
       invoked.filter((args) => args[3]?.endsWith('/dispatches')).length,
       outcome === 'cancelled' ? 1 : 0,
     );
+    assert.equal(
+      invoked.filter((args) => args[3]?.endsWith('/update-branch')).length,
+      stale ? 1 : 0,
+    );
+    if (stale) {
+      const gateReview = invoked.findIndex((args) => args[3]?.includes('/jobs?'));
+      const branchUpdate = invoked.findIndex((args) => args[3]?.endsWith('/update-branch'));
+      assert.ok(gateReview >= 0 && gateReview < branchUpdate);
+    }
     const merges = invoked.filter((args) => args[0] === 'pr' && args[1] === 'merge');
     assert.equal(merges.length, outcome === 'success' ? 1 : 0);
     if (merges.length) assert.deepEqual(merges[0]!.slice(-2), ['--match-head-commit', sha]);
@@ -151,6 +199,73 @@ else if (!endpoint.endsWith('/dispatches') && !endpoint.endsWith('/update-branch
       false,
     );
   });
+
+test('merge CLI retains failed native gate reasons when live main has advanced', (t) => {
+  const scratch = mkdtempSync(join(tmpdir(), 'dependency-controller-failed-merge-'));
+  t.after(() => rmSync(scratch, { recursive: true, force: true }));
+  const event = join(scratch, 'event.json');
+  const calls = join(scratch, 'calls.jsonl');
+  const pr = pull();
+  const failedRun = { ...run(), conclusion: 'failure' };
+  const failedJobs = jobs();
+  failedJobs[0]!.conclusion = 'failure';
+  const liveBase = 'd'.repeat(40);
+  writeFileSync(event, JSON.stringify({ workflow_run: { id: failedRun.id } }));
+  writeFileSync(
+    join(scratch, 'gh'),
+    `#!/usr/bin/env node
+const fs = require('node:fs');
+const args = process.argv.slice(2), endpoint = args[3];
+fs.appendFileSync(process.env.PROBE_CALLS, JSON.stringify(args) + '\\n');
+if (args[0] === 'pr' && args[1] === 'merge') process.exit(0);
+let value;
+if (endpoint.endsWith('/actions/runs/${failedRun.id}')) value = ${JSON.stringify(failedRun)};
+else if (endpoint.includes('/pulls?state=open&base=main&head=')) value = [${JSON.stringify(pr)}];
+else if (endpoint.endsWith('/pulls/${pr.number}')) value = ${JSON.stringify(pr)};
+else if (endpoint.endsWith('/git/ref/heads/main')) value = {object:{sha:${JSON.stringify(liveBase)}}};
+else if (endpoint.endsWith('/compare/${liveBase}...${pr.head.sha}')) value = {merge_base_commit:{sha:${JSON.stringify(pr.base.sha)}}};
+else if (endpoint.endsWith('/jobs?per_page=100&page=1')) value = {jobs:${JSON.stringify(failedJobs)}};
+else if (endpoint.endsWith('/files?per_page=100&page=1')) value = ${JSON.stringify(files.map((filename) => ({ filename })))};
+else throw Error('unexpected API: ' + endpoint);
+process.stdout.write(JSON.stringify(value));
+`,
+    { mode: 0o755 },
+  );
+  const result = spawnSync(
+    process.execPath,
+    [fileURLToPath(new URL('./dependency-controller.ts', import.meta.url)), 'merge'],
+    {
+      encoding: 'utf8',
+      timeout: 12_000,
+      env: {
+        ...process.env,
+        PATH: `${scratch}:${process.env.PATH}`,
+        GITHUB_REPOSITORY: 'probe/repository',
+        GITHUB_EVENT_PATH: event,
+        PROBE_CALLS: calls,
+      },
+    },
+  );
+  assert.equal(result.status, 1, result.stdout + result.stderr);
+  const reviewed = JSON.parse(result.stdout);
+  assert.equal(reviewed.event, 'qualification-reviewed');
+  assert.equal(reviewed.run, failedRun.id);
+  assert.equal(reviewed.pr, pr.number);
+  assert.equal(reviewed.head, pr.head.sha);
+  assert.deepEqual(reviewed.problems, [
+    'main qualification did not pass',
+    'required check missing, skipped, ambiguous or failed: dependency-currency',
+    'main advanced beyond the qualified branch; update and requalify before merging',
+  ]);
+  const invoked = readFileSync(calls, 'utf8')
+    .trim()
+    .split('\n')
+    .map((line) => JSON.parse(line) as string[]);
+  assert.equal(
+    invoked.some((args) => args[0] === 'pr' && args[1] === 'merge'),
+    false,
+  );
+});
 
 test('a native grouped bot PR with exact branch qualification is eligible', () => {
   assert.equal(dependencyGroup(pull(), files), 'build-tools');

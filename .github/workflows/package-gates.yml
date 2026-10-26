@@ -80,6 +80,14 @@ jobs:
           node scripts/packages/consumer-gates/run.mjs --strict-scan --report test-results/package-gates/report.json "${args[@]}"
       - name: npm name check and API reference self-tests (fm-tohj)
         run: node --test scripts/packages/npm-names.test.mjs scripts/packages/api-reference.test.mjs
+      - name: Package docs links resolve, with final names and cross-links (fm-19eb)
+        run: node scripts/packages/docs-links.mjs
+      - name: npm names against the live registry, read-only (fm-tohj)
+        # Anonymous GETs only. Exit 1 names a needed rename; exit 2 is a registry or network error, never "available".
+        run: |
+          set -o pipefail
+          mkdir -p test-results/package-gates
+          node scripts/packages/npm-names.mjs --json | tee test-results/package-gates/npm-names.json
       - name: API reference matches the emitted declarations (fm-tohj)
         run: |
           npm run build -w packages/stylegan-js

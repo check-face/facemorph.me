@@ -1,4 +1,4 @@
-@facemorph/browser-model-manager bundles no third-party code. Its emitted JavaScript imports only
-@facemorph/stylegan-js from the same repository (for types and contracts). The model and runtime bytes it acquires
+browser-model-manager bundles no third-party code. Its emitted JavaScript imports only
+stylegan-js from the same repository (for types and contracts). The model and runtime bytes it acquires
 (for example ONNX Runtime Web, MIT, Microsoft, and model weights) are not part of this package; their terms are
 recorded per model in the docs and travel with those bytes.

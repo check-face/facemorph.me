@@ -21,7 +21,7 @@ import {
   symlinkSync,
 } from 'node:fs';
 import { cpus, homedir, tmpdir } from 'node:os';
-import { join, posix } from 'node:path';
+import { dirname, join, posix, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT_CONFIGS = new Set([
@@ -34,28 +34,30 @@ const ROOT_CONFIGS = new Set([
 ]);
 const TYPED = /\.(?:[cm]?[jt]sx?|json)$/;
 
-/** Workspaces of the tree: directory, package name, @facemorph dependencies and the typecheck commands. */
+/** Workspaces of the tree: directory, package name, dependencies on other workspaces and the typecheck commands. */
 export function workspaces(read) {
   const root = JSON.parse(read('package.json'));
-  return (root.workspaces ?? []).flatMap((dir) => {
-    let meta;
+  const metas = (root.workspaces ?? []).flatMap((dir) => {
     try {
-      meta = JSON.parse(read(`${dir}/package.json`));
+      return [{ dir, meta: JSON.parse(read(`${dir}/package.json`)) }];
     } catch {
       return [];
     }
+  });
+  const names = new Set(metas.map(({ meta }) => meta.name));
+  return metas.map(({ dir, meta }) => {
     const deps = Object.keys({
       ...meta.dependencies,
       ...meta.devDependencies,
       ...meta.peerDependencies,
-    }).filter((name) => name.startsWith('@facemorph/'));
+    }).filter((name) => names.has(name));
     const script = meta.scripts?.typecheck ?? '';
     const projects = script
       .split('&&')
       .map((part) => /^\s*tsc -p (\S+)\s*$/.exec(part)?.[1])
       .filter(Boolean)
       .map((p) => posix.normalize(`${dir}/${p}`));
-    return [{ dir, name: meta.name, deps, projects, script }];
+    return { dir, name: meta.name, deps, projects, script };
   });
 }
 
@@ -160,15 +162,21 @@ export async function typecheckCommit({ root, head, base, cache, log = () => {} 
     execFileSync('sh', ['-c', `git -C "$0" archive "$1" | tar -x -C "$2"`, root, head, temp]);
     // Installed dependencies from the checkout; workspace packages from the commit.
     const modules = join(temp, 'node_modules');
-    mkdirSync(join(modules, '@facemorph'), { recursive: true });
+    // A workspace package resolves to this tree's copy: its name (scoped or not) links to the exported directory.
+    const own = new Map(ws.map((w) => [w.name, w.dir]));
+    mkdirSync(modules, { recursive: true });
     for (const name of readdirSync(join(root, 'node_modules'))) {
-      if (name === '@facemorph') continue;
-      symlinkSync(join(root, 'node_modules', name), join(modules, name));
+      if (name.startsWith('@')) {
+        mkdirSync(join(modules, name), { recursive: true });
+        for (const sub of readdirSync(join(root, 'node_modules', name)))
+          if (!own.has(`${name}/${sub}`))
+            symlinkSync(join(root, 'node_modules', name, sub), join(modules, name, sub));
+      } else if (!own.has(name)) symlinkSync(join(root, 'node_modules', name), join(modules, name));
     }
     for (const w of ws) {
-      const short = w.name.replace('@facemorph/', '');
-      if (w.name.startsWith('@facemorph/'))
-        symlinkSync(join('..', '..', w.dir), join(modules, '@facemorph', short));
+      const link = join(modules, ...w.name.split('/'));
+      mkdirSync(dirname(link), { recursive: true });
+      symlinkSync(relative(dirname(link), join(temp, w.dir)), link);
       if (existsSync(join(root, w.dir, 'node_modules')))
         symlinkSync(join(root, w.dir, 'node_modules'), join(temp, w.dir, 'node_modules'));
     }

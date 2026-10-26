@@ -40,11 +40,7 @@ import { replayFirstVisit, replayRows, type Replayers } from '../controller/repl
 import { fetchControl } from '../../../../scripts/import/fetch-control.mjs';
 import { createHash } from 'node:crypto';
 import { crc32 } from 'node:zlib';
-import {
-  embedRecovery as embedSchema2,
-  readMp4Project,
-  readRecovery,
-} from '@facemorph/stylegan-js';
+import { embedRecovery as embedSchema2, readMp4Project, readRecovery } from 'stylegan-js';
 import { generationIdentity } from '../../src/Next/browser/identity.mjs';
 
 const app = fileURLToPath(new URL('../../', import.meta.url));

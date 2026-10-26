@@ -1,7 +1,7 @@
 // Executed from the clean consumer's Vite output: every runtime API comes from its installed packs.
-import { FFHQ_1024_DESCRIPTOR } from '@facemorph/stylegan-js';
-import * as engine from '@facemorph/stylegan-js/engine';
-import * as manager from '@facemorph/browser-model-manager';
+import { FFHQ_1024_DESCRIPTOR } from 'stylegan-js';
+import * as engine from 'stylegan-js/engine';
+import * as manager from 'browser-model-manager';
 
 const require = (condition, message) => {
   if (!condition) throw Error(message);

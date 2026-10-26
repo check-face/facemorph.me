@@ -5,7 +5,7 @@
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { deflateSync } from 'node:zlib';
-import { pillowBilinearRgb } from '@facemorph/stylegan-js';
+import { pillowBilinearRgb } from 'stylegan-js';
 
 const repo = new URL('../../../../', import.meta.url).pathname;
 

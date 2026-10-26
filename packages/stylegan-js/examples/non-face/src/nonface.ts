@@ -1,4 +1,4 @@
-// The non-face example (fm-tohj): AFHQ cat 512 through @facemorph/stylegan-js on the CPU. Shared by both variants:
+// The non-face example (fm-tohj): AFHQ cat 512 through stylegan-js on the CPU. Shared by both variants:
 // the manager-loaded one (manager-loaded.ts) and the caller-loaded one (caller-loaded.ts) differ only in how verified
 // bytes reach the engine, which is the `prepare` step each hands to `createNonFaceExample`.
 //
@@ -28,7 +28,7 @@ import {
   type MorphWriter,
   type RecoveryMetadataV3,
   type RgbaPixels,
-} from '@facemorph/stylegan-js';
+} from 'stylegan-js';
 import {
   browserModuleHost,
   cpuRuntimeAssets,
@@ -42,7 +42,7 @@ import {
   type LoadedRuntime,
   type LocalAssetReader,
   type NoiseAsset,
-} from '@facemorph/stylegan-js/engine';
+} from 'stylegan-js/engine';
 
 export const DESCRIPTOR = AFHQ_CAT_512_DESCRIPTOR;
 

@@ -32,6 +32,8 @@ export interface QualificationJob {
 }
 
 const GROUPS = ['build-tools', 'react-and-ui', 'onnx-runtime', 'test-tools'];
+const STALE_BASE_PROBLEM =
+  'main advanced beyond the qualified branch; update and requalify before merging';
 export const ORT_MIRROR_GROUP = 'onnx-runtime';
 
 /** Main has one pending slot; another group must not replace a queued qualification. */
@@ -258,22 +260,20 @@ async function prepareOrtMirror(
   return api<DependencyPullRequest>(`repos/${repo}/pulls/${pr.number}`);
 }
 
-/** Scheduled scans also reconcile success: a queued workflow_run delivery may be replaced. */
+/** Scheduled scans also review completed gates: a workflow_run delivery may be replaced. */
 function mergeQualification(
   repo: string,
   run: QualificationRun,
   pr: DependencyPullRequest,
+  extraProblems: readonly string[] = [],
 ): boolean {
   const policy = JSON.parse(
     readFileSync(new URL('./dependency-policy.json', import.meta.url), 'utf8'),
   ) as DependencyPolicy;
-  const problems = qualificationProblems(
-    run,
-    jobsFor(repo, run.id),
-    pr,
-    filesFor(repo, pr.number),
-    policy,
-  );
+  const problems = [
+    ...qualificationProblems(run, jobsFor(repo, run.id), pr, filesFor(repo, pr.number), policy),
+    ...extraProblems,
+  ];
   console.log(
     JSON.stringify({
       event: 'qualification-reviewed',
@@ -337,7 +337,20 @@ async function main() {
       const comparison = api<{ merge_base_commit: { sha: string } }>(
         `repos/${repo}/compare/${base}...${pr.head.sha}`,
       );
-      if (comparison.merge_base_commit.sha !== base) {
+      const stale = comparison.merge_base_commit.sha !== base;
+      const existing = api<{ workflow_runs: QualificationRun[] }>(
+        `repos/${repo}/actions/workflows/main.yml/runs?event=workflow_dispatch&branch=${encodeURIComponent(pr.head.ref)}&per_page=30`,
+      ).workflow_runs;
+      // GitHub lists newest runs first. Preserve the latest completed gate receipt before rebasing.
+      const completed = existing.find(
+        (run) =>
+          run.head_sha === pr.head.sha &&
+          run.status === 'completed' &&
+          run.conclusion !== 'cancelled',
+      );
+      if (completed && mergeQualification(repo, completed, pr, stale ? [STALE_BASE_PROBLEM] : []))
+        return;
+      if (stale) {
         api(`repos/${repo}/pulls/${number}/update-branch`, 'PUT', {
           expected_head_sha: pr.head.sha,
         });
@@ -345,16 +358,6 @@ async function main() {
         continue;
       }
       // GITHUB_TOKEN writes do not emit push/PR workflow events. Dispatch explicitly.
-      const existing = api<{ workflow_runs: QualificationRun[] }>(
-        `repos/${repo}/actions/workflows/main.yml/runs?event=workflow_dispatch&branch=${encodeURIComponent(pr.head.ref)}&per_page=30`,
-      ).workflow_runs;
-      const succeeded = existing.find(
-        (run) =>
-          run.head_sha === pr.head.sha &&
-          run.status === 'completed' &&
-          run.conclusion === 'success',
-      );
-      if (succeeded && mergeQualification(repo, succeeded, pr)) return;
       if (qualificationAttempted(existing, pr.head.sha)) {
         console.log(
           JSON.stringify({ event: 'already-qualified-or-running', number, head: pr.head.sha }),
@@ -386,11 +389,8 @@ async function main() {
     const comparison = api<{ merge_base_commit: { sha: string } }>(
       `repos/${repo}/compare/${base}...${pr.head.sha}`,
     );
-    if (comparison.merge_base_commit.sha !== base)
-      throw new Error(
-        'main advanced beyond the qualified branch; update and requalify before merging',
-      );
-    if (!mergeQualification(repo, run, pr)) process.exitCode = 1;
+    const extraProblems = comparison.merge_base_commit.sha === base ? [] : [STALE_BASE_PROBLEM];
+    if (!mergeQualification(repo, run, pr, extraProblems)) process.exitCode = 1;
   } else throw new Error('usage: dependency-controller.ts dispatch|merge');
 }
 

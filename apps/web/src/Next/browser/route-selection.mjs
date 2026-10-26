@@ -1,4 +1,4 @@
-import {rankedRoutes as ranked} from '@facemorph/stylegan-js/engine';
+import {rankedRoutes as ranked} from 'stylegan-js/engine';
 
 /** Operator, 10 October: WebGPU -> CPU (WebGL execution removed 17 October, fm-x6h5). Timings are observations, never a
  * reason to demote a working route. Only availability/admission/inference failure filters it. The ranking is

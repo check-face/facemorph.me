@@ -82,7 +82,7 @@ class Manifest(unittest.TestCase):
         self.assertEqual(m['tolerance'], {'rawFloat': 0.002, 'rgb': 1})
 
     def test_manifest_carries_the_model_manifest_identity(self):
-        # The fields @facemorph/browser-model-manager's producer-facing schema requires of every producer.
+        # The fields browser-model-manager's producer-facing schema requires of every producer.
         m = built(chunk_bytes=FFHQ_CONFIG_F.chunk_bytes)
         self.assertEqual((m['schemaVersion'], m['modelSourceSha256']), (1, FFHQ_CONFIG_F.source_sha256))
         self.assertEqual(m['bundleVersion'], 'model-conv-stylegan2-ffhq-config-f')

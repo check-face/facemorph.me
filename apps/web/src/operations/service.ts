@@ -1,5 +1,5 @@
 // The controller's operation boundary. Snapshots cross queues; callbacks and AbortSignals stay with the caller.
-import type { ComputeRoute } from '@facemorph/stylegan-js';
+import type { ComputeRoute } from 'stylegan-js';
 import type { Replacement } from './intents.ts';
 import type { InputRevision } from '../contracts/inputs.ts';
 import type { CapabilityStatus, RouteSnapshot } from '../contracts/scheduler.ts';

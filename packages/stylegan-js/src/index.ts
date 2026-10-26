@@ -1,4 +1,4 @@
-// @facemorph/stylegan-js public entry point. Engine contracts so far (fm-z5wy); the engine follows.
+// stylegan-js public entry point. Engine contracts so far (fm-z5wy); the engine follows.
 export * from './contracts/capability.ts';
 export * from './contracts/timing.ts';
 export * from './contracts/operations.ts';

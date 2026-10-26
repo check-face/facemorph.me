@@ -6,8 +6,8 @@ import {
   latentDigest,
   parseModelDescriptor,
   AFHQ_CAT_512_DESCRIPTOR,
-} from '@facemorph/stylegan-js';
-import { createModelCache, createShardStore, Sha256 } from '@facemorph/browser-model-manager';
+} from 'stylegan-js';
+import { createModelCache, createShardStore, Sha256 } from 'browser-model-manager';
 
 const checks = {};
 checks.clampWeight = clampWeight(5) === 2 && clampWeight(-5) === -2 && clampWeight(0.5) === 0.5;

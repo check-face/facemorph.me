@@ -382,6 +382,24 @@ export const progressContract = (entries) =>
       : e,
   );
 
+// fm-qrfz's declared change: the face model's size counts the correctness canaries and sample indices the worker
+// fetches before the first face (model-inventory.mjs routeAssets), so for the same pinned runtime the subject shows
+// about 10 MB more than the control. Only that figure is replaced, on both sides; its value is pinned against the
+// runtime manifest by model-inventory.test.mjs and apps/web/src/consent/requests.test.ts.
+const FACE_MODEL_SIZE = /(face model once(?: \(|: ))\d+(?:\.\d+)? (?:MB|GB)/;
+const DOWNLOAD_SIZE = /^(Download · )\d+(?:\.\d+)? (?:MB|GB)$/;
+export function modelSizeContract(entries) {
+  return entries.map((e) =>
+    typeof e.text !== 'string'
+      ? e
+      : FACE_MODEL_SIZE.test(e.text)
+        ? { ...e, text: e.text.replace(FACE_MODEL_SIZE, '$1<face model size>') }
+        : e.tag === 'button' && DOWNLOAD_SIZE.test(e.text)
+          ? { ...e, text: e.text.replace(DOWNLOAD_SIZE, '$1<face model size>') }
+          : e,
+  );
+}
+
 // fm-36ag/fm-fy2.9's declared result disclosure: the video's actual size sits beside its Share and Save, and the
 // default video is 512 × 512.
 export function videoFormatContract(entries) {
@@ -660,6 +678,7 @@ export function gradeRow(row, controlSteps, subjectSteps) {
     videoFormatContract, // fm-36ag, fm-fy2.9
     seedFieldContract, // fm-25um
     runningCancelContract, // fm-25um
+    modelSizeContract, // fm-qrfz
   ];
   const contract = (dom, step) =>
     [...declared, ...[DECLARED_STEPS[`${row.rowId}/${step}`] ?? []].flat()].reduce(

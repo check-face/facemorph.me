@@ -1,7 +1,7 @@
 import {createImageEncoder} from './image-encoder.mjs';
 import {embedRecovery} from './image-envelope.mjs';
 import {WEBP_QUALITY} from '../media/export-policy.ts';
-import {videoFileResult} from '@facemorph/stylegan-js';
+import {videoFileResult} from 'stylegan-js';
 import {readProjectMp4,readStill,writeProjectMp4} from '../media/recovery-files.ts';
 // Recovery in saved files under the bridge's export names (fm-fy2.7). The envelopes and the MP4 project are the
 // package's schema core (fm-fzzd) through src/media/recovery-files.ts: stills are written as schema 3 and read as

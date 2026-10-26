@@ -7,7 +7,7 @@ import {
   type DeveloperJourneyStep,
   type LatentTensor,
   type ModelDescriptor,
-} from '@facemorph/stylegan-js';
+} from 'stylegan-js';
 
 export function describe(d: ModelDescriptor): string {
   return `${d.identity.name}: ${d.output.shape[2]} px, ${d.latent.layers} x ${d.latent.width} W+, ${d.subject}`;

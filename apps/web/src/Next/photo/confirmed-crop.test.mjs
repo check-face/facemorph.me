@@ -5,7 +5,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
-import {deriveEncoderInput} from '@facemorph/stylegan-js';
+import {deriveEncoderInput} from 'stylegan-js';
 import {createBrowserRuntime} from '../browser/runtime.mjs';
 import {confirmCropped,confirmedCropOf,ConfirmedCropError} from './confirmed-crop.mjs';
 

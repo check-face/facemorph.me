@@ -13,7 +13,7 @@ import {
   ACQUISITION_BUDGETS,
   LIVE_RESIDENCY_LIMIT,
   type AcquisitionMemoryClass,
-} from '@facemorph/browser-model-manager';
+} from 'browser-model-manager';
 import {
   CROP_MAX_BYTES,
   CROP_OUTPUT,
@@ -21,7 +21,7 @@ import {
   MEMORY_BOUNDS,
   type ComputeRoute,
   type MemoryBoundName,
-} from '@facemorph/stylegan-js';
+} from 'stylegan-js';
 import { PREFLIGHT_BUDGETS } from './preflight.ts';
 import type { FrameBudget } from './scheduler.ts';
 

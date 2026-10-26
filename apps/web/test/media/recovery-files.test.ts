@@ -10,7 +10,7 @@ import {
   readMp4Project,
   readRecovery,
   type RecoveryProvenance,
-} from '@facemorph/stylegan-js';
+} from 'stylegan-js';
 import {
   RecoveryFileError,
   checkFaceModel,

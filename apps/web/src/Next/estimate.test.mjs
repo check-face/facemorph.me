@@ -2,7 +2,7 @@
 import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs/promises';import vm from 'node:vm';import {webcrypto} from 'node:crypto';
 import {createEstimator, describeMs, describeMeasuredMs, isSlowJob, COLD_FACE_MS} from './estimate.mjs';
 import {admitRuntimeManifest,RuntimeManifestRefused} from './browser/runtime-manifest.mjs';
-import {engineGeometry} from '@facemorph/stylegan-js/engine';import {FFHQ_1024_DESCRIPTOR,renderMorph} from '@facemorph/stylegan-js';
+import {engineGeometry} from 'stylegan-js/engine';import {FFHQ_1024_DESCRIPTOR,renderMorph} from 'stylegan-js';
 const read=n=>fs.readFile(new URL(n,import.meta.url),'utf8');
 const plain=s=>s.replace(/^(?:import .*|export \{.*\} from .*);\n/gm,'').replaceAll('export ','').replaceAll('import.meta.url',JSON.stringify(import.meta.url));
 function runtimeManifest(){

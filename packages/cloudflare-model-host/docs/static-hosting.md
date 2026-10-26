@@ -48,7 +48,7 @@ package generates:
 <!-- docs-test: run -->
 ```sh
 node --input-type=module -e "
-import { extensionsOf, listFiles, modelHeaders } from '@facemorph/cloudflare-model-host';
+import { extensionsOf, listFiles, modelHeaders } from 'cloudflare-model-host';
 const extensions = extensionsOf(listFiles('./release').map((f) => f.path));
 process.stdout.write(modelHeaders({ basePath: '/models/my-model-v1/', immutable: ['chunks/'],
   mutable: ['manifest.json'], extensions }));

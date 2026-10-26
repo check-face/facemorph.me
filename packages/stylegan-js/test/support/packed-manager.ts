@@ -1,4 +1,4 @@
-// The packed @facemorph/browser-model-manager as a consumer gets it, beside packFresh's stylegan-js (packed.ts):
+// The packed browser-model-manager as a consumer gets it, beside packFresh's stylegan-js (packed.ts):
 // the manager's current sources built fresh into a staging directory (never the checkout's dist/), type-checked
 // against the freshly staged stylegan-js declarations rather than the checkout's (possibly stale) stylegan-js dist/,
 // and `npm pack`ed. Install both tarballs in one `npm install` so the manager's dependency resolves to the staged
@@ -36,9 +36,9 @@ export function packManagerFresh(work: string, styleganStage = join(work, 'stage
           rootDir: join(MANAGER, 'src'),
           outDir: join(stage, 'dist'),
           paths: {
-            '@facemorph/stylegan-js': [dts('index.d.ts')],
-            '@facemorph/stylegan-js/engine': [dts('engine/index.d.ts')],
-            '@facemorph/stylegan-js/engine/webgpu': [dts('engine/webgpu.d.ts')],
+            'stylegan-js': [dts('index.d.ts')],
+            'stylegan-js/engine': [dts('engine/index.d.ts')],
+            'stylegan-js/engine/webgpu': [dts('engine/webgpu.d.ts')],
           },
         },
         include: [join(MANAGER, 'src')],

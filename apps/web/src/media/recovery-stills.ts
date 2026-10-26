@@ -1,5 +1,5 @@
 // Recovery in saved stills, as the app writes and reads it (fm-fy2.7): the package's schema core (fm-fzzd,
-// @facemorph/stylegan-js media/*) bound to the app's face values. Stills are written as schema 3 (generator record
+// stylegan-js media/*) bound to the app's face values. Stills are written as schema 3 (generator record
 // and W+ shape from the model descriptor) and read as schema 3, schema 2 PNG/WebP or the candidate's schema 1 PNG.
 // Split from recovery-files.ts (fm-s0vi) so the image encoder worker, which only writes stills, does not bundle the
 // project-file codec and its contracts; recovery-files.ts re-exports all of this. No DOM: callers pass bytes.
@@ -15,7 +15,7 @@ import {
   type RecoveryModelRecord,
   type RecoveryProvenance,
   type StillGenerationKind,
-} from '@facemorph/stylegan-js';
+} from 'stylegan-js';
 
 /** The generators the app ships; a saved file's model identity selects one. */
 export const APP_DESCRIPTORS: readonly ModelDescriptor[] = [FFHQ_1024_DESCRIPTOR];

@@ -10,7 +10,7 @@
 //                     dependencies, peerDependencies or optionalDependencies.
 //   imports-react     a non-app package names react, react-dom, react-native, preact, scheduler or @types/react*.
 // The stylegan-js engine (packages/stylegan-js/src/engine/**) and everything it reaches through relative imports:
-//   engine-network-cache-import  a bare import of a network or cache module: @facemorph/browser-model-manager (its
+//   engine-network-cache-import  a bare import of a network or cache module: browser-model-manager (its
 //                     cache, shard store and acquisition live there), node:http/https/http2/net/tls/dgram/dns,
 //                     node:fs, node:sqlite, undici, ws, node-fetch, cross-fetch, axios, ky, idb, idb-keyval, dexie,
 //                     localforage.
@@ -29,10 +29,10 @@ import { fileURLToPath } from 'node:url';
 import { globalAccesses, lineOf, references } from './ast.mjs';
 
 export const REACT = /^(?:react|react-dom|react-native|preact|scheduler|@types\/react(?:-dom)?)$/;
-export const ENGINE = { package: '@facemorph/stylegan-js', dir: 'src/engine' };
+export const ENGINE = { package: 'stylegan-js', dir: 'src/engine' };
 export const ENGINE_ALLOWED_BARE = [];
 export const NETWORK_CACHE_MODULES =
-  /^(?:@facemorph\/browser-model-manager|(?:node:)?(?:https?|http2|net|tls|dgram|dns|fs|sqlite)|undici|ws|node-fetch|cross-fetch|axios|ky|idb|idb-keyval|dexie|localforage)(?:\/.*)?$/;
+  /^(?:browser-model-manager|(?:node:)?(?:https?|http2|net|tls|dgram|dns|fs|sqlite)|undici|ws|node-fetch|cross-fetch|axios|ky|idb|idb-keyval|dexie|localforage)(?:\/.*)?$/;
 const CODE = /\.(?:[cm]?[jt]sx?)$/;
 
 export const packageName = (spec) =>

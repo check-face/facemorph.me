@@ -1,4 +1,4 @@
-// @facemorph/browser-model-manager contracts (fm-hwh): lifecycle, leases, grants, budgets, manifests.
+// browser-model-manager contracts (fm-hwh): lifecycle, leases, grants, budgets, manifests.
 export * from './errors.ts';
 export * from './leases.ts';
 export * from './lifecycle.ts';

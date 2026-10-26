@@ -7,7 +7,7 @@ import {
   readRecovery,
   type LatentTensor,
   type RgbaPixels,
-} from '@facemorph/stylegan-js';
+} from 'stylegan-js';
 
 // In an app these are a face's W+ latent and the RGBA pixels `synthesize` returned for it.
 const d = FFHQ_1024_DESCRIPTOR;

@@ -5,8 +5,8 @@
 // - a photo: those, the landmark detector and photo canaries (detector prerequisites), and the encoder. A streamed
 //   encoder whose descriptor has not been read yet is asked for by the manifest's advertised encoder size, as the
 //   candidate estimated it; once the verified descriptor names its shards, they come `via` that descriptor.
-import type { AssetInventory, GrantOwnerId } from '@facemorph/browser-model-manager';
-import type { ComputeRoute } from '@facemorph/stylegan-js';
+import type { AssetInventory, GrantOwnerId } from 'browser-model-manager';
+import type { ComputeRoute } from 'stylegan-js';
 import { collectAssets } from '../Next/browser/acquisition-budget.mjs';
 import { routeAssets } from '../Next/model-inventory.mjs';
 import { sha256Of, type NeededAsset, type Request, type Sha256 } from './grant-policy.ts';

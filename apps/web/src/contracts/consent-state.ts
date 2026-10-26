@@ -1,6 +1,6 @@
 // The app's grant state per intent: what the person decided about a download for a face, a photo or a morph.
 
-import type { GrantOwnerId } from '@facemorph/browser-model-manager';
+import type { GrantOwnerId } from 'browser-model-manager';
 
 export type AppGrantState =
   | { readonly status: 'pending'; readonly owner: GrantOwnerId }

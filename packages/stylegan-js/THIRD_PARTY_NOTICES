@@ -1,8 +1,8 @@
-@facemorph/stylegan-js bundles no third-party packages. Its emitted JavaScript has no runtime dependencies; the parts
+stylegan-js bundles no third-party packages. Its emitted JavaScript has no runtime dependencies; the parts
 noted as ported in the sources come from FaceMorph's own earlier application, under this package's licence.
 
 ONNX Runtime Web (MIT, Microsoft) is not part of this package. The ORT routes import the runtime from bytes the
-caller supplies (normally verified by @facemorph/browser-model-manager from a model manifest), so its licence travels
+caller supplies (normally verified by browser-model-manager from a model manifest), so its licence travels
 with those bytes. Model weights are not part of this package either; their usage and redistribution terms are recorded
 per model in the docs.
 

@@ -18,6 +18,7 @@ import { chromium, devices, type Locator } from 'playwright';
 import { startControl, chromiumArgs, ORIGIN, REPO } from '../parity/control-server.ts';
 import { readIdentity } from '../../../../scripts/import/build-next.mjs';
 import { press } from '../support/operate.ts';
+import { assertNoCardPreparation } from '../support/card-setup.ts';
 import { INSTALL_HOOK } from '../parity/elmish-probe.ts';
 import { generationIdentity } from '../../src/Next/browser/identity.mjs';
 
@@ -260,6 +261,7 @@ test(
             null,
             { timeout: 180_000 },
           );
+          await assertNoCardPreparation(page, 'partial: generator cached, photo encoder absent');
           await idle();
           assert.equal(
             await page.evaluate('window.__elmish.model.JobId'),
@@ -723,6 +725,7 @@ test(
             ).__elmish.model.Downloads;
             return downloads.known && !downloads.photoAvailable;
           });
+          await assertNoCardPreparation(page, `${name}: photo encoding refused`);
           for (const control of [
             page.locator('.next-model-toast').getByRole('button', { name: 'Not now' }),
             page.getByRole('button', { name: 'Ask me later' }),

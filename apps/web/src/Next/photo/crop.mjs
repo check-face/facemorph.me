@@ -3,9 +3,9 @@ import {refusal} from './refusal.mjs';
 // Local cropping ahead of alignment, so an arbitrary camera original never has to be
 // aligned whole. The preview is decoded once at a bounded size and the crop is rendered
 // straight to the square the encoder wants, so no full-resolution bitmap is ever held.
-// The single-input limits are the confirmed-crop policy's (fm-6ib8): one definition, in @facemorph/stylegan-js.
+// The single-input limits are the confirmed-crop policy's (fm-6ib8): one definition, in stylegan-js.
 // Beyond CROP_MAX_PIXELS a decode is refused before it is attempted, whatever the container claims.
-import {PREVIEW_MAX_EDGE,CROP_OUTPUT,CROP_MAX_BYTES,CROP_MAX_PIXELS,CROP_MAX_EDGE} from '@facemorph/stylegan-js';
+import {PREVIEW_MAX_EDGE,CROP_OUTPUT,CROP_MAX_BYTES,CROP_MAX_PIXELS,CROP_MAX_EDGE} from 'stylegan-js';
 export {PREVIEW_MAX_EDGE,CROP_OUTPUT,CROP_MAX_BYTES,CROP_MAX_PIXELS,CROP_MAX_EDGE};
 
 // Browser decoders may ignore imageOrientation:'none'. Remove EXIF APP1 metadata

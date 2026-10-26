@@ -1,7 +1,7 @@
 # Developer-hosted model example
 
-`@facemorph/browser-model-manager` acquiring a converted model from a static origin you host, only after the
-person has approved the exact bytes, and `@facemorph/stylegan-js` running it from the manager's verified local
+`browser-model-manager` acquiring a converted model from a static origin you host, only after the
+person has approved the exact bytes, and `stylegan-js` running it from the manager's verified local
 reader. The model is the AFHQ cat 512 generator converted by `packages/model-conv`; non-face support is
 unqualified. The CPU runtime (ONNX Runtime's WASM build) comes from the same origin.
 
@@ -36,7 +36,7 @@ From a project with both packed tarballs installed:
 npm run build -w packages/stylegan-js -w packages/browser-model-manager
 npm pack -w packages/stylegan-js -w packages/browser-model-manager --pack-destination /tmp/pack
 mkdir app && cd app && npm init -y && npm pkg set type=module
-npm install /tmp/pack/facemorph-stylegan-js-0.0.0.tgz /tmp/pack/facemorph-browser-model-manager-0.0.0.tgz typescript
+npm install /tmp/pack/stylegan-js-0.0.0.tgz /tmp/pack/browser-model-manager-0.0.0.tgz typescript
 cp -r <repo>/packages/browser-model-manager/examples/developer-hosted/. .
 npx tsc -p tsconfig.json
 ```

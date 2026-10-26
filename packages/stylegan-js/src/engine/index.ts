@@ -1,4 +1,4 @@
-// @facemorph/stylegan-js/engine (fm-3h3w): the engine core over the manager's verified local reads. A separate
+// stylegan-js/engine (fm-3h3w): the engine core over the manager's verified local reads. A separate
 // entry point because it needs DOM/WebGPU types, which the package's contracts entry never does.
 export * from './identity.ts';
 export * from './model.ts';

@@ -61,7 +61,7 @@ jobs:
           npm pack -w packages/cloudflare-model-host --pack-destination scan
           # Every rule must be clean, the required LICENSE, notices and provenance included (fm-oagi).
           node scripts/packages/check-tarball-contents.mjs --profile cloudflare-model-host \
-            --input scan/facemorph-cloudflare-model-host-0.0.0.tgz --report scan/cloudflare-model-host.json
+            --input scan/cloudflare-model-host-0.0.0.tgz --report scan/cloudflare-model-host.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:

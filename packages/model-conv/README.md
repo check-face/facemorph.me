@@ -1,6 +1,6 @@
 # model-conv
 
-Converts a trusted StyleGAN2 checkpoint into the files a browser loads with `@facemorph/stylegan-js`, and verifies
+Converts a trusted StyleGAN2 checkpoint into the files a browser loads with `stylegan-js`, and verifies
 the result against the upstream PyTorch implementation reading the original checkpoint. It is a Docker container
 (this directory's `Dockerfile`, with an opt-in Compose service), released as source at a tagged commit of this
 repository. It is not an npm package and not a registry image: you build the image yourself, from base images
@@ -23,11 +23,11 @@ pinned upstream implementation, at the model's declared tolerance, and writes `v
 
 These outputs feed the other packages in order:
 
-1. **Host.** `@facemorph/cloudflare-model-host` stages `out/<name>/` for any HTTPS static host: it checks every
+1. **Host.** `cloudflare-model-host` stages `out/<name>/` for any HTTPS static host: it checks every
    digest, chunks files over 25 MiB and rewrites the manifest to hosted URLs (its README and guides).
-2. **Manager.** `@facemorph/browser-model-manager` acquires the hosted files after the person authorizes the
+2. **Manager.** `browser-model-manager` acquires the hosted files after the person authorizes the
    download, verifies them and stores them in the browser.
-3. **Engine.** `@facemorph/stylegan-js` loads the model through the manager's verified local reader and maps,
+3. **Engine.** `stylegan-js` loads the model through the manager's verified local reader and maps,
    synthesizes and morphs.
 
 ## Build, acquire, convert, verify
@@ -56,6 +56,12 @@ Which checkpoints convert, at what tolerance and with what evidence: [docs/compa
 Two are qualified today: FFHQ config-F (1024 px, 18 W+ layers) and AFHQ cat (512 px, 16 W+ layers, non-face).
 Conditional models and StyleGAN3 are unsupported. Photo encoders are model-specific: the FFHQ e4e encoder works
 only for the FFHQ face generator.
+
+## Related packages
+
+[cloudflare-model-host](../cloudflare-model-host/README.md) hosts the converted files,
+[browser-model-manager](../browser-model-manager/README.md) acquires them in the browser and
+[stylegan-js](../stylegan-js/README.md) runs them.
 
 ## Licences and notices
 

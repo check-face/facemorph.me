@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// External consumer check (fm-hwh): build and pack @facemorph/stylegan-js and
-// @facemorph/browser-model-manager, install the tarballs into a fresh project outside the workspace
+// External consumer check (fm-hwh): build and pack stylegan-js and
+// browser-model-manager, install the tarballs into a fresh project outside the workspace
 // graph (no path aliases, no workspace links), and compile tests/external-consumer/consumer against
 // what the packages emit. Fails unless tsc succeeds and every @facemorph file it reads is a .d.ts.
 //   node tests/external-consumer/run.mjs
@@ -51,7 +51,11 @@ const files = run(join(project, 'node_modules/.bin/tsc'), ['-p', '.', '--listFil
   .split('\n')
   .filter(Boolean);
 run(join(project, 'node_modules/.bin/tsc'), ['-p', '.'], project);
-const ours = files.filter((f) => f.includes('/node_modules/@facemorph/'));
+const ours = files.filter((f) =>
+  /\/node_modules\/(?:stylegan-js|browser-model-manager|cloudflare-model-host|@facemorph\/[\w-]+)\//.test(
+    f,
+  ),
+);
 const sources = ours.filter((f) => !f.endsWith('.d.ts'));
 console.log(
   JSON.stringify({

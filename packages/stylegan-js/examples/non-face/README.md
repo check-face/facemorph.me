@@ -1,6 +1,6 @@
 # Non-face example (AFHQ cat 512)
 
-`@facemorph/stylegan-js` with a model that is not a face: the AFHQ cat 512 generator converted by
+`stylegan-js` with a model that is not a face: the AFHQ cat 512 generator converted by
 `packages/model-conv` (16 W+ layers, 512 x 512 output), described by `AFHQ_CAT_512_DESCRIPTOR`. On the CPU, the
 page:
 
@@ -24,7 +24,7 @@ passes. The descriptor's providers say so, and `status()` reports it.
 
 Two variants, chosen by `?variant=`:
 
-- `manager` (the default), in `src/manager-loaded.ts`: `@facemorph/browser-model-manager` acquires the AFHQ assets
+- `manager` (the default), in `src/manager-loaded.ts`: `browser-model-manager` acquires the AFHQ assets
   and the CPU runtime under one grant, verifies them and stores them in this origin's Cache Storage. The engine
   reads only through the manager's verified local reader (`cache.local`), which never fetches.
 - `caller`, in `src/caller-loaded.ts`: no manager. The caller's own reader fetches each asset from its manifest URL
@@ -40,7 +40,7 @@ Run it from a project that has both packed tarballs installed:
 npm run build -w packages/stylegan-js -w packages/browser-model-manager
 npm pack -w packages/stylegan-js -w packages/browser-model-manager --pack-destination /tmp/pack
 mkdir app && cd app && npm init -y && npm pkg set type=module
-npm install /tmp/pack/facemorph-stylegan-js-0.0.0.tgz /tmp/pack/facemorph-browser-model-manager-0.0.0.tgz typescript
+npm install /tmp/pack/stylegan-js-0.0.0.tgz /tmp/pack/browser-model-manager-0.0.0.tgz typescript
 cp -r <repo>/packages/stylegan-js/examples/non-face/. .
 npx tsc -p tsconfig.json
 ```

@@ -16,12 +16,13 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import test, { type TestContext } from 'node:test';
 import { chromium, devices, type BrowserContext, type Locator, type Page } from 'playwright';
-import { readRecovery } from '@facemorph/stylegan-js';
+import { readRecovery } from 'stylegan-js';
 import { startControl, chromiumArgs, ORIGIN, REPO } from '../parity/control-server.ts';
 import { readIdentity } from '../../../../scripts/import/build-next.mjs';
 import { press } from '../support/operate.ts';
 import { INSTALL_HOOK } from '../parity/elmish-probe.ts';
 import { futureSchemaPng } from '../support/recovery-stills.ts';
+import { assertNoCardPreparation } from '../support/card-setup.ts';
 import {
   headerOnlyPng,
   largeNoisePhoto,
@@ -927,6 +928,46 @@ test(
       });
 
       // Cancel after OK: one terminal outcome, the face keeps no result, no crop reopens, nothing more is computed.
+      // OK (fm-fy2.17.1): three rapid taps on OK at its visible position make one encode request; the dialog
+      // closes and the tile's inline control beside the textbox shows Cancel while that encode runs.
+      await run('triple-ok', async () => {
+        const id = (await d.tiles.nth(0).getAttribute('data-next-face'))!;
+        const mark = await d.mark();
+        await d.choose(0, [fx.nonSquare]);
+        await d.confirmation();
+        const ok = okButton();
+        const box = (await ok.boundingBox())!;
+        const x = box.x + box.width / 2;
+        const y = box.y + box.height / 2;
+        const hit = await d.page.evaluate(
+          ([px, py]) => document.elementFromPoint(px!, py!)?.closest('button')?.textContent?.trim(),
+          [x, y],
+        );
+        assert.equal(hit, 'OK', 'OK is the control at its visible centre');
+        for (let i = 0; i < 3; i++) await d.page.mouse.click(x, y);
+        await d.consent();
+        await d.dialog.waitFor({ state: 'detached', timeout: 30_000 });
+        const slot = d.tiles.nth(0).locator('.next-input-row .next-face-generate');
+        await d.page.waitForFunction(
+          (el) => el?.textContent?.trim() === 'Cancel',
+          await slot.elementHandle(),
+          { timeout: 60_000 },
+        );
+        await d.shots('triple-ok-running');
+        await faceDone(id);
+        await d.settled();
+        await assertNoCardPreparation(
+          d.page,
+          'verified: photo encoder downloaded and used (1280 px)',
+        );
+        const c = await d.since(mark);
+        const m = await readModel(d.page);
+        d.log({ case: 'triple-ok', taps: 3, ...c, error: m.Error });
+        // The confirmation's own opening is counted; no reopen after OK.
+        confirmedOnce({ ...c, cropOpen: c.cropOpen - 1 }, m, id);
+        assert.equal(c.tensorDigests.length, 1, 'one encode request for three taps');
+      });
+
       await run('cancel-after-ok', async () => {
         const mark = await d.mark();
         await d.choose(0, [fx.nonSquare]);
@@ -1155,6 +1196,10 @@ test(
           await p.settled();
           const c = await p.since(mark);
           const m = await readModel(p.page);
+          await assertNoCardPreparation(
+            p.page,
+            'verified: photo encoder downloaded and used (390 px)',
+          );
           await p.shots('phone-adjust-use-ok-result');
           p.log({ case: 'phone-adjust-use-ok', ...c, error: m.Error });
           assert.deepEqual([c.cropOpen, c.cropConfirmed, c.detect, c.e4e], [1, 1, 0, 1]);

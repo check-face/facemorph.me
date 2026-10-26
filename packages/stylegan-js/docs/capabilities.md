@@ -1,6 +1,6 @@
 # stylegan-js capability table
 
-What the library itself, `@facemorph/stylegan-js` used with no model manager and no app, is qualified to do. It is
+What the library itself, `stylegan-js` used with no model manager and no app, is qualified to do. It is
 separate from the FaceMorph app's product routes, whose release cells (eris Chrome and Firefox, the Huawei P30 Pro,
 CPU and WebGPU) belong to the release Beads and are run against the deployed app, not this package.
 

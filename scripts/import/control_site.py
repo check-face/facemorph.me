@@ -97,7 +97,7 @@ class Site:
 
 STRIP = "const m=require('node:module'),fs=require('node:fs');process.stdout.write(m.stripTypeScriptTypes(fs.readFileSync(process.argv[1],'utf8')))"
 TS_SPECIFIER = re.compile(r"""((?:\bfrom|\bimport)\s*\(?\s*)(['"])(\.{1,2}/[^'"]+)\.ts\2""")
-# A workspace package by name (`@facemorph/stylegan-js/engine`), resolved through its package.json `source` export.
+# A workspace package by name (`stylegan-js/engine`), resolved through its package.json `source` export.
 PACKAGE_SPECIFIER = re.compile(r"""((?:\bfrom|\bimport)\s*\(?\s*)(['"])(@facemorph/[a-z0-9-]+(?:/[a-z0-9-]+)?)\2""")
 
 
@@ -121,7 +121,7 @@ def browser_source(src: Path, into: Path) -> Path:
     (src/contracts) and of the packages. In the copy, every TS module reachable by a relative import is written as
     `.mjs` with its types stripped (Node's own stripTypeScriptTypes) and every such import points at that `.mjs`. A
     module inside `src` keeps its place; one outside it (a package) goes under `into/_repo/` at its repository path,
-    so its own relative imports still resolve. A workspace package imported by name (`@facemorph/stylegan-js/engine`)
+    so its own relative imports still resolve. A workspace package imported by name (`stylegan-js/engine`)
     resolves through its package.json `source` export the same way. Nothing else changes."""
     src = src.resolve()
     repo = next(p for p in src.parents if (p / 'packages').is_dir())

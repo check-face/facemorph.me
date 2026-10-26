@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 
 export const PKG = fileURLToPath(new URL('../../', import.meta.url));
 export const REPO = fileURLToPath(new URL('../../../../', import.meta.url));
-export const PACKAGE_NAME = '@facemorph/stylegan-js';
+export const PACKAGE_NAME = 'stylegan-js';
 
 const run = (cmd: string, args: string[], cwd: string) =>
   execFileSync(cmd, args, {
@@ -65,7 +65,7 @@ export function installClean(dir: string, tarball: string, extra: readonly strin
   );
 }
 
-/** tsc in the clean project: exit status, diagnostics, and every @facemorph file the compiler read. */
+/** tsc in the clean project: exit status, diagnostics, and every file of the workspace packages the compiler read. */
 export function compileClean(dir: string, config = 'tsconfig.json') {
   const tsc = join(dir, 'node_modules/.bin/tsc');
   let status = 0;
@@ -78,7 +78,9 @@ export function compileClean(dir: string, config = 'tsconfig.json') {
     output = `${e.stdout ?? ''}${e.stderr ?? ''}`;
   }
   const listed = run(tsc, ['-p', config, '--listFilesOnly'], dir).split('\n');
-  const ours = listed.filter((f) => f.includes('/node_modules/@facemorph/'));
+  const ours = listed.filter((f) =>
+    /\/node_modules\/(?:stylegan-js|browser-model-manager|cloudflare-model-host)\//.test(f),
+  );
   return {
     status,
     output: output.trim(),

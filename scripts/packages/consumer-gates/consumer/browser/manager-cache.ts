@@ -10,7 +10,7 @@ import {
   type LocalReader,
   type ModelCache,
   type ShardStore,
-} from '@facemorph/browser-model-manager';
+} from 'browser-model-manager';
 
 export function memoryCache(store: BlobStore): { cache: ModelCache; local: LocalReader } {
   const cache = createModelCache({ store });

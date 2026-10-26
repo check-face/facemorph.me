@@ -1,6 +1,6 @@
 # Saved file formats and recovery metadata
 
-`@facemorph/stylegan-js` writes and reads the recovery metadata that makes a saved FaceMorph file reopenable:
+`stylegan-js` writes and reads the recovery metadata that makes a saved FaceMorph file reopenable:
 the exact W+ latent and the identity of the generator that made it. This page lists the formats, what each
 one carries and does not carry, its limits, and what happens when a file is damaged or stripped.
 
