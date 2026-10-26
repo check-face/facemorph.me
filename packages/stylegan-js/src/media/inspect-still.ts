@@ -12,6 +12,11 @@ export interface ModelIdentityRef {
   readonly noiseSha256: string;
 }
 
+/** The loaded model: its identity and, from its descriptor, the W+ shape a matching latent must have. */
+export interface LoadedModelRef extends ModelIdentityRef {
+  readonly latent?: { readonly layers: number; readonly width: number };
+}
+
 export type StillKind =
   | 'matching'
   | 'missing'
@@ -40,12 +45,14 @@ const same = (a: ModelIdentityRef, b: ModelIdentityRef) =>
   a.modelSha256 === b.modelSha256 && a.noiseSha256 === b.noiseSha256;
 
 /**
- * `loaded` is the model the app has loaded or will load; `known` lists every identity this build knows (the
- * loaded one included). Equal-shaped latents from another checkpoint are `incompatible-model`, not combinable.
+ * `loaded` is the model the app has loaded or will load, with its descriptor's W+ shape when given (a matching
+ * latent must have it); `known` lists every identity this build knows (the loaded one included). Equal-shaped
+ * latents from another checkpoint are `incompatible-model`, not combinable. Unknown models stay viewable as
+ * media: `unknown-model` returns the original bytes and no latent, so nothing can run editable inference on it.
  */
 export function inspectStill(
   bytes: Uint8Array,
-  models: { readonly loaded: ModelIdentityRef; readonly known: readonly ModelIdentityRef[] },
+  models: { readonly loaded: LoadedModelRef; readonly known: readonly ModelIdentityRef[] },
 ): StillInspection {
   const image = bytes;
   let container: StillInspection['container'] = 'other';
@@ -87,6 +94,20 @@ export function inspectStill(
     modelSha256: recovered.provenance.modelSha256,
     noiseSha256: recovered.provenance.noiseSha256,
   };
+  const want = models.loaded.latent;
+  if (
+    same(identity, models.loaded) &&
+    want !== undefined &&
+    (recovered.latent.shape[0] !== want.layers || recovered.latent.shape[1] !== want.width)
+  )
+    return {
+      kind: 'incompatible-model',
+      image,
+      container,
+      modelIdentity: identity,
+      reason: `Its face data is ${recovered.latent.shape[0]} x ${recovered.latent.shape[1]}, not this model's ${want.layers} x ${want.width}.`,
+      photoActionAllowed: true,
+    };
   if (same(identity, models.loaded))
     return {
       kind: 'matching',

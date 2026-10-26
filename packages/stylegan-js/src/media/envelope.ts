@@ -23,7 +23,21 @@ import {
 } from '../contracts/recovery-metadata.ts';
 import type { RecoveryMetadata } from '../contracts/operations.ts';
 import { sha256Hex, utf8Bytes } from '../contracts/sha256.ts';
+import { blendRecipeDigest } from '../blend/recipe.ts';
 import { encodeVp8lWebp } from './webp-lossless.ts';
+import {
+  RECOVERY_SCHEMA_V3,
+  RECOVERY_V3_KIND,
+  RECOVERY_V3_MAX_METADATA_BYTES,
+  checkRecoveryV3,
+  recordV3Fields,
+  validateBlendRecipe,
+  validateModelRecord,
+  type BlendRecipe,
+  type RecoveryMetadataV3,
+  type RecoveryModelRecord,
+  type StillGenerationKind,
+} from './recovery-v3.ts';
 
 /** 8-bit RGBA, row-major, width * height * 4 bytes. */
 export interface RgbaPixels {
@@ -119,13 +133,11 @@ function checkPixels({ width, height, rgba }: RgbaPixels): void {
   }
 }
 
-/**
- * The image with a fresh schema-2 envelope for `recovery`: any envelope already present is removed first, and
- * the image and latent hashes are computed over this payload. A damaged existing envelope is refused rather
- * than replaced (its identity must not change silently). Works on any PNG or WebP payload, including the
- * app's lossy WebP.
- */
-export function embedRecovery(image: Uint8Array, recovery: RecoveryMetadata): Uint8Array {
+/** The image without any envelope it carries; a damaged envelope is refused rather than replaced. */
+function envelopeBase(image: Uint8Array): {
+  container: NonNullable<ReturnType<typeof stillContainer>>;
+  base: Uint8Array;
+} {
   let container: ReturnType<typeof stillContainer>;
   try {
     container = stillContainer(image);
@@ -140,6 +152,33 @@ export function embedRecovery(image: Uint8Array, recovery: RecoveryMetadata): Ui
       throw new Error('The image carries damaged recovery metadata; it is not replaced.');
     base = located.chunk.baseImage;
   }
+  return { container, base };
+}
+
+/** Places one JSON record as the envelope of `base` (an image with no envelope). */
+function placeEnvelope(base: Uint8Array, mime: RecoveryImageMime, json: Uint8Array): Uint8Array {
+  if (mime === 'image/png') {
+    const chunk = pngChunk('tEXt', concat([ascii('FaceMorph\0'), json]));
+    const iend = base.length - 12; // stillContainer checked that IEND ends the file
+    return concat([base.subarray(0, iend), chunk, base.subarray(iend)]);
+  }
+  const chunk = new Uint8Array(8 + json.length + (json.length & 1));
+  chunk.set(ascii('FMRP'));
+  new DataView(chunk.buffer).setUint32(4, json.length, true);
+  chunk.set(json, 8);
+  const out = concat([base, chunk]);
+  new DataView(out.buffer).setUint32(4, out.length - 8, true);
+  return out;
+}
+
+/**
+ * The image with a fresh schema-2 envelope for `recovery`: any envelope already present is removed first, and
+ * the image and latent hashes are computed over this payload. A damaged existing envelope is refused rather
+ * than replaced (its identity must not change silently). Works on any PNG or WebP payload, including the
+ * app's lossy WebP. New exports use embedRecoveryV3; this writer stays for schema-2 compatibility.
+ */
+export function embedRecovery(image: Uint8Array, recovery: RecoveryMetadata): Uint8Array {
+  const { container, base } = envelopeBase(image);
   const { generationKind, generationSha256, provenance, latent, seed } = recovery;
   if (!['seed', 'photo', 'latent'].includes(generationKind) || !HEX64.test(generationSha256))
     throw new Error('Invalid recovery generation identity.');
@@ -176,19 +215,45 @@ export function embedRecovery(image: Uint8Array, recovery: RecoveryMetadata): Ui
   const json = utf8Bytes(JSON.stringify(record));
   if (json.length > RECOVERY_MAX_METADATA_BYTES)
     throw new Error('Recovery metadata exceeds its limit.');
-  if (container.mime === 'image/png') {
-    const chunk = pngChunk('tEXt', concat([ascii('FaceMorph\0'), json]));
-    const iend = base.length - 12; // stillContainer checked that IEND ends the file
-    return concat([base.subarray(0, iend), chunk, base.subarray(iend)]);
-  }
-  const chunk = new Uint8Array(8 + json.length + (json.length & 1));
-  chunk.set(ascii('FMRP'));
-  new DataView(chunk.buffer).setUint32(4, json.length, true);
-  chunk.set(json, 8);
-  const out = concat([base, chunk]);
-  new DataView(out.buffer).setUint32(4, out.length - 8, true);
-  return out;
+  return placeEnvelope(base, container.mime, json);
 }
+
+/**
+ * The image with a fresh schema-3 (dynamic-shape) envelope: the generator's identity and W+ shape come from
+ * `recovery.descriptor`, the image must be the descriptor's full output frame, and a blend carries its recipe.
+ * As embedRecovery, an existing envelope is replaced and the hashes cover this payload, never a copied one.
+ */
+export function embedRecoveryV3(image: Uint8Array, recovery: RecoveryMetadataV3): Uint8Array {
+  const { container, base } = envelopeBase(image);
+  checkRecoveryV3(recovery, container);
+  if (recovery.blend !== undefined) {
+    const digest = blendRecipeDigest(recovery.descriptor.identity.modelSha256, recovery.blend);
+    if (digest !== recovery.generationSha256)
+      throw new Error('A blend’s generation identity is its recipe digest.');
+  }
+  const raw = latentBytes(recovery.latent);
+  const record = {
+    ...recordV3Fields(recovery),
+    width: container.width,
+    height: container.height,
+    mime: container.mime,
+    imageSha256: sha256Hex(base),
+    latentSha256: sha256Hex(raw),
+    latent: {
+      space: 'w-plus',
+      shape: [recovery.latent.shape[0], recovery.latent.shape[1]],
+      encoding: 'float32-le-base64',
+      data: base64(raw),
+    },
+  };
+  const json = utf8Bytes(JSON.stringify(record));
+  if (json.length > RECOVERY_V3_MAX_METADATA_BYTES)
+    throw new Error('Recovery metadata exceeds its limit.');
+  return placeEnvelope(base, container.mime, json);
+}
+
+const embedAny = (image: Uint8Array, recovery: RecoveryMetadata | RecoveryMetadataV3) =>
+  'descriptor' in recovery ? embedRecoveryV3(image, recovery) : embedRecovery(image, recovery);
 
 type DeflateStream = { readonly readable: unknown; readonly writable: unknown };
 type CompressionGlobal = {
@@ -237,7 +302,7 @@ async function deflate(data: Uint8Array, compress: boolean): Promise<Uint8Array>
  */
 export async function encodePng(
   pixels: RgbaPixels,
-  recovery: RecoveryMetadata,
+  recovery: RecoveryMetadata | RecoveryMetadataV3,
   options: { readonly compress?: boolean } = {},
 ): Promise<Uint8Array> {
   checkPixels(pixels);
@@ -257,27 +322,34 @@ export async function encodePng(
     pngChunk('IDAT', await deflate(scan, options.compress === true)),
     pngChunk('IEND', new Uint8Array()),
   ]);
-  return embedRecovery(png, recovery);
+  return embedAny(png, recovery);
 }
 
 /** A lossless WebP (VP8L) of exactly these pixels, carrying the recovery envelope. */
-export function encodeLosslessWebp(pixels: RgbaPixels, recovery: RecoveryMetadata): Uint8Array {
+export function encodeLosslessWebp(
+  pixels: RgbaPixels,
+  recovery: RecoveryMetadata | RecoveryMetadataV3,
+): Uint8Array {
   checkPixels(pixels);
-  return embedRecovery(encodeVp8lWebp(pixels.rgba, pixels.width, pixels.height), recovery);
+  return embedAny(encodeVp8lWebp(pixels.rgba, pixels.width, pixels.height), recovery);
 }
 
-/** A still's recovered values, from a schema-2 envelope or the candidate's schema-1 PNG. */
+/** A still's recovered values, from a schema-3 or schema-2 envelope or the candidate's schema-1 PNG. */
 export interface RecoveredStill {
-  readonly schemaVersion: 1 | 2;
+  readonly schemaVersion: 1 | 2 | 3;
   readonly mime: RecoveryImageMime;
   readonly width: number;
   readonly height: number;
-  /** Schema 1 may omit the generation identity. */
-  readonly generationKind?: GenerationKind;
+  /** Schema 1 may omit the generation identity; only schema 3 has `blend`. */
+  readonly generationKind?: StillGenerationKind;
   readonly generationSha256?: string;
   readonly provenance: RecoveryProvenance;
   readonly latent: RecoveryLatent;
   readonly seed?: number;
+  /** Schema 3: the generator the latent belongs to, from its descriptor. */
+  readonly model?: RecoveryModelRecord;
+  /** Schema 3 blends: each slot's kind, latent digest and weight. */
+  readonly blend?: BlendRecipe;
   readonly imageSha256: string;
   readonly latentSha256: string;
   /** The image without its envelope (what imageSha256 covers). */
@@ -376,10 +448,162 @@ function readSchema1(bytes: Uint8Array): StillRecoveryResult | null {
   };
 }
 
-/** Reads a still's recovery metadata (schema 2 PNG/WebP, schema 1 PNG). Never throws, never fetches. */
+const B64_INDEX = new Map([...B64].map((c, i) => [c, i]));
+
+/** Strict padded base64 (no whitespace), as the envelope writes it. */
+function base64Decode(text: string): Uint8Array | null {
+  if (text.length % 4 !== 0) return null;
+  const pad = text.endsWith('==') ? 2 : text.endsWith('=') ? 1 : 0;
+  const out = new Uint8Array((text.length / 4) * 3 - pad);
+  let o = 0;
+  for (let i = 0; i < text.length; i += 4) {
+    let n = 0;
+    for (let k = 0; k < 4; k++) {
+      const c = text[i + k]!;
+      const value = c === '=' && i + 4 === text.length && k >= 4 - pad ? 0 : B64_INDEX.get(c);
+      if (value === undefined) return null;
+      n = (n << 6) | value;
+    }
+    for (let k = 0; k < 3 && o < out.length; k++) out[o++] = (n >> (16 - 8 * k)) & 255;
+  }
+  return out;
+}
+
+const V3_FIELDS = new Set([
+  'schema',
+  'kind',
+  'generationKind',
+  'generationSha256',
+  'model',
+  'provenance',
+  'seed',
+  'blend',
+  'width',
+  'height',
+  'mime',
+  'imageSha256',
+  'latentSha256',
+  'latent',
+]);
+
+/** The schema-3 record: every field validated, the shape from the model record, integrity over this payload. */
+function readSchema3(bytes: Uint8Array): StillRecoveryResult | null {
+  const located = locateRecoveryChunk(bytes);
+  if (located.kind !== 'located' || located.chunk.record.schema !== RECOVERY_SCHEMA_V3) return null;
+  const { record, mime, width, height, baseImage, payloadBytes } = located.chunk;
+  const damaged = (reason: RecoveryDamage, detail: string): StillRecoveryResult => ({
+    kind: 'damaged',
+    reason,
+    detail,
+  });
+  const bad = (detail: string) => damaged('invalid-fields', detail);
+  if (payloadBytes > RECOVERY_V3_MAX_METADATA_BYTES)
+    return damaged('metadata-too-large', 'metadata exceeds the schema-3 limit');
+  for (const key of Object.keys(record))
+    if (!V3_FIELDS.has(key)) return bad(`unknown field ${key}`);
+  if (record.kind !== RECOVERY_V3_KIND) return bad('kind');
+  if (record.mime !== mime) return bad('mime differs from the container');
+  if (record.width !== width || record.height !== height)
+    return damaged('dimensions', 'recorded size differs from the image');
+  const kind = record.generationKind;
+  if (kind !== 'seed' && kind !== 'photo' && kind !== 'latent' && kind !== 'blend')
+    return bad('generationKind');
+  const gen = record.generationSha256;
+  if (typeof gen !== 'string' || !HEX64.test(gen)) return bad('generationSha256');
+  const model = validateModelRecord(record.model);
+  if (!model.ok) return bad(model.error);
+  if (model.value.output.width !== width || model.value.output.height !== height)
+    return damaged('dimensions', 'the image is not the model’s full output frame');
+  const p = record.provenance;
+  if (typeof p !== 'object' || p === null || Array.isArray(p)) return bad('provenance');
+  const prov = p as Record<string, unknown>;
+  const keys = new Set<string>(RECOVERY_PROVENANCE_KEYS);
+  for (const [k, value] of Object.entries(prov))
+    if (!keys.has(k) || (typeof value !== 'string' && typeof value !== 'number'))
+      return bad(`provenance field ${k}`);
+  if (prov.modelSha256 !== model.value.modelSha256 || prov.noiseSha256 !== model.value.noiseSha256)
+    return bad('provenance differs from the model record');
+  const seed = record.seed;
+  if (
+    seed !== undefined &&
+    (kind !== 'seed' ||
+      !Number.isSafeInteger(seed) ||
+      (seed as number) < 0 ||
+      (seed as number) > 4294967295)
+  )
+    return bad('seed');
+  let blend: BlendRecipe | undefined;
+  if (kind === 'blend') {
+    const r = validateBlendRecipe(record.blend);
+    if (!r.ok) return bad(r.error);
+    blend = r.value;
+    if (blendRecipeDigest(model.value.modelSha256, blend) !== gen)
+      return damaged('integrity', 'the blend recipe differs from its generation identity');
+  } else if (record.blend !== undefined) return bad('blend on a non-blend still');
+  const l = record.latent as Record<string, unknown> | undefined;
+  const shape = l?.shape;
+  if (
+    typeof l !== 'object' ||
+    l === null ||
+    l.space !== 'w-plus' ||
+    l.encoding !== 'float32-le-base64' ||
+    typeof l.data !== 'string' ||
+    !Array.isArray(shape) ||
+    shape.length !== 2 ||
+    shape[0] !== model.value.latent.layers ||
+    shape[1] !== model.value.latent.width
+  )
+    return bad('latent (its shape must be the model record’s)');
+  const raw = base64Decode(l.data);
+  if (!raw || raw.length !== model.value.latent.layers * model.value.latent.width * 4)
+    return bad('latent bytes do not match its shape');
+  const imageSha256 = record.imageSha256;
+  const latentSha256 = record.latentSha256;
+  if (
+    typeof imageSha256 !== 'string' ||
+    !HEX64.test(imageSha256) ||
+    typeof latentSha256 !== 'string' ||
+    !HEX64.test(latentSha256)
+  )
+    return bad('integrity hashes');
+  if (sha256Hex(baseImage) !== imageSha256 || sha256Hex(raw) !== latentSha256)
+    return damaged('integrity', 'image or latent integrity hash mismatch');
+  const values = new Float32Array(raw.length / 4);
+  const rv = new DataView(raw.buffer, raw.byteOffset, raw.byteLength);
+  for (let i = 0; i < values.length; i++) {
+    values[i] = rv.getFloat32(i * 4, true);
+    if (!Number.isFinite(values[i])) return bad('non-finite latent value');
+  }
+  return {
+    kind: 'parsed',
+    recovered: {
+      schemaVersion: 3,
+      mime,
+      width,
+      height,
+      generationKind: kind,
+      generationSha256: gen,
+      provenance: Object.freeze({ ...(prov as RecoveryProvenance) }),
+      latent: { space: 'w-plus', shape: [shape[0], shape[1]], values },
+      ...(seed === undefined ? {} : { seed: seed as number }),
+      model: model.value,
+      ...(blend === undefined ? {} : { blend }),
+      imageSha256,
+      latentSha256,
+      baseImage,
+    },
+  };
+}
+
+/**
+ * Reads a still's recovery metadata (schema 3 and 2 PNG/WebP, schema 1 PNG). Never throws, never fetches. Any
+ * other version is `incompatible-schema` with the version it claims.
+ */
 export function readRecovery(bytes: Uint8Array): StillRecoveryResult {
   const r = parseRecoveryMetadata(bytes);
   if (r.kind === 'incompatible-schema' && r.schemaVersion === 1) return readSchema1(bytes) ?? r;
+  if (r.kind === 'incompatible-schema' && r.schemaVersion === RECOVERY_SCHEMA_V3)
+    return readSchema3(bytes) ?? r;
   if (r.kind !== 'parsed') return r;
   const { metadata } = r;
   return {

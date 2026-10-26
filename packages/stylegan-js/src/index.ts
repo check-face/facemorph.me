@@ -14,6 +14,9 @@ export {
 } from './contracts/canonical-json.ts';
 export * from './media/envelope.ts';
 export * from './media/inspect-still.ts';
+export * from './media/recovery-v3.ts';
+export * from './media/mp4-project.ts';
 export { encodeVp8lWebp, WEBP_LOSSLESS_MAX_EDGE } from './media/webp-lossless.ts';
 export * from './contracts/descriptor.ts';
 export * from './blend/blend.ts';
+export * from './blend/recipe.ts';

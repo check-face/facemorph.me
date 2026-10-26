@@ -159,3 +159,47 @@ test('inspect-still.no-metadata-url-fetch: URLs in metadata are inert', () => {
     );
   }
 });
+
+test('inspect-still.matching-dynamic-shape', () => {
+  // A schema-3 still of the non-face AFHQ cat 512 model (16 x 512 W+, 512 x 512 frame).
+  const cat = api.AFHQ_CAT_512_DESCRIPTOR;
+  const ffhq = api.FFHQ_1024_DESCRIPTOR;
+  const ref = (d: api.ModelDescriptor) => ({
+    modelSha256: d.identity.modelSha256,
+    noiseSha256: d.identity.noiseSha256,
+    latent: { layers: d.latent.layers, width: d.latent.width },
+  });
+  const values = Float32Array.from({ length: 16 * 512 }, (_, i) => Math.sin(i));
+  const bytes = api.encodeLosslessWebp(
+    { width: 512, height: 512, rgba: new Uint8ClampedArray(512 * 512 * 4).fill(200) },
+    {
+      descriptor: cat,
+      generationKind: 'latent',
+      generationSha256: 'c'.repeat(64),
+      provenance: { modelSha256: cat.identity.modelSha256, noiseSha256: cat.identity.noiseSha256 },
+      latent: { space: 'w-plus', shape: [16, 512], values },
+    },
+  );
+  const m = inspect(bytes, { loaded: ref(cat), known: [ref(cat), ref(ffhq)] });
+  assert.equal(m.kind, 'matching');
+  assert.deepEqual(m.recovered?.latent.shape, [16, 512]);
+  assert.equal(m.recovered?.schemaVersion, 3);
+  assert.deepEqual(Array.from(m.recovered!.latent.values), Array.from(values));
+  // The same file under the face model: another known checkpoint, never combinable.
+  nonMatching(
+    inspect(bytes, { loaded: ref(ffhq), known: [ref(ffhq), ref(cat)] }),
+    'incompatible-model',
+    bytes,
+  );
+  // A build that does not know the cat model: viewable media, no editable latent.
+  const unknown = inspect(bytes, { loaded: ref(ffhq), known: [ref(ffhq)] });
+  nonMatching(unknown, 'unknown-model', bytes);
+  assert.equal(unknown.container, 'webp');
+  // A loaded model whose W+ shape is not the latent's is refused even with equal digests.
+  const wrongShape = { ...ref(cat), latent: { layers: 18, width: 512 } };
+  nonMatching(
+    inspect(bytes, { loaded: wrongShape, known: [wrongShape] }),
+    'incompatible-model',
+    bytes,
+  );
+});
