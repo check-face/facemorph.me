@@ -83,3 +83,37 @@ test('installed cf dry-run retains actual static files, project, main branch and
     'dry-run then publish keeps exact bytes',
   );
 });
+
+test('a Pages API 5xx with a plain-text body is retried; 4xx and exhausted retries fail with a clear reason', async () => {
+  const { request } = await import('./pages-deploy.mjs');
+  const reply = (status, text) => ({ ok: status < 400, status, text: async () => text });
+  const ok = JSON.stringify({ success: true, result: { jwt: 'x' } });
+  const waits = [];
+  const wait = async (ms) => void waits.push(ms);
+  // Cloudflare's 500 page, then success (main run 40340551415's beads-site publish).
+  let calls = 0;
+  const flaky = async () => (++calls === 1 ? reply(500, 'Internal server error') : reply(200, ok));
+  assert.deepEqual(await request('/p', 't', undefined, { wait, fetchImpl: flaky }), { jwt: 'x' });
+  assert.equal(calls, 2);
+  assert.deepEqual(waits, [2000]);
+  // A dropped connection is retried the same way.
+  calls = 0;
+  const dropped = async () => {
+    if (++calls === 1) throw Error('socket hang up');
+    return reply(200, ok);
+  };
+  assert.deepEqual(await request('/p', 't', {}, { wait, fetchImpl: dropped }), { jwt: 'x' });
+  // Persistent 5xx: bounded, and the error names the status and the body, not a JSON parse error.
+  calls = 0;
+  const down = async () => (calls++, reply(503, 'Service Unavailable'));
+  await assert.rejects(
+    request('/p', 't', undefined, { attempts: 3, wait, fetchImpl: down }),
+    /HTTP 503, not JSON: Service Unavailable/,
+  );
+  assert.equal(calls, 3);
+  // A 4xx is the caller's error: no retry.
+  calls = 0;
+  const denied = async () => (calls++, reply(403, JSON.stringify({ success: false })));
+  await assert.rejects(request('/p', 't', undefined, { wait, fetchImpl: denied }), /HTTP 403/);
+  assert.equal(calls, 1);
+});

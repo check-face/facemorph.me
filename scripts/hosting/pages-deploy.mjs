@@ -101,21 +101,48 @@ export function deploymentArgs({ project, branch, commit, manifest, publish }) {
     ...(publish ? [] : ['--dry-run']),
   ];
 }
-async function request(path, token, body) {
-  const response = await fetch(API + path, {
-    method: body === undefined ? 'GET' : 'POST',
-    redirect: 'error',
-    signal: AbortSignal.timeout(120_000),
-    headers: {
-      Authorization: `Bearer ${token}`,
-      ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
-    },
-    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-  });
-  const value = await response.json();
-  if (!response.ok || value.success !== true)
-    throw Error(`Pages API ${path}: HTTP ${response.status}`);
-  return value.result;
+// Every call here is idempotent (an upload token, or asset operations keyed by content hash), so a Cloudflare 5xx
+// or a dropped connection is retried a few times; a 5xx body is often plain text ("Internal server error"), which
+// failed the beads-site publish as a JSON parse error.
+export async function request(
+  path,
+  token,
+  body,
+  { attempts = 4, wait = (ms) => new Promise((r) => setTimeout(r, ms)), fetchImpl = fetch } = {},
+) {
+  for (let attempt = 1; ; attempt++) {
+    let response;
+    try {
+      response = await fetchImpl(API + path, {
+        method: body === undefined ? 'GET' : 'POST',
+        redirect: 'error',
+        signal: AbortSignal.timeout(120_000),
+        headers: {
+          Authorization: `Bearer ${token}`,
+          ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
+        },
+        ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+      });
+    } catch (error) {
+      if (attempt >= attempts) throw Error(`Pages API ${path}: ${error.message}`);
+      await wait(2000 * attempt);
+      continue;
+    }
+    if (response.status >= 500 && attempt < attempts) {
+      await wait(2000 * attempt);
+      continue;
+    }
+    const text = await response.text();
+    let value;
+    try {
+      value = JSON.parse(text);
+    } catch {
+      throw Error(`Pages API ${path}: HTTP ${response.status}, not JSON: ${text.slice(0, 80)}`);
+    }
+    if (!response.ok || value.success !== true)
+      throw Error(`Pages API ${path}: HTTP ${response.status}`);
+    return value.result;
+  }
 }
 async function uploadAssets(assets, { account, project, token }) {
   if (!/^[a-f0-9]{32}$/.test(account) || !token)
