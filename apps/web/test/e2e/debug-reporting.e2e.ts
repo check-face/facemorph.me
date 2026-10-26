@@ -15,11 +15,20 @@
 // 390 px (touch) and 1,280 px (mouse), light and dark; screenshots in test-results/debug-reporting/.
 //   FACEMORPH_REQUIRE_RUNTIME=1 node --test test/e2e/debug-reporting.e2e.ts
 import assert from 'node:assert/strict';
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { join, resolve } from 'node:path';
 import test from 'node:test';
 import { chromium, devices, type Browser, type BrowserContext, type Page } from 'playwright';
-import { startControl, ORIGIN, chromiumArgs, REPO } from '../parity/control-server.ts';
+import {
+  startControl,
+  ORIGIN,
+  ORIGIN_HOST,
+  PORT,
+  chromiumArgs,
+  REPO,
+} from '../parity/control-server.ts';
+import { startCapture } from '../support/stats-capture.ts';
 import { readIdentity } from '../../../../scripts/import/build-next.mjs';
 import { press } from '../support/operate.ts';
 import { INSTALL_HOOK } from '../parity/elmish-probe.ts';
@@ -897,6 +906,77 @@ test(
           c.touch,
         );
         await download;
+
+        // Share: headless Chromium has no navigator.share, so the product hands the file over as a download.
+        log.step = 'share';
+        assert.equal(await page.evaluate(() => typeof navigator.share), 'undefined');
+        const shared = page.waitForEvent('download');
+        await operate(
+          page,
+          tile(page, 0).getByRole('button', { name: 'Share image', exact: true }),
+          c.touch,
+        );
+        assert.match((await shared).suggestedFilename(), /\.(webp|png)$/);
+
+        // A real photo encode on the CPU: face 2's Encode image chooser, the crop confirmed with OK, the photo
+        // encoder download accepted.
+        log.step = 'photo';
+        await operate(
+          page,
+          tile(page, 1).getByRole('button', { name: 'Change mode', exact: true }),
+          c.touch,
+        );
+        const entry = page.getByRole('menuitem', { name: 'Encode image', exact: true });
+        await entry.waitFor();
+        await entry.evaluate(async (el) => {
+          const panel = el.closest('.MuiPaper-root');
+          await Promise.allSettled(
+            (panel?.getAnimations({ subtree: true }) ?? []).map((a) => a.finished),
+          );
+        });
+        const chooser = page.waitForEvent('filechooser');
+        await operate(page, entry, c.touch);
+        await (await chooser).setFiles([join(REPO, 'tests/crop/fixtures/non-square.jpg')]);
+        const crop = page.getByRole('dialog', { name: 'Encode an image', exact: true });
+        await operate(page, crop.getByRole('button', { name: 'OK', exact: true }), c.touch);
+        await crop.waitFor({ state: 'detached' });
+        const accept = page.locator('.next-download-accept');
+        while (
+          await accept.waitFor({ timeout: 6000 }).then(
+            () => true,
+            () => false,
+          )
+        ) {
+          await operate(page, accept, c.touch);
+          await accept.waitFor({ state: 'detached' });
+        }
+        await page.waitForFunction(
+          () => {
+            const m = (
+              window as unknown as {
+                __elmish: {
+                  model: {
+                    Busy: boolean;
+                    PreparingFaces: Set<string>;
+                    Faces: { id: string }[];
+                    Inputs: { id: string; mode: string }[];
+                  };
+                };
+              }
+            ).__elmish.model;
+            const photo = m.Inputs.find((i) => i.mode === 'photo');
+            return (
+              !m.Busy &&
+              m.PreparingFaces.size === 0 &&
+              !!photo &&
+              m.Faces.some((f) => f.id === photo.id)
+            );
+          },
+          null,
+          { timeout: 900_000, polling: 1000 },
+        );
+        assert.equal((await model(page))['Error'], null, 'the photo encoded');
+        await page.screenshot({ path: join(results, `photo-encoded-${name}.png`) });
         await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
         await page.waitForTimeout(2000);
         assert.deepEqual(
@@ -982,5 +1062,99 @@ test(
         await fresh.context.close();
       }
     });
+  },
+);
+
+// ---- 5. the usage-statistics beacon and the analytics script -----------------------------------------------------
+// The shipped build sends no statistics under automation (navigator.webdriver). Its only explicit test opt-in is a
+// build-time variable (FACEMORPH_STATS_ALLOW_AUTOMATION=1, fm-5yqq), so a test build beside deploy-next is used to
+// observe the /stats/v1 beacon class. Google Analytics has no test opt-in at all: analytics.mjs `allowed()` refuses
+// whenever navigator.webdriver is true, so its two host classes (www.googletagmanager.com, *.google-analytics.com)
+// cannot be observed under automation and are checked only as rendered entries of the privacy text.
+
+test(
+  'the usage-statistics beacon class is same-origin /stats/v1 and named in the privacy text',
+  { timeout: 1_200_000 },
+  async (t) => {
+    if (!runtimeOrSkip(t)) return;
+    const out = join(REPO, '.cache/debug-reporting-stats-build');
+    rmSync(out, { recursive: true, force: true });
+    execFileSync('npx', ['vite', 'build', '--outDir', out, '--emptyOutDir', '--logLevel', 'warn'], {
+      cwd: join(REPO, 'apps/web'),
+      env: { ...process.env, FACEMORPH_STATS_ALLOW_AUTOMATION: '1' },
+      stdio: 'inherit',
+    });
+    for (const file of ['catalogue.json', '_headers', '_redirects'])
+      cpSync(join(REPO, 'deploy-next', file), join(out, file));
+    const site = await startControl({
+      runtime,
+      artifact: out,
+      source: 'debug-reporting-stats-build',
+    });
+    const capture = await startCapture({ host: ORIGIN_HOST, upstream: PORT });
+    const browser = await chromium.launch({ args: [...capture.args, '--disable-features=WebGPU'] });
+    try {
+      for (const c of [CELLS[0]!, CELLS[3]!]) {
+        capture.beacons.length = 0;
+        const context = await browser.newContext({
+          ...(c.touch ? devices['iPhone 13'] : {}),
+          viewport: { width: c.width, height: c.height },
+          hasTouch: c.touch,
+          isMobile: c.touch,
+          colorScheme: c.scheme,
+          ignoreHTTPSErrors: true,
+        });
+        await context.addInitScript(INSTALL_HOOK);
+        const hosts = new Set<string>();
+        context.on('request', (r) => {
+          if (/^https?:/.test(r.url())) hosts.add(new URL(r.url()).host);
+        });
+        const page = await context.newPage();
+        capture.step = 'visit';
+        await page.goto(ORIGIN);
+        await settle(page, c.touch);
+        await cpuMode(page);
+        capture.step = 'face';
+        await generate(page, 1, c.touch);
+        await filled(page, 1);
+        await idle(page);
+        capture.step = 'hide';
+        await page.reload();
+        await page.locator('section.next-face').first().waitFor();
+        await page.waitForTimeout(1500);
+        assert.ok(capture.beacons.length > 0, 'the statistics beacon was sent');
+        for (const b of capture.beacons) {
+          assert.equal(b.path, '/stats/v1');
+          assert.equal(b.origin, ORIGIN);
+          assert.equal(b.fetchSite, 'same-origin');
+        }
+        const privacy = await privacyText(page, c.touch);
+        assert.ok(privacy.includes('/stats/v1'), 'the privacy text names the statistics beacon');
+        for (const host of hosts) {
+          if (host === ORIGIN_HOST) continue;
+          const entry = OUTSIDE_REQUESTS.find((r) =>
+            r.host.startsWith('*.') ? host.endsWith(r.host.slice(1)) : r.host === host,
+          );
+          assert.ok(entry && privacy.includes(entry.host), `${host} is in the privacy text`);
+        }
+        for (const r of OUTSIDE_REQUESTS.filter((r) => /Google Analytics/.test(r.purpose)))
+          assert.ok(
+            privacy.includes(r.host),
+            `${r.host} (analytics, untestable under automation) is named`,
+          );
+        t.diagnostic(
+          `${label(c)}: ${capture.beacons.length} /stats/v1 beacons; hosts ${[...hosts].join(', ')}`,
+        );
+        writeFileSync(
+          join(results, `stats-${label(c)}.json`),
+          JSON.stringify({ beacons: capture.beacons, hosts: [...hosts] }, null, 1),
+        );
+        await context.close();
+      }
+    } finally {
+      await browser.close();
+      await capture.stop();
+      await site.stop();
+    }
   },
 );
