@@ -86,7 +86,7 @@ test('a module moved into a package without a module map update fails; the map u
 test('a listed test no CI command runs, and a removed runtime capability, each fail', () => {
   const root = copy();
   try {
-    const workflow = join(root, '.github/workflows/next-site.yml');
+    const workflow = join(root, '.github/workflows/next-site-artifact.yml');
     writeFileSync(
       workflow,
       readFileSync(workflow, 'utf8').replaceAll(' src/Next/storage-request.test.mjs', ''),

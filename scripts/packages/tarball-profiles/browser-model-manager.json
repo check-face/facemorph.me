@@ -168,6 +168,11 @@
       "files": "^schema/model-manifest\\.v1\\.schema\\.json$",
       "pattern": "\"\\$id\":\\s*\"https://github\\.com/facemorph-me/facemorph\\.me/blob/main/packages/browser-model-manager/schema/model-manifest\\.v1\\.schema\\.json\"",
       "reason": "Public producer-contract schema $id, identifying this exact published schema in the public repository."
+    },
+    {
+      "files": "^package\\.json$",
+      "pattern": "github\\.com/facemorph-me/facemorph\\.me",
+      "reason": "repository, homepage and bugs name the public source repository (with its packages/ directory) so npmjs.com resolves the README's relative links; a source reference, not a deployment hostname (fm-19eb)."
     }
   ]
 }

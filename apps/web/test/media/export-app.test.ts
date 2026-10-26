@@ -11,6 +11,7 @@ import { join, relative } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { typeMatchesBytes } from '../../src/media/export-policy.ts';
+import { retainedExportDigests } from '../../src/media/export-names.ts';
 // @ts-expect-error the app module is plain JavaScript
 import { createExportFiles } from '../../src/Next/export-files.mjs';
 
@@ -274,4 +275,110 @@ test('prepared export: the explicit PNG prepares only PNG; switching back hands 
   assert.equal(back.blob, webp.blob);
   assert.equal(back.filename, webp.filename);
   await assert.rejects(files.face('a', emma, { encode, format: 'gif' }), /WebP or PNG/);
+});
+
+test('prepared export rename keeps bytes, format and suffix across empty, long and unsafe edits', async () => {
+  const files = createExportFiles();
+  const emma = face('text', 'Emma');
+  const webp = encoder(WEBP, 'image/webp');
+  const original = await files.face('a', emma, { encode: webp.encode });
+  const suffix = original.filename.slice(original.filename.lastIndexOf('-'));
+  for (const text of ['', 'a'.repeat(200), 'path/to\\face\u202ename.webp']) {
+    const edited = files.rename(original, text);
+    assert.equal(edited.blob, original.blob);
+    assert.equal(edited.digest, original.digest);
+    assert.equal(edited.mime, original.mime);
+    assert.ok(edited.filename.endsWith(suffix), 'identity suffix and extension stay intact');
+    assert.ok(edited.filename.slice(0, -5).length <= 64);
+    assert.doesNotMatch(edited.filename, /[\\/\u202a-\u202e\u2066-\u2069]/);
+    const again = await files.face('a', emma, { encode: webp.encode });
+    assert.equal(again.filename, edited.filename, 'later preparation retains the edited name');
+    assert.equal(again.blob, original.blob);
+  }
+  assert.equal(webp.calls, 1, 'renaming never encodes');
+  assert.throws(
+    () => files.rename({ ...original, digest: 'f'.repeat(64) }, 'other'),
+    /Prepare this file/,
+  );
+});
+
+test('retained still digests preserve both format suffixes with fresh generic labels and real bytes', async () => {
+  const original = face('text', 'Private typed words');
+  const files = createExportFiles();
+  const encode = async (format: string) =>
+    new Blob([format === 'png' ? PNG : WEBP], {
+      type: format === 'png' ? 'image/png' : 'image/webp',
+    });
+  const webp = await files.face('a', original, { encode });
+  const png = await files.face('a', original, { encode, format: 'png' });
+  assert.notEqual(webp.digest, png.digest, 'the format remains part of the identity');
+  const restored = {
+    latent: original.latent,
+    provenance: original.provenance,
+    exportDigests: { webp: webp.digest, png: png.digest },
+  };
+  const afterReload = createExportFiles();
+  for (const [format, before, bytes] of [
+    ['webp', webp, WEBP],
+    ['png', png, PNG],
+  ] as const) {
+    const back = await afterReload.face('a', restored, { encode, format });
+    assert.equal(back.digest, before.digest);
+    assert.equal(back.filename, 'face-' + before.filename.split('-').at(-1));
+    assert.deepEqual(await bytesOf(back.blob), bytes);
+    assert.doesNotMatch(back.filename, /private|typed|words/);
+  }
+  const otherModel = { ...original, provenance: { modelSha256: 'b'.repeat(64) } };
+  const other = await files.face('other', otherModel, { encode });
+  assert.notEqual(other.digest, webp.digest, 'different models retain distinct identities');
+  const invalid = {
+    ...restored,
+    exportDigests: { webp: 'private-filename.webp', png: png.digest },
+  };
+  const refused = await createExportFiles().face('a', invalid, { encode });
+  assert.notEqual(refused.digest, webp.digest, 'malformed digests are ignored');
+  assert.deepEqual(
+    retainedExportDigests({ webp: webp.digest, png: webp.digest }),
+    {},
+    'ambiguous cross-format digests are stripped',
+  );
+  await assert.rejects(
+    afterReload.video(new Blob([MP4], { type: 'video/mp4' }), {
+      encode: async () => new Blob([MP4], { type: 'video/mp4' }),
+      faces: [original, original],
+      morph: { mode: 'linear', settings: {} },
+      retainedDigest: webp.digest,
+    }),
+    /different formats/,
+  );
+});
+
+test('retained video digest preserves its suffix without keeping endpoint labels', async () => {
+  const files = createExportFiles();
+  const encode = async () => new Blob([MP4], { type: 'video/mp4' });
+  const faces = [face('text', 'Private Emma', 1), face('text', 'Private Noah', 2)];
+  const morph = { mode: 'linear', settings: { framesPerSecond: 16 } };
+  const original = await files.video(new Blob([MP4], { type: 'video/mp4' }), {
+    encode,
+    faces,
+    morph,
+  });
+  const restored = await createExportFiles().video(new Blob([MP4], { type: 'video/mp4' }), {
+    encode,
+    faces: faces.map(({ source: _source, ...facts }) => facts),
+    morph,
+    retainedDigest: original.digest,
+  });
+  assert.equal(restored.digest, original.digest);
+  assert.equal(restored.filename, 'morph-' + original.filename.split('-').at(-1));
+  assert.deepEqual(await bytesOf(restored.blob), MP4);
+  await assert.rejects(
+    createExportFiles().video(new Blob([MP4], { type: 'video/mp4' }), {
+      encode,
+      faces,
+      morph,
+      retainedDigest: 'private.mp4',
+    }),
+    /lowercase SHA-256/,
+  );
 });

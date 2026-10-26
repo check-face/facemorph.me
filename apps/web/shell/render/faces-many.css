@@ -1,0 +1,261 @@
+/* The many-face layout (face.many, fm-id4c). Three or more faces sit in one contained strip at every width: it
+ * scrolls sideways inside itself (never the page), snaps to tiles, keeps a visible scrollbar, fades the edge that
+ * has more, and says which faces are showing with Previous/Next buttons. The page height no longer grows with the
+ * face count. The phone breakpoint also switches projects with more than four faces to compact rows.
+ *
+ * Remove's own rules use three classes so they win over the component library's single-class rules in any
+ * stylesheet order (style independence): the drawn circle stays 32 px, the hit area is 44 x 44 inside the image. */
+
+.next-faces-many {
+  contain: inline-size;
+  width: 100%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.next-strip-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.75rem;
+  min-height: 44px;
+}
+.next-strip-cue {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.9rem;
+}
+.next-strip-cue .next-strip-arrow {
+  width: 44px;
+  height: 44px;
+}
+.next-strip-frame {
+  position: relative;
+  min-width: 0;
+}
+.next-strip-frame::before,
+.next-strip-frame::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 14px;
+  width: 12px;
+  pointer-events: none;
+  z-index: 3;
+  opacity: 0;
+  transition: opacity 0.15s ease-out;
+}
+.next-strip-frame::before {
+  left: 0;
+  background: linear-gradient(to right, rgba(128, 128, 128, 0.45), transparent);
+}
+.next-strip-frame::after {
+  right: 0;
+  background: linear-gradient(to left, rgba(128, 128, 128, 0.45), transparent);
+}
+.next-strip-frame[data-more-before='true']::before,
+.next-strip-frame[data-more-after='true']::after {
+  opacity: 1;
+}
+.next-morph-content.next-many .next-faces-row.next-faces-strip {
+  /* A containing block, so visually hidden absolute parts of a tile are clipped by the strip, not the page. */
+  position: relative;
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x proximity;
+  scrollbar-width: thin;
+  padding-bottom: 6px;
+  gap: 0;
+}
+.next-morph-content.next-many .next-faces-strip > .next-face {
+  flex: 0 0 min(400px, calc(100% - 8px));
+  width: min(400px, calc(100% - 8px));
+  max-width: min(400px, calc(100% - 8px));
+  scroll-snap-align: center;
+}
+.next-morph-content.next-many .next-faces-strip > .next-connector {
+  flex: 0 0 48px;
+  width: 48px;
+  max-width: 48px;
+  padding: 0 2px;
+  justify-content: center;
+  align-self: center;
+}
+/* Each + is a snap point too, so a swipe can rest on it at phone width (a tile is nearly the strip's width); the
+ * first and last rest against the strip's ends. */
+.next-morph-content.next-many .next-faces-strip > .next-connector {
+  scroll-snap-align: center;
+}
+.next-morph-content.next-many .next-faces-strip > .next-connector:first-child {
+  scroll-snap-align: start;
+}
+.next-morph-content.next-many .next-faces-strip > .next-connector:last-child {
+  scroll-snap-align: end;
+}
+.next-morph-content.next-many .next-faces-strip > .next-connector::before,
+.next-morph-content.next-many .next-faces-strip > .next-connector::after {
+  display: none;
+}
+.next-faces-strip > .next-strip-spacer {
+  flex: 0 0 auto;
+  height: 1px;
+}
+.next-faces-strip::-webkit-scrollbar {
+  height: 8px;
+}
+.next-faces-strip::-webkit-scrollbar-thumb {
+  background: rgba(128, 128, 128, 0.55);
+  border-radius: 4px;
+}
+
+/* Once a phone project grows past four faces, use compact rows throughout the strip. Keeping a uniform
+ * pitch lets scrolling, keyboard focus and the virtual window reach every face in the same order. */
+@media (max-width: 599px) {
+  .next-faces-many:not([data-next-face-count='3']):not([data-next-face-count='4']) .next-face {
+    display: grid;
+    grid-template-columns: 112px minmax(0, 1fr);
+    align-content: start;
+    align-items: start;
+    gap: 8px;
+  }
+  .next-faces-many:not([data-next-face-count='3']):not([data-next-face-count='4'])
+    .next-face-image {
+    grid-column: 1;
+    grid-row: 1 / span 3;
+    width: 112px;
+  }
+  .next-faces-many:not([data-next-face-count='3']):not([data-next-face-count='4']) .next-input-row {
+    grid-column: 2;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    min-width: 0;
+  }
+  .next-faces-many:not([data-next-face-count='3']):not([data-next-face-count='4'])
+    .next-input-row
+    > .next-field {
+    flex: 0 0 auto;
+  }
+  .next-faces-many:not([data-next-face-count='3']):not([data-next-face-count='4']) .next-face-hint {
+    inset: 48px 4px 0;
+    display: grid;
+    place-items: center;
+    margin: 0;
+    font-size: 0.8rem;
+    line-height: 1.2;
+  }
+  .next-faces-many:not([data-next-face-count='3']):not([data-next-face-count='4'])
+    .next-face-generate {
+    min-height: 44px;
+  }
+  .next-faces-many:not([data-next-face-count='3']):not([data-next-face-count='4'])
+    .next-tile-status,
+  .next-faces-many:not([data-next-face-count='3']):not([data-next-face-count='4'])
+    .next-face-actions {
+    grid-column: 2;
+    min-width: 0;
+  }
+}
+
+/* One face: the reason it has no Remove, beside the tile. */
+.next-last-face-note {
+  font-size: 0.9rem;
+  opacity: 0.85;
+  text-align: center;
+  margin: 0.25rem 0 0;
+}
+
+/* The Undo notice: in the flow above the faces, covering nothing; its line is reserved in the strip head. */
+.next-undo-notice {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 44px;
+  font-size: 0.95rem;
+}
+.next-undo-notice:empty {
+  display: none;
+}
+.next-undo-notice .next-undo {
+  min-height: 44px;
+  min-width: 64px;
+}
+
+/* The face's image box keeps a 48 px band above the picture for Remove, so Remove sits inside the image box
+ * without covering any picture pixel, and the square picture's four corners stay visible (fm-j4i8). */
+.next-face .next-face-image {
+  aspect-ratio: auto;
+  padding-top: 48px;
+  border-radius: 6px 6px 0 0;
+  background: linear-gradient(transparent 48px, rgba(128, 128, 128, 0.08) 48px);
+}
+.next-face .next-face-image > img,
+.next-face .next-face-image > canvas,
+.next-face .next-face-image > .next-face-empty {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1 / 1;
+}
+/* A face with words but no picture yet keeps the square under the band. */
+.next-face .next-face-image:has(> .next-face-hint)::after {
+  content: '';
+  display: block;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+}
+.next-face .next-face-image > .next-face-hint {
+  top: calc(48px + 40%);
+}
+
+/* Remove: drawn as a 32 px circle at the image's top right, with a 44 x 44 hit area that stays inside the image. */
+.next-face .next-face-image .next-face-close {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  z-index: 2;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  /* Square: the whole 44 x 44 box is the hit area (a rounded box would not hit-test its corners). */
+  border-radius: 0;
+  color: #f3f3f3;
+  background: transparent;
+  isolation: isolate;
+  transition: transform 0.15s ease-out;
+}
+.next-face .next-face-image .next-face-close::before {
+  content: '';
+  position: absolute;
+  inset: 6px;
+  border-radius: 50%;
+  background: rgba(23, 24, 28, 0.62);
+  border: 1px solid rgba(240, 240, 240, 0.35);
+  z-index: -1;
+}
+.next-face .next-face-image .next-face-close:hover,
+.next-face .next-face-image .next-face-close:focus-visible {
+  background: transparent;
+  transform: scale(1.08);
+}
+.next-face .next-face-image .next-face-close:hover::before,
+.next-face .next-face-image .next-face-close:focus-visible::before {
+  background: rgba(23, 24, 28, 0.88);
+}
+.next-face .next-face-image .next-face-close:focus-visible {
+  outline: 2px solid #ce621d;
+  outline-offset: -4px;
+}
+.next-face .next-face-image .next-face-close .MuiSvgIcon-root {
+  font-size: 1.15rem;
+  color: #f3f3f3;
+}

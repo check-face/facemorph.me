@@ -33,7 +33,8 @@ S={
  'busy':'.next-status progress',
  'routeCaption':'.next-route-caption',
  'faceImage':'.next-face-image img:not([data-public-preview]), .next-face-image canvas[data-face-drawn="true"]',
- 'faceTextInputs':'.next-face input',
+ 'faceTextInputs':'.next-face .next-field input',
+ 'faceGenerate':'.next-face .next-face-generate:not(.next-file-preparation)',
  'processingMode':'select[aria-label="Processing mode"]',
  'faceSource':'select[aria-label="Face source"]',
  'choosePhoto':'.next-face input[type="file"]',
@@ -69,17 +70,26 @@ def ensure_instrumented():
  js("window.__ciBusyChanges=window.__ciBusyChanges||0;if(!window.__ciBusyObserver||!window.__ciBusyNode||!document.contains(window.__ciBusyNode)){if(window.__ciBusyObserver)window.__ciBusyObserver.disconnect();window.__ciBusyNode=document.querySelector('.next-status');window.__ciBusyObserver=new MutationObserver(()=>{window.__ciBusyChanges++;});window.__ciBusyObserver.observe(window.__ciBusyNode,{subtree:true,attributes:true,childList:true,characterData:true});window.__ciBusyChanges++;}")
 def q(expr):return json.loads(js('JSON.stringify('+expr+')'))
 def text(sel):return js("(()=>{const e=document.querySelector('%s');return e instanceof HTMLInputElement?e.value:(e?.innerText||'');})()"%sel)
-def wait(predicate,seconds=600):
+def wait(predicate,seconds=600,allow_error=False):
  deadline=time.monotonic()+seconds
  while time.monotonic()<deadline:
   error=text(S['error'])
-  if error:raise RuntimeError(error)
+  if error and not allow_error:raise RuntimeError(error)
   value=predicate()
   if value:return value
   time.sleep(.5)
  raise TimeoutError('UI stage deadline exceeded')
+def generate_labels():
+ return q("[...document.querySelectorAll(%s)].filter(b=>!b.disabled&&/^(Generate|Retry)$/.test(b.textContent.trim())).map(b=>b.getAttribute('aria-label'))"%json.dumps(S['faceGenerate']))
 def click(name,expect=None):
- if name==S['buttons']['generate']:name=q("[...document.querySelectorAll('.next-face-generate')].map(b=>b.getAttribute('aria-label'))")[-1]
+ if name==S['buttons']['generate']:
+  labels=generate_labels()
+  assert labels,'No face is awaiting Generate or inference Retry'
+  name=labels[-1]
+ if name in generate_labels():
+  # File preparation shares the operation slot, but it is never an inference action.
+  press_selector(S['faceGenerate']+'[aria-label='+json.dumps(name)+']',allow_error=True)
+  return
  # A click must be verified: a stale React node or a re-render can swallow it silently, which
  # used to surface minutes later as an unrelated stage timeout. The DOM route clicks the exact
  # button; `expect` (when given) re-queries up to three times, re-clicking if the UI did not
@@ -121,7 +131,8 @@ def idle():return js("document.querySelector('.next-product')?.getAttribute('dat
 
 def run(name,predicate=None):
  if name==S['buttons']['generate']:
-  labels=q("[...document.querySelectorAll('.next-face-generate')].map(b=>b.getAttribute('aria-label'))")
+  labels=generate_labels()
+  assert labels,'Generate must operate an invalidated face, not pass on completed results'
   for label in labels:run(label)
   if predicate:wait(predicate,60)
   return
@@ -140,25 +151,105 @@ def run(name,predicate=None):
  click(name,expect=started)
  wait(started,30);wait(idle)
 def faces():
- return q("[...document.querySelectorAll('%s')].map(i=>{const r=i.getBoundingClientRect(),t=i.closest('.next-face-image').getBoundingClientRect();return {width:i.naturalWidth||i.width,height:i.naturalHeight||i.height,url:i.src||'canvas:rgba',renderedWidth:r.width,renderedHeight:r.height,fitsTile:r.width>0&&r.height>0&&Math.abs(r.width-t.width)<=1&&Math.abs(r.height-t.height)<=1&&Math.abs(r.left-t.left)<=1&&Math.abs(r.top-t.top)<=1};})"%S['faceImage'])
+ # fm-id4c reserves a Remove band above the full source frame inside this box (fm-j4i8).
+ # The frame fills its width and retains its source aspect; it must not fill the control band.
+ return q("[...document.querySelectorAll('%s')].map(i=>{const r=i.getBoundingClientRect(),t=i.closest('.next-face-image').getBoundingClientRect(),width=i.naturalWidth||i.width,height=i.naturalHeight||i.height;return {width,height,url:i.src||'canvas:rgba',renderedWidth:r.width,renderedHeight:r.height,controlBand:r.top-t.top,fitsTile:r.width>0&&r.height>0&&Math.abs(r.width-t.width)<=1&&Math.abs(r.height-r.width*height/width)<=1&&r.left>=t.left-1&&r.right<=t.right+1&&r.top>=t.top-1&&r.bottom<=t.bottom+1};})"%S['faceImage'])
+def assert_face_frames():
+ images=faces()
+ assert images and all(i['fitsTile'] for i in images),'Source frame must retain its aspect, full width and 1px containment: '+str(images)
+ evidence=[]
+ for index in range(len(images)):
+  for right,bottom in [(False,False),(True,False),(False,True),(True,True)]:
+   corner=q("""(()=>{
+    const i=[...document.querySelectorAll(%s)][%d];
+    let r=i.getBoundingClientRect();
+    const initialY=r.top+(%s?r.height-.5:.5);
+    window.scrollBy({top:initialY-innerHeight/2,left:0,behavior:'instant'});
+    r=i.getBoundingClientRect();
+    const x=r.left+(%s?r.width-.5:.5),y=r.top+(%s?r.height-.5:.5);
+    const hit=document.elementFromPoint(x,y),clipped=[];
+    for(let a=i.parentElement;a;a=a.parentElement){
+     const c=getComputedStyle(a),b=a.getBoundingClientRect(),root=a===document.scrollingElement;
+     const clipX=/(hidden|clip)/.test(c.overflowX)||(!root&&/(scroll|auto)/.test(c.overflowX));
+     const clipY=/(hidden|clip)/.test(c.overflowY)||(!root&&/(scroll|auto)/.test(c.overflowY));
+     const left=b.left+a.clientLeft,top=b.top+a.clientTop;
+     if((clipX&&(r.left<left-1||r.right>left+a.clientWidth+1))||
+        (clipY&&(r.top<top-1||r.bottom>top+a.clientHeight+1)))clipped.push(a.className||a.tagName);
+    }
+    const remove=i.closest('.next-face').querySelector('.next-face-close')?.getBoundingClientRect();
+    const removeOverlaps=!!remove&&Math.min(remove.right,r.right)>Math.max(remove.left,r.left)&&Math.min(remove.bottom,r.bottom)>Math.max(remove.top,r.top);
+    return {face:i.closest('.next-face').dataset.nextFace,right:%s,bottom:%s,x,y,hit:hit===i,clipped,removeOverlaps};
+   })()"""%(json.dumps(S['faceImage']),index,json.dumps(bottom),json.dumps(right),json.dumps(bottom),json.dumps(right),json.dumps(bottom)))
+   assert corner['hit'],'Source frame corner is obscured or unreachable by normal scrolling: '+str(corner)
+   assert not corner['clipped'],'Full source frame exceeds a clipping ancestor: '+str(corner)
+   assert not corner['removeOverlaps'],'Remove overlaps source pixels: '+str(corner)
+   evidence.append(corner)
+ return evidence
 def select_mode(value):
  if not js("!!document.querySelector('select[aria-label=\"Processing mode\"]')"):click('More options')
- js("document.querySelector('.next-advanced').open=true")
+ js("document.querySelector('.next-advanced')&&(document.querySelector('.next-advanced').open=true)")
  js("(()=>{const s=document.querySelector('%s');Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype,'value').set.call(s,'%s');s.dispatchEvent(new Event('change',{bubbles:true}));})()"%(S['processingMode'],value))
  deadline=time.monotonic()+10
  while time.monotonic()<deadline:
   if js("document.querySelector('%s').value"%S['processingMode'])==value:return
   time.sleep(.5)
  raise AssertionError('Processing mode did not become '+value)
-def set_last_text_input():
- # The last text input is targeted because a face whose mode sits on 'Numeric seed' renders a
- # digits-only input instead of a words input, and a words input accepts anything. A fresh
- # value every call: a repeated value is a cache hit with zero inference.
- js("(()=>{const ins=[...document.querySelectorAll('%s')].filter(x=>x.type==='text');const i=ins[ins.length-1];if(!i)return;const d=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value');d.set.call(i,%s);i.dispatchEvent(new Event('input',{bubbles:true}));})()"%(S['faceTextInputs'],json.dumps('rejection-check '+str(time.time_ns()))))
+def set_face_text_input(index,value):
+ # Operate the source field, never the editable Image filename below the result. Native CDP
+ # input goes through React's real change handler and must invalidate the old face.
+ before=q("(()=>{const i=[...document.querySelectorAll(%s)].at(%d);if(!i)return null;const c=i.closest('.next-face');return {id:c.dataset.nextFace,value:i.value,disabled:i.disabled,hadResult:!!c.querySelector('.next-face-image img:not([data-public-preview]),canvas[data-face-drawn=\"true\"]'),filenames:[...document.querySelectorAll('.next-result-filename input:not(:disabled)')].filter(f=>!c.contains(f)).map(f=>({id:f.closest('.next-face')?.dataset.nextFace,value:f.value}))};})()"%(json.dumps(S['faceTextInputs']),index))
+ assert before and not before['disabled'],'Editable face source is required'
+ assert before['value']!=value,'Source edit must change the request identity'
+ selector='.next-face[data-next-face='+json.dumps(before['id'])+'] .next-field input'
+ js("window.__ciSourceEdits=[];window.__ciSourceListener=e=>window.__ciSourceEdits.push({source:!!e.target.closest('.next-field'),filename:!!e.target.closest('.next-result-filename')});document.addEventListener('input',window.__ciSourceListener,true)")
+ try:
+  press_selector(selector)
+  cdp('Input.dispatchKeyEvent',type='keyDown',key='a',code='KeyA',windowsVirtualKeyCode=65,modifiers=2)
+  cdp('Input.dispatchKeyEvent',type='keyUp',key='a',code='KeyA',windowsVirtualKeyCode=65,modifiers=2)
+  cdp('Input.insertText',text=value)
+  wait(lambda:js("document.querySelector(%s)?.value===%s"%(json.dumps(selector),json.dumps(value))),10)
+ finally:js("document.removeEventListener('input',window.__ciSourceListener,true)")
+ edits=q('window.__ciSourceEdits')
+ assert edits and all(e['source'] and not e['filename'] for e in edits),'Input went to an export filename instead of the face source: '+str(edits)
+ card='.next-face[data-next-face='+json.dumps(before['id'])+']'
+ wait(lambda:not js("!!document.querySelector(%s)?.querySelector('.next-face-image img:not([data-public-preview]),canvas[data-face-drawn=\"true\"]')"%json.dumps(card)),10)
+ for filename in before['filenames']:
+  assert js("document.querySelector(%s)?.querySelector('.next-result-filename input')?.value"%json.dumps('.next-face[data-next-face='+json.dumps(filename['id'])+']'))==filename['value'],'Source edit changed another face export filename'
+ labels=q("[...document.querySelectorAll(%s)].filter(b=>!b.disabled&&b.textContent.trim()==='Generate').map(b=>b.getAttribute('aria-label'))"%json.dumps(card+' .next-face-generate:not(.next-file-preparation)'))
+ assert len(labels)==1,'Invalidated source must expose exactly one Generate: '+str(labels)
+ CTX.setdefault('sourceEdits',[]).append({'face':before['id'],'pointerKeyboard':True,'resultInvalidated':before['hadResult'],'sourceInputEvents':len(edits),'filenameInputEvents':sum(e['filename'] for e in edits)})
+ return labels[0]
+def set_last_text_input(value=None):
+ index=q("[...document.querySelectorAll(%s)].map((i,index)=>({index,editable:!i.disabled&&i.type==='text'&&i.inputMode!=='numeric'})).filter(i=>i.editable).at(-1)?.index??null"%json.dumps(S['faceTextInputs']))
+ assert index is not None,'An editable words source is required'
+ return set_face_text_input(index,value or 'rejection-check '+str(time.time_ns()))
+def repeat_text_face(index):
+ original=q("[...document.querySelectorAll(%s)].at(%d).value"%(json.dumps(S['faceTextInputs']),index))
+ set_face_text_input(index,original+' repeat-check')
+ label=set_face_text_input(index,original)
+ run(label,predicate=lambda:len(faces())==2)
 def download(name):
- folder=downloads/str(time.time_ns());folder.mkdir();cdp('Browser.setDownloadBehavior',behavior='allow',downloadPath=str(folder));click(name)
- return wait(lambda:next((p for p in folder.iterdir() if p.suffix!='.crdownload' and p.stat().st_size>0),None),60)
-def press_selector(selector,index=0,name=None):
+ # Prepared-file controls intentionally disable Save while the selected bytes are being
+ # prepared. Readiness, a real pointer click and the downloaded bytes share the original 60s.
+ deadline=time.monotonic()+60
+ folder=downloads/str(time.time_ns());folder.mkdir();cdp('Browser.setDownloadBehavior',behavior='allow',downloadPath=str(folder))
+ selector='.next-face-actions button' if name==S['buttons']['saveImage'] else '.next-video-slot .next-actions button' if name==S['buttons']['saveVideo'] else 'button'
+ def state():
+  return q("(()=>{const b=[...document.querySelectorAll(%s)].find(b=>(b.getAttribute('aria-label')||b.textContent.trim())===%s);return {present:!!b,disabled:b?b.disabled:null};})()"%(json.dumps(selector),json.dumps(name)))
+ initial=state()
+ def ready():
+  value=state()
+  return value if value['present'] and not value['disabled'] else None
+ try:
+  prepared=wait(ready,max(0,deadline-time.monotonic()))
+  press_selector(selector,name=name,seconds=min(30,max(0,deadline-time.monotonic())))
+  file=wait(lambda:next((p for p in folder.iterdir() if p.suffix!='.crdownload' and p.stat().st_size>0),None),max(0,deadline-time.monotonic()))
+  result.setdefault('downloads',[]).append({'action':name,'initial':initial,'ready':prepared,'pointer':True,'bytes':file.stat().st_size})
+  return file
+ except Exception:
+  result['downloadFailure']={'action':name,'initial':initial,'last':state(),'files':len(list(folder.iterdir()))}
+  raise
+def press_selector(selector,index=0,name=None,allow_error=False,seconds=30):
  # Operate the actual rendered source/crop controls with a verified pointer hit.
  def point():
   return js("""(()=>{const es=[...document.querySelectorAll(%s)].filter(e=>{const r=e.getBoundingClientRect();return r.width&&r.height&&getComputedStyle(e).visibility!=='hidden'&&(!%s||e.textContent.trim().toLowerCase()===%s);});
@@ -168,7 +259,7 @@ def press_selector(selector,index=0,name=None):
    const box=[r.left,r.top,r.width,r.height].map(v=>Math.round(v)).join(','),settled=window.__pressBox===box;window.__pressBox=box;
    const x=r.left+r.width/2,y=r.top+r.height/2;return settled&&r.width&&r.height&&e.contains(document.elementFromPoint(x,y))?{x,y}:null;})()"""%(json.dumps(selector),json.dumps(name),json.dumps(name.lower() if name else None),index))
  js('window.__pressBox=null')
- p=wait(point,30);click_at_xy(p['x'],p['y'])
+ p=wait(point,seconds,allow_error=allow_error);click_at_xy(p['x'],p['y'])
 def upload(selector,path):
  root=cdp('DOM.getDocument')['root']['nodeId'];node=cdp('DOM.querySelector',nodeId=root,selector=selector)['nodeId'];assert node,'File input missing';cdp('DOM.setFileInputFiles',nodeId=node,files=[str(path.resolve())])
 def save_check(name,data):result['checks'][name]=data;(out/'report.json').write_text(json.dumps(result,indent=2));print(json.dumps({'check':name,**data}),flush=True)
@@ -225,7 +316,7 @@ def stage_preflight():
  js("window.__ciLogs=[];['log','warn','error','info'].forEach(k=>{const o=console[k].bind(console);console[k]=(...a)=>{try{window.__ciLogs.push(k+': '+a.map(x=>typeof x==='string'?x:JSON.stringify(x)).join(' ').slice(0,300));if(window.__ciLogs.length>40)window.__ciLogs.shift();}catch(e){}};});")
  js("window.__ciBusyChanges=0;window.__ciBusyObserver=new MutationObserver(()=>{window.__ciBusyChanges++;});window.__ciBusyObserver.observe(document.querySelector('.next-status'),{subtree:true,attributes:true,childList:true,characterData:true});window.__ciBusyChanges++;")
  click('More options')
- js("document.querySelector('.next-advanced').open=true")
+ js("document.querySelector('.next-advanced')&&(document.querySelector('.next-advanced').open=true)")
  state=q("({tiles:document.querySelectorAll('.next-face').length,photos:document.querySelectorAll('%s').length,words:!!document.querySelector('%s'),generate:[...document.querySelectorAll('button')].some(b=>b.classList.contains('next-face-generate')&&b.textContent==='Generate'),modeOptions:[...document.querySelectorAll('%s option')].map(o=>o.value),error:(document.querySelector('%s')?.innerText||'')})"%(S['choosePhoto'],S['faceTextInputs'],S['processingMode'],S['error']))
  assert state['tiles']==2 and state['words'] and state['generate'],state
  assert state['photos']==2,state
@@ -272,15 +363,15 @@ def stage_seedGeneration():
  result['processingSelection']=selection
  # Keep the arbitrary-name mapping path and independently qualify the published
  # public-name W+ pathway. Record message kinds only, never inputs or latents.
- labels=q("[...document.querySelectorAll('.next-face-generate')].map(b=>b.getAttribute('aria-label'))")
+ labels=generate_labels()
  run(labels[0])
  js("window.__ciNameMessages=[];const post=Worker.prototype.postMessage;Worker.prototype.postMessage=function(m,...a){if(m&&['generate','synthesize'].includes(m.type))window.__ciNameMessages.push(m.type);return post.call(this,m,...a);};")
- js("(()=>{const ins=[...document.querySelectorAll('.next-face input')].filter(x=>x.type==='text');const i=ins.at(-1);Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(i,'charlotte');i.dispatchEvent(new Event('input',{bubbles:true}));})()")
- run(labels[-1]);images=wait(lambda:faces() if len(faces())==2 and all(i['width']==1024 and i['height']==1024 for i in faces()) else None,60)
- assert all(i['fitsTile'] for i in images), 'Generated face is clipped or does not fill its tile: '+str(images)
+ label=set_last_text_input('charlotte')
+ run(label);images=wait(lambda:faces() if len(faces())==2 and all(i['width']==1024 and i['height']==1024 for i in faces()) else None,60)
+ frame_geometry=assert_face_frames()
  messages=q('window.__ciNameMessages')
  assert 'synthesize' in messages and 'generate' not in messages, 'Published name silently fell back to mapping: '+str(messages)
- save_check('nameSeed',{'passed':True,'dimensions':[[i['width'],i['height']] for i in images],'processingSelection':selection,'publishedLatentSynthesis':True})
+ save_check('nameSeed',{'passed':True,'dimensions':[[i['width'],i['height']] for i in images],'processingSelection':selection,'publishedLatentSynthesis':True,'frameGeometry':frame_geometry})
  first=download(S['buttons']['saveImage'])
  assert first.suffix=='.webp' and first.read_bytes()[8:12]==b'WEBP', 'Chrome deferred download did not use the supported WebP encoder'
  CTX['seedDownload']=first
@@ -316,9 +407,10 @@ def stage_routeRejection():
  js("window.__FACEMORPH_FORCE_CANARY_FAIL__=true")
  # The face must actually synthesize or admission never runs (a repeated input is a cache
  # hit with zero inference), so change the second face's text first.
- set_last_text_input()
+ label=set_last_text_input()
+ assert CTX['sourceEdits'][-1]['resultInvalidated'],'Route refusal must invalidate an existing result'
  select_mode('webgpu')
- before=js('window.__ciBusyChanges');click(S['buttons']['generate'])
+ before=js('window.__ciBusyChanges');click(label)
  # The refusal can land before the busy flag ever registers (a warm cache makes admission
  # near-instant, so the session's device check fails inside the first poll window), so accept
  # either the busy transition or the expected error itself; wait() would treat the error as
@@ -342,7 +434,7 @@ def stage_routeRejection():
   if 'webgpu' in named and 'cpu' in named and 'failed' in named:break
   time.sleep(.5)
  else:raise AssertionError('route caption never named the refused and current routes: '+caption)
- save_check('routeRejectionNamed',{'passed':True,'caption':caption,'error':text(S['error'])})
+ save_check('routeRejectionNamed',{'passed':True,'caption':caption,'error':text(S['error']),'sourceEdit':CTX['sourceEdits'][-1]})
  # Back to CPU for the remaining checks; the cpu qualification is already cached (C-03). The
  # expected error above stays on screen until the next run starts, so this polls the select
  # directly instead of wait(), which treats any visible error as fatal.
@@ -355,7 +447,7 @@ def stage_repeatOriginal():
  # Baselines for the repeat-original zero-worker assertions are taken AFTER the forced
  # rejection, which legitimately allocated a worker for the failed webgpu attempt.
  workers=js('window.__ciWorkers');requests=js('window.__ciWorkerRequests')
- run(S['buttons']['generate'],predicate=lambda:len(faces())==2);second=download(S['buttons']['saveImage']);assert hashlib.sha256(second.read_bytes()).hexdigest()==CTX['seedSha'];assert js('window.__ciWorkers')==workers,'Repeat created an inference worker';assert js('window.__ciWorkerRequests')==requests,'Repeat invoked the inference worker'
+ repeat_text_face(0);second=download(S['buttons']['saveImage']);assert hashlib.sha256(second.read_bytes()).hexdigest()==CTX['seedSha'];assert js('window.__ciWorkers')==workers,'Repeat created an inference worker';assert js('window.__ciWorkerRequests')==requests,'Repeat invoked the inference worker'
  save_check('repeatOriginal',{'passed':True,'sha256':CTX['seedSha'],'newWorkers':0,'newWorkerRequests':0})
  CTX['workerBaseline']=workers
 def stage_recoveredDownload():
@@ -380,7 +472,7 @@ def stage_syntheticPhotoE4e():
  # The e4e itself, not a new worker: a confirmed crop runs no detector worker (fm-6ib8), and a device with memory
  # to spare keeps the compute worker, so the proof is an 'encode-aligned' request posted after the upload.
  assert js("window.__ciWorkerKinds.slice(%d).some(k=>k.type==='encode-aligned')"%kinds),'the photo was not sent to e4e'
- run(S['buttons']['generate'],predicate=lambda:len(faces())==2)
+ repeat_text_face(1)
  wait(lambda:len(faces())==2 and all(i['width']==1024 and i['height']==1024 for i in faces()),60)
  save_check('syntheticPhotoE4e',{'passed':True,'newWorkers':js('window.__ciWorkers')-CTX['workerBaseline'],'e4eRequests':js("window.__ciWorkerKinds.slice(%d).filter(k=>k.type==='encode-aligned').length"%kinds),'widths':[i['width'] for i in faces()]})
 def stage_localCrop():
@@ -421,7 +513,7 @@ def stage_localCrop():
   raise RuntimeError('crop accept never settled: status=%r error=%r workers=%r logs=%s'%(text(S['status']),text(S['error']),js('window.__ciWorkers'),logs_tail()))
  cropped=text(S['fileName'])
  assert cropped=='cropped.png',cropped
- run(S['buttons']['generate'],predicate=lambda:len(faces())==2)
+ repeat_text_face(1)
  wait(lambda:len(faces())==2 and all(i['width']==1024 and i['height']==1024 for i in faces()),60)
  save_check('localCrop',{'passed':True,'file':cropped})
 def project_files_shipped():

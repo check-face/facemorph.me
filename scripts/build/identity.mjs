@@ -23,6 +23,8 @@ import { join, matchesGlob, posix } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { treeDigest } from '../ci/fetch-artifact.ts';
 import { WORKSPACES } from './check-scaffold.mjs';
+import { runtimeIdentity } from '../../apps/web/build/runtime-identity.ts';
+import { workerInventory } from '../../apps/web/build/worker-inventory.ts';
 
 export const ROOT = fileURLToPath(new URL('../..', import.meta.url));
 export const REPOSITORY_ID = 1413979666;
@@ -273,6 +275,28 @@ function fromChunks(hostedRoot, digest) {
  */
 export function workerFindings({ dist, inventory, pinned, hostedRoot }) {
   const findings = [];
+  const sortedPins = (rows) =>
+    rows
+      .map(({ path, sha256 }) => ({ path, sha256 }))
+      .sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
+  if (
+    !Array.isArray(inventory.hosted) ||
+    JSON.stringify(sortedPins(inventory.hosted)) !== JSON.stringify(sortedPins(pinned))
+  )
+    findings.push({
+      graph: 'hosted',
+      path: 'worker-inventory.json',
+      problem: 'hosted inventory differs from the trusted expected pins',
+    });
+  if (
+    Array.isArray(inventory.hosted) &&
+    workerInventory(inventory.emitted, inventory.hosted).identity !== inventory.identity
+  )
+    findings.push({
+      graph: 'inventory',
+      path: 'worker-inventory.json',
+      problem: 'inventory identity does not follow from its emitted and hosted lists',
+    });
   const closure = new Map();
   const walk = (file, from) => {
     if (closure.has(file)) return;
@@ -335,6 +359,16 @@ export function workerFindings({ dist, inventory, pinned, hostedRoot }) {
   return { findings, emitted };
 }
 
+/** The CLI trusts reviewed runtime composition, never the built inventory as the source of expected pins. */
+export function workerReport({ dist, hostedRoot, root = ROOT }) {
+  const inventory = readJson(join(dist, 'worker-inventory.json'));
+  const pinned = runtimeIdentity(root).hosted;
+  return {
+    ...workerFindings({ dist, inventory, pinned, ...(hostedRoot ? { hostedRoot } : {}) }),
+    hosted: pinned.length,
+  };
+}
+
 // ---- Artifact identity.
 /** The identity a lane records for the artifact it serves: a deploy-next/ layout with next-site-identity.json. */
 export function artifactIdentity(dir, { env = process.env, build = null } = {}) {
@@ -385,20 +419,13 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     const dist = arg('--workers');
     const hosted = arg('--hosted');
     if (!dist) process.exit(2);
-    const inventory = readJson(join(dist, 'worker-inventory.json'));
-    const pinned = readJson(join(ROOT, 'import/build-inputs.json')).worker_graphs.pinned;
-    const r = workerFindings({
-      dist,
-      inventory,
-      pinned,
-      ...(hosted ? { hostedRoot: hosted } : {}),
-    });
+    const r = workerReport({ dist, ...(hosted ? { hostedRoot: hosted } : {}) });
     for (const f of r.findings) console.log(JSON.stringify(f));
     console.log(
       JSON.stringify({
         summary: {
           emitted: r.emitted.length,
-          hosted: hosted ? pinned.length : 'not checked',
+          hosted: hosted ? r.hosted : 'not checked',
           findings: r.findings.length,
         },
       }),

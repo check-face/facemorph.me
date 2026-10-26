@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {inputLatent,truncate,rgba1024} from './identity.mjs';
 import {digest} from './originals.mjs';
+import {confirmCropped} from '../photo/confirmed-crop.mjs';
 const fixture=JSON.parse(await readFile(new URL('./identity-fixtures.json',import.meta.url)));
 for(const c of fixture.cases)test(`Exact NumPy identity: ${c.mode} ${c.value}`,async()=>assert.equal(await digest((await inputLatent(c.mode,c.value)).values),c.sha256));
 test('Reject unsafe seeds and oversized text',async()=>{for(const value of ['-1','1.5','4294967296','1e3',''])await assert.rejects(inputLatent('seed',value));await assert.rejects(inputLatent('text','😀'.repeat(129)));});
@@ -219,4 +220,37 @@ test('grants travel with initialize and reach a live worker when an approval cha
   const settled=seen.length;runtime.setGrants(structuredClone(approved));
   assert.equal(seen.length,settled,'the same grants posted again reach no worker');
  }finally{runtime.dispose();globalThis.indexedDB=oldIDB;}
+});
+
+test('a confirmed-crop grant refusal reaches its caller and retries the same derived pixels after approval',async()=>{
+ const oldBitmap=globalThis.createImageBitmap,oldCanvas=globalThis.OffscreenCanvas,oldIDB=globalThis.indexedDB;
+ const size=32,pixels=new Uint8ClampedArray(size*size*4).fill(128);let decodes=0,encodes=0,approved=false;
+ globalThis.indexedDB=indexedDbFixture().api;
+ globalThis.createImageBitmap=async()=>{decodes++;return {width:size,height:size,close(){}};};
+ globalThis.OffscreenCanvas=class{getContext(){return {drawImage(){},getImageData:()=>({width:size,height:size,data:pixels})};}};
+ const workerFactory=()=>({postMessage(message){
+  if(message.type==='grants')return;
+  const respond=data=>queueMicrotask(()=>this.onmessage({data:{id:message.id,...data}}));
+  if(message.type==='encode-aligned'){
+   encodes++;
+   if(!approved)return respond({type:'error',error:{name:'GrantRefused',message:'This download needs more data than was approved. Approve the download again to continue.'}});
+   return respond({type:'complete',result:{values:new Float32Array(9216).fill(.1),shape:[1,18,512],space:'w-plus',encoderProvider:'wasm',encoderQualification:{passed:true,manifestSha256:pin(8)}}});
+  }
+  respond({type:'complete',result:message.type==='synthesize'?{blob:new Blob(['mock-png'],{type:'image/png'}),values:message.values,space:'w-plus',shape:[1,18,512]}:{deviceValidated:true}});
+ },terminate(){}});
+ const runtime=createBrowserRuntime({manifestSha256:'0'.repeat(64),preferredRoute:'cpu',workerFactory,
+  manifest:{...testManifest(),alignmentSha256:pin(9),encoderStream:{...asset(8,1024),sourceEncoderSha256:pin(7),preprocessingSha256:pin(9),phoneAdmitted:true,maxWasmBytes:268435456}}});
+ try{
+  const file=await confirmCropped(new File(['confirmed-refusal'],'crop.png',{type:'image/png'}),size);
+  await assert.rejects(runtime.encodePhoto(file,{raw:true}),{name:'GrantRefused',message:/Approve the download again/});
+  const [slot]=runtime.cropSlots();assert.equal(slot.state,'failed');assert.ok(runtime.cropPixelRefs(slot.slotId)>0);
+  assert.equal(runtime.status().deviceValidated,true,'a consent refusal does not invalidate the admitted route');
+  const derivations=runtime.inspectCropQueue().derivations;
+  approved=true;
+  runtime.setGrants({approved:{approvalId:2,assets:[],remainingBytes:0,owners:['face:candidate-bridge']},local:null});
+  const face=await runtime.encodePhoto(file,{raw:true});
+  assert.equal(face.preprocessing.slotId,slot.slotId);assert.equal(face.preprocessing.attemptId,`${slot.slotId}.a2`);
+  assert.equal(decodes,1);assert.equal(runtime.inspectCropQueue().derivations,derivations);assert.equal(encodes,2);
+  assert.deepEqual(runtime.cropSlots(),[]);
+ }finally{runtime.dispose();globalThis.createImageBitmap=oldBitmap;globalThis.OffscreenCanvas=oldCanvas;globalThis.indexedDB=oldIDB;}
 });

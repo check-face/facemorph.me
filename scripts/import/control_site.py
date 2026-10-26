@@ -98,7 +98,8 @@ class Site:
 STRIP = "const m=require('node:module'),fs=require('node:fs');process.stdout.write(m.stripTypeScriptTypes(fs.readFileSync(process.argv[1],'utf8')))"
 TS_SPECIFIER = re.compile(r"""((?:\bfrom|\bimport)\s*\(?\s*)(['"])(\.{1,2}/[^'"]+)\.ts\2""")
 # A workspace package by name (`stylegan-js/engine`), resolved through its package.json `source` export.
-PACKAGE_SPECIFIER = re.compile(r"""((?:\bfrom|\bimport)\s*\(?\s*)(['"])(@facemorph/[a-z0-9-]+(?:/[a-z0-9-]+)?)\2""")
+# Bare names outside the workspace export map are left as they are; the old `@facemorph/` scope still matches.
+PACKAGE_SPECIFIER = re.compile(r"""((?:\bfrom|\bimport)\s*\(?\s*)(['"])((?:@facemorph/)?[a-z0-9-]+(?:/[a-z0-9-]+)?)\2""")
 
 
 def package_sources(repo: Path) -> dict:

@@ -22,7 +22,7 @@ import {
   symlinkSync,
   writeFileSync,
 } from 'node:fs';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { fetchControl } from '../../../../scripts/import/fetch-control.mjs';
 
 export const ORIGIN_HOST = 'next.facemorph.me';
@@ -126,6 +126,8 @@ export interface StartOptions {
   readonly artifact?: string;
   /** The subject's own source identity (sent as X-Next-Artifact-Source); required with `artifact`. */
   readonly source?: string;
+  /** Opt-in live HTTP fault file: exact path, optional delaySeconds (0..15), optional status (503). */
+  readonly faultFile?: string;
 }
 
 export async function startControl({
@@ -133,6 +135,7 @@ export async function startControl({
   log,
   artifact,
   source,
+  faultFile,
 }: StartOptions = {}): Promise<Control> {
   if (artifact && !source) throw new Error('a subject artifact needs its own source identity');
   const subjectIdentity = (): ControlIdentity => ({
@@ -217,6 +220,7 @@ export async function startControl({
         join(work, 'next.crt'),
         '--key',
         join(work, 'next.key'),
+        ...(faultFile ? ['--fault-file', resolve(faultFile)] : []),
       ],
       { cwd: work, stdio: ['ignore', logFd, logFd] },
     );

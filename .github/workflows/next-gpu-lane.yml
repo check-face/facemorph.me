@@ -66,6 +66,9 @@ jobs:
         uses: ./.github/actions/run-command
         with:
           exclusive: gpu-timing # times the GPU: alone among timing jobs, never blocking others
+          # Queue behind another timing job (a dispatched research lane, or a pending one) instead of failing
+          # unexecuted with exit 75; timeout-minutes 120 covers this wait, the 2700 s command and cleanup.
+          wait: '2700'
           timeout: '2700'
           command: >-
             BROWSER_HARNESS=/home/cdilga/Work/runs/venv-bh/bin/browser-harness node scripts/ci/gpu-lane/lane.mjs

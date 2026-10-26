@@ -22,8 +22,9 @@ import {
 } from 'node:fs';
 import { join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { BUILD_INPUTS, REPO, line, options, readJson, sha256 } from '../inventory/lib.mjs';
+import { REPO, line, options, readJson, sha256 } from '../inventory/lib.mjs';
 import { acquiredFindings } from '../inventory/check-build-inputs.mjs';
+import { loadCandidateRuntime } from '../ci/candidate-runtime.ts';
 
 const inside = (path, roots) => roots.some((r) => path === r || path.startsWith(r + sep));
 
@@ -157,10 +158,22 @@ export function publicationReference(other, notices = portedNotices()) {
   };
 }
 
-export function stage({ runtime, out, log = () => {} }) {
+export function stage({
+  runtime,
+  out,
+  controlRuntime = process.env.FACEMORPH_CONTROL_RUNTIME_DIR,
+  log = () => {},
+}) {
   runtime = resolve(runtime);
   out = resolve(out);
+  const candidate = loadCandidateRuntime(REPO);
   const roots = [realpathSync(REPO), realpathSync(runtime)];
+  if (controlRuntime) {
+    const control = acquiredFindings(controlRuntime, candidate.controlBuildInputs.runtime.assets);
+    if (control.out.length || !control.files)
+      throw new Error('Declared control cache differs from frozen pins');
+    roots.push(realpathSync(controlRuntime));
+  }
   const step = (name, fields) => log({ step: name, ...fields });
   for (const input of [runtime, join(REPO, 'deploy-next'), join(REPO, 'hosting')])
     if (!inside(realpathSync(input), roots))
@@ -181,7 +194,7 @@ export function stage({ runtime, out, log = () => {} }) {
     treeSha256: treeDigest(frontend),
   });
 
-  const { out: findings, files } = acquiredFindings(runtime, readJson(BUILD_INPUTS).runtime.assets);
+  const { out: findings, files } = acquiredFindings(runtime, candidate.buildInputs.runtime.assets);
   if (findings.length || !files)
     throw new Error(
       `the runtime at ${runtime} is not the acquired set (${findings.length} findings)`,
@@ -238,6 +251,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   try {
     const { staged, fields } = stage({
       runtime: opts.runtime ?? join(REPO, '.cache/runtime'),
+      ...(opts['control-runtime'] ? { controlRuntime: opts['control-runtime'] } : {}),
       out: opts.out ?? join(REPO, '.cache/staging'),
       log: line,
     });

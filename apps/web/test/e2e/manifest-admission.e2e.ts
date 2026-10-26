@@ -77,7 +77,6 @@ test(
       const tile = page.locator('section.next-face').nth(1);
       await tile.waitFor();
       await page.getByRole('button', { name: 'More options' }).click();
-      await page.getByText('Advanced', { exact: true }).click();
       await page.getByLabel('Processing mode').selectOption('cpu');
       await tile.getByRole('button', { name: 'Change mode' }).click();
       await page.getByRole('menuitem', { name: 'Numeric seed', exact: true }).click();

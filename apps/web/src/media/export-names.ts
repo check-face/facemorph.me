@@ -25,7 +25,7 @@ export interface NamedExport extends ExportName {
 
 export interface ExportNamer {
   /** The name for this identity in the session's known set; recorded so later exports never take it. */
-  readonly name: (input: ExportIdentityInput, label?: ExportLabelSource) => NamedExport;
+  readonly name: (input: ExportIdentityInput, label?: ExportLabelSource, retainedDigest?: string) => NamedExport;
   /** A person's edit of the name: their text, the identity's own suffix and the real extension. */
   readonly rename: (identity: ExportIdentity, editedName: string) => NamedExport;
   readonly known: () => readonly KnownExport[];
@@ -33,14 +33,26 @@ export interface ExportNamer {
 
 export function exportNamer(): ExportNamer {
   const known: KnownExport[] = [];
+  const kinds = new Map<string, ExportKind>();
   const record = (identity: ExportIdentity): NamedExport => {
+    if (kinds.has(identity.digest) && kinds.get(identity.digest) !== identity.kind)
+      throw new Error('A retained export digest cannot identify different formats.');
     const name = suggestFilename(identity, known);
     const at = known.findIndex((k) => k.digest === identity.digest);
     if (at < 0) known.push({ digest: identity.digest, filename: name.filename });
+    kinds.set(identity.digest, identity.kind);
     return { ...name, digest: identity.digest, identity };
   };
   return {
-    name: (input, label) => record(exportIdentity(input, label)),
+    name(input, label, retainedDigest) {
+      const identity = exportIdentity(input, label);
+      if (retainedDigest !== undefined) {
+        if (typeof retainedDigest !== 'string' || !/^[0-9a-f]{64}$/u.test(retainedDigest))
+          throw new Error('A retained export digest must be a lowercase SHA-256.');
+        return record({ ...identity, digest: retainedDigest });
+      }
+      return record(identity);
+    },
     rename(identity, editedName) {
       const edited = withEditedName(identity, editedName);
       // The edited name replaces the identity's earlier name in the known set.
@@ -50,6 +62,21 @@ export function exportNamer(): ExportNamer {
     },
     known: () => [...known],
   };
+}
+
+/** Only identity digests survive reload: labels, names and source facts never enter this map. */
+export type StillExportDigests = Readonly<Partial<Record<'webp' | 'png', string>>>;
+export function retainedExportDigests(value: unknown): StillExportDigests {
+  if (!value || typeof value !== 'object') return {};
+  const source = value as Record<string, unknown>;
+  const clean: Partial<Record<'webp' | 'png', string>> = {};
+  for (const format of ['webp', 'png'] as const) {
+    const digest = source[format];
+    if (typeof digest === 'string' && /^[0-9a-f]{64}$/u.test(digest)) clean[format] = digest;
+  }
+  // Valid identities include their format; an ambiguous imported map is not reusable.
+  if (clean.webp && clean.webp === clean.png) return {};
+  return clean;
 }
 
 /** The face facts the app holds, as plain values. */

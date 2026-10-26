@@ -344,7 +344,9 @@ async function execute(opts: {
         { timeout: STAGE_MS.page, polling: 10 },
       );
       await p.getByRole('button', { name: 'More options', exact: true }).click();
-      await p.locator('.next-advanced').evaluate((e) => (e.open = true));
+      // The control keeps the processing mode under Advanced; the build has it above the faces (fm-5kpx).
+      if (await p.locator('.next-advanced').count())
+        await p.locator('.next-advanced').evaluate((e) => (e.open = true));
       await p.getByLabel('Processing mode').selectOption(cell.provider);
       await p.keyboard.press('Escape');
     };

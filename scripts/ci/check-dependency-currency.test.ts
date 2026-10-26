@@ -12,12 +12,22 @@ import {
   type CurrencyOptions,
 } from './check-dependency-currency.ts';
 import { type DependencyPolicy } from './dependency-freeze.ts';
-import { composeManifest, generateOverlay, ORT_FILES } from './ort-mirror.ts';
+import { composeManifest, generateOverlay, ORT_FILES, withSerialCompanion } from './ort-mirror.ts';
+import {
+  composeEncoderDescriptor,
+  generateSerialCompanion,
+  SERIAL_ORT_FILES,
+} from './serial-ort.ts';
 
-const digest = (value: string) => createHash('sha256').update(value).digest('hex');
+const digest = (value: string | Buffer) => createHash('sha256').update(value).digest('hex');
 const policyPath = 'scripts/ci/dependency-policy.json';
 
-function fixture(t: TestContext, encoderVersion = '1.30.0', nestedEncoderVersion?: string) {
+function fixture(
+  t: TestContext,
+  encoderVersion = '1.30.0',
+  nestedEncoderVersion?: string,
+  serial = false,
+) {
   const temporary = mkdtempSync(join(tmpdir(), 'facemorph-currency-'));
   t.after(() => rmSync(temporary, { recursive: true, force: true }));
   const repo = join(temporary, 'repo');
@@ -56,7 +66,7 @@ function fixture(t: TestContext, encoderVersion = '1.30.0', nestedEncoderVersion
     resolved: 'https://registry.npmjs.org/onnxruntime-web/-/onnxruntime-web-1.30.0.tgz',
     integrity: `sha512-${Buffer.alloc(64, 7).toString('base64')}`,
   };
-  const overlay = generateOverlay(dist, locked);
+  let overlay = generateOverlay(dist, locked);
   const encoderManifests = new Map<string, string>();
   const encoder = (version: string, child?: unknown) => {
     const bytes = JSON.stringify({
@@ -77,10 +87,58 @@ function fixture(t: TestContext, encoderVersion = '1.30.0', nestedEncoderVersion
       size: Buffer.byteLength(bytes),
     };
   };
-  const encoderStream = encoder(
+  let encoderStream = encoder(
     encoderVersion,
     nestedEncoderVersion === undefined ? undefined : encoder(nestedEncoderVersion),
   );
+  let controlEncoderDescriptorBytes: Buffer | undefined;
+  let serialDist: string | undefined;
+  if (serial) {
+    controlEncoderDescriptorBytes = readFileSync(
+      new URL(
+        '../../import/runtime-manifests/encoder-stream/417811d879ac9ef5a8714f38a453571d86e7168047e3d22b7d809b74905bf468/manifest.json',
+        import.meta.url,
+      ),
+    );
+    const pin = digest(controlEncoderDescriptorBytes);
+    const path = `encoder-stream/${pin}/manifest.json`;
+    encoderManifests.set(path, controlEncoderDescriptorBytes.toString('utf8'));
+    encoderStream = {
+      url: `https://next.facemorph.me/runtime/${path}`,
+      sha256: pin,
+      size: controlEncoderDescriptorBytes.length,
+    };
+    serialDist = join(temporary, 'serial');
+    mkdirSync(serialDist);
+    // Small valid unshared memory32 module; synthetic bytes never stand in for production qualification.
+    const wasm = Buffer.from([0, 97, 115, 109, 1, 0, 0, 0, 5, 5, 1, 1, 1, 128, 32]);
+    for (const file of SERIAL_ORT_FILES)
+      writeFileSync(
+        join(serialDist, file),
+        file.endsWith('.wasm') ? wasm : `synthetic serial ${file}`,
+      );
+    overlay = withSerialCompanion(
+      overlay,
+      generateSerialCompanion(
+        serialDist,
+        {
+          version: '1.30.0',
+          source: {
+            repository: 'https://github.com/microsoft/onnxruntime.git',
+            tag: 'v1.30.0',
+            commit: 'f2c39fe2f838cf35ce7da92824f5a5e3ee6e88a7',
+          },
+          toolchain: {
+            emsdkVersion: '4.0.23',
+            emsdkCommit: 'c0bb220cb6e6f4e0fabb6f6db9efd53390ef5e56',
+          },
+          commandSha256: digest('fixture command'),
+          linkReceiptSha256: digest('fixture link'),
+        },
+        controlEncoderDescriptorBytes,
+      ),
+    );
+  }
   const asset = (name: string) => ({
     url: `https://next.facemorph.me/runtime/assets/frozen/${name}`,
     sha256: digest(name),
@@ -132,7 +190,7 @@ function fixture(t: TestContext, encoderVersion = '1.30.0', nestedEncoderVersion
     },
     planRevision: null,
   };
-  const files = {
+  const files: Record<string, unknown> = {
     'package.json': {
       name: 'fixture',
       private: true,
@@ -162,6 +220,10 @@ function fixture(t: TestContext, encoderVersion = '1.30.0', nestedEncoderVersion
     'self-host/package.json': { dependencies: { frozen: '1.0.0' }, engines: { node: '22' } },
   };
   for (const [path, value] of Object.entries(files)) write(path, value);
+  for (const [path, bytes] of encoderManifests) {
+    files[`import/runtime-manifests/${path}`] = bytes;
+    write(`import/runtime-manifests/${path}`, bytes);
+  }
   mkdirSync(artifact);
   for (const [path, bytes] of encoderManifests) {
     mkdirSync(dirname(join(artifact, path)), { recursive: true });
@@ -171,7 +233,25 @@ function fixture(t: TestContext, encoderVersion = '1.30.0', nestedEncoderVersion
     mkdirSync(dirname(join(artifact, file.path)), { recursive: true });
     writeFileSync(join(artifact, file.path), readFileSync(join(dist, file.file)));
   }
-  const composed = composeManifest(control, overlay, 'https://next.facemorph.me');
+  const composed = composeManifest(
+    control,
+    overlay,
+    'https://next.facemorph.me',
+    controlEncoderDescriptorBytes === undefined ? {} : { controlEncoderDescriptorBytes },
+  ) as Record<string, unknown> & { encoderStream: typeof encoderStream };
+  if (overlay.schema === 'facemorph.ort-mirror/2' && serialDist && controlEncoderDescriptorBytes) {
+    for (const file of overlay.serial.files) {
+      mkdirSync(dirname(join(artifact, file.path)), { recursive: true });
+      writeFileSync(join(artifact, file.path), readFileSync(join(serialDist, file.file)));
+    }
+    const descriptor = composeEncoderDescriptor(
+      controlEncoderDescriptorBytes,
+      overlay.serial,
+      'https://next.facemorph.me',
+    );
+    mkdirSync(dirname(join(artifact, descriptor.path)), { recursive: true });
+    writeFileSync(join(artifact, descriptor.path), descriptor.bytes);
+  }
   writeFileSync(join(artifact, 'manifest.json'), JSON.stringify(composed));
   git(['init', '--quiet']);
   git(['add', '--', ...Object.keys(files)]);
@@ -196,6 +276,7 @@ function fixture(t: TestContext, encoderVersion = '1.30.0', nestedEncoderVersion
     overlay,
     composed,
     encoderStream,
+    controlEncoderDescriptorBytes,
     write,
     git,
     commit,
@@ -211,6 +292,120 @@ test('exact Git snapshots and a complete composed CPU/WebGPU artifact pass despi
   assert.equal(result.ok, true, JSON.stringify(result.violations));
   assert.equal(result.manifests, 2);
   assert.equal(result.lockfiles, 1);
+});
+
+test('serial adoption is verified from immutable base descriptor and all three actual runtime assets', (t) => {
+  const f = fixture(t, '1.24.3', undefined, true);
+  // Neither dirty trusted-descriptor files nor dirty mirror metadata may supply evidence.
+  f.write('import/runtime-mirror.json', {});
+  f.write(
+    `import/runtime-manifests/${new URL(f.encoderStream.url).pathname.slice('/runtime/'.length)}`,
+    '{}',
+  );
+  const result = f.report();
+  assert.equal(result.ok, true, JSON.stringify(result.violations));
+  assert.equal(f.composed.encoderStream.sha256 === f.encoderStream.sha256, false);
+});
+
+test('serial adoption refuses corrupted or missing actual modules, factories and WASM', (t) => {
+  for (const index of [0, 1, 2]) {
+    const f = fixture(t, '1.24.3', undefined, true);
+    assert.equal(f.overlay.schema, 'facemorph.ort-mirror/2');
+    if (f.overlay.schema !== 'facemorph.ort-mirror/2') throw new Error('missing serial fixture');
+    const file = f.overlay.serial.files[index]!;
+    writeFileSync(join(f.artifact, file.path), Buffer.alloc(file.size, 42));
+    const result = f.report();
+    assert.equal(result.ok, false);
+    assert.ok(result.violations.some((v) => v.message.includes('digest or size mismatch')));
+    rmSync(join(f.artifact, file.path));
+    assert.equal(f.report().ok, false, 'missing actual asset also fails');
+  }
+});
+
+test('a self-consistent forged memory receipt loses to the actual WASM declaration', (t) => {
+  const f = fixture(t, '1.24.3', undefined, true);
+  if (f.overlay.schema !== 'facemorph.ort-mirror/2' || !f.controlEncoderDescriptorBytes)
+    throw new Error('missing serial fixture');
+  const old = f.overlay.serial;
+  const memory = { ...old.memory, maximumPages: 2048 };
+  const bundleSha256 = digest(
+    JSON.stringify({
+      schema: old.schema,
+      controlDescriptorSha256: old.controlDescriptorSha256,
+      build: old.build,
+      memory,
+      files: old.files.map(({ file, sha256, size }) => ({ file, sha256, size })),
+    }),
+  );
+  const serial = {
+    ...old,
+    memory,
+    bundleSha256,
+    files: old.files.map((file) => ({ ...file, path: `assets/${bundleSha256}/${file.file}` })),
+  };
+  const overlay = withSerialCompanion(f.overlay, serial);
+  for (const [i, file] of serial.files.entries()) {
+    mkdirSync(dirname(join(f.artifact, file.path)), { recursive: true });
+    writeFileSync(join(f.artifact, file.path), readFileSync(join(f.artifact, old.files[i]!.path)));
+  }
+  const descriptor = composeEncoderDescriptor(
+    f.controlEncoderDescriptorBytes,
+    serial,
+    'https://next.facemorph.me',
+  );
+  mkdirSync(dirname(join(f.artifact, descriptor.path)), { recursive: true });
+  writeFileSync(join(f.artifact, descriptor.path), descriptor.bytes);
+  writeFileSync(
+    join(f.artifact, 'manifest.json'),
+    JSON.stringify({
+      ...f.composed,
+      encoderStream: { ...f.composed.encoderStream, ...descriptor.asset },
+    }),
+  );
+  f.write('import/runtime-mirror.json', overlay);
+  const head = f.commit(['import/runtime-mirror.json']);
+  const result = f.report({ head });
+  assert.equal(result.ok, false);
+  assert.ok(result.violations.some((v) => v.message.includes('memory declarations differ')));
+});
+
+test('a self-consistent replacement encoder descriptor cannot alter frozen steps or references', (t) => {
+  const f = fixture(t, '1.24.3', undefined, true);
+  const reference = f.composed.encoderStream;
+  const descriptorPath = new URL(reference.url).pathname.slice('/runtime/'.length);
+  const descriptor = JSON.parse(readFileSync(join(f.artifact, descriptorPath), 'utf8'));
+  descriptor.steps[0].sha256 = digest('changed frozen shard');
+  const bytes = JSON.stringify(descriptor);
+  const replacementPath = `encoder-stream/${digest(bytes)}/manifest.json`;
+  mkdirSync(dirname(join(f.artifact, replacementPath)), { recursive: true });
+  writeFileSync(join(f.artifact, replacementPath), bytes);
+  writeFileSync(
+    join(f.artifact, 'manifest.json'),
+    JSON.stringify({
+      ...f.composed,
+      encoderStream: {
+        ...reference,
+        url: `https://next.facemorph.me/runtime/${replacementPath}`,
+        sha256: digest(bytes),
+        size: Buffer.byteLength(bytes),
+      },
+    }),
+  );
+  assert.ok(f.report().violations.some((v) => v.code === 'ort-composition-mismatch'));
+  // Altering the expected on-disk descriptor itself also loses to trusted-base composition.
+  writeFileSync(join(f.artifact, descriptorPath), bytes);
+  assert.ok(
+    f.report().violations.some((v) => v.message.includes('not exactly the trusted control')),
+  );
+});
+
+test('a candidate cannot redefine the base descriptor to bless changed encoder model fields', (t) => {
+  const f = fixture(t, '1.24.3', undefined, true);
+  const path = `import/runtime-manifests/${new URL(f.encoderStream.url).pathname.slice('/runtime/'.length)}`;
+  f.write(path, '{}');
+  const head = f.commit([path]);
+  const result = f.report({ head });
+  assert.equal(result.ok, true, 'candidate descriptor edits never replace immutable base bytes');
 });
 
 test('an overlay label alone cannot claim adopted ORT equality with frozen CPU or WebGPU', (t) => {

@@ -42,6 +42,7 @@ type Bridge = typeof import('../../shell/facade/bridge.ts');
 export type OperationBridge = Pick<
   Bridge,
   | 'subscribe'
+  | 'jobProgress'
   | 'queueFace'
   | 'cancelQueuedFace'
   | 'cancel'
@@ -346,16 +347,18 @@ export function createOperationService(
   function advanceBar(item: Pending, p: Progress): void {
     const { bar } = item;
     const morph = item.handle.request.kind === 'morph';
-    const loaded = Number((p as { loaded?: unknown }).loaded);
-    const total = Number((p as { total?: unknown }).total);
     if (['route-attempt', 'route-admitted', 'model-loaded'].includes(p.stage)) {
       if (hasPhase(bar, 'acquisition')) bar.finish('acquisition');
     } else if (p.stage === 'face' || p.stage === 'synthesis') {
       if (hasPhase(bar, 'acquisition')) bar.finish('acquisition');
       if (hasPhase(bar, 'load')) bar.finish('load');
     } else if (p.stage === 'morph' && hasPhase(bar, 'frames')) {
-      if (Number.isFinite(loaded))
-        bar.advance('frames', 'frames', loaded, Number.isFinite(total) ? total : undefined);
+      // Progress notifications deliberately carry presentation fields only. Read the
+      // actual counter beside that notification, rather than expecting raw runtime units
+      // that the facade does not expose (fm-j4i8's operated DOM proof).
+      const counts = bridge.jobProgress();
+      if (counts.framesTotal > 0)
+        bar.advance('frames', 'frames', counts.framesDone, counts.framesTotal);
     } else if (p.stage === 'export' && hasPhase(bar, 'frames')) {
       bar.finish('frames');
     }
@@ -486,6 +489,10 @@ export function createOperationService(
     if (role === 'dependency') {
       // A verified latent/endpoint is enough. No default-file promise joins
       // the parent's dependency graph, and a file failure cannot rerun inference.
+      if (work.request.kind === 'face')
+        emit(item, { type: 'dependency-ready', slot: work.request.source.slot, output });
+      // Subscribers can cancel or replace this parent while publishing the face.
+      if (!current(item)) return;
       work.owners.delete(item);
       item.dependencies.delete(work);
       if (hasPhase(item.bar, 'prepare'))
@@ -805,12 +812,15 @@ export function createOperationService(
             (result) => {
               if (!current(item)) return;
               if (result.failure) return fail(item, result.failure);
-              if (result.route?.ok && result.route.disclosure)
-                emit(item, {
-                  type: 'disclosure',
-                  text: result.route.disclosure,
-                  width: result.route.width,
-                });
+              if (result.route?.ok) {
+                const route = result.route;
+                const text =
+                  route.disclosure ||
+                  (route.encoder === 'ffmpeg'
+                    ? `This browser uses the compatibility MP4 encoder at ${route.width} × ${route.height}.`
+                    : '');
+                if (text) emit(item, { type: 'disclosure', text, width: route.width });
+              }
               item.checked = true;
               pump();
             },

@@ -205,6 +205,45 @@ export const MULTIPLE_FACES_MESSAGE: string = readString(multipleFacesJs, 'MULTI
 
 /** 'video' or a face id. Settles with the sentence to show. */
 export type StillFormat = 'webp' | 'png';
+export interface PreparedMedia {
+  readonly blob: Blob;
+  readonly filename: string;
+  readonly mime: string;
+  readonly digest: string;
+}
+function readPreparedMedia(value: unknown): PreparedMedia {
+  if (typeof value !== 'object' || value === null)
+    throw new TypeError('preparedMedia: expected a file');
+  const raw = value as Record<string, unknown>;
+  if (
+    !(raw['blob'] instanceof Blob) ||
+    typeof raw['filename'] !== 'string' ||
+    typeof raw['mime'] !== 'string' ||
+    raw['mime'] !== raw['blob'].type ||
+    typeof raw['digest'] !== 'string' ||
+    !/^[a-f0-9]{64}$/.test(raw['digest'])
+  )
+    throw new TypeError('preparedMedia: invalid file identity');
+  return { blob: raw['blob'], filename: raw['filename'], mime: raw['mime'], digest: raw['digest'] };
+}
+export const exportResultRevision = (id: string): number =>
+  readInteger(bridge.exportResultRevision(id), 'exportResultRevision');
+export async function prepareMedia(id: string, format: StillFormat): Promise<PreparedMedia> {
+  return readPreparedMedia(await bridge.prepareMedia(id, { format }));
+}
+export function renamePreparedMedia(file: PreparedMedia, name: string): PreparedMedia {
+  return readPreparedMedia(bridge.renamePreparedMedia(file, name));
+}
+export function handPreparedMedia(
+  id: string,
+  file: PreparedMedia,
+  method: 'save' | 'share',
+): Promise<string> {
+  // Call the bridge before constructing any asynchronous continuation: Share keeps activation.
+  return bridge
+    .handPreparedMedia(id, file, method)
+    .then((value: unknown) => readString(value, 'handPreparedMedia'));
+}
 /** `format`: a face's still as WebP (the default) or PNG (lossless); a morph is always MP4. */
 export async function saveMedia(
   id: string,

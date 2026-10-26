@@ -121,7 +121,6 @@ test(
           )
             await control.click(); // setup
         await page.getByRole('button', { name: 'More options' }).click(); // setup
-        await page.getByText('Advanced', { exact: true }).click(); // setup
         await page.getByLabel('Processing mode').selectOption('cpu');
         await tile.getByRole('button', { name: /^Generate/ }).click(); // setup
         const accept = page.locator('.next-download-accept');
@@ -228,7 +227,6 @@ test(
             )
               await operate(control);
           await operate(page.getByRole('button', { name: 'More options' }));
-          await operate(page.getByText('Advanced', { exact: true }));
           await page.getByLabel('Processing mode').selectOption('cpu');
 
           // 1. matching: the app's own saved face reinstalls with no model or detector request.

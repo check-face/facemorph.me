@@ -14,14 +14,23 @@
 // fixtures is reported untested.
 //   npm run build -w packages/stylegan-js -w packages/browser-model-manager
 //   node --test packages/stylegan-js/test/full31/full31.test.ts
+// FACEMORPH_NUMERICS_OUT writes a new execution receipt only after every selected cell passes.
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import {
+  existsSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  realpathSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { createServer, type Server } from 'node:https';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
-import { extname, join, normalize } from 'node:path';
+import { extname, join, normalize, relative, resolve, sep } from 'node:path';
 import test, { after, before } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { acquiredManifest, RUNTIME, UNTESTED } from '../engine/support/runtime.ts';
@@ -38,6 +47,11 @@ const BUILT =
   existsSync(join(ROOTS['/stylegan/']!, 'engine/index.js')) &&
   existsSync(join(ROOTS['/manager/']!, 'index.js'));
 const runtime = acquiredManifest();
+const NUMERICS_OUT = process.env['FACEMORPH_NUMERICS_OUT'];
+if (NUMERICS_OUT !== undefined) {
+  assert.ok(NUMERICS_OUT.length > 0, 'FACEMORPH_NUMERICS_OUT must name a new file');
+  assert.equal(existsSync(NUMERICS_OUT), false, 'refuse to overwrite a numerical receipt');
+}
 const MAX_RGB = 1,
   MAX_FLOAT = 0.002; // full31's frozen research gate
 
@@ -61,6 +75,49 @@ const suite: Full31Manifest | null = existsSync(join(FULL31, 'manifest.json'))
 const pinned = JSON.parse(
   readFileSync(new URL('./manifest.json', import.meta.url), 'utf8'),
 ) as Full31Manifest;
+
+const sha256 = (bytes: Uint8Array | string) => createHash('sha256').update(bytes).digest('hex');
+const fileSha256 = (path: string) => sha256(readFileSync(path));
+
+/** Bind every served package file using repository-relative POSIX paths and byte identities. */
+function distSha256() {
+  const files: { path: string; sha256: string; size: number }[] = [];
+  const visit = (directory: string) => {
+    for (const entry of readdirSync(directory, { withFileTypes: true })) {
+      const path = join(directory, entry.name);
+      if (entry.isDirectory()) visit(path);
+      else {
+        assert.ok(entry.isFile(), `unsupported dist entry: ${path}`);
+        const bytes = readFileSync(path);
+        files.push({
+          path: relative(REPO, path).split(sep).join('/'),
+          sha256: sha256(bytes),
+          size: bytes.length,
+        });
+      }
+    }
+  };
+  visit(ROOTS['/stylegan/']!);
+  visit(ROOTS['/manager/']!);
+  files.sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
+  return sha256(JSON.stringify(files));
+}
+
+function numericalIdentity() {
+  return {
+    harnessSha256: fileSha256(fileURLToPath(import.meta.url)),
+    runtimeSupportSha256: fileSha256(
+      join(REPO, 'packages/stylegan-js/test/engine/support/runtime.ts'),
+    ),
+    suiteSha256: fileSha256(join(FULL31, 'manifest.json')),
+    pinnedSuiteSha256: fileSha256(fileURLToPath(new URL('./manifest.json', import.meta.url))),
+    distSha256: distSha256(),
+  };
+}
+
+const numericalIdentityBefore = NUMERICS_OUT === undefined ? null : numericalIdentity();
+const numericalCells: NumericalCell[] = [];
+let attemptedCells = 0;
 
 const PAGE = `<!doctype html><meta charset="utf-8"><title>full31</title><script type="module">
 import * as engine from '/stylegan/engine/index.js';
@@ -157,6 +214,42 @@ before(async () => {
 });
 after(() => server?.close());
 
+after(() => {
+  if (NUMERICS_OUT === undefined) return;
+  assert.ok(numericalCells.length > 0, 'a numerical receipt requires an executed passing cell');
+  assert.equal(
+    numericalCells.length,
+    attemptedCells,
+    'every attempted cell must pass before writing a receipt',
+  );
+  assert.deepEqual(
+    numericalIdentity(),
+    numericalIdentityBefore,
+    'served code and fixture identities stayed unchanged',
+  );
+  assert.equal(
+    fileSha256(join(RUNTIME, 'manifest.json')),
+    runtime!.sha256,
+    'runtime manifest stayed unchanged',
+  );
+  writeFileSync(
+    resolve(NUMERICS_OUT),
+    JSON.stringify(
+      {
+        schema: 'facemorph.full31-numerics/1',
+        manifestSha256: runtime!.sha256,
+        identity: numericalIdentityBefore,
+        thresholds: { maxRgb: MAX_RGB, maxFloat: MAX_FLOAT },
+        passed: true,
+        cells: numericalCells,
+      },
+      null,
+      2,
+    ) + '\n',
+    { flag: 'wx' },
+  );
+});
+
 /** A served full31 file as an engine asset, verified against the regenerated manifest's digest. */
 function asset(file: string) {
   const bytes = readFileSync(join(FULL31, file));
@@ -197,12 +290,13 @@ type Page = {
   setDefaultTimeout(ms: number): void;
 };
 type Browser = {
+  version(): string;
   newContext(o?: object): Promise<{ newPage(): Promise<Page> }>;
   close(): Promise<void>;
 };
 const pw = createRequire(join(REPO, 'apps/web/package.json'))('playwright') as Record<
   'chromium' | 'firefox',
-  { launch(o: object): Promise<Browser> }
+  { launch(o: object): Promise<Browser>; executablePath(): string }
 >;
 const call = <T>(page: Page, name: string, ...args: unknown[]) =>
   page.evaluate(
@@ -219,6 +313,88 @@ interface Out {
   ms: number;
   checks: { name: string; maxRgb: number; maxFloat: number; passed: boolean }[];
   failure: { message: string } | null;
+}
+
+interface Adapter {
+  fallback: boolean;
+  vendor: string;
+  architecture: string;
+  description: string;
+}
+interface NumericalCell {
+  requested: { browser: string; engine: string; route: string; provider: string };
+  browser: {
+    version: string;
+    executablePath: string;
+    executableSha256: string;
+    launchTargetPath: string;
+    launchTargetSha256: string;
+  };
+  actual: { engine: string; route: string; provider: string };
+  adapter: Adapter | null;
+  cases: Out['checks'];
+  passed: true;
+}
+
+/** Inspect only this test process's own directly spawned children, never peer browsers. */
+function childBrowserProcesses() {
+  assert.ok(
+    existsSync('/proc/self/exe'),
+    'numerical receipts require Linux /proc executable identity',
+  );
+  const children: { pid: string; executablePath: string }[] = [];
+  for (const pid of readdirSync('/proc')) {
+    if (!/^\d+$/.test(pid)) continue;
+    try {
+      const status = readFileSync(`/proc/${pid}/status`, 'utf8');
+      if (Number(/^PPid:\s+(\d+)$/m.exec(status)?.[1]) !== process.pid) continue;
+      // Chromium may rewrite argv into one space-separated process-title argument.
+      const args = readFileSync(`/proc/${pid}/cmdline`).toString().replaceAll('\0', ' ');
+      if (!/(?:^|\s)(?:--remote-debugging-pipe|-juggler-pipe)(?:\s|$)/.test(args)) continue;
+      children.push({ pid, executablePath: realpathSync(`/proc/${pid}/exe`) });
+    } catch (error) {
+      // A short-lived child may exit between /proc reads; all other errors fail closed.
+      if (
+        (error as NodeJS.ErrnoException).code !== 'ENOENT' &&
+        (error as NodeJS.ErrnoException).code !== 'ESRCH'
+      )
+        throw error;
+    }
+  }
+  return children;
+}
+
+function browserIdentity(browser: Browser, executablePath: string, before: readonly string[]) {
+  const children = childBrowserProcesses().filter((child) => !before.includes(child.pid));
+  assert.equal(
+    children.length,
+    1,
+    'exactly one newly launched browser process must be identifiable',
+  );
+  const path = children[0]!.executablePath;
+  const launchTargetPath = realpathSync(executablePath);
+  return {
+    version: browser.version(),
+    executablePath: path,
+    executableSha256: fileSha256(path),
+    launchTargetPath,
+    launchTargetSha256: fileSha256(launchTargetPath),
+  };
+}
+
+function recordNumericalCell(cell: NumericalCell) {
+  if (NUMERICS_OUT === undefined) return;
+  assert.equal(
+    fileSha256(cell.browser.executablePath),
+    cell.browser.executableSha256,
+    'browser executable stayed unchanged',
+  );
+  assert.equal(
+    fileSha256(cell.browser.launchTargetPath),
+    cell.browser.launchTargetSha256,
+    'browser launch target stayed unchanged',
+  );
+  numericalCells.push(cell);
 }
 
 async function runCell(
@@ -263,11 +439,30 @@ for (const kind of ['chromium', 'firefox'] as const)
     `full31 on the CPU route in Playwright ${kind}`,
     { timeout: 3_600_000, skip: SKIP },
     async (t) => {
-      const browser = await pw[kind].launch({}).catch(() => null);
+      attemptedCells++;
+      // Receipt mode selects an explicit target: Chromium's default headless-shell path differs
+      // from BrowserType.executablePath(), so reporting the latter for a default launch is inaccurate.
+      const executablePath = NUMERICS_OUT === undefined ? null : pw[kind].executablePath();
+      const before =
+        NUMERICS_OUT === undefined ? [] : childBrowserProcesses().map((child) => child.pid);
+      const browser = await pw[kind]
+        .launch(executablePath ? { executablePath } : {})
+        .catch(() => null);
       if (!browser) return t.skip(`untested: Playwright ${kind} does not start here`);
       t.after(() => browser.close());
+      const identity =
+        executablePath === null ? null : browserIdentity(browser, executablePath, before);
       const out = await runCell(t, browser, 'cpu', `cpu-${kind}`);
       assert.deepEqual([out.engine, out.route, out.provider], ['ort-wasm', 'cpu', 'cpu']);
+      if (identity)
+        recordNumericalCell({
+          requested: { browser: kind, engine: 'ort-wasm', route: 'cpu', provider: 'cpu' },
+          browser: identity,
+          actual: { engine: out.engine, route: out.route, provider: out.provider },
+          adapter: null,
+          cases: out.checks,
+          passed: true,
+        });
     },
   );
 
@@ -279,21 +474,23 @@ for (const scope of ['ort', 'direct'] as const)
     `full31 on WebGPU, ${scope === 'ort' ? 'ORT' : 'direct'} engine, in Chrome`,
     { timeout: 3_600_000, skip: SKIP },
     async (t) => {
+      attemptedCells++;
       const executablePath = CHROME.includes('/')
         ? CHROME
         : execFileSync('which', [CHROME]).toString().trim();
+      const before =
+        NUMERICS_OUT === undefined ? [] : childBrowserProcesses().map((child) => child.pid);
       const browser = await pw.chromium
         .launch({ executablePath, headless: false, args: GPU_ARGS })
         .catch(() => null);
       if (!browser) return t.skip(`untested: Chrome does not start here (${CHROME})`);
       t.after(() => browser.close());
+      const identity =
+        NUMERICS_OUT === undefined ? null : browserIdentity(browser, executablePath, before);
       const probe = await (await browser.newContext({ ignoreHTTPSErrors: true })).newPage();
       await probe.goto(`${origin}/`);
       await probe.waitForFunction(() => (window as unknown as { ready?: boolean }).ready === true);
-      const adapter = await call<{ fallback: boolean; vendor: string; description: string } | null>(
-        probe,
-        'adapter',
-      );
+      const adapter = await call<Adapter | null>(probe, 'adapter');
       if (
         !adapter ||
         adapter.fallback ||
@@ -306,5 +503,19 @@ for (const scope of ['ort', 'direct'] as const)
         [out.engine, out.route, out.provider],
         [scope === 'ort' ? 'ort-webgpu' : 'direct-webgpu', 'webgpu', 'webgpu'],
       );
+      if (identity)
+        recordNumericalCell({
+          requested: {
+            browser: 'chromium',
+            engine: scope === 'ort' ? 'ort-webgpu' : 'direct-webgpu',
+            route: 'webgpu',
+            provider: 'webgpu',
+          },
+          browser: identity,
+          actual: { engine: out.engine, route: out.route, provider: out.provider },
+          adapter,
+          cases: out.checks,
+          passed: true,
+        });
     },
   );

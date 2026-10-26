@@ -116,12 +116,56 @@ async function serviceRoute() {
   } as const;
 }
 
+/** Waits for measured inventory, or the next measurement caused by an explicit approval. */
+function downloadInventory(approve?: () => void): Promise<f.Downloads> {
+  return new Promise((resolve, reject) => {
+    let off = () => {};
+    let subscribed = false;
+    const timer = setTimeout(() => {
+      off();
+      reject(
+        new Error(
+          approve
+            ? 'Photo approval did not produce a measured inventory after descriptor inspection within 30 seconds.'
+            : 'The initial download inventory was not known within 30 seconds.',
+        ),
+      );
+    }, 30_000);
+    off = f.subscribeDownloads((snapshot) => {
+      // subscribeDownloads immediately reports its current snapshot; a revised decision needs a new one.
+      if (!snapshot.known || (approve && !subscribed)) return;
+      clearTimeout(timer);
+      queueMicrotask(() => off());
+      resolve(snapshot);
+    });
+    subscribed = true;
+    try {
+      approve?.();
+    } catch (error) {
+      clearTimeout(timer);
+      off();
+      reject(error);
+    }
+  });
+}
+
 const harness = {
   /**
    * The person's approval of the downloads these journeys need (the dialog's Download and continue): workers acquire
    * only what an approval covers or the device already holds (fm-qrfz).
    */
-  approveDownloads: (): string => f.consentToDownload('photo'),
+  async approveDownloads() {
+    const initial = await downloadInventory();
+    const revised = await downloadInventory(() => void f.consentToDownload('photo'));
+    const approvedRevisedCost = revised.photoBytes > initial.photoBytes;
+    if (approvedRevisedCost) f.consentToDownload('photo');
+    return {
+      scope: 'photo',
+      initialPhotoBytes: initial.photoBytes,
+      revisedPhotoBytes: revised.photoBytes,
+      approvedRevisedCost,
+    };
+  },
   controllerJourney,
   controllerTarget,
   startControllerRouting,

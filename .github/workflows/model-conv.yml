@@ -1,6 +1,6 @@
 name: model-conv
-# packages/model-conv (fm-uh14): unit tests, then the real acceptance run (build, convert and verify the FFHQ
-# checkpoint against the upstream reference, perturbed chunk, killed run, ownership, image scan) on eris.
+# packages/model-conv (fm-uh14): unit/schema checks on pushes; explicit dispatch also builds, converts and verifies
+# real checkpoints against the upstream reference (including perturbed chunks, killed runs, ownership and image scan).
 # The checkpoint is cached in the runner's home after its first download.
 on:
   workflow_call:
@@ -25,11 +25,13 @@ jobs:
           python3 -c "import json,sys; sys.path.insert(0,'.'); from tests.test_manifest import built; from model_conv.models import FFHQ_CONFIG_F; json.dump(built(chunk_bytes=FFHQ_CONFIG_F.chunk_bytes), sys.stdout)" > "$RUNNER_TEMP/build-manifest.json"
           npx --yes ajv-cli@5.0.0 validate --spec=draft2020 -s ../browser-model-manager/schema/model-manifest.v1.schema.json -d "$RUNNER_TEMP/build-manifest.json" --errors=text
       - name: Documented commands, verbatim (docs/usage.md; FFHQ and the AFHQ cat non-face model), under the eris lease
+        if: github.event_name == 'workflow_dispatch'
         uses: ./.github/actions/run-command
         with:
           timeout: '3000'
           command: python3 packages/model-conv/tests/doc_commands.py
       - name: Converted manifests validate against the producer-facing model manifest schema
+        if: github.event_name == 'workflow_dispatch'
         run: |
           set -euo pipefail
           # Generator outputs; the e4e encoder output has its own manifest form.
@@ -37,7 +39,7 @@ jobs:
             npx --yes ajv-cli@5.0.0 validate --spec=draft2020 -s ../browser-model-manager/schema/model-manifest.v1.schema.json -d "$m" --errors=text
           done
       - name: Hand-off set (manifests, verify reports; no weights)
-        if: always()
+        if: always() && github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v4
         with:
           name: model-conv-handoff-${{ github.run_id }}
@@ -48,6 +50,7 @@ jobs:
           if-no-files-found: warn
           retention-days: 90
       - name: Acceptance (real checkpoint, real container), under the eris lease
+        if: github.event_name == 'workflow_dispatch'
         uses: ./.github/actions/run-command
         with:
           timeout: '3000'

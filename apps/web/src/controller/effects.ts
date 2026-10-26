@@ -56,7 +56,17 @@ export type Effect =
   | { readonly type: 'downloadModels'; readonly includePhoto: boolean }
   | { readonly type: 'cancelWork' | 'requestNext' }
   | { readonly type: 'queueFace'; readonly id: string; readonly depth: number }
-  | { readonly type: 'cancelQueuedFace' | 'saveMedia' | 'shareMedia'; readonly id: string };
+  | {
+      readonly type: 'cancelQueuedFace' | 'cancelSlot' | 'saveMedia' | 'shareMedia';
+      readonly id: string;
+    }
+  /** An admission refusal, recorded in the trace (fm-id4c). */
+  | {
+      readonly type: 'admissionRefused';
+      readonly budget: 'BATCH_RETAINED_INPUT_BYTES' | 'STORED_SESSION_BYTES';
+    }
+  /** Ends the Undo notice `seq` after its timeout (fm-id4c). */
+  | { readonly type: 'expireUndo'; readonly seq: number };
 export type PhotoEffect =
   | { readonly type: 'focusCropArea' | 'cancelPhotoRun' }
   | { readonly type: 'revokeUrl'; readonly url: string }

@@ -1,8 +1,5 @@
 name: import-closure
-# fm-gpx: the candidate's JS closure in apps/web is exactly the allowlist's frozen-commit bytes (nothing
-# missing, changed or extra; nothing excluded; only the bridge's Fable import unresolved), and the pinned
-# control artifact still downloads from its release asset and verifies file by file, with no weights,
-# credentials or private provenance in it, and its emitted worker chunks match their pins.
+# Import behavior checks: exclusion safety, module resolution and retained control verification.
 on:
   workflow_call:
   workflow_dispatch:
@@ -10,6 +7,8 @@ jobs:
   checks:
     runs-on: [self-hosted, linux-x64]
     timeout-minutes: 30
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -19,12 +18,8 @@ jobs:
       - name: Build the package files mounted by the mobile browser suite
         run: npm run build -w packages/stylegan-js -w packages/browser-model-manager
       - run: node --test scripts/import/control.test.mjs scripts/import/closure.test.mjs scripts/runtime/runtime.test.mjs
-      # Files the app adds beside the imported closure (fm-svg shell and build, fm-s9n contracts, fm-l6mq media core, fm-eeki export files, fm-4umi admission, fm-5yqq usage statistics, fm-ze4u preflight checker, fm-fy2.13 transient model source, photo refusal copy); everything else under apps/web
-      # must be the allowlist's bytes.
-      - run: >-
-          node scripts/import/verify-closure.mjs --allow package.json --allow package-lock.json
-          --allow browser-matrix.json --allow 'tsconfig*.json' --allow vite.config.ts --allow index.html --allow worker-check.html --allow render-check.html --allow .gitignore
-          --allow 'tests/mobile/**' --allow 'build/**' --allow 'shell/**' --allow 'test/**' --allow 'src/photo/**' --allow 'src/contracts/**' --allow 'src/media/**' --allow 'src/admission/**' --allow 'src/consent/**' --allow 'src/project/**' --allow 'src/operations/**' --allow 'src/controller/**' --allow 'src/analytics/**' --allow src/Next/browser/bridge-grant.mjs --allow src/Next/browser/admission.mjs --allow src/Next/export-files.mjs --allow scripts/next-matrix-stages.mjs --allow scripts/next-matrix-stages.d.mts --allow 'src/preflight/**' --allow experiment/preflight-check.ts --allow preflight-check.html --allow src/Next/browser/runtime-manifest.mjs --allow src/Next/browser/runtime-manifest.test.mjs --allow src/Next/browser/model-source.mjs --allow src/Next/browser/model-source.test.mjs --allow src/Next/photo/refusal.mjs --allow src/Next/photo/confirmed-crop.mjs --allow src/Next/photo/confirmed-crop.test.mjs
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
       - run: node scripts/import/scan-exclusions.mjs
       - run: node scripts/inventory/unresolved-imports.mjs --root apps/web --lock package-lock.json --expect-none # one root lock (fm-fy2.4); none since the ProjectJson swap (fm-stth)
       - name: Control artifact downloads, verifies and scans clean

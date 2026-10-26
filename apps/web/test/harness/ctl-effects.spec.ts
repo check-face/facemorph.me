@@ -193,11 +193,13 @@ export async function controllerGoldenJourney(
         ? msg('RunFace', 'face-2')
         : msg('Run', row === 'testing-bulk-generate' ? 'faces' : 'morph');
     let cancelled: Record<string, unknown> | null = null;
+    let fractionBeforeCancel: number | null = null;
     if (row !== 'testing-bulk-generate') {
       // Subscribe before starting, so cancellation occurs at a real progress event even on cache hits.
       const running = until(store, () => store.getState().Stage === 'face');
       store.dispatch(action);
       await running;
+      fractionBeforeCancel = store.getState().Fraction;
       store.dispatch(msg('Cancel'));
       await until(store, () => !store.getState().Busy);
       cancelled = snapshot(store);
@@ -226,6 +228,7 @@ export async function controllerGoldenJourney(
     return {
       slider,
       cancelled,
+      fractionBeforeCancel,
       completed: snapshot(store),
       faces: state.Faces.map(({ id, raw, label, sourceMode, sourceFile }) => ({
         id,

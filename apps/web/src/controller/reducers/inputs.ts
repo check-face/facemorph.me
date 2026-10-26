@@ -2,7 +2,7 @@ import type { Input, State } from '../state.ts';
 import { msg, type Msg } from '../msg.ts';
 import { unchanged, type Transition } from '../effects.ts';
 import { forgetStill } from './photo.ts';
-import { admitTo, refused, type AdmissionFacts } from '../admission.ts';
+import { admitTo, refusal, type AdmissionFacts } from '../admission.ts';
 export function change(state: State, id: string, replace: (input: Input) => Input): State {
   const cached = new Set(state.CachedFaces);
   cached.delete(id);
@@ -72,7 +72,7 @@ export function inputs(message: Msg, state: State, facts: InputFacts = {}): Tran
     case 'AddAt': {
       // No face count (fm-id4c): only the admission budgets refuse a new face, and then nothing is added.
       const admission = admitTo(state, { files: [] }, facts);
-      if (!admission.ok) return { state: refused(state, admission), effects: [] };
+      if (!admission.ok) return refusal(state, admission);
       const position = Math.max(0, Math.min(state.Inputs.length, message.args[0]));
       if (!facts.newFaceId || state.Inputs.some((i) => i.id === facts.newFaceId))
         throw new Error('AddAt requires a fresh face ID');
@@ -85,32 +85,6 @@ export function inputs(message: Msg, state: State, facts: InputFacts = {}): Tran
           VideoUrl: '',
         },
         effects: [{ type: 'invalidateArrivalRestore' }, { type: 'invalidateMorph' }],
-      };
-    }
-    case 'Remove': {
-      if (state.Inputs.length <= 1) return unchanged(state);
-      const [id] = message.args;
-      const released = forgetStill(state, id, true);
-      const preparing = new Set(state.PreparingFaces);
-      preparing.delete(id);
-      const cached = new Set(state.CachedFaces);
-      cached.delete(id);
-      return {
-        state: {
-          ...released.state,
-          Faces: state.Faces.filter((f) => f.id !== id),
-          PreparingFaces: preparing,
-          CachedFaces: cached,
-          Inputs: state.Inputs.filter((i) => i.id !== id),
-          PendingJobs: state.PendingJobs.filter((j) => j.type !== 'RunFace' || j.args[0] !== id),
-          PendingFaces: state.PendingFaces.filter((x) => x !== id),
-          VideoUrl: '',
-        },
-        effects: [
-          ...released.effects,
-          { type: 'invalidateFace', id },
-          { type: 'invalidatePhotoSelections', id },
-        ],
       };
     }
     case 'Kind':

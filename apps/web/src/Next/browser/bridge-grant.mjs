@@ -45,7 +45,7 @@ import {routeAssets,photoAssets} from '../model-inventory.mjs';
 const priorityOf=(a,manifest)=>a.sha256===manifest.landmarks?.sha256||a.sha256===manifest.photoCanary?.sha256||(Array.isArray(manifest.photoCanaries)&&manifest.photoCanaries.some(c=>c?.sha256===a.sha256))?'detector-prerequisite':'foreground-required';
 
 /** {approved, local} grants for `approved` scopes ('route', 'photo'); `cache` answers has(asset) and peek(asset). */
-export async function appGrants({manifest,manifestSha256='',route='cpu',engine='ort',approved=new Set(),cache}){
+export async function appGrants({manifest,manifestSha256='',route='cpu',engine='ort',approved=new Set(),cache,approvalId}){
  const wanted=new Map();let discover=null;
  const add=(a,priority)=>{if(!wanted.has(a.sha256))wanted.set(a.sha256,{sha256:a.sha256,bytes:a.size,priority});};
  const synthesis=routeAssets(manifest,route,engine);
@@ -56,13 +56,30 @@ export async function appGrants({manifest,manifestSha256='',route='cpu',engine='
   if(photo.estimated&&manifest.encoderStream?.sha256)discover={via:manifest.encoderStream.sha256,bytes:photo.extraBytes||0,priority:'foreground-required'};
  }
  const assets=[...wanted.values()];
- const approvedGrant=assets.length?{manifestSha256,route,purpose:approved.has('photo')?'generate-and-encode':'generate',assets,
+ const approvedGrant=assets.length?{manifestSha256,route,purpose:approved.has('photo')?'generate-and-encode':'generate',assets,...(approvalId===undefined?{}:{approvalId}),
   remainingBytes:allowance(assets.reduce((n,a)=>n+a.bytes,0)+(discover?.bytes||0)),owners:[BRIDGE_OWNER],allowances:discover?[discover]:[]}:null;
  const seen=new Set(wanted.keys()),local=[];
  const every=[...routeAssets(manifest,'cpu','ort'),...routeAssets(manifest,'webgpu','ort'),...routeAssets(manifest,'webgpu','direct'),...photo.assets];
  for(const a of every){if(seen.has(a.sha256))continue;seen.add(a.sha256);if(cache&&await cache.has(a))local.push({sha256:a.sha256,bytes:a.size,priority:'foreground-required'});}
  const localGrant=local.length?{manifestSha256,route,purpose:'generate',assets:local,remainingBytes:0,owners:[BRIDGE_OWNER]}:null;
  return {approved:approvedGrant,local:localGrant};
+}
+
+/** One frozen scope per explicit decision. Descriptor knowledge learned later cannot enlarge it. */
+export function createApprovalGenerations(){
+ let generation=0,pending=null,approved=new Set();
+ return {
+  // A route-only decision cannot renew a previous photo allowance or admit newly discovered shards.
+  // Previously approved photo assets remain readable through the verified-local grant.
+  approve(scope){generation++;pending=null;approved=new Set(scope==='photo'?['route','photo']:['route']);},
+  current(id){return id===generation;},
+  async snapshot(options){
+   const id=generation;
+   // Copy before the first asynchronous cache read; simultaneous callers share the same decision.
+   if(!pending)pending=appGrants({...options,approved:new Set(approved),approvalId:id});
+   return {id,grants:await pending};
+  }
+ };
 }
 
 /** The grant an acquisition of `asset` runs under: approved, else local, else none (refused before any request). */
@@ -73,7 +90,9 @@ export function chooseGrant(grants,asset){
 
 /** `incoming`, keeping each current grant object (and so its ledger) when the same grant is posted again. */
 export function mergeGrants(current,incoming){
- const same=(a,b)=>!!a&&!!b&&JSON.stringify(a)===JSON.stringify(b);
+ const same=(a,b)=>!!a&&!!b&&(a.approvalId!==undefined||b.approvalId!==undefined
+  ?a.approvalId===b.approvalId&&a.manifestSha256===b.manifestSha256&&a.route===b.route&&a.purpose===b.purpose
+  :JSON.stringify(a)===JSON.stringify(b));
  return {approved:same(current?.approved,incoming?.approved)?current.approved:incoming?.approved??null,
   local:same(current?.local,incoming?.local)?current.local:incoming?.local??null};
 }

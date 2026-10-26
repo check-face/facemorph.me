@@ -67,9 +67,13 @@ export function TestingInvite({
 export function ErrorBox({ state, dispatch, report, reference }: Props) {
   if (state.Error === null) return null;
   const refusal = refusalForText(state.Error);
+  const inMorphStatus =
+    state.LastRun?.type === 'Run' &&
+    state.LastRun.args[0] === 'morph' &&
+    state.Status === state.Error;
   return (
     <div className="next-error box" role="alert">
-      <p>{state.Error}</p>
+      {!inMorphStatus && <p>{state.Error}</p>}
       {refusal && (
         <p className="next-error-help">
           <a href={refusal.helpAnchor} data-next-reason={refusal.reasonKey}>

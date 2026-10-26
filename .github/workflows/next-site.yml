@@ -1,8 +1,6 @@
 name: New site artifact
-# fm-aa8: classic's next-site.yml carried over with its workflow name and job IDs (artifact, qualify, compiled-ui;
-# deploy comes with the deploy workstream), so required-status names map one to one. Every later lane tests the
-# exact bytes `artifact` uploads. build:next builds this repository's mounted Vite destination once. Portable CPU work uses the shared eris/triton pool (docs/dev/workers.md).
-# This repository never publishes next.facemorph.me before the source handover (no deploy job here).
+# Candidate pushes, PRs and manual runs build once, then qualify those exact bytes.
+# main.yml calls the two children separately so artifact consumers do not await qualification.
 on:
   workflow_call:
   push:
@@ -23,6 +21,8 @@ on:
         '.nvmrc',
         '.github/actions/**',
         '.github/workflows/next-site.yml',
+        '.github/workflows/next-site-artifact.yml',
+        '.github/workflows/next-site-qualify.yml',
         '.github/workflows/next-e2e.yml',
       ]
   pull_request:
@@ -42,6 +42,8 @@ on:
         '.nvmrc',
         '.github/actions/**',
         '.github/workflows/next-site.yml',
+        '.github/workflows/next-site-artifact.yml',
+        '.github/workflows/next-site-qualify.yml',
         '.github/workflows/next-e2e.yml',
       ]
   workflow_dispatch:
@@ -51,159 +53,23 @@ permissions:
 concurrency:
   group: next-site-${{ github.ref }}
   cancel-in-progress: false
-env:
-  BUILD_WORKFLOW: ${{ github.workflow == 'main' && '.github/workflows/main.yml' || '.github/workflows/next-site.yml' }}
 jobs:
   artifact:
-    runs-on: [self-hosted, linux-x64]
-    timeout-minutes: 45
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '24'
-          cache: npm # keyed by the lockfile hash
-      - uses: ./.github/actions/setup-workspace # node_modules for the lockfile, shared on the runner (fm-98po)
-      - name: Every test file is actually run
-        run: node scripts/build/check-tests-listed.mjs
-      # src/Next modules import stylegan-js and browser-model-manager through their dist/ exports.
-      - name: Workspace packages the regressions import
-        run: npm run build -w packages/stylegan-js -w packages/browser-model-manager
-      - name: Shipping runtime, media, privacy and input regressions
-        run: |
-          set -euo pipefail
-          # classic's 37 named files at their destination paths; hosting/next-mirror/worker.test.mjs moves with the
-          # mirror Worker to packages/cloudflare-model-host (model-hosting extraction) and runs there.
-          (cd apps/web && node --test src/Next/image-encoder.test.mjs src/Next/crop-queue.test.mjs src/Next/scheduler.test.mjs src/Next/recovery-metadata.test.mjs src/Next/infill.test.mjs src/Next/last-result.test.mjs src/Next/analytics.test.mjs src/Next/usage-stats.test.mjs src/Next/video-worker.test.mjs src/Next/browser/route-priors.test.mjs src/Next/Assets/model-cache.test.mjs src/Next/browser/runtime.test.mjs src/Next/browser/runtime-manifest.test.mjs src/Next/browser/mobile-runtime.test.mjs src/Next/browser/originals.test.mjs src/Next/browser/acquisition-budget.test.mjs src/Next/browser/fused-resample.test.mjs src/Next/media.test.mjs src/Next/morph-frames.test.mjs src/Next/fresh-review.test.mjs src/Next/browser/encoder-preflight.test.mjs src/Next/photo/crop-view.test.mjs src/Next/photo/confirmed-crop.test.mjs src/Next/estimate.test.mjs src/Next/testing-link.test.mjs src/Next/route-choice.test.mjs src/Next/route-report.test.mjs src/Next/reporting.test.mjs src/Next/stage-labels.test.mjs src/Next/storage-request.test.mjs src/Next/model-inventory.test.mjs src/Next/logging.test.mjs src/Next/public-previews.test.mjs)
-          (cd apps/web && node --test src/Next/photo-selection.test.mjs)
-          node --test hosting/next-static/analytics.test.mjs hosting/next-cloudflare/worker.test.mjs hosting/gallery/materialize.test.mjs
-          if [ -f packages/cloudflare-model-host/test/next-mirror-worker.test.mjs ]; then node --test packages/cloudflare-model-host/test/next-mirror-worker.test.mjs
-          else echo "- hosting/next-mirror/worker.test.mjs: moves with the mirror Worker to packages/cloudflare-model-host (model-hosting extraction); not run here until it lands" | tee -a "$GITHUB_STEP_SUMMARY"; fi
-      - name: Compiled UI imports resolve against the hand-written bridges (the TypeScript UI and typed facade, fm-pia9)
-        run: node apps/web/scripts/check-bridge-imports.mjs
-      - name: Morph progress line is a counter, not a flicker
-        working-directory: apps/web
-        run: node scripts/check-progress-copy.mjs
-      - name: Independent reviewed morph geometry
-        working-directory: apps/web
-        run: node src/Next/geometry/verify.mjs
-      - name: Build the canonical monorepo destination artifact
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-        run: npm run build:next && npm run build:next -- --check
-      - name: Historic hello preview is included byte for byte
-        run: cmp apps/web/src/public/preview/hello-1024.webp deploy-next/preview/hello-1024.webp
-      - name: Model-free checker compressed budget (entry, shared dependencies and worker)
-        # The staging helper deliberately excludes Vite's private manifest from the public artifact.
-        run: node apps/web/build/preflight-size.ts apps/web/dist
-      - name: Exercise typed project import and export (project-json.test.ts, fm-stth)
-        run: node --test apps/web/test/project/project-json.test.ts
-      - name: No third-party runtime dependencies
-        run: node apps/web/scripts/check-no-third-party.mjs deploy-next
-      - name: The site lane's own checks are tested (retired-host scan fixtures, runtime refusal, inference verdict)
-        run: |
-          node --test scripts/ci/site/site.test.mjs
-          python3 scripts/ci/site/test_compiled_ui.py
-      - name: No retired hosts in the destination artifact
-        run: node scripts/ci/site/retired-hosts.mjs deploy-next --summary "$GITHUB_STEP_SUMMARY"
-      - name: Record exact bytes for promotion
-        run: |
-          set -euo pipefail
-          # Byte order (LC_ALL=C), as treeDigest sorts: the runner's en_US collation orders README.md and fonts/ apart.
-          find deploy-next -type f -print0 | LC_ALL=C sort -z | xargs -0 sha256sum > next-site-SHA256SUMS
-          printf '%s\n' '${{ github.sha }}' > next-site-source.txt
-          node -e 'console.log(JSON.stringify({sourceRepoId: Number(process.argv[1]), repository: process.argv[2], workflow: process.env.BUILD_WORKFLOW, runId: Number(process.argv[3]), commit: process.argv[4]}))' \
-            '${{ github.repository_id }}' '${{ github.repository }}' '${{ github.run_id }}' '${{ github.sha }}' > next-site-provenance.json
-          # The SUMS digest is the identity-hashing artifact digest (scripts/ci/fetch-artifact.ts treeDigest).
-          node --input-type=module -e "import {treeDigest} from './scripts/ci/fetch-artifact.ts'; const t=treeDigest('deploy-next'); const s=(await import('node:crypto')).createHash('sha256').update((await import('node:fs')).readFileSync('next-site-SHA256SUMS','utf8').replace(/  deploy-next\//g,'  ')).digest('hex'); console.log(JSON.stringify({treeDigest:t, sumsDigest:s})); if (t!==s) process.exit(1)"
-      - uses: actions/upload-artifact@v4
-        with:
-          name: next-site-${{ github.sha }}
-          path: |
-            deploy-next/
-            next-site-SHA256SUMS
-            next-site-source.txt
-            next-site-provenance.json
-            next-site-identity.json
-          if-no-files-found: error
-          retention-days: 14
-
-  # Pushes and dispatches qualify the exact artifact through the real product journey; PR merge artifacts do not.
+    uses: ./.github/workflows/next-site-artifact.yml
+    permissions:
+      contents: read
+      actions: read
+    with:
+      artifact_workflow: ${{ github.workflow == 'main' && '.github/workflows/main.yml' || '.github/workflows/next-site.yml' }}
   qualify:
-    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     needs: artifact
-    uses: ./.github/workflows/next-e2e.yml
+    uses: ./.github/workflows/next-site-qualify.yml
     permissions:
       contents: read
       actions: read
     with:
       artifact_run: ${{ github.run_id }}
+      artifact_workflow: ${{ github.workflow == 'main' && '.github/workflows/main.yml' || '.github/workflows/next-site.yml' }}
+      artifact_commit: ${{ github.sha }}
       artifact_name: next-site-${{ github.sha }}
       runtime_sha: d9e37e50a436e9fb7c0c7f973e70adee353c808f48c6a51fa5a9186f1c650a5c
-
-  compiled-ui:
-    needs: artifact
-    runs-on: [self-hosted, tempcpu]
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '24'
-      - name: Fetch the exact artifact by explicit provenance
-        id: artifact
-        uses: ./.github/actions/fetch-artifact
-        with:
-          source_repo_id: ${{ github.repository_id }}
-          workflow: ${{ env.BUILD_WORKFLOW }}
-          run_id: ${{ github.run_id }}
-          commit: ${{ github.sha }}
-          artifact_name: next-site-${{ github.sha }}
-          out: site
-      - name: Verify exact built bytes
-        working-directory: site
-        run: |
-          test "$(cat next-site-source.txt)" = '${{ github.sha }}'
-          test -s deploy-next/index.html
-          sha256sum --check next-site-SHA256SUMS
-      - uses: ./.github/actions/setup-workspace
-      - uses: ./.github/actions/setup-playwright
-        with:
-          browsers: chromium
-      - uses: ./.github/actions/setup-browser-harness
-      - uses: ./.github/actions/setup-runtime
-      - name: Native browser for the compiled artifact checks
-        run: |
-          binary=$(node -p 'require("playwright").chromium.executablePath()')
-          echo "CHROMIUM_PATH=$binary" >> "$GITHUB_ENV"
-      - name: Model-free checker real WASM, WebGPU loss, background and wall-clock budgets
-        env:
-          FACEMORPH_PREFLIGHT_SITE: site/deploy-next
-        run: node --test apps/web/test/e2e/preflight.e2e.ts
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: preflight-${{ github.sha }}
-          path: apps/web/test-results/preflight/
-          if-no-files-found: warn
-      - name: Verify retained control before destination parity smoke
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-        run: node scripts/import/fetch-control.mjs --dest .cache/control
-      - name: Destination parity smoke under the production origin
-        run: |
-          export PARITY_RUNTIME="$FACEMORPH_RUNTIME_DIR"
-          node apps/web/test/harness/run.ts --subject site/deploy-next --name port --source '${{ github.sha }}' --rows first-visit --out next-artifact-ui-evidence/parity
-      - name: Publication and qualification scripts parse
-        run: python3 -m compileall -q apps/web/scripts hosting/next hosting/next-static apps/web/src/Next/browser
-      - name: WebGPU bundle contract gate
-        run: python3 -m unittest discover -s hosting/next-static -p 'webgpu_contract_test.py' -t hosting/next-static
-      - name: Run actual artifact in Chromium, network checked by host class
-        run: python3 scripts/ci/site/compiled_ui.py --artifact site/deploy-next --out next-artifact-ui-evidence
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: next-artifact-ui-evidence
-          path: next-artifact-ui-evidence/
-          if-no-files-found: warn
-          retention-days: 14

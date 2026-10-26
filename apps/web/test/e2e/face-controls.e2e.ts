@@ -106,7 +106,6 @@ test(
               await operate(control);
           }
           await operate(page.getByRole('button', { name: 'More options' }));
-          await operate(page.getByText('Advanced', { exact: true }));
           await page.getByLabel('Processing mode').selectOption('cpu');
           const tile = page.locator('section.next-face').nth(1);
           const field = tile.locator('.next-field input');
@@ -269,8 +268,10 @@ test(
             'Enter cannot duplicate an active job',
           );
           assert.match(await page.locator('.next-route-caption').innerText(), /CPU/);
+          // The result can still be preparing its export file in the same operation slot.
+          // That control must not count as an offer to generate the completed input again.
           assert.equal(
-            await tile.locator('.next-face-generate').count(),
+            await tile.locator('.next-face-generate:not(.next-file-preparation)').count(),
             0,
             'verified result has no Generate',
           );
@@ -653,7 +654,6 @@ test(
       const second = page.locator('section.next-face').nth(1);
       await second.waitFor();
       await page.getByRole('button', { name: 'More options' }).click(); // setup
-      await page.getByText('Advanced', { exact: true }).click(); // setup
       await page.getByLabel('Processing mode').selectOption('cpu');
       await second.locator('.next-input-row .next-face-generate').click(); // setup
       const consent = page.locator('.next-download-accept');

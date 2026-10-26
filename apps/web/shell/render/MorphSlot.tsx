@@ -15,6 +15,7 @@ import {
 } from '../../src/controller/morph-options.ts';
 import { FancyButton } from './FancyButton.tsx';
 import { ProgressBar } from './progress.tsx';
+import './morph-output.css';
 
 // Smooth figure eight, pinched, is the default shape (operator, 22 September) and leads the list.
 export const SHAPES = [
@@ -52,10 +53,18 @@ export interface MorphSettings {
 }
 
 export interface MorphSlotProps extends MorphSettings {
+  /** More options → Start over (fm-id4c): two empty faces in one action, undoable. */
+  readonly onStartOver?: () => void;
   readonly faces: number;
   readonly busy: boolean;
   /** Morph's pre-checks are answering; Create morph waits for them. */
   readonly accepting?: boolean;
+  /** A parent morph remains active while its prerequisite faces run. */
+  readonly morphActive?: boolean;
+  readonly awaitingDecision?: boolean;
+  readonly inputProblem?: string;
+  readonly retry?: boolean;
+  readonly onRetry?: () => void;
   /** 'cancelling' disables Cancel. */
   readonly stage: string;
   readonly pendingMorph: boolean;
@@ -203,28 +212,6 @@ function Overflow(p: MorphSlotProps & { readonly custom: Custom }) {
         }
         label="Pinch centre"
       />
-      <details className="next-advanced">
-        <summary>Advanced</summary>
-        <label className="next-overflow-field">
-          <span>Processing mode</span>
-          <select
-            value={p.provider}
-            disabled={p.busy}
-            aria-label="Processing mode"
-            onChange={(e) => p.onSettings({ provider: e.target.value as Provider })}
-          >
-            {PROVIDERS.map(([key, text]) => (
-              <option key={key} value={key}>
-                {text}
-              </option>
-            ))}
-          </select>
-        </label>
-        <p>
-          Leave processing on automatic unless you are comparing routes. Forced routes still need to
-          pass this device’s checks.
-        </p>
-      </details>
     </div>
   );
 }
@@ -244,7 +231,21 @@ export function MorphSlot(p: MorphSlotProps) {
     },
   };
   const twoFaces = p.faces >= 2;
-  const canMorph = twoFaces && problem === '';
+  const morphActive = p.morphActive ?? (p.busy && !p.faceActive);
+  const reason = !twoFaces
+    ? 'Add a second face to create a morph — a single face still generates.'
+    : p.inputProblem ||
+      problem ||
+      (p.awaitingDecision
+        ? 'Confirm the download decision to continue this morph.'
+        : p.accepting
+          ? 'Checking this morph…'
+          : p.pendingMorph
+            ? 'Morph queued. Wait for the current work.'
+            : morphActive
+              ? 'Your morph is running. You can cancel beside its progress bar.'
+              : '');
+  const canMorph = reason === '';
   const cpu = p.route === 'cpu' || p.route === 'native-cpu';
   return (
     <div className="next-morph-slot">
@@ -254,7 +255,8 @@ export function MorphSlot(p: MorphSlotProps) {
         className="next-primary-action"
         data-next-primary="true"
         type="button"
-        disabled={!canMorph || p.accepting === true}
+        disabled={!canMorph}
+        aria-describedby={reason ? 'next-morph-reason' : undefined}
         onClick={() => p.onRun('morph')}
       >
         {p.pendingMorph ? 'Morph queued' : 'Create morph'}
@@ -282,7 +284,7 @@ export function MorphSlot(p: MorphSlotProps) {
         <Button color="inherit" variant="text" onClick={p.onAddFace}>
           Add face
         </Button>
-        {p.busy && (
+        {p.busy && !morphActive && (
           <Button
             color="inherit"
             variant="text"
@@ -293,9 +295,9 @@ export function MorphSlot(p: MorphSlotProps) {
           </Button>
         )}
       </div>
-      {!twoFaces && (
-        <p className="next-morph-reason" role="note">
-          Add a second face to create a morph — a single face still generates.
+      {reason && (
+        <p id="next-morph-reason" className="next-morph-reason" role="status">
+          {reason}
         </p>
       )}
       {p.route !== '' && (
@@ -306,6 +308,16 @@ export function MorphSlot(p: MorphSlotProps) {
       {p.overflow && (
         <div id="next-overflow">
           <Overflow {...p} custom={custom} />
+          {p.onStartOver && (
+            <Button
+              color="inherit"
+              variant="outlined"
+              className="next-start-over"
+              onClick={p.onStartOver}
+            >
+              Start over
+            </Button>
+          )}
         </div>
       )}
       {/* Status, progress and the measured time remaining live next to the action they describe. */}
@@ -314,11 +326,30 @@ export function MorphSlot(p: MorphSlotProps) {
           <progress
             className="next-sr"
             max={1}
-            {...(p.fraction > 0 ? { value: p.fraction } : {})}
+            {...(p.fraction >= 0 ? { value: p.fraction } : {})}
           />
         )}
-        {p.busy && !p.faceActive && <ProgressBar fraction={p.fraction > 0 ? p.fraction : -1} />}
+        {p.busy && (morphActive || !p.faceActive) && (
+          <div className="next-progress-row">
+            <ProgressBar fraction={p.fraction} />
+            {morphActive && (
+              <Button
+                color="inherit"
+                variant="text"
+                disabled={p.stage === 'cancelling'}
+                onClick={p.onCancel}
+              >
+                Cancel
+              </Button>
+            )}
+          </div>
+        )}
         <span>{p.status}</span>
+        {!p.busy && p.retry && p.onRetry && (
+          <Button color="inherit" variant="outlined" onClick={p.onRetry}>
+            Retry
+          </Button>
+        )}
         {p.disclosure && p.disclosure !== p.status && (
           <span className="next-disclosure">{p.disclosure}</span>
         )}

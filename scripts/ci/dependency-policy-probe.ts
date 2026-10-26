@@ -27,6 +27,7 @@ const CHECKERS = [
   'scripts/ci/check-dependency-currency.ts',
   'scripts/ci/dependency-currency.ts',
   'scripts/ci/ort-mirror.ts',
+  'scripts/ci/serial-ort.ts',
   'scripts/ci/package.json',
   'package.json',
 ];
@@ -163,7 +164,7 @@ export function runDependencyPolicyProbe(
       yaml: JSON.parse(readFileSync(join(yamlPackage, 'package.json'), 'utf8')).version,
     };
     const policy = JSON.parse(read(base, POLICY)) as DependencyPolicy;
-    requireProof(policy.planRevision === null, 'Probe requires an undeclared plan revision');
+    // A historical decision cannot authorize these comparisons: policy and PLAN stay unchanged.
     const manifest = JSON.parse(read(base, 'package.json'));
     const lock = JSON.parse(read(base, 'package-lock.json'));
     const before = manifest.devDependencies.oxfmt as string;

@@ -226,7 +226,6 @@ test(
           // A real refusal: force WebGPU where the browser has none, then generate a face.
           await dismissToasts();
           await operate(page.getByRole('button', { name: 'More options' }));
-          await operate(page.getByText('Advanced', { exact: true }));
           await page.getByLabel('Processing mode').selectOption('webgpu'); // setup
           await page.keyboard.press('Escape');
           const tile = page.locator('section.next-face').nth(1);

@@ -1,11 +1,12 @@
 #!/usr/bin/env node
-// Cheap checks on the exact staged/pushed blobs: oxfmt and oxlint, and on pre-push a typecheck of each pushed commit.
+// Cheap checks on exact staged/pushed blobs: format/lint, plus outgoing Beads closure and types on pre-push.
 // Build, test and device validation remain the contributor's job.
 import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { DEFAULT_CACHE, typecheckCommit } from './typecheck.mjs';
+import { checkBeadsCommit } from './beads.mjs';
 
 const root = execFileSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' }).trim();
 const git = (...args) => execFileSync('git', args, { cwd: root, encoding: 'utf8' });
@@ -22,6 +23,19 @@ if (mode === 'pre-push') {
 } else if (mode !== 'pre-commit') throw new Error('expected pre-commit or pre-push');
 
 let failed = false;
+if (mode === 'pre-push')
+  for (const [head, base] of revisions) {
+    const result = checkBeadsCommit({ root, head, base });
+    for (const violation of result.violations)
+      console.error(`pre-push beads: ${JSON.stringify(violation)}`);
+    if (!result.ok) {
+      console.error(
+        `pre-push: Beads closure check failed for ${head}${result.error ? `: ${result.error}` : ''}; fix and commit before pushing.`,
+      );
+      failed = true;
+    }
+  }
+if (failed) process.exit(1);
 for (const revision of revisions) {
   const staged = revision === ':';
   const [head, base] = staged ? [':', undefined] : revision;

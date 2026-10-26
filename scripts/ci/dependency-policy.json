@@ -82,7 +82,9 @@
     ".github/workflows/identity-check.yml": ["check"],
     ".github/workflows/web-shell.yml": ["e2e", "runtime-e2e", "facade", "crop-acceptance"],
     ".github/workflows/parity-harness.yml": ["served"],
-    ".github/workflows/next-site.yml": ["artifact", "qualify", "compiled-ui"],
+    ".github/workflows/next-site.yml": ["artifact", "qualify"],
+    ".github/workflows/next-site-artifact.yml": ["artifact"],
+    ".github/workflows/next-site-qualify.yml": ["qualify", "compiled-ui"],
     ".github/workflows/contracts-m1.yml": ["browsers"],
     ".github/workflows/mobile-browser.yml": ["android", "ios-product-simulator"],
     ".github/workflows/hosted-lanes.yml": ["desktop", "android", "ios"],
@@ -127,5 +129,8 @@
       }
     }
   },
-  "planRevision": null
+  "planRevision": {
+    "date": "2026-10-27",
+    "decision": "split next-site artifact building from qualification"
+  }
 }

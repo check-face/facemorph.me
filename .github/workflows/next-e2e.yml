@@ -17,6 +17,14 @@ on:
       artifact_name:
         type: string
         required: true
+      artifact_workflow:
+        description: Expected source workflow path; omitted only by legacy standalone callers
+        type: string
+        default: ''
+      artifact_commit:
+        description: Expected source commit; omitted only by legacy standalone callers
+        type: string
+        default: ''
       runtime_sha:
         type: string
         required: true
@@ -54,6 +62,8 @@ jobs:
           RUN_ID: ${{ inputs.artifact_run }}
           THIS_RUN: ${{ github.run_id }}
           ARTIFACT: ${{ inputs.artifact_name }}
+          EXPECTED_WORKFLOW: ${{ inputs.artifact_workflow }}
+          EXPECTED_COMMIT: ${{ inputs.artifact_commit }}
         run: |
           set -euo pipefail
           [[ "$RUN_ID" =~ ^[0-9]+$ ]]
@@ -66,6 +76,8 @@ jobs:
           # next-site.yml builds the artifact; on main it runs inside the one pipeline, main.yml (fm-98po).
           workflow = r['path'].split('@')[0]
           assert workflow in ('.github/workflows/next-site.yml', '.github/workflows/main.yml'), r['path']
+          assert not os.environ['EXPECTED_WORKFLOW'] or workflow == os.environ['EXPECTED_WORKFLOW'], 'Artifact workflow differs from caller pin'
+          assert not os.environ['EXPECTED_COMMIT'] or r['head_sha'] == os.environ['EXPECTED_COMMIT'], 'Artifact commit differs from caller pin'
           assert r['conclusion'] == 'success' or same_run, 'Qualify a finished artifact build, or the one calling this workflow'
           assert r['event'] in ('push', 'workflow_dispatch'), 'Use a branch build; PR merge artifact provenance needs a separate merge-SHA receipt'
           assert os.environ['ARTIFACT'] == 'next-site-' + r['head_sha']

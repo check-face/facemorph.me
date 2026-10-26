@@ -7,18 +7,20 @@ import { browserWebCodecs, probeMp4, type FfmpegAvailability } from '../media/mp
 import type { InputRevision } from '../contracts/inputs.ts';
 import type {
   OperationFailure,
+  OperationEvent,
   OperationHandle,
   OperationRequest,
   SourceSnapshot,
 } from '../operations/service.ts';
 import type { Effect, Transition } from './effects.ts';
 import { rejection, unchanged } from './effects.ts';
-import type { State, Input, Request } from './state.ts';
+import type { State, Input, Progress, Request } from './state.ts';
 import { init, type InitialFacts } from './init.ts';
 import { faceInputProblem } from './derived.ts';
 import { msg } from './msg.ts';
 import { reportSent } from './reducers/reporting.ts';
 import { cancelled } from './reducers/jobs.ts';
+import { UNDO_MS } from './reducers/undo.ts';
 import { schedule, scheduled, scheduling } from './reducers/schedule.ts';
 import { createStore, type Store } from './store.ts';
 import { classifyStills, isHeld, stillLog } from '../media/still-entry.ts';
@@ -61,6 +63,23 @@ export function orderedEffects(effects: readonly Effect[]): readonly Effect[] {
     ...effects.filter((effect) => !commands.has(effect.type)),
     ...effects.filter((effect) => commands.has(effect.type)),
   ];
+}
+
+/** Adapts the action's spoken line and bar; route events retain their provider metadata. */
+export function operationProgress(
+  event: Extract<OperationEvent, { type: 'progress' }>,
+  jobId: number,
+  currentStatus: string,
+): Progress {
+  return {
+    ...event.progress,
+    jobId,
+    fraction: event.action.fraction ?? -1,
+    text:
+      event.intent.request.kind === 'morph' && !event.progress.stage.startsWith('route-')
+        ? (event.line ?? currentStatus)
+        : event.progress.text,
+  };
 }
 
 /**
@@ -126,6 +145,10 @@ export function createController(
   // A test can ask for the operation trace (fm-vbj7) by providing an array before the app starts.
   const opctlTrace = (globalThis as { __FACEMORPH_OPCTL_TRACE__?: unknown[] })
     .__FACEMORPH_OPCTL_TRACE__;
+  // A test can likewise ask for the face trace (fm-id4c): every invalidateFace and slot cancel, in order.
+  const faceTraceHook = (globalThis as { __FACEMORPH_FACE_TRACE__?: unknown })
+    .__FACEMORPH_FACE_TRACE__;
+  const faceTrace = Array.isArray(faceTraceHook) ? (faceTraceHook as unknown[]) : null;
   // Morph acceptance pre-checks (fm-fy2.9): the neighbour rule and MP4 probe answer before any acquisition.
   const checks = morphChecks({
     probe: (request) =>
@@ -170,6 +193,14 @@ export function createController(
         : {}),
       ...(message.type === 'AddAt'
         ? { newFaceId: `face-${crypto.randomUUID().replaceAll('-', '')}` }
+        : {}),
+      ...(message.type === 'StartOver'
+        ? {
+            startOverIds: [
+              `face-${crypto.randomUUID().replaceAll('-', '')}`,
+              `face-${crypto.randomUUID().replaceAll('-', '')}`,
+            ] as const,
+          }
         : {}),
       ...(message.type === 'Classified' && !message.args[2]
         ? {
@@ -244,14 +275,50 @@ export function createController(
     const off = service.subscribe((event) => {
       if (disposed || event.intent.requestId !== handle.requestId) return;
       if (event.type === 'progress')
-        store.dispatch(msg('Progressed', { ...event.progress, jobId }));
+        store.dispatch(msg('Progressed', operationProgress(event, jobId, store.getState().Status)));
+      if (event.type === 'dependency-ready')
+        update((current) => {
+          const request = event.intent.request;
+          const expected =
+            'sources' in request
+              ? request.sources.find((source) => source.slot === event.slot)?.input
+              : undefined;
+          const input = current.Inputs.find((input) => input.id === event.slot);
+          const face = event.output.faces.find((face) => face.id === event.slot);
+          if (
+            current.JobId !== jobId ||
+            !current.Busy ||
+            !face ||
+            !input ||
+            !expected ||
+            input.mode !== expected.mode ||
+            input.value !== expected.value ||
+            input.file !== expected.file
+          )
+            return unchanged(current);
+          return {
+            state: {
+              ...current,
+              Faces: [...current.Faces.filter((face) => face.id !== event.slot), face],
+              ActiveFace: current.ActiveFace === event.slot ? null : current.ActiveFace,
+            },
+            effects: [],
+          };
+        });
       if (event.type === 'disclosure')
         update((current) =>
           current.JobId === jobId
             ? { state: { ...current, Status: event.text, Disclosure: event.text }, effects: [] }
             : unchanged(current),
         );
-      if (event.type === 'compute-ready' && final) {
+      if (
+        final &&
+        !committed &&
+        'output' in event &&
+        (event.intent.request.kind === 'morph'
+          ? event.type === 'file-ready'
+          : event.type === 'compute-ready')
+      ) {
         committed = true;
         store.dispatch(msg('Completed', jobId, event.output));
         measureStored();
@@ -277,7 +344,15 @@ export function createController(
           msg(
             'Failed',
             jobId,
-            result.cause.kind === 'admission' ? result.cause.refusal.text : result.cause.message,
+            result.cause.kind === 'admission'
+              ? result.cause.refusal.text
+              : handle.request.kind === 'morph' &&
+                  result.cause.kind === 'operation' &&
+                  !/not covered by an approved download|needs more data than was approved/.test(
+                    result.cause.message,
+                  )
+                ? 'This morph could not finish. Your completed faces are still ready. Retry, or reduce Length in More options.'
+                : result.cause.message,
           ),
         );
       } else if (!committed) update((current) => cancelled(current, jobId));
@@ -468,6 +543,7 @@ export function createController(
           facade.invalidateArrivalRestore();
           break;
         case 'invalidateFace': {
+          faceTrace?.push({ type: 'invalidateFace', id: effect.id, at: performance.now() });
           const revision = (revisions.get(effect.id) ?? 1) + 1;
           revisions.set(effect.id, revision);
           if (state.Inputs.some((input) => input.id === effect.id))
@@ -634,6 +710,23 @@ export function createController(
         case 'cancelQueuedFace':
           facade.cancelQueuedFace(effect.id);
           break;
+        case 'cancelSlot':
+          // Remove's owned-work abort (fm-id4c): the slot's requests stop; its retained result is kept for Undo.
+          faceTrace?.push({ type: 'cancelSlot', id: effect.id, at: performance.now() });
+          service.cancel({ slot: effect.id });
+          break;
+        case 'admissionRefused':
+          faceTrace?.push({ type: 'admissionRefused', id: effect.budget, at: performance.now() });
+          if (Array.isArray(opctlTrace))
+            opctlTrace.push({ type: 'admission-refused', budget: effect.budget });
+          break;
+        case 'expireUndo': {
+          const seq = effect.seq;
+          setTimeout(() => {
+            if (!disposed) store.dispatch(msg('UndoExpired', seq));
+          }, UNDO_MS);
+          break;
+        }
         case 'cancelWork':
           for (const [handle, jobId] of handles)
             if (jobId === state.JobId) service.cancel({ requestId: handle.requestId });

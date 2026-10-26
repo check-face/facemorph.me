@@ -22,6 +22,7 @@ jobs:
       - run: npm run build -w packages/stylegan-js -w packages/browser-model-manager
       - run: node --test scripts/names-publish/publish.test.mjs scripts/names-snapshot/local.test.mjs hosting/gallery/materialize.test.mjs
   publish:
+    if: github.event_name == 'workflow_dispatch'
     needs: test
     # The producer needs qualified Chromium/WebGPU and the pinned classic source, available on eris.
     # Publication has no runtime inference; it consumes the producer's checked manifest and files.

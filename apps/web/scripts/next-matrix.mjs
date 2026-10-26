@@ -175,10 +175,10 @@ try{
  report.crossOriginIsolated=await page.evaluate(()=>crossOriginIsolated);
  if(!report.crossOriginIsolated)throw Error('Production isolation headers missing');
 
- // Force CPU: an engine without a qualified GPU route must still complete the workflow. The processing mode lives
- // under More options > Advanced.
+ // Force CPU: an engine without a qualified GPU route must still complete the workflow. The processing mode is under
+ // More options > Advanced in the control and above the faces in the destination (fm-5kpx).
  await page.getByRole('button',{name:'More options',exact:true}).click();
- await page.locator('.next-advanced').evaluate(e=>{e.open=true;});
+ if(await page.locator('.next-advanced').count())await page.locator('.next-advanced').evaluate(e=>{e.open=true;});
  await page.getByLabel('Processing mode').selectOption('cpu');
  if(await page.getByLabel('Processing mode').inputValue()!=='cpu')throw Error('Could not select CPU processing');
  await page.keyboard.press('Escape');

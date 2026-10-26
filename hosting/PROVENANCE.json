@@ -162,10 +162,10 @@
       "size": 6833,
       "sha256": "4f9d9247d06045763ddd09f90cf5e2503a83bce71418e490ff3985c51c988e47",
       "ported": {
-        "sha256": "ef641c42695a5634111f3bcd4aabb54729d00eec5617d20fa893ad75d2533851",
-        "bytes": 12306,
+        "sha256": "026ac1cc79b5cd0888ee4fec4ebca88061cfa50d5aff2d0b196157f68b11c897",
+        "bytes": 12701,
         "bead": "fm-6fx6",
-        "reason": "Fail-closed re-homing (fm-6fx6): research backing (kernel provenance, canonical ledger keep row) checked first from local inputs, a missing ledger or built-in catalogue refuses, the build run is this repository's main.yml/next-site.yml with its artifact, compiled-ui and qualify gates passed, and --publish goes through the single-publisher guard and the cf deploy driver (scripts/hosting/deploy.mjs). Keeps fm-be10 (verifier path) and fm-rur (gh REMOTE)."
+        "reason": "Fail-closed re-homing (fm-6fx6): research backing (kernel provenance, canonical ledger keep row) checked first from local inputs, a missing ledger or built-in catalogue refuses, the build run is this repository's main.yml/next-site.yml with its artifact, compiled-ui and qualify gates passed, and --publish goes through the single-publisher guard and the cf deploy driver (scripts/hosting/deploy.mjs). Keeps fm-be10 (verifier path) and fm-rur (gh REMOTE). fm-kfs5: accept exact split main/candidate artifact and compiled-UI job contexts while preserving every required gate and legacy contexts."
       }
     },
     {

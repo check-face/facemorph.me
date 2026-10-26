@@ -78,6 +78,11 @@ def gate_jobs(jobs):
     by_name = {}
     for job in jobs:
         name = job['name']
+        # fm-kfs5 split main's build from qualification; the candidate wrapper calls the same children.
+        # Exact aliases only: unrelated workflows' successful artifact/UI jobs cannot satisfy these gates.
+        name = {'next-site-artifact / artifact': 'artifact',
+                'artifact / artifact': 'artifact',
+                'qualify / compiled-ui': 'compiled-ui'}.get(name, name)
         if name.startswith('next-site / '):
             name = name[len('next-site / '):]
         by_name.setdefault(name, []).append(job.get('conclusion'))

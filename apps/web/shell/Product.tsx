@@ -3,13 +3,19 @@ import { useSyncExternalStore } from 'react';
 import type { Store } from '../src/controller/store.ts';
 import { msg } from '../src/controller/msg.ts';
 import { rememberVideoQuality } from '../src/controller/preferences.ts';
-import { estimate, isSlowDevice, perFrameText } from '../src/controller/derived.ts';
+import {
+  estimate,
+  faceInputProblem,
+  isSlowDevice,
+  perFrameText,
+} from '../src/controller/derived.ts';
 import * as facade from './facade/bridge.ts';
 import { describeMeasuredMs, describeMs } from './facade/helpers.ts';
 import { Shell } from './Shell.tsx';
 import { FaceTile } from './render/FaceTile.tsx';
 import { FacesLayout } from './render/FacesLayout.tsx';
 import { MorphSlot } from './render/MorphSlot.tsx';
+import { ProviderSelector } from './render/ProviderSelector.tsx';
 import { VideoSlot } from './render/VideoSlot.tsx';
 import { NamesDialog, DetectedDialog, CropDialog, DownloadDialog } from './render/Dialogs.tsx';
 import { Support, TestingInvite } from './render/Support.tsx';
@@ -32,6 +38,8 @@ export function Product({ store }: { store: Store }) {
     plannedFrames: facade.plannedFrames(settings),
   };
   const prediction = estimate(s, measurements);
+  const morphRemembered = s.LastRun?.type === 'Run' && s.LastRun.args[0] === 'morph';
+  const invalidFace = s.Inputs.findIndex((input) => faceInputProblem(input));
   return (
     <Shell
       busy={s.Busy}
@@ -58,8 +66,8 @@ export function Product({ store }: { store: Store }) {
               </p>
               <p>
                 You can keep using the page while work is queued. Try a shorter morph, or compare
-                available processing routes under More options → Advanced. A capable desktop browser
-                may help if you are using a phone.
+                available processing routes with the Processing control above the faces. A capable
+                desktop browser may help if you are using a phone.
               </p>
             </div>
           )}
@@ -76,9 +84,16 @@ export function Product({ store }: { store: Store }) {
         </>
       }
     >
+      <ProviderSelector
+        provider={s.Provider}
+        busy={s.Busy}
+        onProvider={(provider) => dispatch(msg('Provider', provider))}
+      />
       <FacesLayout
         inputs={s.Inputs}
         onAddAt={(at) => dispatch(msg('AddAt', at))}
+        undo={s.Undo}
+        onUndo={() => dispatch(msg('Undo'))}
         tile={(item, _index, label) => (
           <FaceTile
             key={item.id}
@@ -110,6 +125,7 @@ export function Product({ store }: { store: Store }) {
             }
             photoEncodingAvailable={!s.Downloads.known || s.Downloads.photoAvailable}
             onNotice={(message) => dispatch(msg('PhotoError', message))}
+            onResultNotice={(message) => dispatch(msg('Notice', message))}
             removable={s.Inputs.length > 1}
             onEdit={(value) => dispatch(msg('Edit', item.id, value))}
             onMode={(mode) => dispatch(msg('Mode', item.id, mode))}
@@ -122,6 +138,17 @@ export function Product({ store }: { store: Store }) {
             onRemove={() => dispatch(msg('Remove', item.id))}
             onShare={() => dispatch(msg('Share', item.id))}
             onSave={() => dispatch(msg('Save', item.id))}
+            resultRevision={facade.exportResultRevision(item.id)}
+            resultFiles={
+              s.Held?.get(item.id)?.url
+                ? undefined
+                : {
+                    prepare: (format) => facade.prepareMedia(item.id, format),
+                    rename: facade.renamePreparedMedia,
+                    save: (file) => facade.handPreparedMedia(item.id, file, 'save'),
+                    share: (file) => facade.handPreparedMedia(item.id, file, 'share'),
+                  }
+            }
             held={s.Held?.get(item.id)}
             onUseAsPhoto={() => dispatch(msg('UseAsPhoto', item.id))}
             drawFace={(canvas, id) => {
@@ -139,6 +166,19 @@ export function Product({ store }: { store: Store }) {
             faces={s.Inputs.length}
             busy={s.Busy}
             accepting={s.Accepting === true}
+            morphActive={s.Busy && morphRemembered}
+            awaitingDecision={s.Gate?.[1].type === 'Run' && s.Gate[1].args[0] === 'morph'}
+            inputProblem={
+              invalidFace < 0
+                ? ''
+                : `Face ${invalidFace + 1}: ${faceInputProblem(s.Inputs[invalidFace]!)}`
+            }
+            retry={
+              morphRemembered &&
+              (s.Stage === 'error' ||
+                s.Status === 'Cancelled. Your completed faces are still available.')
+            }
+            onRetry={() => dispatch(msg('Retry'))}
             stage={s.Stage}
             pendingMorph={s.PendingMorph}
             overflow={s.Overflow}
@@ -161,6 +201,7 @@ export function Product({ store }: { store: Store }) {
             onCancel={() => dispatch(msg('Cancel'))}
             onOverflow={(open) => dispatch(msg('OverflowToggle', open))}
             onAddFace={() => dispatch(msg('AddAt', s.Inputs.length))}
+            onStartOver={() => dispatch(msg('StartOver'))}
             onSettings={(change) => {
               if (change.kind !== undefined) dispatch(msg('Kind', change.kind));
               if (change.frames !== undefined) dispatch(msg('Frames', change.frames));
@@ -177,6 +218,7 @@ export function Product({ store }: { store: Store }) {
         videoSlot={
           <VideoSlot
             videoUrl={s.VideoUrl}
+            disclosure={s.Disclosure ?? ''}
             poster={s.Faces[0]?.url}
             useSlider={s.UseSlider}
             sliderFrames={s.SliderFrames}
@@ -187,6 +229,13 @@ export function Product({ store }: { store: Store }) {
             onSliderFrame={(frame) => dispatch(msg('SliderFrameSet', frame))}
             onShare={() => dispatch(msg('Share', 'video'))}
             onSave={() => dispatch(msg('Save', 'video'))}
+            resultFiles={{
+              prepare: (format) => facade.prepareMedia('video', format),
+              rename: facade.renamePreparedMedia,
+              save: (file) => facade.handPreparedMedia('video', file, 'save'),
+              share: (file) => facade.handPreparedMedia('video', file, 'share'),
+            }}
+            onNotice={(message) => dispatch(msg('Notice', message))}
           />
         }
       />

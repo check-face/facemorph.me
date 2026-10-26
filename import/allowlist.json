@@ -1059,10 +1059,10 @@
       "class": "temporary-root",
       "temporary": true,
       "ported": {
-        "sha256": "44ca7d1536c3146dc260ef828df9471c211a968e712cd211d0f28a018c217250",
-        "bytes": 10105,
-        "bead": "fm-aa8",
-        "reason": "the Processing mode select is found by accessible name through build/provider-probe.js (no .next-advanced), routes expected by artifact label from build/provider-routes.json, providerLocation recorded; Vite destination integration: shared production headers and native dynamic-import directives; compiled artifact identity. Operate Encode image through the tile mode menu and source dialog after chooser relocation; verify real pointer landing past closing dialog backdrops. Retain classic selector on the frozen control (fm-aa8, main40186175762).; Name the awaited compiled-UI condition on timeout (1394bb0); compiled-ui operates the card chooser, not the removed Encode source dialog (b8640b7) (fm-aa8); press a menu item only once its box holds still (84a8b11)"
+        "sha256": "bb92e38e01863e8146cc2a5e6d593b7b03a76a95e54009a7697e16c52929be0b",
+        "bytes": 11825,
+        "bead": "fm-id4c",
+        "reason": "the Processing mode select is found by accessible name through build/provider-probe.js (no .next-advanced), routes expected by artifact label from build/provider-routes.json, providerLocation recorded; Vite destination integration: shared production headers and native dynamic-import directives; compiled artifact identity. Operate Encode image through the tile mode menu and source dialog after chooser relocation; verify real pointer landing past closing dialog backdrops. Retain classic selector on the frozen control (fm-aa8, main40186175762).; Name the awaited compiled-UI condition on timeout (1394bb0); compiled-ui operates the card chooser, not the removed Encode source dialog (b8640b7) (fm-aa8); press a menu item only once its box holds still (84a8b11); check full-width source aspect and containment below the Remove band, all actual corner hits, clipping ancestors and control overlap (fm-id4c)"
       }
     },
     {
@@ -1081,10 +1081,10 @@
       "class": "temporary-root",
       "temporary": true,
       "ported": {
-        "sha256": "1e3b20dabb54160a59234b5ef6d4f9f74f9e4c1c730f3c633d01822e6d90117d",
-        "bytes": 2480,
-        "bead": "fm-vbj7",
-        "reason": "The bridge-source cases moved to behavioural tests through the operation service (src/operations/progress-copy.test.ts); only the counter cases remain (dea926c)"
+        "sha256": "a080c62cddf4eec506844c07cbf0c30f5b235edab2b132ef7542dca279de9f56",
+        "bytes": 3558,
+        "bead": "fm-j4i8",
+        "reason": "Check whole-action monotonic progress across prerequisite faces, frames and usable MP4; retain secondary frame-counter cases and require the same-revision operated DOM proof in morph-output.e2e.ts.; keep the behavioural operation-service unit gate in destination-checks and the built-app Morph suite in provisioned web-shell/runtime-e2e"
       }
     },
     {
@@ -1139,10 +1139,10 @@
       "class": "temporary-root",
       "temporary": true,
       "ported": {
-        "sha256": "055776f0e031bcc97d2f816e5177d855a2082ad0f7dc38a50cef4d6b3c715dc3",
-        "bytes": 44320,
-        "bead": "fm-5klw",
-        "reason": "Preserve typed project-codec checks; adapt provider and tile controls for WebGL/filename retirement, retain crop in its mode menu, and use the existing CDP interceptor for worker evidence under no-referrer production headers. Schedule initial navigation and pump events within the unchanged document-load deadline, avoiding the shorter synchronous harness IPC timeout. Adapt the declared Encode source/confirmation/editor flow through real pointer hits while retaining CPU/e4e/crop/export/restore and network assertions (main40183901932 preflight repair). (fm-aa8); real-ui-cpu operates the card chooser, not the removed Encode source dialog (b8640b7) (fm-aa8); the synthetic-photo journey proves e4e by its encode-aligned request, since a confirmed crop starts no detector worker; real-ui-cpu presses a control only once its box is the same on two samples 0.5 s apart, so a press never lands on the backdrop of a menu still growing in (run 40336921863 preflight)"
+        "sha256": "a32e26acc382001a00743f8924ff3937d0b20132dc773e166fbfa1ae371c3f81",
+        "bytes": 51196,
+        "bead": "fm-qh1s",
+        "reason": "Preserve typed project-codec checks; adapt provider and tile controls for WebGL/filename retirement, retain crop in its mode menu, and use the existing CDP interceptor for worker evidence under no-referrer production headers. Schedule initial navigation and pump events within the unchanged document-load deadline, avoiding the shorter synchronous harness IPC timeout. Adapt the declared Encode source/confirmation/editor flow through real pointer hits while retaining CPU/e4e/crop/export/restore and network assertions (main40183901932 preflight repair). (fm-aa8); real-ui-cpu operates the card chooser, not the removed Encode source dialog (b8640b7) (fm-aa8); the synthetic-photo journey proves e4e by its encode-aligned request, since a confirmed crop starts no detector worker; real-ui-cpu presses a control only once its box is the same on two samples 0.5 s apart, so a press never lands on the backdrop of a menu still growing in (run 40336921863 preflight); the processing selector moves above the faces; harnesses open .next-advanced only where it exists (the control), and the selector row is styled; operate face source inputs separately from result filenames, require genuine Generate/Retry and invalidate then restore original inputs for a non-vacuous cache hit; preserve full source-frame aspect/1px containment while checking real corners and excluding the declared Remove band; wait for prepared-file Save readiness and use a real pointer hit within the unchanged single 60s download deadline (fm-qh1s, exact failed-CI artifact and current integration full CPU replays)."
       }
     },
     {
@@ -1153,10 +1153,10 @@
       "class": "temporary-root",
       "temporary": true,
       "ported": {
-        "sha256": "f10e153702c2ca6710e5157906dc9bed3f55bb635f12cd5a7789bdafb7de0a1d",
-        "bytes": 8092,
-        "bead": "fm-d4mw",
-        "reason": "Optional --port isolates concurrent correctness servers while preserving the classic default of 8443; Vite destination integration: shared production headers and native dynamic-import directives; compiled artifact identity. TLS handshake runs in the client thread so speculative idle connections cannot block accept (fm-aa8).; e2e site server listen backlog 256 (fb0f4f1)"
+        "sha256": "a4913ea6f5d0b3c12097c7198de9a3a9ddda9a0c5216947b48115ed088504852",
+        "bytes": 10487,
+        "bead": "fm-jx26",
+        "reason": "Optional --port isolates concurrent correctness servers while preserving the classic default of 8443; Vite destination integration: shared production headers and native dynamic-import directives; compiled artifact identity. TLS handshake runs in the client thread so speculative idle connections cannot block accept (fm-aa8).; e2e site server listen backlog 256 (fb0f4f1); bounded exact-path file-preparation HTTP delay/503 for operated Retry proof (fm-qh1s); accept only the model manager positive retry counter on runtime URLs, retaining the same pinned path and bytes; actual HTTPS failure/retry plus malformed-query and traversal regressions in scripts/hosting/runtime-retry.test.mjs. Serve pinned staged files from --runtime-files before public fallback, verifying SHA256 and declared size; genuine local HTTPS corruption/retry regressions and ORT1.30 P30 CPU warm-face pass (fm-qeh)."
       }
     },
     {
@@ -1175,10 +1175,10 @@
       "class": "temporary-root",
       "temporary": true,
       "ported": {
-        "sha256": "95383e97fda50e1474fb9d3647295b603c549550c9ce9f33bd55c22b3b70fbfc",
-        "bytes": 12143,
-        "bead": "fm-wzy",
-        "reason": "Await the browser load event without renderer evaluations during navigation, then retain document readiness, hardware adapter, route, canary and timing assertions; fm-wzy repairs main40182116464 startup IPC timeout."
+        "sha256": "e431eb1232705eb741b8d516a710e7b6ca5369f536f6cdcb8cc6e4723b9d419f",
+        "bytes": 12187,
+        "bead": "fm-5kpx",
+        "reason": "Await the browser load event without renderer evaluations during navigation, then retain document readiness, hardware adapter, route, canary and timing assertions; fm-wzy repairs main40182116464 startup IPC timeout.; the processing selector moves above the faces; harnesses open .next-advanced only where it exists (the control), and the selector row is styled"
       }
     },
     {
@@ -1211,10 +1211,10 @@
       "class": "temporary-root",
       "temporary": true,
       "ported": {
-        "sha256": "7badb1a84b88e49a1e753ad614df2bc1e576bf5eab232e9659e4fcefcc5426e0",
-        "bytes": 22007,
-        "bead": "fm-r4a",
-        "reason": "repaired harness: stage verdicts in next-matrix-stages.mjs (classic stage list, not-shipped never a pass), project round trip covered by project-json.test.ts; Photo/crop source assertions now execute typed reducers; active check descriptions reference the retained artifact and typed codec.; Wait for actual photo reconstruction before asserting encoder completion; retained-control matrix144 evidence. Exact candidate artifact mode uses a job-owned production-origin CONNECT proxy on Chromium, Firefox and WebKit; retained stage list and verdicts unchanged."
+        "sha256": "7646016f54484a81bb9ed575307f4b078159a9133cbae48979399409253d714b",
+        "bytes": 22116,
+        "bead": "fm-5kpx",
+        "reason": "repaired harness: stage verdicts in next-matrix-stages.mjs (classic stage list, not-shipped never a pass), project round trip covered by project-json.test.ts; Photo/crop source assertions now execute typed reducers; active check descriptions reference the retained artifact and typed codec.; Wait for actual photo reconstruction before asserting encoder completion; retained-control matrix144 evidence. Exact candidate artifact mode uses a job-owned production-origin CONNECT proxy on Chromium, Firefox and WebKit; retained stage list and verdicts unchanged.; the processing selector moves above the faces; harnesses open .next-advanced only where it exists (the control), and the selector row is styled"
       }
     },
     {
@@ -1471,10 +1471,10 @@
       "bytes": 33331,
       "class": "src-next",
       "ported": {
-        "sha256": "99a263e550acea104447cf85d7e47ef41e6c1fba7d7ea67c0f148aa346556b9d",
-        "bytes": 30964,
-        "bead": "fm-tohj",
-        "reason": "acquires under the candidate bridge scope as a grant (bridge-grant.mjs), widened by the streamed encoder descriptor; passes modelAlternateOrigins(location.hostname); Vite destination integration: shared production headers and native dynamic-import directives; compiled artifact identity. (fm-zz2i); Continues verified execution through browser/model-source.mjs when durable model storage refuses (1bb7bd0) (fm-fy2.13); mapping, synthesis, canaries and the ORT runtime run on the stylegan-js engine behind the unchanged worker protocol; compute.photo-descriptor: the worker encodes through the package's streamed encoder after acquiring every shard; dimensions come from the shipped descriptor; compute.app-rebind: the streamed e4e is the only photo encoder; the app's whole-encoder ORT path is removed; the WebGPU generator loaders load through a dynamic import of stylegan-js/engine/webgpu (CPU workers never fetch them); still writing goes through media/recovery-stills.ts so the image encoder worker no longer bundles the project codec; workers acquire only under app-supplied grants built from the person's approval plus a zero-budget grant for verified local files; the route set counts the correctness canaries and sample indices; the streamed encoder is sized from its pinned descriptor; a grant refusal is not a route failure; npm names: stylegan-js, browser-model-manager and cloudflare-model-host are unscoped (the registry name check's result)"
+        "sha256": "b684b85e20bb8332845b88763ccabe8a4563cd947468186044bbe310268cc0d4",
+        "bytes": 31310,
+        "bead": "fm-qrfz",
+        "reason": "acquires under the candidate bridge scope as a grant (bridge-grant.mjs), widened by the streamed encoder descriptor; passes modelAlternateOrigins(location.hostname); Vite destination integration: shared production headers and native dynamic-import directives; compiled artifact identity. (fm-zz2i); Continues verified execution through browser/model-source.mjs when durable model storage refuses (1bb7bd0) (fm-fy2.13); mapping, synthesis, canaries and the ORT runtime run on the stylegan-js engine behind the unchanged worker protocol; compute.photo-descriptor: the worker encodes through the package's streamed encoder after acquiring every shard; dimensions come from the shipped descriptor; compute.app-rebind: the streamed e4e is the only photo encoder; the app's whole-encoder ORT path is removed; the WebGPU generator loaders load through a dynamic import of stylegan-js/engine/webgpu (CPU workers never fetch them); still writing goes through media/recovery-stills.ts so the image encoder worker no longer bundles the project codec; workers acquire only under app-supplied grants built from the person's approval plus a zero-budget grant for verified local files; the route set counts the correctness canaries and sample indices; the streamed encoder is sized from its pinned descriptor; a grant refusal is not a route failure; npm names: stylegan-js, browser-model-manager and cloudflare-model-host are unscoped (the registry name check's result); preflight the entire discovered encoder schedule against approved grants before requesting any shard (fm-qrfz)"
       }
     },
     {
@@ -1531,10 +1531,10 @@
       "bytes": 37783,
       "class": "src-next",
       "ported": {
-        "sha256": "05e28a48871273672a6696a445e2b26f77882b4c8c8da259e138fffafa4e691d",
-        "bytes": 53423,
-        "bead": "fm-tohj",
-        "reason": "WebGL execution removed (fm-x6h5); per-operation admission through admission/route-admission.ts before any worker or model request, photo encoding admitted by capability instead of user-agent labels (fm-lt2p); route snapshot selects bounded fallback scope and forwards cancellation signal (fm-0y24); Save/Share hand over prepared files named by export identity; encoder figures from the export policy (6915a98); directSupported comes from the stylegan-js engine (routes.ts) with the direct engine itself; admits the runtime manifest pointer (runtime-manifest.mjs) before replacing the active runtime; a refused pointer leaves the next attempt free to fetch again; crop.fix: a confirmed crop goes to e4e directly (no detector after OK); detector outcomes are typed (faceDetection/code), not matched on text; crop limits come from the stylegan-js crop policy; compute.photo-descriptor: the worker encodes through the package's streamed encoder after acquiring every shard; dimensions come from the shipped descriptor; runtime options keep their supplied manifest type: three explicit =undefined defaults for the typecheck (ddcffa4); createBrowserRuntime option types via JSDoc casts (b45f05f); the confirmed-crop encode queue wired into the runtime and bridge: slots, per-slot cancel/retry/remove, real-bridge harness; the stall watchdog counts worker silence: any worker message keeps every pending operation alive, so a background canary preempted by a long morph no longer stops it (fm-5klw); workers acquire only under app-supplied grants built from the person's approval plus a zero-budget grant for verified local files; the route set counts the correctness canaries and sample indices; the streamed encoder is sized from its pinned descriptor; a grant refusal is not a route failure; npm names: stylegan-js, browser-model-manager and cloudflare-model-host are unscoped (the registry name check's result)"
+        "sha256": "f81b1f500189e56a1e6238f0a17118c561b08a3b7b921e17a251ade41b10fde4",
+        "bytes": 53737,
+        "bead": "fm-qrfz",
+        "reason": "WebGL execution removed (fm-x6h5); per-operation admission through admission/route-admission.ts before any worker or model request, photo encoding admitted by capability instead of user-agent labels (fm-lt2p); route snapshot selects bounded fallback scope and forwards cancellation signal (fm-0y24); Save/Share hand over prepared files named by export identity; encoder figures from the export policy (6915a98); directSupported comes from the stylegan-js engine (routes.ts) with the direct engine itself; admits the runtime manifest pointer (runtime-manifest.mjs) before replacing the active runtime; a refused pointer leaves the next attempt free to fetch again; crop.fix: a confirmed crop goes to e4e directly (no detector after OK); detector outcomes are typed (faceDetection/code), not matched on text; crop limits come from the stylegan-js crop policy; compute.photo-descriptor: the worker encodes through the package's streamed encoder after acquiring every shard; dimensions come from the shipped descriptor; runtime options keep their supplied manifest type: three explicit =undefined defaults for the typecheck (ddcffa4); createBrowserRuntime option types via JSDoc casts (b45f05f); the confirmed-crop encode queue wired into the runtime and bridge: slots, per-slot cancel/retry/remove, real-bridge harness; the stall watchdog counts worker silence: any worker message keeps every pending operation alive, so a background canary preempted by a long morph no longer stops it (fm-5klw); workers acquire only under app-supplied grants built from the person's approval plus a zero-budget grant for verified local files; the route set counts the correctness canaries and sample indices; the streamed encoder is sized from its pinned descriptor; a grant refusal is not a route failure; npm names: stylegan-js, browser-model-manager and cloudflare-model-host are unscoped (the registry name check's result); unchanged grants are not posted to workers, so opening a saved file stays worker-free; keep GrantRefused resumable through confirmed-crop queue and preserve route admission on revised consent (fm-qrfz)"
       }
     },
     {
@@ -1544,10 +1544,10 @@
       "bytes": 20752,
       "class": "src-next",
       "ported": {
-        "sha256": "e35a2893390d5b33f7ad348b3bbccf201bfbc6f58e254dcfbc1d8b019e26e640",
-        "bytes": 25662,
+        "sha256": "3f233740e9718f6b678929b9eb673628638d61bdef5e9416fb4655111a4ecced",
+        "bytes": 25820,
         "bead": "fm-qrfz",
-        "reason": "stand-in adapter reports the WebGPU spec default limits; the iPhone-label monolithic-encoder case restated as capability admission (no encoder stream refuses before allocation); admits the runtime manifest pointer (runtime-manifest.mjs) before replacing the active runtime; a refused pointer leaves the next attempt free to fetch again; the stall watchdog counts worker silence: any worker message keeps every pending operation alive, so a background canary preempted by a long morph no longer stops it (fm-5klw); workers acquire only under app-supplied grants built from the person's approval plus a zero-budget grant for verified local files; the route set counts the correctness canaries and sample indices; the streamed encoder is sized from its pinned descriptor; a grant refusal is not a route failure"
+        "reason": "stand-in adapter reports the WebGPU spec default limits; the iPhone-label monolithic-encoder case restated as capability admission (no encoder stream refuses before allocation); admits the runtime manifest pointer (runtime-manifest.mjs) before replacing the active runtime; a refused pointer leaves the next attempt free to fetch again; the stall watchdog counts worker silence: any worker message keeps every pending operation alive, so a background canary preempted by a long morph no longer stops it (fm-5klw); workers acquire only under app-supplied grants built from the person's approval plus a zero-budget grant for verified local files; the route set counts the correctness canaries and sample indices; the streamed encoder is sized from its pinned descriptor; a grant refusal is not a route failure; unchanged grants are not posted to workers, so opening a saved file stays worker-free"
       }
     },
     {
@@ -1957,10 +1957,10 @@
       "bytes": 54317,
       "class": "src-next",
       "ported": {
-        "sha256": "8c94377fe9d42cc5698fd98d6ff00aa31c29ca672d42df6fc54aa0e92f1ecf79",
-        "bytes": 64617,
+        "sha256": "2d9264331fb0e6c20dc3a82c84256ba4b7983897a2caa2d53a553a873ab42a84",
+        "bytes": 66957,
         "bead": "fm-qrfz",
-        "reason": "ProjectJson imported from project/bridge-result.ts (fm-stth, one line); Morph admitted on its own and refusals returned with reasonKey/text/helpAnchor (fm-lt2p); revision-owned operation cancellation, compute/file readiness and bounded route snapshots (fm-0y24); downloads subscription returns its disposer (fm-v80g); Preserve unchanged Morph endpoints and their face/file ownership; update the inherited URL expectation to match, verified by real operation-service CPU browser tests (fm-in6a).; Issue link follows the org rename (9e39feb, fm-rur); a damaged saved image is one plain message with the parser reason as cause (cc8ea5e, fm-25um); weighted blend action as one W+ sum and one synthesis (3dd0238, fm-in6a); Expected photo refusals are tagged PhotoRefusal and stay error-area-only; unexpected failures keep the report ask (c0a65fb, operator 26 October, repairing fm-25um c397da4); saved projects carry the video writer's encoder choice; the file entry checks the recovered generator record/shape and skips the seed-identity check for a recipe-checked blend (fm-fy2.7); saveMedia/shareMedia take {format:'webp'|'png'}; the PNG is the face's synthesized pixels while held, else its decoded original; exportStats exposes the prepared-file counters (fm-ykfa); admits the runtime manifest pointer (runtime-manifest.mjs) before replacing the active runtime; a refused pointer leaves the next attempt free to fetch again; crop.fix: a confirmed crop goes to e4e directly (no detector after OK); detector outcomes are typed (faceDetection/code), not matched on text; crop limits come from the stylegan-js crop policy; compute.photo-descriptor: dimensions come from the shipped descriptor; with d1e6a03 (fm-36ag): videoWriter takes the morph's video quality; morph.render: the bridge's morph runs through stylegan-js renderMorph; infill order comes from the package; codec failure retains the completed morph; identical Retry exports stored images without admission or inference, and stale or missing retained images cannot silently regenerate (fm-2xtz); the confirmed-crop encode queue wired into the runtime and bridge: slots, per-slot cancel/retry/remove, real-bridge harness; workers acquire only under app-supplied grants built from the person's approval plus a zero-budget grant for verified local files; the route set counts the correctness canaries and sample indices; the streamed encoder is sized from its pinned descriptor; a grant refusal is not a route failure; npm names: stylegan-js, browser-model-manager and cloudflare-model-host are unscoped (the registry name check's result); the encoder descriptor is read on photo intent or a photo approval, never on arrival"
+        "reason": "ProjectJson imported from project/bridge-result.ts (fm-stth, one line); Morph admitted on its own and refusals returned with reasonKey/text/helpAnchor (fm-lt2p); revision-owned operation cancellation, compute/file readiness and bounded route snapshots (fm-0y24); downloads subscription returns its disposer (fm-v80g); Preserve unchanged Morph endpoints and their face/file ownership; update the inherited URL expectation to match, verified by real operation-service CPU browser tests (fm-in6a).; Issue link follows the org rename (9e39feb, fm-rur); a damaged saved image is one plain message with the parser reason as cause (cc8ea5e, fm-25um); weighted blend action as one W+ sum and one synthesis (3dd0238, fm-in6a); Expected photo refusals are tagged PhotoRefusal and stay error-area-only; unexpected failures keep the report ask (c0a65fb, operator 26 October, repairing fm-25um c397da4); saved projects carry the video writer's encoder choice; the file entry checks the recovered generator record/shape and skips the seed-identity check for a recipe-checked blend (fm-fy2.7); saveMedia/shareMedia take {format:'webp'|'png'}; the PNG is the face's synthesized pixels while held, else its decoded original; exportStats exposes the prepared-file counters (fm-ykfa); admits the runtime manifest pointer (runtime-manifest.mjs) before replacing the active runtime; a refused pointer leaves the next attempt free to fetch again; crop.fix: a confirmed crop goes to e4e directly (no detector after OK); detector outcomes are typed (faceDetection/code), not matched on text; crop limits come from the stylegan-js crop policy; compute.photo-descriptor: dimensions come from the shipped descriptor; with d1e6a03 (fm-36ag): videoWriter takes the morph's video quality; morph.render: the bridge's morph runs through stylegan-js renderMorph; infill order comes from the package; codec failure retains the completed morph; identical Retry exports stored images without admission or inference, and stale or missing retained images cannot silently regenerate (fm-2xtz); the confirmed-crop encode queue wired into the runtime and bridge: slots, per-slot cancel/retry/remove, real-bridge harness; workers acquire only under app-supplied grants built from the person's approval plus a zero-budget grant for verified local files; the route set counts the correctness canaries and sample indices; the streamed encoder is sized from its pinned descriptor; a grant refusal is not a route failure; npm names: stylegan-js, browser-model-manager and cloudflare-model-host are unscoped (the registry name check's result); the encoder descriptor is read on photo intent or a photo approval, never on arrival; prepared exports are ready before a Share gesture, safely renamed without encoding, revision-bound and handed over synchronously (fm-qh1s, media integration with fm-eeki); prepared result adapters retain validated export digests across reload without private labels or filenames (fm-qh1s); no photo-intent descriptor request before approval; freeze approved byte scope before discovery and require a new explicit decision for larger assets; no pre-approval descriptor fetch; freeze approval scope and require a revised decision for extra encoder bytes (fm-qrfz)"
       }
     },
     {
@@ -1970,10 +1970,10 @@
       "bytes": 23028,
       "class": "src-next",
       "ported": {
-        "sha256": "356d3c83569fc492c1abb0c1e6666028529feae4db6a8741dc8fb53855cab55b",
-        "bytes": 28582,
-        "bead": "fm-36ag",
-        "reason": "Retain crop and names rendering repairs; place the single tile operation action inside the face image and retire hold-to-compare styling.; Encode source and crop-confirmation modal styles landed in ae6a3fd; preserve existing tile/product styling. (fm-fy2.17.1); Face card is the photo entry with Generate beside the field (c397da4, fm-25um fm-fy2.17.1); legacy fullscreen gapless names grid styles (07ac969, fm-96if); debug-report disclosure, privacy request list and in-page first-visit prompt styles (fm-szbf); Custom frames per face (2 up to the 4,096-frame budget, odd counts included) and a Full quality video choice; 512 × 512 stays the default (36b3236)"
+        "sha256": "f788bd41c6f401588a70a36b8b3c5fd316305b8c5d9ae9da91bca4d1e6e31373",
+        "bytes": 29320,
+        "bead": "fm-5kpx",
+        "reason": "Retain crop and names rendering repairs; place the single tile operation action inside the face image and retire hold-to-compare styling.; Encode source and crop-confirmation modal styles landed in ae6a3fd; preserve existing tile/product styling. (fm-fy2.17.1); Face card is the photo entry with Generate beside the field (c397da4, fm-25um fm-fy2.17.1); legacy fullscreen gapless names grid styles (07ac969, fm-96if); debug-report disclosure, privacy request list and in-page first-visit prompt styles (fm-szbf); Custom frames per face (2 up to the 4,096-frame budget, odd counts included) and a Full quality video choice; 512 × 512 stays the default (36b3236); the processing selector moves above the faces; harnesses open .next-advanced only where it exists (the control), and the selector row is styled"
       }
     },
     {

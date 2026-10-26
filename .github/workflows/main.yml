@@ -2,8 +2,8 @@ name: main
 # The one CI pipeline for main (fm-98po, the operator's merge-queue rule, 25 October 2026). Exactly one run is in
 # progress at a time and it is never cancelled. Pushes that land while it runs do not start their own runs: GitHub
 # keeps one pending run, a newer push replaces it, and when the running one finishes that pending run takes every
-# change pushed since, stacked. The `changes` job diffs from the head of the last successful main.yml run (not the
-# previous commit), so a change that a failed or stacked run did not cover is still covered, and selects the lanes
+# change pushed since, stacked. The `changes` job diffs from the previous started main.yml run head, including
+# failed runs. Superseded pending runs do not consume stacked changes. It selects the lanes
 # whose paths it touches (scripts/ci/path-filters.json, scripts/ci/changes.ts). Each lane is a reusable workflow
 # called below; a lane that is not selected is skipped. Beads close on locally executed gates before
 # their commits are pushed; this pipeline is the backstop. The agent inspecting a red run diagnoses it and
@@ -44,19 +44,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - name: Lanes for the changes since the last green main.yml run (every lane on a dispatch or with no green run)
+      - name: Lanes changed since the previous started main run (all lanes if no usable base)
         id: select
         env:
           GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          base=''
-          if [ "${{ github.event_name }}" = push ]; then
-            base=$(curl -fsS -H "Authorization: Bearer $GH_TOKEN" -H 'Accept: application/vnd.github+json' \
-              "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/actions/workflows/main.yml/runs?branch=main&status=success&per_page=1" \
-              | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s).workflow_runs[0]?.head_sha??""))')
-          fi
-          node scripts/ci/changes.ts --base "$base" --head "$GITHUB_SHA"
+        run: node scripts/ci/changes.ts --previous-main-run --head "$GITHUB_SHA"
   dependency-policy:
     name: ${{ inputs.dependency_group != '' && 'dependency-currency' || 'dependency-policy' }}
     runs-on: [self-hosted, linux-x64]
@@ -164,7 +156,7 @@ jobs:
           path: ort-canary.json
           if-no-files-found: error
   next-matrix:
-    needs: next-site
+    needs: next-site-artifact
     if: github.event_name == 'workflow_dispatch' && inputs.dependency_group == 'test-tools'
     uses: ./.github/workflows/next-matrix.yml
     permissions:
@@ -181,16 +173,6 @@ jobs:
     needs: changes
     if: contains(fromJSON(needs.changes.outputs.lanes), 'app-contracts')
     uses: ./.github/workflows/app-contracts.yml
-    secrets: inherit
-  beads-check:
-    needs: changes
-    if: contains(fromJSON(needs.changes.outputs.lanes), 'beads-check')
-    uses: ./.github/workflows/beads-check.yml
-    secrets: inherit
-  beads-site:
-    needs: changes
-    if: contains(fromJSON(needs.changes.outputs.lanes), 'beads-site')
-    uses: ./.github/workflows/beads-site.yml
     secrets: inherit
   build-identity:
     needs: changes
@@ -287,7 +269,7 @@ jobs:
       contents: read
     secrets: inherit
   mobile-browser:
-    needs: [changes, next-site]
+    needs: [changes, next-site-artifact]
     if: contains(fromJSON(needs.changes.outputs.lanes), 'mobile-browser')
     uses: ./.github/workflows/mobile-browser.yml
     with:
@@ -336,20 +318,34 @@ jobs:
     permissions:
       contents: read
     secrets: inherit
-  next-site:
+  next-site-artifact:
     needs: changes
-    if: contains(fromJSON(needs.changes.outputs.lanes), 'next-site') || contains(fromJSON(needs.changes.outputs.lanes), 'mobile-browser') || contains(fromJSON(needs.changes.outputs.lanes), 'web-shell')
-    uses: ./.github/workflows/next-site.yml
+    if: contains(fromJSON(needs.changes.outputs.lanes), 'next-site') || contains(fromJSON(needs.changes.outputs.lanes), 'mobile-browser') || contains(fromJSON(needs.changes.outputs.lanes), 'web-shell') || (github.event_name == 'push' && vars.FACEMORPH_DEPLOY_TARGET != '')
+    uses: ./.github/workflows/next-site-artifact.yml
     permissions:
       contents: read
       actions: read
+    with:
+      artifact_workflow: .github/workflows/main.yml
     secrets: inherit
-  # fm-6fx6: the qualified-push deploy (next-deploy.yml), only when the repository variable FACEMORPH_DEPLOY_TARGET
-  # names a target and only after next-site's artifact, qualify and compiled-ui gates passed for this push. Unset (and
-  # until delivery's candidate-source handover for next.facemorph.me), nothing deploys; the publish guard refuses
-  # classic-owned targets regardless.
+  next-site:
+    needs: [changes, next-site-artifact]
+    if: contains(fromJSON(needs.changes.outputs.lanes), 'next-site')
+    uses: ./.github/workflows/next-site-qualify.yml
+    permissions:
+      contents: read
+      actions: read
+    with:
+      artifact_run: ${{ github.run_id }}
+      artifact_workflow: .github/workflows/main.yml
+      artifact_commit: ${{ github.sha }}
+      artifact_name: next-site-${{ github.sha }}
+      runtime_sha: d9e37e50a436e9fb7c0c7f973e70adee353c808f48c6a51fa5a9186f1c650a5c
+    secrets: inherit
+  # Artifact consumers run as soon as the exact build is available. Qualification reports independently;
+  # next-deploy retains its own promotion/release gates and refuses classic-owned targets.
   next-deploy:
-    needs: [changes, next-site]
+    needs: [changes, next-site-artifact]
     if: github.event_name == 'push' && vars.FACEMORPH_DEPLOY_TARGET != ''
     uses: ./.github/workflows/next-deploy.yml
     permissions:
@@ -424,7 +420,7 @@ jobs:
     uses: ./.github/workflows/stats-worker.yml
     secrets: inherit
   web-shell:
-    needs: [changes, next-site]
+    needs: [changes, next-site-artifact]
     if: contains(fromJSON(needs.changes.outputs.lanes), 'web-shell')
     uses: ./.github/workflows/web-shell.yml
     permissions:

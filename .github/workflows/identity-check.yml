@@ -20,13 +20,30 @@ jobs:
           node-version: '22'
       - name: Install gh (pinned, checksum-verified)
         run: |
+          set -euo pipefail
           v=2.101.0
           d="$RUNNER_TEMP/gh"
-          mkdir -p "$d" && cd "$d"
-          curl -fsSLO "https://github.com/cli/cli/releases/download/v$v/gh_${v}_linux_amd64.tar.gz"
-          curl -fsSLO "https://github.com/cli/cli/releases/download/v$v/gh_${v}_checksums.txt"
-          grep " gh_${v}_linux_amd64.tar.gz\$" "gh_${v}_checksums.txt" | sha256sum -c -
-          tar -xzf "gh_${v}_linux_amd64.tar.gz"
+          cache="${RUNNER_TOOL_CACHE:?}/gh/$v/linux_amd64"
+          mkdir -p "$cache" "$d"
+          # Runner-local archives are always checked before reuse; concurrent jobs share one download.
+          exec 9>"$cache/.lock"
+          flock --wait 180 9
+          cd "$cache"
+          archive="gh_${v}_linux_amd64.tar.gz"
+          checksums="gh_${v}_checksums.txt"
+          if ! { test -s "$archive" && test -s "$checksums" && grep " $archive\$" "$checksums" | sha256sum -c -; }; then
+            stage=$(mktemp -d "$RUNNER_TEMP/gh-download.XXXXXX")
+            trap 'rm -rf -- "$stage"' EXIT
+            (
+              cd "$stage"
+              curl --retry 3 --retry-delay 1 --retry-max-time 120 --connect-timeout 10 --max-time 60 -fsSLO "https://github.com/cli/cli/releases/download/v$v/$archive"
+              curl --retry 3 --retry-delay 1 --retry-max-time 120 --connect-timeout 10 --max-time 60 -fsSLO "https://github.com/cli/cli/releases/download/v$v/$checksums"
+              grep " $archive\$" "$checksums" | sha256sum -c -
+              mv "$archive" "$checksums" "$cache/"
+            )
+          fi
+          tar -xzf "$archive" -C "$d"
+          "$d/gh_${v}_linux_amd64/bin/gh" --version
           echo "$d/gh_${v}_linux_amd64/bin" >> "$GITHUB_PATH"
       - name: Clone the sibling repositories
         run: |

@@ -121,7 +121,7 @@ assert not any(name in identity for name in SOFTWARE), \
 # Match the current UI: processing controls are mounted under More options.
 js("(()=>{if(!document.querySelector('select[aria-label=\"Processing mode\"]'))[...document.querySelectorAll('button')].find(b=>b.textContent.trim()==='More options')?.click();})()")
 wait(lambda:q("!!document.querySelector('select[aria-label=\"Processing mode\"]')"),30,'the advanced processing controls')
-js("document.querySelector('.next-advanced').open=true")
+js("document.querySelector('.next-advanced')&&(document.querySelector('.next-advanced').open=true)")
 
 # 2. Ask for WebGPU explicitly. Automatic selection is exercised by the CPU lane; here the point
 #    is to measure the GPU path, so a silent fallback must fail the run rather than be timed.

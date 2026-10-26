@@ -321,7 +321,6 @@ async function cpuMode(page: Page, touch: boolean) {
   assert.ok(
     (await press(page, page.getByRole('button', { name: 'More options' }), { touch })).inside,
   );
-  assert.ok((await press(page, page.getByText('Advanced', { exact: true }), { touch })).inside);
   await page.getByLabel('Processing mode').selectOption('cpu');
 }
 

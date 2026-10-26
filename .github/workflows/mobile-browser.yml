@@ -1,6 +1,7 @@
 name: Mobile browser components
 # fm-zz2i: retained job IDs consume one canonical, provenance-verified destination artifact.
 # main serializes push work; a running check is never cancelled. Exact files are fetched by provenance.
+# Hosted simulators are explicit manual qualification; ordinary pushes verify the artifact identity only.
 on:
   workflow_call:
     inputs:
@@ -69,6 +70,7 @@ jobs:
           DIGEST: ${{ steps.artifact.outputs.artifact_digest }}
         run: echo "Canonical destination artifact, digest $DIGEST" >> "$GITHUB_STEP_SUMMARY"
   android:
+    if: github.event_name == 'workflow_dispatch'
     needs: ios-product-artifact
     runs-on: ubuntu-24.04
     timeout-minutes: 25
@@ -121,6 +123,7 @@ jobs:
           path: apps/web/mobile-evidence/
           if-no-files-found: warn
   ios:
+    if: github.event_name == 'workflow_dispatch'
     needs: ios-product-artifact
     runs-on: macos-15
     timeout-minutes: 20
@@ -160,6 +163,7 @@ jobs:
           path: apps/web/mobile-evidence/
           if-no-files-found: warn
   ios-product-simulator:
+    if: github.event_name == 'workflow_dispatch'
     needs: ios-product-artifact
     runs-on: macos-15
     timeout-minutes: 45

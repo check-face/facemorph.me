@@ -31,8 +31,8 @@ export function SlowRoute({ route }: { route: string }) {
       </p>
       <p>
         You can keep using the page while work is queued. Try a shorter morph, or compare available
-        processing routes under More options → Advanced. A capable desktop browser may help if you
-        are using a phone.
+        processing routes with the Processing control above the faces. A capable desktop browser may
+        help if you are using a phone.
       </p>
     </div>
   );

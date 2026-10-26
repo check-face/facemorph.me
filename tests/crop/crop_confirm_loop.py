@@ -225,6 +225,22 @@ BRIDGE = """async ([fixture, area]) => {
   const photoAligner = createPhotoAligner({manifestUrl: manifest.photo.manifestUrl, workerFactory: () => new Worker(new URL('/src/Next/photo/selection-worker.mjs', location.href), {type: 'module'})});
   const alignPhoto = async (blob, options) => { const prepared = await photoAligner(blob, options); if (prepared.provenance?.preprocessingSha256 !== manifest.alignmentSha256) throw Error('Photo processing files changed.'); return prepared; };
   const runtime = createBrowserRuntime({manifest, manifestSha256, alignPhoto});
+  // As product-bridge.mjs pushGrants (fm-qrfz): workers fetch only approved files, and choosing a photo to encode
+  // approves Generate and encode. The encoder-stream descriptor is read and checked against its pin to size the
+  // encoder exactly, as the bridge's inspectDescriptor does.
+  const {appGrants} = await import('/src/Next/browser/bridge-grant.mjs');
+  const {createBrowserModelCache} = await import('/src/Next/Assets/model-cache.mjs');
+  const planned = await runtime.plan();
+  const stream = planned.manifest.encoderStream;
+  let descriptor = null;
+  if (stream?.url) {
+    const raw = new Uint8Array(await (await fetch(stream.url, {cache: 'no-cache'})).arrayBuffer());
+    const hash = [...new Uint8Array(await crypto.subtle.digest('SHA-256', raw))].map(b => b.toString(16).padStart(2, '0')).join('');
+    if (raw.byteLength === stream.size && hash === stream.sha256) descriptor = new TextDecoder().decode(raw);
+  }
+  const held = await createBrowserModelCache({readOnly: true});
+  const cache = {has: a => held.has(a), peek: async a => (await held.peek(a)) || (descriptor !== null && a.sha256 === stream.sha256 ? {text: async () => descriptor} : null)};
+  runtime.setGrants(await appGrants({manifest: planned.manifest, manifestSha256, route: planned.route, engine: planned.engine, approved: new Set(['route', 'photo']), cache}));
   const bytes = await (await fetch('/crop-fixtures/' + fixture)).blob();
   const file = new File([bytes], fixture, {type: 'image/jpeg'});
   let crop;

@@ -28,6 +28,14 @@ const SOURCES: Record<string, () => { body: string; type: string }> = {
     body: stripTypeScriptTypes(readFileSync(web('shell/session/retention.ts'), 'utf8')),
     type: 'text/javascript',
   }),
+  '/src/media/export-names.ts': () => ({
+    body: stripTypeScriptTypes(readFileSync(web('src/media/export-names.ts'), 'utf8')),
+    type: 'text/javascript',
+  }),
+  '/src/contracts/export-identity.ts': () => ({
+    body: stripTypeScriptTypes(readFileSync(web('src/contracts/export-identity.ts'), 'utf8')),
+    type: 'text/javascript',
+  }),
   '/shell/session/session-words.ts': () => ({
     body: stripTypeScriptTypes(readFileSync(web('shell/session/session-words.ts'), 'utf8')),
     type: 'text/javascript',
@@ -53,6 +61,10 @@ const SOURCES: Record<string, () => { body: string; type: string }> = {
       new URL('../../../../packages/stylegan-js/test/vectors/plain.png', import.meta.url),
     ).toString('latin1'),
     type: 'image/png',
+  }),
+  '/morph.mp4': () => ({
+    body: readFileSync(web('test/fixtures/morph/morph.mp4')).toString('latin1'),
+    type: 'video/mp4',
   }),
 };
 
@@ -97,7 +109,7 @@ async function launch(t: TestContext): Promise<{ browser: Browser; context: Cont
     const { body, type } = source();
     return route.fulfill({
       status: 200,
-      body: Buffer.from(body, type === 'image/png' ? 'latin1' : 'utf8'),
+      body: Buffer.from(body, type === 'image/png' || type === 'video/mp4' ? 'latin1' : 'utf8'),
       contentType: type,
       headers: { 'access-control-allow-origin': '*' },
     });
@@ -241,6 +253,84 @@ test('retention split preserves slider format, real session/video writes and sup
       video: 'video',
       frames: ['frame'],
     });
+  } finally {
+    await l.browser.close();
+  }
+});
+
+test('export digests survive real IndexedDB reload without labels, names or typed inputs', async (t) => {
+  const l = await launch(t);
+  if (!l) return;
+  try {
+    const page = await l.context.newPage();
+    await page.goto(`${ORIGIN}/`);
+    const saved = await page.evaluate<{
+      saved: boolean;
+      before: { digest: string; filename: string }[];
+      privateAbsent: boolean;
+      digests: object[];
+      videoDigest: string;
+    }>(`(async () => {
+      const {lr,faces,settings}=await ${FACES(2)};
+      const naming=await import('${ORIGIN}/src/media/export-names.ts');
+      const names=naming.exportNamer();
+      const facts=faces.map((face,index)=>({source:{mode:'text',value:'private typed '+index},latentValues:face.result.latent.values,modelIdentity:'m'}));
+      const stills=['webp','png'].map(kind=>names.name(naming.stillExport(facts[0],kind,{}),naming.faceLabel(facts[0].source)));
+      faces[0].result.exportDigests={webp:stills[0].digest,png:stills[1].digest,label:'private label',filename:'private.webp'};
+      faces[0].result.source=facts[0].source;
+      faces[1].result.exportDigests={webp:'private.webp',png:'B'.repeat(64),text:'private typed 1'};
+      const movie=names.name(naming.morphExport(facts,{mode:'linear',settings:{}},'m',{}),naming.morphLabel(facts,'linear'));
+      const video=await(await fetch('${ORIGIN}/morph.mp4')).blob();
+      const saved=await lr.rememberSession({ids:faces.map(f=>f.id),faces,settings,project:{version:1},video,videoExportDigest:movie.digest});
+      const store=await import('${ORIGIN}/browser/originals.mjs').then(m=>m.openOriginals());
+      const raw=await store.get('last-generated-session-v2');store.close();
+      const strings=[];const walk=value=>{if(typeof value==='string')strings.push(value);else if(value&&typeof value==='object'&&!(value instanceof Blob)&&!ArrayBuffer.isView(value))Object.values(value).forEach(walk);};walk(raw);
+      return {saved,before:[...stills,movie].map(({digest,filename})=>({digest,filename})),privateAbsent:!strings.some(value=>value.includes('private')),digests:raw.faces.map(f=>f.result.exportDigests),videoDigest:raw.videoExportDigest};
+    })()`);
+    assert.equal(saved.saved, true);
+    assert.equal(saved.privateAbsent, true);
+    assert.deepEqual(saved.digests, [
+      { webp: saved.before[0]!.digest, png: saved.before[1]!.digest },
+      {},
+    ]);
+    assert.equal(saved.videoDigest, saved.before[2]!.digest);
+    await page.reload();
+    const back = await page.evaluate<{
+      after: { digest: string; filename: string }[];
+      malformed: object[];
+      badVideoDigestAbsent: boolean;
+      corruptVideo: boolean;
+      corruptVideoDigestAbsent: boolean;
+    }>(`(async () => {
+      const lr=await import('${ORIGIN}/last-result.mjs');
+      const naming=await import('${ORIGIN}/src/media/export-names.ts');
+      const session=await lr.readSession();const names=naming.exportNamer();
+      const facts=session.faces.map(face=>({latentValues:face.result.latent.values,modelIdentity:face.result.provenance.modelSha256}));
+      const stills=['webp','png'].map(kind=>names.name(naming.stillExport(facts[0],kind,{}),undefined,session.faces[0].result.exportDigests[kind]));
+      const movie=names.name(naming.morphExport(facts,{mode:'linear',settings:{}},'m',{}),undefined,session.videoExportDigest);
+      const store=await import('${ORIGIN}/browser/originals.mjs').then(m=>m.openOriginals());
+      const raw=await store.get('last-generated-session-v2');
+      raw.faces[0].result.exportDigests={webp:'private.webp',png:'B'.repeat(64)};raw.videoExportDigest='private.mp4';
+      await store.put('last-generated-session-v2',raw);
+      const malformed=await lr.readSession();
+      raw.videoExportDigest=movie.digest;raw.videoSha256='0'.repeat(64);await store.put('last-generated-session-v2',raw);store.close();
+      const corrupt=await lr.readSession();
+      return {after:[...stills,movie].map(({digest,filename})=>({digest,filename})),malformed:malformed.faces.map(face=>face.result.exportDigests),badVideoDigestAbsent:malformed.videoExportDigest===undefined,corruptVideo:corrupt.video===null,corruptVideoDigestAbsent:corrupt.videoExportDigest===undefined};
+    })()`);
+    assert.deepEqual(
+      back.after.map((file) => file.digest),
+      saved.before.map((file) => file.digest),
+    );
+    assert.deepEqual(
+      back.after.map((file) => file.filename),
+      saved.before.map(
+        (file, index) => (index === 2 ? 'morph-' : 'face-') + file.filename.split('-').at(-1),
+      ),
+    );
+    assert.deepEqual(back.malformed, [{}, {}]);
+    assert.equal(back.badVideoDigestAbsent, true);
+    assert.equal(back.corruptVideo, true);
+    assert.equal(back.corruptVideoDigestAbsent, true);
   } finally {
     await l.browser.close();
   }

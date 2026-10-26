@@ -44,6 +44,37 @@ def until(predicate, timeout=15, what='the UI condition'):
     # Name the awaited condition and what was open, not only the general snapshot.
     shown=js("JSON.stringify([...document.querySelectorAll('[role=dialog],[role=menu],dialog[open]')].map(e=>e.className||e.tagName))")
     raise AssertionError(f'timed out after {timeout}s waiting for {what}: state={last} open={shown}')
+CANVAS_PROBE = """(()=>{
+ const tile=document.querySelector('.next-face-image'),children=[...tile.childNodes];
+ const canvas=document.createElement('canvas'),scroll={x:scrollX,y:scrollY};
+ canvas.width=canvas.height=1024;canvas.className='next-face-img';
+ try{
+  // Keep Remove in place: the probe must detect a control covering source pixels.
+  tile.replaceChildren(canvas,...children.filter(e=>e.nodeType===1&&e.matches('.next-face-close')));
+  canvas.scrollIntoView({block:'center',inline:'nearest',behavior:'instant'});
+  const r=canvas.getBoundingClientRect(),t=tile.getBoundingClientRect(),clipped=[];
+  for(let a=canvas.parentElement;a;a=a.parentElement){
+   const c=getComputedStyle(a),b=a.getBoundingClientRect(),root=a===document.scrollingElement;
+   const clipX=/(hidden|clip)/.test(c.overflowX)||(!root&&/(scroll|auto)/.test(c.overflowX));
+   const clipY=/(hidden|clip)/.test(c.overflowY)||(!root&&/(scroll|auto)/.test(c.overflowY));
+   const left=b.left+a.clientLeft,top=b.top+a.clientTop;
+   if((clipX&&(r.left<left-1||r.right>left+a.clientWidth+1))||
+      (clipY&&(r.top<top-1||r.bottom>top+a.clientHeight+1)))clipped.push(a.className||a.tagName);
+  }
+  const corners=[[-1,-1],[1,-1],[-1,1],[1,1]].map(([x,y])=>{
+   const px=x<0?r.left+.5:r.right-.5,py=y<0?r.top+.5:r.bottom-.5;
+   window.scrollBy({top:py-innerHeight/2,behavior:'instant'});
+   const b=canvas.getBoundingClientRect();
+   return document.elementFromPoint(px,y<0?b.top+.5:b.bottom-.5)===canvas;
+  });
+  const remove=tile.querySelector('.next-face-close')?.getBoundingClientRect(),b=canvas.getBoundingClientRect();
+  const removeOverlaps=!!remove&&Math.min(remove.right,b.right)>Math.max(remove.left,b.left)&&Math.min(remove.bottom,b.bottom)>Math.max(remove.top,b.top);
+  return {width:r.width,height:r.height,tileWidth:t.width,tileHeight:t.height,controlBand:r.top-t.top,clipped,corners,removeOverlaps,
+   fitsTile:r.width>0&&r.height>0&&Math.abs(r.width-t.width)<=1&&Math.abs(r.height-r.width)<=1&&
+    r.left>=t.left-1&&r.right<=t.right+1&&r.top>=t.top-1&&r.bottom<=t.bottom+1&&
+    clipped.length===0&&corners.every(Boolean)&&!removeOverlaps};
+ }finally{tile.replaceChildren(...children);window.scrollTo(scroll.x,scroll.y);}
+})()"""
 result={'passed':False,'artifactKind':os.environ.get('NEXT_ARTIFACT_KIND','control'),'scope':'Exact compiled artifact startup and face controls only; no inference, photo generation or physical-device qualification'}
 try:
     new_tab(os.environ.get('NEXT_ARTIFACT_ORIGIN','http://127.0.0.1:8080/'))
@@ -108,7 +139,8 @@ try:
         assert all(b['width']>0 and b['right']<=width+1 for b in layout['buttons']), layout
         # Exercise the actual shipped canvas styling without paying for model admission.
         # Intrinsic 1024 dimensions are not evidence that its CSS surface fits the tile.
-        layout['canvas']=json.loads(js("JSON.stringify((()=>{const tile=document.querySelector('.next-face-image'),children=[...tile.childNodes],canvas=document.createElement('canvas');canvas.width=canvas.height=1024;canvas.className='next-face-img';try{tile.replaceChildren(canvas);const r=canvas.getBoundingClientRect(),t=tile.getBoundingClientRect();return {width:r.width,height:r.height,tileWidth:t.width,tileHeight:t.height,fitsTile:r.width>0&&r.height>0&&Math.abs(r.width-t.width)<=1&&Math.abs(r.height-t.height)<=1&&Math.abs(r.left-t.left)<=1&&Math.abs(r.top-t.top)<=1};}finally{tile.replaceChildren(...children);}})())"))
+        layout['canvas']=js(CANVAS_PROBE)
+        if isinstance(layout['canvas'],str): layout['canvas']=json.loads(layout['canvas'])
         assert layout['canvas']['fitsTile'], layout
         assert js("[...document.querySelectorAll('.next-adornment')].every(e=>Number(getComputedStyle(e).opacity)===1)"), 'Face selectors must remain visible at rest'
         result['layouts'].append(layout)

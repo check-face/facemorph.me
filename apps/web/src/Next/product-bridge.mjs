@@ -32,7 +32,7 @@ import {selectPhoto} from './photo-selection.mjs';
 import {refusal} from './photo/refusal.mjs';
 import {persistenceAction} from './storage-request.mjs';
 import {routeAssets,photoAssets,measure} from './model-inventory.mjs';
-import {appGrants} from './browser/bridge-grant.mjs';
+import {createApprovalGenerations} from './browser/bridge-grant.mjs';
 import {previewPhoto,cropPhoto} from './photo/crop.mjs';
 import {confirmCrop} from './photo/confirmed-crop.mjs';
 import {getPublicCatalogue,galleryTextUrl,publicNameLatent} from './public-previews.mjs';
@@ -47,6 +47,7 @@ let runtime,manifest,runtimeIdentity,active,writer,currentJob=0,project=null,vid
 const faces=new Map(),urls=new Map(),faceRevisions=new Map();
 // The encoder choice per produced video: its saved project records the actual size, route and reason (fm-fy2.7).
 const videoRoutes=new WeakMap();
+const videoExportDigests=new WeakMap();
 // Prepared Save/Share files, their names and the export policy (fm-eeki): one prepared file per result and format.
 let exportFiles=null;const exportFilesOf=()=>exportFiles??=createExportFiles();
 let morphRevision=0;
@@ -163,13 +164,14 @@ function retainSession(){
    item.face.sessionReady??=(async()=>{const r=await readyFace(item.face);if(r.blob.type!=='image/png'||typeof downloadImage!=='function')return r;
     const encoded=await downloadImage(r);item.face.downloadReady??=Promise.resolve(encoded);
     if(encoded.type!=='image/webp')return r;const recovered=await recoverImage(encoded);return recovered?{...r,...recovered}:r;
-   })();return {id:item.id,result:await item.face.sessionReady};
+   })();const result=await item.face.sessionReady;return {id:item.id,result:{...result,exportDigests:{...item.face.exportDigests}}};
   }));
   if(epoch!==sessionEpoch)return;
   const frames=[];let bytes=completed.reduce((n,f)=>n+f.result.blob.size,0);
   if(savedVideo&&frameUrls.length&&frameUrls.every(Boolean))for(const url of frameUrls){if(epoch!==sessionEpoch)return;const frame=await (await fetch(url)).blob();bytes+=frame.size;if(bytes>32*1024*1024){frames.length=0;break;}frames.push(frame);}
-  await rememberSession({ids:view.inputs.map(item=>item.id),faces:completed,settings:view,project:savedProject,video:savedVideo,frames},()=>epoch===sessionEpoch);
+  await rememberSession({ids:view.inputs.map(item=>item.id),faces:completed,settings:view,project:savedProject,video:savedVideo,videoExportDigest:savedVideo?videoExportDigests.get(savedVideo):undefined,frames},()=>epoch===sessionEpoch);
  }).catch(error=>console.warn('Last session retention failed:',error?.name||'Error'));
+ return sessionTail;
 }
 function checked(){if(active?.signal.aborted)throw new DOMException('Cancelled','AbortError');}
 // What a face actually costs on this device, so the interface can estimate from measurement
@@ -293,11 +295,9 @@ const wanted=new Set(),downloadListeners=new Set();
 let downloading=null;
 function announceDownloads(){const snapshot={...downloads};for(const callback of downloadListeners){try{callback(snapshot);}catch{}}}
 export function subscribeDownloads(callback){downloadListeners.add(callback);callback({...downloads});return ()=>downloadListeners.delete(callback);}
-// The streamed encoder's descriptor (85 KB, pinned by the manifest's digest) names every shard with its size. Once a
-// photo is chosen it is read as inspection, like the runtime manifest, so the photo question shows the encoder's real
-// size and the approval covers exactly those files; the manifest's single-file encoder size understated it by about
-// 21 MB (fm-qrfz). Nothing is read on arrival: until then the inventory and the grants use only what is cached, and
-// both see the same descriptor knowledge, so what is shown and what is granted stay equal.
+// The pinned encoder descriptor names every shard with its size. It is fetched only after photo approval:
+// choosing an unreadable file, cancelling its crop and recovering a saved face acquire no model bytes.
+// Before discovery the decision uses its advertised allowance; a larger exact scope needs another decision.
 let descriptorText=null,descriptorFor=null,descriptorReading=null;
 function inspectDescriptor(manifest){
  const stream=manifest?.encoderStream;
@@ -323,10 +323,6 @@ function inspectionCache(planned,cache){
  };
  return {has:asset=>cache.has(asset),peek};
 }
-/** A photo was chosen: size its encoder exactly before the photo question is asked (fm-qrfz). */
-async function inspectForPhoto(){
- try{await inspectDescriptor(manifest??(await engine(),manifest));await refreshInventory();await pushGrants();}catch{}
-}
 async function refreshInventory(){
  try{
   const service=await engine();if(!service.plan)return;
@@ -341,19 +337,30 @@ async function refreshInventory(){
   announceDownloads();
  }catch(error){console.warn('Model inventory unavailable:',error?.message||error);}
 }
-// The scopes the person approved this session (fm-qrfz). Workers acquire only under the grants built from them, plus
-// what this device already holds verified; anything else is refused before a request is made.
-const approvedScopes=new Set();
-function approve(scope){approvedScopes.add('route');if(scope==='photo')approvedScopes.add('photo');}
+// The current explicit decision (fm-qrfz), plus what this device already holds verified. A route-only decision
+// does not renew old photo consent; another photo download needs its own decision.
+let approvalGenerations;
+const grantApprovals=()=>approvalGenerations??=createApprovalGenerations();
+function approve(scope){grantApprovals().approve(scope);}
 async function pushGrants(){
  try{
   const service=await engine();if(!service.plan||!service.setGrants)return;
-  const planned=await service.plan();if(!planned)return;
-  // Photos are approved: the person chose them, so size the encoder exactly before granting it.
-  if(approvedScopes.has('photo'))await inspectDescriptor(planned.manifest);
-  const {createBrowserModelCache}=await import('./Assets/model-cache.mjs');
-  const cache=inspectionCache(planned,await createBrowserModelCache({readOnly:true}));
-  service.setGrants(await appGrants({manifest:planned.manifest,manifestSha256:runtimeIdentity||'',route:planned.route,engine:planned.engine,approved:approvedScopes,cache}));
+  for(;;){
+   const planned=await service.plan();if(!planned)return;
+   const {createBrowserModelCache}=await import('./Assets/model-cache.mjs');
+   const cache=inspectionCache(planned,await createBrowserModelCache({readOnly:true}));
+   // Freeze what was approved before learning any new shard digests or sizes. Concurrent calls share it.
+   const approvals=grantApprovals();
+   const snapshot=await approvals.snapshot({manifest:planned.manifest,manifestSha256:runtimeIdentity||'',route:planned.route,engine:planned.engine,cache});
+   if(!approvals.current(snapshot.id))continue;
+   if(snapshot.grants.approved?.purpose==='generate-and-encode'){
+    await inspectDescriptor(planned.manifest);
+    // If the exact cost exceeds the frozen allowance, the worker refuses it. Its revised dialog must show it.
+    await refreshInventory();
+   }
+   if(!approvals.current(snapshot.id))continue;
+   service.setGrants(snapshot.grants);return;
+  }
  }catch(error){console.warn('Model grants unavailable:',error?.message||error);}
 }
 export function downloadModels(includePhoto){
@@ -489,8 +496,9 @@ async function exportFile(id,format){
  if(id==='video'){
   const saved=video,savedProject=project;if(!saved)throw Error('Create a morph first.');
   const morph=savedProject?.morph,endpoints=(morph?.controls||[]).map(control=>({...faces.get(control.visitId),latent:control.latent}));
-  return exportFilesOf().video(saved,{encode:()=>decorateVideo(saved,savedProject,videoRoutes.get(saved)),faces:endpoints,modelIdentity:runtimeIdentity,current:()=>video===saved,
+  const file=await exportFilesOf().video(saved,{encode:()=>decorateVideo(saved,savedProject,videoRoutes.get(saved)),faces:endpoints,modelIdentity:runtimeIdentity,retainedDigest:videoExportDigests.get(saved),current:()=>video===saved&&project===savedProject,
    morph:morph&&{mode:morph.kind,settings:{width:morph.width,pinchCenter:morph.pinchCenter??null,framesPerSegment:morph.framesPerSegment,framesPerSecond:morph.framesPerSecond}}});
+  if(video!==saved||project!==savedProject)throw superseded();if(videoExportDigests.get(saved)!==file.digest){videoExportDigests.set(saved,file.digest);await retainSession();}if(video!==saved||project!==savedProject)throw superseded();return file;
  }
  const face=faces.get(id);if(!face)throw Error('Generate a result first.');
  const seed=face.source?.mode==='seed'?face.source.value:undefined;
@@ -500,10 +508,30 @@ async function exportFile(id,format){
   if(rgba instanceof ArrayBuffer&&rgba.byteLength===SIDE*SIDE*4)return downloadImage(result,seed,{format:'png',rgba:rgba.slice(0)});
   return result.blob.type==='image/png'?decorateImage(result,seed):downloadImage(result,seed,{format:'png'});};
  const encode=async chosen=>{if(chosen==='png')return png();face.downloadReady??=(async()=>{const result=await readyFace(face);return (typeof downloadImage==='function'?downloadImage:decorateImage)(result,seed);})();try{return await face.downloadReady;}catch(error){face.downloadReady=null;throw error;}};
- return exportFilesOf().face(id,face,{encode,format,modelIdentity:runtimeIdentity,current:()=>faces.get(id)===face});
+ const file=await exportFilesOf().face(id,face,{encode,format,modelIdentity:runtimeIdentity,current:()=>faces.get(id)===face});
+ if(faces.get(id)!==face)throw superseded();const exportFormat=file.mime==='image/png'?'png':'webp';if(face.exportDigests?.[exportFormat]!==file.digest){face.exportDigests={...face.exportDigests,[exportFormat]:file.digest};await retainSession();}if(faces.get(id)!==face)throw superseded();return file;
 }
 export async function saveMedia(id,options){return reported(kindOf(id),'save',async()=>{const file=await exportFile(id,options?.format);return saveFile(file.blob,file.filename);});}
 export async function shareMedia(id,options){return reported(kindOf(id),'share',async()=>{const file=await exportFile(id,options?.format);return shareFile(file.blob,file.filename);});}
+// A stable result identity for UI preparation, including same-labelled photo replacements.
+const exportRevisions=new WeakMap(),preparedOwners=new WeakMap();let exportSerial=0;
+const exportResult=id=>id==='video'?video:faces.get(id);
+export function exportResultRevision(id){const result=exportResult(id);if(!result)return 0;let revision=exportRevisions.get(result);if(revision===undefined){revision=++exportSerial;exportRevisions.set(result,revision);}return revision;}
+/** Prepare before a gesture. This does not share, save, infer or authorize model acquisition. */
+export async function prepareMedia(id,options){
+ const result=exportResult(id);if(!result)throw Error('Make a result first.');
+ const file=await exportFile(id,options?.format);if(exportResult(id)!==result)throw superseded();
+ preparedOwners.set(file.blob,{id,result,digest:file.digest});return file;
+}
+export function renamePreparedMedia(file,name){return exportFilesOf().rename(file,name);}
+/** Invoke the gesture now, with prepared bytes only. An old result cannot be handed over. */
+export function handPreparedMedia(id,file,method){
+ const owner=preparedOwners.get(file?.blob);if(!owner||owner.id!==id||owner.result!==exportResult(id)||owner.digest!==file.digest)throw superseded();
+ if(method!=='share'&&method!=='save')throw Error('Choose Save or Share.');
+ const named=renamePreparedMedia(file,file.filename);
+ const work=method==='share'?shareFile(named.blob,named.filename):saveFile(named.blob,named.filename);
+ return reported(kindOf(id),method,work);
+}
 /** Prepared-file counters (fm-ykfa): encodes into the store this session; a repeat Save adds none. */
 export function exportStats(){return exportFiles?exportFiles.stats():{encodes:0,known:0,webpEncodes:true};}
 export async function exportProject(options){
@@ -618,7 +646,6 @@ export function warmPhotoTools(){
  engine().catch(()=>{});
 }
 export async function selectPhotoReported(request){
- void inspectForPhoto();
  const selectionRevision=revisionOf(request.id);
  const file=request.files?.[0];if(file)analytics.operationResult?.('selection','ready',undefined,{size_band:file.size<1024*1024?'small':file.size<8*1024*1024?'medium':'large'});
  const projectText=file?await recoverVideoProject(file):null;if(selectionRevision!==revisionOf(request.id))return null;if(projectText)return {projectFile:new Blob([projectText],{type:'application/json'})};
@@ -711,6 +738,7 @@ export async function restoreLastResult(){
  if(saved.project){try{const candidate=canonicalProject(saved.project);if(candidate.morph.controls.length===saved.faces.length&&candidate.morph.controls.every(control=>{const face=saved.faces.find(f=>f.id===control.visitId);return face&&control.latent.values.length===face.result.latent.values.length&&control.latent.values.every((v,i)=>Math.fround(v)===face.result.latent.values[i]);}))restoredProject=candidate;}catch{}}
  for(const face of saved.faces)await register(face.id,face.result,'Restored face');
  project=restoredProject;video=restoredProject?saved.video:null;if(video)replaceUrl('video',video);
+ if(video&&saved.videoExportDigest)videoExportDigests.set(video,saved.videoExportDigest);
  if(restoredProject&&saved.frames?.length){try{if(createLatentPath(restoredProject.morph).totalFrames===saved.frames.length)liveFrames=saved.frames.map(blob=>URL.createObjectURL(blob));}catch{}}
  const ids=[...saved.ids];for(let n=1;ids.length<2;n++){const id='face-'+n;if(!ids.includes(id))ids.push(id);}
  // A saved WebGL preference (removed 17 October, fm-x6h5) becomes Automatic once, and is written back here.

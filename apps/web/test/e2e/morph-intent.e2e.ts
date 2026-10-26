@@ -95,7 +95,6 @@ test(
               )
                 await operate(control);
             await page.getByRole('button', { name: 'More options' }).click(); // setup
-            await page.getByText('Advanced', { exact: true }).click(); // setup
             await page.getByLabel('Processing mode').selectOption('cpu'); // setup
             await page.getByRole('button', { name: 'More options' }).click(); // setup: close
             const tiles = page.locator('section.next-face');

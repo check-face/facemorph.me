@@ -11,6 +11,7 @@ import { FancyButton } from './FancyButton.tsx';
 import type { Face, FaceMode, Input, PublicPreview } from './types.ts';
 import { faceInputProblem } from '../../src/controller/derived.ts';
 import type { HeldStill } from '../../src/controller/state.ts';
+import { ResultActions, useResultFile, type ResultFiles } from './ResultActions.tsx';
 
 export interface FaceTileProps {
   readonly item: Input;
@@ -29,6 +30,7 @@ export interface FaceTileProps {
   readonly retry?: boolean;
   readonly photoEncodingAvailable?: boolean;
   readonly onNotice?: (message: string) => void;
+  readonly onResultNotice?: (message: string) => void;
   /** Whether Remove is offered: never on the last face, so a morph always has something to morph from. */
   readonly removable: boolean;
   readonly onEdit: (value: string) => void;
@@ -42,6 +44,9 @@ export interface FaceTileProps {
   readonly onRemove: () => void;
   readonly onShare: () => void;
   readonly onSave: () => void;
+  readonly resultFiles?: ResultFiles | undefined;
+  /** Changes for every registered result, including a same-named replacement photo. */
+  readonly resultRevision?: number | undefined;
   /** A still this face holds as media (fm-4f5m): shown and saved as it is, never computed with. */
   readonly held?: HeldStill | undefined;
   /** The explicit Use as photo action on a held still. */
@@ -74,6 +79,15 @@ export function FaceTile(p: FaceTileProps) {
     ((item.mode === 'photo' && !!item.file) ||
       ((item.mode === 'text' || item.mode === 'seed') && !faceInputProblem(item)));
   const working = active || queued || preparing;
+  const resultFile = useResultFile(
+    face
+      ? (shown?.file ??
+          `${item.id}:${p.resultRevision}:${face.url}:${face.sourceMode}:${face.label}:${item.value}`)
+      : null,
+    p.resultFiles,
+  );
+  const filePending = resultFile.status === 'preparing';
+  const fileFailed = resultFile.status === 'failed';
   const action = p.stopping ? 'Cancelling' : working ? 'Cancel' : p.retry ? 'Retry' : 'Generate';
   const drag = (leaving: boolean) => (e: DragEvent<HTMLElement>) => dragPhoto(e, false, leaving);
   const determinate = active && p.fraction > 0;
@@ -245,6 +259,18 @@ export function FaceTile(p: FaceTileProps) {
             {action}
           </FancyButton>
         )}
+        {!working && (filePending || fileFailed) && (
+          <FancyButton
+            variant="contained"
+            size="small"
+            className="next-face-generate next-face-operation next-file-preparation"
+            aria-label={`${filePending ? 'Preparing file' : 'Retry file preparation'} ${label}`}
+            disabled={filePending}
+            onClick={resultFile.retry}
+          >
+            {filePending ? 'Preparing file…' : 'Retry'}
+          </FancyButton>
+        )}
       </div>
       {/* A state mirror for tooling that reads the per-face source as a select; never focusable. */}
       <select
@@ -267,15 +293,24 @@ export function FaceTile(p: FaceTileProps) {
         ))}
       </select>
       <div className="next-actions next-face-actions">
-        {face && (
-          <>
-            <Button color="inherit" variant="text" onClick={p.onShare}>
-              Share image
-            </Button>
-            <Button color="inherit" variant="text" onClick={p.onSave}>
-              Save image
-            </Button>
-          </>
+        {face && p.resultFiles ? (
+          <ResultActions
+            kind="image"
+            state={resultFile}
+            files={p.resultFiles}
+            onNotice={p.onResultNotice}
+          />
+        ) : (
+          face && (
+            <>
+              <Button color="inherit" variant="text" onClick={p.onShare}>
+                Share image
+              </Button>
+              <Button color="inherit" variant="text" onClick={p.onSave}>
+                Save image
+              </Button>
+            </>
+          )
         )}
       </div>
     </section>

@@ -26,6 +26,12 @@ export interface Payloads {
   Photos: readonly [string | null, readonly File[]];
   AddAt: readonly [number];
   Remove: readonly [string];
+  /** More options → Start over: two empty faces in one action, with the same Undo as Remove (fm-id4c). */
+  StartOver: readonly [];
+  /** Restores what the open Remove/Start over notice hid, at the same index with the same content. */
+  Undo: readonly [];
+  /** The notice `seq` timed out; its removal becomes final. */
+  UndoExpired: readonly [number];
   Kind: readonly [MorphKind];
   CancelFace: readonly [string];
   ChooseDetected: readonly [number];

@@ -46,16 +46,6 @@
         "packages/browser-model-manager/**"
       ]
     },
-    "beads-check": {
-      "workflow": ".github/workflows/beads-check.yml",
-      "shared": [],
-      "extra": [".beads/**", "scripts/beads/**"]
-    },
-    "beads-site": {
-      "workflow": ".github/workflows/beads-site.yml",
-      "shared": [],
-      "extra": [".beads/**"]
-    },
     "build-identity": {
       "workflow": ".github/workflows/build-identity.yml",
       "shared": [],
@@ -234,7 +224,7 @@
       ]
     },
     "next-site": {
-      "workflow": ".github/workflows/next-site.yml",
+      "workflow": ".github/workflows/next-site-qualify.yml",
       "shared": [
         "apps/web/**",
         "packages/**",
@@ -250,7 +240,13 @@
         ".nvmrc",
         ".github/actions/**"
       ],
-      "extra": [".github/workflows/next-e2e.yml", "tools/browser-harness/**"]
+      "extra": [
+        ".github/workflows/next-e2e.yml",
+        ".github/workflows/next-site-artifact.yml",
+        ".github/workflows/next-site-qualify.yml",
+        "tools/browser-harness/**",
+        ".github/workflows/next-site.yml"
+      ]
     },
     "package-gates": {
       "workflow": ".github/workflows/package-gates.yml",

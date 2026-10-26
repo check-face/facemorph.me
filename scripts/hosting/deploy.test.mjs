@@ -301,9 +301,9 @@ test('workflow: the deploy job needs the release gate for the artifact it publis
   assert.match(WORKFLOW, /^ {2}deploy:\n {4}needs: gate$/m);
   for (const input of ['artifact_run', 'artifact_name', 'artifact_commit', 'runtime_sha'])
     assert.match(WORKFLOW, new RegExp(`${input}: \\$\\{\\{ inputs\\.${input} \\}\\}`));
-  // main.yml deploys a qualified push only when the variable names a target, after next-site's gates.
+  // main starts the release-gated deploy after artifact creation; qualification runs independently.
   const job = /^ {2}next-deploy:\n((?: {4}.*\n)+)/m.exec(MAIN)?.[1] ?? '';
-  assert.match(job, /needs: \[changes, next-site\]/);
+  assert.match(job, /needs: \[changes, next-site-artifact\]/);
   assert.match(job, /if: github\.event_name == 'push' && vars\.FACEMORPH_DEPLOY_TARGET != ''/);
   assert.match(job, /uses: \.\/\.github\/workflows\/next-deploy\.yml/);
 });

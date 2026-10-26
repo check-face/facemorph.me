@@ -148,7 +148,9 @@ test('AddAt over the stored-session budget adds nothing and names the limit', ()
   assert.equal(refusedAt.state.Inputs, many.Inputs, 'no face added');
   assert.equal(refusedAt.state.NextId, many.NextId);
   assert.equal(refusedAt.state.Status, refusalMessage('STORED_SESSION_BYTES', SESSION));
-  assert.deepEqual(refusedAt.effects, []);
+  assert.deepEqual(refusedAt.effects, [
+    { type: 'admissionRefused', budget: 'STORED_SESSION_BYTES' },
+  ]);
   const atLimit = inputs(msg('AddAt', 64), many, {
     newFaceId: 'fresh',
     storedSessionBytes: SESSION,
@@ -163,7 +165,11 @@ test('a drop over the photo budget is refused whole, before classification, and 
     assert.equal(dropped.state.Inputs, state.Inputs);
     assert.equal(dropped.state.StillChecks, state.StillChecks, 'no classification starts');
     assert.equal(dropped.state.Status, refusalMessage('BATCH_RETAINED_INPUT_BYTES', PHOTO));
-    assert.deepEqual(dropped.effects, [], 'no classification or bridge call');
+    assert.deepEqual(
+      dropped.effects,
+      [{ type: 'admissionRefused', budget: 'BATCH_RETAINED_INPUT_BYTES' }],
+      'no classification or bridge call; the refusal is traced',
+    );
   }
   // The same files without the one extra byte are admitted and go on to classification.
   const ok = photo(msg('Photos', null, files.slice(0, 2)), state)!;
@@ -203,8 +209,11 @@ test('a drop admitted before classification but over budget when its faces are a
   assert.equal(next.state.Status, refusalMessage('BATCH_RETAINED_INPUT_BYTES', PHOTO));
   assert.deepEqual(
     next.effects,
-    entries.map((e) => ({ type: 'revokeUrl', url: e.url })),
-    'display URLs released, nothing selected',
+    [
+      ...entries.map((e) => ({ type: 'revokeUrl', url: e.url })),
+      { type: 'admissionRefused', budget: 'BATCH_RETAINED_INPUT_BYTES' },
+    ],
+    'display URLs released, nothing selected, the refusal traced',
   );
 });
 
@@ -246,7 +255,9 @@ test('a pick or paste onto a face goes through the same check', () => {
   assert.equal(pasted.state.Inputs, full.Inputs);
   assert.equal(pasted.state.PreparingFaces.has('face-2'), false);
   assert.equal(pasted.state.Status, refusalMessage('BATCH_RETAINED_INPUT_BYTES', PHOTO));
-  assert.deepEqual(pasted.effects, []);
+  assert.deepEqual(pasted.effects, [
+    { type: 'admissionRefused', budget: 'BATCH_RETAINED_INPUT_BYTES' },
+  ]);
   // Replacing the photo face's own file is admitted: its old bytes are released.
   const replaced = reduce(msg('PickPhoto', 'face-1', [sized(PHOTO)]), full)!;
   assert.equal(replaced.effects.at(-1)?.type, 'classifyStills');

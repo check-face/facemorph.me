@@ -33,6 +33,13 @@
   ],
   "description": "Cloudflare model host. No weights. FaceMorph origins only as docs examples (markdown/text may name them; JS, .d.ts and JSON may not).",
   "provenanceScope": "non-docs",
+  "provenanceAllow": [
+    {
+      "files": "^package\\.json$",
+      "pattern": "github\\.com/facemorph-me/facemorph\\.me",
+      "reason": "repository, homepage and bugs name the public source repository (with its packages/ directory) so npmjs.com resolves the README's relative links; a source reference, not a deployment hostname (fm-19eb)."
+    }
+  ],
   "contentRules": [],
   "pathRules": [
     {

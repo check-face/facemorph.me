@@ -3,6 +3,7 @@
 import { openOriginals, digest } from '../../src/Next/browser/originals.mjs';
 import type { MorphKind } from '../facade/records.ts';
 import { keepOnlyWords, rememberWords, type FaceWords } from './session-words.ts';
+import { retainedExportDigests, type StillExportDigests } from '../../src/media/export-names.ts';
 
 const KEY = 'last-generated-result-v1';
 const SESSION = 'last-generated-session-v2';
@@ -36,6 +37,7 @@ export interface ResultInput {
   cacheKey?: string;
   generationKind?: string;
   generationSha256?: string;
+  exportDigests?: StillExportDigests;
 }
 export interface RetainedResult extends ResultInput {
   latent: { space: 'w-plus'; shape: readonly [18, 512]; values: Float32Array };
@@ -55,6 +57,7 @@ export interface SessionRecord extends Readonly<Record<string, unknown>> {
   faces: readonly RetainedFace[];
   frames: readonly Blob[];
   video: Blob | null;
+  videoExportDigest?: string | undefined;
 }
 const object = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null;
@@ -123,6 +126,7 @@ export async function validateLast(record: unknown): Promise<LastRecord | null> 
       imageSha256,
       latentSha256,
       provenance,
+      exportDigests: retainedExportDigests(r['exportDigests']),
       latent: { space: 'w-plus', shape: [18, 512], values: bytes },
     },
   };
@@ -273,6 +277,8 @@ export async function validateSession(record: unknown): Promise<SessionRecord | 
     ids: ids as string[],
     faces: checked.sort((a, b) => ids.indexOf(a.id) - ids.indexOf(b.id)),
     video,
+    videoExportDigest:
+      video && hash(record['videoExportDigest']) ? record['videoExportDigest'] : undefined,
     frames,
   };
 }
@@ -315,6 +321,7 @@ export interface SessionInput {
   settings: RetainedSettings;
   project?: unknown;
   video?: Blob | null;
+  videoExportDigest?: string;
   frames?: readonly Blob[];
 }
 const copySettings = (s: RetainedSettings): RetainedSettings => ({
@@ -336,7 +343,7 @@ export function videoHasHeadroom(
   );
 }
 export async function rememberSession(
-  { ids, faces, settings, project, video, frames = [] }: SessionInput,
+  { ids, faces, settings, project, video, videoExportDigest, frames = [] }: SessionInput,
   isCurrent: () => boolean = () => true,
   onRefused: (reason: string) => void = announceRefusal,
 ): Promise<boolean> {
@@ -375,6 +382,7 @@ export async function rememberSession(
           generationKind: r.generationKind || 'latent',
           cacheKey: r.cacheKey,
           provenance: r.provenance,
+          exportDigests: retainedExportDigests(r.exportDigests),
           width: 1024,
           height: 1024,
         },
@@ -410,6 +418,7 @@ export async function rememberSession(
       frameHashes,
       video: savedVideo,
       videoSha256: savedVideo ? await digest(await savedVideo.arrayBuffer()) : null,
+      videoExportDigest: savedVideo && hash(videoExportDigest) ? videoExportDigest : undefined,
     };
     if (!isCurrent()) return false;
     store = await openOriginals();
@@ -422,7 +431,12 @@ export async function rememberSession(
         error instanceof Error ? error.name : 'Error',
       );
       if (!isCurrent()) return false;
-      await store.put(SESSION, { ...record, video: null, videoSha256: null });
+      await store.put(SESSION, {
+        ...record,
+        video: null,
+        videoSha256: null,
+        videoExportDigest: undefined,
+      });
     }
     retainWords(faces);
     return true;

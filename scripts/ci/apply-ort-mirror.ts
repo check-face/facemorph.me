@@ -19,6 +19,7 @@ import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import { composeManifest, validateOverlay, verifyOverlay } from './ort-mirror.ts';
+import { composeEncoderDescriptor, verifySerialCompanion } from './serial-ort.ts';
 
 const MAX_TARBALL = 256 * 1024 * 1024;
 const MAX_ASSET = 64 * 1024 * 1024;
@@ -30,6 +31,8 @@ export interface ApplyOptions {
   controlRuntime: string;
   overlay: unknown;
   out: string;
+  /** Schema 2 only: locally acquired serial build outputs, verified against the companion's fixed file pins. */
+  serialDist?: string;
   /** Test transport injection. The CLI always uses canonical-registry fetch with no redirects. */
   fetch?: typeof fetch;
 }
@@ -43,6 +46,12 @@ export interface AppliedRuntime {
   ortVersion: string;
   files: number;
   bytes: number;
+  serial?: {
+    bundleSha256: string;
+    controlDescriptorSha256: string;
+    descriptorSha256: string;
+    descriptorPath: string;
+  };
 }
 
 function fail(message: string): never {
@@ -84,6 +93,40 @@ function controlTree(root: string): void {
     } else if (!stat.isFile()) fail('control must contain only real files and directories');
   }
   visit(root);
+}
+
+/** The trusted root pin selects only its canonical encoder descriptor, never a caller-chosen filesystem path. */
+function controlEncoderBytes(root: string, manifest: Record<string, unknown>): Buffer {
+  const reference = manifest['encoderStream'] as
+    | { url?: unknown; sha256?: unknown; size?: unknown }
+    | undefined;
+  if (
+    !reference ||
+    typeof reference.url !== 'string' ||
+    typeof reference.sha256 !== 'string' ||
+    !/^[a-f0-9]{64}$/.test(reference.sha256) ||
+    !Number.isSafeInteger(reference.size) ||
+    (reference.size as number) <= 0 ||
+    (reference.size as number) > MAX_MANIFEST
+  )
+    fail('control encoder reference must have a bounded size and digest pin');
+  const url = new URL(reference.url);
+  if (
+    url.protocol !== 'https:' ||
+    url.username ||
+    url.password ||
+    url.search ||
+    url.hash ||
+    !/^\/runtime\/encoder-stream\/[a-f0-9]{64}\/manifest\.json$/.test(url.pathname)
+  )
+    fail('control encoder reference must name a canonical encoder-stream manifest');
+  const path = join(root, url.pathname.slice('/runtime/'.length));
+  const stat = lstatSync(path);
+  if (!stat.isFile() || stat.size !== reference.size)
+    fail('control encoder descriptor size or file type mismatch');
+  const bytes = readFileSync(path);
+  if (digest(bytes) !== reference.sha256) fail('control encoder descriptor digest mismatch');
+  return bytes;
 }
 
 async function tarball(url: string, request: typeof fetch): Promise<Buffer> {
@@ -128,6 +171,11 @@ function member(archive: string, path: string, bound: number): Buffer {
 
 export async function applyOrtMirror(options: ApplyOptions): Promise<AppliedRuntime> {
   const overlay = validateOverlay(options.overlay);
+  if (overlay.schema === 'facemorph.ort-mirror/2') {
+    if (!options.serialDist)
+      fail('schema 2 requires --serial-dist with the pinned serial build outputs');
+    verifySerialCompanion(options.serialDist, overlay.serial);
+  } else if (options.serialDist !== undefined) fail('--serial-dist requires a schema 2 companion');
   for (const file of overlay.files)
     if (file.size > MAX_ASSET) fail(`${file.file} exceeds asset size bound`);
   const control = realpathSync(options.controlRuntime);
@@ -136,10 +184,20 @@ export async function applyOrtMirror(options: ApplyOptions): Promise<AppliedRunt
   const controlFile = join(control, 'manifest.json');
   if (lstatSync(controlFile).size > MAX_MANIFEST) fail('control manifest exceeds size bound');
   const controlBytes = readFileSync(controlFile);
+  const controlManifest = JSON.parse(controlBytes.toString('utf8')) as Record<string, unknown>;
+  const encoderBytes =
+    overlay.schema === 'facemorph.ort-mirror/2'
+      ? controlEncoderBytes(control, controlManifest)
+      : undefined;
+  const descriptor =
+    overlay.schema === 'facemorph.ort-mirror/2'
+      ? composeEncoderDescriptor(encoderBytes!, overlay.serial, 'https://next.facemorph.me')
+      : undefined;
   const composed = composeManifest(
-    JSON.parse(controlBytes.toString('utf8')),
+    controlManifest,
     overlay,
     'https://next.facemorph.me',
+    encoderBytes === undefined ? {} : { controlEncoderDescriptorBytes: encoderBytes },
   );
   const out = outputPath(options.out, control);
   const scratch = mkdtempSync(join(dirname(out), '.ort-acquisition-'));
@@ -170,10 +228,24 @@ export async function applyOrtMirror(options: ApplyOptions): Promise<AppliedRunt
       if (name === 'manifest.json') continue;
       if (name === 'assets') {
         for (const asset of readdirSync(join(control, name))) {
-          if (asset === overlay.bundleSha256) fail('overlay bundle already exists in control');
+          if (
+            asset === overlay.bundleSha256 ||
+            (overlay.schema === 'facemorph.ort-mirror/2' && asset === overlay.serial.bundleSha256)
+          )
+            fail('overlay bundle already exists in control');
           symlinkSync(
             relative(join(out, 'assets'), join(control, name, asset)),
             join(staged, name, asset),
+          );
+        }
+      } else if (name === 'encoder-stream' && descriptor) {
+        mkdirSync(join(staged, name));
+        for (const child of readdirSync(join(control, name))) {
+          if (child === descriptor.path.split('/')[1])
+            fail('composed encoder descriptor already exists in control');
+          symlinkSync(
+            relative(join(out, name), join(control, name, child)),
+            join(staged, name, child),
           );
         }
       } else symlinkSync(relative(out, join(control, name)), join(staged, name));
@@ -182,6 +254,21 @@ export async function applyOrtMirror(options: ApplyOptions): Promise<AppliedRunt
     mkdirSync(bundle);
     for (const file of overlay.files)
       writeFileSync(join(bundle, file.file), readFileSync(join(dist, file.file)), { flag: 'wx' });
+    if (overlay.schema === 'facemorph.ort-mirror/2' && descriptor) {
+      const serialBundle = join(staged, 'assets', overlay.serial.bundleSha256);
+      mkdirSync(serialBundle);
+      for (const file of overlay.serial.files)
+        writeFileSync(
+          join(serialBundle, file.file),
+          readFileSync(join(options.serialDist!, file.file)),
+          { flag: 'wx' },
+        );
+      // Inputs may have changed during npm acquisition. Only the actual staged bytes authorize publication.
+      verifySerialCompanion(serialBundle, overlay.serial);
+      const descriptorPath = join(staged, descriptor.path);
+      mkdirSync(dirname(descriptorPath));
+      writeFileSync(descriptorPath, descriptor.bytes, { flag: 'wx' });
+    }
     const manifest = `${JSON.stringify(composed)}\n`;
     writeFileSync(join(staged, 'manifest.json'), manifest, { flag: 'wx' });
     // Recheck immediately before publication. The caller owns this output parent;
@@ -207,8 +294,21 @@ export async function applyOrtMirror(options: ApplyOptions): Promise<AppliedRunt
       runtimeDir: out,
       manifestSha256: digest(manifest),
       ortVersion: overlay.version,
-      files: overlay.files.length,
-      bytes: overlay.files.reduce((sum, file) => sum + file.size, 0),
+      files: overlay.files.length + (overlay.serial?.files.length ?? 0),
+      bytes: [...overlay.files, ...(overlay.serial?.files ?? [])].reduce(
+        (sum, file) => sum + file.size,
+        0,
+      ),
+      ...(overlay.schema === 'facemorph.ort-mirror/2' && descriptor
+        ? {
+            serial: {
+              bundleSha256: overlay.serial.bundleSha256,
+              controlDescriptorSha256: overlay.serial.controlDescriptorSha256,
+              descriptorSha256: descriptor.asset.sha256,
+              descriptorPath: descriptor.path,
+            },
+          }
+        : {}),
     };
   } finally {
     if (staged) rmSync(staged, { recursive: true, force: true });
@@ -222,11 +322,12 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
       'control-runtime': { type: 'string' },
       overlay: { type: 'string' },
       out: { type: 'string' },
+      'serial-dist': { type: 'string' },
     },
   });
   if (!values['control-runtime'] || !values.overlay || !values.out)
     throw new Error(
-      'usage: apply-ort-mirror.ts --control-runtime <verified dir> --overlay <JSON> --out <new dir>',
+      'usage: apply-ort-mirror.ts --control-runtime <verified dir> --overlay <JSON> --out <new dir> [--serial-dist <verified build dir>]',
     );
   console.log(
     JSON.stringify(
@@ -234,6 +335,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
         controlRuntime: values['control-runtime'],
         overlay: JSON.parse(readFileSync(values.overlay, 'utf8')),
         out: values.out,
+        ...(values['serial-dist'] === undefined ? {} : { serialDist: values['serial-dist'] }),
       }),
     ),
   );

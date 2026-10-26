@@ -188,6 +188,11 @@ export async function buildNext({ out = REPO, log = () => {} } = {}) {
     'hosting/next-static',
     'scripts/hosting',
     'scripts/import/build-next.mjs',
+    'scripts/import/control.mjs',
+    'scripts/inventory/lib.mjs',
+    'scripts/ci/candidate-runtime.ts',
+    'scripts/ci/ort-mirror.ts',
+    'scripts/ci/serial-ort.ts',
     'package.json',
     'package-lock.json',
   ])

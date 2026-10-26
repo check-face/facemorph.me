@@ -15,7 +15,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import test, { type TestContext } from 'node:test';
-import { chromium, devices, type BrowserContext, type Locator, type Page } from 'playwright';
+import { devices, type BrowserContext, type Locator, type Page } from 'playwright';
 import { readRecovery } from 'stylegan-js';
 import { startControl, chromiumArgs, ORIGIN, REPO } from '../parity/control-server.ts';
 import { readIdentity } from '../../../../scripts/import/build-next.mjs';
@@ -23,6 +23,10 @@ import { press } from '../support/operate.ts';
 import { INSTALL_HOOK } from '../parity/elmish-probe.ts';
 import { futureSchemaPng } from '../support/recovery-stills.ts';
 import { assertNoCardPreparation } from '../support/card-setup.ts';
+import {
+  launchFreshChromiumProfile,
+  type FreshChromiumProfile,
+} from '../support/browser-profile.ts';
 import {
   headerOnlyPng,
   largeNoisePhoto,
@@ -33,6 +37,7 @@ import {
 } from '../support/crop-fixtures.ts';
 
 const runtime = process.env['FACEMORPH_RUNTIME_DIR'] ?? join(REPO, '.cache/runtime');
+const out = resolve(process.env['FACEMORPH_DEPLOY_OUT'] ?? REPO);
 const results = join(REPO, 'apps/web/test-results/crop-acceptance');
 const cropFixtures = join(REPO, 'tests/crop/fixtures');
 const stills = join(REPO, 'apps/web/test/fixtures/verify/stills');
@@ -152,9 +157,11 @@ class Session {
   readonly context: BrowserContext;
   readonly page: Page;
   readonly touch: boolean;
-  constructor(name: string, context: BrowserContext, page: Page, touch: boolean) {
+  readonly profile: FreshChromiumProfile;
+  constructor(name: string, profile: FreshChromiumProfile, page: Page, touch: boolean) {
     this.name = name;
-    this.context = context;
+    this.profile = profile;
+    this.context = profile.context;
     this.page = page;
     this.touch = touch;
     page.on('pageerror', (error) => this.errors.push(error.message));
@@ -172,13 +179,10 @@ class Session {
       entry.bytes = Math.max(0, (await request.sizes().catch(() => null))?.responseBodySize ?? 0);
     });
   }
-  static async open(
-    browser: import('playwright').Browser,
-    name: string,
-    width: 1280 | 390,
-  ): Promise<Session> {
+  static async open(name: string, width: 1280 | 390): Promise<Session> {
     const touch = width === 390;
-    const context = await browser.newContext({
+    const profile = await launchFreshChromiumProfile({
+      args: [...chromiumArgs, '--disable-features=WebGPU'],
       ...(touch ? devices['iPhone 13'] : {}),
       viewport: { width, height: 900 },
       hasTouch: touch,
@@ -186,32 +190,37 @@ class Session {
       ignoreHTTPSErrors: true,
       acceptDownloads: true,
     });
-    await context.addInitScript(INSTALL_HOOK);
-    await context.addInitScript(PROBE);
-    await context.tracing.start({
-      screenshots: true,
-      snapshots: false,
-      sources: false,
-    });
-    const page = await context.newPage();
-    const session = new Session(name, context, page, touch);
-    await page.goto(ORIGIN);
-    await session.tiles.nth(1).waitFor();
-    for (const control of [
-      page.locator('.next-model-toast').getByRole('button', { name: 'Not now' }),
-      page.getByRole('button', { name: 'Ask me later' }),
-    ])
-      if (
-        await control.waitFor({ timeout: 5000 }).then(
-          () => true,
-          () => false,
+    const { context } = profile;
+    try {
+      await context.addInitScript(INSTALL_HOOK);
+      await context.addInitScript(PROBE);
+      await context.tracing.start({
+        screenshots: true,
+        snapshots: false,
+        sources: false,
+      });
+      const page = await context.newPage();
+      const session = new Session(name, profile, page, touch);
+      await page.goto(ORIGIN);
+      await session.tiles.nth(1).waitFor();
+      for (const control of [
+        page.locator('.next-model-toast').getByRole('button', { name: 'Not now' }),
+        page.getByRole('button', { name: 'Ask me later' }),
+      ])
+        if (
+          await control.waitFor({ timeout: 5000 }).then(
+            () => true,
+            () => false,
+          )
         )
-      )
-        await control.click(); // setup
-    await page.getByRole('button', { name: 'More options' }).click(); // setup
-    await page.getByText('Advanced', { exact: true }).click(); // setup
-    await page.getByLabel('Processing mode').selectOption('cpu'); // setup: the CPU journey
-    return session;
+          await control.click(); // setup
+      await page.getByRole('button', { name: 'More options' }).click(); // setup
+      await page.getByLabel('Processing mode').selectOption('cpu'); // setup: the CPU journey
+      return session;
+    } catch (error) {
+      await profile.close().catch(() => {});
+      throw error;
+    }
   }
   get tiles() {
     return this.page.locator('section.next-face');
@@ -449,7 +458,7 @@ class Session {
   }
   async close() {
     await this.context.tracing.stop().catch(() => {});
-    await this.context.close().catch(() => {});
+    await this.profile.close().catch(() => {});
   }
 }
 
@@ -499,7 +508,7 @@ test(
       t.skip(reason);
       return;
     }
-    const artifact = readIdentity(REPO);
+    const artifact = readIdentity(out);
     assert.deepEqual(artifact.findings, []);
     assert.equal(artifact.identity?.label, 'destination');
     mkdirSync(results, { recursive: true });
@@ -577,16 +586,13 @@ test(
 
     const site = await startControl({
       runtime,
-      artifact: resolve(REPO, 'deploy-next'),
+      artifact: resolve(out, 'deploy-next'),
       source: artifact.identity.deploySource.buildId,
-    });
-    const browser = await chromium.launch({
-      args: [...chromiumArgs, '--disable-features=WebGPU'],
     });
     const sessions: Session[] = [];
     try {
       // ---- Desktop, real mouse: the confirmed-crop cases. ----
-      const d = await Session.open(browser, 'desktop', 1280);
+      const d = await Session.open('desktop', 1280);
       sessions.push(d);
       const run = caseRunner(t, d);
       const first = () => d.tiles.nth(0);
@@ -1121,7 +1127,7 @@ test(
 
       // ---- Phone, touch taps at 390 px: Cancel, Adjust Crop, Use Crop and OK where a thumb meets them. ----
       if (!only || only.some((n) => n.startsWith('phone-'))) {
-        const p = await Session.open(browser, 'phone', 390);
+        const p = await Session.open('phone', 390);
         sessions.push(p);
         const prun = caseRunner(t, p);
         await prun('phone-cancel-before-ok', async () => {
@@ -1218,7 +1224,7 @@ test(
           existsSync(fx.saved),
           'the encoded face saved by manual-crop-wplus (a matching still)',
         );
-        const r = await Session.open(browser, tag, width);
+        const r = await Session.open(tag, width);
         sessions.push(r);
         const rrun = caseRunner(t, r);
         const pool = [
@@ -1400,7 +1406,6 @@ test(
         JSON.stringify({ fixtures: digests, lines }, null, 1),
       );
       for (const s of sessions) await s.close();
-      await browser.close();
       await site.stop();
       rmSync(generated, { recursive: true, force: true });
     }

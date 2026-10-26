@@ -99,19 +99,20 @@ export function judgeDryRun(answer) {
   return { ok: true, wouldChange: `${d.method} ${d.url}`, detail: 'dry run' };
 }
 
-function probeAnswer(probe) {
+export function probeAnswer(probe, runProbe = run) {
   switch (probe.type) {
     case 'cf-get': {
       // The API answers 5xx now and then; one retry, then the answer stands.
-      const first = run('cf', probe.argv);
-      return first.status !== 0 && /Status code: 5\d\d/.test(first.stderr)
-        ? run('cf', probe.argv)
+      const first = runProbe('cf', probe.argv);
+      return first.status !== 0 &&
+        /\bStatus code: 5\d\d\b|\b5\d\d [^\r\n]* · HTTP\b/.test(first.stderr)
+        ? runProbe('cf', probe.argv)
         : first;
     }
     case 'gh':
-      return run('gh', ['api', probe.path]);
+      return runProbe('gh', ['api', probe.path]);
     case 'ssh':
-      return run('ssh', [
+      return runProbe('ssh', [
         '-o',
         'BatchMode=yes',
         '-o',
@@ -120,7 +121,7 @@ function probeAnswer(probe) {
         ...probe.argv.map((a) => `'${a.replaceAll("'", "'\\''")}'`),
       ]);
     case 'http':
-      return run('curl', [
+      return runProbe('curl', [
         '-s',
         '-o',
         '/dev/null',

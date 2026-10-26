@@ -64,9 +64,9 @@ jobs:
       - name: Every name the UI and the typed facade take from a bridge module is exported there (fm-pia9)
         run: node scripts/check-bridge-imports.mjs
   facade:
-    # Chromium CPU work uses the verified Ubuntu 24.04 temporary pool: linux-x64 also includes unsupported Triton 20.04.
-    # Separate warm-state groups; keep two concurrent facade jobs on the shared 26-core host.
-    runs-on: [self-hosted, tempcpu]
+    # Both portable hosts have verified browsers/runtime caches; unsupported Triton is outside linux-x64 (fm-kfs5).
+    # Separate warm-state groups; retain the two-job facade cap while other CPU journeys use either host.
+    runs-on: [self-hosted, linux-x64]
     timeout-minutes: 25
     strategy:
       fail-fast: false
@@ -101,7 +101,7 @@ jobs:
           if-no-files-found: ignore
   # Full confirmed-crop/recovery acceptance on the same identified artifact (fm-d4mw).
   crop-acceptance:
-    runs-on: [self-hosted, tempcpu]
+    runs-on: [self-hosted, linux-x64]
     timeout-minutes: 120
     steps:
       - uses: actions/checkout@v4
@@ -143,7 +143,7 @@ jobs:
   # same canonical artifact bytes: Encode (fm-fy2.17.1), composed tile controls and legacy links with real CPU
   # synthesis (fm-25um).
   runtime-e2e:
-    runs-on: [self-hosted, tempcpu]
+    runs-on: [self-hosted, linux-x64]
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
@@ -171,12 +171,30 @@ jobs:
           cp -R .cache/canonical-site/. .
           mkdir -p apps/web/dist
           cp -R deploy-next/. apps/web/dist/
-      - name: Encode and composed tile controls with the pinned runtime
+      - name: Encode, result actions and morph controls with the pinned runtime
         working-directory: apps/web
         env:
           FACEMORPH_REQUIRE_RUNTIME: '1'
         run: |
-          node --test --test-timeout=1200000 test/e2e/encode.e2e.ts test/e2e/face-controls.e2e.ts test/e2e/legacy-links.e2e.ts test/e2e/manifest-admission.e2e.ts test/e2e/export-files.e2e.ts test/e2e/opctl-trace.e2e.ts test/e2e/offline.e2e.ts test/e2e/still-entry.e2e.ts
+          node --test --test-timeout=1200000 test/e2e/encode.e2e.ts test/e2e/face-controls.e2e.ts test/e2e/legacy-links.e2e.ts test/e2e/manifest-admission.e2e.ts test/e2e/export-files.e2e.ts test/e2e/result-actions.e2e.ts test/e2e/morph-output.e2e.ts test/e2e/opctl-trace.e2e.ts test/e2e/offline.e2e.ts test/e2e/still-entry.e2e.ts
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: result-actions-${{ github.sha }}
+          path: |
+            apps/web/test-results/result-actions/report.json
+            apps/web/test-results/result-actions/*.png
+            apps/web/test-results/result-actions/*.webp
+            apps/web/test-results/result-actions/*.mp4
+          retention-days: 30
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: morph-output-${{ github.sha }}
+          path: |
+            apps/web/test-results/morph-output/*.json
+            apps/web/test-results/morph-output/*.png
+          retention-days: 30
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
@@ -187,6 +205,8 @@ jobs:
             apps/web/test-results/legacy-links/
             apps/web/test-results/manifest-admission/
             apps/web/test-results/export-files/
+            apps/web/test-results/result-actions/
+            apps/web/test-results/morph-output/
             apps/web/test-results/opctl-trace/
             apps/web/test-results/offline/
             apps/web/test-results/still-entry/
