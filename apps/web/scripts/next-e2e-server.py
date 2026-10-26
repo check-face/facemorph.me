@@ -33,12 +33,13 @@ parsed=json.loads(manifest)
 # and small replacement assets that production does not serve yet; qualification must run
 # against exactly these bytes so the pin and the deployment move together.
 OVERLAY=a.runtime_overlay.resolve() if a.runtime_overlay else None
-PATHMAP={};CHUNKMAP={}
+PATHMAP={};SIZEMAP={};CHUNKMAP={}
 def index(node):
  if isinstance(node,dict):
   url=node.get('url');sha=node.get('sha256')
   if isinstance(url,str) and url.startswith(ORIGIN+'/runtime/') and isinstance(sha,str) and len(sha)==64:
    path=url[len(ORIGIN):];PATHMAP[path]=sha
+   if isinstance(node.get('size'),int):SIZEMAP[path]=node['size']
    chunks=node.get('chunks')
    if isinstance(chunks,list) and chunks and all(isinstance(c,dict) and isinstance(c.get('url'),str) for c in chunks):
     CHUNKMAP[path]=(sha,[c['url'] for c in chunks])
@@ -148,10 +149,16 @@ class Handler(SimpleHTTPRequestHandler):
    if sha is None:
     m=re.fullmatch(r'/runtime/chunks/([0-9a-f]{64})\.bin',self.path)
     sha=m.group(1) if m else None
-   # Unpinned files (photo worker modules, the encoder stream) come from the tree the deploy will
-   # publish, not from production: production can lack them, which is the bug this catches.
-   local=(a.runtime_files.resolve()/self.path[len('/runtime/'):]) if a.runtime_files and sha is None else None
-   if local is not None and local.is_file():return self.respond(local.read_bytes(),self.mime_for(self.path))
+   # Read the tree the deploy will publish, including newly pinned staged assets that the
+   # public origin cannot serve yet. Verify every known pin before returning local bytes.
+   local=(a.runtime_files.resolve()/self.path[len('/runtime/'):]) if a.runtime_files else None
+   if local is not None and local.is_file():
+    if local.stat().st_size>ASSET_BOUND:raise ValueError('Local runtime asset exceeds size bound')
+    data=local.read_bytes()
+    if sha is not None:
+     if hashlib.sha256(data).hexdigest()!=sha:raise ValueError('Local runtime asset differs from its pin')
+     if self.path in SIZEMAP and len(data)!=SIZEMAP[self.path]:raise ValueError('Local runtime asset size differs from its pin')
+    return self.respond(data,self.mime_for(self.path))
    if sha is None:return self.respond(fetch(ORIGIN+self.path),self.mime_for(self.path))
    overlay_file=(OVERLAY/self.path.lstrip('/')) if OVERLAY is not None else None
    if overlay_file is not None and overlay_file.is_file():return self.respond(overlay_file.read_bytes(),self.mime_for(self.path))
