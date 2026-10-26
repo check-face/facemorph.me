@@ -391,18 +391,25 @@ class Session {
     await this.dialog.locator('.next-encode-preview img').waitFor({ timeout: 120_000 });
   }
   /** Operates every photo approval until actual encoding, a queued crop choice, or terminal state. */
-  async consent(timeout = 900_000) {
+  async consent(timeout = 300_000) {
     const accept = this.page.locator('.next-download-accept');
     const deadline = Date.now() + timeout;
     let approvals = 0;
+    // Every call follows an OK, which makes one encoder attempt (or an error). The store can sit idle between OK and
+    // a download decision, for long under load, so idle alone is not an outcome: the attempt made since this call
+    // must have ended, or the store must hold an error.
+    const before = await this.page.evaluate(
+      () => (window as unknown as { __crop: { encodes: unknown[] } }).__crop.encodes.length,
+    );
     while (true) {
       const state = await this.page.waitForFunction(
-        () => {
+        (n) => {
           const w = window as unknown as {
             __crop: { encodes: { stage: string }[] };
             __fmStore: {
               getState(): {
                 Busy: boolean;
+                Error: string | null;
                 PreparingFaces: Set<string>;
                 Crop: unknown;
                 Gate: unknown;
@@ -418,11 +425,19 @@ class Session {
           if (w.__crop.encodes.some((attempt) => attempt.stage === 'encoding')) return 'encoding';
           // A queued confirmation needs the next real OK before it can produce an encoder attempt.
           if (m.Crop) return 'crop';
-          if (!m.Busy && !m.PreparingFaces.size && !m.PendingJobs.length && !m.PhotoQueue.length)
+          const made = w.__crop.encodes.slice(n);
+          const ended = made.length > 0 && made.every((attempt) => attempt.stage === 'terminal');
+          if (
+            (ended || m.Error) &&
+            !m.Busy &&
+            !m.PreparingFaces.size &&
+            !m.PendingJobs.length &&
+            !m.PhotoQueue.length
+          )
             return 'terminal';
           return false;
         },
-        null,
+        before,
         { timeout: Math.max(1, deadline - Date.now()), polling: 100 },
       );
       const next = await state.jsonValue();
@@ -436,7 +451,7 @@ class Session {
       await accept.waitFor({ state: 'detached', timeout: Math.max(1, deadline - Date.now()) });
     }
   }
-  async settled(timeout = 900_000) {
+  async settled(timeout = 300_000) {
     await this.page.waitForFunction(
       () => {
         const m = (
@@ -556,12 +571,23 @@ function caseRunner(t: TestContext, session: Session) {
   };
 }
 
+/** Which desktop session runs a case, balanced by their measured durations (fm-9jnt): a holds the limits, the
+ * confirmed-crop OK cases and manual-crop-wplus (its saved face is the drops' matching still), b the eight EXIF
+ * orientations, c the cancel/revision cases and the sequences. */
+const desktopPart = (name: string): 'a' | 'b' | 'c' =>
+  name === 'oriented-exif-1-8'
+    ? 'b'
+    : name.startsWith('sequence-') ||
+        ['triple-ok', 'cancel-after-ok', 'stale-revision'].includes(name)
+      ? 'c'
+      : 'a';
+
 const zero = { app: 0, model: 0, detector: 0, other: 0 };
 const b64 = (path: string) => readFileSync(path).toString('base64');
 
 test(
   'confirmed crop and still recovery through the built UI (fm-d4mw)',
-  { timeout: 5_400_000 },
+  { timeout: 5_400_000, concurrency: true },
   async (t) => {
     if (!existsSync(join(runtime, 'manifest.json'))) {
       const reason = `untested: no acquired runtime at ${runtime}; owner fm-d4mw; run on the runtime lane`;
@@ -652,599 +678,22 @@ test(
     });
     const sessions: Session[] = [];
     try {
-      // ---- Desktop, real mouse: the confirmed-crop cases. ----
-      const d = await Session.open('desktop', 1280);
-      sessions.push(d);
-      const run = caseRunner(t, d);
-      const first = () => d.tiles.nth(0);
-      const firstId = async () => (await first().getAttribute('data-next-face'))!;
-      const okButton = () => d.dialog.getByRole('button', { name: 'OK', exact: true });
-      const cancelButton = () => d.dialog.getByRole('button', { name: 'CANCEL', exact: true });
-      const adjustButton = () => d.dialog.getByRole('button', { name: 'ADJUST CROP', exact: true });
-      const useCrop = () => d.dialog.getByRole('button', { name: 'Use Crop', exact: true });
-      const faceDone = (id: string, timeout = 900_000) =>
-        d.page.waitForFunction(
-          (face) => {
-            const m = (
-              window as unknown as {
-                __fmStore: {
-                  getState(): {
-                    Faces: { id: string }[];
-                    Error: string | null;
-                    Busy: boolean;
-                    Gate: unknown;
-                  };
-                };
-              }
-            ).__fmStore.getState();
-            if (m.Gate) throw Error('A download decision appeared after consent returned.');
-            return (m.Faces.some((f) => f.id === face) || m.Error) && !m.Busy;
-          },
-          id,
-          { timeout, polling: 500 },
-        );
-      /** A confirmed crop: counters asserted as the locked requirement states them. */
-      const confirmedOnce = (
-        c: Awaited<ReturnType<Session['since']>>,
-        m: ModelView,
-        id: string,
-        { complete = true } = {},
-      ) => {
-        assert.equal(c.cropConfirmed, 1, 'one confirmed crop');
-        assert.equal(c.detect, 0, 'no detection, alignment or warp after confirmation');
-        assert.equal(c.cropOpen, 0, 'the crop does not reopen after confirmation');
-        assert.equal(c.requests.detector, 0, 'no detector asset is requested');
-        if (complete) {
-          assert.equal(c.e4e, 1, 'exactly one e4e attempt');
-          assert.equal(m.Error, null, `no terminal error: ${m.Error}`);
-          assert.ok(m.faces.includes(id), 'the confirmed crop became the face');
-        } else assert.ok(c.e4e === 1 || m.Error, 'one e4e attempt or one terminal error');
-      };
-
-      // Malformed input: one actionable message, no crop, nothing computed.
-      await run('malformed', async () => {
-        const mark = await d.mark();
-        await d.choose(0, [fx.malformed]);
-        const failure = d.page.locator('.next-error > p').first();
-        await failure.waitFor();
-        const text = (await failure.innerText()).trim();
-        assert.match(text, /could not be read|Choose|Try/i, 'an actionable message');
-        await d.shots('malformed');
-        const c = await d.since(mark);
-        d.log({ case: 'malformed', ...c, message: text });
-        assert.deepEqual(
-          [c.cropOpen, c.cropConfirmed, c.detect, c.e4e, c.requests.model, c.requests.detector],
-          [0, 0, 0, 0, 0, 0],
-        );
-        await d.operate(d.page.locator('.next-error').getByRole('button', { name: 'Dismiss' }));
-      });
-
-      // Cancel before OK: nothing confirmed, nothing encoded, nothing requested.
-      await run('cancel-before-ok', async () => {
-        const mark = await d.mark();
-        const before = (await readModel(d.page)).inputs[0];
-        await d.choose(0, [fx.nonSquare]);
-        await d.confirmation();
-        await d.shots('cancel-before-ok');
-        await d.operate(cancelButton());
-        await d.dialog.waitFor({ state: 'detached' });
-        await d.page.waitForTimeout(1000);
-        const c = await d.since(mark);
-        d.log({ case: 'cancel-before-ok', ...c });
-        assert.deepEqual([c.cropOpen, c.cropConfirmed, c.detect, c.e4e], [1, 0, 0, 0]);
-        assert.deepEqual(c.requests, { ...zero, app: c.requests.app });
-        assert.deepEqual((await readModel(d.page)).inputs[0], before, 'the face is unchanged');
-      });
-
-      // Over the limits, through the real file entry: one actionable message, zero e4e, zero new faces.
-      for (const [name, path, message] of [
-        ['over-bytes-64mib-plus-1', 'bytes-64mib-plus-1.png', /smaller than 64 MB/],
-        ['over-header-pixels', fx.pixelsOver, /too large to open/],
-        ['over-edge-20001', fx.edgeOver, /too large to open/],
-      ] as const)
-        await run(name, async () => {
-          const mark = await d.mark();
-          const tiles = await d.tiles.count();
-          const failure = d.page.locator('.next-error > p').first();
-          // A chosen file is read from disk lazily: the generated copy stays until the refusal shows.
-          const refused = async (p: string) => {
-            await d.choose(0, [p]);
-            await failure.waitFor({ timeout: 60_000 });
-          };
-          if (path in largeFiles) await large(path, largeFiles[path]!, refused);
-          else await refused(path);
-          const text = (await failure.innerText()).trim();
-          assert.match(text, message);
-          assert.match(text, /resize|smaller|choose/i, 'the message says what to do');
-          await d.shots(name);
-          const c = await d.since(mark);
-          d.log({ case: name, ...c, message: text });
-          assert.deepEqual([c.cropOpen, c.cropConfirmed, c.detect, c.e4e], [0, 0, 0, 0]);
-          assert.equal(c.requests.model + c.requests.detector, 0);
-          assert.equal(await d.tiles.count(), tiles, 'no new face');
-          await d.operate(d.page.locator('.next-error').getByRole('button', { name: 'Dismiss' }));
-        });
-
-      // Exactly at each limit: the photo proceeds to the crop confirmation (cancelled here; nothing computed).
-      for (const [name, path] of [
-        ['at-bytes-64mib', 'bytes-64mib.png'],
-        ['at-pixels-120x1024sq', fx.pixelsAt],
-        ['at-edge-20000', fx.edgeAt],
-      ] as const)
-        await run(name, async () => {
-          const mark = await d.mark();
-          // A chosen file is read from disk lazily: the generated copy stays until the dialog is closed.
-          const proceeds = async (p: string) => {
-            await d.choose(0, [p]);
-            await d.confirmation();
-            assert.equal(await d.page.locator('.next-error > p').count(), 0, 'no refusal');
-            await d.shots(name);
-            await d.operate(cancelButton());
-            await d.dialog.waitFor({ state: 'detached' });
-          };
-          if (path in largeFiles) await large(path, largeFiles[path]!, proceeds);
-          else await proceeds(path);
-          const c = await d.since(mark);
-          d.log({ case: name, ...c });
-          assert.deepEqual([c.cropOpen, c.cropConfirmed, c.detect, c.e4e], [1, 0, 0, 0]);
-        });
-
-      // The locked requirement (crop.repro ui-no-face, flipped): a photo with no face, confirmed whole with OK, goes
-      // straight to one real e4e attempt; the crop does not reopen. The first encode accepts the photo download.
-      const okCase = (name: string, path: string, edit?: () => Promise<void>) =>
-        run(name, async () => {
-          const id = await firstId();
-          const mark = await d.mark();
-          await d.choose(0, [path]);
-          await d.confirmation();
-          if (edit) await edit();
-          await d.shots(`${name}-confirmation`);
-          await d.operate(okButton());
-          await d.consent();
-          await faceDone(id);
-          await d.settled();
-          const c = await d.since(mark);
-          const m = await readModel(d.page);
-          await d.shots(`${name}-result`);
-          d.log({
-            case: name,
-            ...c,
-            error: m.Error,
-            face: m.faces.includes(id),
-          });
-          // The confirmation opened once; nothing after OK reopened it.
-          assert.equal(c.cropOpen, 1);
-          confirmedOnce({ ...c, cropOpen: c.cropOpen - 1 }, m, id);
-        });
-      await okCase('no-face-ok', fx.noFace);
-      // crop.repro ui-redetection-fails, flipped: the person crops the middle half (zoom 2) of a photo whose only
-      // face is in a corner; the confirmed crop holds no face and still reaches one e4e attempt.
-      await okCase('redetection-fails-zoom-2', fx.redetection, async () => {
-        await d.operate(adjustButton());
-        const area = d.dialog.getByRole('application', { name: 'Crop area' });
-        await area.waitFor();
-        for (let i = 0; i < 4; i++) await d.page.keyboard.press('+');
-        const zoom = await d.page.evaluate(
-          () =>
-            (
-              window as unknown as {
-                __elmish: { model: { Crop: { view: { zoom: number } } } };
-              }
-            ).__elmish.model.Crop.view.zoom,
-        );
-        assert.equal(zoom, 2);
-        await d.shots('redetection-fails-zoom-2-editor');
-        await d.operate(useCrop());
-        await okButton().waitFor();
-      });
-      await okCase('multi-face-ok', fx.multiFace);
-
-      // Manual crop, numerically: the whole of a photo whose derivation is exactly the qualification case
-      // seed-0-unaligned. Adjust Crop, zoom out fully, Use Crop, OK; the engine receives that tensor, and the face's
-      // W+ (read from its saved file) is within 0.0001 of the native reference, whatever the time it took.
-      await run('manual-crop-wplus', async () => {
-        const id = await firstId();
-        const mark = await d.mark();
-        await d.choose(0, [fx.qualification]);
-        await d.confirmation();
-        await d.operate(adjustButton());
-        await d.dialog.getByRole('application', { name: 'Crop area' }).waitFor();
-        for (let i = 0; i < 32; i++) await d.page.keyboard.press('-');
-        await d.shots('manual-crop-wplus-editor');
-        await d.operate(useCrop());
-        await d.operate(okButton());
-        await d.consent();
-        const began = Date.now();
-        await faceDone(id);
-        await d.settled();
-        const ms = Date.now() - began;
-        const c = await d.since(mark);
-        const m = await readModel(d.page);
-        confirmedOnce({ ...c, cropOpen: c.cropOpen - 1 }, m, id);
-        assert.deepEqual(
-          c.tensorDigests,
-          [SEED0_UNALIGNED_TENSOR],
-          'the engine received the qualification tensor',
-        );
-        const saved = await d.save(0);
-        writeFileSync(fx.saved, saved);
-        const recovered = readRecovery(new Uint8Array(saved));
-        assert.equal(recovered.kind, 'parsed', JSON.stringify(recovered).slice(0, 200));
-        const values = Array.from(
-          (
-            recovered as {
-              recovered: { latent: { values: ArrayLike<number> } };
-            }
-          ).recovered.latent.values,
-        );
-        const stream = JSON.parse(readFileSync(join(runtime, 'manifest.json'), 'utf8'))
-          .encoderStream.url as string;
-        const reference = readFileSync(
-          join(runtime, stream.split('/runtime/')[1]!, '..', 'seed-0-unaligned.w.f32'),
-        );
-        const ref = new Float32Array(
-          reference.buffer,
-          reference.byteOffset,
-          reference.byteLength / 4,
-        );
-        assert.equal(values.length, ref.length);
-        const maxError = values.reduce((max, v, i) => Math.max(max, Math.abs(v - ref[i]!)), 0);
-        await d.shots('manual-crop-wplus-result');
-        d.log({
-          case: 'manual-crop-wplus',
-          ...c,
-          wPlusMaxAbsError: maxError,
-          threshold: 1e-4,
-          encodeMs: ms,
-        });
-        assert.ok(maxError <= 1e-4, `max |W+ error| ${maxError}`);
-      });
-
-      /** OK, then wait for the e4e attempt to start and cancel the run at the face's visible Cancel. */
-      const attemptThenCancel = async () => {
-        const id = await firstId();
-        const before = (await d.counters()).e4e;
-        await d.operate(okButton());
-        await d.consent();
-        await d.waitE4e(before);
-        await d.operate(first().getByRole('button', { name: /^Cancel/ }));
-        await d.settled();
-        return id;
-      };
-
-      // The guide overlay never reaches the pixels (orchestrator ruling, 27 Oct). The ported editor draws no guide
-      // yet (fm-z0et owns the oval), so the case lays one over the crop area itself: an opaque oval-and-eyes overlay
-      // shown in one confirmation and hidden by CSS in the next, on the same unchanged rectangle (Adjust Crop, Use
-      // Crop). Both, and the plain confirmation preview, must give one tensorDigest.
-      await run('guide-visible-hidden', async () => {
-        const mark = await d.mark();
-        const guide = (visible: boolean) =>
-          d.page.evaluate((show) => {
-            const area = document.querySelector('.next-crop-view')!;
-            let g = area.querySelector<HTMLElement>('.test-crop-guide');
-            if (!g) {
-              g = document.createElement('div');
-              g.className = 'test-crop-guide';
-              g.setAttribute('aria-hidden', 'true');
-              g.style.cssText =
-                'position:absolute;inset:12%;border:6px solid #fff;border-radius:50%;pointer-events:none;' +
-                'box-shadow:0 0 0 999px rgba(0,0,0,.6);background:radial-gradient(circle at 35% 40%,#f0f 0 6%,transparent 7%),radial-gradient(circle at 65% 40%,#f0f 0 6%,transparent 7%)';
-              area.appendChild(g);
-            }
-            g.style.display = show ? 'block' : 'none';
-            return getComputedStyle(g).display;
-          }, visible);
-        // 1. The plain confirmation preview.
-        await d.choose(0, [fx.nonSquare]);
-        await d.confirmation();
-        await d.shots('guide-none');
-        await attemptThenCancel();
-        // 2. The editor with the guide overlay visible over the same rectangle.
-        await d.choose(0, [fx.nonSquare]);
-        await d.confirmation();
-        await d.operate(adjustButton());
-        await d.dialog.getByRole('application', { name: 'Crop area' }).waitFor();
-        assert.equal(await guide(true), 'block');
-        await d.shots('guide-visible');
-        await d.operate(useCrop());
-        await attemptThenCancel();
-        // 3. The same, with the overlay hidden by CSS.
-        await d.choose(0, [fx.nonSquare]);
-        await d.confirmation();
-        await d.operate(adjustButton());
-        await d.dialog.getByRole('application', { name: 'Crop area' }).waitFor();
-        assert.equal(await guide(false), 'none');
-        await d.shots('guide-hidden');
-        await d.operate(useCrop());
-        await attemptThenCancel();
-        const c = await d.since(mark);
-        d.log({
-          case: 'guide-visible-hidden',
-          method: 'test overlay in .next-crop-view, shown then display:none',
-          ...c,
-        });
-        assert.equal(c.e4e, 3);
-        assert.equal(c.detect, 0);
-        assert.equal(c.tensorDigests.length, 3);
-        assert.equal(
-          new Set(c.tensorDigests).size,
-          1,
-          'guide shown, hidden or absent: one tensorDigest',
-        );
-      });
-
-      // All eight EXIF orientations of the same stored pixels: each confirms once and reaches one e4e attempt; the
-      // policy ignores EXIF (legacy-ignore-exif), so all eight tensors are the same.
-      await run('oriented-exif-1-8', async () => {
-        const mark = await d.mark();
-        for (const [i, path] of fx.oriented.entries()) {
-          const step = await d.mark();
-          await d.choose(0, [path]);
-          await d.confirmation();
-          if (i === 0 || i === 5) await d.shots(`oriented-${i + 1}`);
-          await attemptThenCancel();
-          const c = await d.since(step);
-          d.log({ case: `oriented-${i + 1}`, ...c });
-          assert.deepEqual([c.cropOpen, c.cropConfirmed, c.detect, c.e4e], [1, 1, 0, 1]);
-        }
-        const c = await d.since(mark);
-        d.log({ case: 'oriented-exif-1-8', ...c });
-        assert.equal(
-          new Set(c.tensorDigests).size,
-          1,
-          'EXIF orientation does not change the tensor',
-        );
-      });
-
-      // Cancel after OK: one terminal outcome, the face keeps no result, no crop reopens, nothing more is computed.
-      // OK (fm-fy2.17.1): three rapid taps on OK at its visible position make one encode request; the dialog
-      // closes and the tile's inline control beside the textbox shows Cancel while that encode runs.
-      await run('triple-ok', async () => {
-        const id = (await d.tiles.nth(0).getAttribute('data-next-face'))!;
-        const mark = await d.mark();
-        await d.choose(0, [fx.nonSquare]);
-        await d.confirmation();
-        const ok = okButton();
-        const box = (await ok.boundingBox())!;
-        const x = box.x + box.width / 2;
-        const y = box.y + box.height / 2;
-        const hit = await d.page.evaluate(
-          ([px, py]) => document.elementFromPoint(px!, py!)?.closest('button')?.textContent?.trim(),
-          [x, y],
-        );
-        assert.equal(hit, 'OK', 'OK is the control at its visible centre');
-        for (let i = 0; i < 3; i++) await d.page.mouse.click(x, y);
-        await d.consent();
-        await d.dialog.waitFor({ state: 'detached', timeout: 30_000 });
-        const slot = d.tiles.nth(0).locator('.next-input-row .next-face-generate');
-        await d.page.waitForFunction(
-          (el) => el?.textContent?.trim() === 'Cancel',
-          await slot.elementHandle(),
-          { timeout: 60_000 },
-        );
-        await d.shots('triple-ok-running');
-        await faceDone(id);
-        await d.settled();
-        await assertNoCardPreparation(
-          d.page,
-          'verified: photo encoder downloaded and used (1280 px)',
-        );
-        const c = await d.since(mark);
-        const m = await readModel(d.page);
-        d.log({ case: 'triple-ok', taps: 3, ...c, error: m.Error });
-        // The confirmation's own opening is counted; no reopen after OK.
-        confirmedOnce({ ...c, cropOpen: c.cropOpen - 1 }, m, id);
-        assert.equal(c.tensorDigests.length, 1, 'one encode request for three taps');
-      });
-
-      await run('cancel-after-ok', async () => {
-        const mark = await d.mark();
-        await d.choose(0, [fx.nonSquare]);
-        await d.confirmation();
-        const id = await attemptThenCancel();
-        await d.page.waitForTimeout(2000);
-        const c = await d.since(mark);
-        const m = await readModel(d.page);
-        await d.shots('cancel-after-ok');
-        d.log({
-          case: 'cancel-after-ok',
-          ...c,
-          error: m.Error,
-          status: m.Status,
-        });
-        assert.deepEqual([c.cropOpen, c.cropConfirmed, c.detect, c.e4e], [1, 1, 0, 1]);
-        assert.ok(!m.faces.includes(id), 'the cancelled encode installed nothing');
-      });
-
-      // Stale revision: the face is edited (back to words) while its confirmed crop encodes. The edit wins: the
-      // late result is not installed over it, and no crop reopens.
-      await run('stale-revision', async () => {
-        const id = await firstId();
-        const mark = await d.mark();
-        await d.choose(0, [fx.nonSquare]);
-        await d.confirmation();
-        const before = (await d.counters()).e4e;
-        await d.operate(okButton());
-        await d.consent();
-        await d.waitE4e(before);
-        await d.words(0, 'stale revision check');
-        await d.settled();
-        await d.page.waitForTimeout(2000);
-        const c = await d.since(mark);
-        const m = await readModel(d.page);
-        await d.shots('stale-revision');
-        const input = m.inputs.find((i) => i.id === id)!;
-        d.log({ case: 'stale-revision', ...c, input, error: m.Error });
-        assert.deepEqual([c.cropOpen, c.cropConfirmed, c.detect], [1, 1, 0]);
-        assert.ok(c.e4e <= 1);
-        assert.deepEqual([input.mode, input.value], ['text', 'stale revision check']);
-        assert.ok(
-          !m.faces.includes(id),
-          'the stale photo result is not installed on the edited face',
-        );
-      });
-
-      // A 30 MB photo: no detector runs (no worker pass, no detector asset); a manual crop confirms and reaches one
-      // e4e attempt.
-      await run('large-30mb-manual', async () => {
-        const id = await firstId();
-        const mark = await d.mark();
-        // The generated copy stays until the encode settles: the crop is read from it at OK.
-        await large('large-30mb.png', largeFiles['large-30mb.png']!, async (p) => {
-          await d.choose(0, [p]);
-          await d.confirmation();
-          const c0 = await d.since(mark);
-          assert.equal(c0.detect, 0, 'the detector was not run');
-          await d.operate(adjustButton());
-          await d.dialog.getByRole('application', { name: 'Crop area' }).waitFor();
-          await d.page.keyboard.press('+');
-          await d.shots('large-30mb-editor');
-          await d.operate(useCrop());
-          await d.operate(okButton());
-          await d.consent();
-          await faceDone(id);
-          await d.settled();
-        });
-        const c = await d.since(mark);
-        const m = await readModel(d.page);
-        await d.shots('large-30mb-result');
-        d.log({
-          case: 'large-30mb-manual',
-          ...c,
-          error: m.Error,
-          fileBytes: 30_000_000,
-        });
-        confirmedOnce({ ...c, cropOpen: c.cropOpen - 1 }, m, id);
-      });
-
-      // Confirmed crops at 2, 3 and many in sequence (1 is every case above): a drop of N photos on the page opens
-      // N confirmations one after another; each OK confirms once and runs one e4e attempt, with no detection.
-      for (const n of [2, 3, 5])
-        await run(`sequence-${n}`, async () => {
-          const mark = await d.mark();
-          const before = await readModel(d.page);
-          // Five different photos, so every confirmed crop has its own tensor.
-          const photos = [fx.nonSquare, fx.noFace, fx.multiFace, fx.redetection, fx.qualification];
-          await d.drop(
-            d.page.getByRole('heading', { name: 'What is this?' }),
-            photos.slice(0, n).map((p, i) => ({
-              name: `photo-${i}${p.slice(p.lastIndexOf('.'))}`,
-              type: p.endsWith('.png') ? 'image/png' : 'image/jpeg',
-              base64: b64(p),
-            })),
-          );
-          for (let i = 0; i < n; i++) {
-            await d.confirmation();
-            if (i === 0) await d.shots(`sequence-${n}-first`);
-            const owner = await d.page.evaluate(
-              () =>
-                (
-                  window as unknown as {
-                    __elmish: { model: { Crop: { faceId: string } } };
-                  }
-                ).__elmish.model.Crop.faceId,
-            );
-            await d.operate(okButton());
-            await d.consent();
-            await d.page.waitForFunction((face) => {
-              const m = (
-                window as unknown as {
-                  __elmish: { model: { Crop: { faceId: string } | null } };
-                }
-              ).__elmish.model;
-              return m.Crop?.faceId !== face;
-            }, owner);
-          }
-          await d.settled();
-          const c = await d.since(mark);
-          const m = await readModel(d.page);
-          const added = m.inputs.slice(before.inputs.length).map((i) => i.id);
-          const targets = m.inputs
-            .filter(
-              (i) =>
-                !before.inputs.some(
-                  (b) => b.id === i.id && b.mode === i.mode && b.value === i.value,
-                ),
-            )
-            .map((i) => i.id);
-          await d.shots(`sequence-${n}-result`);
-          d.log({
-            case: `sequence-${n}`,
-            ...c,
-            added: added.length,
-            error: m.Error,
-          });
-          assert.equal(c.cropOpen, n, 'one confirmation per photo, in sequence');
-          assert.equal(c.cropConfirmed, n);
-          assert.equal(c.detect, 0);
-          assert.equal(c.e4e, n, 'one e4e attempt per confirmed crop');
-          assert.equal(m.Error, null);
-          assert.ok(targets.length >= n && targets.slice(-n).every((id) => m.faces.includes(id)));
-          assert.equal(
-            new Set(c.tensorDigests).size,
-            c.tensorDigests.length,
-            'each crop its own tensor',
-          );
-        });
-      assert.deepEqual(d.errors, [], 'no page errors');
-
-      // ---- Phone, touch taps at 390 px: Cancel, Adjust Crop, Use Crop and OK where a thumb meets them. ----
-      if (!only || only.some((n) => n.startsWith('phone-'))) {
-        const p = await Session.open('phone', 390);
-        sessions.push(p);
-        const prun = caseRunner(t, p);
-        await prun('phone-cancel-before-ok', async () => {
-          const mark = await p.mark();
-          await p.choose(0, [fx.nonSquare]);
-          await p.confirmation();
-          await p.shots('phone-cancel-before-ok');
-          await p.operate(p.dialog.getByRole('button', { name: 'CANCEL', exact: true }));
-          await p.dialog.waitFor({ state: 'detached' });
-          const c = await p.since(mark);
-          p.log({ case: 'phone-cancel-before-ok', ...c });
-          assert.deepEqual([c.cropOpen, c.cropConfirmed, c.detect, c.e4e], [1, 0, 0, 0]);
-        });
-        await prun('phone-adjust-use-ok', async () => {
-          const id = (await p.tiles.nth(0).getAttribute('data-next-face'))!;
-          const mark = await p.mark();
-          await p.choose(0, [fx.redetection]);
-          await p.confirmation();
-          await p.operate(p.dialog.getByRole('button', { name: 'ADJUST CROP', exact: true }));
-          const area = p.dialog.getByRole('application', { name: 'Crop area' });
-          await area.waitFor();
-          // A touch drag on the crop square pans it. The drag comes to rest before the finger lifts (the event
-          // timestamps hold the end point for 300 ms): a release at speed starts a fling, and Chrome takes the next
-          // tap as "stop the fling" with no click, so Use Crop's tap was lost on a fast host.
-          const box = (await area.boundingBox())!;
-          const cdp = await p.context.newCDPSession(p.page);
-          const at = (x: number, y: number) => [{ x, y }];
-          const t0 = Date.now() / 1000;
-          const end = at(box.x + box.width / 2 + 40, box.y + box.height / 2 + 30);
-          await cdp.send('Input.dispatchTouchEvent', {
-            type: 'touchStart',
-            touchPoints: at(box.x + box.width / 2, box.y + box.height / 2),
-            timestamp: t0,
-          });
-          await cdp.send('Input.dispatchTouchEvent', {
-            type: 'touchMove',
-            touchPoints: end,
-            timestamp: t0 + 0.2,
-          });
-          await cdp.send('Input.dispatchTouchEvent', {
-            type: 'touchMove',
-            touchPoints: end,
-            timestamp: t0 + 0.5,
-          });
-          await cdp.send('Input.dispatchTouchEvent', {
-            type: 'touchEnd',
-            touchPoints: [],
-            timestamp: t0 + 0.5,
-          });
-          await p.shots('phone-adjust');
-          await p.operate(p.dialog.getByRole('button', { name: 'Use Crop', exact: true }));
-          await p.operate(p.dialog.getByRole('button', { name: 'OK', exact: true }));
-          await p.consent();
-          await p.page.waitForFunction(
+      // ---- Desktop, real mouse: the confirmed-crop cases, in three sessions of their own (fm-9jnt). ----
+      const desktop = async (part: 'a' | 'b' | 'c') => {
+        const d = await Session.open(part === 'a' ? 'desktop' : `desktop-${part}`, 1280);
+        sessions.push(d);
+        const runCase = caseRunner(t, d);
+        const run = (name: string, body: () => Promise<void>) =>
+          desktopPart(name) === part ? runCase(name, body) : Promise.resolve();
+        const first = () => d.tiles.nth(0);
+        const firstId = async () => (await first().getAttribute('data-next-face'))!;
+        const okButton = () => d.dialog.getByRole('button', { name: 'OK', exact: true });
+        const cancelButton = () => d.dialog.getByRole('button', { name: 'CANCEL', exact: true });
+        const adjustButton = () =>
+          d.dialog.getByRole('button', { name: 'ADJUST CROP', exact: true });
+        const useCrop = () => d.dialog.getByRole('button', { name: 'Use Crop', exact: true });
+        const faceDone = (id: string, timeout = 300_000) =>
+          d.page.waitForFunction(
             (face) => {
               const m = (
                 window as unknown as {
@@ -1262,208 +711,819 @@ test(
               return (m.Faces.some((f) => f.id === face) || m.Error) && !m.Busy;
             },
             id,
-            { timeout: 900_000, polling: 500 },
+            { timeout, polling: 500 },
           );
-          await p.settled();
-          const c = await p.since(mark);
-          const m = await readModel(p.page);
-          await assertNoCardPreparation(
-            p.page,
-            'verified: photo encoder downloaded and used (390 px)',
-          );
-          await p.shots('phone-adjust-use-ok-result');
-          p.log({ case: 'phone-adjust-use-ok', ...c, error: m.Error });
-          assert.deepEqual([c.cropOpen, c.cropConfirmed, c.detect, c.e4e], [1, 1, 0, 1]);
-          assert.equal(m.Error, null);
-          assert.ok(m.faces.includes(id));
-        });
-        assert.deepEqual(p.errors, [], 'no page errors');
-      }
+        /** A confirmed crop: counters asserted as the locked requirement states them. */
+        const confirmedOnce = (
+          c: Awaited<ReturnType<Session['since']>>,
+          m: ModelView,
+          id: string,
+          { complete = true } = {},
+        ) => {
+          assert.equal(c.cropConfirmed, 1, 'one confirmed crop');
+          assert.equal(c.detect, 0, 'no detection, alignment or warp after confirmation');
+          assert.equal(c.cropOpen, 0, 'the crop does not reopen after confirmation');
+          assert.equal(c.requests.detector, 0, 'no detector asset is requested');
+          if (complete) {
+            assert.equal(c.e4e, 1, 'exactly one e4e attempt');
+            assert.equal(m.Error, null, `no terminal error: ${m.Error}`);
+            assert.ok(m.faces.includes(id), 'the confirmed crop became the face');
+          } else assert.ok(c.e4e === 1 || m.Error, 'one e4e attempt or one terminal error');
+        };
 
-      // ---- Recovery classes through the drop targets, in fresh contexts: nothing downloaded, so a still that
-      // needed a model or the detector would have to request it. ----
-      for (const width of [1280, 390] as const) {
-        const tag = width === 1280 ? 'drops-desktop' : 'drops-phone';
-        if (only && !only.some((n) => n.startsWith(tag))) continue;
-        assert.ok(
-          existsSync(fx.saved),
-          'the encoded face saved by manual-crop-wplus (a matching still)',
-        );
-        const r = await Session.open(tag, width);
-        sessions.push(r);
-        const rrun = caseRunner(t, r);
-        const pool = [
-          { kind: 'matching', path: fx.saved, type: 'image/webp' },
-          { kind: 'unknown-model', path: fx.mismatch, type: 'image/png' },
-          { kind: 'incompatible-schema', path: fx.future, type: 'image/png' },
-          { kind: 'damaged', path: fx.flipped, type: 'image/png' },
-          { kind: 'missing', path: fx.nonSquare, type: 'image/jpeg' },
-          { kind: 'damaged', path: fx.truncated, type: 'image/png' },
-          { kind: 'missing', path: fx.noFace, type: 'image/jpeg' },
-        ];
-        // Each kind dropped alone on a face's own image: its class, with byte equality where stated.
-        await rrun(`${tag}-tile-kinds`, async () => {
-          for (const item of pool) {
-            const mark = await r.mark();
-            const tile = r.tiles.nth(1);
-            const id = (await tile.getAttribute('data-next-face'))!;
-            const kept = (await readModel(r.page)).inputs.find((i) => i.id === id);
-            assert.equal(
-              await r.drop(tile.locator('.next-face-image'), [
-                {
-                  name: `tile.${item.type.split('/')[1]}`,
-                  type: item.type,
-                  base64: b64(item.path),
-                },
-              ]),
-              id,
-              'the drop landed on this face',
-            );
-            if (item.kind === 'missing') {
-              await r.confirmation();
-              await r.page.waitForTimeout(1000);
-              await r.shots(`${tag}-tile-missing`);
-              await r.operate(r.dialog.getByRole('button', { name: 'CANCEL', exact: true }));
-              await r.dialog.waitFor({ state: 'detached' });
-            } else if (item.kind === 'matching') {
-              await tile.locator('img.next-face-img').waitFor({ timeout: 60_000 });
-              await r.settled();
-              const m = await readModel(r.page);
-              assert.equal(m.inputs.find((i) => i.id === id)?.mode, 'project');
-              assert.ok(m.faces.includes(id), 'the saved face is installed');
-            } else {
-              await tile.locator(`[data-next-held="${item.kind}"]`).first().waitFor();
-              await r.settled();
-              const m = await readModel(r.page);
-              const held = m.held.find((h) => h.id === id)!;
-              assert.equal(held.kind, item.kind);
-              assert.ok(
-                !m.faces.includes(id) || item.kind === 'damaged',
-                'a held still is never computed with',
-              );
-              if (item.kind === 'damaged') {
-                assert.deepEqual(
-                  m.inputs.find((i) => i.id === id),
-                  kept,
-                  'a damaged still keeps the face identity',
-                );
-                const decodes = await r.page.evaluate(
-                  (b) =>
-                    createImageBitmap(
-                      new Blob([Uint8Array.from(atob(b), (c) => c.charCodeAt(0))]),
-                    ).then(
-                      (x) => (x.close(), true),
-                      () => false,
-                    ),
-                  b64(item.path),
-                );
-                assert.equal(
-                  (await tile.getByRole('button', { name: 'Use as photo' }).count()) === 1,
-                  decodes,
-                  'Use as photo only when the pixels decode',
-                );
-              } else {
-                assert.deepEqual(
-                  await r.save(1),
-                  readFileSync(item.path),
-                  'Save returns the opened bytes',
-                );
-                if (item.kind === 'incompatible-schema')
-                  assert.match(await tile.locator('.next-face-held').innerText(), /version 9/);
-              }
-            }
-            await r.shots(`${tag}-tile-${item.kind}`);
-            const c = await r.since(mark);
-            const line = r.stillLines.at(-1);
-            r.log({
-              case: `${tag}-tile-${item.kind}`,
+        // Malformed input: one actionable message, no crop, nothing computed.
+        await run('malformed', async () => {
+          const mark = await d.mark();
+          await d.choose(0, [fx.malformed]);
+          const failure = d.page.locator('.next-error > p').first();
+          await failure.waitFor();
+          const text = (await failure.innerText()).trim();
+          assert.match(text, /could not be read|Choose|Try/i, 'an actionable message');
+          await d.shots('malformed');
+          const c = await d.since(mark);
+          d.log({ case: 'malformed', ...c, message: text });
+          assert.deepEqual(
+            [c.cropOpen, c.cropConfirmed, c.detect, c.e4e, c.requests.model, c.requests.detector],
+            [0, 0, 0, 0, 0, 0],
+          );
+          await d.operate(d.page.locator('.next-error').getByRole('button', { name: 'Dismiss' }));
+        });
+
+        // Cancel before OK: nothing confirmed, nothing encoded, nothing requested.
+        await run('cancel-before-ok', async () => {
+          const mark = await d.mark();
+          const before = (await readModel(d.page)).inputs[0];
+          await d.choose(0, [fx.nonSquare]);
+          await d.confirmation();
+          await d.shots('cancel-before-ok');
+          await d.operate(cancelButton());
+          await d.dialog.waitFor({ state: 'detached' });
+          await d.page.waitForTimeout(1000);
+          const c = await d.since(mark);
+          d.log({ case: 'cancel-before-ok', ...c });
+          assert.deepEqual([c.cropOpen, c.cropConfirmed, c.detect, c.e4e], [1, 0, 0, 0]);
+          assert.deepEqual(c.requests, { ...zero, app: c.requests.app });
+          assert.deepEqual((await readModel(d.page)).inputs[0], before, 'the face is unchanged');
+        });
+
+        // Over the limits, through the real file entry: one actionable message, zero e4e, zero new faces.
+        for (const [name, path, message] of [
+          ['over-bytes-64mib-plus-1', 'bytes-64mib-plus-1.png', /smaller than 64 MB/],
+          ['over-header-pixels', fx.pixelsOver, /too large to open/],
+          ['over-edge-20001', fx.edgeOver, /too large to open/],
+        ] as const)
+          await run(name, async () => {
+            const mark = await d.mark();
+            const tiles = await d.tiles.count();
+            const failure = d.page.locator('.next-error > p').first();
+            // A chosen file is read from disk lazily: the generated copy stays until the refusal shows.
+            const refused = async (p: string) => {
+              await d.choose(0, [p]);
+              await failure.waitFor({ timeout: 60_000 });
+            };
+            if (path in largeFiles) await large(path, largeFiles[path]!, refused);
+            else await refused(path);
+            const text = (await failure.innerText()).trim();
+            assert.match(text, message);
+            assert.match(text, /resize|smaller|choose/i, 'the message says what to do');
+            await d.shots(name);
+            const c = await d.since(mark);
+            d.log({ case: name, ...c, message: text });
+            assert.deepEqual([c.cropOpen, c.cropConfirmed, c.detect, c.e4e], [0, 0, 0, 0]);
+            assert.equal(c.requests.model + c.requests.detector, 0);
+            assert.equal(await d.tiles.count(), tiles, 'no new face');
+            await d.operate(d.page.locator('.next-error').getByRole('button', { name: 'Dismiss' }));
+          });
+
+        // Exactly at each limit: the photo proceeds to the crop confirmation (cancelled here; nothing computed).
+        for (const [name, path] of [
+          ['at-bytes-64mib', 'bytes-64mib.png'],
+          ['at-pixels-120x1024sq', fx.pixelsAt],
+          ['at-edge-20000', fx.edgeAt],
+        ] as const)
+          await run(name, async () => {
+            const mark = await d.mark();
+            // A chosen file is read from disk lazily: the generated copy stays until the dialog is closed.
+            const proceeds = async (p: string) => {
+              await d.choose(0, [p]);
+              await d.confirmation();
+              assert.equal(await d.page.locator('.next-error > p').count(), 0, 'no refusal');
+              await d.shots(name);
+              await d.operate(cancelButton());
+              await d.dialog.waitFor({ state: 'detached' });
+            };
+            if (path in largeFiles) await large(path, largeFiles[path]!, proceeds);
+            else await proceeds(path);
+            const c = await d.since(mark);
+            d.log({ case: name, ...c });
+            assert.deepEqual([c.cropOpen, c.cropConfirmed, c.detect, c.e4e], [1, 0, 0, 0]);
+          });
+
+        // The locked requirement (crop.repro ui-no-face, flipped): a photo with no face, confirmed whole with OK, goes
+        // straight to one real e4e attempt; the crop does not reopen. The first encode accepts the photo download.
+        const okCase = (name: string, path: string, edit?: () => Promise<void>) =>
+          run(name, async () => {
+            const id = await firstId();
+            const mark = await d.mark();
+            await d.choose(0, [path]);
+            await d.confirmation();
+            if (edit) await edit();
+            await d.shots(`${name}-confirmation`);
+            await d.operate(okButton());
+            await d.consent();
+            await faceDone(id);
+            await d.settled();
+            const c = await d.since(mark);
+            const m = await readModel(d.page);
+            await d.shots(`${name}-result`);
+            d.log({
+              case: name,
               ...c,
-              classification: line?.['kind'],
+              error: m.Error,
+              face: m.faces.includes(id),
             });
-            assert.equal(line?.['kind'], item.kind);
-            assert.deepEqual([c.cropConfirmed, c.detect, c.e4e], [0, 0, 0]);
-            assert.equal(c.requests.model + c.requests.detector, 0, 'no model or detector request');
-            assert.equal(c.cropOpen, item.kind === 'missing' ? 1 : 0);
+            // The confirmation opened once; nothing after OK reopened it.
+            assert.equal(c.cropOpen, 1);
+            confirmedOnce({ ...c, cropOpen: c.cropOpen - 1 }, m, id);
+          });
+        await okCase('no-face-ok', fx.noFace);
+        // crop.repro ui-redetection-fails, flipped: the person crops the middle half (zoom 2) of a photo whose only
+        // face is in a corner; the confirmed crop holds no face and still reaches one e4e attempt.
+        await okCase('redetection-fails-zoom-2', fx.redetection, async () => {
+          await d.operate(adjustButton());
+          const area = d.dialog.getByRole('application', { name: 'Crop area' });
+          await area.waitFor();
+          for (let i = 0; i < 4; i++) await d.page.keyboard.press('+');
+          const zoom = await d.page.evaluate(
+            () =>
+              (
+                window as unknown as {
+                  __elmish: { model: { Crop: { view: { zoom: number } } } };
+                }
+              ).__elmish.model.Crop.view.zoom,
+          );
+          assert.equal(zoom, 2);
+          await d.shots('redetection-fails-zoom-2-editor');
+          await d.operate(useCrop());
+          await okButton().waitFor();
+        });
+        await okCase('multi-face-ok', fx.multiFace);
+
+        // Manual crop, numerically: the whole of a photo whose derivation is exactly the qualification case
+        // seed-0-unaligned. Adjust Crop, zoom out fully, Use Crop, OK; the engine receives that tensor, and the face's
+        // W+ (read from its saved file) is within 0.0001 of the native reference, whatever the time it took.
+        await run('manual-crop-wplus', async () => {
+          const id = await firstId();
+          const mark = await d.mark();
+          await d.choose(0, [fx.qualification]);
+          await d.confirmation();
+          await d.operate(adjustButton());
+          await d.dialog.getByRole('application', { name: 'Crop area' }).waitFor();
+          for (let i = 0; i < 32; i++) await d.page.keyboard.press('-');
+          await d.shots('manual-crop-wplus-editor');
+          await d.operate(useCrop());
+          await d.operate(okButton());
+          await d.consent();
+          const began = Date.now();
+          await faceDone(id);
+          await d.settled();
+          const ms = Date.now() - began;
+          const c = await d.since(mark);
+          const m = await readModel(d.page);
+          confirmedOnce({ ...c, cropOpen: c.cropOpen - 1 }, m, id);
+          assert.deepEqual(
+            c.tensorDigests,
+            [SEED0_UNALIGNED_TENSOR],
+            'the engine received the qualification tensor',
+          );
+          const saved = await d.save(0);
+          writeFileSync(fx.saved, saved);
+          const recovered = readRecovery(new Uint8Array(saved));
+          assert.equal(recovered.kind, 'parsed', JSON.stringify(recovered).slice(0, 200));
+          const values = Array.from(
+            (
+              recovered as {
+                recovered: { latent: { values: ArrayLike<number> } };
+              }
+            ).recovered.latent.values,
+          );
+          const stream = JSON.parse(readFileSync(join(runtime, 'manifest.json'), 'utf8'))
+            .encoderStream.url as string;
+          const reference = readFileSync(
+            join(runtime, stream.split('/runtime/')[1]!, '..', 'seed-0-unaligned.w.f32'),
+          );
+          const ref = new Float32Array(
+            reference.buffer,
+            reference.byteOffset,
+            reference.byteLength / 4,
+          );
+          assert.equal(values.length, ref.length);
+          const maxError = values.reduce((max, v, i) => Math.max(max, Math.abs(v - ref[i]!)), 0);
+          await d.shots('manual-crop-wplus-result');
+          d.log({
+            case: 'manual-crop-wplus',
+            ...c,
+            wPlusMaxAbsError: maxError,
+            threshold: 1e-4,
+            encodeMs: ms,
+          });
+          assert.ok(maxError <= 1e-4, `max |W+ error| ${maxError}`);
+        });
+
+        /** OK, then wait for the e4e attempt to start and cancel the run at the face's visible Cancel. */
+        const attemptThenCancel = async () => {
+          const id = await firstId();
+          const before = (await d.counters()).e4e;
+          await d.operate(okButton());
+          await d.consent();
+          await d.waitE4e(before);
+          await d.operate(first().getByRole('button', { name: /^Cancel/ }));
+          await d.settled();
+          return id;
+        };
+
+        // The guide overlay never reaches the pixels (orchestrator ruling, 27 Oct). The ported editor draws no guide
+        // yet (fm-z0et owns the oval), so the case lays one over the crop area itself: an opaque oval-and-eyes overlay
+        // shown in one confirmation and hidden by CSS in the next, on the same unchanged rectangle (Adjust Crop, Use
+        // Crop). Both, and the plain confirmation preview, must give one tensorDigest.
+        await run('guide-visible-hidden', async () => {
+          const mark = await d.mark();
+          const guide = (visible: boolean) =>
+            d.page.evaluate((show) => {
+              const area = document.querySelector('.next-crop-view')!;
+              let g = area.querySelector<HTMLElement>('.test-crop-guide');
+              if (!g) {
+                g = document.createElement('div');
+                g.className = 'test-crop-guide';
+                g.setAttribute('aria-hidden', 'true');
+                g.style.cssText =
+                  'position:absolute;inset:12%;border:6px solid #fff;border-radius:50%;pointer-events:none;' +
+                  'box-shadow:0 0 0 999px rgba(0,0,0,.6);background:radial-gradient(circle at 35% 40%,#f0f 0 6%,transparent 7%),radial-gradient(circle at 65% 40%,#f0f 0 6%,transparent 7%)';
+                area.appendChild(g);
+              }
+              g.style.display = show ? 'block' : 'none';
+              return getComputedStyle(g).display;
+            }, visible);
+          // 1. The plain confirmation preview.
+          await d.choose(0, [fx.nonSquare]);
+          await d.confirmation();
+          await d.shots('guide-none');
+          await attemptThenCancel();
+          // 2. The editor with the guide overlay visible over the same rectangle.
+          await d.choose(0, [fx.nonSquare]);
+          await d.confirmation();
+          await d.operate(adjustButton());
+          await d.dialog.getByRole('application', { name: 'Crop area' }).waitFor();
+          assert.equal(await guide(true), 'block');
+          await d.shots('guide-visible');
+          await d.operate(useCrop());
+          await attemptThenCancel();
+          // 3. The same, with the overlay hidden by CSS.
+          await d.choose(0, [fx.nonSquare]);
+          await d.confirmation();
+          await d.operate(adjustButton());
+          await d.dialog.getByRole('application', { name: 'Crop area' }).waitFor();
+          assert.equal(await guide(false), 'none');
+          await d.shots('guide-hidden');
+          await d.operate(useCrop());
+          await attemptThenCancel();
+          const c = await d.since(mark);
+          d.log({
+            case: 'guide-visible-hidden',
+            method: 'test overlay in .next-crop-view, shown then display:none',
+            ...c,
+          });
+          assert.equal(c.e4e, 3);
+          assert.equal(c.detect, 0);
+          assert.equal(c.tensorDigests.length, 3);
+          assert.equal(
+            new Set(c.tensorDigests).size,
+            1,
+            'guide shown, hidden or absent: one tensorDigest',
+          );
+        });
+
+        // All eight EXIF orientations of the same stored pixels: each confirms once and reaches one e4e attempt; the
+        // policy ignores EXIF (legacy-ignore-exif), so all eight tensors are the same.
+        await run('oriented-exif-1-8', async () => {
+          const mark = await d.mark();
+          for (const [i, path] of fx.oriented.entries()) {
+            const step = await d.mark();
+            await d.choose(0, [path]);
+            await d.confirmation();
+            if (i === 0 || i === 5) await d.shots(`oriented-${i + 1}`);
+            await attemptThenCancel();
+            const c = await d.since(step);
+            d.log({ case: `oriented-${i + 1}`, ...c });
+            assert.deepEqual([c.cropOpen, c.cropConfirmed, c.detect, c.e4e], [1, 1, 0, 1]);
           }
+          const c = await d.since(mark);
+          d.log({ case: 'oriented-exif-1-8', ...c });
+          assert.equal(
+            new Set(c.tensorDigests).size,
+            1,
+            'EXIF orientation does not change the tensor',
+          );
         });
-        // A model mismatch in a morph: the face is left out, with its reason.
-        await rrun(`${tag}-mismatch-morph`, async () => {
-          const mark = await r.mark();
-          const tile = r.tiles.nth(1);
-          await r.drop(tile.locator('.next-face-image'), [
-            { name: 'other.png', type: 'image/png', base64: b64(fx.mismatch) },
-          ]);
-          await tile.locator('[data-next-held="unknown-model"]').first().waitFor();
-          await r.operate(r.page.getByRole('button', { name: 'Create morph' }));
-          await r.page.waitForTimeout(800);
-          const m = await readModel(r.page);
-          await r.shots(`${tag}-mismatch-morph`);
-          const c = await r.since(mark);
-          r.log({ case: `${tag}-mismatch-morph`, ...c, status: m.Status });
-          assert.match(m.Status, /left out of morphs/);
-          assert.equal(c.e4e + c.detect + c.requests.model + c.requests.detector, 0);
+
+        // Cancel after OK: one terminal outcome, the face keeps no result, no crop reopens, nothing more is computed.
+        // OK (fm-fy2.17.1): three rapid taps on OK at its visible position make one encode request; the dialog
+        // closes and the tile's inline control beside the textbox shows Cancel while that encode runs.
+        await run('triple-ok', async () => {
+          const id = (await d.tiles.nth(0).getAttribute('data-next-face'))!;
+          const mark = await d.mark();
+          await d.choose(0, [fx.nonSquare]);
+          await d.confirmation();
+          const ok = okButton();
+          const box = (await ok.boundingBox())!;
+          const x = box.x + box.width / 2;
+          const y = box.y + box.height / 2;
+          const hit = await d.page.evaluate(
+            ([px, py]) =>
+              document.elementFromPoint(px!, py!)?.closest('button')?.textContent?.trim(),
+            [x, y],
+          );
+          assert.equal(hit, 'OK', 'OK is the control at its visible centre');
+          for (let i = 0; i < 3; i++) await d.page.mouse.click(x, y);
+          await d.consent();
+          await d.dialog.waitFor({ state: 'detached', timeout: 30_000 });
+          const slot = d.tiles.nth(0).locator('.next-input-row .next-face-generate');
+          await d.page.waitForFunction(
+            (el) => el?.textContent?.trim() === 'Cancel',
+            await slot.elementHandle(),
+            { timeout: 60_000 },
+          );
+          await d.shots('triple-ok-running');
+          await faceDone(id);
+          await d.settled();
+          await assertNoCardPreparation(
+            d.page,
+            'verified: photo encoder downloaded and used (1280 px)',
+          );
+          const c = await d.since(mark);
+          const m = await readModel(d.page);
+          d.log({ case: 'triple-ok', taps: 3, ...c, error: m.Error });
+          // The confirmation's own opening is counted; no reopen after OK.
+          confirmedOnce({ ...c, cropOpen: c.cropOpen - 1 }, m, id);
+          assert.equal(c.tensorDigests.length, 1, 'one encode request for three taps');
         });
-        // Mixed drops of 1, 2, 3, 8 and 30 files on the page: every file classified (in drop order) before any face
-        // changes; held kinds held, the saved face restored, each photo's confirmation in turn (cancelled here).
-        for (const n of width === 1280 ? [1, 2, 3, 8, 30] : [1, 3, 8])
-          await rrun(`${tag}-drop-${n}`, async () => {
-            const mark = await r.mark();
-            const lines = r.stillLines.length;
-            const before = await readModel(r.page);
-            const files = Array.from({ length: n }, (_, i) => pool[i % pool.length]!);
-            const photos = files.filter((f) => f.kind === 'missing').length;
-            await r.drop(
-              r.page.getByRole('heading', { name: 'What is this?' }),
-              files.map((f, i) => ({
-                name: `drop-${i}.${f.type.split('/')[1]}`,
-                type: f.type,
-                base64: b64(f.path),
+
+        await run('cancel-after-ok', async () => {
+          const mark = await d.mark();
+          await d.choose(0, [fx.nonSquare]);
+          await d.confirmation();
+          const id = await attemptThenCancel();
+          await d.page.waitForTimeout(2000);
+          const c = await d.since(mark);
+          const m = await readModel(d.page);
+          await d.shots('cancel-after-ok');
+          d.log({
+            case: 'cancel-after-ok',
+            ...c,
+            error: m.Error,
+            status: m.Status,
+          });
+          assert.deepEqual([c.cropOpen, c.cropConfirmed, c.detect, c.e4e], [1, 1, 0, 1]);
+          assert.ok(!m.faces.includes(id), 'the cancelled encode installed nothing');
+        });
+
+        // Stale revision: the face is edited (back to words) while its confirmed crop encodes. The edit wins: the
+        // late result is not installed over it, and no crop reopens.
+        await run('stale-revision', async () => {
+          const id = await firstId();
+          const mark = await d.mark();
+          await d.choose(0, [fx.nonSquare]);
+          await d.confirmation();
+          const before = (await d.counters()).e4e;
+          await d.operate(okButton());
+          await d.consent();
+          await d.waitE4e(before);
+          await d.words(0, 'stale revision check');
+          await d.settled();
+          await d.page.waitForTimeout(2000);
+          const c = await d.since(mark);
+          const m = await readModel(d.page);
+          await d.shots('stale-revision');
+          const input = m.inputs.find((i) => i.id === id)!;
+          d.log({ case: 'stale-revision', ...c, input, error: m.Error });
+          assert.deepEqual([c.cropOpen, c.cropConfirmed, c.detect], [1, 1, 0]);
+          assert.ok(c.e4e <= 1);
+          assert.deepEqual([input.mode, input.value], ['text', 'stale revision check']);
+          assert.ok(
+            !m.faces.includes(id),
+            'the stale photo result is not installed on the edited face',
+          );
+        });
+
+        // A 30 MB photo: no detector runs (no worker pass, no detector asset); a manual crop confirms and reaches one
+        // e4e attempt.
+        await run('large-30mb-manual', async () => {
+          const id = await firstId();
+          const mark = await d.mark();
+          // The generated copy stays until the encode settles: the crop is read from it at OK.
+          await large('large-30mb.png', largeFiles['large-30mb.png']!, async (p) => {
+            await d.choose(0, [p]);
+            await d.confirmation();
+            const c0 = await d.since(mark);
+            assert.equal(c0.detect, 0, 'the detector was not run');
+            await d.operate(adjustButton());
+            await d.dialog.getByRole('application', { name: 'Crop area' }).waitFor();
+            await d.page.keyboard.press('+');
+            await d.shots('large-30mb-editor');
+            await d.operate(useCrop());
+            await d.operate(okButton());
+            await d.consent();
+            await faceDone(id);
+            await d.settled();
+          });
+          const c = await d.since(mark);
+          const m = await readModel(d.page);
+          await d.shots('large-30mb-result');
+          d.log({
+            case: 'large-30mb-manual',
+            ...c,
+            error: m.Error,
+            fileBytes: 30_000_000,
+          });
+          confirmedOnce({ ...c, cropOpen: c.cropOpen - 1 }, m, id);
+        });
+
+        // Confirmed crops at 2, 3 and many in sequence (1 is every case above): a drop of N photos on the page opens
+        // N confirmations one after another; each OK confirms once and runs one e4e attempt, with no detection.
+        for (const n of [2, 3, 5])
+          await run(`sequence-${n}`, async () => {
+            const mark = await d.mark();
+            const before = await readModel(d.page);
+            // Five different photos, so every confirmed crop has its own tensor.
+            const photos = [
+              fx.nonSquare,
+              fx.noFace,
+              fx.multiFace,
+              fx.redetection,
+              fx.qualification,
+            ];
+            await d.drop(
+              d.page.getByRole('heading', { name: 'What is this?' }),
+              photos.slice(0, n).map((p, i) => ({
+                name: `photo-${i}${p.slice(p.lastIndexOf('.'))}`,
+                type: p.endsWith('.png') ? 'image/png' : 'image/jpeg',
+                base64: b64(p),
               })),
             );
-            for (let i = 0; i < photos; i++) {
-              await r.confirmation();
-              if (i === 0) await r.shots(`${tag}-drop-${n}-confirmation`);
-              const url = await r.cropUrl();
-              await r.operate(r.dialog.getByRole('button', { name: 'CANCEL', exact: true }));
-              await r.cropGone(url);
+            for (let i = 0; i < n; i++) {
+              await d.confirmation();
+              if (i === 0) await d.shots(`sequence-${n}-first`);
+              const owner = await d.page.evaluate(
+                () =>
+                  (
+                    window as unknown as {
+                      __elmish: { model: { Crop: { faceId: string } } };
+                    }
+                  ).__elmish.model.Crop.faceId,
+              );
+              await d.operate(okButton());
+              await d.consent();
+              await d.page.waitForFunction((face) => {
+                const m = (
+                  window as unknown as {
+                    __elmish: { model: { Crop: { faceId: string } | null } };
+                  }
+                ).__elmish.model;
+                return m.Crop?.faceId !== face;
+              }, owner);
             }
-            await r.settled();
-            const m = await readModel(r.page);
-            await r.page.evaluate(() => window.scrollTo(0, 0));
-            await r.shots(`${tag}-drop-${n}`);
-            const kinds = r.stillLines.slice(lines).map((l) => l['kind']);
-            const c = await r.since(mark);
-            r.log({
-              case: `${tag}-drop-${n}`,
+            await d.settled();
+            const c = await d.since(mark);
+            const m = await readModel(d.page);
+            const added = m.inputs.slice(before.inputs.length).map((i) => i.id);
+            const targets = m.inputs
+              .filter(
+                (i) =>
+                  !before.inputs.some(
+                    (b) => b.id === i.id && b.mode === i.mode && b.value === i.value,
+                  ),
+              )
+              .map((i) => i.id);
+            await d.shots(`sequence-${n}-result`);
+            d.log({
+              case: `sequence-${n}`,
               ...c,
-              kinds,
-              classified: r.stillLines.slice(lines),
-              inputs: m.inputs.length,
+              added: added.length,
               error: m.Error,
             });
-            assert.deepEqual(
-              kinds,
-              files.map((f) => f.kind),
-              'classified in drop order',
-            );
-            assert.equal(c.cropOpen, photos, 'one confirmation per photo, in turn');
-            assert.deepEqual([c.cropConfirmed, c.detect, c.e4e], [0, 0, 0]);
-            assert.equal(c.requests.model + c.requests.detector, 0, 'no model or detector request');
-            const reused = before.inputs.some(
-              (i) => i.mode !== 'photo' && i.mode !== 'project' && !i.value.trim(),
-            );
-            assert.equal(m.inputs.length, before.inputs.length + n - (reused ? 1 : 0));
-            const matching = files.filter((f) => f.kind === 'matching').length;
+            assert.equal(c.cropOpen, n, 'one confirmation per photo, in sequence');
+            assert.equal(c.cropConfirmed, n);
+            assert.equal(c.detect, 0);
+            assert.equal(c.e4e, n, 'one e4e attempt per confirmed crop');
+            assert.equal(m.Error, null);
+            assert.ok(targets.length >= n && targets.slice(-n).every((id) => m.faces.includes(id)));
             assert.equal(
-              m.inputs.filter((i) => i.mode === 'project').length -
-                before.inputs.filter((i) => i.mode === 'project').length,
-              matching +
-                files.filter((f) => f.kind === 'unknown-model' || f.kind === 'incompatible-schema')
-                  .length,
+              new Set(c.tensorDigests).size,
+              c.tensorDigests.length,
+              'each crop its own tensor',
             );
           });
-        assert.deepEqual(r.errors, [], 'no page errors');
-      }
+        assert.deepEqual(d.errors, [], 'no page errors');
+      };
+
+      const phone = async () => {
+        // ---- Phone, touch taps at 390 px: Cancel, Adjust Crop, Use Crop and OK where a thumb meets them. ----
+        if (!only || only.some((n) => n.startsWith('phone-'))) {
+          const p = await Session.open('phone', 390);
+          sessions.push(p);
+          const prun = caseRunner(t, p);
+          await prun('phone-cancel-before-ok', async () => {
+            const mark = await p.mark();
+            await p.choose(0, [fx.nonSquare]);
+            await p.confirmation();
+            await p.shots('phone-cancel-before-ok');
+            await p.operate(p.dialog.getByRole('button', { name: 'CANCEL', exact: true }));
+            await p.dialog.waitFor({ state: 'detached' });
+            const c = await p.since(mark);
+            p.log({ case: 'phone-cancel-before-ok', ...c });
+            assert.deepEqual([c.cropOpen, c.cropConfirmed, c.detect, c.e4e], [1, 0, 0, 0]);
+          });
+          await prun('phone-adjust-use-ok', async () => {
+            const id = (await p.tiles.nth(0).getAttribute('data-next-face'))!;
+            const mark = await p.mark();
+            await p.choose(0, [fx.redetection]);
+            await p.confirmation();
+            await p.operate(p.dialog.getByRole('button', { name: 'ADJUST CROP', exact: true }));
+            const area = p.dialog.getByRole('application', { name: 'Crop area' });
+            await area.waitFor();
+            // A touch drag on the crop square pans it. The drag comes to rest before the finger lifts (the event
+            // timestamps hold the end point for 300 ms): a release at speed starts a fling, and Chrome takes the next
+            // tap as "stop the fling" with no click, so Use Crop's tap was lost on a fast host.
+            const box = (await area.boundingBox())!;
+            const cdp = await p.context.newCDPSession(p.page);
+            const at = (x: number, y: number) => [{ x, y }];
+            const t0 = Date.now() / 1000;
+            const end = at(box.x + box.width / 2 + 40, box.y + box.height / 2 + 30);
+            await cdp.send('Input.dispatchTouchEvent', {
+              type: 'touchStart',
+              touchPoints: at(box.x + box.width / 2, box.y + box.height / 2),
+              timestamp: t0,
+            });
+            await cdp.send('Input.dispatchTouchEvent', {
+              type: 'touchMove',
+              touchPoints: end,
+              timestamp: t0 + 0.2,
+            });
+            await cdp.send('Input.dispatchTouchEvent', {
+              type: 'touchMove',
+              touchPoints: end,
+              timestamp: t0 + 0.5,
+            });
+            await cdp.send('Input.dispatchTouchEvent', {
+              type: 'touchEnd',
+              touchPoints: [],
+              timestamp: t0 + 0.5,
+            });
+            await p.shots('phone-adjust');
+            await p.operate(p.dialog.getByRole('button', { name: 'Use Crop', exact: true }));
+            await p.operate(p.dialog.getByRole('button', { name: 'OK', exact: true }));
+            await p.consent();
+            await p.page.waitForFunction(
+              (face) => {
+                const m = (
+                  window as unknown as {
+                    __fmStore: {
+                      getState(): {
+                        Faces: { id: string }[];
+                        Error: string | null;
+                        Busy: boolean;
+                        Gate: unknown;
+                      };
+                    };
+                  }
+                ).__fmStore.getState();
+                if (m.Gate) throw Error('A download decision appeared after consent returned.');
+                return (m.Faces.some((f) => f.id === face) || m.Error) && !m.Busy;
+              },
+              id,
+              { timeout: 300_000, polling: 500 },
+            );
+            await p.settled();
+            const c = await p.since(mark);
+            const m = await readModel(p.page);
+            await assertNoCardPreparation(
+              p.page,
+              'verified: photo encoder downloaded and used (390 px)',
+            );
+            await p.shots('phone-adjust-use-ok-result');
+            p.log({ case: 'phone-adjust-use-ok', ...c, error: m.Error });
+            assert.deepEqual([c.cropOpen, c.cropConfirmed, c.detect, c.e4e], [1, 1, 0, 1]);
+            assert.equal(m.Error, null);
+            assert.ok(m.faces.includes(id));
+          });
+          assert.deepEqual(p.errors, [], 'no page errors');
+        }
+      };
+      const drops = async () => {
+        // ---- Recovery classes through the drop targets, in fresh contexts: nothing downloaded, so a still that
+        // needed a model or the detector would have to request it. ----
+        for (const width of [1280, 390] as const) {
+          const tag = width === 1280 ? 'drops-desktop' : 'drops-phone';
+          if (only && !only.some((n) => n.startsWith(tag))) continue;
+          assert.ok(
+            existsSync(fx.saved),
+            'the encoded face saved by manual-crop-wplus (a matching still)',
+          );
+          const r = await Session.open(tag, width);
+          sessions.push(r);
+          const rrun = caseRunner(t, r);
+          const pool = [
+            { kind: 'matching', path: fx.saved, type: 'image/webp' },
+            { kind: 'unknown-model', path: fx.mismatch, type: 'image/png' },
+            { kind: 'incompatible-schema', path: fx.future, type: 'image/png' },
+            { kind: 'damaged', path: fx.flipped, type: 'image/png' },
+            { kind: 'missing', path: fx.nonSquare, type: 'image/jpeg' },
+            { kind: 'damaged', path: fx.truncated, type: 'image/png' },
+            { kind: 'missing', path: fx.noFace, type: 'image/jpeg' },
+          ];
+          // Each kind dropped alone on a face's own image: its class, with byte equality where stated.
+          await rrun(`${tag}-tile-kinds`, async () => {
+            for (const item of pool) {
+              const mark = await r.mark();
+              const tile = r.tiles.nth(1);
+              const id = (await tile.getAttribute('data-next-face'))!;
+              const kept = (await readModel(r.page)).inputs.find((i) => i.id === id);
+              assert.equal(
+                await r.drop(tile.locator('.next-face-image'), [
+                  {
+                    name: `tile.${item.type.split('/')[1]}`,
+                    type: item.type,
+                    base64: b64(item.path),
+                  },
+                ]),
+                id,
+                'the drop landed on this face',
+              );
+              if (item.kind === 'missing') {
+                await r.confirmation();
+                await r.page.waitForTimeout(1000);
+                await r.shots(`${tag}-tile-missing`);
+                await r.operate(r.dialog.getByRole('button', { name: 'CANCEL', exact: true }));
+                await r.dialog.waitFor({ state: 'detached' });
+              } else if (item.kind === 'matching') {
+                await tile.locator('img.next-face-img').waitFor({ timeout: 60_000 });
+                await r.settled();
+                const m = await readModel(r.page);
+                assert.equal(m.inputs.find((i) => i.id === id)?.mode, 'project');
+                assert.ok(m.faces.includes(id), 'the saved face is installed');
+              } else {
+                await tile.locator(`[data-next-held="${item.kind}"]`).first().waitFor();
+                await r.settled();
+                const m = await readModel(r.page);
+                const held = m.held.find((h) => h.id === id)!;
+                assert.equal(held.kind, item.kind);
+                assert.ok(
+                  !m.faces.includes(id) || item.kind === 'damaged',
+                  'a held still is never computed with',
+                );
+                if (item.kind === 'damaged') {
+                  assert.deepEqual(
+                    m.inputs.find((i) => i.id === id),
+                    kept,
+                    'a damaged still keeps the face identity',
+                  );
+                  const decodes = await r.page.evaluate(
+                    (b) =>
+                      createImageBitmap(
+                        new Blob([Uint8Array.from(atob(b), (c) => c.charCodeAt(0))]),
+                      ).then(
+                        (x) => (x.close(), true),
+                        () => false,
+                      ),
+                    b64(item.path),
+                  );
+                  assert.equal(
+                    (await tile.getByRole('button', { name: 'Use as photo' }).count()) === 1,
+                    decodes,
+                    'Use as photo only when the pixels decode',
+                  );
+                } else {
+                  assert.deepEqual(
+                    await r.save(1),
+                    readFileSync(item.path),
+                    'Save returns the opened bytes',
+                  );
+                  if (item.kind === 'incompatible-schema')
+                    assert.match(await tile.locator('.next-face-held').innerText(), /version 9/);
+                }
+              }
+              await r.shots(`${tag}-tile-${item.kind}`);
+              const c = await r.since(mark);
+              const line = r.stillLines.at(-1);
+              r.log({
+                case: `${tag}-tile-${item.kind}`,
+                ...c,
+                classification: line?.['kind'],
+              });
+              assert.equal(line?.['kind'], item.kind);
+              assert.deepEqual([c.cropConfirmed, c.detect, c.e4e], [0, 0, 0]);
+              assert.equal(
+                c.requests.model + c.requests.detector,
+                0,
+                'no model or detector request',
+              );
+              assert.equal(c.cropOpen, item.kind === 'missing' ? 1 : 0);
+            }
+          });
+          // A model mismatch in a morph: the face is left out, with its reason.
+          await rrun(`${tag}-mismatch-morph`, async () => {
+            const mark = await r.mark();
+            const tile = r.tiles.nth(1);
+            await r.drop(tile.locator('.next-face-image'), [
+              { name: 'other.png', type: 'image/png', base64: b64(fx.mismatch) },
+            ]);
+            await tile.locator('[data-next-held="unknown-model"]').first().waitFor();
+            await r.operate(r.page.getByRole('button', { name: 'Create morph' }));
+            await r.page.waitForTimeout(800);
+            const m = await readModel(r.page);
+            await r.shots(`${tag}-mismatch-morph`);
+            const c = await r.since(mark);
+            r.log({ case: `${tag}-mismatch-morph`, ...c, status: m.Status });
+            assert.match(m.Status, /left out of morphs/);
+            assert.equal(c.e4e + c.detect + c.requests.model + c.requests.detector, 0);
+          });
+          // Mixed drops of 1, 2, 3, 8 and 30 files on the page: every file classified (in drop order) before any face
+          // changes; held kinds held, the saved face restored, each photo's confirmation in turn (cancelled here).
+          for (const n of width === 1280 ? [1, 2, 3, 8, 30] : [1, 3, 8])
+            await rrun(`${tag}-drop-${n}`, async () => {
+              const mark = await r.mark();
+              const lines = r.stillLines.length;
+              const before = await readModel(r.page);
+              const files = Array.from({ length: n }, (_, i) => pool[i % pool.length]!);
+              const photos = files.filter((f) => f.kind === 'missing').length;
+              await r.drop(
+                r.page.getByRole('heading', { name: 'What is this?' }),
+                files.map((f, i) => ({
+                  name: `drop-${i}.${f.type.split('/')[1]}`,
+                  type: f.type,
+                  base64: b64(f.path),
+                })),
+              );
+              for (let i = 0; i < photos; i++) {
+                await r.confirmation();
+                if (i === 0) await r.shots(`${tag}-drop-${n}-confirmation`);
+                const url = await r.cropUrl();
+                await r.operate(r.dialog.getByRole('button', { name: 'CANCEL', exact: true }));
+                await r.cropGone(url);
+              }
+              await r.settled();
+              const m = await readModel(r.page);
+              await r.page.evaluate(() => window.scrollTo(0, 0));
+              await r.shots(`${tag}-drop-${n}`);
+              const kinds = r.stillLines.slice(lines).map((l) => l['kind']);
+              const c = await r.since(mark);
+              r.log({
+                case: `${tag}-drop-${n}`,
+                ...c,
+                kinds,
+                classified: r.stillLines.slice(lines),
+                inputs: m.inputs.length,
+                error: m.Error,
+              });
+              assert.deepEqual(
+                kinds,
+                files.map((f) => f.kind),
+                'classified in drop order',
+              );
+              assert.equal(c.cropOpen, photos, 'one confirmation per photo, in turn');
+              assert.deepEqual([c.cropConfirmed, c.detect, c.e4e], [0, 0, 0]);
+              assert.equal(
+                c.requests.model + c.requests.detector,
+                0,
+                'no model or detector request',
+              );
+              const reused = before.inputs.some(
+                (i) => i.mode !== 'photo' && i.mode !== 'project' && !i.value.trim(),
+              );
+              assert.equal(m.inputs.length, before.inputs.length + n - (reused ? 1 : 0));
+              const matching = files.filter((f) => f.kind === 'matching').length;
+              assert.equal(
+                m.inputs.filter((i) => i.mode === 'project').length -
+                  before.inputs.filter((i) => i.mode === 'project').length,
+                matching +
+                  files.filter(
+                    (f) => f.kind === 'unknown-model' || f.kind === 'incompatible-schema',
+                  ).length,
+              );
+            });
+          assert.deepEqual(r.errors, [], 'no page errors');
+        }
+      };
+      // Independent sessions run at once (fm-9jnt): the three desktop parts and the phone, then the drops, which need
+      // the face manual-crop-wplus saved. Every lane runs to its end before the first failure is reported.
+      const settle = async (lanes: Promise<void>[]) => {
+        const failed = (await Promise.allSettled(lanes)).find((r) => r.status === 'rejected');
+        if (failed) throw (failed as PromiseRejectedResult).reason;
+      };
+      const partA = desktop('a');
+      await settle([partA, desktop('b'), desktop('c'), phone()]);
+      await partA.catch(() => {});
+      await drops();
     } finally {
       const lines = sessions.flatMap((s) => s.lines);
       writeFileSync(
