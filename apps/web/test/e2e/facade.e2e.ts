@@ -469,6 +469,106 @@ test(
 );
 
 test(
+  'codec-export-retry: native post-frame codec failure retains identical frames; retry produces MP4 with zero inference',
+  { timeout: 600_000 },
+  async () => {
+    type CodecResult = {
+      out: Out;
+      hashes: string[];
+      key: string;
+      video: string | null;
+      inference: string[];
+    } & Settled;
+    let nativeFailure = false;
+    const consoleListener = (message: { text(): string }) => {
+      if (message.text().includes('fm-2xtz-native-finish-failure')) nativeFailure = true;
+    };
+    page.on('console', consoleListener);
+    try {
+      const videoWorker = page.waitForEvent('worker', {
+        predicate: (worker) => /video-worker/.test(worker.url()),
+        timeout: 120_000,
+      });
+      const running = call<CodecResult>('codecExportRetry');
+      const worker = await videoWorker;
+      await worker.evaluate(() => {
+        if (typeof VideoEncoder !== 'function' || typeof self.onmessage !== 'function')
+          throw Error('Real WebCodecs worker required');
+        const onmessage = self.onmessage;
+        const flush = VideoEncoder.prototype.flush;
+        let finishing = false,
+          injected = false;
+        self.onmessage = function (event: MessageEvent) {
+          if (event.data?.type === 'finish') finishing = true;
+          return onmessage.call(this, event);
+        };
+        VideoEncoder.prototype.flush = function () {
+          if (finishing && !injected) {
+            injected = true;
+            this.close();
+            console.info('fm-2xtz-native-finish-failure');
+          }
+          return flush.call(this); // closed native encoder rejects with a real InvalidStateError
+        };
+      });
+      const failed = await running;
+      assert.equal(nativeFailure, true, 'the actual encoder failed after the finish command');
+      assert.match(failed.out.errorMessage, /4 images are saved.*without generating again/);
+      assert.equal(failed.out.videoUrl, '');
+      assert.equal(failed.video, null);
+      assert.equal(failed.hashes.length, 4);
+      assert.ok(failed.inference.length > 0, 'first morph uses the real runtime');
+      const retry = await call<CodecResult>('codecExportRetry');
+      assert.equal(retry.out.errorMessage, '', retry.out.errorMessage);
+      assert.deepEqual(retry.inference, [], 'retry sends no inference or qualification commands');
+      assert.equal(retry.key, failed.key);
+      assert.deepEqual(retry.hashes, failed.hashes);
+      assert.ok(retry.video, 'retry makes a real MP4');
+      const file = join(results, 'codec-export-retry.mp4');
+      writeFileSync(file, Buffer.from(retry.video, 'base64'));
+      const probe = JSON.parse(
+        execFileSync(
+          'ffprobe',
+          [
+            '-v',
+            'error',
+            '-count_frames',
+            '-select_streams',
+            'v:0',
+            '-show_entries',
+            'stream=nb_read_frames,r_frame_rate,width,height',
+            '-of',
+            'json',
+            file,
+          ],
+          { encoding: 'utf8' },
+        ),
+      ) as { streams: { nb_read_frames: string; r_frame_rate: string }[] };
+      assert.equal(Number(probe.streams[0]!.nb_read_frames), 4);
+      assert.equal(probe.streams[0]!.r_frame_rate, '16/1');
+      writeFileSync(
+        join(results, 'codec-export-retry.json'),
+        JSON.stringify(
+          {
+            failed: { ...failed, video: undefined },
+            retry: { ...retry, video: undefined },
+            probe,
+            nativeFailure,
+          },
+          null,
+          2,
+        ),
+      );
+      log(
+        `codec-export-retry:4 canonical frames unchanged, native failure observed, retry inference=${retry.inference.length}, decoded4 MP4 frames`,
+      );
+    } finally {
+      page.off('console', consoleListener);
+    }
+  },
+);
+
+test(
   'restore-last: after a reload the faces come back as a typed Output',
   { timeout: 300_000 },
   async () => {

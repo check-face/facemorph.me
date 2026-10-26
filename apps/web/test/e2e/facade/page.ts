@@ -9,7 +9,8 @@ import type {
 } from '../../../src/operations/service.ts';
 import type { InputRevision } from '../../../src/contracts/inputs.ts';
 import { readSession } from '../../../src/Next/last-result.mjs';
-import { cropPhotoReported } from '../../../src/Next/product-bridge.mjs';
+import { cropPhotoReported, morphFramesKey } from '../../../src/Next/product-bridge.mjs';
+import { frameStoreGet } from '../../../src/Next/morph-frames.mjs';
 import { createBrowserRuntime } from '../../../src/Next/browser/runtime.mjs';
 import { generationIdentity } from '../../../src/Next/browser/identity.mjs';
 import { digest, openOriginals } from '../../../src/Next/browser/originals.mjs';
@@ -474,6 +475,54 @@ const harness = {
       fps: 16,
     });
     return { out, planned, ...settled() };
+  },
+  /** fm-2xtz: actual worker commands, canonical retained bytes and retry MP4, never fake frames. */
+  async codecExportRetry() {
+    const options = request(
+      'morph',
+      '',
+      [input('codec-a', 'seed', '271'), input('codec-b', 'seed', '314')],
+      2,
+    );
+    f.rememberView(options);
+    const posted: string[] = [];
+    const post = Worker.prototype.postMessage;
+    Worker.prototype.postMessage = function (this: Worker, message: unknown, ...rest: unknown[]) {
+      const command = message as { type?: unknown; provider?: unknown } | null;
+      if (
+        typeof command?.type === 'string' &&
+        (['generate', 'synthesize', 'synthesize-frames', 'encode-aligned', 'qualify'].includes(
+          command.type,
+        ) ||
+          (command.type === 'initialize' && typeof command.provider === 'string'))
+      )
+        posted.push(command.type);
+      return (post as (...a: unknown[]) => void).call(this, message, ...rest);
+    } as typeof Worker.prototype.postMessage;
+    try {
+      const out = await f.execute(options);
+      const key = await morphFramesKey();
+      const frames = key ? await frameStoreGet(key) : null;
+      const hashes = await Promise.all(
+        (frames ?? []).map(async (blob: Blob) =>
+          Array.from(
+            new Uint8Array(await crypto.subtle.digest('SHA-256', await blob.arrayBuffer())),
+            (byte) => byte.toString(16).padStart(2, '0'),
+          ).join(''),
+        ),
+      );
+      let video: string | null = null;
+      if (out.videoUrl) {
+        const bytes = new Uint8Array(await (await fetch(out.videoUrl)).arrayBuffer());
+        let text = '';
+        for (let i = 0; i < bytes.length; i += 0x8000)
+          text += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+        video = btoa(text);
+      }
+      return { out, hashes, key, video, inference: posted, ...settled() };
+    } finally {
+      Worker.prototype.postMessage = post;
+    }
   },
   /**
    * morph.render (fm-ioap): a closed two-face pairwise ellipse, 16 frames per segment (32 frames) at 16 FPS, through

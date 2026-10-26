@@ -106,6 +106,35 @@ async function bridgeContext({generate,writer,readLast,fetchManifest,identity}={
  return ctx;
 }
 const singleRequest=(id,value)=>({jobId:1,action:'face',target:id,provider:'cpu',inputs:[{id,mode:'seed',value}],kind:'linear',width:0,pinch:false,frames:16,fps:16});
+test('post-frame export failure retries only retained images; missing frames never cause inference',async()=>{
+ let ctx,attempts=0,inferred=0,admitted=0;const encoded=[];
+ const face=()=>({blob:new Blob(['canonical'],{type:'image/png'}),latent:{space:'w-plus',values:new Float32Array(9216)},provenance:{bundleVersion:'test',manifestSha256:'0'.repeat(64),modelSha256:'a'.repeat(64),noiseSha256:'b'.repeat(64)}});
+ ctx=await bridgeContext({generate:async()=>{inferred++;return face();}});
+ const service=ctx.createBrowserRuntime();service.synthesize=async()=>{inferred++;return face();};service.setPreferredRoute=()=>{admitted++;};
+ ctx.frameStoreGet=async()=>ctx.retained.size===32?Array.from({length:32},(_,i)=>ctx.retained.get(i)):null;
+ ctx.videoWriter=()=>{const attempt=++attempts;return {initialize:async()=>({kind:'webcodecs'}),retain:async(blob,index)=>{ctx.retained.set(index,blob);return blob;},add:async(blob,index)=>{encoded.push({attempt,blob,index});},finish:async()=>{if(attempt===1)throw Error('real codec boundary fixture');return new Blob(['video'],{type:'video/mp4'});},dispose(){}};};
+ const request={...singleRequest('a','1'),action:'morph',inputs:[{id:'a',mode:'seed',value:'1'},{id:'b',mode:'seed',value:'2'}]};
+ const failed=await ctx.run(request);assert.match(failed.errorMessage,/32 images are saved.*without generating again/);assert.equal(failed.videoUrl,'');assert.equal(ctx.retained.size,32);assert(inferred>0);
+ const originals=[...ctx.retained.values()],before={inferred,admitted};
+ const saved=ctx.retained.get(0);ctx.retained.delete(0);
+ for(let retry=0;retry<2;retry++){const refused=await ctx.run({...request,jobId:2+retry});assert.match(refused.errorMessage,/saved images.*no longer available/);assert.equal(refused.videoUrl,'');}
+ assert.equal(attempts,1);assert.deepEqual({inferred,admitted},before);
+ ctx.retained.set(0,saved);
+ const retried=await ctx.run({...request,jobId:4});assert.equal(retried.errorMessage,'');assert(retried.videoUrl.startsWith('blob:'));assert.deepEqual({inferred,admitted},before);
+ const retryFrames=encoded.filter(item=>item.attempt===2);assert.deepEqual(retryFrames.map(item=>item.index),Array.from({length:32},(_,i)=>i));assert(retryFrames.every(item=>item.blob===ctx.retained.get(item.index)));assert.equal(ctx.retained.size,originals.length);
+ // A changed setting is a new morph; it does not inherit the export-only shortcut.
+ await ctx.run({...request,jobId:5,width:.75});assert(admitted>before.admitted);
+});
+test('an edit during post-failure retained-frame read cannot restore an obsolete retry',async()=>{
+ let ctx,release,reading,admitted=0,reads=0;const began=new Promise(resolve=>reading=resolve);
+ const face=()=>({blob:new Blob(['canonical'],{type:'image/png'}),latent:{space:'w-plus',values:new Float32Array(9216)},provenance:{bundleVersion:'test',manifestSha256:'0'.repeat(64),modelSha256:'a'.repeat(64),noiseSha256:'b'.repeat(64)}});
+ ctx=await bridgeContext({generate:async()=>face()});const runtime=ctx.createBrowserRuntime();runtime.synthesize=async()=>face();runtime.setPreferredRoute=()=>admitted++;
+ ctx.frameStoreGet=async()=>{if(++reads===2){reading();return new Promise(resolve=>release=resolve);}return null;};
+ ctx.videoWriter=()=>({initialize:async()=>({kind:'webcodecs'}),retain:async(blob,index)=>{ctx.retained.set(index,blob);return blob;},add:async()=>{},finish:async()=>{throw Error('codec boundary');},dispose(){}});
+ const request={...singleRequest('a','1'),action:'morph',inputs:[{id:'a',mode:'seed',value:'1'},{id:'b',mode:'seed',value:'2'}]};
+ const pending=ctx.run(request);await began;ctx.invalidate('a');release([...ctx.retained.values()]);const stale=await pending;assert.doesNotMatch(stale.errorMessage,/images are saved.*without generating again/);
+ const before=admitted;await ctx.run({...request,jobId:2});assert.equal(admitted,before+1,'the next morph must take normal admission after an intervening edit');
+});
 test('editing/removing an in-flight face discards its result and retains an unrelated completed face',async()=>{
  let resolve,started;const began=new Promise(r=>started=r);
  const face={blob:new Blob(['image'],{type:'image/png'}),latent:{space:'w-plus',values:new Float32Array(9216)}};

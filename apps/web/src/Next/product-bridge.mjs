@@ -49,7 +49,18 @@ const videoRoutes=new WeakMap();
 // Prepared Save/Share files, their names and the export policy (fm-eeki): one prepared file per result and format.
 let exportFiles=null;const exportFilesOf=()=>exportFiles??=createExportFiles();
 let morphRevision=0;
-export function invalidateMorph(){morphRevision++;video=null;project=null;exportFiles?.drop('video');const url=urls.get('video');if(url)URL.revokeObjectURL(url);urls.delete('video');clearLiveFrames();retainSession();}
+let retryMorphExport=null;
+export function invalidateMorph(){morphRevision++;retryMorphExport=null;video=null;project=null;exportFiles?.drop('video');const url=urls.get('video');if(url)URL.revokeObjectURL(url);urls.delete('video');clearLiveFrames();retainSession();}
+// A codec retry owns this exact completed morph. An edit or a new route/setting is a new
+// generation request; an unchanged retry must never silently generate missing frames.
+function sameMorphExport(request,saved){
+ return saved&&saved.project===project&&saved.revision===morphRevision&&
+  ['provider','kind','width','pinch','frames','fps','quality'].every(key=>request[key]===saved.request[key])&&
+  JSON.stringify(request.routeSnapshot||null)===JSON.stringify(saved.request.routeSnapshot||null)&&
+  request.inputs.length===saved.request.inputs.length&&request.inputs.every((item,index)=>{
+   const old=saved.request.inputs[index];return item.id===old.id&&item.mode===old.mode&&item.value===old.value&&item.file===old.file&&revisionOf(item.id)===saved.revisions.get(item.id);
+  });
+}
 export function invalidateFace(id){
  arrivalRevision++;faceRevisions.set(id,(faceRevisions.get(id)||0)+1);
  faces.delete(id);exportFiles?.drop(id);const url=urls.get(id);if(url)URL.revokeObjectURL(url);urls.delete(id);
@@ -327,13 +338,14 @@ export function subscribe(callback){listeners.add(callback);const report=({detai
 export async function execute(request){
  if(active)throw Error('Another job is still stopping.');active=new AbortController();currentJob=request.jobId;closePhotoRun('completed');diagnostics.start(request.action,request.provider);reportStorage();
  const revisions=new Map(request.inputs.map(item=>[item.id,revisionOf(item.id)]));
+ const exportOnly=request.action==='morph'&&sameMorphExport(request,retryMorphExport)?retryMorphExport:null;
  analytics.setJobContext(()=>({requested_route:request.provider||'auto',faces:jobCounts.facesTotal,frames:jobCounts.framesTotal,input_kind:analytics.inputKind(request.inputs),morph_kind:request.action==='morph'?project?.morph?.kind:undefined}));
  jobCounts.facesDone=0;jobCounts.facesTotal=request.action==='face'?1:request.inputs.length;jobCounts.framesDone=0;jobCounts.framesTotal=0;jobCounts.videoFramesDone=0;jobCounts.videoFramesTotal=0;
  analytics.jobStarted({action:request.action,provider:request.provider||'auto',warm:downloads.routeReady,target:request.target||'morph'});
  try{
-  await admission(request.provider,request.routeSnapshot);
+  if(!exportOnly)await admission(request.provider,request.routeSnapshot);
   // Morph is admitted on its own (fm-lt2p): faces being admitted says nothing about the video codec.
-  if(request.action==='morph'){const decision=await (await engine()).admission?.('morph',request.provider);if(decision?.status==='refused')throw new AdmissionRefused(decision);}
+  if(request.action==='morph'&&!exportOnly){const decision=await (await engine()).admission?.('morph',request.provider);if(decision?.status==='refused')throw new AdmissionRefused(decision);}
   // Per-face generate (U-03): work only the one face asked for, so no other face emits a
   // synthesis. Cached hits stay cheap and are not treated as measurements.
   if(request.action==='face'){
@@ -367,13 +379,14 @@ export async function execute(request){
    jobCounts.facesDone=1;diagnostics.finish('completed');return snapshot('Blend updated.');
   }
   jobCounts.facesDone=0;jobCounts.facesTotal=request.inputs.length;jobCounts.framesDone=0;jobCounts.framesTotal=0;jobCounts.videoFramesDone=0;jobCounts.videoFramesTotal=0;
-  await inputs(request,revisions);checked();
+  if(!exportOnly)await inputs(request,revisions);checked();
   const renderToken=morphRevision;
   if(request.action==='morph'){
    const path=createLatentPath(project.morph);if(path.totalFrames>4096)throw Error('Choose fewer faces or frames for this export.');
    jobCounts.framesTotal=path.totalFrames;jobCounts.videoFramesTotal=path.totalFrames;
-   const framesKey=await morphFramesKey();clearLiveFrames();liveFrameKey=framesKey;liveFrames=Array(path.totalFrames).fill('');
+   const framesKey=exportOnly?exportOnly.framesKey:await morphFramesKey();clearLiveFrames();liveFrameKey=framesKey;liveFrames=Array(path.totalFrames).fill('');
    const stored=framesKey?await frameStoreGet(framesKey).catch(()=>null):null;analytics.operationResult?.('frame-cache',stored?'hit':'miss');
+   if(exportOnly&&stored?.length!==path.totalFrames)throw Error('The saved images for this video are no longer available. Change a morph setting to generate a new morph.');
    writer=videoWriter({codec:manifest.codec,fps:project.morph.framesPerSecond,quality:request.quality==='full'?'full':'standard',signal:active.signal,onProgress:progress,framesKey,totalFrames:path.totalFrames});const videoChoice=await writer.initialize();
    // morph.render (fm-ioap): stylegan-js renderMorph owns the frame production, the branch choice, ordered delivery
    // and the settle status; the bridge keeps display URLs, the frame counter, progress copy and supersession.
@@ -387,8 +400,8 @@ export async function execute(request){
    const morphWriter=typeof OffscreenCanvas==='function'?writer:{add:(blob,index)=>writer.add(blob,index),retain:writer.retain&&((blob,index)=>writer.retain(blob,index)),finish:()=>writer.finish(),dispose:()=>writer.dispose()};
    const blobFrame=async output=>output.rgba?output:readyFace(output);
    let exporting=false,videoBegan=now();
-   const settled=await renderMorph({path,canonical:()=>infillFrames(path,project.morph),writer:morphWriter,store:framesKey?{get:frameStoreGet,getOne:frameStoreGetOne}:undefined,framesKey,signal,window:FRAME_WINDOW,
-    source:{
+   const settled=await renderMorph({path,canonical:()=>infillFrames(path,project.morph),writer:morphWriter,store:framesKey?{get:frameStoreGet,getOne:frameStoreGetOne}:undefined,framesKey,signal,window:FRAME_WINDOW,branch:exportOnly?'cached-result':undefined,
+    source:exportOnly?{synthesize:async()=>{throw Error('Saved images are unavailable. Export retry cannot generate images.');}}:{
      synthesize:async(latent,{raw})=>blobFrame(await runtime.synthesize(latent,{signal:active.signal,persist:false,raw})),
      synthesizeFrames:typeof runtime.synthesizeFrames==='function'?(latents,{raw,onFrame})=>runtime.synthesizeFrames(latents,{signal:active.signal,raw,onFrame:(at,output)=>blobFrame(output).then(frame=>onFrame(at,frame))}):undefined},
     endpoint:async visitId=>{const saved=faces.get(visitId);return saved?readyFace(saved):null;},
@@ -399,9 +412,17 @@ export async function execute(request){
    writer=null;
    if(!current()||request.inputs.some(item=>revisionOf(item.id)!==revisions.get(item.id)))throw superseded();
    if(settled.status==='cancelled')throw new DOMException('Morph cancelled','AbortError');
+   if(settled.status==='export-failed'&&framesKey){
+    const retained=await frameStoreGet(framesKey).catch(()=>null);
+    if(!current()||request.inputs.some(item=>revisionOf(item.id)!==revisions.get(item.id)))throw superseded();
+    if(retained?.length===path.totalFrames){
+     retryMorphExport={project,revision:morphRevision,framesKey,revisions,request:{...request,inputs:request.inputs.map(item=>({...item})),routeSnapshot:request.routeSnapshot&&{...request.routeSnapshot}}};
+     throw Error(`Video export failed. Your ${path.totalFrames} images are saved. Try again to export them without generating again.`);
+    }
+   }
    if(settled.status!=='complete'){const message=settled.error.message;throw Error(/Your faces are saved/.test(message)?message:`${message} Your faces are saved.`);}
    const finished=settled.video;recordUnit(videoTimings,(now()-videoBegan)/path.totalFrames);analytics.stageDuration?.('export',now()-videoBegan);
-   video=finished;if(videoChoice)videoRoutes.set(finished,videoChoice);replaceUrl('video',video);
+   retryMorphExport=null;video=finished;if(videoChoice)videoRoutes.set(finished,videoChoice);replaceUrl('video',video);
   }
   rememberView(request);retainSession();
   diagnostics.finish('completed');return snapshot();
