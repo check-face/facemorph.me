@@ -126,7 +126,7 @@ function Modal({
         } else if (e.key === 'Tab') {
           const controls = [
             ...e.currentTarget.querySelectorAll<HTMLElement>(
-              'button, input, textarea, select, [tabindex]',
+              'a[href], button, input, textarea, select, [tabindex]',
             ),
           ].filter(
             (item) =>
