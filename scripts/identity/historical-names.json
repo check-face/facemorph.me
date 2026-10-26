@@ -1,0 +1,40 @@
+{
+  "$comment": "Lookup mapping for frozen records after the check-face -> facemorph-me organization rename (fm-fy2.20, plan: rename.repair). Frozen evidence, research history, import provenance and dated docs keep the repository names they were written with; they are resolved here by stable repository ID, never rewritten. A name can mean different repositories over time: check-face/facemorph.me named the classic application until the monorepo took that name, so GitHub's redirect for it now reaches the monorepo, where classic's runs and commits do not exist. Resolve a recorded run or commit by ID: try each candidate repository in order and use the one that answers.",
+  "resolve": {
+    "run": "gh api repositories/<id>/actions/runs/<run>",
+    "commit": "gh api repositories/<id>/commits/<sha>"
+  },
+  "names": [
+    {
+      "recorded": "check-face/facemorph.me",
+      "candidates": [295956585, 1413979666],
+      "meaning": "The classic application in records from before the monorepo took the name (classic research history, docs/review, import provenance, self-host pin 0abb215, runs such as 38033537996 and 38033695234); the monorepo in its own later records. A run or commit exists in exactly one of the two."
+    },
+    {
+      "recorded": "check-face/facemorph.me-classic",
+      "candidates": [295956585],
+      "meaning": "The classic application under its pre-rename organization."
+    },
+    {
+      "recorded": "check-face/checkface",
+      "candidates": [185985766],
+      "meaning": "The archived legacy backend (archived as-is)."
+    },
+    {
+      "recorded": "check-face/facemorph-names",
+      "candidates": [348379171],
+      "meaning": "The legacy names site source."
+    },
+    {
+      "recorded": "check-face/encoder4editing",
+      "candidates": [368806700],
+      "meaning": "The encoder fork."
+    }
+  ],
+  "verified": [
+    {
+      "on": "2026-10-26",
+      "check": "gh api repositories/295956585/actions/runs/38033537996 and .../38033695234 resolve to facemorph-me/facemorph.me-classic; the same IDs under repositories/1413979666 answer 404; commits 0abb215 and b2d945a resolve under 295956585 and not under 1413979666; https://github.com/check-face/facemorph.me/actions/runs/38033537996 answers 301 to the monorepo"
+    }
+  ]
+}

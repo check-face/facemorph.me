@@ -19,8 +19,8 @@
     "expectedPin": "0abb215f27b16e17e3919cf78b616b6ae4998a5d"
   },
   "organizations": [
-    { "identity": "org:check-face", "login": "check-face" },
-    { "identity": "org:facemorph-me", "login": "facemorph-me", "availabilityOnly": true }
+    { "identity": "org:facemorph-me", "login": "facemorph-me" },
+    { "identity": "org:check-face", "login": "check-face", "availabilityOnly": true }
   ],
   "hosts": [
     {

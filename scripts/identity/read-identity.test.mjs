@@ -306,7 +306,7 @@ test('live: repository identities re-read by ID agree with the checked-in values
 test('live: each checked-in `gh api` value matches a re-run of the command it cites, or the reader lists it as drift', async () => {
   const cited = checkedIn.filter(
     (x) =>
-      x.identity !== 'org:facemorph-me' &&
+      x.identity !== 'org:check-face' &&
       /^gh api repositories\/\d+ --jq|^gh api orgs\/[a-z-]+ --jq/.test(x.command),
   );
   assert.ok(cited.length >= 5 * 7, 'repository and organization fields cite their reads');

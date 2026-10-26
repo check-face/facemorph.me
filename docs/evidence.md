@@ -30,3 +30,11 @@ cp scripts/obs/obs-snapshot.{service,timer} ~/.config/systemd/user/ && systemctl
 The page reads only what the tools already wrote; it creates nothing and gates nothing. If it stops
 being useful, delete the timer and the script — the underlying evidence surfaces above are the
 authority.
+
+## Repository names in older records
+
+Frozen records, research history and import provenance keep the GitHub repository names they were
+written with; the organization rename does not rewrite them. An old name can now redirect to a
+different repository (the classic application's old name now reaches the monorepo), so resolve a
+recorded run or commit by stable repository ID with
+[scripts/identity/historical-names.json](../scripts/identity/historical-names.json).

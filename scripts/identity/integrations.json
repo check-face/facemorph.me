@@ -30,6 +30,14 @@
         {
           "command": "Cloudflare connector DNS read (facemorph.me A 76.76.21.21, proxied false)",
           "at": "2026-10-24T08:31:00Z"
+        },
+        {
+          "command": "node scripts/identity/read-identity.mjs after the rename (exit 3: drift limited to owner names, ID-based OIDC prefixes, runner/workflow additions and the pre-rename deploys of 24-25 October): integration:classic-vercel-production workflow.check no drift; legacy-production-web deploy.record.run 40131971810 (master 8525121, 24 October, before the rename) still attests the served artifact",
+          "at": "2026-10-26"
+        },
+        {
+          "command": "gh run view 40273903805 -R facemorph-me/facemorph.me-classic (deploy.yml on pull request #41 under the new owner: build, including the Vercel preview deployment, success)",
+          "at": "2026-10-26"
         }
       ],
       "check": {
@@ -84,6 +92,14 @@
         {
           "command": "Cloudflare connector: workers/domains next.facemorph.me -> facemorph-next; workers/scripts facemorph-next modified 2026-10-24T02:59:22Z",
           "at": "2026-10-24T08:31:00Z"
+        },
+        {
+          "command": "node scripts/identity/read-identity.mjs after the rename (exit 3: drift limited to owner names, ID-based OIDC prefixes, runner/workflow additions and the pre-rename deploys of 24-25 October): integration:classic-next-site workflow.check no drift; on-device-candidate deploy.record.run 40239792332 (11b741d, 25 October) still attests the served artifact",
+          "at": "2026-10-26"
+        },
+        {
+          "command": "gh run view 40273823098 -R facemorph-me/facemorph.me-classic (next-site.yml on pull request #40 under the new owner: artifact and compiled-ui success; deploy skipped on pull request)",
+          "at": "2026-10-26"
         }
       ],
       "check": {
@@ -126,6 +142,10 @@
         {
           "command": "Cloudflare connector: workers/domains models.facemorph.me -> facemorph-models; r2/buckets facemorph-runtime-mirror",
           "at": "2026-10-24T08:31:00Z"
+        },
+        {
+          "command": "node scripts/identity/read-identity.mjs after the rename (exit 3: drift limited to owner names, ID-based OIDC prefixes, runner/workflow additions and the pre-rename deploys of 24-25 October): integration:classic-models-mirror workflow.check and model-mirror sample no drift",
+          "at": "2026-10-26"
         }
       ],
       "check": {
@@ -166,6 +186,10 @@
         {
           "command": "Cloudflare connector: workers/scripts facemorph-name-catalogue (assets) modified 2026-10-10T06:19:58Z",
           "at": "2026-10-24T08:31:00Z"
+        },
+        {
+          "command": "node scripts/identity/read-identity.mjs after the rename (exit 3: drift limited to owner names, ID-based OIDC prefixes, runner/workflow additions and the pre-rename deploys of 24-25 October): integration:classic-name-catalogue workflow.check and names-catalogue sample no drift",
+          "at": "2026-10-26"
         }
       ],
       "check": {
@@ -205,6 +229,10 @@
         {
           "command": "Cloudflare connector: workers/scripts facemorph-seed-gallery (assets) modified 2026-09-16T05:28:27Z",
           "at": "2026-10-24T08:31:00Z"
+        },
+        {
+          "command": "node scripts/identity/read-identity.mjs after the rename (exit 3: drift limited to owner names, ID-based OIDC prefixes, runner/workflow additions and the pre-rename deploys of 24-25 October): host value unchanged; not GitHub-bound",
+          "at": "2026-10-26"
         }
       ],
       "rename": "not GitHub-bound"
@@ -227,6 +255,10 @@
         {
           "command": "Cloudflare connector: zones/{zone}/workers/routes lists only next.facemorph.me/stats/* and facemorph.me/stats/* (facemorph-stats); workers/scripts facemorph-next-diagnostics modified 2026-09-16T06:27:35Z",
           "at": "2026-10-24T08:31:00Z"
+        },
+        {
+          "command": "node scripts/identity/read-identity.mjs after the rename (exit 3: drift limited to owner names, ID-based OIDC prefixes, runner/workflow additions and the pre-rename deploys of 24-25 October): not GitHub-bound; no GitHub-side change",
+          "at": "2026-10-26"
         }
       ],
       "rename": "not GitHub-bound; a retirement candidate for the domain handover inventory"
@@ -255,6 +287,14 @@
         {
           "command": "Cloudflare connector: zones/{zone}/workers/routes; dns_records facemorph.me A proxied false",
           "at": "2026-10-24T08:31:00Z"
+        },
+        {
+          "command": "node scripts/identity/read-identity.mjs after the rename (exit 3: drift limited to owner names, ID-based OIDC prefixes, runner/workflow additions and the pre-rename deploys of 24-25 October): integration:monorepo-stats-worker workflow.check no drift",
+          "at": "2026-10-26"
+        },
+        {
+          "command": "gh run list --workflow main.yml (runs 40267533753 through 40273797926 under facemorph-me: stats-worker / test-and-deploy success)",
+          "at": "2026-10-26"
         }
       ],
       "check": {
@@ -296,6 +336,14 @@
         {
           "command": "Cloudflare connector: pages/projects beads-dilger-dev (domains beads-dilger-dev.pages.dev, beads.dilger.dev; source none)",
           "at": "2026-10-24T08:31:00Z"
+        },
+        {
+          "command": "node scripts/identity/read-identity.mjs after the rename (exit 3: drift limited to owner names, ID-based OIDC prefixes, runner/workflow additions and the pre-rename deploys of 24-25 October): integration:monorepo-beads-site workflow.check no drift",
+          "at": "2026-10-26"
+        },
+        {
+          "command": "gh run list --workflow main.yml (runs 40267533753 through 40273797926 under facemorph-me: beads-site / publish success)",
+          "at": "2026-10-26"
         }
       ],
       "check": {
@@ -328,7 +376,7 @@
       "target": "https://names.facemorph.me (CNAME cname.vercel-dns.com, DNS-only; Vercel team slug `erinome`)",
       "trigger": "push to master (Production); other branches and pull requests (Preview)",
       "credentials": ["Vercel GitHub app installation (no repository secret)"],
-      "status": "verified",
+      "status": "needs-inspection",
       "evidence": [
         {
           "command": "node scripts/identity/read-identity.mjs (org:check-face installations; legacy-names-site deploy.record.* and source.commit; legacy-names-source environments)",
@@ -337,9 +385,14 @@
         {
           "command": "Cloudflare connector DNS read (names.facemorph.me CNAME cname.vercel-dns.com, proxied false)",
           "at": "2026-10-24T08:31:00Z"
+        },
+        {
+          "command": "gh api orgs/facemorph-me/installations (vercel installed on all repositories); gh api repos/facemorph-me/facemorph-names/deployments?environment=Production (latest by vercel[bot] at 9243fef = master head); names.facemorph.me unchanged in read-identity",
+          "at": "2026-10-26"
         }
       ],
-      "rename": "Vercel's Git connection follows the repository ID through a rename, but re-check the project's linked repository after the rename (Vercel-side settings need a Vercel credential)"
+      "rename": "Vercel's Git connection follows the repository ID through a rename, but re-check the project's linked repository after the rename (Vercel-side settings need a Vercel credential)",
+      "missing": "whether the Vercel project still links repository 348379171 after the rename is visible only Vercel-side (credential for team erinome) or through the next push; no push has happened since the rename"
     },
     {
       "id": "checkface-pages",
@@ -356,7 +409,7 @@
       "target": "https://checkface.facemorph.me (API documentation pages; DNS CNAME check-face.github.io, DNS-only)",
       "trigger": "push to master (archived: no further pushes)",
       "credentials": [],
-      "status": "verified",
+      "status": "needs-inspection",
       "evidence": [
         {
           "command": "node scripts/identity/read-identity.mjs (archived-backend pages; legacy-api-docs github-pages, dns.*)",
@@ -365,9 +418,14 @@
         {
           "command": "Cloudflare connector DNS read (checkface.facemorph.me CNAME check-face.github.io, proxied false)",
           "at": "2026-10-24T08:31:00Z"
+        },
+        {
+          "command": "curl https://checkface.facemorph.me/ (200, server GitHub.com, the archived 2024 docs); gh api repositories/185985766/pages (cname checkface.facemorph.me, https_enforced, status building; pages/builds/latest answers 409 Repository is archived); DNS over HTTPS: CNAME check-face.github.io",
+          "at": "2026-10-26"
         }
       ],
-      "rename": "the CNAME target names the organization: after the rename it must point at facemorph-me.github.io (and the Pages custom domain re-verified), or checkface.facemorph.me stops serving; API retirement may remove it instead"
+      "rename": "the CNAME target names the organization: after the rename it must point at facemorph-me.github.io (and the Pages custom domain re-verified), or checkface.facemorph.me stops serving; API retirement may remove it instead",
+      "missing": "the site serves, but the DNS CNAME still names the old organization host check-face.github.io; repointing it to facemorph-me.github.io is a one-record change in the facemorph.me Cloudflare zone awaiting an operator decision (the archived repository cannot rebuild Pages to re-verify the custom domain)"
     },
     {
       "id": "checkface-hooks",
@@ -383,6 +441,10 @@
         {
           "command": "node scripts/identity/read-identity.mjs (archived-backend hooks)",
           "at": "2026-10-24"
+        },
+        {
+          "command": "node scripts/identity/read-identity.mjs after the rename (exit 3: drift limited to owner names, ID-based OIDC prefixes, runner/workflow additions and the pre-rename deploys of 24-25 October): archived-backend hooks no drift (bound by repository ID)",
+          "at": "2026-10-26"
         }
       ],
       "rename": "webhooks are bound by repository ID; no edit (archived)"
@@ -405,6 +467,10 @@
         {
           "command": "Cloudflare connector: pages/projects (no project has a check-face Git source)",
           "at": "2026-10-24T08:31:00Z"
+        },
+        {
+          "command": "gh api orgs/facemorph-me/installations (vercel: all repositories, claude: all repositories; same installations as under check-face)",
+          "at": "2026-10-26"
         }
       ],
       "rename": "installations are bound to the organization ID and survive the rename; re-check after it"
@@ -421,7 +487,13 @@
       "trigger": "n/a",
       "credentials": [],
       "status": "needs-inspection",
-      "missing": "organization secrets, variables, runners and runner groups need the admin:org scope and container packages need read:packages; the operator's gh token has read:org only (HTTP 403, see org:check-face values). Repository-level secrets, variables, runners and environments are read."
+      "missing": "organization webhooks need the admin:org_hook scope (HTTP 404 with admin:org) and container packages need read:packages (HTTP 403); the other organization Actions settings were read after the rename and hold nothing owner-bound",
+      "evidence": [
+        {
+          "command": "gh api orgs/facemorph-me/actions/{secrets,variables,runners,runner-groups,permissions} with admin:org (0 organization secrets, 0 variables, 0 organization runners; runner group Default only, visibility all; Actions enabled for all repositories, all actions allowed)",
+          "at": "2026-10-26"
+        }
+      ]
     },
     {
       "id": "self-hosted-runners",
@@ -437,6 +509,10 @@
         {
           "command": "node scripts/identity/read-identity.mjs (new-monorepo and retained-application actions.runners)",
           "at": "2026-10-24"
+        },
+        {
+          "command": "gh api repos/facemorph-me/{facemorph.me,facemorph.me-classic}/actions/runners (every registered runner online after the rename: classic eris-device-lab, triton, truenas, truenas-gpu; monorepo eris-build-2..5, eris-device-lab, triton, triton-2..4)",
+          "at": "2026-10-26"
         }
       ],
       "rename": "runners stay registered to the repository; confirm they come back online after the rename"
@@ -465,6 +541,14 @@
         {
           "command": "git grep -n id-token <rev> -- .github (no match in any of the five repositories)",
           "at": "2026-10-24"
+        },
+        {
+          "command": "node scripts/identity/read-identity.mjs after the rename (exit 3: drift limited to owner names, ID-based OIDC prefixes, runner/workflow additions and the pre-rename deploys of 24-25 October): actions.oidc-sub of all five repositories now repo:facemorph-me@50488585/<name>@<id>, use_default true",
+          "at": "2026-10-26"
+        },
+        {
+          "command": "git grep id-token on each repository default/candidate branch .github (0 files in all five)",
+          "at": "2026-10-26"
         }
       ],
       "rename": "default subjects change with the owner name; harmless while nothing trusts them"
@@ -497,6 +581,10 @@
         {
           "command": "node scripts/identity/read-identity.mjs (dns.cname / dns.a of each host, through public DNS-over-HTTPS)",
           "at": "2026-10-24"
+        },
+        {
+          "command": "DNS over HTTPS (cloudflare-dns.com) checkface.facemorph.me CNAME check-face.github.io; the zone has no other organization-named record",
+          "at": "2026-10-26"
         }
       ],
       "rename": "only checkface.facemorph.me names the organization (see checkface-pages); e4e.facemorph.me is a retiring API host not yet in the 15 October source scan"
