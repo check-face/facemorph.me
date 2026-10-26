@@ -72,7 +72,7 @@ test('queue-cancelled heads retry, but failed gates and completed qualifications
   assert.equal(qualificationAttempted([cancelled, run()], sha), true);
 });
 
-for (const outcome of ['cancelled', 'success', 'active'] as const)
+for (const outcome of ['cancelled', 'success', 'active', 'stale-base'] as const)
   test(`dispatch CLI reconciles ${outcome} without replacing another group`, (t) => {
     const scratch = mkdtempSync(join(tmpdir(), 'dependency-controller-queue-'));
     t.after(() => rmSync(scratch, { recursive: true, force: true }));
@@ -91,9 +91,10 @@ const fs = require('node:fs');
 const args = process.argv.slice(2), endpoint = args[3];
 fs.appendFileSync(process.env.PROBE_CALLS, JSON.stringify(args) + '\\n');
 if (args[0] === 'pr' && args[1] === 'merge') process.exit(0);
-const prs = ${JSON.stringify([first, second])};
+const prs = ${JSON.stringify(outcome === 'stale-base' ? [first] : [first, second])};
 let value;
 if (endpoint.endsWith('/pulls?state=open&base=main&per_page=100')) value = prs;
+else if (endpoint.endsWith('/git/ref/heads/main')) value = {object:{sha:${JSON.stringify(outcome === 'stale-base' ? 'd'.repeat(40) : first.base.sha)}}};
 else if (endpoint.endsWith('/runs?event=workflow_dispatch&per_page=100'))
   value = {workflow_runs:${JSON.stringify(outcome === 'active' ? [{ ...run(), status: 'pending', conclusion: null }] : [])}};
 else if (endpoint.includes('/files?')) value = [{filename:'package.json'}];
@@ -101,11 +102,11 @@ else if (endpoint.includes('/compare/')) value = {merge_base_commit:{sha:prs[0].
 else if (endpoint.includes('/runs?event=workflow_dispatch&branch='))
   value = {workflow_runs:[${JSON.stringify({ ...run(), conclusion: outcome === 'cancelled' ? 'cancelled' : 'success' })}]};
 else if (endpoint.endsWith('/jobs?per_page=100&page=1')) value = {jobs:${JSON.stringify(jobs())}};
-else if (endpoint.endsWith('/dispatches')) {
+else if (endpoint.endsWith('/dispatches') || endpoint.endsWith('/update-branch')) {
   fs.readFileSync(0, 'utf8');
 } else value = prs.find(pr => endpoint.endsWith('/pulls/' + pr.number));
 if (value !== undefined) process.stdout.write(JSON.stringify(value));
-else if (!endpoint.endsWith('/dispatches')) throw Error('unexpected API: ' + endpoint);
+else if (!endpoint.endsWith('/dispatches') && !endpoint.endsWith('/update-branch')) throw Error('unexpected API: ' + endpoint);
 `,
       { mode: 0o755 },
     );
@@ -130,7 +131,9 @@ else if (!endpoint.endsWith('/dispatches')) throw Error('unexpected API: ' + end
         ? 'qualification-reviewed'
         : outcome === 'active'
           ? 'qualification-in-flight'
-          : 'qualification-dispatched',
+          : outcome === 'stale-base'
+            ? 'base-update-requested'
+            : 'qualification-dispatched',
     );
     const invoked = readFileSync(calls, 'utf8')
       .trim()

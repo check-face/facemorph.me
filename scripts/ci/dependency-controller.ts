@@ -131,6 +131,13 @@ function api<T>(path: string, method = 'GET', body?: unknown): T {
   return output.trim() ? (JSON.parse(output) as T) : (undefined as T);
 }
 
+function mainHead(repo: string): string {
+  // pulls/:number base.sha may retain an older snapshot after main advances.
+  const sha = api<{ object: { sha: string } }>(`repos/${repo}/git/ref/heads/main`).object.sha;
+  if (!/^[a-f0-9]{40}$/.test(sha)) throw new Error('main ref must identify an immutable commit');
+  return sha;
+}
+
 function filesFor(repo: string, number: number): string[] {
   const files: string[] = [];
   for (let page = 1; ; page++) {
@@ -326,10 +333,11 @@ async function main() {
         );
         continue;
       }
+      const base = mainHead(repo);
       const comparison = api<{ merge_base_commit: { sha: string } }>(
-        `repos/${repo}/compare/${pr.base.sha}...${pr.head.sha}`,
+        `repos/${repo}/compare/${base}...${pr.head.sha}`,
       );
-      if (comparison.merge_base_commit.sha !== pr.base.sha) {
+      if (comparison.merge_base_commit.sha !== base) {
         api(`repos/${repo}/pulls/${number}/update-branch`, 'PUT', {
           expected_head_sha: pr.head.sha,
         });
@@ -374,10 +382,11 @@ async function main() {
     );
     if (prs.length !== 1) throw new Error('qualification must identify exactly one open PR');
     const pr = api<DependencyPullRequest>(`repos/${repo}/pulls/${prs[0]!.number}`);
+    const base = mainHead(repo);
     const comparison = api<{ merge_base_commit: { sha: string } }>(
-      `repos/${repo}/compare/${pr.base.sha}...${pr.head.sha}`,
+      `repos/${repo}/compare/${base}...${pr.head.sha}`,
     );
-    if (comparison.merge_base_commit.sha !== pr.base.sha)
+    if (comparison.merge_base_commit.sha !== base)
       throw new Error(
         'main advanced beyond the qualified branch; update and requalify before merging',
       );
