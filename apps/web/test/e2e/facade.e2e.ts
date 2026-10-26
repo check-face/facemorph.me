@@ -49,6 +49,10 @@ const repo = fileURLToPath(new URL('../../../../', import.meta.url));
 const RUNTIME = process.env['FACEMORPH_RUNTIME_DIR'] ?? join(repo, '.cache/runtime');
 const PHOTO = join(repo, 'tests/crop/fixtures/non-square.jpg');
 const NO_FACE = join(repo, 'tests/crop/fixtures/no-face.jpg');
+const SEED0_RGB = join(
+  repo,
+  'packages/stylegan-js/test/vectors/candidate-preprocessing/seed-0.rgb',
+);
 const ORIGIN = 'https://next.facemorph.me';
 const results = join(app, 'test-results/facade');
 const UNTESTED = existsSync(join(RUNTIME, 'manifest.json'))
@@ -121,9 +125,11 @@ async function open(publicGallery = false): Promise<void> {
             ? PHOTO
             : path === '/no-face.jpg'
               ? NO_FACE
-              : path.startsWith('/runtime/')
-                ? join(RUNTIME, path.slice('/runtime/'.length))
-                : join(bundleDir, path === '/' ? 'index.html' : path);
+              : path === '/seed-0.rgb'
+                ? SEED0_RGB
+                : path.startsWith('/runtime/')
+                  ? join(RUNTIME, path.slice('/runtime/'.length))
+                  : join(bundleDir, path === '/' ? 'index.html' : path);
     if (!existsSync(file) || !statSync(file).isFile())
       return route.fulfill({ status: 404, body: 'not found' });
     return route.fulfill({
@@ -331,6 +337,57 @@ test(
     assert.equal(r.out.cropFace, null, 'the crop does not reopen');
     assert.equal(r.out.errorMessage, '', r.out.errorMessage);
     assert.ok(r.out.faces.some((f) => f.id === 'q'));
+  },
+);
+
+test(
+  'photo-encode-package: a confirmed crop of the qualification photo encodes through the package within 1e-4 of the native W+, and a warm encode makes no request',
+  { timeout: 1_800_000 },
+  async () => {
+    const stream = JSON.parse(readFileSync(join(RUNTIME, 'manifest.json'), 'utf8'))
+      .encoderStream as {
+      url: string;
+    };
+    const dir = join(RUNTIME, stream.url.split('/runtime/')[1]!, '..');
+    const canary = (
+      JSON.parse(readFileSync(join(dir, 'manifest.json'), 'utf8')).canaries as {
+        id: string;
+        reference: { url: string };
+      }[]
+    ).find((c) => c.id === 'seed-0-unaligned')!;
+    const bytes = readFileSync(join(dir, canary.reference.url.split('/').at(-1)!));
+    const reference = new Float32Array(bytes.buffer, bytes.byteOffset, bytes.byteLength / 4);
+    const error = (values: number[]) =>
+      values.reduce((m, v, i) => Math.max(m, Math.abs(v - reference[i]!)), 0);
+    type Encoded = { out: Out } & Settled;
+    // The face's W+ as its saved file carries it (recovery metadata), so the read goes through the product's Save.
+    const savedLatent = async (id: string) => {
+      const ready = page.waitForEvent('download', { timeout: 60_000 });
+      await call('save', id);
+      const saved = readRecovery(new Uint8Array(readFileSync(await (await ready).path())));
+      if (saved.kind !== 'parsed')
+        throw new Error(`${id}: saved file has no recovery (${JSON.stringify(saved)})`);
+      return Array.from(saved.recovered.latent.values as ArrayLike<number>);
+    };
+    const cold = await call<Encoded>('encodeQualifiedCrop', 'w1', `${ORIGIN}/seed-0.rgb`);
+    assert.equal(cold.out.errorMessage, '', cold.out.errorMessage);
+    const coldValues = await savedLatent('w1');
+    assert.equal(coldValues.length, reference.length);
+    // A second Use this crop of the same pixels is a new confirmed crop (no output-cache hit): a full encode on
+    // shards already held locally.
+    const before = new Map(counts);
+    const warm = await call<Encoded>('encodeQualifiedCrop', 'w2', `${ORIGIN}/seed-0.rgb`);
+    const warmValues = await savedLatent('w2');
+    const requested = [...counts]
+      .filter(([path, n]) => path.startsWith('/runtime/') && n > (before.get(path) ?? 0))
+      .map(([path]) => path);
+    log(
+      `photo-encode-package: cold max|W+ err| ${error(coldValues).toExponential(2)}, warm ${error(warmValues).toExponential(2)}; warm runtime requests ${requested.length}`,
+    );
+    assert.ok(error(coldValues) <= 1e-4, `cold ${error(coldValues)}`);
+    assert.equal(warm.out.errorMessage, '', warm.out.errorMessage);
+    assert.ok(error(warmValues) <= 1e-4, `warm ${error(warmValues)}`);
+    assert.deepEqual(requested, [], 'the warm encode reads verified local shards only');
   },
 );
 

@@ -1,7 +1,10 @@
 // Mapping, synthesis, the canaries and the ORT runtime are the stylegan-js engine's (fm-7f2o): this worker keeps the
 // acquisition, residency, encoder and message protocol, and hands the engine a reader over its verified bytes.
-import {loadCpuGenerator,loadOrtWebGpuGenerator,loadDirectWebGpuGenerator,loadOrtRuntime,cpuRuntimeAssets,browserModuleHost,createCanaryQualification} from '@facemorph/stylegan-js/engine';
+import {loadCpuGenerator,loadOrtWebGpuGenerator,loadDirectWebGpuGenerator,loadOrtRuntime,cpuRuntimeAssets,browserModuleHost,createCanaryQualification,loadStreamedEncoder,loadEncoderRuntime,engineGeometry} from '@facemorph/stylegan-js/engine';
 import {FFHQ_1024_DESCRIPTOR} from '@facemorph/stylegan-js';
+// The model's dimensions (fm-dmlz): the side, the W+ shape and the pixel bytes come from the descriptor of the
+// model this app ships (FFHQ), never from literal 1024 / 18 x 512.
+const GEOMETRY=engineGeometry(FFHQ_1024_DESCRIPTOR),SIDE=GEOMETRY.width,BATCH_W_SHAPE=[1,GEOMETRY.latent.layers,GEOMETRY.latent.width];
 import {encodeRgbaPng} from './png.mjs';
 import {createModelSource} from './model-source.mjs';
 import {inputLatent,requireLatent} from './identity.mjs';
@@ -32,7 +35,7 @@ let encoder=null,encoderStream=null;
 async function releaseEncoder(){
  shedShards();
  if(encoder){const session=encoder;encoder=null;await session.release().catch(()=>{});}
- if(encoderStream){const held=encoderStream;encoderStream=null;for(const url of held.urls)URL.revokeObjectURL(url);}
+ if(encoderStream){const held=encoderStream;encoderStream=null;held.release();}
 }
 const report=(id,stage,extra={})=>postMessage({id,type:'progress',stage,...extra});
 /**
@@ -235,24 +238,40 @@ function cpuThreads(){
  return Math.max(1,Math.min(4,Math.floor(cores)-1));
 }
 
-async function encodeStream(tensor,id,qualifiedEncoderSha256){
+const sha256Hex=async values=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new Uint8Array(values.buffer,values.byteOffset,values.byteLength))),x=>x.toString(16).padStart(2,'0')).join('');
+async function encodeStream(tensor,id,qualifiedEncoderSha256,confirmedCropId){
  const started=performance.now();const descriptor=manifest.encoderStream,config=admitDescriptor(JSON.parse(new TextDecoder().decode(await bytes(descriptor,id))));
  planAsset(config);await probePlanned(); // 108 shards, known the moment the descriptor is verified: budget for all of them.
  if(config.sourceEncoderSha256!==descriptor.sourceEncoderSha256||config.sourceEncoderSha256!==manifest.encoder?.sha256||config.preprocessingSha256!==manifest.alignmentSha256||config.preprocessingSha256!==descriptor.preprocessingSha256||config.runtime?.unshared!==true||config.runtime.maxWasmBytes!==268435456)throw Error('Streamed encoder identity mismatch.');
+ // fm-dmlz: acquisition and verification of the encoder's shards finish before the encode starts. Each shard is
+ // committed to the device's model cache here (acquire alone, nothing materialised), so the package encoder then
+ // reads every step from verified local storage and the encode itself issues no request. A device without durable
+ // model storage keeps the candidate's bounded behaviour: each shard is read as its step needs it.
+ cache ||= await modelSource();
+ if(!cache.uncached)for(const step of config.steps){await cache.acquire(step,acquireOptions());budget.progress(false);}
+ const local=asset=>cache.uncached?bytes(asset,id,true):cache.has(asset).then(held=>{if(!held)throw Object.assign(Error('An encoder shard left the model cache after it was acquired.'),{code:'cache-miss'});return bytes(asset,id,true);});
+ const reader={allowRepair:false,read:asset=>local(asset).then(value=>({ok:true,value}),error=>({ok:false,error:{code:error.code||'local-read',message:String(error.message||error),sha256:asset.sha256}}))};
  // The runtime is the small half: three modules and a wasm binary, none of which are weights.
  // Holding them across photos skips a re-import and a wasm recompile per encode; the 108 shards
- // are still acquired and released one at a time, which is what keeps the working set bounded.
+ // are still read and released one at a time (package loadStreamedEncoder), which keeps the working set bounded.
  if(encoderStream&&encoderStream.sha256!==descriptor.sha256)await releaseEncoder();
- const urls=encoderStream?encoderStream.urls:[];const verifiedModule=async asset=>{const url=URL.createObjectURL(new Blob([await bytes(asset,id)],{type:'text/javascript'}));urls.push(url);return url;};
- {
-  if(!encoderStream){
-   const apiUrl=await verifiedModule(config.runtime.module),factoryUrl=await verifiedModule(config.runtime.factory),wasmUrl=URL.createObjectURL(new Blob([await bytes(config.runtime.wasm,id)],{type:'application/wasm'}));urls.push(wasmUrl);
-   const observerUrl=URL.createObjectURL(new Blob([`import factory from ${JSON.stringify(factoryUrl)};let ref;export default async function(config){const m=await factory(config);ref=new WeakRef(m);return m;}export function snapshot(){const buffer=ref?.deref()?.HEAPU8?.buffer;return {available:Boolean(buffer),shared:Object.prototype.toString.call(buffer)==='[object SharedArrayBuffer]',currentBytes:buffer?.byteLength};}`],{type:'text/javascript'}));urls.push(observerUrl);
-   const observer=await import(/* @vite-ignore */ observerUrl),encoderOrt=await import(/* @vite-ignore */ apiUrl),executor=await import(/* @vite-ignore */ await verifiedModule(config.executor));encoderOrt.env.wasm.numThreads=1;encoderOrt.env.wasm.wasmPaths={mjs:observerUrl,wasm:wasmUrl};
-   encoderStream={sha256:descriptor.sha256,urls,observer,encoderOrt,executor};
-  }
-  const {observer,encoderOrt,executor}=encoderStream;
-  const execute=input=>executor.executeEncoderStream({ort:encoderOrt,manifest:config,tensor:input,acquireBytes:asset=>bytes(asset,id,true),snapshotMemory:observer.snapshot,onProgress:event=>report(id,event.stage,event)});
+ if(!encoderStream){
+  const runtime=await loadEncoderRuntime({allowRepair:false,read:asset=>bytes(asset,id).then(value=>({ok:true,value}))},config.runtime,browserModuleHost());
+  encoderStream={sha256:descriptor.sha256,runtime,release:runtime.release};
+ }
+ const {runtime}=encoderStream;
+ const execute=async(input,cropId)=>{
+  const encoder=loadStreamedEncoder({manifest:config,reader,ort:runtime.ort,snapshotMemory:runtime.snapshotMemory,model:FFHQ_1024_DESCRIPTOR});let runs=0;
+  try{
+   const tensorDigest=await sha256Hex(input);
+   // The encoder's input contract is crop-preprocessing-v1's tensor (NCHW, 256 x 256, float32 (x/255-0.5)/0.5),
+   // which a detector-aligned photo shares; its record id is the confirmed crop's, or the aligned tensor's digest.
+   const out=await encoder.encode({ids:{requestId:String(id),inputRevision:0,attemptId:0},input:{tensor:input,tensorDigest,policyVersion:'crop-preprocessing-v1'},confirmedCropId:cropId||tensorDigest},undefined,
+    event=>{if(event.stage==='encoder-run')report(id,'encoder-shard-complete',{loaded:++runs,total:config.steps.length});});
+   const t=out.timings;
+   return {values:out.wPlus.values,shape:[1,...out.wPlus.shape],space:'w-plus',encoderProvider:'wasm-unshared-streamed',encoderStats:{provider:'wasm-unshared-streamed',sourceEncoderSha256:config.sourceEncoderSha256,maxLiveSessions:t.maxLiveSessions,wasmPeakBytes:t.wasmHeapBytes,verifiedReadMs:t.verifiedReadMs,sessionCreateMs:t.sessionCreateMs,runMs:t.runMs,totalMs:t.totalMs,steps:config.steps.length,completed:true}};
+  }finally{await encoder.dispose();}
+ };
   // Operator direction, 21 September: the product does not pay for expensive correctness passes.
   // This one ran the whole 108-shard schedule against a pinned reference before touching a photo
   // and cost 20,920 ms on the operator's Samsung against 7,395 ms for the real encode — the guard
@@ -266,9 +285,8 @@ async function encodeStream(tensor,id,qualifiedEncoderSha256){
    fullQualify?await qualifyEncoderReference({config,manifestSha256:descriptor.sha256,execute,acquireBytes:asset=>bytes(asset,id),onProgress:event=>report(id,event.stage,event)})
    :qualifiedEncoderSha256===descriptor.sha256?{passed:true,manifestSha256:descriptor.sha256,reusedRuntimeAdmission:true}
    :{passed:true,manifestSha256:descriptor.sha256,verifiedOnThisDevice:false,scope:'Encoder correctness is verified in the device lab, not per device (operator direction, 21 September)'};
-  const result=await execute(tensor);result.encoderQualification=encoderQualification;
-  requireLatent(result.values);const totals=result.encoderStats.steps.reduce((a,s)=>({acquireMs:a.acquireMs+s.acquireMs,createMs:a.createMs+s.createMs,runMs:a.runMs+s.runMs}),{acquireMs:0,createMs:0,runMs:0});report(id,'encoder-loaded',{elapsedMs:totals.createMs,scope:'Sum of108 sequential ORT session creations',acquisitionMs:totals.acquireMs});report(id,'encoding-complete',{elapsedMs:totals.runMs,scope:'Sum of108 session inference calls',totalWallMs:performance.now()-started});return result;
- }
+  const result=await execute(tensor,confirmedCropId);result.encoderQualification=encoderQualification;
+  requireLatent(result.values);const stats=result.encoderStats;report(id,'encoder-loaded',{elapsedMs:stats.sessionCreateMs,scope:'Sum of108 sequential ORT session creations',acquisitionMs:stats.verifiedReadMs});report(id,'encoding-complete',{elapsedMs:stats.runMs,scope:'Sum of108 session inference calls',totalWallMs:performance.now()-started});return result;
 }
 
 async function load(id){if(generator)return;
@@ -311,7 +329,7 @@ async function synthesizeFrames(list,id,rawOutput=false){
  report(id,'synthesis');let last=performance.now();
  await generator.synthesizeSequence(list,async(index,rgba)=>{
   const now=performance.now();report(id,'synthesis-complete',{elapsedMs:now-last});last=now;
-  if(rawOutput){const frame=own(rgba),ack=rawAck(id,index);postMessage({id,type:'frame',index,rgba:frame.buffer,width:1024,height:1024},[frame.buffer]);await ack;}
+  if(rawOutput){const frame=own(rgba),ack=rawAck(id,index);postMessage({id,type:'frame',index,rgba:frame.buffer,width:SIDE,height:SIDE},[frame.buffer]);await ack;}
   else postMessage({id,type:'frame',index,blob:await encodeRgbaPng(rgba)});
  });
  return {frames:list.length};
@@ -384,7 +402,7 @@ self.onmessage=({data})=>{
   try{
    let result;
    if(type==='initialize'){if(!['wasm','webgpu'].includes(request.provider))throw Error('Unsupported provider: WebGL execution was removed');manifest=request.manifest;provider=request.provider;gpuEngine=request.gpuEngine==='direct'&&request.provider==='webgpu'?'direct':'ort';manifestSha256=request.manifestSha256;fullQualify=request.fullQualify===true||(!request.hostForcedQualify&&request.webdriver===true);forceCanaryFail=request.forceCanaryFail===true;result={provider};}
-   else if(type==='qualify')result=await qualify(id);else if(type==='prefetch')result=await prefetchRoute(id,request.scope);else if(type==='generate'){const input=await inputLatent(request.mode,request.value),values=await mappingFor(input.values,id);result={...(request.raw===true?{rgba:(await faceRgba(values,id)).buffer,width:1024,height:1024}:{blob:await faceBlob(values,id)}),values,shape:[1,18,512],space:'w-plus',identity:input.identity};}else if(type==='synthesize-frames')result=await synthesizeFrames(request.frames,id,request.raw===true);else if(type==='synthesize'){const values=requireLatent(request.values);result={...(request.raw===true?{rgba:(await faceRgba(values,id)).buffer,width:1024,height:1024}:{blob:await faceBlob(values,id)}),values,shape:[1,18,512],space:'w-plus'};}else if(type==='encode-aligned'){
+   else if(type==='qualify')result=await qualify(id);else if(type==='prefetch')result=await prefetchRoute(id,request.scope);else if(type==='generate'){const input=await inputLatent(request.mode,request.value),values=await mappingFor(input.values,id);result={...(request.raw===true?{rgba:(await faceRgba(values,id)).buffer,width:SIDE,height:SIDE}:{blob:await faceBlob(values,id)}),values,shape:[...BATCH_W_SHAPE],space:'w-plus',identity:input.identity};}else if(type==='synthesize-frames')result=await synthesizeFrames(request.frames,id,request.raw===true);else if(type==='synthesize'){const values=requireLatent(request.values);result={...(request.raw===true?{rgba:(await faceRgba(values,id)).buffer,width:SIDE,height:SIDE}:{blob:await faceBlob(values,id)}),values,shape:[...BATCH_W_SHAPE],space:'w-plus'};}else if(type==='encode-aligned'){
  // Sequential residency: e4e is released before loading synthesis.
  if(!manifest.encoder&&!manifest.encoderStream)throw Error('The browser encoder bundle is not available.');
  residency.mode=request.retain===true?'on':'off';
@@ -396,7 +414,7 @@ self.onmessage=({data})=>{
  // byte arrives, so the bar measures the wait the user is actually in for.
  planAsset(manifest.encoderStream||manifest.encoder);await probePlanned();
  if(!(request.tensor instanceof Float32Array)||request.tensor.length!==196608||!request.tensor.every(Number.isFinite))throw Error('Invalid aligned photo tensor');
- if(manifest.encoderStream){result=await encodeStream(request.tensor,id,request.qualifiedEncoderSha256);}else{await ensureOrt(id);let input,out,values;try{if(!encoder){report(id,'encoder-loading');const created=performance.now();encoder=await ort.InferenceSession.create(await bytes(manifest.encoder,id),{executionProviders:['wasm']});report(id,'encoder-loaded',{elapsedMs:Math.round(performance.now()-created)});}input=new ort.Tensor('float32',request.tensor,[1,3,256,256]);report(id,'encoding');const started=performance.now();out=(await encoder.run({image:input})).w;values=requireLatent(new Float32Array(await out.getData()));report(id,'encoding-complete',{elapsedMs:Math.round(performance.now()-started)});}finally{out?.dispose();input?.dispose();}result={values,shape:[1,18,512],space:'w-plus',encoderProvider:'wasm'};}
+ if(manifest.encoderStream){result=await encodeStream(request.tensor,id,request.qualifiedEncoderSha256,request.confirmedCropId);}else{await ensureOrt(id);let input,out,values;try{if(!encoder){report(id,'encoder-loading');const created=performance.now();encoder=await ort.InferenceSession.create(await bytes(manifest.encoder,id),{executionProviders:['wasm']});report(id,'encoder-loaded',{elapsedMs:Math.round(performance.now()-created)});}input=new ort.Tensor('float32',request.tensor,[1,3,256,256]);report(id,'encoding');const started=performance.now();out=(await encoder.run({image:input})).w;values=requireLatent(new Float32Array(await out.getData()));report(id,'encoding-complete',{elapsedMs:Math.round(performance.now()-started)});}finally{out?.dispose();input?.dispose();}result={values,shape:[...BATCH_W_SHAPE],space:'w-plus',encoderProvider:'wasm'};}
  }else throw Error('Unknown runtime operation');postMessage({id,type:'complete',result},result?.rgba?[result.rgba]:[]);}catch(error){postMessage({id,type:'error',error:{name:error.name,message:error.message}});}});
  pump();
 };

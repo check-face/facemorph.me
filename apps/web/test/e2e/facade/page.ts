@@ -9,6 +9,7 @@ import type {
 } from '../../../src/operations/service.ts';
 import type { InputRevision } from '../../../src/contracts/inputs.ts';
 import { readSession } from '../../../src/Next/last-result.mjs';
+import { cropPhotoReported } from '../../../src/Next/product-bridge.mjs';
 import { generationIdentity } from '../../../src/Next/browser/identity.mjs';
 import { digest, openOriginals } from '../../../src/Next/browser/originals.mjs';
 import {
@@ -352,6 +353,31 @@ const harness = {
     } finally {
       Worker.prototype.postMessage = post;
     }
+  },
+  /**
+   * compute.photo-descriptor (fm-dmlz): the e4e qualification photo seed-0 (512 x 512, unaligned) as a lossless
+   * PNG, confirmed whole through the bridge's Use this crop at its own size, then run as face `id`. The runner
+   * reads the face's W+ from its saved file's recovery metadata and compares it with the native reference.
+   */
+  async encodeQualifiedCrop(id: string, url: string) {
+    const rgb = new Uint8Array(await (await fetch(url)).arrayBuffer());
+    const side = 512;
+    const canvas = new OffscreenCanvas(side, side);
+    const context = canvas.getContext('2d')!;
+    const image = context.createImageData(side, side);
+    for (let i = 0; i < side * side; i++)
+      image.data.set([rgb[i * 3]!, rgb[i * 3 + 1]!, rgb[i * 3 + 2]!, 255], i * 4);
+    context.putImageData(image, 0, 0);
+    const file = new File([await canvas.convertToBlob({ type: 'image/png' })], 'seed-0.png', {
+      type: 'image/png',
+    });
+    const chosen = (await cropPhotoReported(
+      file,
+      { left: 0, top: 0, width: side, height: side },
+      { previewScale: 1, rotation: 0, output: side },
+    )) as File;
+    const out = await f.execute(request('face', id, [input(id, 'photo', 'Photo', chosen)]));
+    return { out, ...settled() };
   },
   save: (id: string) => f.saveMedia(id),
   /** One Save with its wall time, the prepared-file counters and the job progress count after it (fm-ykfa). */

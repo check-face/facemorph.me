@@ -135,8 +135,9 @@
     },
     {
       "id": "streamed-single-threaded-e4e",
-      "path": "apps/web/src/Next/browser/ort-worker.mjs",
-      "pattern": "encoderOrt\\.env\\.wasm\\.numThreads=1;"
+      "path": "packages/stylegan-js/src/engine/encode.ts",
+      "pattern": "ort\\.env\\.wasm\\.numThreads = 1;",
+      "moved": "fm-dmlz: the worker loads the encoder runtime through the package's loadEncoderRuntime, which pins one thread"
     },
     {
       "id": "streamed-e4e-descriptor",

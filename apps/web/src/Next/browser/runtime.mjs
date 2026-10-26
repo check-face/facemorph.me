@@ -7,6 +7,11 @@ import {directSupported} from '@facemorph/stylegan-js/engine';
 import {adapterFacts,capabilityRecord,admissionEvidence,logAdmission,AdmissionRefused,decide,reasonFromError} from './admission.mjs';
 import {admitRuntimeManifest,RuntimeManifestRefused} from './runtime-manifest.mjs';
 import {confirmedCropOf,encoderInputFor,ConfirmedCropError} from '../photo/confirmed-crop.mjs';
+import {engineGeometry} from '@facemorph/stylegan-js/engine';
+import {FFHQ_1024_DESCRIPTOR} from '@facemorph/stylegan-js';
+// The model's dimensions (fm-dmlz): the side, the W+ shape and the pixel bytes come from the descriptor of the
+// model this app ships (FFHQ), never from literal 1024 / 18 x 512.
+const GEOMETRY=engineGeometry(FFHQ_1024_DESCRIPTOR),SIDE=GEOMETRY.width,W_SHAPE=[GEOMETRY.latent.layers,GEOMETRY.latent.width],BATCH_W_SHAPE=JSON.stringify([1,...W_SHAPE]);
 /** WebGL execution was removed (fm-x6h5): asking for it is a typed refusal, never a silent fallback. */
 export class RemovedRouteError extends Error{constructor(route='webgl'){super('WebGL processing was removed; use Automatic, CPU or WebGPU.');this.name='RemovedRouteError';this.code='route-removed';this.route=route;}}
 const abortError=()=>new DOMException('Generation cancelled','AbortError');
@@ -288,7 +293,7 @@ export function createBrowserRuntime({manifest: suppliedManifest, manifestSha256
    const input=await encoderInputFor(blob);if(signal.aborted)throw signal.reason;
    await start(progress);let encoded;
    // The worker takes the tensor's buffer; the kept input stays whole for a retry.
-   try{encoded=await send('encode-aligned',{tensor:input.tensor.slice(),qualifiedEncoderSha256:encoderValidatedSha256??qualifiedEncoder(),retain:hold},progress);}
+   try{encoded=await send('encode-aligned',{tensor:input.tensor.slice(),qualifiedEncoderSha256:encoderValidatedSha256??qualifiedEncoder(),retain:hold,confirmedCropId:confirmed.confirmedCropId},progress);}
    catch(error){if(signal.aborted)throw signal.reason;throw new ConfirmedCropError(/invalidat|evict|corrupt|deleted/i.test(error?.name||'')?'encoder-invalidated':'encoder-unavailable',error);}
    if(manifest.encoderStream){if(encoded.encoderQualification?.passed!==true||encoded.encoderQualification.manifestSha256!==manifest.encoderStream.sha256){stop();throw new ConfirmedCropError('encoder-invalidated');}encoderValidatedSha256=manifest.encoderStream.sha256;rememberEncoder(encoderValidatedSha256);}
    if(!hold){const stillAdmitted=validated;stop();validated=stillAdmitted;}if(signal.aborted)throw signal.reason;
@@ -310,7 +315,7 @@ export function createBrowserRuntime({manifest: suppliedManifest, manifestSha256
   let result;try{result=await produce();}catch(error){if(signal.aborted)throw signal.reason;if(fallbackScope==='none'||route==='cpu'||preferredRoute!=='auto'||!['generate','synthesize'].includes(error.failedOperation))throw error;failRoute(route);noteGpuFailure(error);stop();if(chooseRoute()==='cpu')emit({stage:'fallback-cpu'},progress);await admit(progress,signal);result=await produce();}
   if(signal.aborted)throw signal.reason;
   const rgba=result.rgba;delete result.rgba;
-  const value={...result,cacheKey:key,generationKind:keyData.kind,generationSha256,latentSha256:await digest(result.values),latent:{space:result.space,shape:[18,512],values:result.values},width:1024,height:1024,cached:false,provenance:{bundleVersion:manifest.bundleVersion,manifestSha256:manifestHash,modelSha256:manifest.modelSourceSha256,noiseSha256:manifest.noiseSha256,provider:route==='webgpu'?'webgpu':'wasm',mappingProvider:keyData.kind==='seed'?'wasm':null,route,truncationPsi:keyData.kind==='seed'?.7:null,truncationCutoff:keyData.kind==='seed'?8:null,createdAt:new Date().toISOString()}};
+  const value={...result,cacheKey:key,generationKind:keyData.kind,generationSha256,latentSha256:await digest(result.values),latent:{space:result.space,shape:[...W_SHAPE],values:result.values},width:SIDE,height:SIDE,cached:false,provenance:{bundleVersion:manifest.bundleVersion,manifestSha256:manifestHash,modelSha256:manifest.modelSourceSha256,noiseSha256:manifest.noiseSha256,provider:route==='webgpu'?'webgpu':'wasm',mappingProvider:keyData.kind==='seed'?'wasm':null,route,truncationPsi:keyData.kind==='seed'?.7:null,truncationCutoff:keyData.kind==='seed'?8:null,createdAt:new Date().toISOString()}};
   const finish=async blob=>{
    const completed={...value,blob,imageSha256:await digest(await blob.arrayBuffer())};
    try{if(persist){const aliases=[];if(keyData.kind==='seed'||keyData.kind==='photo'){const latentGenerationSha256=await digest(JSON.stringify(generationIdentity(manifest,'latent')));aliases.push({generationSha256:latentGenerationSha256,key:await digest(JSON.stringify({generationSha256:latentGenerationSha256,kind:'latent',sha256:completed.latentSha256}))});}await store?.put(key,completed,aliases);}}
@@ -319,7 +324,7 @@ export function createBrowserRuntime({manifest: suppliedManifest, manifestSha256
    return completed;
   };
   if(rgba){
-   if(!(rgba instanceof ArrayBuffer)||rgba.byteLength!==1024*1024*4)throw Error('Invalid raw face.');
+   if(!(rgba instanceof ArrayBuffer)||rgba.byteLength!==SIDE*SIDE*4)throw Error('Invalid raw face.');
    imageEncoder??=imageEncoderFactory();
    const slot=await imageEncoder.acquire(rgba.byteLength,{signal});
    const fileReady=imageEncoder.encode(slot,{rgba:rgba.slice(0),format:'webp'},{signal}).catch(async error=>{
@@ -420,7 +425,7 @@ export function createBrowserRuntime({manifest: suppliedManifest, manifestSha256
  const api={
  peekOriginal:async(request)=>{
   await config();let keyData;
-  if(request.mode==='latent'){if(request.latent?.space!=='w-plus'||JSON.stringify(request.latent.shape)!=='[1,18,512]')return null;keyData={kind:'latent',sha256:await digest(requireLatent(request.latent.values))};}
+  if(request.mode==='latent'){if(request.latent?.space!=='w-plus'||JSON.stringify(request.latent.shape)!==BATCH_W_SHAPE)return null;keyData={kind:'latent',sha256:await digest(requireLatent(request.latent.values))};}
   else if(request.mode==='photo'){if(!(request.file instanceof Blob))return null;keyData={kind:'photo',sha256:await digest(await request.file.arrayBuffer()),tryAlign:true,facePolicy:'exactly-one-face-v1'};}
   else {const {identity}=await inputLatent(request.mode,request.value);keyData={kind:'seed',identity};}
   const generationSha256=await digest(JSON.stringify(generationIdentity(manifest,keyData.kind))),key=await digest(JSON.stringify({generationSha256,...keyData}));
@@ -437,7 +442,7 @@ export function createBrowserRuntime({manifest: suppliedManifest, manifestSha256
  setPreferredRoute:(requested)=>{if(active)throw Error('Cannot change processing mode during generation.');if(requested==='webgl')throw new RemovedRouteError();if(!['auto','cpu','webgpu'].includes(requested))throw Error('Invalid preferred inference route');if(preferredRoute!==requested){stop();preferredRoute=requested;}},
  qualify:(requestedRoute='cpu',options={})=>afterDelivery(operation(async progress=>{if(requestedRoute==='webgl')throw new RemovedRouteError();if(!['cpu','webgpu'].includes(requestedRoute))throw Error('Choose CPU or WebGPU.');if(route!==requestedRoute)stop();route=requestedRoute;await start(progress);const result=await send('qualify',{},progress);acceptQualification(result);return result;},options)),
  generate:(request,options={})=>afterDelivery(operation(async(progress,signal)=>{const {identity}=await inputLatent(request.mode,request.value);return cachedGenerate({kind:'seed',identity},async()=>{await start(progress);return send('generate',{mode:request.mode,value:request.value,raw:options.raw===true},progress,ACQUIRE_STALL);},progress,signal);},{...request,...options})),
- synthesize:(latent,options={})=>afterDelivery(operation(async(progress,signal)=>{if(latent.space!=='w-plus'||JSON.stringify(latent.shape)!=='[1,18,512]')throw Error('Only explicit W+ [1,18,512] is accepted.');const values=requireLatent(latent.values);
+ synthesize:(latent,options={})=>afterDelivery(operation(async(progress,signal)=>{if(latent.space!=='w-plus'||JSON.stringify(latent.shape)!==BATCH_W_SHAPE)throw Error(`Only explicit W+ ${BATCH_W_SHAPE} is accepted.`);const values=requireLatent(latent.values);
  if(options.raw===true&&options.persist===false){await config();if(!validated)await admit(progress,signal);else announce(progress);await start(progress);return send('synthesize',{values,raw:true},progress);}
  return cachedGenerate({kind:'latent',sha256:await digest(values)},async()=>{await start(progress);return send('synthesize',{values,raw:options.raw===true},progress);},progress,signal,options.persist!==false);},options)),
  /**
@@ -450,11 +455,11 @@ export function createBrowserRuntime({manifest: suppliedManifest, manifestSha256
   */
  synthesizeFrames:(latents,options={})=>afterDelivery(operation(async(progress,signal)=>{
   if(!Array.isArray(latents)||!latents.length||latents.length>64)throw Error('Choose 1 to 64 frames per batch.');
-  const list=latents.map(latent=>{if(latent.space!=='w-plus'||JSON.stringify(latent.shape)!=='[1,18,512]')throw Error('Only explicit W+ [1,18,512] is accepted.');return requireLatent(latent.values);});
+  const list=latents.map(latent=>{if(latent.space!=='w-plus'||JSON.stringify(latent.shape)!==BATCH_W_SHAPE)throw Error(`Only explicit W+ ${BATCH_W_SHAPE} is accepted.`);return requireLatent(latent.values);});
   await config();if(!validated)await admit(progress,signal);else announce(progress);if(signal.aborted)throw signal.reason;
   let delivered=0;
   const produce=async()=>{await start(progress);const offset=delivered;
-   await send('synthesize-frames',{frames:list.slice(offset),raw:options.raw===true},progress,stallMs,(index,blob,rgba)=>{const at=offset+index;if(at!==delivered||signal.aborted)return;delivered++;emit({stage:'transient-frame'},progress);return options.onFrame?.(at,{blob,rgba,width:1024,height:1024,values:list[at],space:'w-plus',shape:[1,18,512]});});};
+   await send('synthesize-frames',{frames:list.slice(offset),raw:options.raw===true},progress,stallMs,(index,blob,rgba)=>{const at=offset+index;if(at!==delivered||signal.aborted)return;delivered++;emit({stage:'transient-frame'},progress);return options.onFrame?.(at,{blob,rgba,width:SIDE,height:SIDE,values:list[at],space:'w-plus',shape:[1,...W_SHAPE]});});};
   try{await produce();}
   catch(error){if(signal.aborted)throw signal.reason;if(fallbackScope==='none'||route==='cpu'||preferredRoute!=='auto'||error.failedOperation!=='synthesize-frames')throw error;failRoute(route);noteGpuFailure(error);stop();if(chooseRoute()==='cpu')emit({stage:'fallback-cpu'},progress);await admit(progress,signal);await produce();}
   if(signal.aborted)throw signal.reason;

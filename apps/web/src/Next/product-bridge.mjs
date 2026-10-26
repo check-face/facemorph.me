@@ -8,6 +8,10 @@ import {admitRuntimeManifest} from './browser/runtime-manifest.mjs';
 import {AdmissionRefused} from './browser/admission.mjs';
 import {createLatentPath,GEOMETRY_VERSION} from './geometry/latent-path.mjs';
 import {blend,FFHQ_1024_DESCRIPTOR} from '@facemorph/stylegan-js';
+import {engineGeometry} from '@facemorph/stylegan-js/engine';
+// The model's dimensions (fm-dmlz): the side, the W+ shape and the pixel bytes come from the descriptor of the
+// model this app ships (FFHQ), never from literal 1024 / 18 x 512.
+const GEOMETRY=engineGeometry(FFHQ_1024_DESCRIPTOR),SIDE=GEOMETRY.width,W_SHAPE=[GEOMETRY.latent.layers,GEOMETRY.latent.width];
 import {checkFaceModel} from '../media/recovery-files.ts';
 import {decode,encode} from '../project/bridge-result.ts';
 import {saveFile,shareFile,videoWriter} from './media.mjs';
@@ -223,7 +227,7 @@ export function drawFace(canvas,id){
  if(face.pixels?.rgba){paintRgba(canvas,{rgba:face.pixels.rgba});face.pixels.rgba=null;canvas.dataset.faceDrawn='true';displayMilestone('generated-visible');return;}
  void readyFace(face).then(async complete=>{
   if(faces.get(id)!==face||canvas.__faceResult!==face||!canvas.isConnected)return;
-  const bitmap=await createImageBitmap(complete.blob);try{canvas.width=1024;canvas.height=1024;canvas.getContext('2d').drawImage(bitmap,0,0);canvas.dataset.faceDrawn='true';displayMilestone('generated-visible');}finally{bitmap.close();}
+  const bitmap=await createImageBitmap(complete.blob);try{canvas.width=SIDE;canvas.height=SIDE;canvas.getContext('2d').drawImage(bitmap,0,0);canvas.dataset.faceDrawn='true';displayMilestone('generated-visible');}finally{bitmap.close();}
  }).catch(()=>{});
 }
 
@@ -351,12 +355,12 @@ export async function execute(request){
   }
   // Weighted blend (fm-in6a, compute.blend): one weighted W+ sum over each slot's verified current latent, one synthesis.
   if(request.action==='blend'){
-   const latents=(request.inputs||[]).map(item=>{const face=faces.get(item.id);if(!face?.latent||!sameSource(face,item))throw Error('Generate every blended face first.');if(face.latent.space!=='w-plus')throw Error('Only W+ faces can be blended.');return {space:'w-plus',shape:[18,512],values:face.latent.values};});
+   const latents=(request.inputs||[]).map(item=>{const face=faces.get(item.id);if(!face?.latent||!sameSource(face,item))throw Error('Generate every blended face first.');if(face.latent.space!=='w-plus')throw Error('Only W+ faces can be blended.');return {space:'w-plus',shape:[...W_SHAPE],values:face.latent.values};});
    const mixed=blend(FFHQ_1024_DESCRIPTOR,latents,request.weights||[]);if(!mixed.ok)throw Error(mixed.error.message);
    jobCounts.facesDone=0;jobCounts.facesTotal=1;
    progress({stage:'face',face:request.target,text:'Blending faces…',loaded:0,total:1});
    // The descriptor's latent is [18,512]; the runtime takes the batched W+ [1,18,512].
-   const result=await (await engine()).synthesize({...mixed.value.latent,shape:[1,18,512]},{signal:active.signal,raw:true});
+   const result=await (await engine()).synthesize({...mixed.value.latent,shape:[1,...W_SHAPE]},{signal:active.signal,raw:true});
    checked();if(request.inputs.some(item=>revisionOf(item.id)!==revisions.get(item.id)))throw superseded();
    await register(request.target,result,`Blend of ${latents.length} faces`);faces.get(request.target).source={mode:'project',value:'',file:null};
    jobCounts.facesDone=1;diagnostics.finish('completed');return snapshot('Blend updated.');
@@ -385,7 +389,7 @@ export async function execute(request){
     for(const frame of infillFrames(path,project.morph)){
      if(anchors.size>=4)break;checked();
      const saved=frame.visitId?faces.get(frame.visitId):null;
-     const output=saved?await readyFace(saved):await runtime.synthesize({space:'w-plus',shape:[1,18,512],values:Float32Array.from(frame.values)},{signal:active.signal,persist:false,raw:true});
+     const output=saved?await readyFace(saved):await runtime.synthesize({space:'w-plus',shape:[1,...W_SHAPE],values:Float32Array.from(frame.values)},{signal:active.signal,persist:false,raw:true});
      const display=output.rgba?await writer.retainRaw(output,frame.index):await writer.retain(output.blob,frame.index);
      anchors.add(frame.index);await publish(frame.index,display);
     }
@@ -396,7 +400,7 @@ export async function execute(request){
      for(const frame of window)if(anchors.has(frame.index)){const blob=await frameStoreGetOne(framesKey,frame.index);if(!blob)throw Error('A preview frame is unavailable.');ready.set(frame.index,{blob});}
      const todo=window.filter(frame=>!anchors.has(frame.index));let cursor=0,chain=Promise.resolve();
      const drain=async()=>{for(;cursor<window.length;cursor++){checked();if(renderToken!==morphRevision)throw superseded();const frame=window[cursor],output=ready.get(frame.index);if(!output)return;ready.delete(frame.index);if(output.rgba){const display=await writer.addRaw(output,frame.index);await publish(frame.index,display);}else await writer.add(output.blob,frame.index);}};
-     if(todo.length)await runtime.synthesizeFrames(todo.map(frame=>({space:'w-plus',shape:[1,18,512],values:Float32Array.from(frame.values)})),{signal:active.signal,raw:true,onFrame:(at,output)=>{ready.set(todo[at].index,output);chain=chain.then(drain);return chain;}});
+     if(todo.length)await runtime.synthesizeFrames(todo.map(frame=>({space:'w-plus',shape:[1,...W_SHAPE],values:Float32Array.from(frame.values)})),{signal:active.signal,raw:true,onFrame:(at,output)=>{ready.set(todo[at].index,output);chain=chain.then(drain);return chain;}});
      await (chain=chain.then(drain));if(cursor<window.length)throw Error('Some morph frames were not produced. Your faces are saved.');
     }
    }else{
@@ -422,14 +426,14 @@ export async function execute(request){
       checked();
       const todo=window.filter(frame=>!(frame.visitId&&faces.get(frame.visitId))),ready=new Map();let cursor=0,chain=Promise.resolve();
       const drain=async()=>{for(;cursor<window.length;cursor++){checked();const frame=window[cursor],output=(frame.visitId&&faces.get(frame.visitId))||ready.get(frame.index);if(!output)return;ready.delete(frame.index);await add((await readyFace(output)).blob,frame.index);}};
-      if(todo.length)await runtime.synthesizeFrames(todo.map(frame=>({space:'w-plus',shape:[1,18,512],values:Float32Array.from(frame.values)})),{signal:active.signal,onFrame:(at,output)=>{ready.set(todo[at].index,output);chain=chain.then(drain);chain.catch(()=>{});}});
+      if(todo.length)await runtime.synthesizeFrames(todo.map(frame=>({space:'w-plus',shape:[1,...W_SHAPE],values:Float32Array.from(frame.values)})),{signal:active.signal,onFrame:(at,output)=>{ready.set(todo[at].index,output);chain=chain.then(drain);chain.catch(()=>{});}});
       await (chain=chain.then(drain));
       if(cursor<window.length)throw Error('Some morph frames were not produced. Your faces are saved.');
      }
     }else for(const frame of (writer.retain?infillFrames(path,project.morph):path.frames())){
      checked();
      const saved=frame.visitId?faces.get(frame.visitId):null;
-     const output=saved||await runtime.synthesize({space:'w-plus',shape:[1,18,512],values:Float32Array.from(frame.values)},{signal:active.signal,persist:false});
+     const output=saved||await runtime.synthesize({space:'w-plus',shape:[1,...W_SHAPE],values:Float32Array.from(frame.values)},{signal:active.signal,persist:false});
      await add((await readyFace(output)).blob,frame.index);
     }}
    const videoBegan=now();
@@ -461,7 +465,7 @@ async function exportFile(id,format){
  // The PNG holds the face's own pixels: the synthesized RGBA while this tab still has it, else its canonical PNG
  // as made, else the lossless encode of its decoded original.
  const png=async()=>{const result=await readyFace(face),rgba=face.pixels?.rgba;
-  if(rgba instanceof ArrayBuffer&&rgba.byteLength===1024*1024*4)return downloadImage(result,seed,{format:'png',rgba:rgba.slice(0)});
+  if(rgba instanceof ArrayBuffer&&rgba.byteLength===SIDE*SIDE*4)return downloadImage(result,seed,{format:'png',rgba:rgba.slice(0)});
   return result.blob.type==='image/png'?decorateImage(result,seed):downloadImage(result,seed,{format:'png'});};
  const encode=async chosen=>{if(chosen==='png')return png();face.downloadReady??=(async()=>{const result=await readyFace(face);return (typeof downloadImage==='function'?downloadImage:decorateImage)(result,seed);})();try{return await face.downloadReady;}catch(error){face.downloadReady=null;throw error;}};
  return exportFilesOf().face(id,face,{encode,format,modelIdentity:runtimeIdentity,current:()=>faces.get(id)===face});
@@ -495,7 +499,7 @@ export async function importProject(request){
   if(imported.modelSha256!==manifest.modelSourceSha256||imported.noiseSha256!==manifest.noiseSha256)throw Error('This project needs a different model bundle. Its saved file has not been changed.');
   if(imported.morph.controls.some(x=>x.latent.space!=='w-plus'))throw Error('This generation bundle requires a W+ project.');
   await admission(request.provider||'auto',request.routeSnapshot);const next=new Map();
-  for(const control of imported.morph.controls){checked();const result=await service.synthesize({...control.latent,shape:[1,18,512],values:Float32Array.from(control.latent.values)},{signal:active.signal});next.set(control.visitId,{...result,label:'Project face'});}
+  for(const control of imported.morph.controls){checked();const result=await service.synthesize({...control.latent,shape:[1,...W_SHAPE],values:Float32Array.from(control.latent.values)},{signal:active.signal});next.set(control.visitId,{...result,label:'Project face'});}
   checked();await commit(next,imported,true);diagnostics.finish('completed');analytics.exported({kind:'project',method:'open',outcome:'completed'});return snapshot('Project opened.',true);
  }catch(error){diagnostics.finish(error?.name==='AbortError'?'cancelled':'failed',error,{stage:lastStage});analytics.exported({kind:'project',method:'open',outcome:error?.name==='AbortError'?'cancelled':'failed'});throw error;}
  finally{active=null;if(wanted.size)void pumpDownloads();}

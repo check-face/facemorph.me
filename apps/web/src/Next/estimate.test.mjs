@@ -2,6 +2,7 @@
 import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs/promises';import vm from 'node:vm';import {webcrypto} from 'node:crypto';
 import {createEstimator, describeMs, describeMeasuredMs, isSlowJob, COLD_FACE_MS} from './estimate.mjs';
 import {admitRuntimeManifest,RuntimeManifestRefused} from './browser/runtime-manifest.mjs';
+import {engineGeometry} from '@facemorph/stylegan-js/engine';import {FFHQ_1024_DESCRIPTOR} from '@facemorph/stylegan-js';
 const read=n=>fs.readFile(new URL(n,import.meta.url),'utf8');
 const plain=s=>s.replace(/^(?:import .*|export \{.*\} from .*);\n/gm,'').replaceAll('export ','').replaceAll('import.meta.url',JSON.stringify(import.meta.url));
 function runtimeManifest(){
@@ -19,7 +20,7 @@ test('Face time is measured from real work only, and frames come from the shared
  const service={setPreferredRoute(){},onProgress:()=>{},generate:async()=>{
   service.onProgress({stage:'synthesis-complete',elapsedMs:synthesisMs});
   return {blob:new Blob(['i'],{type:'image/png'}),cached:false,latent:{space:'w-plus',shape:[18,512],values:new Float32Array(9216)},provenance:{bundleVersion:'t',manifestSha256:'0'.repeat(64),modelSha256:'a'.repeat(64),noiseSha256:'b'.repeat(64)}};}};
- const ctx=vm.createContext({admitRuntimeManifest,RuntimeManifestRefused,analytics:new Proxy({},{get:()=>()=>{}}),onJobEnd(){},Blob,Float32Array,AbortController,DOMException,TextDecoder,crypto:webcrypto,JSON,Map,Date,performance:{now:()=>Date.now()},
+ const ctx=vm.createContext({admitRuntimeManifest,RuntimeManifestRefused,engineGeometry,FFHQ_1024_DESCRIPTOR,analytics:new Proxy({},{get:()=>()=>{}}),onJobEnd(){},Blob,Float32Array,AbortController,DOMException,TextDecoder,crypto:webcrypto,JSON,Map,Date,performance:{now:()=>Date.now()},
   URL:{createObjectURL:()=>'blob:'+ ++counter,revokeObjectURL(){}},
   fetch:async()=>({ok:true,arrayBuffer:async()=>new TextEncoder().encode(JSON.stringify(runtimeManifest())).buffer}),
   createBrowserRuntime:options=>{service.onProgress=options.onProgress;return service;},createDesktopRuntime:options=>{service.onProgress=options.onProgress;return service;},decode:s=>({tag:0,fields:[JSON.parse(s)]}),encode:x=>({tag:0,fields:[JSON.stringify(x)]}),

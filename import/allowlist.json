@@ -1465,10 +1465,10 @@
       "bytes": 33331,
       "class": "src-next",
       "ported": {
-        "sha256": "a6ae7c4437d87d87a38d9fd97ce2909e1d158ecf56c60c67b880d5a91831c347",
-        "bytes": 29556,
-        "bead": "fm-7f2o",
-        "reason": "acquires under the candidate bridge scope as a grant (bridge-grant.mjs), widened by the streamed encoder descriptor; passes modelAlternateOrigins(location.hostname); Vite destination integration: shared production headers and native dynamic-import directives; compiled artifact identity. (fm-zz2i); Continues verified execution through browser/model-source.mjs when durable model storage refuses (1bb7bd0) (fm-fy2.13); mapping, synthesis, canaries and the ORT runtime run on the stylegan-js engine behind the unchanged worker protocol"
+        "sha256": "37091e96fcabca694616be83c14298848317f7dd839d395b901403e100067523",
+        "bytes": 31087,
+        "bead": "fm-dmlz",
+        "reason": "acquires under the candidate bridge scope as a grant (bridge-grant.mjs), widened by the streamed encoder descriptor; passes modelAlternateOrigins(location.hostname); Vite destination integration: shared production headers and native dynamic-import directives; compiled artifact identity. (fm-zz2i); Continues verified execution through browser/model-source.mjs when durable model storage refuses (1bb7bd0) (fm-fy2.13); mapping, synthesis, canaries and the ORT runtime run on the stylegan-js engine behind the unchanged worker protocol; compute.photo-descriptor: the worker encodes through the package's streamed encoder after acquiring every shard; dimensions come from the shipped descriptor"
       }
     },
     {
@@ -1525,10 +1525,10 @@
       "bytes": 37783,
       "class": "src-next",
       "ported": {
-        "sha256": "7628a037a202f4623d9c2dbef08e0c3010be02445dc4558472294cb9cac16ce4",
-        "bytes": 44553,
-        "bead": "fm-6ib8",
-        "reason": "WebGL execution removed (fm-x6h5); per-operation admission through admission/route-admission.ts before any worker or model request, photo encoding admitted by capability instead of user-agent labels (fm-lt2p); route snapshot selects bounded fallback scope and forwards cancellation signal (fm-0y24); Save/Share hand over prepared files named by export identity; encoder figures from the export policy (6915a98); directSupported comes from the stylegan-js engine (routes.ts) with the direct engine itself; admits the runtime manifest pointer (runtime-manifest.mjs) before replacing the active runtime; a refused pointer leaves the next attempt free to fetch again; crop.fix: a confirmed crop goes to e4e directly (no detector after OK); detector outcomes are typed (faceDetection/code), not matched on text; crop limits come from the stylegan-js crop policy"
+        "sha256": "5bb195261cb07d5a8228fb4bf33c1eb283012596c7e448388ce8c35c82ed0d8d",
+        "bytes": 45094,
+        "bead": "fm-dmlz",
+        "reason": "WebGL execution removed (fm-x6h5); per-operation admission through admission/route-admission.ts before any worker or model request, photo encoding admitted by capability instead of user-agent labels (fm-lt2p); route snapshot selects bounded fallback scope and forwards cancellation signal (fm-0y24); Save/Share hand over prepared files named by export identity; encoder figures from the export policy (6915a98); directSupported comes from the stylegan-js engine (routes.ts) with the direct engine itself; admits the runtime manifest pointer (runtime-manifest.mjs) before replacing the active runtime; a refused pointer leaves the next attempt free to fetch again; crop.fix: a confirmed crop goes to e4e directly (no detector after OK); detector outcomes are typed (faceDetection/code), not matched on text; crop limits come from the stylegan-js crop policy; compute.photo-descriptor: the worker encodes through the package's streamed encoder after acquiring every shard; dimensions come from the shipped descriptor"
       }
     },
     {
@@ -1628,10 +1628,10 @@
       "bytes": 6296,
       "class": "src-next",
       "ported": {
-        "sha256": "69b3f52229ace0db05622d415f75298dfb45d606b4eee6f6cb5b1c38df805b23",
-        "bytes": 6970,
-        "bead": "fm-fy2.14",
-        "reason": "admits the runtime manifest pointer (runtime-manifest.mjs) before replacing the active runtime; a refused pointer leaves the next attempt free to fetch again"
+        "sha256": "2d31c1f1e6d358c6d2ea0769d2e028e5a87cc389e2416ccd3d3e58c9c1a0aaae",
+        "bytes": 7128,
+        "bead": "fm-dmlz",
+        "reason": "admits the runtime manifest pointer (runtime-manifest.mjs) before replacing the active runtime; a refused pointer leaves the next attempt free to fetch again; compute.photo-descriptor: the worker encodes through the package's streamed encoder after acquiring every shard; dimensions come from the shipped descriptor"
       }
     },
     {
@@ -1641,10 +1641,10 @@
       "bytes": 23533,
       "class": "src-next",
       "ported": {
-        "sha256": "15d77f7f47e231cba31e8f0605038d6fc758ac5e0bb07c46243a006ddfcda31c",
-        "bytes": 25354,
-        "bead": "fm-fy2.14",
-        "reason": "Supply the real shared endpoint selector to the existing VM harness after reporter gained that import.; Save/Share hand over prepared files named by export identity; encoder figures from the export policy (6915a98); admits the runtime manifest pointer (runtime-manifest.mjs) before replacing the active runtime; a refused pointer leaves the next attempt free to fetch again"
+        "sha256": "452a5e31ac7c854d98cc6a831a364dc8f2c794943b154c95b3d9efb181994779",
+        "bytes": 25620,
+        "bead": "fm-dmlz",
+        "reason": "Supply the real shared endpoint selector to the existing VM harness after reporter gained that import.; Save/Share hand over prepared files named by export identity; encoder figures from the export policy (6915a98); admits the runtime manifest pointer (runtime-manifest.mjs) before replacing the active runtime; a refused pointer leaves the next attempt free to fetch again; compute.photo-descriptor: the worker encodes through the package's streamed encoder after acquiring every shard; dimensions come from the shipped descriptor"
       }
     },
     {
@@ -1915,10 +1915,10 @@
       "bytes": 54317,
       "class": "src-next",
       "ported": {
-        "sha256": "7523e2e7792f0d673c91d89a2ce1ed4ef7d363269553bf0282a7ec30d376349f",
-        "bytes": 60693,
-        "bead": "fm-6ib8",
-        "reason": "ProjectJson imported from project/bridge-result.ts (fm-stth, one line); Morph admitted on its own and refusals returned with reasonKey/text/helpAnchor (fm-lt2p); revision-owned operation cancellation, compute/file readiness and bounded route snapshots (fm-0y24); downloads subscription returns its disposer (fm-v80g); Preserve unchanged Morph endpoints and their face/file ownership; update the inherited URL expectation to match, verified by real operation-service CPU browser tests (fm-in6a).; Issue link follows the org rename (9e39feb, fm-rur); a damaged saved image is one plain message with the parser reason as cause (cc8ea5e, fm-25um); weighted blend action as one W+ sum and one synthesis (3dd0238, fm-in6a); Expected photo refusals are tagged PhotoRefusal and stay error-area-only; unexpected failures keep the report ask (c0a65fb, operator 26 October, repairing fm-25um c397da4); saved projects carry the video writer's encoder choice; the file entry checks the recovered generator record/shape and skips the seed-identity check for a recipe-checked blend (fm-fy2.7); saveMedia/shareMedia take {format:'webp'|'png'}; the PNG is the face's synthesized pixels while held, else its decoded original; exportStats exposes the prepared-file counters (fm-ykfa); admits the runtime manifest pointer (runtime-manifest.mjs) before replacing the active runtime; a refused pointer leaves the next attempt free to fetch again; crop.fix: a confirmed crop goes to e4e directly (no detector after OK); detector outcomes are typed (faceDetection/code), not matched on text; crop limits come from the stylegan-js crop policy"
+        "sha256": "54175d26e4021bca3bea563c110f0434f5786f46d8066637cbbb330721c034bf",
+        "bytes": 61142,
+        "bead": "fm-dmlz",
+        "reason": "ProjectJson imported from project/bridge-result.ts (fm-stth, one line); Morph admitted on its own and refusals returned with reasonKey/text/helpAnchor (fm-lt2p); revision-owned operation cancellation, compute/file readiness and bounded route snapshots (fm-0y24); downloads subscription returns its disposer (fm-v80g); Preserve unchanged Morph endpoints and their face/file ownership; update the inherited URL expectation to match, verified by real operation-service CPU browser tests (fm-in6a).; Issue link follows the org rename (9e39feb, fm-rur); a damaged saved image is one plain message with the parser reason as cause (cc8ea5e, fm-25um); weighted blend action as one W+ sum and one synthesis (3dd0238, fm-in6a); Expected photo refusals are tagged PhotoRefusal and stay error-area-only; unexpected failures keep the report ask (c0a65fb, operator 26 October, repairing fm-25um c397da4); saved projects carry the video writer's encoder choice; the file entry checks the recovered generator record/shape and skips the seed-identity check for a recipe-checked blend (fm-fy2.7); saveMedia/shareMedia take {format:'webp'|'png'}; the PNG is the face's synthesized pixels while held, else its decoded original; exportStats exposes the prepared-file counters (fm-ykfa); admits the runtime manifest pointer (runtime-manifest.mjs) before replacing the active runtime; a refused pointer leaves the next attempt free to fetch again; crop.fix: a confirmed crop goes to e4e directly (no detector after OK); detector outcomes are typed (faceDetection/code), not matched on text; crop limits come from the stylegan-js crop policy; compute.photo-descriptor: dimensions come from the shipped descriptor; with d1e6a03 (fm-36ag): videoWriter takes the morph's video quality"
       }
     },
     {
