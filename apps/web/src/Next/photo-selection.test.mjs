@@ -12,7 +12,7 @@ function withDecoder(run,{width=4000,height=3000}={}){
 }
 const png=(width=10,height=10)=>{const b=new Uint8Array(33),v=new DataView(b.buffer);b.set([137,80,78,71,13,10,26,10]);v.setUint32(8,13);v.setUint32(12,0x49484452);v.setUint32(16,width);v.setUint32(20,height);b[24]=8;return new Blob([b]);};
 test('picker and drop share files; cancel preserves input; rejects multiple and unsupported',async()=>{
- const f=png(),target={files:[f],value:'same-file'};assert.deepEqual(photoFiles({target}),[f]);assert.equal(target.value,'');assert.deepEqual(photoFiles({dataTransfer:{files:[f]}}),[f]);assert.equal(await selectPhoto({id:'x',files:[]}),null);await assert.rejects(selectPhoto({id:'x',files:[f,f]}),/one photo/);await assert.rejects(selectPhoto({id:'x',files:[new Blob(['not an image'])]}),/could not be read|cannot prepare/);
+ const f=png(),target={files:[f],value:'same-file'};assert.deepEqual(photoFiles({target}),[f]);assert.equal(target.value,'');assert.deepEqual(photoFiles({dataTransfer:{files:[f]}}),[f]);assert.equal(await selectPhoto({id:'x',files:[]}),null);await assert.rejects(selectPhoto({id:'x',files:[f,f]}),(error)=>error.name==='PhotoRefusal'&&/one photo/.test(error.message));await assert.rejects(selectPhoto({id:'x',files:[new Blob(['not an image'])]}),/could not be read|cannot prepare/);
 });
 test('decoded selection, unreadable file, superseded selection and busy invalidation',async()=>{
  const old=globalThis.Image;const images=[];globalThis.Image=class{naturalWidth=10;naturalHeight=10;constructor(){images.push(this);}set src(v){this.url=v;}};

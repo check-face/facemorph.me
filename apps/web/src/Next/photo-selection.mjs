@@ -1,5 +1,6 @@
 import {inspectImage} from './photo/image-header.mjs';
 import {CROP_MAX_BYTES,CROP_MAX_EDGE,CROP_MAX_PIXELS,previewPhoto} from './photo/crop.mjs';
+import {refusal} from './photo/refusal.mjs';
 /** True when the alignment route can consume these exact bytes without a re-encode. */
 function inspectableDirectly(bytes){try{inspectImage(bytes);return true;}catch{return false;}}
 const pending=new Map();
@@ -16,10 +17,10 @@ export function dragPhoto(event,busy,leaving=false){event.preventDefault();event
 export async function selectPhoto({id,files}){
  const token={};pending.set(id,token);if(!files?.length){pending.delete(id);return null;}
  try{
-  if(files.length!==1)throw Error('Choose one photo for this face.');
+  if(files.length!==1)throw refusal('Choose one photo for this face.');
   const file=files[0];
-  if(!(file instanceof Blob)||file.size<8)throw Error('Choose a photo.');
-  if(file.size>CROP_MAX_BYTES)throw Error('Choose a photo smaller than 64 MB.');
+  if(!(file instanceof Blob)||file.size<8)throw refusal('Choose a photo.');
+  if(file.size>CROP_MAX_BYTES)throw refusal('Choose a photo smaller than 64 MB.');
   // The header still bounds what may be decoded. A photo the alignment route cannot take
   // directly is routed to the crop step; only an unreadable or absurdly large one is refused.
   const bytes=new Uint8Array(await file.arrayBuffer());
@@ -29,13 +30,13 @@ export async function selectPhoto({id,files}){
    direct=header.width*header.height<=4*1024*1024&&inspectableDirectly(bytes);
   }catch(error){
    // An unknown container (HEIC and friends) can still be decoded by the browser for cropping.
-   if(error?.code!=='unknown-container')throw error;
+   if(error?.code!=='unknown-container')throw refusal(error.message||'This photo could not be read.');
    direct=false;
   }
   if(pending.get(id)!==token)return null;
   if(direct){
    const url=URL.createObjectURL(file);try{
-    await new Promise((resolve,reject)=>{const image=new Image();const timer=setTimeout(()=>finish(Error('This photo could not be read.')),15000);function finish(error){clearTimeout(timer);image.onload=image.onerror=null;image.src='';error?reject(error):resolve();}image.onload=()=>finish(image.naturalWidth>0&&image.naturalHeight>0&&image.naturalWidth*image.naturalHeight<=4*1024*1024?null:Error('crop-required'));image.onerror=()=>finish(Error('This photo could not be read.'));image.src=url;});
+    await new Promise((resolve,reject)=>{const image=new Image();const timer=setTimeout(()=>finish(refusal('This photo could not be read.')),15000);function finish(error){clearTimeout(timer);image.onload=image.onerror=null;image.src='';error?reject(error):resolve();}image.onload=()=>finish(image.naturalWidth>0&&image.naturalHeight>0&&image.naturalWidth*image.naturalHeight<=4*1024*1024?null:Error('crop-required'));image.onerror=()=>finish(refusal('This photo could not be read.'));image.src=url;});
    }catch(error){if(error?.message!=='crop-required')throw error;direct=false;}
    finally{URL.revokeObjectURL(url);}
   }

@@ -3,6 +3,7 @@ import { msg, type ConsentBasis, type Msg } from './msg.ts';
 import type { State, Input, Request } from './state.ts';
 import type { DetectedFaces } from '../../shell/facade/records.ts';
 import type { CropRect } from '../../shell/facade/helpers.ts';
+import { isRefusal } from '../Next/photo/refusal.mjs';
 export interface ViewSnapshot {
   readonly inputs: readonly Input[];
   readonly kind: State['Kind'];
@@ -108,7 +109,11 @@ export function rejection(effect: Effect, error: unknown, input?: Input): Msg {
     case 'previewPhoto':
     case 'cropPhoto':
     case 'chooseDetectedFace':
-      return msg('PhotoFailed', effect.id, text);
+      // An expected refusal (unreadable, unsupported or oversized photo, cancelled crop) has
+      // the error area as its one owner; an unexpected failure keeps the Off-state report ask.
+      return isRefusal(error)
+        ? msg('PhotoRefused', effect.id, text)
+        : msg('PhotoFailed', effect.id, text);
     default:
       throw new Error(`Effect ${effect.type} has no promise rejection mapping`);
   }

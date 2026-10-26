@@ -5,6 +5,7 @@ import { reduce } from '../../src/controller/reducers/index.ts';
 import { photo } from '../../src/controller/reducers/photo.ts';
 import { rejection } from '../../src/controller/effects.ts';
 import { MULTIPLE_FACES_MESSAGE } from '../../shell/facade/bridge.ts';
+import { refusal } from '../../src/Next/photo/refusal.mjs';
 import { state, file, offer, recovered } from './photo-inputs.ts';
 import { classifyClipboard } from '../../src/photo/source.ts';
 
@@ -53,10 +54,21 @@ test('recovery installs without encoding; direct fresh photos preview before any
       (effect) => effect.type === 'execute' || effect.type === 'downloadModels',
     ),
   );
-  const failed = reduce(msg('PhotoFailed', 'face-1', 'Unreadable image'), state)!;
+  const failed = reduce(msg('PhotoRefused', 'face-1', 'Unreadable image'), state)!;
   assert.equal(failed.state.Error, 'Unreadable image');
-  assert.equal(failed.state.FailureToast, false);
+  assert.equal(failed.state.FailureToast, false, 'an expected refusal has the error area alone');
   assert.equal(failed.state.Inputs, state.Inputs);
+});
+
+test('an unexpected photo failure keeps the Off-state report ask; a refusal does not', () => {
+  const refused = reduce(msg('PhotoRefused', 'face-1', 'Unreadable image'), state)!;
+  assert.equal(refused.state.FailureToast, false);
+  const failed = reduce(
+    msg('PhotoFailed', 'face-1', 'Landmark chunk integrity check failed.'),
+    state,
+  )!;
+  assert.equal(failed.state.Error, 'Landmark chunk integrity check failed.');
+  assert.equal(failed.state.FailureToast, true, 'state.Debug is false: the ask stays for bugs');
 });
 
 test('a stale crop result cannot change a replacement photo', () => {
@@ -117,7 +129,11 @@ test('selection failure advances pending photos and drops only that face intent'
   };
   const next = photo(msg('PhotoFailed', 'face-1', 'decode failed'), pending)!;
   assert.equal(next.state.Error, 'decode failed');
-  assert.equal(next.state.FailureToast, false, 'the error area alone owns a refused photo');
+  assert.equal(
+    next.state.FailureToast,
+    true,
+    'an unexpected selection failure keeps the Off-state report ask',
+  );
   assert.deepEqual([...next.state.PreparingFaces], ['face-2']);
   assert.deepEqual(next.state.PendingJobs, [msg('RunFace', 'face-2')]);
   assert.deepEqual(
@@ -180,8 +196,13 @@ test('photo promise rejections map to PhotoFailed with the original slot and err
         scale: 0.5,
       },
     },
-  ] as const)
+  ] as const) {
     assert.deepEqual(rejection(effect, error), msg('PhotoFailed', 'face-1', error.message));
+    assert.deepEqual(
+      rejection(effect, refusal('This photo could not be read.')),
+      msg('PhotoRefused', 'face-1', 'This photo could not be read.'),
+    );
+  }
 });
 
 test('cancelled chooser and rejected replacement keep the previous result and other faces', () => {

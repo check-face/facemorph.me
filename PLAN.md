@@ -641,7 +641,12 @@ while the standing choice stays Off.
 The grouping ID is random and consent-scoped, not a hardware identifier.
 
 Retain one contextual report toast while standing reporting is Off, as the operator
-requested. **Send this report** sends only the owning failed attempt's bounded safe
+requested. The 26 October operator decision narrows the ask to unexpected failures: an
+expected photo refusal (unreadable, unsupported or oversized file, a browser capability
+shortfall, a cancelled crop) keeps the error area as its one message owner with no report
+ask, and the pipeline tags refusals (`PhotoRefusal` in `src/Next/photo/refusal.mjs`) so the
+controller can tell them apart.
+**Send this report** sends only the owning failed attempt's bounded safe
 records and never enables standing reporting or overrides a stored refusal. If the
 same invitation offers ongoing consent, label that action explicitly **Turn on debug
 reporting** and explain future sending; it must not hide that choice under **Send
@@ -2498,7 +2503,7 @@ coverage remains scoped to evidence.
 | Reopen external project-bearing MP4 | Outside current UI scope | Deferred by operator: retain export/internal metadata readers and same-origin session playback; do not add import/preview restoration as a release gate. |
 | Missing/damaged/incompatible still recovery or unsupported media | Reasonably preserve current work; clear valid recovery/photo options | No silent fresh encoding; explicit use-as-photo in existing action area. Avoid costly whole-project transactions; MP4 opening is deferred. |
 | Background/reload/close during unfinished work | Truthful interruption; completed work retained | Planned: completed records/files remain useful; lost photo inputs require source selection, and unfinished/background work is not promised complete. |
-| Report error with/without standing consent | One-shot stays one-shot; standing opt-in is explicit; Off-state toast remains | Specified: report only owning safe records, preserve refusal, label future reporting clearly, and make later withdrawal available via footer/Help. No redundant opt-in toast while On. |
+| Report error with/without standing consent | One-shot stays one-shot; standing opt-in is explicit; Off-state toast remains for unexpected failures (26 October operator decision: an expected photo refusal keeps the error area as its one message) | Specified: report only owning safe records, preserve refusal, label future reporting clearly, and make later withdrawal available via footer/Help. No redundant opt-in toast while On. |
 | Remove down to one face | Generate/Encode/Save and compatible reload remain useful | Retained: only Morph requires a second compatible face; its existing reason explains how to continue. |
 | Use tester bulk Generate faces or support/contact links | Existing tester tools and safe support context remain usable | Retained: bulk action is `?testing` only; Help/footer issue links carry safe source/device/actual-route/report reference and follow the correct repo. |
 | Turn standing debug reports On/Off, reload or fail to persist | Discoverable choice below Help; Off immediately stops uploads without interrupting work | Specified: `#debug-reporting` disclosure/footer link; restore actual saved choice, abort/discard unsent reports on withdrawal, disclose tab-only choice on persistence failure. Analytics remains separate. |

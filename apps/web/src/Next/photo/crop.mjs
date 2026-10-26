@@ -1,4 +1,5 @@
 import {inspectImage} from './image-header.mjs';
+import {refusal} from './refusal.mjs';
 // Local cropping ahead of alignment, so an arbitrary camera original never has to be
 // aligned whole. The preview is decoded once at a bounded size and the crop is rendered
 // straight to the square the encoder wants, so no full-resolution bitmap is ever held.
@@ -36,12 +37,12 @@ function scaleTo(width,height,edge){
 /** Decodes at most `edge` pixels on the long side. Returns the bitmap and the source size. */
 export async function decodeBounded(file,options){
  const {edge=PREVIEW_MAX_EDGE,signal}=options||{};
- if(!(file instanceof Blob))throw Error('Choose a photo.');
- if(file.size<8||file.size>CROP_MAX_BYTES)throw Error('Choose a photo smaller than 64 MB.');
- if(typeof createImageBitmap!=='function')throw Error('This browser cannot prepare photos for cropping.');
+ if(!(file instanceof Blob))throw refusal('Choose a photo.');
+ if(file.size<8||file.size>CROP_MAX_BYTES)throw refusal('Choose a photo smaller than 64 MB.');
+ if(typeof createImageBitmap!=='function')throw refusal('This browser cannot prepare photos for cropping.');
  signal?.throwIfAborted?.();
  let header;const bytes=new Uint8Array(await file.arrayBuffer());
- try{header=inspectImage(bytes,{maxPixels:CROP_MAX_PIXELS,maxBytes:CROP_MAX_BYTES,maxEdge:CROP_MAX_EDGE,requireEightBit:false});}catch(error){if(error.code!=='unknown-container')throw error;}
+ try{header=inspectImage(bytes,{maxPixels:CROP_MAX_PIXELS,maxBytes:CROP_MAX_BYTES,maxEdge:CROP_MAX_EDGE,requireEightBit:false});}catch(error){if(error.code!=='unknown-container')throw refusal(error.message);}
  const decodedBytes=browserDecodeBytes(bytes);if(decodedBytes!==bytes)file=new Blob([decodedBytes],{type:file.type});
  if(header){
   const target=scaleTo(header.width,header.height,edge);
@@ -49,12 +50,12 @@ export async function decodeBounded(file,options){
  }
  let probe;
  try{probe=await createImageBitmap(file,{imageOrientation:'none'});}
- catch{throw Error('This photo could not be read. Try a JPEG or PNG copy.');}
+ catch{throw refusal('This photo could not be read. Try a JPEG or PNG copy.');}
  const width=probe.width,height=probe.height;
  try{
   signal?.throwIfAborted?.();
-  if(!(width>0&&height>0))throw Error('This photo could not be read.');
-  if(width*height>CROP_MAX_PIXELS)throw Error('This photo is too large to open. Resize a copy and try again.');
+  if(!(width>0&&height>0))throw refusal('This photo could not be read.');
+  if(width*height>CROP_MAX_PIXELS)throw refusal('This photo is too large to open. Resize a copy and try again.');
   const target=scaleTo(width,height,edge);
   if(!target)return {bitmap:probe,width,height,scale:1,detached:false};
   const bounded=await createImageBitmap(probe,{resizeWidth:target.width,resizeHeight:target.height,resizeQuality:'high'});
@@ -66,14 +67,14 @@ export async function decodeBounded(file,options){
 function paint(bitmap,width,height){
  const canvas=typeof OffscreenCanvas==='function'?new OffscreenCanvas(width,height):Object.assign(document.createElement('canvas'),{width,height});
  const context=canvas.getContext('2d');
- if(!context)throw Error('This browser could not prepare the photo.');
+ if(!context)throw refusal('This browser could not prepare the photo.');
  context.drawImage(bitmap,0,0,width,height);
  return canvas;
 }
 
 async function encode(canvas,type='image/png'){
  if(canvas.convertToBlob)return canvas.convertToBlob({type});
- return new Promise((resolve,reject)=>canvas.toBlob(blob=>blob?resolve(blob):reject(Error('This browser could not prepare the photo.')),type));
+ return new Promise((resolve,reject)=>canvas.toBlob(blob=>blob?resolve(blob):reject(refusal('This browser could not prepare the photo.')),type));
 }
 
 /** A bounded preview of the chosen file, for display and for picking the crop. */
@@ -113,13 +114,13 @@ export async function cropPhoto(file,rect,options){
   const top=Math.min(Math.max(0,Math.round(rect.top*factor)),Math.max(0,bitmap.height-size));
   const canvas=typeof OffscreenCanvas==='function'?new OffscreenCanvas(output,output):Object.assign(document.createElement('canvas'),{width:output,height:output});
   const context=canvas.getContext('2d');
-  if(!context)throw Error('This browser could not prepare the photo.');
+  if(!context)throw refusal('This browser could not prepare the photo.');
   context.save();
   if(rotation%360){context.translate(output/2,output/2);context.rotate((rotation%360)*Math.PI/180);context.translate(-output/2,-output/2);}
   context.drawImage(bitmap,left,top,Math.min(size,bitmap.width-left),Math.min(size,bitmap.height-top),0,0,output,output);
   context.restore();
   const blob=await encode(canvas,'image/png');
-  if(blob.size<8)throw Error('This browser could not prepare the photo.');
+  if(blob.size<8)throw refusal('This browser could not prepare the photo.');
   return new File([blob],'cropped.png',{type:'image/png'});
  }finally{bitmap.close?.();}
 }

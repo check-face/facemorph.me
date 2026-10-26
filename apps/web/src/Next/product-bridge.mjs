@@ -21,6 +21,7 @@ import {labelFor,loadedBytes,createFrameCounter} from './stage-labels.mjs';
 import {infillFrames} from './infill.mjs';
 import {frameStoreKey,frameStoreGet,frameStoreGetDisplay,frameStoreGetOne} from './morph-frames.mjs';
 import {selectPhoto} from './photo-selection.mjs';
+import {refusal} from './photo/refusal.mjs';
 import {persistenceAction} from './storage-request.mjs';
 import {routeAssets,photoAssets,measure} from './model-inventory.mjs';
 import {previewPhoto,cropPhoto} from './photo/crop.mjs';
@@ -641,7 +642,7 @@ export function cancelQueuedFace(id){analytics.cancelQueued?.(id);}
 
 async function prepareFaceChoices(id,boxes,processed){const file=processed?.facemorphOriginal||processed||sourceFiles.get(id);if(!file)return null;try{const preview=await previewPhoto(file,{edge:2048});return {id,file,boxes,...preview};}catch{return null;}}
 export async function chooseDetectedFace(choice,index){
- analytics.operationResult?.('selection','completed');const box=choice.boxes[index];if(!box)throw Error('Choose a detected face.');
+ analytics.operationResult?.('selection','completed');const box=choice.boxes[index];if(!box)throw refusal('Choose a detected face.');
  const size=Math.min(box.width*choice.previewWidth,box.height*choice.previewHeight);
  return cropPhoto(choice.file,{left:box.x*choice.previewWidth,top:box.y*choice.previewHeight,width:size,height:size},{previewScale:choice.scale,rotation:0});
 }

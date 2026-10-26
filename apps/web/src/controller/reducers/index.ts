@@ -48,6 +48,7 @@ export const CASES = {
   Photo: photo,
   PickPhoto: photo,
   PhotoError: photo,
+  PhotoRefused: photo,
   PhotoFailed: photo,
   Photos: photo,
   ChooseDetected: photo,

@@ -20,6 +20,7 @@ export interface Payloads {
   Photo: readonly [string, PhotoSelection];
   PickPhoto: readonly [string, readonly File[]];
   PhotoError: readonly [string];
+  PhotoRefused: readonly [string, string];
   PhotoFailed: readonly [string, string];
   Photos: readonly [string | null, readonly File[]];
   AddAt: readonly [number];

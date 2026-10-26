@@ -113,6 +113,7 @@ export function photo(message: Msg, state: State, facts: PhotoFacts = {}): Trans
       const [id, at, file] = message.args;
       return at !== revision(facts) ? unchanged(state) : acceptPhoto(state, id, file, true);
     }
+    case 'PhotoRefused':
     case 'PhotoFailed': {
       const [id, error] = message.args;
       const preparing = new Set(state.PreparingFaces);
@@ -122,9 +123,10 @@ export function photo(message: Msg, state: State, facts: PhotoFacts = {}): Trans
         PreparingFaces: preparing,
         PendingJobs: without(state.PendingJobs, runFace(id)),
         PendingFaces: state.PendingFaces.filter((face) => face !== id),
-        // The error area is the one owner of a refused photo; no second failure toast.
+        // An expected refusal (bad file, cancelled crop) is owned by the error area alone;
+        // an unexpected failure keeps the Off-state report ask (flow-matrix R45).
         Error: error,
-        FailureToast: false,
+        FailureToast: message.type === 'PhotoRefused' ? false : !state.Debug,
       });
       return schedule(next.state, next.effects);
     }
