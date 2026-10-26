@@ -1,0 +1,1114 @@
+{
+  "schema": "facemorph-calibration/1",
+  "version": 1,
+  "threshold": "measured, no threshold",
+  "scopeNote": "One exact implementation/browser/CPU profile and full1024 synthesis only. No model-load, canary, alignment, encoder, video-export, GPU, physical-phone or hosted-platform calibration is inferred.",
+  "provenance": {
+    "eris-chrome-cpu-be1ac74": {
+      "device": {
+        "hostname": "eris",
+        "os": "Linux-7.2.5-3-omarchy-x86_64-with-glibc2.44",
+        "cpu": "12th Gen Intel(R) Core(TM) i5-12400"
+      },
+      "browser": {
+        "family": "chrome",
+        "executable": "/home/cdilga/.local/opt/google-chrome/google-chrome",
+        "version": "Google Chrome 156.0.8078.47",
+        "flags": ["--enable-automation", "--disable-features=WebGPU"],
+        "preferences": {},
+        "headless": true,
+        "ignoreHttpsErrors": false,
+        "distribution": "installed",
+        "launches": [
+          {
+            "commandLine": [
+              "/home/cdilga/.local/bin/google-chrome",
+              "--disable-field-trial-config",
+              "--disable-background-networking",
+              "--disable-background-timer-throttling",
+              "--disable-backgrounding-occluded-windows",
+              "--disable-back-forward-cache",
+              "--disable-breakpad",
+              "--disable-client-side-phishing-detection",
+              "--disable-component-extensions-with-background-pages",
+              "--disable-component-update",
+              "--no-default-browser-check",
+              "--disable-default-apps",
+              "--disable-dev-shm-usage",
+              "--disable-edgeupdater",
+              "--disable-extensions",
+              "--disable-features=AvoidUnnecessaryBeforeUnloadCheckSync,DestroyProfileOnBrowserClose,DialMediaRouteProvider,GlobalMediaControls,HttpsUpgrades,LensOverlay,MediaRouter,PaintHolding,ThirdPartyStoragePartitioning,BlockOriginHeaderModificationOnRedirect,AvoidCorsURLLoaderRestartOnRedirect,Translate,AutoDeElevate,OptimizationHints,NetworkTimeServiceQuerying,AimEnabled,msForceBrowserSignIn,msEdgeUpdateLaunchServicesPreferredVersion",
+              "--enable-features=CDPScreenshotNewSurface",
+              "--allow-pre-commit-input",
+              "--disable-hang-monitor",
+              "--disable-ipc-flooding-protection",
+              "--disable-popup-blocking",
+              "--disable-prompt-on-repost",
+              "--disable-renderer-backgrounding",
+              "--disable-updater-scheduler",
+              "--force-color-profile=srgb",
+              "--metrics-recording-only",
+              "--no-first-run",
+              "--password-store=basic",
+              "--use-mock-keychain",
+              "--no-service-autorun",
+              "--export-tagged-pdf",
+              "--disable-search-engine-choice-screen",
+              "--unsafely-disable-devtools-self-xss-warnings",
+              "--edge-skip-compat-layer-relaunch",
+              "--disable-infobars",
+              "--disable-search-engine-choice-screen",
+              "--disable-sync",
+              "--enable-unsafe-swiftshader",
+              "--headless",
+              "--hide-scrollbars",
+              "--mute-audio",
+              "--blink-settings=primaryHoverType=2,availableHoverTypes=2,primaryPointerType=4,availablePointerTypes=4",
+              "--no-sandbox",
+              "--enable-automation",
+              "--disable-features=WebGPU",
+              "--user-data-dir=/tmp/pearl-calibration-chrome/profile-1",
+              "--remote-debugging-pipe",
+              "--noerrdialogs",
+              "--ozone-platform=headless",
+              "--ozone-override-screen-size=800,600",
+              "--use-angle=swiftshader-webgl",
+              "--flag-switches-begin",
+              "--flag-switches-end",
+              "--enable-unsafe-swiftshader",
+              "about:blank"
+            ],
+            "executable": "/home/cdilga/.local/opt/google-chrome/google-chrome"
+          }
+        ]
+      },
+      "artifact": {
+        "digest": "a5b9ac5f0b144ba6a2286faa690d454a25ad48e775edee336409fe3d8e8b506a",
+        "kind": "destination",
+        "source": {
+          "repository": "facemorph-me/facemorph.me",
+          "commit": "be1ac74ed6e1faed3ab6a544e5b69d233e7b050f",
+          "buildId": "be1ac74ed6e1faed3ab6a544e5b69d233e7b050f",
+          "sourceTreeClean": true,
+          "sourceTreeSha256": "44930535e1b5a025d76644055dc2fa5da11b65a657b6cf2b569ec261d4fb9af6"
+        }
+      },
+      "runtimeSha256": "d9e37e50a436e9fb7c0c7f973e70adee353c808f48c6a51fa5a9186f1c650a5c",
+      "implementationAssets": [
+        {
+          "path": "deploy-next/assets/ort-worker-qi34s_AR.js",
+          "sha256": "0d1e46a6f3bc69f861c2b7bdb9770e6f47b7e962b2a49e051d14bd9ec3ab5128",
+          "bytes": 86681
+        },
+        {
+          "path": "deploy-next/assets/preflight-DJNR5oP-.js",
+          "sha256": "db9675625800e60e7bc0ae406c0fcd0a2c90a5226078b65f1d8f909df82b8291",
+          "bytes": 307
+        },
+        {
+          "path": "deploy-next/assets/preflight-check-C9Gg58cN.js",
+          "sha256": "c53e742f8ad27afee9433568ea6bdadc7b3be8934b41e56ea97051cc080c3580",
+          "bytes": 7161
+        }
+      ],
+      "model": {
+        "provider": "wasm",
+        "manifestSha256": "d9e37e50a436e9fb7c0c7f973e70adee353c808f48c6a51fa5a9186f1c650a5c",
+        "modelSourceSha256": "adf127ea7bb8a7788c8bdeda3c9937f7310b669b09ecf799ca53a631ff46948d",
+        "synthesisSha256": "e2cae9655a4af5981f13d6e1af63f71ffcf9f564079de6f90d4f8da04db639bb"
+      },
+      "threadCount": 4,
+      "threadCountEvidence": "cpuThreads() in the hash-bound artifact worker; crossOriginIsolated and hardwareConcurrency recorded per pair",
+      "measurementBoundary": "Final synthesis-complete.elapsedMs for the user face, after runtime admission/canaries; cached faces cannot supply this event.",
+      "rawMeasurementsSha256": "94a2345c4093bbb59ab1a08c0bd299f0f1e943b6e7c89448db1f09634dce0e0d",
+      "collector": "tools/device-lab/calibrate.py",
+      "command": "uv run --with playwright python tools/device-lab/calibrate.py --artifact <verified-be1ac74-artifact>/deploy-next --runtime-sha d9e37e50a436e9fb7c0c7f973e70adee353c808f48c6a51fa5a9186f1c650a5c --out <evidence-directory>"
+    }
+  },
+  "measurements": [
+    {
+      "id": "chrome-0",
+      "partition": "training",
+      "at": "2026-10-26T15:59:50.760750+00:00",
+      "scope": {
+        "checkpoint": "adf127ea7bb8a7788c8bdeda3c9937f7310b669b09ecf799ca53a631ff46948d",
+        "resolution": 1024,
+        "provider": "cpu",
+        "runtime": "d9e37e50a436e9fb7c0c7f973e70adee353c808f48c6a51fa5a9186f1c650a5c",
+        "threadMode": "multi",
+        "workload": "single-face-original-noise"
+      },
+      "stage": "synthesis-per-output",
+      "durationMs": 2167.5949999690056,
+      "profile": "12th Gen Intel(R) Core(TM) i5-12400 | Google Chrome 156.0.8078.47 | be1ac74ed6e1faed3ab6a544e5b69d233e7b050f",
+      "device": "eris",
+      "checkerUnitMs": 0.0403404249789867,
+      "provenanceKey": "eris-chrome-cpu-be1ac74",
+      "checker": {
+        "outcome": "ok",
+        "estimate": {
+          "kind": "no-reliable-estimate",
+          "outcome": "skip"
+        },
+        "evidence": {
+          "webgpuAdapter": {
+            "state": "failed",
+            "reason": "no-webgpu-adapter"
+          },
+          "wasmSimd": {
+            "state": "known",
+            "value": true
+          },
+          "wasmThreads": {
+            "state": "known",
+            "value": true
+          },
+          "hardwareConcurrency": {
+            "state": "known",
+            "value": 12
+          },
+          "deviceMemoryGiB": {
+            "state": "unknown"
+          },
+          "cpuSample": {
+            "state": "known",
+            "value": {
+              "compileMs": 0.5800000429153442,
+              "warmupMs": 1.9649999737739563,
+              "completionMs": 18.95999974012375,
+              "samples": 470
+            }
+          },
+          "gpuSample": {
+            "state": "failed",
+            "reason": "no-webgpu-adapter"
+          }
+        },
+        "storage": {
+          "quotaBytes": 10737418240,
+          "usageBytes": 0
+        },
+        "coarseMemoryGiB": 32,
+        "routes": [
+          {
+            "route": "cpu",
+            "eligibility": "eligible-model-check-pending"
+          },
+          {
+            "route": "webgpu",
+            "eligibility": "not-eligible",
+            "reason": "no-webgpu-adapter"
+          }
+        ],
+        "elapsedMs": 1935.0299999713898,
+        "samplingMs": 1929.6299999952316,
+        "scratchPeakBytes": 4194304,
+        "resourcesRemaining": 0,
+        "reused": false
+      },
+      "facts": {
+        "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+        "hardwareConcurrency": 12,
+        "crossOriginIsolated": true
+      },
+      "workerSynthesis": [
+        {
+          "id": 2,
+          "elapsedMs": 2431.310000002384
+        },
+        {
+          "id": 2,
+          "elapsedMs": 2419.8199999928474
+        },
+        {
+          "id": 2,
+          "elapsedMs": 2310.285000026226
+        },
+        {
+          "id": 2,
+          "elapsedMs": 2324.860000014305
+        },
+        {
+          "id": 2,
+          "elapsedMs": 2684.175000011921
+        },
+        {
+          "id": 2,
+          "elapsedMs": 2381.1700000166893
+        },
+        {
+          "id": 2,
+          "elapsedMs": 1923.1100000143051
+        },
+        {
+          "id": 3,
+          "elapsedMs": 2167.5949999690056
+        }
+      ],
+      "journey": {
+        "usableS": 0.21,
+        "faceS": 26.61,
+        "route": "Ready \u00b7 this device\u2019s CPU.",
+        "url": "http://localhost:8798/",
+        "documentSha256": "0812ba126f4dd9d9c06ffaf985b9d3bea41659f7f55ae90d20ad04852d6b9d86",
+        "typed": "calibration-chrome-0-1793030359719699136",
+        "fieldValue": "calibration-chrome-0-1793030359719699136",
+        "typedExactly": true
+      },
+      "loadAverage": [6.0576171875, 13.29248046875, 21.77978515625]
+    },
+    {
+      "id": "chrome-1",
+      "partition": "training",
+      "at": "2026-10-26T16:00:18.634625+00:00",
+      "scope": {
+        "checkpoint": "adf127ea7bb8a7788c8bdeda3c9937f7310b669b09ecf799ca53a631ff46948d",
+        "resolution": 1024,
+        "provider": "cpu",
+        "runtime": "d9e37e50a436e9fb7c0c7f973e70adee353c808f48c6a51fa5a9186f1c650a5c",
+        "threadMode": "multi",
+        "workload": "single-face-original-noise"
+      },
+      "stage": "synthesis-per-output",
+      "durationMs": 2334.4050000309944,
+      "profile": "12th Gen Intel(R) Core(TM) i5-12400 | Google Chrome 156.0.8078.47 | be1ac74ed6e1faed3ab6a544e5b69d233e7b050f",
+      "device": "eris",
+      "checkerUnitMs": 0.03836864561347638,
+      "provenanceKey": "eris-chrome-cpu-be1ac74",
+      "checker": {
+        "outcome": "ok",
+        "estimate": {
+          "kind": "no-reliable-estimate",
+          "outcome": "skip"
+        },
+        "evidence": {
+          "webgpuAdapter": {
+            "state": "failed",
+            "reason": "no-webgpu-adapter"
+          },
+          "wasmSimd": {
+            "state": "known",
+            "value": true
+          },
+          "wasmThreads": {
+            "state": "known",
+            "value": true
+          },
+          "hardwareConcurrency": {
+            "state": "known",
+            "value": 12
+          },
+          "deviceMemoryGiB": {
+            "state": "unknown"
+          },
+          "cpuSample": {
+            "state": "known",
+            "value": {
+              "compileMs": 0.1549999713897705,
+              "warmupMs": 1.425000011920929,
+              "completionMs": 18.110000729560852,
+              "samples": 472
+            }
+          },
+          "gpuSample": {
+            "state": "failed",
+            "reason": "no-webgpu-adapter"
+          }
+        },
+        "storage": {
+          "quotaBytes": 10903507923,
+          "usageBytes": 166089683
+        },
+        "coarseMemoryGiB": 32,
+        "routes": [
+          {
+            "route": "cpu",
+            "eligibility": "eligible-model-check-pending"
+          },
+          {
+            "route": "webgpu",
+            "eligibility": "not-eligible",
+            "reason": "no-webgpu-adapter"
+          }
+        ],
+        "elapsedMs": 1930.2250000238419,
+        "samplingMs": 1927.7250000238419,
+        "scratchPeakBytes": 4194304,
+        "resourcesRemaining": 0,
+        "reused": false
+      },
+      "facts": {
+        "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+        "hardwareConcurrency": 12,
+        "crossOriginIsolated": true
+      },
+      "workerSynthesis": [
+        {
+          "id": 2,
+          "elapsedMs": 2375.8849999904633
+        },
+        {
+          "id": 2,
+          "elapsedMs": 2300.735000014305
+        },
+        {
+          "id": 2,
+          "elapsedMs": 2039.675000011921
+        },
+        {
+          "id": 2,
+          "elapsedMs": 2437.1650000214577
+        },
+        {
+          "id": 2,
+          "elapsedMs": 3429.2549999952316
+        },
+        {
+          "id": 2,
+          "elapsedMs": 2264.574999988079
+        },
+        {
+          "id": 2,
+          "elapsedMs": 2302.164999961853
+        },
+        {
+          "id": 3,
+          "elapsedMs": 2334.4050000309944
+        }
+      ],
+      "journey": {
+        "usableS": 0.23,
+        "faceS": 21.4,
+        "route": "Ready \u00b7 this device\u2019s CPU.",
+        "url": "http://localhost:8798/",
+        "documentSha256": "0812ba126f4dd9d9c06ffaf985b9d3bea41659f7f55ae90d20ad04852d6b9d86",
+        "typed": "calibration-chrome-1-1793030392803823284",
+        "fieldValue": "calibration-chrome-1-1793030392803823284",
+        "typedExactly": true
+      },
+      "loadAverage": [8.0380859375, 13.1005859375, 21.4453125]
+    },
+    {
+      "id": "chrome-2",
+      "partition": "training",
+      "at": "2026-10-26T16:00:45.507025+00:00",
+      "scope": {
+        "checkpoint": "adf127ea7bb8a7788c8bdeda3c9937f7310b669b09ecf799ca53a631ff46948d",
+        "resolution": 1024,
+        "provider": "cpu",
+        "runtime": "d9e37e50a436e9fb7c0c7f973e70adee353c808f48c6a51fa5a9186f1c650a5c",
+        "threadMode": "multi",
+        "workload": "single-face-original-noise"
+      },
+      "stage": "synthesis-per-output",
+      "durationMs": 2403.074999988079,
+      "profile": "12th Gen Intel(R) Core(TM) i5-12400 | Google Chrome 156.0.8078.47 | be1ac74ed6e1faed3ab6a544e5b69d233e7b050f",
+      "device": "eris",
+      "checkerUnitMs": 0.042946807881619066,
+      "provenanceKey": "eris-chrome-cpu-be1ac74",
+      "checker": {
+        "outcome": "ok",
+        "estimate": {
+          "kind": "no-reliable-estimate",
+          "outcome": "skip"
+        },
+        "evidence": {
+          "webgpuAdapter": {
+            "state": "failed",
+            "reason": "no-webgpu-adapter"
+          },
+          "wasmSimd": {
+            "state": "known",
+            "value": true
+          },
+          "wasmThreads": {
+            "state": "known",
+            "value": true
+          },
+          "hardwareConcurrency": {
+            "state": "known",
+            "value": 12
+          },
+          "deviceMemoryGiB": {
+            "state": "unknown"
+          },
+          "cpuSample": {
+            "state": "known",
+            "value": {
+              "compileMs": 0.6299999952316284,
+              "warmupMs": 3.665000021457672,
+              "completionMs": 20.184999704360962,
+              "samples": 470
+            }
+          },
+          "gpuSample": {
+            "state": "failed",
+            "reason": "no-webgpu-adapter"
+          }
+        },
+        "storage": {
+          "quotaBytes": 10903344252,
+          "usageBytes": 165926012
+        },
+        "coarseMemoryGiB": 32,
+        "routes": [
+          {
+            "route": "cpu",
+            "eligibility": "eligible-model-check-pending"
+          },
+          {
+            "route": "webgpu",
+            "eligibility": "not-eligible",
+            "reason": "no-webgpu-adapter"
+          }
+        ],
+        "elapsedMs": 1934.5149999856949,
+        "samplingMs": 1927.4449999928474,
+        "scratchPeakBytes": 4194304,
+        "resourcesRemaining": 0,
+        "reused": false
+      },
+      "facts": {
+        "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+        "hardwareConcurrency": 12,
+        "crossOriginIsolated": true
+      },
+      "workerSynthesis": [
+        {
+          "id": 2,
+          "elapsedMs": 2403.8349999785423
+        },
+        {
+          "id": 2,
+          "elapsedMs": 2360.064999997616
+        },
+        {
+          "id": 2,
+          "elapsedMs": 2423.1599999666214
+        },
+        {
+          "id": 2,
+          "elapsedMs": 2288.125
+        },
+        {
+          "id": 2,
+          "elapsedMs": 2688.064999997616
+        },
+        {
+          "id": 2,
+          "elapsedMs": 1965.3899999856949
+        },
+        {
+          "id": 2,
+          "elapsedMs": 1937.4449999928474
+        },
+        {
+          "id": 3,
+          "elapsedMs": 2403.074999988079
+        }
+      ],
+      "journey": {
+        "usableS": 0.19,
+        "faceS": 20.41,
+        "route": "Ready \u00b7 this device\u2019s CPU.",
+        "url": "http://localhost:8798/",
+        "documentSha256": "0812ba126f4dd9d9c06ffaf985b9d3bea41659f7f55ae90d20ad04852d6b9d86",
+        "typed": "calibration-chrome-2-1793030420647273442",
+        "fieldValue": "calibration-chrome-2-1793030420647273442",
+        "typedExactly": true
+      },
+      "loadAverage": [7.53857421875, 12.5771484375, 21.04931640625]
+    },
+    {
+      "id": "chrome-3",
+      "partition": "held-out",
+      "at": "2026-10-26T16:01:12.355905+00:00",
+      "scope": {
+        "checkpoint": "adf127ea7bb8a7788c8bdeda3c9937f7310b669b09ecf799ca53a631ff46948d",
+        "resolution": 1024,
+        "provider": "cpu",
+        "runtime": "d9e37e50a436e9fb7c0c7f973e70adee353c808f48c6a51fa5a9186f1c650a5c",
+        "threadMode": "multi",
+        "workload": "single-face-original-noise"
+      },
+      "stage": "synthesis-per-output",
+      "durationMs": 2414.949999988079,
+      "profile": "12th Gen Intel(R) Core(TM) i5-12400 | Google Chrome 156.0.8078.47 | be1ac74ed6e1faed3ab6a544e5b69d233e7b050f",
+      "device": "eris",
+      "checkerUnitMs": 0.04215957674574345,
+      "provenanceKey": "eris-chrome-cpu-be1ac74",
+      "checker": {
+        "outcome": "ok",
+        "estimate": {
+          "kind": "no-reliable-estimate",
+          "outcome": "skip"
+        },
+        "evidence": {
+          "webgpuAdapter": {
+            "state": "failed",
+            "reason": "no-webgpu-adapter"
+          },
+          "wasmSimd": {
+            "state": "known",
+            "value": true
+          },
+          "wasmThreads": {
+            "state": "known",
+            "value": true
+          },
+          "hardwareConcurrency": {
+            "state": "known",
+            "value": 12
+          },
+          "deviceMemoryGiB": {
+            "state": "unknown"
+          },
+          "cpuSample": {
+            "state": "known",
+            "value": {
+              "compileMs": 0.19999998807907104,
+              "warmupMs": 0.8999999761581421,
+              "completionMs": 19.81500107049942,
+              "samples": 470
+            }
+          },
+          "gpuSample": {
+            "state": "failed",
+            "reason": "no-webgpu-adapter"
+          }
+        },
+        "storage": {
+          "quotaBytes": 10903482731,
+          "usageBytes": 166064491
+        },
+        "coarseMemoryGiB": 32,
+        "routes": [
+          {
+            "route": "cpu",
+            "eligibility": "eligible-model-check-pending"
+          },
+          {
+            "route": "webgpu",
+            "eligibility": "not-eligible",
+            "reason": "no-webgpu-adapter"
+          }
+        ],
+        "elapsedMs": 1934.1949999928474,
+        "samplingMs": 1926.1899999976158,
+        "scratchPeakBytes": 4194304,
+        "resourcesRemaining": 0,
+        "reused": false
+      },
+      "facts": {
+        "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+        "hardwareConcurrency": 12,
+        "crossOriginIsolated": true
+      },
+      "workerSynthesis": [
+        {
+          "id": 2,
+          "elapsedMs": 2429.9050000309944
+        },
+        {
+          "id": 2,
+          "elapsedMs": 2340.4300000071526
+        },
+        {
+          "id": 2,
+          "elapsedMs": 2359.4700000286102
+        },
+        {
+          "id": 2,
+          "elapsedMs": 1692.9549999833107
+        },
+        {
+          "id": 2,
+          "elapsedMs": 2175.9449999928474
+        },
+        {
+          "id": 2,
+          "elapsedMs": 2352.3949999809265
+        },
+        {
+          "id": 2,
+          "elapsedMs": 2383.3449999690056
+        },
+        {
+          "id": 3,
+          "elapsedMs": 2414.949999988079
+        }
+      ],
+      "journey": {
+        "usableS": 0.19,
+        "faceS": 20.44,
+        "route": "Ready \u00b7 this device\u2019s CPU.",
+        "url": "http://localhost:8798/",
+        "documentSha256": "0812ba126f4dd9d9c06ffaf985b9d3bea41659f7f55ae90d20ad04852d6b9d86",
+        "typed": "calibration-chrome-3-1793030447511095753",
+        "fieldValue": "calibration-chrome-3-1793030447511095753",
+        "typedExactly": true
+      },
+      "loadAverage": [7.74365234375, 12.14013671875, 20.63330078125]
+    },
+    {
+      "id": "chrome-4",
+      "partition": "held-out",
+      "at": "2026-10-26T16:01:39.233859+00:00",
+      "scope": {
+        "checkpoint": "adf127ea7bb8a7788c8bdeda3c9937f7310b669b09ecf799ca53a631ff46948d",
+        "resolution": 1024,
+        "provider": "cpu",
+        "runtime": "d9e37e50a436e9fb7c0c7f973e70adee353c808f48c6a51fa5a9186f1c650a5c",
+        "threadMode": "multi",
+        "workload": "single-face-original-noise"
+      },
+      "stage": "synthesis-per-output",
+      "durationMs": 2167.3300000429153,
+      "profile": "12th Gen Intel(R) Core(TM) i5-12400 | Google Chrome 156.0.8078.47 | be1ac74ed6e1faed3ab6a544e5b69d233e7b050f",
+      "device": "eris",
+      "checkerUnitMs": 0.04122881477667113,
+      "provenanceKey": "eris-chrome-cpu-be1ac74",
+      "checker": {
+        "outcome": "ok",
+        "estimate": {
+          "kind": "no-reliable-estimate",
+          "outcome": "skip"
+        },
+        "evidence": {
+          "webgpuAdapter": {
+            "state": "failed",
+            "reason": "no-webgpu-adapter"
+          },
+          "wasmSimd": {
+            "state": "known",
+            "value": true
+          },
+          "wasmThreads": {
+            "state": "known",
+            "value": true
+          },
+          "hardwareConcurrency": {
+            "state": "known",
+            "value": 12
+          },
+          "deviceMemoryGiB": {
+            "state": "unknown"
+          },
+          "cpuSample": {
+            "state": "known",
+            "value": {
+              "compileMs": 0.17500001192092896,
+              "warmupMs": 1.0949999690055847,
+              "completionMs": 19.460000574588776,
+              "samples": 472
+            }
+          },
+          "gpuSample": {
+            "state": "failed",
+            "reason": "no-webgpu-adapter"
+          }
+        },
+        "storage": {
+          "quotaBytes": 10903508647,
+          "usageBytes": 166090407
+        },
+        "coarseMemoryGiB": 32,
+        "routes": [
+          {
+            "route": "cpu",
+            "eligibility": "eligible-model-check-pending"
+          },
+          {
+            "route": "webgpu",
+            "eligibility": "not-eligible",
+            "reason": "no-webgpu-adapter"
+          }
+        ],
+        "elapsedMs": 1933.2049999833107,
+        "samplingMs": 1929.5649999976158,
+        "scratchPeakBytes": 4194304,
+        "resourcesRemaining": 0,
+        "reused": false
+      },
+      "facts": {
+        "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+        "hardwareConcurrency": 12,
+        "crossOriginIsolated": true
+      },
+      "workerSynthesis": [
+        {
+          "id": 2,
+          "elapsedMs": 2452.139999985695
+        },
+        {
+          "id": 2,
+          "elapsedMs": 1814.9799999594688
+        },
+        {
+          "id": 2,
+          "elapsedMs": 2124.560000002384
+        },
+        {
+          "id": 2,
+          "elapsedMs": 2151.4449999928474
+        },
+        {
+          "id": 2,
+          "elapsedMs": 2692.285000026226
+        },
+        {
+          "id": 2,
+          "elapsedMs": 2369.6299999952316
+        },
+        {
+          "id": 2,
+          "elapsedMs": 2364.1449999809265
+        },
+        {
+          "id": 3,
+          "elapsedMs": 2167.3300000429153
+        }
+      ],
+      "journey": {
+        "usableS": 0.22,
+        "faceS": 20.42,
+        "route": "Ready \u00b7 this device\u2019s CPU.",
+        "url": "http://localhost:8798/",
+        "documentSha256": "0812ba126f4dd9d9c06ffaf985b9d3bea41659f7f55ae90d20ad04852d6b9d86",
+        "typed": "calibration-chrome-4-1793030474364347392",
+        "fieldValue": "calibration-chrome-4-1793030474364347392",
+        "typedExactly": true
+      },
+      "loadAverage": [7.75146484375, 11.7900390625, 20.29150390625]
+    }
+  ],
+  "platformCells": [
+    {
+      "cell": "eris-cpu",
+      "stage": "photo-preprocessing",
+      "status": "eligible-untested",
+      "evidenceClass": "physical-desktop",
+      "measurementIds": [],
+      "reason": "No paired checker/workload calibration measurements; withhold range."
+    },
+    {
+      "cell": "eris-cpu",
+      "stage": "e4e-per-confirmed-crop",
+      "status": "eligible-untested",
+      "evidenceClass": "physical-desktop",
+      "measurementIds": [],
+      "reason": "No paired checker/workload calibration measurements; withhold range."
+    },
+    {
+      "cell": "eris-cpu",
+      "stage": "synthesis-per-output",
+      "status": "tested",
+      "evidenceClass": "physical-desktop",
+      "measurementIds": ["chrome-0", "chrome-1", "chrome-2", "chrome-3", "chrome-4"],
+      "reason": "Paired same-device training and held-out runs; no cross-device validation."
+    },
+    {
+      "cell": "eris-cpu",
+      "stage": "model-load-and-check",
+      "status": "eligible-untested",
+      "evidenceClass": "physical-desktop",
+      "measurementIds": [],
+      "reason": "No paired checker/workload calibration measurements; withhold range."
+    },
+    {
+      "cell": "eris-cpu",
+      "stage": "video-export",
+      "status": "eligible-untested",
+      "evidenceClass": "physical-desktop",
+      "measurementIds": [],
+      "reason": "No paired checker/workload calibration measurements; withhold range."
+    },
+    {
+      "cell": "eris-webgpu",
+      "stage": "photo-preprocessing",
+      "status": "eligible-untested",
+      "evidenceClass": "physical-desktop",
+      "measurementIds": [],
+      "reason": "No paired checker/workload calibration measurements; withhold range."
+    },
+    {
+      "cell": "eris-webgpu",
+      "stage": "e4e-per-confirmed-crop",
+      "status": "eligible-untested",
+      "evidenceClass": "physical-desktop",
+      "measurementIds": [],
+      "reason": "No paired checker/workload calibration measurements; withhold range."
+    },
+    {
+      "cell": "eris-webgpu",
+      "stage": "synthesis-per-output",
+      "status": "eligible-untested",
+      "evidenceClass": "physical-desktop",
+      "measurementIds": [],
+      "reason": "No paired checker/workload calibration measurements; withhold range."
+    },
+    {
+      "cell": "eris-webgpu",
+      "stage": "model-load-and-check",
+      "status": "eligible-untested",
+      "evidenceClass": "physical-desktop",
+      "measurementIds": [],
+      "reason": "No paired checker/workload calibration measurements; withhold range."
+    },
+    {
+      "cell": "eris-webgpu",
+      "stage": "video-export",
+      "status": "eligible-untested",
+      "evidenceClass": "physical-desktop",
+      "measurementIds": [],
+      "reason": "No paired checker/workload calibration measurements; withhold range."
+    },
+    {
+      "cell": "eris-firefox-cpu",
+      "stage": "photo-preprocessing",
+      "status": "eligible-untested",
+      "evidenceClass": "physical-desktop",
+      "measurementIds": [],
+      "reason": "No paired checker/workload calibration measurements; withhold range."
+    },
+    {
+      "cell": "eris-firefox-cpu",
+      "stage": "e4e-per-confirmed-crop",
+      "status": "eligible-untested",
+      "evidenceClass": "physical-desktop",
+      "measurementIds": [],
+      "reason": "No paired checker/workload calibration measurements; withhold range."
+    },
+    {
+      "cell": "eris-firefox-cpu",
+      "stage": "synthesis-per-output",
+      "status": "eligible-untested",
+      "evidenceClass": "physical-desktop",
+      "measurementIds": [],
+      "reason": "No paired checker/workload calibration measurements; withhold range."
+    },
+    {
+      "cell": "eris-firefox-cpu",
+      "stage": "model-load-and-check",
+      "status": "eligible-untested",
+      "evidenceClass": "physical-desktop",
+      "measurementIds": [],
+      "reason": "No paired checker/workload calibration measurements; withhold range."
+    },
+    {
+      "cell": "eris-firefox-cpu",
+      "stage": "video-export",
+      "status": "eligible-untested",
+      "evidenceClass": "physical-desktop",
+      "measurementIds": [],
+      "reason": "No paired checker/workload calibration measurements; withhold range."
+    },
+    {
+      "cell": "eris-firefox-webgpu",
+      "stage": "photo-preprocessing",
+      "status": "eligible-untested",
+      "evidenceClass": "physical-desktop",
+      "measurementIds": [],
+      "reason": "No paired checker/workload calibration measurements; withhold range."
+    },
+    {
+      "cell": "eris-firefox-webgpu",
+      "stage": "e4e-per-confirmed-crop",
+      "status": "eligible-untested",
+      "evidenceClass": "physical-desktop",
+      "measurementIds": [],
+      "reason": "No paired checker/workload calibration measurements; withhold range."
+    },
+    {
+      "cell": "eris-firefox-webgpu",
+      "stage": "synthesis-per-output",
+      "status": "eligible-untested",
+      "evidenceClass": "physical-desktop",
+      "measurementIds": [],
+      "reason": "No paired checker/workload calibration measurements; withhold range."
+    },
+    {
+      "cell": "eris-firefox-webgpu",
+      "stage": "model-load-and-check",
+      "status": "eligible-untested",
+      "evidenceClass": "physical-desktop",
+      "measurementIds": [],
+      "reason": "No paired checker/workload calibration measurements; withhold range."
+    },
+    {
+      "cell": "eris-firefox-webgpu",
+      "stage": "video-export",
+      "status": "eligible-untested",
+      "evidenceClass": "physical-desktop",
+      "measurementIds": [],
+      "reason": "No paired checker/workload calibration measurements; withhold range."
+    },
+    {
+      "cell": "phone-cpu",
+      "stage": "photo-preprocessing",
+      "status": "eligible-untested",
+      "evidenceClass": "physical-phone",
+      "measurementIds": [],
+      "reason": "No paired checker/workload calibration measurements; withhold range."
+    },
+    {
+      "cell": "phone-cpu",
+      "stage": "e4e-per-confirmed-crop",
+      "status": "eligible-untested",
+      "evidenceClass": "physical-phone",
+      "measurementIds": [],
+      "reason": "No paired checker/workload calibration measurements; withhold range."
+    },
+    {
+      "cell": "phone-cpu",
+      "stage": "synthesis-per-output",
+      "status": "eligible-untested",
+      "evidenceClass": "physical-phone",
+      "measurementIds": [],
+      "reason": "No paired checker/workload calibration measurements; withhold range."
+    },
+    {
+      "cell": "phone-cpu",
+      "stage": "model-load-and-check",
+      "status": "eligible-untested",
+      "evidenceClass": "physical-phone",
+      "measurementIds": [],
+      "reason": "No paired checker/workload calibration measurements; withhold range."
+    },
+    {
+      "cell": "phone-cpu",
+      "stage": "video-export",
+      "status": "eligible-untested",
+      "evidenceClass": "physical-phone",
+      "measurementIds": [],
+      "reason": "No paired checker/workload calibration measurements; withhold range."
+    },
+    {
+      "cell": "phone-webgpu",
+      "stage": "photo-preprocessing",
+      "status": "eligible-untested",
+      "evidenceClass": "physical-phone",
+      "measurementIds": [],
+      "reason": "No paired checker/workload calibration measurements; withhold range."
+    },
+    {
+      "cell": "phone-webgpu",
+      "stage": "e4e-per-confirmed-crop",
+      "status": "eligible-untested",
+      "evidenceClass": "physical-phone",
+      "measurementIds": [],
+      "reason": "No paired checker/workload calibration measurements; withhold range."
+    },
+    {
+      "cell": "phone-webgpu",
+      "stage": "synthesis-per-output",
+      "status": "eligible-untested",
+      "evidenceClass": "physical-phone",
+      "measurementIds": [],
+      "reason": "No paired checker/workload calibration measurements; withhold range."
+    },
+    {
+      "cell": "phone-webgpu",
+      "stage": "model-load-and-check",
+      "status": "eligible-untested",
+      "evidenceClass": "physical-phone",
+      "measurementIds": [],
+      "reason": "No paired checker/workload calibration measurements; withhold range."
+    },
+    {
+      "cell": "phone-webgpu",
+      "stage": "video-export",
+      "status": "eligible-untested",
+      "evidenceClass": "physical-phone",
+      "measurementIds": [],
+      "reason": "No paired checker/workload calibration measurements; withhold range."
+    },
+    {
+      "cell": "ios-simulator-cpu",
+      "stage": "photo-preprocessing",
+      "status": "eligible-untested",
+      "evidenceClass": "simulator",
+      "measurementIds": [],
+      "reason": "No paired checker/workload calibration measurements; withhold range."
+    },
+    {
+      "cell": "ios-simulator-cpu",
+      "stage": "e4e-per-confirmed-crop",
+      "status": "eligible-untested",
+      "evidenceClass": "simulator",
+      "measurementIds": [],
+      "reason": "No paired checker/workload calibration measurements; withhold range."
+    },
+    {
+      "cell": "ios-simulator-cpu",
+      "stage": "synthesis-per-output",
+      "status": "eligible-untested",
+      "evidenceClass": "simulator",
+      "measurementIds": [],
+      "reason": "No paired checker/workload calibration measurements; withhold range."
+    },
+    {
+      "cell": "ios-simulator-cpu",
+      "stage": "model-load-and-check",
+      "status": "eligible-untested",
+      "evidenceClass": "simulator",
+      "measurementIds": [],
+      "reason": "No paired checker/workload calibration measurements; withhold range."
+    },
+    {
+      "cell": "ios-simulator-cpu",
+      "stage": "video-export",
+      "status": "eligible-untested",
+      "evidenceClass": "simulator",
+      "measurementIds": [],
+      "reason": "No paired checker/workload calibration measurements; withhold range."
+    },
+    {
+      "cell": "android-emulator-cpu",
+      "stage": "photo-preprocessing",
+      "status": "eligible-untested",
+      "evidenceClass": "emulator",
+      "measurementIds": [],
+      "reason": "No paired checker/workload calibration measurements; withhold range."
+    },
+    {
+      "cell": "android-emulator-cpu",
+      "stage": "e4e-per-confirmed-crop",
+      "status": "eligible-untested",
+      "evidenceClass": "emulator",
+      "measurementIds": [],
+      "reason": "No paired checker/workload calibration measurements; withhold range."
+    },
+    {
+      "cell": "android-emulator-cpu",
+      "stage": "synthesis-per-output",
+      "status": "eligible-untested",
+      "evidenceClass": "emulator",
+      "measurementIds": [],
+      "reason": "No paired checker/workload calibration measurements; withhold range."
+    },
+    {
+      "cell": "android-emulator-cpu",
+      "stage": "model-load-and-check",
+      "status": "eligible-untested",
+      "evidenceClass": "emulator",
+      "measurementIds": [],
+      "reason": "No paired checker/workload calibration measurements; withhold range."
+    },
+    {
+      "cell": "android-emulator-cpu",
+      "stage": "video-export",
+      "status": "eligible-untested",
+      "evidenceClass": "emulator",
+      "measurementIds": [],
+      "reason": "No paired checker/workload calibration measurements; withhold range."
+    }
+  ],
+  "method": {
+    "score": "CPU WASM completionMs / completed fixed-size samples",
+    "point": "Median training ratio of synthesis milliseconds to checker unit milliseconds",
+    "range": "Minimum to maximum observed training ratio, scaled only inside the training score domain; empirical range, not a confidence interval",
+    "validation": "Three training and two held-out same-device runs; held-out values never fit the coefficient or range; no cross-device validation",
+    "applicability": "Exact profile includes CPU, browser version and implementation source commit; all CalibrationScope keys must match"
+  }
+}
