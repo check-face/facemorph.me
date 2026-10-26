@@ -251,6 +251,50 @@ async function prepareOrtMirror(
   return api<DependencyPullRequest>(`repos/${repo}/pulls/${pr.number}`);
 }
 
+/** Scheduled scans also reconcile success: a queued workflow_run delivery may be replaced. */
+function mergeQualification(
+  repo: string,
+  run: QualificationRun,
+  pr: DependencyPullRequest,
+): boolean {
+  const policy = JSON.parse(
+    readFileSync(new URL('./dependency-policy.json', import.meta.url), 'utf8'),
+  ) as DependencyPolicy;
+  const problems = qualificationProblems(
+    run,
+    jobsFor(repo, run.id),
+    pr,
+    filesFor(repo, pr.number),
+    policy,
+  );
+  console.log(
+    JSON.stringify({
+      event: 'qualification-reviewed',
+      run: run.id,
+      pr: pr.number,
+      head: pr.head.sha,
+      problems,
+    }),
+  );
+  if (problems.length) return false;
+  // GitHub atomically refuses if a new bot push raced this review. No bypass or admin merge.
+  execFileSync(
+    'gh',
+    [
+      'pr',
+      'merge',
+      String(pr.number),
+      '--repo',
+      repo,
+      '--squash',
+      '--match-head-commit',
+      pr.head.sha,
+    ],
+    { stdio: 'inherit' },
+  );
+  return true;
+}
+
 async function main() {
   const mode = process.argv[2];
   const repo = process.env.GITHUB_REPOSITORY;
@@ -296,6 +340,13 @@ async function main() {
       const existing = api<{ workflow_runs: QualificationRun[] }>(
         `repos/${repo}/actions/workflows/main.yml/runs?event=workflow_dispatch&branch=${encodeURIComponent(pr.head.ref)}&per_page=30`,
       ).workflow_runs;
+      const succeeded = existing.find(
+        (run) =>
+          run.head_sha === pr.head.sha &&
+          run.status === 'completed' &&
+          run.conclusion === 'success',
+      );
+      if (succeeded && mergeQualification(repo, succeeded, pr)) return;
       if (qualificationAttempted(existing, pr.head.sha)) {
         console.log(
           JSON.stringify({ event: 'already-qualified-or-running', number, head: pr.head.sha }),
@@ -330,44 +381,7 @@ async function main() {
       throw new Error(
         'main advanced beyond the qualified branch; update and requalify before merging',
       );
-    const policy = JSON.parse(
-      readFileSync(new URL('./dependency-policy.json', import.meta.url), 'utf8'),
-    ) as DependencyPolicy;
-    const problems = qualificationProblems(
-      run,
-      jobsFor(repo, id),
-      pr,
-      filesFor(repo, pr.number),
-      policy,
-    );
-    console.log(
-      JSON.stringify({
-        event: 'qualification-reviewed',
-        run: id,
-        pr: pr.number,
-        head: pr.head.sha,
-        problems,
-      }),
-    );
-    if (problems.length) {
-      process.exitCode = 1;
-      return;
-    }
-    // GitHub atomically refuses if a new bot push raced this review. No bypass or admin merge.
-    execFileSync(
-      'gh',
-      [
-        'pr',
-        'merge',
-        String(pr.number),
-        '--repo',
-        repo,
-        '--squash',
-        '--match-head-commit',
-        pr.head.sha,
-      ],
-      { stdio: 'inherit' },
-    );
+    if (!mergeQualification(repo, run, pr)) process.exitCode = 1;
   } else throw new Error('usage: dependency-controller.ts dispatch|merge');
 }
 
