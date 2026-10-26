@@ -369,7 +369,7 @@ export async function execute(request){
    jobCounts.framesTotal=path.totalFrames;jobCounts.videoFramesTotal=path.totalFrames;
    const framesKey=await morphFramesKey();clearLiveFrames();liveFrameKey=framesKey;liveFrames=Array(path.totalFrames).fill('');
    const stored=framesKey?await frameStoreGet(framesKey).catch(()=>null):null;analytics.operationResult?.('frame-cache',stored?'hit':'miss');
-   writer=videoWriter({codec:manifest.codec,fps:project.morph.framesPerSecond,signal:active.signal,onProgress:progress,framesKey,totalFrames:path.totalFrames});const videoChoice=await writer.initialize();
+   writer=videoWriter({codec:manifest.codec,fps:project.morph.framesPerSecond,quality:request.quality==='full'?'full':'standard',signal:active.signal,onProgress:progress,framesKey,totalFrames:path.totalFrames});const videoChoice=await writer.initialize();
    const counter=createFrameCounter(path.totalFrames);let directEncoded=false;
    if(stored&&stored.length===path.totalFrames){
     liveFrames=stored.map(blob=>URL.createObjectURL(blob));
