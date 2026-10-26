@@ -9,6 +9,7 @@ import test from 'node:test';
 import { pathToFileURL } from 'node:url';
 import { boundaryCode } from '../../src/engine/adapters/fused-resample.ts';
 import * as shaders from '../../src/engine/adapters/direct-shaders.ts';
+import { FFHQ_SIDE } from '../../src/engine/identity.ts';
 import {
   admissionCandidates,
   capabilities,
@@ -227,7 +228,8 @@ test('the fused-resample WGSL is the control kernel and the manifest kernel, cha
     for (const variant of ['bounded', 'unrolled'] as const)
       for (const workgroup of [64, 256]) {
         const m = { strength: 0.0123, gain: 1.4142135623730951 };
-        const code = boundaryCode(m, tail, variant, workgroup);
+        // FFHQ's side, from its descriptor: the only model the pinned split bundle exists for.
+        const code = boundaryCode(m, tail, variant, workgroup, FFHQ_SIDE);
         assert.equal(code, fused.boundaryCode(m, tail, variant, workgroup));
         assert.ok(!code.includes('continue') && code.includes('select(0.0,sample,valid)'));
       }
@@ -241,15 +243,19 @@ test('the fused-resample WGSL is the control kernel and the manifest kernel, cha
     boundaryCode: typeof boundaryCode;
   };
   assert.equal(
-    boundaryCode({ strength: 0.5, gain: 2 }, true),
+    boundaryCode({ strength: 0.5, gain: 2 }, true, 'bounded', 256, FFHQ_SIDE),
     pinned.boundaryCode({ strength: 0.5, gain: 2 }, true),
   );
 });
 
 test('the direct engine WGSL appears verbatim in the control engine', () => {
   const source = readFileSync(new URL('webgpu-direct.mjs', CONTROL), 'utf8');
-  for (const name of ['FIR', 'RGB', 'AFFINE', 'DEMOD', 'OUT', 'RGBA8'] as const)
+  for (const name of ['FIR', 'RGB', 'AFFINE', 'DEMOD'] as const)
     assert.ok(source.includes('`' + shaders[name] + '`'), name);
+  // The output passes are sized by the descriptor; at FFHQ's plane they are the control's text.
+  const pixels = FFHQ_SIDE * FFHQ_SIDE;
+  assert.ok(source.includes('`' + shaders.outShader(pixels) + '`'), 'OUT');
+  assert.ok(source.includes('`' + shaders.rgba8Shader(pixels) + '`'), 'RGBA8');
   // The GEMM generator: every tile and tap set the engine uses, against the control's own generator text.
   const gemm = source.slice(source.indexOf('function gemmShader'), source.indexOf('// 4x4 FIR'));
   const controlGemm = new Function(

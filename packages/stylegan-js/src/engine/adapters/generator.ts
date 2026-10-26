@@ -19,7 +19,6 @@
 import type {
   CancellationSignal,
   ComputeRoute,
-  LatentSchema,
   LoadedModelCapability,
   ProviderState,
   RequestedRoute,
@@ -32,8 +31,10 @@ import type {
   SynthesisResult,
 } from '../../contracts/operations.ts';
 import type { StageCompletionBoundary, StageTimingHook } from '../../contracts/timing.ts';
+import { FFHQ_1024_DESCRIPTOR, type ModelDescriptor } from '../../contracts/descriptor.ts';
 import type { NoiseMode } from '../canary.ts';
-import { FFHQ_LATENT, FFHQ_SIDE, requireLatent, toRgba8, truncate } from '../identity.ts';
+import { requireLatent, toRgba8, truncate } from '../identity.ts';
+import { checkManifest, engineGeometry, type EngineGeometry } from '../model.ts';
 import { floats, readLocal, type EngineAsset, type LocalAssetReader } from '../reader.ts';
 import type { OrtModule, OrtSession, OrtTensor } from './ort.ts';
 
@@ -112,6 +113,9 @@ export class GeneratorUnavailable extends Error {
 export interface Generator extends LoadedModelCapability {
   readonly engine: AdapterEngine;
   readonly route: ComputeRoute;
+  /** The model this generator runs, and the dimensions read from it. */
+  readonly descriptor: ModelDescriptor;
+  readonly geometry: EngineGeometry;
   /** Every asset this generator reads, for the handle's leases. */
   readonly assets: readonly { readonly sha256: string; readonly bytes: number }[];
   /** Load order, for the sequential-CPU / overlapped-WebGPU check. */
@@ -154,6 +158,21 @@ export function noiseFor(noise: NoiseSet, mode: NoiseMode): NoiseSet {
   return out;
 }
 
+/**
+ * The descriptor a loader runs (FFHQ's by default) and its geometry for `engine`, checked against the
+ * manifest before any byte is read: an unsupported field or a manifest of another model is a typed
+ * DescriptorUnsupported, never a load.
+ */
+export function describedGeometry(
+  engine: AdapterEngine,
+  manifest: GeneratorManifest,
+  descriptor: ModelDescriptor = FFHQ_1024_DESCRIPTOR,
+): { readonly descriptor: ModelDescriptor; readonly geometry: EngineGeometry } {
+  const geometry = engineGeometry(descriptor, engine);
+  checkManifest(descriptor, manifest);
+  return { descriptor, geometry };
+}
+
 /** Builds the generator around a backend. Internal: the route-specific loaders call it. */
 export async function assembleGenerator(o: {
   readonly reader: LocalAssetReader;
@@ -166,11 +185,14 @@ export async function assembleGenerator(o: {
     noise: NoiseSet,
     trace: (e: LoadEvent) => void,
     reader: LocalAssetReader,
+    geometry: EngineGeometry,
   ) => Promise<SynthesisBackend>;
   readonly extraAssets: readonly EngineAsset[];
   readonly unsupported: readonly UnsupportedCapability[];
   readonly now?: () => number;
-  readonly latent?: LatentSchema;
+  /** From describedGeometry(), computed by the loader before it probes or reads anything. */
+  readonly descriptor: ModelDescriptor;
+  readonly geometry: EngineGeometry;
   /** WebGPU engines: create the mapping session beside the GPU model load. The CPU route stays sequential. */
   readonly warmMapping: boolean;
   readonly release?: () => void;
@@ -193,7 +215,9 @@ export async function assembleGenerator(o: {
       }
     },
   };
-  const schema = o.latent ?? FFHQ_LATENT;
+  const { geometry } = o;
+  const schema = geometry.latent;
+  const { width, height } = geometry;
   const trace: LoadEvent[] = [];
   const noise: Record<string, Float32Array> = {};
   for (const item of manifest.noise)
@@ -274,7 +298,7 @@ export async function assembleGenerator(o: {
   const readBefore = readMs;
   let backend: SynthesisBackend;
   try {
-    backend = await o.backend(noise, (e) => trace.push(e), reader);
+    backend = await o.backend(noise, (e) => trace.push(e), reader, geometry);
   } catch (error) {
     if (mappingLoad) await (mappingLoad as Promise<void>).catch(() => {});
     await (mapping as OrtSession | null)?.release();
@@ -307,7 +331,7 @@ export async function assembleGenerator(o: {
     requireLatent(values, schema);
     if (backend.submitRgba) return backend.submitRgba(values, noise);
     const raw = await backend.submitRaw(values, noise);
-    return { done: raw.done.then((r) => toRgba8(r)) };
+    return { done: raw.done.then((r) => toRgba8(r, width, height)) };
   };
 
   const provider: ProviderState = {
@@ -327,8 +351,10 @@ export async function assembleGenerator(o: {
       manifestSha256: o.manifestSha256,
       ...(manifest.bundleVersion ? { bundleVersion: manifest.bundleVersion } : {}),
     },
+    descriptor: o.descriptor,
+    geometry,
     latent: schema,
-    image: { width: FFHQ_SIDE, height: FFHQ_SIDE },
+    image: { width, height },
     provider,
     unsupported: o.unsupported,
     assets: [manifest.mapping, manifest.average, ...manifest.noise, ...o.extraAssets].map((a) => ({
@@ -404,7 +430,7 @@ export async function assembleGenerator(o: {
         let rawFloat: Float32Array | undefined;
         if (request.output === 'rgba-and-raw-float') {
           rawFloat = await (await submitRaw(values, 'original')).done;
-          rgba = toRgba8(rawFloat);
+          rgba = toRgba8(rawFloat, width, height);
         } else rgba = await (await submitRgba(values)).done;
         onTiming?.({
           ids: request.ids,
@@ -418,8 +444,8 @@ export async function assembleGenerator(o: {
         aborted(signal);
         return {
           ids: request.ids,
-          width: FFHQ_SIDE,
-          height: FFHQ_SIDE,
+          width,
+          height,
           rgba,
           ...(rawFloat ? { rawFloat } : {}),
           provider: route,

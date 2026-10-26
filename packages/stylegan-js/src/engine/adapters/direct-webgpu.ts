@@ -6,9 +6,10 @@
 //
 // Desktop only: routes.ts gpuEngine() never offers it to a mobile device, and it re-checks the adapter
 // against DIRECT_LIMITS before requesting a device. Its output contract is the ORT engine's (NCHW float
-// [3,1024,1024]); it also converts to RGBA8 on the GPU, so a face crosses the bus as 4 MB instead of 12 MB.
+// [3, height, width]); it also converts to RGBA8 on the GPU, so a face crosses the bus as 4 MB instead of 12 MB.
 
 import type { RequestedRoute } from '../../contracts/capability.ts';
+import type { ModelDescriptor } from '../../contracts/descriptor.ts';
 import { floats, readLocal, type EngineAsset, type LocalAssetReader } from '../reader.ts';
 import { BufferUsage, MapMode } from './gpu-constants.ts';
 import { DIRECT_LIMITS, directSupported } from '../routes.ts';
@@ -16,9 +17,9 @@ import {
   AFFINE,
   DEMOD,
   FIR,
-  OUT,
+  outShader,
   RGB,
-  RGBA8,
+  rgba8Shader,
   TAPS3,
   TILES,
   gemmShader,
@@ -27,6 +28,7 @@ import {
 } from './direct-shaders.ts';
 import {
   assembleGenerator,
+  describedGeometry,
   type Generator,
   type GeneratorManifest,
   type NoiseSet,
@@ -73,8 +75,6 @@ interface StreamManifest {
   readonly blocks: readonly Block[];
 }
 
-const PIXELS = 1048576;
-
 export async function loadDirectWebGpuGenerator(o: {
   readonly reader: LocalAssetReader;
   readonly manifest: GeneratorManifest & { readonly webgl: DirectBundle };
@@ -82,17 +82,23 @@ export async function loadDirectWebGpuGenerator(o: {
   readonly gpu: GPU;
   readonly cpuOrt: () => Promise<OrtModule>;
   readonly requested?: RequestedRoute;
+  /** The model the manifest holds (default FFHQ config-F, the only one the block stream exists for). */
+  readonly descriptor?: ModelDescriptor;
   readonly now?: () => number;
   readonly release?: () => void;
   readonly progress?: (stage: 'gpu-direct-ready') => void;
 }): Promise<Generator> {
   const { reader, manifest } = o;
+  // A descriptor this engine cannot run is rejected before the adapter is even probed.
+  const described = describedGeometry('direct-webgpu', manifest, o.descriptor);
+  const PIXELS = described.geometry.width * described.geometry.height;
   const adapter = await o.gpu.requestAdapter();
   if (!adapter) throw new GpuUnsupported('WebGPU is unavailable.');
   const limits = adapter.limits as unknown as Record<string, number>;
   if (!directSupported(limits))
     throw new GpuUnsupported('This GPU does not meet the direct engine limits.');
   return assembleGenerator({
+    ...described,
     reader,
     manifest,
     manifestSha256: o.manifestSha256,
@@ -202,7 +208,9 @@ export async function loadDirectWebGpuGenerator(o: {
           const g = Math.ceil(n / 64);
           return [Math.min(g, 65535), Math.ceil(g / 65535)];
         };
-        const latent = buffer(9216 * 4),
+        const latent = buffer(
+            described.geometry.latent.layers * described.geometry.latent.width * 4,
+          ),
           noiseBuf: Record<string, GPUBuffer> = {},
           dummy = buffer(16);
         for (const n of manifest.noise)
@@ -360,11 +368,15 @@ export async function loadDirectWebGpuGenerator(o: {
         if (!skip) throw Error('Direct engine stream has no blocks');
         const finalRgb: GPUBuffer = skip;
         const output = buffer(3 * PIXELS * 4, S | CS);
-        step(OUT, [finalRgb, output], grid(PIXELS));
+        step(outShader(PIXELS), [finalRgb, output], grid(PIXELS));
         const outSteps = steps.length;
         const rgba = buffer(PIXELS * 4 + 16, S | CS | CD),
           bad = buffer(16, S | CS | CD);
-        step(RGBA8, [finalRgb, rgba, bad, upload(new Uint32Array(4), U | CD)], grid(PIXELS));
+        step(
+          rgba8Shader(PIXELS),
+          [finalRgb, rgba, bad, upload(new Uint32Array(4), U | CD)],
+          grid(PIXELS),
+        );
         o.progress?.('gpu-direct-ready');
         const lastNoise: Record<string, Float32Array> = {};
         const writeInputs = (values: Float32Array, noise: NoiseSet) => {

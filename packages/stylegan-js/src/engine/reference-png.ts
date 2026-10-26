@@ -2,6 +2,8 @@
 // decodeReferencePng() (classic a42829b): 8-bit RGB/RGBA, non-interlaced, every chunk's CRC checked, no
 // canvas and no colour conversion, so the encoded samples are what the canary compares against.
 
+import { FFHQ_SIDE } from './identity.ts';
+
 const TABLE = Uint32Array.from({ length: 256 }, (_, n) => {
   for (let k = 0; k < 8; k++) n = n & 1 ? 0xedb88320 ^ (n >>> 1) : n >>> 1;
   return n >>> 0;
@@ -31,8 +33,8 @@ export interface DecodedReference {
 export async function decodeReferencePng(
   bytes: Uint8Array,
   {
-    expectedWidth = 1024,
-    expectedHeight = 1024,
+    expectedWidth = FFHQ_SIDE,
+    expectedHeight = FFHQ_SIDE,
   }: { expectedWidth?: number; expectedHeight?: number } = {},
 ): Promise<DecodedReference> {
   if (bytes.byteLength > 16 * 1024 * 1024)

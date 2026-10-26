@@ -10,16 +10,31 @@ export interface BoundaryConstants {
   readonly gain: number;
 }
 
+/** The boundary's output plane: its side (the model's resolution) and the 32 channels it writes. */
+const plane = (side: number) => {
+  if (!Number.isSafeInteger(side) || side < 8 || (side & (side - 1)) !== 0)
+    throw Error('Invalid boundary side');
+  const pixels = side * side;
+  return { padded: side + 2, phase: side / 2 + 1, pixels, total: 32 * pixels };
+};
+
+/**
+ * The WGSL for a `side`-pixel output plane (the generator passes its descriptor's resolution; the
+ * pinned split bundle is FFHQ's, so in the product it is that one).
+ */
 export function boundaryCode(
   m: BoundaryConstants,
   tail: boolean,
   variant: BoundaryVariant = 'bounded',
   workgroup = 256,
+  side?: number,
 ): string {
   if (!['bounded', 'unrolled'].includes(variant) || ![64, 256].includes(workgroup))
     throw Error('Invalid boundary candidate');
+  if (side === undefined) throw Error('The boundary needs the output side');
+  const g = plane(side);
   const tap = (fy: string, fx: string) =>
-    `{let qy=y+${fy};let qx=xx+${fx};let valid=qy>=1u&&qy<=1026u&&qx>=1u&&qx<=1026u;let iy=clamp(qy,1u,1026u)-1u;let ix=clamp(qx,1u,1026u)-1u;let offset=(((c%16u)*4u+(iy%2u)*2u+ix%2u)*513u+iy/2u)*513u+ix/2u;var sample:f32;if(c<16u){sample=x[offset];}else{sample=xb[offset];}let padded=select(0.0,sample,valid);v+=padded*fir[${fy}*4u+${fx}];}`;
+    `{let qy=y+${fy};let qx=xx+${fx};let valid=qy>=1u&&qy<=${g.padded}u&&qx>=1u&&qx<=${g.padded}u;let iy=clamp(qy,1u,${g.padded}u)-1u;let ix=clamp(qx,1u,${g.padded}u)-1u;let offset=(((c%16u)*4u+(iy%2u)*2u+ix%2u)*${g.phase}u+iy/2u)*${g.phase}u+ix/2u;var sample:f32;if(c<16u){sample=x[offset];}else{sample=xb[offset];}let padded=select(0.0,sample,valid);v+=padded*fir[${fy}*4u+${fx}];}`;
   const sum =
     variant === 'bounded'
       ? `for(var fy=0u;fy<4u;fy++){for(var fx=0u;fx<4u;fx++)${tap('fy', 'fx')}}`
@@ -31,7 +46,7 @@ export function boundaryCode(
           `@group(0) @binding(${i}) var<storage,${i === 5 ? 'read_write' : 'read'}> ${name}:array<f32>;`,
       )
       .join('\n') +
-    `\n@compute @workgroup_size(${workgroup}) fn main(@builtin(global_invocation_id) id:vec3<u32>){let i=id.y*512u*${workgroup}u+id.x;if(i>=33554432u){return;}let c=i/1048576u;let p=i%1048576u;let y=p/1024u;let xx=p%1024u;var v:f32=0.0;${sum}` +
+    `\n@compute @workgroup_size(${workgroup}) fn main(@builtin(global_invocation_id) id:vec3<u32>){let i=id.y*512u*${workgroup}u+id.x;if(i>=${g.total}u){return;}let c=i/${g.pixels}u;let p=i%${g.pixels}u;let y=p/${side}u;let xx=p%${side}u;var v:f32=0.0;${sum}` +
     (tail
       ? `v=v*d[c];let ns=noise[p]*${m.strength};v=ns+v;v=v+bias[c];if(v<0.0){v=v*0.20000000298023224;}v=v*${m.gain};`
       : '') +
@@ -60,8 +75,12 @@ export async function createBoundaryPipeline(
   tail = false,
   workgroup = 256,
   variant: BoundaryVariant = 'bounded',
+  side?: number,
 ): Promise<BoundaryPipeline> {
-  const module = device.createShaderModule({ code: boundaryCode(m, tail, variant, workgroup) });
+  const module = device.createShaderModule({
+    code: boundaryCode(m, tail, variant, workgroup, side),
+  });
+  const { total } = plane(side ?? 0);
   const info = await module.getCompilationInfo();
   if (info.messages.some((x) => x.type === 'error'))
     throw Error(info.messages.map((x) => x.message).join('\n'));
@@ -99,7 +118,7 @@ export async function createBoundaryPipeline(
           const p = e.beginComputePass();
           p.setPipeline(pipeline);
           p.setBindGroup(0, group);
-          p.dispatchWorkgroups(512, 33554432 / (512 * workgroup));
+          p.dispatchWorkgroups(512, total / (512 * workgroup));
           p.end();
         },
       };

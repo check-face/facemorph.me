@@ -1,0 +1,86 @@
+{
+  "schema": "facemorph-afhq-cat-512-reference-v1",
+  "model": "stylegan2-ada-afhqcat",
+  "checkpointSha256": "f62fd750c51f649147ba355844833c0f2a37081f7c032194f52fd74a016c3a29",
+  "implementation": "NVlabs/stylegan2-ada-pytorch@d72cc7d041b42ec8e806021a205ed9349f87c6a4",
+  "truncation": {
+    "psi": 0.7,
+    "cutoff": 8
+  },
+  "synthesis": {
+    "noiseMode": "const",
+    "forceFp32": true,
+    "fusedModconv": false
+  },
+  "tolerance": {
+    "rawFloat": 0.001,
+    "rgb": 1
+  },
+  "container": "facemorph/model-conv@sha256:d49e856376d69e5cb75fb4ac251a728bfbcd919ffeab3b2f9f5886e9803399d7",
+  "versions": {
+    "python": "3.12.15",
+    "torch": "2.14.0+cpu",
+    "onnx": "1.19.1",
+    "onnxruntime": "1.24.3",
+    "numpy": "2.2.6",
+    "os": "Linux-7.2.5-3-omarchy-x86_64-with-glibc2.41",
+    "upstream": "NVlabs/stylegan2-ada-pytorch@d72cc7d041b42ec8e806021a205ed9349f87c6a4"
+  },
+  "cases": [
+    {
+      "seed": 0,
+      "z": {
+        "file": "seed-0.z.f32",
+        "shape": [1, 512],
+        "size": 2048,
+        "sha256": "3281a32dd82b5a6b8bf5a1fe36604b9cfc06a3799b5228e2e2cd2a87fff1e32a"
+      },
+      "w": {
+        "file": "seed-0.w.f32",
+        "shape": [1, 16, 512],
+        "size": 32768,
+        "sha256": "268be95313bac21cfe85282cf2b6f081c0be3e8ceb14c72ace25c573016a2c62"
+      },
+      "raw": {
+        "file": "seed-0.raw.f32",
+        "shape": [1, 3, 512, 512],
+        "size": 3145728,
+        "sha256": "eeb843979ca6a150e8624d218f5185f4cecacc2f6a126307b7e34cc0d67085cd"
+      }
+    },
+    {
+      "seed": 1,
+      "z": {
+        "file": "seed-1.z.f32",
+        "shape": [1, 512],
+        "size": 2048,
+        "sha256": "27a28409b4c3fb901902ba7120066fad31662d0570b155593180944d5217353e"
+      },
+      "w": {
+        "file": "seed-1.w.f32",
+        "shape": [1, 16, 512],
+        "size": 32768,
+        "sha256": "73c0df4b2b5cbc3c1678718f180d0e963b302631941e621ccf998393b66ff08a"
+      },
+      "raw": {
+        "file": "seed-1.raw.f32",
+        "shape": [1, 3, 512, 512],
+        "size": 3145728,
+        "sha256": "fa3e1ce7495cb2feafbfa7d92182549c1f9cb7b6cbf0639bd511a48bf701c21e"
+      }
+    }
+  ],
+  "converted": {
+    "note": "The engine runs model-conv's conversion of the same checkpoint (packages/model-conv/out/afhqcat, gitignored: weights stay out of Git). The test reads it only through a verifying local reader against this manifest digest.",
+    "manifestSha256": "2aa475d70b667531183e9749ae09e5f96555f512d283b463e829e299f2e59bf1",
+    "bundleVersion": "model-conv-stylegan2-ada-afhqcat",
+    "container": "facemorph/model-conv@sha256:5aa62915f7a1f19e1fd2126284d9775fa37dad5eef4f1aacca0f107ad7c07380",
+    "converterVerify": {
+      "maxRawAbsError": 6.586313247680664e-5,
+      "maxRgbDifference": 1,
+      "passed": true
+    }
+  },
+  "descriptor": "AFHQ_CAT_512_DESCRIPTOR (src/contracts/descriptor.ts): 512 px, 16 W+ layers of 512, 15 constant noise planes, non-face",
+  "regenerate": "test/vectors/afhq-cat-512/make-reference.py (its docstring has the docker command); references land in packages/model-conv/out/afhqcat/reference"
+}

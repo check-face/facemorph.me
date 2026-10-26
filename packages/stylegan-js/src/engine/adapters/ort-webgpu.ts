@@ -13,12 +13,14 @@
 //   next face can write the shared output (two readbacks are pooled; more are destroyed).
 
 import type { RequestedRoute } from '../../contracts/capability.ts';
+import type { ModelDescriptor } from '../../contracts/descriptor.ts';
 import { floats, readLocal, type EngineAsset, type LocalAssetReader } from '../reader.ts';
 import { BufferUsage, MapMode } from './gpu-constants.ts';
 import { ortWebGpuSupported } from '../routes.ts';
 import { createBoundaryPipeline } from './fused-resample.ts';
 import {
   assembleGenerator,
+  describedGeometry,
   type Generator,
   type GeneratorManifest,
   type NoiseSet,
@@ -65,11 +67,15 @@ export async function loadOrtWebGpuGenerator(o: {
   /** The CPU ORT module for the mapping session. */
   readonly cpuOrt: () => Promise<OrtModule>;
   readonly requested?: RequestedRoute;
+  /** The model the manifest holds (default FFHQ config-F, the only one the split bundle exists for). */
+  readonly descriptor?: ModelDescriptor;
   readonly now?: () => number;
   readonly release?: () => void;
   readonly progress?: (stage: 'gpu-prefix-loading' | 'gpu-suffix-loading') => void;
 }): Promise<Generator> {
   const { reader, manifest } = o;
+  // A descriptor this engine cannot run is rejected before the adapter is even probed.
+  const described = describedGeometry('ort-webgpu', manifest, o.descriptor);
   const bundle = manifest.webgpu;
   // Probe and check before anything is read: an unusable adapter costs no bytes and no device.
   const adapter = await o.gpu.requestAdapter();
@@ -90,6 +96,7 @@ export async function loadOrtWebGpuGenerator(o: {
     bundle.bias,
   ];
   return assembleGenerator({
+    ...described,
     reader,
     manifest,
     manifestSha256: o.manifestSha256,
@@ -100,7 +107,8 @@ export async function loadOrtWebGpuGenerator(o: {
     unsupported: [],
     ...(o.now ? { now: o.now } : {}),
     ...(o.release ? { release: o.release } : {}),
-    backend: async (_noise, _trace, reader): Promise<SynthesisBackend> => {
+    backend: async (_noise, _trace, reader, geometry): Promise<SynthesisBackend> => {
+      const { latent, channels, height, width } = geometry;
       const sessions: OrtSession[] = [];
       const buffers = new Set<GPUBuffer>();
       let device: GPUDevice | undefined;
@@ -180,14 +188,15 @@ export async function loadOrtWebGpuGenerator(o: {
           return { buffer, tensor: t };
         };
         const all: Record<string, { buffer: GPUBuffer; tensor: OrtTensor }> = {
-          w: tensor([1, 18, 512]),
+          w: tensor([1, latent.layers, latent.width]),
         };
         for (const n of manifest.noise) all[n.name] = tensor(n.shape);
         const outputs = Object.fromEntries(
           Object.entries(split.prefixOutputs).map(([name, dims]) => [name, tensor(dims)]),
         );
-        const external = tensor([1, 32, 1024, 1024]);
-        const out = tensor([1, 3, 1024, 1024]);
+        // The boundary's 32 channels at full resolution feed the suffix; the suffix writes the image.
+        const external = tensor([1, 32, height, width]);
+        const out = tensor([1, channels, height, width]);
         const filterBuffer = tensor([16], filter);
         const biasBuffer = tensor([32], bias);
         const pick = (name: string) => {
@@ -215,12 +224,14 @@ export async function loadOrtWebGpuGenerator(o: {
             true,
             256,
             'bounded',
+            width,
           )
         ).bind({
           phase: pick(phase + '__tile0').buffer,
           phaseB: pick(phase + '__tile1').buffer,
           demod: outputs[String(meta['demod'])]?.buffer,
-          noise: all['noise_15']?.buffer,
+          // The boundary's tail adds the first full-resolution noise plane.
+          noise: all[geometry.noise[geometry.noise.length - 2]!.name]?.buffer,
           filter: filterBuffer.buffer,
           bias: biasBuffer.buffer,
           output: external.buffer,

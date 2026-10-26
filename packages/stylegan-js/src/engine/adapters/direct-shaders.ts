@@ -169,18 +169,19 @@ fn main(@builtin(global_invocation_id) g:vec3u){
  var v=0.0; for(var i=0u;i<p.Ci;i++){v=v+s[i]*s[i]*E[((o/4u)*p.Ci+i)*4u+o%4u];}
  d[o]=p.num/sqrt(v+p.eps);
 }`;
-export const OUT = /* wgsl */ `
+/** NHWC RGB to the NCHW float output, for a plane of `pixels` (height x width, from the descriptor). */
+export const outShader = (pixels: number) => /* wgsl */ `
 @group(0)@binding(0) var<storage,read> rgb:array<vec4f>;
 @group(0)@binding(1) var<storage,read_write> y:array<f32>;
 @compute @workgroup_size(64)
 fn main(@builtin(global_invocation_id) g:vec3u){
- let pix=g.x+g.y*65535u*64u; if(pix>=1048576u){return;}
- let v=rgb[pix]; y[pix]=v.x; y[1048576u+pix]=v.y; y[2097152u+pix]=v.z;
+ let pix=g.x+g.y*65535u*64u; if(pix>=${pixels}u){return;}
+ let v=rgb[pix]; y[pix]=v.x; y[${pixels}u+pix]=v.y; y[${2 * pixels}u+pix]=v.z;
 }`;
 // The product's own output conversion (identity.mjs rgba1024: trunc(clamp(v*127.5+128))) on the GPU, so a
 // face crosses the bus as 4 MB of RGBA8 instead of 12 MB of floats and the worker skips its per-pixel loop.
 // Non-finite values are counted rather than silently clamped; a count above zero fails the face as before.
-export const RGBA8 = /* wgsl */ `
+export const rgba8Shader = (pixels: number) => /* wgsl */ `
 @group(0)@binding(0) var<storage,read> rgb:array<vec4f>;
 @group(0)@binding(1) var<storage,read_write> y:array<u32>;
 @group(0)@binding(2) var<storage,read_write> bad:atomic<u32>;
@@ -192,7 +193,7 @@ fn q(v:f32)->u32{let t=bitcast<f32>(bitcast<u32>(v*127.5)^zero.x); let s=t+128.0
 fn finite(v:vec3f)->bool{return all(v==v)&&all(abs(v)<=vec3f(3.4e38));}
 @compute @workgroup_size(64)
 fn main(@builtin(global_invocation_id) g:vec3u){
- let pix=g.x+g.y*65535u*64u; if(pix>=1048576u){return;}
+ let pix=g.x+g.y*65535u*64u; if(pix>=${pixels}u){return;}
  let v=rgb[pix].xyz; if(!finite(v)){atomicAdd(&bad,1u);}
  y[pix]=q(v.x)|(q(v.y)<<8u)|(q(v.z)<<16u)|(255u<<24u);
 }`;

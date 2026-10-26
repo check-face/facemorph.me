@@ -37,6 +37,7 @@ import {
   type CanaryEvent,
   type CanaryQualification,
 } from './canary.ts';
+import { DescriptorUnsupported } from './model.ts';
 import { LocalAssetUnavailable } from './reader.ts';
 
 export type EngineTraceEvent =
@@ -111,6 +112,8 @@ export function engineError(error: unknown): EngineError {
       : fail('route-failed', { cause: error.kind });
   if (error instanceof LocalAssetUnavailable)
     return fail('route-failed', { cause: error.error.code });
+  // A descriptor the engine cannot run names its field in the message (fm-qjcs).
+  if (error instanceof DescriptorUnsupported) return fail('unsupported');
   if (error instanceof WorkerMessageError || error instanceof TypeError)
     return fail('invalid-request');
   // The manager's HandleUnavailable carries its typed error (invalidated with a cause, evicted, corrupt).

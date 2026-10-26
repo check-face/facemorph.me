@@ -6,12 +6,16 @@
 
 import { sha256Hex } from '../contracts/sha256.ts';
 import type { LatentSchema } from '../contracts/capability.ts';
+import { FFHQ_1024_DESCRIPTOR } from '../contracts/descriptor.ts';
 
-/** FFHQ 1024: z 512, W+ 18 x 512, 1024 x 1024 output. */
-export const FFHQ_LATENT: LatentSchema = Object.freeze({ zLength: 512, layers: 18, width: 512 });
-export const FFHQ_SIDE = 1024;
-/** The product's truncation for seed and text faces. */
-export const SEED_TRUNCATION = Object.freeze({ psi: 0.7, cutoff: 8 });
+/** FFHQ's latent and side, read from its descriptor (the product's defaults; nothing else assumes them). */
+export const FFHQ_LATENT: LatentSchema = Object.freeze({ ...FFHQ_1024_DESCRIPTOR.latent });
+export const FFHQ_SIDE: number = FFHQ_1024_DESCRIPTOR.output.shape[3];
+/** The product's truncation for seed and text faces (FFHQ's descriptor truncation). */
+export const SEED_TRUNCATION = Object.freeze({
+  psi: FFHQ_1024_DESCRIPTOR.truncation.psi,
+  cutoff: FFHQ_1024_DESCRIPTOR.truncation.cutoff,
+});
 
 /** NumPy RandomState legacy MT19937 + polar Gaussian, seeded by an integer or a uint32 key. */
 export function randomState(seed: number | readonly number[]): { normal(): number } {
@@ -230,7 +234,8 @@ export function generationIdentity(manifest: IdentityManifest, kind: 'seed' | 'p
       : {}),
     alignment: kind === 'photo' ? manifest.alignmentSha256 : null,
     noise: manifest.noise.map((n) => ({ name: n.name, shape: n.shape, sha256: n.sha256 })),
-    truncation: kind === 'seed' ? { psi: 0.7, cutoff: 8 } : null,
+    truncation:
+      kind === 'seed' ? { psi: SEED_TRUNCATION.psi, cutoff: SEED_TRUNCATION.cutoff } : null,
     outputPipeline: 'nchw-f32-mul127.5-add128-trunc-rgba8-raw-png-v1',
   };
 }
