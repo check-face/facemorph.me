@@ -10,6 +10,16 @@ const MAX_SESSION_BYTES = 32 * 1024 * 1024;
 export const MORPH_FRAME_BUDGET = 4096;
 export const SESSION_TOO_LARGE =
   'These faces are too large to keep for next time. They stay here until you close this tab.';
+/** Listeners told when a session is refused for its size (the bridge passes no observer of its own). */
+const refusalListeners = new Set<(reason: string) => void>();
+/** Subscribes to over-bound session refusals; returns the unsubscribe. */
+export function onSessionRefused(listener: (reason: string) => void): () => void {
+  refusalListeners.add(listener);
+  return () => void refusalListeners.delete(listener);
+}
+const announceRefusal = (reason: string): void => {
+  for (const listener of refusalListeners) listener(reason);
+};
 export interface RetainedSettings {
   kind: MorphKind;
   width: number;
@@ -326,7 +336,7 @@ export function videoHasHeadroom(
 export async function rememberSession(
   { ids, faces, settings, project, video, frames = [] }: SessionInput,
   isCurrent: () => boolean = () => true,
-  onRefused: (reason: string) => void = () => {},
+  onRefused: (reason: string) => void = announceRefusal,
 ): Promise<boolean> {
   let store: Awaited<ReturnType<typeof openOriginals>> | undefined;
   try {

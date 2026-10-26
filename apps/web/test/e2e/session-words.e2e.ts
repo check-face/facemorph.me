@@ -6,6 +6,7 @@
 // cases (64 is the app's own face limit; CPU synthesis makes them a long local run).
 import assert from 'node:assert/strict';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { resolve, join } from 'node:path';
 import test from 'node:test';
 import { chromium, devices, type BrowserContext, type Locator, type Page } from 'playwright';
@@ -476,6 +477,620 @@ test(
       writeFileSync(join(results, 'evidence.json'), JSON.stringify(evidence, null, 2));
       await browser.close();
       await site.stop();
+    }
+  },
+);
+
+/** Shared per-test setup: the identified artifact served for the production origin, CPU Chromium. */
+async function site(t: { skip: (reason: string) => void }) {
+  if (!existsSync(join(runtime, 'manifest.json'))) {
+    const reason = `untested: no acquired runtime at ${runtime}; owner fm-5hww; run on the runtime lane`;
+    if (process.env['FACEMORPH_REQUIRE_RUNTIME'] === '1') throw Error(reason);
+    t.skip(reason);
+    return null;
+  }
+  const artifact = readIdentity(REPO);
+  assert.deepEqual(artifact.findings, []);
+  assert.equal(artifact.identity?.label, 'destination');
+  const control = await startControl({
+    runtime,
+    artifact: resolve(REPO, 'deploy-next'),
+    source: artifact.identity.deploySource.buildId,
+  });
+  const browser = await chromium.launch({ args: [...chromiumArgs, '--disable-features=WebGPU'] });
+  mkdirSync(results, { recursive: true });
+  return { control, browser };
+}
+
+/** One viewport's context, with every outgoing request URL and body captured. */
+async function cell(browser: import('playwright').Browser, width: number, touch: boolean) {
+  const context = await browser.newContext({
+    ...(touch ? devices['iPhone 13'] : {}),
+    viewport: { width, height: 900 },
+    hasTouch: touch,
+    isMobile: touch,
+    ignoreHTTPSErrors: true,
+    acceptDownloads: true,
+  });
+  await context.addInitScript(INSTALL_HOOK);
+  const payloads: { url: string; body: string }[] = [];
+  context.on('request', (request) =>
+    payloads.push({ url: request.url(), body: request.postData() ?? '' }),
+  );
+  const errors: string[] = [];
+  const open = async () => {
+    const page = await context.newPage();
+    page.on('pageerror', (error) => errors.push(error.message));
+    await page.goto(`${ORIGIN}/?testing`);
+    await page.locator('section.next-face').first().waitFor();
+    return page;
+  };
+  return { context, payloads, errors, open };
+}
+
+async function cpuSetup(page: Page) {
+  const toast = page.locator('.next-model-toast').getByRole('button', { name: 'Not now' });
+  if (
+    await toast.waitFor({ timeout: 4000 }).then(
+      () => true,
+      () => false,
+    )
+  )
+    await toast.click(); // setup
+  await page.getByRole('button', { name: 'More options' }).click(); // setup
+  await page.getByText('Advanced', { exact: true }).click(); // setup
+  await page.getByLabel('Processing mode').selectOption('cpu'); // setup
+}
+
+const facesReady = (page: Page, k: number, timeout: number) =>
+  page.waitForFunction(
+    (k) => {
+      const m = (window as unknown as { __elmish: { model: { Faces: unknown[]; Busy: boolean } } })
+        .__elmish.model;
+      return m.Faces.length === k && !m.Busy;
+    },
+    k,
+    { timeout, polling: 500 },
+  );
+
+/** Every Blob in IndexedDB is a generated face (its own imageSha256 and a latent), the session's frames/video, or a
+ * synthesized morph frame in the frame cache: never a source photo. */
+async function storedBlobs(page: Page) {
+  return page.evaluate(async () => {
+    const hex = async (b: Blob) =>
+      Array.from(
+        new Uint8Array(await crypto.subtle.digest('SHA-256', await b.arrayBuffer())),
+        (x) => x.toString(16).padStart(2, '0'),
+      ).join('');
+    const out: { where: string; kind: string; type: string; size: number; sha: string }[] = [];
+    for (const info of await indexedDB.databases()) {
+      const db = await new Promise<IDBDatabase>((r) => {
+        const q = indexedDB.open(info.name!);
+        q.onsuccess = () => r(q.result);
+      });
+      for (const store of Array.from(db.objectStoreNames)) {
+        const rows = await new Promise<{ key: IDBValidKey; value: unknown }[]>((r) => {
+          const rows: { key: IDBValidKey; value: unknown }[] = [];
+          const c = db.transaction(store).objectStore(store).openCursor();
+          c.onsuccess = () => {
+            if (!c.result) return r(rows);
+            rows.push({ key: c.result.key, value: c.result.value });
+            c.result.continue();
+          };
+        });
+        const visit = async (where: string, v: unknown, parent: unknown, field: string) => {
+          if (v instanceof Blob) {
+            const sha = await hex(v);
+            const p = parent as { imageSha256?: string; latentSha256?: string } | null;
+            const kind =
+              field === 'blob' && p?.imageSha256 === sha && typeof p?.latentSha256 === 'string'
+                ? 'generated-face'
+                : field === 'video' || field === 'frames'
+                  ? 'session-' + field
+                  : where.startsWith('checkface-morph-frames-v1/')
+                    ? 'synthesized-morph-frame'
+                    : 'other';
+            out.push({ where, kind, type: v.type, size: v.size, sha });
+          } else if (v && typeof v === 'object' && !ArrayBuffer.isView(v))
+            for (const [k, x] of Object.entries(v))
+              await visit(where, x, Array.isArray(v) ? parent : v, Array.isArray(v) ? field : k);
+        };
+        for (const row of rows)
+          await visit(`${info.name}/${store}/${String(row.key)}`, row.value, null, '');
+      }
+      db.close();
+    }
+    let session = 0;
+    for (let i = 0; i < sessionStorage.length; i++) {
+      const k = sessionStorage.key(i)!;
+      session += k.length + (sessionStorage.getItem(k)?.length ?? 0);
+    }
+    return { blobs: out, sessionChars: session };
+  });
+}
+
+test(
+  'photo faces keep only their file name; an unfinished photo points to Encode image; MP4 and diagnostics carry no words',
+  { timeout: 3_600_000 },
+  async (t) => {
+    const s = await site(t);
+    if (!s) return;
+    const fixture = join(REPO, 'tests/crop/fixtures/non-square.jpg');
+    const fixtureSha = createHash('sha256').update(readFileSync(fixture)).digest('hex');
+    try {
+      for (const [viewport, width, touch] of [
+        ['desktop', 1280, false],
+        ['phone', 390, true],
+      ] as const) {
+        const label = `${viewport}-photo`;
+        const c = await cell(s.browser, width, touch);
+        const page = await c.open();
+        const operate = async (control: Locator) =>
+          assert.ok((await press(page, control, { touch })).inside, `${label}: ${control}`);
+        const shot = (name: string) =>
+          page.screenshot({ path: join(results, `${label}-${name}.png`), fullPage: true });
+        const tiles = page.locator('section.next-face');
+        const field = (i: number) => tiles.nth(i).locator('.next-field input');
+        await cpuSetup(page);
+        // Debug reports on, at the control's visible position.
+        await operate(page.getByText('Send debug reports until I turn this off', { exact: true }));
+        await page.waitForFunction(
+          () =>
+            (window as unknown as { __elmish: { model: { Debug: boolean } } }).__elmish.model.Debug,
+        );
+        const words = `  Photo pair 🌙 words ${viewport}  `;
+        await operate(field(0));
+        await page.keyboard.press('ControlOrMeta+A');
+        await page.keyboard.press('Backspace');
+        await page.keyboard.insertText(words);
+        // Face 2: the card's own chooser with a real JPEG, its crop confirmed, encoded on the CPU.
+        await operate(tiles.nth(1).getByRole('button', { name: 'Change mode', exact: true }));
+        const entry = page.getByRole('menuitem', { name: 'Encode image', exact: true });
+        await entry.evaluate(async (el) => {
+          const panel = el.closest('.MuiPaper-root');
+          await Promise.allSettled(
+            (panel?.getAnimations({ subtree: true }) ?? []).map((a) => a.finished),
+          );
+        });
+        const chooser = page.waitForEvent('filechooser');
+        await operate(entry);
+        await (await chooser).setFiles([fixture]);
+        const dialog = page.getByRole('dialog', { name: 'Encode an image', exact: true });
+        await operate(dialog.getByRole('button', { name: 'OK', exact: true }));
+        await dialog.waitFor({ state: 'detached' });
+        const acceptDownloads = async () => {
+          const accept = page.locator('.next-download-accept');
+          while (
+            await accept.waitFor({ timeout: 6000 }).then(
+              () => true,
+              () => false,
+            )
+          ) {
+            await operate(accept);
+            await accept.waitFor({ state: 'detached' });
+          }
+        };
+        await acceptDownloads();
+        // The confirmed photo encodes on its own; then Generate faces makes the typed face.
+        await page.waitForFunction(
+          () => {
+            const m = (
+              window as unknown as {
+                __elmish: {
+                  model: { Busy: boolean; PreparingFaces: Set<string>; Faces: unknown[] };
+                };
+              }
+            ).__elmish.model;
+            return !m.Busy && m.PreparingFaces.size === 0;
+          },
+          null,
+          { timeout: 900_000, polling: 1000 },
+        );
+        if ((await model(page)).Faces.length < 2) {
+          await operate(page.getByRole('button', { name: 'Generate faces' }));
+          await acceptDownloads();
+        }
+        await facesReady(page, 2, 900_000);
+        const photoName = String(
+          await page.evaluate(() => {
+            const m = (
+              window as unknown as {
+                __elmish: { model: { Inputs: { mode: string; file: File | null }[] } };
+              }
+            ).__elmish.model;
+            return m.Inputs[1]?.file?.name ?? '';
+          }),
+        );
+        assert.ok(photoName, `${label}: the photo input has a file name`);
+        // Face 3: a photo chosen and left at its crop confirmation: unfinished.
+        await page.locator('.next-connector-add').last().click(); // setup
+        await page.waitForFunction(
+          () => document.querySelectorAll('section.next-face').length === 3,
+        );
+        const card = tiles.nth(2).locator('.next-face-image').getByRole('button', {
+          name: 'Encode image',
+          exact: true,
+        });
+        const cardChooser = page.waitForEvent('filechooser');
+        await operate(card);
+        await (await cardChooser).setFiles([fixture]);
+        await dialog.locator('.next-encode-preview img').waitFor();
+        await shot('unfinished-photo');
+        await page.keyboard.press('Escape'); // the confirmation stays unanswered: close it, keep the input
+        await dialog.waitFor({ state: 'detached' });
+        // A morph of the two faces, then its MP4 saved and scanned.
+        await page.getByLabel('Morph length').selectOption('8'); // setup
+        if ((await tiles.count()) === 3)
+          await tiles
+            .nth(2)
+            .getByRole('button', { name: /^Remove/ })
+            .click(); // setup: a morph needs every face; the unfinished photo is re-added below
+        await operate(page.getByRole('button', { name: 'Create morph' }));
+        await page.waitForFunction(
+          () =>
+            !!(window as unknown as { __elmish: { model: { VideoUrl: string; Busy: boolean } } })
+              .__elmish.model.VideoUrl,
+          null,
+          { timeout: 1_800_000, polling: 1000 },
+        );
+        await facesReady(page, 2, 60_000);
+        const videoDownload = page.waitForEvent('download');
+        await operate(page.getByRole('button', { name: 'Save video', exact: true }));
+        const mp4 = join(results, `${label}.mp4`);
+        await (await videoDownload).saveAs(mp4);
+        const mp4Bytes = readFileSync(mp4).toString('latin1');
+        assert.ok(mp4Bytes.slice(4, 8) === 'ftyp', `${label}: a real MP4`);
+        for (const needle of [words.trim(), photoName])
+          assert.ok(!contains(mp4Bytes, needle), `${label}: ${needle} in the saved MP4`);
+        const stillDownload = page.waitForEvent('download');
+        await operate(tiles.nth(1).getByRole('button', { name: 'Save image', exact: true }));
+        const still = join(results, `${label}-photo-face.webp`);
+        await (await stillDownload).saveAs(still);
+        const stillBytes = readFileSync(still).toString('latin1');
+        for (const needle of [words.trim(), photoName])
+          assert.ok(!contains(stillBytes, needle), `${label}: ${needle} in the saved image`);
+        // The unfinished photo again, on a third face, then the session settles.
+        await page.locator('.next-connector-add').last().click(); // setup
+        await page.waitForFunction(
+          () => document.querySelectorAll('section.next-face').length === 3,
+        );
+        const again = page.waitForEvent('filechooser');
+        await operate(
+          tiles
+            .nth(2)
+            .locator('.next-face-image')
+            .getByRole('button', { name: 'Encode image', exact: true }),
+        );
+        await (await again).setFiles([fixture]);
+        await dialog.locator('.next-encode-preview img').waitFor();
+        await page.waitForFunction(
+          async ([prefix]) => {
+            const db = await new Promise<IDBDatabase>((r) => {
+              const q = indexedDB.open('checkface-originals-v1');
+              q.onsuccess = () => r(q.result);
+            });
+            const rec = await new Promise<{ faces?: unknown[]; ids?: unknown[] } | undefined>(
+              (r) => {
+                const q = db
+                  .transaction('originals')
+                  .objectStore('originals')
+                  .get('last-generated-session-v2');
+                q.onsuccess = () => r(q.result);
+              },
+            );
+            db.close();
+            const kept = Object.keys(sessionStorage).filter((x) =>
+              x.startsWith(prefix as string),
+            ).length;
+            return rec?.faces?.length === 2 && rec?.ids?.length === 3 && kept === 2;
+          },
+          [WORDS_PREFIX] as const,
+          { timeout: 120_000, polling: 500 },
+        );
+        // Storage: no words or file name outside the word entries; every stored Blob is a generated face or the
+        // session's own frames/video, never the source photo.
+        const strings = await storageStrings(page);
+        for (const needle of [words.trim(), photoName])
+          assert.deepEqual(
+            strings.filter((x) => contains(x.text, needle)).map((x) => x.where),
+            [],
+            `${label}: ${needle} stored outside sessionStorage`,
+          );
+        const stored = await storedBlobs(page);
+        assert.deepEqual(
+          stored.blobs.filter((b) => b.kind === 'other' || b.sha === fixtureSha),
+          [],
+          `${label}: no photo pixels stored`,
+        );
+        assert.ok(stored.sessionChars < 64 * 1024, `${label}: sessionStorage holds text only`);
+        const wordsEntries = await page.evaluate((prefix) => {
+          const out: string[] = [];
+          for (const k of Object.keys(sessionStorage))
+            if (k.startsWith(prefix)) out.push(sessionStorage.getItem(k)!);
+          return out;
+        }, WORDS_PREFIX);
+        assert.deepEqual(
+          wordsEntries.map((x) => JSON.parse(x)).sort((a, b) => (a.mode < b.mode ? -1 : 1)),
+          [
+            { mode: 'photo', value: photoName },
+            { mode: 'text', value: words },
+          ],
+          `${label}: the tab keeps the exact words and only the photo's file name`,
+        );
+        await shot('before-reload');
+        // A real reload: the photo face shows only its file name; the unfinished photo points to Encode image.
+        await page.reload();
+        await facesReady(page, 2, 120_000);
+        const after = await model(page);
+        assert.deepEqual(
+          after.Inputs.slice(0, 2).map((x) => [x.mode, x.value]),
+          [
+            ['text', words],
+            ['project', photoName],
+          ],
+          `${label}: words exact; the photo face is labelled with its file name only`,
+        );
+        assert.equal(await field(1).inputValue(), photoName);
+        assert.equal(
+          await field(1).isDisabled(),
+          true,
+          'the restored photo face is not editable text',
+        );
+        assert.equal(
+          await tiles.count(),
+          3,
+          `${label}: the unfinished photo's face is still there`,
+        );
+        assert.equal(await tiles.nth(2).getAttribute('data-next-state'), 'empty');
+        assert.equal(
+          await tiles
+            .nth(2)
+            .locator('.next-face-image')
+            .getByRole('button', { name: 'Encode image', exact: true })
+            .count(),
+          1,
+          `${label}: the lost unfinished photo points to Encode image`,
+        );
+        assert.equal(
+          await page.getByRole('button', { name: 'Retry' }).count(),
+          0,
+          `${label}: never Retry`,
+        );
+        await shot('reloaded');
+        // Diagnostics with reporting on: at least one report was sent, and no payload carries the words or name.
+        const reports = c.payloads.filter((p) => p.url.includes('/diagnostics/'));
+        assert.ok(reports.length > 0, `${label}: debug reports were sent`);
+        for (const needle of [words.trim(), photoName])
+          assert.deepEqual(
+            c.payloads
+              .filter((p) => contains(p.url, needle) || contains(p.body, needle))
+              .map((p) => p.url),
+            [],
+            `${label}: ${needle} in an outgoing payload`,
+          );
+        writeFileSync(
+          join(results, `${label}-diagnostics.json`),
+          JSON.stringify(
+            reports.map((r) => ({ url: r.url, body: r.body.slice(0, 4000) })),
+            null,
+            2,
+          ),
+        );
+        assert.deepEqual(c.errors, [], `${label}: page errors`);
+        await c.context.close();
+      }
+    } finally {
+      await s.browser.close();
+      await s.control.stop();
+    }
+  },
+);
+
+test(
+  'many faces through a real project import, then the stored-session byte bound (no face count) on reload',
+  { timeout: 5_400_000 },
+  async (t) => {
+    const s = await site(t);
+    if (!s) return;
+    const evidence: Record<string, unknown> = {};
+    try {
+      const c = await cell(s.browser, 1280, false);
+      const page = await c.open();
+      const operate = async (control: Locator) =>
+        assert.ok((await press(page, control)).inside, `${control}`);
+      const tiles = page.locator('section.next-face');
+      const shots = async (name: string) => {
+        for (const width of [1280, 390]) {
+          await page.setViewportSize({ width, height: 900 });
+          await page.waitForTimeout(300);
+          await tiles
+            .first()
+            .scrollIntoViewIfNeeded()
+            .catch(() => {});
+          await page.screenshot({ path: join(results, `many-${width}-${name}.png`) });
+        }
+        await page.setViewportSize({ width: 1280, height: 900 });
+      };
+      await cpuSetup(page);
+      // A real saved MP4 from this app: two faces and a short morph.
+      await page.getByLabel('Morph length').selectOption('8'); // setup
+      await operate(page.getByRole('button', { name: 'Create morph' }));
+      const accept = page.locator('.next-download-accept');
+      if (
+        await accept.waitFor({ timeout: 8000 }).then(
+          () => true,
+          () => false,
+        )
+      )
+        await operate(accept);
+      await page.waitForFunction(
+        () =>
+          !!(window as unknown as { __elmish: { model: { VideoUrl: string } } }).__elmish.model
+            .VideoUrl,
+        null,
+        { timeout: 1_800_000, polling: 1000 },
+      );
+      await facesReady(page, 2, 60_000);
+      const saved = page.waitForEvent('download');
+      await operate(page.getByRole('button', { name: 'Save video', exact: true }));
+      const source = join(results, 'many-source.mp4');
+      await (await saved).saveAs(source);
+      // The project file: the app's own MP4 project, rewritten by the app's own writer with the schema's most
+      // controls (64, the project codec's MAX_CONTROLS and the app's face limit), alternating its two real latents.
+      const { readProjectMp4, writeProjectMp4 } = await import('../../src/media/recovery-files.ts');
+      const bytes = new Uint8Array(readFileSync(source));
+      const project = JSON.parse(readProjectMp4(bytes)!.text);
+      const pair = project.morph.controls;
+      project.morph.controls = Array.from({ length: 64 }, (_, i) => ({
+        visitId: `face-${i}`,
+        latent: pair[i % 2].latent,
+      }));
+      const many = join(results, 'many-64.mp4');
+      writeFileSync(many, writeProjectMp4(bytes, project));
+      // Opened through the card's own chooser, as a person opens a saved video.
+      await operate(tiles.nth(0).getByRole('button', { name: 'Change mode', exact: true }));
+      const entry = page.getByRole('menuitem', { name: 'Encode image', exact: true });
+      await entry.evaluate(async (el) => {
+        const panel = el.closest('.MuiPaper-root');
+        await Promise.allSettled(
+          (panel?.getAnimations({ subtree: true }) ?? []).map((a) => a.finished),
+        );
+      });
+      const chooser = page.waitForEvent('filechooser');
+      await operate(entry);
+      const started = Date.now();
+      await (await chooser).setFiles([many]);
+      await facesReady(page, 64, 3_000_000);
+      evidence['import64Ms'] = Date.now() - started;
+      const settled = (k: number) =>
+        page.waitForFunction(
+          async (k) => {
+            const db = await new Promise<IDBDatabase>((r) => {
+              const q = indexedDB.open('checkface-originals-v1');
+              q.onsuccess = () => r(q.result);
+            });
+            const rec = await new Promise<{ faces?: unknown[] } | undefined>((r) => {
+              const q = db
+                .transaction('originals')
+                .objectStore('originals')
+                .get('last-generated-session-v2');
+              q.onsuccess = () => r(q.result);
+            });
+            db.close();
+            return rec?.faces?.length === k;
+          },
+          k,
+          { timeout: 600_000, polling: 1000 },
+        );
+      await settled(64);
+      await shots('imported-64');
+      await page.reload();
+      await facesReady(page, 64, 300_000);
+      const restored64 = await model(page);
+      assert.equal(restored64.Inputs.length, 64);
+      assert.ok(
+        restored64.Inputs.every((x) => x.mode === 'project' && x.value === 'Restored face'),
+        'imported faces have no words: the accepted Restored face label',
+      );
+      await shots('reloaded-64');
+
+      // Beyond the app's own 64: session records made of this app's real stored faces, repeated. Restore is
+      // bounded by bytes, not by count: 150 faces and the most faces that fit MAX_SESSION_BYTES restore in full;
+      // one face more than fits is refused whole, never partly.
+      const plant = (n: number | 'fit') =>
+        page.evaluate(async (n) => {
+          const db = await new Promise<IDBDatabase>((r) => {
+            const q = indexedDB.open('checkface-originals-v1');
+            q.onsuccess = () => r(q.result);
+          });
+          const store = () => db.transaction('originals', 'readwrite').objectStore('originals');
+          const record = await new Promise<{
+            faces: { id: string; result: { blob: Blob } }[];
+            ids: string[];
+          }>((r) => {
+            const q = store().get('last-generated-session-v2');
+            q.onsuccess = () => r(q.result);
+          });
+          const bound = 32 * 1024 * 1024;
+          const faces: { id: string; result: { blob: Blob } }[] = [];
+          let bytes = 0;
+          for (let i = 0; n === 'fit' ? true : i < n; i++) {
+            const face = record.faces[i % record.faces.length]!;
+            if (n === 'fit' && bytes + face.result.blob.size > bound) break;
+            bytes += face.result.blob.size;
+            faces.push({ ...face, id: `face-${i}` });
+          }
+          await new Promise<void>((r) => {
+            const q = store().put(
+              {
+                ...record,
+                ids: faces.map((f) => f.id),
+                faces,
+                project: null,
+                frames: [],
+                frameHashes: [],
+                video: null,
+                videoSha256: null,
+              },
+              'last-generated-session-v2',
+            );
+            q.onsuccess = () => r();
+          });
+          db.close();
+          return { faces: faces.length, bytes, bound };
+        }, n);
+      const hundredFifty = await plant(150);
+      assert.ok(hundredFifty.bytes <= hundredFifty.bound, '150 of these faces fit the byte bound');
+      evidence['hundredFifty'] = hundredFifty;
+      await page.reload();
+      await facesReady(page, 150, 600_000);
+      const restored150 = await model(page);
+      assert.equal(restored150.Inputs.length, 150, '150 faces restore: no face count check');
+      assert.equal(await tiles.count(), 150);
+      await shots('restored-150');
+      const fit = await plant('fit');
+      assert.ok(fit.faces > 64, `more than 64 faces fit the byte bound: ${fit.faces}`);
+      evidence['atBound'] = fit;
+      await page.reload();
+      await facesReady(page, fit.faces, 600_000);
+      assert.equal(
+        (await model(page)).Inputs.length,
+        fit.faces,
+        'every face under the bound restores',
+      );
+      await shots(`at-bound-${fit.faces}`);
+      // One more face than fits: over the bound by one face, refused whole.
+      const over = await plant(fit.faces + 1);
+      assert.ok(over.bytes > over.bound);
+      evidence['overBound'] = over;
+      await page.reload();
+      await page.waitForTimeout(8000);
+      const afterOver = await model(page);
+      assert.equal(afterOver.Faces.length, 0, 'one face over the bound: refused whole');
+      assert.equal(
+        afterOver.Inputs[0]?.value,
+        'hello',
+        'the page starts fresh, no partial restore',
+      );
+      await shots('over-bound');
+      // Clear at its visible position empties the store.
+      const sizeLine = page.locator('.next-stored');
+      await sizeLine.scrollIntoViewIfNeeded();
+      await page.waitForFunction(
+        () => Number(document.querySelector('.next-stored')?.getAttribute('data-next-stored')) > 0,
+      );
+      evidence['storedBeforeClear'] = Number(await sizeLine.getAttribute('data-next-stored'));
+      await operate(page.locator('.next-stored-clear'));
+      await page.waitForFunction(
+        () => document.querySelector('.next-stored')?.getAttribute('data-next-stored') === '0',
+      );
+      await shots('cleared');
+      assert.deepEqual(c.errors, [], 'page errors');
+      await c.context.close();
+    } finally {
+      writeFileSync(join(results, 'many-evidence.json'), JSON.stringify(evidence, null, 2));
+      await s.browser.close();
+      await s.control.stop();
     }
   },
 );

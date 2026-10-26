@@ -458,7 +458,11 @@ test('session-restore.150-faces and .indexeddb-record-has-no-strings; session-sa
     }>(`(async () => {
       const { lr, faces, settings } = await ${FACES(3, 12 * 1024 * 1024)};
       const messages = [];
-      const saved = await lr.rememberSession({ ids: faces.map(f => f.id), faces, settings, project: null, video: null }, () => true, m => messages.push(m));
+      // The bridge passes no observer: the refusal reaches the app through onSessionRefused (fm-5hww).
+      const retention = await import('${ORIGIN}/shell/session/retention.ts');
+      const off = retention.onSessionRefused(m => messages.push(m));
+      const saved = await lr.rememberSession({ ids: faces.map(f => f.id), faces, settings, project: null, video: null });
+      off();
       const back = await lr.readSession();
       return { saved, messages, faces: back.faces.length };
     })()`);
