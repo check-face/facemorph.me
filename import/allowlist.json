@@ -1153,10 +1153,10 @@
       "class": "temporary-root",
       "temporary": true,
       "ported": {
-        "sha256": "9e3efb3b4cde173bf913886ba7519bec17da8815aca658fcfc03d2c5cafc3fc6",
-        "bytes": 9585,
-        "bead": "fm-qh1s",
-        "reason": "Optional --port isolates concurrent correctness servers while preserving the classic default of 8443; Vite destination integration: shared production headers and native dynamic-import directives; compiled artifact identity. TLS handshake runs in the client thread so speculative idle connections cannot block accept (fm-aa8).; e2e site server listen backlog 256 (fb0f4f1); bounded exact-path file-preparation HTTP delay/503 for operated Retry proof (fm-qh1s)"
+        "sha256": "d8a8c5240fb317fee5a3d3e6489bde5580e899cfcf247c68eb4e02298ab2b53d",
+        "bytes": 10058,
+        "bead": "fm-jx26",
+        "reason": "Optional --port isolates concurrent correctness servers while preserving the classic default of 8443; Vite destination integration: shared production headers and native dynamic-import directives; compiled artifact identity. TLS handshake runs in the client thread so speculative idle connections cannot block accept (fm-aa8).; e2e site server listen backlog 256 (fb0f4f1); bounded exact-path file-preparation HTTP delay/503 for operated Retry proof (fm-qh1s); accept only the model manager positive retry counter on runtime URLs, retaining the same pinned path and bytes; actual HTTPS failure/retry plus malformed-query and traversal regressions in scripts/hosting/runtime-retry.test.mjs."
       }
     },
     {

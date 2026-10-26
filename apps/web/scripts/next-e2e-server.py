@@ -134,7 +134,14 @@ class Handler(SimpleHTTPRequestHandler):
    path=urlsplit(self.path).path
    if not Path(path).suffix and 'text/html' in self.headers.get('Accept','') and not Path(self.translate_path(path)).is_file():return self.respond(Path('deploy-next/index.html').read_bytes(),'text/html; charset=utf-8')
    return super().do_GET()
-  if '?' in self.path or '#' in self.path or '..' in self.path or '%' in self.path:return self.send_error(400)
+  if '#' in self.path or '..' in self.path or '%' in self.path:return self.send_error(400)
+  # Acquisition retries bust the browser cache, not the pinned asset identity. Only
+  # the manager's exact positive retry counter is admitted; all lookup/hash checks
+  # below still use the original manifest path (fm-jx26 actual UI replay).
+  runtime_url=urlsplit(self.path)
+  if runtime_url.query and not re.fullmatch(r'retry=[1-9][0-9]*',runtime_url.query):return self.send_error(400)
+  if '?' in self.path and not runtime_url.query:return self.send_error(400)
+  self.path=runtime_url.path
   try:
    if self.path=='/runtime/manifest.json':return self.respond(manifest,self.mime_for(self.path))
    sha=PATHMAP.get(self.path)
