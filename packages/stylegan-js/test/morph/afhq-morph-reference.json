@@ -1,0 +1,89 @@
+{
+  "schema": "facemorph-afhq-cat-512-morph-reference-v1",
+  "model": "stylegan2-ada-afhqcat",
+  "checkpointSha256": "f62fd750c51f649147ba355844833c0f2a37081f7c032194f52fd74a016c3a29",
+  "implementation": "NVlabs/stylegan2-ada-pytorch@d72cc7d041b42ec8e806021a205ed9349f87c6a4",
+  "synthesis": {
+    "noiseMode": "const",
+    "forceFp32": true,
+    "fusedModconv": false
+  },
+  "tolerance": {
+    "rawFloat": 0.001,
+    "rgb": 1
+  },
+  "latents": {
+    "shape": [8, 16, 512],
+    "sha256": "c7ca2032a0287125d69a7e968055974c54704db611ad28bcbcb00384bd9c8aba",
+    "morph": {
+      "algorithmVersion": "latent-path-v1",
+      "kind": "pairwise-ellipse",
+      "closed": true,
+      "pinchCenter": false,
+      "width": 0.7,
+      "framesPerSegment": 4,
+      "framesPerSecond": 16,
+      "controls": ["seed-0", "seed-1"]
+    }
+  },
+  "container": "facemorph/model-conv@sha256:93119956df5b6429ae3fd4942a026ac902b62b31e7122ac1cf3d558eaba73237",
+  "versions": {
+    "python": "3.12.15",
+    "torch": "2.14.0+cpu",
+    "onnx": "1.19.1",
+    "onnxruntime": "1.24.3",
+    "numpy": "2.2.6",
+    "os": "Linux-7.2.5-3-omarchy-x86_64-with-glibc2.41",
+    "upstream": "NVlabs/stylegan2-ada-pytorch@d72cc7d041b42ec8e806021a205ed9349f87c6a4"
+  },
+  "frames": [
+    {
+      "index": 0,
+      "file": "frame-0.raw.f32",
+      "size": 3145728,
+      "sha256": "eeb843979ca6a150e8624d218f5185f4cecacc2f6a126307b7e34cc0d67085cd"
+    },
+    {
+      "index": 1,
+      "file": "frame-1.raw.f32",
+      "size": 3145728,
+      "sha256": "c4c88312bfa71f785f1f05e4c34f730ee5ea0b84e33733728399355a591c5300"
+    },
+    {
+      "index": 2,
+      "file": "frame-2.raw.f32",
+      "size": 3145728,
+      "sha256": "bc65e9620e931467e766e3cb731f48ee13c2840c23703ba37c52a403bfde710e"
+    },
+    {
+      "index": 3,
+      "file": "frame-3.raw.f32",
+      "size": 3145728,
+      "sha256": "880e93995ef899e4d320b658d791dbcce09b0e261154d25b078e7152a0585e11"
+    },
+    {
+      "index": 4,
+      "file": "frame-4.raw.f32",
+      "size": 3145728,
+      "sha256": "fa3e1ce7495cb2feafbfa7d92182549c1f9cb7b6cbf0639bd511a48bf701c21e"
+    },
+    {
+      "index": 5,
+      "file": "frame-5.raw.f32",
+      "size": 3145728,
+      "sha256": "fcfe2df2ebf220c945aed84c67568deb62dfd5db1ea4f4ed4d899f25750b3ee5"
+    },
+    {
+      "index": 6,
+      "file": "frame-6.raw.f32",
+      "size": 3145728,
+      "sha256": "122789856bcb17d11ca6b2e831049305374d4c433377effbded708dcd5e86f21"
+    },
+    {
+      "index": 7,
+      "file": "frame-7.raw.f32",
+      "size": 3145728,
+      "sha256": "5e93f35fc3d0e3d0891e5ec8781520ebe7c2059ac60015cd1b70f87469a134f8"
+    }
+  ]
+}
