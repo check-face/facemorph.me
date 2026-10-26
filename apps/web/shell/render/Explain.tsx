@@ -151,7 +151,7 @@ export function Explain({ route = '', reference = '' }: { route?: string; refere
             "FaceMorph's own code is MIT licensed, but the model weights are for non-commercial use under their own licences:"
           }
         </p>
-        <ul className="next-model-licences">
+        <ul className="next-privacy-requests next-model-licences">
           {MODEL_LICENCES.map((l) => (
             <li key={l.href}>
               <a href={l.href}>{l.title}</a>
