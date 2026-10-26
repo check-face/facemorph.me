@@ -27,6 +27,7 @@ const CHECKERS = [
   'scripts/ci/check-dependency-currency.ts',
   'scripts/ci/dependency-currency.ts',
   'scripts/ci/ort-mirror.ts',
+  'scripts/ci/serial-ort.ts',
   'scripts/ci/package.json',
   'package.json',
 ];
