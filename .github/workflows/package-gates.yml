@@ -40,6 +40,12 @@ jobs:
           # Exit 0 only when every rule is clean, the required files included; 1 lists findings, 2 is a usage error.
           node scripts/packages/check-tarball-contents.mjs --profile stylegan-js \
             --input "$d/facemorph-stylegan-js-0.0.0.tgz" --report "$d/stylegan-js.json"
+      - name: npm name check and API reference self-tests (fm-tohj)
+        run: node --test scripts/packages/npm-names.test.mjs scripts/packages/api-reference.test.mjs
+      - name: API reference matches the emitted declarations (fm-tohj)
+        run: |
+          npm run build -w packages/stylegan-js
+          node scripts/packages/api-reference.mjs --check
       - uses: actions/upload-artifact@v4
         if: always()
         with:
