@@ -221,6 +221,7 @@ test('the candidate schema-1 project MP4 reads as its own project text, unchange
 });
 
 test('the Blob envelope the encoder worker uses writes schema 3 for a shipped model, schema 2 otherwise', async () => {
+  // @ts-expect-error -- an untyped .mjs module of the candidate bridge
   const { embedRecovery, recoverEnvelope } = await import('../../src/Next/image-envelope.mjs');
   const blob = new Blob([new Uint8Array(v2.image)], { type: 'image/png' });
   const result = {
