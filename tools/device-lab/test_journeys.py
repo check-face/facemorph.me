@@ -5,6 +5,7 @@ import tempfile
 import subprocess
 import sys
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 import lab
@@ -34,6 +35,44 @@ class Journeys(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn('repeat must be at least 1', result.stderr)
         self.assertNotIn('cell_start', result.stdout)
+
+
+class MorphAction(unittest.TestCase):
+    def test_real_mouse_keeps_morph_target_when_result_buttons_change(self):
+        try:
+            from playwright.sync_api import sync_playwright
+        except ImportError:
+            self.skipTest('real-browser regression requires uv run --with playwright')
+
+        class ReachedVideoWait(Exception):
+            """Stop after the real click; this fixture does not pretend to produce a morph."""
+
+        with sync_playwright() as pw:
+            browser = pw.chromium.launch(headless=True)
+            try:
+                # Exercise Desktop.tap itself without a device, lab lease or inference runtime.
+                dev = lab.Desktop.__new__(lab.Desktop)
+                dev.page = browser.new_page()
+                dev.page.set_content('''<div style="height:1200px"></div>
+                  <button id="result">Save image</button>
+                  <button class="next-primary-action" onclick="window.clicked='morph';window.trusted=event.isTrusted">Create morph</button>
+                  <button onclick="window.clicked='more'">More options</button>
+                  <script>window.clicked=null;window.reordered=false;
+                  addEventListener('scroll',()=>{document.querySelector('#result').remove();window.reordered=true;},{once:true});</script>''')
+                # The real scroll delivers an asynchronous result-control update before tap's
+                # hit probe. Stop at the video wait, preserving its real 1800-second deadline.
+                with patch.object(dev, 'wait', side_effect=ReachedVideoWait) as video_wait:
+                    with self.assertRaises(ReachedVideoWait):
+                        lab.journey_morph(dev)
+                self.assertTrue(dev.js('window.reordered'))
+                self.assertEqual(dev.js('window.clicked'), 'morph')
+                self.assertTrue(dev.js('window.trusted'))
+                self.assertTrue(dev.js('window.__labHit.inside'))
+                self.assertIn('next-primary-action', dev.js('window.__labHit.what'))
+                self.assertEqual(video_wait.call_args.args[1], 1800)
+                self.assertIn(lab.S['video'], video_wait.call_args.args[0])
+            finally:
+                browser.close()
 
 
 class Evidence(unittest.TestCase):

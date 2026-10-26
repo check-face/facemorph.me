@@ -801,10 +801,12 @@ def journey_face(phone, url, cold, word, gpu=None):
 
 def journey_morph(phone, gpu=None):
     t0 = time.time()
-    btn = phone.js("[...document.querySelectorAll('button')].findIndex(b=>b.textContent.trim()==='Create morph')")
-    if btn < 0:
+    # Result-file controls can mount between the warm face and tap's scroll/hit
+    # probe. A global button index would then identify a different real control.
+    selector = 'button.next-primary-action'
+    if not phone.js("sel=>{const buttons=document.querySelectorAll(sel);return buttons.length===1&&buttons[0].textContent.trim()==='Create morph'}", selector):
         raise RuntimeError('no Create morph button')
-    phone.tap('button', btn)
+    phone.tap(selector)
     phone.wait(f"(()=>{{const v=document.querySelector('{S['video']}');return !!v&&v.readyState>=2&&v.duration>0}})()", 1800)
     route = phone.js(f"document.querySelector('{S['route']}')?.innerText||''").strip()
     if gpu is not None:
