@@ -163,6 +163,10 @@ jobs:
     needs: ios-product-artifact
     runs-on: macos-15
     timeout-minutes: 45
+    env:
+      # The pinned runtime manifest SHA-256: the cache key is derived from it, so a runtime change misses
+      # (scripts/ci/runtime-pin.test.ts keeps every workflow's pin equal).
+      RUNTIME_SHA: d9e37e50a436e9fb7c0c7f973e70adee353c808f48c6a51fa5a9186f1c650a5c
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -189,9 +193,9 @@ jobs:
       - uses: actions/cache@v4
         with:
           path: .cache/mobile-runtime
-          key: mobile-runtime-sha256-d9e37e50a436e9fb7c0c7f973e70adee353c808f48c6a51fa5a9186f1c650a5c
+          key: mobile-runtime-sha256-${{ env.RUNTIME_SHA }}
       - name: Product in an iOS Simulator
-        run: python3 apps/web/scripts/next-ios-sim.py --device 'iPhone 16 Pro' --artifact mobile-artifact/deploy-next --evidence next-ios-evidence --runtime-sha d9e37e50a436e9fb7c0c7f973e70adee353c808f48c6a51fa5a9186f1c650a5c
+        run: python3 apps/web/scripts/next-ios-sim.py --device 'iPhone 16 Pro' --artifact mobile-artifact/deploy-next --evidence next-ios-evidence --runtime-sha "$RUNTIME_SHA"
       - name: Explicit unobservable fields and timing reference
         if: always()
         run: |
