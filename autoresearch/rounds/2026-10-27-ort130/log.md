@@ -59,3 +59,39 @@
   this round's `candidates/ort130-serial-cpu-tempcpu-v1/` and updated its links.
   Imported history and its checker remain unchanged; raw evidence bytes are
   unchanged. Both research checks must pass before pushing.
+
+### 2026-10-26T21:43:00+00:00 — QEH-CPU-CLEANUP-1
+
+- Phase / status: observed / owned remote scratch removed after evidence audit.
+- Exact path `/home/runner/fm-qeh-cpu-measure-20261026T2126` was removed using
+  symlink-safe directory removal after checking no task process remained and
+  profiles were empty. Approximately 139 MB freed. Runtime and dependency-cache
+  target directories survived; their manifest and Playwright package hashes
+  match before and after. Shared lock metadata remains. No other remote path
+  was removed. The candidate retains the unchanged `cleanup-result.json.raw`.
+
+### 2026-10-26T21:49:52+00:00 — QEH-PHONE-NATIVE-GPU-1
+
+- Phase / status: observed / local flagged phone GPU route and budgets pass.
+- Exact prior qeh artifact `d10d38fa…` and native serial root `d8ed9d5c…`, actual
+  Huawei P30 Pro Android 10 / Chrome 150.0.7871.128. The lab used
+  `--enable-unsafe-webgpu --ignore-gpu-blocklist`; unflagged visitors on this
+  blocklisted driver are not qualified as GPU by this result.
+- Genuine cold then warm face journeys rendered via the GPU, with no CPU
+  fallback. Cold face 31.66 s / complete journey 42.1 s within 70 s; warm face
+  22.8 s / journey 33.1 s within 50 s. These single visits are not paired
+  performance evidence. The loaded document SHA matches the staged artifact.
+- Raw reports record `typedExactly: false`: the page capitalized `lab0cold` and
+  `lab0warm` to `Lab0cold` and `Lab0warm`. This route/budget check does not establish
+  exact-case input preservation or full release acceptance. Peak summed Chrome
+  PSS is 6,891 MiB, not encoder heap or GPU allocation; phone photo/e4e remains
+  untested. Five other release cells are explicitly missing from this run.
+- Evidence: unchanged summary and per-cell JSON in the candidate's
+  `evidence/phone-webgpu/`, original output
+  `tools/device-lab/out/20261027-074728-fm-qeh-ort130-phone-gpu-verified`.
+- Cleanup: camera status confirms streaming false, no webcam/watchdog process
+  and heldOff true; the task server no longer listens on 8443. Device lock
+  released. The initial launcher failed before device I/O (unset uv shim); an
+  incorrectly transcribed runtime digest then refused server startup before
+  device I/O. The verified attempt computed SHA-256 from the actual manifest.
+  No failed startup is relabelled a passing journey.
