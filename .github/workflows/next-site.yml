@@ -66,6 +66,9 @@ jobs:
       - uses: ./.github/actions/setup-workspace # node_modules for the lockfile, shared on the runner (fm-98po)
       - name: Every test file is actually run
         run: node scripts/build/check-tests-listed.mjs
+      # src/Next modules import @facemorph/stylegan-js and browser-model-manager through their dist/ exports.
+      - name: Workspace packages the regressions import
+        run: npm run build -w packages/stylegan-js -w packages/browser-model-manager
       - name: Shipping runtime, media, privacy and input regressions
         run: |
           set -euo pipefail
