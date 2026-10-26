@@ -1211,10 +1211,10 @@
       "class": "temporary-root",
       "temporary": true,
       "ported": {
-        "sha256": "4dab0d03824a7ba653cba01fa5f60cdd5e8cfa90505230dd1881abfe678aaefa",
-        "bytes": 21542,
-        "bead": "fm-pud",
-        "reason": "repaired harness: stage verdicts in next-matrix-stages.mjs (classic stage list, not-shipped never a pass), project round trip covered by project-json.test.ts; Photo/crop source assertions now execute typed reducers; active check descriptions reference the retained artifact and typed codec.; Wait for actual photo reconstruction before asserting encoder completion; retained-control matrix144 evidence."
+        "sha256": "7badb1a84b88e49a1e753ad614df2bc1e576bf5eab232e9659e4fcefcc5426e0",
+        "bytes": 22007,
+        "bead": "fm-r4a",
+        "reason": "repaired harness: stage verdicts in next-matrix-stages.mjs (classic stage list, not-shipped never a pass), project round trip covered by project-json.test.ts; Photo/crop source assertions now execute typed reducers; active check descriptions reference the retained artifact and typed codec.; Wait for actual photo reconstruction before asserting encoder completion; retained-control matrix144 evidence. Exact candidate artifact mode uses a job-owned production-origin CONNECT proxy on Chromium, Firefox and WebKit; retained stage list and verdicts unchanged."
       }
     },
     {
