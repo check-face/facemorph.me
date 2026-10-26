@@ -62,6 +62,8 @@ export const CASES = {
   CropCancel: crop,
   RequestCrop: crop,
   Cropped: photo,
+  Classified: photo,
+  UseAsPhoto: photo,
   CancelFace: jobs,
   Run: jobs,
   RunFace: jobs,

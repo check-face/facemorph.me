@@ -30,9 +30,25 @@ test('a card choice never alters a face or authorizes downloads; an empty choose
   assert.equal(selecting.state.PreparingFaces.has('face-2'), true);
   assert.deepEqual(selecting.effects, [
     { type: 'invalidatePhotoSelections', id: 'face-2' },
-    { type: 'selectPhoto', id: 'face-2', files: [chosen] },
+    {
+      type: 'classifyStills',
+      key: 'face-2',
+      token: 1,
+      pick: true,
+      target: 'face-2',
+      files: [chosen],
+    },
   ]);
-  const cancelled = reduce(msg('CancelFace', 'face-2'), selecting.state)!;
+  // Its verdict (a plain photo) continues to the bridge's selection; the face is still unchanged.
+  const verdict = reduce(
+    msg('Classified', 'face-2', 1, true, 'face-2', [
+      { index: 0, file: chosen, bytes: chosen.size, kind: 'missing', reason: null },
+    ]),
+    selecting.state,
+  )!;
+  assert.equal(verdict.state.Inputs, state.Inputs);
+  assert.deepEqual(verdict.effects, [{ type: 'selectPhoto', id: 'face-2', files: [chosen] }]);
+  const cancelled = reduce(msg('CancelFace', 'face-2'), verdict.state)!;
   assert.equal(cancelled.state.PreparingFaces.has('face-2'), false);
   assert.equal(cancelled.state.Inputs, state.Inputs);
   assert.ok(
@@ -106,9 +122,26 @@ test('accepted photo queues behind a real run but clears cropping-owned Busy', (
 test('a three-file drop uses an empty tile first then appends in drop order', () => {
   const files = ['first.jpg', 'second.jpg', 'third.jpg'].map(file);
   const empty = { ...state, Inputs: [{ ...state.Inputs[0]!, value: '' }, state.Inputs[1]!] };
-  const next = photo(msg('Photos', null, files), empty, {
-    newPhotoIds: ['new-a', 'new-b', 'unused'],
-  })!;
+  const dropped = photo(msg('Photos', null, files), empty)!;
+  assert.equal(dropped.state.Inputs, empty.Inputs, 'nothing changes before classification');
+  const next = photo(
+    msg(
+      'Classified',
+      '*',
+      dropped.state.StillSeq!,
+      false,
+      null,
+      files.map((f, index) => ({
+        index,
+        file: f,
+        bytes: f.size,
+        kind: 'missing' as const,
+        reason: null,
+      })),
+    ),
+    dropped.state,
+    { newPhotoIds: ['new-a', 'new-b', 'unused'] },
+  )!;
   assert.deepEqual(
     next.state.Inputs.map((input) => input.id),
     ['face-1', 'face-2', 'new-a', 'new-b'],

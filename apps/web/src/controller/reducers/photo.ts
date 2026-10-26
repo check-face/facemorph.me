@@ -4,11 +4,157 @@ import { unchanged, type Effect, type Transition } from '../effects.ts';
 import { change } from './inputs.ts';
 import { schedule, enqueue, without, runFace } from './schedule.ts';
 import { createCrop } from '../geometry.ts';
+import type { ClassifiedStill } from '../msg.ts';
+import type { HeldStill } from '../state.ts';
 type Offer = Extract<Extract<Msg, { type: 'Photo' }>['args'][1], { kind: 'crop' }>['offer'];
 
 export interface PhotoFacts {
   readonly photoRevision?: number;
   readonly newPhotoIds?: readonly string[];
+}
+/** Kinds a face holds as media; `matching` and `missing` continue to the bridge's own entry. */
+const isHeld = (kind: ClassifiedStill['kind']): kind is HeldStill['kind'] =>
+  kind !== 'matching' && kind !== 'missing';
+/** The still-check key of a drop on the page rather than on a face. */
+export const DROP_KEY = '*';
+/** A fresh classification token for `key`; a later pick or drop on the same key supersedes it. */
+function checkStill(state: State, key: string): readonly [State, number] {
+  const token = (state.StillSeq ?? 0) + 1;
+  const checks = new Map(state.StillChecks ?? []);
+  checks.set(key, token);
+  return [{ ...state, StillSeq: token, StillChecks: checks }, token];
+}
+/**
+ * The face no longer holds its still (it was replaced, edited or removed); with `checks`, a classification still
+ * pending for it is superseded too, so its late verdict is discarded.
+ */
+export function forgetStill(state: State, id: string, checks: boolean): Transition {
+  const held = state.Held?.get(id);
+  const pending = checks && state.StillChecks?.has(id);
+  if (!held && !pending) return { state, effects: [] };
+  const next: { -readonly [K in keyof State]: State[K] } = { ...state };
+  if (held) {
+    const map = new Map(state.Held);
+    map.delete(id);
+    next.Held = map;
+  }
+  if (pending) {
+    const map = new Map(state.StillChecks);
+    map.delete(id);
+    next.StillChecks = map;
+  }
+  return { state: next, effects: held?.url ? [{ type: 'revokeUrl', url: held.url }] : [] };
+}
+/** The face holds `entry` as media: shown, saved as its original bytes and never computed with. */
+function hold(state: State, id: string, entry: ClassifiedStill): Transition {
+  if (!isHeld(entry.kind) || !entry.reason) throw new Error('Only a held kind is held by a face');
+  const released = forgetStill(state, id, false);
+  const preparing = new Set(released.state.PreparingFaces);
+  preparing.delete(id);
+  // A damaged still never replaces the face: its identity is unchanged, and Use as photo is explicit.
+  const damaged = entry.kind === 'damaged';
+  const base = damaged
+    ? released.state
+    : change(released.state, id, (item) => ({
+        ...item,
+        mode: 'project',
+        file: null,
+        value: 'Saved face',
+      }));
+  const still: HeldStill = {
+    kind: entry.kind,
+    reason: entry.reason,
+    file: entry.file,
+    url: damaged ? '' : (entry.url ?? ''),
+    photoAction: entry.decodes === true,
+  };
+  const map = new Map(base.Held ?? []);
+  map.set(id, still);
+  const effects: Effect[] = [...released.effects];
+  if (damaged && entry.url) effects.push({ type: 'revokeUrl', url: entry.url });
+  if (!damaged) effects.push({ type: 'invalidateFace', id });
+  return { state: { ...base, Held: map, PreparingFaces: preparing, Error: null }, effects };
+}
+function classified(
+  [key, token, pick, target, entries]: Extract<Msg, { type: 'Classified' }>['args'],
+  state: State,
+  facts: PhotoFacts,
+): Transition {
+  const urls: Effect[] = entries.flatMap((entry) =>
+    entry.url ? [{ type: 'revokeUrl' as const, url: entry.url }] : [],
+  );
+  // A verdict for a superseded pick or drop (a newer one, an edit, a removal) changes nothing.
+  if (state.StillChecks?.get(key) !== token) return { state, effects: urls };
+  const checks = new Map(state.StillChecks);
+  checks.delete(key);
+  let next: State = { ...state, StillChecks: checks };
+  const effects: Effect[] = [];
+  const apply = (id: string, entry: ClassifiedStill) => {
+    const t = hold(next, id, entry);
+    next = t.state;
+    effects.push(...t.effects);
+  };
+  const unused = (entry: ClassifiedStill) => {
+    if (entry.url) effects.push({ type: 'revokeUrl', url: entry.url });
+  };
+  if (pick) {
+    const id = target ?? '';
+    if (!next.Inputs.some((input) => input.id === id)) return { state: next, effects: urls };
+    const [first] = entries;
+    if (entries.length === 1 && first && isHeld(first.kind)) {
+      apply(id, first);
+      return schedule(next, effects);
+    }
+    entries.forEach(unused);
+    return {
+      state: next,
+      effects: [...effects, { type: 'selectPhoto', id, files: entries.map((e) => e.file) }],
+    };
+  }
+  if (target !== null && !next.Inputs.some((input) => input.id === target)) {
+    const preparing = new Set(next.PreparingFaces);
+    preparing.delete(target);
+    return { state: { ...next, PreparingFaces: preparing }, effects: urls };
+  }
+  const inputs = [...next.Inputs];
+  const targets: string[] = [];
+  let generated = 0;
+  const append = (): string => {
+    const id = facts.newPhotoIds?.[generated++];
+    if (!id || inputs.some((input) => input.id === id))
+      throw new Error('Photo drop requires fresh face IDs');
+    inputs.push({ id, mode: 'text', value: '', file: null });
+    return id;
+  };
+  const empty = inputs.find(
+    (item) => item.mode !== 'photo' && item.mode !== 'project' && !item.value.trim(),
+  );
+  targets.push(target ?? empty?.id ?? append());
+  for (let index = 1; index < entries.length; index++) targets.push(append());
+  next = { ...next, Inputs: inputs };
+  effects.push({ type: 'invalidateArrivalRestore' });
+  for (const id of targets) effects.push({ type: 'invalidatePhotoSelections', id });
+  const photos: (readonly [string, File])[] = [];
+  entries.forEach((entry, index) => {
+    const id = targets[index]!;
+    if (isHeld(entry.kind)) apply(id, entry);
+    else {
+      unused(entry);
+      photos.push([id, entry.file]);
+    }
+  });
+  const [first, ...rest] = photos;
+  if (!first) return schedule({ ...next, PhotoQueue: [] }, effects);
+  effects.push({ type: 'selectPhoto', id: first[0], files: [first[1]] });
+  return {
+    state: {
+      ...next,
+      PhotoQueue: rest,
+      Error: null,
+      PreparingFaces: new Set([...next.PreparingFaces, first[0]]),
+    },
+    effects,
+  };
 }
 export function revision(facts: PhotoFacts): number {
   if (facts.photoRevision === undefined)
@@ -63,7 +209,9 @@ export function offerCrop(state: State, id: string, offer: Offer): Transition {
 }
 const fileName = (file: Blob): string =>
   'name' in file && typeof file.name === 'string' ? file.name : '';
-function acceptPhoto(state: State, id: string, file: Blob, fromCrop: boolean): Transition {
+function acceptPhoto(input: State, id: string, file: Blob, fromCrop: boolean): Transition {
+  const released = forgetStill(input, id, false);
+  const state = released.state;
   const preparing = new Set(state.PreparingFaces);
   preparing.delete(id);
   const next = change(state, id, (item) => ({
@@ -80,7 +228,7 @@ function acceptPhoto(state: State, id: string, file: Blob, fromCrop: boolean): T
       Busy: fromCrop && state.Stage === 'cropping' ? false : state.Busy,
       Status: !fromCrop && state.Busy ? state.Status : next.Status,
     },
-    [{ type: 'invalidateFace', id }],
+    [...released.effects, { type: 'invalidateFace', id }],
   );
   return queued.state.Busy
     ? {
@@ -98,14 +246,16 @@ export function photo(message: Msg, state: State, facts: PhotoFacts = {}): Trans
     case 'PickPhoto': {
       const [id, files] = message.args;
       if (!files.length || !state.Inputs.some((input) => input.id === id)) return unchanged(state);
+      // Classified first (fm-4f5m): nothing about the face changes until its file's verdict arrives.
+      const [checked, token] = checkStill(state, id);
       return {
         state: {
-          ...state,
+          ...checked,
           PreparingFaces: new Set([...state.PreparingFaces, id]),
         },
         effects: [
           { type: 'invalidatePhotoSelections', id },
-          { type: 'selectPhoto', id, files },
+          { type: 'classifyStills', key: id, token, pick: true, target: id, files },
         ],
       };
     }
@@ -158,8 +308,9 @@ export function photo(message: Msg, state: State, facts: PhotoFacts = {}): Trans
           preparing.delete(id);
           const cached = new Set(state.CachedFaces);
           cached.delete(id);
+          const released = forgetStill(state, id, false);
           const next = dequeue({
-            ...state,
+            ...released.state,
             Inputs: state.Inputs.map((item) =>
               item.id === id ? { ...item, mode: 'project', file: null, value: 'Saved face' } : item,
             ),
@@ -170,7 +321,7 @@ export function photo(message: Msg, state: State, facts: PhotoFacts = {}): Trans
             ],
             PreparingFaces: preparing,
           });
-          return schedule(next.state, next.effects);
+          return schedule(next.state, [...released.effects, ...next.effects]);
         }
         case 'crop':
           return offerCrop(state, id, selection.offer);
@@ -184,33 +335,33 @@ export function photo(message: Msg, state: State, facts: PhotoFacts = {}): Trans
       if (!files.length) return unchanged(state);
       if (target !== null && !state.Inputs.some((input) => input.id === target))
         return unchanged(state);
-      const inputs = [...state.Inputs];
-      const targets: string[] = [];
-      let generated = 0;
-      const append = (): string => {
-        const id = facts.newPhotoIds?.[generated++];
-        if (!id || inputs.some((input) => input.id === id))
-          throw new Error('Photo drop requires fresh face IDs');
-        inputs.push({ id, mode: 'text', value: '', file: null });
-        return id;
-      };
-      const empty = inputs.find(
-        (item) => item.mode !== 'photo' && item.mode !== 'project' && !item.value.trim(),
-      );
-      targets.push(target ?? empty?.id ?? append());
-      for (let index = 1; index < files.length; index++) targets.push(append());
-      const effects: Effect[] = [{ type: 'invalidateArrivalRestore' }];
-      for (const id of targets) effects.push({ type: 'invalidatePhotoSelections', id });
-      effects.push({ type: 'selectPhoto', id: targets[0]!, files: [files[0]!] });
+      // Every file of the drop is classified before any target is chosen or changed (fm-4f5m).
+      const key = target ?? DROP_KEY;
+      const [checked, token] = checkStill(state, key);
       return {
         state: {
-          ...state,
-          Inputs: inputs,
-          PhotoQueue: targets.slice(1).map((id, index) => [id, files[index + 1]!] as const),
+          ...checked,
           Error: null,
-          PreparingFaces: new Set([...state.PreparingFaces, targets[0]!]),
+          PreparingFaces:
+            target === null ? state.PreparingFaces : new Set([...state.PreparingFaces, target]),
         },
-        effects,
+        effects: [{ type: 'classifyStills', key, token, pick: false, target, files }],
+      };
+    }
+    case 'Classified':
+      return classified(message.args, state, facts);
+    case 'UseAsPhoto': {
+      const [id] = message.args;
+      const held = state.Held?.get(id);
+      if (!held?.photoAction || !state.Inputs.some((input) => input.id === id))
+        return unchanged(state);
+      // Only this explicit action makes a held still a photo, through the confirmed-crop flow.
+      return {
+        state: { ...state, Error: null, PreparingFaces: new Set([...state.PreparingFaces, id]) },
+        effects: [
+          { type: 'invalidatePhotoSelections', id },
+          { type: 'previewPhoto', id, file: held.file },
+        ],
       };
     }
     case 'DismissDetected': {

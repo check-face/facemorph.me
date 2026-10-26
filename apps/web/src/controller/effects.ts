@@ -60,6 +60,14 @@ export type PhotoEffect =
   | { readonly type: 'focusCropArea' | 'cancelPhotoRun' }
   | { readonly type: 'revokeUrl'; readonly url: string }
   | { readonly type: 'selectPhoto'; readonly id: string; readonly files: readonly File[] }
+  | {
+      readonly type: 'classifyStills';
+      readonly key: string;
+      readonly token: number;
+      readonly pick: boolean;
+      readonly target: string | null;
+      readonly files: readonly File[];
+    }
   | { readonly type: 'previewPhoto'; readonly id: string; readonly file: Blob }
   | {
       readonly type: 'cropPhoto';
@@ -107,6 +115,8 @@ export function rejection(effect: Effect, error: unknown, input?: Input): Msg {
       return msg('NamesFailed', text);
     case 'exportProject':
       return msg('Notice', text);
+    case 'classifyStills':
+      return msg('PhotoFailed', effect.target ?? '', text);
     case 'selectPhoto':
     case 'previewPhoto':
     case 'cropPhoto':

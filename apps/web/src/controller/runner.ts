@@ -21,6 +21,9 @@ import { reportSent } from './reducers/reporting.ts';
 import { cancelled } from './reducers/jobs.ts';
 import { schedule, scheduled, scheduling } from './reducers/schedule.ts';
 import { createStore, type Store } from './store.ts';
+import { classifyStills, isHeld, stillLog } from '../media/still-entry.ts';
+import { saveFile, shareFile } from '../Next/media.mjs';
+import type { ClassifiedStill } from './msg.ts';
 import { subscribeProgress, subscribeDownloads } from './subscriptions.ts';
 
 export interface RuntimeIdentity {
@@ -47,6 +50,7 @@ const commands = new Set<Effect['type']>([
   'exportProject',
   'requestNext',
   'selectPhoto',
+  'classifyStills',
   'previewPhoto',
   'cropPhoto',
   'chooseDetectedFace',
@@ -80,6 +84,37 @@ async function ffmpegAvailability(): Promise<FfmpegAvailability> {
     /* Cache Storage unavailable */
   }
   return 'needs-consent';
+}
+
+/**
+ * Each file's recovery verdict (fm-4f5m). A held still gets a display URL when its pixels decode; a damaged one
+ * only learns whether they decode (Use as photo is offered then). Nothing here fetches.
+ */
+async function classify(files: readonly File[]): Promise<readonly ClassifiedStill[]> {
+  const entries = await classifyStills(files);
+  return Promise.all(
+    entries.map(async (entry): Promise<ClassifiedStill> => {
+      if (!isHeld(entry.kind)) return entry;
+      let decodes = false;
+      try {
+        (await createImageBitmap(entry.file)).close();
+        decodes = true;
+      } catch {
+        /* the pixels do not decode */
+      }
+      return {
+        ...entry,
+        decodes,
+        url: decodes && entry.kind !== 'damaged' ? URL.createObjectURL(entry.file) : '',
+      };
+    }),
+  );
+}
+/** A held still is handed over as the exact File that was opened (media.mjs owns Save/Share). */
+function handOver(file: File, share: boolean): Promise<string> {
+  const name =
+    file.name || (file.type === 'image/webp' ? 'facemorph-face.webp' : 'facemorph-face.png');
+  return share ? shareFile(file, name) : saveFile(file, name);
 }
 
 /** The only I/O boundary for the controller. All compute goes through the operation service. */
@@ -119,6 +154,13 @@ export function createController(
     facts: (message, state) => ({
       ...(message.type === 'AddAt'
         ? { newFaceId: `face-${crypto.randomUUID().replaceAll('-', '')}` }
+        : {}),
+      ...(message.type === 'Classified' && !message.args[2]
+        ? {
+            newPhotoIds: message.args[4].map(
+              () => `face-${crypto.randomUUID().replaceAll('-', '')}`,
+            ),
+          }
         : {}),
       ...(message.type === 'Photos'
         ? {
@@ -254,10 +296,13 @@ export function createController(
           }),
     );
   }
+  /** A held still (another model, an unreadable version, damaged) never reaches the engine (fm-4f5m). */
+  const computable = (inputs: readonly Input[], state: State = store.getState()) =>
+    inputs.filter((input) => !(state.Held?.has(input.id) && input.mode === 'project'));
   function morphRequest(state: State): Extract<OperationRequest, { kind: 'morph' }> {
     return {
       kind: 'morph',
-      sources: state.Inputs.map(source),
+      sources: computable(state.Inputs, state).map(source),
       settings: {
         kind: state.Kind,
         width: state.Width,
@@ -276,6 +321,17 @@ export function createController(
   function acceptMorph(message: Extract<Parameters<Store['dispatch']>[0], { type: 'Run' }>): void {
     const state = store.getState();
     if (accepting) return;
+    const held = state.Inputs.filter((input) => !computable([input], state).length);
+    if (!state.Busy && held.length && state.Inputs.length - held.length < 2) {
+      // Morph leaves held faces out; with fewer than two others it says which face and why.
+      const why = held.map((input) => state.Held?.get(input.id)?.reason.text ?? '').join(' ');
+      update((current) =>
+        current.Busy
+          ? unchanged(current)
+          : { state: { ...current, Status: `Add another face to morph. ${why}` }, effects: [] },
+      );
+      return;
+    }
     if (state.Busy || state.Inputs.length < 2 || state.Inputs.some((i) => faceInputProblem(i)))
       return store.dispatch(message);
     const request = morphRequest(state);
@@ -325,7 +381,7 @@ export function createController(
       frames: request.frames,
       fps: request.fps,
     };
-    const sources = request.inputs.map(source);
+    const sources = computable(request.inputs).map(source);
     if (request.action === 'morph') {
       await watch(
         service.requestMorph({ kind: 'morph', sources, settings, route }),
@@ -434,6 +490,25 @@ export function createController(
           );
           break;
         }
+        case 'classifyStills':
+          task(
+            classify(effect.files),
+            (entries) => {
+              const current = store.getState().StillChecks?.get(effect.key) === effect.token;
+              for (const entry of entries)
+                console.info(
+                  '[still-entry]',
+                  JSON.stringify(
+                    stillLog(entry, effect.target ?? effect.key, effect.token, current),
+                  ),
+                );
+              store.dispatch(
+                msg('Classified', effect.key, effect.token, effect.pick, effect.target, entries),
+              );
+            },
+            (error) => store.dispatch(rejection(effect, error)),
+          );
+          break;
         case 'previewPhoto': {
           const selection = ++photoSelectionSequence;
           photoSelections.set(effect.id, selection);
@@ -538,7 +613,18 @@ export function createController(
           break;
         }
         case 'saveMedia':
-        case 'shareMedia':
+        case 'shareMedia': {
+          // Only a shown held still stands in for the face; a damaged one leaves the face (and its Save) as it was.
+          const held = state.Held?.get(effect.id);
+          if (held?.url) {
+            // A held still is handed over as the exact bytes that were opened: no re-encode, envelope kept.
+            task(
+              handOver(held.file, effect.type === 'shareMedia'),
+              (notice) => store.dispatch(msg('Notice', notice)),
+              (error) => store.dispatch(rejection(effect, error)),
+            );
+            break;
+          }
           task(
             effect.type === 'saveMedia'
               ? facade.saveMedia(effect.id)
@@ -547,6 +633,7 @@ export function createController(
             (error) => store.dispatch(rejection(effect, error)),
           );
           break;
+        }
         case 'exportProject':
           task(
             facade.exportProject(effect.view),

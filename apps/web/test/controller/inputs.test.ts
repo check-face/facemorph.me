@@ -81,7 +81,8 @@ test('cached completion belongs to the exact input that requested the check', ()
   assert.equal(inputs(msg('CachedFaceChecked', input, true), edited)!.state, edited);
 });
 test('all retained messages have explicit ownership; Compare is retired by fm-25um', () => {
-  assert.equal(Object.keys(CASES).length, 67); // +NamesFailed (fm-96if): the picker shows its own load failure.
+  assert.equal(Object.keys(CASES).length, 69); // +NamesFailed (fm-96if): the picker shows its own load failure;
+  // +Classified, UseAsPhoto (fm-4f5m): every file is classified before a face changes, and held stills are explicit.
   for (const name of ['CropAdjust', 'CropUse'] as const)
     assert.equal(typeof CASES[name], 'function', `${name} needs a reducer`);
   assert.equal('Compare' in CASES, false);

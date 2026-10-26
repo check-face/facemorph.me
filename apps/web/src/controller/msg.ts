@@ -1,5 +1,6 @@
 // One payload tuple per frozen Product.fs Msg case (a42829bb, lines 263-279).
 import type { CropState } from '../../shell/facade/helpers.ts';
+import type { StillEntry } from '../media/still-entry.ts';
 import type {
   Downloads,
   Input,
@@ -81,6 +82,21 @@ export interface Payloads {
   CropCancel: readonly [];
   RequestCrop: readonly [string];
   Cropped: readonly [string, number, Blob];
+  /** Each file of a pick (`target`) or drop classified, in order, before any face changes (fm-4f5m). */
+  Classified: readonly [
+    key: string,
+    token: number,
+    pick: boolean,
+    target: string | null,
+    entries: readonly ClassifiedStill[],
+  ];
+  /** The explicit Use as photo action on a held still: enters the confirmed-crop flow. */
+  UseAsPhoto: readonly [string];
+}
+/** A classified file; held kinds carry their display URL ('' when it does not decode) and photo action. */
+export interface ClassifiedStill extends StillEntry {
+  readonly url?: string;
+  readonly decodes?: boolean;
 }
 export type Msg = {
   [K in keyof Payloads]: { readonly type: K; readonly args: Payloads[K] };

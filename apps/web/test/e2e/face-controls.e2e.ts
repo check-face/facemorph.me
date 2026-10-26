@@ -413,13 +413,15 @@ test(
                 .__elmish.model.PreparingFaces.size === 0,
           );
           await shot('damaged-saved-image');
-          assert.equal(
-            (await page.locator('.next-error > p').first().innerText()).trim(),
-            'This saved image is damaged.',
-            'one plain message, not the parser error',
+          // fm-4f5m: the face holds the damaged file with one plain reason tied to it, not the parser error.
+          const held = tile.locator('.next-face-held[data-next-held="damaged"]');
+          assert.match(
+            (await held.getAttribute('data-reason-key')) ?? '',
+            /^still-damaged-/,
+            'a damage class names the reason',
           );
+          assert.match(await held.innerText(), /saved face data/);
           assert.equal(await encodeDialog.count(), 0, 'a damaged file opens no crop');
-          await operate(page.locator('.next-error').getByRole('button', { name: 'Dismiss' }));
           assert.equal(await snapshot(), kept, 'a damaged saved image keeps the result');
           assert.equal(await tile.getAttribute('data-next-state'), 'filled');
           // A real PNG on the clipboard, pasted into the field while the CPU is throttled so the import

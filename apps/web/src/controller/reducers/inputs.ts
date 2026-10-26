@@ -1,6 +1,7 @@
 import type { Input, State } from '../state.ts';
 import { msg, type Msg } from '../msg.ts';
 import { unchanged, type Transition } from '../effects.ts';
+import { forgetStill } from './photo.ts';
 export function change(state: State, id: string, replace: (input: Input) => Input): State {
   const cached = new Set(state.CachedFaces);
   cached.delete(id);
@@ -32,13 +33,15 @@ export function inputs(message: Msg, state: State, facts: InputFacts = {}): Tran
   switch (message.type) {
     case 'Edit': {
       const [id, value] = message.args;
-      const next = change(state, id, (item) => ({
+      const released = forgetStill(state, id, true);
+      const next = change(released.state, id, (item) => ({
         ...item,
         value,
       }));
       return {
         state: next,
         effects: [
+          ...released.effects,
           { type: 'invalidateArrivalRestore' },
           { type: 'invalidatePhotoSelections', id },
           { type: 'invalidateFace', id },
@@ -47,7 +50,8 @@ export function inputs(message: Msg, state: State, facts: InputFacts = {}): Tran
     }
     case 'Mode': {
       const [id, mode] = message.args;
-      const next = change(state, id, (item) => ({
+      const released = forgetStill(state, id, true);
+      const next = change(released.state, id, (item) => ({
         ...item,
         mode,
         file: null,
@@ -56,6 +60,7 @@ export function inputs(message: Msg, state: State, facts: InputFacts = {}): Tran
       return {
         state: next,
         effects: [
+          ...released.effects,
           { type: 'invalidateArrivalRestore' },
           { type: 'invalidatePhotoSelections', id },
           { type: 'invalidateFace', id },
@@ -82,13 +87,14 @@ export function inputs(message: Msg, state: State, facts: InputFacts = {}): Tran
     case 'Remove': {
       if (state.Inputs.length <= 1) return unchanged(state);
       const [id] = message.args;
+      const released = forgetStill(state, id, true);
       const preparing = new Set(state.PreparingFaces);
       preparing.delete(id);
       const cached = new Set(state.CachedFaces);
       cached.delete(id);
       return {
         state: {
-          ...state,
+          ...released.state,
           Faces: state.Faces.filter((f) => f.id !== id),
           PreparingFaces: preparing,
           CachedFaces: cached,
@@ -98,6 +104,7 @@ export function inputs(message: Msg, state: State, facts: InputFacts = {}): Tran
           VideoUrl: '',
         },
         effects: [
+          ...released.effects,
           { type: 'invalidateFace', id },
           { type: 'invalidatePhotoSelections', id },
         ],

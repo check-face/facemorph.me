@@ -121,6 +121,8 @@ export function Product({ store }: { store: Store }) {
             onRemove={() => dispatch(msg('Remove', item.id))}
             onShare={() => dispatch(msg('Share', item.id))}
             onSave={() => dispatch(msg('Save', item.id))}
+            held={s.Held?.get(item.id)}
+            onUseAsPhoto={() => dispatch(msg('UseAsPhoto', item.id))}
             drawFace={(canvas, id) => {
               if (canvas) facade.drawFace(canvas, id);
             }}

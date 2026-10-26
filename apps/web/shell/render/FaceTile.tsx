@@ -10,6 +10,7 @@ import { FaceField, pastedPhoto } from './FaceField.tsx';
 import { FancyButton } from './FancyButton.tsx';
 import type { Face, FaceMode, Input, PublicPreview } from './types.ts';
 import { faceInputProblem } from '../../src/controller/derived.ts';
+import type { HeldStill } from '../../src/controller/state.ts';
 
 export interface FaceTileProps {
   readonly item: Input;
@@ -41,6 +42,10 @@ export interface FaceTileProps {
   readonly onRemove: () => void;
   readonly onShare: () => void;
   readonly onSave: () => void;
+  /** A still this face holds as media (fm-4f5m): shown and saved as it is, never computed with. */
+  readonly held?: HeldStill | undefined;
+  /** The explicit Use as photo action on a held still. */
+  readonly onUseAsPhoto?: () => void;
   /** Paints raw pixels into the canvas (bridge drawFace). */
   readonly drawFace?: (canvas: HTMLCanvasElement | null, id: string) => void;
   readonly displayMilestone?: (name: 'preview' | 'generated-visible' | 'restored-visible') => void;
@@ -58,7 +63,12 @@ const state = (item: Input, face: Face | undefined, preview: PublicPreview | und
           : 'empty';
 
 export function FaceTile(p: FaceTileProps) {
-  const { item, label, face, preview, active, queued, preparing } = p;
+  const { item, label, preview, active, queued, preparing } = p;
+  // A shown held still stands in for the face: Save and Share hand over its original bytes.
+  const shown = p.held?.url ? p.held : undefined;
+  const face: Face | undefined = shown
+    ? { id: item.id, raw: false, url: shown.url, label, sourceMode: 'held', sourceFile: shown.file }
+    : p.face;
   const canGenerate =
     !face &&
     ((item.mode === 'photo' && !!item.file) ||
@@ -105,6 +115,15 @@ export function FaceTile(p: FaceTileProps) {
             className="next-face-img"
             aria-label={`Generated face from ${label}`}
             role="img"
+          />
+        ) : shown ? (
+          <img
+            src={shown.url}
+            alt={`Saved image for ${label}`}
+            width={1024}
+            height={1024}
+            className="next-face-img"
+            data-next-held={shown.kind}
           />
         ) : face ? (
           <img
@@ -177,6 +196,23 @@ export function FaceTile(p: FaceTileProps) {
       {(active || queued || preparing) && (
         <div className="next-tile-status" role="status">
           <span>{active ? p.status : preparing ? 'Preparing photo…' : 'Queued'}</span>
+        </div>
+      )}
+      {p.held && (
+        <div
+          className="next-tile-status next-face-held"
+          role="status"
+          data-next-held={p.held.kind}
+          data-reason-key={p.held.reason.reasonKey}
+        >
+          <span>
+            {p.held.reason.text} <a href={p.held.reason.helpAnchor}>Why?</a>
+          </span>
+          {p.held.photoAction && p.onUseAsPhoto && (
+            <Button color="inherit" variant="text" size="small" onClick={p.onUseAsPhoto}>
+              Use as photo
+            </Button>
+          )}
         </div>
       )}
       <div className="next-input-row">

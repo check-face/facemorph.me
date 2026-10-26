@@ -1,4 +1,5 @@
 import type { CropView, Msg } from './msg.ts';
+import type { HeldKind, StillReason } from '../media/still-entry.ts';
 import type {
   DetectedFaces,
   Downloads,
@@ -90,4 +91,18 @@ export interface State {
   readonly FailureToast: boolean;
   /** The current morph's MP4 size disclosure (e.g. 512 × 512), kept beside progress and the result (fm-fy2.9). */
   readonly Disclosure?: string;
+  /** Pending still classifications (fm-4f5m): the face (or '*' for a drop on the page) and its latest token. */
+  readonly StillChecks?: ReadonlyMap<string, number>;
+  readonly StillSeq?: number;
+  /** Files a face holds as media, never computed with: damaged, unreadable-version or other-model stills. */
+  readonly Held?: ReadonlyMap<string, HeldStill>;
+}
+/** A still the face shows and saves as its original bytes; `url` is '' when it is not shown (damaged). */
+export interface HeldStill {
+  readonly kind: HeldKind;
+  readonly reason: StillReason;
+  readonly file: File;
+  readonly url: string;
+  /** Use as photo is offered (only as an explicit action) when the pixels decode. */
+  readonly photoAction: boolean;
 }
