@@ -72,7 +72,14 @@ test('queue-cancelled heads retry, but failed gates and completed qualifications
   assert.equal(qualificationAttempted([cancelled, run()], sha), true);
 });
 
-for (const outcome of ['cancelled', 'success', 'active', 'stale-base'] as const)
+for (const outcome of [
+  'cancelled',
+  'success',
+  'active',
+  'stale-base',
+  'failed',
+  'stale-failed',
+] as const)
   test(`dispatch CLI reconciles ${outcome} without replacing another group`, (t) => {
     const scratch = mkdtempSync(join(tmpdir(), 'dependency-controller-queue-'));
     t.after(() => rmSync(scratch, { recursive: true, force: true }));
@@ -84,6 +91,17 @@ for (const outcome of ['cancelled', 'success', 'active', 'stale-base'] as const)
     second.number++;
     second.head.ref = 'dependabot/npm_and_yarn/react-and-ui-hash';
     second.head.sha = 'c'.repeat(40);
+    const stale = outcome === 'stale-base' || outcome === 'stale-failed';
+    const failed = outcome === 'failed' || outcome === 'stale-failed';
+    const branchRuns = [
+      {
+        ...run(),
+        conclusion: outcome === 'cancelled' ? 'cancelled' : failed ? 'failure' : 'success',
+      },
+      ...(failed ? [{ ...run(), id: 41 }] : []),
+    ];
+    const branchJobs = jobs();
+    if (failed) branchJobs[0]!.conclusion = 'failure';
     writeFileSync(
       join(scratch, 'gh'),
       `#!/usr/bin/env node
@@ -91,17 +109,17 @@ const fs = require('node:fs');
 const args = process.argv.slice(2), endpoint = args[3];
 fs.appendFileSync(process.env.PROBE_CALLS, JSON.stringify(args) + '\\n');
 if (args[0] === 'pr' && args[1] === 'merge') process.exit(0);
-const prs = ${JSON.stringify(outcome === 'stale-base' ? [first] : [first, second])};
+const prs = ${JSON.stringify(stale || failed ? [first] : [first, second])};
 let value;
 if (endpoint.endsWith('/pulls?state=open&base=main&per_page=100')) value = prs;
-else if (endpoint.endsWith('/git/ref/heads/main')) value = {object:{sha:${JSON.stringify(outcome === 'stale-base' ? 'd'.repeat(40) : first.base.sha)}}};
+else if (endpoint.endsWith('/git/ref/heads/main')) value = {object:{sha:${JSON.stringify(stale ? 'd'.repeat(40) : first.base.sha)}}};
 else if (endpoint.endsWith('/runs?event=workflow_dispatch&per_page=100'))
   value = {workflow_runs:${JSON.stringify(outcome === 'active' ? [{ ...run(), status: 'pending', conclusion: null }] : [])}};
 else if (endpoint.includes('/files?')) value = [{filename:'package.json'}];
 else if (endpoint.includes('/compare/')) value = {merge_base_commit:{sha:prs[0].base.sha}};
 else if (endpoint.includes('/runs?event=workflow_dispatch&branch='))
-  value = {workflow_runs:[${JSON.stringify({ ...run(), conclusion: outcome === 'cancelled' ? 'cancelled' : 'success' })}]};
-else if (endpoint.endsWith('/jobs?per_page=100&page=1')) value = {jobs:${JSON.stringify(jobs())}};
+  value = {workflow_runs:${JSON.stringify(branchRuns)}};
+else if (endpoint.endsWith('/jobs?per_page=100&page=1')) value = {jobs:${JSON.stringify(branchJobs)}};
 else if (endpoint.endsWith('/dispatches') || endpoint.endsWith('/update-branch')) {
   fs.readFileSync(0, 'utf8');
 } else value = prs.find(pr => endpoint.endsWith('/pulls/' + pr.number));
@@ -124,17 +142,38 @@ else if (!endpoint.endsWith('/dispatches') && !endpoint.endsWith('/update-branch
         },
       },
     );
-    const eventResult = JSON.parse(output);
-    assert.equal(
-      eventResult.event,
+    const events = output
+      .trim()
+      .split('\n')
+      .map((line) => JSON.parse(line));
+    assert.deepEqual(
+      events.map((event) => event.event),
       outcome === 'success'
-        ? 'qualification-reviewed'
+        ? ['qualification-reviewed']
         : outcome === 'active'
-          ? 'qualification-in-flight'
-          : outcome === 'stale-base'
-            ? 'base-update-requested'
-            : 'qualification-dispatched',
+          ? ['qualification-in-flight']
+          : stale
+            ? ['qualification-reviewed', 'base-update-requested']
+            : failed
+              ? ['qualification-reviewed', 'already-qualified-or-running']
+              : ['qualification-dispatched'],
     );
+    const reviews = events.filter((event) => event.event === 'qualification-reviewed');
+    assert.equal(reviews.length, outcome === 'success' || stale || failed ? 1 : 0);
+    if (reviews.length) {
+      assert.equal(reviews[0].run, run().id);
+      assert.deepEqual(reviews[0].problems, [
+        ...(failed
+          ? [
+              'main qualification did not pass',
+              'required check missing, skipped, ambiguous or failed: dependency-currency',
+            ]
+          : []),
+        ...(stale
+          ? ['main advanced beyond the qualified branch; update and requalify before merging']
+          : []),
+      ]);
+    }
     const invoked = readFileSync(calls, 'utf8')
       .trim()
       .split('\n')
@@ -143,6 +182,15 @@ else if (!endpoint.endsWith('/dispatches') && !endpoint.endsWith('/update-branch
       invoked.filter((args) => args[3]?.endsWith('/dispatches')).length,
       outcome === 'cancelled' ? 1 : 0,
     );
+    assert.equal(
+      invoked.filter((args) => args[3]?.endsWith('/update-branch')).length,
+      stale ? 1 : 0,
+    );
+    if (stale) {
+      const gateReview = invoked.findIndex((args) => args[3]?.includes('/jobs?'));
+      const branchUpdate = invoked.findIndex((args) => args[3]?.endsWith('/update-branch'));
+      assert.ok(gateReview >= 0 && gateReview < branchUpdate);
+    }
     const merges = invoked.filter((args) => args[0] === 'pr' && args[1] === 'merge');
     assert.equal(merges.length, outcome === 'success' ? 1 : 0);
     if (merges.length) assert.deepEqual(merges[0]!.slice(-2), ['--match-head-commit', sha]);
