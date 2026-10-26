@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "description": "Stages, verifies and publishes verified model bytes for Cloudflare static hosting: chunking above the 25 MiB file limit, manifest rewriting against the manager's contract, reconstruction verification, dry-run-first publication with paid-service and model-terms refusals (fm-3osh).",
+  "license": "MIT",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -20,14 +21,15 @@
     "PROVENANCE.json",
     "cloudflare.config.ts",
     "vite.config.ts",
-    "src/mirror/worker.ts"
+    "src/mirror/worker.ts",
+    "LICENSE"
   ],
   "engines": {
     "node": ">=24"
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.test.json",
-    "build": "tsc -p tsconfig.build.json && node scripts/write-provenance.mjs",
+    "build": "tsc -p tsconfig.build.json && node ../../scripts/packages/write-provenance.mjs",
     "test": "node --test test/*.test.ts",
     "test:workerd": "node --test test/*.workerd.ts",
     "test:staging": "node --test test/*.e2e.ts"

@@ -2,6 +2,7 @@
   "name": "facemorph-me",
   "private": true,
   "description": "FaceMorph monorepo root (fm-fy2.4): npm workspaces for the app and the four packages, strict TypeScript and the Oxc gates. build:next writes deploy-next/ (docs/dev/build-next.md).",
+  "license": "MIT",
   "engines": {
     "node": ">=24"
   },

@@ -30,24 +30,16 @@ jobs:
           node scripts/packages/consumer-gates/run.mjs --report test-results/package-gates/report.json
       - name: package-tarball-content-scan self-test (fm-1jr7)
         run: node --test scripts/packages/check-tarball-contents.test.mjs
-      - name: Scan the packed stylegan-js tarball (fm-1jr7)
+      - name: Scan the packed stylegan-js tarball (fm-1jr7, fm-oagi)
         run: |
           set -euo pipefail
           d=test-results/package-gates/scan; mkdir -p "$d"
+          # The build writes the package's PROVENANCE.json beside its LICENSE and THIRD_PARTY_NOTICES.
           npm run build -w packages/stylegan-js
           npm pack -w packages/stylegan-js --pack-destination "$d"
-          status=0
+          # Exit 0 only when every rule is clean, the required files included; 1 lists findings, 2 is a usage error.
           node scripts/packages/check-tarball-contents.mjs --profile stylegan-js \
-            --input "$d/facemorph-stylegan-js-0.0.0.tgz" --report "$d/stylegan-js.json" || status=$?
-          test "$status" -le 1   # 2 is a usage error or unreadable input
-          # Clean apart from the three required files the licence and notices decision (fm-oagi) adds.
-          node -e '
-            const r = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"));
-            const pending = new Set(["LICENSE", "THIRD_PARTY_NOTICES", "PROVENANCE.json"]);
-            const other = r.findings.filter((f) => !(f.rule === "required-file" && pending.has(f.path)));
-            console.log(JSON.stringify({ outcome: r.outcome, files: r.files.length, other }));
-            if (other.length || r.files.length === 0) process.exit(1);
-          ' "$d/stylegan-js.json"
+            --input "$d/facemorph-stylegan-js-0.0.0.tgz" --report "$d/stylegan-js.json"
       - uses: actions/upload-artifact@v4
         if: always()
         with:

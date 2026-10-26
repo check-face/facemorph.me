@@ -56,15 +56,9 @@ jobs:
           set -euo pipefail
           mkdir -p scan
           npm pack -w packages/cloudflare-model-host --pack-destination scan
+          # Every rule must be clean, the required LICENSE, notices and provenance included (fm-oagi).
           node scripts/packages/check-tarball-contents.mjs --profile cloudflare-model-host \
-            --input scan/facemorph-cloudflare-model-host-0.0.0.tgz --report scan/cloudflare-model-host.json || true
-          # Every rule must be clean except the LICENSE file, which waits on the licence decision (fm-oagi).
-          node -e '
-            const r = JSON.parse(require("fs").readFileSync("scan/cloudflare-model-host.json", "utf8"));
-            const other = r.findings.filter((f) => !(f.rule === "required-file" && f.path === "LICENSE"));
-            console.log(JSON.stringify({ outcome: r.outcome, files: r.files.length, requiredMissing: r.requiredMissing, other }));
-            if (other.length || r.files.length === 0) process.exit(1);
-          '
+            --input scan/facemorph-cloudflare-model-host-0.0.0.tgz --report scan/cloudflare-model-host.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:

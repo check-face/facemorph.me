@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "description": "Consented acquisition, verification, storage and eviction of browser model assets. Contracts so far (fm-hwh): lifecycle, leases, grants, budgets and the model manifest schema.",
+  "license": "MIT",
   "exports": {
     ".": {
       "source": "./src/index.ts",
@@ -13,7 +14,10 @@
   },
   "files": [
     "dist",
-    "schema"
+    "schema",
+    "LICENSE",
+    "THIRD_PARTY_NOTICES",
+    "PROVENANCE.json"
   ],
   "dependencies": {
     "@facemorph/stylegan-js": "^0.0.0"
@@ -23,7 +27,7 @@
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.test.json",
-    "build": "tsc -p tsconfig.build.json",
+    "build": "tsc -p tsconfig.build.json && node ../../scripts/packages/write-provenance.mjs",
     "test": "node test/run.mjs test/*.test.ts"
   },
   "devDependencies": {
