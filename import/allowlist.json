@@ -1189,10 +1189,10 @@
       "class": "temporary-root",
       "temporary": true,
       "ported": {
-        "sha256": "9b69cee981bffbe99e20810c24df723c7eeb2f562ac4f5b3a5707afe8f8a9462",
-        "bytes": 20372,
+        "sha256": "b72fb29974eddb760dbe14cf3d501b7ca6351023057f51fbd03f878a09c3f723",
+        "bytes": 20930,
         "bead": "fm-fy2.19",
-        "reason": "Preserve real Simulator CPU inference/layout checks and add passive per-native-worker acquisition payload counters plus before/after navigator.storage.estimate measurements; complete wire transfers remain explicitly unknown."
+        "reason": "Preserve real Simulator CPU inference/layout checks; record before/after navigator.storage.estimate and passive per-native-worker acquisition snapshots. Distinguish first-face accounted payload from the full planned qualification budget and unknown complete wire transfers."
       }
     },
     {

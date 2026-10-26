@@ -41,6 +41,47 @@ console.log(JSON.stringify([empty.report(),missing.report(),partial.report()]));
             self.assertIsNone(row['acquiredPayloadBytes'])
             self.assertIsNone(row['fetchedBodyBytes'])
             self.assertIsNone(row['completeTransferBytes'])
+        for row in result[:2]:
+            self.assertIsNone(row['observedPayloadBytes'])
+            self.assertIsNone(row['plannedPayloadBytes'])
+        self.assertEqual(result[2]['observedPayloadBytes'], 3)
+        self.assertEqual(result[2]['plannedPayloadBytes'], 8)
+        self.assertFalse(result[2]['budgetComplete'])
+
+    def test_native_budget_partial_first_face_snapshot_remains_observable(self):
+        result = observe("""
+import {Worker} from 'node:worker_threads';
+import {pathToFileURL} from 'node:url';
+const moduleUrl = pathToFileURL(process.cwd()+'/apps/web/src/Next/browser/acquisition-budget.mjs').href;
+const metrics = acquisitionMetrics();
+const id = metrics.worker('actual-native-worker');
+metrics.request(id,{type:'generate'});
+const source = `
+  import {parentPort,workerData} from 'node:worker_threads';
+  const {createAcquisitionBudget} = await import(workerData.moduleUrl);
+  const budget = createAcquisitionBudget();
+  const face = {sha256:'first-face-assets',size:157442243,url:'/face'};
+  const remaining = {sha256:'remaining-canary-references',size:8335853,url:'/remaining'};
+  budget.planAsset([face,remaining]);
+  budget.attach(values => parentPort.postMessage({type:'progress',stage:'asset-acquisition',...values}));
+  await budget.probe(async () => false);
+  budget.cacheEvent({status:'missing',sha256:face.sha256});
+  budget.cacheEvent({status:'verified',sha256:face.sha256,bytes:face.size});
+`;
+await new Promise((resolve,reject) => {
+  const worker = new Worker(new URL('data:text/javascript,'+encodeURIComponent(source)),{workerData:{moduleUrl}});
+  worker.on('message', data => metrics.observe(id,data));
+  worker.on('error',reject);
+  worker.on('exit',code => code === 0 ? resolve() : reject(Error('worker exit '+code)));
+});
+console.log(JSON.stringify(metrics.report()));
+""")
+        self.assertEqual(result['status'], 'untested')
+        self.assertEqual(result['observedPayloadBytes'], 157442243)
+        self.assertEqual(result['plannedPayloadBytes'], 165778096)
+        self.assertFalse(result['budgetComplete'])
+        self.assertIsNone(result['acquiredPayloadBytes'])
+        self.assertIsNone(result['completeTransferBytes'])
 
     def test_real_budget_messages_from_native_workers_are_not_summed_as_deltas(self):
         result = observe("""
@@ -91,6 +132,8 @@ console.log(JSON.stringify({combined:metrics.report(),individuals}));
         result = result['combined']
         self.assertEqual(result['status'], 'measured')
         self.assertEqual(result['acquiredPayloadBytes'], 36)
+        self.assertEqual(result['observedPayloadBytes'], 36)
+        self.assertTrue(result['budgetComplete'])
         self.assertEqual(result['fetchedBodyBytes'], 36)
         self.assertEqual([row['latest']['fetched'] for row in result['workers']], [18, 0, 18])
         self.assertGreater(result['workers'][0]['regressions'], 0)
@@ -108,6 +151,9 @@ console.log(JSON.stringify([invalid.report(),overflow.report()]));
         for row in result:
             self.assertEqual(row['status'], 'untested')
             self.assertIsNone(row['fetchedBodyBytes'])
+            self.assertIsNone(row['observedPayloadBytes'])
+            self.assertIsNone(row['plannedPayloadBytes'])
+            self.assertFalse(row['budgetComplete'])
 
 
 if __name__ == '__main__':

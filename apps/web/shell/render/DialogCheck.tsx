@@ -1,5 +1,6 @@
 // Render-check's modal surfaces from plain inputs. Exercises rendering and reducer messages, never I/O effects.
 import { useCallback, useState } from 'react';
+import phoneCpuCheck from '../../test/fixtures/phone-cpu-check.json';
 import { init, testingInvited } from '../../src/controller/init.ts';
 import { msg, type Msg } from '../../src/controller/msg.ts';
 import { reduce } from '../../src/controller/reducers/index.ts';
@@ -38,7 +39,7 @@ function initial(): State {
           : query.get('phase') === 'failed'
             ? 'failed'
             : 'idle',
-      routeBytes: 200 * 1024 * 1024,
+      routeBytes: phoneCpuCheck.cpuPackageBytes,
       photoBytes: 1024 * 1024 * 1024,
       photoAvailable: true,
     },

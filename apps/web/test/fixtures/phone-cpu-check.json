@@ -1,0 +1,332 @@
+{
+  "schemaVersion": 1,
+  "manifestDigest": "d9e37e50a436e9fb7c0c7f973e70adee353c808f48c6a51fa5a9186f1c650a5c",
+  "route": "cpu",
+  "operation": "synthesis-first-face",
+  "qualification": "cold",
+  "byteBase": 1024,
+  "cpuPackageBytes": 165778096,
+  "cpuPackageLabel": "158 MB",
+  "requiredAssets": [
+    {
+      "sha256": "d5a6d7bc8ee587648fb3742dde8c0094d17cbd3822a68bbec8ddfcd4f2adb88e",
+      "size": 49997,
+      "url": "https://next.facemorph.me/runtime/assets/4b3f9e19cc8ff04368959d2a99baf14f0daf0ba324a6e0d66384496b6b399a1f/ort.wasm.min.mjs"
+    },
+    {
+      "sha256": "5687566b1bc1c8cf628d76c2ddb16b2a3b81a7997273d4666564880495088e57",
+      "size": 24274,
+      "url": "https://next.facemorph.me/runtime/assets/4b3f9e19cc8ff04368959d2a99baf14f0daf0ba324a6e0d66384496b6b399a1f/ort-wasm-simd-threaded.mjs"
+    },
+    {
+      "sha256": "be0e129949062ad50290ef94683fac8be5bb6156f709e030b7a5f1661a2f6c17",
+      "size": 12361745,
+      "url": "https://next.facemorph.me/runtime/assets/4b3f9e19cc8ff04368959d2a99baf14f0daf0ba324a6e0d66384496b6b399a1f/ort-wasm-simd-threaded.wasm"
+    },
+    {
+      "sha256": "4453826529a88cf640a340a9bd54d9453ac26e4398c0a8c8c814dc1fbab7edd1",
+      "size": 8411270,
+      "url": "https://next.facemorph.me/runtime/assets/4453826529a88cf640a340a9bd54d9453ac26e4398c0a8c8c814dc1fbab7edd1/mapping.onnx"
+    },
+    {
+      "sha256": "082c662391d30eade08be993ac20dc27f3f2e7c80052efb7cb518a4cceeb5a93",
+      "size": 2048,
+      "url": "https://next.facemorph.me/runtime/assets/082c662391d30eade08be993ac20dc27f3f2e7c80052efb7cb518a4cceeb5a93/average.f32"
+    },
+    {
+      "sha256": "c334041314ea1b5de1df1d0a63dd58691b2461bed73dc8c817689f012a622d4c",
+      "size": 64,
+      "url": "https://next.facemorph.me/runtime/assets/c334041314ea1b5de1df1d0a63dd58691b2461bed73dc8c817689f012a622d4c/noise_0.f32"
+    },
+    {
+      "sha256": "bf37391fccf8637122db6a4902c3fb65d7e13663aab62355928046a8602b502a",
+      "size": 256,
+      "url": "https://next.facemorph.me/runtime/assets/bf37391fccf8637122db6a4902c3fb65d7e13663aab62355928046a8602b502a/noise_1.f32"
+    },
+    {
+      "sha256": "f14ae909732c6ce8da58ba111797259bf238e2b98b7ae77bced1b681081a1069",
+      "size": 256,
+      "url": "https://next.facemorph.me/runtime/assets/f14ae909732c6ce8da58ba111797259bf238e2b98b7ae77bced1b681081a1069/noise_2.f32"
+    },
+    {
+      "sha256": "63d04eaed6395c35960a3df338a51922348d737fc353a448ba5610cfe03abf6f",
+      "size": 1024,
+      "url": "https://next.facemorph.me/runtime/assets/63d04eaed6395c35960a3df338a51922348d737fc353a448ba5610cfe03abf6f/noise_3.f32"
+    },
+    {
+      "sha256": "89fb6e253858378a941c808a751ba1b61f55f3fcafb6b1e52b50b8ace5759d78",
+      "size": 1024,
+      "url": "https://next.facemorph.me/runtime/assets/89fb6e253858378a941c808a751ba1b61f55f3fcafb6b1e52b50b8ace5759d78/noise_4.f32"
+    },
+    {
+      "sha256": "55a129bf8b988d1d5c423b3fefec37811a941288fcb64bd8d1050893644cc3bd",
+      "size": 4096,
+      "url": "https://next.facemorph.me/runtime/assets/55a129bf8b988d1d5c423b3fefec37811a941288fcb64bd8d1050893644cc3bd/noise_5.f32"
+    },
+    {
+      "sha256": "c687d9f41c5d3405807a2bcd0a5c741e94c05f9c65d0f6692ad3bbddd28b742c",
+      "size": 4096,
+      "url": "https://next.facemorph.me/runtime/assets/c687d9f41c5d3405807a2bcd0a5c741e94c05f9c65d0f6692ad3bbddd28b742c/noise_6.f32"
+    },
+    {
+      "sha256": "90462733811481997389262016c913156fa0eb6816bc1e1116f606ec7c3f9af8",
+      "size": 16384,
+      "url": "https://next.facemorph.me/runtime/assets/90462733811481997389262016c913156fa0eb6816bc1e1116f606ec7c3f9af8/noise_7.f32"
+    },
+    {
+      "sha256": "0a122bf1fd0c548746e34653c8f42c7e7f32efe199e1724e2bbbfbbb2352f839",
+      "size": 16384,
+      "url": "https://next.facemorph.me/runtime/assets/0a122bf1fd0c548746e34653c8f42c7e7f32efe199e1724e2bbbfbbb2352f839/noise_8.f32"
+    },
+    {
+      "sha256": "293af09ef4b4ddb721e506b4291ef808c9d0b72d53e9ff1131b8709cd3dee19d",
+      "size": 65536,
+      "url": "https://next.facemorph.me/runtime/assets/293af09ef4b4ddb721e506b4291ef808c9d0b72d53e9ff1131b8709cd3dee19d/noise_9.f32"
+    },
+    {
+      "sha256": "f59f9fedd7859a83e141b1ea55e9aec8d167f58ce3b6275e0ec469bf52318e61",
+      "size": 65536,
+      "url": "https://next.facemorph.me/runtime/assets/f59f9fedd7859a83e141b1ea55e9aec8d167f58ce3b6275e0ec469bf52318e61/noise_10.f32"
+    },
+    {
+      "sha256": "285602cc56cb2b61551ec014c370d1cf62db1d1675e99e9b05a69fe16e06f216",
+      "size": 262144,
+      "url": "https://next.facemorph.me/runtime/assets/285602cc56cb2b61551ec014c370d1cf62db1d1675e99e9b05a69fe16e06f216/noise_11.f32"
+    },
+    {
+      "sha256": "36d0766b07aa72ab1e42e624f6451cd108ba81a6a2fcd7b7c837ee2717604d4f",
+      "size": 262144,
+      "url": "https://next.facemorph.me/runtime/assets/36d0766b07aa72ab1e42e624f6451cd108ba81a6a2fcd7b7c837ee2717604d4f/noise_12.f32"
+    },
+    {
+      "sha256": "e968a9320ff664f03c6309ab2ba21acf7952f5c70a036c897465ec2a65731d0c",
+      "size": 1048576,
+      "url": "https://next.facemorph.me/runtime/assets/e968a9320ff664f03c6309ab2ba21acf7952f5c70a036c897465ec2a65731d0c/noise_13.f32"
+    },
+    {
+      "sha256": "fbdbf6a564d57e273f6010529a51ff31dfc5571671714a08a0d566eefc910ac9",
+      "size": 1048576,
+      "url": "https://next.facemorph.me/runtime/assets/fbdbf6a564d57e273f6010529a51ff31dfc5571671714a08a0d566eefc910ac9/noise_14.f32"
+    },
+    {
+      "sha256": "160080558b6169007b937d99478ff06f193f736241f5183f91114279a922634e",
+      "size": 4194304,
+      "url": "https://next.facemorph.me/runtime/assets/160080558b6169007b937d99478ff06f193f736241f5183f91114279a922634e/noise_15.f32"
+    },
+    {
+      "sha256": "c7cb060fd06b5167807b65bef5655a9bfa2ea7d3da62eeff7ce906a72e3c594b",
+      "size": 4194304,
+      "url": "https://next.facemorph.me/runtime/assets/c7cb060fd06b5167807b65bef5655a9bfa2ea7d3da62eeff7ce906a72e3c594b/noise_16.f32"
+    },
+    {
+      "sha256": "e2cae9655a4af5981f13d6e1af63f71ffcf9f564079de6f90d4f8da04db639bb",
+      "size": 123805596,
+      "url": "https://next.facemorph.me/runtime/assets/e2cae9655a4af5981f13d6e1af63f71ffcf9f564079de6f90d4f8da04db639bb/synthesis-spatial.onnx"
+    },
+    {
+      "sha256": "88d1de05846a5f14abf385852c424a56b985f20f9e44b1572ffbce5c47251d23",
+      "size": 16364,
+      "url": "https://next.facemorph.me/runtime/assets/88d1de05846a5f14abf385852c424a56b985f20f9e44b1572ffbce5c47251d23/sample-indices.i32"
+    },
+    {
+      "sha256": "cc13afdfa7528d21f088ef591316245e2893c869658545a569ebaf16422f0e23",
+      "size": 36864,
+      "url": "https://next.facemorph.me/runtime/assets/cc13afdfa7528d21f088ef591316245e2893c869658545a569ebaf16422f0e23/alternate-noise.w.f32"
+    },
+    {
+      "sha256": "cbcae5e55e3a9d986261a7972d1ba96e760845dc1f307e57128bc46855010d5a",
+      "size": 16364,
+      "url": "https://next.facemorph.me/runtime/assets/cbcae5e55e3a9d986261a7972d1ba96e760845dc1f307e57128bc46855010d5a/frame-00.samples.f32"
+    },
+    {
+      "sha256": "438c6e66a04c421e8901b4c621436e5896e2f7619f4a5c5f5b66b3188c9fe2a0",
+      "size": 1496153,
+      "url": "https://next.facemorph.me/runtime/assets/438c6e66a04c421e8901b4c621436e5896e2f7619f4a5c5f5b66b3188c9fe2a0/frame-00.png"
+    },
+    {
+      "sha256": "ec1497071c6aa598533e963a7adb17522033af831a05ab0b156c6d615bebc417",
+      "size": 36864,
+      "url": "https://next.facemorph.me/runtime/assets/ec1497071c6aa598533e963a7adb17522033af831a05ab0b156c6d615bebc417/frame-25.w.f32"
+    },
+    {
+      "sha256": "2220293fe81e8c55c705f2942ded10c3b924f59a72bd380761f13c373ee3fb15",
+      "size": 16364,
+      "url": "https://next.facemorph.me/runtime/assets/2220293fe81e8c55c705f2942ded10c3b924f59a72bd380761f13c373ee3fb15/frame-25.samples.f32"
+    },
+    {
+      "sha256": "7f85997b6ffb6a37bdf49f9701319c7b2ea51e42c540a0a2aaa47b605412757f",
+      "size": 1435375,
+      "url": "https://next.facemorph.me/runtime/assets/7f85997b6ffb6a37bdf49f9701319c7b2ea51e42c540a0a2aaa47b605412757f/frame-25.png"
+    },
+    {
+      "sha256": "6cc5fbf6abe80dbce32ff223093fad3f56c5624827d802c2eec479c97faef27f",
+      "size": 36864,
+      "url": "https://next.facemorph.me/runtime/assets/6cc5fbf6abe80dbce32ff223093fad3f56c5624827d802c2eec479c97faef27f/encoded-synthetic-photo.w.f32"
+    },
+    {
+      "sha256": "c19bb04818841b3a8cd278c5333f1725d3a7986dcb5a4be82ceef9e475d17c17",
+      "size": 16364,
+      "url": "https://next.facemorph.me/runtime/assets/c19bb04818841b3a8cd278c5333f1725d3a7986dcb5a4be82ceef9e475d17c17/encoded-synthetic-photo.samples.f32"
+    },
+    {
+      "sha256": "20f8e17ddc373f8d4f2e4d3dbb3f95c4711871d6d0a40a7d995d28ab2ddc41c3",
+      "size": 1369710,
+      "url": "https://next.facemorph.me/runtime/assets/20f8e17ddc373f8d4f2e4d3dbb3f95c4711871d6d0a40a7d995d28ab2ddc41c3/encoded-synthetic-photo.png"
+    },
+    {
+      "sha256": "0262fd85711b14391ebc92bb6c4b98fc48feb6c5571751dad29f8c1fa80e9381",
+      "size": 16364,
+      "url": "https://next.facemorph.me/runtime/assets/0262fd85711b14391ebc92bb6c4b98fc48feb6c5571751dad29f8c1fa80e9381/zero-noise.samples.f32"
+    },
+    {
+      "sha256": "c4f72be57ff7dad4ff57c2ce3667194109fb9b8eb461cecf2a015cd1258a208d",
+      "size": 728622,
+      "url": "https://next.facemorph.me/runtime/assets/c4f72be57ff7dad4ff57c2ce3667194109fb9b8eb461cecf2a015cd1258a208d/zero-noise.png"
+    },
+    {
+      "sha256": "c4af93a16b3d1971e7a83156de8625a60ffc2ded279f2ae41b0b1fb920edfdd4",
+      "size": 16364,
+      "url": "https://next.facemorph.me/runtime/assets/c4af93a16b3d1971e7a83156de8625a60ffc2ded279f2ae41b0b1fb920edfdd4/alternate-noise.samples.f32"
+    },
+    {
+      "sha256": "bed7e9409715b1492fbda2e9484f1aa0e3a06513a2685d06eaa0e8b07ba446de",
+      "size": 1495757,
+      "url": "https://next.facemorph.me/runtime/assets/bed7e9409715b1492fbda2e9484f1aa0e3a06513a2685d06eaa0e8b07ba446de/alternate-noise.png"
+    },
+    {
+      "sha256": "43dbc8bb10a6fd3123100121afbaa13740e8d79a11f245a8fa947f08c9000201",
+      "size": 36864,
+      "url": "https://next.facemorph.me/runtime/assets/43dbc8bb10a6fd3123100121afbaa13740e8d79a11f245a8fa947f08c9000201/trunc-psi-0.w.f32"
+    },
+    {
+      "sha256": "ee1ca2b08aecaf6753d3a5341d196629486b0361df6ef35eff902e9f8fe20b52",
+      "size": 16364,
+      "url": "https://next.facemorph.me/runtime/assets/ee1ca2b08aecaf6753d3a5341d196629486b0361df6ef35eff902e9f8fe20b52/trunc-psi-0.samples.f32"
+    },
+    {
+      "sha256": "fd0556ded0b5e37dcecb4228401af0e700a977ab13964417793eb0d1cd8114f4",
+      "size": 1601465,
+      "url": "https://next.facemorph.me/runtime/assets/fd0556ded0b5e37dcecb4228401af0e700a977ab13964417793eb0d1cd8114f4/trunc-psi-0.png"
+    },
+    {
+      "sha256": "f3118273ff08454bbe81d69a972bf9891395e81ceb4a8d46e291a3e1dc586a65",
+      "size": 36864,
+      "url": "https://next.facemorph.me/runtime/assets/f3118273ff08454bbe81d69a972bf9891395e81ceb4a8d46e291a3e1dc586a65/trunc-psi-1.w.f32"
+    },
+    {
+      "sha256": "8d40cb75e5bf9f8a7be819f6154a5c743a93f67b5fd7db18edcc64709b76cb19",
+      "size": 16364,
+      "url": "https://next.facemorph.me/runtime/assets/8d40cb75e5bf9f8a7be819f6154a5c743a93f67b5fd7db18edcc64709b76cb19/trunc-psi-1.samples.f32"
+    },
+    {
+      "sha256": "d5fd7d70d4b1058ee92e27b02d9f97672c7cf187a14ee348ce483c76d3d5551d",
+      "size": 1496148,
+      "url": "https://next.facemorph.me/runtime/assets/d5fd7d70d4b1058ee92e27b02d9f97672c7cf187a14ee348ce483c76d3d5551d/trunc-psi-1.png"
+    }
+  ],
+  "measurements": [
+    {
+      "lane": "ios-product-simulator",
+      "browser": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1",
+      "platform": "iOS Simulator iPhone 16 Pro, iOS 18.5",
+      "measuredAt": "2026-10-26T13:28:33.660Z",
+      "quotaBytes": 41231686042,
+      "usageBytes": 21,
+      "quotaLabel": "38.4 GB",
+      "storagePhase": "before-generate",
+      "storageMeasuredAt": "2026-10-26T13:27:58.515Z",
+      "remainingPackageBytes": 165778096,
+      "canKeep": true,
+      "outcome": "completed-on-cpu",
+      "webgpu": null,
+      "requestedRoute": "auto",
+      "actualProvider": [
+        "wasm"
+      ],
+      "firstFaceMs": 34770,
+      "afterFaceStorage": {
+        "phase": "after-face",
+        "measuredAt": "2026-10-26T13:28:33.647Z",
+        "status": "measured",
+        "quota": 41231686042,
+        "usage": 320864936,
+        "reason": null
+      },
+      "observedPayloadBytesAtReport": 157405379,
+      "plannedPayloadBytes": 165778096,
+      "budgetComplete": false,
+      "acquisitionBoundary": "first-face report; background qualification can still be active",
+      "payloadMeasurement": "Native production acquisition-budget accounting in a fresh origin. Not complete HTTP transfer bytes: retries and protocol overhead are unobservable.",
+      "completeTransferBytes": null,
+      "evidence": {
+        "run": 40330065627,
+        "job": 121597034128,
+        "artifactDigest": "e72239c0f6ff1e17adc566e847ca01e0594a5afc2d7d09aebe0a0c9a816cef29",
+        "commit": "20a8a04db558302c6f7d5cf1d169782ff17a7759",
+        "driverCommit": "cf680077cfb80ac752a8b9f4adef39f73d7dd502",
+        "execution": "hosted product Simulator",
+        "reportSha256": "768ec367d123a78c08400ae2b4a870a69f0a227838aa000720afea3e33980fe5",
+        "coldIsolation": {
+          "kind": "newly-created-simulator",
+          "device": "iPhone 16 Pro",
+          "udid": "275084D4-E060-4CFF-94A5-CBE61ACF4CFC",
+          "runtime": "com.apple.CoreSimulator.SimRuntime.iOS-18-5"
+        }
+      }
+    },
+    {
+      "lane": "android-emulator-chrome",
+      "browser": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Mobile Safari/537.36",
+      "platform": "Android 17 emulator facemorph-webgpu, stable Google Chrome 145",
+      "measuredAt": "2026-10-26T13:26:48.105Z",
+      "quotaBytes": 4981238169,
+      "usageBytes": 0,
+      "quotaLabel": "4.6 GB",
+      "storagePhase": "before-generate",
+      "storageMeasuredAt": "2026-10-26T13:26:22.784Z",
+      "remainingPackageBytes": 165778096,
+      "canKeep": true,
+      "outcome": "completed-on-cpu",
+      "webgpu": null,
+      "requestedRoute": "auto",
+      "actualProvider": [
+        "wasm"
+      ],
+      "firstFaceMs": 25255,
+      "afterFaceStorage": {
+        "phase": "after-face",
+        "measuredAt": "2026-10-26T13:26:48.095Z",
+        "status": "measured",
+        "quota": 4981238169,
+        "usage": 157456765,
+        "reason": null
+      },
+      "observedPayloadBytesAtReport": 157442243,
+      "plannedPayloadBytes": 165778096,
+      "budgetComplete": false,
+      "acquisitionBoundary": "first-face report; background qualification can still be active",
+      "payloadMeasurement": "Native production acquisition-budget accounting in a fresh origin. Not complete HTTP transfer bytes: retries and protocol overhead are unobservable.",
+      "completeTransferBytes": null,
+      "evidence": {
+        "run": 40317850464,
+        "job": null,
+        "artifactDigest": "e72239c0f6ff1e17adc566e847ca01e0594a5afc2d7d09aebe0a0c9a816cef29",
+        "commit": "20a8a04db558302c6f7d5cf1d169782ff17a7759",
+        "driverCommit": "cf680077cfb80ac752a8b9f4adef39f73d7dd502",
+        "execution": "local emulator through tools/device-lab/android.py run --route cpu; same injected campaign",
+        "reportSha256": "d52b8485e9f3803052341ddd5f464c9ae107ae14c7b242cc648d5fa4c4c8f5ca",
+        "coldIsolation": {
+          "kind": "unique-origin-and-CDP-clear-all",
+          "origin": "http://localhost:48543"
+        }
+      }
+    }
+  ],
+  "untested": [
+    {
+      "lane": "physical-iphone-safaridriver",
+      "reason": "No connected physical iPhone available on the current Linux worker; Simulator evidence does not qualify this cell."
+    }
+  ],
+  "cannotKeepConsentRequirement": "Show the byte count and explain that the files must be downloaded again on each visit."
+}

@@ -1,7 +1,8 @@
 // Rendering/reducer-message qualification from plain inputs. No bridge, model, reporting or download is simulated.
 // Actual controller/bridge effect execution is qualified separately in facade.e2e.ts.
 import assert from 'node:assert/strict';
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, readFileSync } from 'node:fs';
+import { megabytes } from '../../src/controller/derived.ts';
 import test, { before, after } from 'node:test';
 import { chromium, firefox, webkit, type BrowserType, type Page } from 'playwright';
 import { press } from '../support/operate.ts';
@@ -10,6 +11,9 @@ import { operatedClick, StepLog } from '../verify/operated.ts';
 import { bindOrigins, DEFAULT_HOST_MAP } from '../verify/artifact.ts';
 
 const app = new URL('../../', import.meta.url);
+const phoneCpuCheck = JSON.parse(
+  readFileSync(new URL('test/fixtures/phone-cpu-check.json', app), 'utf8'),
+);
 const results = new URL('test-results/dialogs/', app);
 const engines: Record<string, BrowserType> = { chromium, firefox, webkit };
 const only = process.env['FACEMORPH_E2E_ENGINES']?.split(',');
@@ -215,7 +219,11 @@ for (const [engine, type] of Object.entries(engines).filter(
             name: photo ? 'Download the photo encoder?' : 'Download the face model?',
           });
           await gate.waitFor();
-          assert.match((await gate.textContent()) ?? '', photo ? /1\.2 GB/ : /200 MB/);
+          assert.ok(
+            ((await gate.textContent()) ?? '').includes(
+              megabytes(phoneCpuCheck.cpuPackageBytes + (photo ? 1024 ** 3 : 0)),
+            ),
+          );
           await shot(photo ? 'download-photo' : 'download-face');
           await hit(gate.getByRole('button', { name: 'Cancel', exact: true }));
           await last(page, 'GateCancel');
@@ -283,7 +291,11 @@ for (const [engine, type] of Object.entries(engines).filter(
           await last(page, action === 'Ask me later' ? 'DismissConsentPrompt' : 'Consent');
           await consent.waitFor({ state: 'detached' });
         }
-        for (const action of ['Download · 200 MB', 'Plus photo encoder · 1.2 GB', 'Not now']) {
+        for (const action of [
+          `Download · ${phoneCpuCheck.cpuPackageLabel}`,
+          `Plus photo encoder · ${megabytes(phoneCpuCheck.cpuPackageBytes + 1024 ** 3)}`,
+          'Not now',
+        ]) {
           await open();
           await hit(page.getByRole('button', { name: 'Show model toast', exact: true }));
           const model = page.locator('.next-model-toast');

@@ -77,8 +77,9 @@ function acquisitionMetrics() {
     },
     report() {
       const rows = [...workers.values()].filter(row => row.expected);
-      const complete = !overflow && rows.length > 0 && rows.every(row => row.invalid === 0
-        && row.latest !== null && row.latest.loaded === row.latest.total
+      const observed = !overflow && rows.length > 0 && rows.every(row => row.invalid === 0
+        && row.latest !== null);
+      const complete = observed && rows.every(row => row.latest.loaded === row.latest.total
         && row.latest.fetched === row.latest.fetchedTotal);
       return {status: complete ? 'measured' : 'untested',
         reason: complete ? null : overflow ? 'worker observation limit exceeded'
@@ -86,8 +87,12 @@ function acquisitionMetrics() {
           : 'missing, invalid or incomplete native acquisition counters',
         acquiredPayloadBytes: complete ? rows.reduce((sum, row) => sum + row.latest.fetched, 0) : null,
         fetchedBodyBytes: complete ? rows.reduce((sum, row) => sum + row.latest.fetched, 0) : null,
+        observedPayloadBytes: observed ? rows.reduce((sum, row) => sum + row.latest.fetched, 0) : null,
+        plannedPayloadBytes: observed ? rows.reduce((sum, row) => sum + row.latest.total, 0) : null,
+        budgetComplete: complete,
+        observationBoundary: 'first-face report; background qualification may still be active',
         measurement: 'native ort-worker asset-acquisition counters; latest snapshot per worker',
-        byteMeaning: 'acquired payload bytes: SHA-deduplicated asset payloads counted as fetched by the production acquisition budget; excludes HTTP overhead and retry re-transfers',
+        byteMeaning: 'production accounted payload: SHA-deduplicated assets marked fetched by the acquisition budget; partial/cache/shared-worker accounting is not wire traffic or a universal transfer lower bound; excludes HTTP overhead and retry re-transfers',
         completeTransferBytes: null,
         completeTransferBytesReason: 'per-asset acquisition counters do not measure all wire transfers',
         workers: rows};
@@ -342,7 +347,8 @@ def main():
         'untested':network['unobservable'],'timingReferenceMs':{'firstFace':25287,'warmSynthesis':4741.2},
         'timingsArePassFail':False}
     verdict['acquisitionMetrics'] = report.get('acquisition', {'status': 'untested',
-        'acquiredPayloadBytes': None, 'fetchedBodyBytes': None, 'reason': 'no browser acquisition report'})
+        'acquiredPayloadBytes': None, 'fetchedBodyBytes': None, 'observedPayloadBytes': None,
+        'plannedPayloadBytes': None, 'budgetComplete': False, 'reason': 'no browser acquisition report'})
     (a.evidence/'verdict.json').write_text(json.dumps(verdict,indent=2))
     if not verdict['passed']:
         print('iOS product failed CPU inference, isolation, layout or error checks.',file=sys.stderr);sys.exit(1)
