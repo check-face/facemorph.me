@@ -98,6 +98,15 @@ def command(*args, check=True, timeout=90):
     return subprocess.run(args, check=check, capture_output=True, text=True, timeout=timeout).stdout.strip()
 
 
+def open_chrome(url):
+    # A fresh emulator's Chrome can swallow the first VIEW intent behind its first-run promos
+    # (main run 40284140320: the notifications sheet over the new-tab page). Record it; only the
+    # subsequent browser report may establish success.
+    result = subprocess.run(['adb', 'shell', 'am', 'start', '-W', '-a', 'android.intent.action.VIEW', '-d', url,
+                             'com.android.chrome'], capture_output=True, text=True, timeout=90)
+    return {'returncode': result.returncode, 'stdout': result.stdout, 'stderr': result.stderr}
+
+
 def open_safari(udid, url):
     # Fresh Simulator SpringBoard can report launch failure before Safari becomes
     # usable. Record it; only the subsequent browser report may establish success.
@@ -280,8 +289,11 @@ def main():
             command('adb', 'reverse', f'tcp:{args.port}', f'tcp:{args.port}')
             command('adb', 'shell', 'am', 'set-debug-app', '--persistent', 'com.android.chrome')
             command('adb', 'shell', "echo 'chrome --no-first-run --disable-fre --no-default-browser-check --ignore-certificate-errors' > /data/local/tmp/chrome-command-line")
+            # Android 13+ Chrome asks for notifications on first launch (--disable-fre does not cover it);
+            # granting the permission up front skips that sheet. Older images have no such permission.
+            command('adb', 'shell', 'pm', 'grant', 'com.android.chrome', 'android.permission.POST_NOTIFICATIONS', check=False)
             command('adb', 'shell', 'am', 'force-stop', 'com.android.chrome')
-            command('adb', 'shell', 'am', 'start', '-W', '-a', 'android.intent.action.VIEW', '-d', url, 'com.android.chrome')
+            evidence['launchAttempts'] = [open_chrome(url)]
         elif args.platform == 'ios':
             evidence['xcode'] = command('xcodebuild', '-version')
             evidence['simulatorSdk'] = command('xcrun', '--sdk', 'iphonesimulator', '--show-sdk-version')
@@ -310,8 +322,8 @@ def main():
             report = state['report']
             if report and (report.get('completed') is True or report.get('error')):
                 break
-            if udid and report is None and time.monotonic() >= retry_at and len(evidence['launchAttempts']) == 1:
-                evidence['launchAttempts'].append(open_safari(udid, url))
+            if report is None and time.monotonic() >= retry_at and len(evidence.get('launchAttempts', [])) == 1:
+                evidence['launchAttempts'].append(open_safari(udid, url) if udid else open_chrome(url))
             time.sleep(0.5)
         evidence['passed'] = assess(state['report'], run_id)
         evidence['completed'] = bool(state['report'] and state['report'].get('completed'))
