@@ -95,7 +95,7 @@ export interface Payloads {
   UseAsPhoto: readonly [string];
 }
 /** A classified file; held kinds carry their display URL ('' when it does not decode) and photo action. */
-export interface ClassifiedStill extends StillEntry {
+export interface ClassifiedStill extends StillEntry<File> {
   readonly url?: string;
   readonly decodes?: boolean;
 }

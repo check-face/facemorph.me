@@ -17,10 +17,16 @@ export interface StillReason {
 /** Kinds the bridge's own entry takes; every other kind is held by the face, untouched. */
 export type HeldKind = Exclude<StillKind, 'matching' | 'missing'>;
 
-export interface StillEntry {
+/** What the classifier reads of a picked file; a DOM File satisfies it (the media core has no DOM globals). */
+export interface StillFile {
+  readonly size: number;
+  arrayBuffer(): Promise<ArrayBuffer>;
+}
+
+export interface StillEntry<F extends StillFile = StillFile> {
   /** The file's position in its pick or drop. */
   readonly index: number;
-  readonly file: File;
+  readonly file: F;
   readonly bytes: number;
   readonly kind: StillKind;
   readonly reason: StillReason | null;
@@ -94,13 +100,13 @@ export function classifyStillBytes(
 }
 
 /** Classifies each file in order, before any face changes. A file too large to read is left to the bridge. */
-export async function classifyStills(
-  files: readonly File[],
+export async function classifyStills<F extends StillFile>(
+  files: readonly F[],
   models: Parameters<typeof inspectStill>[1] = SHIPPED_MODELS,
-): Promise<readonly StillEntry[]> {
-  const entries: StillEntry[] = [];
+): Promise<readonly StillEntry<F>[]> {
+  const entries: StillEntry<F>[] = [];
   for (const [index, file] of files.entries()) {
-    if (!(file instanceof Blob) || file.size > MAX_STILL_BYTES) {
+    if (typeof file?.arrayBuffer !== 'function' || file.size > MAX_STILL_BYTES) {
       entries.push({ index, file, bytes: file?.size ?? 0, kind: 'missing', reason: null });
       continue;
     }
