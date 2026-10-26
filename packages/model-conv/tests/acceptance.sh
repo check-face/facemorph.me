@@ -6,7 +6,8 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 CHECKPOINTS=${CHECKPOINTS:-$HOME/.cache/facemorph-model-conv/checkpoints}
 WORK=$(mktemp -d "${TMPDIR:-/tmp}/model-conv-acceptance.XXXXXX")
-trap 'docker rm -f model-conv-killed >/dev/null 2>&1 || true; rm -rf "$WORK"' EXIT
+KILLED_CONTAINER="model-conv-killed-$(id -u)-$$-${WORK##*.}"
+trap 'docker rm -f "$KILLED_CONTAINER" >/dev/null 2>&1 || true; rm -rf "$WORK"' EXIT
 CKPT=stylegan2-ffhq-config-f.pkl
 SHA=adf127ea7bb8a7788c8bdeda3c9937f7310b669b09ecf799ca53a631ff46948d
 step() { printf '\n== %s\n' "$*"; }
@@ -21,12 +22,12 @@ fi
 echo "$SHA  $CHECKPOINTS/$CKPT" | sha256sum -c -
 
 step "build"
-docker build -q -t facemorph/model-conv . >/dev/null
-IMAGE=$(docker image inspect --format '{{.Id}}' facemorph/model-conv)
+docker build -q --iidfile "$WORK/image-id" -t facemorph/model-conv . >/dev/null
+IMAGE=$(cat "$WORK/image-id")
 echo "image $IMAGE"
 run() {
   docker run --rm --user "$(id -u):$(id -g)" -e MODEL_CONV_IMAGE="facemorph/model-conv@$IMAGE" \
-    -v "$CHECKPOINTS":/checkpoints:ro -v "$WORK":/out facemorph/model-conv "$@"
+    -v "$CHECKPOINTS":/checkpoints:ro -v "$WORK":/out "$IMAGE" "$@"
 }
 
 step "convert into an empty output"
@@ -63,17 +64,47 @@ grep -q "$chunk: missing or digest mismatch" "$WORK/perturbed/verify.json" || fa
 
 step "a wrong checkpoint is refused before loading"
 mkdir -p "$WORK/wrong" && head -c 1000 /dev/urandom > "$WORK/wrong/$CKPT"
-if docker run --rm --user "$(id -u):$(id -g)" -v "$WORK/wrong":/checkpoints:ro -v "$WORK":/out facemorph/model-conv \
+if docker run --rm --user "$(id -u):$(id -g)" -v "$WORK/wrong":/checkpoints:ro -v "$WORK":/out "$IMAGE" \
      verify --checkpoint /checkpoints/$CKPT --out /out/ffhq 2>"$WORK/wrong.log"; then fail "verify accepted a wrong checkpoint"; fi
 grep -q "is not the declared" "$WORK/wrong.log" || fail "wrong checkpoint not refused by digest"
 
 step "a killed conversion leaves nothing labelled complete; the next run clears its staging"
-docker run -d --name model-conv-killed --user "$(id -u):$(id -g)" -v "$CHECKPOINTS":/checkpoints:ro -v "$WORK":/out \
-  facemorph/model-conv convert --checkpoint /checkpoints/$CKPT --out /out/killed >/dev/null
-for _ in $(seq 1 60); do compgen -G "$WORK/.partial-killed-*" >/dev/null && break; sleep 0.5; done
-sleep 3
-docker kill model-conv-killed >/dev/null
-docker rm model-conv-killed >/dev/null
+# Stop after the real export wrote mapping and synthesis into staging, before transforms
+# or publication. A fixed sleep can miss staging on a busy host and kill an already
+# complete conversion. This test-only wrapper changes no production converter code.
+cat > "$WORK/interrupt.py" <<'PY'
+import os
+import signal
+from pathlib import Path
+from model_conv import convert as converter
+from model_conv.__main__ import main
+
+original_export = converter.export
+
+def stop_after_export(*args, **kwargs):
+    result = original_export(*args, **kwargs)
+    Path('/out/interruption-ready').write_text('real mapping and synthesis export completed in staging\n')
+    os.kill(os.getpid(), signal.SIGSTOP)
+    return result
+
+converter.export = stop_after_export
+raise SystemExit(main())
+PY
+# Python must be a child of the container init: PID 1 can ignore its own SIGSTOP.
+docker run -d --init --name "$KILLED_CONTAINER" --user "$(id -u):$(id -g)" \
+  -v "$CHECKPOINTS":/checkpoints:ro -v "$WORK":/out --entrypoint python \
+  "$IMAGE" /out/interrupt.py convert --checkpoint /checkpoints/$CKPT --out /out/killed >/dev/null
+for _ in $(seq 1 120); do [ -f "$WORK/interruption-ready" ] && break; sleep 0.5; done
+if [ ! -f "$WORK/interruption-ready" ]; then
+  docker logs "$KILLED_CONTAINER" >&2
+  fail "conversion did not reach the export-complete interruption barrier"
+fi
+staging=$(compgen -G "$WORK/.partial-killed-*") || fail "interruption barrier has no staging"
+[ -s "$staging/work/mapping.onnx" ] || fail "interruption barrier has no real mapping export"
+[ -s "$staging/work/synthesis-export.onnx" ] || fail "interruption barrier has no real synthesis export"
+[ ! -e "$WORK/killed/manifest.json" ] || fail "interruption barrier is already complete"
+docker kill "$KILLED_CONTAINER" >/dev/null
+docker rm "$KILLED_CONTAINER" >/dev/null
 [ ! -e "$WORK/killed/manifest.json" ] || fail "killed run left a complete manifest"
 compgen -G "$WORK/.partial-killed-*" >/dev/null || fail "killed run left no staging to show the interruption"
 run convert --checkpoint /checkpoints/$CKPT --out /out/killed 2>"$WORK/rerun.log"
@@ -82,7 +113,7 @@ grep -q "removed incomplete staging" "$WORK/rerun.log" || fail "stale staging no
 if compgen -G "$WORK/.partial-killed-*" >/dev/null; then fail "staging left after a complete run"; fi
 
 step "no weights, credentials or generated artifacts in the image or the package tree"
-found=$(docker run --rm --entrypoint sh facemorph/model-conv -c \
+found=$(docker run --rm --entrypoint sh "$IMAGE" -c \
   "find / -xdev \( -name '*.pkl' -o -name '*.pt' -o -name '*.pth' -o -name '*.onnx' -o -name '*.ckpt' -o -name '*.safetensors' -o -name '.env' \) 2>/dev/null" \
   | grep -v '/site-packages/' || true)
 [ -z "$found" ] || fail "weight-like files in the image: $found"
