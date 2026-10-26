@@ -2,6 +2,7 @@
 import { useEffect } from 'react';
 import { issueUrl } from '../links.ts';
 import { helpTopics, type Run } from './help.ts';
+import { MODEL_LICENCES } from './model-licences.ts';
 import { StoredData } from './StoredData.tsx';
 import { OUTSIDE_REQUESTS } from '../../src/controller/outside-requests.ts';
 
@@ -136,6 +137,26 @@ export function Explain({ route = '', reference = '' }: { route?: string; refere
           {'The model was trained on the '}
           <a href={'https://github.com/NVlabs/ffhq-dataset'}>{'Flickr-Faces-HQ dataset'}</a>
           {", crawled from Flickr, and it inherits that site's biases."}
+        </p>
+      </details>
+      <details className="next-faq" id="models">
+        <summary>{'What models does FaceMorph use?'}</summary>
+        <p>
+          {
+            "Faces come from StyleGAN2, NVIDIA's face model, trained on the Flickr-Faces-HQ (FFHQ) dataset. Photos are turned into faces by the e4e encoder, after dlib's landmark model finds the face."
+          }
+        </p>
+        <p>
+          {
+            "FaceMorph's own code is MIT licensed, but the model weights are for non-commercial use under their own licences: "
+          }
+          {MODEL_LICENCES.map((l, i) => (
+            <span key={l.href}>
+              {i === 0 ? '' : i === MODEL_LICENCES.length - 1 ? ' and ' : ', '}
+              <a href={l.href}>{l.title}</a>
+            </span>
+          ))}
+          {'.'}
         </p>
       </details>
       <details className="next-faq">

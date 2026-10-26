@@ -151,7 +151,7 @@ test('classic staging comparison changes only to the exact production header pol
       treeSha256: treeDigest([header, app]),
     },
   };
-  const target = publicationReference(before);
+  const target = publicationReference(before, []);
   const good = [
     {
       path: '_headers',
@@ -171,7 +171,7 @@ test('classic staging comparison changes only to the exact production header pol
       (d) => d.path === 'index.html',
     ),
   );
-  assert.throws(() => publicationReference({ ...before, files: [app] }), /header record/);
+  assert.throws(() => publicationReference({ ...before, files: [app] }, []), /header record/);
 });
 
 test('classic staging comparison takes each ported notice exactly, and nothing else', () => {
@@ -218,8 +218,80 @@ test('classic staging comparison takes each ported notice exactly, and nothing e
       publicationReference({ ...before, files: [header, file(frozen.path, 'x'), other] }, notices),
     /not the frozen notice/,
   );
-  // The repository's provenance declares the fm-gbdt notice port.
+  // The repository's provenance declares the notice page's port (fm-gbdt, then fm-qoc3).
   const real = portedNotices();
-  assert.ok(real.some((n) => n.path === 'runtime/notices/index.html' && n.bead === 'fm-gbdt'));
+  assert.ok(real.some((n) => n.path === 'runtime/notices/index.html' && n.classic));
   assert.ok(real.every((n) => /^[0-9a-f]{64}$/.test(n.sha256) && n.classic !== n.sha256));
+});
+
+test('classic staging comparison takes each added notice exactly, and nothing else (fm-qoc3)', () => {
+  const file = (path, text) => ({
+    path,
+    size: Buffer.byteLength(text),
+    sha256: sha256(Buffer.from(text)),
+  });
+  const header = file('_headers', 'old');
+  const app = file('index.html', 'page');
+  const other = file('runtime/notices/e4e-MIT.txt', 'mit');
+  const added = file('runtime/notices/FFHQ-terms.txt', 'ffhq');
+  const notices = [
+    { path: added.path, classic: null, sha256: added.sha256, size: added.size, bead: 'fm-x' },
+  ];
+  const before = {
+    classicCommit: 'f'.repeat(40),
+    files: [header, app, other],
+    fields: { files: 3, runtimeFiles: 1, headersSha256: header.sha256 },
+  };
+  const target = publicationReference(before, notices);
+  const h = file('_headers', headersText());
+  const staged = [h, app, added, other];
+  assert.deepEqual(compareTrees(staged, target.files), []);
+  assert.deepEqual(target.noticeMigration, [
+    { path: added.path, classic: null, ported: added.sha256, bead: 'fm-x' },
+  ]);
+  // The reference is in staged-tree order, so its fields are what staging that tree records.
+  assert.deepEqual(
+    target.files.map((f) => f.path),
+    ['_headers', 'index.html', 'runtime/notices/FFHQ-terms.txt', 'runtime/notices/e4e-MIT.txt'],
+  );
+  assert.equal(target.fields.files, 4);
+  assert.equal(target.fields.runtimeFiles, 2);
+  assert.equal(target.fields.treeSha256, treeDigest(staged));
+  // The added notice missing, with other bytes, or any other change still differs.
+  assert.ok(compareTrees([h, app, other], target.files).some((d) => d.path === added.path));
+  assert.ok(
+    compareTrees([h, app, file(added.path, 'changed'), other], target.files).some(
+      (d) => d.path === added.path,
+    ),
+  );
+  assert.ok(
+    compareTrees([h, app, added, file(other.path, 'changed')], target.files).some(
+      (d) => d.path === other.path,
+    ),
+  );
+  // A file classic already staged cannot be declared as added.
+  assert.throws(
+    () => publicationReference({ ...before, files: [header, app, other, added] }, notices),
+    /declared as added/,
+  );
+  // An added notice record needs its digest and size.
+  assert.throws(
+    () =>
+      portedNotices({
+        files: [],
+        addedFiles: [{ path: 'hosting/next/notices/x.txt', bead: 'fm-x', reason: 'r' }],
+      }),
+    /no recorded digest and size/,
+  );
+  // The repository's provenance declares this bead's added notices with the bytes on disk.
+  const real = portedNotices().filter((n) => n.classic === null);
+  assert.deepEqual(real.map((n) => n.path).sort(), [
+    'runtime/notices/FFHQ-terms.txt',
+    'runtime/notices/NVIDIA-StyleGAN2-NC.txt',
+  ]);
+  for (const n of real) {
+    const bytes = readFileSync(join('hosting/next', n.path.slice('runtime/'.length)));
+    assert.equal(sha256(bytes), n.sha256, n.path);
+    assert.equal(bytes.length, n.size, n.path);
+  }
 });

@@ -1,7 +1,11 @@
 <!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>FaceMorph preview model notices</title>
 <h1>Preview model and runtime notices</h1>
 <p>This candidate is for non-commercial research and evaluation. The model terms apply to the converted ONNX and GPU coefficient bundles as well.</p>
-<ul><li><a href="NVIDIA-StyleGAN2-ADA.txt">NVIDIA StyleGAN2-ADA terms</a></li><li><a href="e4e-MIT.txt">e4e MIT license</a></li><li><a href="ONNX-Runtime-MIT.txt">ONNX Runtime MIT license</a> and <a href="ONNX-Runtime-ThirdPartyNotices.txt">third-party notices</a></li></ul>
-<p>The 68-point landmark predictor uses the iBUG 300-W data; its training-data terms exclude commercial use. See the <a href="https://www.dlib.net/face_landmark_detection_ex.cpp.html">upstream predictor notice</a>.</p>
+<h2>Model terms</h2>
+<p>The model weights are not covered by FaceMorph's MIT code licence. They are for non-commercial use only, under the terms below. The e4e source is MIT licensed; its pretrained encoder weights state no licence of their own, and the StyleGAN2 and FFHQ terms may reach them.</p>
+<!-- model-licences:start --><ul><li><a href="NVIDIA-StyleGAN2-NC.txt">NVIDIA Source Code License-NC (StyleGAN2 model)</a></li><li><a href="NVIDIA-StyleGAN2-ADA.txt">NVIDIA Source Code License (StyleGAN2-ADA conversion code)</a></li><li><a href="FFHQ-terms.txt">FFHQ dataset terms (CC BY-NC-SA 4.0)</a></li><li><a href="e4e-MIT.txt">e4e MIT licence</a></li></ul><!-- model-licences:end -->
+<p id="dlib-landmarks">The 68-point landmark predictor uses the iBUG 300-W data; its training-data terms exclude commercial use. See the <a href="https://www.dlib.net/face_landmark_detection_ex.cpp.html">upstream predictor notice</a>.</p>
+<h2>Runtime</h2>
+<ul><li><a href="ONNX-Runtime-MIT.txt">ONNX Runtime MIT license</a> and <a href="ONNX-Runtime-ThirdPartyNotices.txt">third-party notices</a></li></ul>
 <p>Where the browser cannot encode video itself, video export loads the unmodified <a href="https://www.npmjs.com/package/@ffmpeg/core/v/0.12.10">@ffmpeg/core 0.12.10</a> from this site's own runtime files (under /runtime/assets/), byte-for-byte as published and checked against a pinned SHA-256; it is not fetched from the publisher's CDN. That core uses GPL-2.0-or-later. <a href="https://github.com/ffmpegwasm/ffmpeg.wasm">Upstream source and build instructions</a>.</p>
 <p>Questions: <a href="mailto:checkfaceml@gmail.com">checkfaceml@gmail.com</a></p>

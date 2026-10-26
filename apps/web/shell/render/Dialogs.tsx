@@ -17,6 +17,7 @@ import type { CropChoice, State } from '../../src/controller/state.ts';
 export type Dispatch = (message: Msg) => void;
 export { megabytes } from '../../src/controller/derived.ts';
 import { megabytes } from '../../src/controller/derived.ts';
+import { NOTICES_HREF } from './help.ts';
 
 // A programmatic close traverses history asynchronously. A subsequent modal must not treat that traversal
 // (including React StrictMode's setup/cleanup probe) as the person pressing Back on the new modal.
@@ -560,6 +561,11 @@ export function DownloadDialog({ state, dispatch }: { state: State; dispatch: Di
         <p>
           It’s saved for next time. Your browser may ask whether this site can keep it; saying yes
           stops it being cleared when space runs low.
+        </p>
+        <p className="next-download-licences">
+          <a href={NOTICES_HREF} target="_blank" rel="noopener">
+            Model licences
+          </a>
         </p>
         <div className="next-actions">
           <Button onClick={() => dispatch(msg('GateCancel'))}>Cancel</Button>

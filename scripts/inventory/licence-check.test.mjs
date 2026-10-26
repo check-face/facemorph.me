@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { coverage } from './licence-check.mjs';
+import { addedNotices, coverage, noticeFindings } from './licence-check.mjs';
+import { sha256 } from './lib.mjs';
 
 const row = (id, applies_to, extra = {}) => ({
   id,
@@ -54,4 +55,33 @@ test('rows need licence, provenance, evidence and a verdict; unresolved needs it
     { row: 'open', problem: 'missing unresolved' },
     { row: 'dead', problem: 'matches no allowlist file or runtime asset' },
   ]);
+});
+
+test('a notice file must be in classic, a runtime asset, or an added notice with its recorded bytes', () => {
+  const rows = [
+    row('a', {}, { notice_file: 'hosting/next/notices/a.txt' }),
+    row('b', {}, { notices: [{ file: 'hosting/next/notices/b.txt' }, { file: 'notices/c.txt' }] }),
+    row('d', {}, { notice_file: 'hosting/next/notices/d.txt' }),
+  ];
+  const where = {
+    runtime: (p) => p === 'notices/c.txt',
+    classic: (p) => p === 'hosting/next/notices/a.txt',
+    added: (p) => p === 'hosting/next/notices/b.txt',
+  };
+  assert.deepEqual(
+    noticeFindings(rows, where).map((f) => f.row),
+    ['d'],
+  );
+  const bytes = Buffer.from('terms');
+  const provenance = {
+    addedFiles: [
+      { path: 'x.txt', sha256: sha256(bytes), bytes: bytes.length },
+      { path: 'changed.txt', sha256: sha256(bytes), bytes: bytes.length },
+      { path: 'missing.txt', sha256: sha256(bytes), bytes: bytes.length },
+      { path: 'unrecorded.txt' },
+    ],
+  };
+  const read = (p) =>
+    ({ 'x.txt': bytes, 'changed.txt': Buffer.from('other'), 'unrecorded.txt': bytes })[p] ?? null;
+  assert.deepEqual([...addedNotices(provenance, read)], ['x.txt']);
 });

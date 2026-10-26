@@ -1,0 +1,38 @@
+Flickr-Faces-HQ (FFHQ) dataset terms
+
+The StyleGAN2 face model and the e4e photo encoder that FaceMorph uses were
+trained on the Flickr-Faces-HQ (FFHQ) dataset. FaceMorph does not ship the
+dataset or any of its images. Whether trained weights or generated faces are
+adaptations of the dataset is an open question, so these terms are kept with
+the weights.
+
+The licence statement below is quoted from the dataset's README
+(https://github.com/NVlabs/ffhq-dataset#licenses):
+
+  The individual images were published in Flickr by their respective authors
+  under either Creative Commons BY 2.0, Creative Commons BY-NC 2.0, Public
+  Domain Mark 1.0, Public Domain CC0 1.0, or U.S. Government Works license.
+  All of these licenses allow free use, redistribution, and adaptation for
+  non-commercial purposes. However, some of them require giving appropriate
+  credit to the original author, as well as indicating any changes that were
+  made to the images. The license and original author of each image are
+  indicated in the metadata.
+
+  The dataset itself (including JSON metadata, download script, and
+  documentation) is made available under Creative Commons BY-NC-SA 4.0
+  license by NVIDIA Corporation. You can use, redistribute, and adapt it for
+  non-commercial purposes, as long as you (a) give appropriate credit by
+  citing our paper, (b) indicate any changes that you've made, and (c)
+  distribute any derivative works under the same license.
+
+Licences:
+  https://creativecommons.org/licenses/by-nc-sa/4.0/
+  https://creativecommons.org/licenses/by/2.0/
+  https://creativecommons.org/licenses/by-nc/2.0/
+  https://creativecommons.org/publicdomain/mark/1.0/
+  https://creativecommons.org/publicdomain/zero/1.0/
+  http://www.usa.gov/copyright.shtml
+
+Paper: Tero Karras, Samuli Laine and Timo Aila, "A Style-Based Generator
+Architecture for Generative Adversarial Networks", CVPR 2019
+(https://arxiv.org/abs/1812.04948).

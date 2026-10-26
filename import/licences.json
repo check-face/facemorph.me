@@ -2,7 +2,7 @@
   "schema": "facemorph.import-licences/1",
   "bead": "fm-fy2.1",
   "frozen_commit": "a42829bb0582b5a7a55ba6b1045a05861612b8a5",
-  "note": "Licence and notice rows for every imported file (import/allowlist.json files, matched by source) and every runtime asset (import/build-inputs.json runtime.assets, matched by of ?? path). Checked by scripts/inventory/licence-check.mjs. Redistribution unresolved means a named open question, not permission.",
+  "note": "Licence and notice rows for every imported file (import/allowlist.json files, matched by source) and every runtime asset (import/build-inputs.json runtime.assets, matched by of ?? path). Checked by scripts/inventory/licence-check.mjs. Redistribution unresolved means a named open question, not permission. A row's optional `notices` lists the licence texts published beside the weights at /runtime/notices/ (file, link title, upstream copy, optional fragment); scripts/inventory/model-licences.mjs generates the app's model-licence links, the notices page's model list and the package and quickstart README lists from them (fm-qoc3).",
   "rows": [
     {
       "id": "facemorph-app-code",
@@ -296,7 +296,7 @@
       "licence": "Nvidia Source Code License-NC (StyleGAN2, Copyright (c) 2019 NVIDIA) for the config-F checkpoint, and the NVIDIA Source Code License for StyleGAN2 with Adaptive Discriminator Augmentation (ADA) (Copyright (c) 2021 NVIDIA) for the conversion and network code",
       "spdx": "LicenseRef-Nvidia-Source-Code-License-NC AND LicenseRef-NVIDIA-Source-Code-License-StyleGAN2-ADA",
       "notice_file": "hosting/next/notices/NVIDIA-StyleGAN2-ADA.txt",
-      "required_notice": "Section 3.1: a complete copy of the licence with every distribution, with NVIDIA copyright and attribution notices kept unmodified. Classic publishes only the 2021 ADA text (runtime notices/NVIDIA-StyleGAN2-ADA.txt). The 2019 Nvidia Source Code License-NC that governs the checkpoint is kept only at classic experiment/hf/models/LEGACY_LICENSE.txt (byte-identical to NVlabs/stylegan2 LICENSE.txt) and is not shipped.",
+      "required_notice": "Section 3.1: a complete copy of the licence with every distribution, with NVIDIA copyright and attribution notices kept unmodified. Classic publishes only the 2021 ADA text (runtime notices/NVIDIA-StyleGAN2-ADA.txt). The 2019 Nvidia Source Code License-NC that governs the checkpoint was kept only at classic experiment/hf/models/LEGACY_LICENSE.txt (byte-identical to NVlabs/stylegan2 LICENSE.txt); this repository publishes those bytes beside it as notices/NVIDIA-StyleGAN2-NC.txt (fm-qoc3).",
       "restrictions": "Section 3.3: the Work and any derivative works may be used, or intended for use, only non-commercially, meaning for research or evaluation purposes only (NVIDIA excepted). Section 3.4: rights terminate on a patent claim. Section 3.5: no trademark rights.",
       "provenance": "Official StyleGAN2 FFHQ config-F checkpoint stylegan2-ffhq-config-f.pkl (https://nvlabs-fi-cdn.nvidia.com/stylegan2/networks/stylegan2-ffhq-config-f.pkl in self-host/prepare_model.py), taken as a read-only copy of the deployed Triton server-api-1 checkpoint, source sha256 adf127ea7bb8a7788c8bdeda3c9937f7310b669b09ecf799ca53a631ff46948d (manifest modelSourceSha256). Converted with NVlabs/stylegan2-ada-pytorch legacy.py at d72cc7d041b42ec8e806021a205ed9349f87c6a4 (G_ema only, no retraining), then exported to ONNX (experiment/onnx), WebGL vector16 coefficients and WebGPU mobile-fusion segments. The e4e encoder ONNX keeps the latent average ('Preserved in original final graph nodes'). The runtime manifest's distribution.purpose is 'research-and-evaluation', and notices/index.html says 'This candidate is for non-commercial research and evaluation. The model terms apply to the converted ONNX and GPU coefficient bundles as well.'",
       "evidence": [
@@ -312,10 +312,11 @@
         "classic a42829b: self-host/README.md (model terms section)",
         "classic a42829b: experiment/onnx/e4e_export.py (latent_avg added to the exported encoder)",
         "scratchpad/rt/encoder-stream.json (latentAverage)",
-        "https://raw.githubusercontent.com/NVlabs/stylegan2/master/LICENSE.txt"
+        "https://raw.githubusercontent.com/NVlabs/stylegan2/master/LICENSE.txt",
+        "hosting/next/notices/NVIDIA-StyleGAN2-NC.txt (fm-qoc3: classic experiment/hf/models/LEGACY_LICENSE.txt bytes, sha256 803ddcc4...)"
       ],
       "redistribution": "unresolved",
-      "unresolved": "(1) Is serving the converted weights to every visitor of next.facemorph.me, and later facemorph.me, 'research or evaluation' use under section 3.3? Any commercial or general public operation needs NVIDIA's permission. (2) The shipped notices must add the 2019 Nvidia Source Code License-NC that covers the checkpoint itself. (3) Are generated images and latents 'derivative works' bound by section 3.3?",
+      "unresolved": "(1) Is serving the converted weights to every visitor of next.facemorph.me, and later facemorph.me, 'research or evaluation' use under section 3.3? Any commercial or general public operation needs NVIDIA's permission. (2) Are generated images and latents 'derivative works' bound by section 3.3?",
       "applies_to": {
         "allowlist": [
           "src/public/og-next.png",
@@ -351,25 +352,38 @@
           "encoder-stream/*/no-face-aligned.w.f32",
           "notices/NVIDIA-StyleGAN2-ADA.txt"
         ]
-      }
+      },
+      "notices": [
+        {
+          "file": "hosting/next/notices/NVIDIA-StyleGAN2-NC.txt",
+          "title": "NVIDIA Source Code License-NC (StyleGAN2 model)",
+          "upstream": "https://github.com/NVlabs/stylegan2/blob/master/LICENSE.txt"
+        },
+        {
+          "file": "hosting/next/notices/NVIDIA-StyleGAN2-ADA.txt",
+          "title": "NVIDIA Source Code License (StyleGAN2-ADA conversion code)",
+          "upstream": "https://github.com/NVlabs/stylegan2-ada-pytorch/blob/main/LICENSE.txt"
+        }
+      ]
     },
     {
       "id": "ffhq-dataset-terms",
       "subject": "Flickr-Faces-HQ (FFHQ) training data behind both the StyleGAN2 config-F generator and the e4e FFHQ encoder, as it bears on their weights and outputs",
       "licence": "The FFHQ dataset itself is Creative Commons BY-NC-SA 4.0 (NVIDIA). Individual images are CC BY 2.0, CC BY-NC 2.0, Public Domain Mark 1.0, CC0 1.0 or U.S. Government Works.",
       "spdx": "CC-BY-NC-SA-4.0",
-      "notice_file": null,
-      "required_notice": "If the weights or outputs count as adaptations: credit by citing the FFHQ paper, indicate changes, and distribute derivatives under the same licence. Classic's web notices never mention FFHQ. Only the retired native NOTICE (desktop/scripts/stage-native-notices.py) linked https://github.com/NVlabs/ffhq-dataset#licenses.",
+      "notice_file": "hosting/next/notices/FFHQ-terms.txt",
+      "required_notice": "If the weights or outputs count as adaptations: credit by citing the FFHQ paper, indicate changes, and distribute derivatives under the same licence. Classic's web notices never mention FFHQ. Only the retired native NOTICE (desktop/scripts/stage-native-notices.py) linked https://github.com/NVlabs/ffhq-dataset#licenses. This repository publishes the dataset's licence statement as notices/FFHQ-terms.txt (fm-qoc3).",
       "restrictions": "Non-commercial only (dataset CC BY-NC-SA 4.0 and the BY-NC image licences). ShareAlike for derivatives of the dataset.",
       "provenance": "src/explain.md: 'The model was trained on the Flickr-Faces-HQ dataset'. The e4e upstream README lists the checkpoint as 'FFHQ Inversion — FFHQ e4e encoder'. Neither the weights nor the images are a copy of the dataset.",
       "evidence": [
         "https://raw.githubusercontent.com/NVlabs/ffhq-dataset/master/README.md (Licenses section)",
         "classic a42829b: src/explain.md",
         "classic a42829b: desktop/scripts/stage-native-notices.py",
-        "https://raw.githubusercontent.com/omertov/encoder4editing/main/README.md (Pretrained Models)"
+        "https://raw.githubusercontent.com/omertov/encoder4editing/main/README.md (Pretrained Models)",
+        "hosting/next/notices/FFHQ-terms.txt (fm-qoc3)"
       ],
       "redistribution": "unresolved",
-      "unresolved": "Are trained weights and generated faces adaptations of the FFHQ dataset (CC BY-NC-SA 4.0) or of individual Flickr images? If so, NonCommercial, ShareAlike and attribution reach the published runtime and any npm/model hosting. No FFHQ notice is shipped today.",
+      "unresolved": "Are trained weights and generated faces adaptations of the FFHQ dataset (CC BY-NC-SA 4.0) or of individual Flickr images? If so, NonCommercial, ShareAlike and attribution reach the published runtime and any npm/model hosting. notices/FFHQ-terms.txt (fm-qoc3) quotes the dataset's terms; it does not settle the question.",
       "applies_to": {
         "allowlist": [
           "src/public/og-next.png",
@@ -404,7 +418,14 @@
           "encoder-stream/*/seed-*",
           "encoder-stream/*/no-face-aligned.w.f32"
         ]
-      }
+      },
+      "notices": [
+        {
+          "file": "hosting/next/notices/FFHQ-terms.txt",
+          "title": "FFHQ dataset terms (CC BY-NC-SA 4.0)",
+          "upstream": "https://github.com/NVlabs/ffhq-dataset#licenses"
+        }
+      ]
     },
     {
       "id": "e4e-source-mit",
@@ -433,7 +454,14 @@
           "photo/*/photo-native.wasm",
           "notices/e4e-MIT.txt"
         ]
-      }
+      },
+      "notices": [
+        {
+          "file": "hosting/next/notices/e4e-MIT.txt",
+          "title": "e4e MIT licence",
+          "upstream": "https://github.com/omertov/encoder4editing/blob/main/LICENSE"
+        }
+      ]
     },
     {
       "id": "e4e-ffhq-checkpoint-weights",
@@ -493,7 +521,15 @@
         "runtime": [
           "assets/*/shape_predictor_68_face_landmarks.dat"
         ]
-      }
+      },
+      "notices": [
+        {
+          "file": "hosting/next/notices/index.html",
+          "fragment": "dlib-landmarks",
+          "title": "dlib landmark model notice",
+          "upstream": "https://www.dlib.net/face_landmark_detection_ex.cpp.html"
+        }
+      ]
     },
     {
       "id": "photo-native-wasm-components",

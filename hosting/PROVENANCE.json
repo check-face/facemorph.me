@@ -246,10 +246,10 @@
       "size": 1224,
       "sha256": "9f22ee195c64c31c2a2b30185768143d63f3b80c25051a0cc56559dff71c8894",
       "ported": {
-        "sha256": "c4494dd6b8c56d08b2be9492e509086804b39325d8908de062d32e1877846c16",
-        "bytes": 1379,
-        "bead": "fm-gbdt",
-        "reason": "Licence notice: @ffmpeg/core is served from this site's own pinned runtime files, not fetched from the publisher's CDN."
+        "sha256": "fa91f41cd9e59d91bd44d2a79ab556eacec0a9defea0c1212cc66f892918efbd",
+        "bytes": 1981,
+        "bead": "fm-qoc3",
+        "reason": "Licence notice: @ffmpeg/core is served from this site's own pinned runtime files, not fetched from the publisher's CDN. fm-qoc3: the model terms list (NVIDIA licence-NC and StyleGAN2-ADA, FFHQ terms, e4e MIT) generated from import/licences.json by scripts/inventory/model-licences.mjs, the dlib notice anchored, the runtime notices under their own heading."
       }
     },
     {
@@ -340,6 +340,20 @@
       "path": "hosting/publish-targets.json",
       "bead": "fm-6fx6",
       "reason": "Publish targets and the single-publisher rule (fm-6fx6): the staging test target, and the classic-owned next/production targets refused until the candidate-source handover."
+    },
+    {
+      "path": "hosting/next/notices/NVIDIA-StyleGAN2-NC.txt",
+      "bead": "fm-qoc3",
+      "reason": "The 2019 Nvidia Source Code License-NC governing the StyleGAN2 FFHQ checkpoint (classic experiment/hf/models/LEGACY_LICENSE.txt, byte-identical to NVlabs/stylegan2 LICENSE.txt), published beside the weights at /runtime/notices/.",
+      "sha256": "803ddcc4dd20de6387e2e5731f6a864ea01364dd305b17bda7157bcab0c39295",
+      "bytes": 4767
+    },
+    {
+      "path": "hosting/next/notices/FFHQ-terms.txt",
+      "bead": "fm-qoc3",
+      "reason": "The FFHQ dataset's licence statement (NVlabs/ffhq-dataset README, Licenses), published beside the weights at /runtime/notices/.",
+      "sha256": "831e36a0a4cc493fd312238d83658405dba7e0af0210b16acd5100fa7026482a",
+      "bytes": 1924
     }
   ]
 }

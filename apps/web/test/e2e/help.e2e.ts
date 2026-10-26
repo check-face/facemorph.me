@@ -5,7 +5,8 @@
 // are setup only. The refusal is real: forcing the WebGPU route in a browser without WebGPU is refused by route
 // admission (webgpu-absent), and the shown sentence must be that reason's copy, never an exception's text.
 // The licence page is served from hosting/next/notices/, the copy hosting/next-static/stage.py publishes at
-// /runtime/notices/ over the runtime mirror's.
+// /runtime/notices/ over the runtime mirror's. fm-qoc3: the FAQ entry on the models presses each model licence link
+// and reads the served text, and the face-model download consent shows a Model licences link a keyboard reaches.
 import assert from 'node:assert/strict';
 import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
@@ -16,6 +17,7 @@ import { readIdentity } from '../../../../scripts/import/build-next.mjs';
 import { press } from '../support/operate.ts';
 import { reason, type ReasonKey } from '../../src/admission/route-admission.ts';
 import { FORMATS_HREF, NOTICES_HREF, helpTopics } from '../../shell/render/help.ts';
+import { MODEL_LICENCES } from '../../shell/render/model-licences.ts';
 
 const runtime = process.env['FACEMORPH_RUNTIME_DIR'] ?? join(REPO, '.cache/runtime');
 const results = join(REPO, 'apps/web/test-results/help');
@@ -195,6 +197,32 @@ test(
           await page.goto(fromFooter.href!);
           await licencePage('footer-licence-page');
 
+          // fm-qoc3: the FAQ entry on the models links each model licence text served beside the weights.
+          const models = page.locator('details#models');
+          await operate(models.locator('summary'));
+          assert.equal(await models.evaluate((d) => (d as HTMLDetailsElement).open), true);
+          assert.match(
+            await models.innerText(),
+            /StyleGAN2[\s\S]*NVIDIA[\s\S]*FFHQ[\s\S]*e4e[\s\S]*non-commercial use under their own licences/,
+          );
+          await models.scrollIntoViewIfNeeded();
+          await shot('faq-models');
+          for (const licence of MODEL_LICENCES) {
+            if (!(await models.evaluate((d) => (d as HTMLDetailsElement).open)))
+              await operate(models.locator('summary'));
+            const link = models.getByRole('link', { name: licence.title, exact: true });
+            const landed = await operate(link, false);
+            assert.equal(landed.href, `${ORIGIN}${licence.href}`);
+            const response = await page.goto(landed.href!);
+            assert.equal(response?.status(), 200, licence.href);
+            const file = licence.href.slice('/runtime/notices/'.length).split('#')[0]!;
+            assert.ok((await response!.body()).equals(readFileSync(join(NOTICES, file))), file);
+            await shot(`faq-licence-${licence.href.replace(/\W+/g, '-')}`);
+            await page.goBack();
+            await page.locator('section.next-face').nth(1).waitFor();
+            await dismissToasts();
+          }
+
           // A real refusal: force WebGPU where the browser has none, then generate a face.
           await dismissToasts();
           await operate(page.getByRole('button', { name: 'More options' }));
@@ -209,13 +237,34 @@ test(
           await operate(tile.locator('.next-input-row .next-face-generate'));
           // First use asks before the face model downloads; the refusal comes from route admission after it.
           const gate = page.getByRole('button', { name: 'Download and continue' });
-          if (
-            await gate.waitFor({ timeout: 10_000 }).then(
-              () => true,
-              () => false,
-            )
-          )
-            await operate(gate);
+          await gate.waitFor({ timeout: 10_000 });
+          // fm-qoc3: the consent dialog names the model licences: a link in the dialog's accessibility tree that
+          // Tab reaches and Enter opens (in a new tab, so the dialog stays), and that a press lands on.
+          const consent = page.getByRole('dialog', { name: 'Download the face model?' });
+          const modelLicences = consent.getByRole('link', { name: 'Model licences', exact: true });
+          assert.equal(await modelLicences.getAttribute('href'), NOTICES_HREF);
+          let reached = false;
+          for (let i = 0; i < 8 && !reached; i++) {
+            await page.keyboard.press('Tab');
+            reached = await modelLicences.evaluate((e) => e === document.activeElement);
+          }
+          assert.ok(reached, 'Tab reaches the Model licences link in the consent dialog');
+          await shot('consent-model-licences');
+          const [popup] = await Promise.all([
+            page.waitForEvent('popup'),
+            page.keyboard.press('Enter'),
+          ]);
+          await popup.waitForLoadState();
+          assert.equal(popup.url(), `${ORIGIN}${NOTICES_HREF}`);
+          assert.match(
+            await popup.locator('body').innerText(),
+            /Model terms[\s\S]*FFHQ dataset terms/,
+          );
+          await popup.close();
+          assert.ok(await gate.isVisible(), 'the consent dialog stays open');
+          const fromConsent = await operate(modelLicences, false);
+          assert.equal(fromConsent.href, `${ORIGIN}${NOTICES_HREF}`);
+          await operate(gate);
           const box = page.locator('.next-error');
           await box.waitFor({ timeout: 180_000 });
           await dismissToasts();

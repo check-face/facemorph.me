@@ -82,6 +82,19 @@ repository's `import/licences.json`. One row must cover the manifest's `modelSou
 "acknowledged": "<row id>"}`). For the qualified runtime, row `nvidia-stylegan2-ffhq-config-f-derived` is
 `unresolved` today, so publishing it needs that explicit acknowledgement.
 
+**Model weights and their licence texts.** This package's code is MIT licensed; no model weights are included. The
+weights it stages come under their own terms, separate from that licence and limited to non-commercial use. Publish
+these texts beside the weights, under `notices/` next to the manifest, and point the manifest's
+`distribution.notices` at their index:
+
+<!-- model-terms:start -->
+- NVIDIA Source Code License-NC (StyleGAN2 model): [upstream text](https://github.com/NVlabs/stylegan2/blob/master/LICENSE.txt); served beside the weights as `notices/NVIDIA-StyleGAN2-NC.txt`
+- NVIDIA Source Code License (StyleGAN2-ADA conversion code): [upstream text](https://github.com/NVlabs/stylegan2-ada-pytorch/blob/main/LICENSE.txt); served beside the weights as `notices/NVIDIA-StyleGAN2-ADA.txt`
+- FFHQ dataset terms (CC BY-NC-SA 4.0): [upstream text](https://github.com/NVlabs/ffhq-dataset#licenses); served beside the weights as `notices/FFHQ-terms.txt`
+- e4e MIT licence: [upstream text](https://github.com/omertov/encoder4editing/blob/main/LICENSE); served beside the weights as `notices/e4e-MIT.txt`
+- dlib landmark model notice: [upstream text](https://www.dlib.net/face_landmark_detection_ex.cpp.html); served beside the weights as `notices/index.html#dlib-landmarks`
+<!-- model-terms:end -->
+
 ## Retention policy (fm-fy2.14)
 
 An open tab keeps the one manifest it loaded for as long as it runs, so a new release must not take away the

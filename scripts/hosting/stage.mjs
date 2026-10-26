@@ -66,22 +66,49 @@ export function compareTrees(a, b) {
 
 /** The notices a later bead ported (hosting/PROVENANCE.json `ported` records under hosting/next/notices/), as
  * the staged runtime/notices/ path with the frozen and the ported digest and size. stage.py copies these over the
- * runtime's own notices, so classic's staging carries the frozen bytes and this clone's the ported ones. */
+ * runtime's own notices, so classic's staging carries the frozen bytes and this clone's the ported ones. A notice a
+ * bead added (an `addedFiles` record under hosting/next/notices/ with its digest and size, fm-qoc3) has classic
+ * null: classic's staging has no such file, and this clone's carries exactly the recorded bytes. */
 export function portedNotices(provenance = readJson(join(REPO, 'hosting/PROVENANCE.json'))) {
   const prefix = 'hosting/next/notices/';
-  return provenance.files
-    .filter((f) => f.path.startsWith(prefix) && f.ported?.sha256)
-    .map((f) => ({
-      path: 'runtime/notices/' + f.path.slice(prefix.length),
-      classic: f.sha256,
-      sha256: f.ported.sha256,
-      size: f.ported.bytes,
-      bead: f.ported.bead,
-    }));
+  const staged = (path) => 'runtime/notices/' + path.slice(prefix.length);
+  return [
+    ...provenance.files
+      .filter((f) => f.path.startsWith(prefix) && f.ported?.sha256)
+      .map((f) => ({
+        path: staged(f.path),
+        classic: f.sha256,
+        sha256: f.ported.sha256,
+        size: f.ported.bytes,
+        bead: f.ported.bead,
+      })),
+    ...(provenance.addedFiles ?? [])
+      .filter((f) => f.path.startsWith(prefix))
+      .map((f) => {
+        if (!/^[a-f0-9]{64}$/.test(f.sha256 ?? '') || !Number.isInteger(f.bytes))
+          throw Error(`added notice ${f.path} has no recorded digest and size`);
+        return {
+          path: staged(f.path),
+          classic: null,
+          sha256: f.sha256,
+          size: f.bytes,
+          bead: f.bead,
+        };
+      }),
+  ];
 }
 
+/** Staged-tree order (digestTree: each directory's names sorted), so a reference with added files digests alike. */
+const byTreePath = (a, b) => {
+  const x = a.path.split('/');
+  const y = b.path.split('/');
+  for (let i = 0; i < Math.min(x.length, y.length); i++)
+    if (x[i] !== y[i]) return x[i] < y[i] ? -1 : 1;
+  return x.length - y.length;
+};
+
 /** The declared migrations from frozen staging: the shared production header policy (fm-zz2i) and each notice a
- * bead ported (portedNotices). Every other path/byte remains compared to classic. A wrong candidate header or
+ * bead ported or added (portedNotices). Every other path/byte remains compared to classic. A wrong candidate header or
  * notice still fails, and so does a classic record whose notice is not the frozen bytes the port replaced.
  */
 export function publicationReference(other, notices = portedNotices()) {
@@ -96,11 +123,22 @@ export function publicationReference(other, notices = portedNotices()) {
     if (f.path === '_headers') return { ...f, size: bytes.length, sha256: sha256(bytes) };
     const port = ports.get(f.path);
     if (!port) return f;
+    if (port.classic === null)
+      throw Error(
+        `Classic staging reference already has ${f.path}, which a bead declared as added`,
+      );
     if (f.sha256 !== port.classic)
       throw Error(`Classic staging reference ${f.path} is not the frozen notice its port replaced`);
     noticeMigration.push({ path: f.path, classic: f.sha256, ported: port.sha256, bead: port.bead });
     return { ...f, size: port.size, sha256: port.sha256 };
   });
+  for (const port of notices.filter(
+    (n) => n.classic === null && !files.some((f) => f.path === n.path),
+  )) {
+    noticeMigration.push({ path: port.path, classic: null, ported: port.sha256, bead: port.bead });
+    files.push({ path: port.path, size: port.size, sha256: port.sha256 });
+  }
+  files.sort(byTreePath);
   return {
     ...other,
     files,
@@ -108,7 +146,11 @@ export function publicationReference(other, notices = portedNotices()) {
     ...(noticeMigration.length ? { noticeMigration } : {}),
     fields: {
       ...other.fields,
+      ...('files' in other.fields ? { files: files.length } : {}),
       bytes: files.reduce((n, f) => n + f.size, 0),
+      ...('runtimeFiles' in other.fields
+        ? { runtimeFiles: files.filter((f) => f.path.startsWith('runtime/')).length }
+        : {}),
       headersSha256: sha256(bytes),
       treeSha256: treeDigest(files),
     },

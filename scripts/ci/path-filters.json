@@ -153,7 +153,15 @@
     "import-inventory": {
       "workflow": ".github/workflows/import-inventory.yml",
       "shared": [],
-      "extra": ["import/**", "scripts/inventory/**"]
+      "extra": [
+        "import/**",
+        "scripts/inventory/**",
+        "hosting/next/notices/**",
+        "hosting/PROVENANCE.json",
+        "apps/web/shell/render/model-licences.ts",
+        "packages/*/README.md",
+        "docs/dev/build-next.md"
+      ]
     },
     "inventory": {
       "workflow": ".github/workflows/inventory.yml",
