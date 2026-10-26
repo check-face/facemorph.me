@@ -229,7 +229,10 @@ test('seed.generate', async ({ page }, info) => {
   await seed.waitFor();
   expect((await press(page, seed, { touch: t })).inside).toBe(true);
   await expect(page.getByRole('menu')).toBeHidden(); // the menu has finished closing, as a person sees it
-  await expect(tile(page, 1).locator('input[type=number]')).toBeVisible();
+  // The retained seed field is a number input; fm-25um's keeps invalid seeds literal in a numeric text field.
+  await expect(
+    tile(page, 1).locator('input[type=number], input[inputmode=numeric]').first(),
+  ).toBeVisible();
   await rec.step('seed-mode', { kind: 'press', target: 'Numeric seed' });
   for (const value of ['0', '4294967295']) {
     await typeInto(page, info, 1, value);
@@ -252,7 +255,11 @@ test('retry-unchanged', async ({ page }, info) => {
       .inside,
   ).toBe(true);
   await acceptDownload(page, info);
-  const cancel = tile(page, 1).locator('.next-tile-status').getByRole('button', { name: 'Cancel' });
+  // The retained tile puts Cancel in its status; fm-25um's one operation action becomes Cancel while it runs.
+  const cancel = tile(page, 1)
+    .locator('.next-tile-status')
+    .getByRole('button', { name: 'Cancel' })
+    .or(tile(page, 1).locator('.next-face-operation', { hasText: /^Cancel$/ }));
   await cancel.waitFor({ timeout: 60_000 });
   await rec.step('running', { kind: 'press', target: 'Generate Morph to' });
   expect((await press(page, cancel, { touch: touch(info) })).inside).toBe(true);
