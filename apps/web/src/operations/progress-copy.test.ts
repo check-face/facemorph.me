@@ -10,6 +10,10 @@ import { createFrameCounter, morphCounter } from '../Next/stage-labels.mjs';
 import { createOperationService } from './bridge-service.ts';
 import { fakeBridge, flush, morph, output } from './fake-bridge.ts';
 import type { OperationEvent } from './service.ts';
+import { operationProgress } from '../controller/runner.ts';
+import { init } from '../controller/init.ts';
+import { msg } from '../controller/msg.ts';
+import { reduce } from '../controller/reducers/index.ts';
 
 function infill(total: number): number[] {
   const order = [0, total - 1];
@@ -62,6 +66,7 @@ async function render(total: number, order: readonly number[]) {
     fake.progress(id, 'face', 'Encoding your photo…');
     const finished = counter.complete(index);
     fake.progress(id, 'morph', finished.text, { loaded: finished.done, total });
+    fake.progress(id, 'route-admitted', 'cpu');
   }
   fake.progress(id, 'export', 'Encoding your video…');
   fake.progress(id, 'export', 'Finishing your video…');
@@ -132,4 +137,40 @@ for (const [name, total, order] of [
 
 test('the counter wording itself', () => {
   assert.equal(morphCounter(3, 26), 'Generating 3 / 26 images');
+});
+
+test('Morph progress keeps the admitted route separate from its spoken frame counter', async () => {
+  const { events } = await render(4, [0, 3, 1, 2]);
+  let state = {
+    ...init({
+      today: '<today>',
+      url: 'https://next.facemorph.me/',
+      consentAnswered: true,
+      sliderPreference: false,
+      sliderPosition: 1,
+    }).state,
+    Busy: true,
+    JobId: 7,
+    Status: 'Preparing morph…',
+  };
+  let admittedDuringFrames = false;
+  for (const event of events) {
+    const previousStatus = state.Status;
+    state = reduce(
+      msg('Progressed', operationProgress(event, state.JobId, state.Status)),
+      state,
+    )!.state;
+    if (event.progress.stage === 'route-admitted') {
+      assert.equal(state.Route, 'cpu', 'route metadata must not become the Morph status line');
+      assert.equal(
+        state.Status,
+        previousStatus,
+        'route metadata must not overwrite spoken progress',
+      );
+      if (event.line?.startsWith('Generating ')) admittedDuringFrames = true;
+    }
+  }
+  assert.ok(admittedDuringFrames, 'the route is also reported while the frame counter is active');
+  assert.equal(state.Route, 'cpu');
+  assert.equal(state.Status, 'Finishing your video…');
 });

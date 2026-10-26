@@ -7,13 +7,14 @@ import { browserWebCodecs, probeMp4, type FfmpegAvailability } from '../media/mp
 import type { InputRevision } from '../contracts/inputs.ts';
 import type {
   OperationFailure,
+  OperationEvent,
   OperationHandle,
   OperationRequest,
   SourceSnapshot,
 } from '../operations/service.ts';
 import type { Effect, Transition } from './effects.ts';
 import { rejection, unchanged } from './effects.ts';
-import type { State, Input, Request } from './state.ts';
+import type { State, Input, Progress, Request } from './state.ts';
 import { init, type InitialFacts } from './init.ts';
 import { faceInputProblem } from './derived.ts';
 import { msg } from './msg.ts';
@@ -62,6 +63,23 @@ export function orderedEffects(effects: readonly Effect[]): readonly Effect[] {
     ...effects.filter((effect) => !commands.has(effect.type)),
     ...effects.filter((effect) => commands.has(effect.type)),
   ];
+}
+
+/** Adapts the action's spoken line and bar; route events retain their provider metadata. */
+export function operationProgress(
+  event: Extract<OperationEvent, { type: 'progress' }>,
+  jobId: number,
+  currentStatus: string,
+): Progress {
+  return {
+    ...event.progress,
+    jobId,
+    fraction: event.action.fraction ?? -1,
+    text:
+      event.intent.request.kind === 'morph' && !event.progress.stage.startsWith('route-')
+        ? (event.line ?? currentStatus)
+        : event.progress.text,
+  };
 }
 
 /**
@@ -257,17 +275,7 @@ export function createController(
     const off = service.subscribe((event) => {
       if (disposed || event.intent.requestId !== handle.requestId) return;
       if (event.type === 'progress')
-        store.dispatch(
-          msg('Progressed', {
-            ...event.progress,
-            jobId,
-            fraction: event.action.fraction ?? -1,
-            text:
-              event.intent.request.kind === 'morph'
-                ? (event.line ?? store.getState().Status)
-                : event.progress.text,
-          }),
-        );
+        store.dispatch(msg('Progressed', operationProgress(event, jobId, store.getState().Status)));
       if (event.type === 'dependency-ready')
         update((current) => {
           const request = event.intent.request;

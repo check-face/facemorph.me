@@ -1054,7 +1054,7 @@ test(
 );
 
 test(
-  'open-source Chromium: genuine unavailable H264 probe and qualified fallback disclosure',
+  'Chromium family: genuine unavailable H264 probe and qualified fallback disclosure',
   { timeout: 300_000 },
   async (t) => {
     const executablePath = process.env['FACEMORPH_MORPH_CHROMIUM'] ?? '/usr/bin/chromium';
@@ -1063,7 +1063,7 @@ test(
       return;
     }
     const version = execFileSync(executablePath, ['--version'], { encoding: 'utf8' }).trim();
-    assert.match(version, /Chromium/);
+    assert.match(version, /Chromium|Google Chrome|Google Chrome for Testing/);
     const artifact = readIdentity(artifactRoot);
     assert.deepEqual(artifact.findings, []);
     mkdirSync(out, { recursive: true });

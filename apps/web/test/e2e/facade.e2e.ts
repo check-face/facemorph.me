@@ -178,7 +178,8 @@ async function load(): Promise<void> {
   );
   // As the person answering the download question would: workers acquire only what is approved or already held
   // (fm-qrfz). The grants it builds settle before a test takes its request snapshot.
-  await call('approveDownloads');
+  const approval = await call('approveDownloads');
+  log(`explicit download approval: ${JSON.stringify(approval)}`);
   await page.waitForLoadState('networkidle');
 }
 const call = <T>(fn: string, ...args: unknown[]): Promise<T> =>
@@ -1148,6 +1149,7 @@ test(
       const actual = await call<{
         slider: Record<string, unknown>[];
         cancelled: Record<string, unknown> | null;
+        fractionBeforeCancel: number | null;
         completed: Record<string, unknown>;
         faces: Record<string, unknown>[];
         video: boolean;
@@ -1180,8 +1182,22 @@ test(
           const file = files[i];
           if (!file || !observed) continue;
           const expected: Record<string, unknown> = fixture(`${row}/${device}/${file}.json`).model;
-          for (const [key, value] of Object.entries(observed))
-            assert.deepEqual(value, expected[key], `${row}/${device}/${file}: ${key}`);
+          for (const [key, value] of Object.entries(observed)) {
+            if (i === 0 && key === 'Fraction') {
+              // fm-j4i8 preserves actual progress on Cancel; classic incorrectly marked it complete.
+              assert.equal(expected[key], 1, 'the frozen control records cancellation as complete');
+              assert.equal(
+                value,
+                actual.fractionBeforeCancel,
+                'Cancel preserves real pre-cancel progress',
+              );
+              assert.equal(typeof value, 'number');
+              assert.ok(
+                Number.isFinite(value) && (value as number) < 1,
+                'Cancel never claims completion',
+              );
+            } else assert.deepEqual(value, expected[key], `${row}/${device}/${file}: ${key}`);
+          }
         }
         const expected: Record<string, unknown> = fixture(
           `${row}/${device}/${files[1]}.json`,
