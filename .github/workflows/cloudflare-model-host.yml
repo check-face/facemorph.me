@@ -1,30 +1,33 @@
 name: cloudflare-model-host
 # cloudflare-model-host (fm-3osh): chunk -> reconstruct, staging against the manager's contract and JSON schema,
 # dry-run publication with paid-service and model-terms refusals, and the Cloudflare limits, on planted bundles
-# and on the qualified runtime the device lab keeps on eris; the mirror Worker in workerd (fm-fy2.14). Then the
-# shared package-tarball-content-scan: its self-test, and the scan of the packed tarball (JSON report kept as an
-# artifact).
+# and on the complete digest-verified runtime acquired on the portable Ubuntu pool; the mirror Worker in workerd
+# (fm-fy2.14). Then the shared package-tarball-content-scan: its self-test, and the scan of the packed tarball
+# (JSON report kept as an artifact).
 on:
   workflow_call:
   workflow_dispatch:
 jobs:
   check:
-    runs-on: [self-hosted, eris]
+    # workerd requires modern glibc; the generic pool also includes unsupported Triton Ubuntu 20.04.
+    runs-on: [self-hosted, tempcpu]
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
       - uses: ./.github/actions/setup-workspace # node_modules for the lockfile, shared on the runner (fm-98po)
+      - uses: ./.github/actions/setup-playwright
+        with:
+          browsers: chromium
+      - uses: ./.github/actions/setup-runtime
       - run: npm run build -w packages/stylegan-js -w packages/browser-model-manager -w packages/cloudflare-model-host
       - name: Host tests, with the qualified runtime as the real staged set
         working-directory: packages/cloudflare-model-host
         env:
           FACEMORPH_REQUIRE_RUNTIME: '1'
-        run: |
-          export FACEMORPH_RUNTIME_DIR="$HOME/.cache/facemorph-device-lab/runtime-public"
-          node --test test/*.test.ts
-      # workerd needs glibc 2.32+, which eris has and triton (npm test in scaffold) does not (fm-fy2.14).
+        run: node --test test/*.test.ts
       - name: The mirror Worker in workerd, against a real local upstream
         run: npm run test:workerd -w packages/cloudflare-model-host
       - name: Diagnostics collector in workerd, with real local R2 and KV
