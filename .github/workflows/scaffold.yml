@@ -1,51 +1,120 @@
 name: scaffold
-# fm-fy2.4: the workspace's read-only gates on every push to main, ahead of building anything. format:check
-# (oxfmt), lint (oxlint --deny-warnings) and typecheck (every workspace), then the scaffold and interop checks,
-# the declaration builds, the tests and a pack of each package. seeded-gates.mjs proves each gate fails on a planted
-# violation and the clean tree passes, and `git diff --exit-code` proves the gates wrote nothing.
+# Independent checkouts let the read-only gates, seeded violations and npm-test shards run in parallel.
+# The shard inventory is derived from the live npm scripts, including browser isolation and Python suites.
 on:
   workflow_call:
     inputs:
+      full:
+        type: boolean
+        required: false
+        default: true
+        description: Include full31 browser numerics (mandatory for full pre-deploy qualification)
+      shared_build:
+        type: boolean
+        required: false
+        default: false
+        description: Restore this run's exact workspace-build artifact instead of rebuilding
       base:
         type: string
         required: false
-        description: The last green main.yml head (scripts/ci/changes.ts); empty without one
+        description: The previous started main.yml head (scripts/ci/changes.ts); empty without one
   workflow_dispatch:
 jobs:
-  gates:
+  checks:
+    name: ${{ matrix.gate }}
     runs-on: [self-hosted, linux-x64]
     timeout-minutes: 30
-    env:
-      # Controller tests independently re-verify the release in child processes.
-      GITHUB_TOKEN: ${{ github.token }}
+    strategy:
+      fail-fast: false
+      matrix:
+        gate: [format, lint, typecheck, seeded, format-stable, packages]
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # the interop rename check diffs from the last green main.yml head
+          fetch-depth: 0 # interop compares against the previous started main.yml head
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - uses: ./.github/actions/setup-workspace # node_modules for the lockfile, shared on the runner (fm-98po)
-      - run: node scripts/build/check-scaffold.mjs
+      - uses: ./.github/actions/setup-workspace
+      - if: inputs.shared_build && (matrix.gate == 'packages' || matrix.gate == 'seeded')
+        uses: ./.github/actions/restore-workspace-build
+      - if: matrix.gate == 'format'
+        run: npm run format:check
+      - if: matrix.gate == 'lint'
+        run: npm run lint
+      - if: matrix.gate == 'typecheck'
+        run: npm run typecheck
+      # Seeded workspace typechecks resolve the same built declarations as the original serial gate.
+      - if: matrix.gate == 'seeded' && !inputs.shared_build
+        run: npm run build
+      - if: matrix.gate == 'seeded'
+        run: node scripts/build/seeded-gates.mjs
+      - if: matrix.gate == 'format-stable'
+        run: node scripts/build/format-stable.mjs
+      - if: matrix.gate == 'packages'
+        run: node scripts/build/check-scaffold.mjs
       - name: Every TypeScript-API tool resolves the one root TypeScript (the caret range at latest)
+        if: matrix.gate == 'packages'
         run: |
           versions=$(npm ls typescript --all --parseable | xargs -I{} node -p "require('{}/package.json').version" | sort -u)
           echo "typescript: $versions"
           test "$versions" = "$(node -p "require('typescript/package.json').version")"
-      - run: node scripts/build/interop-check.mjs --base "${BASE:-HEAD~1}"
+      - if: matrix.gate == 'packages'
+        run: node scripts/build/interop-check.mjs --base "${BASE:-HEAD~1}"
         env:
           BASE: ${{ inputs.base }}
-      - run: npm run format:check
-      - run: npm run lint
-      - run: npm run typecheck
-      - run: npm run build
-      - run: node scripts/build/check-tests-listed.mjs
-      - run: npm test
-        env:
-          FACEMORPH_ISOLATE_TEST_NETWORK: '1'
+      - if: matrix.gate == 'packages' && !inputs.shared_build
+        run: npm run build
+      - if: matrix.gate == 'packages'
+        run: node scripts/build/check-tests-listed.mjs
       - name: Every package packs
+        if: matrix.gate == 'packages'
         run: for w in packages/stylegan-js packages/browser-model-manager packages/cloudflare-model-host packages/model-conv; do npm pack -w "$w" --dry-run >/dev/null || exit 1; done
-      - run: node scripts/build/seeded-gates.mjs
-      - run: node scripts/build/format-stable.mjs
       - name: The gates wrote nothing
         run: git diff --exit-code
+  tests:
+    name: npm test (${{ matrix.shard }}/6)
+    runs-on: [self-hosted, linux-x64]
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4, 5, 6]
+    env:
+      # Controller tests independently re-verify the release in child processes.
+      GITHUB_TOKEN: ${{ github.token }}
+      FACEMORPH_ISOLATE_TEST_NETWORK: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: ./.github/actions/setup-workspace
+      - if: inputs.shared_build
+        uses: ./.github/actions/restore-workspace-build
+      - if: '!inputs.shared_build'
+        run: npm run build
+      - name: Run every npm-test file assigned to this shard
+        run: |
+          args=(--shard "$SHARD")
+          if [ "$FULL" != true ]; then args+=(--quick); fi
+          node scripts/ci/scaffold-test-shards.mjs "${args[@]}"
+        env:
+          SHARD: ${{ matrix.shard }}
+          FULL: ${{ github.event_name == 'workflow_dispatch' || inputs.full }}
+      - name: The tests wrote nothing
+        run: git diff --exit-code
+  # Keep the dependency controller's existing required check context, scaffold / gates.
+  gates:
+    needs: [checks, tests]
+    if: always()
+    runs-on: [self-hosted, linux-x64]
+    timeout-minutes: 2
+    steps:
+      - name: Every scaffold check and npm-test shard passed
+        env:
+          CHECKS: ${{ needs.checks.result }}
+          TESTS: ${{ needs.tests.result }}
+        run: test "$CHECKS" = success && test "$TESTS" = success

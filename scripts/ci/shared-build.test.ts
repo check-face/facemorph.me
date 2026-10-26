@@ -19,6 +19,7 @@ const names = [
   'package-gates',
   'web-shell',
   'name-catalogue',
+  'scaffold',
 ];
 
 test('every shared-build consumer waits for the producer and retains a standalone build', () => {

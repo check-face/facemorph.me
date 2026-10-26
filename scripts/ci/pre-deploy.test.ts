@@ -22,7 +22,7 @@ const identity: Identity = {
 const results = () => Object.fromEntries(required.map((lane) => [lane, { result: 'success' }]));
 
 test('push path is correctness-only; manual all-lanes run keeps every full browser command', () => {
-  for (const id of ['web-shell', 'next-site'])
+  for (const id of ['web-shell', 'next-site', 'scaffold'])
     assert.equal(main.jobs[id].with.full, "${{ github.event_name == 'workflow_dispatch' }}");
   for (const id of ['mobile-browser', 'next-gpu-lane'])
     assert.match(main.jobs[id].if, /^github.event_name == 'workflow_dispatch' &&/);

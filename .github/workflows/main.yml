@@ -436,6 +436,8 @@ jobs:
     if: contains(fromJSON(needs.changes.outputs.lanes), 'scaffold')
     uses: ./.github/workflows/scaffold.yml
     with:
+      shared_build: true
+      full: ${{ github.event_name == 'workflow_dispatch' }}
       base: ${{ needs.changes.outputs.base }}
     secrets: inherit
   stats-worker:
