@@ -60,11 +60,18 @@
       "disposition": "leave: byte-identical classic research import checked against docs/research-import/digest-list.json (fm-86u) and the research ledger prefix; GitHub redirects the old owner"
     },
     {
+      "id": "monorepo-plan",
+      "repo": "facemorph.me",
+      "paths": ["PLAN.md"],
+      "class": "frozen-evidence",
+      "disposition": "leave: PLAN.md link prefixes now name facemorph-me (operator 24 October, fm-fy2.20); remaining bare check-face mentions describe the rename itself and stay as architectural background"
+    },
+    {
       "id": "monorepo-frozen-plan",
       "repo": "facemorph.me",
-      "paths": ["PLAN.md", "docs/plan-history.md", "docs/findings/**", "docs/receipts/**"],
+      "paths": ["docs/plan-history.md", "docs/findings/**", "docs/receipts/**"],
       "class": "frozen-evidence",
-      "disposition": "leave: frozen plan and dated findings/receipts; links at pinned commits resolve through the rename redirect and the repository-ID mapping"
+      "disposition": "leave: frozen plan history and dated findings/receipts; links at pinned commits resolve through the rename redirect and the repository-ID mapping"
     },
     {
       "id": "monorepo-tracker",

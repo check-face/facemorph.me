@@ -337,19 +337,19 @@ update.
 
 ## Starting facts and boundaries
 
-- New initiative checkout: `facemorph.me/`, origin `github.com/check-face/facemorph.me`,
+- New initiative checkout: `facemorph.me/`, origin `github.com/facemorph-me/facemorph.me`,
   default branch `main`, fresh repository ID `1413979666`. This is the continuation
   point for the monorepo plan; it has no application build or deployment yet.
   Repo creation, local directory rename, plan publication and workspace setup
   are complete. Sibling `facemorph-names/` and `encoder4editing/` are also cloned;
   `fm-control/` and `fm-direct/` are retained historical benchmark copies.
 - Retained application/source checkout: sibling `facemorph.me-classic/`, origin
-  `github.com/check-face/facemorph.me-classic`, ID `295956585`, branch
+  `github.com/facemorph-me/facemorph.me-classic`, ID `295956585`, branch
   `candidate/next-delivery-20260916`. Existing candidate delivery remains
   `https://next.facemorph.me` until a qualified new-monorepo cutover.
 - Source reviewed for planning: `b2d945a8c7f0ff9f382fbfefaecc2651943077a3`; recorded verified delivery:
   `001ba853b277775a060030a3ab23a3900af28f16`, build `next-04403766fff8630a`.
-  [Receipt](https://github.com/check-face/facemorph.me-classic/blob/b2d945a8c7f0ff9f382fbfefaecc2651943077a3/docs/plans/feedback-delivery-2026-10-11.md). Reverify before a new comparison;
+  [Receipt](https://github.com/facemorph-me/facemorph.me-classic/blob/b2d945a8c7f0ff9f382fbfefaecc2651943077a3/docs/plans/feedback-delivery-2026-10-11.md). Reverify before a new comparison;
   neither current checkout nor a rebuilt artifact is automatically the live control.
 - `src/Next/` uses F#/Fable plus JS runtime/worker/media modules. The product bridge
   currently mixes application and compute orchestration. Package extraction must
@@ -371,8 +371,8 @@ update.
 Current commands in the retained classic checkout are `npm run build:next` and the existing exact-artifact/UI/device
 harnesses. Current CI uses Node 22, .NET 5 and pinned Fable tools. The migration
 keeps top-level build/verification commands as stable wrappers while paths change.
-Use [development](https://github.com/check-face/facemorph.me-classic/blob/b2d945a8c7f0ff9f382fbfefaecc2651943077a3/docs/dev/README.md), [research protocol](https://github.com/check-face/facemorph.me-classic/blob/b2d945a8c7f0ff9f382fbfefaecc2651943077a3/autoresearch/program.md)
-and [record standards](https://github.com/check-face/facemorph.me-classic/blob/b2d945a8c7f0ff9f382fbfefaecc2651943077a3/autoresearch/records.md) for current procedures.
+Use [development](https://github.com/facemorph-me/facemorph.me-classic/blob/b2d945a8c7f0ff9f382fbfefaecc2651943077a3/docs/dev/README.md), [research protocol](https://github.com/facemorph-me/facemorph.me-classic/blob/b2d945a8c7f0ff9f382fbfefaecc2651943077a3/autoresearch/program.md)
+and [record standards](https://github.com/facemorph-me/facemorph.me-classic/blob/b2d945a8c7f0ff9f382fbfefaecc2651943077a3/autoresearch/records.md) for current procedures.
 
 ## Existing Next implementation and feature disposition
 
@@ -404,7 +404,7 @@ do not silently discard it. Apply declared UX changes on top of that baseline.
 Recent candidate work includes mobile controls and crop geometry fixes, background
 WebP retention with PNG fallback, bounded compressed multi-face/video/scrub session
 recovery, and corrected asynchronous retention checks. The
-[11 October delivery note](https://github.com/check-face/facemorph.me-classic/blob/b2d945a8c7f0ff9f382fbfefaecc2651943077a3/docs/plans/feedback-delivery-2026-10-11.md)
+[11 October delivery note](https://github.com/facemorph-me/facemorph.me-classic/blob/b2d945a8c7f0ff9f382fbfefaecc2651943077a3/docs/plans/feedback-delivery-2026-10-11.md)
 records that work and its verification. Keep these fixes and the earlier integrated
 performance work; this short note is a baseline reference, not an exhaustive file
 map. Research prototypes and experiment results that were not integrated remain
@@ -458,9 +458,9 @@ constraint. The corrected policy preserves first-class phones and their existing
 match the [11 October live receipt](../facemorph.me-classic/docs/review/feedback-fixes-2026-10-11/live-assets.json).
 No model payload was fetched and no new inference/performance measurement was made.
 GitHub still records successful artifact/CPU/compiled-UI/deploy
-[run 38066762339](https://github.com/check-face/facemorph.me-classic/actions/runs/38066762339)
+[run 38066762339](https://github.com/facemorph-me/facemorph.me-classic/actions/runs/38066762339)
 and Android/iOS component + iOS product
-[run 38067059174](https://github.com/check-face/facemorph.me-classic/actions/runs/38067059174)
+[run 38067059174](https://github.com/facemorph-me/facemorph.me-classic/actions/runs/38067059174)
 for source `001ba853…`. These are retained evidence, not new all-platform qualification.
 
 | Candidate capability | Previous plan weakness → retained target | How to verify / intentional limit |
@@ -3298,7 +3298,7 @@ branch-protection bindings are inventoried, not inferred from a workflow filenam
 
 12 October GitHub read-only inspection confirms successful current-source site and
 mobile runs named in the comparison above. The latest recorded manual desktop
-matrix [run 37555426933](https://github.com/check-face/facemorph.me-classic/actions/runs/37555426933)
+matrix [run 37555426933](https://github.com/facemorph-me/facemorph.me-classic/actions/runs/37555426933)
 failed on 7 October; recent GPU evidence failed adapter admission. Do not advertise
 all cells as currently passing. There is no dedicated Windows **web-browser** job in
 this existing matrix: historical Windows browser receipts and native packaging are
