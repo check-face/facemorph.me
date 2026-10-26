@@ -4,6 +4,7 @@ import {readFile} from 'node:fs/promises';
 import {inputLatent,truncate,rgba1024} from './identity.mjs';
 import {digest} from './originals.mjs';
 import {confirmCropped} from '../photo/confirmed-crop.mjs';
+import {createExecutionGate} from './execution-gate.mjs';
 const fixture=JSON.parse(await readFile(new URL('./identity-fixtures.json',import.meta.url)));
 for(const c of fixture.cases)test(`Exact NumPy identity: ${c.mode} ${c.value}`,async()=>assert.equal(await digest((await inputLatent(c.mode,c.value)).values),c.sha256));
 test('Reject unsafe seeds and oversized text',async()=>{for(const value of ['-1','1.5','4294967296','1e3',''])await assert.rejects(inputLatent('seed',value));await assert.rejects(inputLatent('text','😀'.repeat(129)));});
@@ -253,4 +254,109 @@ test('a confirmed-crop grant refusal reaches its caller and retries the same der
   assert.equal(decodes,1);assert.equal(runtime.inspectCropQueue().derivations,derivations);assert.equal(encodes,2);
   assert.deepEqual(runtime.cropSlots(),[]);
  }finally{runtime.dispose();globalThis.createImageBitmap=oldBitmap;globalThis.OffscreenCanvas=oldCanvas;globalThis.indexedDB=oldIDB;}
+});
+
+const untilRuntime=async accept=>{const end=performance.now()+2000;while(!accept()){if(performance.now()>end)throw Error('Runtime protocol boundary not reached');await new Promise(resolve=>setTimeout(resolve,1));}};
+test('independent explicit photo transfer survives synthesis and its cancellation; speculative preparation still stops',async()=>{
+ for(const explicit of [true,false]){
+  const owners=[];let finishPhoto;
+  const runtime=createBrowserRuntime({manifestSha256:'0'.repeat(64),preferredRoute:'cpu',
+   manifest:{...testManifest(),encoderStream:{...asset(8,1024),sourceEncoderSha256:pin(7),preprocessingSha256:pin(9),phoneAdmitted:true,maxWasmBytes:268435456},alignmentSha256:pin(9)},
+   workerFactory:()=>{
+    const owner={terminated:false,postMessage(message){
+     if(message.type==='prefetch'){finishPhoto=()=>this.onmessage({data:{id:message.id,type:'complete',result:{assets:1,acquired:1}}});return;}
+     const result=message.type==='generate'?{blob:new Blob(['mock-png'],{type:'image/png'}),values:new Float32Array(9216),space:'w-plus',shape:[1,18,512]}:{deviceValidated:true};
+     queueMicrotask(()=>this.onmessage({data:{id:message.id,type:'complete',result}}));
+    },terminate(){this.terminated=true;}};owners.push(owner);return owner;
+   }});
+  try{
+   const photo=runtime.prefetch('photo',{explicit});await untilRuntime(()=>finishPhoto);
+   await runtime.generate({mode:'seed',value:'121'});runtime.cancel();
+   assert.equal(owners[0].terminated,!explicit,'only independently approved transfer keeps its worker');
+   if(explicit)finishPhoto();
+   assert.equal((await photo).started,explicit);assert.equal(owners[0].terminated,true,'finished preparation releases its worker');
+  }finally{runtime.dispose();}
+ }
+});
+test('private compute admission waits for all reads and tolerates a queued permit beyond the worker stall window',async()=>{
+ let finishA,finishB,admit;const a=new Promise(resolve=>finishA=resolve),b=new Promise(resolve=>finishB=resolve),admission=new Promise(resolve=>admit=resolve);
+ const events=[],replies=new Map();let token=0;
+ const runtime=createBrowserRuntime({manifest:testManifest(),manifestSha256:'0'.repeat(64),preferredRoute:'cpu',stallMs:50,workerFactory:()=>({
+  postMessage(message){
+   if(message.type==='compute-response'){const reply=replies.get(message.token);replies.delete(message.token);message.error?reply.reject(Object.assign(Error(message.error.message),{name:message.error.name})):reply.resolve();return;}
+   const owner=this,ask=phase=>new Promise((resolve,reject)=>{const key=String(++token);replies.set(key,{resolve,reject});queueMicrotask(()=>owner.onmessage({data:{id:message.id,type:'compute-request',token:key,phase}}));});
+   (async()=>{
+    if(message.type==='initialize')return {deviceValidated:true};
+    assert.equal(message.computeAdmission,true);
+    const gate=createExecutionGate({acquire:()=>ask('acquire'),release:()=>ask('release')});
+    try{
+     if(message.type==='qualify')await Promise.all([gate.read(()=>a),gate.read(()=>b)]);
+     return await gate.compute(async()=>{events.push(message.type);return message.type==='generate'?{blob:new Blob(['mock-png'],{type:'image/png'}),values:new Float32Array(9216),space:'w-plus',shape:[1,18,512]}:{deviceValidated:true};});
+    }finally{gate.close();}
+   })().then(result=>this.onmessage({data:{id:message.id,type:'complete',result}}));
+  },terminate(){}})});
+ let acquisitions=0,releases=0;
+ runtime.setComputeAdmission({acquire:async()=>{acquisitions++;await admission;},release:async()=>{releases++;}});
+ try{
+  const result=runtime.generate({mode:'seed',value:'122'});
+  finishA();await new Promise(resolve=>setTimeout(resolve,5));assert.equal(acquisitions,0);
+  finishB();await untilRuntime(()=>acquisitions===1);
+  await new Promise(resolve=>setTimeout(resolve,230));assert.deepEqual(events,[],'worker cannot start before host permit even beyond the 200ms acquisition stall window');
+  admit();await result;assert.deepEqual(events,['qualify','generate']);assert.equal(acquisitions,2);assert.equal(releases,2);
+ }finally{admit();runtime.dispose();}
+});
+test('cancelling while a private admission is queued releases a late permit without restarting the worker',async()=>{
+ let admit,asked=false,released=0,ran=false;
+ const admission=new Promise(resolve=>admit=resolve);
+ const runtime=createBrowserRuntime({manifest:testManifest(),manifestSha256:'0'.repeat(64),preferredRoute:'cpu',workerFactory:()=>({
+  postMessage(message){
+   if(message.type==='compute-response'){ran=true;return;}
+   queueMicrotask(()=>this.onmessage({data:message.type==='qualify'?{id:message.id,type:'compute-request',token:'late',phase:'acquire'}:{id:message.id,type:'complete',result:{deviceValidated:true}}}));
+  },terminate(){}})});
+ runtime.setComputeAdmission({acquire:async()=>{asked=true;await admission;},release:async()=>{released++;}});
+ try{
+  const generation=runtime.generate({mode:'seed',value:'123'});const outcome=generation.catch(e=>e);
+  await untilRuntime(()=>asked);runtime.cancel();assert.equal((await outcome).name,'AbortError');
+  admit();await untilRuntime(()=>released===1);assert.equal(ran,false);
+ }finally{admit();runtime.dispose();}
+});
+
+test('initial qualification grant refusal preserves Auto WebGPU and retries it only after a new decision',async()=>{
+ const oldNav=Object.getOwnPropertyDescriptor(globalThis,'navigator'),oldStorage=globalThis.sessionStorage;
+ Object.defineProperty(globalThis,'navigator',{configurable:true,value:{gpu:{requestAdapter:async()=>({limits:SPEC_DEFAULT_LIMITS})}}});
+ globalThis.sessionStorage=fakeStorage();const calls=[],events=[];let approved=false;
+ const runtime=createBrowserRuntime({manifestSha256:'0'.repeat(64),manifest:testManifest(),onProgress:event=>events.push(event),workerFactory:()=>{let provider;return {
+  postMessage(message){
+   if(message.type==='initialize')provider=message.provider;calls.push(message.type+':'+provider);
+   const error=message.type==='qualify'&&!approved?{name:'GrantRefused',message:'Approve the missing model bytes.'}:null;
+   queueMicrotask(()=>this.onmessage({data:error?{id:message.id,type:'error',error}:{id:message.id,type:'complete',result:message.type==='generate'?{blob:new Blob(['controller-test-only'],{type:'image/png'}),values:new Float32Array(9216),space:'w-plus',shape:[1,18,512]}:{deviceValidated:true}}}));
+  },terminate(){calls.push('terminate:'+provider);}
+ };}});
+ try{
+  await assert.rejects(runtime.generate({mode:'seed',value:'3'}),{name:'GrantRefused'});
+  assert.deepEqual(calls,['initialize:webgpu','qualify:webgpu','terminate:webgpu']);
+  assert.ok(!events.some(event=>['route-refused','gpu-engine-fallback'].includes(event.stage)));
+  approved=true;const result=await runtime.generate({mode:'seed',value:'3'});
+  assert.equal(result.provenance.provider,'webgpu');
+  assert.deepEqual(calls.slice(3),['initialize:webgpu','qualify:webgpu','generate:webgpu']);
+ }finally{runtime.dispose();if(oldNav)Object.defineProperty(globalThis,'navigator',oldNav);else delete globalThis.navigator;if(oldStorage===undefined)delete globalThis.sessionStorage;else globalThis.sessionStorage=oldStorage;}
+});
+
+test('watchdog pauses a silent worker while hidden and gives a full stall window on becoming visible',async t=>{
+ const oldDocument=Object.getOwnPropertyDescriptor(globalThis,'document');let onVisibility,generating=false,settled=false;
+ const document={hidden:true,addEventListener(type,listener){if(type==='visibilitychange')onVisibility=listener;}};
+ Object.defineProperty(globalThis,'document',{configurable:true,value:document});
+ t.mock.timers.enable({apis:['setTimeout']});
+ const runtime=createBrowserRuntime({manifest:testManifest(),manifestSha256:'0'.repeat(64),preferredRoute:'cpu',stallMs:50,workerFactory:()=>({
+  postMessage(message){if(message.type==='generate'){generating=true;return;}queueMicrotask(()=>this.onmessage({data:{id:message.id,type:'complete',result:{deviceValidated:true}}}));},terminate(){}
+ })});
+ try{
+  const outcome=runtime.generate({mode:'seed',value:'324'}).then(()=>{settled=true;return null;},error=>{settled=true;return error;});
+  const end=performance.now()+5000;while(!generating){if(performance.now()>end)throw Error('worker never reached generation');await new Promise(setImmediate);}
+  // Generate uses ACQUIRE_STALL = 4 * 50ms; neither hidden interval counts as visible silence.
+  t.mock.timers.tick(200);t.mock.timers.tick(150);await Promise.resolve();assert.equal(settled,false);
+  document.hidden=false;onVisibility();
+  t.mock.timers.tick(199);await Promise.resolve();assert.equal(settled,false,'visibility return restarts the complete 200ms window');
+  t.mock.timers.tick(1);assert.match((await outcome).message,/stopped responding/);
+ }finally{runtime.dispose();t.mock.timers.reset();if(oldDocument)Object.defineProperty(globalThis,'document',oldDocument);else delete globalThis.document;}
 });

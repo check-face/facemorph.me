@@ -446,6 +446,7 @@ export function createOperationService(
       if (work.request.kind === 'face') bridge.cancelQueuedFace(work.request.source.slot);
       work.release();
     } else if (work === active) {
+      governor.withdraw(String(work.jobId));
       // No new provider work is admitted until this real execute settles.
       bridge.cancel();
       if (sources(work.request).some((source) => source.input.mode === 'photo'))
@@ -574,27 +575,40 @@ export function createOperationService(
         jobId: String(work.jobId),
         requested: request.route.requested,
       });
-      leases.set(
-        work.jobId,
-        await governor.request({
-          id: String(work.jobId),
-          op: heavyOp(request),
-          context: contextOf(request),
-          bytes: 0,
-          sessions: 1,
-        }),
-      );
+      const compute: facade.ComputeAdmission = {
+        async acquire() {
+          if (work.cancelled || disposed)
+            throw new DOMException('Operation cancelled', 'AbortError');
+          if (leases.has(work.jobId)) return;
+          const lease = await governor.request({
+            id: String(work.jobId),
+            op: heavyOp(request),
+            context: contextOf(request),
+            bytes: 0,
+            sessions: 1,
+          });
+          if (work.cancelled || disposed) {
+            await lease.settle();
+            throw new DOMException('Operation cancelled', 'AbortError');
+          }
+          leases.set(work.jobId, lease);
+        },
+        release: () => settleLease(work),
+      };
       if (work.cancelled || disposed) return;
       const inputs = sources(request).map((source) => source.input);
       let output: Output;
       if (request.kind === 'import') {
-        output = await b.importProject({
-          file: request.file,
-          inputs,
-          jobId: work.jobId,
-          provider: request.route.requested,
-          routeSnapshot: request.route,
-        });
+        output = await b.importProject(
+          {
+            file: request.file,
+            inputs,
+            jobId: work.jobId,
+            provider: request.route.requested,
+            routeSnapshot: request.route,
+          },
+          compute,
+        );
       } else if (request.kind === 'blend') {
         // Weight-0 slots were never dependencies and are not part of the sum.
         const used = request.sources.flatMap((source, index) =>
@@ -602,16 +616,19 @@ export function createOperationService(
             ? []
             : [{ input: source.input, weight: request.weights[index]! }],
         );
-        output = await b.execute({
-          ...request.settings,
-          jobId: work.jobId,
-          action: 'blend',
-          target: request.target,
-          inputs: used.map((slot) => slot.input),
-          weights: used.map((slot) => slot.weight),
-          provider: request.route.requested,
-          routeSnapshot: request.route,
-        });
+        output = await b.execute(
+          {
+            ...request.settings,
+            jobId: work.jobId,
+            action: 'blend',
+            target: request.target,
+            inputs: used.map((slot) => slot.input),
+            weights: used.map((slot) => slot.weight),
+            provider: request.route.requested,
+            routeSnapshot: request.route,
+          },
+          compute,
+        );
       } else {
         const payload = {
           ...request.settings,
@@ -623,7 +640,7 @@ export function createOperationService(
           routeSnapshot: request.route,
         };
         if (request.kind !== 'face') b.rememberView(payload);
-        output = await b.execute(payload);
+        output = await b.execute(payload, compute);
       }
       if (work.cancelled || disposed) return;
       if (output.refusal) {
@@ -707,6 +724,7 @@ export function createOperationService(
                 },
         );
     } finally {
+      governor.withdraw(String(work.jobId));
       await settleLease(work);
       works.delete(work.jobId);
       if (active === work) active = undefined;

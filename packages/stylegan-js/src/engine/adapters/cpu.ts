@@ -5,7 +5,7 @@
 
 import type { RequestedRoute } from '../../contracts/capability.ts';
 import type { ModelDescriptor } from '../../contracts/descriptor.ts';
-import { readLocal, type LocalAssetReader } from '../reader.ts';
+import { readLocal, runCompute, type LocalAssetReader } from '../reader.ts';
 import {
   assembleGenerator,
   describedGeometry,
@@ -45,36 +45,35 @@ export async function loadCpuGenerator(o: {
     backend: async (_noise, _trace, reader, geometry): Promise<SynthesisBackend> => {
       const { latent, channels, height, width } = geometry;
       const ort = await o.ort();
-      let session: OrtSession | null = await ort.InferenceSession.create(
-        await readLocal(reader, manifest.synthesis),
-        {
-          executionProviders: ['wasm'],
-        },
+      const model = await readLocal(reader, manifest.synthesis);
+      let session: OrtSession | null = await runCompute(reader, () =>
+        ort.InferenceSession.create(model, { executionProviders: ['wasm'] }),
       );
-      const run = async (values: Float32Array, noise: NoiseSet): Promise<Float32Array> => {
-        if (!session) throw Error('The CPU session was released.');
-        const feeds: Record<string, OrtTensor> = {
-          w: new ort.Tensor('float32', values, [1, latent.layers, latent.width]),
-        };
-        for (const item of manifest.noise)
-          feeds[item.name] = new ort.Tensor(
-            'float32',
-            noise[item.name] as Float32Array,
-            item.shape,
-          );
-        let output: OrtTensor | undefined;
-        try {
-          output = (await session.run(feeds))['image'];
-          if (!output) throw Error('Synthesis produced no image output');
-          const raw = new Float32Array((await output.getData()) as Float32Array);
-          if (raw.length !== channels * height * width)
-            throw Error(`Synthesis output is not [1,${channels},${height},${width}]`);
-          return raw;
-        } finally {
-          for (const t of Object.values(feeds)) t.dispose();
-          output?.dispose();
-        }
-      };
+      const run = (values: Float32Array, noise: NoiseSet): Promise<Float32Array> =>
+        runCompute(reader, async () => {
+          if (!session) throw Error('The CPU session was released.');
+          const feeds: Record<string, OrtTensor> = {
+            w: new ort.Tensor('float32', values, [1, latent.layers, latent.width]),
+          };
+          for (const item of manifest.noise)
+            feeds[item.name] = new ort.Tensor(
+              'float32',
+              noise[item.name] as Float32Array,
+              item.shape,
+            );
+          let output: OrtTensor | undefined;
+          try {
+            output = (await session.run(feeds))['image'];
+            if (!output) throw Error('Synthesis produced no image output');
+            const raw = new Float32Array((await output.getData()) as Float32Array);
+            if (raw.length !== channels * height * width)
+              throw Error(`Synthesis output is not [1,${channels},${height},${width}]`);
+            return raw;
+          } finally {
+            for (const t of Object.values(feeds)) t.dispose();
+            output?.dispose();
+          }
+        });
       return {
         engine: 'ort-wasm',
         route: 'cpu',

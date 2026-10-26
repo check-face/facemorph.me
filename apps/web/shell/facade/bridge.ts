@@ -53,8 +53,14 @@ export * from './records.ts';
 // ---- jobs ----------------------------------------------------------------------------------------------------------
 
 /** Runs one job (a face, every face, or a morph) and settles with its Output; failures are in `errorMessage`. */
-export async function execute(request: Request): Promise<Output> {
-  return readOutput(await bridge.execute({ ...request, inputs: inputsToBridge(request.inputs) }));
+export interface ComputeAdmission {
+  acquire(): Promise<void>;
+  release(): Promise<void>;
+}
+export async function execute(request: Request, compute?: ComputeAdmission): Promise<Output> {
+  return readOutput(
+    await bridge.execute({ ...request, inputs: inputsToBridge(request.inputs) }, compute),
+  );
 }
 
 /** Progress of the job in flight. A malformed event is dropped and reported, never passed on. */
@@ -279,16 +285,20 @@ export async function exportProject(options: MorphSettings | null): Promise<stri
     'exportProject',
   );
 }
-export async function importProject(request: {
-  readonly file: Blob;
-  readonly inputs?: readonly Input[];
-  readonly jobId?: number;
-  readonly provider?: 'auto' | 'cpu' | 'webgpu';
-  readonly routeSnapshot?: import('../../src/contracts/scheduler.ts').RouteSnapshot;
-}): Promise<Output> {
+export async function importProject(
+  request: {
+    readonly file: Blob;
+    readonly inputs?: readonly Input[];
+    readonly jobId?: number;
+    readonly provider?: 'auto' | 'cpu' | 'webgpu';
+    readonly routeSnapshot?: import('../../src/contracts/scheduler.ts').RouteSnapshot;
+  },
+  compute?: ComputeAdmission,
+): Promise<Output> {
   return readOutput(
     await bridge.importProject(
       request.inputs ? { ...request, inputs: inputsToBridge(request.inputs) } : request,
+      compute,
     ),
   );
 }

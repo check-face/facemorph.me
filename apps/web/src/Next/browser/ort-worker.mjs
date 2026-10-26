@@ -12,6 +12,7 @@ import {qualifyEncoderReference} from './encoder-preflight.mjs';
 import {createAcquisitionBudget,collectAssets} from './acquisition-budget.mjs';
 import {chooseGrant,mergeGrants,widenWithin,BRIDGE_OWNER} from './bridge-grant.mjs';
 import {GrantRefused} from '../../../../../packages/browser-model-manager/src/acquisition/grants.ts';
+import {createExecutionGate} from './execution-gate.mjs';
 import {modelAlternateOrigins} from '../../contracts/model-origins.ts';
 // Chunks of a model download in flight at once (16 MiB each). Eight gigabytes stated by the device earns four;
 // everything else, including iOS where deviceMemory is undefined, gets two, a 32 MiB window.
@@ -160,7 +161,22 @@ function touchResidency(){
  if(residency.timer)clearTimeout(residency.timer);
  residency.timer=residency.held?setTimeout(shedShards,RESIDENT_IDLE_MS):null;
 }
-async function bytes(asset,id,retainable=false,{allowUncached=true}={}){
+let executionGate=null,computeSequence=0;
+const computeReplies=new Map();
+function computeRequest(id,phase){
+ const token=`${id}:${++computeSequence}`;
+ return new Promise((resolve,reject)=>{computeReplies.set(token,{resolve,reject});postMessage({id,type:'compute-request',token,phase});});
+}
+function taskGate(id,admitted){return createExecutionGate(admitted?{acquire:()=>computeRequest(id,'acquire'),release:()=>computeRequest(id,'release')}:{});}
+async function gatedTask(id,admitted,run){
+ const gate=taskGate(id,admitted);executionGate=gate;currentId=id;
+ try{const result=await run();await gate.drain();return result;}finally{gate.close();executionGate=null;}
+}
+const compute=work=>executionGate?executionGate.compute(work):Promise.resolve().then(work);
+const read=work=>executionGate?executionGate.read(work):Promise.resolve().then(work);
+const bytes=(...args)=>read(()=>readBytes(...args));
+const acquireAsset=asset=>read(()=>cache.acquire(asset,acquireOptions(asset)));
+async function readBytes(asset,id,retainable=false,{allowUncached=true}={}){
  if(retainable){
   const held=residency.bytes.get(asset.sha256);
   // A detached buffer reads as zero length: never hand back something ORT may have taken.
@@ -186,7 +202,7 @@ async function bytes(asset,id,retainable=false,{allowUncached=true}={}){
 // The grants the app supplies (bridge-grant.mjs appGrants, fm-qrfz): what the person approved, and what is already
 // verified on this device. An asset in neither has no grant, so the manager refuses it before any request.
 let grants=null;
-function acquireOptions(asset){return {grant:chooseGrant(grants,asset)??undefined,owner:BRIDGE_OWNER};}
+function acquireOptions(asset){return {grant:chooseGrant(grants,asset)??undefined,owner:BRIDGE_OWNER,signal:executionGate?.signal};}
 // The streamed encoder's descriptor (pinned by the manifest's digest, read verified) names its shards: they are
 // admitted against the bytes approved for it, never beyond (bridge-grant.mjs widenWithin).
 function admitDescriptor(config){
@@ -216,13 +232,13 @@ async function prefetchRoute(id,scope='route'){
  let assets=0,acquired=0;
  for(const asset of list){
   assets++;
-  try{await cache.acquire(asset,acquireOptions(asset));acquired++;budget.progress(false);}
+  try{await acquireAsset(asset);acquired++;budget.progress(false);}
   catch{break;} // offline, evicted mid-run, or out of quota: the real run will say so properly
  }
  return {provider,scope,assets,acquired,...budget.totals()};
 }
 // The engine reads only through this: the worker's verified bytes (acquired under the bridge's grant), errors as thrown.
-const reader={allowRepair:false,read:async asset=>({ok:true,value:await bytes(asset,currentId)})};
+const reader={allowRepair:false,compute,read:async asset=>({ok:true,value:await bytes(asset,currentId)})};
 // Import exactly the verified runtime bytes, avoiding a second unchecked network request (package loadOrtRuntime).
 async function ensureOrt(id){if(ort)return;report(id,'runtime-loading');ort=(await loadOrtRuntime(reader,cpuRuntimeAssets(manifest.runtime),browserModuleHost(),cpuThreads())).ort;}
 const cpuOrt=async()=>{await ensureOrt(currentId);return ort;};
@@ -254,15 +270,15 @@ async function encodeStream(tensor,id,qualifiedEncoderSha256,confirmedCropId){
  // reads every step from verified local storage and the encode itself issues no request. A device without durable
  // model storage keeps the candidate's bounded behaviour: each shard is read as its step needs it.
  cache ||= await modelSource();
- if(!cache.uncached)for(const step of config.steps){await cache.acquire(step,acquireOptions(step));budget.progress(false);}
+ if(!cache.uncached)for(const step of config.steps){await acquireAsset(step);budget.progress(false);}
  const local=asset=>cache.uncached?bytes(asset,id,true):cache.has(asset).then(held=>{if(!held)throw Object.assign(Error('An encoder shard left the model cache after it was acquired.'),{code:'cache-miss'});return bytes(asset,id,true);});
- const reader={allowRepair:false,read:asset=>local(asset).then(value=>({ok:true,value}),error=>({ok:false,error:{code:error.code||'local-read',message:String(error.message||error),sha256:asset.sha256}}))};
+ const reader={allowRepair:false,compute,read:asset=>local(asset).then(value=>({ok:true,value}),error=>{if(error?.name==='GrantRefused')throw error;return {ok:false,error:{code:error.code||'local-read',message:String(error.message||error),sha256:asset.sha256}};})};
  // The runtime is the small half: three modules and a wasm binary, none of which are weights.
  // Holding them across photos skips a re-import and a wasm recompile per encode; the 108 shards
  // are still read and released one at a time (package loadStreamedEncoder), which keeps the working set bounded.
  if(encoderStream&&encoderStream.sha256!==descriptor.sha256)await releaseEncoder();
  if(!encoderStream){
-  const runtime=await loadEncoderRuntime({allowRepair:false,read:asset=>bytes(asset,id).then(value=>({ok:true,value}))},config.runtime,browserModuleHost());
+  const runtime=await loadEncoderRuntime({allowRepair:false,compute,read:asset=>bytes(asset,id).then(value=>({ok:true,value}))},config.runtime,browserModuleHost());
   encoderStream={sha256:descriptor.sha256,runtime,release:runtime.release};
  }
  const {runtime}=encoderStream;
@@ -388,25 +404,30 @@ function pump(){
 // The runtime sends 'resume' once the first face is delivered. The remaining canaries then run
 // here one at a time, preempted by any user operation. A canary that fails now invalidates the
 // route loudly: the task reports the error and the runtime drops the route and says so (C-03).
-function startResumeDrain(id){
+function startResumeDrain(id,admitted){
  if(resumeDrain!=null){postMessage({id,type:'complete',result:{checks:[],provider,deviceValidated:false,resumed:true}});return;}
  resumeDrain=id;
- const step=()=>{backgroundTask=async()=>{
+ const step=()=>{backgroundTask=()=>gatedTask(id,admitted,async()=>{
   try{
    const q=await ensureQualification(id);
    if(!q.complete())await q.runNext('background',canaryEvent(id));
    if(!q.complete()){step();return;}
    resumeDrain=null;
+   await executionGate.drain();
    postMessage({id,type:'complete',result:{checks:q.checks(),provider,deviceValidated:true,resumed:true}});
   }catch(error){resumeDrain=null;postMessage({id,type:'error',error:{name:error.name,message:error.message,correctnessFailure:/Device correctness check failed|integrity/i.test(error.message||'')}});}
- };pump();};
+ });pump();};
  step();
 }
 self.onmessage=({data})=>{
+ if(data.type==='compute-response'){
+  const reply=computeReplies.get(data.token);if(!reply)return;computeReplies.delete(data.token);
+  if(data.error)reply.reject(Object.assign(Error(data.error.message),{name:data.error.name}));else reply.resolve();return;
+ }
  const {id,type,...request}=data;if(type==='raw-frame-ack'){rawAcks.get(id+':'+request.index)?.();return;}
- if(type==='grants'){grants=mergeGrants(grants,request.grants);return;}currentId=id;
- if(type==='qualify'&&request.resume){startResumeDrain(id);return;}
- foreground.push(async()=>{
+ if(type==='grants'){grants=mergeGrants(grants,request.grants);return;}
+ if(type==='qualify'&&request.resume){startResumeDrain(id,request.computeAdmission);return;}
+ foreground.push(()=>gatedTask(id,request.computeAdmission,async()=>{
   try{
    let result;
    if(type==='initialize'){if(!['wasm','webgpu'].includes(request.provider))throw Error('Unsupported provider: WebGL execution was removed');if(request.grants)grants=mergeGrants(grants,request.grants);manifest=request.manifest;provider=request.provider;gpuEngine=request.gpuEngine==='direct'&&request.provider==='webgpu'?'direct':'ort';manifestSha256=request.manifestSha256;fullQualify=request.fullQualify===true||(!request.hostForcedQualify&&request.webdriver===true);forceCanaryFail=request.forceCanaryFail===true;result={provider};}
@@ -424,6 +445,6 @@ self.onmessage=({data})=>{
  if(!(request.tensor instanceof Float32Array)||request.tensor.length!==196608||!request.tensor.every(Number.isFinite))throw Error('Invalid aligned photo tensor');
  // The streamed encoder is the only photo encoder (fm-fy2.6): the package runs it; the app holds no second e4e path.
  if(!manifest.encoderStream)throw Error('This model bundle has no streamed photo encoder.');result=await encodeStream(request.tensor,id,request.qualifiedEncoderSha256,request.confirmedCropId);
- }else throw Error('Unknown runtime operation');postMessage({id,type:'complete',result},result?.rgba?[result.rgba]:[]);}catch(error){postMessage({id,type:'error',error:{name:error.name,message:error.message}});}});
+ }else throw Error('Unknown runtime operation');await executionGate.drain();postMessage({id,type:'complete',result},result?.rgba?[result.rgba]:[]);}catch(error){postMessage({id,type:'error',error:{name:error.name,message:error.message}});}}));
  pump();
 };

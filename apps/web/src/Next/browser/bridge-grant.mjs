@@ -5,7 +5,7 @@
 // that descriptor names, at its declared size, with enough bytes for each to arrive once plus one retry per
 // scheduled retry delay (CHUNK_RETRY_DELAYS_MS). The ledger lives in the worker that spends it (grants.ts).
 import {CHUNK_RETRY_DELAYS_MS} from '../Assets/model-cache.mjs';
-import {grantRemaining} from '../../../../../packages/browser-model-manager/src/acquisition/grants.ts';
+import {grantRemaining,GrantRefused} from '../../../../../packages/browser-model-manager/src/acquisition/grants.ts';
 
 // Every asset descriptor anywhere in the manifest (its chunks belong to the asset, so the walk stops there).
 function assetsIn(value,found=[]){
@@ -88,6 +88,20 @@ export function chooseGrant(grants,asset){
  return has(grants?.approved)?grants.approved:has(grants?.local)?grants.local:null;
 }
 
+/** Resolve a discovered schedule before posting an encode: a revised cost is a decision, not a failed attempt. */
+export async function resolveDiscoveredGrants(grants,via,value,cache){
+ const approved=widenWithin(grants?.approved,via,value);
+ let local=grants?.local??null;
+ for(const asset of assetsIn(value)){
+  if(chooseGrant({approved,local},asset))continue;
+  if(!cache||!await cache.has(asset))throw new GrantRefused('revision-required',asset.sha256);
+  // Newly discovered but verified local files require no additional transfer authority.
+  local={...(local??{manifestSha256:approved?.manifestSha256??'',route:approved?.route??'cpu',purpose:'generate',remainingBytes:0,owners:[BRIDGE_OWNER]}),
+   assets:[...(local?.assets??[]),{sha256:asset.sha256,bytes:asset.size,priority:'foreground-required'}]};
+ }
+ return {approved,local};
+}
+
 /** `incoming`, keeping each current grant object (and so its ledger) when the same grant is posted again. */
 export function mergeGrants(current,incoming){
  const same=(a,b)=>!!a&&!!b&&(a.approvalId!==undefined||b.approvalId!==undefined
@@ -111,5 +125,5 @@ export function widenWithin(grant,via,value){
   known.add(s.sha256);added.push({sha256:s.sha256,bytes:s.size,priority:left.priority});room-=s.size;}
  return widened();
  // A new object starts a new ledger: carry over what the old one has left (the allowance is already inside it).
- function widened(){return {...grant,assets:[...grant.assets,...added],allowances:grant.allowances.map(a=>a.via===via?{...a,bytes:room}:a),remainingBytes:grantRemaining(grant)};}
+ function widened(){return added.length?{...grant,assets:[...grant.assets,...added],allowances:grant.allowances.map(a=>a.via===via?{...a,bytes:room}:a),remainingBytes:grantRemaining(grant)}:grant;}
 }

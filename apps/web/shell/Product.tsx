@@ -1,5 +1,6 @@
 // The mounted application: one controller owns effects and state; views dispatch typed messages only.
-import { useSyncExternalStore } from 'react';
+import { useMemo, useSyncExternalStore } from 'react';
+import { frameSubscription } from './react-subscription.ts';
 import type { Store } from '../src/controller/store.ts';
 import { msg } from '../src/controller/msg.ts';
 import { rememberVideoQuality } from '../src/controller/preferences.ts';
@@ -21,7 +22,8 @@ import { NamesDialog, DetectedDialog, CropDialog, DownloadDialog } from './rende
 import { Support, TestingInvite } from './render/Support.tsx';
 
 export function Product({ store }: { store: Store }) {
-  const s = useSyncExternalStore(store.subscribe, store.getState);
+  const subscribe = useMemo(() => frameSubscription(store.subscribe), [store]);
+  const s = useSyncExternalStore(subscribe, store.getState);
   const dispatch = store.dispatch;
   const settings = {
     inputs: s.Inputs,

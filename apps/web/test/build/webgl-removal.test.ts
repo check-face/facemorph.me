@@ -179,13 +179,13 @@ test('check-next-artifact probe: the control and destination shapes give the rou
   );
 });
 
-test('kept behaviour: the visible-time stall watchdog (paused while hidden, restarted on return) is unchanged', () => {
+test('kept behaviour: the visible-time stall watchdog pauses while hidden or waiting for compute and restarts on return', () => {
   const runtime = read('src/Next/browser/runtime.mjs');
   assert.match(runtime, /const hidden=\(\)=>globalThis\.document\?\.hidden===true;/);
   assert.match(
     runtime,
-    /const timeout=\(\)=>\{if\(hidden\(\)\)\{task\.timer=setTimeout\(timeout,stall\);return;\}stop\(/,
-    'reschedules instead of firing while hidden',
+    /const timeout=\(\)=>\{if\(hidden\(\)\|\|task\.waitingCompute\)\{task\.timer=setTimeout\(timeout,stall\);return;\}stop\(/,
+    'reschedules instead of firing while hidden or waiting for the host compute permit',
   );
   assert.match(
     runtime,

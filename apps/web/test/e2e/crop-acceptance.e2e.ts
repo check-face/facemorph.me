@@ -21,6 +21,7 @@ import { startControl, chromiumArgs, ORIGIN, REPO } from '../parity/control-serv
 import { readIdentity } from '../../../../scripts/import/build-next.mjs';
 import { press } from '../support/operate.ts';
 import { INSTALL_HOOK } from '../parity/elmish-probe.ts';
+import { STORE_HOOK } from '../support/face-fixture.ts';
 import { futureSchemaPng } from '../support/recovery-stills.ts';
 import { assertNoCardPreparation } from '../support/card-setup.ts';
 import {
@@ -61,13 +62,37 @@ const hostClass = (url: string): HostClass => {
 /** Counters kept in the page (installed after INSTALL_HOOK, before the app loads). */
 const PROBE = `(() => {
   const hex = (b) => [...new Uint8Array(b)].map((x) => x.toString(16).padStart(2, '0')).join('');
-  const c = (window.__crop = { align: 0, e4e: 0, digests: [], hashing: 0, opens: 0, confirmed: 0 });
+  const c = (window.__crop = { align: 0, e4e: 0, digests: [], hashing: 0, opens: 0, confirmed: 0, encodes: [] });
+  const live = new WeakMap();
+  const terminate = Worker.prototype.terminate;
+  Worker.prototype.terminate = function (...args) {
+    for (const attempt of live.get(this) ?? []) attempt.stage = 'terminal';
+    live.delete(this);
+    return terminate.apply(this, args);
+  };
   const post = Worker.prototype.postMessage;
   Worker.prototype.postMessage = function (m, ...rest) {
     const t = m && m.type;
     if (t === 'align') c.align++;
     if (t === 'encode-aligned') {
       c.e4e++;
+      // Posting precedes descriptor acquisition, which can ask for revised download approval. Observe the real
+      // worker's encoding stage instead: admission and acquisition have finished, but Cancel can still interrupt.
+      const attempt = { stage: 'pending' };
+      c.encodes.push(attempt);
+      const owned = live.get(this) ?? new Set();
+      live.set(this, owned);
+      owned.add(attempt);
+      const progress = ({ data }) => {
+        if (data?.id !== m.id) return;
+        if (data.type === 'progress' && data.stage === 'encoding') attempt.stage = 'encoding';
+        if (data.type === 'complete' || data.type === 'error') {
+          attempt.stage = 'terminal';
+          owned.delete(attempt);
+          this.removeEventListener('message', progress);
+        }
+      };
+      this.addEventListener('message', progress);
       // Copied before the post: the engine takes the tensor's buffer.
       const a = m.tensor, copy = new Uint8Array(a.buffer, a.byteOffset, a.byteLength).slice();
       c.hashing++;
@@ -166,6 +191,10 @@ class Session {
     this.touch = touch;
     page.on('pageerror', (error) => this.errors.push(error.message));
     page.on('console', (m) => {
+      if (m.type() === 'error' && m.text().startsWith('[operation-service listener]')) {
+        this.errors.push(m.text());
+        console.error(`[crop-acceptance:${name}] ${m.text()}`);
+      }
       if (m.text().startsWith('[still-entry]'))
         this.stillLines.push(JSON.parse(m.text().slice('[still-entry] '.length)));
     });
@@ -192,8 +221,7 @@ class Session {
     });
     const { context } = profile;
     try {
-      await context.addInitScript(INSTALL_HOOK);
-      await context.addInitScript(PROBE);
+      await context.addInitScript(`${INSTALL_HOOK}\n${STORE_HOOK}\n${PROBE}`);
       await context.tracing.start({
         screenshots: true,
         snapshots: false,
@@ -362,17 +390,50 @@ class Session {
   async confirmation() {
     await this.dialog.locator('.next-encode-preview img').waitFor({ timeout: 120_000 });
   }
-  /** The photo download consent, when it shows, accepted at its visible position. */
-  async consent() {
+  /** Operates every photo approval until actual encoding, a queued crop choice, or terminal state. */
+  async consent(timeout = 900_000) {
     const accept = this.page.locator('.next-download-accept');
-    while (
-      await accept.waitFor({ timeout: 4000 }).then(
-        () => true,
-        () => false,
-      )
-    ) {
+    const deadline = Date.now() + timeout;
+    let approvals = 0;
+    while (true) {
+      const state = await this.page.waitForFunction(
+        () => {
+          const w = window as unknown as {
+            __crop: { encodes: { stage: string }[] };
+            __fmStore: {
+              getState(): {
+                Busy: boolean;
+                PreparingFaces: Set<string>;
+                Crop: unknown;
+                Gate: unknown;
+                PendingJobs: unknown[];
+                PhotoQueue: unknown[];
+              };
+            };
+          };
+          // The render adapter may defer a commit; this reads the same real store without dispatching to it.
+          const m = w.__fmStore.getState();
+          if (document.querySelector('.next-download-accept')) return 'approve';
+          if (m.Gate) return false;
+          if (w.__crop.encodes.some((attempt) => attempt.stage === 'encoding')) return 'encoding';
+          // A queued confirmation needs the next real OK before it can produce an encoder attempt.
+          if (m.Crop) return 'crop';
+          if (!m.Busy && !m.PreparingFaces.size && !m.PendingJobs.length && !m.PhotoQueue.length)
+            return 'terminal';
+          return false;
+        },
+        null,
+        { timeout: Math.max(1, deadline - Date.now()), polling: 100 },
+      );
+      const next = await state.jsonValue();
+      await state.dispose();
+      if (next !== 'approve') {
+        this.log({ event: 'download-consent', approvals, ready: next });
+        return;
+      }
       await this.operate(accept);
-      await accept.waitFor({ state: 'detached' });
+      approvals++;
+      await accept.waitFor({ state: 'detached', timeout: Math.max(1, deadline - Date.now()) });
     }
   }
   async settled(timeout = 900_000) {
@@ -606,15 +667,17 @@ test(
           (face) => {
             const m = (
               window as unknown as {
-                __elmish: {
-                  model: {
+                __fmStore: {
+                  getState(): {
                     Faces: { id: string }[];
                     Error: string | null;
                     Busy: boolean;
+                    Gate: unknown;
                   };
                 };
               }
-            ).__elmish.model;
+            ).__fmStore.getState();
+            if (m.Gate) throw Error('A download decision appeared after consent returned.');
             return (m.Faces.some((f) => f.id === face) || m.Error) && !m.Busy;
           },
           id,
@@ -1185,15 +1248,17 @@ test(
             (face) => {
               const m = (
                 window as unknown as {
-                  __elmish: {
-                    model: {
+                  __fmStore: {
+                    getState(): {
                       Faces: { id: string }[];
                       Error: string | null;
                       Busy: boolean;
+                      Gate: unknown;
                     };
                   };
                 }
-              ).__elmish.model;
+              ).__fmStore.getState();
+              if (m.Gate) throw Error('A download decision appeared after consent returned.');
               return (m.Faces.some((f) => f.id === face) || m.Error) && !m.Busy;
             },
             id,

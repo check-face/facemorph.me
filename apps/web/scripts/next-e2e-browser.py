@@ -142,6 +142,7 @@ def run(name,predicate=None):
  # may have reloaded the page since the driver last armed the observers, so re-arm here.
  ensure_instrumented()
  before=js('window.__ciBusyChanges')
+ prior_error=text(S['error'])
  # Three independent signals that the click landed, because each one alone has a blind spot: the
  # busy counter misses a job whose status has not changed yet, the stage predicate can be minutes
  # away on the CPU route, and the button's own disabled state says nothing once the job finishes.
@@ -149,7 +150,10 @@ def run(name,predicate=None):
  # evidence available and it does not depend on any instrumentation surviving a re-render.
  started=lambda: js('window.__ciBusyChanges')>before or js("(()=>{const b=[...document.querySelectorAll('button')].find(x=>x.textContent.trim()===%s||x.getAttribute('aria-label')===%s);return !!b&&b.disabled;})()"%(json.dumps(name),json.dumps(name))) or (predicate() if predicate else False)
  click(name,expect=started)
- wait(started,30);wait(idle)
+ # A deliberate refusal from the preceding stage stays visible until this action paints.
+ # Observe the new action before making that old error fatal again; idle/outcome checks still
+ # reject every error from the new attempt, including a repeated refusal with identical text.
+ wait(started,30,allow_error=bool(prior_error));wait(idle)
 def faces():
  # fm-id4c reserves a Remove band above the full source frame inside this box (fm-j4i8).
  # The frame fills its width and retains its source aspect; it must not fill the control band.
