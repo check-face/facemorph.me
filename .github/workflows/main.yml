@@ -174,11 +174,6 @@ jobs:
     if: contains(fromJSON(needs.changes.outputs.lanes), 'app-contracts')
     uses: ./.github/workflows/app-contracts.yml
     secrets: inherit
-  beads-check:
-    needs: changes
-    if: contains(fromJSON(needs.changes.outputs.lanes), 'beads-check')
-    uses: ./.github/workflows/beads-check.yml
-    secrets: inherit
   beads-site:
     needs: changes
     if: contains(fromJSON(needs.changes.outputs.lanes), 'beads-site')
