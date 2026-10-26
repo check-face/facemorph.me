@@ -245,7 +245,10 @@ describe('manager public classifications do not admit private near misses', () =
     [
       'schema private host',
       schema,
-      managerPublic[schema].replace('github.com/', 'private.facemorph.me/'),
+      managerPublic[schema].replace(
+        new URL(JSON.parse(managerPublic[schema]).$id).hostname,
+        'private.facemorph.me',
+      ),
     ],
     ['other private reference', cache, managerPublic[cache] + '\n// ported from checkface\n'],
   ];
