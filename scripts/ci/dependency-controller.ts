@@ -32,6 +32,7 @@ export interface QualificationJob {
 }
 
 const GROUPS = ['build-tools', 'react-and-ui', 'onnx-runtime', 'test-tools'];
+export const ORT_MIRROR_GROUP = 'onnx-runtime';
 const MANIFESTS = new Set([
   'package.json',
   'apps/web/package.json',
@@ -273,7 +274,7 @@ async function main() {
         );
         continue;
       }
-      if (group === 'onnx-runtime') pr = await prepareOrtMirror(repo, pr);
+      if (group === ORT_MIRROR_GROUP) pr = await prepareOrtMirror(repo, pr);
       api(`repos/${repo}/actions/workflows/main.yml/dispatches`, 'POST', {
         ref: pr.head.ref,
         inputs: { dependency_group: group, dependency_pr: String(number) },

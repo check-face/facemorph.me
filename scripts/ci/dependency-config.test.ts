@@ -4,6 +4,7 @@ import { matchesGlob } from 'node:path';
 import test from 'node:test';
 import { parse } from 'yaml';
 import { policyProblems, type DependencyPolicy } from './dependency-freeze.ts';
+import { ORT_MIRROR_GROUP } from './dependency-controller.ts';
 
 const read = (path: string) => readFileSync(new URL(`../../${path}`, import.meta.url), 'utf8');
 const config = parse(read('.github/dependabot.yml'));
@@ -23,6 +24,7 @@ test('the built-in updater has exactly four npm groups, each matching the frozen
   }
   assert.deepEqual(npm['exclude-paths'], policy.excludedPaths);
   assert.equal(npm['versioning-strategy'], 'increase');
+  assert.deepEqual(npm.groups[ORT_MIRROR_GROUP].patterns, ['onnxruntime-web']);
 });
 
 test('each declared external npm dependency belongs to one group, including the paired ORT package', () => {
