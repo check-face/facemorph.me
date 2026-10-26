@@ -1,13 +1,17 @@
 // fm-fy2.14: real deployed model bytes through a controlled fault proxy, not a deployed app rollout.
 // The proxy forwards the staging manifest/assets unchanged except for explicitly named faults.
 // A pinned consumer survives an incompatible mutable pointer, a removed old path gives bounded
-// reload recovery, and an interrupted real body resumes only the unverified bytes. Parser checks
-// do not establish app-level atomic catalogue replacement; a previous-app rollback needs its own
-// deployed app fixture and manifest. Those remaining acceptance cells are explicitly untested.
+// reload recovery, and an interrupted real body resumes only the unverified bytes. The app's own
+// runtime module (apps/web createBrowserRuntime, bundled as-is) admits the real staging pointer,
+// refuses incompatible pointers typed with no model request and keeps its admitted manifest. The
+// previous deployed app (the verified control artifact) is identified by its recorded manifest
+// digest; that manifest's own paths are HEAD-checked on the test mirror and one of its chunked
+// assets is loaded from the staging origin. The previous app's UI itself is not run here.
 /// <reference lib="dom" />
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer, type Server } from 'node:https';
 import { createRequire } from 'node:module';
 import type { AddressInfo } from 'node:net';
@@ -41,7 +45,7 @@ let primary = '';
 let manifest: Record<string, unknown>;
 let chunked: AssetNode;
 let plain: AssetNode;
-const fault = { incompatiblePointer: false, missing: '', cut: '' };
+const fault = { incompatiblePointer: false, mixedPointer: false, missing: '', cut: '' };
 const sent: { path: string; bytes: number; status: number; finished: boolean; aborted: boolean }[] =
   [];
 const listen = (server: Server) =>
@@ -107,24 +111,41 @@ test.before(async () => {
     '--outDir',
     built,
   ]);
+  // The app's real runtime module (admission, config commit), bundled unmodified for the page.
+  const appBuilt = join(work, 'app');
+  execFileSync(process.execPath, [
+    join(REPO, 'node_modules/rolldown/bin/cli.mjs'),
+    join(REPO, 'apps/web/src/Next/browser/runtime.mjs'),
+    '--format',
+    'esm',
+    '--platform',
+    'browser',
+    '--dir',
+    appBuilt,
+    '--silent',
+  ]);
   app = createServer(tls, (req, res) => {
     const path = pathOf(`https://x${req.url}`);
     if (path === '/')
       return void res
         .writeHead(200, { 'content-type': 'text/html' })
         .end('<title>Model release component consumer</title>');
-    if (path.startsWith('/pkg/')) {
-      try {
-        return void res
-          .writeHead(200, {
-            'content-type':
-              extname(path) === '.js' ? 'text/javascript' : 'application/octet-stream',
-          })
-          .end(readFileSync(join(built, path.slice(5))));
-      } catch {
-        /* 404 below */
+    for (const [prefix, dir] of [
+      ['/pkg/', built],
+      ['/app/', appBuilt],
+    ] as const)
+      if (path.startsWith(prefix)) {
+        try {
+          return void res
+            .writeHead(200, {
+              'content-type':
+                extname(path) === '.js' ? 'text/javascript' : 'application/octet-stream',
+            })
+            .end(readFileSync(join(dir, path.slice(prefix.length))));
+        } catch {
+          /* 404 below */
+        }
       }
-    }
     res.writeHead(404).end();
   });
   proxy = createServer(tls, async (req, res) => {
@@ -147,6 +168,12 @@ test.before(async () => {
       let body = Buffer.from(await upstream.arrayBuffer());
       if (path === '/runtime/manifest.json' && fault.incompatiblePointer)
         body = Buffer.from(JSON.stringify({ ...JSON.parse(body.toString()), schemaVersion: 999 }));
+      if (path === '/runtime/manifest.json' && fault.mixedPointer) {
+        // Assets from two releases: the encoder stream claims a different source encoder.
+        const mixed = JSON.parse(body.toString());
+        mixed.encoderStream.sourceEncoderSha256 = 'f'.repeat(64);
+        body = Buffer.from(JSON.stringify(mixed));
+      }
       entry.status = upstream.status;
       res.writeHead(upstream.status, {
         ...headers,
@@ -250,6 +277,7 @@ async function session(
     throw error;
   } finally {
     fault.incompatiblePointer = false;
+    fault.mixedPointer = false;
     fault.missing = '';
     fault.cut = '';
     await context.close();
@@ -553,19 +581,338 @@ test(
   },
 );
 
+const pointerPath = '/runtime/manifest.json';
+type Refusal = {
+  name: string;
+  code?: string;
+  reason?: string;
+  path?: string;
+  reload?: boolean;
+  message: string;
+};
 test(
-  'atomic replacement of an incompatible catalogue in the deployed app',
-  {
-    // disabled-test: reason=the manager parser has no active app catalogue transaction yet; owner=fm-fy2.14; until=the app admission journey applies catalogues atomically
-    skip: 'untested: manager parser has no active app catalogue transaction; needs the actual app admission journey',
+  'deployed app admission: the real staging pointer is admitted; incompatible pointers are refused typed with no model request and nothing half-applied',
+  { skip, timeout: timeoutMs },
+  async (t) => {
+    await session('app-admission', async (page, att) => {
+      const pointer = `${primary}${pointerPath}`;
+      const stepPaths = (step: string) =>
+        att.rec.requests
+          .filter((r) => att.rec.steps[r.step]?.name === step && r.hostClass !== 'app')
+          .map((r) => ({ hostClass: r.hostClass, path: pathOf(r.url) }));
+      const onlyPointer = [{ hostClass: 'model-host', path: pointerPath }];
+      // Two runtimes of the app's own module: one already admitted (the active app), one created
+      // while the pointer is bad (a new page load). No worker may start in any of these steps.
+      record.step(att.rec, 'admit');
+      const admitted = await page.evaluate(async (pointer) => {
+        const m = await import(String('/app/runtime.js'));
+        const w = window as unknown as Record<string, unknown>;
+        w['makeRuntime'] = () =>
+          m.createBrowserRuntime({
+            manifestUrl: pointer,
+            preferredRoute: 'cpu',
+            workerFactory() {
+              throw new Error('admission must not start a model worker');
+            },
+          });
+        const runtime = (w['makeRuntime'] as () => unknown)();
+        w['activeRuntime'] = runtime;
+        const plan = await (runtime as { plan(): Promise<{ manifest: unknown }> }).plan();
+        return plan.manifest;
+      }, pointer);
+      assert.deepEqual(admitted, manifest, 'the app admitted the deployed staging manifest whole');
+      await att.settled();
+      assert.deepEqual(stepPaths('admit'), onlyPointer);
+
+      const refuse = (runtime: 'new' | 'retry') =>
+        page.evaluate(
+          async ({ runtime }) => {
+            const w = window as unknown as Record<string, unknown>;
+            if (runtime === 'new') w['retryRuntime'] = (w['makeRuntime'] as () => unknown)();
+            try {
+              await (w['retryRuntime'] as { plan(): Promise<unknown> }).plan();
+              return null;
+            } catch (error) {
+              const e = error as Error & Record<string, unknown>;
+              return {
+                name: e.name,
+                code: e['code'],
+                reason: e['reason'],
+                path: e['path'],
+                reload: e['reload'],
+                message: e.message,
+              } as Refusal;
+            }
+          },
+          { runtime },
+        );
+      fault.incompatiblePointer = true;
+      record.step(att.rec, 'refuse-newer');
+      const newer = await refuse('new');
+      assert.deepEqual(
+        { ...newer, message: undefined },
+        {
+          name: 'RuntimeManifestRefused',
+          code: 'manifest-rejected',
+          reason: 'newer-major',
+          path: '$.schemaVersion',
+          reload: true,
+          message: undefined,
+        },
+      );
+      assert.match(newer!.message, /Reload the page/);
+      await att.settled();
+      assert.deepEqual(stepPaths('refuse-newer'), onlyPointer, 'refusal requests no model file');
+
+      fault.incompatiblePointer = false;
+      fault.mixedPointer = true;
+      record.step(att.rec, 'refuse-mixed');
+      const mixed = await refuse('retry');
+      assert.equal(mixed?.name, 'RuntimeManifestRefused');
+      assert.equal(mixed?.code, 'manifest-rejected');
+      assert.equal(mixed?.path, '$.encoderStream.sourceEncoderSha256');
+      assert.equal(mixed?.reload, true);
+      await att.settled();
+      assert.deepEqual(
+        stepPaths('refuse-mixed'),
+        onlyPointer,
+        'a refused candidate was not cached: the retry fetched the pointer again, and no model file',
+      );
+
+      // The active app keeps its admitted manifest while the pointer is bad: no pointer read, and its
+      // model acquisition requests only the admitted manifest's own digests.
+      fault.mixedPointer = false;
+      fault.incompatiblePointer = true;
+      record.step(att.rec, 'active-pinned');
+      const kept = await page.evaluate(
+        async ({ sha256, primary }) => {
+          const w = window as unknown as Record<string, unknown>;
+          const plan = await (
+            w['activeRuntime'] as { plan(): Promise<{ manifest: unknown }> }
+          ).plan();
+          const find = (value: unknown): Record<string, unknown> | undefined => {
+            if (!value || typeof value !== 'object') return;
+            const row = value as Record<string, unknown>;
+            if (row['sha256'] === sha256 && row['size'] !== undefined) return row;
+            for (const child of Object.values(row)) {
+              const found = find(child);
+              if (found) return found;
+            }
+          };
+          const asset = find(plan.manifest)!;
+          w['pinnedReleaseAsset'] = {
+            ...asset,
+            url: `${primary}${new URL(asset['url'] as string).pathname}`,
+            chunks: (asset['chunks'] as { url: string }[]).map((c) => ({
+              ...c,
+              url: `${primary}${new URL(c.url).pathname}`,
+            })),
+          };
+          return plan.manifest;
+        },
+        { sha256: chunked.sha256, primary },
+      );
+      assert.deepEqual(kept, manifest, 'the active app still holds the manifest it admitted');
+      await att.settled();
+      assert.deepEqual(
+        stepPaths('active-pinned'),
+        [],
+        'an admitted app does not re-read the pointer',
+      );
+      record.step(att.rec, 'active-acquire');
+      const from = sent.length;
+      assert.deepEqual(await acquire(page, viaPrimary(chunked), [], true), {
+        ok: true,
+        size: chunked.size,
+        sha256: chunked.sha256,
+      });
+      await att.settled();
+      assert.deepEqual(
+        modelRequests(att, 'active-acquire')
+          .map((r) => pathOf(r.url))
+          .sort(),
+        chunked.chunks!.map((c) => pathOf(c.url!)).sort(),
+      );
+      assert.equal(
+        sent.slice(from).reduce((n, r) => n + r.bytes, 0),
+        chunked.size,
+      );
+
+      // Restoring the pointer lets the refused runtime admit it on retry, equal to the active one.
+      fault.incompatiblePointer = false;
+      record.step(att.rec, 'retry-valid');
+      const retried = await page.evaluate(async () => {
+        const w = window as unknown as Record<string, unknown>;
+        return (await (w['retryRuntime'] as { plan(): Promise<{ manifest: unknown }> }).plan())
+          .manifest;
+      });
+      assert.deepEqual(retried, manifest);
+      await att.settled();
+      assert.deepEqual(stepPaths('retry-valid'), onlyPointer);
+      t.diagnostic(
+        `admitted ${String(manifest['bundleVersion'])}; refused newer-major and ${mixed?.reason} at ${mixed?.path} with 0 model requests; active app acquired ${chunked.chunks!.length} chunks (${chunked.size} bytes) of its admitted manifest`,
+      );
+    });
   },
-  () => {},
 );
+
 test(
-  'rollback runs the previous deployed app using its own manifest and retained paths',
-  {
-    // disabled-test: reason=no previous deployed app artifact with a bound manifest exists to roll back to; owner=fm-fy2.14; until=a qualified previous deploy-next artifact is retained for staging
-    skip: 'untested: no previous deployed app artifact and bound manifest fixture configured; staging hosts model bytes only',
+  'rollback: the previous deployed app’s own manifest paths are HEAD-200 on the test mirror and load from the staging origin',
+  { skip, timeout: timeoutMs },
+  async (t) => {
+    // The previous app is the verified control artifact (what next.facemorph.me serves before cutover).
+    const control = JSON.parse(
+      execFileSync(
+        process.execPath,
+        [join(REPO, 'scripts/import/fetch-control.mjs'), '--dest', join(work, 'control')],
+        { encoding: 'utf8', env: process.env },
+      )
+        .trim()
+        .split('\n')
+        .at(-1)!,
+    ).summary as { ok: boolean; dir: string; commit: string };
+    assert.equal(control.ok, true, 'previous app artifact verifies against its record');
+    const record_ = JSON.parse(
+      readFileSync(join(REPO, 'import/control-artifact.json'), 'utf8'),
+    ) as {
+      exercised_with: { runtime_manifest_sha256: string };
+    };
+    const expected = record_.exercised_with.runtime_manifest_sha256;
+    const site = join(control.dir, 'deploy-next');
+    const deployedOrigin = new URL(
+      /<meta property="og:url" content="([^"]+)"/.exec(
+        readFileSync(join(site, 'index.html'), 'utf8'),
+      )![1]!,
+    ).origin;
+    const bundle = readFileSync(
+      join(site, readdirSync(site).find((name) => /^app\.[0-9a-f]+\.js$/.test(name)) ?? 'app.js'),
+      'utf8',
+    );
+    assert.ok(bundle.includes(`"${pointerPath}"`), 'the previous app reads its own pointer path');
+    const sha = (bytes: Buffer) => createHash('sha256').update(bytes).digest('hex');
+    const tried: { source: string; sha256: string | null; note?: string }[] = [];
+    let previous: Buffer | undefined;
+    const sources: [string, () => Promise<Buffer>][] = [
+      ...[
+        // The retained copy: the control artifact's runtime manifest, kept with the import records so a rollback
+        // stays provable after next.facemorph.me's pointer moves on (digest-checked below like every source).
+        join(REPO, 'import/runtime-manifests/control', expected, 'manifest.json'),
+        process.env['STAGING_PREVIOUS_MANIFEST'],
+        join(process.env['FACEMORPH_RUNTIME_DIR'] ?? join(REPO, '.cache/runtime'), 'manifest.json'),
+      ]
+        .filter((file): file is string => !!file)
+        .map((file) => [file, async () => readFileSync(file)] as [string, () => Promise<Buffer>]),
+      [
+        `${deployedOrigin}${pointerPath}`,
+        async () => {
+          const r = await fetch(`${deployedOrigin}${pointerPath}`, {
+            signal: AbortSignal.timeout(30_000),
+          });
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+          return Buffer.from(await r.arrayBuffer());
+        },
+      ],
+    ];
+    for (const [source, read] of sources) {
+      try {
+        const bytes = await read();
+        tried.push({ source, sha256: sha(bytes) });
+        if (sha(bytes) === expected) {
+          previous = bytes;
+          break;
+        }
+      } catch (error) {
+        tried.push({ source, sha256: null, note: String(error) });
+      }
+    }
+    mkdirSync(evidence, { recursive: true });
+    if (!previous) {
+      writeFileSync(
+        join(evidence, 'rollback-manifest.json'),
+        JSON.stringify({ expected, tried }, null, 2),
+      );
+      // A rollback cannot be claimed without the previous app's own manifest bytes.
+      assert.fail(`no source of the previous app's manifest ${expected}: ${JSON.stringify(tried)}`);
+    }
+    const prior = JSON.parse(previous.toString()) as Record<string, unknown>;
+    const units = assets(prior).flatMap(({ asset }) => asset.chunks ?? [asset]);
+    for (const unit of units)
+      assert.equal(
+        new URL(unit.url!).origin,
+        deployedOrigin,
+        'previous manifest names its own paths',
+      );
+    const paths = [...new Set(units.map((unit) => pathOf(unit.url!)))].sort();
+    const heads: { path: string; status: number }[] = [];
+    const queue = [...paths];
+    await Promise.all(
+      Array.from({ length: 6 }, async () => {
+        for (let path = queue.shift(); path; path = queue.shift()) {
+          const response = await fetch(`${MIRROR}${path}`, {
+            method: 'HEAD',
+            signal: AbortSignal.timeout(30_000),
+          });
+          heads.push({ path, status: response.status });
+        }
+      }),
+    );
+    writeFileSync(
+      join(evidence, 'rollback-manifest.json'),
+      JSON.stringify(
+        {
+          previousApp: control.commit,
+          manifestSha256: expected,
+          tried,
+          mirror: MIRROR,
+          heads: heads.sort((a, b) => a.path.localeCompare(b.path)),
+        },
+        null,
+        2,
+      ),
+    );
+    assert.deepEqual(
+      heads.filter((r) => r.status !== 200),
+      [],
+      'every rollback path is held on the test mirror',
+    );
+    assert.equal(heads.length, paths.length);
+    const target = assets(prior)
+      .map((a) => a.asset)
+      .filter((a) => a.chunks && a.chunks.length >= 2)
+      .sort((a, b) => a.size - b.size)[0]!;
+    assert.ok(target, 'the previous manifest has a chunked asset');
+    await session('rollback', async (page, att) => {
+      record.step(att.rec, 'previous-parse');
+      const parsed = await page.evaluate(async (value) => {
+        const m = await import(String('/pkg/index.js'));
+        const result = m.parseModelManifest(value);
+        return result.ok ? result.value.bundleVersion : result.error;
+      }, prior);
+      assert.equal(parsed, prior['bundleVersion'], 'the manager accepts the previous manifest');
+      record.step(att.rec, 'previous-acquire');
+      const from = sent.length;
+      assert.deepEqual(await acquire(page, viaPrimary(target)), {
+        ok: true,
+        size: target.size,
+        sha256: target.sha256,
+      });
+      await att.settled();
+      assert.deepEqual(
+        modelRequests(att, 'previous-acquire')
+          .map((r) => pathOf(r.url))
+          .sort(),
+        target.chunks!.map((c) => pathOf(c.url!)).sort(),
+        'only the previous manifest’s own chunk paths are requested',
+      );
+      const forwarded = sent.slice(from);
+      assert.ok(forwarded.every((r) => r.finished && !r.aborted && r.status === 200));
+      assert.equal(
+        forwarded.reduce((n, r) => n + r.bytes, 0),
+        target.size,
+      );
+    });
+    t.diagnostic(
+      `previous app ${control.commit.slice(0, 12)} manifest ${expected.slice(0, 12)} from ${tried.at(-1)!.source}; ${paths.length} paths HEAD-200 on the mirror; loaded ${target.chunks!.length} chunks (${target.size} bytes) from the staging origin`,
+    );
   },
-  () => {},
 );
