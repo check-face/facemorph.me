@@ -4,6 +4,8 @@
 // with one unfinished input, each through file preparation and the MP4. The recorded trace (requests,
 // permit/reservation acquire and release, provider requested/actual, compute-ready, file-ready, cancelled,
 // settled) is compared with test/harness/opctl-expected-trace.json; a mismatch names the first divergence.
+// The bounded execution gate records each compute section's acquire/release; verified reads release
+// compute and finished dependency reuse needs no lease. Keep every section in the strict expected trace.
 // OPCTL_TRACE_UPDATE=1 rewrites the expected trace from this run (review the diff before committing).
 import assert from 'node:assert/strict';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -16,7 +18,9 @@ import { INSTALL_HOOK } from '../parity/elmish-probe.ts';
 import { compareTraces, normalizeTrace, type TraceEvent } from '../harness/opctl-trace.ts';
 
 const runtime = process.env['FACEMORPH_RUNTIME_DIR'] ?? join(REPO, '.cache/runtime');
-const results = join(REPO, 'apps/web/test-results/opctl-trace');
+const out = resolve(process.env['FACEMORPH_DEPLOY_OUT'] ?? REPO);
+const results =
+  process.env['OPCTL_TRACE_RESULTS'] ?? join(REPO, 'apps/web/test-results/opctl-trace');
 const expectedPath = join(REPO, 'apps/web/test/harness/opctl-expected-trace.json');
 
 const stateOf = (page: Page, index: number) =>
@@ -44,15 +48,19 @@ test(
       t.skip(reason);
       return;
     }
-    const artifact = readIdentity(REPO);
+    const artifact = readIdentity(out);
     assert.deepEqual(artifact.findings, []);
     const site = await startControl({
       runtime,
-      artifact: resolve(REPO, 'deploy-next'),
+      artifact: join(out, 'deploy-next'),
       source: artifact.identity.deploySource.buildId,
     });
     const browser = await chromium.launch({ args: [...chromiumArgs, '--disable-features=WebGPU'] });
     mkdirSync(results, { recursive: true });
+    writeFileSync(
+      join(results, 'artifact-identity.json'),
+      JSON.stringify(artifact.identity, null, 2) + '\n',
+    );
     const context = await browser.newContext({
       viewport: { width: 1280, height: 900 },
       ignoreHTTPSErrors: true,
@@ -122,12 +130,32 @@ test(
       await page.getByRole('menuitem', { name: 'Numeric seed', exact: true }).click(); // setup
       await tiles.nth(1).locator('.next-field input').fill('424242');
       await slot(1).click();
+      // The label precedes engine work. This warm seed maps in its first compute section,
+      // then synthesizes in its second: cancel only while that actual inference lease is held.
       await page.waitForFunction(
-        () =>
-          document
-            .querySelectorAll('section.next-face')[1]
-            ?.querySelector('.next-tile-status')
-            ?.textContent?.trim() === 'Generating…',
+        () => {
+          const events =
+            (
+              globalThis as {
+                __FACEMORPH_OPCTL_TRACE__?: { type: string; jobId?: string }[];
+              }
+            ).__FACEMORPH_OPCTL_TRACE__ ?? [];
+          const job = events.filter((event) => event.type === 'provider-requested').at(-1)?.jobId;
+          const acquired = events.filter(
+            (event) => event.type === 'permit-acquire' && event.jobId === job,
+          ).length;
+          const released = events.filter(
+            (event) => event.type === 'permit-release' && event.jobId === job,
+          ).length;
+          return (
+            acquired === 2 &&
+            released === 1 &&
+            document
+              .querySelectorAll('section.next-face')[1]
+              ?.querySelector('.next-tile-status')
+              ?.textContent?.trim() === 'Generating…'
+          );
+        },
         null,
         { timeout: 120_000 },
       );
