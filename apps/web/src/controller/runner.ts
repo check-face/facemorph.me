@@ -1,16 +1,25 @@
 import * as facade from '../../shell/facade/bridge.ts';
 import * as helpers from '../../shell/facade/helpers.ts';
 import { createOperationService } from '../operations/bridge-service.ts';
+import { morphFrameFailure } from '../operations/morph-budget.ts';
+import { morphChecks, neighbourFailure } from '../operations/morph-guards.ts';
+import { browserWebCodecs, probeMp4, type FfmpegAvailability } from '../media/mp4-probe.ts';
 import type { InputRevision } from '../contracts/inputs.ts';
-import type { OperationHandle, OperationRequest, SourceSnapshot } from '../operations/service.ts';
+import type {
+  OperationFailure,
+  OperationHandle,
+  OperationRequest,
+  SourceSnapshot,
+} from '../operations/service.ts';
 import type { Effect, Transition } from './effects.ts';
-import { rejection } from './effects.ts';
+import { rejection, unchanged } from './effects.ts';
 import type { State, Input, Request } from './state.ts';
 import { init, type InitialFacts } from './init.ts';
+import { faceInputProblem } from './derived.ts';
 import { msg } from './msg.ts';
 import { reportSent } from './reducers/reporting.ts';
 import { cancelled } from './reducers/jobs.ts';
-import { scheduled, scheduling } from './reducers/schedule.ts';
+import { schedule, scheduled, scheduling } from './reducers/schedule.ts';
 import { createStore, type Store } from './store.ts';
 import { subscribeProgress, subscribeDownloads } from './subscriptions.ts';
 
@@ -49,6 +58,30 @@ export function orderedEffects(effects: readonly Effect[]): readonly Effect[] {
   ];
 }
 
+/**
+ * Where the FFmpeg fallback stands, read from the same-origin runtime manifest (not a model asset): absent
+ * only when the manifest positively carries no codec; cached when Cache Storage already holds its wasm;
+ * otherwise acquisition consent asks for it. An unreadable manifest is not a refusal: the bridge decides.
+ */
+async function ffmpegAvailability(): Promise<FfmpegAvailability> {
+  let codec: { wasm?: { url?: unknown } } | undefined;
+  try {
+    const response = await fetch('/runtime/manifest.json', { credentials: 'omit' });
+    if (!response.ok) return 'needs-consent';
+    codec = ((await response.json()) as { codec?: { wasm?: { url?: unknown } } }).codec;
+  } catch {
+    return 'needs-consent';
+  }
+  if (!codec) return 'absent';
+  const url = codec.wasm?.url;
+  try {
+    if (typeof url === 'string' && globalThis.caches && (await caches.match(url))) return 'cached';
+  } catch {
+    /* Cache Storage unavailable */
+  }
+  return 'needs-consent';
+}
+
 /** The only I/O boundary for the controller. All compute goes through the operation service. */
 export function createController(
   facts: InitialFacts,
@@ -57,9 +90,21 @@ export function createController(
   // A test can ask for the operation trace (fm-vbj7) by providing an array before the app starts.
   const opctlTrace = (globalThis as { __FACEMORPH_OPCTL_TRACE__?: unknown[] })
     .__FACEMORPH_OPCTL_TRACE__;
-  const service = createOperationService(
-    Array.isArray(opctlTrace) ? { trace: (event) => void opctlTrace.push(event) } : {},
-  );
+  // Morph acceptance pre-checks (fm-fy2.9): the neighbour rule and MP4 probe answer before any acquisition.
+  const checks = morphChecks({
+    probe: (request) =>
+      probeMp4({
+        fps: request.settings.fps,
+        webcodecs: browserWebCodecs(),
+        ffmpeg: ffmpegAvailability,
+      }),
+  });
+  const service = createOperationService({
+    ...(Array.isArray(opctlTrace) ? { trace: (event) => void opctlTrace.push(event) } : {}),
+    morphChecks: checks,
+  });
+  /** The Morph status refusal from the last pre-check, cleared or replaced when the inputs change. */
+  let morphRefusal: string | null = null;
   const initial = init(facts);
   const revisions = new Map<string, number>();
   const photoSelections = new Map<string, number>();
@@ -142,6 +187,12 @@ export function createController(
       if (disposed || event.intent.requestId !== handle.requestId) return;
       if (event.type === 'progress')
         store.dispatch(msg('Progressed', { ...event.progress, jobId }));
+      if (event.type === 'disclosure')
+        update((current) =>
+          current.JobId === jobId
+            ? { state: { ...current, Status: event.text }, effects: [] }
+            : unchanged(current),
+        );
       if (event.type === 'compute-ready' && final) {
         committed = true;
         store.dispatch(msg('Completed', jobId, event.output));
@@ -154,7 +205,15 @@ export function createController(
         if (final && !committed) store.dispatch(msg('Completed', jobId, result.output));
         return true;
       }
-      if (result.status === 'failed') {
+      const cause = result.status === 'failed' ? result.cause : null;
+      if (
+        cause &&
+        (cause.kind === 'morph-neighbours' ||
+          cause.kind === 'mp4-route' ||
+          cause.kind === 'morph-frames')
+      ) {
+        refuseMorph(cause, jobId);
+      } else if (result.status === 'failed') {
         store.dispatch(
           msg(
             'Failed',
@@ -168,6 +227,94 @@ export function createController(
       off();
       handles.delete(handle);
     }
+  }
+  /** A morph refused at acceptance says why in Morph status, never as a generic failure. */
+  function refuseMorph(cause: OperationFailure, jobId: number | null): void {
+    if (
+      cause.kind !== 'morph-neighbours' &&
+      cause.kind !== 'mp4-route' &&
+      cause.kind !== 'morph-frames'
+    )
+      return;
+    const text = cause.message;
+    morphRefusal = cause.kind === 'morph-neighbours' ? text : null;
+    update((current) =>
+      (jobId === null ? current.Busy : current.JobId !== jobId)
+        ? unchanged(current)
+        : schedule({
+            ...current,
+            Busy: false,
+            Error: null,
+            Status: text,
+            Stage: 'idle',
+            Fraction: 0,
+            Warn: null,
+            Remaining: '',
+            ActiveFace: null,
+          }),
+    );
+  }
+  function morphRequest(state: State): Extract<OperationRequest, { kind: 'morph' }> {
+    return {
+      kind: 'morph',
+      sources: state.Inputs.map(source),
+      settings: {
+        kind: state.Kind,
+        width: state.Width,
+        pinch: state.Pinch,
+        frames: state.Frames,
+        fps: state.Fps,
+      },
+      route: { ...identity, requested: state.Provider, fallbackScope: 'cpu-once' },
+    };
+  }
+  /**
+   * Morph acceptance (fm-fy2.9): the frame budget, neighbour rule and MP4 probe answer before the Run
+   * reaches the reducers, so a refused morph never opens the download question or acquires anything.
+   */
+  let accepting = false;
+  function acceptMorph(message: Extract<Parameters<Store['dispatch']>[0], { type: 'Run' }>): void {
+    const state = store.getState();
+    if (accepting) return;
+    if (state.Busy || state.Inputs.length < 2 || state.Inputs.some((i) => faceInputProblem(i)))
+      return store.dispatch(message);
+    const request = morphRequest(state);
+    const frames = morphFrameFailure(request);
+    if (frames) return refuseMorph(frames, null);
+    accepting = true;
+    task(
+      checks(request).finally(() => (accepting = false)),
+      (result) => (result.failure ? refuseMorph(result.failure, null) : store.dispatch(message)),
+      (error) => {
+        console.error('[morph acceptance]', error);
+        store.dispatch(message);
+      },
+    );
+  }
+  const guarded: Store = {
+    ...store,
+    dispatch(message) {
+      if (message.type === 'Run' && message.args[0] === 'morph') acceptMorph(message);
+      else store.dispatch(message);
+    },
+  };
+  /** Re-runs the neighbour rule on changed inputs: a valid change clears the refusal, another replaces it. */
+  function recheckNeighbours(state: State): void {
+    const shown = morphRefusal;
+    const request = morphRequest(state);
+    task(
+      neighbourFailure(request),
+      (failure) => {
+        if (morphRefusal !== shown) return;
+        morphRefusal = failure?.message ?? null;
+        update((current) =>
+          current.Status !== shown || current.Busy
+            ? unchanged(current)
+            : { state: { ...current, Status: failure?.message ?? '' }, effects: [] },
+        );
+      },
+      () => {},
+    );
   }
   async function execute(request: Request): Promise<void> {
     const route = { ...identity, requested: request.provider, fallbackScope: 'cpu-once' as const };
@@ -237,6 +384,7 @@ export function createController(
           if (state.Inputs.some((input) => input.id === effect.id))
             service.revise(effect.id, revision as InputRevision);
           else service.remove(effect.id);
+          if (morphRefusal !== null && state.Status === morphRefusal) recheckNeighbours(state);
           break;
         }
         case 'invalidateMorph':
@@ -437,7 +585,7 @@ export function createController(
   }
   store.update((state) => ({ state, effects: initial.effects }));
   return {
-    store,
+    store: guarded,
     async dispose() {
       if (disposed) return;
       disposed = true;

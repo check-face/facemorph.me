@@ -6,7 +6,7 @@ import Button from '@mui/material/Button';
 import Checkbox from '@mui/material/Checkbox';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import Slider from '@mui/material/Slider';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 export function MorphSlider({
   frames,
@@ -85,6 +85,7 @@ export interface VideoSlotProps {
 }
 
 export function VideoSlot(p: VideoSlotProps) {
+  const [size, setSize] = useState<{ url: string; w: number; h: number } | null>(null);
   if (p.videoUrl === '') return <div className="next-video-slot" />;
   const showSlider = p.useSlider || (p.busy && p.sliderFrames !== null);
   const slider = !p.useSlider ? null : p.sliderFrames ? (
@@ -110,6 +111,13 @@ export function VideoSlot(p: VideoSlotProps) {
           playsInline
           aria-label="Your morph"
           className="next-video"
+          onLoadedMetadata={(e) =>
+            setSize({
+              url: p.videoUrl,
+              w: e.currentTarget.videoWidth,
+              h: e.currentTarget.videoHeight,
+            })
+          }
           {...(p.poster ? { poster: p.poster } : {})}
         />
       )}
@@ -121,6 +129,12 @@ export function VideoSlot(p: VideoSlotProps) {
       />
       {showSlider && slider}
       <div className="next-actions">
+        {/* The actual encoded resolution, read from the video itself (fm-fy2.9: 512 is never hidden). */}
+        {size && size.url === p.videoUrl && size.w > 0 && (
+          <span className="next-video-format" data-next-video-width={size.w}>
+            {`MP4 · ${size.w} × ${size.h}`}
+          </span>
+        )}
         <Button color="inherit" variant="text" onClick={p.onShare}>
           Share morph
         </Button>

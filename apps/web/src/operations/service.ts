@@ -70,6 +70,20 @@ export type OperationFailure =
       readonly recovery: 'shorten-morph' | 'adjust-frames' | 'select-faces';
     }
   | {
+      /** Two cyclically adjacent faces are the same face (defect 6); `faces` are 1-based tile numbers. */
+      readonly kind: 'morph-neighbours';
+      readonly slots: readonly [string, string];
+      readonly faces: readonly [number, number];
+      readonly message: string;
+      readonly recovery: 'change-face';
+    }
+  | {
+      /** No MP4 route on this browser: nothing is synthesised and ready faces stay saveable. */
+      readonly kind: 'mp4-route';
+      readonly message: string;
+      readonly recovery: 'save-faces';
+    }
+  | {
       /** The device is offline and this job needs files that are not on it yet (defect 15). */
       readonly kind: 'offline';
       readonly message: string;
@@ -103,6 +117,12 @@ export type OperationEvent = EventIdentity &
         readonly action: ActionProgress;
         /** The action's status line; a morph speaks only its frame counter and MP4 preparation. */
         readonly line: string | null;
+      }
+    | {
+        /** Said in Morph status before frames start, e.g. the MP4 will be 512 × 512 (fm-fy2.9). */
+        readonly type: 'disclosure';
+        readonly text: string;
+        readonly width: number;
       }
     | { readonly type: 'compute-ready'; readonly output: Output }
     | { readonly type: 'file-ready'; readonly output: Output }

@@ -4,6 +4,7 @@ import type { ComputeRoute } from '@facemorph/stylegan-js';
 import { nextScheduled } from '../Next/scheduler.mjs';
 import { IntentRegistry } from './intents.ts';
 import { morphFrameFailure } from './morph-budget.ts';
+import type { MorphChecks } from './morph-guards.ts';
 import {
   createGovernor,
   type AdmittedPhase,
@@ -61,6 +62,8 @@ interface Pending {
   readonly resolve: (value: OperationSettlement) => void;
   readonly dependencies: Set<Work>;
   readonly refusal: OperationFailure | undefined;
+  /** The morph acceptance pre-checks (neighbour rule, MP4 probe) have passed; no work starts before. */
+  checked: boolean;
   provider: ComputeRoute | null;
   cancelled: boolean;
   started: boolean;
@@ -212,6 +215,8 @@ export function createOperationService(
     readonly online?: () => boolean;
     /** Records the operation trace (fm-vbj7): requests, governor decisions, providers and settlements. */
     readonly trace?: (event: OperationTraceEvent) => void;
+    /** Morph acceptance pre-checks run before any dependency, acquisition or inference (fm-fy2.9). */
+    readonly morphChecks?: MorphChecks;
   } = {},
 ): OperationService {
   const online = options.online ?? (() => globalThis.navigator?.onLine !== false);
@@ -470,7 +475,13 @@ export function createOperationService(
     }
   }
   function prepareParent(item: Pending): void {
-    if (item.started || !isParent(item.handle.request) || blocked.blockMorph || !current(item))
+    if (
+      item.started ||
+      !item.checked ||
+      !isParent(item.handle.request) ||
+      blocked.blockMorph ||
+      !current(item)
+    )
       return;
     const request = item.handle.request;
     for (const source of dependencySources(request)) {
@@ -712,6 +723,7 @@ export function createOperationService(
       line: null,
       readyDependencies: 0,
       refusal: morphFrameFailure(intent.request) ?? blendFailure(intent.request),
+      checked: intent.request.kind !== 'morph' || !options.morphChecks,
     };
     // A newer blend for the same result supersedes a pending one: latest wins, the old result is never
     // installed. It is stopped after the newer one has joined the shared slot jobs, so no face reruns.
@@ -752,6 +764,30 @@ export function createOperationService(
       }
       pump();
       stop(superseded, 'superseded');
+      const checks = options.morphChecks;
+      const request = intent.request;
+      if (!item.checked && !item.refusal && checks && request.kind === 'morph')
+        track(
+          checks(request).then(
+            (result) => {
+              if (!current(item)) return;
+              if (result.failure) return fail(item, result.failure);
+              if (result.route?.ok && result.route.disclosure)
+                emit(item, {
+                  type: 'disclosure',
+                  text: result.route.disclosure,
+                  width: result.route.width,
+                });
+              item.checked = true;
+              pump();
+            },
+            (error: unknown) =>
+              fail(item, {
+                kind: 'operation',
+                message: error instanceof Error ? error.message : String(error),
+              }),
+          ),
+        );
     });
     return handle;
   }
