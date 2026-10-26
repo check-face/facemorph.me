@@ -423,7 +423,12 @@ test(
       if (Array.isArray(value)) return value.forEach(walk);
       if (!value || typeof value !== 'object') return;
       for (const [key, child] of Object.entries(value)) {
-        if (key === 'url' && typeof child === 'string' && child.includes('/runtime/')) {
+        // `manifestUrl`/`workerUrl` name the photo runtime's own pinned manifest and worker (manifest.photo).
+        if (
+          /^(url|manifestUrl|workerUrl)$/.test(key) &&
+          typeof child === 'string' &&
+          child.includes('/runtime/')
+        ) {
           const path = new URL(child, ORIGIN).pathname;
           if (declared.has(path)) continue;
           declared.add(path);
