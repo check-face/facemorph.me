@@ -41,7 +41,15 @@ export function inventory(list, sources) {
     const frozen = at('frozen', s.classic);
     const head = at('head', s.classic);
     const monorepo = s.monorepo ? at('monorepo', s.monorepo) : null;
-    if (!head?.length)
+    // A row the candidate edit set has applied (`applied: {bead, commit}`) must be gone from the head;
+    // every other row must still be there, or the list and the source have drifted.
+    if (s.applied && !(s.applied.bead && s.applied.commit))
+      problems.push(`${s.id}: applied without its bead and commit`);
+    else if (s.applied && head?.length)
+      problems.push(
+        `${s.id}: ${JSON.stringify(s.find)} is still in ${s.classic} at the ${BRANCH} head though applied`,
+      );
+    else if (!s.applied && !head?.length)
       problems.push(
         `${s.id}: ${JSON.stringify(s.find)} is not in ${s.classic} at the ${BRANCH} head`,
       );
@@ -77,6 +85,7 @@ export function inventory(list, sources) {
       action: s.action,
       replacement: s.replacement,
       note: s.note,
+      ...(s.applied ? { applied: s.applied } : {}),
       locations,
     };
   });

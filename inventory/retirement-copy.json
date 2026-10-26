@@ -4,7 +4,7 @@
   "generatedBy": "scripts/delivery/copy-inventory.mjs from scripts/delivery/copy-strings.json",
   "revisions": {
     "classicFrozen": "a42829bb0582b5a7a55ba6b1045a05861612b8a5",
-    "classicHead": "985d52157abab947150cc3712f70039309dfde98",
+    "classicHead": "11b741d1fe2afafcf37d5f621c7a8c5f5b8bc7e3",
     "branch": "candidate/next-delivery-20260916"
   },
   "rules": "The candidate's preview-chrome and retirement strings that change before production, each with its replacement or removal and the bead that makes the edit. scripts/delivery/copy-inventory.mjs locates every one by file and line in classic's Git objects (the frozen import revision and the candidate branch head) and in this repository's shell, and writes inventory/retirement-copy.json, which the candidate edit set (fm-ww4) and the monorepo copy beads read. Draft wording rules: old GUIDs, results and links are not preserved; no new share URLs exist; the operator controls timing, so no fixed date unless the operator sets one; operation limits and CPU/WebGPU/mobile guidance match the chosen artifact; classic self-host Compose is described in Help only, never as a primary recovery link.",
@@ -29,7 +29,7 @@
           "source": "classic",
           "revision": "head",
           "file": "src/Next/Product.fs",
-          "line": 1204,
+          "line": 1212,
           "text": "Html.span [prop.className \"next-preview-strip-lead\";prop.children [Html.strong \"Experimental preview\";Html.text \" of the next facemorph.me. Everything runs on your device.\"]]",
           "owner": "fm-ww4"
         },
@@ -63,7 +63,7 @@
           "source": "classic",
           "revision": "head",
           "file": "src/Next/Product.fs",
-          "line": 1206,
+          "line": 1214,
           "text": "Html.a [prop.href \"https://facemorph.me\";prop.text \"Classic facemorph.me\"]",
           "owner": "fm-ww4"
         },
@@ -97,7 +97,7 @@
           "source": "classic",
           "revision": "head",
           "file": "src/Next/Product.fs",
-          "line": 1207,
+          "line": 1215,
           "text": "Html.a [prop.href \"https://facemorph.me/retirement\";prop.text \"Its server is retiring\"]",
           "owner": "fm-ww4"
         },
@@ -131,7 +131,7 @@
           "source": "classic",
           "revision": "head",
           "file": "src/Next/Product.fs",
-          "line": 1229,
+          "line": 1238,
           "text": "Html.h2 \"Thanks for testing FaceMorph\"",
           "owner": "fm-ww4"
         }
@@ -144,18 +144,14 @@
       "action": "replace",
       "replacement": "Report this problem",
       "note": "The error panel links to the prefilled GitHub issue (issueUrl) instead of a classic site that no longer exists.",
+      "applied": {
+        "bead": "fm-ww4",
+        "commit": "d9b749f"
+      },
       "locations": [
         {
           "source": "classic",
           "revision": "frozen",
-          "file": "src/Next/Product.fs",
-          "line": 1306,
-          "text": "Html.a [prop.href \"https://facemorph.me\";prop.text \"Use classic FaceMorph\"]",
-          "owner": "fm-ww4"
-        },
-        {
-          "source": "classic",
-          "revision": "head",
           "file": "src/Next/Product.fs",
           "line": 1306,
           "text": "Html.a [prop.href \"https://facemorph.me\";prop.text \"Use classic FaceMorph\"]",
@@ -170,21 +166,17 @@
       "action": "remove",
       "replacement": null,
       "note": "Native desktop packages are retired; the slow-device guidance keeps its route and browser advice only.",
+      "applied": {
+        "bead": "fm-ww4",
+        "commit": "d9b749f"
+      },
       "locations": [
         {
           "source": "classic",
           "revision": "frozen",
           "file": "src/Next/Product.fs",
           "line": 1287,
-          "text": "Html.p [Html.a [prop.href \"https://github.com/facemorph-me/facemorph.me/blob/candidate/next-delivery-20260916/desktop/README.md\";prop.text \"Desktop app capabilities and availability\"]]]]",
-          "owner": "fm-ww4"
-        },
-        {
-          "source": "classic",
-          "revision": "head",
-          "file": "src/Next/Product.fs",
-          "line": 1287,
-          "text": "Html.p [Html.a [prop.href \"https://github.com/facemorph-me/facemorph.me/blob/candidate/next-delivery-20260916/desktop/README.md\";prop.text \"Desktop app capabilities and availability\"]]]]",
+          "text": "Html.p [Html.a [prop.href \"https://github.com/check-face/facemorph.me/blob/candidate/next-delivery-20260916/desktop/README.md\";prop.text \"Desktop app capabilities and availability\"]]]]",
           "owner": "fm-ww4"
         }
       ]
@@ -209,8 +201,8 @@
           "source": "classic",
           "revision": "head",
           "file": "src/Next/Product.fs",
-          "line": 1464,
-          "text": "Html.p [prop.className \"next-footer-version\";prop.text (\"Preview version \" + sourceVersion())]]]",
+          "line": 1473,
+          "text": "Html.p [prop.className \"next-footer-version\";prop.text ((if isNextPreviewOrigin then \"Preview version \" else \"Version \") + sourceVersion())]]]",
           "owner": "fm-ww4"
         },
         {
@@ -243,7 +235,7 @@
           "source": "classic",
           "revision": "head",
           "file": "src/Next/Product.fs",
-          "line": 1157,
+          "line": 1162,
           "text": "faq \"What is next.facemorph.me?\" [",
           "owner": "fm-ww4"
         }
@@ -269,7 +261,7 @@
           "source": "classic",
           "revision": "head",
           "file": "src/Next/Product.fs",
-          "line": 1175,
+          "line": 1180,
           "text": "faq \"Is there an API I can self-host?\" [",
           "owner": "fm-ww4"
         }
@@ -282,21 +274,17 @@
       "action": "remove",
       "replacement": null,
       "note": "Retired host (scripts/ci/site/retired-hosts.mjs reports it).",
+      "applied": {
+        "bead": "fm-ww4",
+        "commit": "d9b749f"
+      },
       "locations": [
         {
           "source": "classic",
           "revision": "frozen",
           "file": "src/Next/Product.fs",
           "line": 1176,
-          "text": "Html.p [Html.text \"Yes. The server source is at \";Html.a [prop.href \"https://github.com/facemorph-me/checkface\";prop.text \"github.com/facemorph-me/checkface\"];Html.text \" and is documented at \";Html.a [prop.href \"https://checkface.facemorph.me/api\";prop.text \"checkface.facemorph.me/api\"];Html.text \".\"]",
-          "owner": "fm-ww4"
-        },
-        {
-          "source": "classic",
-          "revision": "head",
-          "file": "src/Next/Product.fs",
-          "line": 1176,
-          "text": "Html.p [Html.text \"Yes. The server source is at \";Html.a [prop.href \"https://github.com/facemorph-me/checkface\";prop.text \"github.com/facemorph-me/checkface\"];Html.text \" and is documented at \";Html.a [prop.href \"https://checkface.facemorph.me/api\";prop.text \"checkface.facemorph.me/api\"];Html.text \".\"]",
+          "text": "Html.p [Html.text \"Yes. The server source is at \";Html.a [prop.href \"https://github.com/check-face/checkface\";prop.text \"github.com/check-face/checkface\"];Html.text \" and is documented at \";Html.a [prop.href \"https://checkface.facemorph.me/api\";prop.text \"checkface.facemorph.me/api\"];Html.text \".\"]",
           "owner": "fm-ww4"
         }
       ]
@@ -321,7 +309,7 @@
           "source": "classic",
           "revision": "head",
           "file": "src/Next/Product.fs",
-          "line": 1156,
+          "line": 1161,
           "text": "Html.p \"Yes. Drop a photo onto a face, tap an empty face, or open a face's mode menu and choose Upload image. Photos are processed on your device and never uploaded.\"]",
           "owner": "fm-ww4"
         }
@@ -334,18 +322,14 @@
       "action": "replace",
       "replacement": "The first visit downloads the face models, about {generatorMb} MB, plus about {photoGb} GB more the first time you use a photo.",
       "note": "Sizes come from the chosen artifact's runtime manifest (generator and photo bundles), not from a hand-written number.",
+      "applied": {
+        "bead": "fm-ww4",
+        "commit": "d9b749f"
+      },
       "locations": [
         {
           "source": "classic",
           "revision": "frozen",
-          "file": "src/Next/Product.fs",
-          "line": 1161,
-          "text": "Html.p \"No. Your photos, the words you type and the faces you make stay here. The first visit downloads the face models, about 200 MB, plus about 1 GB more the first time you use a photo. They're saved on this device, so later visits don't download them again.\"",
-          "owner": "fm-ww4"
-        },
-        {
-          "source": "classic",
-          "revision": "head",
           "file": "src/Next/Product.fs",
           "line": 1161,
           "text": "Html.p \"No. Your photos, the words you type and the faces you make stay here. The first visit downloads the face models, about 200 MB, plus about 1 GB more the first time you use a photo. They're saved on this device, so later visits don't download them again.\"",
@@ -373,7 +357,7 @@
           "source": "classic",
           "revision": "head",
           "file": "src/Next/Product.fs",
-          "line": 1190,
+          "line": 1195,
           "text": "Html.p [Html.a [prop.href \"mailto:checkfaceml@gmail.com\";prop.text \"Email us\"]]",
           "owner": "fm-ww4"
         }
@@ -386,18 +370,14 @@
       "action": "replace",
       "replacement": "The old server and its API have been retired.",
       "note": "Past tense at production; the facemorph.me/retirement page link goes with the legacy site.",
+      "applied": {
+        "bead": "fm-ww4",
+        "commit": "d9b749f"
+      },
       "locations": [
         {
           "source": "classic",
           "revision": "frozen",
-          "file": "src/Next/Product.fs",
-          "line": 1159,
-          "text": "Html.p [Html.text \"The classic site's server and API are being retired. \";Html.a [prop.href \"https://facemorph.me/retirement\";prop.text \"Here's why, and what's changing\"];Html.text \".\"]]",
-          "owner": "fm-ww4"
-        },
-        {
-          "source": "classic",
-          "revision": "head",
           "file": "src/Next/Product.fs",
           "line": 1159,
           "text": "Html.p [Html.text \"The classic site's server and API are being retired. \";Html.a [prop.href \"https://facemorph.me/retirement\";prop.text \"Here's why, and what's changing\"];Html.text \".\"]]",
@@ -412,18 +392,14 @@
       "action": "remove",
       "replacement": null,
       "note": "Retired host.",
+      "applied": {
+        "bead": "fm-ww4",
+        "commit": "11b741d"
+      },
       "locations": [
         {
           "source": "classic",
           "revision": "frozen",
-          "file": "src/explain.md",
-          "line": 94,
-          "text": "It is documented at [checkface.facemorph.me/api](https://checkface.facemorph.me/api)",
-          "owner": "fm-ww4"
-        },
-        {
-          "source": "classic",
-          "revision": "head",
           "file": "src/explain.md",
           "line": 94,
           "text": "It is documented at [checkface.facemorph.me/api](https://checkface.facemorph.me/api)",
@@ -477,7 +453,7 @@
           "source": "classic",
           "revision": "head",
           "file": "src/Config.fs",
-          "line": 49,
+          "line": 55,
           "text": "let apiTransitionDateLabel = \"October 25, 2026 (AEST)\"",
           "owner": "fm-ww4"
         }

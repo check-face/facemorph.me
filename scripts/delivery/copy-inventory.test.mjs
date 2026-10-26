@@ -55,8 +55,11 @@ test('every listed string is located at the branch head and has its replacement 
   assert.equal(committed.entries.length, list.strings.length);
   for (const e of committed.entries) {
     assert.ok(
-      e.locations.some((l) => l.revision === 'head'),
-      `${e.id} located at the head`,
+      e.applied
+        ? e.locations.some((l) => l.revision === 'frozen') &&
+            !e.locations.some((l) => l.revision === 'head')
+        : e.locations.some((l) => l.revision === 'head'),
+      `${e.id} located at the head, or applied and gone from it`,
     );
     assert.ok(
       e.locations.every((l) => /^fm-[a-z0-9.]+$/.test(l.owner) && l.file && l.line > 0),
@@ -97,4 +100,25 @@ test('the replacements promise no fixed date, no preserved links and no new shar
       committed.entries.some((e) => e.kind.startsWith(kind)),
       `the inventory covers ${kind}`,
     );
+});
+
+test('an applied row must be gone from the head and name its bead and commit', () => {
+  const row = {
+    id: 'y',
+    kind: 'FAQ',
+    find: 'old API',
+    classic: 'P.fs',
+    action: 'remove',
+    replacement: null,
+    applied: { bead: 'fm-ww4', commit: 'd9b749f' },
+  };
+  const run = (head, extra = {}) =>
+    inventory(
+      { owners: list.owners, strings: [{ ...row, ...extra }] },
+      { frozen: { 'P.fs': 'the old API' }, head: { 'P.fs': head }, monorepo: {} },
+    ).problems;
+  assert.deepEqual(run('rewritten'), []);
+  assert.equal(run('still the old API').length, 1);
+  assert.equal(run('rewritten', { applied: { bead: 'fm-ww4' } }).length, 1);
+  assert.equal(run('rewritten', { applied: undefined }).length, 1);
 });

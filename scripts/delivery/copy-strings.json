@@ -56,7 +56,11 @@
       "monorepo": null,
       "action": "replace",
       "replacement": "Report this problem",
-      "note": "The error panel links to the prefilled GitHub issue (issueUrl) instead of a classic site that no longer exists."
+      "note": "The error panel links to the prefilled GitHub issue (issueUrl) instead of a classic site that no longer exists.",
+      "applied": {
+        "bead": "fm-ww4",
+        "commit": "d9b749f"
+      }
     },
     {
       "id": "desktop-readme-link",
@@ -66,7 +70,11 @@
       "monorepo": null,
       "action": "remove",
       "replacement": null,
-      "note": "Native desktop packages are retired; the slow-device guidance keeps its route and browser advice only."
+      "note": "Native desktop packages are retired; the slow-device guidance keeps its route and browser advice only.",
+      "applied": {
+        "bead": "fm-ww4",
+        "commit": "d9b749f"
+      }
     },
     {
       "id": "footer-preview-version",
@@ -106,7 +114,11 @@
       "monorepo": null,
       "action": "remove",
       "replacement": null,
-      "note": "Retired host (scripts/ci/site/retired-hosts.mjs reports it)."
+      "note": "Retired host (scripts/ci/site/retired-hosts.mjs reports it).",
+      "applied": {
+        "bead": "fm-ww4",
+        "commit": "d9b749f"
+      }
     },
     {
       "id": "faq-upload-image",
@@ -126,7 +138,11 @@
       "monorepo": null,
       "action": "replace",
       "replacement": "The first visit downloads the face models, about {generatorMb} MB, plus about {photoGb} GB more the first time you use a photo.",
-      "note": "Sizes come from the chosen artifact's runtime manifest (generator and photo bundles), not from a hand-written number."
+      "note": "Sizes come from the chosen artifact's runtime manifest (generator and photo bundles), not from a hand-written number.",
+      "applied": {
+        "bead": "fm-ww4",
+        "commit": "d9b749f"
+      }
     },
     {
       "id": "faq-support-address",
@@ -146,7 +162,11 @@
       "monorepo": null,
       "action": "replace",
       "replacement": "The old server and its API have been retired.",
-      "note": "Past tense at production; the facemorph.me/retirement page link goes with the legacy site."
+      "note": "Past tense at production; the facemorph.me/retirement page link goes with the legacy site.",
+      "applied": {
+        "bead": "fm-ww4",
+        "commit": "d9b749f"
+      }
     },
     {
       "id": "explain-api-docs",
@@ -156,7 +176,11 @@
       "monorepo": null,
       "action": "remove",
       "replacement": null,
-      "note": "Retired host."
+      "note": "Retired host.",
+      "applied": {
+        "bead": "fm-ww4",
+        "commit": "11b741d"
+      }
     },
     {
       "id": "retirement-fixed-date",
