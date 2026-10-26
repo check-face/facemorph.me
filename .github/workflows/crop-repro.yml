@@ -1,7 +1,8 @@
 name: crop-repro
-# fm-f2rs: the crop-confirm loop reproduced as expected-to-fail tests on the control artifact (tests/crop/). Every
-# case must behave as tests/known-failing.json registers it: listed cases fail for the documented reason, the rest
-# behave as intended. Also: fixture digests, and the test-only detector hook absent from the built site.
+# fm-f2rs: the crop-confirm loop cases (tests/crop/), run on the ported app: the identified build:next deploy-next/
+# this job builds (fm-d4mw flipped the ui-* cases there). Every case must behave as tests/known-failing.json registers
+# it: listed cases fail for the documented reason, the rest behave as intended. Also: fixture digests, and the
+# test-only detector hook absent from the retained control and from the built site.
 # The browser cases need the acquired runtime (model weights under import/licences.json). CI never accepts those
 # terms itself: it uses a runtime already acquired on the runner by someone who did (verified, nothing downloaded),
 # and records the browser cases as untested when there is none.
@@ -19,7 +20,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '24'
       - uses: ./.github/actions/setup-workspace # node_modules for the lockfile, shared on the runner (fm-98po)
       - run: node --test tests/crop/scan-test-hook.test.mjs
       - name: Fixtures match their recorded digests
@@ -35,8 +36,14 @@ jobs:
           PY
       - name: Fetch retained control independently
         run: node scripts/import/fetch-control.mjs --dest .cache/control
-      - name: Test-only detector hook absent from the built site
-        run: node tests/crop/scan-test-hook.mjs .cache/control/tree/deploy-next
+      - name: Build the ported app (the cases' subject)
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: npm run build:next && npm run build:next -- --check
+      - name: Test-only detector hook absent from the built sites
+        run: |
+          node tests/crop/scan-test-hook.mjs .cache/control/tree/deploy-next
+          node tests/crop/scan-test-hook.mjs deploy-next
       - name: Runtime already acquired on this runner (verified; nothing downloaded)
         id: runtime
         run: |
@@ -54,13 +61,13 @@ jobs:
         run: |
           python3 -m venv "$RUNNER_TEMP/venv"
           "$RUNNER_TEMP/venv/bin/pip" install -q browser-harness==0.1.8 playwright==1.56.0
-      - name: Crop-confirm loop cases on the control (with a bounded runner)
+      - name: Crop-confirm loop cases on the ported app (with a bounded runner)
         if: steps.runtime.outputs.dir != ''
         uses: ./.github/actions/run-command
         with:
           timeout: '2400'
           command: >-
-            "$RUNNER_TEMP/venv/bin/python" tests/crop/crop_confirm_loop.py --runtime "${{ steps.runtime.outputs.dir }}"
+            "$RUNNER_TEMP/venv/bin/python" tests/crop/crop_confirm_loop.py --artifact ported --runtime "${{ steps.runtime.outputs.dir }}"
             --out crop-evidence --chrome "$(command -v chromium || command -v google-chrome)"
       - uses: actions/upload-artifact@v4
         if: always()

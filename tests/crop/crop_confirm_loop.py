@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""Crop-confirm loop: expected-to-fail tests on the control artifact (fm-f2rs; fixed by crop.fix fm-6ib8).
+"""Crop-confirm loop (fm-f2rs): reproduced as expected-to-fail on the control artifact, fixed by crop.fix (fm-6ib8)
+and flipped on the ported app (fm-d4mw). By default every case runs against the ported app (the identified build:next
+deploy-next/, `--artifact ported`), where all of them must behave as intended; `--artifact control` runs them against
+the retained classic control, frozen before the fix, where the ui-* cases still show the documented loop.
 
 Failure analysis at the imported revision (facemorph.me-classic a42829b; apps/web/ holds the same bytes):
 
@@ -23,21 +26,25 @@ Intended behaviour (PLAN.md confirmed-crop encoding): a confirmed crop goes stra
 one real e4e attempt ('encode-aligned' posted), and the crop dialog does not reopen.
 
 Cases (each reports intended | documented-failure | other):
-  ui-no-face                 built UI: a photo with no face; detection fails, the dialog opens, the person
-                             confirms the whole image
-  ui-redetection-fails       built UI: one small face in a corner; the person crops the middle half (zoom 2)
+  ui-no-face                 built UI: a photo with no face, confirmed whole. On the control detection fails first and
+                             the dialog opens itself; the ported app always confirms a crop before encoding (OK)
+  ui-redetection-fails       built UI: one small face in a corner; the person crops the middle half (zoom 2): on the
+                             ported app Adjust Crop, zoom 2, Use Crop, OK
   bridge-<fixture>           the bridge's composition (product-bridge.mjs engine(): createBrowserRuntime with the
                              real createPhotoAligner and selection worker) called with cropPhotoReported's real output
                              (photo/confirmed-crop.mjs confirmCrop) for the confirmed crop of each fixture; since
                              crop.fix (fm-6ib8) these behave as intended: no detection pass, one e4e attempt
-tests/known-failing.json says which cases must fail, and for which documented reason, until crop.fix.
+tests/known-failing.json says which cases must fail, and for which documented reason (on the ported app: none). On
+the control, frozen before crop.fix, the ui-* cases are expected to show the documented loop (CONTROL_LOOPS).
 
 Test-build hook (for the ported app, absent from production builds and checked by the build scan):
 window.__FACEMORPH_TEST_FAIL_DETECTION__ = true would force the detector to report zero faces. The control has no
 such hook, so the cases above use real fixtures instead.
 
-  python3 tests/crop/crop_confirm_loop.py [--runtime .cache/runtime] [--out crop-evidence] [--case ui-no-face ...]
-Writes <out>/results.json; exit 0 when every case matches tests/known-failing.json, 1 otherwise.
+  python3 tests/crop/crop_confirm_loop.py [--artifact ported|control] [--runtime .cache/runtime] [--out crop-evidence]
+                                         [--case ui-no-face ...]
+The ported artifact is deploy-next/ as `npm run build:next` wrote it (verified with build:next --check).
+Writes <out>/results.json; exit 0 when every case matches its expectation, 1 otherwise.
 """
 import argparse, asyncio, json, re, shutil, sys, tempfile, time
 from pathlib import Path
@@ -66,6 +73,8 @@ Worker.prototype.postMessage=function(m,...rest){const t=m&&m.type;if(t){window.
  if(t==='align')window.__cropProbe.align++;if(t==='encode-aligned')window.__cropProbe.encode++;}return post.call(this,m,...rest);};
 """
 REDETECTION = r'No face was found|More than one face was found|Choose a clear photo containing exactly one face'
+# The classic control predates crop.fix: its ui-* cases still loop (the documented failure), whatever the registry says.
+CONTROL_LOOPS = {'ui-no-face', 'ui-redetection-fails'}
 # product-bridge.mjs:407: the messages that turn a failed run into a crop reopen.
 BRIDGE_REOPENS = r'No face was found|More than one face was found'
 
@@ -143,6 +152,63 @@ async def ui_case(context, name, fixture, zoom, evidence):
         await page.close()
 
 
+async def ui_case_ported(context, name, fixture, zoom, evidence):
+    """The same journey on the ported app's crop flow: a chosen photo opens 'Encode an image' (confirmation), OK
+    confirms the proposal; ADJUST CROP opens the editor, where '+' zooms by 0.25 and Use Crop returns to the
+    confirmation. A reopen is any later crop choice for the face (counted per crop choice in the app state)."""
+    page = await context.new_page()
+    await page.add_init_script(INSTRUMENT)
+    try:
+        await page.goto(ORIGIN + '/', wait_until='load')
+        await page.wait_for_selector('section.next-face', timeout=60000)
+        # Setup: the analytics and model-download offers are not under test; the photo download is accepted when asked.
+        await page.evaluate("setInterval(()=>{for(const b of document.querySelectorAll('button'))"
+                            "if(/^(Not now|Ask me later)$/.test(b.textContent.trim()||b.getAttribute('aria-label')||''))b.click();"
+                            "document.querySelector('.next-download-dialog .next-download-accept')?.click();},250)")
+        # Every new crop choice (the confirmation of a newly chosen or reopened crop) counts as an open.
+        await page.evaluate("window.__cropOpens=0;let shown=null;setInterval(()=>{const img=document.querySelector("
+                            "'.next-encode-dialog .next-encode-preview img, .next-encode-dialog .next-crop-image');const src=img?img.src:null;"
+                            "if(src&&src!==shown)window.__cropOpens++;shown=src;},50)")
+        face = page.locator('section.next-face').first
+        await face.locator('input[type=file]').set_input_files(str(FIXTURES / fixture))
+        dialog = page.locator('.next-encode-dialog')
+        await dialog.locator('.next-encode-preview img').wait_for(timeout=120000)
+        if zoom != 1:
+            await dialog.get_by_role('button', name='ADJUST CROP', exact=True).click()
+            await dialog.locator('.next-crop-view').wait_for()
+            await page.locator('.next-crop-view').focus()
+            for _ in range(round((zoom - 1) / 0.25)):
+                await page.keyboard.press('+')
+            await dialog.get_by_role('button', name='Use Crop', exact=True).click()
+            await dialog.locator('.next-encode-preview img').wait_for()
+        before = await page.evaluate("({opens:window.__cropOpens,encode:window.__cropProbe.encode,align:window.__cropProbe.align})")
+        await dialog.get_by_role('button', name='OK', exact=True).click()
+        # Settle: the face either encodes (one e4e attempt, the product idle again) or its crop reopens.
+        settle = time.monotonic() + 600
+        while time.monotonic() < settle:
+            state = await page.evaluate("({opens:window.__cropOpens,encode:window.__cropProbe.encode,"
+                                        "busy:document.querySelector('.next-product')?.getAttribute('data-next-busy'),"
+                                        "error:!!document.querySelector('.next-error > p')})")
+            if state['opens'] > before['opens'] or state['error'] or (state['encode'] > before['encode'] and state['busy'] == 'false'):
+                break
+            await page.wait_for_timeout(500)
+        await page.wait_for_timeout(1000)
+        after = await page.evaluate("({opens:window.__cropOpens,encode:window.__cropProbe.encode,align:window.__cropProbe.align,"
+                                    "status:document.querySelector('.next-status')?.innerText||'',error:document.querySelector('.next-error')?.innerText||''})")
+        reopened = after['opens'] > before['opens']
+        encodes = after['encode'] - before['encode']
+        outcome = classify(encodes, reopened)
+        if outcome != 'intended':
+            await page.screenshot(path=str(evidence / f'{name}.png'), full_page=True)
+        return {'case': name, 'outcome': outcome, 'fixture': fixture, 'cropReopened': reopened, 'e4eAttemptsAfterConfirm': encodes,
+                'detectionPassesAfterConfirm': after['align'] - before['align'], 'status': after['status'], 'error': after['error']}
+    except Exception as exc:
+        await page.screenshot(path=str(evidence / f'{name}.png'), full_page=True)
+        return {'case': name, 'outcome': 'other', 'fixture': fixture, 'error': f'{type(exc).__name__}: {exc}'}
+    finally:
+        await page.close()
+
+
 BRIDGE = """async ([fixture, area]) => {
   const {createBrowserRuntime} = await import('/src/Next/browser/runtime.mjs');
   const {createPhotoAligner} = await import('/src/Next/photo/align-photo.mjs');
@@ -191,20 +257,26 @@ async def bridge_case(context, fixture, evidence):
         await page.close()
 
 
-async def run_cases(site, cases, evidence):
+async def run_cases(site, cases, evidence, ported):
     from playwright.async_api import async_playwright
     async with async_playwright() as pw:
         browser = await pw.chromium.connect_over_cdp(site.cdp_url)
         context = browser.contexts[0]
         results = []
+        ui = ui_case_ported if ported else ui_case
+        # On the ported app a confirmed crop encodes, and its result is cached by confirmed crop: the ui cases get their
+        # own context, so a bridge case of the same pixels and crop still makes its own e4e attempt (no cache hit).
+        ui_context = await browser.new_context(ignore_https_errors=True) if ported else context
         for case in cases:
             if case == 'ui-no-face':
-                results.append(await ui_case(context, case, 'no-face.jpg', 1, evidence))
+                results.append(await ui(ui_context, case, 'no-face.jpg', 1, evidence))
             elif case == 'ui-redetection-fails':
-                results.append(await ui_case(context, case, 'redetection-fails-on-confirmed-crop.jpg', 2, evidence))
+                results.append(await ui(ui_context, case, 'redetection-fails-on-confirmed-crop.jpg', 2, evidence))
             elif case.startswith('bridge-'):
                 results.append(await bridge_case(context, case.removeprefix('bridge-') + '.jpg', evidence))
             print(json.dumps(results[-1]), flush=True)
+        if ui_context is not context:
+            await ui_context.close()
         await browser.close()
     return results
 
@@ -220,6 +292,8 @@ def main():
     ap.add_argument('--out', type=Path, default=REPO / 'crop-evidence')
     ap.add_argument('--chrome', default=shutil.which('google-chrome') or shutil.which('chromium') or 'chromium')
     ap.add_argument('--case', action='append', choices=all_cases)
+    ap.add_argument('--artifact', choices=['ported', 'control'], default='ported',
+                    help='ported: the identified build:next deploy-next/ (default); control: the retained classic control')
     a = ap.parse_args()
     evidence = a.out.resolve()
     evidence.mkdir(parents=True, exist_ok=True)
@@ -229,19 +303,23 @@ def main():
     # The fixtures are served beside the control in the site's copy; the control's own files are unchanged.
     # The bridge cases load source modules in the browser: serve a browser-loadable copy (fm-eulc's TS shims inlined).
     src = browser_source(REPO / 'apps/web/src', Path(tempfile.mkdtemp(prefix='crop-src-')) / 'src')
-    with served_control(a.runtime, evidence, a.chrome, retained=True, extra_trees={'src': src, 'crop-fixtures': FIXTURES}) as site:
-        results = asyncio.run(run_cases(site, cases, evidence))
+    ported = a.artifact == 'ported'
+    with served_control(a.runtime, evidence, a.chrome, retained=not ported, extra_trees={'src': src, 'crop-fixtures': FIXTURES}) as site:
+        results = asyncio.run(run_cases(site, cases, evidence, ported))
         artifact, runtime = site.artifact, site.runtime
     mismatches = []
     for r in results:
         entry = known.get(r['case'])
-        want = 'documented-failure' if entry else 'intended'
+        frozen = not ported and r['case'] in CONTROL_LOOPS
+        want = 'documented-failure' if entry or frozen else 'intended'
         r['expected'] = want
         if entry:
             r['knownFailing'] = {'bead': entry['bead'], 'fixedBy': entry['fixedBy']}
+        elif frozen:
+            r['knownFailing'] = {'bead': 'fm-f2rs', 'fixedBy': 'fm-6ib8; the classic control is frozen before it'}
         if r['outcome'] != want:
             mismatches.append(r['case'])
-    report = {'bead': 'fm-f2rs', 'artifact': artifact, 'runtime': runtime, 'results': results, 'mismatches': mismatches,
+    report = {'bead': 'fm-f2rs', 'subject': a.artifact, 'artifact': artifact, 'runtime': runtime, 'results': results, 'mismatches': mismatches,
               'passed': not mismatches, 'meaning': 'passed = every case behaves as registered: known-failing cases fail for the documented '
               'reason (crop reopens / redetection, no e4e attempt); all others behave as intended. A known-failing case that '
               'now behaves as intended is a mismatch: remove it from tests/known-failing.json in the fixing bead.'}

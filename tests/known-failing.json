@@ -1,20 +1,5 @@
 {
   "schema": "facemorph.known-failing/1",
-  "note": "Tests that must fail, for the documented reason, until the named bead fixes the behaviour. A listed case that starts behaving as intended fails CI: the fixing bead removes its entry. Unlisted cases must behave as intended.",
-  "entries": [
-    {
-      "case": "ui-no-face",
-      "suite": "tests/crop/crop_confirm_loop.py",
-      "bead": "fm-f2rs",
-      "fixedBy": "fm-6ib8 (crop.fix); built UI flips in crop.ported-app",
-      "reason": "confirmed crop is re-detected; the crop dialog reopens and no e4e attempt is made"
-    },
-    {
-      "case": "ui-redetection-fails",
-      "suite": "tests/crop/crop_confirm_loop.py",
-      "bead": "fm-f2rs",
-      "fixedBy": "fm-6ib8 (crop.fix); built UI flips in crop.ported-app",
-      "reason": "confirmed crop is re-detected; the crop dialog reopens and no e4e attempt is made"
-    }
-  ]
+  "note": "Tests that must fail, for the documented reason, until the named bead fixes the behaviour. A listed case that starts behaving as intended fails CI: the fixing bead removes its entry. Unlisted cases must behave as intended. The crop-confirm loop rows (fm-f2rs ui-no-face, ui-redetection-fails) were removed when they flipped on the ported app (fm-d4mw).",
+  "entries": []
 }
