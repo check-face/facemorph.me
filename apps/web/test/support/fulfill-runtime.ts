@@ -9,7 +9,7 @@ export async function fulfillRuntime(
 ): Promise<void> {
   const response = await request.get(url);
   try {
-    await route.fulfill({ response, headers });
+    await route.fulfill({ response, headers: { ...response.headers(), ...headers } });
   } finally {
     await response.dispose();
   }

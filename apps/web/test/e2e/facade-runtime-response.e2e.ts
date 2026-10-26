@@ -32,6 +32,7 @@ test('runtime HTTP responses retain exact bytes and failure status without infla
   await context.route('https://runtime.example/runtime/**', (route) =>
     fulfillRuntime(route, context.request, site.origin + new URL(route.request().url()).pathname, {
       'content-type': 'application/octet-stream',
+      'cache-control': 'no-store',
       'access-control-allow-origin': '*',
       'cross-origin-resource-policy': 'cross-origin',
     }),
@@ -44,13 +45,23 @@ test('runtime HTTP responses retain exact bytes and failure status without infla
     const digest = await crypto.subtle.digest('SHA-256', bytes);
     return {
       status: response.status,
+      contentLength: response.headers.get('content-length'),
+      contentType: response.headers.get('content-type'),
+      cacheControl: response.headers.get('cache-control'),
       length: bytes.byteLength,
       digest: Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join(
         '',
       ),
     };
   });
-  assert.deepEqual(received, { status: 200, length: bytes.length, digest });
+  assert.deepEqual(received, {
+    status: 200,
+    contentLength: String(bytes.length),
+    contentType: 'application/octet-stream',
+    cacheControl: 'no-store',
+    length: bytes.length,
+    digest,
+  });
   const missing = await page.evaluate(async () => {
     const response = await fetch('https://runtime.example/runtime/missing.bin');
     return { status: response.status, length: (await response.arrayBuffer()).byteLength };
