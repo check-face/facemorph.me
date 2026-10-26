@@ -1465,10 +1465,10 @@
       "bytes": 33331,
       "class": "src-next",
       "ported": {
-        "sha256": "37091e96fcabca694616be83c14298848317f7dd839d395b901403e100067523",
-        "bytes": 31087,
-        "bead": "fm-dmlz",
-        "reason": "acquires under the candidate bridge scope as a grant (bridge-grant.mjs), widened by the streamed encoder descriptor; passes modelAlternateOrigins(location.hostname); Vite destination integration: shared production headers and native dynamic-import directives; compiled artifact identity. (fm-zz2i); Continues verified execution through browser/model-source.mjs when durable model storage refuses (1bb7bd0) (fm-fy2.13); mapping, synthesis, canaries and the ORT runtime run on the stylegan-js engine behind the unchanged worker protocol; compute.photo-descriptor: the worker encodes through the package's streamed encoder after acquiring every shard; dimensions come from the shipped descriptor"
+        "sha256": "9cdbbe685fb9e01064296859c62a8c92bc6f91c7be5fe94303761820c76bf72d",
+        "bytes": 30464,
+        "bead": "fm-fy2.6",
+        "reason": "acquires under the candidate bridge scope as a grant (bridge-grant.mjs), widened by the streamed encoder descriptor; passes modelAlternateOrigins(location.hostname); Vite destination integration: shared production headers and native dynamic-import directives; compiled artifact identity. (fm-zz2i); Continues verified execution through browser/model-source.mjs when durable model storage refuses (1bb7bd0) (fm-fy2.13); mapping, synthesis, canaries and the ORT runtime run on the stylegan-js engine behind the unchanged worker protocol; compute.photo-descriptor: the worker encodes through the package's streamed encoder after acquiring every shard; dimensions come from the shipped descriptor; compute.app-rebind: the streamed e4e is the only photo encoder; the app's whole-encoder ORT path is removed"
       }
     },
     {

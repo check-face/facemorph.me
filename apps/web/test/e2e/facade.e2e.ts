@@ -243,6 +243,28 @@ const keep = async (name: string) => {
   await page.screenshot({ path: join(results, `${name}.png`) }).catch(() => {});
 };
 
+test(
+  'engine-construction: constructing the runtime and reading its status request nothing but the pointer and start no worker',
+  { timeout: 120_000 },
+  async () => {
+    const before = new Map(counts);
+    const started = workersStarted;
+    const r = await call<{ statuses: { busy?: boolean; disposed?: boolean }[] }>(
+      'constructRuntime',
+    );
+    const requested = [...counts]
+      .filter(([path, n]) => n > (before.get(path) ?? 0))
+      .map(([path]) => path);
+    log(
+      `engine-construction: requested ${JSON.stringify(requested)}; workers ${workersStarted - started}`,
+    );
+    assert.deepEqual(requested, ['/runtime/manifest.json'], 'only the pointer the caller read');
+    assert.equal(workersStarted - started, 0, 'no worker at construction or status reads');
+    assert.equal(r.statuses.length, 3);
+    assert.ok(r.statuses.every((s) => s.busy === false));
+  },
+);
+
 test('cpu-name: a name becomes a typed Output with its face', { timeout: 600_000 }, async () => {
   try {
     const r = await call<{ out: Out } & Settled>('face', 'a', 'text', 'charlotte');
@@ -388,6 +410,35 @@ test(
     assert.equal(warm.out.errorMessage, '', warm.out.errorMessage);
     assert.ok(error(warmValues) <= 1e-4, `warm ${error(warmValues)}`);
     assert.deepEqual(requested, [], 'the warm encode reads verified local shards only');
+  },
+);
+
+test(
+  'engine-requests: every runtime path the journeys requested is an asset or chunk the manifests declare',
+  { timeout: 60_000 },
+  async () => {
+    // The manager acquires exactly what the (verified) manifests name: walk the pointer and each nested manifest.
+    const declared = new Set<string>(['/runtime/manifest.json']);
+    const walk = (value: unknown): void => {
+      if (Array.isArray(value)) return value.forEach(walk);
+      if (!value || typeof value !== 'object') return;
+      for (const [key, child] of Object.entries(value)) {
+        if (key === 'url' && typeof child === 'string' && child.includes('/runtime/')) {
+          const path = new URL(child, ORIGIN).pathname;
+          if (declared.has(path)) continue;
+          declared.add(path);
+          const local = join(RUNTIME, path.slice('/runtime/'.length));
+          if (path.endsWith('.json') && existsSync(local))
+            walk(JSON.parse(readFileSync(local, 'utf8')));
+        } else walk(child);
+      }
+    };
+    walk(JSON.parse(readFileSync(join(RUNTIME, 'manifest.json'), 'utf8')));
+    const requested = [...counts.keys()].filter((path) => path.startsWith('/runtime/'));
+    const undeclared = requested.filter((path) => !declared.has(path));
+    log(`engine-requests: ${requested.length} runtime paths requested, ${declared.size} declared`);
+    assert.ok(requested.length > 1, 'the journeys acquired model assets');
+    assert.deepEqual(undeclared, [], 'a runtime request the manifests do not declare');
   },
 );
 

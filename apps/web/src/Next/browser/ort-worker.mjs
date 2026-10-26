@@ -31,10 +31,9 @@ let gpuEngine='ort',manifest,ort,cache,generator=null,provider,currentId,manifes
  * higher: the encoder and the route are both resident. That is the trade, and it is only offered
  * to a device that has said it has the room.
  */
-let encoder=null,encoderStream=null;
+let encoderStream=null;
 async function releaseEncoder(){
  shedShards();
- if(encoder){const session=encoder;encoder=null;await session.release().catch(()=>{});}
  if(encoderStream){const held=encoderStream;encoderStream=null;held.release();}
 }
 const report=(id,stage,extra={})=>postMessage({id,type:'progress',stage,...extra});
@@ -285,6 +284,7 @@ async function encodeStream(tensor,id,qualifiedEncoderSha256,confirmedCropId){
    fullQualify?await qualifyEncoderReference({config,manifestSha256:descriptor.sha256,execute,acquireBytes:asset=>bytes(asset,id),onProgress:event=>report(id,event.stage,event)})
    :qualifiedEncoderSha256===descriptor.sha256?{passed:true,manifestSha256:descriptor.sha256,reusedRuntimeAdmission:true}
    :{passed:true,manifestSha256:descriptor.sha256,verifiedOnThisDevice:false,scope:'Encoder correctness is verified in the device lab, not per device (operator direction, 21 September)'};
+  report(id,'encoding');
   const result=await execute(tensor,confirmedCropId);result.encoderQualification=encoderQualification;
   requireLatent(result.values);const stats=result.encoderStats;report(id,'encoder-loaded',{elapsedMs:stats.sessionCreateMs,scope:'Sum of108 sequential ORT session creations',acquisitionMs:stats.verifiedReadMs});report(id,'encoding-complete',{elapsedMs:stats.runMs,scope:'Sum of108 session inference calls',totalWallMs:performance.now()-started});return result;
 }
@@ -414,7 +414,8 @@ self.onmessage=({data})=>{
  // byte arrives, so the bar measures the wait the user is actually in for.
  planAsset(manifest.encoderStream||manifest.encoder);await probePlanned();
  if(!(request.tensor instanceof Float32Array)||request.tensor.length!==196608||!request.tensor.every(Number.isFinite))throw Error('Invalid aligned photo tensor');
- if(manifest.encoderStream){result=await encodeStream(request.tensor,id,request.qualifiedEncoderSha256,request.confirmedCropId);}else{await ensureOrt(id);let input,out,values;try{if(!encoder){report(id,'encoder-loading');const created=performance.now();encoder=await ort.InferenceSession.create(await bytes(manifest.encoder,id),{executionProviders:['wasm']});report(id,'encoder-loaded',{elapsedMs:Math.round(performance.now()-created)});}input=new ort.Tensor('float32',request.tensor,[1,3,256,256]);report(id,'encoding');const started=performance.now();out=(await encoder.run({image:input})).w;values=requireLatent(new Float32Array(await out.getData()));report(id,'encoding-complete',{elapsedMs:Math.round(performance.now()-started)});}finally{out?.dispose();input?.dispose();}result={values,shape:[...BATCH_W_SHAPE],space:'w-plus',encoderProvider:'wasm'};}
+ // The streamed encoder is the only photo encoder (fm-fy2.6): the package runs it; the app holds no second e4e path.
+ if(!manifest.encoderStream)throw Error('This model bundle has no streamed photo encoder.');result=await encodeStream(request.tensor,id,request.qualifiedEncoderSha256,request.confirmedCropId);
  }else throw Error('Unknown runtime operation');postMessage({id,type:'complete',result},result?.rgba?[result.rgba]:[]);}catch(error){postMessage({id,type:'error',error:{name:error.name,message:error.message}});}});
  pump();
 };

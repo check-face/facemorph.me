@@ -10,6 +10,7 @@ import type {
 import type { InputRevision } from '../../../src/contracts/inputs.ts';
 import { readSession } from '../../../src/Next/last-result.mjs';
 import { cropPhotoReported } from '../../../src/Next/product-bridge.mjs';
+import { createBrowserRuntime } from '../../../src/Next/browser/runtime.mjs';
 import { generationIdentity } from '../../../src/Next/browser/identity.mjs';
 import { digest, openOriginals } from '../../../src/Next/browser/originals.mjs';
 import {
@@ -378,6 +379,26 @@ const harness = {
     )) as File;
     const out = await f.execute(request('face', id, [input(id, 'photo', 'Photo', chosen)]));
     return { out, ...settled() };
+  },
+  /**
+   * compute.app-rebind (fm-fy2.6): construct the engine's runtime from the served pointer and read its status, with
+   * no work asked of it. The runner asserts that this requests nothing but the pointer and starts no worker.
+   */
+  async constructRuntime() {
+    const response = await fetch('/runtime/manifest.json');
+    const bytes = await response.arrayBuffer();
+    const manifest: unknown = JSON.parse(new TextDecoder().decode(bytes));
+    const manifestSha256 = Array.from(
+      new Uint8Array(await crypto.subtle.digest('SHA-256', bytes)),
+      (x) => x.toString(16).padStart(2, '0'),
+    ).join('');
+    const runtime = createBrowserRuntime({ manifest, manifestSha256 }) as {
+      status(): unknown;
+      dispose(): void;
+    };
+    const statuses = [runtime.status(), runtime.status(), runtime.status()];
+    runtime.dispose();
+    return { statuses: JSON.parse(JSON.stringify(statuses)) as unknown[] };
   },
   save: (id: string) => f.saveMedia(id),
   /** One Save with its wall time, the prepared-file counters and the job progress count after it (fm-ykfa). */
