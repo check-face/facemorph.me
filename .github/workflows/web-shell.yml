@@ -159,6 +159,10 @@ jobs:
       - uses: ./.github/actions/setup-playwright # browsers cached per Playwright version (fm-98po)
         with:
           browsers: chromium firefox webkit
+      # facade and face-controls import app modules that read the engine package through its built dist/
+      # exports; without it they fail to load (run 40290030872).
+      - run: npm run build -w packages/stylegan-js -w packages/browser-model-manager
+        working-directory: .
       - name: Verify the canonical site artifact
         uses: ./.github/actions/fetch-artifact
         with:

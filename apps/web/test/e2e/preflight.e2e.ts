@@ -5,7 +5,7 @@ import { spawn } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
-import { chromium, type Page } from 'playwright';
+import { chromium, type Browser, type Page } from 'playwright';
 import { serve } from '../support/serve.ts';
 import type { checkDevice } from '../../src/preflight/checker.ts';
 import type { createGpuSample, admitsGpuSample } from '../../src/preflight/gpu-sample.ts';
@@ -25,6 +25,8 @@ declare global {
 }
 const out = new URL('../../test-results/preflight/', import.meta.url).pathname;
 const evidence: unknown[] = [];
+// Each test writes here, whichever test runs or fails first.
+mkdirSync(out, { recursive: true });
 function clean(result: CheckResult) {
   assert.equal(result.resourcesRemaining, 0);
   assert.ok(result.scratchPeakBytes <= 16 * 1024 * 1024);
@@ -50,6 +52,9 @@ async function visibilityBrowser() {
   const child = spawn(
     chromium.executablePath(),
     [
+      // New headless is the full browser with real tab visibility; it needs no display, which a hosted
+      // runner lacks (a headed launch there exits before attachment).
+      '--headless',
       '--no-sandbox',
       '--no-first-run',
       '--no-default-browser-check',
@@ -116,27 +121,36 @@ test(
     const site = await serve(
       process.env['FACEMORPH_PREFLIGHT_SITE'] ?? new URL('../../dist', import.meta.url).pathname,
     );
-    const plain = await visibilityBrowser();
-    const context = plain.context;
+    // Registered before anything can fail: a listening server or a browser left open keeps the
+    // test process alive after the failure, and the whole e2e run never exits.
+    let plain: Awaited<ReturnType<typeof visibilityBrowser>> | undefined;
+    let page: Page | undefined;
     const requests: string[] = [];
+    t.after(async () => {
+      try {
+        if (plain) {
+          if (t.error && page)
+            await page.screenshot({ path: join(out, 'cpu-failure.png') }).catch(() => {});
+          await plain.context.tracing.stop({ path: join(out, 'cpu-trace.zip') }).catch(() => {});
+          writeFileSync(join(out, 'cpu.json'), JSON.stringify({ evidence, requests }, null, 2));
+          await plain.close();
+        }
+      } finally {
+        await site.close();
+      }
+    });
+    plain = await visibilityBrowser();
+    const context = plain.context;
     await context.route('**/*', (route) => {
       requests.push(route.request().url());
       return route.continue();
     });
     await context.tracing.start({ screenshots: true, snapshots: true, sources: true });
-    const page = await context.newPage();
+    page = await context.newPage();
     // Other desktop workers may change window focus during the unrelated timing cases.
     // Disable this protection explicitly for the real visibilitychange case below.
     const focus = await context.newCDPSession(page);
     await focus.send('Emulation.setFocusEmulationEnabled', { enabled: true });
-    mkdirSync(out, { recursive: true });
-    t.after(async () => {
-      if (t.error) await page.screenshot({ path: join(out, 'cpu-failure.png') }).catch(() => {});
-      await context.tracing.stop({ path: join(out, 'cpu-trace.zip') });
-      writeFileSync(join(out, 'cpu.json'), JSON.stringify({ evidence, requests }, null, 2));
-      await plain.close();
-      await site.close();
-    });
     await surface(page, site.origin);
     const result = await page.evaluate(() => window.preflight.checkDevice({ rerun: true }));
     clean(result);
@@ -225,25 +239,35 @@ test(
     const site = await serve(
       process.env['FACEMORPH_PREFLIGHT_SITE'] ?? new URL('../../dist', import.meta.url).pathname,
     );
+    let browser: Browser | undefined;
+    let page: Page | undefined;
+    t.after(async () => {
+      try {
+        if (browser) {
+          if (t.error && page)
+            await page.screenshot({ path: join(out, 'gpu-failure.png') }).catch(() => {});
+          await browser
+            .contexts()[0]
+            ?.tracing.stop({ path: join(out, 'gpu-trace.zip') })
+            .catch(() => {});
+          await browser.close();
+        }
+      } finally {
+        await site.close();
+      }
+    });
     // Software Vulkan is still a real browser GPUDevice, not a mocked API or inference pass.
-    const browser = await chromium.launch({
+    browser = await chromium.launch({
       args: ['--enable-unsafe-webgpu', '--use-angle=swiftshader'],
     });
     const context = await browser.newContext();
-    const page = await context.newPage();
+    page = await context.newPage();
     const requests: string[] = [];
     await context.route('**/*', (route) => {
       requests.push(route.request().url());
       return route.continue();
     });
     await context.tracing.start({ screenshots: true, snapshots: true, sources: true });
-    t.after(async () => {
-      mkdirSync(out, { recursive: true });
-      if (t.error) await page.screenshot({ path: join(out, 'gpu-failure.png') }).catch(() => {});
-      await context.tracing.stop({ path: join(out, 'gpu-trace.zip') });
-      await browser.close();
-      await site.close();
-    });
     await surface(page, site.origin);
     const result = await page.evaluate(() => window.preflight.checkDevice({ rerun: true }));
     clean(result);

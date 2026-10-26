@@ -133,8 +133,8 @@ for (const [engine, type] of Object.entries(ENGINES).filter(([e]) => !only || on
           assert.equal(await select.inputValue(), value);
         }
         assert.match(
-          await page.locator('.next-frame-count').innerText(),
-          /^64 frames total$/,
+          await page.locator('#next-custom-frames-note').innerText(),
+          /^64 frames total · 4\.0 s video$/,
           `${at}: 2 faces × 32 frames`,
         );
         const pinch = page.getByLabel('Pinch centre');
