@@ -31,6 +31,8 @@ import {
   type Route,
 } from 'playwright';
 import { press } from '../support/operate.ts';
+import { serve, type Served } from '../support/serve.ts';
+import { fulfillRuntime } from '../support/fulfill-runtime.ts';
 import { build } from 'vite';
 import { controlRows, fixture, verifyControl } from '../controller/control.ts';
 import { replayFirstVisit, replayRows, type Replayers } from '../controller/replay.ts';
@@ -78,6 +80,7 @@ const TYPES: Record<string, string> = {
 const log = (line: string) => console.log(`# ${line}`);
 
 let bundleDir = '';
+let runtimeServer: Served | undefined;
 let browser: Browser;
 let context: BrowserContext;
 let page: Page;
@@ -132,17 +135,17 @@ async function open(publicGallery = false): Promise<void> {
                   : join(bundleDir, path === '/' ? 'index.html' : path);
     if (!existsSync(file) || !statSync(file).isFile())
       return route.fulfill({ status: 404, body: 'not found' });
-    return route.fulfill({
-      status: 200,
-      body: readFileSync(file),
-      headers: {
-        'content-type': TYPES[extname(file)] ?? 'application/octet-stream',
-        'cross-origin-opener-policy': 'same-origin',
-        'cross-origin-embedder-policy': 'require-corp',
-        'cross-origin-resource-policy': 'same-origin',
-        'cache-control': 'no-store',
-      },
-    });
+    const headers = {
+      'content-type': TYPES[extname(file)] ?? 'application/octet-stream',
+      'cross-origin-opener-policy': 'same-origin',
+      'cross-origin-embedder-policy': 'require-corp',
+      'cross-origin-resource-policy': 'same-origin',
+      'cache-control': 'no-store',
+    };
+    // Preserve exact pinned bytes while tracing a response reference instead of gigabytes of inline base64.
+    if (path.startsWith('/runtime/'))
+      return fulfillRuntime(route, context.request, `${runtimeServer!.origin}${path}`, headers);
+    return route.fulfill({ status: 200, body: readFileSync(file), headers });
   });
   // Anything not at the origin (a third party, a CDN) is refused and counted.
   await context.route(
@@ -197,14 +200,22 @@ before(async () => {
     build: { outDir: bundleDir, emptyOutDir: true, target: 'esnext', sourcemap: false },
     worker: { format: 'es' },
   });
+  runtimeServer = await serve(bundleDir, { '/runtime/': RUNTIME });
   browser = await chromium.launch();
   await open();
 });
 after(async () => {
   if (UNTESTED) return;
-  await context?.close();
-  await browser?.close();
-  if (bundleDir) rmSync(bundleDir, { recursive: true, force: true });
+  try {
+    await context?.close();
+  } finally {
+    try {
+      await browser?.close();
+    } finally {
+      await runtimeServer?.close();
+      if (bundleDir) rmSync(bundleDir, { recursive: true, force: true });
+    }
+  }
 });
 beforeEach(async () => {
   if (!UNTESTED) await context.tracing.startChunk();
