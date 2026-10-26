@@ -186,9 +186,15 @@ function cf(args, env, base = process.env, cwd = SITE_PROJECT) {
   };
 }
 
-/** Hard-links (else copies) every staged file into the build's assets directory. */
+// stage.py writes classic's `/* /index.html 200` _redirects, which Workers Static Assets refuse as an infinite loop
+// under the default html handling (API error 100324). Wrangler skipped the invalid rule with a warning, so
+// next.facemorph.me has never applied it (an unknown path answers 404 there); leaving the file out serves the same.
+export const NOT_UPLOADED = ['_redirects'];
+
+/** Hard-links (else copies) every staged file but NOT_UPLOADED into the build's assets directory. */
 function linkTree(from, to) {
   for (const p of files(from)) {
+    if (NOT_UPLOADED.includes(p)) continue;
     const dest = join(to, p);
     mkdirSync(dirname(dest), { recursive: true });
     try {
@@ -242,6 +248,7 @@ export function siteDeploy({ target, public: dir, publish = false, env = process
     published: publish && r.status === 0,
     worker: site.worker,
     cfAssetsRead: files ? Number(files) : null,
+    notUploaded: NOT_UPLOADED,
     previousVersion: previous,
     rollback: previous
       ? `cf workers deployments create --worker ${site.worker} --strategy percentage --versions '[{"version_id":"${previous}","percentage":100}]'`
