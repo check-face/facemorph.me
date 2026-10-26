@@ -17,6 +17,7 @@ import { extname, join, normalize } from 'node:path';
 import test, { type TestContext } from 'node:test';
 import type { Page } from 'playwright';
 import { componentBrowser } from './support/browser.ts';
+import { ACQUISITION_BUDGETS, ACQUISITION_CHUNK_MAX_BYTES } from '../src/contracts/budgets.ts';
 
 const PKG = new URL('..', import.meta.url).pathname;
 const REPO = new URL('../../..', import.meta.url).pathname;
@@ -100,6 +101,76 @@ self.onmessage = async ({ data }) => {
   } catch (e) { postMessage({ ok: false, message: String(e && e.message || e) }); }
 };`;
 
+/** Observe the real digest promises and committed OPFS writes, without delaying either API. */
+const PHASE_WORKER = `
+import {createModelCache, acquireUncachedBytes} from '/pkg/cache/model-cache.js';
+import {createShardStore} from '/pkg/cache/shard-store.js';
+import {createAcquisitionSlots} from '/pkg/acquisition/slots.js';
+import {grantRemaining} from '/pkg/acquisition/grants.js';
+import {Sha256} from '/pkg/cache/sha256.js';
+let beginRead;
+self.onmessage = async ({data}) => {
+  if (data.type === 'read') return beginRead();
+  const events = [];
+  let stage = 'acquire';
+  const mark = (phase, delta) => events.push({stage, phase, delta, at: performance.timeOrigin + performance.now()});
+  const digest = crypto.subtle.digest.bind(crypto.subtle);
+  crypto.subtle.digest = async (...args) => {
+    const size = args[1].byteLength;
+    mark('hash', size);
+    mark('native-hash', size);
+    try { return await digest(...args); } finally { mark('hash', -size); mark('native-hash', -size); }
+  };
+  const update = Sha256.prototype.update;
+  Sha256.prototype.update = function(bytes) {
+    mark('hash', bytes.byteLength);
+    try { return update.call(this, bytes); } finally { mark('hash', -bytes.byteLength); }
+  };
+  try {
+    const root = await navigator.storage.getDirectory();
+    const directory = await root.getDirectoryHandle(data.run, {create:true});
+    const real = createShardStore(directory);
+    const shards = {...real, async write(hash, bytes) {
+      mark('write', bytes.byteLength);
+      try { return await real.write(hash, bytes); } finally { mark('write', -bytes.byteLength); }
+    }};
+    const nativeCache = await caches.open(data.run);
+    const store = {
+      get: hash => nativeCache.match('/' + hash),
+      put: (hash, response) => nativeCache.put('/' + hash, response),
+      remove: hash => nativeCache.delete('/' + hash),
+    };
+    if (data.mode.startsWith('legacy')) {
+      // Write the actual pre-repair file shape as a fixture, outside the measured production operations.
+      const previous = new Uint8Array(await (await fetch(data.asset.url)).arrayBuffer());
+      if (data.mode === 'legacy-corrupt') previous[0] ^= 0xff;
+      await real.write(data.asset.sha256, previous);
+    }
+    const slots = createAcquisitionSlots({locks:navigator.locks, count:2, name:data.run});
+    let bytes;
+    if (data.mode.startsWith('uncached')) {
+      bytes = await acquireUncachedBytes(data.asset, {grant:data.grant, owner:data.owner}, {slots, retryDelaysMs:[]});
+    } else {
+      const cache = createModelCache({store, shards, slots, locks:navigator.locks, retryDelaysMs:[]});
+      if (data.mode.startsWith('legacy') && !(await cache.has(data.asset))) throw new Error('Existing oversized OPFS unit lost');
+      const handle = await cache.acquire(data.asset, {grant:data.grant, owner:data.owner});
+      if (data.mode === 'local') {
+        const ready = new Promise(resolve => { beginRead = resolve; });
+        postMessage({ready:true});
+        await ready;
+        stage = 'local';
+        bytes = await handle.bytes();
+      } else {
+        stage = 'verify';
+        bytes = await handle.bytes();
+      }
+    }
+    // Independently verify every returned byte with the original platform operation.
+    const actual = Array.from(new Uint8Array(await digest('SHA-256',bytes)), n=>n.toString(16).padStart(2,'0')).join('');
+    postMessage({ok:true, events, verified:actual===data.asset.sha256, size:bytes.byteLength, remaining:grantRemaining(data.grant)});
+  } catch(error) {postMessage({ok:false, message:String(error), events});}
+};`;
+
 const app = createServer(tls, (req, res) => {
   const path = normalize(new URL(req.url ?? '/', 'https://x').pathname);
   const send = (type: string, body: Uint8Array | string) => {
@@ -108,6 +179,7 @@ const app = createServer(tls, (req, res) => {
   };
   if (path === '/') return send('text/html', '<!doctype html><title>acquisition</title>');
   if (path === '/worker.js') return send('text/javascript', WORKER);
+  if (path === '/phase-worker.js') return send('text/javascript', PHASE_WORKER);
   if (path.startsWith('/pkg/')) {
     try {
       return send(
@@ -1112,6 +1184,191 @@ test(
       throw error;
     } finally {
       faults.clear();
+      await s.context.close();
+    }
+  },
+);
+
+interface PhaseEvent {
+  stage: string;
+  phase: 'hash' | 'native-hash' | 'write';
+  delta: number;
+  at: number;
+}
+
+/** Cross-worker timestamps share an epoch. Count inputs only while the real API promise is pending. */
+function phasePeak(events: PhaseEvent[], phase: PhaseEvent['phase'], stage: string): number {
+  let active = 0;
+  let peak = 0;
+  for (const event of events
+    .filter((e) => e.phase === phase && e.stage === stage)
+    .sort((a, b) => a.at - b.at)) {
+    active += event.delta;
+    peak = Math.max(peak, active);
+  }
+  assert.equal(active, 0, `${phase} operations all settled`);
+  return peak;
+}
+
+test(
+  `${engine}: hash and OPFS write phases stay inside the frozen aggregate byte ceilings across real workers`,
+  { skip: NO_BROWSER, timeout: 120_000 },
+  async (t) => {
+    const s = await session(t);
+    try {
+      const make = (name: string, size: number, seed: number): AssetInput => {
+        const body = bytes(size, seed);
+        const path = `/${name}.bin`;
+        files.set(path, body);
+        return { sha256: sha(body), size, url: `${PRIMARY}${path}` };
+      };
+      const small = [
+        make('phase-a', ACQUISITION_CHUNK_MAX_BYTES, 401),
+        make('phase-b', ACQUISITION_CHUNK_MAX_BYTES, 402),
+      ];
+      const limits = ACQUISITION_BUDGETS['constrained-or-unknown'];
+      for (const mode of [
+        'download',
+        'download',
+        'download',
+        'local',
+        'uncached',
+        'large',
+        'legacy',
+        'legacy-corrupt',
+        'uncached-large',
+      ]) {
+        const assets =
+          mode === 'large' || mode.startsWith('legacy') || mode === 'uncached-large'
+            ? [
+                make(
+                  'phase-large',
+                  mode === 'large'
+                    ? ACQUISITION_CHUNK_MAX_BYTES + 1
+                    : ACQUISITION_CHUNK_MAX_BYTES * 4,
+                  403,
+                ),
+              ]
+            : small;
+        const from = log.length;
+        const run = `phase-${mode}-${Date.now()}-${Math.random()}`;
+        s.phase(run);
+        const results = await s.page.evaluate(
+          async ({ assets, grants, run, mode }) => {
+            const workers: Worker[] = [];
+            let ready = 0;
+            try {
+              return await Promise.all(
+                assets.map(
+                  (asset, i) =>
+                    new Promise<{
+                      ok: boolean;
+                      message?: string;
+                      events: PhaseEvent[];
+                      verified?: boolean;
+                      size?: number;
+                      remaining?: number;
+                    }>((resolve, reject) => {
+                      const worker = new Worker('/phase-worker.js', { type: 'module' });
+                      workers.push(worker);
+                      worker.onerror = (error) => reject(new Error(error.message));
+                      worker.onmessage = ({ data }) => {
+                        if (data.ready) {
+                          if (++ready === assets.length)
+                            workers.forEach((w) => w.postMessage({ type: 'read' }));
+                        } else resolve(data);
+                      };
+                      worker.postMessage({
+                        run,
+                        mode,
+                        asset,
+                        grant: grants[i],
+                        owner: `face:phase-${i}`,
+                      });
+                    }),
+                ),
+              );
+            } finally {
+              workers.forEach((w) => w.terminate());
+            }
+          },
+          {
+            assets,
+            grants: assets.map((a, i) => grant([`face:phase-${i}`], [a], a.size)),
+            run,
+            mode,
+          },
+        );
+        for (const [i, result] of results.entries()) {
+          assert.equal(result.ok, true, result.message ?? mode);
+          assert.equal(
+            result.verified,
+            true,
+            'every stored/uncached byte retains its whole-asset digest',
+          );
+          assert.equal(result.size, assets[i]!.size);
+          assert.equal(
+            result.remaining,
+            mode === 'legacy' ? assets[i]!.size : 0,
+            'cache retention preserves the grant; every acquired byte spends its exact scope',
+          );
+        }
+        assert.equal(
+          requestsFor(
+            assets.map((a) => new URL(a.url).pathname),
+            from,
+          ).length,
+          assets.length * (mode === 'legacy-corrupt' ? 2 : 1),
+          'one request per missing asset (plus the legacy fixture); verified local reads add none',
+        );
+        const events = results.flatMap((r) => r.events);
+        const stage = mode === 'local' ? 'local' : 'acquire';
+        const hash = phasePeak(events, 'hash', stage);
+        const write = phasePeak(events, 'write', 'acquire');
+        const nativeHash = phasePeak(events, 'native-hash', stage);
+        const verifiedHash = phasePeak(events, 'hash', 'verify');
+        console.info(
+          `# aggregate phases ${mode}: hash=${hash} native-hash=${nativeHash} OPFS-write=${write} verified-read-hash=${verifiedHash}`,
+        );
+        assert.ok(
+          hash <= limits.hashBytes,
+          `native hash inputs ${hash} exceed ${limits.hashBytes}`,
+        );
+        assert.ok(
+          verifiedHash <= limits.hashBytes,
+          `verified local hash inputs ${verifiedHash} exceed ${limits.hashBytes}`,
+        );
+        assert.ok(
+          write <= limits.writeBufferBytes,
+          `pending OPFS write inputs ${write} exceed ${limits.writeBufferBytes}`,
+        );
+        if (mode !== 'large' && !mode.startsWith('legacy') && mode !== 'uncached-large')
+          assert.equal(hash, ACQUISITION_CHUNK_MAX_BYTES, 'real platform digest observed');
+        if (
+          mode !== 'uncached' &&
+          mode !== 'large' &&
+          !mode.startsWith('legacy') &&
+          mode !== 'uncached-large'
+        )
+          assert.equal(write, ACQUISITION_CHUNK_MAX_BYTES, 'real OPFS commit observed');
+        if (mode === 'large' || mode.startsWith('legacy') || mode === 'uncached-large') {
+          assert.equal(nativeHash, 0, 'oversized unchunked assets use bounded incremental hashing');
+          assert.ok(
+            hash > 0 || verifiedHash > 0,
+            'real incremental SHA-256 input windows observed',
+          );
+          assert.equal(
+            write,
+            0,
+            'oversized unchunked assets use the existing streaming Cache Storage path',
+          );
+        }
+      }
+    } catch (error) {
+      await s.capture();
+      throw error;
+    } finally {
+      for (const path of ['/phase-a.bin', '/phase-b.bin', '/phase-large.bin']) files.delete(path);
       await s.context.close();
     }
   },
