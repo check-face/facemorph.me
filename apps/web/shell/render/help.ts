@@ -15,6 +15,9 @@ export interface HelpTopic {
 
 /** Licence and notices page, staged with the runtime by hosting/next-static/stage.py. */
 export const NOTICES_HREF = '/runtime/notices/index.html';
+/** The saved-file format reference (packages/stylegan-js/docs/formats.md, fm-fy2.7): formats, limits, damage. */
+export const FORMATS_HREF =
+  'https://github.com/facemorph-me/facemorph.me/blob/main/packages/stylegan-js/docs/formats.md';
 
 /** This site's own entry URL (the current origin), never a retired desktop package. */
 export const siteEntry = (): string =>
@@ -147,6 +150,11 @@ export function helpTopics(entry: string = siteEntry()): readonly HelpTopic[] {
         ],
         [
           'Social and messaging apps often recompress shared images and strip that data, so a shared copy may open only as a new photo. Your own downloaded file stays the copy to recover from.',
+        ],
+        [
+          'What each format carries and leaves out, its size limits, and how a damaged or stripped file behaves: ',
+          { text: 'saved file formats', href: FORMATS_HREF },
+          '.',
         ],
       ],
     },

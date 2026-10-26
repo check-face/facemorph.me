@@ -13,7 +13,7 @@ import {
   reasonFromError,
   refusalForText,
 } from '../../src/admission/route-admission.ts';
-import { NOTICES_HREF, helpTopics } from '../../shell/render/help.ts';
+import { FORMATS_HREF, NOTICES_HREF, helpTopics } from '../../shell/render/help.ts';
 
 const WEB = fileURLToPath(new URL('../..', import.meta.url));
 const REPO = join(WEB, '../..');
@@ -123,6 +123,27 @@ test('Help covers each required topic, links the licences, and names the selecto
     new RegExp(`className="next-footer-notices"\\s+href="${NOTICES_HREF}"`),
     'the footer links the licences page',
   );
+});
+
+test('Help links the saved-file format reference from Keep your originals (fm-fy2.7)', () => {
+  const originals = topics.find((t) => t.id === 'help-keep-originals')!;
+  const links = originals.paragraphs.flat().filter((r) => typeof r !== 'string');
+  assert.deepEqual(
+    links.map((l) => l.href),
+    [FORMATS_HREF],
+  );
+  const path = FORMATS_HREF.replace('https://github.com/facemorph-me/facemorph.me/blob/main/', '');
+  assert.notEqual(path, FORMATS_HREF, 'the link names this repository on main');
+  const doc = readFileSync(join(REPO, path), 'utf8');
+  for (const topic of [
+    /## Formats/,
+    /## Still schemas/,
+    /limit/i,
+    /damage/i,
+    /strip/i,
+    /WebP, quality 0\.8/,
+  ])
+    assert.match(doc, topic);
 });
 
 /** Phrases that recommend a native download or installer (defect: retired desktop packages). */
