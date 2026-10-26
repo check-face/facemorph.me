@@ -310,3 +310,77 @@ test('makeGrant refuses an asset without a byte size; the approved scope is the 
   );
   assert.equal(sha256Of('not a digest'), null);
 });
+
+test('encoder shards a verified descriptor names are covered up to the advertised bytes, and no further', () => {
+  const DESC = sha('1');
+  const S1 = sha('2');
+  const S2 = sha('3');
+  const S3 = sha('4');
+  // The descriptor is not cached yet: its shards are asked for by the manifest's advertised encoder size.
+  const crop: Request = {
+    owner: 'photo:1#1',
+    purpose: 'generate-and-encode',
+    manifestSha256: MANIFEST,
+    route: 'cpu',
+    assets: [
+      asset(DET, 1_000_000, 'detector-prerequisite'),
+      asset(DESC, 10_000, 'foreground-required'),
+    ],
+    discovers: { via: DESC, bytes: 90_000_000, priority: 'foreground-required' },
+  };
+  const shard = (sha256: Sha256, bytes: number, via = DESC): NeededAsset => ({
+    ...asset(sha256, bytes, 'foreground-required'),
+    via,
+  });
+  const { discovers: _advertised, ...readCrop } = crop;
+  const read = (shards: readonly NeededAsset[]): Request => ({
+    ...readCrop,
+    assets: [
+      asset(DET, 1_000_000, 'detector-prerequisite', 'partial'),
+      asset(DESC, 10_000, 'foreground-required', 'verified-local'),
+      ...shards,
+    ],
+  });
+  const [approved, e1] = run([
+    { type: 'request', request: crop, at: 0 },
+    { type: 'approve', decision: 1, at: 1 },
+  ]);
+  const ask = asks(e1)[0] as Extract<Effect, { type: 'ask' }>;
+  assert.equal(ask.decision.bytes, 91_010_000, 'the person sees the advertised encoder bytes');
+  assert.deepEqual(ask.decision.discovers, {
+    via: DESC,
+    bytes: 90_000_000,
+    priority: 'foreground-required',
+  });
+  assert.deepEqual(fetched(e1), [DET, DESC]);
+  assert.equal(approved.grants[0]!.remainingBytes, 91_010_000);
+  // The verified descriptor names two shards inside the advertised bytes: no decision, both fetched.
+  const [within, e2] = step(approved, {
+    type: 'continue',
+    request: read([shard(S1, 40_000_000), shard(S2, 45_000_000)]),
+    at: 2,
+  });
+  assert.equal(asks(e2).length, 0);
+  assert.deepEqual(fetched(e2), [S1, S2]);
+  assert.equal(
+    within.grants[0]!.allowances[0]!.bytes,
+    5_000_000,
+    'the allowance is spent, not renewed',
+  );
+  assert.equal(within.grants[0]!.remainingBytes, 91_010_000, 'the approved total never grows');
+  // A third shard beyond what is left of the allowance is a new material cost: a revised decision.
+  const [, e3] = step(within, {
+    type: 'continue',
+    request: read([shard(S1, 40_000_000), shard(S2, 45_000_000), shard(S3, 6_000_000)]),
+    at: 3,
+  });
+  assert.equal((asks(e3)[0] as Extract<Effect, { type: 'ask' }>).decision.revises, 1);
+  assert.deepEqual(fetched(e3), []);
+  // A shard another descriptor named is not covered by this one's allowance.
+  const [, e4] = step(approved, {
+    type: 'continue',
+    request: read([shard(S1, 1_000, sha('5'))]),
+    at: 4,
+  });
+  assert.equal(asks(e4).length, 1);
+});

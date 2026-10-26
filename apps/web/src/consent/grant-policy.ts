@@ -3,7 +3,7 @@
 // inventory skipped gateScope and work started without a decision (audit defect 19).
 //
 // Pure: events and their timestamps are plain inputs, and every effect is returned, never performed. The manager
-// supplies the grant shape, scope coverage and shared-fetch release (contracts/grant.ts); this module decides.
+// supplies the grant shape and shared-fetch release (contracts/grant.ts); this module decides, coverage included.
 //
 // - An owner names one intent (a face press, a photo crop, early preparation). A new press is a new owner, so a
 //   cancelled or declined owner's late continuation is refused, and manual continuation is a new request.
@@ -16,8 +16,10 @@
 //   stay in the cache.
 // - Approved fetches start at once, synthesis prerequisites first, so a face can be made while encoder bytes are
 //   still transferring.
+// - Assets only a descriptor names (the streamed encoder's shards) are asked for by their advertised size. The grant
+//   keeps that many bytes as an allowance tied to the descriptor's digest: shards the verified descriptor names are
+//   covered up to it, and anything beyond it is a new material cost, so a revised decision.
 import {
-  scopeCovers,
   cancelOwner,
   type AcquisitionGrant,
   type AcquisitionPriority,
@@ -42,17 +44,25 @@ export interface BoundedAsset {
   readonly bytes: number;
   readonly priority: AcquisitionPriority;
 }
+/** Bytes approved for assets a descriptor (`via`) will name once its verified bytes are read. */
+export interface Allowance {
+  readonly via: Sha256;
+  readonly bytes: number;
+  readonly priority: AcquisitionPriority;
+}
 declare const boundedBrand: unique symbol;
 /** A grant the policy made: every asset has a digest and a size, and remainingBytes is their sum. */
 export type BoundedGrant = AcquisitionGrant & {
   readonly id: number;
   readonly assets: readonly BoundedAsset[];
+  /** What is left of each descriptor's advertised bytes; spent as its named assets are admitted. */
+  readonly allowances: readonly Allowance[];
   readonly [boundedBrand]: true;
 };
 
 /**
  * The only way to make a grant: at least one asset, each with its digest and byte size, and at least one owner.
- * The approved byte scope is the assets' total; the grant never covers more.
+ * The approved byte scope is the assets' total plus any descriptor allowances; the grant never covers more.
  */
 export function makeGrant(input: {
   readonly id: number;
@@ -61,13 +71,19 @@ export function makeGrant(input: {
   readonly purpose: GrantPurpose;
   readonly assets: readonly [BoundedAsset, ...BoundedAsset[]];
   readonly owners: readonly [GrantOwnerId, ...GrantOwnerId[]];
+  readonly allowances?: readonly Allowance[];
 }): BoundedGrant {
-  for (const a of input.assets)
+  const allowances = input.allowances ?? [];
+  for (const a of [...input.assets, ...allowances])
     if (!Number.isSafeInteger(a.bytes) || a.bytes < 0)
-      throw RangeError(`asset ${a.sha256.slice(0, 12)} has no byte size`);
+      throw RangeError(`asset ${('sha256' in a ? a.sha256 : a.via).slice(0, 12)} has no byte size`);
+  for (const a of allowances)
+    if (!input.assets.some((x) => x.sha256 === a.via))
+      throw RangeError(`allowance ${a.via.slice(0, 12)} names no descriptor in the grant`);
   return {
     ...input,
-    remainingBytes: input.assets.reduce((n, a) => n + a.bytes, 0),
+    allowances,
+    remainingBytes: [...input.assets, ...allowances].reduce((n, a) => n + a.bytes, 0),
   } as unknown as BoundedGrant;
 }
 
@@ -77,6 +93,8 @@ export interface NeededAsset {
   readonly bytes: number | null;
   readonly priority: AcquisitionPriority;
   readonly inventory: AssetInventory;
+  /** The descriptor whose verified bytes named this asset, when it was not in the manifest itself. */
+  readonly via?: Sha256;
 }
 export interface Request {
   readonly owner: GrantOwnerId;
@@ -84,6 +102,8 @@ export interface Request {
   readonly manifestSha256: string;
   readonly route: ComputeRoute;
   readonly assets: readonly NeededAsset[];
+  /** Assets a descriptor among `assets` will name, by their advertised size (photoAssets' estimated case). */
+  readonly discovers?: Allowance;
 }
 /** What the person is asked: every missing asset of the grouped owners, with its size. */
 export interface Decision {
@@ -94,6 +114,8 @@ export interface Decision {
   readonly route: ComputeRoute;
   /** Everything the owners lack, so the grant covers them whoever else leaves; fetches still dedupe by digest. */
   readonly assets: readonly BoundedAsset[];
+  /** Assets a descriptor will name, shown by their advertised size and included in `bytes`. */
+  readonly discovers: Allowance | null;
   readonly bytes: number;
   /** The part of `bytes` no approved grant already covers: what this decision newly asks for. */
   readonly extraBytes: number;
@@ -207,6 +229,37 @@ function startFetches(
   return { fetches: next, effects };
 }
 
+/**
+ * `grant` extended to cover `missing`, or null: each asset is in the grant at the same size, or a descriptor the grant
+ * holds an allowance for named it and the allowance still has room. The approved total never grows.
+ */
+function cover(
+  grant: BoundedGrant,
+  missing: readonly (BoundedAsset & { readonly via?: Sha256 })[],
+): BoundedGrant | null {
+  const granted = new Map(grant.assets.map((a) => [a.sha256, a.bytes]));
+  const left = new Map(grant.allowances.map((a) => [a.via, a.bytes]));
+  const added: BoundedAsset[] = [];
+  for (const a of missing) {
+    const size = granted.get(a.sha256);
+    if (size !== undefined) {
+      if (size !== a.bytes) return null;
+      continue;
+    }
+    const room = a.via === undefined ? undefined : left.get(a.via);
+    if (room === undefined || room < a.bytes) return null;
+    left.set(a.via!, room - a.bytes);
+    granted.set(a.sha256, a.bytes);
+    added.push({ sha256: a.sha256, bytes: a.bytes, priority: a.priority });
+  }
+  if (!added.length) return grant;
+  return {
+    ...grant,
+    assets: [...grant.assets, ...added],
+    allowances: grant.allowances.map((a) => ({ ...a, bytes: left.get(a.via) ?? a.bytes })),
+  } as BoundedGrant;
+}
+
 /** Admits a request whose inventory is known: proceed, join a covering grant, or ask (revised if it extends one). */
 function admit(
   state: PolicyState,
@@ -223,26 +276,32 @@ function admit(
   }
   const missing = request.assets
     .filter((a) => a.inventory !== 'verified-local')
-    .map((a) => ({ sha256: a.sha256, bytes: a.bytes as number, priority: a.priority }));
+    .map((a) => ({
+      sha256: a.sha256,
+      bytes: a.bytes as number,
+      priority: a.priority,
+      ...(a.via ? { via: a.via } : {}),
+    }));
   const admitted = withSet(state.admitted, request.owner);
-  if (!missing.length) return [{ ...state, admitted }, [{ type: 'proceed', owner: request.owner }]];
+  if (!missing.length && !request.discovers)
+    return [{ ...state, admitted }, [{ type: 'proceed', owner: request.owner }]];
   const same = state.grants.filter(
     (g) => g.manifestSha256 === request.manifestSha256 && g.route === request.route,
   );
-  const covering = same.find(
-    (g) =>
-      scopeCovers(g, {
-        manifestSha256: request.manifestSha256,
-        route: request.route,
-        assets: missing,
-      }) === 'covered',
-  );
-  if (covering) {
-    const grants = state.grants.map((g) =>
-      g === covering && !g.owners.includes(request.owner)
-        ? ({ ...g, owners: [...g.owners, request.owner] } as BoundedGrant)
-        : g,
-    );
+  let covering: BoundedGrant | null = null;
+  let extended: BoundedGrant | null = null;
+  for (const g of same) {
+    extended = request.discovers ? null : cover(g, missing);
+    if (extended) {
+      covering = g;
+      break;
+    }
+  }
+  if (covering && extended) {
+    const grown = extended.owners.includes(request.owner)
+      ? extended
+      : ({ ...extended, owners: [...extended.owners, request.owner] } as BoundedGrant);
+    const grants = state.grants.map((g) => (g === covering ? grown : g));
     const started = startFetches(state.fetches, missing, [request.owner]);
     return [
       { ...state, grants, fetches: started.fetches, admitted },
@@ -251,15 +310,23 @@ function admit(
   }
   // Ask once for everything missing; a grant it partly overlaps is revised, and only the rest is new to the person.
   const granted = new Set(same.flatMap((g) => g.assets.map((a) => a.sha256)));
+  const advertised = request.discovers?.bytes ?? 0;
+  const assets = bySynthesisFirst(missing).map(({ sha256, bytes, priority }) => ({
+    sha256,
+    bytes,
+    priority,
+  }));
   const decision: Decision = {
     id: state.next,
     owners: [request.owner],
     purpose: request.purpose,
     manifestSha256: request.manifestSha256,
     route: request.route,
-    assets: bySynthesisFirst(missing),
-    bytes: missing.reduce((n, a) => n + a.bytes, 0),
-    extraBytes: missing.filter((a) => !granted.has(a.sha256)).reduce((n, a) => n + a.bytes, 0),
+    assets,
+    discovers: request.discovers ?? null,
+    bytes: assets.reduce((n, a) => n + a.bytes, 0) + advertised,
+    extraBytes:
+      assets.filter((a) => !granted.has(a.sha256)).reduce((n, a) => n + a.bytes, 0) + advertised,
     revises: same.length ? same[same.length - 1]!.id : null,
   };
   return [
@@ -351,6 +418,7 @@ export function step(state: PolicyState, event: Event): readonly [PolicyState, r
         purpose: d.purpose,
         assets: [first, ...rest],
         owners: [owner, ...others],
+        ...(d.discovers ? { allowances: [d.discovers] } : {}),
       });
       const started = startFetches(state.fetches, d.assets, d.owners);
       let admitted = state.admitted;

@@ -39,3 +39,10 @@ export const noOwner = makeGrant({
 });
 // @ts-expect-error A grant is never a plain object literal: only makeGrant brands one.
 export const literal: BoundedGrant = { ...base, assets: [asset], owners, remainingBytes: 1 };
+export const allowanceWithoutBytes = makeGrant({
+  ...base,
+  assets: [asset],
+  owners,
+  // @ts-expect-error An allowance is a byte scope too.
+  allowances: [{ via: digest, priority: 'foreground-required' }],
+});
