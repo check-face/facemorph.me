@@ -16,10 +16,14 @@
     {
       "id": "hosted-github-api-root",
       "repo": "facemorph.me",
-      "paths": ["tools/device-lab/hosted.py", "scripts/ci/acquire-serial-ort.test.ts"],
+      "paths": [
+        "tools/device-lab/hosted.py",
+        "scripts/ci/acquire-serial-ort.test.ts",
+        "scripts/ci/fetch-artifact.ts"
+      ],
       "kind": "url",
       "target": "^/$",
-      "line": "https://api\\.github\\.com/",
+      "line": "https://api\\.github\\.com/?[\"']",
       "class": "external",
       "disposition": "leave: GitHub REST API hostname has no organisation identity; repository paths come from explicit release inputs"
     },
