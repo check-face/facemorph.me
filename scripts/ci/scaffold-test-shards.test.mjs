@@ -53,6 +53,26 @@ test('sharding rejects invalid indices instead of silently running no tests', ()
     assert.throws(() => shardInventory([], index), /integer shard/);
 });
 
+test('the measured hosting tail moves to shard 4 without disturbing other assignments', () => {
+  const suites = inventory();
+  const paths = (items) =>
+    items.flatMap(({ cwd, files }) => files.map((file) => (cwd ? `${cwd}/${file}` : file)));
+  const all = paths(suites);
+  const hosted = 'packages/cloudflare-model-host/test/host.test.ts';
+  assert.equal(all.filter((file) => file === hosted).length, 1);
+  for (const count of [1, 2, 3, SHARDS, SHARDS + 1]) {
+    for (let shard = 1; shard <= count; shard++) {
+      const expected = all.filter((file, index) => {
+        const assigned = count === SHARDS && file === hosted ? 4 : (index % count) + 1;
+        return assigned === shard;
+      });
+      assert.deepEqual(paths(shardInventory(suites, shard, count)), expected);
+    }
+  }
+  assert.ok(paths(shardInventory(suites, 4)).includes(hosted));
+  assert.ok(!paths(shardInventory(suites, 6)).includes(hosted));
+});
+
 test('contracts reuse the live engine workspace inventory and the same exact inference partition', () => {
   const suites = inventory();
   const selected = workspaceInventory(suites, 'packages/stylegan-js');

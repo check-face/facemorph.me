@@ -71,7 +71,18 @@ export function shardInventory(suites, shard, count = SHARDS) {
     throw Error('Expected an integer shard in 1..count');
   let offset = 0;
   return suites.flatMap((suite) => {
-    const files = suite.files.filter(() => offset++ % count === shard - 1);
+    const files = suite.files.filter((file) => {
+      const roundRobin = (offset++ % count) + 1;
+      // Main 40420843014: shard 6 serialized 55s acquisition + 29s hosting, while shard 4
+      // took 21s. Move only this measured tail; keep every other file's assignment stable.
+      const assigned =
+        count === SHARDS &&
+        suite.cwd === 'packages/cloudflare-model-host' &&
+        file === 'test/host.test.ts'
+          ? 4
+          : roundRobin;
+      return assigned === shard;
+    });
     return files.length ? [{ ...suite, files }] : [];
   });
 }
