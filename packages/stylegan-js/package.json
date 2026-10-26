@@ -21,7 +21,7 @@
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.engine.json && tsc -p tsconfig.test.json",
-    "test": "node --test test/*.test.ts test/engine/*.test.ts",
+    "test": "node --test test/*.test.ts test/engine/*.test.ts test/full31/*.test.ts",
     "build": "tsc -p tsconfig.build.json"
   },
   "devDependencies": {
