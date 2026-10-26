@@ -212,6 +212,40 @@ export function arrivalTileContract(entries) {
   return out;
 }
 
+// fm-szbf's declared arrival change (defect 16): the first-visit model prompt moved out of the toast
+// layer into the page below the morph controls, as a labelled region whose actions sit in their own
+// row. Applied to the retained prompt only; the new layout is compared as-is, so a missing label, the
+// old alert role or a missing actions row still fails.
+export function arrivalPromptContract(entries) {
+  const out = [];
+  let inPrompt = false;
+  let wrapped = false;
+  for (const e of entries) {
+    if (
+      e.region === 'toasts' &&
+      !e.tag &&
+      JSON.stringify(e.next) === JSON.stringify(['next-consent-toast', 'next-model-toast']) &&
+      JSON.stringify(e.attrs) === JSON.stringify({ role: 'alert' })
+    ) {
+      out.push({
+        ...e,
+        next: ['next-consent-toast', 'next-first-visit', 'next-model-toast'],
+        attrs: { 'aria-label': 'Face model download', role: 'region' },
+      });
+      inPrompt = true;
+      wrapped = false;
+      continue;
+    }
+    if (inPrompt && e.region !== 'toasts') inPrompt = false;
+    if (inPrompt && !wrapped && e.tag === 'button') {
+      out.push({ region: 'toasts', next: ['next-first-visit-actions'], attrs: {}, text: '' });
+      wrapped = true;
+    }
+    out.push(e);
+  }
+  return out;
+}
+
 const key = (e) => JSON.stringify(e);
 
 /**
@@ -290,7 +324,9 @@ export function gradeRow(row, controlSteps, subjectSteps) {
       subject: names(subjectSteps),
     };
   const contract = (dom) =>
-    row.rowId === 'first-visit' ? arrivalTileContract(contractOf(dom)) : contractOf(dom);
+    row.rowId === 'first-visit'
+      ? arrivalPromptContract(arrivalTileContract(contractOf(dom)))
+      : contractOf(dom);
   const steps = controlSteps.map((c, i) => ({
     step: c.step,
     diffs: diffContracts(contract(c.dom), contract(subjectSteps[i].dom)),

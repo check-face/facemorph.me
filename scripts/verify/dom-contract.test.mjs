@@ -289,3 +289,37 @@ test('only the explicitly retired WebGL option is excluded; other provider chang
   );
   assert.notDeepEqual(contractOf(control), contractOf({ faces: [opt('cpu', 'CPU')] }));
 });
+
+test('the declared first-visit prompt move keeps checks on its label, role and actions row', async () => {
+  const { arrivalPromptContract } = await import('./dom-contract.mjs');
+  const retained = [
+    {
+      region: 'toasts',
+      next: ['next-consent-toast', 'next-model-toast'],
+      attrs: { role: 'alert' },
+      text: '',
+    },
+    { region: 'toasts', next: [], attrs: {}, text: 'Faces are made on this device.' },
+    { region: 'toasts', tag: 'button', next: [], attrs: { type: 'button' }, text: 'Not now' },
+  ];
+  const current = [
+    {
+      region: 'toasts',
+      next: ['next-consent-toast', 'next-first-visit', 'next-model-toast'],
+      attrs: { 'aria-label': 'Face model download', role: 'region' },
+      text: '',
+    },
+    { region: 'toasts', next: [], attrs: {}, text: 'Faces are made on this device.' },
+    { region: 'toasts', next: ['next-first-visit-actions'], attrs: {}, text: '' },
+    { region: 'toasts', tag: 'button', next: [], attrs: { type: 'button' }, text: 'Not now' },
+  ];
+  const same = (a, b) =>
+    JSON.stringify(arrivalPromptContract(a)) === JSON.stringify(arrivalPromptContract(b));
+  assert.ok(same(retained, current));
+  const withoutLabel = structuredClone(current);
+  delete withoutLabel[0].attrs['aria-label'];
+  const oldRole = structuredClone(current);
+  oldRole[0].attrs.role = 'alert';
+  const noActionsRow = current.filter((e) => !e.next.includes('next-first-visit-actions'));
+  for (const changed of [withoutLabel, oldRole, noActionsRow]) assert.ok(!same(retained, changed));
+});
