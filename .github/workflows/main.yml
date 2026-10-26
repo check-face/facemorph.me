@@ -87,7 +87,10 @@ jobs:
           if (pr.state !== 'open' || pr.user.login !== 'dependabot[bot]' || pr.base.ref !== 'main' ||
               pr.head.sha !== process.env.GITHUB_SHA || pr.head.repo.id !== pr.base.repo.id)
             throw Error('qualification must name the current same-repository bot PR head');
-          appendFileSync(process.env.GITHUB_OUTPUT, `base=${pr.base.sha}\n`);
+          const base = JSON.parse(execFileSync('gh', ['api', `repos/${process.env.GITHUB_REPOSITORY}/git/ref/heads/main`], {encoding:'utf8'})).object.sha;
+          if (!/^[a-f0-9]{40}$/.test(base)) throw Error('main ref must identify an immutable commit');
+          execFileSync('git', ['merge-base', '--is-ancestor', base, process.env.GITHUB_SHA]);
+          appendFileSync(process.env.GITHUB_OUTPUT, `base=${base}\n`);
           JS
       - if: inputs.dependency_group != '' && hashFiles('import/runtime-mirror.json') != ''
         uses: ./.github/actions/setup-runtime
