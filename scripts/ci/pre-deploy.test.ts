@@ -52,6 +52,21 @@ test('the receipt waits for all registered lanes and publication waits for that 
   assert.match(wf('name-catalogue').jobs.publish.if, /github.workflow_ref/);
 });
 
+test('the release gate verifies the exact artifact run receipt before any hosted or device work', () => {
+  const gate = wf('release-gate');
+  const steps = gate.jobs.receipt.steps;
+  assert(steps.some((s: any) => s.uses === './.github/actions/fetch-artifact'));
+  const verify = steps.find((s: any) => /pre-deploy\.ts --receipt/.test(s.run ?? ''));
+  assert.match(
+    verify.run,
+    /gh run download "\$ARTIFACT_RUN" .*--name "pre-deploy-\$ARTIFACT_COMMIT"/,
+  );
+  assert.equal(verify.env.ARTIFACT_DIGEST, '${{ steps.artifact.outputs.artifact_digest }}');
+  for (const id of ['hosted', 'device-lab']) assert.equal(gate.jobs[id].needs, 'receipt');
+  assert.deepEqual(gate.jobs.gate.needs, ['receipt', 'hosted', 'device-lab']);
+  assert.match(gate.jobs.gate.steps[0].run, /test "\$RECEIPT" = success/);
+});
+
 test('complete receipt verifies; every absent, skipped, failed or extra lane refuses', () => {
   const receipt = createReceipt(identity, results(), required);
   assert.deepEqual(verifyReceipt(receipt, identity, required), receipt);
