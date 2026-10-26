@@ -309,13 +309,16 @@ export function FacesLayout({
       ) : null}
     </div>
   );
+  // Outside the strip the notice exists only while it is open, so two faces render exactly as before (the parity
+  // DOM contract); its role=status announces it as it appears.
+  const openNotice = undo && onUndo ? notice : null;
   const [first, second] = inputs;
   if (mode === 'pair-grid' || mode === 'pair-stack') {
     if (first && second)
       return (
-        <div ref={root} className="next-faces-layout" onClickCapture={onClickCapture}>
-          {notice}
-          <div className="next-morph-content n2">
+        <>
+          {openNotice}
+          <div ref={root} className="next-morph-content n2" onClickCapture={onClickCapture}>
             <div className="next-morph-cell next-morph-from">{tile(first, 0, 'Morph from')}</div>
             <div className="next-morph-cell next-morph-morph">{morphSlot}</div>
             <div className="next-morph-cell next-morph-to">{tile(second, 1, 'Morph to')}</div>
@@ -324,30 +327,28 @@ export function FacesLayout({
             {add('next-connector-stack', 'Add a face between these two', () => onAddAt(1))}
             {add('next-connector-trail', 'Add a face after Morph to', () => onAddAt(2))}
           </div>
-        </div>
+        </>
       );
   }
   if (mode === 'strip')
     return (
-      <div ref={root} className="next-faces-layout" onClickCapture={onClickCapture}>
-        <div className="next-morph-content n3 next-many">
-          <Strip
-            inputs={inputs}
-            tile={tile}
-            onAddAt={onAddAt}
-            virtual={virtual}
-            keep={keep}
-            head={notice}
-          />
-          {morphSlot}
-          {videoSlot}
-        </div>
+      <div ref={root} className="next-morph-content n3 next-many" onClickCapture={onClickCapture}>
+        <Strip
+          inputs={inputs}
+          tile={tile}
+          onAddAt={onAddAt}
+          virtual={virtual}
+          keep={keep}
+          head={notice}
+        />
+        {morphSlot}
+        {videoSlot}
       </div>
     );
   return (
-    <div ref={root} className="next-faces-layout" onClickCapture={onClickCapture}>
-      {notice}
-      <div className="next-morph-content n3">
+    <>
+      {openNotice}
+      <div ref={root} className="next-morph-content n3" onClickCapture={onClickCapture}>
         <div className="next-faces-row" data-next-face-count={inputs.length}>
           {tilesWithConnectors(inputs, tile, onAddAt)}
         </div>
@@ -357,6 +358,6 @@ export function FacesLayout({
         {morphSlot}
         {videoSlot}
       </div>
-    </div>
+    </>
   );
 }
