@@ -58,6 +58,85 @@ const manifestPath = (path: string) => /(^|\/)package\.json$/.test(path);
 const lockPath = (path: string) => /(^|\/)package-lock\.json$/.test(path);
 const requirementsPath = (path: string) => /(^|\/)requirements\.(?:in|txt)$/.test(path);
 
+/** Follow pinned encoder manifests from actual artifact bytes, including any nested encoder streams. */
+function encoderRuntimeProblems(
+  root: unknown,
+  runtimeDir: string,
+  expectedVersion: string,
+): CurrencyViolation[] {
+  const problems: CurrencyViolation[] = [];
+  const visited = new Map<string, string>();
+  const problem = (code: string, path: string, text: string) =>
+    problems.push({ code, path, message: text });
+  const walk = (value: unknown): void => {
+    if (!value || typeof value !== 'object') return;
+    for (const [key, child] of Object.entries(value)) {
+      if (key !== 'encoderStream') {
+        walk(child);
+        continue;
+      }
+      let path = 'encoderStream';
+      try {
+        if (!child || typeof child !== 'object')
+          throw new Error('Encoder stream must be a pinned manifest reference');
+        const descriptor = child as { url?: unknown; sha256?: unknown; size?: unknown };
+        if (
+          typeof descriptor.url !== 'string' ||
+          typeof descriptor.sha256 !== 'string' ||
+          !/^[a-f0-9]{64}$/.test(descriptor.sha256)
+        )
+          throw new Error('Encoder stream needs a URL and SHA-256 pin');
+        const url = new URL(descriptor.url);
+        if (
+          url.protocol !== 'https:' ||
+          url.username ||
+          url.password ||
+          url.search ||
+          url.hash ||
+          !url.pathname.startsWith('/runtime/')
+        )
+          throw new Error('Encoder manifest URL must identify an HTTPS runtime file');
+        path = decodeURIComponent(url.pathname.slice('/runtime/'.length));
+        if (
+          !path ||
+          /[\\\0]/.test(path) ||
+          path.split('/').some((part) => !part || part === '.' || part === '..')
+        )
+          throw new Error('Encoder manifest path must remain inside the runtime artifact');
+        const previous = visited.get(path);
+        if (previous !== undefined) {
+          if (previous !== descriptor.sha256) throw new Error('Conflicting encoder manifest pins');
+          continue;
+        }
+        if (visited.size >= 64)
+          throw new Error('Encoder manifest reference graph exceeds 64 files');
+        visited.set(path, descriptor.sha256);
+        const file = join(runtimeDir, path);
+        const stat = lstatSync(file);
+        if (!stat.isFile() || stat.size > 16 * 1024 * 1024)
+          throw new Error('Encoder manifest must be a regular JSON file of at most 16 MiB');
+        const bytes = readFileSync(file);
+        if (hash(bytes) !== descriptor.sha256)
+          throw new Error('Actual encoder manifest digest differs from its pin');
+        if (descriptor.size !== undefined && descriptor.size !== bytes.length)
+          throw new Error('Actual encoder manifest size differs from its pin');
+        const manifest = JSON.parse(bytes.toString('utf8')) as { runtime?: { version?: unknown } };
+        if (manifest.runtime?.version !== expectedVersion)
+          problem(
+            'ort-encoder-version-mismatch',
+            path,
+            `Mirrored encoder runtime is ${String(manifest.runtime?.version)} but locked/composed ORT is ${expectedVersion}; the bounded encoder runtime must be adopted separately without weakening its memory contract`,
+          );
+        walk(manifest);
+      } catch (error) {
+        problem('ort-encoder-manifest-invalid', path, message(error));
+      }
+    }
+  };
+  walk(root);
+  return problems;
+}
+
 export function parseCurrencyArgs(args: readonly string[]): CurrencyOptions {
   const { values } = parseArgs({
     args: [...args],
@@ -256,6 +335,9 @@ export function checkDependencyCurrency(
               'manifest.json',
               'Runtime artifact is not the frozen control composed with exactly the declared CPU/WebGPU ORT overlay; model/reference fields must remain intact',
             );
+          violations.push(
+            ...encoderRuntimeProblems(actual, resolve(repo, options.runtimeDir!), overlay.version),
+          );
         });
     }
     if (overlay && lock)

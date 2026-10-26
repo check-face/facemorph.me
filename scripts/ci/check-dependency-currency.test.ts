@@ -17,7 +17,7 @@ import { composeManifest, generateOverlay, ORT_FILES } from './ort-mirror.ts';
 const digest = (value: string) => createHash('sha256').update(value).digest('hex');
 const policyPath = 'scripts/ci/dependency-policy.json';
 
-function fixture(t: TestContext) {
+function fixture(t: TestContext, encoderVersion = '1.30.0', nestedEncoderVersion?: string) {
   const temporary = mkdtempSync(join(tmpdir(), 'facemorph-currency-'));
   t.after(() => rmSync(temporary, { recursive: true, force: true }));
   const repo = join(temporary, 'repo');
@@ -57,6 +57,30 @@ function fixture(t: TestContext) {
     integrity: `sha512-${Buffer.alloc(64, 7).toString('base64')}`,
   };
   const overlay = generateOverlay(dist, locked);
+  const encoderManifests = new Map<string, string>();
+  const encoder = (version: string, child?: unknown) => {
+    const bytes = JSON.stringify({
+      runtime: {
+        version,
+        unshared: true,
+        maxWasmBytes: 268435456,
+        memoryReceipt: { newMaximumPages: 4096 },
+      },
+      ...(child === undefined ? {} : { encoderStream: child }),
+    });
+    const sha256 = digest(bytes);
+    const path = `encoder-stream/${sha256}/manifest.json`;
+    encoderManifests.set(path, bytes);
+    return {
+      url: `https://next.facemorph.me/runtime/${path}`,
+      sha256,
+      size: Buffer.byteLength(bytes),
+    };
+  };
+  const encoderStream = encoder(
+    encoderVersion,
+    nestedEncoderVersion === undefined ? undefined : encoder(nestedEncoderVersion),
+  );
   const asset = (name: string) => ({
     url: `https://next.facemorph.me/runtime/assets/frozen/${name}`,
     sha256: digest(name),
@@ -85,6 +109,7 @@ function fixture(t: TestContext) {
       },
     },
     reference: { sha256: digest('frozen numerical reference') },
+    encoderStream,
   };
   const controlBytes = JSON.stringify(control);
   const tolerance = 'export const tolerance = 0.0001;\n';
@@ -138,6 +163,10 @@ function fixture(t: TestContext) {
   };
   for (const [path, value] of Object.entries(files)) write(path, value);
   mkdirSync(artifact);
+  for (const [path, bytes] of encoderManifests) {
+    mkdirSync(dirname(join(artifact, path)), { recursive: true });
+    writeFileSync(join(artifact, path), bytes);
+  }
   for (const file of overlay.files) {
     mkdirSync(dirname(join(artifact, file.path)), { recursive: true });
     writeFileSync(join(artifact, file.path), readFileSync(join(dist, file.file)));
@@ -158,7 +187,20 @@ function fixture(t: TestContext) {
       { base, head: base, lane: 'stable', runtimeDir: artifact, ...options },
       repo,
     );
-  return { repo, artifact, base, policy, files, overlay, composed, write, git, commit, report };
+  return {
+    repo,
+    artifact,
+    base,
+    policy,
+    files,
+    overlay,
+    composed,
+    encoderStream,
+    write,
+    git,
+    commit,
+    report,
+  };
 }
 
 test('exact Git snapshots and a complete composed CPU/WebGPU artifact pass despite dirty checkout mutations', (t) => {
@@ -197,6 +239,47 @@ test('changed artifact bytes fail independent digest verification', (t) => {
   const f = fixture(t);
   writeFileSync(join(f.artifact, f.overlay.files[0]!.path), 'corrupt runtime bytes');
   assert.ok(f.report().violations.some((v) => v.code === 'ort-digest-mismatch'));
+});
+
+test('top-level ORT adoption cannot hide the preserved encoder stream old runtime and bounded memory contract', (t) => {
+  const f = fixture(t, '1.24.3');
+  const result = f.report();
+  assert.equal(result.ok, false);
+  assert.ok(
+    result.violations.some(
+      (v) => v.code === 'ort-encoder-version-mismatch' && v.message.includes('1.24.3'),
+    ),
+  );
+  assert.equal(
+    result.violations.some((v) => v.code === 'ort-composition-mismatch'),
+    false,
+    'top-level composition alone remains valid',
+  );
+  const path = join(f.artifact, new URL(f.encoderStream.url).pathname.slice('/runtime/'.length));
+  const manifest = JSON.parse(readFileSync(path, 'utf8'));
+  assert.equal(manifest.runtime.unshared, true);
+  assert.equal(manifest.runtime.maxWasmBytes, 268435456);
+  assert.equal(manifest.runtime.memoryReceipt.newMaximumPages, 4096);
+});
+
+test('recursive encoder references are checked and a corrupted actual encoder manifest cannot vouch for itself', (t) => {
+  const f = fixture(t, '1.30.0', '1.24.3');
+  assert.ok(
+    f
+      .report()
+      .violations.some(
+        (v) => v.code === 'ort-encoder-version-mismatch' && v.message.includes('1.24.3'),
+      ),
+  );
+  const path = join(f.artifact, new URL(f.encoderStream.url).pathname.slice('/runtime/'.length));
+  writeFileSync(path, JSON.stringify({ runtime: { version: '1.30.0' } }));
+  assert.ok(
+    f
+      .report()
+      .violations.some(
+        (v) => v.code === 'ort-encoder-manifest-invalid' && v.message.includes('digest'),
+      ),
+  );
 });
 
 test('an updater group may edit inventoried manifests and requirement files but cannot edit source', (t) => {
