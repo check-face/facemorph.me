@@ -30,6 +30,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: npm run build:next && npm run build:next -- --check
+      - name: Pack the compiled workspace for downstream correctness lanes
+        run: node scripts/ci/workspace-build.mjs pack --out .cache/workspace-build-artifact --commit "$GITHUB_SHA"
       - name: Shipping runtime, media, privacy and input regressions
         run: |
           set -euo pipefail
@@ -84,8 +86,6 @@ jobs:
             next-site-identity.json
           if-no-files-found: error
           retention-days: 14
-      - name: Pack the compiled workspace for downstream correctness lanes
-        run: node scripts/ci/workspace-build.mjs pack --out .cache/workspace-build-artifact --commit "$GITHUB_SHA"
       - uses: actions/upload-artifact@v4
         with:
           name: workspace-build-${{ github.sha }}

@@ -61,6 +61,10 @@ test('one canonical build creates both the deployable artifact and the compiled 
   assert(build < imports, 'compile once before regression tests import package exports');
   const pack = commands.findIndex((s: string) => s.includes('workspace-build.mjs pack'));
   assert(pack > build);
+  const record = producer.steps.findIndex(
+    (s: any) => s.name === 'Record exact bytes for promotion',
+  );
+  assert(pack < record, 'pack while the checkout is clean, before generated provenance is written');
   const upload = producer.steps.find(
     (s: any) => s.with?.name === 'workspace-build-${{ github.sha }}',
   );
