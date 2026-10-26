@@ -25,8 +25,15 @@ import {
   sniffContainer,
   stillSettings,
   typeMatchesBytes,
+  ffmpegChoice,
+  ffmpegEncodeBytes,
+  h264Codec,
+  h264Level,
+  qualitySizes,
   videoEncoderCandidates,
   videoEncoderSettings,
+  videoSizes,
+  type VideoEncoderSettings,
 } from '../../src/media/export-policy.ts';
 import { preparedFiles } from '../../src/media/prepared-files.ts';
 
@@ -62,14 +69,26 @@ test('export-policy.unchanged: WebCodecs config for 1024/512 at fps 8, 16, 32 an
     const candidate: unknown[] = sizes.map((size) =>
       JSON.parse(JSON.stringify(runInNewContext(`(${expr[1]})`, { size, fps, Math }))),
     );
-    assert.deepEqual(videoEncoderCandidates(fps), candidate, `fps ${fps}`);
+    // fm-36ag: the baseline entries at 1024 and 512 are the candidate's configs, byte for byte.
+    const baseline = videoEncoderCandidates(fps, { quality: 'full' }).filter(
+      (c) => c.codec.startsWith('avc1.4200') && sizes.includes(c.width),
+    );
+    assert.deepEqual(baseline, candidate, `fps ${fps}`);
+    assert.deepEqual(
+      videoEncoderCandidates(fps).filter((c) => c.codec.startsWith('avc1.4200')),
+      [candidate[1]],
+      `standard baseline at fps ${fps}`,
+    );
     for (const [i, size] of sizes.entries())
       assert.deepEqual(videoEncoderSettings(size, fps), candidate[i]);
   }
   assert.match(CANDIDATE.correctness, /new Canvas\(64,64\)/, 'the correctness encode is 64 x 64');
   assert.deepEqual(CORRECTNESS_ENCODE, { width: 64, height: 64 });
   assert.match(CANDIDATE.ffmpeg, /width:fallbackWidth,height:fallbackWidth/);
-  assert.equal(FFMPEG_WIDTH, sizes[1]);
+  // The candidate's FFmpeg encoded at its fallback (512): Standard keeps that; Full takes the model size (fm-36ag).
+  assert.equal(chooseVideoEncoder(16, null).width, sizes[1]);
+  assert.equal(FFMPEG_WIDTH, sizes[0]);
+  assert.equal(chooseVideoEncoder(16, null, { quality: 'full' }).width, sizes[0]);
   assert.match(CANDIDATE.scrub, /quality:\.85\}/, 'scrub JPEG 0.85');
   assert.equal(SCRUB_JPEG_QUALITY, 0.85);
   assert.match(CANDIDATE.download, /quality:\.8,/);
@@ -77,8 +96,9 @@ test('export-policy.unchanged: WebCodecs config for 1024/512 at fps 8, 16, 32 an
   assert.equal(WEBP_QUALITY, 0.8);
   // The app now reads each of these from the policy.
   const media = text('src/Next/media.mjs');
-  assert.match(media, /const config=videoEncoderSettings\(size,fps\);/);
-  assert.match(media, /probeVideoEncoder\(\{width=VIDEO_WIDTH,fallbackWidth=VIDEO_FALLBACK_WIDTH,/);
+  assert.match(media, /for\(const config of videoEncoderCandidates\(fps,options\)\)\{/);
+  assert.match(media, /probeVideoEncoder\(\{fps=16,quality='standard',modelSize=VIDEO_WIDTH,/);
+  assert.match(media, /ffmpegChoice\('webcodecs-unavailable',/);
   assert.match(media, /new Canvas\(side,side\)/);
   assert.match(media, /quality:SCRUB_JPEG_QUALITY\}/);
   assert.match(text('src/Next/recovery-metadata.mjs'), /format:'webp',quality:WEBP_QUALITY,/);
@@ -107,6 +127,7 @@ test('export-policy: WebP 0.8 by default, PNG when lossless is asked for or WebP
     width: 512,
     height: 512,
     reason: 'webcodecs-unavailable',
+    sizeReason: 'target',
   });
   assert.equal(chooseVideoEncoder(16, (s) => s.width === 512).width, 512);
   assert.deepEqual(chooseVideoEncoder(16, () => false).kind, 'ffmpeg');
@@ -119,6 +140,169 @@ test('export-policy: WebP 0.8 by default, PNG when lossless is asked for or WebP
 });
 
 // ---- Import scan: the computational modules carry no Save/Share, gesture or DOM code.
+// ---- fm-36ag video sizes: Standard 512 (or a smaller model's size) by default, Full from the model size down.
+test('export-policy.sizes: Standard is 512 for FFHQ and AFHQ cat; Full descends by 128 from the model size', () => {
+  assert.deepEqual(qualitySizes(), [512], 'no option set: 512 for the default FFHQ model');
+  assert.deepEqual(qualitySizes({ modelSize: 1024 }), [512]);
+  assert.deepEqual(qualitySizes({ modelSize: 512 }), [512], 'AFHQ cat');
+  assert.deepEqual(qualitySizes({ modelSize: 256 }), [256], 'never above the model');
+  assert.deepEqual(videoSizes(1024), [1024, 896, 768, 640, 512, 384, 256]);
+  assert.deepEqual(videoSizes(512), [512, 384, 256]);
+  assert.deepEqual(qualitySizes({ modelSize: 512, quality: 'full' }), [512, 384, 256]);
+  for (const model of [256, 512, 1000, 1024, 2048])
+    for (const size of videoSizes(model)) {
+      assert.equal(size % 16, 0, `${size} is a multiple of 16`);
+      assert.ok(size <= model, `${size} ≤ ${model}`);
+    }
+  assert.deepEqual(
+    videoSizes(1000).slice(0, 2),
+    [992, 864],
+    'a model size rounds down to a multiple of 16',
+  );
+  assert.throws(() => videoSizes(8), RangeError);
+});
+
+test('export-policy.levels: each codec names a level whose MaxFS and MaxMBPS cover the size and fps (floor 4.2)', () => {
+  // H.264 Table A-1: level_idc → [MaxMBPS, MaxFS].
+  const table: Record<number, [number, number]> = {
+    0x2a: [522240, 8704],
+    0x32: [589824, 22080],
+    0x33: [983040, 36864],
+    0x34: [2073600, 36864],
+    0x3c: [4177920, 139264],
+  };
+  for (const model of [512, 1024, 2048])
+    for (const size of videoSizes(model))
+      for (const fps of [1, 8, 16, 30, 32, 60, 120]) {
+        const level = h264Level(size, fps);
+        const [mbps, fs] = table[level] ?? [0, 0];
+        const mbs = (size / 16) ** 2;
+        assert.ok(
+          mbs <= fs && mbs * fps <= mbps,
+          `${size}@${fps}: level ${level.toString(16)} covers it`,
+        );
+        assert.ok(level >= 0x2a, 'never below 4.2');
+        const lower = Object.keys(table)
+          .map(Number)
+          .filter((l) => l >= 0x2a && l < level);
+        for (const l of lower) {
+          const [m, f] = table[l]!;
+          assert.ok(
+            !(mbs <= f && mbs * fps <= m),
+            `${size}@${fps}: ${l.toString(16)} would already cover it`,
+          );
+        }
+      }
+  assert.equal(
+    h264Codec('baseline', 1024, 16),
+    'avc1.42002A',
+    "the candidate's 1024 codec is unchanged",
+  );
+  assert.equal(h264Codec('high', 1024, 16), 'avc1.64002A');
+  assert.equal(h264Codec('baseline', 256, 8), 'avc1.42002A', 'small sizes stay at the 4.2 floor');
+  // A hypothetical 2048 model: 16384 macroblocks exceed 4.2's MaxFS; 60 fps needs 5.1's MaxMBPS.
+  assert.equal(h264Codec('high', 2048, 16), 'avc1.640032', 'level 5');
+  assert.equal(h264Codec('high', 2048, 60), 'avc1.640033', 'level 5.1');
+  assert.equal(h264Codec('baseline', 2048, 120), 'avc1.420034', 'level 5.2');
+  assert.equal(h264Codec('high', 1024, 128), 'avc1.640032', '1024 above 127.5 fps leaves 4.2');
+  assert.throws(() => h264Level(8192, 120), RangeError, 'no level is invented');
+});
+
+test('export-policy.candidates: High before baseline at each size, largest first, bitrate unchanged', () => {
+  const full = videoEncoderCandidates(16, { quality: 'full' });
+  assert.deepEqual(
+    full.map((c) => `${c.width}:${c.codec}`),
+    [1024, 896, 768, 640, 512, 384, 256].flatMap((s) => [`${s}:avc1.64002A`, `${s}:avc1.42002A`]),
+  );
+  for (const c of full)
+    assert.equal(c.bitrate, Math.round((c.width * c.width * 16 * 0.25) / 1000) * 1000);
+  assert.deepEqual(
+    videoEncoderCandidates(16).map((c) => c.codec),
+    ['avc1.64002A', 'avc1.42002A'],
+    'Standard: one size, High then baseline',
+  );
+  assert.ok(
+    videoEncoderCandidates(16, { quality: 'full', modelSize: 512 }).every((c) => c.width <= 512),
+    'a 512-native model never tries 1024',
+  );
+  assert.deepEqual(
+    videoEncoderCandidates(16, { quality: 'full', modelSize: 512 }).slice(0, 2),
+    videoEncoderCandidates(16, { modelSize: 512 }),
+    'a 512-native model makes Full start where Standard is',
+  );
+  const pick = (accept: (s: VideoEncoderSettings) => boolean) =>
+    chooseVideoEncoder(16, accept, { quality: 'full' });
+  assert.deepEqual(
+    pick(() => true),
+    { kind: 'webcodecs', ...videoEncoderSettings(1024, 16, 'high'), targetSize: 1024 },
+  );
+  assert.deepEqual(
+    pick((s) => s.width === 768),
+    { kind: 'webcodecs', ...videoEncoderSettings(768, 16, 'high'), targetSize: 1024 },
+  );
+  assert.deepEqual(
+    pick((s) => s.width === 512 && s.codec.startsWith('avc1.4200')),
+    {
+      kind: 'webcodecs',
+      ...videoEncoderSettings(512, 16, 'baseline'),
+      targetSize: 1024,
+    },
+  );
+  assert.deepEqual(chooseVideoEncoder(16, null, { quality: 'full' }), {
+    kind: 'ffmpeg',
+    width: 1024,
+    height: 1024,
+    reason: 'webcodecs-unavailable',
+    sizeReason: 'target',
+  });
+  assert.equal(
+    chooseVideoEncoder(16, () => true).width,
+    512,
+    'Standard takes 512 even where 1024 works',
+  );
+  assert.equal(chooseVideoEncoder(16, () => true, { modelSize: 512, quality: 'full' }).width, 512);
+});
+
+test('export-policy.ffmpeg-memory: Full falls below the model size only when deviceMemory cannot hold the frames', () => {
+  const MiB = 2 ** 20;
+  assert.equal(Math.round(ffmpegEncodeBytes(1024) / MiB), 168);
+  assert.equal(Math.round(ffmpegEncodeBytes(512) / MiB), 126);
+  for (const deviceMemoryGiB of [null, 2, 4, 8])
+    assert.deepEqual(ffmpegChoice('webcodecs-unavailable', { quality: 'full', deviceMemoryGiB }), {
+      kind: 'ffmpeg',
+      width: 1024,
+      height: 1024,
+      reason: 'webcodecs-unavailable',
+      sizeReason: 'target',
+    });
+  // 1 GiB × 1/8 = 128 MiB: 1024…640 do not fit, 512 does.
+  assert.deepEqual(ffmpegChoice('webcodecs-unsupported', { quality: 'full', deviceMemoryGiB: 1 }), {
+    kind: 'ffmpeg',
+    width: 512,
+    height: 512,
+    reason: 'webcodecs-unsupported',
+    sizeReason: 'ffmpeg-memory',
+  });
+  // Standard keeps the classic 512 everywhere; Full never goes below Standard.
+  assert.equal(ffmpegChoice('webcodecs-unavailable', { deviceMemoryGiB: 0.25 }).width, 512);
+  assert.equal(
+    ffmpegChoice('webcodecs-unavailable', { deviceMemoryGiB: 0.25 }).sizeReason,
+    'target',
+  );
+  assert.equal(
+    ffmpegChoice('webcodecs-unavailable', { quality: 'full', deviceMemoryGiB: 0.25 }).width,
+    512,
+  );
+  assert.equal(
+    ffmpegChoice('webcodecs-unavailable', {
+      quality: 'full',
+      modelSize: 512,
+      deviceMemoryGiB: 0.25,
+    }).sizeReason,
+    'target',
+  );
+});
+
 test('the computational media modules have no Save/Share, gesture or DOM code', () => {
   const files = [
     ...readdirSync(web('src/media'))

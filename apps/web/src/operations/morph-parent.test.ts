@@ -95,7 +95,7 @@ test('over-budget morph settles before morph-owned acquisition, even when blocke
 });
 
 test('invalid morph frame settings settle without starting provider work', async () => {
-  for (const frames of [0, 1, 3, NaN, Infinity, 2.5]) {
+  for (const frames of [0, 1, NaN, Infinity, 2.5]) {
     const service = createOperationService();
     const handle = service.requestMorph(morph(2, frames));
     const result = await handle.done;

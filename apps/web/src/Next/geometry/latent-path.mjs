@@ -70,7 +70,7 @@ function requireValid(m) {
     for (const x of l.values) if (!Number.isFinite(x) || Math.abs(x) > LIMITS.absoluteInput) fail('Nonfinite or out-of-budget latent');
   }
   const segments = m.closed ? m.controls.length : m.controls.length - 1;
-  if (!Number.isInteger(m.framesPerSegment) || m.framesPerSegment < 2 || m.framesPerSegment % 2 || segments * m.framesPerSegment + (m.closed ? 0 : 1) > LIMITS.frames) fail('Expected even frames per segment within total frame budget');
+  if (!Number.isInteger(m.framesPerSegment) || m.framesPerSegment < 2 || segments * m.framesPerSegment + (m.closed ? 0 : 1) > LIMITS.frames) fail('Expected at least 2 frames per segment within total frame budget');
   if (!Number.isInteger(m.framesPerSecond) || m.framesPerSecond < 1 || m.framesPerSecond > 120) fail('Frame rate must be an integer from 1 to 120');
   for (let i = 0; i < segments; i++) {
     const a = m.controls[i].latent.values, b = m.controls[(i + 1) % m.controls.length].latent.values;

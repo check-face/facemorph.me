@@ -23,11 +23,6 @@ const ALLOW: readonly { file: string; line: RegExp; why: string }[] = [
     why: 'the locked confirmed-crop output size (a product design constant, not a model dimension)',
   },
   {
-    file: 'contracts/operations.ts',
-    line: /^export type VideoResolution = 1024 \| 512;$/,
-    why: 'video export sizes offered by the product, not a model dimension',
-  },
-  {
     file: 'media/mp4-project.ts',
     line: /^export function videoFileResult\(choice: VideoChoiceLike, fullSize = 1024\): VideoFileResult \{$/,
     why: 'the full-size video export choice (VideoResolution), not a model dimension',
@@ -36,11 +31,6 @@ const ALLOW: readonly { file: string; line: RegExp; why: string }[] = [
     file: 'media/recovery-v3.ts',
     line: /^export const BLEND_RECIPE_MAX_SLOTS = 1024;$/,
     why: 'a count of blend recipe slots',
-  },
-  {
-    file: 'contracts/worker-messages.ts',
-    line: /q\.resolution !== 1024 && q\.resolution !== 512/,
-    why: 'validation of the VideoResolution contract above',
   },
 ];
 

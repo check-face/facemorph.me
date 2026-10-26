@@ -8,6 +8,8 @@ export interface InitialFacts {
   readonly debugOn?: boolean;
   readonly sliderPreference: boolean;
   readonly sliderPosition: number;
+  /** The remembered morph video size (fm-36ag); Standard when absent. */
+  readonly videoQuality?: 'standard' | 'full';
 }
 export const namesRequested = (url: URL): boolean =>
   url.pathname === '/names' || url.pathname === '/names/' || url.searchParams.has('names');
@@ -36,6 +38,7 @@ export function init(facts: InitialFacts): Transition {
       Pinch: true,
       Frames: 16,
       Fps: 16,
+      ...(facts.videoQuality === 'full' ? { Quality: 'full' as const } : {}),
       Provider: 'auto',
       Busy: false,
       JobId: 0,

@@ -24,7 +24,7 @@ export async function recoverImage(file){
 export async function decorateVideo(blob,project,choice){
  if(!(blob instanceof Blob))throw Error('Create a morph first.');if(!project)return blob;
  if(blob.size>MAX_VIDEO)throw Error('Project recovery metadata exceeds its limit.');
- return new Blob([writeProjectMp4(await bytesOf(blob),project,choice?videoFileResult(choice):undefined)],{type:'video/mp4'});
+ return new Blob([writeProjectMp4(await bytesOf(blob),project,choice?videoFileResult(choice,choice.targetSize??1024):undefined)],{type:'video/mp4'});
 }
 /** A saved MP4's project as the app's project JSON text, or null for a file that is not a project MP4. */
 export async function recoverVideoProject(file){

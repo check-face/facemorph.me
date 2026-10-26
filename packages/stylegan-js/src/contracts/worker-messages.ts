@@ -8,7 +8,9 @@ import type { CancellationSignal, ProviderState, UnsupportedCapability } from '.
 import { ENCODER_INPUT_LENGTH } from './crop-policy.ts';
 import {
   MAX_MORPH_FRAMES,
+  MAX_VIDEO_RESOLUTION,
   MORPH_PATH_MODES,
+  isVideoResolution,
   type EncodeRequest,
   type EncodeResult,
   type ExtractMetadataRequest,
@@ -262,7 +264,8 @@ function request(type: string, r: unknown): void {
         typeof s.width !== 'number' ||
         !(s.width >= 0 && s.width <= 1.2) ||
         typeof s.pinch !== 'boolean' ||
-        ![8, 16, 32].includes(s.frames as number) ||
+        // Any count of at least 2 frames per segment; a closed loop of every endpoint stays within the bound.
+        !isInt(s.frames, 2, Math.floor(MAX_MORPH_FRAMES / (q.endpoints as unknown[]).length)) ||
         !isInt(s.fps, 1, 120)
       ) {
         fail('request.settings', 'morph settings');
@@ -270,7 +273,9 @@ function request(type: string, r: unknown): void {
       if (!isInt(q.frameCount, 2, MAX_MORPH_FRAMES))
         fail('request.frameCount', `2 to ${MAX_MORPH_FRAMES}`);
       if (!isInt(q.fps, 1, 120)) fail('request.fps', '1 to 120');
-      if (q.resolution !== 1024 && q.resolution !== 512) fail('request.resolution', '1024 or 512');
+      // No descriptor here: bounded by the largest model output this package supports, never upscaled.
+      if (!isVideoResolution(q.resolution))
+        fail('request.resolution', `a multiple of 16 up to ${MAX_VIDEO_RESOLUTION}`);
       if (
         ![
           'cached-result',

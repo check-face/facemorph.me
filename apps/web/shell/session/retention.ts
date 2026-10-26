@@ -75,8 +75,10 @@ function settingsValid(value: unknown): boolean {
     value['width'] >= 0 &&
     value['width'] <= 1.2 &&
     typeof value['pinch'] === 'boolean' &&
-    typeof value['frames'] === 'number' &&
-    [8, 16, 32].includes(value['frames']) &&
+    // Any custom count of at least 2 that a two-face closed morph can make within the frame budget.
+    Number.isSafeInteger(value['frames']) &&
+    (value['frames'] as number) >= 2 &&
+    (value['frames'] as number) <= Math.floor(MORPH_FRAME_BUDGET / 2) &&
     typeof value['fps'] === 'number' &&
     Number.isInteger(value['fps']) &&
     value['fps'] >= 1 &&

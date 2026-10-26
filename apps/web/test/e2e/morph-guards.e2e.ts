@@ -9,7 +9,8 @@
 //   - faces at 8 and 64 with a repeat refuse naming the faces;
 //   - no MP4 route: WebCodecs removed and the runtime manifest served without its FFmpeg codec explains in
 //     Morph status before any synthesis;
-//   - 512 disclosure: WebCodecs answering only 512 says the MP4 will be 512 × 512 before frames start.
+//   - size disclosure (fm-36ag): with WebCodecs answering only up to 768, Full quality says the MP4 will be
+//     768 × 768 before frames start, and the Standard default (512 × 512) says nothing.
 // The over-budget refusal and 150-face loops are not reachable here until fm-id4c removes the 64-face Add face
 // cap (MorphSlot): 64 × 32 frames is under the 4,096-frame budget; the service and unit tests cover them.
 //   FACEMORPH_DEPLOY_OUT=<dir with deploy-next/> node --test test/e2e/morph-guards.e2e.ts
@@ -31,7 +32,7 @@ const MODEL = /^\/runtime\/(assets|chunks|encoder-stream|photo)\//;
 const NO_WEBCODECS = () => {
   delete (globalThis as { VideoEncoder?: unknown }).VideoEncoder;
 };
-const ONLY_512 = () => {
+const AT_MOST_768 = () => {
   const encoder = (
     globalThis as unknown as {
       VideoEncoder?: {
@@ -42,7 +43,7 @@ const ONLY_512 = () => {
   if (!encoder) return;
   const original = encoder.isConfigSupported.bind(encoder);
   encoder.isConfigSupported = async (config) =>
-    config.width === 1024 ? { supported: false } : original(config);
+    config.width > 768 ? { supported: false } : original(config);
 };
 
 test(
@@ -300,20 +301,38 @@ test(
           assert.doesNotMatch(await s.page.locator('.next-product').innerText(), /video is ready/i);
           await s.context.close();
         }
-        // 512 disclosure before frames start.
-        {
-          const s = await open(ONLY_512);
+        // Size disclosure before frames start (fm-36ag): Standard says nothing; Full quality held to 768 says so.
+        for (const quality of ['standard', 'full'] as const) {
+          const s = await open(AT_MOST_768);
           await faces(s, ['alpha words', 'beta words']);
+          if (quality === 'full') {
+            await s.page.getByRole('button', { name: 'More options' }).click(); // setup
+            await s.page.getByLabel('Video size').selectOption('full'); // setup
+            await s.page.getByRole('button', { name: 'More options' }).click(); // setup: close
+          }
           await proceed(s);
-          await s.page.waitForFunction(
-            () =>
-              /512 × 512/.test(
-                document.querySelector('.next-morph-slot .next-status')?.textContent ?? '',
-              ),
-            null,
-            { timeout: 30_000 },
-          );
-          await shot(s, 'disclosure-512');
+          if (quality === 'full')
+            await s.page
+              .waitForFunction(
+                () =>
+                  /can make up to 768 × 768, so this morph’s MP4 will be 768 × 768/.test(
+                    document.querySelector('.next-morph-slot .next-status')?.textContent ?? '',
+                  ),
+                null,
+                { timeout: 30_000 },
+              )
+              .catch(async (error: unknown) => {
+                await shot(s, 'disclosure-full-FAILED');
+                throw Error(
+                  `${name} full: Morph status was ${JSON.stringify(await status(s).innerText())}`,
+                  { cause: error },
+                );
+              });
+          else {
+            await s.page.waitForTimeout(3000);
+            assert.doesNotMatch(await status(s).innerText(), /can make up to|smaller video/);
+          }
+          await shot(s, `disclosure-${quality}`);
           await s.operate(
             s.page.locator('.next-morph-slot').getByRole('button', { name: 'Cancel' }),
           );

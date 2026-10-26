@@ -64,8 +64,13 @@ test('AddAt permits 63 to 64, then makes no state change; busy Provider is ignor
   const busy = { ...state, Busy: true };
   assert.equal(inputs(msg('Provider', 'webgpu'), busy)!.state, busy);
 });
-test('Kind, Pinch and Frames invalidate morph once and clear the slider frames', () => {
-  for (const message of [msg('Kind', 'linear'), msg('PinchToggle', false), msg('Frames', 32)]) {
+test('Kind, Pinch, Frames and Quality invalidate morph once and clear the slider frames', () => {
+  for (const message of [
+    msg('Kind', 'linear'),
+    msg('PinchToggle', false),
+    msg('Frames', 32),
+    msg('Quality', 'full'),
+  ]) {
     const result = inputs(message, { ...state, SliderFrames: ['frame'], VideoUrl: 'video' })!;
     assert.equal(result.state.VideoUrl, '');
     assert.equal(result.state.SliderFrames, null);
@@ -81,7 +86,7 @@ test('cached completion belongs to the exact input that requested the check', ()
   assert.equal(inputs(msg('CachedFaceChecked', input, true), edited)!.state, edited);
 });
 test('all retained messages have explicit ownership; Compare is retired by fm-25um', () => {
-  assert.equal(Object.keys(CASES).length, 69); // +NamesFailed (fm-96if): the picker shows its own load failure;
+  assert.equal(Object.keys(CASES).length, 70); // +Quality (fm-36ag): the morph video size choice; +NamesFailed (fm-96if): the picker shows its own load failure;
   // +Classified, UseAsPhoto (fm-4f5m): every file is classified before a face changes, and held stills are explicit.
   for (const name of ['CropAdjust', 'CropUse'] as const)
     assert.equal(typeof CASES[name], 'function', `${name} needs a reducer`);

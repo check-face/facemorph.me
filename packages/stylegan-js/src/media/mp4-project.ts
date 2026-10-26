@@ -56,7 +56,7 @@ export type VideoChoiceLike =
       readonly reason: 'webcodecs-unavailable' | 'webcodecs-unsupported';
     };
 
-/** The file result for an encoder choice; `fullSize` is the policy's first WebCodecs size (1024). */
+/** The file result for an encoder choice; `fullSize` is the size the chosen quality aimed for (1024 by default). */
 export function videoFileResult(choice: VideoChoiceLike, fullSize = 1024): VideoFileResult {
   if (choice.kind === 'ffmpeg')
     return { width: choice.width, height: choice.height, route: 'ffmpeg', reason: choice.reason };

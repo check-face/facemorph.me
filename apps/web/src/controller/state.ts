@@ -42,6 +42,8 @@ export interface State {
   readonly Pinch: boolean;
   readonly Frames: number;
   readonly Fps: number;
+  /** Morph video size (fm-36ag): Standard 512 × 512 by default, or Full quality up to the model size. */
+  readonly Quality?: 'standard' | 'full';
   readonly Provider: RequestedProvider;
   readonly Busy: boolean;
   readonly JobId: number;

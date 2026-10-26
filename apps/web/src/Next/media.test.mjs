@@ -40,18 +40,18 @@ let workers=[];
 function installWorker(){workers=[];const saved=globalThis.Worker;globalThis.Worker=FakeWorker;return ()=>{globalThis.Worker=saved;};}
 
 // --- probe (C-11) -----------------------------------------------------------
-test('The encoder probe selects WebCodecs at full resolution once per bundle',async()=>{
+test('The Full-quality encoder probe selects WebCodecs at full resolution with High first, once per bundle',async()=>{
  const {probeVideoEncoder,resetEncoderProbe}=await import('./media.mjs');
  resetEncoderProbe();const restore=installWebCodecs();
  try{
-  const first=await probeVideoEncoder({bundle:'bundle-1'});
-  assert.equal(first.kind,'webcodecs');assert.equal(first.width,1024);assert.equal(first.height,1024);
+  const first=await probeVideoEncoder({bundle:'bundle-1',quality:'full'});
+  assert.equal(first.kind,'webcodecs');assert.equal(first.width,1024);assert.equal(first.height,1024);assert.equal(first.codec,'avc1.64002A');
   assert.equal(encoderSupportCount,1,'one isConfigSupported probe');
   assert.equal(first.correctnessChecks,1,'one encoder-correctness-check');
-  const second=await probeVideoEncoder({bundle:'bundle-1'});
+  const second=await probeVideoEncoder({bundle:'bundle-1',quality:'full'});
   assert.equal(encoderSupportCount,1,'the decision is cached per bundle');
   assert.equal(second.kind,'webcodecs');
-  const other=await probeVideoEncoder({bundle:'bundle-2'});
+  const other=await probeVideoEncoder({bundle:'bundle-2',quality:'full'});
   assert.equal(encoderSupportCount,2,'a new bundle is measured again');
   assert.equal(other.correctnessChecks,2);
  }finally{restore();resetEncoderProbe();}
@@ -63,6 +63,10 @@ test('Browsers without WebCodecs fall back to ffmpeg at the classic resolution',
  try{
   const probe=await probeVideoEncoder({});
   assert.equal(probe.kind,'ffmpeg');assert.equal(probe.width,512);assert.equal(probe.reason,'webcodecs-unavailable');
+  const full=await probeVideoEncoder({quality:'full',modelSize:1024,deviceMemoryGiB:null});
+  assert.equal(full.width,1024);assert.equal(full.sizeReason,'target');
+  const low=await probeVideoEncoder({quality:'full',modelSize:1024,deviceMemoryGiB:1,bundle:'low'});
+  assert.equal(low.width,512);assert.equal(low.sizeReason,'ffmpeg-memory');
  }finally{globalThis.VideoEncoder=saved;resetEncoderProbe();}
 });
 test('A WebCodecs decision never fetches the ffmpeg codec assets',async()=>{
@@ -74,7 +78,7 @@ test('A WebCodecs decision never fetches the ffmpeg codec assets',async()=>{
   const choice=await writer.initialize();
   assert.equal(choice.kind,'webcodecs');
   const init=workers.at(-1).sent[0];
-  assert.equal(init.mode,'webcodecs');assert.equal(init.codec,'avc1.42002A');assert.equal(init.width,1024);
+  assert.equal(init.mode,'webcodecs');assert.equal(init.codec,'avc1.64002A','High first');assert.equal(init.width,512,'Standard (the default) is 512');
   assert.equal('wasm' in init,false,'no ffmpeg asset in the init message');
   assert.equal(fetched,0,'ffmpeg-core.wasm is not downloaded');
   writer.dispose();
@@ -91,6 +95,10 @@ test('The fallback path still initializes the ffmpeg worker at 512',async()=>{
   const init=workers.at(-1).sent[0];
   assert.equal(init.mode,'ffmpeg');assert.equal(init.width,512);assert.equal(init.height,512);assert.deepEqual(init.codec,{wasm:'w',module:'m'});
   writer.dispose();
+  const full=videoWriter({codec:{wasm:'w',module:'m'},fps:16,quality:'full',modelSize:1024});
+  assert.equal((await full.initialize()).width,1024,'Full quality: FFmpeg at the model size');
+  assert.equal(workers.at(-1).sent[0].width,1024);
+  full.dispose();
  }finally{globalThis.VideoEncoder=saved;restoreWorker();resetEncoderProbe();}
 });
 

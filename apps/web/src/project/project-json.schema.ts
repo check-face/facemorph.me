@@ -305,8 +305,8 @@ export function validate(project: Project): string[] {
     errors.push('Visit IDs must be unique; repeated latents can use distinct IDs.');
   if (!Number.isFinite(morph.width) || morph.width < 0)
     errors.push('Width must be finite and nonnegative.');
-  if (morph.framesPerSegment < 2 || morph.framesPerSegment % 2 !== 0)
-    errors.push('Use a positive even frame count per segment to include exact midpoint samples.');
+  // Classic also required an even count (an exact u = 0.5 midpoint sample); a custom count may be odd (fm-36ag).
+  if (morph.framesPerSegment < 2) errors.push('Use at least 2 frames per segment.');
   if (morph.framesPerSecond < 1 || morph.framesPerSecond > 240)
     errors.push('Frame rate must be 1–240.');
   if (!morph.closed && (morph.kind === 'full-smooth-ellipse' || morph.kind === 'full-smooth-figure8'))

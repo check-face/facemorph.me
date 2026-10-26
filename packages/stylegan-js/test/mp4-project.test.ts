@@ -177,6 +177,15 @@ test('schema 2 round trip: FFHQ and AFHQ-shaped controls, settings, model and vi
   }
 });
 
+test('a custom frames-per-face count, odd or large, round-trips through the MP4 project (fm-36ag)', () => {
+  for (const framesPerSegment of [2, 7, 33, 1365]) {
+    const i = input(FFHQ_1024_DESCRIPTOR, 3);
+    const custom = { ...i, morph: { ...i.morph, framesPerSegment } };
+    const p = parsed(readMp4Project(embedMp4Project(movie(), custom))).project;
+    assert.equal(p.morph.framesPerSegment, framesPerSegment);
+  }
+});
+
 test('a truncated MP4 is rejected', () => {
   const saved = embedMp4Project(movie(), input(FFHQ_1024_DESCRIPTOR));
   for (const cut of [1, 100, saved.length - movie().length + 10, saved.length - 2000])

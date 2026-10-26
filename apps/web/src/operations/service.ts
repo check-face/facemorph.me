@@ -35,6 +35,8 @@ export interface MorphSettings {
   readonly pinch: boolean;
   readonly frames: number;
   readonly fps: number;
+  /** Morph video size (fm-36ag); Standard when absent. */
+  readonly quality?: 'standard' | 'full';
 }
 interface Common {
   readonly route: RouteSnapshot;

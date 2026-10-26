@@ -31,6 +31,7 @@ export interface Payloads {
   ChooseDetected: readonly [number];
   DismissDetected: readonly [];
   Frames: readonly [number];
+  Quality: readonly ['standard' | 'full'];
   Provider: readonly [RequestedProvider];
   Run: readonly [string];
   RunFace: readonly [string];

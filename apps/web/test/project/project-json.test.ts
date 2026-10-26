@@ -66,6 +66,27 @@ function answer(input: string): { ok: boolean; text?: string; messages?: readonl
   return { ok: true, text: encoded.value };
 }
 
+/**
+ * Where the port deliberately answers differently from classic, by case name: the classic answer it replaces
+ * (checked, so a regenerated vector cannot silently change it) and the port's own. Classic refused an odd
+ * frames-per-segment count (an even count gives an exact u = 0.5 midpoint sample); the operator's Custom frame
+ * count admits any integer of at least 2 (fm-36ag, 26 October 2026). Even counts sample exactly as before.
+ */
+const EVEN_RULE = 'Use a positive even frame count per segment to include exact midpoint samples.';
+const DEVIATIONS: Readonly<Record<string, { readonly classic: Answer; readonly port: Answer }>> = {
+  'an odd frame count is invalid': {
+    classic: { ok: false, messages: [EVEN_RULE] },
+    port: { ok: true },
+  },
+  'several errors are all named, in order': {
+    classic: {
+      ok: false,
+      messages: ['Invalid truncation settings.', EVEN_RULE, 'Frame rate must be 1–240.'],
+    },
+    port: { ok: false, messages: ['Invalid truncation settings.', 'Frame rate must be 1–240.'] },
+  },
+};
+
 let checks = 0;
 let classicChecks = 0;
 for (const c of vectors.cases) {
@@ -73,15 +94,20 @@ for (const c of vectors.cases) {
     const input = inputOf(c);
     const got = answer(input);
     classicChecks += c.classicChecks ?? 0;
-    assert.equal(got.ok, c.classic.ok, `admitted as classic: ${JSON.stringify(got.messages)}`);
+    const deviation = DEVIATIONS[c.name];
+    if (deviation)
+      assert.deepEqual(c.classic, deviation.classic, 'the classic answer this case replaces');
+    const expected = deviation?.port ?? c.classic;
+    assert.equal(got.ok, expected.ok, `admitted as classic: ${JSON.stringify(got.messages)}`);
     checks++;
-    if (!c.classic.ok) {
-      assert.deepEqual(got.messages, c.classic.messages);
+    if (!expected.ok) {
+      assert.deepEqual(got.messages, expected.messages);
       checks++;
       return;
     }
     const text = got.text ?? '';
-    if (c.classic.sha256) {
+    if (deviation) assert.equal(text, input, 'the canonical input re-encodes to itself');
+    else if (c.classic.sha256) {
       assert.equal(sha256(text), c.classic.sha256, 'canonical text is classic’s byte for byte');
       assert.equal(text.length, c.classic.chars);
     } else assert.equal(text, c.classic.text, 'canonical text is classic’s byte for byte');
@@ -143,6 +169,34 @@ test('malformed input never throws: it is a typed error with classic’s one mes
     assert.equal(r.ok, false);
     if (!r.ok) assert.deepEqual(r.error, { kind: 'malformed', messages: [MALFORMED_MESSAGE] });
   }
+});
+
+test('frames per segment: any integer from 2 up to the 100,000-frame schedule limit (fm-36ag)', () => {
+  const text = readFileSync(
+    new URL('../../src/Next/project-v1.fixture.json', import.meta.url),
+    'utf8',
+  );
+  const fixture = JSON.parse(text) as { morph: Record<string, unknown> };
+  const withFrames = (frames: unknown) =>
+    JSON.stringify({ ...fixture, morph: { ...fixture.morph, framesPerSegment: frames } });
+  for (const frames of [2, 3, 7, 8, 16, 33, 100000]) {
+    const got = answer(withFrames(frames));
+    assert.equal(got.ok, true, `${frames}: ${JSON.stringify(got.messages)}`);
+    assert.equal(
+      JSON.parse(got.text ?? '').morph.framesPerSegment,
+      frames,
+      'round-trips the count',
+    );
+  }
+  for (const frames of [0, 1])
+    assert.deepEqual(answer(withFrames(frames)).messages, ['Use at least 2 frames per segment.']);
+  assert.deepEqual(answer(withFrames(100001)).messages, ['Frame schedule exceeds the limit.']);
+  for (const frames of [-2, 1.5, '16', null])
+    assert.equal(answer(withFrames(frames)).ok, false, String(frames));
+  assert.equal(
+    answer(withFrames(16).replace('"framesPerSegment":16', '"framesPerSegment":NaN')).ok,
+    false,
+  );
 });
 
 test('encode refuses an invalid project with every reason, and admits the fixture', () => {

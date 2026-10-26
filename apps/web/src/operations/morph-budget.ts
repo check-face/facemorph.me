@@ -13,11 +13,11 @@ export function morphFrameFailure(request: OperationRequest): OperationFailure |
     };
   }
   const frames = request.settings.frames;
-  if (!Number.isSafeInteger(frames) || frames < 2 || frames % 2) {
+  if (!Number.isSafeInteger(frames) || frames < 2) {
     return {
       kind: 'morph-frames',
       reason: 'invalid-settings',
-      message: 'Choose an even number of frames per segment, at least 2.',
+      message: 'Choose at least 2 frames per face.',
       recovery: 'adjust-frames',
     };
   }

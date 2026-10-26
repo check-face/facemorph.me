@@ -277,10 +277,9 @@ function requireValid(
   if (
     !Number.isInteger(m.framesPerSegment) ||
     m.framesPerSegment < 2 ||
-    m.framesPerSegment % 2 ||
     segments * m.framesPerSegment + (m.closed ? 0 : 1) > LIMITS.frames
   )
-    fail('Expected even frames per segment within total frame budget');
+    fail('Expected at least 2 frames per segment within total frame budget');
   if (
     !Number.isInteger(m.framesPerSecond) ||
     m.framesPerSecond < LIMITS.minFramesPerSecond ||

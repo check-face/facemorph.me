@@ -1,8 +1,12 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
+  AFHQ_CAT_512_DESCRIPTOR,
+  FFHQ_1024_DESCRIPTOR,
   MAX_MORPH_FRAMES,
+  MAX_VIDEO_RESOLUTION,
   WorkerMessageError,
+  isVideoResolution,
   assertCloneSafe,
   validateWorkerRequest,
   validateWorkerResponse,
@@ -271,6 +275,36 @@ function mutate(value: unknown, random: () => number, odd: unknown[]): unknown {
     );
   return copy;
 }
+
+test('render-morph takes any frames per face from 2 within the total bound, and any size up to the model (fm-36ag)', () => {
+  const morph = (settings: Record<string, unknown>, request: Record<string, unknown> = {}) => {
+    const base = requests()[5]!;
+    const r = base.request as Record<string, unknown>;
+    return {
+      ...base,
+      request: { ...r, settings: { ...(r.settings as object), ...settings }, ...request },
+    };
+  };
+  const accepted = (m: unknown) => code(() => validateWorkerRequest(m));
+  // Three endpoints in a closed loop: the largest count within MAX_MORPH_FRAMES, and one more.
+  const largest = Math.floor(MAX_MORPH_FRAMES / 3);
+  for (const frames of [2, 7, 8, 16, 24, 32, 33, largest])
+    assert.equal(accepted(morph({ frames })), 'accepted', String(frames));
+  for (const frames of [0, 1, 1.5, '16', NaN, Infinity, -2, largest + 1, undefined])
+    assert.equal(accepted(morph({ frames })), 'invalid-field', String(frames));
+  // Two endpoints allow twice the per-face count.
+  const two = { endpoints: [latent(), latent()] };
+  assert.equal(accepted(morph({ frames: MAX_MORPH_FRAMES / 2 }, two)), 'accepted');
+  assert.equal(accepted(morph({ frames: MAX_MORPH_FRAMES / 2 + 1 }, two)), 'invalid-field');
+  // Video size: a multiple of 16 up to the largest model output this package supports, never upscaled.
+  assert.equal(MAX_VIDEO_RESOLUTION, FFHQ_1024_DESCRIPTOR.output.shape[3]);
+  for (const resolution of [16, 512, 640, 768, 896, MAX_VIDEO_RESOLUTION])
+    assert.equal(accepted(morph({}, { resolution })), 'accepted', String(resolution));
+  for (const resolution of [0, 8, 500, 513, 1000, 15.5, '512', NaN, MAX_VIDEO_RESOLUTION + 16])
+    assert.equal(accepted(morph({}, { resolution })), 'invalid-field', String(resolution));
+  assert.equal(isVideoResolution(512, AFHQ_CAT_512_DESCRIPTOR.output.shape[3]), true);
+  assert.equal(isVideoResolution(528, AFHQ_CAT_512_DESCRIPTOR.output.shape[3]), false);
+});
 
 test('fuzz (seed 1024, 4000 cases): mutated worker payloads are accepted or rejected with a typed error', () => {
   const random = mulberry32(1024);

@@ -132,6 +132,9 @@ export function createController(
         fps: request.settings.fps,
         webcodecs: browserWebCodecs(),
         ffmpeg: ffmpegAvailability,
+        quality: request.settings.quality ?? 'standard',
+        deviceMemoryGiB:
+          (globalThis.navigator as { deviceMemory?: number } | undefined)?.deviceMemory ?? null,
       }),
   });
   const service = createOperationService({
@@ -309,6 +312,7 @@ export function createController(
         pinch: state.Pinch,
         frames: state.Frames,
         fps: state.Fps,
+        quality: state.Quality ?? 'standard',
       },
       route: { ...identity, requested: state.Provider, fallbackScope: 'cpu-once' },
     };
@@ -380,6 +384,7 @@ export function createController(
       pinch: request.pinch,
       frames: request.frames,
       fps: request.fps,
+      ...(request.quality ? { quality: request.quality } : {}),
     };
     const sources = computable(request.inputs).map(source);
     if (request.action === 'morph') {

@@ -11,6 +11,7 @@ export interface ViewSnapshot {
   readonly pinch: boolean;
   readonly frames: number;
   readonly fps: number;
+  readonly quality?: 'standard' | 'full';
 }
 export type EverydayEffect =
   | {
@@ -137,4 +138,5 @@ export const viewSnapshot = (state: State): ViewSnapshot => ({
   pinch: state.Pinch,
   frames: state.Frames,
   fps: state.Fps,
+  ...(state.Quality ? { quality: state.Quality } : {}),
 });

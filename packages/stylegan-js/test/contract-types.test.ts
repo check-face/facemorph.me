@@ -208,8 +208,8 @@ export const noMetadata: RecoveryReadResult = { kind: 'parsed' };
 // @ts-expect-error damaged results give a known reason
 export const badReason: RecoveryReadResult = { kind: 'damaged', reason: 'cosmic-rays', detail: '' };
 const twelveFrames = { kind: 'linear', width: 1, pinch: false, frames: 12, fps: 24 } as const;
-// @ts-expect-error morph settings take only the candidate frame counts
-export const badFrames: api.MorphSettings = twelveFrames;
+// A custom frames-per-face count is a valid setting (fm-36ag); the validator bounds it at run time.
+export const customFrames: api.MorphSettings = twelveFrames;
 // @ts-expect-error WebGL is no longer a compute route
 export const webgl: api.ComputeRoute = 'webgl';
 

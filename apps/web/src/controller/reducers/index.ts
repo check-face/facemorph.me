@@ -22,6 +22,7 @@ export const CASES = {
   Remove: inputs,
   Kind: inputs,
   Frames: inputs,
+  Quality: inputs,
   Provider: inputs,
   OverflowToggle: inputs,
   CachedFaceChecked: inputs,

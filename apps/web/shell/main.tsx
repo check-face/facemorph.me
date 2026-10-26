@@ -14,6 +14,7 @@ import {
   sliderPreference,
   sliderPosition,
 } from './facade/bridge.ts';
+import { videoQualityPreference } from '../src/controller/preferences.ts';
 
 const root = document.getElementById('elmish-app');
 if (!root) throw new Error('No #elmish-app element to mount the app into');
@@ -42,6 +43,7 @@ function start() {
       debugOn: restoreDebug(),
       sliderPreference: sliderPreference(),
       sliderPosition: sliderPosition(),
+      videoQuality: videoQualityPreference(),
     },
     { identity: { runtimeSha256, modelSha256 } },
   );

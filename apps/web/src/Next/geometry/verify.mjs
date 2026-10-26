@@ -97,8 +97,9 @@ for (let i = 0; i < 4; i++) assert(norm(jets(u => zeroWidth.sample(i, u), 0, 1).
 const m = project(shared), path = createLatentPath(m), frames = [...path.frames()];
 assert.equal(frames.length, 16); assert.deepEqual(frames.filter(f => f.visitId).map(f => f.visitId), ['visit-0', 'visit-1', 'visit-2', 'visit-3']);
 const endpoint = path.sample(1, 0); m.controls[1].latent.values[0] = 99; endpoint[0] = 100; assert.equal(path.sample(1, 0)[0], 2);
-const open = createLatentPath(project(ring(3), 'linear', { closed: false })); assert.equal(open.totalFrames, 9); assert.equal([...open.frames()].at(-1).visitId, 'visit-2');
-for (const patch of [{ algorithmVersion: 'future' }, { width: Infinity }, { width: 1.21 }, { framesPerSegment: 3 }, { framesPerSegment: 100000 }, { closed: false }, { controls: [] }]) assert.throws(() => createLatentPath({ ...project(ring(3)), ...patch }), RangeError);
+const open = createLatentPath(project(ring(3), 'linear', { closed: false })); assert.equal(open.totalFrames, 9);
+assert.equal(createLatentPath({ ...project(ring(3)), framesPerSegment: 7 }).totalFrames, 21); // an odd custom count (fm-36ag) assert.equal([...open.frames()].at(-1).visitId, 'visit-2');
+for (const patch of [{ algorithmVersion: 'future' }, { width: Infinity }, { width: 1.21 }, { framesPerSegment: 1 }, { framesPerSegment: 1.5 }, { framesPerSegment: 100000 }, { closed: false }, { controls: [] }]) assert.throws(() => createLatentPath({ ...project(ring(3)), ...patch }), RangeError);
 for (const mutate of [m => { m.controls[0].latent.space = 'z'; }, m => { m.controls[0].latent.values[0] = NaN; }, m => { m.controls[0].visitId = m.controls[1].visitId; }, m => { m.controls[1].latent.values = m.controls[0].latent.values.slice(); }, m => { m.controls[0].latent.shape = [9216]; }]) { const invalid = project(ring(3)); mutate(invalid); assert.throws(() => createLatentPath(invalid), RangeError); }
 assert.throws(() => path.sample(0, -1), RangeError); assert.throws(() => path.sample(4, 0), RangeError);
 console.log(JSON.stringify({ status: 'passed', referenceCases, invariantCases, dimensions: [512, 9216], note: 'Geometry only; generated-face qualification remains required.' }));

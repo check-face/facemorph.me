@@ -84,6 +84,26 @@ test('budget: no face count refusal; the message names the limit, the estimate a
   );
 });
 
+test('budget: Custom counts (fm-36ag): any whole number from 2, odd included, up to exactly the budget', () => {
+  for (const frames of [2, 3, 7, 33])
+    assert.equal(morphFrameFailure(many(3, frames, 'linear')), undefined, `3×${frames}`);
+  assert.equal(morphFrameFailure(many(3, 1365, 'linear')), undefined, '3 × 1,365 = 4,095 fits');
+  const over = morphFrameFailure(many(3, 1366, 'linear'));
+  assert.equal(over?.kind === 'morph-frames' && over.reason, 'over-budget');
+  for (const frames of [0, 1, 1.5, Number.NaN]) {
+    const failure = morphFrameFailure(many(2, frames, 'linear'));
+    assert.equal(
+      failure?.kind === 'morph-frames' && failure.reason,
+      'invalid-settings',
+      String(frames),
+    );
+    assert.equal(
+      failure?.kind === 'morph-frames' && failure.message,
+      'Choose at least 2 frames per face.',
+    );
+  }
+});
+
 // ---- Identical neighbours (defect 6) -------------------------------------------------------------
 
 const resolveNames =
@@ -228,6 +248,7 @@ test('mp4-probe.probe-before-synthesis: no dependency or frame work until the pr
       probe: () =>
         probeMp4({
           fps: 16,
+          quality: 'full',
           webcodecs: () => new Promise<boolean>((resolve) => (answer = resolve)),
           ffmpeg: async () => 'absent',
         }),
@@ -270,12 +291,13 @@ test('mp4-probe.none in the service: zero synthesis, an explanation, faces untou
   await service.dispose();
 });
 
-test('mp4-probe.disclosure-512 in the service: Morph status says 512 × 512 before frames start', async () => {
+test('mp4-probe.disclosure-512 in the service: Full quality held to 512 says 512 × 512 before frames start', async () => {
   const { fake, service, events } = held(
     morphChecks({
       probe: () =>
         probeMp4({
           fps: 16,
+          quality: 'full',
           webcodecs: async (s) => s.width === 512,
           ffmpeg: async () => 'absent',
         }),
@@ -287,6 +309,10 @@ test('mp4-probe.disclosure-512 in the service: Morph status says 512 × 512 befo
   assert.deepEqual(types.slice(0, 2), ['queued', 'disclosure']);
   const notice = events.find((e) => e.type === 'disclosure');
   assert.ok(notice?.type === 'disclosure' && /512 × 512/.test(notice.text) && notice.width === 512);
+  assert.equal(
+    notice.text,
+    'This browser can make up to 512 × 512, so this morph’s MP4 will be 512 × 512.',
+  );
   for (let i = 0; i < fake.executions.length; i++) {
     const e = fake.executions[i]!;
     e.resolve(output(e.request.action === 'face' ? [e.request.target] : []));

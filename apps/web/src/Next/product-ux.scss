@@ -324,6 +324,12 @@ html:has(.next-consent-toast.MuiSnackbarContent-root) { scroll-padding-bottom:12
 .next-overflow .next-overflow-field { flex-direction:column; align-items:stretch; gap:.4rem; text-align:left; }
 .next-overflow-field select { width:100%; min-height:44px; }
 .next-overflow-field option { background:#232429; color:#eee; }
+// Custom frames per face (fm-36ag): the field matches the selects; its reason sits beside it in a readable colour.
+.next-overflow-field input { font:inherit; width:100%; min-height:44px; padding:.35rem .5rem; border-radius:6px; border:1px solid rgba(128,128,128,.45); background:transparent; color:inherit; }
+.next-overflow-field input:focus-visible { outline:2px solid #ce621d; outline-offset:2px; }
+.next-overflow-field input[aria-invalid=true] { border-color:#b3261e; }
+.next-field-problem { font-size:.9rem; line-height:1.4; color:#b3261e; text-align:left; }
+@media (prefers-color-scheme: dark) { .next-field-problem { color:#ffb4ab; } .next-overflow-field input[aria-invalid=true] { border-color:#ffb4ab; } }
 .next-advanced { width:100%; border:1px solid #8886; border-radius:6px; padding:.5rem .75rem; }
 .next-advanced summary { font-weight:600; padding:.4rem 0; }
 .next-advanced p { margin-top:.75rem; font-size:.9rem; line-height:1.5; opacity:.85; }

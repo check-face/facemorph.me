@@ -9,7 +9,7 @@ import { clearWords, wordsBytes } from './session-words.ts';
 export const ORIGINALS_DB = 'checkface-originals-v1';
 export const ORIGINALS_STORE = 'originals';
 export const SESSION_KEY = 'last-generated-session-v2';
-export const KEPT_LOCAL_KEYS = ['facemorph-slider-v1'] as const;
+export const KEPT_LOCAL_KEYS = ['facemorph-slider-v1', 'facemorph-video-quality-v1'] as const;
 
 /** Bytes of a stored value: Blobs by size, typed arrays by length, strings as UTF-8, objects recursively. */
 export function valueBytes(v: unknown, seen = new Set<object>()): number {

@@ -14,7 +14,7 @@
 // pipelined: `add()` hands the frame to the worker and returns, so frame N encodes while
 // frame N+1 synthesizes; the encode surfaces as its own 'encoding' stage in diagnostics.
 import {createImageEncoder} from './image-encoder.mjs';
-import {CORRECTNESS_ENCODE,FFMPEG_WIDTH,SCRUB_JPEG_QUALITY,VIDEO_FALLBACK_WIDTH,VIDEO_WIDTH,videoEncoderSettings} from '../media/export-policy.ts';
+import {CORRECTNESS_ENCODE,SCRUB_JPEG_QUALITY,VIDEO_WIDTH,ffmpegChoice,qualitySizes,videoEncoderCandidates} from '../media/export-policy.ts';
 import { frameStorePut, frameKey } from './morph-frames.mjs';
 
 export async function saveFile(blob,name){
@@ -60,6 +60,8 @@ async function frameDerivatives(blob,{encodeSize=512,derivativeSize=0}={}){
 }
 
 let encoderProbe=null,correctnessChecks=0;
+/** navigator.deviceMemory in GiB, or null where the browser does not say (export-policy ffmpegChoice bound). */
+export const browserDeviceMemory=()=>Number.isFinite(globalThis.navigator?.deviceMemory)?globalThis.navigator.deviceMemory:null;
 async function encoderCorrectnessCheck(codec,fps){
  correctnessChecks++;
  const Canvas=typeof OffscreenCanvas==='function'?OffscreenCanvas:null;
@@ -79,35 +81,36 @@ async function encoderCorrectnessCheck(codec,fps){
  return chunks>0;
 }
 /**
- * One measured encoder decision per bundle: WebCodecs `VideoEncoder` wherever
- * `isConfigSupported()` passes (verified by one small correctness encode), at the preferred
- * resolution — 512 only when the device says no — and the ffmpeg fallback otherwise. The
- * result is cached for the session keyed by bundle, so a second photo or morph performs no
- * further encoder-correctness-check. The chosen resolution is recorded in the result; callers
- * must pass it on to diagnostics rather than lowering it themselves.
+ * One measured encoder decision per bundle and quality: WebCodecs `VideoEncoder` wherever
+ * `isConfigSupported()` passes (verified by one small correctness encode), at the largest of the
+ * quality's sizes that works — High before baseline at each (export-policy videoEncoderCandidates) —
+ * and the ffmpeg fallback at the quality's memory-bounded size otherwise. The result is cached for the
+ * session keyed by bundle, quality and model size, so a second photo or morph performs no further
+ * encoder-correctness-check. The chosen resolution is recorded in the result; callers must pass it
+ * on to diagnostics rather than lowering it themselves.
  */
-export async function probeVideoEncoder({width=VIDEO_WIDTH,fallbackWidth=VIDEO_FALLBACK_WIDTH,fps=16,bundle=''}={}){
- if(encoderProbe&&encoderProbe.bundle===bundle)return encoderProbe.result;
- const VideoEncoder=globalThis.VideoEncoder;
+export async function probeVideoEncoder({fps=16,quality='standard',modelSize=VIDEO_WIDTH,deviceMemoryGiB=browserDeviceMemory(),bundle=''}={}){
+ const key=`${bundle}|${quality}|${modelSize}`;
+ if(encoderProbe&&encoderProbe.key===key)return encoderProbe.result;
+ const VideoEncoder=globalThis.VideoEncoder,options={quality,modelSize,deviceMemoryGiB};
  let result;
- if(!VideoEncoder?.isConfigSupported)result={kind:'ffmpeg',width:fallbackWidth,height:fallbackWidth,reason:'webcodecs-unavailable'};
+ if(!VideoEncoder?.isConfigSupported)result=ffmpegChoice('webcodecs-unavailable',options);
  else{
-  result={kind:'ffmpeg',width:fallbackWidth,height:fallbackWidth,reason:'webcodecs-unsupported'};
-  for(const size of [width,fallbackWidth]){
-   const config=videoEncoderSettings(size,fps);
+  result=ffmpegChoice('webcodecs-unsupported',options);
+  for(const config of videoEncoderCandidates(fps,options)){
    try{
     if(!(await VideoEncoder.isConfigSupported(config)).supported)continue;
-    if(await encoderCorrectnessCheck(config.codec,fps)){result={kind:'webcodecs',...config,correctnessChecks};break;}
+    if(await encoderCorrectnessCheck(config.codec,fps)){result={kind:'webcodecs',...config,targetSize:qualitySizes(options)[0],correctnessChecks};break;}
    }catch{}
   }
  }
- encoderProbe={bundle,result};
+ encoderProbe={key,result};
  return result;
 }
 /** Test seam: forget the per-session encoder decision. */
 export function resetEncoderProbe(){encoderProbe=null;correctnessChecks=0;}
 
-export function videoWriter({codec,encoder,fps=16,framesKey,totalFrames,derivativeSize=512,signal,onProgress=()=>{},imageEncoderFactory=()=>createImageEncoder()}){
+export function videoWriter({codec,encoder,fps=16,quality='standard',modelSize=VIDEO_WIDTH,framesKey,totalFrames,derivativeSize=512,signal,onProgress=()=>{},imageEncoderFactory=()=>createImageEncoder()}){
  const worker=new Worker(new URL('./video-worker.mjs',import.meta.url),{type:'module'});let id=0,closed=false,mode='',encodeSize=0,nextIndex=0,submitted=0,encoded=0;const pending=new Map(),persisting=[],drainWaiters=[];let images;
  const stop=(reason=new DOMException('Video cancelled','AbortError'))=>{if(closed)return;closed=true;images?.dispose();signal?.removeEventListener('abort',abort);try{worker.terminate();}catch{}finally{for(const p of pending.values()){clearTimeout(p.timer);p.reject(reason);}pending.clear();for(const w of drainWaiters.splice(0))w();}};
  const abort=()=>stop();signal?.addEventListener('abort',abort,{once:true});if(signal?.aborted)stop();
@@ -139,8 +142,8 @@ export function videoWriter({codec,encoder,fps=16,framesKey,totalFrames,derivati
    // Without WebCodecs the probe answer needs no await, so the initialize call is registered
    // synchronously and a worker failure still rejects the very call the caller awaits.
    let choice=encoder;
-   if(!choice){const probe=globalThis.VideoEncoder?.isConfigSupported?probeVideoEncoder({fps}):null;
-    choice=probe?await probe:{kind:'ffmpeg',width:FFMPEG_WIDTH,height:FFMPEG_WIDTH,reason:'webcodecs-unavailable'};}
+   if(!choice){const probe=globalThis.VideoEncoder?.isConfigSupported?probeVideoEncoder({fps,quality,modelSize}):null;
+    choice=probe?await probe:ffmpegChoice('webcodecs-unavailable',{quality,modelSize,deviceMemoryGiB:browserDeviceMemory()});}
    mode=choice.kind;encodeSize=choice.width;
    if(mode==='webcodecs')await call('initialize',{mode,codec:choice.codec,width:choice.width,height:choice.height,fps,bitrate:choice.bitrate});
    else await call('initialize',{mode:'ffmpeg',codec,fps,width:choice.width,height:choice.height});

@@ -24,6 +24,7 @@ import type {
   GenerationKind,
   RecoveryReadResult,
 } from './recovery-metadata.ts';
+import { AFHQ_CAT_512_DESCRIPTOR, FFHQ_1024_DESCRIPTOR } from './descriptor.ts';
 import type { E4eTimings } from './timing.ts';
 
 /** Ids carried by every request and result. */
@@ -153,8 +154,8 @@ export interface MorphSettings {
   /** Path width, 0 to 1.2. */
   readonly width: number;
   readonly pinch: boolean;
-  /** Frames per segment. */
-  readonly frames: 8 | 16 | 32;
+  /** Frames per segment: an integer of at least 2; the total-frame bound (MAX_MORPH_FRAMES) is the only cap. */
+  readonly frames: number;
   /** 1 to 120. */
   readonly fps: number;
 }
@@ -167,7 +168,30 @@ export interface MorphSettings {
 export const MAX_MORPH_FRAMES = 4096;
 /** Frames per raw transfer segment (ort-worker.mjs synthesize-frames). */
 export const RAW_SEGMENT_FRAMES = 8;
-export type VideoResolution = 1024 | 512;
+/**
+ * The side of a square video frame in pixels: a positive multiple of 16 (so even and macroblock-aligned) no
+ * larger than the model's output side. Never upscaled. See isVideoResolution.
+ */
+export type VideoResolution = number;
+/**
+ * The largest model output side this package supports (its descriptors), the bound for a video size when no
+ * model descriptor is in scope (the worker message validator). With a descriptor, pass its output side instead.
+ */
+export const MAX_VIDEO_RESOLUTION: number = Math.max(
+  ...[FFHQ_1024_DESCRIPTOR, AFHQ_CAT_512_DESCRIPTOR].map((d) => d.output.shape[3]),
+);
+/** A video size that needs no upscaling: a positive multiple of 16 up to the model's output side. */
+export function isVideoResolution(
+  value: unknown,
+  modelSide: number = MAX_VIDEO_RESOLUTION,
+): boolean {
+  return (
+    Number.isSafeInteger(value) &&
+    (value as number) >= 16 &&
+    (value as number) % 16 === 0 &&
+    (value as number) <= modelSide
+  );
+}
 export type VideoEncoderPath = 'webcodecs' | 'ffmpeg';
 
 export type MediaBranch =

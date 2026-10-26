@@ -112,13 +112,16 @@ export function inputs(message: Msg, state: State, facts: InputFacts = {}): Tran
     }
     case 'Kind':
     case 'PinchToggle':
+    case 'Quality':
     case 'Frames': {
       const patch =
         message.type === 'Kind'
           ? { Kind: message.args[0] }
           : message.type === 'Frames'
             ? { Frames: message.args[0] }
-            : { Pinch: message.args[0] };
+            : message.type === 'Quality'
+              ? { Quality: message.args[0] }
+              : { Pinch: message.args[0] };
       return {
         state: { ...state, ...patch, VideoUrl: '', SliderFrames: null },
         effects: [{ type: 'invalidateMorph' }],

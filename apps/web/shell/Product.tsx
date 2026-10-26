@@ -2,6 +2,7 @@
 import { useSyncExternalStore } from 'react';
 import type { Store } from '../src/controller/store.ts';
 import { msg } from '../src/controller/msg.ts';
+import { rememberVideoQuality } from '../src/controller/preferences.ts';
 import { estimate, isSlowDevice, perFrameText } from '../src/controller/derived.ts';
 import * as facade from './facade/bridge.ts';
 import { describeMeasuredMs, describeMs } from './facade/helpers.ts';
@@ -151,6 +152,9 @@ export function Product({ store }: { store: Store }) {
             remaining={s.Remaining}
             warning={s.Warn ?? undefined}
             plannedFrames={measurements.plannedFrames}
+            quality={s.Quality ?? 'standard'}
+            fps={s.Fps}
+            frameMs={measurements.frameMs}
             testingInvited={new URL(location.href).searchParams.has('testing')}
             onRun={(what) => dispatch(msg('Run', what))}
             onCancel={() => dispatch(msg('Cancel'))}
@@ -159,6 +163,10 @@ export function Product({ store }: { store: Store }) {
             onSettings={(change) => {
               if (change.kind !== undefined) dispatch(msg('Kind', change.kind));
               if (change.frames !== undefined) dispatch(msg('Frames', change.frames));
+              if (change.quality !== undefined) {
+                rememberVideoQuality(change.quality);
+                dispatch(msg('Quality', change.quality));
+              }
               if (change.pinch !== undefined) dispatch(msg('PinchToggle', change.pinch));
               if (change.provider !== undefined) dispatch(msg('Provider', change.provider));
             }}

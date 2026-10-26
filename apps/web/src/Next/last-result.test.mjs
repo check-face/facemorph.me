@@ -11,6 +11,14 @@ test('restore validates image and latent hashes and rejects corrupt or incompati
  for(const compatible of [Array.from(values),new Float64Array(values)])assert.equal((await validateLast({...record,result:{...result,latent:{space:'w-plus',values:compatible}}})).result.latent.values.length,9216);
  for(const invalid of [Array(9216).fill('0'),new Float32Array(9216).fill(NaN)])assert.equal(await validateLast({...record,result:{...result,latent:{space:'w-plus',values:invalid}}}),null);
 });
+test('a custom frames-per-face count persists from 2 up to a two-face morph within the 4,096-frame budget (fm-36ag)',async()=>{
+ const {MORPH_FRAME_BUDGET}=await import('./last-result.mjs');
+ const blob=new Blob(['image'],{type:'image/png'}),values=new Float32Array(18*512);
+ const result={blob,latent:{space:'w-plus',values},imageSha256:await digest(await blob.arrayBuffer()),latentSha256:await digest(values),provenance:{modelSha256:'model',noiseSha256:'noise'}};
+ const at=frames=>validateLast({kind:'last-generated-result-v1',result,settings:{kind:'pairwise-figure8',width:.2,pinch:false,frames,fps:24}});
+ for(const frames of [2,7,8,24,33,MORPH_FRAME_BUDGET/2])assert.ok(await at(frames),`${frames} is kept`);
+ for(const frames of [0,1,1.5,'16',NaN,Infinity,-2,MORPH_FRAME_BUDGET/2+1])assert.equal(await at(frames),null,`${String(frames)} is refused`);
+});
 test('unavailable device storage gracefully skips save and restore',async()=>{
  assert.equal(await readLast(),null);assert.equal(await rememberLast({imageSha256:'x',latentSha256:'y'},{}),false);
 });

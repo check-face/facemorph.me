@@ -12,6 +12,7 @@ import { infillFrames, infillIndices } from '../../src/morph/infill.ts';
 import {
   createLatentPath,
   GEOMETRY_VERSION,
+  LIMITS,
   LatentShapeUnsupported,
   type LatentSpace,
   type LatentValues,
@@ -137,7 +138,8 @@ test('latent-path.byte-identical: 2-64 controls equal the app latent-path-v1 byt
             framesPerSegment: controls === 5 ? 6 : 2,
             as: 'f32',
           });
-  for (const framesPerSegment of [2, 8, 16])
+  // Odd custom counts (fm-36ag) agree with the app module too.
+  for (const framesPerSegment of [2, 3, 7, 8, 16])
     cases.push({
       controls: 3,
       space: 'w',
@@ -257,9 +259,45 @@ test('latent-path.no-control-cap: 65 and 150 controls give valid finite paths in
         tiny,
       ),
     {
-      message: 'Expected even frames per segment within total frame budget',
+      message: 'Expected at least 2 frames per segment within total frame budget',
     },
   );
+});
+
+test('latent-path.frames-per-segment: any integer of at least 2 within the 100,000-frame total (fm-36ag)', () => {
+  const message = 'Expected at least 2 frames per segment within total frame budget';
+  const closed = spec('pairwise-figure8', { controls: 3, space: 'w', pinchCenter: true });
+  const open = spec('linear', { controls: 3, space: 'w', closed: false });
+  for (const geometry of [{ createLatentPath }, appGeometry])
+    for (const m of [closed, open]) {
+      const segments = m.closed ? 3 : 2;
+      const at = (framesPerSegment: unknown) =>
+        geometry.createLatentPath({ ...m, framesPerSegment } as MorphPathSpec);
+      for (const n of [2, 3, 7, 33])
+        assert.equal(at(n).totalFrames, segments * n + (m.closed ? 0 : 1));
+      // The largest count whose total stays within LIMITS.frames, and one more.
+      const largest = Math.floor((LIMITS.frames - (m.closed ? 0 : 1)) / segments);
+      assert.ok(segments * largest + (m.closed ? 0 : 1) <= LIMITS.frames);
+      assert.equal(at(largest).totalFrames, segments * largest + (m.closed ? 0 : 1));
+      for (const n of [0, 1, 1.5, '16', NaN, Infinity, -2, largest + 1])
+        assert.throws(() => at(n), { name: 'RangeError', message }, String(n));
+    }
+  // An odd count samples u = k/n exactly; it never visits the midpoint and every frame is finite.
+  for (const kind of KINDS) {
+    const path = createLatentPath(spec(kind, { controls: 3, framesPerSegment: 7 }));
+    const frames = [...path.frames()];
+    assert.equal(frames.length, 21);
+    assert.deepEqual(
+      frames.filter((f) => f.visitId).map((f) => f.index),
+      [0, 7, 14],
+    );
+    for (const f of frames)
+      assert.deepEqual(
+        bytes(f.values),
+        bytes(path.sample(f.segment, (f.index % 7) / 7)),
+        `${kind} frame ${f.index}`,
+      );
+  }
 });
 
 test('latent-path.sanity-bounds: frames, fps and the other validation messages are unchanged', () => {
@@ -271,8 +309,11 @@ test('latent-path.sanity-bounds: frames, fps and the other validation messages a
   };
   both({ algorithmVersion: 'future' }, 'Unsupported latent geometry version');
   both({ width: 1.21 }, 'Width must be between 0 and 1.2');
-  both({ framesPerSegment: 3 }, 'Expected even frames per segment within total frame budget');
-  both({ framesPerSegment: 100000 }, 'Expected even frames per segment within total frame budget');
+  both({ framesPerSegment: 1 }, 'Expected at least 2 frames per segment within total frame budget');
+  both(
+    { framesPerSegment: 100000 },
+    'Expected at least 2 frames per segment within total frame budget',
+  );
   both({ framesPerSecond: 0 }, 'Frame rate must be an integer from 1 to 120');
   both({ framesPerSecond: 121 }, 'Frame rate must be an integer from 1 to 120');
   both({ closed: false }, 'Full-smooth paths require closed equal-duration segments');

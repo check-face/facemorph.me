@@ -61,7 +61,7 @@ test('a blend export identity includes its recipe and is named by the filename r
 });
 
 test('forced WebCodecs-512 and forced FFmpeg report {width: 512, height: 512, route, reason}', () => {
-  const at512 = chooseVideoEncoder(16, (s) => s.width === 512);
+  const at512 = chooseVideoEncoder(16, (s) => s.width === 512, { quality: 'full' });
   assert.deepEqual(videoFileResult(at512), {
     width: 512,
     height: 512,
@@ -74,13 +74,20 @@ test('forced WebCodecs-512 and forced FFmpeg report {width: 512, height: 512, ro
     route: 'ffmpeg',
     reason: 'webcodecs-unavailable',
   });
+  // fm-36ag: Full quality's FFmpeg fallback is the model size, reported as such.
+  assert.deepEqual(videoFileResult(chooseVideoEncoder(16, null, { quality: 'full' })), {
+    width: 1024,
+    height: 1024,
+    route: 'ffmpeg',
+    reason: 'webcodecs-unavailable',
+  });
   assert.deepEqual(videoFileResult(chooseVideoEncoder(16, () => false)), {
     width: 512,
     height: 512,
     route: 'ffmpeg',
     reason: 'webcodecs-unsupported',
   });
-  assert.deepEqual(videoFileResult(chooseVideoEncoder(16, () => true)), {
+  assert.deepEqual(videoFileResult(chooseVideoEncoder(16, () => true, { quality: 'full' })), {
     width: 1024,
     height: 1024,
     route: 'webcodecs',
