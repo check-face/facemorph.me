@@ -92,3 +92,24 @@ test('dependency qualification retains main serialization and exact candidate pr
   assert.match(main.jobs['dependency-policy'].name, /dependency-currency/);
   assert.match(main.jobs['next-deploy'].if, /github.event_name == 'push'/);
 });
+
+test('mandatory policy rejection stops costly fanout without a cycle or an independent bypass', () => {
+  assert.equal(main.jobs['dependency-policy'].needs, undefined);
+  assert.deepEqual(main.jobs.changes.needs, ['dependency-policy']);
+  assert.deepEqual(main.jobs['ort-canaries'].needs, ['dependency-policy']);
+  for (const id of ['changes', 'ort-canaries'])
+    assert.doesNotMatch(main.jobs[id].if ?? '', /\balways\s*\(/);
+  const guarded = (id: string, ancestors: string[] = []): boolean => {
+    assert.ok(!ancestors.includes(id), `CI dependency cycle: ${[...ancestors, id].join(' -> ')}`);
+    if (id === 'dependency-policy') return true;
+    assert.ok(main.jobs[id], `unknown dependency ${id}`);
+    const needs = main.jobs[id].needs;
+    const dependencies: string[] =
+      needs === undefined ? [] : Array.isArray(needs) ? needs : [needs];
+    return (
+      dependencies.length > 0 && dependencies.every((parent) => guarded(parent, [...ancestors, id]))
+    );
+  };
+  for (const id of Object.keys(main.jobs))
+    assert.ok(guarded(id), `${id} bypasses policy admission`);
+});

@@ -27,6 +27,8 @@ concurrency:
   cancel-in-progress: false
 jobs:
   changes:
+    # Reject invalid policy/dependency revisions before the expensive lane fanout (fm-jx26).
+    needs: [dependency-policy]
     runs-on: [self-hosted, linux-x64]
     timeout-minutes: 10
     permissions:
@@ -119,6 +121,7 @@ jobs:
           if [ -n "$RUNTIME_PROOF" ]; then args+=(--runtime-dir "$RUNTIME_PROOF"); fi
           node scripts/ci/check-dependency-currency.ts "${args[@]}"
   ort-canaries:
+    needs: [dependency-policy]
     if: github.event_name == 'workflow_dispatch' && inputs.dependency_group == 'onnx-runtime'
     name: ort-canaries / ${{ matrix.route }}
     runs-on: [self-hosted, eris]
