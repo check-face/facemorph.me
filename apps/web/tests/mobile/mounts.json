@@ -1,3 +1,4 @@
 {
-  "/packages/browser-model-manager/": "../../packages/browser-model-manager/dist"
+  "/packages/browser-model-manager/": "../../packages/browser-model-manager/dist",
+  "/packages/stylegan-js/": "../../packages/stylegan-js/dist"
 }

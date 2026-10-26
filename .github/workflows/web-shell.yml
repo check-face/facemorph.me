@@ -104,6 +104,8 @@ jobs:
       - uses: ./.github/actions/setup-playwright
         with:
           browsers: chromium
+      # The e2e tests import app modules that read the engine package through its built dist/ exports (fm-7f2o).
+      - run: npm run build -w packages/stylegan-js -w packages/browser-model-manager
       - name: Verify the canonical site artifact
         uses: ./.github/actions/fetch-artifact
         with:

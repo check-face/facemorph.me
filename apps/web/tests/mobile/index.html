@@ -2,6 +2,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>FaceMorph mobile component CI</title>
+<!-- App modules import the engine package by name (photo/crop.mjs takes the crop limits from it, fm-6ib8); the
+     unbundled page resolves that name to the built package served beside the manager. -->
+<script type="importmap">{"imports":{"@facemorph/stylegan-js":"/packages/stylegan-js/index.js"}}</script>
 <h1>Mobile component tests</h1><pre id="status">Starting…</pre>
 <script type="module">
 import('./suite.mjs').catch(async error => {
