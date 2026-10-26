@@ -268,8 +268,10 @@ test(
             'Enter cannot duplicate an active job',
           );
           assert.match(await page.locator('.next-route-caption').innerText(), /CPU/);
+          // The result can still be preparing its export file in the same operation slot.
+          // That control must not count as an offer to generate the completed input again.
           assert.equal(
-            await tile.locator('.next-face-generate').count(),
+            await tile.locator('.next-face-generate:not(.next-file-preparation)').count(),
             0,
             'verified result has no Generate',
           );
