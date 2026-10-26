@@ -14,7 +14,7 @@ from urllib.request import Request, urlopen
 spec=importlib.util.spec_from_file_location('ios_product',Path(__file__).resolve().parents[2]/'scripts/next-ios-sim.py')
 ios_product=importlib.util.module_from_spec(spec);spec.loader.exec_module(ios_product)
 import unittest
-from run import chrome_intent, assess, EXPECTED, MANAGER_EXPECTED, simulator_options
+from run import chrome_intent, assess, open_safari, EXPECTED, MANAGER_EXPECTED, simulator_options
 
 
 def manager_rows():
@@ -57,6 +57,33 @@ class EvidenceTests(unittest.TestCase):
             words = subprocess.run(['/bin/sh', '-c', 'printf \"%s\\n\" '+suffix],
                                    capture_output=True, text=True, check=True, timeout=5)
             self.assertEqual(words.stdout, literal+'\ncom.android.chrome\n')
+
+    def test_safari_is_launched_before_openurl_and_a_cold_exit_60_is_retried(self):
+        calls, sleeps = [], []
+        # launch, openurl exits 60, relaunch, openurl times out, relaunch, openurl succeeds.
+        replies = iter([{'returncode': 0}, {'returncode': 60, 'stderr': 'NSPOSIXErrorDomain 60'}, {'returncode': 0},
+                        {'timedOut': True}, {'returncode': 0}, {'returncode': 0}])
+        def run(*args, timeout):
+            calls.append((args[0], timeout))
+            return next(replies)
+        result = open_safari('UDID', 'https://127.0.0.1:1/x?a=1&b=2', run=run, sleep=sleeps.append)
+        self.assertEqual([c[0] for c in calls], ['launch', 'openurl', 'launch', 'openurl', 'launch', 'openurl'])
+        self.assertEqual(result['returncode'], 0)
+        self.assertEqual([c['step'] for c in result['calls']], [c[0] for c in calls])
+        self.assertEqual(sleeps, [10, 10])
+
+    def test_safari_open_is_bounded_and_reports_the_last_failure(self):
+        calls = []
+        def run(*args, timeout):
+            calls.append((args[0], timeout))
+            return {'returncode': 0} if args[0] == 'launch' else {'returncode': 60, 'stderr': 'Operation timed out'}
+        result = open_safari('UDID', 'https://127.0.0.1:1/x', run=run, sleep=lambda s: None)
+        self.assertEqual([c[0] for c in calls].count('openurl'), 4)
+        self.assertEqual(calls[-1][0], 'openurl')
+        self.assertEqual(result['returncode'], 60)
+        self.assertIn('timed out', result['stderr'])
+        # About six minutes at most: two-minute first launch, four one-minute openurls, three relaunches, 30 s sleep.
+        self.assertLessEqual(sum(t for _, t in calls) + 30, 600)
 
     def test_complete_components_only(self):
         self.assertTrue(assess(self.report, 'test'))

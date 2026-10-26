@@ -192,15 +192,33 @@ def open_chrome(url):
     return {'returncode': result.returncode, 'stdout': result.stdout, 'stderr': result.stderr}
 
 
-def open_safari(udid, url):
-    # Fresh Simulator SpringBoard can report launch failure before Safari becomes
-    # usable. Record it; only the subsequent browser report may establish success.
+def simctl(*args, timeout):
+    # One bounded simctl call, recorded; a timeout is slowness on a cold runner, not a verdict.
     try:
-        result = subprocess.run(['xcrun', 'simctl', 'openurl', udid, url],
-                                capture_output=True, text=True, timeout=90)
-        return {'returncode': result.returncode, 'stdout': result.stdout, 'stderr': result.stderr}
+        result = subprocess.run(['xcrun', 'simctl', *args], capture_output=True, text=True, timeout=timeout)
+        return {'returncode': result.returncode, 'stdout': result.stdout[-1000:], 'stderr': result.stderr[-1000:]}
     except subprocess.TimeoutExpired:
         return {'timedOut': True}
+
+
+def open_safari(udid, url, run=simctl, sleep=time.sleep, attempts=4):
+    # A freshly booted Simulator accepts `openurl` only once Safari and its URL handlers are up;
+    # before that it fails with NSPOSIXErrorDomain 60 (main run 40372947913: two openurl exits 60,
+    # SpringBoard on screen, zero cases). Launch Safari first and retry, as next-ios-sim.py does for
+    # the product lane. Bounded to about six minutes inside the job's 20. Every call is recorded;
+    # only the subsequent browser report may establish success.
+    calls = [dict(step='launch', **run('launch', udid, 'com.apple.mobilesafari', timeout=120))]
+    for attempt in range(1, attempts+1):
+        result = run('openurl', udid, url, timeout=60)
+        calls.append(dict(step='openurl', attempt=attempt, **result))
+        if result.get('returncode') == 0:
+            break
+        if attempt < attempts:
+            sleep(10)
+            calls.append(dict(step='launch', **run('launch', udid, 'com.apple.mobilesafari', timeout=60)))
+    last = calls[-1]  # the loop always ends on an openurl
+    return {'returncode': last.get('returncode'), 'timedOut': last.get('timedOut', False),
+            'stdout': last.get('stdout', ''), 'stderr': last.get('stderr', ''), 'calls': calls}
 
 
 def simulator_certificate(udid, certificate, attempts):
