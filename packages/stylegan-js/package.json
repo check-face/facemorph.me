@@ -4,6 +4,7 @@
   "private": true,
   "description": "StyleGAN mapping, synthesis and e4e encoding in the browser: engine contracts, and the engine core (./engine).",
   "type": "module",
+  "sideEffects": false,
   "exports": {
     ".": {
       "source": "./src/index.ts",
