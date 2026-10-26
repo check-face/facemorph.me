@@ -8,29 +8,69 @@ name: package-gates
 # and require the same gate functions to fail them. The JSON report is kept as an artifact.
 on:
   workflow_call:
+    inputs:
+      release_artifact:
+        type: string
+        default: ''
+        description: Explicit fetch-artifact inputs as JSON; enables release FFHQ verification
   workflow_dispatch:
+    inputs:
+      release_artifact:
+        type: string
+        required: false
+        default: ''
+        description: JSON with artifact_source_repo_id, artifact_workflow, artifact_run, artifact_commit, artifact_name
 permissions:
   contents: read
+  actions: read
 jobs:
   gates:
-    runs-on: [self-hosted, linux-x64]
-    timeout-minutes: 30
+    runs-on: ${{ inputs.release_artifact != '' && fromJSON('["self-hosted","eris"]') || fromJSON('["self-hosted","linux-x64"]') }}
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
       - uses: ./.github/actions/setup-workspace # node_modules for the lockfile, shared on the runner (fm-98po)
+      - uses: ./.github/actions/setup-playwright
+        with:
+          browsers: chromium
+      - uses: ./.github/actions/fetch-artifact
+        if: inputs.release_artifact != ''
+        id: release
+        with:
+          source_repo_id: ${{ fromJSON(inputs.release_artifact).artifact_source_repo_id }}
+          workflow: ${{ fromJSON(inputs.release_artifact).artifact_workflow }}
+          run_id: ${{ fromJSON(inputs.release_artifact).artifact_run }}
+          commit: ${{ fromJSON(inputs.release_artifact).artifact_commit }}
+          artifact_name: ${{ fromJSON(inputs.release_artifact).artifact_name }}
+          out: ${{ runner.temp }}/package-release-artifact
+      - uses: ./.github/actions/setup-runtime
+        if: inputs.release_artifact != ''
+      - name: Acquire, convert and independently verify fresh FFHQ in its pinned container
+        if: inputs.release_artifact != ''
+        env:
+          CONVERSION_OUT: ${{ runner.temp }}/package-conversion-${{ github.run_id }}-${{ github.run_attempt }}
+        run: bash scripts/packages/consumer-gates/convert.sh "$CONVERSION_OUT"
       - name: Gate unit tests (boundaries, side-effect sandbox, packed imports; seeded alias and side effect fail)
         run: node --test 'scripts/packages/consumer-gates/*.test.mjs'
       - name: package-tarball-content-scan self-test (fm-1jr7)
         run: node --test scripts/packages/check-tarball-contents.test.mjs
       - name: Consumer gates for all four packages
+        env:
+          PACKAGE_RELEASE_PROVENANCE: ${{ steps.release.outputs.provenance_json }}
+          PACKAGE_RELEASE_DIGEST: ${{ steps.release.outputs.artifact_digest }}
+          CONVERSION_OUT: ${{ runner.temp }}/package-conversion-${{ github.run_id }}-${{ github.run_attempt }}
         run: |
           set -euo pipefail
           mkdir -p test-results/package-gates
           # Scan exactly the packs installed by the external consumer; retain each pack, canonical scan and integrity.
-          node scripts/packages/consumer-gates/run.mjs --strict-scan --report test-results/package-gates/report.json
+          args=()
+          if [ -n "$PACKAGE_RELEASE_PROVENANCE" ]; then
+            args+=(--converted "$CONVERSION_OUT/ffhq" --runtime "$FACEMORPH_RUNTIME_DIR")
+          fi
+          node scripts/packages/consumer-gates/run.mjs --strict-scan --report test-results/package-gates/report.json "${args[@]}"
       - name: npm name check and API reference self-tests (fm-tohj)
         run: node --test scripts/packages/npm-names.test.mjs scripts/packages/api-reference.test.mjs
       - name: API reference matches the emitted declarations (fm-tohj)

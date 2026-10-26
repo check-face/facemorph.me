@@ -22,6 +22,7 @@
 //   model-conv  has no JavaScript: its tarball must declare no JS entry (main/module/exports/bin/types), carry no
 //               JS/TS code, no __pycache__ or .pyc, every `files` entry, and Python that parses.
 //   node scripts/packages/consumer-gates/run.mjs [--skip-build] [--keep] [--strict-scan] [--report <file>]
+//     [--converted <fresh model-conv output> --runtime <verified runtime directory>]
 // One JSON line per gate and a final summary; exit 0 when every gate passes, 1 otherwise.
 import { execFileSync, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
@@ -43,6 +44,8 @@ import { references } from './ast.mjs';
 import { checkBoundaries } from './boundaries.mjs';
 import { checkPackedImports, exportEntries, missingExportTargets } from './packed-imports.mjs';
 import { sandboxImport, verdict } from './sandbox.mjs';
+import { runBrowserGate } from './browser.mjs';
+import { runConvertedGate } from './converted.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 export const ROOT = resolve(here, '../../..');
@@ -257,7 +260,12 @@ async function bundle(consumer, work) {
       minify: false,
       modulePreload: false,
       rolldownOptions: {
-        input: { main: join(root, 'main.js'), manager: join(root, 'manager.js') },
+        input: {
+          main: join(root, 'main.js'),
+          manager: join(root, 'manager.js'),
+          status: join(root, 'status.js'),
+          converted: join(root, 'converted.js'),
+        },
         preserveEntrySignatures: 'exports-only',
       },
     },
@@ -272,6 +280,19 @@ async function bundle(consumer, work) {
   };
   walk(outDir);
   const read = (f) => readFileSync(join(outDir, f), 'utf8');
+  const reachableText = (entry, seen = new Set()) => {
+    if (!entry || seen.has(entry)) return '';
+    seen.add(entry);
+    const text = read(entry);
+    return [
+      text,
+      ...references(entry, text)
+        .filter((ref) => ref.spec?.startsWith('.'))
+        .map((ref) => join(dirname(entry), ref.spec))
+        .filter((file) => files.includes(file))
+        .map((file) => reachableText(file, seen)),
+    ].join('\n');
+  };
   const MARK = 'a worker message is a plain object';
   const worker = files.find((f) => /engine-worker[^/]*\.js$/.test(f));
   const main = files.find((f) => /(?:^|\/)main[^/]*\.js$/.test(f));
@@ -280,9 +301,9 @@ async function bundle(consumer, work) {
     workerChunk: Boolean(worker),
     workerHasServeEngine: Boolean(worker && read(worker).includes(MARK)),
     mainReferencesWorker: Boolean(worker && main && read(main).includes(worker.split('/').pop())),
-    managerBundled: Boolean(manager && read(manager).includes('checkface-model-blobs-v1')),
+    managerBundled: Boolean(manager && reachableText(manager).includes('checkface-model-blobs-v1')),
   };
-  return { files, worker, checks, ok: Object.values(checks).every(Boolean) };
+  return { outDir, files, worker, checks, ok: Object.values(checks).every(Boolean) };
 }
 
 async function main(argv) {
@@ -291,6 +312,29 @@ async function main(argv) {
   const strictScan = argv.includes('--strict-scan');
   const ri = argv.indexOf('--report');
   const reportPath = ri >= 0 ? resolve(argv[ri + 1]) : null;
+  const option = (name) => {
+    const index = argv.indexOf(name);
+    if (index < 0) return null;
+    if (!argv[index + 1] || argv[index + 1].startsWith('--'))
+      throw Error(`${name} requires a value`);
+    return resolve(argv[index + 1]);
+  };
+  const convertedDir = option('--converted');
+  const runtimeDir = option('--runtime');
+  if (Boolean(convertedDir) !== Boolean(runtimeDir))
+    throw Error('--converted and --runtime must be supplied together');
+  const commit = sh('git', ['rev-parse', 'HEAD'], ROOT).trim();
+  const release = process.env.PACKAGE_RELEASE_PROVENANCE
+    ? {
+        ...JSON.parse(process.env.PACKAGE_RELEASE_PROVENANCE),
+        artifactDigest: process.env.PACKAGE_RELEASE_DIGEST,
+      }
+    : null;
+  if (release) {
+    if (release.commit !== commit || !/^[a-f0-9]{64}$/.test(release.artifactDigest ?? ''))
+      throw Error('Release artifact must identify this exact checkout and a verified digest');
+    if (!convertedDir) throw Error('Release verification requires --converted and --runtime');
+  }
   const results = {};
   const packages = [];
   const fail = [];
@@ -436,6 +480,30 @@ async function main(argv) {
       ),
     });
 
+    if (b.ok) {
+      const evidence = reportPath ? dirname(reportPath) : work;
+      const browser = await runBrowserGate({
+        outDir: b.outDir,
+        evidenceDir: join(evidence, 'browser'),
+      });
+      gate('browser:construction-status', browser.ok, browser);
+      if (convertedDir) {
+        const converted = await runConvertedGate({
+          outDir: b.outDir,
+          convertedDir,
+          runtimeDir,
+          evidenceDir: join(evidence, 'converted'),
+          packages,
+        });
+        gate('browser:converted-ffhq', converted.ok, converted);
+      } else {
+        gate('browser:converted-ffhq', true, {
+          outcome: 'untested',
+          reason: 'Supply --converted and --runtime for the release converter proof',
+        });
+      }
+    }
+
     const smoke = spawnSync(process.execPath, ['smoke.mjs'], { cwd: consumer, encoding: 'utf8' });
     let smokeReport = null;
     try {
@@ -503,12 +571,27 @@ async function main(argv) {
     event: 'package-consumer-gates',
     ok: fail.length === 0,
     failed: fail,
+    source: { commit, workflowRun: process.env.GITHUB_RUN_ID ?? null },
+    release: release ?? { outcome: 'untested', reason: 'No release artifact supplied' },
     packages,
   };
   emit(summary);
   if (reportPath) {
     mkdirSync(dirname(reportPath), { recursive: true });
     writeFileSync(reportPath, `${JSON.stringify({ ...summary, results }, null, 2)}\n`);
+    writeFileSync(
+      join(dirname(reportPath), 'sub-result-3-consumers.json'),
+      `${JSON.stringify(
+        {
+          schema: 'facemorph.verify.packages-consumers/1',
+          ...summary,
+          scope: 'Packed consumers and converted FFHQ; non-face joint proof belongs to fm-tqub',
+          results,
+        },
+        null,
+        2,
+      )}\n`,
+    );
   }
   return fail.length === 0 ? 0 : 1;
 }
