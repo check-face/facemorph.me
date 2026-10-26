@@ -203,6 +203,43 @@ def open_safari(udid, url):
         return {'timedOut': True}
 
 
+def simulator_certificate(udid, certificate, attempts):
+    # bootstatus can finish before native keychain services answer a cold Simulator.
+    # Retry only a timed-out setup IPC, on the same device and exact same certificate.
+    # Browser deadlines and every component assertion are created after this setup.
+    for attempt in (1, 2):
+        entry = dict(phase='simulator-certificate', attempt=attempt, timeoutSeconds=60)
+        attempts.append(entry)
+        print(json.dumps(entry), file=sys.stderr, flush=True)
+        started = time.monotonic()
+        try:
+            result = subprocess.run(['xcrun', 'simctl', 'keychain', udid, 'add-root-cert', str(certificate)],
+                                    capture_output=True, text=True, timeout=60)
+            entry.update(returncode=result.returncode, stdout=result.stdout[-1000:], stderr=result.stderr[-1000:])
+            result.check_returncode()
+            return
+        except subprocess.TimeoutExpired:
+            entry['timedOut'] = True
+            if attempt == 2:
+                raise
+        finally:
+            entry['seconds'] = round(time.monotonic()-started, 3)
+        readiness = dict(phase='simulator-bootstatus-recheck', timeoutSeconds=60)
+        attempts.append(readiness)
+        print(json.dumps(readiness), file=sys.stderr, flush=True)
+        started = time.monotonic()
+        try:
+            result = subprocess.run(['xcrun', 'simctl', 'bootstatus', udid, '-b'],
+                                    capture_output=True, text=True, timeout=60)
+            readiness.update(returncode=result.returncode, stdout=result.stdout[-1000:], stderr=result.stderr[-1000:])
+            result.check_returncode()
+        except subprocess.TimeoutExpired:
+            readiness['timedOut'] = True
+            raise
+        finally:
+            readiness['seconds'] = round(time.monotonic()-started, 3)
+
+
 def ios_tab_controller(origin, run_id, udid, state, fixture_ledger, navigations, output, lock):
     before = fixture_ledger()
     primary_url = origin+'/tests/mobile/manager-tab.html?'+urlencode({'run': run_id, 'role': 'primary'})
@@ -551,7 +588,8 @@ def main():
             evidence['device'] = {'udid': udid, 'runtime': runtime, 'profile': device['name']}
             command('xcrun', 'simctl', 'boot', udid)
             command('xcrun', 'simctl', 'bootstatus', udid, '-b', timeout=180)
-            command('xcrun', 'simctl', 'keychain', udid, 'add-root-cert', str(cert), timeout=60)
+            evidence['certificateAttempts'] = []
+            simulator_certificate(udid, cert, evidence['certificateAttempts'])
             evidence['launchAttempts'] = [open_safari(udid, url)]
         if args.platform == 'desktop':
             print(json.dumps({'url':url}), flush=True)
