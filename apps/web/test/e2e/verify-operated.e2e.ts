@@ -118,6 +118,34 @@ for (const [engine, type] of Object.entries(ENGINES)) {
     assert.ok(steps.includes('verify.harness/defect-1/press-remove'));
     for (const e of log.entries.filter((x) => x.ok))
       assert.ok(e.point && e.hit && e.target, `${e.step} has point, hit and target`);
+    // The pre-input centre is correct, but a real pointerdown reveals an overlay before pointerup/click.
+    // A geometry-only helper passes this while the intended control receives no click.
+    await page.setContent(
+      '<button id="race" style="width:120px;height:60px">Press</button><div id="cover" style="display:none;position:fixed;inset:0;background:red"></div>',
+    );
+    await page.evaluate(() => {
+      const button = document.querySelector<HTMLButtonElement>('#race')!;
+      button.addEventListener('pointerdown', () => {
+        document.querySelector<HTMLElement>('#cover')!.style.display = 'block';
+      });
+      button.addEventListener('click', () => {
+        button.dataset['clicked'] = 'true';
+      });
+    });
+    await assert.rejects(
+      operatedClick(page, page.locator('#race'), {
+        ...fast,
+        step: 'verify.harness/race/late-overlay',
+      }),
+      /trusted click landed outside the control/,
+    );
+    assert.equal(
+      await page.locator('#race').getAttribute('data-clicked'),
+      null,
+      'real input did not click the intended control',
+    );
+    assert.equal(log.entries.at(-1)?.ok, false);
+    assert.ok(log.entries.at(-1)?.hit, 'the actual late target is recorded');
     log.write(new URL(`test-results/verify/${engine}-operated.log`, app).pathname);
   });
 

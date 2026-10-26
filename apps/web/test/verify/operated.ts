@@ -13,7 +13,7 @@
 import { AssertionError } from 'node:assert';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
-import type { Locator, Page } from 'playwright';
+import type { ConsoleMessage, Locator, Page } from 'playwright';
 import {
   attachPlaywright,
   DEFAULT_HOST_MAP,
@@ -213,6 +213,64 @@ async function locate(page: Page, control: Locator, region: Region | undefined) 
   return { box, point, hit };
 }
 
+let inputSerial = 0;
+/** Observe the trusted click itself: geometry can change after the pre-input hit check. Console delivery
+ * preserves the observation even if the click navigates away from its original document. */
+async function actualClick(
+  page: Page,
+  control: Locator,
+  point: { x: number; y: number },
+  touch: boolean,
+  timeout: number,
+  effect: OperateOptions['effect'],
+) {
+  const marker = `[verify-operated-${++inputSerial}]`;
+  type Actual = { inside: boolean; hit: string | null };
+  let listener!: (message: ConsoleMessage) => void;
+  const received = new Promise<Actual>((resolve) => {
+    listener = (message) => {
+      const text = message.text();
+      if (text.startsWith(marker)) resolve(JSON.parse(text.slice(marker.length)) as Actual);
+    };
+  });
+  page.on('console', listener);
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const cleanup = await control.evaluateHandle((el, prefix) => {
+    const doc = el.ownerDocument;
+    const clicked = (event: MouseEvent) => {
+      if (!event.isTrusted) return;
+      const hit = event.target instanceof Element ? event.target : null;
+      console.debug(
+        prefix +
+          JSON.stringify({
+            inside: !!hit && (el === hit || el.contains(hit)),
+            hit: hit?.outerHTML.slice(0, 160) ?? null,
+          }),
+      );
+      doc.removeEventListener('click', clicked, true);
+    };
+    doc.addEventListener('click', clicked, true);
+    return () => doc.removeEventListener('click', clicked, true);
+  }, marker);
+  try {
+    if (touch) await page.touchscreen.tap(point.x, point.y);
+    else await page.mouse.click(point.x, point.y);
+    const landed = await Promise.race([
+      received,
+      new Promise<null>((resolve) => {
+        timer = setTimeout(() => resolve(null), timeout);
+      }),
+    ]);
+    if (landed?.inside && effect) await effect();
+    return landed;
+  } finally {
+    clearTimeout(timer);
+    page.off('console', listener);
+    await cleanup.evaluate((remove) => remove()).catch(() => {});
+    await cleanup.dispose();
+  }
+}
+
 /** Presses `control` at its visible centre with the real mouse (or a touch tap), after the checks above. */
 export async function operatedClick(
   page: Page,
@@ -248,10 +306,17 @@ export async function operatedClick(
         ok: false,
         problem: `${base.control}: elementFromPoint at its centre is not the control but ${found.hit.at}`,
       };
-    if (touch) await page.touchscreen.tap(found.point.x, found.point.y);
-    else await page.mouse.click(found.point.x, found.point.y);
-    if (effect) await effect();
-    return { ...base, hit: found.hit.at, ok: true };
+    const landed = await actualClick(page, control, found.point, touch, settleMs, effect);
+    if (!landed?.inside)
+      return {
+        ...base,
+        hit: landed?.hit ?? null,
+        ok: false,
+        problem: landed
+          ? `${base.control}: trusted click landed outside the control on ${landed.hit}`
+          : `${base.control}: real input produced no trusted click`,
+      };
+    return { ...base, hit: landed.hit, ok: true };
   });
   const full: StepRecord = { ...record, requests };
   log.add(full);
