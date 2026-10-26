@@ -64,9 +64,9 @@ jobs:
       - name: Every name the UI and the typed facade take from a bridge module is exported there (fm-pia9)
         run: node scripts/check-bridge-imports.mjs
   facade:
-    # Chromium CPU work uses the verified Ubuntu 24.04 temporary pool: linux-x64 also includes unsupported Triton 20.04.
-    # Separate warm-state groups; keep two concurrent facade jobs on the shared 26-core host.
-    runs-on: [self-hosted, tempcpu]
+    # Both portable hosts have verified browsers/runtime caches; unsupported Triton is outside linux-x64 (fm-kfs5).
+    # Separate warm-state groups; retain the two-job facade cap while other CPU journeys use either host.
+    runs-on: [self-hosted, linux-x64]
     timeout-minutes: 25
     strategy:
       fail-fast: false
@@ -101,7 +101,7 @@ jobs:
           if-no-files-found: ignore
   # Full confirmed-crop/recovery acceptance on the same identified artifact (fm-d4mw).
   crop-acceptance:
-    runs-on: [self-hosted, tempcpu]
+    runs-on: [self-hosted, linux-x64]
     timeout-minutes: 120
     steps:
       - uses: actions/checkout@v4
@@ -143,7 +143,7 @@ jobs:
   # same canonical artifact bytes: Encode (fm-fy2.17.1), composed tile controls and legacy links with real CPU
   # synthesis (fm-25um).
   runtime-e2e:
-    runs-on: [self-hosted, tempcpu]
+    runs-on: [self-hosted, linux-x64]
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
