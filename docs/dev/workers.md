@@ -24,7 +24,8 @@ or a runner label is not inference evidence; the adapter column is what a real b
   the research workflows, browser end-to-end and parity, model conversion, hosting staging. Four build/test
   instances run beside the device-lab one. Correctness runs share compute without a
   machine-wide lease; the physical phone is local-only with its own lab lock.
-- **triton**: builds, gates, unit and package tests. The disk-full inventory above is
+- **triton**: compatible work explicitly assigned to its Triton-specific labels;
+  removed from the portable CPU pool on 27 October (fm-kfs5, below). The disk-full inventory above is
   historical; a read-only SSH check on 25 October found 61 GB free on root and
   3.1 TB free in `/mnt/unit/gh-runners` on tank. Runner workspaces, TMPDIR and
   npm/uv/browser caches remain on that pool. Workerd also requires newer glibc
@@ -37,37 +38,48 @@ or a runner label is not inference evidence; the adapter column is what a real b
 
 ## Opportunistic CPU capacity (fm-sziz)
 
-Operator policy, 25 October: use Triton fully for compatible work while it is
-available; if it is unavailable, continue on eris. It is not a required dependency
-for development or the ordinary CPU CI checks.
+Operator policy on 25 October allowed compatible work on Triton while available.
+The 27 October fm-kfs5 correction removes it from ordinary portable CPU scheduling
+until its workspace/toolchain setup supports that work. Triton remains available
+through its specific labels; development and ordinary CPU CI do not depend on it.
 
-Portable jobs use `runs-on: [self-hosted, linux-x64]`. All four Triton runners and
-all four eris build runners advertise those labels; the device-lab runner does not.
+Observed pool on 27 October after the operator-directed label changes:
+
+- Portable jobs use `runs-on: [self-hosted, linux-x64]`: the four eris build slots
+  and `tempcpu-2` through `tempcpu-5` retain that label. The latter also retain `tempcpu`.
+- Triton runner IDs 3, 25, 26 and 27 no longer have `linux-x64`; their Triton-specific
+  labels remain. The inventory table above records the earlier observation.
+- `tempcpu-1` (runner ID 30) has only `facemorph-artifact` as a custom label and is
+  reserved for `next-site-artifact.yml`, which uses `[self-hosted, facemorph-artifact]`.
+  It is outside the portable and `tempcpu` pools; the device-lab runner is also outside
+  the portable pool. Jobs already running when labels changed are allowed to finish.
+
 The portable pool needs GitHub CLI (`gh`) on its service PATH for artifact lookup
 tests, in addition to the workflow-provided Node toolchain. After an observed
 `spawnSync gh ENOENT` scaffold failure, Triton received the checksum-verified
 upstream CLI 2.103.2 in `/usr/local/bin/gh`; the real expired-classic-artifact test
 passed there on 25 October. New/rebuilt workers need the same prerequisite.
-GitHub can assign independent jobs to either machine, so queued CPU work remains
-eligible for eris when every Triton runner is offline. Four Triton slots share its
-20 threads and 125 GiB RAM; they are not four separate 20-thread machines. Run useful
-builds/tests concurrently rather than reserving the whole host for one check.
+GitHub can assign independent portable jobs to the eligible eris and temporary CPU
+slots. Four Triton slots share its 20 threads and 125 GiB RAM; they are not four
+separate 20-thread machines. Run compatible work concurrently on its specific
+labels rather than reserving the whole host for one check.
 The main workflow still finishes its running revision before taking the newest
 pending revision; it can execute independent jobs within that revision in parallel.
 
 The pool includes scaffold build/typecheck/test/pack, package contracts, web-shell
-builds, import/inventory/identity checks, diagnostics Docker tests, tracker publication, native-retirement checks, the site artifact build and
-the artifact lookup job. Jobs requiring eris's browsers, qualified model cache,
+builds, import/inventory/identity checks, diagnostics Docker tests, native-retirement checks and
+the artifact lookup job. The site artifact build uses its reserved runner; tracker publication
+is outside the push path (fm-kfs5). Jobs requiring eris's browsers, qualified model cache,
 provider tools or GPU stay there until another runner has those capabilities
 verified. Docker is available on both hosts, but that alone is not evidence that
 a browser/GPU lane works in a container on Triton. Inference-hosting retirement
 does not retire Triton's CI capacity or its monitoring services.
 
 GitHub's shared labels provide availability, not a preference for the fastest
-machine or automatic recovery of a running job. If Triton disappears during a job,
+machine or automatic recovery of a running job. If an eligible runner disappears during a job,
 that attempt can fail and must be rerun on an available worker; never mark it as
 passing. Portable jobs have explicit execution timeouts (at most 45 minutes;
-10 for the workflow's change selector), bounding a stalled running attempt. Keep implementing independent work. If both hosts are unavailable, CI
+10 for the workflow's change selector), bounding a stalled running attempt. Keep implementing independent work. If the eligible pool is unavailable, CI
 waits for capacity while local work can continue. No Triton-specific readiness
 job or machine-wide correctness lock is added. Only timing measurements take the
 exclusive measurement lock; the physical phone keeps its own local device lock.
