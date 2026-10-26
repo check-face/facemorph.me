@@ -35,11 +35,15 @@ async function morph(
   });
   await context.addInitScript(INSTALL_HOOK);
   const page = await context.newPage();
+  page.setDefaultTimeout(60_000);
+  const step = (what: string) => console.log(`fm-36ag ${engine} ${name}: ${what}`);
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
   try {
+    step(`open ${origin}`);
     await page.goto(origin);
     await page.locator('section.next-face').nth(1).waitFor();
+    step('settings');
     for (const control of [
       page.locator('.next-model-toast').getByRole('button', { name: 'Not now' }),
       page.getByRole('button', { name: 'Ask me later' }),
@@ -92,6 +96,12 @@ async function morph(
     const played = await page.locator('.next-video-slot video').evaluate(
       (v: HTMLVideoElement) =>
         new Promise<number>((ok, fail) => {
+          // The result video loops; this check plays it once through to its end.
+          v.loop = false;
+          setTimeout(
+            () => fail(Error(`playback stopped at ${v.currentTime} s of ${v.duration} s`)),
+            60_000,
+          );
           v.muted = true;
           v.playbackRate = 4;
           v.addEventListener('ended', () => ok(v.currentTime), { once: true });
