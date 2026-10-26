@@ -4,6 +4,7 @@ import type { Replacement } from './intents.ts';
 import type { InputRevision } from '../contracts/inputs.ts';
 import type { CapabilityStatus, RouteSnapshot } from '../contracts/scheduler.ts';
 import type { Input, MorphKind, Output, Progress, Refusal } from '../../shell/facade/records.ts';
+import type { ActionProgress } from './progress.ts';
 
 declare const requestTag: unique symbol;
 declare const attemptTag: unique symbol;
@@ -89,7 +90,14 @@ export type OperationEvent = EventIdentity &
   (
     | { readonly type: 'queued' }
     | { readonly type: 'admitted' }
-    | { readonly type: 'progress'; readonly progress: Progress }
+    | {
+        readonly type: 'progress';
+        readonly progress: Progress;
+        /** The whole requested action's one bar, for this attempt (fm-vbj7). */
+        readonly action: ActionProgress;
+        /** The action's status line; a morph speaks only its frame counter and MP4 preparation. */
+        readonly line: string | null;
+      }
     | { readonly type: 'compute-ready'; readonly output: Output }
     | { readonly type: 'file-ready'; readonly output: Output }
     | { readonly type: 'failed'; readonly cause: OperationFailure }

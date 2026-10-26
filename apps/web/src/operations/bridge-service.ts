@@ -5,6 +5,13 @@ import { nextScheduled } from '../Next/scheduler.mjs';
 import { IntentRegistry } from './intents.ts';
 import { morphFrameFailure } from './morph-budget.ts';
 import { createGovernor, type AdmittedPhase, type Governor, type Lease } from './scheduler.ts';
+import {
+  createActionProgress,
+  morphLine,
+  type ActionProgressTracker,
+  type PhaseKind,
+  type PhasePlan,
+} from './progress.ts';
 import type { HeavyOp, ProviderContextId } from '../contracts/scheduler.ts';
 import { validateSeedText, validateWords } from '../contracts/inputs.ts';
 import {
@@ -53,6 +60,10 @@ interface Pending {
   started: boolean;
   failure?: OperationFailure;
   work?: Work;
+  /** The whole action's bar for this attempt, and its status line. */
+  readonly bar: ActionProgressTracker;
+  line: string | null;
+  readyDependencies: number;
 }
 interface Work {
   order: number;
@@ -84,6 +95,46 @@ const PHASES: Readonly<Record<string, AdmittedPhase>> = {
   face: 'inference',
   morph: 'inference',
 };
+// Phase shares of one action, from the device-lab journey measurements (tools/device-lab/journeys.json):
+// on eris CPU a cold face spends ~3 s of ~21 s on acquisition and loading and the rest generating; a
+// phone morph spends most of its time on frames. Costs that are not known up front stay null, so the
+// bar is indeterminate until they are, instead of racing to 99%.
+function planFor(request: OperationRequest): PhasePlan[] {
+  const file: PhasePlan = { kind: 'file', unit: 'steps', weight: 0.1, total: 1 };
+  switch (request.kind) {
+    case 'face':
+      return [
+        { kind: 'acquisition', unit: 'bytes', weight: 0.15, total: null },
+        { kind: 'load', unit: 'steps', weight: 0.1, total: 1 },
+        { kind: 'compute', unit: 'steps', weight: 0.65, total: 1 },
+        file,
+      ];
+    case 'morph':
+      return [
+        { kind: 'prepare', unit: 'steps', weight: 0.25, total: request.sources.length },
+        { kind: 'frames', unit: 'frames', weight: 0.65, total: null },
+        file,
+      ];
+    case 'blend':
+      return [
+        {
+          kind: 'prepare',
+          unit: 'steps',
+          weight: 0.5,
+          total: request.weights.filter((w) => w !== 0).length,
+        },
+        { kind: 'compute', unit: 'steps', weight: 0.4, total: 1 },
+        file,
+      ];
+    case 'faces':
+      return [{ kind: 'compute', unit: 'steps', weight: 0.9, total: request.sources.length }, file];
+    case 'import':
+      return [{ kind: 'compute', unit: 'steps', weight: 0.9, total: 1 }, file];
+  }
+}
+const hasPhase = (bar: ActionProgressTracker, kind: PhaseKind) =>
+  bar.snapshot().phases.some((p) => p.kind === kind);
+
 /** Parent intents wait for their slots' latents, holding nothing, and join the queue when ready. */
 const isParent = (request: OperationRequest): boolean =>
   request.kind === 'morph' || request.kind === 'blend';
@@ -179,6 +230,8 @@ export function createOperationService(
   }
   function finish(item: Pending, result: OperationSettlement): void {
     if (!pending.delete(item.handle.requestId)) return;
+    if (result.status !== 'completed')
+      item.bar.settle(result.status === 'failed' ? 'failed' : 'cancelled');
     if (result.status === 'completed') registry.complete(item.handle.requestId, result.output);
     if (result.status === 'failed') registry.fail(item.handle.requestId);
     if (result.status === 'cancelled' || result.status === 'superseded')
@@ -195,12 +248,41 @@ export function createOperationService(
       work.provider = p.text;
     const phase = PHASES[p.stage];
     if (phase) leases.get(work.jobId)?.phase(phase);
-    for (const item of work.owners.keys()) {
+    for (const [item, role] of work.owners) {
       if (!current(item)) continue;
       item.provider = work.provider;
       if (p.stage === 'route-admitted' && work.provider !== null) emit(item, { type: 'admitted' });
-      emit(item, { type: 'progress', progress: p });
+      // A dependency's own stages are its tile's business: the parent's bar moves when it is ready.
+      if (role !== 'dependency') advanceBar(item, p);
+      emit(item, { type: 'progress', progress: p, action: item.bar.snapshot(), line: item.line });
     }
+  }
+  function advanceBar(item: Pending, p: Progress): void {
+    const { bar } = item;
+    const morph = item.handle.request.kind === 'morph';
+    const loaded = Number((p as { loaded?: unknown }).loaded);
+    const total = Number((p as { total?: unknown }).total);
+    if (['route-attempt', 'route-admitted', 'model-loaded'].includes(p.stage)) {
+      if (hasPhase(bar, 'acquisition')) bar.finish('acquisition');
+    } else if (p.stage === 'face' || p.stage === 'synthesis') {
+      if (hasPhase(bar, 'acquisition')) bar.finish('acquisition');
+      if (hasPhase(bar, 'load')) bar.finish('load');
+    } else if (p.stage === 'morph' && hasPhase(bar, 'frames')) {
+      if (Number.isFinite(loaded))
+        bar.advance('frames', 'frames', loaded, Number.isFinite(total) ? total : undefined);
+    } else if (p.stage === 'export' && hasPhase(bar, 'frames')) {
+      bar.finish('frames');
+    }
+    if (!morph) {
+      if (p.text) item.line = p.text;
+      return;
+    }
+    // Release gate (operator, 21 September): while a morph renders the line is the finished-frame
+    // count and nothing else; MP4 preparation follows it so the action never ends in silence.
+    if (p.stage === 'morph') {
+      const frames = bar.snapshot().phases.find((phase) => phase.kind === 'frames');
+      if (frames?.total) item.line = morphLine(frames.done, frames.total);
+    } else if (p.stage === 'export' && p.text) item.line = p.text;
   }
   async function getBridge(): Promise<OperationBridge> {
     return (loading ??= Promise.resolve(bridge).then((b) => {
@@ -320,8 +402,14 @@ export function createOperationService(
       // the parent's dependency graph, and a file failure cannot rerun inference.
       work.owners.delete(item);
       item.dependencies.delete(work);
+      if (hasPhase(item.bar, 'prepare'))
+        item.bar.advance('prepare', 'steps', ++item.readyDependencies);
       if (item.started) promote(item);
-    } else emit(item, { type: 'compute-ready', output });
+    } else {
+      for (const kind of ['acquisition', 'load', 'compute', 'frames'] as const)
+        if (hasPhase(item.bar, kind)) item.bar.finish(kind);
+      emit(item, { type: 'compute-ready', output });
+    }
   }
   function prepareParent(item: Pending): void {
     if (item.started || !isParent(item.handle.request) || blocked.blockMorph || !current(item))
@@ -485,6 +573,8 @@ export function createOperationService(
       const fileOwners = [...work.owners];
       for (const [item, role] of fileOwners) {
         if (role === 'dependency' || !current(item)) continue;
+        // The completion boundary: the default file (a morph's playable MP4) is ready.
+        item.bar.fileReady();
         emit(item, { type: 'file-ready', output: prepared });
         work.owners.delete(item);
         if (current(item)) finish(item, { status: 'completed', output: prepared });
@@ -550,6 +640,9 @@ export function createOperationService(
       provider: null,
       cancelled: false,
       started: false,
+      bar: createActionProgress(intent.attemptId, planFor(intent.request)),
+      line: null,
+      readyDependencies: 0,
       refusal: morphFrameFailure(intent.request) ?? blendFailure(intent.request),
     };
     // A newer blend for the same result supersedes a pending one: latest wins, the old result is never

@@ -81,8 +81,9 @@ export function fakeBridge() {
     executions,
     files,
     /** Emits a progress event the way the runtime does for the job in flight. */
-    progress(jobId: number, stage: string, text = '') {
-      for (const listener of listeners) listener({ jobId, stage, text, fraction: 0 });
+    progress(jobId: number, stage: string, text = '', extra: Record<string, number> = {}) {
+      for (const listener of listeners)
+        listener({ jobId, stage, text, fraction: 0, ...extra } as Progress);
     },
   };
 }

@@ -2,27 +2,12 @@
 // while a morph renders, the status line reads "Generating X / Y images" and nothing else.
 // X counts finished frames, so it never decreases whatever order frames are made in.
 // Estimates belong on the separate line beneath it. "Encoding" is banned from the line.
-import { readFileSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
+// The bridge-source cases (MORPH_SPOKEN_STAGES, the morph-only gate, counter-only morph text, the
+// export stage) moved to behavioural tests through the operation service in
+// src/operations/progress-copy.test.ts (fm-vbj7). Only the counter cases remain here.
 import { createFrameCounter, morphCounter } from '../src/Next/stage-labels.mjs';
 
-const root = resolve(dirname(new URL(import.meta.url).pathname), '..');
-const bridge = readFileSync(resolve(root, 'src/Next/product-bridge.mjs'), 'utf8');
 const problems = [];
-
-const allowed = bridge.match(/const MORPH_SPOKEN_STAGES\s*=\s*new Set\(\[([^\]]*)\]\)/);
-if (!allowed) problems.push('MORPH_SPOKEN_STAGES is gone: every stage can reach the line again.');
-else {
-  const names = [...allowed[1].matchAll(/'([^']+)'/g)].map(m => m[1]).sort();
-  if (String(names) !== String(['export', 'morph']))
-    problems.push(`MORPH_SPOKEN_STAGES must be exactly morph and export, found: ${names.join(', ')}`);
-}
-if (!/if\(jobCounts\.framesTotal>1&&!MORPH_SPOKEN_STAGES\.has\(stage\)\)return;/.test(bridge))
-  problems.push('The morph-only gate is missing from progress(); other stages can speak again.');
-
-for (const [, text] of bridge.matchAll(/stage:'morph',text:([^,]+),/g))
-  if (!/^(first|finished)\.text$/.test(text.trim()))
-    problems.push(`The morph line must come from the frame counter, found: ${text}`);
 
 function drive(total, order) {
   const counter = createFrameCounter(total);
@@ -54,11 +39,10 @@ for (const [name, total, order] of [
   }
 }
 if (morphCounter(3, 26) !== 'Generating 3 / 26 images') problems.push('morphCounter wording changed.');
-if (!/stage:'export'/.test(bridge)) problems.push('The export stage is not emitted, so the morph ends in silence.');
 
 if (problems.length) {
   console.error('The morph progress line does not meet its release gate:\n');
   for (const problem of problems) console.error('  - ' + problem);
   process.exit(1);
 }
-console.log(JSON.stringify({ morphProgressLine: 'Generating X / Y images', monotonic: true, otherStagesSilent: true }));
+console.log(JSON.stringify({ morphProgressLine: 'Generating X / Y images', monotonic: true, gate: 'src/operations/progress-copy.test.ts' }));
