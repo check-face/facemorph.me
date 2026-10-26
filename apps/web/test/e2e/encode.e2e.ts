@@ -470,6 +470,54 @@ test(
               noModels();
             }
 
+            // Detector and encoder assets absent (this profile has downloaded nothing) and the consent
+            // declined: ADJUST CROP still reaches OK, and choosing, adjusting, OK and declining make no
+            // network request of any kind.
+            {
+              const network: string[] = [];
+              const record = (request: { url(): string }) => {
+                if (/^https?:/.test(request.url())) network.push(request.url());
+              };
+              await choose([fixture('non-square.jpg')]);
+              await cropOwner();
+              page.on('request', record);
+              await hit(dialog.getByRole('button', { name: 'ADJUST CROP', exact: true }));
+              await dialog.getByRole('application', { name: 'Crop area' }).waitFor();
+              await page.keyboard.press('ArrowLeft');
+              await hit(dialog.getByRole('button', { name: 'Use Crop', exact: true }));
+              const ok = dialog.getByRole('button', { name: 'OK', exact: true });
+              await ok.waitFor();
+              assert.equal(await ok.isEnabled(), true, 'the manual crop reaches an enabled OK');
+              await hit(ok);
+              const gate = page.locator('.next-download-dialog');
+              const asked = await gate.waitFor({ timeout: 10_000 }).then(
+                () => true,
+                () => false,
+              );
+              await shot('assets-absent-consent');
+              if (asked) {
+                await hit(gate.getByRole('button', { name: 'Cancel', exact: true }));
+                await gate.waitFor({ state: 'detached' });
+              }
+              await page.waitForTimeout(1000);
+              page.off('request', record);
+              assert.ok(asked, 'with the encoder absent, OK asks for the download first');
+              assert.deepEqual(network, [], 'no network request before or after declining');
+              // OK committed the confirmed crop to the tile; nothing was encoded or queued.
+              assert.equal(await field.inputValue(), 'cropped.png');
+              assert.notEqual(await tiles.first().getAttribute('data-next-state'), 'filled');
+              await page.waitForFunction(
+                () => !document.querySelector('.next-product[data-next-busy=true]'),
+              );
+              noModels();
+              // Back to words for the cases that follow.
+              await hit(tiles.first().getByRole('button', { name: 'Change mode', exact: true }));
+              await hit(page.getByRole('menuitem', { name: 'Name or words', exact: true }));
+              await hit(field);
+              await page.keyboard.insertText(before);
+              assert.equal(await field.inputValue(), before);
+            }
+
             // Main-field paste (fm-25um), trusted Ctrl+V of the real system clipboard: the PNG with
             // coincident text still on it opens the same confirmation for this face, and the image wins
             // over the text; text alone is ordinary typing with no dialog.
