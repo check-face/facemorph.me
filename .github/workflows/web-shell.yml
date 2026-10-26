@@ -195,7 +195,9 @@ jobs:
   # Firefox and WebKit): control goldens at the shell rows, operated links at desktop and phone width (mouse
   # and touch), and every emitted worker loading. Screenshots are kept as an artifact.
   e2e:
-    runs-on: ubuntu-24.04
+    # All three Playwright engines and genuine Google Chrome are installed on this Ubuntu pool.
+    # Hosted dependency installation repeatedly exhausted the job before any tests ran (fm-jx26).
+    runs-on: [self-hosted, tempcpu]
     # About 4 minutes when healthy; a hung browser cell held the newest-only group for 4 hours (run 40094481824).
     timeout-minutes: 30
     defaults:
