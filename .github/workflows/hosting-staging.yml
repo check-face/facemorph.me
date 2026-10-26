@@ -23,6 +23,8 @@ jobs:
         with:
           node-version: '24'
       - run: npm ci
+      # The deploy driver's warm and mirror-deploy run the model-host package's CLI (fm-6fx6).
+      - run: npm run build -w packages/stylegan-js -w packages/browser-model-manager -w packages/cloudflare-model-host
       - run: node --test 'scripts/hosting/*.test.mjs'
       - name: Imported files equal the frozen revision
         run: node scripts/hosting/import-hosting.mjs --check --classic .cache/classic

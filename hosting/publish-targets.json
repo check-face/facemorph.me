@@ -1,0 +1,50 @@
+{
+  "schema": "facemorph.publish-targets/1",
+  "note": "Where this repository's deploy job (.github/workflows/next-deploy.yml, scripts/hosting/deploy.mjs) and promote.py may publish (fm-6fx6). Exactly one repository publishes a target at a time. scripts/hosting/publish-guard.mjs refuses, before any network call, a target the repository variable FACEMORPH_PUBLISH_TARGETS does not name, a target marked classicOwned, and any target sharing a Worker, bucket or host with a classicOwned one. classicOwned stays true for next and production until delivery's candidate-source handover (scripts/delivery/runbook.json) moves the publisher here; the handover change sets it false and the operator names the target in the variable. Classic keeps publishing until then.",
+  "variable": "FACEMORPH_PUBLISH_TARGETS",
+  "targets": {
+    "staging": {
+      "classicOwned": false,
+      "purpose": "Test target for the deploy dry run: a workers.dev site and its test mirror. Holds only published runtime and artifact bytes; never user data.",
+      "site": {
+        "worker": "facemorph-next-staging",
+        "origin": "https://facemorph-next-staging.cdilga.workers.dev/",
+        "workersDev": true
+      },
+      "mirror": {
+        "worker": "facemorph-next-staging-mirror",
+        "bucket": "facemorph-next-staging-mirror",
+        "origin": "https://facemorph-next-staging-mirror.cdilga.workers.dev/",
+        "workersDev": true,
+        "prefixes": "runtime/assets/,runtime/chunks/,runtime/manifests/,runtime/photo/,runtime/encoder-stream/"
+      }
+    },
+    "next": {
+      "classicOwned": true,
+      "purpose": "next.facemorph.me and its runtime mirror; classic next-site.yml publishes both until the candidate-source handover.",
+      "site": {
+        "worker": "facemorph-next",
+        "origin": "https://next.facemorph.me/",
+        "diagnostics": {
+          "bucket": "facemorph-diagnostics",
+          "namespace": "3a71e4ec58354345be24a1e02a3edb82"
+        }
+      },
+      "mirror": {
+        "worker": "facemorph-models",
+        "bucket": "facemorph-runtime-mirror",
+        "origin": "https://models.facemorph.me/",
+        "domain": "models.facemorph.me",
+        "prefixes": "runtime/assets/,runtime/chunks/,runtime/manifests/,runtime/photo/,runtime/encoder-stream/"
+      }
+    },
+    "production": {
+      "classicOwned": true,
+      "purpose": "facemorph.me; production promotion is a separate operator decision (fm-fy2.12).",
+      "site": {
+        "worker": "facemorph-next",
+        "origin": "https://facemorph.me/"
+      }
+    }
+  }
+}

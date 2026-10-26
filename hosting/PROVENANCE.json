@@ -162,10 +162,10 @@
       "size": 6833,
       "sha256": "4f9d9247d06045763ddd09f90cf5e2503a83bce71418e490ff3985c51c988e47",
       "ported": {
-        "sha256": "8d5ad707243c65b0cd1719909af30f40cef1797966b94b89346084a4bfbce1db",
-        "bytes": 6836,
-        "bead": "fm-rur",
-        "reason": "promote.py calls the web-artifact verifier at its destination (fm-be10), and its gh REMOTE follows the organization rename (fm-rur)."
+        "sha256": "ef641c42695a5634111f3bcd4aabb54729d00eec5617d20fa893ad75d2533851",
+        "bytes": 12306,
+        "bead": "fm-6fx6",
+        "reason": "Fail-closed re-homing (fm-6fx6): research backing (kernel provenance, canonical ledger keep row) checked first from local inputs, a missing ledger or built-in catalogue refuses, the build run is this repository's main.yml/next-site.yml with its artifact, compiled-ui and qualify gates passed, and --publish goes through the single-publisher guard and the cf deploy driver (scripts/hosting/deploy.mjs). Keeps fm-be10 (verifier path) and fm-rur (gh REMOTE)."
       }
     },
     {
@@ -325,6 +325,21 @@
       "path": "hosting/next-static/headers.json",
       "bead": "fm-zz2i",
       "reason": "Shared production header policy consumed by staging and local preview."
+    },
+    {
+      "path": "hosting/next-static/cloudflare.config.ts",
+      "bead": "fm-6fx6",
+      "reason": "cf project of the site Worker (fm-6fx6): staged public/ on Workers Static Assets, entry Worker first only for /diagnostics/*; replaces the wrangler.jsonc deploy."
+    },
+    {
+      "path": "hosting/next-static/vite.config.mts",
+      "bead": "fm-6fx6",
+      "reason": "Vite build of the site cf project (fm-6fx6); the staged tree is linked into its assets by scripts/hosting/deploy.mjs."
+    },
+    {
+      "path": "hosting/publish-targets.json",
+      "bead": "fm-6fx6",
+      "reason": "Publish targets and the single-publisher rule (fm-6fx6): the staging test target, and the classic-owned next/production targets refused until the candidate-source handover."
     }
   ]
 }

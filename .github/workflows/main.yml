@@ -212,6 +212,26 @@ jobs:
       contents: read
       actions: read
     secrets: inherit
+  # fm-6fx6: the qualified-push deploy (next-deploy.yml), only when the repository variable FACEMORPH_DEPLOY_TARGET
+  # names a target and only after next-site's artifact, qualify and compiled-ui gates passed for this push. Unset (and
+  # until delivery's candidate-source handover for next.facemorph.me), nothing deploys; the publish guard refuses
+  # classic-owned targets regardless.
+  next-deploy:
+    needs: [changes, next-site]
+    if: github.event_name == 'push' && vars.FACEMORPH_DEPLOY_TARGET != ''
+    uses: ./.github/workflows/next-deploy.yml
+    permissions:
+      contents: read
+      actions: write # release-gate dispatches the bounded hosted attempt
+    with:
+      target: ${{ vars.FACEMORPH_DEPLOY_TARGET }}
+      artifact_source_repo_id: ${{ github.repository_id }}
+      artifact_workflow: .github/workflows/main.yml
+      artifact_commit: ${{ github.sha }}
+      artifact_run: ${{ github.run_id }}
+      artifact_name: next-site-${{ github.sha }}
+      runtime_sha: d9e37e50a436e9fb7c0c7f973e70adee353c808f48c6a51fa5a9186f1c650a5c
+    secrets: inherit
   package-gates:
     needs: changes
     if: contains(fromJSON(needs.changes.outputs.lanes), 'package-gates')

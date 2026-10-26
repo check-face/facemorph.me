@@ -1,0 +1,135 @@
+name: next-deploy
+# fm-6fx6: classic next-site.yml's deploy job (6107f80, the frozen import revision of hosting/) re-homed. One exact,
+# qualified artifact is published to one target from hosting/publish-targets.json: verify its SHA256SUMS, check the
+# acquired runtime set, stage (hosting/next-static/stage.py), deploy the site with cf, check the live bytes (this build,
+# the historic hello preview, every staged runtime file), deploy the runtime mirror and warm it, through the model-host
+# package's commands. Each step is one scripts/hosting/deploy.mjs subcommand, so `deploy.mjs all` locally runs the same
+# commands. No origin is written here: hosts come from the target configuration.
+#
+# Single publisher: scripts/hosting/publish-guard.mjs refuses, before any network call, a target the repository
+# variable FACEMORPH_PUBLISH_TARGETS does not name and every classic-owned target (next.facemorph.me, facemorph.me and
+# their mirror) until delivery's candidate-source handover. main.yml calls this on qualified pushes only when the
+# variable FACEMORPH_DEPLOY_TARGET names a target; unset, nothing deploys. A publication in progress is never cancelled.
+# The release gate (release-gate.yml, fm-5klw) runs for the artifact first: a failed required hosted lane or local
+# cell blocks the deploy. Rollback: the site-deploy record names the previous version and the cf command restoring it.
+on:
+  workflow_call:
+    inputs:
+      target:
+        type: string
+        required: true
+      artifact_source_repo_id:
+        type: string
+        required: true
+      artifact_workflow:
+        type: string
+        required: true
+      artifact_commit:
+        type: string
+        required: true
+      artifact_run:
+        type: string
+        required: true
+      artifact_name:
+        type: string
+        required: true
+      runtime_sha:
+        type: string
+        required: true
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Target in hosting/publish-targets.json (staging is the test target)
+        required: true
+        default: staging
+      artifact_source_repo_id:
+        description: Numeric source repository ID
+        required: true
+      artifact_workflow:
+        description: Source workflow file
+        required: true
+        default: .github/workflows/main.yml
+      artifact_commit:
+        description: Full source commit SHA
+        required: true
+      artifact_run:
+        description: Build run id
+        required: true
+      artifact_name:
+        description: Its site artifact (next-site-<sha>)
+        required: true
+      runtime_sha:
+        description: Runtime manifest SHA256 the artifact was qualified with
+        default: d9e37e50a436e9fb7c0c7f973e70adee353c808f48c6a51fa5a9186f1c650a5c
+permissions:
+  contents: read
+  actions: read
+jobs:
+  gate:
+    permissions:
+      contents: read
+      actions: write # release-gate dispatches the bounded hosted attempt
+    uses: ./.github/workflows/release-gate.yml
+    with:
+      artifact_source_repo_id: ${{ inputs.artifact_source_repo_id }}
+      artifact_workflow: ${{ inputs.artifact_workflow }}
+      artifact_commit: ${{ inputs.artifact_commit }}
+      artifact_run: ${{ inputs.artifact_run }}
+      artifact_name: ${{ inputs.artifact_name }}
+      runtime_sha: ${{ inputs.runtime_sha }}
+  deploy:
+    needs: gate
+    runs-on: [self-hosted, eris]
+    timeout-minutes: 120
+    # One publication per target at a time. A second queued push waits; a pending one may be superseded by a newer
+    # push, but a publication in progress is never cancelled.
+    concurrency:
+      group: next-deploy-${{ inputs.target }}
+      cancel-in-progress: false
+    defaults:
+      run:
+        shell: bash # -eo pipefail: a failed step piped to tee still fails
+    env:
+      TARGET: ${{ inputs.target }}
+      FACEMORPH_PUBLISH_TARGETS: ${{ vars.FACEMORPH_PUBLISH_TARGETS }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Single-publisher guard, site and mirror, before any network call
+        run: node scripts/hosting/publish-guard.mjs --target "$TARGET" --kind site,mirror
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: ./.github/actions/setup-workspace # node_modules for the lockfile, shared on the runner (fm-98po)
+      - uses: ./.github/actions/fetch-artifact
+        with:
+          source_repo_id: ${{ inputs.artifact_source_repo_id }}
+          workflow: ${{ inputs.artifact_workflow }}
+          run_id: ${{ inputs.artifact_run }}
+          commit: ${{ inputs.artifact_commit }}
+          artifact_name: ${{ inputs.artifact_name }}
+          out: web
+      - name: Verify the artifact is the one that was built and qualified
+        run: node scripts/hosting/deploy.mjs verify --artifact web
+      - name: Model-host package commands (mirror deploy, warm)
+        run: npm run build -w packages/stylegan-js -w packages/browser-model-manager -w packages/cloudflare-model-host
+      - name: The acquired runtime set, file by file, and the WebGPU contract (nothing downloaded)
+        run: |
+          test "$(sha256sum < "$HOME/.cache/facemorph-runtime/manifest.json" | cut -d' ' -f1)" = '${{ inputs.runtime_sha }}'
+          node scripts/hosting/deploy.mjs runtime --runtime "$HOME/.cache/facemorph-runtime"
+      - name: Stage
+        run: |
+          rm -rf "$RUNNER_TEMP/public"
+          node scripts/hosting/deploy.mjs stage --runtime "$HOME/.cache/facemorph-runtime" --artifact web --public "$RUNNER_TEMP/public"
+      - name: Deploy the site
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: node scripts/hosting/deploy.mjs site-deploy --target "$TARGET" --public "$RUNNER_TEMP/public" --publish | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Check the live site serves this build, the historic hello preview and every runtime file
+        run: node scripts/hosting/deploy.mjs live --target "$TARGET" --public "$RUNNER_TEMP/public" --artifact web | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Deploy the runtime mirror
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: node scripts/hosting/deploy.mjs mirror-deploy --target "$TARGET" --publish | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Warm the runtime mirror with every immutable runtime file
+        run: node scripts/hosting/deploy.mjs warm --target "$TARGET" --public "$RUNNER_TEMP/public" --publish | tee -a "$GITHUB_STEP_SUMMARY"
