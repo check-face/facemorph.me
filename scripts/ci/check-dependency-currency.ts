@@ -17,6 +17,7 @@ import {
 } from './dependency-currency.ts';
 import { frozenProblems, type DependencyPolicy } from './dependency-freeze.ts';
 import { composeManifest, validateOverlay } from './ort-mirror.ts';
+import { composeEncoderDescriptor, verifySerialCompanion } from './serial-ort.ts';
 
 export const DEPENDENCY_GROUPS = [
   'build-tools',
@@ -323,10 +324,59 @@ export function checkDependencyCurrency(
           const actual = JSON.parse(
             readFileSync(join(resolve(repo, options.runtimeDir!), 'manifest.json'), 'utf8'),
           );
+          const origin = new URL(actual.runtime.moduleUrl).origin;
+          let controlEncoderDescriptorBytes: Buffer | undefined;
+          if (overlay.schema === 'facemorph.ort-mirror/2') {
+            // Only the immutable base snapshot can authorize model/reference fields in a new descriptor.
+            // The candidate's own self-consistent hash is insufficient evidence of preservation.
+            const reference = control.encoderStream;
+            const url = new URL(reference.url);
+            const path = decodeURIComponent(url.pathname.slice('/runtime/'.length));
+            if (
+              url.protocol !== 'https:' ||
+              url.username ||
+              url.password ||
+              url.search ||
+              url.hash ||
+              !url.pathname.startsWith('/runtime/') ||
+              !path ||
+              /[\\\0]/.test(path) ||
+              path.split('/').some((part) => !part || part === '.' || part === '..')
+            )
+              throw new Error('Trusted encoder descriptor URL must remain inside the runtime');
+            controlEncoderDescriptorBytes = Buffer.from(
+              read(options.base, `import/runtime-manifests/${path}`),
+            );
+            if (
+              hash(controlEncoderDescriptorBytes) !== reference.sha256 ||
+              controlEncoderDescriptorBytes.length !== reference.size
+            )
+              throw new Error('Trusted encoder descriptor bytes differ from the frozen root pin');
+            verifySerialCompanion(
+              join(resolve(repo, options.runtimeDir!), 'assets', overlay.serial.bundleSha256),
+              overlay.serial,
+            );
+            const descriptor = composeEncoderDescriptor(
+              controlEncoderDescriptorBytes,
+              overlay.serial,
+              origin,
+            );
+            const actualDescriptor = join(resolve(repo, options.runtimeDir!), descriptor.path);
+            const stat = lstatSync(actualDescriptor);
+            if (
+              !stat.isFile() ||
+              stat.size !== descriptor.bytes.length ||
+              !readFileSync(actualDescriptor).equals(descriptor.bytes)
+            )
+              throw new Error(
+                'Actual encoder descriptor is not exactly the trusted control plus serial runtime',
+              );
+          }
           const expected = composeManifest(
             control,
             overlay,
-            new URL(actual.runtime.moduleUrl).origin,
+            origin,
+            controlEncoderDescriptorBytes === undefined ? {} : { controlEncoderDescriptorBytes },
           );
           composed = isDeepStrictEqual(actual, expected);
           if (!composed)

@@ -4,6 +4,11 @@
 import { createHash } from 'node:crypto';
 import { lstatSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
+import {
+  composeEncoderDescriptor,
+  validateSerialCompanion,
+  type SerialOrtCompanion,
+} from './serial-ort.ts';
 
 const WASM_FILES = [
   'ort.wasm.min.mjs',
@@ -42,8 +47,7 @@ export interface OrtMirrorFile {
   readonly size: number;
 }
 
-export interface OrtMirrorOverlay {
-  readonly schema: 'facemorph.ort-mirror/1';
+interface OrtMirrorBase {
   readonly version: string;
   readonly npm: {
     readonly package: 'onnxruntime-web';
@@ -54,6 +58,12 @@ export interface OrtMirrorOverlay {
   readonly bundleSha256: string;
   readonly files: readonly OrtMirrorFile[];
 }
+
+export type OrtMirrorOverlay = OrtMirrorBase &
+  (
+    | { readonly schema: 'facemorph.ort-mirror/1'; readonly serial?: never }
+    | { readonly schema: 'facemorph.ort-mirror/2'; readonly serial: SerialOrtCompanion }
+  );
 
 const SHA256 = /^[a-f0-9]{64}$/;
 const STABLE_VERSION = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
@@ -110,8 +120,25 @@ function buildName(value: unknown): OrtGpuBuild {
 /** Reject arbitrary paths, extra assets, mismatched GPU builds, and altered bundle metadata. */
 export function validateOverlay(input: unknown): OrtMirrorOverlay {
   const overlay = object(input, 'overlay');
-  keys(overlay, ['schema', 'version', 'npm', 'gpuBuild', 'bundleSha256', 'files'], 'overlay');
-  if (overlay['schema'] !== 'facemorph.ort-mirror/1') fail('unsupported overlay schema');
+  if (
+    overlay['schema'] !== 'facemorph.ort-mirror/1' &&
+    overlay['schema'] !== 'facemorph.ort-mirror/2'
+  )
+    fail('unsupported overlay schema');
+  const serial = overlay['schema'] === 'facemorph.ort-mirror/2';
+  keys(
+    overlay,
+    [
+      'schema',
+      'version',
+      'npm',
+      'gpuBuild',
+      'bundleSha256',
+      'files',
+      ...(serial ? ['serial'] : []),
+    ],
+    'overlay',
+  );
   const gpuBuild = buildName(overlay['gpuBuild']);
   const expectedFiles = ORT_BUILD_FILES[gpuBuild];
   const npm = object(overlay['npm'], 'npm');
@@ -138,7 +165,21 @@ export function validateOverlay(input: unknown): OrtMirrorOverlay {
     bundleDigest(overlay['version'] as string, source, gpuBuild, files) !== overlay['bundleSha256']
   )
     fail('bundle digest does not match its provenance and files');
+  if (serial && validateSerialCompanion(overlay['serial']).build.version !== overlay['version'])
+    fail('serial companion version differs from the npm runtime');
   return structuredClone(input) as OrtMirrorOverlay;
+}
+
+/** Upgrade the envelope without changing the six npm assets or their historical bundle digest. */
+export function withSerialCompanion(
+  input: unknown,
+  serial: unknown,
+): Extract<OrtMirrorOverlay, { schema: 'facemorph.ort-mirror/2' }> {
+  return validateOverlay({
+    ...validateOverlay(input),
+    schema: 'facemorph.ort-mirror/2',
+    serial,
+  }) as Extract<OrtMirrorOverlay, { schema: 'facemorph.ort-mirror/2' }>;
 }
 
 function installed(dist: string, version: string): void {
@@ -183,7 +224,7 @@ export function generateOverlay(
   });
 }
 
-/** Check supplied bytes before acquiring/staging an already recorded overlay. */
+/** Check the six npm files; schema 2's separate serial files require verifySerialCompanion as well. */
 export function verifyOverlay(dist: string, input: unknown): OrtMirrorOverlay {
   const overlay = validateOverlay(input);
   installed(dist, overlay.version);
@@ -217,11 +258,17 @@ function pinnedAsset(value: unknown): void {
     fail('invalid control asset size');
 }
 
-/** Compose only the two ORT subtrees; model/reference fields remain byte-for-byte values. */
+export interface ComposeOptions {
+  /** Exact bytes addressed by the trusted root control's encoderStream pin; mandatory for schema 2. */
+  readonly controlEncoderDescriptorBytes?: Uint8Array;
+}
+
+/** Compose the declared runtime subtrees; all model/reference/admission fields retain their control values. */
 export function composeManifest(
   controlInput: unknown,
   input: unknown,
   origin: string,
+  options: ComposeOptions = {},
 ): Record<string, unknown> {
   const overlay = validateOverlay(input);
   const base = httpsUrl(origin, 'destination origin');
@@ -245,8 +292,22 @@ export function composeManifest(
     return { url: `${base.origin}/runtime/${file.path}`, sha256: file.sha256, size: file.size };
   };
   const wasm = [asset(0), asset(1), asset(2)];
+  let encoderStream: Record<string, unknown> | undefined;
+  if (overlay.schema === 'facemorph.ort-mirror/2') {
+    const reference = object(control['encoderStream'], 'control encoder reference');
+    pinnedAsset(reference);
+    if (reference.sha256 !== overlay.serial.controlDescriptorSha256)
+      fail('serial companion does not name the trusted control encoder pin');
+    const bytes =
+      options.controlEncoderDescriptorBytes ??
+      fail('trusted control encoder descriptor bytes are required for schema 2');
+    if (reference.size !== bytes.length) fail('trusted control encoder descriptor size mismatch');
+    const descriptor = composeEncoderDescriptor(bytes, overlay.serial, origin);
+    encoderStream = { ...structuredClone(reference), ...descriptor.asset };
+  }
   return {
     ...structuredClone(control),
+    ...(encoderStream === undefined ? {} : { encoderStream }),
     runtime: {
       ...structuredClone(runtime),
       version: overlay.version,

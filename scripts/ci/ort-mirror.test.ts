@@ -11,9 +11,15 @@ import {
   ORT_FILES,
   validateOverlay,
   verifyOverlay,
+  withSerialCompanion,
   type OrtMirrorOverlay,
   type OrtGpuBuild,
 } from './ort-mirror.ts';
+import {
+  composeEncoderDescriptor,
+  generateSerialCompanion,
+  SERIAL_ORT_FILES,
+} from './serial-ort.ts';
 
 const lock = {
   version: '1.30.0',
@@ -48,6 +54,44 @@ function fixture(t: TestContext, gpuBuild: OrtGpuBuild = 'webgpu'): string {
         : `// fixture ${file}\nexport const value = ${index};\n`,
     );
   return dist;
+}
+
+function serialFixture(t: TestContext, version = lock.version) {
+  const dist = mkdtempSync(join(tmpdir(), 'facemorph-serial-overlay-'));
+  t.after(() => rmSync(dist, { recursive: true, force: true }));
+  for (const file of SERIAL_ORT_FILES)
+    writeFileSync(
+      join(dist, file),
+      file.endsWith('.wasm')
+        ? Buffer.from([0, 97, 115, 109, 1, 0, 0, 0, 5, 5, 1, 1, 1, 128, 32])
+        : `// synthetic fixture ${file}\n`,
+    );
+  const bytes = readFileSync(
+    new URL(
+      '../../import/runtime-manifests/encoder-stream/417811d879ac9ef5a8714f38a453571d86e7168047e3d22b7d809b74905bf468/manifest.json',
+      import.meta.url,
+    ),
+  );
+  const hash = (text: string) => createHash('sha256').update(text).digest('hex');
+  const companion = generateSerialCompanion(
+    dist,
+    {
+      version,
+      source: {
+        repository: 'https://github.com/microsoft/onnxruntime.git',
+        tag: `v${version}`,
+        commit: 'f2c39fe2f838cf35ce7da92824f5a5e3ee6e88a7',
+      },
+      toolchain: {
+        emsdkVersion: '4.0.23',
+        emsdkCommit: 'c0bb220cb6e6f4e0fabb6f6db9efd53390ef5e56',
+      },
+      commandSha256: hash('synthetic fixture command'),
+      linkReceiptSha256: hash('synthetic fixture link receipt'),
+    },
+    bytes,
+  );
+  return { bytes, companion };
 }
 
 test('six actual fixture files yield reproducible immutable WASM/JSEP destinations', (t) => {
@@ -401,5 +445,101 @@ test('composition refuses unsupported control/runtime shapes and unsafe destinat
       () => composeManifest(changed, overlay, 'https://next.facemorph.me'),
       /ORT mirror:/,
     );
+  }
+});
+
+test('schema 2 keeps the npm bundle identity and composes only the trusted control encoder reference', (t) => {
+  const npm = generateOverlay(fixture(t, 'jsep'), lock, 'jsep');
+  const serial = serialFixture(t);
+  const overlay = withSerialCompanion(npm, serial.companion);
+  assert.equal(overlay.schema, 'facemorph.ort-mirror/2');
+  assert.equal(overlay.bundleSha256, npm.bundleSha256);
+  assert.deepEqual(overlay.files, npm.files);
+  assert.deepEqual(overlay.npm, npm.npm);
+  assert.deepEqual(validateOverlay(overlay), overlay);
+  assert.deepEqual(
+    verifyOverlay(fixture(t, 'jsep'), overlay),
+    overlay,
+    'npm verification retains its six-file scope',
+  );
+  const original = control();
+  const composed = composeManifest(original, overlay, 'https://next.facemorph.me', {
+    controlEncoderDescriptorBytes: serial.bytes,
+  });
+  const descriptor = composeEncoderDescriptor(
+    serial.bytes,
+    serial.companion,
+    'https://next.facemorph.me',
+  );
+  assert.deepEqual(composed.encoderStream, { ...original.encoderStream, ...descriptor.asset });
+  assert.equal((composed.encoderStream as any).phoneAdmitted, original.encoderStream.phoneAdmitted);
+  assert.deepEqual(
+    (composed.encoderStream as any).candidateAdmission,
+    original.encoderStream.candidateAdmission,
+  );
+  assert.equal((composed.encoderStream as any).releaseQualified, false);
+  const retained: any = structuredClone(composed);
+  retained.runtime = original.runtime;
+  retained.webgpu.runtime = original.webgpu.runtime;
+  retained.encoderStream = original.encoderStream;
+  assert.deepEqual(retained, original);
+  assert.deepEqual(control(), original);
+  const schema1 = { ...overlay, schema: 'facemorph.ort-mirror/1' } as any;
+  delete schema1.serial;
+  assert.deepEqual(
+    validateOverlay(schema1),
+    npm,
+    'historical schema 1 bytes and digest stay compatible',
+  );
+});
+
+test('schema 2 requires matching version, trusted root pin and exact descriptor bytes; caller replacements fail closed', (t) => {
+  const npm = generateOverlay(fixture(t), lock);
+  const { bytes, companion } = serialFixture(t);
+  const overlay = withSerialCompanion(npm, companion);
+  assert.throws(
+    () => validateOverlay({ ...npm, schema: 'facemorph.ort-mirror/2' }),
+    /missing or unexpected/,
+  );
+  assert.throws(() => validateOverlay({ ...npm, serial: companion }), /unexpected fields/);
+  assert.throws(
+    () => withSerialCompanion(npm, serialFixture(t, '1.29.0').companion),
+    /version differs/,
+  );
+  assert.throws(
+    () => composeManifest(control(), overlay, 'https://next.facemorph.me'),
+    /trusted control encoder descriptor bytes are required/,
+  );
+  assert.throws(
+    () =>
+      composeManifest(control(), overlay, 'https://next.facemorph.me', {
+        controlEncoderDescriptorBytes: Buffer.from('{}'),
+      }),
+    /size mismatch/,
+  );
+  const changed = Buffer.from(bytes);
+  changed[0] = changed[0]! ^ 1;
+  assert.throws(
+    () =>
+      composeManifest(control(), overlay, 'https://next.facemorph.me', {
+        controlEncoderDescriptorBytes: changed,
+      }),
+    /digest mismatch/,
+  );
+  const root = control();
+  root.encoderStream.sha256 = 'a'.repeat(64);
+  assert.throws(
+    () =>
+      composeManifest(root, overlay, 'https://next.facemorph.me', {
+        controlEncoderDescriptorBytes: bytes,
+      }),
+    /trusted control encoder pin/,
+  );
+  for (const field of ['steps', 'canaries', 'phoneAdmitted', 'modelSourceSha256', 'descriptor']) {
+    assert.throws(
+      () => withSerialCompanion(npm, { ...companion, [field]: null }),
+      /unexpected fields/,
+    );
+    assert.throws(() => validateOverlay({ ...overlay, [field]: null }), /unexpected fields/);
   }
 });
