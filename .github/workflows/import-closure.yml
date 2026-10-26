@@ -10,6 +10,8 @@ jobs:
   checks:
     runs-on: [self-hosted, linux-x64]
     timeout-minutes: 30
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -19,6 +21,8 @@ jobs:
       - name: Build the package files mounted by the mobile browser suite
         run: npm run build -w packages/stylegan-js -w packages/browser-model-manager
       - run: node --test scripts/import/control.test.mjs scripts/import/closure.test.mjs scripts/runtime/runtime.test.mjs
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
       # Files the app adds beside the imported closure (fm-svg shell and build, fm-s9n contracts, fm-l6mq media core, fm-eeki export files, fm-4umi admission, fm-5yqq usage statistics, fm-ze4u preflight checker, fm-fy2.13 transient model source, photo refusal copy); everything else under apps/web
       # must be the allowlist's bytes.
       - run: >-
