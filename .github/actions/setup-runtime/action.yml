@@ -9,9 +9,10 @@ runs:
       env:
         RUNNER_ENVIRONMENT: ${{ runner.environment }}
       run: |
+        pins=$(node scripts/ci/runtime-cache-key.mjs)
+        echo "pins=$pins" >> "$GITHUB_OUTPUT"
         runtime="$GITHUB_WORKSPACE/.cache/ci-runtime"
         if [ "$RUNNER_ENVIRONMENT" != github-hosted ]; then
-          pins=$(sha256sum import/build-inputs.json | cut -d ' ' -f1)
           base="${RUNNER_TOOL_CACHE:?}/facemorph-runtime"
           runtime="$base/$pins"
           compat="$GITHUB_WORKSPACE/.cache/ci-runtime"
@@ -39,7 +40,7 @@ runs:
       uses: actions/cache@v4
       with:
         path: .cache/ci-runtime
-        key: runtime-pins-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('import/build-inputs.json') }}
+        key: runtime-pins-${{ runner.os }}-${{ runner.arch }}-${{ steps.runtime.outputs.pins }}
     - name: Acquire every pinned runtime file
       shell: bash
       env:
