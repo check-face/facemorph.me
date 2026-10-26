@@ -6,7 +6,8 @@ on:
   workflow_dispatch:
 jobs:
   test:
-    runs-on: [self-hosted, linux-x64]
+    # SeaweedFS integration needs Docker; the tempcpu portable runners do not provide it.
+    runs-on: [self-hosted, eris-build]
     timeout-minutes: 30
     defaults:
       run:
