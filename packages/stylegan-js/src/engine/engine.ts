@@ -162,21 +162,25 @@ export function createEngine(o: {
     if (pumping) return;
     pumping = true;
     void (async () => {
-      for (;;) {
-        const unit = foreground.shift() ?? background;
-        if (!unit) break;
-        if (unit === background) background = null;
-        running = true;
-        try {
-          await unit();
-        } catch {
-          /* units settle their own operations */
+      try {
+        for (;;) {
+          const unit = foreground.shift() ?? background;
+          if (!unit) break;
+          if (unit === background) background = null;
+          running = true;
+          try {
+            await unit();
+          } catch {
+            /* units settle their own operations */
+          }
+          running = false;
         }
-        running = false;
+      } finally {
+        // Cleared in the same turn as the empty-queue check: a unit queued after it starts a new pump. (A
+        // .finally() on the promise ran a few microtasks later, and work queued in between was never run.)
+        pumping = false;
       }
-    })().finally(() => {
-      pumping = false;
-    });
+    })();
   }
 
   function admit(): Promise<AdmissionReceipt | null> {

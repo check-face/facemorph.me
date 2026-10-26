@@ -1,0 +1,17 @@
+{
+  // Compiled in the consumer project, against the installed package's emitted declarations only.
+  "compilerOptions": {
+    "target": "ES2024",
+    "lib": ["ES2024", "DOM", "DOM.Iterable"],
+    "types": [],
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "skipLibCheck": false,
+    "rootDir": "src",
+    "outDir": "out"
+  },
+  "include": ["src"]
+}

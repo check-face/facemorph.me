@@ -185,17 +185,22 @@ export function evaluate({ profile, files }) {
 
     const scope = profile.provenanceScope;
     if (scope === 'all' || (scope === 'non-docs' && !isDoc)) {
+      // A profile may name exact persisted identifiers that must keep a private name (each with its reason); they
+      // are removed before the provenance patterns run, so any other mention in the same file still fails.
+      let provText = text;
+      for (const a of profile.provenanceAllow ?? [])
+        provText = provText.replace(rx(a.pattern, 'g'), '');
       for (const h of sh.productionHostnames) {
-        const m = rx(h, 'i').exec(text);
+        const m = rx(h, 'i').exec(provText);
         if (m)
           add('private-provenance', path, `FaceMorph production hostname ${JSON.stringify(m[0])}`);
       }
       for (const b of sh.r2BucketNames) {
-        if (text.includes(b))
+        if (provText.includes(b))
           add('private-provenance', path, `R2 bucket name ${JSON.stringify(b)}`);
       }
       for (const b of sh.r2BucketPatterns) {
-        const m = rx(b, 'i').exec(text);
+        const m = rx(b, 'i').exec(provText);
         if (m) add('private-provenance', path, `R2 bucket reference ${JSON.stringify(m[0])}`);
       }
     }

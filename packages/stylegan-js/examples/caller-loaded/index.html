@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>stylegan-js caller-loaded</title>
+    <link rel="icon" href="data:," />
+    <!-- The installed package, resolved by the browser itself: no bundler, no manager. -->
+    <script type="importmap">
+      {
+        "imports": {
+          "@facemorph/stylegan-js": "./node_modules/@facemorph/stylegan-js/dist/index.js",
+          "@facemorph/stylegan-js/engine": "./node_modules/@facemorph/stylegan-js/dist/engine/index.js"
+        }
+      }
+    </script>
+    <style>
+      body {
+        font:
+          14px system-ui,
+          sans-serif;
+        margin: 16px;
+        background: #fff;
+        color: #111;
+      }
+      canvas {
+        width: 256px;
+        height: 256px;
+        background: #eee;
+        margin-right: 8px;
+      }
+      pre {
+        max-height: 40vh;
+        overflow: auto;
+        background: #f4f4f4;
+        padding: 8px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>stylegan-js, caller-loaded</h1>
+    <p>
+      <button id="load">Load</button> <button id="run">Map and synthesize</button>
+      <button id="abort">Abort</button> <button id="dispose">Dispose</button>
+    </p>
+    <p><progress id="progress" max="1" value="0"></progress> <span id="phase">idle</span></p>
+    <p><canvas id="face-a"></canvas><canvas id="face-mid"></canvas><canvas id="face-b"></canvas></p>
+    <p>Status: <code id="status"></code></p>
+    <pre id="log"></pre>
+    <script type="module" src="./out/main.js"></script>
+  </body>
+</html>

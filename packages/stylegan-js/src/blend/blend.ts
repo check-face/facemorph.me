@@ -1,6 +1,6 @@
 // Weighted face blend (fm-mtax, plan: compute.blend): the retired API's `num_multi` arithmetic on W+ latents,
 // sum(weight_k * W+_k) with each weight clamped to [-2, 2] and not normalised, ready for one synthesis. It matches
-// classic LatentByMultiLerp (checkface/src/server/checkface.py) on dlatent inputs; the API's Z-space sums for word
+// classic LatentByMultiLerp (the legacy Python server) on dlatent inputs; the API's Z-space sums for word
 // and seed slots are deliberately not matched, since the app holds every face as W+. Pure arithmetic, shaped by
 // the model descriptor (no hard-coded 18 x 512), with any number of slots from 1. Retained-input memory is the
 // caller's admission check against the byte budgets, not a slot count here.

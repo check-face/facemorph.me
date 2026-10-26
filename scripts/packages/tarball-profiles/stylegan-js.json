@@ -33,6 +33,12 @@
   ],
   "description": "Engine package: browser synthesis/mapping/e4e. No host URLs, OPFS/Cache Storage, DOM/UI imports or reporting transport.",
   "provenanceScope": "all",
+  "provenanceAllow": [
+    {
+      "pattern": "\\bcheckface-canary-qualification-v1\\b",
+      "reason": "CANARY_RECORD_SCHEMA: the persisted per-device canary receipt schema; renaming it would invalidate receipts already recorded on devices"
+    }
+  ],
   "contentRules": [
     {
       "id": "host-url",

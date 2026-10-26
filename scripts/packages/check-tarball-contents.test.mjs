@@ -6,6 +6,7 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { gzipSync } from 'node:zlib';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { after, describe, test } from 'node:test';
@@ -110,6 +111,17 @@ describe('clean fixtures pass', () => {
     assert.equal(r.status, 0, r.stdout);
   });
 
+  test('stylegan-js may ship its persisted canary receipt schema name (provenanceAllow)', () => {
+    const r = scan('stylegan-js', {
+      ...packageBase(),
+      'dist/canary.js':
+        'export const CANARY_RECORD_SCHEMA = "checkface-canary-qualification-v1";\n',
+      'dist/canary.d.ts':
+        'export declare const CANARY_RECORD_SCHEMA = "checkface-canary-qualification-v1";\n',
+    });
+    assert.equal(r.status, 0, r.stdout);
+  });
+
   test('an oversize runtime .wasm is on the allowlist', () => {
     const r = scan('stylegan-js', {
       ...packageBase(),
@@ -180,6 +192,12 @@ const bad = [
     'stylegan-js',
     { 'dist/index.js.map': JSON.stringify({ version: 3, sources: ['../src/index.ts'] }) },
   ],
+  [
+    'sourcemap-outside',
+    'stylegan-js',
+    { 'dist/index.js': 'export const a = 1;\n//# sourceMappingURL=/abs/index.js.map\n' },
+  ],
+  ['sourcemap-outside', 'stylegan-js', { 'dist/index.js.map': 'not a source map' }],
   ['absolute-path', 'stylegan-js', { 'dist/p.js': 'export const p = "/home/someone/work";\n' }],
   [
     'absolute-path',
@@ -216,7 +234,28 @@ const bad = [
       ),
     },
   ],
+  [
+    'private-provenance',
+    'stylegan-js',
+    {
+      'dist/canary.js':
+        'export const S = "checkface-canary-qualification-v1"; // ported from checkface\n',
+    },
+  ],
   ['required-file', 'stylegan-js', { 'dist/index.d.ts': null }],
+  [
+    'required-file',
+    'stylegan-js',
+    {
+      'package.json': JSON.stringify({
+        name: 'x',
+        exports: {
+          '.': { types: './dist/index.d.ts', default: './dist/index.js' },
+          './engine': { types: './dist/engine/index.d.ts', default: './dist/engine/index.js' },
+        },
+      }),
+    },
+  ],
   ['required-file', 'stylegan-js', { 'dist/index.js': null }],
   ['required-file', 'stylegan-js', { LICENSE: null }],
   ['required-file', 'stylegan-js', { 'THIRD_PARTY_NOTICES.md': null }],
@@ -339,6 +378,51 @@ describe('planted bad fixtures fail with the expected rule', () => {
       'dist/s.js': `export const t = "${NPM_TOKEN}";\n`,
     });
     assert.ok(!JSON.stringify(r.report).includes(NPM_TOKEN));
+  });
+
+  test('an absolute or parent-relative tar entry is a finding, and nothing is extracted', () => {
+    // A hand-written ustar archive: GNU tar refuses to create such names, a hostile tarball need not.
+    const header = (name, size) => {
+      const h = Buffer.alloc(512);
+      h.write(name, 0, 100);
+      h.write('0000644\0', 100);
+      h.write('0000000\0', 108);
+      h.write('0000000\0', 116);
+      h.write(`${size.toString(8).padStart(11, '0')}\0`, 124);
+      h.write('00000000000\0', 136);
+      h.write('        ', 148);
+      h.write('0', 156);
+      h.write('ustar\0', 257);
+      h.write('00', 263);
+      let sum = 0;
+      for (const byte of h) sum += byte;
+      h.write(`${sum.toString(8).padStart(6, '0')}\0 `, 148);
+      return h;
+    };
+    const entry = (name, text) => {
+      const body = Buffer.from(text);
+      const pad = Buffer.alloc((512 - (body.length % 512)) % 512);
+      return [header(name, body.length), body, pad];
+    };
+    for (const name of ['package/../escape.js', '/abs/escape.js']) {
+      const out = `${fresh()}.tgz`;
+      writeFileSync(
+        out,
+        gzipSync(
+          Buffer.concat([
+            ...entry('package/package.json', PKG_JSON),
+            ...entry(name, 'x'),
+            Buffer.alloc(1024),
+          ]),
+        ),
+      );
+      const r = run('stylegan-js', out);
+      assert.equal(r.status, 1, r.stdout + r.stderr);
+      assert.ok(
+        r.report.findings.some((f) => f.rule === 'unsafe-entry' && f.path === name),
+        JSON.stringify(r.report.findings),
+      );
+    }
   });
 
   test('a symlink in a directory input is a finding', () => {
