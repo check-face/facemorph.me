@@ -110,7 +110,7 @@
     {
       "id": "dns-checkface",
       "kind": "dns",
-      "target": "checkface.facemorph.me CNAME facemorph-me.github.io, record baa8e426a96ed754490629120d52c525",
+      "target": "checkface.facemorph.me CNAME check-face.github.io, record baa8e426a96ed754490629120d52c525",
       "disposition": "remove",
       "when": "api-retirement",
       "reason": "The API documentation site (GitHub Pages of facemorph-me/checkface); retired with the API.",
@@ -409,11 +409,7 @@
       "probe": {
         "type": "ssh",
         "host": "triton",
-        "argv": [
-          "systemctl",
-          "is-active",
-          "actions.runner.facemorph-me-facemorph.me.triton.service"
-        ],
+        "argv": ["systemctl", "is-active", "actions.runner.check-face-facemorph.me.triton.service"],
         "expect": "active"
       }
     },

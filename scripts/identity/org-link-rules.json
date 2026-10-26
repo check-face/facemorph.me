@@ -88,6 +88,14 @@
       "disposition": "record of the retired native updater feed: retirement disposition, not migration; never point it at the monorepo"
     },
     {
+      "id": "monorepo-live-host-names",
+      "repo": "facemorph.me",
+      "paths": ["scripts/delivery/runbook.json", "scripts/delivery/handover.md"],
+      "line": "actions\\.runner\\.check-face-|check-face\\.github\\.io",
+      "class": "frozen-evidence",
+      "disposition": "leave: live host names registered under the old owner (triton's runner systemd units, the API docs Pages CNAME); the rename does not change them, and the probes must name what is really there"
+    },
+    {
       "id": "monorepo-retirement-copy-quotes",
       "repo": "facemorph.me",
       "paths": ["inventory/retirement-copy.json"],
