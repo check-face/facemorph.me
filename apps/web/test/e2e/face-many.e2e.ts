@@ -4,7 +4,7 @@
 // position after elementFromPoint shows it there and trusted input lands inside (verify/operated.ts).
 // Screenshots and identified per-session step/network receipts are in test-results/face-many/.
 //
-// Cases (FACE_MANY_CASES=matrix,frames,dark,many,style,keyboard,virtual,height,admission,generate,start-over-generated,one-face-encode selects some):
+// Cases (FACE_MANY_CASES=matrix,frames,dark,many,style,keyboard,virtual,height,admission,generate,start-over-generated,one-face-encode,one-face-generate selects some):
 //   matrix    counts GRID_COUNTS x every sweep width and built breakpoint +/-1 px (touch at or below 599 px):
 //             no page-level sideways scroll, no hidden scrolling surface but the strip, a cue while a face is
 //             outside the strip; every face reached by real wheel (desktop) or swipe (touch) with its image,
@@ -31,6 +31,8 @@
 //             real CPU inference and Save at desktop/touch widths; validates the actual recoverable photo file.
 //   one-face-encode 1280 mouse / 390 touch: operated Remove leaves one face; Encode image opens its chooser,
 //             a real JPEG is crop-confirmed and encoded on CPU; Save exports a valid photo recovery image.
+//   one-face-generate 1280 mouse / 390 touch: operated Remove, Numeric seed and native typing, then
+//             explicit Generate, real CPU inference and Save; validates the actual recoverable seed file.
 //   FACEMORPH_DEPLOY_OUT=<dir with deploy-next/> node --test test/e2e/face-many.e2e.ts
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
@@ -69,7 +71,7 @@ const MODEL = /^\/runtime\/(assets|chunks|encoder-stream|photo)\//;
 const CASES = new Set(
   (
     process.env['FACE_MANY_CASES'] ??
-    'matrix,frames,dark,many,style,keyboard,virtual,height,admission,generate,start-over-generated,one-face-encode'
+    'matrix,frames,dark,many,style,keyboard,virtual,height,admission,generate,start-over-generated,one-face-encode,one-face-generate'
   ).split(','),
 );
 const ONLY_WIDTHS = process.env['FACE_MANY_WIDTHS']?.split(',').map(Number);
@@ -1741,6 +1743,247 @@ test(
             }
           },
         );
+
+      if (CASES.has('one-face-generate'))
+        await t.test('one remaining face: operated numeric Generate and Save on CPU', async () => {
+          type SeedWindow = Window & {
+            __fmStore: import('../../src/controller/store.ts').Store;
+            __FACEMORPH_OPCTL_TRACE__: {
+              type: string;
+              kind?: string;
+              provider?: string;
+              outcome?: string;
+              requestId?: string;
+              inputs?: { slot: string; mode: string }[];
+            }[];
+          };
+          const rows: Record<string, unknown>[] = [];
+          for (const [width, touch] of (
+            [
+              [1280, false],
+              [390, true],
+            ] as const
+          ).filter(([w]) => !ONLY_WIDTHS || ONLY_WIDTHS.includes(w))) {
+            const s = await open(browser, width, touch);
+            const { page } = s;
+            const operated: Record<string, unknown>[] = [];
+            const hit = async (label: string, control: Locator) => {
+              const landed = await press(page, control, { touch });
+              assert.ok(landed.inside, label);
+              operated.push({ control: label, ...landed });
+              record('one-face-generate-progress', { width, touch, operated });
+            };
+            await s.context.tracing.start({ screenshots: true, snapshots: false, sources: false });
+            try {
+              const before = await setFaces(page, 2); // Input setup only; all graded actions below use real input.
+              const id = before[0]!.id;
+              const tile = page.locator(`section.next-face[data-next-face="${id}"]`);
+              const timeOrigin = await page.evaluate(() => performance.timeOrigin);
+              await hit(
+                'Remove second face',
+                page.locator(`[data-next-face="${before[1]!.id}"] .next-face-close`),
+              );
+              await page.waitForFunction(
+                () => document.querySelectorAll('section.next-face').length === 1,
+              );
+              const checkOne = async () => {
+                assert.deepEqual(
+                  (await faceList(page)).map((face) => face.id),
+                  [id],
+                );
+                assert.equal(await page.locator('.next-face-close').count(), 0);
+                assert.match(await page.locator('.next-last-face-note').innerText(), /only face/);
+                assert.ok(await page.locator('.next-primary-action').isDisabled());
+                assert.match(await page.locator('.next-morph-reason').innerText(), /second face/);
+              };
+              await checkOne();
+              await hit(
+                'Change mode',
+                tile.getByRole('button', { name: 'Change mode', exact: true }),
+              );
+              await hit(
+                'Numeric seed',
+                page.getByRole('menuitem', { name: 'Numeric seed', exact: true }),
+              );
+              const field = tile.locator('.next-field input[inputmode=numeric]');
+              await field.waitFor();
+              await hit('Focus numeric seed', field);
+              await page.keyboard.press('ControlOrMeta+A');
+              await page.keyboard.type('7003'); // Native key events; no controller edit or fill replacement.
+              assert.equal(await field.inputValue(), '7003');
+              assert.deepEqual(await faceList(page), [{ id, mode: 'seed', value: '7003' }]);
+              assert.deepEqual(s.models, [], 'typing a seed acquires no model');
+              await page.screenshot({
+                path: join(results, `one-face-generate-${width}-before.png`),
+              });
+              const generate = tile.locator('.next-face-operation');
+              assert.equal((await generate.textContent())?.trim(), 'Generate');
+              await hit('Generate', generate);
+              const accept = page.locator('.next-download-accept');
+              await accept.waitFor({ timeout: 15_000 });
+              assert.deepEqual(s.models, [], 'cold CPU models wait for actual consent');
+              const disclosure = await page.locator('.next-download-dialog').innerText();
+              await hit('Approve CPU model download', accept);
+              await page.waitForFunction(
+                () => {
+                  const w = window as unknown as SeedWindow;
+                  return (
+                    !!w.__fmStore.getState().Error ||
+                    w.__FACEMORPH_OPCTL_TRACE__.some((event) => event.type === 'settled')
+                  );
+                },
+                null,
+                { timeout: 600_000 },
+              );
+              await page.waitForFunction(
+                () => !(window as unknown as SeedWindow).__fmStore.getState().Busy,
+              );
+              const generated = await page.evaluate(() => {
+                const w = window as unknown as SeedWindow;
+                const state = w.__fmStore.getState();
+                return {
+                  error: state.Error,
+                  faces: state.Faces.map((face) => face.id),
+                  trace: w.__FACEMORPH_OPCTL_TRACE__,
+                };
+              });
+              record('one-face-generate-operation', { width, ...generated });
+              assert.equal(generated.error, null);
+              assert.deepEqual(generated.faces, [id]);
+              const requests = generated.trace.filter((event) => event.type === 'request');
+              assert.equal(requests.length, 1, 'one explicit Generate runs once');
+              assert.equal(requests[0]!.kind, 'face');
+              assert.deepEqual(
+                requests[0]!.inputs?.map(({ slot, mode }) => ({ slot, mode })),
+                [{ slot: id, mode: 'seed' }],
+              );
+              assert.deepEqual(
+                generated.trace
+                  .filter((event) => event.type === 'settled')
+                  .map((event) => event.outcome),
+                ['completed'],
+              );
+              assert.equal(
+                generated.trace.filter((event) => event.type === 'compute-ready').length,
+                1,
+              );
+              assert.equal(
+                generated.trace.filter((event) => event.type === 'file-ready').length,
+                1,
+              );
+              assert.ok(
+                generated.trace.some(
+                  (event) => event.type === 'provider-actual' && event.provider === 'cpu',
+                ),
+              );
+              await page.waitForFunction((id) => {
+                const image = document.querySelector(`[data-next-face="${id}"] .next-face-img`);
+                return image instanceof HTMLCanvasElement
+                  ? image.dataset.faceDrawn === 'true'
+                  : image instanceof HTMLImageElement && image.complete && image.naturalWidth > 0;
+              }, id);
+              await checkOne();
+              const save = tile.getByRole('button', { name: 'Save image', exact: true });
+              await page.waitForFunction(
+                (id) =>
+                  [...document.querySelectorAll(`[data-next-face="${id}"] button`)].some(
+                    (button) =>
+                      button instanceof HTMLButtonElement &&
+                      button.textContent?.trim() === 'Save image' &&
+                      !button.disabled,
+                  ),
+                id,
+              );
+              const downloading = page.waitForEvent('download', { timeout: 60_000 });
+              await hit('Save generated image', save);
+              const download = await downloading;
+              assert.equal(await download.failure(), null);
+              const saved = join(
+                results,
+                `one-face-generate-${width}-${download.suggestedFilename()}`,
+              );
+              await download.saveAs(saved);
+              const bytes = new Uint8Array(readFileSync(saved));
+              const recovered = readStill(bytes);
+              assert.ok(recovered, 'the actual exported file has verified recovery');
+              assert.equal(recovered.schemaVersion, 3);
+              assert.equal(recovered.generationKind, 'seed');
+              assert.equal(recovered.seed, 7003, 'export preserves the natively typed seed');
+              assert.deepEqual(recovered.latent.shape, [18, 512]);
+              assert.ok(recovered.latent.values.every(Number.isFinite));
+              assert.ok(recovered.latent.values.some((value) => value !== 0));
+              assert.equal(recovered.provenance.route, 'cpu');
+              assert.equal(recovered.provenance.provider, 'wasm');
+              assert.ok(
+                typeMatchesBytes(bytes, {
+                  mime: recovered.mime,
+                  filename: download.suggestedFilename(),
+                }),
+              );
+              const decoded = await page.evaluate(async (bytes) => {
+                const bitmap = await createImageBitmap(new Blob([Uint8Array.from(bytes)]));
+                const size = { width: bitmap.width, height: bitmap.height };
+                bitmap.close();
+                return size;
+              }, Array.from(bytes));
+              assert.deepEqual(decoded, { width: 1024, height: 1024 });
+              await checkOne();
+              assert.equal(
+                await page.evaluate(() => performance.timeOrigin),
+                timeOrigin,
+                'Generate/Save preserves the actual document',
+              );
+              assert.deepEqual(s.errors, []);
+              rows.push({
+                width,
+                touch,
+                artifact: runTag,
+                before,
+                after: await faceList(page),
+                disclosure,
+                operated,
+                generated,
+                modelRequests: s.models,
+                documentTimeOrigin: timeOrigin,
+                saved: {
+                  path: saved,
+                  bytes: bytes.length,
+                  sha256: createHash('sha256').update(bytes).digest('hex'),
+                  ...decoded,
+                  schemaVersion: recovered.schemaVersion,
+                  generationKind: recovered.generationKind,
+                  seed: recovered.seed,
+                  imageSha256: recovered.imageSha256,
+                  latentSha256: recovered.latentSha256,
+                  provenance: recovered.provenance,
+                },
+                errors: s.errors,
+              });
+              record('one-face-generate', rows);
+              await page.screenshot({
+                path: join(results, `one-face-generate-${width}-saved.png`),
+              });
+            } catch (error) {
+              record('one-face-generate-failure', {
+                width,
+                message: String(error),
+                errors: s.errors,
+              });
+              await page
+                .screenshot({ path: join(results, `one-face-generate-${width}-failure.png`) })
+                .catch(() => {});
+              throw error;
+            } finally {
+              try {
+                await s.context.tracing.stop({
+                  path: join(results, `one-face-generate-${width}.zip`),
+                });
+              } finally {
+                await s.context.close();
+              }
+            }
+          }
+        });
 
       if (CASES.has('one-face-encode'))
         await t.test(
