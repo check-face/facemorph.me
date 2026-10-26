@@ -1,12 +1,16 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { readFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync, unlinkSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import test from 'node:test';
 import { stringify } from 'yaml';
 import {
   declaredPlanRevision,
   frozenProblems,
   policyProblems,
+  previousPolicyRevision,
   type DependencyPolicy,
 } from './dependency-freeze.ts';
 
@@ -138,4 +142,41 @@ test('the active LTS and both frozen distribution exclusions remain mandatory', 
   candidate.activeNodeMajor = 26;
   candidate.excludedPaths = [];
   assert.equal(policyProblems(candidate).length, 3);
+});
+
+test('stacked deletion and restoration cannot bootstrap a different frozen snapshot', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'fm-dependency-history-'));
+  const path = 'scripts/ci/dependency-policy.json';
+  const git = (...args: string[]) =>
+    execFileSync('git', ['-C', dir, ...args], { encoding: 'utf8' }).trim();
+  const commit = () =>
+    git(
+      '-c',
+      'user.name=Fixture',
+      '-c',
+      'user.email=fixture@example.test',
+      'commit',
+      '-qm',
+      'fixture',
+      '--allow-empty',
+    );
+  try {
+    git('init', '-q');
+    commit();
+    mkdirSync(join(dir, 'scripts/ci'), { recursive: true });
+    writeFileSync(join(dir, path), 'original');
+    git('add', '--', path);
+    commit();
+    const original = git('rev-parse', 'HEAD');
+    assert.equal(previousPolicyRevision(dir, original), undefined);
+    unlinkSync(join(dir, path));
+    git('add', '--', path);
+    commit();
+    writeFileSync(join(dir, path), 'different');
+    git('add', '--', path);
+    commit();
+    assert.equal(previousPolicyRevision(dir, git('rev-parse', 'HEAD')), original);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });

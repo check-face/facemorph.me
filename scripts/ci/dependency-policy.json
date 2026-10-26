@@ -64,11 +64,11 @@
         "ci-shared / helpers",
         "ci-shared / lookup",
         "contracts-m1 / browsers",
-        "ubuntu-24.04 chromium (Playwright Chromium, not Chrome on a phone)",
-        "ubuntu-24.04 firefox (Playwright Firefox on Linux)",
-        "ubuntu-24.04 webkit (WebKit on Linux, not iOS)",
-        "macos-15 webkit (Playwright WebKit, not Safari)",
-        "macos-15 firefox (Playwright Firefox on macOS)",
+        "next-matrix / ubuntu-24.04 chromium (Playwright Chromium, not Chrome on a phone)",
+        "next-matrix / ubuntu-24.04 firefox (Playwright Firefox on Linux)",
+        "next-matrix / ubuntu-24.04 webkit (WebKit on Linux, not iOS)",
+        "next-matrix / macos-15 webkit (Playwright WebKit, not Safari)",
+        "next-matrix / macos-15 firefox (Playwright Firefox on macOS)",
         "next-matrix / summary"
       ]
     }
@@ -86,7 +86,8 @@
     ".github/workflows/contracts-m1.yml": ["browsers"],
     ".github/workflows/mobile-browser.yml": ["android", "ios-product-simulator"],
     ".github/workflows/hosted-lanes.yml": ["desktop", "android", "ios"],
-    ".github/workflows/next-matrix.yml": ["engines", "summary"]
+    ".github/workflows/next-matrix.yml": ["engines", "summary"],
+    ".github/workflows/main.yml": ["dependency-policy", "ort-canaries", "next-matrix"]
   },
   "requiredMatrices": {
     ".github/workflows/next-matrix.yml": {
@@ -118,6 +119,11 @@
             "label": "Playwright Firefox on macOS"
           }
         ]
+      }
+    },
+    ".github/workflows/main.yml": {
+      "ort-canaries": {
+        "route": ["cpu", "webgpu-ort"]
       }
     }
   },

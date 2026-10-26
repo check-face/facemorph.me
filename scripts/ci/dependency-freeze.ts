@@ -66,6 +66,29 @@ export function declaredPlanRevision(policy: DependencyPolicy, planDiff: string)
     );
 }
 
+/** Find the preceding snapshot even when stacked commits deleted and restored the policy. */
+export function previousPolicyRevision(root: string, head: string): string | undefined {
+  if (!/^[a-f0-9]{40}$/.test(head)) throw new Error('head must be an immutable Git SHA');
+  const path = 'scripts/ci/dependency-policy.json';
+  const revisions = execFileSync('git', ['-C', root, 'rev-list', `${head}^`, '--', path], {
+    encoding: 'utf8',
+  })
+    .trim()
+    .split('\n')
+    .filter(Boolean);
+  for (const revision of revisions) {
+    try {
+      execFileSync('git', ['-C', root, 'cat-file', '-e', `${revision}:${path}`], {
+        stdio: 'ignore',
+      });
+      return revision;
+    } catch {
+      /* A deletion is not permission to replace the preceding snapshot. */
+    }
+  }
+  return undefined;
+}
+
 export function frozenProblems(
   trusted: DependencyPolicy,
   candidate: DependencyPolicy,
@@ -137,9 +160,16 @@ export function frozenProblems(
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  const [base, head] = process.argv.slice(2);
+  const args = process.argv.slice(2);
+  const head = args[1];
+  const base =
+    args[0] === '--previous-policy' && head
+      ? (previousPolicyRevision(process.cwd(), head) ?? head)
+      : args[0];
   if (!base || !head || !/^[a-f0-9]{40}$/.test(base) || !/^[a-f0-9]{40}$/.test(head))
-    throw new Error('usage: node scripts/ci/dependency-freeze.ts <base SHA> <head SHA>');
+    throw new Error(
+      'usage: node scripts/ci/dependency-freeze.ts <base SHA>|--previous-policy <head SHA>',
+    );
   const git = (args: string[]) => execFileSync('git', args, { encoding: 'utf8' });
   const path = 'scripts/ci/dependency-policy.json';
   const trusted = JSON.parse(git(['show', `${base}:${path}`])) as DependencyPolicy;
