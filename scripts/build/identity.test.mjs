@@ -3,12 +3,15 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { treeDigest } from '../ci/fetch-artifact.ts';
 import { WORKSPACES } from './check-scaffold.mjs';
+import { runtimeIdentity } from '../../apps/web/build/runtime-identity.ts';
+import { workerInventory } from '../../apps/web/build/worker-inventory.ts';
+import { generateOverlay, ORT_FILES } from '../ci/ort-mirror.ts';
 import {
   artifactIdentity,
   lockClosure,
@@ -16,6 +19,7 @@ import {
   selectChecks,
   uncoveredPaths,
   workerFindings,
+  workerReport,
 } from './identity.mjs';
 
 const sha = (b) => createHash('sha256').update(b).digest('hex');
@@ -143,13 +147,14 @@ function workers() {
   });
   const mod = "const wasm = 'ort.wasm';\n";
   plant(hosted, { 'assets/r/ort.mjs': mod, 'assets/r/ort.wasm': 'binary' });
-  const inventory = {
-    emitted: [{ source: 'src/w.mjs', file: 'assets/worker-0.js', sha256: sha(worker) }],
-  };
   const pinned = [
     { path: 'assets/r/ort.mjs', sha256: sha(mod) },
     { path: 'assets/r/ort.wasm', sha256: sha('binary') },
   ];
+  const inventory = workerInventory(
+    [{ source: 'src/w.mjs', file: 'assets/worker-0.js', sha256: sha(worker) }],
+    pinned,
+  );
   return { dist, hosted, inventory, pinned };
 }
 
@@ -212,11 +217,79 @@ test('an unlisted transitive worker import fails: a missing emitted chunk, or an
     },
     h.pinned[1],
   ];
-  const hr = workerFindings({ dist: h.dist, inventory: h.inventory, pinned, hostedRoot: h.hosted });
+  const hr = workerFindings({
+    dist: h.dist,
+    inventory: workerInventory(h.inventory.emitted, pinned),
+    pinned,
+    hostedRoot: h.hosted,
+  });
   assert.deepEqual(
     hr.findings.map((f) => [f.path, f.problem]),
     [['assets/r/ort.jsep.mjs', 'loaded by assets/r/ort.mjs but not pinned']],
   );
+});
+
+test('expected hosted pins remain authoritative even when a forged inventory rehashes itself', () => {
+  const w = workers();
+  const forged = workerInventory(w.inventory.emitted, [{ ...w.pinned[0], sha256: 'f'.repeat(64) }]);
+  const result = workerFindings({ dist: w.dist, inventory: forged, pinned: w.pinned });
+  assert.deepEqual(
+    result.findings.map((f) => f.problem),
+    ['hosted inventory differs from the trusted expected pins'],
+  );
+  const invalid = { ...w.inventory, identity: 'f'.repeat(64) };
+  assert.match(
+    workerFindings({ dist: w.dist, inventory: invalid, pinned: w.pinned }).findings[0].problem,
+    /identity does not follow/,
+  );
+});
+
+test('CLI worker report preserves frozen defaults and accepts only trusted composed hosted inventory', (t) => {
+  const root = mkdtempSync(join(tmpdir(), 'identity-cli-pins-'));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const inputs = JSON.parse(
+    readFileSync(new URL('../../import/build-inputs.json', import.meta.url), 'utf8'),
+  );
+  const dist = join(root, 'build');
+  const controlPath = `import/runtime-manifests/control/${inputs.runtime.manifest.sha256}/manifest.json`;
+  plant(root, {
+    'import/build-inputs.json': JSON.stringify(inputs),
+    [controlPath]: readFileSync(new URL(`../../${controlPath}`, import.meta.url)),
+    'build/worker-inventory.json': JSON.stringify(workerInventory([], inputs.worker_graphs.pinned)),
+  });
+  assert.deepEqual(
+    runtimeIdentity(root).hosted,
+    inputs.worker_graphs.pinned.map(({ path, sha256 }) => ({ path, sha256 })),
+  );
+  assert.deepEqual(workerReport({ dist, root }), {
+    findings: [],
+    emitted: [],
+    hosted: inputs.worker_graphs.pinned.length,
+  });
+  const files = Object.fromEntries(
+    ORT_FILES.map((file) => [`dist/${file}`, `synthetic module ${file}`]),
+  );
+  plant(root, {
+    ...files,
+    'package.json': JSON.stringify({ name: 'onnxruntime-web', version: '1.30.0' }),
+  });
+  const overlay = generateOverlay(join(root, 'dist'), {
+    version: '1.30.0',
+    resolved: 'https://registry.npmjs.org/onnxruntime-web/-/onnxruntime-web-1.30.0.tgz',
+    integrity: `sha512-${Buffer.alloc(64, 17).toString('base64')}`,
+  });
+  plant(root, { 'import/runtime-mirror.json': JSON.stringify(overlay) });
+  const expected = runtimeIdentity(root).hosted;
+  assert.notDeepEqual(expected, inputs.worker_graphs.pinned);
+  plant(dist, { 'worker-inventory.json': JSON.stringify(workerInventory([], expected)) });
+  assert.deepEqual(workerReport({ dist, root }).findings, []);
+  const forged = expected.map((p) => ({ ...p }));
+  forged[0].sha256 = 'f'.repeat(64);
+  plant(dist, { 'worker-inventory.json': JSON.stringify(workerInventory([], forged)) });
+  assert.match(workerReport({ dist, root }).findings[0].problem, /trusted expected pins/);
+  plant(dist, { 'worker-inventory.json': JSON.stringify(workerInventory([], expected)) });
+  plant(root, { [controlPath]: readFileSync(join(root, controlPath), 'utf8') + ' ' });
+  assert.throws(() => workerReport({ dist, root }), /frozen control bytes differ/i);
 });
 
 test("artifact identity: the control keeps classic's identity and label; a destination build names this repository", () => {

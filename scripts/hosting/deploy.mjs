@@ -25,6 +25,7 @@ import {
   linkSync,
   copyFileSync,
   mkdirSync,
+  mkdtempSync,
   readdirSync,
   readFileSync,
   rmSync,
@@ -32,9 +33,11 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { dirname, join, relative, resolve, sep } from 'node:path';
+import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import { assertMayPublish, loadTargets } from './publish-guard.mjs';
+import { loadCandidateRuntime } from '../ci/candidate-runtime.ts';
 
 export const REPO = fileURLToPath(new URL('../..', import.meta.url));
 const SITE_PROJECT = join(REPO, 'hosting/next-static');
@@ -114,19 +117,44 @@ export function verify({ artifact }) {
   };
 }
 
-export async function runtime({ runtime: dir }) {
-  const [{ acquiredFindings }, { readJson, BUILD_INPUTS }] = await Promise.all([
-    import('../inventory/check-build-inputs.mjs'),
-    import('../inventory/lib.mjs'),
-  ]);
-  const { out, files: count } = acquiredFindings(dir, readJson(BUILD_INPUTS).runtime.assets);
-  const contract = spawnSync(
-    'python3',
-    [join(SITE_PROJECT, 'webgpu_contract.py'), '--runtime', dir],
-    {
+export async function runtime({ runtime: dir, repo = REPO }) {
+  const { acquiredFindings } = await import('../inventory/check-build-inputs.mjs');
+  const { buildInputs } = loadCandidateRuntime(repo);
+  const { out, files: count } = acquiredFindings(dir, buildInputs.runtime.assets);
+  // Acquisition borrows immutable control files by symlink. The structural gate checks the
+  // deployed layout and deliberately forbids escaping links, so give it real copies of exactly
+  // the manifest/kernel/split/metadata bytes it reads, independently checked against the inventory.
+  const view = mkdtempSync(join(tmpdir(), 'facemorph-runtime-contract-'));
+  let contract;
+  try {
+    const manifestBytes = readFileSync(join(dir, 'manifest.json'));
+    if (sha256(manifestBytes) !== buildInputs.runtime.manifest.sha256)
+      throw new Error('Runtime changed after inventory verification');
+    writeFileSync(join(view, 'manifest.json'), manifestBytes);
+    const manifest = JSON.parse(manifestBytes);
+    for (const descriptor of [
+      manifest.webgpu?.kernel,
+      manifest.webgpu?.split,
+      manifest.webgpu?.metadata,
+    ]) {
+      if (!descriptor) continue;
+      for (const asset of descriptor.chunks ?? [descriptor]) {
+        const path = new URL(asset.url).pathname.replace(/^\/runtime\//, '');
+        const row = buildInputs.runtime.assets.find((entry) => entry.path === path);
+        if (!row) throw new Error('Structural contract asset has no trusted inventory row');
+        const bytes = readFileSync(join(dir, path));
+        if (sha256(bytes) !== row.sha256 || (row.bytes !== null && bytes.length !== row.bytes))
+          throw new Error('Structural contract asset changed after inventory verification');
+        mkdirSync(dirname(join(view, path)), { recursive: true });
+        writeFileSync(join(view, path), bytes);
+      }
+    }
+    contract = spawnSync('python3', [join(SITE_PROJECT, 'webgpu_contract.py'), '--runtime', view], {
       encoding: 'utf8',
-    },
-  );
+    });
+  } finally {
+    rmSync(view, { recursive: true, force: true });
+  }
   return {
     step: 'runtime',
     ok: out.length === 0 && !!count && contract.status === 0,

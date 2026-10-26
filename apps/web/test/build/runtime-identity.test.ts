@@ -76,7 +76,7 @@ test('schema1 binds exact acquisition serialization and replaces only hosted run
   assert.ok(actual.hosted.some((x) => x.path.endsWith('/photo-worker.mjs')));
   assert.ok(!actual.hosted.some((x) => x.path.endsWith('/ort-wasm-simd-threaded.jsep.mjs')));
   writeFileSync(f.controlPath, readFileSync(f.controlPath, 'utf8') + ' ');
-  assert.throws(() => runtimeIdentity(f.root), /Frozen control runtime bytes/);
+  assert.throws(() => runtimeIdentity(f.root), /frozen control bytes/);
 });
 
 test('schema2 binds verified encoder bytes and inventories the actual serial modules', (t) => {
@@ -128,7 +128,7 @@ test('schema2 binds verified encoder bytes and inventories the actual serial mod
   );
   assert.ok(actual.hosted.some((x) => x.path.endsWith('/execute.mjs')));
   writeFileSync(encoderFile, Buffer.concat([encoder, Buffer.from(' ')]));
-  assert.throws(() => runtimeIdentity(f.root), /Frozen encoder bytes/);
+  assert.throws(() => runtimeIdentity(f.root), /frozen encoder bytes/);
 });
 
 test('a malformed overlay cannot silently fall back to the frozen runtime', (t) => {
