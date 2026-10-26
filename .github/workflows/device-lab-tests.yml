@@ -20,13 +20,15 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
+      - uses: astral-sh/setup-uv@v6
       - name: Pinned native Chromium for the browser identity assertion
         env:
           PLAYWRIGHT_SKIP_BROWSER_GC: '1'
         run: |
           # Newer Playwright bundles identify as Chrome for Testing. This version-only assertion needs
-          # actual Chromium, not Chrome; no page or device is opened with this pinned fixture.
-          npx --yes playwright@1.56.0 install --no-shell chromium
+          # actual Chromium, not Chrome. Install its matching headless shell for the real mouse
+          # regression as well; both stay in the existing per-version browser cache.
+          npx --yes playwright@1.56.0 install chromium
           browser_cache="${PLAYWRIGHT_BROWSERS_PATH:-${XDG_CACHE_HOME:-$HOME/.cache}/ms-playwright}"
           binary="$browser_cache/chromium-1194/chrome-linux/chrome"
           "$binary" --version
@@ -37,4 +39,4 @@ jobs:
         working-directory: tools/device-lab
         env:
           GH_TOKEN: ${{ github.token }}
-        run: python3 -m unittest -v test_lab_range test_hosted test_download test_lab_lock test_journeys test_local_ports
+        run: uv run --quiet --with playwright==1.56.0 python -m unittest -v test_lab_range test_hosted test_download test_lab_lock test_journeys test_local_ports
