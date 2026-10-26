@@ -81,6 +81,17 @@ export function jobs(message: Msg, state: State, facts: JobFacts = {}): Transiti
     case 'Run': {
       const [action] = message.args;
       if (state.Inputs.some((input) => faceInputProblem(input))) return unchanged(state);
+      // One current morph (fm-8w99): pressing Morph again while that same morph runs (same faces and settings)
+      // is the running intent, not a second one queued behind it.
+      if (
+        action === 'morph' &&
+        state.Busy &&
+        state.LastRun?.type === 'Run' &&
+        state.LastRun.args[0] === 'morph' &&
+        state.RunSettings === settingsKey(state) &&
+        sameInputs(state.RunInputs, state.Inputs)
+      )
+        return unchanged(state);
       if (
         action === 'morph' &&
         (state.Busy ||

@@ -49,6 +49,18 @@ test('queued imports and morphs are deduplicated while busy or cropping', () => 
   assert.equal(morph.Busy, false);
   assert.equal(reduce(msg('Run', 'morph'), morph)!.state.PendingJobs.length, 1);
 });
+test('a repeated Morph press while that morph runs is the same intent; a morph behind a face still queues (fm-8w99)', () => {
+  const started = reduce(msg('Run', 'morph'), state)!.state;
+  assert.equal(started.Busy, true);
+  const again = reduce(msg('Run', 'morph'), started)!;
+  assert.equal(again.state, started, 'no second morph is queued behind the running one');
+  assert.deepEqual(again.effects, []);
+  // Behind a face job, or after a setting changed, Morph is still queued as before.
+  const face = reduce(msg('RunFace', 'face-1'), state)!.state;
+  assert.equal(reduce(msg('Run', 'morph'), face)!.state.PendingMorph, true);
+  const changed = { ...started, Frames: started.Frames === 8 ? 16 : 8 };
+  assert.equal(reduce(msg('Run', 'morph'), changed)!.state.PendingMorph, true);
+});
 test('Cancel changes spoken state; Retry without a remembered run clears only the error', () => {
   const cancelled = reduce(msg('Cancel'), { ...state, Busy: true })!;
   assert.equal(cancelled.state.Stage, 'cancelling');
