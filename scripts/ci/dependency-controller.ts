@@ -263,17 +263,15 @@ function mergeQualification(
   repo: string,
   run: QualificationRun,
   pr: DependencyPullRequest,
+  extraProblems: readonly string[] = [],
 ): boolean {
   const policy = JSON.parse(
     readFileSync(new URL('./dependency-policy.json', import.meta.url), 'utf8'),
   ) as DependencyPolicy;
-  const problems = qualificationProblems(
-    run,
-    jobsFor(repo, run.id),
-    pr,
-    filesFor(repo, pr.number),
-    policy,
-  );
+  const problems = [
+    ...qualificationProblems(run, jobsFor(repo, run.id), pr, filesFor(repo, pr.number), policy),
+    ...extraProblems,
+  ];
   console.log(
     JSON.stringify({
       event: 'qualification-reviewed',
@@ -386,11 +384,11 @@ async function main() {
     const comparison = api<{ merge_base_commit: { sha: string } }>(
       `repos/${repo}/compare/${base}...${pr.head.sha}`,
     );
-    if (comparison.merge_base_commit.sha !== base)
-      throw new Error(
-        'main advanced beyond the qualified branch; update and requalify before merging',
-      );
-    if (!mergeQualification(repo, run, pr)) process.exitCode = 1;
+    const extraProblems =
+      comparison.merge_base_commit.sha === base
+        ? []
+        : ['main advanced beyond the qualified branch; update and requalify before merging'];
+    if (!mergeQualification(repo, run, pr, extraProblems)) process.exitCode = 1;
   } else throw new Error('usage: dependency-controller.ts dispatch|merge');
 }
 

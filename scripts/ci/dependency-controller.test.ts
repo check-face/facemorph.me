@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -151,6 +151,73 @@ else if (!endpoint.endsWith('/dispatches') && !endpoint.endsWith('/update-branch
       false,
     );
   });
+
+test('merge CLI retains failed native gate reasons when live main has advanced', (t) => {
+  const scratch = mkdtempSync(join(tmpdir(), 'dependency-controller-failed-merge-'));
+  t.after(() => rmSync(scratch, { recursive: true, force: true }));
+  const event = join(scratch, 'event.json');
+  const calls = join(scratch, 'calls.jsonl');
+  const pr = pull();
+  const failedRun = { ...run(), conclusion: 'failure' };
+  const failedJobs = jobs();
+  failedJobs[0]!.conclusion = 'failure';
+  const liveBase = 'd'.repeat(40);
+  writeFileSync(event, JSON.stringify({ workflow_run: { id: failedRun.id } }));
+  writeFileSync(
+    join(scratch, 'gh'),
+    `#!/usr/bin/env node
+const fs = require('node:fs');
+const args = process.argv.slice(2), endpoint = args[3];
+fs.appendFileSync(process.env.PROBE_CALLS, JSON.stringify(args) + '\\n');
+if (args[0] === 'pr' && args[1] === 'merge') process.exit(0);
+let value;
+if (endpoint.endsWith('/actions/runs/${failedRun.id}')) value = ${JSON.stringify(failedRun)};
+else if (endpoint.includes('/pulls?state=open&base=main&head=')) value = [${JSON.stringify(pr)}];
+else if (endpoint.endsWith('/pulls/${pr.number}')) value = ${JSON.stringify(pr)};
+else if (endpoint.endsWith('/git/ref/heads/main')) value = {object:{sha:${JSON.stringify(liveBase)}}};
+else if (endpoint.endsWith('/compare/${liveBase}...${pr.head.sha}')) value = {merge_base_commit:{sha:${JSON.stringify(pr.base.sha)}}};
+else if (endpoint.endsWith('/jobs?per_page=100&page=1')) value = {jobs:${JSON.stringify(failedJobs)}};
+else if (endpoint.endsWith('/files?per_page=100&page=1')) value = ${JSON.stringify(files.map((filename) => ({ filename })))};
+else throw Error('unexpected API: ' + endpoint);
+process.stdout.write(JSON.stringify(value));
+`,
+    { mode: 0o755 },
+  );
+  const result = spawnSync(
+    process.execPath,
+    [fileURLToPath(new URL('./dependency-controller.ts', import.meta.url)), 'merge'],
+    {
+      encoding: 'utf8',
+      timeout: 12_000,
+      env: {
+        ...process.env,
+        PATH: `${scratch}:${process.env.PATH}`,
+        GITHUB_REPOSITORY: 'probe/repository',
+        GITHUB_EVENT_PATH: event,
+        PROBE_CALLS: calls,
+      },
+    },
+  );
+  assert.equal(result.status, 1, result.stdout + result.stderr);
+  const reviewed = JSON.parse(result.stdout);
+  assert.equal(reviewed.event, 'qualification-reviewed');
+  assert.equal(reviewed.run, failedRun.id);
+  assert.equal(reviewed.pr, pr.number);
+  assert.equal(reviewed.head, pr.head.sha);
+  assert.deepEqual(reviewed.problems, [
+    'main qualification did not pass',
+    'required check missing, skipped, ambiguous or failed: dependency-currency',
+    'main advanced beyond the qualified branch; update and requalify before merging',
+  ]);
+  const invoked = readFileSync(calls, 'utf8')
+    .trim()
+    .split('\n')
+    .map((line) => JSON.parse(line) as string[]);
+  assert.equal(
+    invoked.some((args) => args[0] === 'pr' && args[1] === 'merge'),
+    false,
+  );
+});
 
 test('a native grouped bot PR with exact branch qualification is eligible', () => {
   assert.equal(dependencyGroup(pull(), files), 'build-tools');
