@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
-import { entries, judgeDryRun, judgeProbe, runtimeFiles } from './dry-run.mjs';
+import { entries, judgeDryRun, judgeProbe, probeAnswer, runtimeFiles } from './dry-run.mjs';
 import { render, rollbackTarget } from './render-handover.mjs';
 
 const runbook = JSON.parse(readFileSync(new URL('runbook.json', import.meta.url), 'utf8'));
@@ -153,6 +153,75 @@ test('the dry run judges answers as plain values', () => {
   );
   assert.equal(judgeDryRun({ status: 1, stdout: '', stderr: 'bad flag' }).ok, false);
   assert.ok(entries(runbook).length >= 20);
+});
+
+test('cf probes retry current and legacy server errors once and judge the retry answer', () => {
+  const probe = runbook.namesHost.probe;
+  const success = {
+    status: 0,
+    stdout: JSON.stringify({ result: { ...probe.expect } }),
+    stderr: '',
+  };
+  for (const stderr of [
+    '┌ APIError\n│ [10500] Internal authentication error: internal server error\n│ 500 Internal Server Error · HTTP /zones/example/dns_records/example\n└',
+    'Status code: 503',
+  ]) {
+    const calls = [];
+    const answer = probeAnswer(probe, (command, argv) => {
+      calls.push([command, argv]);
+      return calls.length === 1 ? { status: 1, stdout: '', stderr } : success;
+    });
+    assert.deepEqual(calls, [
+      ['cf', probe.argv],
+      ['cf', probe.argv],
+    ]);
+    assert.equal(answer, success);
+    assert.equal(judgeProbe(probe, answer).ok, true);
+  }
+});
+
+test('cf probes stop after one retry and preserve a persistent server failure', () => {
+  let calls = 0;
+  const probe = runbook.namesHost.probe;
+  const first = { status: 1, stdout: '', stderr: 'Status code: 502' };
+  const persistent = {
+    status: 1,
+    stdout: '',
+    stderr: '500 Internal Server Error · HTTP /zones/example/dns_records/example',
+  };
+  const answer = probeAnswer(probe, () => (++calls === 1 ? first : persistent));
+  assert.equal(calls, 2);
+  assert.equal(answer, persistent);
+  assert.equal(judgeProbe(probe, answer).ok, false);
+});
+
+test('cf probes do not retry authentication, authorization, missing targets or successful answers', () => {
+  for (const code of [401, 403, 404]) {
+    for (const stderr of [
+      `Status code: ${code}`,
+      `┌ APIError\n│ [10500] Request failed\n│ ${code} Request Failed · HTTP /zones/example/dns_records/example\n└`,
+    ]) {
+      let calls = 0;
+      const failure = { status: 1, stdout: '', stderr };
+      const answer = probeAnswer(runbook.namesHost.probe, () => {
+        calls++;
+        return failure;
+      });
+      assert.equal(calls, 1, stderr);
+      assert.equal(answer, failure);
+      assert.equal(judgeProbe(runbook.namesHost.probe, answer).ok, false);
+    }
+  }
+  let calls = 0;
+  const success = { status: 0, stdout: '{}', stderr: 'Status code: 500' };
+  assert.equal(
+    probeAnswer(runbook.namesHost.probe, () => {
+      calls++;
+      return success;
+    }),
+    success,
+  );
+  assert.equal(calls, 1);
 });
 
 test('runtime files count a chunked asset by its chunks and never a directory', () => {
