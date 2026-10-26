@@ -36,6 +36,11 @@ A small docs/tooling change does not need the full application matrix. Review yo
 changes, fix failures, record executed evidence, and close a bead when its complete
 acceptance is met. Do not invent follow-up beads or weaken tests to claim completion.
 
+The authoritative device-lab journeys and measured cell budgets are in
+[journeys.json](tools/device-lab/journeys.json). `cold-face`, `warm-face`, `morph`
+and `operated` are implemented; `operated` has no frozen budget. `photo-face`,
+`export` and `blend` remain pending under the owners listed there.
+
 Push tested work and take the next bead while CI runs. Inspect new CI failures once,
 assign one repair owner and return regressions to the responsible bead. Finish the
 current coherent slice, then repair attributable failures; peers continue independent
