@@ -245,6 +245,9 @@ class AndroidChrome(lab.Desktop):
         adb('reverse', f'tcp:{port}', f'tcp:{port}')
         adb('shell', 'am', 'set-debug-app', '--persistent', 'com.android.chrome')
         adb('shell', "echo 'chrome --no-first-run --disable-fre --no-default-browser-check' > /data/local/tmp/chrome-command-line")
+        # --disable-fre does not cover Chrome's Android 13+ notification promo.
+        # Match the existing mobile component runner before launching this CI browser.
+        adb('shell', 'pm', 'grant', 'com.android.chrome', 'android.permission.POST_NOTIFICATIONS')
         adb('shell', 'am', 'force-stop', 'com.android.chrome')
         adb('shell', 'am', 'start', '-W', '-n', 'com.android.chrome/com.google.android.apps.chrome.Main', '-d', 'about:blank')
         adb('forward', f'tcp:{lab.CDP_PORT}', 'localabstract:chrome_devtools_remote')
@@ -265,6 +268,19 @@ class AndroidChrome(lab.Desktop):
         self.page.on('crash', lambda *_: setattr(self, 'crashed', True))
 
     clear_origin = lab.Phone.clear_origin
+
+    def type_into(self, selector, text, index=0):
+        super().type_into(selector, text, index)
+        # Android pans the visual viewport while the IME is open. A subsequent
+        # desktop-style click can dismiss it and hit a different element as it moves.
+        # Back hides the native keyboard; never send it when it would navigate.
+        state = self.adb('shell', 'dumpsys', 'input_method')
+        if re.search(r'\bmInputShown=true\b', state):
+            self.adb('shell', 'input', 'keyevent', '4')
+            self.page.wait_for_function(
+                'visualViewport.offsetTop===0 && Math.abs(visualViewport.height-innerHeight)<1',
+                timeout=8000, polling=100)
+        return self.js("([s,i])=>document.querySelectorAll(s)[i].value", [selector, index])
 
     def version(self):
         return self.page.evaluate('navigator.userAgent')
