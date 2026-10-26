@@ -2,6 +2,7 @@ import type { Input, State } from '../state.ts';
 import { msg, type Msg } from '../msg.ts';
 import { unchanged, type Transition } from '../effects.ts';
 import { forgetStill } from './photo.ts';
+import { admitTo, refused, type AdmissionFacts } from '../admission.ts';
 export function change(state: State, id: string, replace: (input: Input) => Input): State {
   const cached = new Set(state.CachedFaces);
   cached.delete(id);
@@ -26,7 +27,7 @@ export function change(state: State, id: string, replace: (input: Input) => Inpu
   };
 }
 /** AddAt's fresh ID is supplied by the effect runner, keeping randomness outside pure reducers. */
-export interface InputFacts {
+export interface InputFacts extends AdmissionFacts {
   readonly newFaceId?: string;
 }
 export function inputs(message: Msg, state: State, facts: InputFacts = {}): Transition | null {
@@ -69,7 +70,9 @@ export function inputs(message: Msg, state: State, facts: InputFacts = {}): Tran
       };
     }
     case 'AddAt': {
-      if (state.Inputs.length >= 64) return unchanged(state);
+      // No face count (fm-id4c): only the admission budgets refuse a new face, and then nothing is added.
+      const admission = admitTo(state, { files: [] }, facts);
+      if (!admission.ok) return { state: refused(state, admission), effects: [] };
       const position = Math.max(0, Math.min(state.Inputs.length, message.args[0]));
       if (!facts.newFaceId || state.Inputs.some((i) => i.id === facts.newFaceId))
         throw new Error('AddAt requires a fresh face ID');

@@ -47,7 +47,7 @@ test('remove of the last face is a no-op; queued removal drops only its job and 
     { type: 'invalidatePhotoSelections', id: 'face-1' },
   ]);
 });
-test('AddAt permits 63 to 64, then makes no state change; busy Provider is ignored', () => {
+test('AddAt has no face count: 63 to 64 to 65, then 150 to 151; it still needs a fresh ID; busy Provider is ignored', () => {
   const many = {
     ...state,
     Inputs: Array.from({ length: 63 }, (_, i) => ({
@@ -60,7 +60,27 @@ test('AddAt permits 63 to 64, then makes no state change; busy Provider is ignor
   const full = inputs(msg('AddAt', 1), many, { newFaceId: 'face-fresh-id' })!.state;
   assert.equal(full.Inputs.length, 64);
   assert.equal(full.Inputs[1]?.id, 'face-fresh-id');
-  assert.equal(inputs(msg('AddAt', 0), full)!.state, full);
+  const beyond = inputs(msg('AddAt', 0), full, { newFaceId: 'face-65' })!.state;
+  assert.equal(beyond.Inputs.length, 65);
+  assert.equal(beyond.Inputs[0]?.id, 'face-65');
+  assert.deepEqual(
+    beyond.Inputs.slice(1).map((i) => i.id),
+    full.Inputs.map((i) => i.id),
+    'the others keep their order',
+  );
+  assert.throws(() => inputs(msg('AddAt', 0), full), /fresh face ID/);
+  const many150 = {
+    ...state,
+    Inputs: Array.from({ length: 150 }, (_, i) => ({
+      id: `x-${i}`,
+      mode: 'text' as const,
+      value: '',
+      file: null,
+    })),
+  };
+  const added = inputs(msg('AddAt', 150), many150, { newFaceId: 'face-151' })!.state;
+  assert.equal(added.Inputs.length, 151);
+  assert.equal(added.Inputs[150]?.id, 'face-151');
   const busy = { ...state, Busy: true };
   assert.equal(inputs(msg('Provider', 'webgpu'), busy)!.state, busy);
 });

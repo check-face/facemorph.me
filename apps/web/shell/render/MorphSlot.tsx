@@ -279,12 +279,7 @@ export function MorphSlot(p: MorphSlotProps) {
         >
           More options
         </Button>
-        <Button
-          color="inherit"
-          variant="text"
-          disabled={!twoFaces || p.faces >= 64}
-          onClick={p.onAddFace}
-        >
+        <Button color="inherit" variant="text" onClick={p.onAddFace}>
           Add face
         </Button>
         {p.busy && (

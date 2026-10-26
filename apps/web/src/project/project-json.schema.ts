@@ -3,10 +3,31 @@
 // file is read by this bounded reader, never by JSON.parse, and admitted only if every field is present, known,
 // typed and within its limits. Messages are classic's, in classic's order.
 
-export const MAX_INPUT_CHARS = 16777216;
-// Classic's limit, kept as-is for exact goldens; face.many (fm-id4c) replaces it later.
-export const MAX_CONTROLS = 64;
+import { admitUntrustedFileSize, utf8Length } from '../contracts/untrusted-files.ts';
+import { lookupCeiling } from '../contracts/ceilings.ts';
+
+// There is no control (face) count (operator, 24 October; fm-id4c): classic's 64-control check is replaced by the
+// byte-size bound on untrusted project files from the contracts ceilings (PROJECT_FILE_PARSE_BYTES), checked on
+// the UTF-8 size before any parsing. Classic read at most 16 MiB of text with at most 1,000,000 JSON values and
+// 900,000 latent values; those two densities carry over to the byte bound, so a file's size, not a face count,
+// is what binds (a W+ face is 9,216 values).
+const parseBytes = lookupCeiling('PROJECT_FILE_PARSE_BYTES', { kind: 'all-routes' });
+if (!parseBytes.admitted) throw new Error('no PROJECT_FILE_PARSE_BYTES ceiling');
+export const MAX_INPUT_BYTES = parseBytes.ceiling.value;
+const CLASSIC_INPUT_CHARS = 16777216;
+export const MAX_JSON_VALUES = Math.floor((1000000 * MAX_INPUT_BYTES) / CLASSIC_INPUT_CHARS);
+export const MAX_TOTAL_LATENT_VALUES = Math.floor((900000 * MAX_INPUT_BYTES) / CLASSIC_INPUT_CHARS);
 export const MAX_LATENT_VALUES = 65536;
+/** The one refusal for a project file over the byte bound. */
+export const PROJECT_TOO_LARGE_MESSAGE = `This project file is larger than ${MAX_INPUT_BYTES / 2 ** 20} MB, the most a project file can be.`;
+
+/** Whether `input` is within the project byte bound, by its UTF-8 size (counted only when it could matter). */
+export function withinInputBytes(input: string): boolean {
+  // UTF-8 takes one to three bytes per UTF-16 unit, so only a text between limit/3 and the limit is counted.
+  const bytes =
+    input.length > MAX_INPUT_BYTES || input.length * 3 <= MAX_INPUT_BYTES ? input.length : utf8Length(input);
+  return admitUntrustedFileSize('project-file', bytes).ok;
+}
 
 export const LATENT_SPACES = ['z', 'w', 'w-plus'] as const;
 export type LatentSpace = (typeof LATENT_SPACES)[number];
@@ -72,10 +93,11 @@ const invalid = (message: string): never => {
 
 const isDigit = (c: string): boolean => c >= '0' && c <= '9';
 
-/** Classic's bounded reader: 16 MiB input, depth 16, 1,000,000 values, 65,536 array items, 32 object
- * fields, 4,096-character strings, 128-character finite numbers, no duplicate fields, no trailing content. */
+/** Classic's bounded reader, over the contracts byte bound: MAX_INPUT_BYTES of UTF-8, depth 16, MAX_JSON_VALUES
+ * values, 65,536 array items, 32 object fields, 4,096-character strings, 128-character finite numbers, no
+ * duplicate fields, no trailing content. */
 export function parseBounded(input: string): Json {
-  if (typeof input !== 'string' || input.length > MAX_INPUT_CHARS)
+  if (typeof input !== 'string' || !withinInputBytes(input))
     invalid('Project exceeds the input size limit.');
   let offset = 0;
   let nodes = 0;
@@ -177,7 +199,7 @@ export function parseBounded(input: string): Json {
   const read = (depth: number): Json => {
     if (depth > 16) invalid('Project exceeds the nesting limit.');
     nodes++;
-    if (nodes > 1000000) invalid('Project exceeds the value count limit.');
+    if (nodes > MAX_JSON_VALUES) invalid('Project exceeds the value count limit.');
     whitespace();
     const c = peek();
     switch (c) {
@@ -343,8 +365,7 @@ export function validate(project: Project): string[] {
 export function bounds(project: Project): string[] {
   const controls = project.morph.controls;
   const errors: string[] = [];
-  if (controls.length > MAX_CONTROLS) errors.push('Project exceeds 64 controls.');
-  if (controls.reduce((n, c) => n + c.latent.values.length, 0) > 900000)
+  if (controls.reduce((n, c) => n + c.latent.values.length, 0) > MAX_TOTAL_LATENT_VALUES)
     errors.push('Project exceeds the total latent value limit.');
   if (
     controls.some(

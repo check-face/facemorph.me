@@ -9,6 +9,8 @@ import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import {
   MALFORMED_MESSAGE,
+  MAX_INPUT_BYTES,
+  PROJECT_TOO_LARGE_MESSAGE,
   decode,
   encode,
   numeric,
@@ -71,6 +73,8 @@ function answer(input: string): { ok: boolean; text?: string; messages?: readonl
  * (checked, so a regenerated vector cannot silently change it) and the port's own. Classic refused an odd
  * frames-per-segment count (an even count gives an exact u = 0.5 midpoint sample); the operator's Custom frame
  * count admits any integer of at least 2 (fm-36ag, 26 October 2026). Even counts sample exactly as before.
+ * Classic refused more than 64 controls; there is no fixed face count (operator, 24 October; fm-id4c), so a
+ * project is bounded by its byte size (PROJECT_FILE_PARSE_BYTES) instead and 65 controls load.
  */
 const EVEN_RULE = 'Use a positive even frame count per segment to include exact midpoint samples.';
 const DEVIATIONS: Readonly<Record<string, { readonly classic: Answer; readonly port: Answer }>> = {
@@ -84,6 +88,10 @@ const DEVIATIONS: Readonly<Record<string, { readonly classic: Answer; readonly p
       messages: ['Invalid truncation settings.', EVEN_RULE, 'Frame rate must be 1–240.'],
     },
     port: { ok: false, messages: ['Invalid truncation settings.', 'Frame rate must be 1–240.'] },
+  },
+  'limits: 65 controls are rejected': {
+    classic: { ok: false, messages: [MALFORMED_MESSAGE] },
+    port: { ok: true },
   },
 };
 
@@ -218,4 +226,66 @@ test('encode refuses an invalid project with every reason, and admits the fixtur
       messages: ['Invalid truncation settings.', 'Frame rate must be 1–240.'],
     });
   assert.equal(encode(p).ok, true);
+});
+
+/** The fixture with `count` distinct real-shaped W+ controls (18 x 512 values each), in order. */
+function manyControls(count: number): string {
+  const text = readFileSync(
+    new URL('../../src/Next/project-v1.fixture.json', import.meta.url),
+    'utf8',
+  );
+  const fixture = JSON.parse(text) as { morph: Record<string, unknown> };
+  const controls = Array.from({ length: count }, (_, i) => ({
+    visitId: `face-${i}`,
+    latent: {
+      space: 'w-plus',
+      shape: [18, 512],
+      values: Array.from({ length: 18 * 512 }, (_, d) => Math.fround(Math.sin(i * 7919 + d) * 0.5)),
+    },
+  }));
+  return JSON.stringify({ ...fixture, morph: { ...fixture.morph, controls } });
+}
+
+test('no control count (fm-id4c): 65 and 150 real-shaped W+ controls under the byte bound load in order', () => {
+  for (const count of [65, 150]) {
+    const input = manyControls(count);
+    assert.ok(input.length < MAX_INPUT_BYTES, `${input.length} bytes is under the bound`);
+    const got = decode(input);
+    assert.equal(got.ok, true, `${count}: ${got.ok ? '' : JSON.stringify(got.error)}`);
+    if (!got.ok) return;
+    assert.equal(got.value.morph.controls.length, count);
+    assert.deepEqual(
+      got.value.morph.controls.map((c) => c.visitId),
+      Array.from({ length: count }, (_, i) => `face-${i}`),
+    );
+    const encoded = encode(got.value);
+    assert.ok(encoded.ok, 'and it encodes');
+  }
+});
+
+test('a project file over the byte bound is refused before parsing, with one plain message', () => {
+  assert.equal(
+    MAX_INPUT_BYTES,
+    64 * 1024 * 1024,
+    'PROJECT_FILE_PARSE_BYTES from the contracts ceilings',
+  );
+  assert.equal(
+    PROJECT_TOO_LARGE_MESSAGE,
+    'This project file is larger than 64 MB, the most a project file can be.',
+  );
+  // Exactly at the bound is read (and refused only as unreadable JSON); one byte over is refused for its size.
+  const at = ' '.repeat(MAX_INPUT_BYTES);
+  assert.deepEqual(decode(at), {
+    ok: false,
+    error: { kind: 'malformed', messages: [MALFORMED_MESSAGE] },
+  });
+  assert.deepEqual(decode(at + ' '), {
+    ok: false,
+    error: { kind: 'malformed', messages: [PROJECT_TOO_LARGE_MESSAGE] },
+  });
+  // The bound is UTF-8 bytes, not UTF-16 units: one more three-byte character than a third of it is over.
+  assert.deepEqual(decode('€'.repeat(Math.floor(MAX_INPUT_BYTES / 3) + 1)), {
+    ok: false,
+    error: { kind: 'malformed', messages: [PROJECT_TOO_LARGE_MESSAGE] },
+  });
 });

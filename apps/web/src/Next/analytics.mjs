@@ -47,7 +47,7 @@ const ENUMS = {
   morph_kind: ['linear', 'pairwise-ellipse', 'pairwise-figure8', 'full-smooth-ellipse', 'full-smooth-figure8']
 };
 const STAGE = /^[a-z][a-z-]{0,39}$/;
-const NUMBERS = { schema_version:[2,2], duration_ms: [0, 3.6e6], size_mb: [0, 4096], faces: [0, 64], frames: [0, 4096], ttfr_ms: [0, 3.6e6], wait_ms:[0,3.6e6], queue_depth:[0,64], metric_value:[0,3.6e6] };
+const NUMBERS = { schema_version:[2,2], duration_ms: [0, 3.6e6], size_mb: [0, 4096], faces: [0, Number.MAX_SAFE_INTEGER], frames: [0, 4096], ttfr_ms: [0, 3.6e6], wait_ms:[0,3.6e6], queue_depth:[0,64], metric_value:[0,3.6e6] };
 
 /** Keeps only known parameters holding known values. Exposed for the tests. */
 export function clean(params = {}) {

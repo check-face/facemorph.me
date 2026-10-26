@@ -6,9 +6,10 @@ import { schedule, enqueue, without, runFace } from './schedule.ts';
 import { createCrop } from '../geometry.ts';
 import type { ClassifiedStill } from '../msg.ts';
 import type { HeldStill } from '../state.ts';
+import { admitTo, refused, type AdmissionFacts } from '../admission.ts';
 type Offer = Extract<Extract<Msg, { type: 'Photo' }>['args'][1], { kind: 'crop' }>['offer'];
 
-export interface PhotoFacts {
+export interface PhotoFacts extends AdmissionFacts {
   readonly photoRevision?: number;
   readonly newPhotoIds?: readonly string[];
 }
@@ -87,6 +88,17 @@ function classified(
   if (state.StillChecks?.get(key) !== token) return { state, effects: urls };
   const checks = new Map(state.StillChecks);
   checks.delete(key);
+  // Admitted again as the faces are added (the state may have changed since the pick or drop): a refusal adds
+  // nothing, not even part of the drop.
+  const admission = admitTo(state, { files: entries.map((e) => e.file), replacing: target }, facts);
+  if (!admission.ok) {
+    const preparing = new Set(state.PreparingFaces);
+    if (target !== null) preparing.delete(target);
+    return {
+      state: refused({ ...state, StillChecks: checks, PreparingFaces: preparing }, admission),
+      effects: urls,
+    };
+  }
   let next: State = { ...state, StillChecks: checks };
   const effects: Effect[] = [];
   const apply = (id: string, entry: ClassifiedStill) => {
@@ -246,6 +258,8 @@ export function photo(message: Msg, state: State, facts: PhotoFacts = {}): Trans
     case 'PickPhoto': {
       const [id, files] = message.args;
       if (!files.length || !state.Inputs.some((input) => input.id === id)) return unchanged(state);
+      const admission = admitTo(state, { files, replacing: id }, facts);
+      if (!admission.ok) return { state: refused(state, admission), effects: [] };
       // Classified first (fm-4f5m): nothing about the face changes until its file's verdict arrives.
       const [checked, token] = checkStill(state, id);
       return {
@@ -335,6 +349,9 @@ export function photo(message: Msg, state: State, facts: PhotoFacts = {}): Trans
       if (!files.length) return unchanged(state);
       if (target !== null && !state.Inputs.some((input) => input.id === target))
         return unchanged(state);
+      // One admission check for the whole drop, before any classification or bridge call (fm-id4c).
+      const admission = admitTo(state, { files, replacing: target }, facts);
+      if (!admission.ok) return { state: refused(state, admission), effects: [] };
       // Every file of the drop is classified before any target is chosen or changed (fm-4f5m).
       const key = target ?? DROP_KEY;
       const [checked, token] = checkStill(state, key);

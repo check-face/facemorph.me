@@ -1,11 +1,10 @@
 // ProjectJson in TypeScript (fm-7s3a): the explicit, bounded project-file codec ported from classic
 // src/Next/ProjectJson.fs with identical semantics: field names, schema version 1 only, classic's limits and
-// messages, and classic's shipped text (fields in a fixed order, strings escaped per UTF-16 unit, numbers as the
-// classic build wrote them: String(value)). Typed results replace the legacy tag protocol;
+// messages (except the 64-control check, replaced by the contracts byte bound: fm-id4c), and classic's shipped text
+// (fields in a fixed order, strings escaped per UTF-16 unit, numbers as the classic build wrote them: String(value)). Typed results replace the legacy tag protocol;
 // export names stay decode and encode for the retained bridge.
 import {
-  MAX_CONTROLS,
-  MAX_INPUT_CHARS,
+  PROJECT_TOO_LARGE_MESSAGE,
   SchemaError,
   array,
   boolean,
@@ -19,6 +18,7 @@ import {
   space,
   text,
   validate,
+  withinInputBytes,
   type Project,
 } from './project-json.schema.ts';
 
@@ -63,7 +63,6 @@ function read(input: string): Project {
   const bundle = fieldsOf(['version', 'manifestSha256'], field(root, 'bundle'));
   const morph = fieldsOf(MORPH_FIELDS, field(root, 'morph'));
   const controls = array(field(morph, 'controls'));
-  if (controls.length > MAX_CONTROLS) throw new SchemaError('Project exceeds 64 controls.');
   // Field reads follow classic's record construction order, so the first failing read is the same one.
   const bundleValue = {
     version: text(field(bundle, 'version')),
@@ -106,6 +105,9 @@ function read(input: string): Project {
 
 /** Reads untrusted project text. Never throws: any failure is a typed error. */
 export function decode(input: string): ProjectResult<Project> {
+  // The byte bound is checked before any parsing, with its own plain message (no face count: fm-id4c).
+  if (typeof input === 'string' && !withinInputBytes(input))
+    return { ok: false, error: { kind: 'malformed', messages: [PROJECT_TOO_LARGE_MESSAGE] } };
   let project: Project;
   try {
     project = read(input);
@@ -190,7 +192,7 @@ export function encode(project: Project): ProjectResult<string> {
       ]),
     ],
   ]);
-  return value.length > MAX_INPUT_CHARS
-    ? { ok: false, error: { kind: 'invalid', messages: ['Project exceeds the input size limit.'] } }
+  return !withinInputBytes(value)
+    ? { ok: false, error: { kind: 'invalid', messages: [PROJECT_TOO_LARGE_MESSAGE] } }
     : { ok: true, value };
 }

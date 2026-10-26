@@ -1,6 +1,7 @@
 /** Shared browser/desktop latent geometry. No inference, random input or DOM. */
 export const GEOMETRY_VERSION = 'latent-path-v1';
-export const LIMITS = Object.freeze({ controls: 64, width: 1.2, frames: 100000, absoluteInput: 10000 });
+// No fixed control count (operator, 24 October): the total frame bound limits a path, not a face count.
+export const LIMITS = Object.freeze({ minControls: 2, width: 1.2, frames: 100000, absoluteInput: 10000 });
 const kinds = new Set(['linear', 'pairwise-ellipse', 'pairwise-figure8', 'full-smooth-ellipse', 'full-smooth-figure8']);
 const combine = (...terms) => Float64Array.from(terms[0][0], (_, d) => terms.reduce((s, [v, k]) => s + v[d] * k, 0));
 const norm = v => Math.sqrt(v.reduce((s, x) => s + x * x, 0));
@@ -53,7 +54,7 @@ function requireValid(m) {
   if (!m || m.algorithmVersion !== GEOMETRY_VERSION) fail('Unsupported latent geometry version');
   if (!kinds.has(m.kind) || typeof m.closed !== 'boolean' || typeof m.pinchCenter !== 'boolean') fail('Invalid morph kind or flags');
   if (!Number.isFinite(m.width) || m.width < 0 || m.width > LIMITS.width) fail('Width must be between 0 and 1.2');
-  if (!Array.isArray(m.controls) || m.controls.length < 2 || m.controls.length > LIMITS.controls) fail('Expected 2–64 control visits');
+  if (!Array.isArray(m.controls) || m.controls.length < LIMITS.minControls) fail('Expected at least 2 control visits');
   if (m.kind.startsWith('full-smooth') && !m.closed) fail('Full-smooth paths require closed equal-duration segments');
   const ids = new Set(); let space, shapeKey;
   for (const control of m.controls) {

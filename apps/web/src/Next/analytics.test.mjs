@@ -22,8 +22,10 @@ test('automation, Save-Data, GPC and DNT switch it off', () => {
 test('clean keeps closed vocabularies and bounded numbers, and drops everything else', () => {
   const kept = clean({action: 'morph', outcome: 'failed', route: 'webgpu', error_kind: 'memory', error_stage: 'synthesis', duration_ms: 1234.567, faces: 3, frames: 96, input_kind: 'photo', morph_kind: 'full-smooth-figure8'});
   assert.deepEqual(kept, {action: 'morph', outcome: 'failed', route: 'webgpu', error_kind: 'memory', error_stage: 'synthesis', duration_ms: 1234.6, faces: 3, frames: 96, input_kind: 'photo', morph_kind: 'full-smooth-figure8'});
-  const dropped = clean({name: 'Alice', seed: 12345, file: 'me.jpg', message: 'Failed to fetch https://x', outcome: 'exploded', route: 'gpu9000', error_stage: 'Has Spaces', duration_ms: -5, faces: 9999, frames: NaN, email: 'a@b.c'});
+  const dropped = clean({name: 'Alice', seed: 12345, file: 'me.jpg', message: 'Failed to fetch https://x', outcome: 'exploded', route: 'gpu9000', error_stage: 'Has Spaces', duration_ms: -5, faces: -1, frames: NaN, email: 'a@b.c'});
   assert.deepEqual(dropped, {});
+  // No fixed face count (fm-id4c): a large count is recorded as it is, never clamped or dropped.
+  for (const faces of [64, 65, 150, 9999]) assert.deepEqual(clean({faces}), {faces});
 });
 test('input kinds describe what was given without keeping it', () => {
   assert.equal(inputKind([{mode: 'text', value: 'hello'}, {mode: 'text', value: 'world'}]), 'name');

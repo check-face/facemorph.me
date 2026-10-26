@@ -177,6 +177,21 @@ test('schema 2 round trip: FFHQ and AFHQ-shaped controls, settings, model and vi
   }
 });
 
+test('no fixed control count (fm-id4c): 65 and 150 FFHQ controls round-trip in order, byte-exact', () => {
+  for (const n of [65, 150]) {
+    const i = input(FFHQ_1024_DESCRIPTOR, n);
+    const p = parsed(readMp4Project(embedMp4Project(movie(), i))).project;
+    assert.equal(p.schemaVersion, 2);
+    assert.deepEqual(
+      p.morph.controls.map((c) => c.visitId),
+      i.morph.controls.map((c) => c.visitId),
+    );
+    p.morph.controls.forEach((c, k) =>
+      assert.ok(bytesOf(c.latent.values).equals(bytesOf(i.morph.controls[k]!.latent.values))),
+    );
+  }
+});
+
 test('a custom frames-per-face count, odd or large, round-trips through the MP4 project (fm-36ag)', () => {
   for (const framesPerSegment of [2, 7, 33, 1365]) {
     const i = input(FFHQ_1024_DESCRIPTOR, 3);

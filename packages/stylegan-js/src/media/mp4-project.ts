@@ -23,8 +23,6 @@ export const MP4_PROJECT_KIND = 'facemorph-project-v2';
 export const MP4_MAX_FILE_BYTES = 512 * 1024 * 1024;
 export const MP4_PROJECT_MAX_PAYLOAD_BYTES = 16 * 1024 * 1024;
 export const MP4_MAX_BOXES = 10000;
-/** Most controls a project records: the candidate project codec's limit (project-json.schema.ts MAX_CONTROLS). */
-export const MP4_PROJECT_MAX_CONTROLS = 64;
 const KEY = 'FaceMorphProject';
 const HEX64 = /^[0-9a-f]{64}$/;
 
@@ -387,8 +385,8 @@ function morphSettings(m: Record<string, unknown>): Omit<ProjectMorph, 'controls
 }
 
 function controlsList(v: unknown): unknown[] {
-  if (!Array.isArray(v) || v.length < 2 || v.length > MP4_PROJECT_MAX_CONTROLS)
-    bad('morph.controls');
+  // At least two controls and no fixed count (fm-id4c): the payload byte bound limits a project.
+  if (!Array.isArray(v) || v.length < 2) bad('morph.controls');
   return v as unknown[];
 }
 const visitId = (c: Record<string, unknown>, i: number): string => {

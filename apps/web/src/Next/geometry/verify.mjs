@@ -81,6 +81,10 @@ for (const layers of [1, 18]) {
   }
 }
 const largest = createLatentPath(project(ring(64))); assert.equal(largest.segments, 64); assert(largest.sample(63, .3).every(Number.isFinite));
+// No fixed control count (fm-id4c): 65 and 150 controls are accepted, bounded only by the total frame budget.
+for (const count of [65, 150]) { const many = createLatentPath(project(ring(count))); assert.equal(many.segments, count); assert(many.sample(count - 1, .3).every(Number.isFinite)); }
+assert.throws(() => createLatentPath(project(ring(1))), /at least 2 control visits/);
+assert.throws(() => createLatentPath({ ...project(ring(150)), framesPerSegment: 1000 }), /total frame budget/);
 // Independent closed-form pair ellipse and half-return orientation fixture.
 const pair = project([[1, 0], [-1, 0]], 'pairwise-ellipse', { width: .4 });
 const ellipse = createLatentPath(pair);
