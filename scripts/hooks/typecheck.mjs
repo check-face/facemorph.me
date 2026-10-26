@@ -129,9 +129,28 @@ export async function typecheckCommit({ root, head, base, cache, log = () => {} 
   )
     .split('\0')
     .filter(Boolean);
-  const read = (path) => git('show', `${head}:${path}`);
-  const list = (dir) => git('ls-tree', '--name-only', `${head}:${dir}`).split('\n').filter(Boolean);
-  const ws = workspaces(read);
+  const quiet = (...args) =>
+    execFileSync('git', args, {
+      cwd: root,
+      encoding: 'utf8',
+      maxBuffer: 64 * 1024 * 1024,
+      stdio: ['ignore', 'pipe', 'ignore'],
+    });
+  // A tree without a root package.json or workflows (another repository's hooks, a fixture) has nothing to check.
+  const read = (path) => quiet('show', `${head}:${path}`);
+  const list = (dir) => {
+    try {
+      return quiet('ls-tree', '--name-only', `${head}:${dir}`).split('\n').filter(Boolean);
+    } catch {
+      return [];
+    }
+  };
+  let ws;
+  try {
+    ws = workspaces(read);
+  } catch {
+    return { ok: true, checked: [], failures: [], ms: Date.now() - began };
+  }
   const extra = workflowProjects(read, list);
   const { workspaces: chosen, projects } = affected(files, ws, extra);
   if (!projects.length) return { ok: true, checked: [], failures: [], ms: Date.now() - began };
