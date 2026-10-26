@@ -115,7 +115,7 @@ jobs:
         with:
           timeout: '900'
           # The Linux-only netlink namespace wrapper stays disabled on these macOS runners.
-          command: node packages/browser-model-manager/test/run.mjs packages/browser-model-manager/test/cache-local.test.ts packages/browser-model-manager/test/handles-tabs.test.ts packages/browser-model-manager/test/acquisition.test.ts packages/browser-model-manager/test/worker-storage.test.ts packages/browser-model-manager/test/storage-permission.test.ts packages/browser-model-manager/test/uncached-browser.test.ts
+          command: node packages/browser-model-manager/test/run.mjs --test-concurrency=1 packages/browser-model-manager/test/cache-local.test.ts packages/browser-model-manager/test/handles-tabs.test.ts packages/browser-model-manager/test/acquisition.test.ts packages/browser-model-manager/test/acquisition-deadline.test.ts packages/browser-model-manager/test/slots-browser.test.ts packages/browser-model-manager/test/worker-storage.test.ts packages/browser-model-manager/test/storage-permission.test.ts packages/browser-model-manager/test/uncached-browser.test.ts
       - name: Journeys on ${{ matrix.lane }}
         working-directory: tools/device-lab
         run: python hosted.py browser --lane ${{ matrix.lane }} --browser ${{ matrix.browser }} --artifact ../../artifact/deploy-next --runtime-sha ${{ inputs.runtime_sha }} --out ../../lane

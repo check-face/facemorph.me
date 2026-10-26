@@ -14,7 +14,7 @@ import { createServer, type Server } from 'node:https';
 import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
 import { extname, join, normalize } from 'node:path';
-import test from 'node:test';
+import test, { type TestContext } from 'node:test';
 import type { Page } from 'playwright';
 import { componentBrowser } from './support/browser.ts';
 
@@ -83,12 +83,18 @@ execFileSync(process.execPath, [
 
 /** A module worker that acquires what it is told with the package's browser cache and its own slot view. */
 const WORKER = `import * as m from '/pkg/index.js';
+let prepared;
 self.onmessage = async ({ data }) => {
   try {
-    const cache = await m.createBrowserModelCache({
+    const cache = prepared ?? await m.createBrowserModelCache({
       slots: m.createAcquisitionSlots({ locks: navigator.locks, count: data.slots }),
       readAhead: data.readAhead, retryDelaysMs: [],
     });
+    if (data.type === 'prepare') {
+      prepared = cache;
+      postMessage({ ready: true });
+      return;
+    }
     await Promise.all(data.assets.map((a) => cache.acquire(a, { grant: data.grant, owner: data.owner })));
     postMessage({ ok: true });
   } catch (e) { postMessage({ ok: false, message: String(e && e.message || e) }); }
@@ -288,34 +294,72 @@ test.after(async () => {
   await browser?.close();
   await Promise.all(
     [app, primary, alternate].map(
-      (server) => new Promise<void>((resolve) => server.close(() => resolve())),
+      (server) =>
+        new Promise<void>((resolve) => {
+          server.close(() => resolve());
+          // Fault cases deliberately leave HTTPS bodies open. They must not outlive this suite,
+          // including when a timed-out page could not finish its own cancellation.
+          server.closeAllConnections();
+        }),
     ),
   );
   rmSync(work, { recursive: true, force: true });
 });
 
-async function session() {
+async function session(t?: TestContext) {
   const context = await newContext!({ ignoreHTTPSErrors: true });
   await context.tracing.start({ screenshots: true, snapshots: true });
   const name = `acquisition-${++sessionId}`;
   const att = helper.attachPlaywright(context, hostMap);
   const page = await context.newPage();
-  await page.goto(`${APP}/`);
-  await page.evaluate(() => import(String('/pkg/index.js')), undefined);
+  let phase = 'session setup';
+  const capture = async () => {
+    const dir = join(REPO, 'test-results/manager-cache', engine);
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, `${name}-network.json`), JSON.stringify(att.rec));
+    writeFileSync(join(dir, `${name}-server.json`), JSON.stringify({ phase, log }));
+    const diagnostics = Promise.allSettled([
+      page.screenshot({ path: join(dir, `${name}.png`), timeout: 3000 }),
+      context.tracing.stop({ path: join(dir, `${name}.zip`) }),
+    ]);
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      await Promise.race([
+        diagnostics,
+        new Promise<void>((resolve) => {
+          timer = setTimeout(resolve, 5000);
+        }),
+      ]);
+    } finally {
+      clearTimeout(timer);
+    }
+  };
+  let abortCleanup: Promise<void> | undefined;
+  const abort = () => {
+    abortCleanup = capture().finally(() => context.close());
+  };
+  t?.signal.addEventListener('abort', abort, { once: true });
+  t?.after(async () => {
+    t.signal.removeEventListener('abort', abort);
+    await (abortCleanup ?? context.close());
+  });
+  try {
+    await page.goto(`${APP}/`);
+    await page.evaluate(() => import(String('/pkg/index.js')), undefined);
+  } catch (error) {
+    await capture();
+    await context.close();
+    throw error;
+  }
   return {
     context,
     page,
     rec: att.rec,
     settled: () => att.settled(),
-    async capture() {
-      const dir = join(REPO, 'test-results/manager-cache', engine);
-      mkdirSync(dir, { recursive: true });
-      writeFileSync(join(dir, `${name}-network.json`), JSON.stringify(att.rec));
-      await Promise.allSettled([
-        page.screenshot({ path: join(dir, `${name}.png`) }),
-        context.tracing.stop({ path: join(dir, `${name}.zip`) }),
-      ]);
+    phase(value: string) {
+      phase = value;
     },
+    capture,
   };
 }
 
@@ -831,13 +875,13 @@ test(
 test(
   `${engine}: the aggregate budget holds across workers, and an identical digest is fetched once`,
   { skip: NO_BROWSER, timeout: 60_000 },
-  async () => {
+  async (t) => {
     const W = [asset('w0', 3, 10), asset('w1', 3, 11), asset('w2', 3, 12)];
     const D = asset('dup', 3, 13);
     const C = [asset('c0', 3, 17), asset('c1', 3, 18), asset('c2', 3, 19)];
     for (const a of [...W, D, ...C])
       for (const p of a.parts) faults.set(`primary:${p}`, { pieceDelayMs: 30 });
-    const s = await session();
+    const s = await session(t);
     try {
       // Three module workers with read-ahead 2 each: alone they would hold six chunks.
       // Keep the same cohort for the control, bounded and duplicate phases. Rebooting every worker
@@ -875,6 +919,7 @@ test(
       // Control: with six slots the same load does put more than two chunks in flight, so the bound below is the
       // slots' doing and the measurement can see a breach.
       maxInFlight = inFlight;
+      s.phase('aggregate control: six slots');
       const control = await run(
         C.map((a, i) => ({ assets: [descriptor(a)], owner: `face:c${i}` })),
         6,
@@ -887,6 +932,7 @@ test(
 
       const from = log.length;
       maxInFlight = inFlight;
+      s.phase('aggregate bounded: two slots');
       const spread = await run(W.map((a, i) => ({ assets: [descriptor(a)], owner: `face:w${i}` })));
       assert.deepEqual(
         spread,
@@ -906,6 +952,7 @@ test(
       );
 
       const fromDup = log.length;
+      s.phase('aggregate duplicate digest');
       const dup = await run([
         { assets: [descriptor(D)], owner: 'face:d0' },
         { assets: [descriptor(D)], owner: 'face:d1' },
@@ -931,7 +978,7 @@ test(
 test(
   `${engine}: across workers, optional work takes no slot while foreground work waits in another worker`,
   { skip: NO_BROWSER, timeout: 60_000 },
-  async () => {
+  async (t) => {
     // The page holds both slots: SA1 for about 1.2 s, SA2 for about 0.6 s. Worker C asks for foreground F and worker
     // B for optional O while both are held. The slot SA2 frees must go to F, whichever slot F queued behind.
     const SA1 = asset('hold-long', 0, 20);
@@ -940,9 +987,10 @@ test(
     const O = asset('cross-opt', 0, 23);
     faults.set(`primary:${SA1.parts[0]}`, { pieceDelayMs: 150 });
     faults.set(`primary:${SA2.parts[0]}`, { pieceDelayMs: 75 });
-    const s = await session();
+    const s = await session(t);
     try {
       const from = log.length;
+      s.phase('cross-worker foreground and optional');
       const results = await s.page.evaluate(
         async ({ held, gHeld, f, gf, o, go }) => {
           const m = await import(String('/pkg/index.js'));
@@ -950,25 +998,80 @@ test(
             retryDelaysMs: [],
             slots: m.createAcquisitionSlots({ locks: navigator.locks, count: 2 }),
           });
-          const pause = (ms: number) => new Promise((r) => setTimeout(r, ms));
-          const inWorker = (assets: object[], grant: object, owner: string) =>
-            new Promise<{ ok: boolean; message?: string }>((resolve) => {
-              const worker = new Worker('/worker.js', { type: 'module' });
-              worker.onmessage = ({ data }) => {
-                worker.terminate();
-                resolve(data);
-              };
-              worker.postMessage({ assets, grant, owner, slots: 2, readAhead: 1 });
+          const workers: Worker[] = [];
+          const prepareWorker = (label: string) => {
+            const worker = new Worker('/worker.js', { type: 'module' });
+            workers.push(worker);
+            let fatal: Error | undefined;
+            let accept!: (data: { ready?: boolean; ok?: boolean; message?: string }) => void;
+            let refuse!: (error: Error) => void;
+            const ready = new Promise<void>((resolve, reject) => {
+              accept = (data) =>
+                data.ready
+                  ? resolve()
+                  : reject(
+                      new Error(`${label} preparation: ${data.message ?? 'unexpected result'}`),
+                    );
+              refuse = reject;
             });
-          const page = Promise.all(
-            held.map((a: object) => cache.acquire(a, { grant: gHeld, owner: 'face:held' })),
-          );
-          await pause(200);
-          const fg = inWorker([f], gf, 'face:f');
-          await pause(150);
-          const opt = inWorker([o], go, 'warming:o');
-          await page;
-          return Promise.all([fg, opt]);
+            const fail = (message: string) => {
+              fatal = new Error(`${label}: ${message}`);
+              refuse(fatal);
+            };
+            worker.onerror = (event) => fail(event.message);
+            worker.onmessageerror = () => fail('unreadable worker result');
+            worker.onmessage = ({ data }) => accept(data);
+            worker.postMessage({ type: 'prepare', slots: 2, readAhead: 1 });
+            return {
+              ready,
+              acquire: (assets: object[], grant: object, owner: string) =>
+                new Promise<{ ok: boolean; message?: string }>((resolve, reject) => {
+                  if (fatal) return reject(fatal);
+                  accept = (data) =>
+                    resolve({
+                      ok: data.ok === true,
+                      ...(data.message ? { message: data.message } : {}),
+                    });
+                  refuse = reject;
+                  worker.postMessage({ assets, grant, owner });
+                }),
+            };
+          };
+          // Module loading and the native cache's OPFS/probe setup finish before the timed holders start.
+          const foreground = prepareWorker('foreground'),
+            optional = prepareWorker('optional');
+          const waitForSlots = async (queued: boolean) => {
+            const deadline = performance.now() + 5000;
+            for (;;) {
+              const snapshot = await navigator.locks.query();
+              const own = (list: readonly { name?: string }[] = []) =>
+                list.filter((lock) => lock.name?.startsWith('facemorph-acquisition:slot-'));
+              if (queued ? own(snapshot.pending).length === 2 : own(snapshot.held).length === 2)
+                return;
+              if (performance.now() >= deadline)
+                throw new Error(
+                  `Native ${queued ? 'foreground queue' : 'holder'} contention not established: ${JSON.stringify(snapshot)}`,
+                );
+              await new Promise((resolve) => setTimeout(resolve, 0));
+            }
+          };
+          try {
+            await Promise.all([foreground.ready, optional.ready]);
+            const page = Promise.all(
+              held.map((a: object) => cache.acquire(a, { grant: gHeld, owner: 'face:held' })),
+            );
+            void page.catch(() => {}); // surfaced below, even if it fails during the lock-state observation
+            await waitForSlots(false);
+            const fg = foreground.acquire([f], gf, 'face:f');
+            void fg.catch(() => {});
+            await waitForSlots(true); // required work really queued on both held slots before optional starts
+            const opt = optional.acquire([o], go, 'warming:o');
+            const results = await Promise.all([fg, opt]);
+            await page;
+            return results;
+          } finally {
+            for (const worker of workers) worker.terminate();
+          }
         },
         {
           held: [descriptor(SA1), descriptor(SA2)],
@@ -1056,14 +1159,15 @@ test(
 test(
   `${engine}: a chunk silent mid-body is abandoned and retried on a fresh request; a slow but steady asset outlives the deadline`,
   { skip: NO_BROWSER, timeout: 60_000 },
-  async () => {
+  async (t) => {
     const T = asset('silent', 2, 15);
     faults.set(`primary:${T.parts[0]}`, { silentOnce: true });
     const U = asset('steady', 3, 16);
     for (const p of U.parts) faults.set(`primary:${p}`, { pieceDelayMs: 120 }); // about a second a chunk
-    const s = await session();
+    const s = await session(t);
     try {
       const from = log.length;
+      s.phase('silent chunk retry');
       const silent = await acquireOne(s.page, descriptor(T), grant(['face:a'], [T], T.size * 2), {
         stallMs: 600,
         retryDelaysMs: [50],
@@ -1081,6 +1185,7 @@ test(
       );
 
       // Three seconds of steady arrival against a one-second silence deadline: it completes.
+      s.phase('steady network beyond deadline');
       const steady = await acquireOne(s.page, descriptor(U), grant(['face:a'], [U], U.size), {
         timeoutMs: 1000,
         stallMs: 1000,

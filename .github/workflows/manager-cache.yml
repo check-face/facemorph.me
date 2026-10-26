@@ -33,17 +33,22 @@ jobs:
         uses: ./.github/actions/run-command
         env:
           FACEMORPH_ISOLATE_TEST_NETWORK: '1'
+          # Disposable component profiles exercise native storage APIs, not disk throughput. Keep their
+          # I/O separate from concurrent Docker/model builds; the cold-photo storage measurement stays below.
+          TMPDIR: /dev/shm
         with:
           timeout: '900'
+          # Run browser files serially: their workers already exercise real concurrency without competing
+          # with seven other browser startups/OPFS profiles on this runner. Keep every cell and deadline.
           # Every test origin is local. Isolate netlink notifications from concurrent Docker jobs:
           # veth address changes otherwise abort Chromium's localhost module fetches.
           command: |
             if [ "$FACEMORPH_MANAGER_ENGINE" = chromium ]; then
-              npm test -w packages/browser-model-manager
+              npm test -w packages/browser-model-manager -- --test-concurrency=1
             else
               # Other package files run Node ORT or explicitly launch Chromium, independent
               # of this matrix value. Keep those in the full suite, without repeating them.
-              node packages/browser-model-manager/test/run.mjs packages/browser-model-manager/test/cache-local.test.ts packages/browser-model-manager/test/handles-tabs.test.ts packages/browser-model-manager/test/acquisition.test.ts packages/browser-model-manager/test/worker-storage.test.ts packages/browser-model-manager/test/storage-permission.test.ts packages/browser-model-manager/test/uncached-browser.test.ts
+              node packages/browser-model-manager/test/run.mjs --test-concurrency=1 packages/browser-model-manager/test/cache-local.test.ts packages/browser-model-manager/test/handles-tabs.test.ts packages/browser-model-manager/test/acquisition.test.ts packages/browser-model-manager/test/acquisition-deadline.test.ts packages/browser-model-manager/test/slots-browser.test.ts packages/browser-model-manager/test/worker-storage.test.ts packages/browser-model-manager/test/storage-permission.test.ts packages/browser-model-manager/test/uncached-browser.test.ts
             fi
       - name: Candidate cache shim and worker source regressions
         working-directory: apps/web

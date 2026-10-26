@@ -102,7 +102,7 @@ jobs:
           reports="$PWD/test-results/manager-cache/node-reports"
           mkdir -p "$reports"
           export NODE_OPTIONS="--report-on-signal --report-signal=SIGUSR2 --report-directory=$reports"
-          node packages/browser-model-manager/test/run.mjs $ARGS ${FILES:-packages/browser-model-manager/test/cache-local.test.ts packages/browser-model-manager/test/handles-tabs.test.ts packages/browser-model-manager/test/acquisition.test.ts packages/browser-model-manager/test/worker-storage.test.ts packages/browser-model-manager/test/storage-permission.test.ts packages/browser-model-manager/test/uncached-browser.test.ts} &
+          node packages/browser-model-manager/test/run.mjs --test-concurrency=1 $ARGS ${FILES:-packages/browser-model-manager/test/cache-local.test.ts packages/browser-model-manager/test/handles-tabs.test.ts packages/browser-model-manager/test/acquisition.test.ts packages/browser-model-manager/test/acquisition-deadline.test.ts packages/browser-model-manager/test/slots-browser.test.ts packages/browser-model-manager/test/worker-storage.test.ts packages/browser-model-manager/test/storage-permission.test.ts packages/browser-model-manager/test/uncached-browser.test.ts} &
           pid=$!
           (
             sleep "$WATCH"

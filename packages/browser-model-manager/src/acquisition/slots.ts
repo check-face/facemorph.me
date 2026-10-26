@@ -141,7 +141,12 @@ export function createAcquisitionSlots({
     const required = queuesOnLocks(w.priority);
     if (required || !(await othersWaiting()))
       for (let k = 0; k < count; k++) {
+        if (w.signal.aborted) throw w.signal.reason ?? aborted();
         const release = await hold(locks, slot((next + k) % count), { ifAvailable: true });
+        if (w.signal.aborted) {
+          release?.();
+          throw w.signal.reason ?? aborted();
+        }
         if (release) {
           next = (next + k + 1) % count;
           return release;
@@ -164,6 +169,38 @@ export function createAcquisitionSlots({
     return null;
   }
 
+  /**
+   * Platform queries and ifAvailable callbacks need not answer before cancellation. Let the caller and the local
+   * queue move on immediately; an outstanding attempt still owns its answer and returns any grant that arrives late.
+   */
+  function attemptHead(w: Waiter): Promise<(() => void) | null> {
+    return new Promise((resolve, reject) => {
+      let settled = false;
+      const cancel = () => {
+        if (settled) return;
+        settled = true;
+        w.signal.removeEventListener('abort', cancel);
+        reject(w.signal.reason ?? aborted());
+      };
+      w.signal.addEventListener('abort', cancel, { once: true });
+      if (w.signal.aborted) return cancel();
+      void grantHead(w).then(
+        (release) => {
+          if (settled) return release?.();
+          settled = true;
+          w.signal.removeEventListener('abort', cancel);
+          resolve(release);
+        },
+        (error) => {
+          if (settled) return;
+          settled = true;
+          w.signal.removeEventListener('abort', cancel);
+          reject(error);
+        },
+      );
+    });
+  }
+
   async function pump() {
     if (busy) return;
     busy = true;
@@ -173,7 +210,7 @@ export function createAcquisitionSlots({
         const w = waiting[0]!;
         current = w;
         try {
-          const release = await grantHead(w);
+          const release = await attemptHead(w);
           current = null;
           if (!release) continue;
           waiting.splice(waiting.indexOf(w), 1);
@@ -208,19 +245,28 @@ export function createAcquisitionSlots({
           once = true;
           r();
         };
-        const w: Waiter = { priority, signal, resolve: (r) => resolve(release(r)), reject };
-        // A waiter cancelled before its turn leaves at once; an attempt in flight is ended by its signal.
-        signal.addEventListener(
-          'abort',
-          () => {
-            const at = waiting.indexOf(w);
-            if (at >= 0 && current !== w) {
-              waiting.splice(at, 1);
-              reject(signal.reason ?? aborted());
-            }
+        const cleanup = () => signal.removeEventListener('abort', cancel);
+        const w: Waiter = {
+          priority,
+          signal,
+          resolve: (r) => {
+            cleanup();
+            resolve(release(r));
           },
-          { once: true },
-        );
+          reject: (reason) => {
+            cleanup();
+            reject(reason);
+          },
+        };
+        // A waiter cancelled before its turn leaves at once; an attempt in flight is ended by its signal.
+        const cancel = () => {
+          const at = waiting.indexOf(w);
+          if (at >= 0 && current !== w) {
+            waiting.splice(at, 1);
+            w.reject(signal.reason ?? aborted());
+          }
+        };
+        signal.addEventListener('abort', cancel, { once: true });
         waiting.push(w);
         void pump();
       });

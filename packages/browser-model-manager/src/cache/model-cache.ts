@@ -61,7 +61,7 @@ export interface ModelCacheOptions {
   readonly shards?: ShardStore | null | undefined;
   readonly fetcher?: Fetcher | undefined;
   readonly locks?: LockManagerLike | undefined;
-  /** An asset that receives nothing for this long fails (TimeoutError); every byte restarts it. */
+  /** A pending network fetch/read that receives nothing for this long fails (TimeoutError). */
   readonly timeoutMs?: number | undefined;
   /** A chunk attempt that receives nothing for this long is abandoned and retried (CHUNK_STALL_MS). */
   readonly stallMs?: number | undefined;
@@ -206,12 +206,97 @@ const pauseFor = (ms: number, signal: AbortSignal) =>
     signal?.addEventListener('abort', done, { once: true });
   });
 type Download = (part: Asset, signal: AbortSignal) => Promise<ReadableStream<Uint8Array> | null>;
+/** Time only pending network operations, never hashing, storage backpressure or aggregate-slot waits.
+ * A separate controller keeps the timeout attached to the actual fetch, including handle repairs.
+ * Zero read-ahead here leaves local consumers in charge of when the next network read begins.
+ */
+function networkDeadline(download: Download, timeoutMs: number): Download {
+  return async (part, signal) => {
+    const controller = new AbortController();
+    const relay = () => controller.abort(signal.reason || aborted());
+    signal.addEventListener('abort', relay, { once: true });
+    if (signal.aborted) relay();
+    let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
+    let cancellation: Promise<void> | undefined;
+    const cancelReader = (reason: unknown): Promise<void> => {
+      if (!reader) return Promise.resolve();
+      return (cancellation ??= reader
+        .cancel(reason)
+        .catch(() => {})
+        .finally(() => reader!.releaseLock()));
+    };
+    const cancel = () => {
+      void cancelReader(controller.signal.reason || aborted());
+    };
+    controller.signal.addEventListener('abort', cancel, { once: true });
+    const cleanup = () => {
+      signal.removeEventListener('abort', relay);
+      controller.signal.removeEventListener('abort', cancel);
+    };
+    const wait = async <T>(operation: () => Promise<T>): Promise<T> => {
+      check(controller.signal);
+      let interrupt!: () => void;
+      const cancelled = new Promise<never>((_resolve, reject) => {
+        interrupt = () => reject(controller.signal.reason || aborted());
+        controller.signal.addEventListener('abort', interrupt, { once: true });
+      });
+      const timer = setTimeout(
+        () => controller.abort(new DOMException('Asset acquisition timed out', 'TimeoutError')),
+        timeoutMs,
+      );
+      try {
+        return await Promise.race([operation(), cancelled]);
+      } catch (error) {
+        check(controller.signal); // Native fetch cancellation can substitute its own generic AbortError.
+        throw error;
+      } finally {
+        clearTimeout(timer);
+        controller.signal.removeEventListener('abort', interrupt);
+      }
+    };
+    try {
+      const body = await wait(() => download(part, controller.signal));
+      if (!body) {
+        cleanup();
+        return null;
+      }
+      reader = body.getReader();
+      return new ReadableStream<Uint8Array>(
+        {
+          async pull(output) {
+            try {
+              const result = await wait(() => reader!.read());
+              check(controller.signal);
+              if (result.done) {
+                cleanup();
+                reader!.releaseLock();
+                output.close();
+              } else output.enqueue(result.value);
+            } catch (error) {
+              cleanup();
+              output.error(error);
+              await cancelReader(error);
+            }
+          },
+          cancel(reason) {
+            cleanup();
+            controller.abort(reason || aborted());
+            return cancelReader(reason);
+          },
+        },
+        { highWaterMark: 0 },
+      );
+    } catch (error) {
+      cleanup();
+      controller.abort(error);
+      throw error;
+    }
+  };
+}
 /** Who pays for an asset's bytes now, and at what priority: the shared fetch's current owners decide both. */
 interface Transfer {
   payer(): AcquisitionGrant;
   priority(): AcquisitionPriority;
-  /** Bytes arrived: restarts the asset's silence deadline. */
-  alive(): void;
 }
 /** The same path on another origin. */
 const onOrigin = (url: string, origin: string) => new URL(new URL(url).pathname, origin).href;
@@ -296,7 +381,6 @@ async function fetchChunkOnce(
         check(attempt.signal);
         quiet();
         if (done) break;
-        transfer.alive();
         charge.received(value.byteLength);
         if (at + value.byteLength > part.size) throw new Error('Asset exceeds declared size');
         out.set(value, at);
@@ -453,14 +537,6 @@ export async function acquireUncachedBytes(
   const controller = new AbortController();
   const relay = () => controller.abort(signal?.reason || aborted());
   signal?.addEventListener('abort', relay, { once: true });
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  const alive = () => {
-    clearTimeout(timer);
-    timer = setTimeout(
-      () => controller.abort(new DOMException('Asset acquisition timed out', 'TimeoutError')),
-      timeoutMs,
-    );
-  };
   const emit = (event: CacheEvent) => {
     try {
       report(event);
@@ -468,9 +544,9 @@ export async function acquireUncachedBytes(
       /* observers cannot break acquisition */
     }
   };
-  const transfer: Transfer = { payer: () => grant!, priority: () => permission.priority, alive };
+  const transfer: Transfer = { payer: () => grant!, priority: () => permission.priority };
   let completed = 0;
-  const download: Download = async (part, attemptSignal) => {
+  const download = networkDeadline(async (part, attemptSignal) => {
     const response = await fetcher(part.url, {
       signal: attemptSignal,
       credentials: 'omit',
@@ -490,7 +566,7 @@ export async function acquireUncachedBytes(
           }),
         )
       : null;
-  };
+  }, timeoutMs);
   try {
     emit({ status: 'downloading', sha256: asset.sha256 });
     const out = asset.chunks ? new Uint8Array(asset.size) : null;
@@ -499,7 +575,6 @@ export async function acquireUncachedBytes(
       const release = slots ? await slots.take(permission.priority, controller.signal) : () => {};
       try {
         check(controller.signal);
-        alive();
         const bytes = await fetchVerifiedChunk(
           part,
           download,
@@ -518,7 +593,6 @@ export async function acquireUncachedBytes(
         completed += bytes.byteLength;
         emit({ status: 'progress', sha256: asset.sha256, loaded: completed, bytes: asset.size });
       } finally {
-        clearTimeout(timer);
         release();
       }
     }
@@ -529,7 +603,6 @@ export async function acquireUncachedBytes(
     emit({ status: 'verified', sha256: asset.sha256, bytes: asset.size });
     return out;
   } finally {
-    clearTimeout(timer);
     signal?.removeEventListener('abort', relay);
   }
 }
@@ -538,6 +611,7 @@ function verifiedStream(
   body: ReadableStream<Uint8Array> | null,
   asset: Asset,
   signal: AbortSignal,
+  onFailure?: (reason: unknown) => void,
 ): ReadableStream<Uint8Array> {
   if (!body) throw new Error('Asset response has no readable body');
   const reader = body.getReader();
@@ -553,6 +627,7 @@ function verifiedStream(
     if (terminal) return;
     const reason = signal.reason || aborted();
     cleanup();
+    onFailure?.(reason);
     streamController.error(reason);
     void reader.cancel(reason).catch(() => {});
   };
@@ -581,6 +656,7 @@ function verifiedStream(
       } catch (error) {
         if (!terminal) {
           cleanup();
+          onFailure?.(error);
           controller.error(error);
         }
         void reader.cancel(error).catch(() => {});
@@ -707,8 +783,6 @@ interface Pending {
   readonly owners: Map<GrantOwnerId, { readonly grant: AcquisitionGrant; count: number }>;
   readonly transfer: Transfer;
   promise: Promise<void>;
-  /** Restarts the silence deadline; set while the work runs. */
-  alive?: (() => void) | undefined;
 }
 
 /** Store contract: get(hash) -> fresh Response|undefined; put(hash, Response)
@@ -766,7 +840,6 @@ export function createModelCache({
   const stored = new Set<string>();
   const emit = (event: CacheEvent) => {
     if (event.status === 'saved' || event.status === 'retained') stored.add(event.sha256);
-    if (event.status === 'progress') pending.get(event.sha256)?.alive?.(); // the deadline counts silence, not size
     try {
       report(event);
     } catch {
@@ -774,7 +847,7 @@ export function createModelCache({
     }
   };
   const records = createRecordAccess(store);
-  async function fetchBody(part: Asset, signal: AbortSignal) {
+  const fetchBody = networkDeadline(async (part, signal) => {
     const response = await fetcher(part.url, {
       signal,
       credentials: 'omit',
@@ -785,7 +858,7 @@ export function createModelCache({
     if (!response.ok || response.status !== 200 || response.type === 'opaque')
       throw downloadRefused(response);
     return response.body;
-  }
+  }, timeoutMs);
   // ---- Shard store (OPFS) -------------------------------------------------------------------
   // Each pinned unit (a manifest chunk, or a small unchunked asset) is its own file, and every
   // read digests every unit with the platform SHA-256 against the manifest's pin. There is no
@@ -962,7 +1035,7 @@ export function createModelCache({
           if (again && (await platformHex(again)) === unit.sha256) return again;
           await shards!.remove(unit.sha256);
           // The refetch is under the grant that acquired the asset, inside the shared budget.
-          const repair = AbortSignal.timeout(timeoutMs);
+          const repair = new AbortController().signal;
           return inSlot(transfer, repair, async () => {
             const fresh = await chunk(unit, repair, transfer);
             await commitUnit(asset, unit, fresh).catch(() => {}); // the verified bytes are served even if saving fails
@@ -1043,18 +1116,6 @@ export function createModelCache({
     } else emit({ status: 'missing', sha256: asset.sha256 }); // Missing alone does not prove eviction.
     check(signal);
     emit({ status: 'downloading', sha256: asset.sha256 });
-    async function download(part: Asset, from: AbortSignal = signal) {
-      const response = await fetcher(part.url, {
-        signal: from,
-        credentials: 'omit',
-        cache: 'default',
-        mode: 'cors',
-      });
-      check(from);
-      if (!response.ok || response.status !== 200 || response.type === 'opaque')
-        throw downloadRefused(response);
-      return response.body;
-    }
     /** Slots held by this asset's chunks still in memory; all are let go when the asset settles. */
     const held = new Set<() => void>();
     const letGo = (release: () => void) => {
@@ -1117,7 +1178,6 @@ export function createModelCache({
             const piece = next.bytes;
             check(signal);
             fill();
-            pending.get(asset.sha256)?.alive?.();
             // Network-sized views, not the whole 16 MiB buffer: Firefox failed the first read-ahead build with a
             // NetworkError (caught by the pre-deploy engine matrix), and the progress bar would move in 16 MiB
             // steps. Views share the buffer, so this copies nothing.
@@ -1158,7 +1218,7 @@ export function createModelCache({
                 slot = slots ? await slots.take(transfer.priority(), signal) : () => {};
                 held.add(slot);
                 charge = chargeGrant(transfer.payer(), part.sha256, part.size);
-                reader = verifiedStream(await download(part), part, signal).getReader();
+                reader = verifiedStream(await fetchBody(part, signal), part, signal).getReader();
               }
               const result = await reader.read();
               if (result.done) {
@@ -1189,7 +1249,7 @@ export function createModelCache({
       let charge: ReturnType<typeof chargeGrant> | undefined;
       try {
         charge = chargeGrant(transfer.payer(), asset.sha256, asset.size);
-        body = charged(await download(asset), charge);
+        body = charged(await fetchBody(asset, signal), charge);
       } catch (error) {
         charge?.settle();
         letGo(slot); // a refused grant gives its slot back at once
@@ -1198,24 +1258,34 @@ export function createModelCache({
       const settle = charge;
       settlePlain = () => settle.settle();
     }
-    const verified = new Response(verifiedStream(counted(body!, asset, emit), asset, signal), {
-      headers: {
-        'Content-Type': 'application/octet-stream',
-        'Content-Length': String(asset.size),
-        'X-CheckFace-SHA256': asset.sha256,
+    let streamFailure: unknown;
+    const verified = new Response(
+      verifiedStream(counted(body!, asset, emit), asset, signal, (error) => {
+        streamFailure = error;
+      }),
+      {
+        headers: {
+          'Content-Type': 'application/octet-stream',
+          'Content-Length': String(asset.size),
+          'X-CheckFace-SHA256': asset.sha256,
+        },
       },
-    });
+    );
     try {
       await store.put(asset.sha256, verified);
     } catch (error) {
+      // Native Cache.put may replace a rejected body's reason with a generic NetworkError.
+      // Preserve the verified stream's actual failure; storage-only refusals retain their own error.
+      const failure = streamFailure ?? error;
       // A backend can reject before consuming (e.g. quota); cancel the unconsumed network stream.
-      if (verified.body && !verified.body.locked) await verified.body.cancel(error).catch(() => {});
-      const quota = (error as Err | null)?.name === 'QuotaExceededError';
+      if (verified.body && !verified.body.locked)
+        await verified.body.cancel(failure).catch(() => {});
+      const quota = (failure as Err | null)?.name === 'QuotaExceededError';
       emit({
         status: quota ? 'quota-exceeded' : 'save-failed',
         sha256: asset.sha256,
       });
-      throw quota ? new CacheQuotaExceeded(asset.size, error) : error;
+      throw quota ? new CacheQuotaExceeded(asset.size, failure) : failure;
     } finally {
       for (const release of held) letGo(release); // deleting the visited entry is safe
       settlePlain?.();
@@ -1348,7 +1418,6 @@ export function createModelCache({
           }
           return best;
         },
-        alive: () => current.alive?.(),
       };
       const current: Pending = {
         asset,
@@ -1359,21 +1428,7 @@ export function createModelCache({
         promise: Promise.resolve(),
       };
       task = current;
-      // The deadline is for an asset that has stopped arriving, not one that is big on a slow link: it starts when
-      // the work does (not while queued) and every progress tick restarts it. A wall-clock 300 s made the 158 MB
-      // WebGPU prefix unobtainable below 4.2 Mbit/s and the 124 MB CPU model below 3.3 Mbit/s (fm-vf9l).
-      let timer: ReturnType<typeof setTimeout> | undefined;
-      current.alive = () => {
-        clearTimeout(timer);
-        timer = setTimeout(
-          () => controller.abort(new DOMException('Asset acquisition timed out', 'TimeoutError')),
-          timeoutMs,
-        );
-      };
-      const run = () => {
-        current.alive?.();
-        return ensure(asset, controller.signal, transfer);
-      };
+      const run = () => ensure(asset, controller.signal, transfer);
       current.promise = schedule(
         () =>
           locks?.request
@@ -1385,8 +1440,6 @@ export function createModelCache({
             : run(),
         controller.signal,
       ).finally(() => {
-        clearTimeout(timer);
-        current.alive = undefined;
         if (pending.get(asset.sha256) === current) pending.delete(asset.sha256);
       });
       pending.set(asset.sha256, current);
@@ -1402,7 +1455,6 @@ export function createModelCache({
     const own: Transfer = {
       payer: () => grant!,
       priority: () => grant!.assets.find((a) => a.sha256 === asset.sha256)!.priority,
-      alive: () => {},
     };
     return new Promise<AssetHandle>((resolve, reject) => {
       let settled = false;
