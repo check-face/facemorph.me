@@ -32,6 +32,7 @@ import {selectPhoto} from './photo-selection.mjs';
 import {refusal} from './photo/refusal.mjs';
 import {persistenceAction} from './storage-request.mjs';
 import {routeAssets,photoAssets,measure} from './model-inventory.mjs';
+import {appGrants} from './browser/bridge-grant.mjs';
 import {previewPhoto,cropPhoto} from './photo/crop.mjs';
 import {confirmCrop} from './photo/confirmed-crop.mjs';
 import {getPublicCatalogue,galleryTextUrl,publicNameLatent} from './public-previews.mjs';
@@ -292,12 +293,32 @@ const wanted=new Set(),downloadListeners=new Set();
 let downloading=null;
 function announceDownloads(){const snapshot={...downloads};for(const callback of downloadListeners){try{callback(snapshot);}catch{}}}
 export function subscribeDownloads(callback){downloadListeners.add(callback);callback({...downloads});return ()=>downloadListeners.delete(callback);}
+// The streamed encoder's descriptor (85 KB, pinned by the manifest's digest) names every shard with its size. It is
+// read as inspection, like the runtime manifest, so the visitor is shown the encoder's real size and the approval
+// covers exactly those files; the manifest's single-file encoder size understated it by about 21 MB (fm-qrfz).
+let descriptorRead=null,descriptorFor=null;
+async function inspectionCache(planned,cache){
+ const stream=planned.manifest.encoderStream;
+ if(!stream?.url||!stream.sha256)return cache;
+ const peek=async asset=>{
+  const held=await cache.peek(asset);if(held||asset.sha256!==stream.sha256)return held;
+  if(descriptorFor!==stream.sha256){descriptorFor=stream.sha256;descriptorRead=(async()=>{
+   const response=await fetch(stream.url,{cache:'no-cache'});if(!response.ok)throw Error('The encoder description is unavailable.');
+   const bytes=new Uint8Array(await response.arrayBuffer());
+   const hash=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',bytes)),x=>x.toString(16).padStart(2,'0')).join('');
+   if(bytes.byteLength!==stream.size||hash!==stream.sha256)throw Error('The encoder description does not match its pin.');
+   return new TextDecoder().decode(bytes);
+  })();}
+  try{const text=await descriptorRead;return {text:async()=>text};}catch{descriptorFor=null;return null;}
+ };
+ return {has:asset=>cache.has(asset),peek};
+}
 async function refreshInventory(){
  try{
   const service=await engine();if(!service.plan)return;
   const planned=await service.plan();if(!planned)return;
   const {createBrowserModelCache}=await import('./Assets/model-cache.mjs');
-  const cache=await createBrowserModelCache({readOnly:true});
+  const cache=await inspectionCache(planned,await createBrowserModelCache({readOnly:true}));
   const route=await measure(routeAssets(planned.manifest,planned.route,planned.engine),cache);
   const photoList=await photoAssets(planned.manifest,cache);
   const photo=await measure(photoList.assets,cache,photoList.extraBytes||0);
@@ -306,13 +327,26 @@ async function refreshInventory(){
   announceDownloads();
  }catch(error){console.warn('Model inventory unavailable:',error?.message||error);}
 }
+// The scopes the person approved this session (fm-qrfz). Workers acquire only under the grants built from them, plus
+// what this device already holds verified; anything else is refused before a request is made.
+const approvedScopes=new Set();
+function approve(scope){approvedScopes.add('route');if(scope==='photo')approvedScopes.add('photo');}
+async function pushGrants(){
+ try{
+  const service=await engine();if(!service.plan||!service.setGrants)return;
+  const planned=await service.plan();if(!planned)return;
+  const {createBrowserModelCache}=await import('./Assets/model-cache.mjs');
+  const cache=await inspectionCache(planned,await createBrowserModelCache({readOnly:true}));
+  service.setGrants(await appGrants({manifest:planned.manifest,manifestSha256:runtimeIdentity||'',route:planned.route,engine:planned.engine,approved:approvedScopes,cache}));
+ }catch(error){console.warn('Model grants unavailable:',error?.message||error);}
+}
 export function downloadModels(includePhoto){
- keepModelsOnDevice();
+ keepModelsOnDevice();approve(includePhoto?'photo':'route');
  wanted.add('route');if(includePhoto)wanted.add('photo');
  downloads.phase='downloading';announceDownloads();
  void pumpDownloads();
 }
-export function consentToDownload(scope){keepModelsOnDevice();return scope;}
+export function consentToDownload(scope){keepModelsOnDevice();approve(scope);void pushGrants();return scope;}
 async function pumpDownloads(){
  if(downloading||active)return;
  // A face made while the download was paused fetches what it needs itself, so re-measure first
@@ -324,7 +358,7 @@ async function pumpDownloads(){
   if(scope==='route'?downloads.routeReady:downloads.photoReady){wanted.delete(scope);continue;}
   downloading=scope;Object.assign(downloads,{phase:'downloading',scope,loaded:0,total:scope==='route'?downloads.routeBytes:downloads.photoBytes});announceDownloads();
   let result={started:false};const began=performance.now(),planned=downloads.total;
-  try{result=await (await engine()).prefetch(scope,{explicit:true});}catch{}
+  try{await pushGrants();result=await (await engine()).prefetch(scope,{explicit:true});}catch{}
   downloading=null;
   analytics.modelsDownloaded({scope,outcome:result.started&&result.acquired===result.assets?'completed':active?'interrupted':'failed',sizeMb:planned/1048576,durationMs:performance.now()-began});
   if(active){downloads.phase='waiting';announceDownloads();return;}
@@ -343,7 +377,8 @@ export async function execute(request){
  jobCounts.facesDone=0;jobCounts.facesTotal=request.action==='face'?1:request.inputs.length;jobCounts.framesDone=0;jobCounts.framesTotal=0;jobCounts.videoFramesDone=0;jobCounts.videoFramesTotal=0;
  analytics.jobStarted({action:request.action,provider:request.provider||'auto',warm:downloads.routeReady,target:request.target||'morph'});
  try{
-  if(!exportOnly)await admission(request.provider,request.routeSnapshot);
+  // Grants follow the route admission just chose, so a job acquires only for the route it runs (fm-qrfz).
+  if(!exportOnly){await admission(request.provider,request.routeSnapshot);await pushGrants();}
   // Morph is admitted on its own (fm-lt2p): faces being admitted says nothing about the video codec.
   if(request.action==='morph'&&!exportOnly){const decision=await (await engine()).admission?.('morph',request.provider);if(decision?.status==='refused')throw new AdmissionRefused(decision);}
   // Per-face generate (U-03): work only the one face asked for, so no other face emits a
@@ -479,7 +514,7 @@ export async function importProject(request){
   jobCounts.facesTotal=imported.morph.controls.length;
   if(imported.modelSha256!==manifest.modelSourceSha256||imported.noiseSha256!==manifest.noiseSha256)throw Error('This project needs a different model bundle. Its saved file has not been changed.');
   if(imported.morph.controls.some(x=>x.latent.space!=='w-plus'))throw Error('This generation bundle requires a W+ project.');
-  await admission(request.provider||'auto',request.routeSnapshot);const next=new Map();
+  await admission(request.provider||'auto',request.routeSnapshot);await pushGrants();const next=new Map();
   for(const control of imported.morph.controls){checked();const result=await service.synthesize({...control.latent,shape:[1,...W_SHAPE],values:Float32Array.from(control.latent.values)},{signal:active.signal});next.set(control.visitId,{...result,label:'Project face'});}
   checked();await commit(next,imported,true);diagnostics.finish('completed');analytics.exported({kind:'project',method:'open',outcome:'completed'});return snapshot('Project opened.',true);
  }catch(error){diagnostics.finish(error?.name==='AbortError'?'cancelled':'failed',error,{stage:lastStage});analytics.exported({kind:'project',method:'open',outcome:error?.name==='AbortError'?'cancelled':'failed'});throw error;}
@@ -589,8 +624,8 @@ export function cancelPhotoRun(){closePhotoRun('cancelled');}
 // slot with its own Cancel, Retry and Remove and tab-only pixels. face.batch renders tiles over these and never keeps
 // its own slots, attempt IDs or pixel references. Results are W+ latents; slot events carry slot, attempt and batch
 // revision.
-export async function encodeCropBatch(files,options={}){return (await engine()).encodeConfirmedCrops(files,options);}
-export async function retryCropSlots(slotIds,options={}){return (await engine()).retryCropSlots(slotIds,options);}
+export async function encodeCropBatch(files,options={}){await pushGrants();return (await engine()).encodeConfirmedCrops(files,options);}
+export async function retryCropSlots(slotIds,options={}){await pushGrants();return (await engine()).retryCropSlots(slotIds,options);}
 export async function cancelCropSlot(slotId){return (await engine()).cancelCropSlot(slotId);}
 export async function removeCropSlot(slotId){return (await engine()).removeCropSlot(slotId);}
 export async function disposeCropBatch(batchRevision){return (await engine()).disposeCropBatch(batchRevision);}

@@ -52,6 +52,7 @@ function qualificationWorker(onMessage){
  let state='cold';
  return {postMessage(message){const respond=result=>queueMicrotask(()=>this.onmessage?.({data:{id:message.id,type:'complete',result}}));
   onMessage(message);
+  if(message.type==='grants')return; // fm-qrfz: a grant update has no reply
   if(message.type==='initialize')return respond({provider:message.provider});
   if(message.type==='qualify'&&message.resume){state='warm';return respond({checks:[{name:'c0',passed:true}],provider:'wasm',deviceValidated:true,resumed:true});}
   if(message.type==='qualify')return respond(state==='cold'?{checks:[{name:'c0',passed:true}],provider:'wasm',deviceValidated:true,partial:true}:{checks:[{name:'c0',passed:true}],provider:'wasm',deviceValidated:true,cached:true});
@@ -198,4 +199,22 @@ test('a morph longer than the stall window survives a preempted background canar
   assert.deepEqual(delivered,[0,1,2,3,4,5,6,7]);assert.equal(result.frames,8);
   await assert.rejects(morph({frames:8,gapMs:60,silent:true}),/stopped responding/,'a worker that says nothing for the stall window is still stopped');
  }finally{globalThis.indexedDB=oldIDB;}
+});
+// fm-qrfz: workers acquire under the app's grants. They travel with initialize and reach a live worker when an
+// approval changes them; a runtime given none sends none, and the worker's manager then refuses what it lacks.
+test('grants travel with initialize and reach a live worker when an approval changes them',async()=>{
+ globalThis.sessionStorage=fakeStorage();
+ const oldIDB=globalThis.indexedDB;globalThis.indexedDB=indexedDbFixture().api;
+ const seen=[];
+ const worker=qualificationWorker(message=>seen.push({type:message.type,grants:message.grants}));
+ const runtime=createBrowserRuntime({manifest:testManifest(),manifestSha256:'0'.repeat(64),preferredRoute:'cpu',workerFactory:()=>worker});
+ try{
+  const first={approved:null,local:{assets:[{sha256:'a'.repeat(64),bytes:1,priority:'foreground-required'}],remainingBytes:0,owners:['face:candidate-bridge']}};
+  runtime.setGrants(first);
+  await runtime.generate({mode:'seed',value:'42'});
+  assert.deepEqual(seen.find(m=>m.type==='initialize').grants,first,'the worker starts with the current grants');
+  const approved={...first,approved:{assets:[],remainingBytes:10,owners:['face:candidate-bridge']}};
+  const before=seen.length;runtime.setGrants(approved);
+  assert.deepEqual(seen.slice(before),[{type:'grants',grants:approved}],'an approval reaches the live worker at once');
+ }finally{runtime.dispose();globalThis.indexedDB=oldIDB;}
 });

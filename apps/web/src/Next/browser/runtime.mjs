@@ -81,7 +81,9 @@ export function createBrowserRuntime({manifest: suppliedManifest=/** @type {unkn
  async function start(progress){if(worker)return;await config();worker=workerFactory();worker.onmessage=({data})=>{const task=pending.get(data.id);if(!task)return;alive();if(data.type==='frame'){
  if(data.rgba){const owner=worker;Promise.resolve().then(()=>task.onFrame?.(data.index,data.blob,data.rgba)).then(()=>owner.postMessage({id:data.id,type:'raw-frame-ack',index:data.index})).catch(error=>stop(error));}
  else task.onFrame?.(data.index,data.blob);return;
-}if(data.type==='progress'){if(data.stage==='synthesis-complete'){synthesisRuns++;if(synthesisRuns>1&&['generate','synthesize'].includes(task.operation)&&Number.isFinite(data.elapsedMs)&&data.elapsedMs>0)task.synthesisMs=data.elapsedMs;}emit(data,task.progress);return;}clearTimeout(task.timer);pending.delete(data.id);unmark();if(data.type==='error'){if(task.operation==='encode-aligned'){encoderValidatedSha256=undefined;forgetEncoder();}validated=false;failRoute(route);const error=Object.assign(Error(data.error.message),{name:data.error.name,failedOperation:task.operation,correctnessFailure:data.error.correctnessFailure===true});stop(error);task.reject(error);}else{if(task.synthesisMs!==undefined)remember(route,task.synthesisMs);task.resolve(data.result);}};worker.onerror=event=>{
+}if(data.type==='progress'){if(data.stage==='synthesis-complete'){synthesisRuns++;if(synthesisRuns>1&&['generate','synthesize'].includes(task.operation)&&Number.isFinite(data.elapsedMs)&&data.elapsedMs>0)task.synthesisMs=data.elapsedMs;}emit(data,task.progress);return;}clearTimeout(task.timer);pending.delete(data.id);unmark();if(data.type==='error'){const refused=data.error.name==='GrantRefused';if(task.operation==='encode-aligned'&&!refused){encoderValidatedSha256=undefined;forgetEncoder();}
+ // A file the person has not approved is a decision to ask for, not a broken route or encoder (fm-qrfz).
+ if(!refused){validated=false;failRoute(route);}const error=Object.assign(Error(data.error.message),{name:data.error.name,failedOperation:task.operation,correctnessFailure:data.error.correctnessFailure===true});stop(error);task.reject(error);}else{if(task.synthesisMs!==undefined)remember(route,task.synthesisMs);task.resolve(data.result);}};worker.onerror=event=>{
   // A worker that dies at startup is not a verdict on a route: the operator's phone burned
   // webgpu, cpu and webgl in 257 ms — 154, 203 and 251 ms apart — which is far too fast for a
   // canary, because a canary requires a synthesis. Every route was blamed for one engine that
@@ -95,13 +97,17 @@ export function createBrowserRuntime({manifest: suppliedManifest=/** @type {unkn
   const error=Object.assign(Error('The local generation engine stopped.'+(detail?' ('+detail+')':'')),
    {engineStopped:true,workerDetail:detail||undefined});
   stop(error);
- };if(route==='webgpu')await probeGpu();engine=gpuEngine();await send('initialize',{manifest,provider:route==='webgpu'?'webgpu':'wasm',gpuEngine:engine,manifestSha256:manifestHash,fullQualify:globalThis.__FACEMORPH_FULL_QUALIFY__===true,hostForcedQualify:globalThis.__FACEMORPH_FULL_QUALIFY__!==undefined,webdriver:globalThis.navigator?.webdriver===true,forceCanaryFail:globalThis.__FACEMORPH_FORCE_CANARY_FAIL__===true},progress);}
+ };if(route==='webgpu')await probeGpu();engine=gpuEngine();await send('initialize',{manifest,grants,provider:route==='webgpu'?'webgpu':'wasm',gpuEngine:engine,manifestSha256:manifestHash,fullQualify:globalThis.__FACEMORPH_FULL_QUALIFY__===true,hostForcedQualify:globalThis.__FACEMORPH_FULL_QUALIFY__!==undefined,webdriver:globalThis.navigator?.webdriver===true,forceCanaryFail:globalThis.__FACEMORPH_FORCE_CANARY_FAIL__===true},progress);}
  // Acquisition warm-up. The first face on a cold device waits on roughly 200 MB, and none of
  // those bytes depend on which face is asked for, so they are fetched while the visitor is still
  // reading the page. It runs in a worker of its own: the inference worker's queue is strictly
  // ordered, so warming through it would put a real Generate behind the whole download. Any real
  // operation terminates this worker, and every asset it had already committed stays cached.
  let prefetchWorker=null,prefetchCancel=null;
+ // What workers may acquire (fm-qrfz): the app's grants, posted with every initialize and to live workers when an
+ // approval changes them. Without any, a worker acquires nothing it does not already hold.
+ let grants=null;
+ function setGrants(next){grants=next??null;for(const w of [worker,prefetchWorker])try{w?.postMessage({id:0,type:'grants',grants});}catch{}}
  /**
   * Whether this device can keep the photo encoder resident instead of throwing the whole worker
   * away around every photo.
@@ -389,7 +395,7 @@ export function createBrowserRuntime({manifest: suppliedManifest=/** @type {unkn
    catch(error){if(signal.aborted)throw error;emit({stage:'original-cache-invalid'},progress);}
   }
   await beforeAdmission();if(!validated)await admit(progress,signal);else announce(progress);if(signal.aborted)throw signal.reason;
-  let result;try{result=await produce();}catch(error){if(signal.aborted)throw signal.reason;if(fallbackScope==='none'||route==='cpu'||preferredRoute!=='auto'||!['generate','synthesize'].includes(error.failedOperation))throw error;failRoute(route);noteGpuFailure(error);stop();if(chooseRoute()==='cpu')emit({stage:'fallback-cpu'},progress);await admit(progress,signal);result=await produce();}
+  let result;try{result=await produce();}catch(error){if(signal.aborted)throw signal.reason;if(error?.name==='GrantRefused'||fallbackScope==='none'||route==='cpu'||preferredRoute!=='auto'||!['generate','synthesize'].includes(error.failedOperation))throw error;failRoute(route);noteGpuFailure(error);stop();if(chooseRoute()==='cpu')emit({stage:'fallback-cpu'},progress);await admit(progress,signal);result=await produce();}
   if(signal.aborted)throw signal.reason;
   const rgba=result.rgba;delete result.rgba;
   const value={...result,cacheKey:key,generationKind:keyData.kind,generationSha256,latentSha256:await digest(result.values),latent:{space:result.space,shape:[...W_SHAPE],values:result.values},width:SIDE,height:SIDE,cached:false,provenance:{bundleVersion:manifest.bundleVersion,manifestSha256:manifestHash,modelSha256:manifest.modelSourceSha256,noiseSha256:manifest.noiseSha256,provider:route==='webgpu'?'webgpu':'wasm',mappingProvider:keyData.kind==='seed'?'wasm':null,route,truncationPsi:keyData.kind==='seed'?.7:null,truncationCutoff:keyData.kind==='seed'?8:null,createdAt:new Date().toISOString()}};
@@ -473,7 +479,7 @@ export function createBrowserRuntime({manifest: suppliedManifest=/** @type {unkn
      if(data.type==='error')reject(Error(data.error.message));
      else if(data.id===2)resolve(data.result);
     };
-    own.postMessage({id:1,type:'initialize',manifest,provider:target==='webgpu'?'webgpu':'wasm',gpuEngine:gpuEngine(target),manifestSha256:manifestHash});
+    own.postMessage({id:1,type:'initialize',manifest,grants,provider:target==='webgpu'?'webgpu':'wasm',gpuEngine:gpuEngine(target),manifestSha256:manifestHash});
     own.postMessage({id:2,type:'prefetch',scope});
    });
    // Recorded, never spoken: a warm cache changes nothing the visitor can act on, and the
@@ -512,6 +518,7 @@ export function createBrowserRuntime({manifest: suppliedManifest=/** @type {unkn
   return {...saved,cacheKey:key,generationKind:keyData.kind,cached:true};
  },
  prefetch,
+ setGrants,
  plan,
  /** The policy's answer for one operation on this browser, with its typed event (fm-lt2p); fetches no model. */
  admission:(operation,requested=preferredRoute)=>admissionFor(operation,requested).then(r=>r.decision),
@@ -538,7 +545,7 @@ export function createBrowserRuntime({manifest: suppliedManifest=/** @type {unkn
   const produce=async()=>{await start(progress);const offset=delivered;
    await send('synthesize-frames',{frames:list.slice(offset),raw:options.raw===true},progress,stallMs,(index,blob,rgba)=>{const at=offset+index;if(at!==delivered||signal.aborted)return;delivered++;emit({stage:'transient-frame'},progress);return options.onFrame?.(at,{blob,rgba,width:SIDE,height:SIDE,values:list[at],space:'w-plus',shape:[1,...W_SHAPE]});});};
   try{await produce();}
-  catch(error){if(signal.aborted)throw signal.reason;if(fallbackScope==='none'||route==='cpu'||preferredRoute!=='auto'||error.failedOperation!=='synthesize-frames')throw error;failRoute(route);noteGpuFailure(error);stop();if(chooseRoute()==='cpu')emit({stage:'fallback-cpu'},progress);await admit(progress,signal);await produce();}
+  catch(error){if(signal.aborted)throw signal.reason;if(error?.name==='GrantRefused'||fallbackScope==='none'||route==='cpu'||preferredRoute!=='auto'||error.failedOperation!=='synthesize-frames')throw error;failRoute(route);noteGpuFailure(error);stop();if(chooseRoute()==='cpu')emit({stage:'fallback-cpu'},progress);await admit(progress,signal);await produce();}
   if(signal.aborted)throw signal.reason;
   return {frames:delivered};
  },options)),

@@ -2,9 +2,11 @@ import { collectAssets } from './browser/acquisition-budget.mjs';
 
 // On desktop the WebGPU route runs the direct engine, which reads the block-stream coefficients
 // (manifest.webgl) rather than the ORT split graph; size what the device will actually download.
+// The device correctness canaries and the sample indices are fetched before the first face too (fm-qrfz): they are
+// part of what a face needs, so they are counted in the size the visitor is shown and covered by its approval.
 export function routeAssets(manifest, route, engine = 'ort') {
   const bundle = route === 'webgpu' ? (engine === 'direct' ? manifest.webgl : manifest.webgpu) : route === 'webgl' ? manifest.webgl : manifest.synthesis;
-  return unique(collectAssets([bundle, manifest.runtime, manifest.mapping, manifest.average, manifest.noise]));
+  return unique(collectAssets([bundle, manifest.runtime, manifest.mapping, manifest.average, manifest.noise, manifest.canaries, manifest.sampleIndices]));
 }
 
 export async function photoAssets(manifest, cache) {
