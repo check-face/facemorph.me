@@ -1284,10 +1284,10 @@
       "bytes": 14707,
       "class": "src-next",
       "ported": {
-        "sha256": "a9517533ef7f3f0bc59df181041d3acadbe9efb59aec14f84bc4ba920d7527a4",
-        "bytes": 15296,
-        "bead": "fm-id4c",
-        "reason": "Native retirement: comment no longer mentions the desktop app (fm-be10); the changeover statistics visit is noted behind the stats sink's own gate (both production hosts) and job starts reach the sink (fm-5yqq); no fixed face count: geometry controls bounded by frames, analytics faces unclamped (c12b4f9)"
+        "sha256": "9049eb42b29af23310b9f3ceb189a2d5b1789b855427febac9c630abf3ba6b56",
+        "bytes": 15787,
+        "bead": "fm-szbf",
+        "reason": "Native retirement: comment no longer mentions the desktop app (fm-be10); the changeover statistics visit is noted behind the stats sink's own gate (both production hosts) and job starts reach the sink (fm-5yqq); no fixed face count: geometry controls bounded by frames, analytics faces unclamped (c12b4f9); test-build-only analytics automation opt-in (c9fcfd8)"
       }
     },
     {
