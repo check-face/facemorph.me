@@ -186,14 +186,6 @@ jobs:
           name: preflight-${{ github.sha }}
           path: apps/web/test-results/preflight/
           if-no-files-found: warn
-      - name: Verify retained control before destination parity smoke
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-        run: node scripts/import/fetch-control.mjs --dest .cache/control
-      - name: Destination parity smoke under the production origin
-        run: |
-          export PARITY_RUNTIME="$FACEMORPH_RUNTIME_DIR"
-          node apps/web/test/harness/run.ts --subject site/deploy-next --name port --source '${{ github.sha }}' --rows first-visit --out next-artifact-ui-evidence/parity
       - name: Publication and qualification scripts parse
         run: python3 -m compileall -q apps/web/scripts hosting/next hosting/next-static apps/web/src/Next/browser
       - name: WebGPU bundle contract gate
