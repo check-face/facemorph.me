@@ -1525,10 +1525,10 @@
       "bytes": 37783,
       "class": "src-next",
       "ported": {
-        "sha256": "6a9b1c34531aba72297c905d1e8582db760b996c740593bc561494e394fa11fa",
-        "bytes": 45124,
+        "sha256": "bdde574bcf01e0ae1410b2b99c6b17dd15280c5128fcc8eccac704d8963b5ce3",
+        "bytes": 45248,
         "bead": "fm-ioap",
-        "reason": "WebGL execution removed (fm-x6h5); per-operation admission through admission/route-admission.ts before any worker or model request, photo encoding admitted by capability instead of user-agent labels (fm-lt2p); route snapshot selects bounded fallback scope and forwards cancellation signal (fm-0y24); Save/Share hand over prepared files named by export identity; encoder figures from the export policy (6915a98); directSupported comes from the stylegan-js engine (routes.ts) with the direct engine itself; admits the runtime manifest pointer (runtime-manifest.mjs) before replacing the active runtime; a refused pointer leaves the next attempt free to fetch again; crop.fix: a confirmed crop goes to e4e directly (no detector after OK); detector outcomes are typed (faceDetection/code), not matched on text; crop limits come from the stylegan-js crop policy; compute.photo-descriptor: the worker encodes through the package's streamed encoder after acquiring every shard; dimensions come from the shipped descriptor; runtime options keep their supplied manifest type: three explicit =undefined defaults for the typecheck (ddcffa4)"
+        "reason": "WebGL execution removed (fm-x6h5); per-operation admission through admission/route-admission.ts before any worker or model request, photo encoding admitted by capability instead of user-agent labels (fm-lt2p); route snapshot selects bounded fallback scope and forwards cancellation signal (fm-0y24); Save/Share hand over prepared files named by export identity; encoder figures from the export policy (6915a98); directSupported comes from the stylegan-js engine (routes.ts) with the direct engine itself; admits the runtime manifest pointer (runtime-manifest.mjs) before replacing the active runtime; a refused pointer leaves the next attempt free to fetch again; crop.fix: a confirmed crop goes to e4e directly (no detector after OK); detector outcomes are typed (faceDetection/code), not matched on text; crop limits come from the stylegan-js crop policy; compute.photo-descriptor: the worker encodes through the package's streamed encoder after acquiring every shard; dimensions come from the shipped descriptor; runtime options keep their supplied manifest type: three explicit =undefined defaults for the typecheck (ddcffa4); createBrowserRuntime option types via JSDoc casts (b45f05f)"
       }
     },
     {
