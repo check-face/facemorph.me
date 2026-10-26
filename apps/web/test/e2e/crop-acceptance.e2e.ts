@@ -1064,21 +1064,33 @@ test(
           await p.operate(p.dialog.getByRole('button', { name: 'ADJUST CROP', exact: true }));
           const area = p.dialog.getByRole('application', { name: 'Crop area' });
           await area.waitFor();
-          // A touch drag on the crop square pans it.
+          // A touch drag on the crop square pans it. The drag comes to rest before the finger lifts (the event
+          // timestamps hold the end point for 300 ms): a release at speed starts a fling, and Chrome takes the next
+          // tap as "stop the fling" with no click, so Use Crop's tap was lost on a fast host.
           const box = (await area.boundingBox())!;
           const cdp = await p.context.newCDPSession(p.page);
           const at = (x: number, y: number) => [{ x, y }];
+          const t0 = Date.now() / 1000;
+          const end = at(box.x + box.width / 2 + 40, box.y + box.height / 2 + 30);
           await cdp.send('Input.dispatchTouchEvent', {
             type: 'touchStart',
             touchPoints: at(box.x + box.width / 2, box.y + box.height / 2),
+            timestamp: t0,
           });
           await cdp.send('Input.dispatchTouchEvent', {
             type: 'touchMove',
-            touchPoints: at(box.x + box.width / 2 + 40, box.y + box.height / 2 + 30),
+            touchPoints: end,
+            timestamp: t0 + 0.2,
+          });
+          await cdp.send('Input.dispatchTouchEvent', {
+            type: 'touchMove',
+            touchPoints: end,
+            timestamp: t0 + 0.5,
           });
           await cdp.send('Input.dispatchTouchEvent', {
             type: 'touchEnd',
             touchPoints: [],
+            timestamp: t0 + 0.5,
           });
           await p.shots('phone-adjust');
           await p.operate(p.dialog.getByRole('button', { name: 'Use Crop', exact: true }));
