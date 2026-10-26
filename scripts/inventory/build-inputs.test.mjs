@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+  testListFindings,
   acquiredFindings,
   artifactJob,
   deriveRuntime,
@@ -210,4 +211,21 @@ test('an acquired tree must hold exactly the rows, byte for byte', () => {
       'asset row missing from the acquired tree',
     ],
   );
+});
+
+test('test rows match the frozen next-site.yml list; a monorepo-added row needs its bead and reason', () => {
+  const tests = ['a.test.mjs', 'b.test.mjs'];
+  const frozen = tests.map((file) => ({ file, runs_on: 'closure' }));
+  const added = { file: 'c.test.mjs', runs_on: 'closure', added: { bead: 'fm-x', reason: 'new' } };
+  assert.deepEqual(testListFindings([...frozen, added], tests), []);
+  assert.deepEqual(testListFindings([...frozen, { ...added, added: { bead: 'fm-x' } }], tests), [
+    { test: 'c.test.mjs', problem: 'added without its bead and reason' },
+  ]);
+  assert.deepEqual(
+    testListFindings([...frozen, { file: 'c.test.mjs', runs_on: 'closure' }], tests),
+    [{ test: 'c.test.mjs', problem: 'node_test_files row not in next-site.yml' }],
+  );
+  assert.deepEqual(testListFindings(frozen.slice(1), tests), [
+    { test: 'a.test.mjs', problem: 'next-site.yml test without a node_test_files row' },
+  ]);
 });

@@ -69,6 +69,29 @@ test('each ledger violation fails with its kind', () => {
   );
 });
 
+test('restoring the snapshot over a base that lost it is a repair; rewriting an intact base still fails', () => {
+  const broken = snapshotText.replace('legacy-2', 'legacy-2b');
+  assert.deepEqual(ledger(`${snapshotText}${row('new-1')}\n`, `${broken}${row('new-1')}\n`), []);
+  assert.ok(kinds(ledger(`${broken}${row('new-1')}\n`, broken)).includes('snapshot-prefix'));
+  assert.ok(
+    kinds(ledger(`${snapshotText}${row('new-1b')}\n`, `${snapshotText}${row('new-1')}\n`)).includes(
+      'rewritten',
+    ),
+  );
+});
+
+test('a frozen imported log restored to its imported digest is not a rewrite; any other change is', () => {
+  const imported = Buffer.from('# Log\n\n## 2026-10-10 original heading\n');
+  const digest = createHash('sha256').update(imported).digest('hex');
+  const edited = Buffer.from('# Log\n\n## 2026-10-10 edited heading\n');
+  const restore = { path: 'l', head: imported, base: edited, frozen: true, imported: digest };
+  assert.deepEqual(checkLog(restore), []);
+  assert.deepEqual(kinds(checkLog({ ...restore, head: Buffer.from('# Log\n') })), [
+    'log-rewritten',
+  ]);
+  assert.deepEqual(kinds(checkLog({ ...restore, imported: null })), ['log-rewritten']);
+});
+
 test('round logs only grow at EOF, with timezone-aware timestamps and unique IDs', () => {
   const entry = (ts, id) => `### ${ts} — ${id}\n\n- Phase / status: observed / x\n`;
   const base = Buffer.from(`# Log\n\n${entry('2026-10-24T09:00:00+10:00', 'e1')}`);

@@ -1,6 +1,6 @@
 # Paired built-UI screen — 10 October 2026
 
-[Successful campaign 38036307932](https://github.com/facemorph-me/facemorph.me/actions/runs/38036307932) compares exact qualified `e0b2192` and `bce3204` artifacts. [Raw report](ci-built-ui.json) · [descriptive statistics](built-ui-analysis.json) · [analysis recipe](analyze-built-ui.py).
+[Successful campaign 38036307932](https://github.com/check-face/facemorph.me/actions/runs/38036307932) compares exact qualified `e0b2192` and `bce3204` artifacts. [Raw report](ci-built-ui.json) · [descriptive statistics](built-ui-analysis.json) · [analysis recipe](analyze-built-ui.py).
 
 Ubuntu 24.04 hosted CPU (processor model not recorded), headless Chrome 155 / Playwright 1.55, visible isolated persistent profiles reopened each visit; fixed discarded warmup per side, then ABBA ×3, six matched cases per side. Model bytes and photo assets are retained. Pinned local runtime mirror; this is not a network benchmark. Webdriver remains true; ordinary-user admission is explicitly emulated. Artifact receipts, source hashes, fixture hashes, input hashes, order and load are retained in the raw report.
 

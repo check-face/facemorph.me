@@ -144,6 +144,22 @@ export function rowFindings(rows, commands) {
 }
 
 // The frozen next-site.yml artifact job: its step names and its `node --test` file list.
+/**
+ * node_test_files rows against the frozen next-site.yml test list. A test the monorepo adds beside classic's
+ * carries `added: { bead, reason }` and is outside that list; one without both is a finding. Pure.
+ */
+export function testListFindings(rows, tests) {
+  const findings = [];
+  for (const t of rows.filter((t) => t.added && !(t.added.bead && t.added.reason)))
+    findings.push({ test: t.file, problem: 'added without its bead and reason' });
+  const listed = rows.filter((t) => !t.added).map((t) => t.file);
+  for (const t of tests.filter((t) => !listed.includes(t)))
+    findings.push({ test: t, problem: 'next-site.yml test without a node_test_files row' });
+  for (const t of listed.filter((t) => !tests.includes(t)))
+    findings.push({ test: t, problem: 'node_test_files row not in next-site.yml' });
+  return findings;
+}
+
 export function artifactJob(workflow) {
   const job = workflow.slice(workflow.indexOf('\n  artifact:'), workflow.indexOf('\n  qualify:'));
   const steps = [...job.matchAll(/^\s+- name: (.+)$/gm)].map((m) => m[1].trim());
@@ -256,11 +272,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   }
   findings.push(...rowFindings(inputs.runtime.assets, inputs.runtime.acquisition_commands));
   const job = artifactJob(blob(dir, commit, '.github/workflows/next-site.yml').toString('utf8'));
-  const listed = inputs.checks.node_test_files.map((t) => t.file);
-  for (const t of job.tests.filter((t) => !listed.includes(t)))
-    findings.push({ test: t, problem: 'next-site.yml test without a node_test_files row' });
-  for (const t of listed.filter((t) => !job.tests.includes(t)))
-    findings.push({ test: t, problem: 'node_test_files row not in next-site.yml' });
+  findings.push(...testListFindings(inputs.checks.node_test_files, job.tests));
   const steps = inputs.checks.next_site_artifact_job.map((s) => s.step);
   for (const s of job.steps.filter((s) => !steps.includes(s)))
     findings.push({ step: s, problem: 'next-site.yml artifact step without a row' });

@@ -154,7 +154,7 @@ test(
     const reused = await page.evaluate(() => window.preflight.checkDevice());
     clean(reused);
     assert.equal(reused.reused, true);
-    const skip = await page.evaluate(() => window.preflight.checkDevice({ skip: true }));
+    const skip = await page.evaluate(() => window.preflight.checkDevice({ declined: true }));
     clean(skip);
     assert.equal(skip.outcome, 'skip');
     assert.equal(skip.scratchPeakBytes, 0);

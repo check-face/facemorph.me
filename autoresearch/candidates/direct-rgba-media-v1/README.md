@@ -146,7 +146,7 @@ the raw report in Git; retire the automatic experimental trigger after completio
 
 ## Complete built-UI outcome
 
-[Run 38036307932](https://github.com/facemorph-me/facemorph.me/actions/runs/38036307932)
+[Run 38036307932](https://github.com/check-face/facemorph.me/actions/runs/38036307932)
 passed two warmups and all twelve measured visits. [Raw report](ci-built-ui.json),
 [analysis](built-ui-analysis.md) and [statistics](built-ui-analysis.json) retain
 exact e0/bce artifact identities and six matched cases per side. Recorded load

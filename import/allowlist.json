@@ -1059,10 +1059,10 @@
       "class": "temporary-root",
       "temporary": true,
       "ported": {
-        "sha256": "335c313d2ad175279d67fb102444e3b074fef88480a24bcea0ce5a5cad7c5509",
-        "bytes": 8924,
+        "sha256": "399cae1cb19ce7345ac3beba8510ab98b6b28c5047fed47ef3e152a87618ecca",
+        "bytes": 9751,
         "bead": "fm-aa8",
-        "reason": "the Processing mode select is found by accessible name through build/provider-probe.js (no .next-advanced), routes expected by artifact label from build/provider-routes.json, providerLocation recorded; Vite destination integration: shared production headers and native dynamic-import directives; compiled artifact identity. Operate Encode image through the tile mode menu and source dialog after chooser relocation; verify real pointer landing past closing dialog backdrops. Retain classic selector on the frozen control (fm-aa8, main40186175762)."
+        "reason": "the Processing mode select is found by accessible name through build/provider-probe.js (no .next-advanced), routes expected by artifact label from build/provider-routes.json, providerLocation recorded; Vite destination integration: shared production headers and native dynamic-import directives; compiled artifact identity. Operate Encode image through the tile mode menu and source dialog after chooser relocation; verify real pointer landing past closing dialog backdrops. Retain classic selector on the frozen control (fm-aa8, main40186175762).; Name the awaited compiled-UI condition on timeout (1394bb0); compiled-ui operates the card chooser, not the removed Encode source dialog (b8640b7) (fm-aa8)"
       }
     },
     {
@@ -1079,7 +1079,13 @@
       "sha256": "8f443b792d01d80a11fa0c0c462be4e2b3dda0b9b47bed87dc8016dab748c79f",
       "bytes": 3391,
       "class": "temporary-root",
-      "temporary": true
+      "temporary": true,
+      "ported": {
+        "sha256": "1e3b20dabb54160a59234b5ef6d4f9f74f9e4c1c730f3c633d01822e6d90117d",
+        "bytes": 2480,
+        "bead": "fm-vbj7",
+        "reason": "The bridge-source cases moved to behavioural tests through the operation service (src/operations/progress-copy.test.ts); only the counter cases remain (dea926c)"
+      }
     },
     {
       "source": "scripts/check-tests-listed.mjs",
@@ -1133,10 +1139,10 @@
       "class": "temporary-root",
       "temporary": true,
       "ported": {
-        "sha256": "5788e4b9b4e3898855b8e1a23deb78e712e21a098567b02ba8dd280a3f0d073b",
-        "bytes": 42086,
+        "sha256": "551ab0545fce4a0028cfeeade7b9fbaadc632e9c74e02b1520455ba517491d52",
+        "bytes": 42911,
         "bead": "fm-aa8",
-        "reason": "Preserve typed project-codec checks; adapt provider and tile controls for WebGL/filename retirement, retain crop in its mode menu, and use the existing CDP interceptor for worker evidence under no-referrer production headers. Schedule initial navigation and pump events within the unchanged document-load deadline, avoiding the shorter synchronous harness IPC timeout. Adapt the declared Encode source/confirmation/editor flow through real pointer hits while retaining CPU/e4e/crop/export/restore and network assertions (main40183901932 preflight repair)."
+        "reason": "Preserve typed project-codec checks; adapt provider and tile controls for WebGL/filename retirement, retain crop in its mode menu, and use the existing CDP interceptor for worker evidence under no-referrer production headers. Schedule initial navigation and pump events within the unchanged document-load deadline, avoiding the shorter synchronous harness IPC timeout. Adapt the declared Encode source/confirmation/editor flow through real pointer hits while retaining CPU/e4e/crop/export/restore and network assertions (main40183901932 preflight repair). (fm-aa8); real-ui-cpu operates the card chooser, not the removed Encode source dialog (b8640b7) (fm-aa8)"
       }
     },
     {
@@ -1239,10 +1245,10 @@
       "bytes": 37543,
       "class": "src-next",
       "ported": {
-        "sha256": "0fb314dc574f20e204849f0d75150b3624725aa26f4ebc158496de8ca98b9b57",
-        "bytes": 38052,
-        "bead": "fm-fr9s",
-        "reason": "acquire takes a grant since c228ae9: each carried case passes a grant for exactly its asset; mirrorOf became alternateOrigins and the runtimeMirror case asserts the app config modelAlternateOrigins; other assertions unchanged"
+        "sha256": "98dea9a10b4351df7cb936cbdb2ada84188ab39e45c722a753f2cab2cf768afc",
+        "bytes": 38581,
+        "bead": "fm-fy2.13",
+        "reason": "acquire takes a grant since c228ae9: each carried case passes a grant for exactly its asset; mirrorOf became alternateOrigins and the runtimeMirror case asserts the app config modelAlternateOrigins; other assertions unchanged (fm-fr9s); Read-ahead cancellation repaired and acquisition run in every engine (9b67ba3) (fm-fy2.13)"
       }
     },
     {
@@ -1437,10 +1443,10 @@
       "bytes": 33331,
       "class": "src-next",
       "ported": {
-        "sha256": "6a9bce1c47ae781234d444ac1ff7bcb3f01e50e547470ad90d9dbc441ccc4eff",
-        "bytes": 33231,
-        "bead": "fm-zz2i",
-        "reason": "acquires under the candidate bridge scope as a grant (bridge-grant.mjs), widened by the streamed encoder descriptor; passes modelAlternateOrigins(location.hostname); Vite destination integration: shared production headers and native dynamic-import directives; compiled artifact identity."
+        "sha256": "5087a0456f55ef9611548249e70278ab8d2eeca37e8a24bc9f24a542c37e7631",
+        "bytes": 33114,
+        "bead": "fm-fy2.13",
+        "reason": "acquires under the candidate bridge scope as a grant (bridge-grant.mjs), widened by the streamed encoder descriptor; passes modelAlternateOrigins(location.hostname); Vite destination integration: shared production headers and native dynamic-import directives; compiled artifact identity. (fm-zz2i); Continues verified execution through browser/model-source.mjs when durable model storage refuses (1bb7bd0) (fm-fy2.13)"
       }
     },
     {
@@ -1772,7 +1778,13 @@
       "destination": "apps/web/src/Next/photo-selection.mjs",
       "sha256": "cad8234d8549eebd61c8920bd8e10bab79e956b6b2b51fce82d7bbbcafadb7a0",
       "bytes": 5545,
-      "class": "src-next"
+      "class": "src-next",
+      "ported": {
+        "sha256": "119ea3be0414b95795cce39fb18a8545d82bfb77fe20837b46598b9ea2b4b092",
+        "bytes": 5778,
+        "bead": "fm-96if",
+        "reason": "Expected photo refusals are tagged PhotoRefusal and stay error-area-only; unexpected failures keep the report ask (c0a65fb, operator 26 October, repairing fm-25um c397da4); names focus moves into the fullscreen names grid instead of the old dialog input (07ac969, fm-96if)"
+      }
     },
     {
       "source": "src/Next/photo-selection.test.mjs",
@@ -1781,10 +1793,10 @@
       "bytes": 6149,
       "class": "src-next",
       "ported": {
-        "sha256": "9f135b506db7f952ff52bfe73d0c4edfaadd0c740242b2750eaee4fd0e3de33a",
-        "bytes": 6288,
-        "bead": "fm-j16n",
-        "reason": "Photo/crop source assertions now execute typed reducers; active check descriptions reference the retained artifact and typed codec."
+        "sha256": "ab58b1822454726116d70f2ab53ec0517d9d9f3a446c4afb9f2b9bc80e09d6a5",
+        "bytes": 6346,
+        "bead": "fm-25um",
+        "reason": "Photo/crop source assertions now execute typed reducers; active check descriptions reference the retained artifact and typed codec. (fm-j16n); Expected photo refusals are tagged PhotoRefusal and stay error-area-only; unexpected failures keep the report ask (c0a65fb, operator 26 October, repairing fm-25um c397da4)"
       }
     },
     {
@@ -1813,7 +1825,13 @@
       "destination": "apps/web/src/Next/photo/crop.mjs",
       "sha256": "7bfcd39a78f125e1504d845e2c8f9cf196db96782a38e459bd1de1a23d4a4052",
       "bytes": 8018,
-      "class": "src-next"
+      "class": "src-next",
+      "ported": {
+        "sha256": "688a0c57ad2eb0b2d6fa42c5a7bcdd86a3c5192d885e60db4255fc66ab993237",
+        "bytes": 8094,
+        "bead": "fm-25um",
+        "reason": "Expected photo refusals are tagged PhotoRefusal and stay error-area-only; unexpected failures keep the report ask (c0a65fb, operator 26 October, repairing fm-25um c397da4); refusals come from photo/refusal.mjs"
+      }
     },
     {
       "source": "src/Next/photo/image-header.mjs",
@@ -1842,10 +1860,10 @@
       "bytes": 54317,
       "class": "src-next",
       "ported": {
-        "sha256": "31d6897b0aaaa12ca4902dc952ec65a9e6d2860b43f7fc611dd969b8798e8932",
-        "bytes": 56249,
-        "bead": "fm-in6a",
-        "reason": "ProjectJson imported from project/bridge-result.ts (fm-stth, one line); Morph admitted on its own and refusals returned with reasonKey/text/helpAnchor (fm-lt2p); revision-owned operation cancellation, compute/file readiness and bounded route snapshots (fm-0y24); downloads subscription returns its disposer (fm-v80g); Preserve unchanged Morph endpoints and their face/file ownership; update the inherited URL expectation to match, verified by real operation-service CPU browser tests (fm-in6a)."
+        "sha256": "50b8109d8d6c36f4c6c8f14a131422c75aefc38cbec81f73705c9844df543276",
+        "bytes": 57857,
+        "bead": "fm-25um",
+        "reason": "ProjectJson imported from project/bridge-result.ts (fm-stth, one line); Morph admitted on its own and refusals returned with reasonKey/text/helpAnchor (fm-lt2p); revision-owned operation cancellation, compute/file readiness and bounded route snapshots (fm-0y24); downloads subscription returns its disposer (fm-v80g); Preserve unchanged Morph endpoints and their face/file ownership; update the inherited URL expectation to match, verified by real operation-service CPU browser tests (fm-in6a).; Issue link follows the org rename (9e39feb, fm-rur); a damaged saved image is one plain message with the parser reason as cause (cc8ea5e, fm-25um); weighted blend action as one W+ sum and one synthesis (3dd0238, fm-in6a); Expected photo refusals are tagged PhotoRefusal and stay error-area-only; unexpected failures keep the report ask (c0a65fb, operator 26 October, repairing fm-25um c397da4)"
       }
     },
     {
@@ -1855,10 +1873,10 @@
       "bytes": 23028,
       "class": "src-next",
       "ported": {
-        "sha256": "f5a219bab3e4ea8d809d1bb6cb3d7988822baf6542c8e5ea9e070ec601c45023",
-        "bytes": 25820,
-        "bead": "fm-fy2.17.1",
-        "reason": "Retain crop and names rendering repairs; place the single tile operation action inside the face image and retire hold-to-compare styling.; Encode source and crop-confirmation modal styles landed in ae6a3fd; preserve existing tile/product styling."
+        "sha256": "91b78652ae312cd1666751ecdc596f5e3c969a8f33457350c41a0ada3c9a6df3",
+        "bytes": 26711,
+        "bead": "fm-96if",
+        "reason": "Retain crop and names rendering repairs; place the single tile operation action inside the face image and retire hold-to-compare styling.; Encode source and crop-confirmation modal styles landed in ae6a3fd; preserve existing tile/product styling. (fm-fy2.17.1); Face card is the photo entry with Generate beside the field (c397da4, fm-25um fm-fy2.17.1); legacy fullscreen gapless names grid styles (07ac969, fm-96if)"
       }
     },
     {
@@ -1873,14 +1891,26 @@
       "destination": "apps/web/src/Next/public-previews.mjs",
       "sha256": "67072c28f6607c80966d05c01363636e72036b0b8ce737c8f928ce6c6d4cdac5",
       "bytes": 5225,
-      "class": "src-next"
+      "class": "src-next",
+      "ported": {
+        "sha256": "20e0ce40dbb1fd6c6816ece13ae9dfdaa82b064066919336f5fb8b446f8fd8e6",
+        "bytes": 5667,
+        "bead": "fm-96if",
+        "reason": "An instant picture is asked only for a value that can have one (no empty text or non-numeric seed), so a mode switch on an empty field fetches nothing (07ac969)"
+      }
     },
     {
       "source": "src/Next/public-previews.test.mjs",
       "destination": "apps/web/src/Next/public-previews.test.mjs",
       "sha256": "9e7b3786a86a13399bd88c171e50e61e05a433ac57e18b66db98fa98cdb7f20c",
       "bytes": 3587,
-      "class": "src-next"
+      "class": "src-next",
+      "ported": {
+        "sha256": "320b77e60fbc3227f47f90b4877f7708879999e804476fbad198828deb11b7fe",
+        "bytes": 3857,
+        "bead": "fm-96if",
+        "reason": "Asserts a value that cannot have a published picture never fetches the name list (07ac969)"
+      }
     },
     {
       "source": "src/Next/recovery-metadata.mjs",
@@ -1943,10 +1973,10 @@
       "bytes": 622,
       "class": "src-next",
       "ported": {
-        "sha256": "56703c697c396bc8091b3715ebaf96964e0a86e036b7cc25e650104a8d1a88ab",
-        "bytes": 719,
+        "sha256": "89b3f8b9290c2370192671a3ccc576074b54149c71c7381f1eeb53cadafab727",
+        "bytes": 748,
         "bead": "fm-in6a",
-        "reason": "Retain tester bulk scheduling; skip file-preparation entries after compute settles without letting later faces overtake an eligible Morph."
+        "reason": "Retain tester bulk scheduling; skip file-preparation entries after compute settles without letting later faces overtake an eligible Morph. (fm-in6a); A blend waits on photo decisions/preparation like a morph (3dd0238) (fm-in6a)"
       }
     },
     {
@@ -1961,7 +1991,13 @@
       "destination": "apps/web/src/Next/stage-labels.mjs",
       "sha256": "0671e7af7607078a41da12937427d685b41724f369fd59a888ffd8fa957266e3",
       "bytes": 11122,
-      "class": "src-next"
+      "class": "src-next",
+      "ported": {
+        "sha256": "ab54bbfcb641ee83a1f0d2919d8e17bd40f14efdd85be5a2da45a9ae78e62f4e",
+        "bytes": 11009,
+        "bead": "fm-fy2.13",
+        "reason": "cache-unavailable-detail says the worker continues without saving model files when storage refuses (1bb7bd0)"
+      }
     },
     {
       "source": "src/Next/stage-labels.test.mjs",
@@ -2362,10 +2398,10 @@
       "class": "temporary-root",
       "temporary": true,
       "ported": {
-        "sha256": "d49fa6abf63b3ad5c489482679bcd3a01dfcb814e1de95d4bf6485ba2c9799b4",
-        "bytes": 13655,
-        "bead": "fm-zz2i",
-        "reason": "Mobile component runner uses real HTTPS fixture transfers and built manager modules with grants; persistent storage, strict eight-component assessor and Simulator product CPU inference/layout evidence. Shared artifact server/interception helper; no fake fetches; Simulator/emulator labels retained.; Vite destination integration: shared production headers and native dynamic-import directives; compiled artifact identity."
+        "sha256": "4fb271bb1e7fb4514f53cede127b7aa3dec5694915681154f8183bd140c91828",
+        "bytes": 18810,
+        "bead": "fm-fy2.13",
+        "reason": "Mobile component runner uses real HTTPS fixture transfers and built manager modules with grants; persistent storage, strict eight-component assessor and Simulator product CPU inference/layout evidence. Shared artifact server/interception helper; no fake fetches; Simulator/emulator labels retained.; Vite destination integration: shared production headers and native dynamic-import directives; compiled artifact identity. (fm-zz2i); Reports the native mobile manager matrix with explicit limits (0cfcd1c) (fm-fy2.13)"
       }
     },
     {
@@ -2376,10 +2412,10 @@
       "class": "temporary-root",
       "temporary": true,
       "ported": {
-        "sha256": "ea9c5cbe8ea66bdaef59e6f5f48c8a9ed30dd03540a8f2fba1a57a04168ad58f",
-        "bytes": 9358,
-        "bead": "fm-hlv",
-        "reason": "Mobile component runner uses real HTTPS fixture transfers and built manager modules with grants; persistent storage, strict eight-component assessor and Simulator product CPU inference/layout evidence. Shared artifact server/interception helper; no fake fetches; Simulator/emulator labels retained."
+        "sha256": "7627a16a12e9b9a83d97d6afe5d78997aa594f2b7c2c34e31ca653d6a0eea884",
+        "bytes": 9541,
+        "bead": "fm-fy2.13",
+        "reason": "Mobile component runner uses real HTTPS fixture transfers and built manager modules with grants; persistent storage, strict eight-component assessor and Simulator product CPU inference/layout evidence. Shared artifact server/interception helper; no fake fetches; Simulator/emulator labels retained. (fm-hlv); Reports the native mobile manager matrix with explicit limits (0cfcd1c) (fm-fy2.13)"
       }
     },
     {
@@ -2390,10 +2426,10 @@
       "class": "temporary-root",
       "temporary": true,
       "ported": {
-        "sha256": "1811719244758913165d0eacadc90baac502f8c13bf20db997b95ad276474be2",
-        "bytes": 2940,
-        "bead": "fm-hlv",
-        "reason": "Mobile component runner uses real HTTPS fixture transfers and built manager modules with grants; persistent storage, strict eight-component assessor and Simulator product CPU inference/layout evidence. Shared artifact server/interception helper; no fake fetches; Simulator/emulator labels retained."
+        "sha256": "b76df25d0629aeac716956c3fc5df940cd8975509b3e29dad3eb062e764375e5",
+        "bytes": 11539,
+        "bead": "fm-fy2.13",
+        "reason": "Mobile component runner uses real HTTPS fixture transfers and built manager modules with grants; persistent storage, strict eight-component assessor and Simulator product CPU inference/layout evidence. Shared artifact server/interception helper; no fake fetches; Simulator/emulator labels retained. (fm-hlv); Reports the native mobile manager matrix with explicit limits (0cfcd1c) (fm-fy2.13)"
       }
     }
   ]

@@ -1,6 +1,6 @@
 # Paired codec screen — 10 October 2026
 
-[CI run 38031453811](https://github.com/facemorph-me/facemorph.me/actions/runs/38031453811) tested source `afb20d9c9aae0ac5e99e9c2ee6309927a0490efc` on Ubuntu 24.04 / headless Chrome 155. Load was 0.27 → 0.58; visibility visible. Public API hello 1024px fixture only, unchanged image/video parameters, fixed warmup and ABBA ×3. Each side has 6 measured samples per question. [Raw samples and source hashes](ci-paired-codec.json) · [correctness](ci-correctness.json) · [grouped analysis](ci-analysis.json).
+[CI run 38031453811](https://github.com/check-face/facemorph.me/actions/runs/38031453811) tested source `afb20d9c9aae0ac5e99e9c2ee6309927a0490efc` on Ubuntu 24.04 / headless Chrome 155. Load was 0.27 → 0.58; visibility visible. Public API hello 1024px fixture only, unchanged image/video parameters, fixed warmup and ABBA ×3. Each side has 6 measured samples per question. [Raw samples and source hashes](ci-paired-codec.json) · [correctness](ci-correctness.json) · [grouped analysis](ci-analysis.json).
 
 | Question / boundary | Control median | Candidate median | Decision |
 | --- | --- | --- | --- |

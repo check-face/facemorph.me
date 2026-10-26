@@ -45,6 +45,21 @@
       "disposition": "leave: identity tooling names pre-rename owners on purpose (recorded observations, classification rules and test inputs); the rename re-runs it rather than editing it"
     },
     {
+      "id": "monorepo-imported-research",
+      "repo": "facemorph.me",
+      "paths": [
+        "autoresearch/benchmark-campaign-v2/**",
+        "autoresearch/candidates/**",
+        "autoresearch/devices/**",
+        "autoresearch/history/**",
+        "autoresearch/reviews/**",
+        "autoresearch/templates/**",
+        "autoresearch/results.tsv"
+      ],
+      "class": "frozen-evidence",
+      "disposition": "leave: byte-identical classic research import checked against docs/research-import/digest-list.json (fm-86u) and the research ledger prefix; GitHub redirects the old owner"
+    },
+    {
       "id": "monorepo-frozen-plan",
       "repo": "facemorph.me",
       "paths": ["PLAN.md", "docs/plan-history.md", "docs/findings/**", "docs/receipts/**"],
@@ -61,7 +76,7 @@
     {
       "id": "monorepo-import-provenance",
       "repo": "facemorph.me",
-      "paths": ["import/**"],
+      "paths": ["import/**", "packages/cloudflare-model-host/mirror/provenance.json"],
       "class": "immutable-provenance",
       "disposition": "keep: import provenance names classic at pinned commits and runs; it resolves by repository ID 295956585 after the rename"
     },

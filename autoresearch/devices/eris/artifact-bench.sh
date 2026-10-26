@@ -19,7 +19,7 @@ root="$HOME/Work/runs/artifacts/$run_id"
 run="$HOME/Work/runs/$label"; port=$((9500 + RANDOM % 400))
 mkdir -p "$root" "$run" "$HOME/Work/runs/runtime-mirror"
 if [ ! -d "$root/deploy-next" ]; then
-  gh run download "$run_id" -R facemorph-me/facemorph.me -n "$artifact" -D "$root"
+  gh run download "$run_id" -R check-face/facemorph.me -n "$artifact" -D "$root"
 fi
 ln -sfn "$repo/scripts" "$root/scripts"; ln -sfn "$repo/hosting" "$root/hosting"
 ln -sfn "$HOME/Work/runs/runtime-mirror" "$root/.runtime-mirror"

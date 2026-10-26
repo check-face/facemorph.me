@@ -2,7 +2,7 @@
   "schema": "facemorph.import-provenance/1",
   "bead": "fm-fy2.14",
   "source": {
-    "repository": "facemorph-me/facemorph.me-classic",
+    "repository": "check-face/facemorph.me-classic",
     "branch": "candidate/next-delivery-20260916",
     "commit": "a42829bb0582b5a7a55ba6b1045a05861612b8a5",
     "read": "Git objects at the commit (git show <commit>:<path>), never a working tree"

@@ -25,10 +25,10 @@
       "size": 2277,
       "sha256": "f119ba1bc6aa6ab41efee8a06cbb5b7f976cbc66c3c1d14eb3993990bdddd944",
       "ported": {
-        "sha256": "06d01698c303bb1aef8f557a5a6aac579782049f7e9db0832a0960fae85767ea",
-        "bytes": 4294,
-        "bead": "fm-e6yj",
-        "reason": "Document recovery-bearing immutable catalogue publication and verified provisioned snapshot reuse."
+        "sha256": "483ac29c4ed4b9fa28600a3d49061c5e5c7896b2e5ea0d0b723024207ec75e23",
+        "bytes": 6239,
+        "bead": "fm-a0c1",
+        "reason": "Document recovery-bearing immutable catalogue publication and verified provisioned snapshot reuse (fm-e6yj), the facemorph-me org rename of the run link (fm-rur), and API-free materialization through the shared publisher with cf dry-run/--check/--publish (fm-a0c1)."
       }
     },
     {
@@ -41,7 +41,13 @@
       "path": "hosting/gallery/materialize.py",
       "mode": "100644",
       "size": 6252,
-      "sha256": "b366d9689706da0fa1de42c116993de024b1002f5469136330d668ca3353534b"
+      "sha256": "b366d9689706da0fa1de42c116993de024b1002f5469136330d668ca3353534b",
+      "ported": {
+        "sha256": "5d80fba59b31dde4fdd7106cc763e6ddd5572926e0179a638cd35741df43f14a",
+        "bytes": 1922,
+        "bead": "fm-a0c1",
+        "reason": "API-free materialization: stage the checked names-generator output through the shared publisher with cf (no preview fetches, no separate latent catalogue)."
+      }
     },
     {
       "path": "hosting/gallery/names-wrangler.jsonc",
@@ -59,7 +65,13 @@
       "path": "hosting/next-cloudflare/README.md",
       "mode": "100644",
       "size": 5680,
-      "sha256": "c09b83125ada71e17f4fd00b2246a96e80686157a324f6ea62c2c5021deb9289"
+      "sha256": "c09b83125ada71e17f4fd00b2246a96e80686157a324f6ea62c2c5021deb9289",
+      "ported": {
+        "sha256": "97ceff8adfe1a17e07f913aa035de802b1eb202df5bf13447065989b34789e0e",
+        "bytes": 4586,
+        "bead": "fm-a0c1",
+        "reason": "Document the collector re-homed to a cf CLI deployment (cloudflare.config.ts, entry/environment/local modules) in place of Wrangler."
+      }
     },
     {
       "path": "hosting/next-cloudflare/delete-run.mjs",
@@ -77,7 +89,13 @@
       "path": "hosting/next-cloudflare/worker.mjs",
       "mode": "100644",
       "size": 5221,
-      "sha256": "0c45f9be49c2dc7778b6d8a35185d3d3054b8eb3203f1ce51a6fcd37303a141b"
+      "sha256": "0c45f9be49c2dc7778b6d8a35185d3d3054b8eb3203f1ce51a6fcd37303a141b",
+      "ported": {
+        "sha256": "bc9ed332ce7389e030b04f32f508aa31d4746fa693192b2d808aef4020bf8765",
+        "bytes": 5046,
+        "bead": "fm-a0c1",
+        "reason": "Collector re-homed for the cf deployment: origins and endpoint from the named diagnostics environment, and no automatic KV/R2 expiry."
+      }
     },
     {
       "path": "hosting/next-cloudflare/worker.test.mjs",
@@ -85,17 +103,22 @@
       "size": 10357,
       "sha256": "7d1b103852237c52bd956ee60c4ca1c7d992839bc9f88e9b45f3c093473f22ec",
       "ported": {
-        "sha256": "9702428cc3f3aebfbd2b0b61e0480755d8923d31943f2e4ff9aa36fef87aed76",
-        "bytes": 10375,
-        "bead": "fm-aa8",
-        "reason": "the collector's stage and consent tests read reporting.mjs at its destination apps/web/src/Next/ (classic: src/Next/)"
+        "sha256": "80b5a584feb3b3f12ab8c80a37fb3f56979a4df04b034284481a19be4f314d5b",
+        "bytes": 10296,
+        "bead": "fm-a0c1",
+        "reason": "Tests read reporting.mjs at its destination apps/web/src/Next/ (fm-aa8), and assert the re-homed collector stores events without automatic KV expiry (fm-a0c1)."
       }
     },
     {
       "path": "hosting/next-cloudflare/wrangler.toml",
       "mode": "100644",
       "size": 536,
-      "sha256": "a9018d3519daa2c099dd3da62a6c4bd913e6b5ea99e8341e2ed04ff160944c34"
+      "sha256": "a9018d3519daa2c099dd3da62a6c4bd913e6b5ea99e8341e2ed04ff160944c34",
+      "ported": {
+        "removed": true,
+        "bead": "fm-a0c1",
+        "reason": "Wrangler config removed on purpose: the operator rule (24 October 2026) is cf, never Wrangler; the collector deploys from hosting/next-cloudflare/cloudflare.config.ts."
+      }
     },
     {
       "path": "hosting/next-static/.gitignore",
@@ -139,10 +162,10 @@
       "size": 6833,
       "sha256": "4f9d9247d06045763ddd09f90cf5e2503a83bce71418e490ff3985c51c988e47",
       "ported": {
-        "sha256": "13684cfb4a9ad63b9b27302c0eeb8794e1e97183cfb94eb722d4eea3608a6af9",
-        "bytes": 6834,
-        "bead": "fm-be10",
-        "reason": "promote.py calls the web-artifact verifier at its re-homed path apps/web/scripts/verify-web-artifact.py (native dispatch retired; f876ddd)"
+        "sha256": "8d5ad707243c65b0cd1719909af30f40cef1797966b94b89346084a4bfbce1db",
+        "bytes": 6836,
+        "bead": "fm-rur",
+        "reason": "promote.py calls the web-artifact verifier at its destination (fm-be10), and its gh REMOTE follows the org rename check-face -> facemorph-me (fm-rur)."
       }
     },
     {
@@ -221,7 +244,13 @@
       "path": "hosting/next/notices/index.html",
       "mode": "100644",
       "size": 1224,
-      "sha256": "9f22ee195c64c31c2a2b30185768143d63f3b80c25051a0cc56559dff71c8894"
+      "sha256": "9f22ee195c64c31c2a2b30185768143d63f3b80c25051a0cc56559dff71c8894",
+      "ported": {
+        "sha256": "c4494dd6b8c56d08b2be9492e509086804b39325d8908de062d32e1877846c16",
+        "bytes": 1379,
+        "bead": "fm-gbdt",
+        "reason": "Licence notice: @ffmpeg/core is served from this site's own pinned runtime files, not fetched from the publisher's CDN."
+      }
     },
     {
       "path": "hosting/next/phone-candidate-admission.json",

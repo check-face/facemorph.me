@@ -556,6 +556,7 @@ test(
 test(
   'atomic replacement of an incompatible catalogue in the deployed app',
   {
+    // disabled-test: reason=the manager parser has no active app catalogue transaction yet; owner=fm-fy2.14; until=the app admission journey applies catalogues atomically
     skip: 'untested: manager parser has no active app catalogue transaction; needs the actual app admission journey',
   },
   () => {},
@@ -563,6 +564,7 @@ test(
 test(
   'rollback runs the previous deployed app using its own manifest and retained paths',
   {
+    // disabled-test: reason=no previous deployed app artifact with a bound manifest exists to roll back to; owner=fm-fy2.14; until=a qualified previous deploy-next artifact is retained for staging
     skip: 'untested: no previous deployed app artifact and bound manifest fixture configured; staging hosts model bytes only',
   },
   () => {},

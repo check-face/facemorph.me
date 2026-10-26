@@ -338,6 +338,14 @@
         "needs": "hosting/next-mirror/worker.mjs (hosting-listed with digests)",
         "owner": "deploy.staging (fm-8tyu)",
         "after_import": "Runs with node --test wherever deploy.staging places hosting/next-mirror/ (it takes the files from this frozen revision, digests in import/allowlist.json listed_with_digests); until then it runs only in classic's next-site.yml."
+      },
+      {
+        "file": "src/Next/browser/model-source.test.mjs",
+        "runs_on": "closure",
+        "added": {
+          "bead": "fm-fy2.13",
+          "reason": "Monorepo addition (1bb7bd0): the verified transient model source the worker continues on when durable storage refuses"
+        }
       }
     ]
   },

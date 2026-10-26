@@ -122,7 +122,7 @@ test(
     if (unavailable) return t.skip(unavailable);
     if (engine !== 'chromium') {
       await browser!.close();
-      return t.skip('untested: this first cold-photo native OPFS CPU cell is Chromium only');
+      return t.skip('untested here: this first cold-photo native OPFS CPU cell is Chromium only');
     }
     const work = mkdtempSync(join(tmpdir(), 'manager-cold-photo-'));
     const evidence = join(REPO, 'test-results/manager-cache', engine, 'cold-photo');

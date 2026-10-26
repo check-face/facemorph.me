@@ -31,7 +31,12 @@ function cacheKey(): string {
 
 /** Local ephemeral reuse only: no storage, diagnostics events, model assets or inference imports. */
 export async function checkDevice(
-  options: { signal?: AbortSignal; rerun?: boolean; skip?: boolean; idle?: Promise<unknown> } = {},
+  options: {
+    signal?: AbortSignal;
+    rerun?: boolean;
+    declined?: boolean;
+    idle?: Promise<unknown>;
+  } = {},
 ): Promise<CheckResult> {
   const start = performance.now();
   const scratch = new Scratch();
@@ -87,7 +92,7 @@ export async function checkDevice(
   document.addEventListener('visibilitychange', onVisible);
   const key = cacheKey();
   try {
-    if (options.skip || options.signal?.aborted || document.visibilityState !== 'visible')
+    if (options.declined || options.signal?.aborted || document.visibilityState !== 'visible')
       stop('skip');
     if (
       !controller.signal.aborted &&

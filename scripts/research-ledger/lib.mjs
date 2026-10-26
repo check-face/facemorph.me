@@ -40,13 +40,17 @@ export function checkLedger({ head, base, snapshot }) {
   else problems.push({ kind: 'no-final-newline' });
   if (lines[0] !== COLUMNS.join('\t'))
     problems.push({ kind: 'header', detail: 'the 11-column header changed' });
-  if (head.length < snapshot.size || sha256(head.subarray(0, snapshot.size)) !== snapshot.sha256) {
+  const keepsSnapshot = (bytes) =>
+    bytes.length >= snapshot.size && sha256(bytes.subarray(0, snapshot.size)) === snapshot.sha256;
+  if (!keepsSnapshot(head)) {
     problems.push({
       kind: 'snapshot-prefix',
       detail: 'the handover snapshot bytes are no longer the ledger prefix',
     });
   }
-  if (base && !startsWith(head, base))
+  // A base that had already lost the snapshot prefix is no append authority: restoring the snapshot
+  // bytes is its repair, and the snapshot check above still holds the head to them.
+  if (base && keepsSnapshot(base) && !startsWith(head, base))
     problems.push({
       kind: 'rewritten',
       detail: 'an existing row changed; append corrections as new rows',
@@ -77,9 +81,11 @@ export function checkLedger({ head, base, snapshot }) {
 }
 
 /** A dated round log only grows at EOF; every entry heading has a timezone-aware timestamp and a unique ID. */
-export function checkLog({ path, head, base, frozen = false }) {
+export function checkLog({ path, head, base, frozen = false, imported = null }) {
   const problems = [];
-  if (base && !startsWith(head, base))
+  // An imported log whose bytes are again exactly the imported digest is a restoration, not a rewrite.
+  const restored = imported !== null && sha256(head) === imported;
+  if (base && !restored && !startsWith(head, base))
     problems.push({ kind: 'log-rewritten', path, detail: 'log entries only append at EOF' });
   if (frozen) return problems; // historical logs keep their own heading styles
   const seen = new Set();

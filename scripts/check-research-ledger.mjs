@@ -84,6 +84,7 @@ export function run({ root, base, classic }) {
         head: readFileSync(join(root, path)),
         base: at(base, path),
         frozen: path.startsWith('autoresearch/reviews/'),
+        imported: list.files.find((f) => f.destination === path)?.sha256 ?? null,
       }),
     );
   }

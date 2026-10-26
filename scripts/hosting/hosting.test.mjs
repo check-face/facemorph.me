@@ -98,3 +98,23 @@ test('a ported record needs its digest, bead and reason', () => {
     { path: 'hosting/b.py', problem: 'ported without its digest, bead and reason' },
   ]);
 });
+
+test('a deliberately removed file is ported as removed with its bead and reason, and no digest', () => {
+  const { ported, problems } = portedRecords([
+    {
+      path: 'hosting/a.toml',
+      ported: { removed: true, bead: 'fm-a0c1', reason: 'replaced by cf' },
+    },
+    { path: 'hosting/b.toml', ported: { removed: true, bead: 'fm-a0c1' } },
+    {
+      path: 'hosting/c.toml',
+      ported: { removed: true, sha256: 'c'.repeat(64), bead: 'fm-a0c1', reason: 'x' },
+    },
+    { path: 'hosting/d.toml', ported: { removed: 'yes', bead: 'fm-a0c1', reason: 'x' } },
+  ]);
+  assert.equal(ported.size, 4);
+  assert.deepEqual(
+    problems.map((p) => p.path),
+    ['hosting/b.toml', 'hosting/c.toml', 'hosting/d.toml'],
+  );
+});

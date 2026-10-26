@@ -67,11 +67,12 @@ export function plan(rows, entries) {
   return { imports, refused };
 }
 
-/** The provenance's ported records by path, and a problem for each lacking its digest, bead or reason. Pure. */
+/** The provenance's ported records by path, and a problem for each lacking its digest, bead or reason. Pure.
+ * A file a later bead deleted on purpose is `ported: {removed: true, bead, reason}`: no digest, and it must be absent. */
 export function portedRecords(files) {
   const ported = new Map(files.filter((f) => f.ported).map((f) => [f.path, f.ported]));
   const problems = [...ported]
-    .filter(([, p]) => !(p.sha256 && p.bead && p.reason))
+    .filter(([, p]) => !((p.removed === true ? !('sha256' in p) : p.sha256) && p.bead && p.reason))
     .map(([path]) => ({ path, problem: 'ported without its digest, bead and reason' }));
   return { ported, problems };
 }
@@ -111,7 +112,10 @@ export function importHosting({ classic, root = REPO, check = false, log = () =>
     const dest = join(root, e.path);
     const port = ported.get(e.path);
     const expected = port?.sha256 ?? digest;
-    if (check) {
+    if (port?.removed === true) {
+      if (existsSync(dest))
+        problems.push({ path: e.path, problem: 'present though ported as removed' });
+    } else if (check) {
       if (!existsSync(dest)) problems.push({ path: e.path, problem: 'missing' });
       else if (sha256(readFileSync(dest)) !== expected)
         problems.push({

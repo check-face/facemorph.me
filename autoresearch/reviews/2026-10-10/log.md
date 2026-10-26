@@ -54,7 +54,7 @@ a new entry with the superseded ID. Follow [record standards](../../records.md).
 - Boundary / samples: not_measured; no new performance samples
 - Correctness / workflow: source commit includes queue/restore/recovery changes; research has not qualified its artifact or frozen its measurement control
 - Resources / failures: not_measured; application deployment status not inferred from commit
-- Evidence: [development commit](https://github.com/facemorph-me/facemorph.me/commit/f506892), [handoff](next-pass.md); Luna final pass found coherent history/current separation and requested this freshness event
+- Evidence: [development commit](https://github.com/check-face/facemorph.me/commit/f506892), [handoff](next-pass.md); Luna final pass found coherent history/current separation and requested this freshness event
 - Conclusion / next action: obtain development qualification/live receipt; retain old snapshot claims until bytes are verified
 
 ### 2026-10-10T05:53:23Z — review-20261010-005
@@ -93,7 +93,7 @@ a new entry with the superseded ID. Follow [record standards](../../records.md).
 - Boundary / samples: control/candidate not_measured; no codec or ordinary-policy latency claim
 - Correctness / workflow: keep bounded memory, source privacy, immediate save/recovery/cancellation and canonical-order gates; exact-artifact CI/live identity still required before freeze
 - Resources / failures: not_measured; GA access/registration reported in progress, receipt/performance unverified
-- Evidence: [UI source commit](https://github.com/facemorph-me/facemorph.me/commit/f506892), [handoff](next-pass.md), message 15 in UI/research thread
+- Evidence: [UI source commit](https://github.com/check-face/facemorph.me/commit/f506892), [handoff](next-pass.md), message 15 in UI/research thread
 - Conclusion / next action: preserve proposed experiment contract; obtain qualified/promoted identity and recent matching analytics before controlled measurement
 
 ### 2026-10-10T06:35:04Z — review-20261010-008
@@ -114,7 +114,7 @@ a new entry with the superseded ID. Follow [record standards](../../records.md).
 - Phase / status: proposed / bounded experimental CI and qualified UI control handoff
 - Round / experiment / correction: 2026-10-10 / R03-R04 / not_applicable
 - Hypothesis / decision: isolated CI can measure codec costs while eris is contended; it does not establish desktop GPU/phone E2E speed
-- Identity: versioned [experimental workflow](../../../.github/workflows/research-rgba-screen-v1.yml); current development source `e0b2192` passed [artifact run38030647695](https://github.com/facemorph-me/facemorph.me/actions/runs/38030647695); exact live identity still being requested
+- Identity: versioned [experimental workflow](../../../.github/workflows/research-rgba-screen-v1.yml); current development source `e0b2192` passed [artifact run38030647695](https://github.com/check-face/facemorph.me/actions/runs/38030647695); exact live identity still being requested
 - Context: Ubuntu24.04 GitHub runner / stable Chrome actual version reported / Playwright1.55.0; ABBA×3 after fixed warmup; new image worker per sample, per-clip video worker
 - Boundary / samples: display draw+RAF, file-ready, decoded playable video; not_measured until reports; no compositor/OS-share claim
 - Correctness / workflow: Node and actual browser decode/recovery/playback before timing; separate experimental workflow, no required-check changes
@@ -127,7 +127,7 @@ a new entry with the superseded ID. Follow [record standards](../../records.md).
 - Phase / status: observed / paired codec results; scoped keeps and discard
 - Round / experiment / correction: 2026-10-10 / R03-R04 / not_applicable
 - Hypothesis / decision: remove foreground PNG round trips; evaluate WebP size and realtime H.264 settings independently
-- Identity: experimental source `afb20d9c9aae0ac5e99e9c2ee6309927a0490efc`; exact input/source hashes in [CI report](../../candidates/direct-rgba-media-v1/ci-paired-codec.json); workflow [run38031453811](https://github.com/facemorph-me/facemorph.me/actions/runs/38031453811)
+- Identity: experimental source `afb20d9c9aae0ac5e99e9c2ee6309927a0490efc`; exact input/source hashes in [CI report](../../candidates/direct-rgba-media-v1/ci-paired-codec.json); workflow [run38031453811](https://github.com/check-face/facemorph.me/actions/runs/38031453811)
 - Context: Ubuntu24.04 GitHub runner / headless Chrome155 / visible document / public hello1024 / fixed warmup, ABBA×3,6 observations per side per question; load0.27→0.58
 - Boundary / samples: draw+RAF65.31→5.02ms; file-ready PNG55.36/WebP113.17ms; 32-frame1024/16FPS H.264 decoded playable PNG1,316.24/raw186.07ms; quality153.36/realtime158.22ms medians; excludes synthesis/compiled UI/compositor/OS share
 - Correctness / workflow:9 integrity tests and browser image/recovery/playback pass; quality spot-check public fixture; fixed full31 not applicable to isolated codec screen, product qualification still separate
@@ -153,7 +153,7 @@ a new entry with the superseded ID. Follow [record standards](../../records.md).
 - Phase / status: observed then implemented / exact-artifact repeat reuse failure corrected; qualification pending
 - Round / experiment / correction: 2026-10-10 / R03-R04 / followup to review-20261010-011
 - Hypothesis / decision: preserve the completed download on an unchanged per-face request; never repeat inference or background file encoding for that retained result
-- Identity: failed candidate `d0d8d7a6332652dbc09cc7418520f8863aed11f8`; control `e0b2192`; [CI run38032536121](https://github.com/facemorph-me/facemorph.me/actions/runs/38032536121)
+- Identity: failed candidate `d0d8d7a6332652dbc09cc7418520f8863aed11f8`; control `e0b2192`; [CI run38032536121](https://github.com/check-face/facemorph.me/actions/runs/38032536121)
 - Context: hosted Linux Chrome154 CI, replicated on contended eris Chrome152 exact artifact; correctness only, no speed claim
 - Boundary / samples: one CI failure and one instrumented reproduction; after baseline only the image encoder worker posted blob/format/quality/recovery, no inference worker creation or inference messages
 - Correctness / workflow: build and compiled UI passed; real CPU UI failed and deployment skipped. Per-face same-input reuse and deferred last-result remembrance corrected, including superseded-result rejection; focused regression tests pass
@@ -166,7 +166,7 @@ a new entry with the superseded ID. Follow [record standards](../../records.md).
 - Phase / status: implemented / download worker transport corrected; new exact-artifact qualification required
 - Round / experiment / correction: 2026-10-10 / R03-R04 / followup to review-20261010-012
 - Hypothesis / decision: the worker receives only cloneable latent/provenance/generation identity; displayed face promises and UI/source state must remain on the page
-- Identity: correction follows `e590de2`; initial built-UI experiment [run38033537996](https://github.com/facemorph-me/facemorph.me/actions/runs/38033537996) cancelled by research before accepting measurements
+- Identity: correction follows `e590de2`; initial built-UI experiment [run38033537996](https://github.com/check-face/facemorph.me/actions/runs/38033537996) cancelled by research before accepting measurements
 - Context: actual bridge-ready result includes `fileReady`; source codec screen used a pure canonical record and did not cover this structured-clone boundary
 - Boundary / samples: no new speed claim; worker-transport regression reproduces Promise clone rejection and confirms successful WebP dispatch after correction
 - Correctness / workflow: focused metadata/bridge tests pass; Chrome exact-artifact gate now requires WebP and checks downloaded-face re-upload bypasses processing workers; PNG fallback retained for unsupported encoders
@@ -179,7 +179,7 @@ a new entry with the superseded ID. Follow [record standards](../../records.md).
 - Phase / status: deployed / corrected raw media candidate qualified and live bytes verified
 - Round / experiment / correction: 2026-10-10 / R03-R04 / follows review-20261010-013
 - Hypothesis / decision: deliver direct display/video pixels with deferred PNG persistence and recoverable WebP downloads; retain video quality/queue8
-- Identity: `bce320418a694bc48f25a609217bb81861ee6e47`, diagnostic build `next-995b477854d97c7a`, app `app.25b21e2904ae5841d01e.js`, runtime `d9e37e50a436e9fb7c0c7f973e70adee353c808f48c6a51fa5a9186f1c650a5c`, [successful run38033695234](https://github.com/facemorph-me/facemorph.me/actions/runs/38033695234)
+- Identity: `bce320418a694bc48f25a609217bb81861ee6e47`, diagnostic build `next-995b477854d97c7a`, app `app.25b21e2904ae5841d01e.js`, runtime `d9e37e50a436e9fb7c0c7f973e70adee353c808f48c6a51fa5a9186f1c650a5c`, [successful run38033695234](https://github.com/check-face/facemorph.me/actions/runs/38033695234)
 - Context: exact built UI Linux Chrome154 CPU; unchanged numerical/privacy/asset tests and compiled UI pass; iOS/Android component lanes pass, exact iOS simulator still running; physical phone unmeasured
 - Boundary / samples: correctness only; paired built UI screen remains in progress, no product speed claim
 - Correctness / workflow: named face synthesis, named rejection, repeated originals with zero workers/messages, real WebP download/re-upload without processing workers, metadata-free photo e4e, crop, decoded1024 playable2s MP4 pass. Hidden project-file controls are explicitly skipped, not passed; serialization is separately checked
@@ -205,7 +205,7 @@ a new entry with the superseded ID. Follow [record standards](../../records.md).
 - Phase / status: observed / corrected iOS simulator product screen passed
 - Round / experiment / correction: 2026-10-10 / R03-R04 / follows pending mobile coverage in review-20261010-014
 - Hypothesis / decision: accept drawn full-resolution canvas as the delivered face surface; retain decoded-image compatibility without weakening error/idle checks
-- Identity: harness-only follow-up `549ecdf`; [successful run 38034719345](https://github.com/facemorph-me/facemorph.me/actions/runs/38034719345); artifact hashes retained in the receipt, different bundle identity from live `bce3204`
+- Identity: harness-only follow-up `549ecdf`; [successful run 38034719345](https://github.com/check-face/facemorph.me/actions/runs/38034719345); artifact hashes retained in the receipt, different bundle identity from live `bce3204`
 - Context: macOS 15 hosted runner / iPhone 16 Pro Simulator / Safari iOS 18.5 / CPU after no WebGPU adapter; one first-face functional attempt, acquisition/setup included
 - Boundary / samples: Generate click → full 1024px drawn canvas and idle; 500 ms polling; diagnostic 34,876 ms is unpaired and not warm/physical-phone performance
 - Correctness / workflow: faceProduced and completed true, RGBA canvas, errors empty; Android/iOS component checks passed; photo/download/video/total-memory not qualified by this one-face screen
@@ -218,7 +218,7 @@ a new entry with the superseded ID. Follow [record standards](../../records.md).
 - Phase / status: observed then proposed / built-UI budget timeout; unchanged comparison restarted with a larger bounded budget
 - Round / experiment / correction: 2026-10-10 / R01-R05 / amends the run budget in review-20261010-015, not the workload or qualification gates
 - Hypothesis / decision: complete the originally planned six matched cases per side; do not select incomplete samples as a general speed win
-- Identity: control `e0b2192c26f6b921b9fb5e24c94be358c508c052`; candidate `bce320418a694bc48f25a609217bb81861ee6e47`; timed-out harness `2f3e54770ba72d621ea7435783e9b6dd47fcb550`, [run 38034405920](https://github.com/facemorph-me/facemorph.me/actions/runs/38034405920)
+- Identity: control `e0b2192c26f6b921b9fb5e24c94be358c508c052`; candidate `bce320418a694bc48f25a609217bb81861ee6e47`; timed-out harness `2f3e54770ba72d621ea7435783e9b6dd47fcb550`, [run 38034405920](https://github.com/check-face/facemorph.me/actions/runs/38034405920)
 - Context: Ubuntu 24.04 / visible headless Chrome 155 / CPU, retained independent profiles, explicit ordinary-policy admission emulation; same source/artifacts/inputs and fixed warmup → ABBA ×3 on rerun
 - Boundary / samples: two warmups and eight complete measured visits plus partial ninth; original 1800 s command limit reached during video, exit 124; accepted performance outcome inconclusive
 - Correctness / workflow: completed visits passed full 1024px faces, matching downloads, metadata-free photo encoder events and 2 s playable video; planned campaign is incomplete
@@ -231,7 +231,7 @@ a new entry with the superseded ID. Follow [record standards](../../records.md).
 - Phase / status: observed / complete paired built-UI campaign accepted within amended budget
 - Round / experiment / correction: 2026-10-10 / R01-R05 / completes review-20261010-017; timeout samples are not merged
 - Hypothesis / decision: component transport gains need not improve whole CPU journeys; retain scoped repeat-result reuse and deferred WebP size/quality tradeoff, no broad generation/photo/video speed claim
-- Identity: control `e0b2192c26f6b921b9fb5e24c94be358c508c052`, candidate `bce320418a694bc48f25a609217bb81861ee6e47`; experiment source `9bbf06a5a6c319df0fbd22749ecedc604ca6d8ea`; raw harness/artifact hashes retained; [successful run 38036307932](https://github.com/facemorph-me/facemorph.me/actions/runs/38036307932); runtime manifest unchanged
+- Identity: control `e0b2192c26f6b921b9fb5e24c94be358c508c052`, candidate `bce320418a694bc48f25a609217bb81861ee6e47`; experiment source `9bbf06a5a6c319df0fbd22749ecedc604ca6d8ea`; raw harness/artifact hashes retained; [successful run 38036307932](https://github.com/check-face/facemorph.me/actions/runs/38036307932); runtime manifest unchanged
 - Context: Ubuntu 24.04 hosted CPU (processor model not recorded), headless Chrome 155 / Playwright 1.55, visible/isolated; ordinary admission explicitly emulated, webdriver true; pinned local mirror; separate retained profiles reopened each visit; fixed warmup each side then ABBA ×3, six matched cases/side; recorded visit-boundary load below 4
 - Boundary / samples: action → full 1024px drawn/decoded face and idle; navigation → first decoded restored original; 32-frame/16 FPS/1024px decoded playable 2 s video; browser download complete. All twelve measured visits plus two discarded warmups pass; full per-case distributions in statistics
 - Correctness / workflow: exact source/runtime identities, matched photo inputs+encoder dispatch/completion, repeat file identity+zero workers/messages, CPU route and no browser errors pass; kernels unchanged, canaries/source agreement/shipping checks separate from a new fixed-full31 qualification
