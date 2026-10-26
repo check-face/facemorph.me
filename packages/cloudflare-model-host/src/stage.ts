@@ -140,6 +140,7 @@ export function stage(options: StageOptions): StageResult {
         published.set(rel, { sha256: asset.sha256, size: asset.size, chunks });
         chunked++;
         const entry = published.get(rel)!;
+        delete asset.file;
         asset.url = `${base}/${rel}`;
         asset.chunks = entry.chunks!.map((c) => ({
           url: `${base}/${c.path}`,

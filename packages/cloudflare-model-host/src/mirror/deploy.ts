@@ -4,7 +4,9 @@
 // `cf deploy --dry-run`, which builds and checks the Worker and its bindings and sends no API request.
 import { spawnSync } from 'node:child_process';
 import { createRequire } from 'node:module';
-import { dirname, join } from 'node:path';
+import { cpSync, mkdtempSync, symlinkSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { dirname, join, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 /** Where the mirror goes: every value FaceMorph (or anyone) deploys with, none built in. */
@@ -59,8 +61,22 @@ export function runCf(args: readonly string[], env: Record<string, string>, base
   const pkg = require.resolve('cf/package.json');
   const bin = (require(pkg) as { bin: string | Record<string, string> }).bin;
   const cf = join(dirname(pkg), typeof bin === 'string' ? bin : bin['cf']!);
+  // Node strips TypeScript types only outside node_modules, so an installed package's cf project (its .ts config)
+  // is run from a copy outside it, beside a link to the node_modules its imports resolve from.
+  let cwd = PACKAGE_ROOT;
+  if (PACKAGE_ROOT.includes(`${sep}node_modules${sep}`)) {
+    cwd = mkdtempSync(join(tmpdir(), 'model-host-cf-'));
+    for (const f of [
+      'package.json',
+      'cloudflare.config.ts',
+      'vite.config.ts',
+      'src/mirror/worker.ts',
+    ])
+      cpSync(join(PACKAGE_ROOT, f), join(cwd, f));
+    symlinkSync(dirname(dirname(pkg)), join(cwd, 'node_modules'), 'dir');
+  }
   const r = spawnSync(process.execPath, [cf, ...args], {
-    cwd: PACKAGE_ROOT,
+    cwd,
     env: { ...base, ...env, CI: '1' },
     encoding: 'utf8',
     maxBuffer: 1 << 26,
