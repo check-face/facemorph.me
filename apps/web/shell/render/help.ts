@@ -83,7 +83,7 @@ export function helpTopics(entry: string = siteEntry()): readonly HelpTopic[] {
           'With Processing mode on Automatic, faces use the graphics card when this browser offers WebGPU, the adapter can hold the model and its check face comes out right; otherwise they use the CPU.',
         ],
         [
-          'If you forced the graphics route and it was refused, set Processing (the control above the faces) back to Automatic or CPU. If the graphics device stopped responding, reloading the page starts it again; your saved files are unaffected.',
+          'If you forced the graphics route and it was refused, set Processing mode, above the faces, back to Automatic or CPU. If the graphics device stopped responding, reloading the page starts it again; your saved files are unaffected.',
         ],
       ],
     },
