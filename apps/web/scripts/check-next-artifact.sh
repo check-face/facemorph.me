@@ -9,6 +9,9 @@ import json,time,os
 from pathlib import Path
 def click(role,name):
     deadline=time.monotonic()+10
+    # A menu grows in: click only once the target's box holds still between two polls, or the press lands
+    # where the item was a frame ago (seen on a loaded runner: Change mode opened, Encode image never chose).
+    last_box=None
     while time.monotonic()<deadline:
         nodes=cdp('Accessibility.getFullAXTree')['nodes']
         matching=[n for n in nodes if n.get('role',{}).get('value')==role and n.get('name',{}).get('value','').lower()==name.lower()]
@@ -17,6 +20,8 @@ def click(role,name):
         if matching:
             ident=matching[0]['backendDOMNodeId'];cdp('DOM.scrollIntoViewIfNeeded',backendNodeId=ident)
             q=cdp('DOM.getBoxModel',backendNodeId=ident)['model']['content'];x,y=sum(q[0::2])/4,sum(q[1::2])/4
+            box=(ident,tuple(round(v,1) for v in q))
+            if box!=last_box: last_box=box;time.sleep(.1);continue
             hit=js("(()=>{const e=document.elementFromPoint(%f,%f)?.closest('button,[role=menuitem]');const name=e?.getAttribute('aria-label')||e?.textContent||'';return name.trim().toLowerCase()===%s;})()"%(x,y,json.dumps(name.lower())))
             if hit:click_at_xy(x,y);return
         time.sleep(.1)
