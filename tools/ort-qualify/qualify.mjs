@@ -2,17 +2,17 @@
 // Qualifies an onnxruntime-web release against the product's numerical canaries (fm-bxwv). Runs the candidate's own
 // runtime (classic src/Next at the pinned commit, from Git objects) in eris's Chromium with the pinned runtime
 // manifest, or with a variant whose six ORT entries (the WASM route's ort.wasm.min.mjs and threaded .mjs/.wasm,
-// the WebGPU route's ort.webgpu.min.mjs, JSEP factory and wasm) point at a local onnxruntime-web dist, digests
+// the selected WebGPU module, factory and wasm) point at a local onnxruntime-web dist, digests
 // computed from the bytes. Every model file, canary input and reference stays pinned and comes from its manifest
 // URL. Under Playwright the worker runs every canary (full qualification) at the fixed gates: RGB max <= 1,
 // sampled float <= 0.002, unchanged.
 //
-// Routes: cpu (ORT WASM), webgpu-ort (ORT's JSEP build on the GPU: the engine phones use; on a desktop the runtime
+// Routes: cpu (ORT WASM), webgpu-ort (ORT's selected build on the GPU: the engine phones use; on a desktop the runtime
 // picks it for a mobile user agent, so this route presents one; the inference and GPU are real), webgpu (the
 // desktop default, the direct WGSL engine: ORT is not on its path, a control).
 //
 //   node tools/ort-qualify/qualify.mjs --ort <onnxruntime-web package dir | pinned> [--routes cpu,webgpu-ort]
-//        [--gpu-build webgpu|jsep] [--classic ../facemorph.me-classic] [--chromium /usr/bin/chromium] [--out <file>]
+//        [--gpu-build webgpu|jspi|jsep] [--classic ../facemorph.me-classic] [--chromium /usr/bin/chromium] [--out <file>]
 // Run with the bounded command runner. One JSON line per route, then a summary; exit 1 when any route fails.
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
@@ -23,7 +23,7 @@ import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { extname, join, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { prepareClassic } from '../names-generator/generate.mjs';
+import { PINNED, prepareClassic } from '../names-generator/generate.mjs';
 
 const REPO = fileURLToPath(new URL('../..', import.meta.url));
 const { chromium } = createRequire(join(REPO, 'apps/web/package.json'))('playwright');
@@ -50,6 +50,11 @@ export const GPU_BUILDS = {
     factory: 'ort-wasm-simd-threaded.asyncify.mjs',
     wasm: 'ort-wasm-simd-threaded.asyncify.wasm',
   },
+  jspi: {
+    module: 'ort.jspi.min.mjs',
+    factory: 'ort-wasm-simd-threaded.jspi.mjs',
+    wasm: 'ort-wasm-simd-threaded.jspi.wasm',
+  },
   jsep: {
     module: 'ort.min.mjs',
     factory: 'ort-wasm-simd-threaded.jsep.mjs',
@@ -59,8 +64,8 @@ export const GPU_BUILDS = {
 
 /** The pinned manifest with its ORT entries replaced by the files in `dist`, served under `base`. */
 export function withOrt(manifest, dist, base, version, gpuBuild = 'webgpu') {
+  if (!Object.hasOwn(GPU_BUILDS, gpuBuild)) throw new Error(`unknown --gpu-build ${gpuBuild}`);
   const GPU_FILES = GPU_BUILDS[gpuBuild];
-  if (!GPU_FILES) throw new Error(`unknown --gpu-build ${gpuBuild}`);
   const entry = (name) => {
     const bytes = readFileSync(join(dist, name));
     return { url: `${base}${name}`, sha256: sha256(bytes), size: bytes.length };
@@ -82,6 +87,71 @@ export function withOrt(manifest, dist, base, version, gpuBuild = 'webgpu') {
     },
   };
   return m;
+}
+
+/** Bind a canary result to exact served manifests, local release bytes and the unchanged classic source. */
+export function qualificationIdentity({
+  controlBytes,
+  candidateBytes,
+  gpuBuild,
+  packageBytes = null,
+}) {
+  if (!Object.hasOwn(GPU_BUILDS, gpuBuild)) throw new Error(`unknown --gpu-build ${gpuBuild}`);
+  const control = JSON.parse(controlBytes.toString('utf8'));
+  const candidate = JSON.parse(candidateBytes.toString('utf8'));
+  let release;
+  if (packageBytes !== null) {
+    const pkg = JSON.parse(packageBytes.toString('utf8'));
+    if (pkg.name !== 'onnxruntime-web' || typeof pkg.version !== 'string' || !pkg.version.trim())
+      throw new Error('ORT release must identify the onnxruntime-web package and a version');
+    if (
+      candidate.runtime.version !== pkg.version ||
+      candidate.webgpu.runtime.version !== pkg.version
+    )
+      throw new Error('candidate runtime versions differ from the supplied ORT release');
+    release = { package: pkg.name, version: pkg.version, packageJsonSha256: sha256(packageBytes) };
+  } else {
+    if (!Buffer.from(controlBytes).equals(Buffer.from(candidateBytes)))
+      throw new Error('a variant runtime requires the supplied ORT package identity');
+    release = {
+      package: 'onnxruntime-web',
+      cpuVersion: control.runtime.version,
+      webgpuVersion: control.webgpu.runtime.version,
+    };
+  }
+  const assets = [
+    ...candidate.runtime.assets,
+    candidate.webgpu.runtime.module,
+    candidate.webgpu.runtime.factory,
+    candidate.webgpu.runtime.wasm,
+  ].map((asset) => ({
+    file: new URL(asset.url).pathname.split('/').at(-1),
+    url: asset.url,
+    sha256: asset.sha256,
+    size: asset.size,
+  }));
+  return {
+    schema: 'facemorph.ort-qualification/1',
+    scope: 'pinned-classic-synthesis-canaries; not monorepo or encoder adoption',
+    source: {
+      classicCommit: PINNED.commit,
+      classicManifestSha256: sha256(controlBytes),
+      qualifierSha256: sha256(readFileSync(fileURLToPath(import.meta.url))),
+      harnessSha256: sha256(readFileSync(join(NAMES, 'harness.mjs'))),
+    },
+    controlManifestSha256: sha256(controlBytes),
+    candidateManifestSha256: sha256(candidateBytes),
+    release,
+    gpuBuild,
+    assets,
+    runtimeSetSha256: sha256(
+      JSON.stringify({
+        release,
+        gpuBuild,
+        assets: assets.map(({ file, sha256, size }) => ({ file, sha256, size })),
+      }),
+    ),
+  };
 }
 
 function serve(classicDir, manifest, dist) {
@@ -237,19 +307,29 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const classic = prepareClassic(resolve(a.classic ?? join(REPO, '../facemorph.me-classic')));
   let manifest = classic.manifest,
     dist = null,
+    packageBytes = null,
     version = `pinned (WASM ${manifest.runtime.version}, WebGPU ${manifest.webgpu.runtime.version})`;
+  const controlBytes = readFileSync(
+    join(classic.dir, 'hosting/next-static/runtime-overlay/manifest.json'),
+  );
   if (a.ort && a.ort !== 'pinned') {
     dist = resolve(a.ort, 'dist');
-    version = JSON.parse(readFileSync(resolve(a.ort, 'package.json'), 'utf8')).version;
+    packageBytes = readFileSync(resolve(a.ort, 'package.json'));
+    version = JSON.parse(packageBytes.toString('utf8')).version;
   }
+  const gpuBuild = dist ? (a['gpu-build'] ?? 'webgpu') : 'jsep122';
   const served = { bytes: Buffer.alloc(0) };
   const { server, origin } = await serve(classic.dir, served, null);
   const ortHost = dist ? await serveOrt(dist) : null;
-  if (dist) manifest = withOrt(manifest, dist, ortHost.base, version, a['gpu-build'] ?? 'webgpu');
+  if (dist) manifest = withOrt(manifest, dist, ortHost.base, version, gpuBuild);
   // The pinned run serves the manifest's own bytes (its digest is the pinned one); the variant is a new manifest.
-  served.bytes = dist
-    ? Buffer.from(JSON.stringify(manifest))
-    : readFileSync(join(classic.dir, 'hosting/next-static/runtime-overlay/manifest.json'));
+  served.bytes = dist ? Buffer.from(JSON.stringify(manifest)) : controlBytes;
+  const provenance = qualificationIdentity({
+    controlBytes,
+    candidateBytes: served.bytes,
+    gpuBuild,
+    packageBytes,
+  });
   const results = [];
   for (const route of (a.routes ?? 'cpu,webgpu-ort').split(',')) {
     const r = await qualifyRoute({
@@ -257,13 +337,15 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       route,
       chromiumPath: a.chromium ?? '/usr/bin/chromium',
     });
-    console.log(JSON.stringify({ ort: version, ...r }));
-    results.push(r);
+    const result = { ort: version, provenance, ...r };
+    console.log(JSON.stringify(result));
+    results.push(result);
   }
   server.close();
   ortHost?.server.close();
   const summary = {
     ort: version,
+    provenance,
     routes: results.length,
     failed: results.filter((r) => !r.ok).map((r) => r.route),
   };
