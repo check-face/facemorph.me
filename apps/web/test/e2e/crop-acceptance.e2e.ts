@@ -69,17 +69,17 @@ const PROBE = `(() => {
     }
     return post.call(this, m, ...rest);
   };
-  let open = false;
-  new MutationObserver(() => {
-    const now = !!document.querySelector('.next-encode-dialog');
-    if (now && !open) c.opens++;
-    open = now;
-  }).observe(document, { subtree: true, childList: true });
+  let lastCrop = null;
   const seen = new WeakSet();
   const hook = window.__REACT_DEVTOOLS_GLOBAL_HOOK__;
   const commit = hook.onCommitFiberRoot.bind(hook);
   hook.onCommitFiberRoot = (...args) => {
     commit(...args);
+    // A crop opens when a new choice takes the dialog (queued crops reuse the mounted dialog; Adjust Crop does not
+    // make a new choice).
+    const crop = window.__elmish.model?.Crop;
+    if (crop && crop.url !== lastCrop) c.opens++;
+    lastCrop = crop ? crop.url : null;
     for (const i of window.__elmish.model?.Inputs ?? [])
       if (i.mode === 'photo' && i.file && i.file.name === 'cropped.png' && !seen.has(i.file)) { seen.add(i.file); c.confirmed++; }
   };
@@ -147,7 +147,6 @@ class Session {
   readonly errors: string[] = [];
   readonly stillLines: Record<string, unknown>[] = [];
   readonly lines: Record<string, unknown>[] = [];
-  failed = false;
   readonly name: string;
   readonly context: BrowserContext;
   readonly page: Page;
@@ -190,7 +189,7 @@ class Session {
     await context.addInitScript(PROBE);
     await context.tracing.start({
       screenshots: true,
-      snapshots: true,
+      snapshots: false,
       sources: false,
     });
     const page = await context.newPage();
@@ -333,6 +332,23 @@ class Session {
     await this.page.keyboard.press('ControlOrMeta+A');
     await this.page.keyboard.insertText(text);
   }
+  /** The current crop choice's preview URL (null when no crop is open). */
+  cropUrl(): Promise<string | null> {
+    return this.page.evaluate(
+      () =>
+        (window as unknown as { __elmish: { model: { Crop: { url: string } | null } } }).__elmish
+          .model.Crop?.url ?? null,
+    );
+  }
+  /** Waits until the crop `url` was closed or replaced by the next queued one. */
+  async cropGone(url: string | null) {
+    await this.page.waitForFunction(
+      (u) =>
+        (window as unknown as { __elmish: { model: { Crop: { url: string } | null } } }).__elmish
+          .model.Crop?.url !== u,
+      url,
+    );
+  }
   async confirmation() {
     await this.dialog.locator('.next-encode-preview img').waitFor({ timeout: 120_000 });
   }
@@ -361,12 +377,23 @@ class Session {
                 Crop: unknown;
                 Gate: unknown;
                 PendingJobs: unknown[];
+                StillChecks?: Map<string, number>;
+                PhotoQueue: unknown[];
+                CropQueue: unknown[];
               };
             };
           }
         ).__elmish.model;
+        // A page drop holds no face while its files are classified: the pending check is the signal.
         return (
-          !m.Busy && m.PreparingFaces.size === 0 && !m.Crop && !m.Gate && !m.PendingJobs?.length
+          !m.Busy &&
+          m.PreparingFaces.size === 0 &&
+          !m.Crop &&
+          !m.Gate &&
+          !m.PendingJobs?.length &&
+          !m.StillChecks?.size &&
+          !m.PhotoQueue.length &&
+          !m.CropQueue.length
         );
       },
       null,
@@ -420,22 +447,25 @@ class Session {
     return readFileSync((await (await download).path())!);
   }
   async close() {
-    await this.context.tracing
-      .stop(this.failed ? { path: join(results, `${this.name}-trace.zip`) } : {})
-      .catch(() => {});
+    await this.context.tracing.stop().catch(() => {});
     await this.context.close().catch(() => {});
   }
 }
 
-/** Runs one case as a subtest: skipped unless selected; on failure a screenshot, and the session keeps its trace. */
+/** Runs one case as a subtest: skipped unless selected; on failure a screenshot and that case's trace. */
 function caseRunner(t: TestContext, session: Session) {
   return async (name: string, body: () => Promise<void>) => {
     if (only && !only.includes(name)) return;
     await t.test(`${session.name}: ${name}`, async () => {
+      // One trace chunk per case, written only when the case fails.
+      await session.context.tracing.startChunk();
       try {
         await body();
+        await session.context.tracing.stopChunk();
       } catch (error) {
-        session.failed = true;
+        await session.context.tracing
+          .stopChunk({ path: join(results, `${session.name}-${name}-trace.zip`) })
+          .catch(() => {});
         await session.page
           .screenshot({
             path: join(results, `${session.name}-${name}-failure.png`),
@@ -945,12 +975,13 @@ test(
         await run(`sequence-${n}`, async () => {
           const mark = await d.mark();
           const before = await readModel(d.page);
-          const photos = [fx.nonSquare, fx.noFace, fx.multiFace, fx.redetection, fx.nonSquare];
+          // Five different photos, so every confirmed crop has its own tensor.
+          const photos = [fx.nonSquare, fx.noFace, fx.multiFace, fx.redetection, fx.qualification];
           await d.drop(
             d.page.getByRole('heading', { name: 'What is this?' }),
             photos.slice(0, n).map((p, i) => ({
-              name: `photo-${i}.jpg`,
-              type: 'image/jpeg',
+              name: `photo-${i}${p.slice(p.lastIndexOf('.'))}`,
+              type: p.endsWith('.png') ? 'image/png' : 'image/jpeg',
               base64: b64(p),
             })),
           );
@@ -1226,11 +1257,13 @@ test(
             for (let i = 0; i < photos; i++) {
               await r.confirmation();
               if (i === 0) await r.shots(`${tag}-drop-${n}-confirmation`);
+              const url = await r.cropUrl();
               await r.operate(r.dialog.getByRole('button', { name: 'CANCEL', exact: true }));
-              await r.dialog.waitFor({ state: 'detached' });
+              await r.cropGone(url);
             }
             await r.settled();
             const m = await readModel(r.page);
+            await r.page.evaluate(() => window.scrollTo(0, 0));
             await r.shots(`${tag}-drop-${n}`);
             const kinds = r.stillLines.slice(lines).map((l) => l['kind']);
             const c = await r.since(mark);
@@ -1238,7 +1271,9 @@ test(
               case: `${tag}-drop-${n}`,
               ...c,
               kinds,
+              classified: r.stillLines.slice(lines),
               inputs: m.inputs.length,
+              error: m.Error,
             });
             assert.deepEqual(
               kinds,
