@@ -307,9 +307,18 @@ async function main(argv) {
       } catch {
         /* gone */
       }
-    chrome.kill('SIGTERM');
+    // Chrome writes its profile until it has exited, so the work directory goes only after that (main run
+    // 40317850464: removing it right after SIGTERM failed with ENOTEMPTY). A Chrome that ignores SIGTERM is killed.
+    if (chrome.exitCode === null && chrome.signalCode === null) {
+      const exited = new Promise((done) => chrome.once('exit', done));
+      chrome.kill('SIGTERM');
+      const stubborn = setTimeout(() => chrome.kill('SIGKILL'), 10_000);
+      await exited;
+      clearTimeout(stubborn);
+    }
     await control.stop();
-    rmSync(work, { recursive: true, force: true });
+    // Helper processes Chrome started can outlive it by a moment.
+    rmSync(work, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
   }
   return code;
 }
