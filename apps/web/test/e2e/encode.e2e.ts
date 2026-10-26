@@ -502,6 +502,98 @@ test(
             assert.equal(await field.inputValue(), before);
             noModels();
 
+            // Clipboard content no browser lets a test put on the system clipboard (two images, a non-PNG
+            // image, a WebP file): a paste event carrying a real DataTransfer of real files, dispatched to
+            // the element at the field's visible centre. The same message, the text untouched, no model;
+            // the app's own saved WebP restores its face with no model and no dialog.
+            const pasteFiles = async (files: { name: string; type: string; base64: string }[]) => {
+              await field.scrollIntoViewIfNeeded();
+              const box = await field.boundingBox();
+              assert.ok(box);
+              return page.evaluate(
+                ([x, y, list]) => {
+                  const data = new DataTransfer();
+                  for (const f of list as { name: string; type: string; base64: string }[])
+                    data.items.add(
+                      new File([Uint8Array.from(atob(f.base64), (c) => c.charCodeAt(0))], f.name, {
+                        type: f.type,
+                      }),
+                    );
+                  const at = document.elementFromPoint(x as number, y as number)!;
+                  at.dispatchEvent(
+                    new ClipboardEvent('paste', {
+                      clipboardData: data,
+                      bubbles: true,
+                      cancelable: true,
+                    }),
+                  );
+                  return at.tagName;
+                },
+                [box.x + box.width / 2, box.y + box.height / 2, files] as const,
+              );
+            };
+            const png = readFileSync(
+              join(repo, 'apps/web/test/fixtures/verify/stills/recovery-v2.png'),
+            ).toString('base64');
+            const gif = 'R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+            const refusal = 'Paste one PNG, JPEG or WebP image. Your text is unchanged.';
+            for (const [caseName, files] of [
+              [
+                'two-images',
+                [
+                  { name: 'a.png', type: 'image/png', base64: png },
+                  { name: 'b.png', type: 'image/png', base64: png },
+                ],
+              ],
+              ['unsupported-gif', [{ name: 'a.gif', type: 'image/gif', base64: gif }]],
+            ] as const) {
+              assert.equal(await pasteFiles([...files]), 'INPUT');
+              await page.locator('.next-error > p').first().waitFor();
+              assert.equal(
+                (await page.locator('.next-error > p').first().innerText()).trim(),
+                refusal,
+                caseName,
+              );
+              assert.equal(
+                await page.locator('.next-model-toast, .MuiSnackbar-root').count(),
+                0,
+                `${caseName}: one message, no toast`,
+              );
+              assert.equal(await field.inputValue(), before, `${caseName}: text unchanged`);
+              assert.equal(await page.getByRole('dialog').count(), 0);
+              await shot(`main-field-paste-${caseName}`);
+              await hit(page.locator('.next-error').getByRole('button', { name: 'Dismiss' }));
+              noModels();
+            }
+            assert.equal(
+              await pasteFiles([
+                {
+                  name: 'saved.webp',
+                  type: 'image/webp',
+                  base64: readFileSync(saved).toString('base64'),
+                },
+              ]),
+              'INPUT',
+            );
+            await page.waitForFunction(
+              () =>
+                document.querySelector('[data-next-face]')?.getAttribute('data-next-state') ===
+                'project',
+            );
+            assert.equal(
+              await page.getByRole('dialog').count(),
+              0,
+              'a recovery-bearing WebP opens no dialog',
+            );
+            await shot('main-field-paste-recovered-webp');
+            noModels();
+            // Back to words for the cases that follow.
+            await hit(tiles.first().getByRole('button', { name: 'Change mode', exact: true }));
+            await hit(page.getByRole('menuitem', { name: 'Name or words', exact: true }));
+            await hit(field);
+            await page.keyboard.insertText(before);
+            assert.equal(await field.inputValue(), before);
+
             // Drop (fm-25um): a synthetic DataTransfer carrying a real JPEG, dispatched at a visible
             // point to whatever element is there. A tile binds itself; the background takes the first
             // empty face, else appends one.
