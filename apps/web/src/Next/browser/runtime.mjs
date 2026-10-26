@@ -16,7 +16,7 @@ const GEOMETRY=engineGeometry(FFHQ_1024_DESCRIPTOR),SIDE=GEOMETRY.width,W_SHAPE=
 export class RemovedRouteError extends Error{constructor(route='webgl'){super('WebGL processing was removed; use Automatic, CPU or WebGPU.');this.name='RemovedRouteError';this.code='route-removed';this.route=route;}}
 const abortError=()=>new DOMException('Generation cancelled','AbortError');
 /** One foreground operation, one worker, explicit route qualification. */
-export function createBrowserRuntime({manifest: suppliedManifest=undefined, manifestSha256:suppliedManifestSha256=undefined, manifestUrl='/runtime/manifest.json',onProgress=()=>{},alignPhoto=undefined,preferredRoute='auto',workerFactory=()=>new Worker(new URL('./ort-worker.mjs',import.meta.url),{type:'module'}),imageEncoderFactory=()=>createImageEncoder(),stallMs=300000}={}){
+export function createBrowserRuntime({manifest: suppliedManifest=/** @type {unknown} */(undefined), manifestSha256:suppliedManifestSha256=/** @type {string|undefined} */(undefined), manifestUrl='/runtime/manifest.json',onProgress=()=>{},alignPhoto=/** @type {((blob:Blob,options?:any)=>Promise<any>)|undefined} */(undefined),preferredRoute='auto',workerFactory=()=>new Worker(new URL('./ort-worker.mjs',import.meta.url),{type:'module'}),imageEncoderFactory=()=>createImageEncoder(),stallMs=300000}={}){
  let fallbackScope='cpu-once';
  const failedRoutes=new Set();let interruptedRoute,imageEncoder;
  // A reload/background interruption does not prove route failure. Retain its observation,
