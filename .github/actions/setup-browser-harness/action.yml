@@ -1,0 +1,25 @@
+name: setup-browser-harness
+description: >-
+  Pinned browser-harness in a runner-local venv, keyed by its version and Python minor. Runtime state is private
+  to this job; daemon socket names retain BU_NAME so independent journeys cannot attach to each other.
+runs:
+  using: composite
+  steps:
+    - name: Install or verify browser-harness 0.1.8
+      shell: bash
+      env:
+        HARNESS_VERSION: '0.1.8'
+      run: |
+        set -euo pipefail
+        python_minor=$(python3 -c 'import sys; assert sys.version_info >= (3, 11), "browser-harness needs Python >=3.11"; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
+        venv="$RUNNER_TOOL_CACHE/browser-harness/$HARNESS_VERSION/python-$python_minor"
+        if ! "$venv/bin/python" -c 'from importlib.metadata import version; import os; assert version("browser-harness") == os.environ["HARNESS_VERSION"]' 2>/dev/null; then
+          python3 -m venv "$venv"
+          "$venv/bin/python" -m pip install --disable-pip-version-check --only-binary=:all: "browser-harness==$HARNESS_VERSION"
+        fi
+        "$venv/bin/python" -m pip check
+        test -x "$venv/bin/browser-harness"
+        echo "BROWSER_HARNESS=$venv/bin/browser-harness" >> "$GITHUB_ENV"
+        echo "BH_HOME=$RUNNER_TEMP/bh" >> "$GITHUB_ENV"
+        echo 'BH_TELEMETRY=0' >> "$GITHUB_ENV"
+        echo 'BH_RECORD=0' >> "$GITHUB_ENV"

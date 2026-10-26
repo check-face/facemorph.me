@@ -1,6 +1,6 @@
 name: ci-shared
-# fm-o8xn: the shared CI pieces on every change to them. On eris (Playwright browsers, system Chromium and
-# browser-harness 0.1.8 are there): strict typecheck; the artifact lookup tests against the real GitHub API; the path
+# fm-o8xn: the shared CI pieces on every change to them. On the portable Ubuntu pool with Playwright Chromium and
+# pinned browser-harness 0.1.8: strict typecheck; the artifact lookup tests against the real GitHub API; the path
 # filter coverage and lane check; the interception fixture page through both helpers (Playwright and CDP), whose
 # per-assertion JSON logs are uploaded, the same format the lanes and e2e tests emit. Then the lookup action fetches
 # the pinned control's classic next-site artifact by explicit inputs and verifies it, and refuses an owner/name.
@@ -12,7 +12,7 @@ permissions:
   actions: read
 jobs:
   helpers:
-    runs-on: [self-hosted, eris]
+    runs-on: [self-hosted, tempcpu]
     timeout-minutes: 20
     env:
       INTERCEPT_LOG_DIR: ${{ github.workspace }}/test-results/intercept
@@ -23,13 +23,17 @@ jobs:
         with:
           node-version: '24'
       - uses: ./.github/actions/setup-workspace # node_modules for the lockfile, shared on the runner (fm-98po)
+      - uses: ./.github/actions/setup-playwright
+        with:
+          browsers: chromium
+      - uses: ./.github/actions/setup-browser-harness
+      - name: Use the installed Playwright Chromium for both helpers
+        run: echo "CHROMIUM_PATH=$(node -p 'require("playwright").chromium.executablePath()')" >> "$GITHUB_ENV"
       - name: Typecheck (strict)
         run: npx tsc -p scripts/ci
       - name: Lookup, path filters and the Playwright helper
         run: node --test scripts/ci/fetch-artifact.test.ts scripts/ci/path-filters.test.ts scripts/ci/changes.test.ts scripts/ci/intercept/intercept.test.ts
       - name: The CDP helper (browser-harness)
-        env:
-          BROWSER_HARNESS: /home/cdilga/Work/runs/venv-bh/bin/browser-harness
         run: python3 scripts/ci/intercept/test_intercept.py
       - name: Bounded commands and timing locks (real processes)
         run: python3 autoresearch/test_run.py
