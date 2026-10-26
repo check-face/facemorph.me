@@ -16,7 +16,7 @@
     "hooks:install": "node scripts/hooks/install.mjs",
     "typecheck": "npm run build -w packages/stylegan-js -w packages/browser-model-manager -w packages/cloudflare-model-host && npm run typecheck --workspaces --if-present",
     "build": "npm run build -w packages/stylegan-js -w packages/browser-model-manager -w packages/cloudflare-model-host --if-present && npm run build -w apps/web",
-    "test": "npm test --workspaces --if-present && node --test 'scripts/names-publish/*.test.mjs' 'scripts/build/*.test.mjs' 'scripts/packages/consumer-gates/*.test.mjs' 'scripts/verify/not-worse/*.test.ts' 'scripts/hosting/*.test.mjs' tools/ort-qualify/qualify.test.mjs scripts/delivery/runbook.test.mjs scripts/delivery/post-delivery-check.test.mjs scripts/delivery/copy-inventory.test.mjs 'scripts/ci/**/*.test.ts' 'scripts/ci/**/*.test.mjs' && python3 scripts/ci/site/test_compiled_ui.py && python3 scripts/ci/intercept/test_intercept.py && python3 autoresearch/test_run.py",
+    "test": "npm test --workspaces --if-present && node --test 'scripts/names-publish/*.test.mjs' 'scripts/build/*.test.mjs' 'scripts/hooks/*.test.mjs' 'scripts/packages/consumer-gates/*.test.mjs' 'scripts/verify/not-worse/*.test.ts' 'scripts/hosting/*.test.mjs' tools/ort-qualify/qualify.test.mjs scripts/delivery/runbook.test.mjs scripts/delivery/post-delivery-check.test.mjs scripts/delivery/copy-inventory.test.mjs 'scripts/ci/**/*.test.ts' 'scripts/ci/**/*.test.mjs' && python3 scripts/ci/site/test_compiled_ui.py && python3 scripts/ci/intercept/test_intercept.py && python3 autoresearch/test_run.py",
     "lint": "oxlint --deny-warnings",
     "lint:fix": "oxlint --fix",
     "format": "oxfmt",

@@ -1,9 +1,11 @@
 #!/usr/bin/env node
-// Cheap checks on the exact staged/pushed blobs. Build, test and device validation remain the contributor's job.
+// Cheap checks on the exact staged/pushed blobs: oxfmt and oxlint, and on pre-push a typecheck of each pushed commit.
+// Build, test and device validation remain the contributor's job.
 import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
+import { DEFAULT_CACHE, typecheckCommit } from './typecheck.mjs';
 
 const root = execFileSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' }).trim();
 const git = (...args) => execFileSync('git', args, { cwd: root, encoding: 'utf8' });
@@ -79,4 +81,26 @@ for (const revision of revisions) {
     rmSync(temp, { recursive: true, force: true });
   }
 }
+// Pre-push also typechecks each pushed commit's own tree (typecheck.mjs): the workspaces it touches and their
+// dependents, never the working tree, so other sessions' uncommitted edits cannot hide or cause an error.
+if (mode === 'pre-push')
+  for (const [head, base] of revisions) {
+    const result = await typecheckCommit({
+      root,
+      head,
+      base,
+      cache: DEFAULT_CACHE,
+      log: (line) => console.error(`pre-push typecheck: ${line}`),
+    });
+    for (const f of result.failures) process.stdout.write(`\n${f.project}\n${f.output}`);
+    if (!result.ok) {
+      console.error(
+        `pre-push: tsc failed in ${result.failures.length} project(s) of ${head}; fix and commit before pushing.`,
+      );
+      failed = true;
+    } else if (result.checked.length)
+      console.error(
+        `pre-push typecheck: ${result.checked.length} project(s) clean in ${result.ms} ms`,
+      );
+  }
 process.exitCode = failed ? 1 : 0;
