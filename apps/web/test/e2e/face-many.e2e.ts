@@ -31,11 +31,24 @@ import assert from 'node:assert/strict';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import test from 'node:test';
-import { chromium, type Browser, type BrowserContext, type Locator, type Page } from 'playwright';
+import {
+  chromium,
+  type Browser,
+  type BrowserContext,
+  type CDPSession,
+  type Locator,
+  type Page,
+} from 'playwright';
 import { startControl, chromiumArgs, ORIGIN, REPO } from '../parity/control-server.ts';
 import { readIdentity } from '../../../../scripts/import/build-next.mjs';
 import { press } from '../support/operate.ts';
-import { STORE_HOOK, faceList, faceTrace, setFaces } from '../support/face-fixture.ts';
+import {
+  STORE_HOOK,
+  faceList,
+  faceTrace,
+  restoreFaces,
+  setFaces,
+} from '../support/face-fixture.ts';
 import { builtBreakpoints, visualOrderProblems, type FocusStop } from '../verify/harness.ts';
 import {
   FACE_MANY_COUNTS,
@@ -70,6 +83,7 @@ interface Session {
   errors: string[];
   models: string[];
   navigations: number;
+  cdp?: CDPSession;
 }
 
 async function open(
@@ -129,7 +143,7 @@ const settle = (page: Page) =>
           const now = `${scrollX},${scrollY},${strip?.scrollLeft ?? 0}`;
           same = now === last ? same + 1 : 0;
           last = now;
-          if (same >= 4) done();
+          if (same >= 3) done();
           else requestAnimationFrame(tick);
         };
         requestAnimationFrame(tick);
@@ -298,33 +312,36 @@ async function scroll(s: Session, dx: number, dy: number, at: { x: number; y: nu
   }
   // A finger stays on the screen: a long swipe is several strokes, each starting where it has room to travel.
   const view = s.page.viewportSize()!;
-  const cdp = await s.context.newCDPSession(s.page);
+  const cdp = (s.cdp ??= await s.context.newCDPSession(s.page));
   let restX = dx,
     restY = dy;
   // Each stroke is centred on `at` (inside the strip for sideways swipes) and stays on the screen.
   const cx = Math.min(Math.max(at.x, 30), view.width - 30);
   const cy = Math.min(Math.max(at.y, 30), view.height - 30);
-  const roomX = 2 * (Math.min(cx, view.width - cx) - 20);
-  const roomY = 2 * (Math.min(cy, view.height - cy) - 20);
+  // The finger starts and ends 40 px inside the screen (and so inside a full-width strip).
+  const roomX = 2 * (Math.min(cx, view.width - cx) - 40);
+  const roomY = 2 * (Math.min(cy, view.height - cy) - 40);
   while (Math.abs(restX) >= 1 || Math.abs(restY) >= 1) {
     const stepX = Math.sign(restX) * Math.min(Math.abs(restX), roomX);
     const stepY = Math.sign(restY) * Math.min(Math.abs(restY), roomY);
     // Scrolling right/down moves the finger left/up.
     const x = cx + stepX / 2;
     const y = cy + stepY / 2;
-    await cdp.send('Input.synthesizeScrollGesture', {
-      x: Math.round(x),
-      y: Math.round(y),
-      xDistance: -Math.round(stepX),
-      yDistance: -Math.round(stepY),
-      gestureSourceType: 'touch',
-      speed: 2000,
-      preventFling: true,
-    });
+    // touchStart, moves, a short hold (so no fling), touchEnd: the compositor scrolls as for a finger.
+    const steps = 8;
+    const point = (k: number) => [{ x: x - (stepX * k) / steps, y: y - (stepY * k) / steps }];
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: point(0) });
+    for (let k = 1; k <= steps; k++) {
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: point(k) });
+      await s.page.waitForTimeout(16);
+    }
+    await s.page.waitForTimeout(120);
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
     restX -= stepX;
     restY -= stepY;
+    // A remainder under the touch slop would not scroll at all: stop there.
+    if (Math.abs(restX) < 40 && Math.abs(restY) < 40) break;
   }
-  await cdp.detach();
 }
 
 const stripTop = (page: Page) =>
@@ -389,7 +406,13 @@ async function visitAll(s: Session, count: number, label: string): Promise<Visit
         const c = document.querySelector('[data-next-strip] > .next-connector');
         return (f?.getBoundingClientRect().width ?? 300) + (c?.getBoundingClientRect().width ?? 0);
       });
-      await scroll(s, Math.min(pitch, v.strip!.width), 0, {
+      // One view's worth of whole tiles (at least one), so every face passes through the view once.
+      // Snapping centres a tile, so its neighbours may be cut: step by the tiles wholly in view.
+      const tiles = Math.max(
+        1,
+        Math.min(Math.floor(v.strip!.width / pitch), v.faces.filter((f) => f.inView).length),
+      );
+      await scroll(s, tiles * pitch, 0, {
         x: box!.x + box!.width / 2,
         y: box!.y + 40,
       });
@@ -1045,7 +1068,8 @@ test(
                 await page.reload();
                 await page.locator('section.next-face').first().waitFor();
                 await page.waitForTimeout(1500); // the runner measures the stored session at start
-                await setFaces(page, count);
+                // The budget is over, so no face can be added: they arrive by the arrival restore (setup).
+                await restoreFaces(page, count);
                 const status = page.locator('.next-morph-slot .next-status');
                 const sessionMessage =
                   /^Not added: a saved session can hold at most 32 MB, and this would go over it\. Remove some faces first\.$/;

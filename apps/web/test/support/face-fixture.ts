@@ -67,7 +67,12 @@ export async function setFaces(page: Page, count: number): Promise<FixtureFace[]
       if (seq !== undefined) send('UndoExpired', seq);
     };
     end();
-    while (store.getState().Inputs.length < n) send('AddAt', store.getState().Inputs.length);
+    while (store.getState().Inputs.length < n) {
+      const before = store.getState().Inputs.length;
+      send('AddAt', before);
+      if (store.getState().Inputs.length === before)
+        throw new Error('AddAt was refused during setup');
+    }
     while (store.getState().Inputs.length > n) {
       send('Remove', store.getState().Inputs.at(-1)!.id);
       end();
@@ -103,3 +108,57 @@ export const faceTrace = (page: Page): Promise<{ type: string; id: string; at: n
         }
       ).__FACEMORPH_FACE_TRACE__,
   );
+
+/**
+ * `count` word faces through the arrival restore (RestoredLast on a fresh page), which is not an admission path:
+ * the setup for a page whose admission budget is already over. Setup, not graded.
+ */
+export async function restoreFaces(page: Page, count: number): Promise<FixtureFace[]> {
+  await page.waitForFunction(() => !!(window as unknown as { __fmStore?: unknown }).__fmStore);
+  await page.evaluate((n) => {
+    type S = { JobId: number; Inputs: { value: string }[]; Kind: string };
+    const store = (
+      window as unknown as {
+        __fmStore: { getState(): S; dispatch(m: { type: string; args: unknown[] }): void };
+      }
+    ).__fmStore;
+    const s = store.getState();
+    if (s.JobId !== 0 || s.Inputs[0]?.value !== 'hello')
+      throw new Error('restoreFaces needs a fresh page');
+    const inputs = Array.from({ length: n }, (_, i) => ({
+      id: `face-r${i + 1}`,
+      mode: 'text',
+      value: `words-${i + 1}`,
+      file: null,
+    }));
+    store.dispatch({
+      type: 'RestoredLast',
+      args: [
+        {
+          faces: [],
+          videoUrl: '',
+          projectJson: '',
+          message: '',
+          errorMessage: '',
+          restored: true,
+          inputs,
+          kind: s.Kind,
+          width: 1,
+          pinch: false,
+          frames: 16,
+          fps: 16,
+          photoChoices: null,
+        },
+      ],
+    });
+  }, count);
+  await page.waitForFunction(
+    (n) =>
+      document.querySelectorAll('section.next-face').length > 0 &&
+      (
+        window as unknown as { __fmStore: { getState(): { Inputs: unknown[] } } }
+      ).__fmStore.getState().Inputs.length === n,
+    count,
+  );
+  return faceList(page);
+}

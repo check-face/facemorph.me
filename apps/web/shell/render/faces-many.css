@@ -166,7 +166,8 @@
   padding: 0;
   margin: 0;
   border: 0;
-  border-radius: 50%;
+  /* Square: the whole 44 x 44 box is the hit area (a rounded box would not hit-test its corners). */
+  border-radius: 0;
   color: #f3f3f3;
   background: transparent;
   isolation: isolate;
