@@ -1,6 +1,9 @@
 // Real selected browser worker: pinned model acquisition and native ORT/WASM lifecycle execution.
 // The page/controller must acknowledge acquisition before sending run, so runtime reads can be gated.
-import { acquire, run, cleanup } from '/manager-loaded-driver.mjs';
+// The mobile/component HTTPS servers provide this endpoint from the shared
+// package driver; it is a served module URL, not an app-root source file.
+const driverUrl = '/manager-loaded-driver.mjs';
+const driver = import(driverUrl);
 
 let phase = 'new';
 let backend;
@@ -17,7 +20,7 @@ const failure = async (error) => {
   phase = 'failed';
   let cleanupError;
   try {
-    await cleanup();
+    await (await driver).cleanup();
   } catch (error) {
     cleanupError = message(error);
   }
@@ -35,6 +38,7 @@ self.addEventListener('unhandledrejection', (event) => {
 });
 self.onmessage = async ({ data }) => {
   try {
+    const { acquire, run, cleanup } = await driver;
     if (!self.isSecureContext)
       throw Error('loaded runtime worker requires a native secure context');
     if (data.type === 'acquire' || (!data.type && data.manifest)) {
