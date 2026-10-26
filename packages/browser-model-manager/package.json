@@ -1,5 +1,5 @@
 {
-  "name": "@facemorph/browser-model-manager",
+  "name": "browser-model-manager",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -20,7 +20,7 @@
     "PROVENANCE.json"
   ],
   "dependencies": {
-    "@facemorph/stylegan-js": "^0.0.0"
+    "stylegan-js": "^0.0.0"
   },
   "engines": {
     "node": ">=24"

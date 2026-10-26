@@ -10,7 +10,7 @@ import re
 from .models import ModelDeclaration
 
 SCHEMA = 'facemorph-model-conv-v1'
-# The producer-facing model manifest major (@facemorph/browser-model-manager
+# The producer-facing model manifest major (browser-model-manager
 # schema/model-manifest.v1.schema.json), which every manifest written here validates against.
 MANIFEST_SCHEMA_MAJOR = 1
 HEX64 = re.compile(r'^[0-9a-f]{64}$')

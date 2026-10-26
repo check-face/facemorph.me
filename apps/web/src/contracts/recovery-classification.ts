@@ -2,7 +2,7 @@
 // is stylegan-js (readRecovery / inspectStill, fm-1muu); this decides the allowed actions from its result and
 // the loaded model's identity.
 
-import type { StillRecoveryResult } from '@facemorph/stylegan-js';
+import type { StillRecoveryResult } from 'stylegan-js';
 
 export type RecoveryClassification = 'matching' | 'missing' | 'damaged' | 'incompatible-schema' | 'incompatible-model' | 'unknown-model';
 

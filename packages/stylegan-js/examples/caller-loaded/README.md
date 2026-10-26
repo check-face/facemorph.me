@@ -1,6 +1,6 @@
 # Caller-loaded example
 
-`@facemorph/stylegan-js` with no model manager. The page loads a model capability itself from a runtime
+`stylegan-js` with no model manager. The page loads a model capability itself from a runtime
 directory you serve (`manifest.json` and the assets it names), maps seed 7, synthesizes it, synthesizes seed
 1234 and their W+ midpoint (`blend` with weights 0.5/0.5) through the engine's `map`/`synthesize`, and disposes.
 It shows progress, an Abort button, and errors as typed `{ code, message, cause }` values.
@@ -15,7 +15,7 @@ Run it from a project that has the packed tarball installed:
 ```sh
 npm pack -w packages/stylegan-js --pack-destination /tmp/pack
 mkdir app && cd app && npm init -y && npm pkg set type=module
-npm install /tmp/pack/facemorph-stylegan-js-0.0.0.tgz typescript
+npm install /tmp/pack/stylegan-js-0.0.0.tgz typescript
 cp -r <repo>/packages/stylegan-js/examples/caller-loaded/. .
 npx tsc -p tsconfig.json
 ```

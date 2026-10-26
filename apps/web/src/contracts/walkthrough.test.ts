@@ -6,7 +6,7 @@ import {
   type IdentifiedLatent,
   type ModelDescriptor,
 } from '../../../../packages/stylegan-js/src/contracts/descriptor.ts';
-import type { RecoveredStill } from '@facemorph/stylegan-js';
+import type { RecoveredStill } from 'stylegan-js';
 import {
   CROP_PREPROCESSING_POLICY_V1, createConfirmedCrop,
 } from '../../../../packages/stylegan-js/src/contracts/crop-policy.ts';

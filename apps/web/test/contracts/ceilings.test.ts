@@ -10,14 +10,14 @@ import {
   LIVE_RESIDENCY_LIMIT,
   type AcquisitionBudget,
   type LiveResidencyLimit,
-} from '@facemorph/browser-model-manager';
+} from 'browser-model-manager';
 import {
   CROP_MAX_BYTES,
   MAX_MORPH_FRAMES,
   MEMORY_BOUNDS,
   readRecovery,
   type MemoryBoundName,
-} from '@facemorph/stylegan-js';
+} from 'stylegan-js';
 import {
   CEILINGS,
   CLASSIC_COMMIT,

@@ -9,7 +9,7 @@ import {
   type BlendError,
   type BlendResult,
   type LatentTensor,
-} from '@facemorph/stylegan-js';
+} from 'stylegan-js';
 
 export function mix(a: LatentTensor, b: LatentTensor, w: number): BlendResult | BlendError {
   const d = parseModelDescriptor(AFHQ_CAT_512_DESCRIPTOR);

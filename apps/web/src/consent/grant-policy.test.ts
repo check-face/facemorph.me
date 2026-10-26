@@ -1,7 +1,7 @@
 // fm-qrfz rows 1 and 2: the grant state machine and no repeated asks. Pure: events and timestamps are plain inputs.
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import type { GrantOwnerId } from '@facemorph/browser-model-manager';
+import type { GrantOwnerId } from 'browser-model-manager';
 import {
   INSPECT_MS,
   initialPolicy,

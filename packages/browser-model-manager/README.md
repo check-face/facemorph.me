@@ -1,9 +1,9 @@
-# @facemorph/browser-model-manager
+# browser-model-manager
 
 Consented acquisition, verification, storage and eviction of browser model assets, and the model manifest schema
 (`schema/`). It downloads model files from the static origin you host them on, only under a grant the app or the
 developer has approved, checks every byte against the manifest's SHA-256 pins, stores verified bytes in the Origin
-Private File System (OPFS) or Cache Storage, and hands an engine such as `@facemorph/stylegan-js` a reader of
+Private File System (OPFS) or Cache Storage, and hands an engine such as `stylegan-js` a reader of
 verified local bytes that never touches the network.
 
 **No hidden network repair happens during engine operations.** The engine reads only through the verified local
@@ -24,10 +24,10 @@ is the complete, tested browser example.
 
 <!-- docs-test: install -->
 ```sh
-npm install @facemorph/browser-model-manager
+npm install browser-model-manager
 ```
 
-ESM only, with `.d.ts` declarations. It depends on `@facemorph/stylegan-js` for the engine's types (the loaded
+ESM only, with `.d.ts` declarations. It depends on `stylegan-js` for the engine's types (the loaded
 capability and compute routes); importing the manager does no I/O.
 
 ## Authorize, then acquire
@@ -65,7 +65,7 @@ import {
   type AcquisitionGrant,
   type BlobStore,
   type Fetcher,
-} from '@facemorph/browser-model-manager';
+} from 'browser-model-manager';
 
 const check = (ok: boolean, message: string) => {
   if (!ok) throw new Error(message);
@@ -201,7 +201,7 @@ import {
   type BlobStore,
   type Fetcher,
   type ShardStore,
-} from '@facemorph/browser-model-manager';
+} from 'browser-model-manager';
 
 const check = (ok: boolean, message: string) => {
   if (!ok) throw new Error(message);
@@ -427,7 +427,7 @@ import {
   listenForDeletions,
   type LeaseHolder,
   type Removable,
-} from '@facemorph/browser-model-manager';
+} from 'browser-model-manager';
 
 const check = (ok: boolean, message: string) => {
   if (!ok) throw new Error(message);
@@ -542,7 +542,7 @@ must add up. The JSON schema producers validate against is `schema/model-manifes
 [`examples/developer-hosted`](examples/developer-hosted) is a page that constructs the cache and reads its status
 with zero requests; on "Review download" fetches the two small manifests from your static origin and shows the
 grant's exact bytes; on approval acquires the converted model and the CPU runtime with a progress bar and an Abort
-button; reads every asset back through the verified local reader; loads `@facemorph/stylegan-js` on the CPU from
+button; reads every asset back through the verified local reader; loads `stylegan-js` on the CPU from
 those reads alone, under leases, and synthesizes one image; and then releases and evicts. Its test
 (`test/example.test.ts`) runs it from freshly packed tarballs in a clean project with Playwright Chromium against a
 local static HTTPS host and checks each of those steps by the requests actually made.

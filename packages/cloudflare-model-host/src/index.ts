@@ -1,7 +1,7 @@
-// @facemorph/cloudflare-model-host: chunk staging, manifest rewriting, reconstruction verification and dry-run-first
+// cloudflare-model-host: chunk staging, manifest rewriting, reconstruction verification and dry-run-first
 // publication of verified model bytes to Cloudflare static hosting (fm-3osh); the mirror Worker, its deploy and its
 // warm (fm-fy2.14).
-export const PACKAGE = '@facemorph/cloudflare-model-host' as const;
+export const PACKAGE = 'cloudflare-model-host' as const;
 export * from './limits.ts';
 export * from './chunks.ts';
 export * from './manifest.ts';

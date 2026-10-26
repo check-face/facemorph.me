@@ -1,5 +1,5 @@
 name: manager-cache
-# fm-eulc: the model cache in @facemorph/browser-model-manager. In the qualified temporary browser pool: the
+# fm-eulc: the model cache in browser-model-manager. In the qualified temporary browser pool: the
 # package's typecheck, build and tests, whose browser cases run verified local reads on OPFS and Cache Storage
 # (typed miss, corruption, eviction; zero requests counted by host class with the interception helper; entries the
 # candidate's own cache wrote read without a download), the tarball check, and the candidate's carried

@@ -32,10 +32,7 @@ test('no WebGL execution path remains in the runtime, worker, route selection or
     worker,
     /if\(!manifest\.webgl\)throw Error\('WebGPU direct bundle unavailable'\);generator=await \(await webgpuLoaders\(\)\)\.loadDirectWebGpuGenerator\(\{reader,manifest,/,
   );
-  assert.match(
-    worker,
-    /const webgpuLoaders=\(\)=>import\('@facemorph\/stylegan-js\/engine\/webgpu'\);/,
-  );
+  assert.match(worker, /const webgpuLoaders=\(\)=>import\('stylegan-js\/engine\/webgpu'\);/);
   assert.match(worker, /if\(!\['wasm','webgpu'\]\.includes\(request\.provider\)\)throw/);
 });
 

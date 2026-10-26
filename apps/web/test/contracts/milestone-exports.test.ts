@@ -203,7 +203,7 @@ import type {
   latentFitsDescriptor,
   parseModelDescriptor,
   sameModelEndpoints,
-} from '@facemorph/stylegan-js';
+} from 'stylegan-js';
 export type {
   AdmissionSplit,
   AppGrantState,

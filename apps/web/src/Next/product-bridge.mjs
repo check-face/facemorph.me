@@ -7,8 +7,8 @@ import {createBrowserRuntime} from './browser/runtime.mjs';
 import {admitRuntimeManifest} from './browser/runtime-manifest.mjs';
 import {AdmissionRefused} from './browser/admission.mjs';
 import {createLatentPath,GEOMETRY_VERSION} from './geometry/latent-path.mjs';
-import {blend,FFHQ_1024_DESCRIPTOR} from '@facemorph/stylegan-js';
-import {engineGeometry} from '@facemorph/stylegan-js/engine';
+import {blend,FFHQ_1024_DESCRIPTOR} from 'stylegan-js';
+import {engineGeometry} from 'stylegan-js/engine';
 // The model's dimensions (fm-dmlz): the side, the W+ shape and the pixel bytes come from the descriptor of the
 // model this app ships (FFHQ), never from literal 1024 / 18 x 512.
 const GEOMETRY=engineGeometry(FFHQ_1024_DESCRIPTOR),SIDE=GEOMETRY.width,W_SHAPE=[GEOMETRY.latent.layers,GEOMETRY.latent.width];
@@ -26,7 +26,7 @@ if(typeof recordUsage==='function')analytics.setStatsSink?.(recordUsage);
 analytics.start();analytics.observeVitals?.();
 import {labelFor,loadedBytes,createFrameCounter} from './stage-labels.mjs';
 import {infillFrames} from './infill.mjs';
-import {renderMorph} from '@facemorph/stylegan-js';
+import {renderMorph} from 'stylegan-js';
 import {frameStoreKey,frameStoreGet,frameStoreGetDisplay,frameStoreGetOne} from './morph-frames.mjs';
 import {selectPhoto} from './photo-selection.mjs';
 import {refusal} from './photo/refusal.mjs';

@@ -1,4 +1,4 @@
-# @facemorph/cloudflare-model-host
+# cloudflare-model-host
 
 Stages, verifies and publishes converted model files for static HTTPS hosting, then checks that an origin serves
 them byte for byte with the headers a browser needs. Cloudflare is optional: any static host that can set response
@@ -12,9 +12,9 @@ Where it fits:
 2. **Host** it with this package: `stage` gives every file a hosted URL, cuts files over 25 MiB into 16 MiB chunks,
    `verify` reads the result back, `publish` copies it to a static root, and `qualify-origin` checks the served bytes
    and headers.
-3. **Acquire** it in the browser with [@facemorph/browser-model-manager](../browser-model-manager/README.md), which
+3. **Acquire** it in the browser with [browser-model-manager](../browser-model-manager/README.md), which
    downloads only after the person authorizes it, verifies every byte and keeps the files in the browser's storage.
-4. **Run** it with [@facemorph/stylegan-js](../stylegan-js/README.md), which reads the manager's verified local
+4. **Run** it with [stylegan-js](../stylegan-js/README.md), which reads the manager's verified local
    bytes and never fetches by itself.
 
 Guides: [any static HTTPS host](docs/static-hosting.md) and [Cloudflare](docs/cloudflare.md). Every export is listed
@@ -24,7 +24,7 @@ in the [API reference](docs/api.md). Where the code came from: [extraction histo
 
 <!-- docs-test: install -->
 ```sh
-npm install @facemorph/cloudflare-model-host @facemorph/browser-model-manager
+npm install cloudflare-model-host browser-model-manager
 ```
 
 Node 24 or newer. The package installs the `facemorph-model-host` command; the manager is the browser half of the
@@ -82,7 +82,7 @@ A static HTTPS server with the headers this package requires (save it as `serve.
 import { readFileSync } from 'node:fs';
 import { createServer } from 'node:https';
 import { resolve, sep } from 'node:path';
-import { expectedType, IMMUTABLE_CACHE, MUTABLE_CACHE } from '@facemorph/cloudflare-model-host';
+import { expectedType, IMMUTABLE_CACHE, MUTABLE_CACHE } from 'cloudflare-model-host';
 
 const [dir, port] = process.argv.slice(2);
 const root = resolve(dir);
@@ -147,7 +147,7 @@ is needed:
 <!-- docs-test: run -->
 ```sh
 mkdir -p app
-cp -r node_modules/@facemorph/browser-model-manager/dist app/manager
+cp -r node_modules/browser-model-manager/dist app/manager
 ```
 
 <!-- docs-test: file app/index.html -->
@@ -158,7 +158,7 @@ cp -r node_modules/@facemorph/browser-model-manager/dist app/manager
     <meta charset="utf-8" />
     <title>Model host quickstart</title>
     <script type="importmap">
-      { "imports": { "@facemorph/browser-model-manager": "./manager/index.js" } }
+      { "imports": { "browser-model-manager": "./manager/index.js" } }
     </script>
   </head>
   <body>
@@ -171,7 +171,7 @@ cp -r node_modules/@facemorph/browser-model-manager/dist app/manager
 
 <!-- docs-test: file app/load.mjs -->
 ```js
-import { createBrowserModelCache, parseModelManifest } from '@facemorph/browser-model-manager';
+import { createBrowserModelCache, parseModelManifest } from 'browser-model-manager';
 
 const MODELS = 'https://localhost:8443/models/';
 const OWNER = 'face:quickstart';
@@ -242,7 +242,7 @@ for a usage error. Nothing is written to a host and no Cloudflare API request is
   `chunks/<sha256>.bin`; a chunk is written once and never changed. The manifest is rewritten to hosted URLs under
   `--base`. The source can be an unpublished bundle (assets named by `file`, as model-conv writes them) or an already
   hosted tree being restaged (`--from-base` maps its URLs back to paths). The manifest must pass
-  `@facemorph/browser-model-manager`'s contract before and after staging: a newer or unknown major is refused. Local
+  `browser-model-manager`'s contract before and after staging: a newer or unknown major is refused. Local
   paths, `file://` URLs, sibling checkouts and private inventories (`sources.private.json`) never reach the staged
   manifest. `--manifest` names a manifest file other than `manifest.json` in the source.
 - **Verify:** `facemorph-model-host verify --root <dir> --base <https url> [--manifest <name>]

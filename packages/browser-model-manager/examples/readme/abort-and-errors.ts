@@ -9,7 +9,7 @@ import {
   type BlobStore,
   type Fetcher,
   type ShardStore,
-} from '@facemorph/browser-model-manager';
+} from 'browser-model-manager';
 
 const check = (ok: boolean, message: string) => {
   if (!ok) throw new Error(message);

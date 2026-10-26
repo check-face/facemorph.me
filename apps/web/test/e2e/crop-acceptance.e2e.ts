@@ -16,7 +16,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import test, { type TestContext } from 'node:test';
 import { chromium, devices, type BrowserContext, type Locator, type Page } from 'playwright';
-import { readRecovery } from '@facemorph/stylegan-js';
+import { readRecovery } from 'stylegan-js';
 import { startControl, chromiumArgs, ORIGIN, REPO } from '../parity/control-server.ts';
 import { readIdentity } from '../../../../scripts/import/build-next.mjs';
 import { press } from '../support/operate.ts';

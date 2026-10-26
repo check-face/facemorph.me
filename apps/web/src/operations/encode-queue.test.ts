@@ -13,7 +13,7 @@ import {
   type EncodeResult,
   type LoadedEncoderCapability,
   type SourcePixels,
-} from '@facemorph/stylegan-js';
+} from 'stylegan-js';
 import {
   afterReload,
   createEncodeQueue,
@@ -271,11 +271,7 @@ test('crop-queue.retry-reuses-derived-pixels: new attempt ID, same frozen crop, 
       /from '([^']+)'/g,
     ),
   ].map((m) => m[1]);
-  assert.deepEqual(imports.sort(), [
-    '../contracts/scheduler.ts',
-    './scheduler.ts',
-    '@facemorph/stylegan-js',
-  ]);
+  assert.deepEqual(imports.sort(), ['../contracts/scheduler.ts', './scheduler.ts', 'stylegan-js']);
 });
 
 test('crop-queue.no-pixels-no-retry: succeeded, underivable, removed, queued and running slots refuse Retry', async () => {

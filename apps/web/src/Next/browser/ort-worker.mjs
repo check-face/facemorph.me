@@ -1,7 +1,7 @@
 // Mapping, synthesis, the canaries and the ORT runtime are the stylegan-js engine's (fm-7f2o): this worker keeps the
 // acquisition, residency, encoder and message protocol, and hands the engine a reader over its verified bytes.
-import {loadCpuGenerator,loadOrtRuntime,cpuRuntimeAssets,browserModuleHost,createCanaryQualification,loadStreamedEncoder,loadEncoderRuntime,engineGeometry} from '@facemorph/stylegan-js/engine';
-import {FFHQ_1024_DESCRIPTOR} from '@facemorph/stylegan-js';
+import {loadCpuGenerator,loadOrtRuntime,cpuRuntimeAssets,browserModuleHost,createCanaryQualification,loadStreamedEncoder,loadEncoderRuntime,engineGeometry} from 'stylegan-js/engine';
+import {FFHQ_1024_DESCRIPTOR} from 'stylegan-js';
 // The model's dimensions (fm-dmlz): the side, the W+ shape and the pixel bytes come from the descriptor of the
 // model this app ships (FFHQ), never from literal 1024 / 18 x 512.
 const GEOMETRY=engineGeometry(FFHQ_1024_DESCRIPTOR),SIDE=GEOMETRY.width,BATCH_W_SHAPE=[1,GEOMETRY.latent.layers,GEOMETRY.latent.width];
@@ -73,7 +73,7 @@ const probePlanned=()=>budget.probe(asset=>cache.has(asset));
 // the ORT engine its split graph (manifest.webgpu).
 const gpuBundle=()=>gpuEngine==='direct'?manifest.webgl:manifest.webgpu;
 // The WebGPU loaders (WGSL engine, ORT WebGPU glue) arrive only when a WebGPU route loads; CPU workers never fetch them (fm-s0vi).
-const webgpuLoaders=()=>import('@facemorph/stylegan-js/engine/webgpu');
+const webgpuLoaders=()=>import('stylegan-js/engine/webgpu');
 function planRoute(){
  if(!manifest)return;
  planAsset([manifest.runtime,manifest.mapping,manifest.average,manifest.noise]);

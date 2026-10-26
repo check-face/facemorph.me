@@ -1,5 +1,5 @@
 // Recovery in saved files, as the app writes and reads it (fm-fy2.7): the package's schema core (fm-fzzd,
-// @facemorph/stylegan-js media/*) bound to the app's face and project values. Stills are written as schema 3
+// stylegan-js media/*) bound to the app's face and project values. Stills are written as schema 3
 // (generator record and W+ shape from the model descriptor) and read as schema 3, schema 2 PNG/WebP or the
 // candidate's schema 1 PNG; a saved MP4 carries a schema-2 project (exact float32 controls, the movie's size,
 // frame count and encoder route) and the candidate's schema-1 project stays readable. No DOM: callers pass
@@ -10,7 +10,7 @@ import {
   mp4VideoInfo,
   readMp4Project,
   type VideoFileResult,
-} from '@facemorph/stylegan-js';
+} from 'stylegan-js';
 import { encode as encodeProject, type Project } from '../project/project-json.ts';
 import { RecoveryFileError, descriptorFor, latentFor } from './recovery-stills.ts';
 

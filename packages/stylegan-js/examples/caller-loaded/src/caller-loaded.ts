@@ -1,4 +1,4 @@
-// Caller-loaded example (fm-1jr7): @facemorph/stylegan-js with no model manager. The caller loads a model
+// Caller-loaded example (fm-1jr7): stylegan-js with no model manager. The caller loads a model
 // capability itself from files it serves (a runtime directory: manifest.json and the assets it names), maps a
 // seed, synthesizes it, synthesizes a second face and one interpolated latent through the public map/synthesize
 // API, and disposes, reporting progress, honouring abort and settling errors as typed values.
@@ -6,7 +6,7 @@
 // Construction and status reads do no I/O. Every byte the engine reads comes through `createVerifyingReader`
 // below: the caller's own fetch of the caller's own URL, verified against the manifest's SHA-256 on every read.
 // The library never fetches anything itself.
-import { blend, FFHQ_1024_DESCRIPTOR, type LatentTensor } from '@facemorph/stylegan-js';
+import { blend, FFHQ_1024_DESCRIPTOR, type LatentTensor } from 'stylegan-js';
 import {
   browserModuleHost,
   canaryBundle,
@@ -32,7 +32,7 @@ import {
   type LocalAssetReader,
   type OrtWebGpuBundle,
   LocalAssetUnavailable,
-} from '@facemorph/stylegan-js/engine';
+} from 'stylegan-js/engine';
 
 /** The runtime manifest fields this example reads. */
 export type RuntimeManifest = GeneratorManifest &

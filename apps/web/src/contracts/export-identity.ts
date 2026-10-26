@@ -10,7 +10,7 @@
 // There is no cross-device uniqueness claim: the suffix only separates names inside one session's
 // known export set, and a different device may produce the same name for different results.
 
-import type { ConfirmedCrop } from '@facemorph/stylegan-js';
+import type { ConfirmedCrop } from 'stylegan-js';
 
 /** Container kinds that can leave the app. WebP and PNG of one result are distinct exports. */
 export type ExportKind = 'webp' | 'png' | 'mp4';

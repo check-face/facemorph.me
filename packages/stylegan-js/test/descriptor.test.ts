@@ -203,7 +203,7 @@ function journey(d: ModelDescriptor, r: CompatibilityRow): DeveloperJourney {
     {
       step: 4,
       kind: 'install-and-load',
-      packages: ['@facemorph/stylegan-js', '@facemorph/browser-model-manager'],
+      packages: ['stylegan-js', 'browser-model-manager'],
       load: 'manager-grant',
       descriptor: d,
     },

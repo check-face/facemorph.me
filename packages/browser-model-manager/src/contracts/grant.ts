@@ -8,7 +8,7 @@
 // or a retryable error, never permission to fetch (the candidate's unknown inventory bypassed
 // gateScope). The manager supplies these primitives; the policy that uses them lives in the app.
 
-import type { ComputeRoute } from '@facemorph/stylegan-js';
+import type { ComputeRoute } from 'stylegan-js';
 import type { AssetInventory } from './lifecycle.ts';
 
 export type GrantPurpose = 'generate' | 'generate-and-encode' | 'prepare-encoder';

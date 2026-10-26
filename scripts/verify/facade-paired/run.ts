@@ -119,15 +119,20 @@ function prepare(rev: string): { sha: string; tree: string; bundle: string } {
   if (!existsSync(join(tree, 'node_modules'))) {
     // node_modules: the checkout's third-party packages, the workspace packages from this tree.
     const nm = join(tree, 'node_modules');
+    // Workspace packages link by their package.json name (the app is @facemorph/web; the packages are unscoped).
+    const own = [
+      join(tree, 'apps/web'),
+      ...readdirSync(join(tree, 'packages')).map((p) => join(tree, 'packages', p)),
+    ].map(
+      (dir) =>
+        [JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8')).name as string, dir] as const,
+    );
+    const names = new Set(own.map(([name]) => name));
     mkdirSync(join(nm, '@facemorph'), { recursive: true });
     for (const entry of readdirSync(join(repo, 'node_modules')))
-      if (entry !== '@facemorph' && entry !== '.vite')
+      if (entry !== '@facemorph' && entry !== '.vite' && !names.has(entry))
         symlinkSync(join(repo, 'node_modules', entry), join(nm, entry));
-    for (const [name, dir] of [
-      ['web', 'apps/web'],
-      ...readdirSync(join(tree, 'packages')).map((p) => [p, `packages/${p}`]),
-    ] as const)
-      symlinkSync(join(tree, dir), join(nm, '@facemorph', name));
+    for (const [name, dir] of own) symlinkSync(dir, join(nm, ...name.split('/')));
     // Declarations and JS only: the packages' `build` scripts also write PROVENANCE.json through a repository script
     // this export does not carry.
     for (const p of ['stylegan-js', 'browser-model-manager'])

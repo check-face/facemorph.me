@@ -1,4 +1,4 @@
-// The recovery schema core (fm-fzzd, in @facemorph/stylegan-js) against the app's own contracts: a blend's export
+// The recovery schema core (fm-fzzd, in stylegan-js) against the app's own contracts: a blend's export
 // identity and filename come from its recipe through exportIdentity/suggestFilename; forced encoder choices from
 // export-policy report the file's actual size, route and reason; and the candidate's saved project MP4, read by the
 // package, decodes through the app's project codec (project-json.ts) with its controls and settings intact.
@@ -12,7 +12,7 @@ import {
   readMp4Project,
   videoFileResult,
   type LatentTensor,
-} from '@facemorph/stylegan-js';
+} from 'stylegan-js';
 import { exportIdentity, suggestFilename } from '../../src/contracts/export-identity.ts';
 import { chooseVideoEncoder, WEBP_QUALITY } from '../../src/media/export-policy.ts';
 import { decode } from '../../src/project/project-json.ts';

@@ -1,7 +1,7 @@
 // Manifest walking, contract validation and the private-provenance rule (fm-3osh). The contract is
-// @facemorph/browser-model-manager's: its parser here, and its JSON schema in the tests. A published manifest
+// browser-model-manager's: its parser here, and its JSON schema in the tests. A published manifest
 // names hosted URLs and digests only; local paths, private inventories and source checkouts never appear in it.
-import { parseModelManifest, type ManifestError } from '@facemorph/browser-model-manager';
+import { parseModelManifest, type ManifestError } from 'browser-model-manager';
 
 /** A descriptor as it appears anywhere in a manifest: hosted (`url`) or unpublished (`file`). */
 export interface AssetNode {

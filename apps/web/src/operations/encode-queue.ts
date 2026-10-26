@@ -21,7 +21,7 @@ import {
   type LoadedEncoderCapability,
   type SourcePixels,
   type StageTimingEvent,
-} from '@facemorph/stylegan-js';
+} from 'stylegan-js';
 import type { ProviderContextId } from '../contracts/scheduler.ts';
 import type { Governor, Lease } from './scheduler.ts';
 

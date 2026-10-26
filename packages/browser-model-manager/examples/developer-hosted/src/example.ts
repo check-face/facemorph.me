@@ -1,5 +1,5 @@
-// Developer-hosted example: @facemorph/browser-model-manager acquires a converted model and the CPU runtime from a
-// static origin you host, only after the person has seen and approved the exact bytes; @facemorph/stylegan-js then
+// Developer-hosted example: browser-model-manager acquires a converted model and the CPU runtime from a
+// static origin you host, only after the person has seen and approved the exact bytes; stylegan-js then
 // loads from the manager's verified local reader, which never fetches, and synthesizes one image.
 //
 // Steps, each a separate call so a page can put a person's decision between them:
@@ -12,7 +12,7 @@
 //   generate()    loads the engine from verified local bytes under leases and synthesizes one image
 //   release()     disposes the engine's sessions and releases the leases
 //   evict()       removes the model from storage, skipping anything still leased
-import { AFHQ_CAT_512_DESCRIPTOR } from '@facemorph/stylegan-js';
+import { AFHQ_CAT_512_DESCRIPTOR } from 'stylegan-js';
 import {
   browserModuleHost,
   cpuRuntimeAssets,
@@ -25,7 +25,7 @@ import {
   type LoadedRuntime,
   type LocalAssetReader,
   type NoiseAsset,
-} from '@facemorph/stylegan-js/engine';
+} from 'stylegan-js/engine';
 import {
   acquisitionMemoryClass,
   createAcquisitionBudget,
@@ -47,7 +47,7 @@ import {
   type ModelCache,
   type Removable,
   type ShardStore,
-} from '@facemorph/browser-model-manager';
+} from 'browser-model-manager';
 
 const DESCRIPTOR = AFHQ_CAT_512_DESCRIPTOR;
 const OWNER: GrantOwnerId = 'face:developer-hosted-example';

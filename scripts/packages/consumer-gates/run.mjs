@@ -442,11 +442,11 @@ async function main(argv) {
         .join('');
     writeFileSync(
       join(consumer, 'generated/browser-exports.ts'),
-      everySubpath(['@facemorph/stylegan-js', '@facemorph/browser-model-manager']),
+      everySubpath(['stylegan-js', 'browser-model-manager']),
     );
     writeFileSync(
       join(consumer, 'generated/node-exports.ts'),
-      everySubpath(['@facemorph/cloudflare-model-host']),
+      everySubpath(['cloudflare-model-host']),
     );
     const tsc = join(consumer, 'node_modules/.bin/tsc');
     for (const config of ['tsconfig.json', 'tsconfig.node.json']) {
@@ -455,7 +455,11 @@ async function main(argv) {
         cwd: consumer,
         encoding: 'utf8',
       }).stdout.split('\n');
-      const ours = listed.filter((f) => f.includes('/node_modules/@facemorph/'));
+      const ours = listed.filter((f) =>
+        /\/node_modules\/(?:stylegan-js|browser-model-manager|cloudflare-model-host|@facemorph\/[\w-]+)\//.test(
+          f,
+        ),
+      );
       const sources = ours.filter((f) => !f.endsWith('.d.ts'));
       gate(`types:${config}`, r.status === 0 && ours.length > 0 && sources.length === 0, {
         declarations: ours.length,
@@ -511,13 +515,13 @@ async function main(argv) {
     } catch {
       /* reported below */
     }
-    const sgExports = new Set(installed['@facemorph/stylegan-js'].entries[0]?.exportNames ?? []);
+    const sgExports = new Set(installed['stylegan-js'].entries[0]?.exportNames ?? []);
     const blendExported = /export \* from '\.\/blend\/blend\.ts'/.test(
       readFileSync(join(ROOT, 'packages/stylegan-js/src/index.ts'), 'utf8'),
     );
     const blendNames = ['blend', 'clampWeight', 'latentDigest'];
     gate(
-      'blend:@facemorph/stylegan-js',
+      'blend:stylegan-js',
       !blendExported ||
         (blendNames.every((n) => sgExports.has(n)) &&
           smokeReport?.checks?.blend === true &&
@@ -529,9 +533,7 @@ async function main(argv) {
         smoke: smokeReport?.checks ?? smoke.stderr.trim().slice(-1000),
       },
     );
-    const bmmExports = new Set(
-      installed['@facemorph/browser-model-manager'].entries[0]?.exportNames ?? [],
-    );
+    const bmmExports = new Set(installed['browser-model-manager'].entries[0]?.exportNames ?? []);
     const cacheNames = [
       'createModelCache',
       'createBrowserModelCache',
@@ -540,7 +542,7 @@ async function main(argv) {
       'Sha256',
     ];
     gate(
-      'cache:@facemorph/browser-model-manager',
+      'cache:browser-model-manager',
       cacheNames.every((n) => bmmExports.has(n)) &&
         smokeReport?.checks?.cacheLocal === true &&
         smokeReport.checks.sha256 === true,
@@ -552,7 +554,7 @@ async function main(argv) {
 
     const host = hostBin(consumer, work);
     gate(
-      'host-bin:@facemorph/cloudflare-model-host',
+      'host-bin:cloudflare-model-host',
       host.every((c) => c.ok),
       { checks: host },
     );

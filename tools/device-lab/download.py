@@ -14,7 +14,7 @@ each retried chunk and the origin that finally served it, and the terminal event
   uv run --with playwright python download.py --cells eris-cpu --throttle-kbps 4000     # a 4 Mbit/s link
   uv run --with playwright python download.py --client package --cells eris-cpu,phone-cpu --interrupt 0.35:30
 
-`--client package` runs the same cold download through @facemorph/browser-model-manager instead of the deployed app
+`--client package` runs the same cold download through browser-model-manager instead of the deployed app
 (fm-fr9s): this checkout's package, built fresh, is served into a page of the real origin (the runtime manifest's own
 document, so no app code runs beside it), and acquires the runtime manifest's face model and photo encoder from the
 real origins under one grant, with the app's alternate-origin configuration. Its progress comes from the package's

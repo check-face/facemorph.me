@@ -92,7 +92,7 @@ test('paths out of the package, absolute paths, repository source and app import
     'dist/util.js': [
       "import '../../../apps/web/src/main.tsx';",
       "import '/home/someone/checkout/packages/x.js';",
-      "import '@facemorph/stylegan-js/src/index.ts';",
+      "import 'stylegan-js/src/index.ts';",
       "import '@facemorph/web';",
       "export const u = new URL('../../model.onnx', import.meta.url);",
       'export const a = 1;',
@@ -106,7 +106,7 @@ test('paths out of the package, absolute paths, repository source and app import
     'ts-source-import dist/util.js ../../../apps/web/src/main.tsx',
     'repository-path dist/util.js ../../../apps/web/src/main.tsx',
     'absolute-specifier dist/util.js /home/someone/checkout/packages/x.js',
-    'repository-path dist/util.js @facemorph/stylegan-js/src/index.ts',
+    'repository-path dist/util.js stylegan-js/src/index.ts',
     'imports-app dist/util.js @facemorph/web',
     'escapes-package dist/util.js ../../model.onnx',
   ]);

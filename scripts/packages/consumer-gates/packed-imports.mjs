@@ -103,7 +103,12 @@ export function checkPackedImports({ dir, pkg }) {
       if (spec.startsWith('#')) continue; // a subpath import the package's `imports` declares (checked above)
       const name = packageName(spec);
       if (name === '@facemorph/web') add('imports-app', 'the app workspace');
-      else if (/^(?:apps|packages)\//.test(spec) || /^@facemorph\/[^/]+\/src(?:\/|$)/.test(spec))
+      else if (
+        /^(?:apps|packages)\//.test(spec) ||
+        /^(?:@facemorph\/[^/]+|stylegan-js|browser-model-manager|cloudflare-model-host)\/src(?:\/|$)/.test(
+          spec,
+        )
+      )
         add('repository-path', 'reaches into repository source');
       else if (!isBuiltin(spec) && name !== pkg.name && !declared.has(name))
         add('undeclared-dependency', `${name} is not declared by ${pkg.name}`);

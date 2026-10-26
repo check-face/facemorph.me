@@ -10,7 +10,7 @@
 // separate from app retention, and model-cache eviction never deletes exports or recovery records.
 // An in-flight app uses one immutable manifest identity.
 
-import type { CancellationSignal, LoadedModelCapability } from '@facemorph/stylegan-js';
+import type { CancellationSignal, LoadedModelCapability } from 'stylegan-js';
 import type { AcquisitionBudget, LiveResidencyLimit } from './budgets.ts';
 import type { ManagerError, Result } from './errors.ts';
 import type { AcquisitionGrant, GrantDecision, GrantOwnerId } from './grant.ts';

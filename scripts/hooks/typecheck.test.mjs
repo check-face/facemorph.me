@@ -20,12 +20,7 @@ test('a change selects its workspace and every workspace that depends on it', ()
   const web = WS.find((w) => w.dir === 'apps/web').name;
   assert.deepEqual(
     names(affected(['packages/stylegan-js/src/index.ts'], WS, [])),
-    [
-      '@facemorph/browser-model-manager',
-      '@facemorph/cloudflare-model-host',
-      '@facemorph/stylegan-js',
-      web,
-    ].sort(),
+    ['browser-model-manager', 'cloudflare-model-host', 'stylegan-js', web].sort(),
   );
   assert.deepEqual(names(affected(['apps/web/shell/main.tsx'], WS, [])), [web]);
   assert.deepEqual(names(affected(['docs/README.md', 'apps/web/README.md'], WS, [])), []);

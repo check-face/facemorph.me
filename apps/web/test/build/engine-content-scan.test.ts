@@ -1,5 +1,5 @@
 // No engine code in the app (fm-fy2.6, compute.app-rebind): a scripted scan of every module under apps/web/src for
-// what only @facemorph/stylegan-js may do: create or run ONNX sessions, build ORT tensors, compile WGSL or GL
+// what only stylegan-js may do: create or run ONNX sessions, build ORT tensors, compile WGSL or GL
 // programs for synthesis, or fetch and cache model weights outside the browser model manager. The few hits that
 // remain are named below with the reason they are not a second engine; anything else fails.
 import assert from 'node:assert/strict';

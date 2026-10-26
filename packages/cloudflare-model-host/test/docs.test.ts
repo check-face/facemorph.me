@@ -1,6 +1,6 @@
 // Host docs test (fm-19eb): every code block in the README and the two hosting guides is annotated with what this
 // test does with it, and is executed from the packed tarballs installed into a clean project outside the monorepo.
-// This package, @facemorph/browser-model-manager and @facemorph/stylegan-js are built fresh from their sources and
+// This package, browser-model-manager and stylegan-js are built fresh from their sources and
 // `npm pack`ed (stylegan-js's test/support/packed.ts and packed-manager.ts; packHostFresh below), never the
 // checkout's dist/. The converted AFHQ cat model (packages/model-conv/out/afhqcat, FACEMORPH_AFHQ_CAT; gitignored)
 // is the fixture: the README quickstart stages it, verifies it, publishes it to a directory, serves that with the
@@ -151,7 +151,7 @@ function packHostFresh(work: string, managerStage = join(work, 'manager-stage'))
           outDir: join(stage, 'dist'),
           // Outside the repository, @types/node is found only from here.
           typeRoots: [join(REPO, 'node_modules/@types')],
-          paths: { '@facemorph/browser-model-manager': [join(managerStage, 'dist/index.d.ts')] },
+          paths: { 'browser-model-manager': [join(managerStage, 'dist/index.d.ts')] },
         },
         include: [join(PKG, 'src')],
       },
@@ -194,17 +194,12 @@ function install(): void {
     const host = packHostFresh(work);
     const block = docBlocks('README.md').filter((b) => b.annotation === 'install');
     assert.equal(block.length, 1, 'one install block');
-    assert.equal(
-      block[0]!.code.trim(),
-      'npm install @facemorph/cloudflare-model-host @facemorph/browser-model-manager',
-    );
+    assert.equal(block[0]!.code.trim(), 'npm install cloudflare-model-host browser-model-manager');
     installClean(consumer, stylegan, [manager, host]);
     for (const p of ['cloudflare-model-host', 'browser-model-manager'])
-      assert.ok(existsSync(join(consumer, 'node_modules/@facemorph', p, 'package.json')), p);
+      assert.ok(existsSync(join(consumer, 'node_modules', p, 'package.json')), p);
     // The installed package is the packed build, not a link to the workspace.
-    assert.ok(
-      !statSync(join(consumer, 'node_modules/@facemorph/cloudflare-model-host')).isSymbolicLink(),
-    );
+    assert.ok(!statSync(join(consumer, 'node_modules/cloudflare-model-host')).isSymbolicLink());
     symlinkSync(MODEL, join(consumer, 'converted'), 'dir');
     installed = true;
   } catch (e) {

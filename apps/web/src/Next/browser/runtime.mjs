@@ -3,13 +3,13 @@ import {openOriginals,digest} from './originals.mjs';
 import {capabilities} from './route-priors.mjs';
 import {rankedRoutes} from './route-selection.mjs';
 import {inputLatent,requireLatent,generationIdentity} from './identity.mjs';
-import {directSupported} from '@facemorph/stylegan-js/engine';
+import {directSupported} from 'stylegan-js/engine';
 import {adapterFacts,capabilityRecord,admissionEvidence,logAdmission,AdmissionRefused,decide,reasonFromError} from './admission.mjs';
 import {admitRuntimeManifest,RuntimeManifestRefused} from './runtime-manifest.mjs';
 import {confirmedCropOf,sourcePixelsOf,derivationFailure,ConfirmedCropError} from '../photo/confirmed-crop.mjs';
 import {createEncodeQueue} from '../../operations/encode-queue.ts';
-import {engineGeometry} from '@facemorph/stylegan-js/engine';
-import {FFHQ_1024_DESCRIPTOR} from '@facemorph/stylegan-js';
+import {engineGeometry} from 'stylegan-js/engine';
+import {FFHQ_1024_DESCRIPTOR} from 'stylegan-js';
 // The model's dimensions (fm-dmlz): the side, the W+ shape and the pixel bytes come from the descriptor of the
 // model this app ships (FFHQ), never from literal 1024 / 18 x 512.
 const GEOMETRY=engineGeometry(FFHQ_1024_DESCRIPTOR),SIDE=GEOMETRY.width,W_SHAPE=[GEOMETRY.latent.layers,GEOMETRY.latent.width],BATCH_W_SHAPE=JSON.stringify([1,...W_SHAPE]);

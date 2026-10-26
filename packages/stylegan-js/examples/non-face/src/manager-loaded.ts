@@ -1,11 +1,11 @@
-// Manager-loaded non-face variant: @facemorph/browser-model-manager acquires the AFHQ cat model and the CPU runtime
+// Manager-loaded non-face variant: browser-model-manager acquires the AFHQ cat model and the CPU runtime
 // under one grant (download, verify, store in this origin's Cache Storage), and the engine reads only through the
 // manager's verified local reader, which never fetches.
 import {
   createBrowserModelCache,
   type AcquisitionGrant,
   type GrantOwnerId,
-} from '@facemorph/browser-model-manager';
+} from 'browser-model-manager';
 import { assetsOf, createNonFaceExample, type ExampleOptions } from './nonface.js';
 
 const OWNER: GrantOwnerId = 'face:non-face-example';

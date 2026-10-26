@@ -1,11 +1,11 @@
 // Still recovery envelopes for the app's Blob callers (the image encoder worker, the names tools), kept under the
 // export names the candidate's image-envelope.mjs had. The envelope itself is the package's (fm-fzzd,
-// @facemorph/stylegan-js media/envelope.ts) through apps/web/src/media/recovery-stills.ts (fm-fy2.7, fm-s0vi): a face of a
+// stylegan-js media/envelope.ts) through apps/web/src/media/recovery-stills.ts (fm-fy2.7, fm-s0vi): a face of a
 // model this app ships is written as schema 3 (generator record and W+ shape from its descriptor); any other
 // identity keeps the schema-2 record, which needs no descriptor. Reading accepts schema 3 and 2; schema 1 is
 // reported as legacy for recovery-metadata.mjs. The rules the candidate enforced here stay: a full 1024 x 1024
 // face, no second envelope, finite latent, valid identity, only the allowed provenance keys.
-import {embedRecovery as embedV2,parseRecoveryMetadata,stillContainer} from '@facemorph/stylegan-js';
+import {embedRecovery as embedV2,parseRecoveryMetadata,stillContainer} from 'stylegan-js';
 import {descriptorFor,readStill,writeStill} from '../media/recovery-stills.ts';
 const MAX_FILE=64*1024*1024;
 const bytesOf=async blob=>new Uint8Array(await blob.arrayBuffer());

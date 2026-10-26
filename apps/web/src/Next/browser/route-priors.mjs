@@ -34,7 +34,7 @@
 
 // The priors and their order are stylegan-js engine/routes.ts (fm-7f2o), the candidate's without the retired WebGL
 // route; this module keeps the names and the globalThis-reading capabilities() its callers use.
-import {ROUTE_PRIORS,priorOrder,capabilities as fromFacts} from '@facemorph/stylegan-js/engine';
+import {ROUTE_PRIORS,priorOrder,capabilities as fromFacts} from 'stylegan-js/engine';
 export {ROUTE_PRIORS,priorOrder};
 
 /** Cheap, allocation-free reading of what this browser offers. No model or context is created. */

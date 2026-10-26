@@ -1,5 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';import {decorateImage,recoverImage,downloadImage} from './recovery-metadata.mjs';import {encodeRgbaPng} from './browser/png.mjs';
-import {FFHQ_1024_DESCRIPTOR,readRecovery} from '@facemorph/stylegan-js';
+import {FFHQ_1024_DESCRIPTOR,readRecovery} from 'stylegan-js';
 test('deferred product faces send only cloneable recovery identity to the download worker',async t=>{
  const previous=globalThis.Worker,requests=[],webp=new Blob(['webp'],{type:'image/webp'});let disposed=0;
  globalThis.Worker=class{postMessage(message){requests.push(structuredClone(message));queueMicrotask(()=>this.onmessage({data:{id:message.id,result:{blob:webp}}}));}terminate(){disposed++;}};
@@ -21,7 +21,7 @@ test('PNG recovery preserves canonical bytes and W+ without treating the generat
  const corrupt=new Uint8Array(await decorated.arrayBuffer());corrupt[corrupt.length-30]^=1;await assert.rejects(recoverImage(new Blob([corrupt])),/Damaged|Invalid|integrity/);
  assert.equal(await recoverImage(blob),null);
 });
-import {decorateVideo,recoverVideoProject} from './recovery-metadata.mjs';import {readMp4Project} from '@facemorph/stylegan-js';
+import {decorateVideo,recoverVideoProject} from './recovery-metadata.mjs';import {readMp4Project} from 'stylegan-js';
 test('MP4 embeds a bounded project without changing media boxes',async()=>{
  // fm-fy2.7: the schema-2 project of the package; the movie is the candidate's fixture morph without its project.
  const candidate=new Uint8Array(await readFile(new URL('../../test/fixtures/verify/stills/project.mp4',import.meta.url))),media=readMp4Project(candidate).baseVideo;

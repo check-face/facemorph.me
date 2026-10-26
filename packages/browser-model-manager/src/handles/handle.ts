@@ -13,7 +13,7 @@ import type {
   StageTimingHook,
   SynthesisRequest,
   SynthesisResult,
-} from '@facemorph/stylegan-js';
+} from 'stylegan-js';
 import type { ManagerError } from '../contracts/errors.ts';
 import type { AssetLease, LeaseInvalidationCause } from '../contracts/leases.ts';
 import type { LoadedModelHandle } from '../contracts/lifecycle.ts';

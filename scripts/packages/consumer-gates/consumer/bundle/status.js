@@ -1,16 +1,7 @@
 // Installed tarballs only. This consumer exercises the acquisition-free public boundary;
 // a caller-owned inert capability permits engine construction without loading any model.
-import {
-  createBrowserModelCache,
-  MODEL_CACHE_NAME,
-  storageStatus,
-} from '@facemorph/browser-model-manager';
-import {
-  capabilities,
-  createEngine,
-  rankedRoutes,
-  supportedRoutes,
-} from '@facemorph/stylegan-js/engine';
+import { createBrowserModelCache, MODEL_CACHE_NAME, storageStatus } from 'browser-model-manager';
+import { capabilities, createEngine, rankedRoutes, supportedRoutes } from 'stylegan-js/engine';
 
 export async function exerciseStatus(onPhase) {
   const check = (condition, message) => {

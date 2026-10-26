@@ -27,8 +27,8 @@ import {
   type GrantOwnerId,
   type GrantPurpose,
   type SharedFetch,
-} from '@facemorph/browser-model-manager';
-import type { ComputeRoute } from '@facemorph/stylegan-js';
+} from 'browser-model-manager';
+import type { ComputeRoute } from 'stylegan-js';
 
 /** How long a bounded inventory inspection may take before the request settles with Retry. */
 export const INSPECT_MS = 10_000;

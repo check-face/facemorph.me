@@ -1,6 +1,6 @@
 // The non-face example (examples/non-face, fm-tohj) from the packed tarballs in real Chromium on the CPU.
 //
-// @facemorph/stylegan-js and @facemorph/browser-model-manager are built fresh from their sources and `npm pack`ed
+// stylegan-js and browser-model-manager are built fresh from their sources and `npm pack`ed
 // (test/support/packed.ts, packed-manager.ts), both tarballs are installed into a clean project in os.tmpdir()
 // (outside the monorepo), the example is compiled there by tsc against the emitted .d.ts only, and its index.html is
 // served as-is over HTTPS with COOP/COEP (an import map onto node_modules; no bundler). The converted AFHQ cat model
@@ -400,7 +400,7 @@ async function journey(
        const max = (a, b) => { if (a.length !== b.length) return Infinity; let m = 0; for (let i = 0; i < a.length; i++) m = Math.max(m, Math.abs(a[i] - b[i])); return m; };
        const face = example.tensors()[arg.i], rgba = example.images()[arg.i].rgba;
        const rw = await get(arg.w), rr = await get(arg.raw);
-       const { toRgba8 } = await import('@facemorph/stylegan-js/engine');
+       const { toRgba8 } = await import('stylegan-js/engine');
        const expected = toRgba8(rr, 512, 512);
        let rgb = 0; for (let k = 0; k < expected.length; k++) rgb = Math.max(rgb, Math.abs(rgba[k] - expected[k]));
        return { w: max(face.w, rw), raw: max(face.raw, rr), rgb };`,
@@ -479,8 +479,8 @@ test(
   (t) => {
     assert.ok(compiled);
     assert.equal(compiled.status, 0, compiled.output);
-    assert.ok(compiled.declarations.some((f) => f.includes('/@facemorph/browser-model-manager/')));
-    assert.ok(compiled.declarations.some((f) => f.includes('/@facemorph/stylegan-js/')));
+    assert.ok(compiled.declarations.some((f) => f.includes('/browser-model-manager/')));
+    assert.ok(compiled.declarations.some((f) => f.includes('/stylegan-js/')));
     assert.deepEqual(compiled.sources, []);
     for (const f of ['caller-loaded.js', 'nonface.js'])
       assert.doesNotMatch(

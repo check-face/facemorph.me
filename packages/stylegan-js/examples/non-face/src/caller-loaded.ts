@@ -1,7 +1,7 @@
 // Caller-loaded non-face variant: no model manager. The caller's own reader fetches each asset from the URL the
 // manifest gives it and checks every chunk and the whole asset for size and SHA-256 on every read; the engine reads
-// nothing else. This module imports nothing from @facemorph/browser-model-manager.
-import type { LocalAssetReader } from '@facemorph/stylegan-js/engine';
+// nothing else. This module imports nothing from browser-model-manager.
+import type { LocalAssetReader } from 'stylegan-js/engine';
 import {
   createNonFaceExample,
   sha256,

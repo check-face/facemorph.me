@@ -4,7 +4,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
-import { embedRecovery, readRecovery } from '@facemorph/stylegan-js';
+import { embedRecovery, readRecovery } from 'stylegan-js';
 import * as api from '../../src/contracts/index.ts';
 import {
   PREFLIGHT_BUDGETS,

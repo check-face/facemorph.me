@@ -8,7 +8,7 @@ import {
   type LoadedModelCapability,
   type MappingResult,
   type SynthesisResult,
-} from '@facemorph/stylegan-js';
+} from 'stylegan-js';
 
 export function minimalCapability(): LoadedModelCapability {
   return {

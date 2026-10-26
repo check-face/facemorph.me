@@ -14,13 +14,13 @@ import {
   createConfirmedCrop,
   deriveEncoderInput,
   type SourcePixels,
-} from '@facemorph/stylegan-js';
+} from 'stylegan-js';
 import {
   loadStreamedEncoder,
   maxWPlusError,
   type EncoderOrt,
   type EncoderStreamManifest,
-} from '@facemorph/stylegan-js/engine';
+} from 'stylegan-js/engine';
 import {
   acquiredManifest,
   RUNTIME,
