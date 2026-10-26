@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 // Which CI lanes a main.yml run calls (fm-98po, the merge queue): main has one run at a time and the next run
-// takes every change pushed since, stacked. The diff runs from the head of the last successful main.yml run, not
-// the previous commit, so a change in a run that failed, or in a stacked push, is still covered. Each lane's paths
+// takes every change pushed since, stacked. The diff runs from the previous started main.yml run's head,
+// regardless of its result; cancelled pending runs do not consume stacked changes. Each lane's paths
 // are its declaration in scripts/ci/path-filters.json: its shared narrowing, its extras, its own workflow file and
 // the shared actions. A lane marked `always` runs on any change outside its `ignore` list. A change to the pipeline
 // itself (main.yml, this script, the filters) runs every lane, as does a run with no usable base.
 //   node scripts/ci/changes.ts --head <sha> [--base <sha>]     one JSON line; appends lanes=<json> to $GITHUB_OUTPUT
+//   node scripts/ci/changes.ts --previous-main-run --head <sha>   resolve base using GitHub run metadata
 import { execFileSync } from 'node:child_process';
 import { appendFileSync, readFileSync } from 'node:fs';
 import { join, matchesGlob } from 'node:path';
@@ -47,13 +48,79 @@ export function selectLanes(files: readonly string[] | null, filters: Filters): 
 const git = (root: string, ...args: string[]) =>
   execFileSync('git', ['-C', root, ...args], { encoding: 'utf8' });
 
-/** Files changed from base to head, or null when the base is absent or not an ancestor of head. */
+/** Previous started main run, including failures; never the current run, a newer run, or a superseded pending run. */
+export function previousMainRunHead(input: unknown, currentRunNumber: number): string | undefined {
+  if (
+    !Number.isSafeInteger(currentRunNumber) ||
+    currentRunNumber < 1 ||
+    !input ||
+    typeof input !== 'object'
+  )
+    return undefined;
+  const runs = (input as { workflow_runs?: unknown }).workflow_runs;
+  if (!Array.isArray(runs)) return undefined;
+  const earlier = runs.filter((inputRun: unknown) => {
+    if (!inputRun || typeof inputRun !== 'object') return false;
+    const run = inputRun as Record<string, unknown>;
+    return (
+      Number.isSafeInteger(run.run_number) &&
+      (run.run_number as number) > 0 &&
+      (run.run_number as number) < currentRunNumber &&
+      run.head_branch === 'main' &&
+      (run.event === 'push' || run.event === 'workflow_dispatch') &&
+      (run.status === 'completed' || run.status === 'in_progress') &&
+      run.conclusion !== 'cancelled' &&
+      run.conclusion !== 'skipped' &&
+      typeof run.head_sha === 'string' &&
+      /^[a-f0-9]{40}$/.test(run.head_sha)
+    );
+  }) as { run_number: number; head_sha: string }[];
+  return earlier.sort((a, b) => b.run_number - a.run_number)[0]?.head_sha;
+}
+
+/** API failure or a history with no usable earlier run safely selects all lanes. */
+function previousMainBase(): string | undefined {
+  if (process.env['GITHUB_EVENT_NAME'] !== 'push') {
+    console.error('changes: non-push run requires all lanes');
+    return undefined;
+  }
+  const repository = process.env['GITHUB_REPOSITORY'];
+  const runNumber = Number(process.env['GITHUB_RUN_NUMBER']);
+  if (
+    !repository ||
+    !/^[a-zA-Z0-9_.-]+\/[a-zA-Z0-9_.-]+$/.test(repository) ||
+    !Number.isSafeInteger(runNumber) ||
+    runNumber < 1
+  ) {
+    console.error('changes: missing or invalid run identity; selecting all lanes');
+    return undefined;
+  }
+  try {
+    const base = previousMainRunHead(
+      JSON.parse(
+        execFileSync(
+          'gh',
+          ['api', `repos/${repository}/actions/workflows/main.yml/runs?branch=main&per_page=100`],
+          { encoding: 'utf8', timeout: 30_000, maxBuffer: 4 * 1024 * 1024 },
+        ),
+      ),
+      runNumber,
+    );
+    if (!base) console.error('changes: no usable earlier main run; selecting all lanes');
+    return base;
+  } catch {
+    console.error('changes: previous main run lookup unavailable; selecting all lanes');
+    return undefined;
+  }
+}
+
+/** Files changed from base to head; absent, equal, missing or nonancestor bases require all lanes. */
 export function changedFiles(
   root: string,
   base: string | undefined,
   head: string,
 ): string[] | null {
-  if (!base) return null;
+  if (!base || base === head) return null;
   try {
     git(root, 'merge-base', '--is-ancestor', base, head);
   } catch {
@@ -64,19 +131,27 @@ export function changedFiles(
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const { values } = parseArgs({
-    options: { base: { type: 'string' }, head: { type: 'string' }, root: { type: 'string' } },
+    options: {
+      base: { type: 'string' },
+      head: { type: 'string' },
+      root: { type: 'string' },
+      'previous-main-run': { type: 'boolean' },
+    },
   });
   const root = values.root ?? fileURLToPath(new URL('../..', import.meta.url));
   if (!values.head) throw new Error('--head is required');
   const filters = JSON.parse(
     readFileSync(join(root, 'scripts/ci/path-filters.json'), 'utf8'),
   ) as Filters;
-  const files = changedFiles(root, values.base || undefined, values.head);
+  if (values['previous-main-run'] && values.base !== undefined)
+    throw new Error('--previous-main-run and --base are mutually exclusive');
+  const base = values['previous-main-run'] ? previousMainBase() : values.base || undefined;
+  const files = changedFiles(root, base, values.head);
   const lanes = selectLanes(files, filters);
   console.log(
     JSON.stringify({
       event: 'changes',
-      base: values.base || null,
+      base: files ? base : null,
       head: values.head,
       files: files?.length ?? 'all',
       lanes,
@@ -86,6 +161,6 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   if (process.env['GITHUB_OUTPUT'])
     appendFileSync(
       process.env['GITHUB_OUTPUT'],
-      `lanes=${JSON.stringify(lanes)}\nbase=${files ? values.base : ''}\n`,
+      `lanes=${JSON.stringify(lanes)}\nbase=${files ? base : ''}\n`,
     );
 }
