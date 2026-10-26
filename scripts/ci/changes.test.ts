@@ -139,6 +139,22 @@ test('previous run includes failed runs, skips superseded pending runs, excludes
   );
 });
 
+test('a workflow rejected at startup cannot consume untested stacked changes', () => {
+  const failed = 'b'.repeat(40);
+  assert.equal(
+    previousMainRunHead(
+      {
+        workflow_runs: [
+          run(3, 'c'.repeat(40), { conclusion: 'startup_failure' }),
+          run(2, failed, { conclusion: 'failure' }),
+        ],
+      },
+      4,
+    ),
+    failed,
+  );
+});
+
 test('missing run/event identity, first runs and malformed metadata cannot establish a base', () => {
   const sha = 'a'.repeat(40);
   for (const input of [

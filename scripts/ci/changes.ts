@@ -71,6 +71,7 @@ export function previousMainRunHead(input: unknown, currentRunNumber: number): s
       (run.status === 'completed' || run.status === 'in_progress') &&
       run.conclusion !== 'cancelled' &&
       run.conclusion !== 'skipped' &&
+      run.conclusion !== 'startup_failure' &&
       typeof run.head_sha === 'string' &&
       /^[a-f0-9]{40}$/.test(run.head_sha)
     );
