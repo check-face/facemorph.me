@@ -270,7 +270,7 @@ jobs:
     secrets: inherit
   mobile-browser:
     needs: [changes, next-site-artifact]
-    if: contains(fromJSON(needs.changes.outputs.lanes), 'mobile-browser')
+    if: github.event_name == 'workflow_dispatch' && (contains(fromJSON(needs.changes.outputs.lanes), 'mobile-browser'))
     uses: ./.github/workflows/mobile-browser.yml
     with:
       artifact_run: ${{ github.run_id }}
@@ -313,7 +313,7 @@ jobs:
     secrets: inherit
   next-gpu-lane:
     needs: changes
-    if: contains(fromJSON(needs.changes.outputs.lanes), 'next-gpu-lane')
+    if: github.event_name == 'workflow_dispatch' && (contains(fromJSON(needs.changes.outputs.lanes), 'next-gpu-lane'))
     uses: ./.github/workflows/next-gpu-lane.yml
     permissions:
       contents: read
@@ -336,18 +336,18 @@ jobs:
       contents: read
       actions: read
     with:
+      full: ${{ github.event_name == 'workflow_dispatch' }}
       artifact_run: ${{ github.run_id }}
       artifact_workflow: .github/workflows/main.yml
       artifact_commit: ${{ github.sha }}
       artifact_name: next-site-${{ github.sha }}
       runtime_sha: d9e37e50a436e9fb7c0c7f973e70adee353c808f48c6a51fa5a9186f1c650a5c
     secrets: inherit
-  # Artifact consumers run as soon as the exact build is available. Qualification reports independently,
-  # except to next-deploy: a publication needs the exact artifact's CPU/compiled-UI qualification (fm-6fx6),
-  # then its own release gate, and refuses classic-owned targets.
+  # Pushes check correctness quickly. Manual all-lanes qualification produces the pre-deploy receipt;
+  # only that successful full run can enter the existing hosted/device release gate and publication.
   next-deploy:
-    needs: [changes, next-site-artifact, next-site]
-    if: github.event_name == 'push' && vars.FACEMORPH_DEPLOY_TARGET != '' && needs.next-site.result == 'success'
+    needs: [changes, next-site-artifact, next-site, pre-deploy]
+    if: github.event_name == 'workflow_dispatch' && inputs.dependency_group == '' && vars.FACEMORPH_DEPLOY_TARGET != '' && needs.pre-deploy.result == 'success'
     uses: ./.github/workflows/next-deploy.yml
     permissions:
       contents: read
@@ -428,8 +428,65 @@ jobs:
       contents: read
       actions: read
     with:
+      full: ${{ github.event_name == 'workflow_dispatch' }}
       artifact_run: ${{ github.run_id }}
       artifact_workflow: .github/workflows/main.yml
       artifact_commit: ${{ github.sha }}
       artifact_name: next-site-${{ github.sha }}
     secrets: inherit
+
+  # fm-fy2.11: the manual run selects every lane and qualifies one build before deployment.
+  pre-deploy:
+    needs:
+      [
+        app-contracts,
+        build-identity,
+        ci-shared,
+        cloudflare-model-host,
+        contracts-m1,
+        crop-repro,
+        delivery-dry-run,
+        dependency-policy,
+        design-reference,
+        device-lab-tests,
+        diagnostics-retention,
+        hosting-staging,
+        identity-check,
+        import-checks,
+        import-closure,
+        import-inventory,
+        inventory,
+        manager-cache,
+        mobile-browser,
+        model-conv,
+        name-catalogue,
+        names-generator,
+        names-snapshot,
+        names-spike,
+        native-retirement,
+        next-gpu-lane,
+        next-site,
+        next-site-artifact,
+        package-gates,
+        parity-harness,
+        rename-check,
+        research-built-ui-media,
+        research-import,
+        research-lease,
+        research-ledger,
+        research-rgba-screen,
+        scaffold,
+        stats-worker,
+        web-shell,
+      ]
+    if: always() && github.event_name == 'workflow_dispatch' && inputs.dependency_group == ''
+    uses: ./.github/workflows/pre-deploy.yml
+    permissions:
+      contents: read
+      actions: read
+    with:
+      results: ${{ toJSON(needs) }}
+      artifact_run: ${{ github.run_id }}
+      artifact_workflow: .github/workflows/main.yml
+      artifact_commit: ${{ github.sha }}
+      artifact_name: next-site-${{ github.sha }}

@@ -143,7 +143,7 @@ test('main artifact consumers do not wait on CPU or compiled UI qualification; a
     assert.deepEqual(
       main.jobs[id].needs,
       id === 'next-deploy'
-        ? ['changes', 'next-site-artifact', 'next-site']
+        ? ['changes', 'next-site-artifact', 'next-site', 'pre-deploy']
         : ['changes', 'next-site-artifact'],
     );
     for (const pin of provenance)
@@ -152,5 +152,5 @@ test('main artifact consumers do not wait on CPU or compiled UI qualification; a
   // fm-6fx6: qualification runs whenever a deploy target is set, and the deploy needs it to pass.
   for (const id of ['next-site-artifact', 'next-site'])
     assert.match(main.jobs[id].if, /FACEMORPH_DEPLOY_TARGET/);
-  assert.match(main.jobs['next-deploy'].if, /needs\.next-site\.result == 'success'/);
+  assert.match(main.jobs['next-deploy'].if, /needs\.pre-deploy\.result == 'success'/);
 });
