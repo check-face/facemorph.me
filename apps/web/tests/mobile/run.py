@@ -548,11 +548,15 @@ def main():
             '-keyout', str(key), '-out', str(cert), '-subj', '/CN=localhost',
             '-addext', 'subjectAltName=DNS:localhost,IP:127.0.0.1')
     phase('server')
-    server = ThreadingHTTPServer(('127.0.0.1', args.port), functools.partial(Handler, directory=str(ROOT)))
+    # Native module workers open a graph of connections together. Keep a slow TLS
+    # peer out of the accept loop and retain the burst until handler threads take it.
+    class MobileServer(ThreadingHTTPServer):
+        request_queue_size = 256
+    server = MobileServer(('127.0.0.1', args.port), functools.partial(Handler, directory=str(ROOT)))
     args.port = server.server_address[1]
     tls = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
     tls.load_cert_chain(cert, key)
-    server.socket = tls.wrap_socket(server.socket, server_side=True)
+    server.socket = tls.wrap_socket(server.socket, server_side=True, do_handshake_on_connect=False)
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
     udid = None

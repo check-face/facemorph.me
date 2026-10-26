@@ -138,7 +138,7 @@ export function runManagerMatrix(runId){
   const finish=result=>{clearTimeout(timer);worker.terminate();resolve(result);};
   const fail=reason=>finish({capabilities:{opfs:false,cacheStorage:false,workerSync:false},rows:[...['opfs','cache-storage'].flatMap(backend=>cells.map(name=>({id:backend+'.'+name,backend,lane:lane(),status:'fail',reason,network:empty()}))),{id:'worker.native-sync-handles',backend:'worker',lane:lane(),status:'fail',reason,network:empty()}]});
   const timer=setTimeout(()=>fail('Native component worker did not settle within120seconds'),120000);
-  worker.onerror=event=>fail(event.message);worker.onmessageerror=()=>fail('Native component worker result could not be decoded');
+  worker.onerror=event=>fail(event.message||'Native component worker failed to load: '+new URL('./storage-worker.mjs',import.meta.url).href);worker.onmessageerror=()=>fail('Native component worker result could not be decoded');
   worker.onmessage=({data})=>data.error?fail(data.error):finish(data);
   worker.postMessage({runId});
  });
