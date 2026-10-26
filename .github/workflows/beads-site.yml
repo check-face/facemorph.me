@@ -1,6 +1,6 @@
 name: beads-site
 # Publishes the bead tracker (bv's static site over .beads/issues.jsonl, with Git history for
-# time travel) to https://beads.dilger.dev on every push that changes the beads.
+# time travel) to https://beads.dilger.dev on explicit dispatch.
 # Cloudflare Pages project `beads-dilger-dev`; the BEADS_PAGES_TOKEN secret can only edit Pages.
 # The custom hostname is protected by the existing Cloudflare Access app for beads.dilger.dev.
 on:
@@ -14,6 +14,7 @@ env:
   BV_SHA256: 4c269087af7a0ddef6825609cb4cdf7db0163624d26d7b02030c38c260b1e199
 jobs:
   publish:
+    if: github.event_name == 'workflow_dispatch'
     runs-on: [self-hosted, linux-x64]
     timeout-minutes: 30
     steps:

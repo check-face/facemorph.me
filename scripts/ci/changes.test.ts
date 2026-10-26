@@ -52,7 +52,7 @@ test('packages/stylegan-js: its lanes run', () => {
 });
 
 test('bead and documentation changes do not rebuild or retest the application', () => {
-  assert.deepEqual(selectLanes(['.beads/issues.jsonl'], FILTERS), ['beads-check', 'beads-site']);
+  assert.deepEqual(selectLanes(['.beads/issues.jsonl'], FILTERS), []);
   assert.deepEqual(
     selectLanes(['README.md', 'AGENTS.md', 'ops/swarm/implementer.md'], FILTERS),
     [],

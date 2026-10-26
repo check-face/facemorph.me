@@ -46,11 +46,6 @@
         "packages/browser-model-manager/**"
       ]
     },
-    "beads-site": {
-      "workflow": ".github/workflows/beads-site.yml",
-      "shared": [],
-      "extra": [".beads/**"]
-    },
     "build-identity": {
       "workflow": ".github/workflows/build-identity.yml",
       "shared": [],
