@@ -609,7 +609,11 @@ def github_api(path, payload=None):
     if payload is not None:
         command += ['--method', 'POST', '--input', '-']
     result = subprocess.run(command, input=json.dumps(payload) if payload is not None else None,
-                            capture_output=True, text=True, check=True, timeout=60)
+                            capture_output=True, text=True, timeout=60)
+    if result.returncode:
+        # GitHub's reason (an unexpected input, a missing permission) is only in gh's output.
+        raise RuntimeError(f'gh api {path} failed ({result.returncode}): '
+                           f'{(result.stderr or result.stdout).strip()[:500]}')
     return json.loads(result.stdout) if result.stdout.strip() else None
 
 
