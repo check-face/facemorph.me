@@ -171,6 +171,29 @@ function blendFailure(request: OperationRequest): OperationFailure | undefined {
       message: 'Give at least one face a weight other than 0.',
     };
 }
+const sameRecord = (a: object, b: object): boolean => {
+  const x = a as Record<string, unknown>;
+  const y = b as Record<string, unknown>;
+  return [...new Set([...Object.keys(x), ...Object.keys(y)])].every((key) => x[key] === y[key]);
+};
+/** Whether a morph request repeats a pending morph exactly: no new faces, order, revision or setting. */
+function sameMorph(existing: OperationRequest, request: OperationRequest): boolean {
+  return (
+    existing.kind === 'morph' &&
+    request.kind === 'morph' &&
+    existing.sources.length === request.sources.length &&
+    existing.sources.every((source, index) => {
+      const next = request.sources[index]!;
+      return (
+        source.slot === next.slot &&
+        source.revision === next.revision &&
+        sameRecord(source.input, next.input)
+      );
+    }) &&
+    sameRecord(existing.settings, request.settings) &&
+    sameRecord(existing.route, request.route)
+  );
+}
 const heavyOp = (request: OperationRequest): HeavyOp =>
   request.kind === 'morph'
     ? 'morph-frames'
@@ -705,6 +728,15 @@ export function createOperationService(
   }
   function queue(request: OperationRequest): OperationHandle {
     if (disposed) throw new Error('Operation service disposed');
+    // One current morph: repeating the pending morph (same faces, revisions, settings and route)
+    // is that intent, not a second one; any other morph supersedes it below.
+    const repeat =
+      request.kind === 'morph'
+        ? [...pending.values()].find(
+            (other) => current(other) && sameMorph(other.handle.request, request),
+          )
+        : undefined;
+    if (repeat) return repeat.handle;
     const intent = registry.queue(request);
     let resolve!: Pending['resolve'];
     const done = new Promise<OperationSettlement>((r) => {
@@ -725,18 +757,19 @@ export function createOperationService(
       refusal: morphFrameFailure(intent.request) ?? blendFailure(intent.request),
       checked: intent.request.kind !== 'morph' || !options.morphChecks,
     };
-    // A newer blend for the same result supersedes a pending one: latest wins, the old result is never
-    // installed. It is stopped after the newer one has joined the shared slot jobs, so no face reruns.
+    // A newer blend for the same result, or any newer morph (new faces, order or settings), supersedes
+    // a pending one: latest wins, the old result is never installed. It is stopped after the newer one
+    // has joined the shared slot jobs, so no face reruns.
     const superseded =
-      intent.request.kind === 'blend'
+      intent.request.kind === 'blend' || intent.request.kind === 'morph'
         ? [...pending.values()]
             .filter((other) => {
               const r = other.handle.request;
-              return (
-                r.kind === 'blend' &&
-                intent.request.kind === 'blend' &&
-                r.target === intent.request.target
-              );
+              return intent.request.kind === 'morph'
+                ? r.kind === 'morph'
+                : r.kind === 'blend' &&
+                    intent.request.kind === 'blend' &&
+                    r.target === intent.request.target;
             })
             .map((other) => other.handle.requestId)
         : [];

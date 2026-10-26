@@ -1,7 +1,7 @@
 // A recording, manually settled OperationBridge for operation-service tests: every provider call is
 // pending until the test resolves it, so each cancellation boundary can be held open and observed.
 import type { InputRevision } from '../contracts/inputs.ts';
-import type { OperationBridge } from './bridge-service.ts';
+import { createOperationService, type OperationBridge } from './bridge-service.ts';
 import type { OperationEvent, OperationRequest, SourceSnapshot } from './service.ts';
 import type { Output, Progress, Request } from '../../shell/facade/records.ts';
 
@@ -124,4 +124,23 @@ export function morph(...slots: readonly string[]) {
 /** The event types one request received, in order. */
 export function eventsFor(events: readonly OperationEvent[], requestId: string): string[] {
   return events.filter((e) => e.intent.requestId === requestId).map((e) => e.type);
+}
+/** A service over a held fake bridge, recording every event; `targets` lists executions as `action:target`. */
+export function held() {
+  const fake = fakeBridge();
+  const service = createOperationService({ bridge: fake.bridge });
+  const events: OperationEvent[] = [];
+  service.subscribe((event) => events.push(event));
+  const targets = () => fake.executions.map((e) => `${e.request.action}:${e.request.target}`);
+  return { fake, service, events, targets };
+}
+/** Resolves every provider call from `from` on, including ones they start: faces as results, a morph as a video. */
+export async function computeAll(fake: ReturnType<typeof fakeBridge>, from: number) {
+  for (let index = from; index < fake.executions.length; index += 1) {
+    const execution = fake.executions[index]!;
+    execution.resolve(
+      output(execution.request.action === 'face' ? [execution.request.target] : []),
+    );
+    await flush();
+  }
 }
