@@ -3,15 +3,13 @@ name: crop-repro
 # this job builds (fm-d4mw flipped the ui-* cases there). Every case must behave as tests/known-failing.json registers
 # it: listed cases fail for the documented reason, the rest behave as intended. Also: fixture digests, and the
 # test-only detector hook absent from the retained control and from the built site.
-# The browser cases need the acquired runtime (model weights under import/licences.json). CI never accepts those
-# terms itself: it uses a runtime already acquired on the runner by someone who did (verified, nothing downloaded),
-# and records the browser cases as untested when there is none.
+# The browser cases require the complete pinned runtime, verified by the shared portable acquisition step.
 on:
   workflow_call:
   workflow_dispatch:
 jobs:
   crop:
-    runs-on: [self-hosted, eris]
+    runs-on: [self-hosted, tempcpu]
     timeout-minutes: 120
     env:
       # The crop driver re-verifies the release after the initial fetch step.
@@ -22,6 +20,22 @@ jobs:
         with:
           node-version: '24'
       - uses: ./.github/actions/setup-workspace # node_modules for the lockfile, shared on the runner (fm-98po)
+      - uses: ./.github/actions/setup-playwright
+        with:
+          browsers: chromium
+      - uses: ./.github/actions/setup-runtime
+      - name: Browser controller for the crop cases
+        run: |
+          set -euo pipefail
+          python_minor=$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
+          venv="$RUNNER_TOOL_CACHE/python-playwright/1.56.0/python-$python_minor"
+          if ! "$venv/bin/python" -c 'from importlib.metadata import version; assert version("playwright") == "1.56.0"' 2>/dev/null; then
+            python3 -m venv "$venv"
+            "$venv/bin/python" -m pip install --disable-pip-version-check --only-binary=:all: playwright==1.56.0
+          fi
+          "$venv/bin/python" -m pip check
+          echo "CROP_PYTHON=$venv/bin/python" >> "$GITHUB_ENV"
+          echo "CHROMIUM_PATH=$(node -p 'require("playwright").chromium.executablePath()')" >> "$GITHUB_ENV"
       - run: node --test tests/crop/scan-test-hook.test.mjs
       - name: Fixtures match their recorded digests
         run: |
@@ -46,31 +60,13 @@ jobs:
         run: |
           node tests/crop/scan-test-hook.mjs .cache/control/tree/deploy-next
           node tests/crop/scan-test-hook.mjs deploy-next
-      - name: Runtime already acquired on this runner (verified; nothing downloaded)
-        id: runtime
-        run: |
-          dir="$HOME/.cache/facemorph-runtime"
-          # The acquired tree must be exactly import/build-inputs.json runtime.assets (acquiredFindings needs no classic checkout).
-          check='const [{acquiredFindings},{readJson,BUILD_INPUTS}]=await Promise.all([import("./scripts/inventory/check-build-inputs.mjs"),import("./scripts/inventory/lib.mjs")]);
-            const {out,files}=acquiredFindings(process.argv[1],readJson(BUILD_INPUTS).runtime.assets);console.log(JSON.stringify({files,findings:out.length,first:out.slice(0,3)}));process.exit(out.length||!files?1:0);'
-          if [ -f "$dir/manifest.json" ] && node --input-type=module -e "$check" "$dir"; then
-            echo "dir=$dir" >> "$GITHUB_OUTPUT"
-          else
-            echo "::warning::No verified runtime in $dir: the browser crop cases are untested in this run"
-          fi
-      - name: Browser controller for the crop cases
-        if: steps.runtime.outputs.dir != ''
-        run: |
-          python3 -m venv "$RUNNER_TEMP/venv"
-          "$RUNNER_TEMP/venv/bin/pip" install -q browser-harness==0.1.8 playwright==1.56.0
       - name: Crop-confirm loop cases on the ported app (with a bounded runner)
-        if: steps.runtime.outputs.dir != ''
         uses: ./.github/actions/run-command
         with:
           timeout: '2400'
           command: >-
-            "$RUNNER_TEMP/venv/bin/python" tests/crop/crop_confirm_loop.py --artifact ported --runtime "${{ steps.runtime.outputs.dir }}"
-            --out crop-evidence --chrome "$(command -v chromium || command -v google-chrome)"
+            "$CROP_PYTHON" tests/crop/crop_confirm_loop.py --artifact ported --runtime "$FACEMORPH_RUNTIME_DIR"
+            --out crop-evidence --chrome "$CHROMIUM_PATH"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
