@@ -46,7 +46,11 @@
       "monorepo": null,
       "action": "replace",
       "replacement": "Help improve FaceMorph",
-      "note": "Kept for ?testing links after launch; the body text stays (it describes the report contents exactly), the heading stops calling everyone a tester."
+      "note": "Kept for ?testing links after launch; the body text stays (it describes the report contents exactly), the heading stops calling everyone a tester.",
+      "applied": {
+        "bead": "fm-ww4",
+        "commit": "ceab073"
+      }
     },
     {
       "id": "error-classic-link",
@@ -104,7 +108,11 @@
       "monorepo": null,
       "action": "replace",
       "replacement": "faq \"What happened to the old API?\" — It has been retired. Its source stays at github.com/facemorph-me/checkface for anyone who wants to run it themselves; Help describes the classic self-host setup. Bugs in this app belong in a GitHub issue.",
-      "note": "The checkface.facemorph.me/api link goes: that host is retired."
+      "note": "The checkface.facemorph.me/api link goes: that host is retired.",
+      "applied": {
+        "bead": "fm-ww4",
+        "commit": "ceab073"
+      }
     },
     {
       "id": "faq-api-docs-link",
@@ -190,7 +198,11 @@
       "monorepo": null,
       "action": "replace",
       "replacement": "The operator decides when the old API retires; there is no fixed date.",
-      "note": "Legacy production still announces October 25; no date unless the operator sets one."
+      "note": "Legacy production still announces October 25; no date unless the operator sets one.",
+      "applied": {
+        "bead": "fm-ww4",
+        "commit": "ceab073"
+      }
     },
     {
       "id": "config-fixed-date",
@@ -200,7 +212,11 @@
       "monorepo": null,
       "action": "remove",
       "replacement": null,
-      "note": "The label feeds the legacy banner; no date unless the operator sets one."
+      "note": "The label feeds the legacy banner; no date unless the operator sets one.",
+      "applied": {
+        "bead": "fm-ww4",
+        "commit": "ceab073"
+      }
     },
     {
       "id": "retirement-link-promise",
@@ -210,7 +226,11 @@
       "monorepo": null,
       "action": "replace",
       "replacement": "Do old links still work? No. Old GUIDs, results and links are not preserved, and the new site has no share links; save the image or video you want to keep.",
-      "note": "Replaces an open-ended answer with the decided behaviour."
+      "note": "Replaces an open-ended answer with the decided behaviour.",
+      "applied": {
+        "bead": "fm-ww4",
+        "commit": "ceab073"
+      }
     }
   ]
 }

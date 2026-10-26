@@ -4,7 +4,7 @@
   "generatedBy": "scripts/delivery/copy-inventory.mjs from scripts/delivery/copy-strings.json",
   "revisions": {
     "classicFrozen": "a42829bb0582b5a7a55ba6b1045a05861612b8a5",
-    "classicHead": "11b741d1fe2afafcf37d5f621c7a8c5f5b8bc7e3",
+    "classicHead": "805052fe0b798ce50a45b7453d48559c1ce60816",
     "branch": "candidate/next-delivery-20260916"
   },
   "rules": "The candidate's preview-chrome and retirement strings that change before production, each with its replacement or removal and the bead that makes the edit. scripts/delivery/copy-inventory.mjs locates every one by file and line in classic's Git objects (the frozen import revision and the candidate branch head) and in this repository's shell, and writes inventory/retirement-copy.json, which the candidate edit set (fm-ww4) and the monorepo copy beads read. Draft wording rules: old GUIDs, results and links are not preserved; no new share URLs exist; the operator controls timing, so no fixed date unless the operator sets one; operation limits and CPU/WebGPU/mobile guidance match the chosen artifact; classic self-host Compose is described in Help only, never as a primary recovery link.",
@@ -29,7 +29,7 @@
           "source": "classic",
           "revision": "head",
           "file": "src/Next/Product.fs",
-          "line": 1212,
+          "line": 1236,
           "text": "Html.span [prop.className \"next-preview-strip-lead\";prop.children [Html.strong \"Experimental preview\";Html.text \" of the next facemorph.me. Everything runs on your device.\"]]",
           "owner": "fm-ww4"
         },
@@ -63,7 +63,7 @@
           "source": "classic",
           "revision": "head",
           "file": "src/Next/Product.fs",
-          "line": 1214,
+          "line": 1238,
           "text": "Html.a [prop.href \"https://facemorph.me\";prop.text \"Classic facemorph.me\"]",
           "owner": "fm-ww4"
         },
@@ -97,7 +97,7 @@
           "source": "classic",
           "revision": "head",
           "file": "src/Next/Product.fs",
-          "line": 1215,
+          "line": 1239,
           "text": "Html.a [prop.href \"https://facemorph.me/retirement\";prop.text \"Its server is retiring\"]",
           "owner": "fm-ww4"
         },
@@ -118,20 +118,16 @@
       "action": "replace",
       "replacement": "Help improve FaceMorph",
       "note": "Kept for ?testing links after launch; the body text stays (it describes the report contents exactly), the heading stops calling everyone a tester.",
+      "applied": {
+        "bead": "fm-ww4",
+        "commit": "ceab073"
+      },
       "locations": [
         {
           "source": "classic",
           "revision": "frozen",
           "file": "src/Next/Product.fs",
           "line": 1229,
-          "text": "Html.h2 \"Thanks for testing FaceMorph\"",
-          "owner": "fm-ww4"
-        },
-        {
-          "source": "classic",
-          "revision": "head",
-          "file": "src/Next/Product.fs",
-          "line": 1238,
           "text": "Html.h2 \"Thanks for testing FaceMorph\"",
           "owner": "fm-ww4"
         }
@@ -201,7 +197,7 @@
           "source": "classic",
           "revision": "head",
           "file": "src/Next/Product.fs",
-          "line": 1473,
+          "line": 1500,
           "text": "Html.p [prop.className \"next-footer-version\";prop.text ((if isNextPreviewOrigin then \"Preview version \" else \"Version \") + sourceVersion())]]]",
           "owner": "fm-ww4"
         },
@@ -235,7 +231,7 @@
           "source": "classic",
           "revision": "head",
           "file": "src/Next/Product.fs",
-          "line": 1162,
+          "line": 1181,
           "text": "faq \"What is next.facemorph.me?\" [",
           "owner": "fm-ww4"
         }
@@ -248,20 +244,16 @@
       "action": "replace",
       "replacement": "faq \"What happened to the old API?\" — It has been retired. Its source stays at github.com/facemorph-me/checkface for anyone who wants to run it themselves; Help describes the classic self-host setup. Bugs in this app belong in a GitHub issue.",
       "note": "The checkface.facemorph.me/api link goes: that host is retired.",
+      "applied": {
+        "bead": "fm-ww4",
+        "commit": "ceab073"
+      },
       "locations": [
         {
           "source": "classic",
           "revision": "frozen",
           "file": "src/Next/Product.fs",
           "line": 1175,
-          "text": "faq \"Is there an API I can self-host?\" [",
-          "owner": "fm-ww4"
-        },
-        {
-          "source": "classic",
-          "revision": "head",
-          "file": "src/Next/Product.fs",
-          "line": 1180,
           "text": "faq \"Is there an API I can self-host?\" [",
           "owner": "fm-ww4"
         }
@@ -309,7 +301,7 @@
           "source": "classic",
           "revision": "head",
           "file": "src/Next/Product.fs",
-          "line": 1161,
+          "line": 1174,
           "text": "Html.p \"Yes. Drop a photo onto a face, tap an empty face, or open a face's mode menu and choose Upload image. Photos are processed on your device and never uploaded.\"]",
           "owner": "fm-ww4"
         }
@@ -357,7 +349,7 @@
           "source": "classic",
           "revision": "head",
           "file": "src/Next/Product.fs",
-          "line": 1195,
+          "line": 1219,
           "text": "Html.p [Html.a [prop.href \"mailto:checkfaceml@gmail.com\";prop.text \"Email us\"]]",
           "owner": "fm-ww4"
         }
@@ -414,18 +406,14 @@
       "action": "replace",
       "replacement": "The operator decides when the old API retires; there is no fixed date.",
       "note": "Legacy production still announces October 25; no date unless the operator sets one.",
+      "applied": {
+        "bead": "fm-ww4",
+        "commit": "ceab073"
+      },
       "locations": [
         {
           "source": "classic",
           "revision": "frozen",
-          "file": "src/retirement.md",
-          "line": 15,
-          "text": "The current API retirement target is **October 25, 2026 (AEST)**. It is subject to preservation and trial readiness. If the work needs more time, we will revise the target rather than shorten the comparison period or switch the service off automatically.",
-          "owner": "fm-ww4"
-        },
-        {
-          "source": "classic",
-          "revision": "head",
           "file": "src/retirement.md",
           "line": 15,
           "text": "The current API retirement target is **October 25, 2026 (AEST)**. It is subject to preservation and trial readiness. If the work needs more time, we will revise the target rather than shorten the comparison period or switch the service off automatically.",
@@ -440,20 +428,16 @@
       "action": "remove",
       "replacement": null,
       "note": "The label feeds the legacy banner; no date unless the operator sets one.",
+      "applied": {
+        "bead": "fm-ww4",
+        "commit": "ceab073"
+      },
       "locations": [
         {
           "source": "classic",
           "revision": "frozen",
           "file": "src/Config.fs",
           "line": 49,
-          "text": "let apiTransitionDateLabel = \"October 25, 2026 (AEST)\"",
-          "owner": "fm-ww4"
-        },
-        {
-          "source": "classic",
-          "revision": "head",
-          "file": "src/Config.fs",
-          "line": 55,
           "text": "let apiTransitionDateLabel = \"October 25, 2026 (AEST)\"",
           "owner": "fm-ww4"
         }
@@ -466,18 +450,14 @@
       "action": "replace",
       "replacement": "Do old links still work? No. Old GUIDs, results and links are not preserved, and the new site has no share links; save the image or video you want to keep.",
       "note": "Replaces an open-ended answer with the decided behaviour.",
+      "applied": {
+        "bead": "fm-ww4",
+        "commit": "ceab073"
+      },
       "locations": [
         {
           "source": "classic",
           "revision": "frozen",
-          "file": "src/retirement.md",
-          "line": 47,
-          "text": "#### Will the API and old links work exactly as before?",
-          "owner": "fm-ww4"
-        },
-        {
-          "source": "classic",
-          "revision": "head",
           "file": "src/retirement.md",
           "line": 47,
           "text": "#### Will the API and old links work exactly as before?",
