@@ -14,6 +14,14 @@ on:
         type: string
         required: false
         description: 'smoke (one sample per side) or paired (warmup + ABBA x3; refuses load above 4)'
+      candidate_run_id:
+        type: string
+        required: false
+        description: 'main.yml run whose next-site lane built the candidate artifact (empty: control/control)'
+      candidate_commit:
+        type: string
+        required: false
+        description: Full commit SHA that run built (artifact next-site-<commit>)
   workflow_dispatch:
     inputs:
       mode:
@@ -21,6 +29,14 @@ on:
         type: choice
         options: [smoke, paired]
         default: smoke
+      candidate_run_id:
+        description: main.yml run whose next-site lane built the candidate artifact (empty runs control/control)
+        required: false
+        default: ''
+      candidate_commit:
+        description: Full commit SHA that run built (artifact next-site-<commit>)
+        required: false
+        default: ''
 permissions:
   contents: read
 jobs:
@@ -39,6 +55,20 @@ jobs:
       - uses: ./.github/actions/setup-workspace # node_modules for the lockfile, shared on the runner (fm-98po)
       - name: Driver tests
         run: node --test autoresearch/drivers/drivers.test.mjs
+      # A candidate is located only through the shared lookup action: this repository's ID, the run, its commit
+      # and artifact next-site-<commit>, digest-verified file by file (fm-7ge, fm-qqh). Without one the run is
+      # control/control.
+      - name: Fetch the candidate artifact through the shared lookup
+        id: candidate
+        if: inputs.candidate_run_id != ''
+        uses: ./.github/actions/fetch-artifact
+        with:
+          source_repo_id: '1413979666'
+          workflow: .github/workflows/main.yml
+          run_id: ${{ inputs.candidate_run_id }}
+          commit: ${{ inputs.candidate_commit }}
+          artifact_name: next-site-${{ inputs.candidate_commit }}
+          out: .cache/candidate
       - name: Fetch retained control independently (digest re-verified)
         env:
           GITHUB_TOKEN: ${{ github.token }}
@@ -57,7 +87,7 @@ jobs:
           command: >-
             node autoresearch/drivers/morph-frame-product.mjs --label "$LABEL" --mode "${{ inputs.mode || 'smoke' }}"
             --route webgpu --control .cache/control/tree/deploy-next --control-digest "$(node -p
-            'require("./autoresearch/drivers/control.json").treeSha256')" --runtime "$RUNTIME" --out-root "$OUT"
+            'require("./autoresearch/drivers/control.json").treeSha256')" --runtime "$RUNTIME" --out-root "$OUT"${{ steps.candidate.outputs.artifact_dir && format(' --candidate {0} --candidate-digest {1} --candidate-source run:{2}', steps.candidate.outputs.artifact_dir, steps.candidate.outputs.artifact_digest, inputs.candidate_run_id) || '' }}
       - name: Durable location
         if: always()
         run: |
