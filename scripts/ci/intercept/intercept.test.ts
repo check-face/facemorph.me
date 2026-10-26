@@ -122,6 +122,9 @@ interface BrowserServer {
 // Settle the explicitly owned context (including service workers and pending
 // artifacts) before asking the browser server to exit. Both steps share one bound;
 // a stuck browser still fails, and only this fixture's process group is killed.
+// 30 s, not 5: a normal shutdown on the loaded eris runner (load ~36 on 12 cores)
+// overran 5 s (main run 40284140320); a stopped browser never exits at any bound.
+const SHUTDOWN_MS = 30_000;
 async function closeBrowser(server: BrowserServer, context?: Context) {
   let deadline: ReturnType<typeof setTimeout> | undefined;
   try {
@@ -132,8 +135,12 @@ async function closeBrowser(server: BrowserServer, context?: Context) {
       })(),
       new Promise<never>((_, reject) => {
         deadline = setTimeout(() => {
-          reject(new Error('Chromium shutdown exceeded 5 seconds; owned process killed'));
-        }, 5_000);
+          reject(
+            new Error(
+              `Chromium shutdown exceeded ${SHUTDOWN_MS / 1000} seconds; owned process killed`,
+            ),
+          );
+        }, SHUTDOWN_MS);
       }),
     ]);
   } catch (error) {
@@ -271,7 +278,7 @@ test(
       const exited = new Promise<void>((resolve) => child.once('exit', () => resolve()));
       assert.ok(child.pid);
       process.kill(child.pid, 'SIGSTOP');
-      await assert.rejects(closeBrowser(server, context), /shutdown exceeded 5 seconds/);
+      await assert.rejects(closeBrowser(server, context), /shutdown exceeded 30 seconds/);
       await exited;
       assert.equal(child.signalCode, 'SIGKILL');
     } finally {
