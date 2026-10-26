@@ -100,6 +100,10 @@ export default defineConfig({
     'import.meta.env.FACEMORPH_STATS_ALLOW_AUTOMATION': JSON.stringify(
       process.env['FACEMORPH_STATS_ALLOW_AUTOMATION'] === '1' ? '1' : '',
     ),
+    // A test build only (fm-szbf): lets product analytics load under automation. Never set for a release.
+    'import.meta.env.FACEMORPH_ANALYTICS_ALLOW_AUTOMATION': JSON.stringify(
+      process.env['FACEMORPH_ANALYTICS_ALLOW_AUTOMATION'] === '1' ? '1' : '',
+    ),
   },
   css: {
     preprocessorOptions: {

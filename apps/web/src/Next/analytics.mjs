@@ -79,12 +79,21 @@ export function deviceProperties(nav = globalThis.navigator, isolated = globalTh
   };
 }
 
+/**
+ * Only a test build sets this (FACEMORPH_ANALYTICS_ALLOW_AUTOMATION=1 at build time, fm-szbf); never the shipped
+ * site, whose build defines it as ''. Outside a Vite build (node tests, a raw module) `import.meta.env` is absent and
+ * the automation refusal stands.
+ */
+export const ALLOW_AUTOMATION = (() => {
+  try { return import.meta.env.FACEMORPH_ANALYTICS_ALLOW_AUTOMATION === '1'; } catch { return false; }
+})();
+
 /** Whether analytics may run here at all. Pure so the rules can be tested. */
-export function allowed(env = globalThis) {
+export function allowed(env = globalThis, { allowAutomation = ALLOW_AUTOMATION } = {}) {
   try {
     const { location, navigator: nav } = env;
     if (!location || location.hostname !== HOST || location.protocol !== 'https:') return false;
-    if (nav?.webdriver) return false;
+    if (nav?.webdriver && !allowAutomation) return false;
     if (nav?.globalPrivacyControl === true || nav?.doNotTrack === '1' || env.doNotTrack === '1') return false;
     if (nav?.connection?.saveData === true) return false;
     return true;

@@ -989,6 +989,10 @@ test(
         // Every host contacted is this site or a disclosed outside host, named in the rendered privacy text.
         const privacy = await privacyText(page, c.touch);
         const hosts = new Set(Object.values(log.hosts).flat());
+        assert.ok(
+          ![...hosts].some((h) => /googletagmanager|google-analytics/.test(h)),
+          'the default build loads no analytics under automation',
+        );
         for (const host of hosts) {
           if (host === new URL(ORIGIN).host) continue;
           const entry = OUTSIDE_REQUESTS.find((r) =>
@@ -1066,14 +1070,14 @@ test(
 );
 
 // ---- 5. the usage-statistics beacon and the analytics script -----------------------------------------------------
-// The shipped build sends no statistics under automation (navigator.webdriver). Its only explicit test opt-in is a
-// build-time variable (FACEMORPH_STATS_ALLOW_AUTOMATION=1, fm-5yqq), so a test build beside deploy-next is used to
-// observe the /stats/v1 beacon class. Google Analytics has no test opt-in at all: analytics.mjs `allowed()` refuses
-// whenever navigator.webdriver is true, so its two host classes (www.googletagmanager.com, *.google-analytics.com)
-// cannot be observed under automation and are checked only as rendered entries of the privacy text.
+// The shipped build sends neither under automation (navigator.webdriver; the journey above asserts no Google host).
+// Each has a build-time, test-build-only opt-in: FACEMORPH_STATS_ALLOW_AUTOMATION=1 (fm-5yqq) and
+// FACEMORPH_ANALYTICS_ALLOW_AUTOMATION=1 (fm-szbf); a test build beside deploy-next sets both. The gtag script is
+// Google's real one, so its *.google-analytics.com measurement requests are really made, and every one of them is
+// answered locally: no measurement reaches Google.
 
 test(
-  'the usage-statistics beacon class is same-origin /stats/v1 and named in the privacy text',
+  'the statistics beacon and both analytics host classes are intercepted and named in the privacy text',
   { timeout: 1_200_000 },
   async (t) => {
     if (!runtimeOrSkip(t)) return;
@@ -1081,7 +1085,11 @@ test(
     rmSync(out, { recursive: true, force: true });
     execFileSync('npx', ['vite', 'build', '--outDir', out, '--emptyOutDir', '--logLevel', 'warn'], {
       cwd: join(REPO, 'apps/web'),
-      env: { ...process.env, FACEMORPH_STATS_ALLOW_AUTOMATION: '1' },
+      env: {
+        ...process.env,
+        FACEMORPH_STATS_ALLOW_AUTOMATION: '1',
+        FACEMORPH_ANALYTICS_ALLOW_AUTOMATION: '1',
+      },
       stdio: 'inherit',
     });
     for (const file of ['catalogue.json', '_headers', '_redirects'])
@@ -1093,6 +1101,9 @@ test(
     });
     const capture = await startCapture({ host: ORIGIN_HOST, upstream: PORT });
     const browser = await chromium.launch({ args: [...capture.args, '--disable-features=WebGPU'] });
+    const analyticsHosts = OUTSIDE_REQUESTS.filter((r) => /Google Analytics/.test(r.purpose));
+    const covers = (pattern: string, host: string) =>
+      pattern.startsWith('*.') ? host.endsWith(pattern.slice(1)) : host === pattern;
     try {
       for (const c of [CELLS[0]!, CELLS[3]!]) {
         capture.beacons.length = 0;
@@ -1109,10 +1120,47 @@ test(
         context.on('request', (r) => {
           if (/^https?:/.test(r.url())) hosts.add(new URL(r.url()).host);
         });
+        // The tag script is Google's real one (the product's own GET, which carries no page data), so its
+        // measurement requests are really made; every *.google-analytics.com request is answered here with a 204,
+        // so no measurement reaches Google.
+        const google: string[] = [];
+        await context.route(
+          /^https:\/\/([a-z0-9-]+\.)*(googletagmanager|google-analytics)\.com\//,
+          async (route) => {
+            google.push(route.request().url());
+            if (!/\/gtag\/js/.test(route.request().url()))
+              return route.fulfill({ status: 204, body: '' });
+            const response = await route.fetch();
+            const body = `${await response.text()}\n;window.__gtagLoaded = true;`;
+            return route.fulfill({ response, body });
+          },
+        );
         const page = await context.newPage();
         capture.step = 'visit';
         await page.goto(ORIGIN);
         await settle(page, c.touch);
+        // Analytics loads once the page is idle: the gtag script request, with the product's measurement queued.
+        await page.waitForFunction(
+          () => (window as unknown as { __gtagLoaded?: boolean }).__gtagLoaded === true,
+          null,
+          { timeout: 30_000 },
+        );
+        // gtag.js also pushes its own event objects; the product's calls are the arguments lists.
+        const queued = await page.evaluate(() =>
+          ((window as unknown as { dataLayer?: unknown[] }).dataLayer ?? [])
+            .filter(
+              (a): a is ArrayLike<unknown> => typeof (a as ArrayLike<unknown>)?.length === 'number',
+            )
+            .map((a) => Array.from(a).slice(0, 2).map(String)),
+        );
+        assert.ok(
+          queued.some(([kind, id]) => kind === 'config' && (id ?? '').startsWith('G-')),
+          'the product queued its analytics config',
+        );
+        assert.ok(
+          google.some((u) => u.startsWith('https://www.googletagmanager.com/gtag/js?id=G-')),
+          'the analytics script request is in the intercepted set',
+        );
         await cpuMode(page);
         capture.step = 'face';
         await generate(page, 1, c.touch);
@@ -1132,22 +1180,23 @@ test(
         assert.ok(privacy.includes('/stats/v1'), 'the privacy text names the statistics beacon');
         for (const host of hosts) {
           if (host === ORIGIN_HOST) continue;
-          const entry = OUTSIDE_REQUESTS.find((r) =>
-            r.host.startsWith('*.') ? host.endsWith(r.host.slice(1)) : r.host === host,
-          );
+          const entry = OUTSIDE_REQUESTS.find((r) => covers(r.host, host));
           assert.ok(entry && privacy.includes(entry.host), `${host} is in the privacy text`);
         }
-        for (const r of OUTSIDE_REQUESTS.filter((r) => /Google Analytics/.test(r.purpose)))
-          assert.ok(
-            privacy.includes(r.host),
-            `${r.host} (analytics, untestable under automation) is named`,
-          );
+        const intercepted = [...new Set(google.map((u) => new URL(u).host))];
+        const seen = analyticsHosts.filter((r) => intercepted.some((h) => covers(r.host, h)));
+        assert.deepEqual(
+          seen.map((r) => r.host),
+          analyticsHosts.map((r) => r.host),
+          `every analytics host class is intercepted (saw ${intercepted.join(', ')})`,
+        );
+        for (const r of analyticsHosts) assert.ok(privacy.includes(r.host), `${r.host} is named`);
         t.diagnostic(
-          `${label(c)}: ${capture.beacons.length} /stats/v1 beacons; hosts ${[...hosts].join(', ')}`,
+          `${label(c)}: ${capture.beacons.length} /stats/v1 beacons; Google requests answered locally: ${google.length} (${intercepted.join(', ')}); analytics classes observed: ${seen.map((r) => r.host).join(', ')}; hosts ${[...hosts].join(', ')}`,
         );
         writeFileSync(
           join(results, `stats-${label(c)}.json`),
-          JSON.stringify({ beacons: capture.beacons, hosts: [...hosts] }, null, 1),
+          JSON.stringify({ beacons: capture.beacons, hosts: [...hosts], google, queued }, null, 1),
         );
         await context.close();
       }
