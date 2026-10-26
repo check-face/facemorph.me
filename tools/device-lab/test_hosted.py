@@ -5,7 +5,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
-from hosted import IOS_JOURNEYS, IOS_POST, IosAttempt, ios_reset_page, ios_script, ios_simulator, observe_request_failures, AndroidChrome, lane_report, lab, ArtifactServer, HOSTED_LANES, OriginStorage, hosted_outcomes, manifest_sha, release_reports, runner_unavailable_reason, summarise
+from hosted import IOS_JOURNEYS, IOS_POST, IosAttempt, ios_reset_page, ios_script, ios_simulator, observe_request_failures, AndroidChrome, lane_report, lab, ArtifactServer, HOSTED_LANES, OriginStorage, dispatch_inputs, hosted_outcomes, manifest_sha, release_reports, runner_unavailable_reason, summarise
 
 RUN = {'cold': {'route': 'Ready · this device’s CPU.', 'faceS': 22.2}, 'warm': {'route': 'Ready · this device’s CPU.', 'faceS': 16.7},
        'morph': {'videoS': 57.5}, 'ok': True}
@@ -302,6 +302,19 @@ class Summary(unittest.TestCase):
     def test_duration_versus_budget_for_executed_journeys(self):
         table = summarise([{'lane': 'macos-webkit', 'ok': True, 'runs': [RUN]}])
         self.assertIn('cold-face 22s (unbudgeted); warm-face 17s (unbudgeted); morph 58s (unbudgeted)', table)
+
+
+class Dispatch(unittest.TestCase):
+    def test_only_declared_hosted_inputs_are_dispatched(self):
+        caller = {'target': 'staging', 'artifact_source_repo_id': '1413979666', 'artifact_workflow': '.github/workflows/main.yml',
+                  'artifact_commit': 'a' * 40, 'artifact_run': '40302561246', 'artifact_name': 'next-site-x', 'runtime_sha': 'd9e3'}
+        sent = dispatch_inputs(caller)
+        self.assertNotIn('target', sent)
+        self.assertEqual(set(sent), set(caller) - {'target'})
+
+    def test_missing_artifact_input_refuses_before_dispatch(self):
+        with self.assertRaises(SystemExit):
+            dispatch_inputs({'artifact_name': 'next-site-x'})
 
 
 class Availability(unittest.TestCase):
