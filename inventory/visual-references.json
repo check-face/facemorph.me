@@ -19,7 +19,7 @@
         "value": "72e52dc343595aa1d6e27ef70beb3a1445f9fe496fab3995f57c18ae50737769"
       },
       "note": null,
-      "asset_url": "https://github.com/check-face/facemorph.me/releases/download/visual-references-2026-10-24/legacy-production-390.png"
+      "asset_url": "https://github.com/facemorph-me/facemorph.me/releases/download/visual-references-2026-10-24/legacy-production-390.png"
     },
     {
       "name": "legacy-production",
@@ -38,7 +38,7 @@
         "value": "72e52dc343595aa1d6e27ef70beb3a1445f9fe496fab3995f57c18ae50737769"
       },
       "note": null,
-      "asset_url": "https://github.com/check-face/facemorph.me/releases/download/visual-references-2026-10-24/legacy-production-1280.png"
+      "asset_url": "https://github.com/facemorph-me/facemorph.me/releases/download/visual-references-2026-10-24/legacy-production-1280.png"
     },
     {
       "name": "legacy-production-picker",
@@ -57,7 +57,7 @@
         "value": "72e52dc343595aa1d6e27ef70beb3a1445f9fe496fab3995f57c18ae50737769"
       },
       "note": "picker open",
-      "asset_url": "https://github.com/check-face/facemorph.me/releases/download/visual-references-2026-10-24/legacy-production-picker-390.png"
+      "asset_url": "https://github.com/facemorph-me/facemorph.me/releases/download/visual-references-2026-10-24/legacy-production-picker-390.png"
     },
     {
       "name": "legacy-production-picker",
@@ -76,7 +76,7 @@
         "value": "72e52dc343595aa1d6e27ef70beb3a1445f9fe496fab3995f57c18ae50737769"
       },
       "note": "picker open",
-      "asset_url": "https://github.com/check-face/facemorph.me/releases/download/visual-references-2026-10-24/legacy-production-picker-1280.png"
+      "asset_url": "https://github.com/facemorph-me/facemorph.me/releases/download/visual-references-2026-10-24/legacy-production-picker-1280.png"
     },
     {
       "name": "names-site",
@@ -95,7 +95,7 @@
         "value": "de7a9518b946d4512e55783bd2413cae51516f25862508f08fb8aee6e8fb1c15"
       },
       "note": null,
-      "asset_url": "https://github.com/check-face/facemorph.me/releases/download/visual-references-2026-10-24/names-site-390.png"
+      "asset_url": "https://github.com/facemorph-me/facemorph.me/releases/download/visual-references-2026-10-24/names-site-390.png"
     },
     {
       "name": "names-site",
@@ -114,7 +114,7 @@
         "value": "de7a9518b946d4512e55783bd2413cae51516f25862508f08fb8aee6e8fb1c15"
       },
       "note": null,
-      "asset_url": "https://github.com/check-face/facemorph.me/releases/download/visual-references-2026-10-24/names-site-1280.png"
+      "asset_url": "https://github.com/facemorph-me/facemorph.me/releases/download/visual-references-2026-10-24/names-site-1280.png"
     },
     {
       "name": "next-site",
@@ -133,7 +133,7 @@
         "value": "81da899bb904d8829cc4a04e487de67d857ac5341822d50ae27fd3c281f1c4dd"
       },
       "note": null,
-      "asset_url": "https://github.com/check-face/facemorph.me/releases/download/visual-references-2026-10-24/next-site-390.png"
+      "asset_url": "https://github.com/facemorph-me/facemorph.me/releases/download/visual-references-2026-10-24/next-site-390.png"
     },
     {
       "name": "next-site",
@@ -152,12 +152,12 @@
         "value": "81da899bb904d8829cc4a04e487de67d857ac5341822d50ae27fd3c281f1c4dd"
       },
       "note": null,
-      "asset_url": "https://github.com/check-face/facemorph.me/releases/download/visual-references-2026-10-24/next-site-1280.png"
+      "asset_url": "https://github.com/facemorph-me/facemorph.me/releases/download/visual-references-2026-10-24/next-site-1280.png"
     }
   ],
   "store": {
     "kind": "github-release-assets",
-    "release": "https://github.com/check-face/facemorph.me/releases/tag/visual-references-2026-10-24",
+    "release": "https://github.com/facemorph-me/facemorph.me/releases/tag/visual-references-2026-10-24",
     "note": "PNGs are stored outside Git as release assets of this repository (same store as the control artifact, PLAN.md Control custody). Local working copies live in inventory/visual-references/ (gitignored)."
   }
 }

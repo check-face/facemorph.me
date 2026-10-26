@@ -2,7 +2,7 @@
   "bead": "fm-p7v",
   "description": "Release surfaces of the FaceMorph candidate and their owners, inputs and consumers. Source paths refer to the sibling classic checkout; this inventory reads it without changing it.",
   "source": {
-    "repo": "check-face/facemorph.me-classic (id 295956585)",
+    "repo": "facemorph-me/facemorph.me-classic (id 295956585)",
     "branch": "candidate/next-delivery-20260916",
     "frozen_revision": "a42829bb0582b5a7a55ba6b1045a05861612b8a5",
     "read_revision": "a42829bb0582b5a7a55ba6b1045a05861612b8a5 (working tree head, 2026-10-24)",
@@ -179,7 +179,7 @@
       "consumers": ["src/Next/product-bridge.mjs:6 (createDesktopRuntime when globalThis.__TAURI__)", "scripts/build-next.cjs:8", "desktop-candidates.yml, desktop-product.yml, desktop-native-inference.yml (all artifact-only, no releases)", "next-e2e.yml (verify-web-artifact.py provenance check)"],
       "build_worker_urls": [],
       "persistent_identities": [],
-      "live_receipt": "No native release ever published: both classic and monorepo repos have zero releases and the updater endpoint https://github.com/check-face/facemorph.me/releases/latest/download/latest.json returns 404 (verified 2026-10-24).",
+      "live_receipt": "No native release ever published: both classic and monorepo repos have zero releases and the updater endpoint https://github.com/facemorph-me/facemorph.me/releases/latest/download/latest.json returns 404 (verified 2026-10-24).",
       "uncertainties": ["Number of installed desktop clients in the wild is unknowable from the repo; no update feed exists, so none can be redirected (fm-p7v disposition: clients never redirected)"]
     },
     {

@@ -111,6 +111,12 @@
       "disposition": "generic GitHub host route/assertions name no owner; repository-specific links still use the normal owner rules"
     },
     {
+      "id": "renamed-organization",
+      "target": "^facemorph-me/",
+      "class": "active-link",
+      "disposition": "done: already names the renamed organization (fm-fy2.20)"
+    },
+    {
       "id": "monorepo-active",
       "repo": "facemorph.me",
       "target": "^check-face/",

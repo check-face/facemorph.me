@@ -1,6 +1,6 @@
 {
   "classic": {
-    "repository": "check-face/facemorph.me-classic",
+    "repository": "facemorph-me/facemorph.me-classic",
     "commit": "a42829bb0582b5a7a55ba6b1045a05861612b8a5",
     "note": "Frozen import revision (import/allowlist.json). Ported files keep their arithmetic; workspace paths became arguments."
   },

@@ -8,10 +8,10 @@ Zone `facemorph.me` is `893772fe7a5a4ee368f71706bc19e609`; account `8f550a622a48
 
 | Artifact | Build | Source | Digest |
 | --- | --- | --- | --- |
-| classic candidate build serving next.facemorph.me (observed 24 October, 15:40 UTC) (`candidate`) | next-site.yml run 40080943175, artifact next-site-45463b630e5ed3ce6bc00a7af5fecaa93b5a5b94 | `check-face/facemorph.me-classic@45463b630e5ed3ce6bc00a7af5fecaa93b5a5b94` | `228eb615fdbd6d46d34459a4574b660e540aeb0c3903cf20018e8107ebd14f6b` |
-| the pinned control (import/control-artifact.json): an earlier candidate build, no longer what next.facemorph.me serves (`control`) | next-dbc2925ff6e7dcb6 | `check-face/facemorph.me-classic@551b60726290b2d67a32c62477b2fd964de51f96` | `aaeb99a92a082b5399aa809a5aadd802c3c61ccc167f306aa86fc091b527bf50` |
-| legacy facemorph.me on Vercel: classic master's last successful deploy.yml (`legacyProduction`) | deploy.yml run 36654890071 | `check-face/facemorph.me-classic@e6e229831533244133f80aea61ae944c811bf9a0` | none (not an on-device artifact) |
-| names.facemorph.me on Vercel (facemorph-names) (`namesSite`) | GitHub deployment 359827192 (Production) | `check-face/facemorph-names@9243fef8a34050ccf0a08d37de02784bd06fb57b` | none (not an on-device artifact) |
+| classic candidate build serving next.facemorph.me (observed 24 October, 15:40 UTC) (`candidate`) | next-site.yml run 40080943175, artifact next-site-45463b630e5ed3ce6bc00a7af5fecaa93b5a5b94 | `facemorph-me/facemorph.me-classic@45463b630e5ed3ce6bc00a7af5fecaa93b5a5b94` | `228eb615fdbd6d46d34459a4574b660e540aeb0c3903cf20018e8107ebd14f6b` |
+| the pinned control (import/control-artifact.json): an earlier candidate build, no longer what next.facemorph.me serves (`control`) | next-dbc2925ff6e7dcb6 | `facemorph-me/facemorph.me-classic@551b60726290b2d67a32c62477b2fd964de51f96` | `aaeb99a92a082b5399aa809a5aadd802c3c61ccc167f306aa86fc091b527bf50` |
+| legacy facemorph.me on Vercel: classic master's last successful deploy.yml (`legacyProduction`) | deploy.yml run 36654890071 | `facemorph-me/facemorph.me-classic@e6e229831533244133f80aea61ae944c811bf9a0` | none (not an on-device artifact) |
+| names.facemorph.me on Vercel (facemorph-names) (`namesSite`) | GitHub deployment 359827192 (Production) | `facemorph-me/facemorph-names@9243fef8a34050ccf0a08d37de02784bd06fb57b` | none (not an on-device artifact) |
 
 ## Retirement inventory
 
@@ -21,15 +21,15 @@ Remove items run at the action named in "When"; keep items stay, with the reason
 | --- | --- | --- | --- | --- | --- | --- |
 | `dns-api` | api.facemorph.me CNAME triton.dilger.dev (proxied), record b2c42b2999fa669db0c9a8c9467a2703 | remove | api-retirement | The old API's public hostname; nothing in the on-device app calls it. | `cf dns records delete b2c42b2999fa669db0c9a8c9467a2703 --zone 893772fe7a5a4ee368f71706bc19e609 --force` | `cf dns records delete b2c42b2999fa669db0c9a8c9467a2703 --zone 893772fe7a5a4ee368f71706bc19e609 --dry-run` |
 | `dns-e4e` | e4e.facemorph.me CNAME triton.dilger.dev (proxied), record ec9bc3bd316f393fe194f8b93b94bbbd | remove | api-retirement | The hosted encoder's hostname; the app encodes photos on the device. | `cf dns records delete ec9bc3bd316f393fe194f8b93b94bbbd --zone 893772fe7a5a4ee368f71706bc19e609 --force` | `cf dns records delete ec9bc3bd316f393fe194f8b93b94bbbd --zone 893772fe7a5a4ee368f71706bc19e609 --dry-run` |
-| `dns-checkface` | checkface.facemorph.me CNAME check-face.github.io, record baa8e426a96ed754490629120d52c525 | remove | api-retirement | The API documentation site (GitHub Pages of check-face/checkface); retired with the API. | `cf dns records delete baa8e426a96ed754490629120d52c525 --zone 893772fe7a5a4ee368f71706bc19e609 --force` | `cf dns records delete baa8e426a96ed754490629120d52c525 --zone 893772fe7a5a4ee368f71706bc19e609 --dry-run` |
-| `pages-checkface` | GitHub Pages of check-face/checkface (master:/docs, custom domain checkface.facemorph.me) | remove | api-retirement | Publishes the API documentation; the repository itself stays archived as-is. | `gh api -X DELETE repos/check-face/checkface/pages` | GitHub has no dry-run for disabling Pages; the read-only probe shows the site exists. |
+| `dns-checkface` | checkface.facemorph.me CNAME facemorph-me.github.io, record baa8e426a96ed754490629120d52c525 | remove | api-retirement | The API documentation site (GitHub Pages of facemorph-me/checkface); retired with the API. | `cf dns records delete baa8e426a96ed754490629120d52c525 --zone 893772fe7a5a4ee368f71706bc19e609 --force` | `cf dns records delete baa8e426a96ed754490629120d52c525 --zone 893772fe7a5a4ee368f71706bc19e609 --dry-run` |
+| `pages-checkface` | GitHub Pages of facemorph-me/checkface (master:/docs, custom domain checkface.facemorph.me) | remove | api-retirement | Publishes the API documentation; the repository itself stays archived as-is. | `gh api -X DELETE repos/facemorph-me/checkface/pages` | GitHub has no dry-run for disabling Pages; the read-only probe shows the site exists. |
 | `caddy-api` | triton: caddy-docker-proxy service ccheckfaceapi (caddy label api.facemorph.me), /usr/local/caddy-docker-proxy/docker-compose.yml | remove | api-retirement | Routes api.facemorph.me to the API container. | `ssh triton 'cd /usr/local/caddy-docker-proxy && docker compose rm -sf ccheckfaceapi' && remove the ccheckfaceapi service from that docker-compose.yml so a later 'up' does not restore it` | Docker Compose v2.2.3 on triton has no --dry-run; the probe shows the container and its caddy label. |
 | `caddy-e4e` | triton: caddy-docker-proxy service ce4eapi (caddy label e4e.facemorph.me) | remove | api-retirement | Routes e4e.facemorph.me to the encoder container. | `ssh triton 'cd /usr/local/caddy-docker-proxy && docker compose rm -sf ce4eapi' && remove the ce4eapi service from that docker-compose.yml` | Docker Compose v2.2.3 on triton has no --dry-run; the probe shows the container and its caddy label. |
 | `triton-api` | triton: compose project server, service api (container server-api-1, image server_api), checkface/src/server | remove | api-retirement | The hosted inference API (checkface backend, archived as-is). | `ssh triton 'cd /home/chris/repos/checkface/src/server && docker compose -p server rm -sf api'` | Docker Compose v2.2.3 on triton has no --dry-run; the probe shows the running container. |
 | `triton-encoder` | triton: compose project server, service encoderapi (container server-encoderapi-1, image olicoad/encoder4editing) | remove | api-retirement | The hosted e4e encoder behind e4e.facemorph.me. | `ssh triton 'cd /home/chris/repos/checkface/src/server && docker compose -p server rm -sf encoderapi'` | Docker Compose v2.2.3 on triton has no --dry-run; the probe shows the running container. |
 | `triton-db` | triton: compose project server, service db (container server-db-1, mongo 4.2): the API's stored GUIDs and results | keep | separate data-disposal operation | Production data disposal and deleting personal records are a separate explicit operation (out of scope here); the container stops with that operation, not with API retirement. | none | Kept here; no command. |
 | `cred-mongo` | MONGO_INITDB_ROOT_PASSWORD in checkface/src/server/docker-compose.yml (name only) | remove | separate data-disposal operation | API-only; goes with the database at its disposal. | none | Removed with the compose project; the probe shows the variable is set (its value is never read out). |
-| `cred-vercel` | VERCEL_TOKEN, VERCEL_ORG_ID, VERCEL_PROJECT_ID (secrets of check-face/facemorph.me-classic) | remove | vercel-retirement | Used only by classic deploy.yml to publish legacy facemorph.me. | `for s in VERCEL_TOKEN VERCEL_ORG_ID VERCEL_PROJECT_ID; do gh secret delete "$s" -R check-face/facemorph.me-classic; done` | gh has no dry-run for deleting a secret; the probe lists the secret names. |
+| `cred-vercel` | VERCEL_TOKEN, VERCEL_ORG_ID, VERCEL_PROJECT_ID (secrets of facemorph-me/facemorph.me-classic) | remove | vercel-retirement | Used only by classic deploy.yml to publish legacy facemorph.me. | `for s in VERCEL_TOKEN VERCEL_ORG_ID VERCEL_PROJECT_ID; do gh secret delete "$s" -R facemorph-me/facemorph.me-classic; done` | gh has no dry-run for deleting a secret; the probe lists the secret names. |
 | `dns-vercel-ns` | vercel.facemorph.me NS ns1/ns2.vercel-dns.com, records e644890bdfee1ffb266ecd5759f83c0e and 0285eb6dad67df6609f19b6d3be71481 | remove | vercel-retirement | Delegation to Vercel's DNS, used only by the Vercel publishers. | `for id in e644890bdfee1ffb266ecd5759f83c0e 0285eb6dad67df6609f19b6d3be71481; do cf dns records delete "$id" --zone 893772fe7a5a4ee368f71706bc19e609 --force; done` | `cf dns records delete e644890bdfee1ffb266ecd5759f83c0e --zone 893772fe7a5a4ee368f71706bc19e609 --dry-run` |
 | `keep-models` | Worker facemorph-models (models.facemorph.me) over R2 facemorph-runtime-mirror, SITE service binding, its deploy credentials | keep | always | Second runtime origin of every on-device artifact, including rollback artifacts. | none | Kept. |
 | `keep-stats` | Worker facemorph-stats (/stats/v1 on next.facemorph.me) and its scrape token (STATS_SCRAPE_TOKEN, SCRAPE_TOKEN) | keep | always | The changeover statistics' 'after' side. | none | Kept. |
@@ -65,10 +65,10 @@ Remove items run at the action named in "When"; keep items stay, with the reason
 - **Commands:**
   - Route facemorph.me to Worker facemorph-next, which serves the retained candidate: replace A record ef8a8938cd3275bf1a4e83a7050e8eb6 (76.76.21.21, Vercel) with a proxied AAAA 100:: and add the facemorph.me/* Worker route (cf dns records update ef8a8938cd3275bf1a4e83a7050e8eb6 --zone 893772fe7a5a4ee368f71706bc19e609 --body '{"type":"AAAA","name":"facemorph.me","content":"100::","proxied":true}').
   - Dry run: `cf dns records update ef8a8938cd3275bf1a4e83a7050e8eb6 --zone 893772fe7a5a4ee368f71706bc19e609 --body {"type":"AAAA","name":"facemorph.me","content":"100::","proxied":true} --dry-run`
-- **Rollback target:** legacy facemorph.me on Vercel: classic master's last successful deploy.yml: deploy.yml run 36654890071, `check-face/facemorph.me-classic@e6e229831533244133f80aea61ae944c811bf9a0`
+- **Rollback target:** legacy facemorph.me on Vercel: classic master's last successful deploy.yml: deploy.yml run 36654890071, `facemorph-me/facemorph.me-classic@e6e229831533244133f80aea61ae944c811bf9a0`
 - **Rollback steps:**
   - cf dns records update ef8a8938cd3275bf1a4e83a7050e8eb6 --zone 893772fe7a5a4ee368f71706bc19e609 --body '{"type":"A","name":"facemorph.me","content":"76.76.21.21","proxied":false}' (Vercel production, deploy.yml run 36654890071).
-- **One publisher:** Classic deploy.yml (vercel --prod) is disabled (gh workflow disable deploy.yml -R check-face/facemorph.me-classic); classic next-site.yml remains the only publisher of facemorph-next until the candidate-source handover.
+- **One publisher:** Classic deploy.yml (vercel --prod) is disabled (gh workflow disable deploy.yml -R facemorph-me/facemorph.me-classic); classic next-site.yml remains the only publisher of facemorph-next until the candidate-source handover.
 - **Post-delivery check:** `node scripts/delivery/post-delivery-check.mjs --mode app --host facemorph.me --expect-digest 228eb615fdbd6d46d34459a4574b660e540aeb0c3903cf20018e8107ebd14f6b --identity next-site-SHA256SUMS`
 - **Cutover annotation:** `node scripts/delivery/annotate-cutover.mjs --action early-promotion --host facemorph.me --digest 228eb615fdbd6d46d34459a4574b660e540aeb0c3903cf20018e8107ebd14f6b`
 
@@ -80,8 +80,8 @@ Remove items run at the action named in "When"; keep items stay, with the reason
   - The monorepo release bead set is closed and its artifact passed the full local validation.
   - models.facemorph.me holds every runtime path of the live and rollback artifacts (warm them, or re-point the mirror's origin, before the switch; verified by the dry-run HEAD list).
 - **Commands:**
-  - Deploy the monorepo artifact to Worker facemorph-next through the monorepo's deploy workflow (fm-6fx6), then disable classic next-site.yml's deploy job: gh workflow disable next-site.yml -R check-face/facemorph.me-classic.
-- **Rollback target:** classic candidate build serving next.facemorph.me (observed 24 October, 15:40 UTC): next-site.yml run 40080943175, artifact next-site-45463b630e5ed3ce6bc00a7af5fecaa93b5a5b94, `check-face/facemorph.me-classic@45463b630e5ed3ce6bc00a7af5fecaa93b5a5b94`, deploy-next digest `228eb615fdbd6d46d34459a4574b660e540aeb0c3903cf20018e8107ebd14f6b`
+  - Deploy the monorepo artifact to Worker facemorph-next through the monorepo's deploy workflow (fm-6fx6), then disable classic next-site.yml's deploy job: gh workflow disable next-site.yml -R facemorph-me/facemorph.me-classic.
+- **Rollback target:** classic candidate build serving next.facemorph.me (observed 24 October, 15:40 UTC): next-site.yml run 40080943175, artifact next-site-45463b630e5ed3ce6bc00a7af5fecaa93b5a5b94, `facemorph-me/facemorph.me-classic@45463b630e5ed3ce6bc00a7af5fecaa93b5a5b94`, deploy-next digest `228eb615fdbd6d46d34459a4574b660e540aeb0c3903cf20018e8107ebd14f6b`
 - **Rollback steps:**
   - Redeploy the classic candidate artifact next-site-551b60726290b2d67a32c62477b2fd964de51f96 (deploy-next 228eb615…) to facemorph-next and re-enable classic next-site.yml.
 - **One publisher:** After the switch only the monorepo deploy workflow publishes facemorph-next; classic next-site.yml is disabled.
@@ -98,10 +98,10 @@ Remove items run at the action named in "When"; keep items stay, with the reason
 - **Commands:**
   - If early-promotion ran, facemorph.me already routes to Worker facemorph-next: production promotion is the deploy of the chosen artifact there (rollback target: the retained candidate). Otherwise: Route facemorph.me to Worker facemorph-next: replace A record ef8a8938cd3275bf1a4e83a7050e8eb6 (76.76.21.21, Vercel) with a proxied AAAA 100:: and add the facemorph.me/* Worker route (cf dns records update ef8a8938cd3275bf1a4e83a7050e8eb6 --zone 893772fe7a5a4ee368f71706bc19e609 --body '{"type":"AAAA","name":"facemorph.me","content":"100::","proxied":true}').
   - Dry run: `cf dns records update ef8a8938cd3275bf1a4e83a7050e8eb6 --zone 893772fe7a5a4ee368f71706bc19e609 --body {"type":"AAAA","name":"facemorph.me","content":"100::","proxied":true} --dry-run`
-- **Rollback target:** legacy facemorph.me on Vercel: classic master's last successful deploy.yml: deploy.yml run 36654890071, `check-face/facemorph.me-classic@e6e229831533244133f80aea61ae944c811bf9a0`
+- **Rollback target:** legacy facemorph.me on Vercel: classic master's last successful deploy.yml: deploy.yml run 36654890071, `facemorph-me/facemorph.me-classic@e6e229831533244133f80aea61ae944c811bf9a0`
 - **Rollback steps:**
   - cf dns records update ef8a8938cd3275bf1a4e83a7050e8eb6 --zone 893772fe7a5a4ee368f71706bc19e609 --body '{"type":"A","name":"facemorph.me","content":"76.76.21.21","proxied":false}' (Vercel production, deploy.yml run 36654890071).
-- **One publisher:** Classic deploy.yml (vercel --prod) is disabled: gh workflow disable deploy.yml -R check-face/facemorph.me-classic.
+- **One publisher:** Classic deploy.yml (vercel --prod) is disabled: gh workflow disable deploy.yml -R facemorph-me/facemorph.me-classic.
 - **Post-delivery check:** `node scripts/delivery/post-delivery-check.mjs --mode app --host facemorph.me --expect-digest <the promoted artifact's deploy-next digest> --identity next-site-SHA256SUMS`
 - **Cutover annotation:** `node scripts/delivery/annotate-cutover.mjs --action production-promotion --host facemorph.me --digest <the promoted artifact's deploy-next digest>`
 
@@ -117,7 +117,7 @@ Remove items run at the action named in "When"; keep items stay, with the reason
   - artifacts.candidate names the build serving next.facemorph.me now (re-pin it from classic's latest next-site.yml run if it moved, then re-render handover.md).
 - **Commands:**
   - Run every retirement item with when = api-retirement, in table order (DNS first, then routes and processes, then GitHub Pages).
-- **Rollback target:** classic candidate build serving next.facemorph.me (observed 24 October, 15:40 UTC): next-site.yml run 40080943175, artifact next-site-45463b630e5ed3ce6bc00a7af5fecaa93b5a5b94, `check-face/facemorph.me-classic@45463b630e5ed3ce6bc00a7af5fecaa93b5a5b94`, deploy-next digest `228eb615fdbd6d46d34459a4574b660e540aeb0c3903cf20018e8107ebd14f6b`
+- **Rollback target:** classic candidate build serving next.facemorph.me (observed 24 October, 15:40 UTC): next-site.yml run 40080943175, artifact next-site-45463b630e5ed3ce6bc00a7af5fecaa93b5a5b94, `facemorph-me/facemorph.me-classic@45463b630e5ed3ce6bc00a7af5fecaa93b5a5b94`, deploy-next digest `228eb615fdbd6d46d34459a4574b660e540aeb0c3903cf20018e8107ebd14f6b`
 - **Rollback steps:**
   - Rollback serves the retained on-device artifact (deploy-next 228eb615…) with its immutable assets; Triton and the API are never restarted and historic production data is never restored.
 - **One publisher:** No publisher remains for api.facemorph.me, e4e.facemorph.me or checkface.facemorph.me.
@@ -132,7 +132,7 @@ Remove items run at the action named in "When"; keep items stay, with the reason
   - facemorph.me serves the on-device app with the fullscreen names modal at /names.
 - **Commands:**
   - See namesHost.
-- **Rollback target:** names.facemorph.me on Vercel (facemorph-names): GitHub deployment 359827192 (Production), `check-face/facemorph-names@9243fef8a34050ccf0a08d37de02784bd06fb57b`
+- **Rollback target:** names.facemorph.me on Vercel (facemorph-names): GitHub deployment 359827192 (Production), `facemorph-me/facemorph-names@9243fef8a34050ccf0a08d37de02784bd06fb57b`
 - **Rollback steps:**
   - See namesHost.rollback.
 - **One publisher:** Vercel for GitHub no longer deploys facemorph-names: remove the Vercel project at vercel-retirement.
@@ -146,7 +146,7 @@ Remove items run at the action named in "When"; keep items stay, with the reason
   - production-promotion and names-redirect are done and checked.
 - **Commands:**
   - Run every retirement item with when = vercel-retirement; delete the Vercel projects for legacy facemorph.me and facemorph-names in the Vercel dashboard (no dry-run; the probe below shows they still serve).
-- **Rollback target:** legacy facemorph.me on Vercel: classic master's last successful deploy.yml: deploy.yml run 36654890071, `check-face/facemorph.me-classic@e6e229831533244133f80aea61ae944c811bf9a0`
+- **Rollback target:** legacy facemorph.me on Vercel: classic master's last successful deploy.yml: deploy.yml run 36654890071, `facemorph-me/facemorph.me-classic@e6e229831533244133f80aea61ae944c811bf9a0`
 - **Rollback steps:**
   - Vercel keeps deleted projects' builds only until deletion; rollback after this point is the on-device artifact (artifacts.candidate).
 - **One publisher:** No Vercel publisher remains for any facemorph.me host.
@@ -160,7 +160,7 @@ Remove items run at the action named in "When"; keep items stay, with the reason
   - See the classic publication bead's pre-checks; this runbook only records that the switch follows the candidate-source handover.
 - **Commands:**
   - None here.
-- **Rollback target:** classic candidate build serving next.facemorph.me (observed 24 October, 15:40 UTC): next-site.yml run 40080943175, artifact next-site-45463b630e5ed3ce6bc00a7af5fecaa93b5a5b94, `check-face/facemorph.me-classic@45463b630e5ed3ce6bc00a7af5fecaa93b5a5b94`, deploy-next digest `228eb615fdbd6d46d34459a4574b660e540aeb0c3903cf20018e8107ebd14f6b`
+- **Rollback target:** classic candidate build serving next.facemorph.me (observed 24 October, 15:40 UTC): next-site.yml run 40080943175, artifact next-site-45463b630e5ed3ce6bc00a7af5fecaa93b5a5b94, `facemorph-me/facemorph.me-classic@45463b630e5ed3ce6bc00a7af5fecaa93b5a5b94`, deploy-next digest `228eb615fdbd6d46d34459a4574b660e540aeb0c3903cf20018e8107ebd14f6b`
 - **Rollback steps:**
   - None here.
 - **One publisher:** Unchanged by this action.
@@ -168,7 +168,7 @@ Remove items run at the action named in "When"; keep items stay, with the reason
 
 ## Names host
 
-- **Before:** names.facemorph.me CNAME cname.vercel-dns.com (not proxied), record 305676364f6ed740e56c97b95fe2d782; `GET /` answered 200 with 1267 bytes (SHA-256 `de7a9518b946d451…`); Vercel (facemorph-names), GitHub deployment 359827192, check-face/facemorph-names@9243fef8.
+- **Before:** names.facemorph.me CNAME cname.vercel-dns.com (not proxied), record 305676364f6ed740e56c97b95fe2d782; `GET /` answered 200 with 1267 bytes (SHA-256 `de7a9518b946d451…`); Vercel (facemorph-names), GitHub deployment 359827192, facemorph-me/facemorph-names@9243fef8.
 - **Redirect:**
   - `cf dns records update 305676364f6ed740e56c97b95fe2d782 --zone 893772fe7a5a4ee368f71706bc19e609 --body '{"type":"AAAA","name":"names.facemorph.me","content":"100::","proxied":true}'`
   - Add a Single Redirect rule in the zone's http_request_dynamic_redirect phase: when http.host eq "names.facemorph.me", 301 to https://facemorph.me/names (no query, no path carried: no result-bearing or two-click URLs).

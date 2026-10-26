@@ -12,7 +12,9 @@ import { fileURLToPath } from 'node:url';
 import { docLinks, EXPECTED_FILE } from './check-rename.mjs';
 
 const SCRIPT = fileURLToPath(new URL('./check-rename.mjs', import.meta.url));
-const ORG = JSON.parse(readFileSync(EXPECTED_FILE, 'utf8')).organizations.before;
+const { before: OLD_ORG, after: ORG } = JSON.parse(
+  readFileSync(EXPECTED_FILE, 'utf8'),
+).organizations;
 const recorded = () => JSON.parse(readFileSync(EXPECTED_FILE, 'utf8'));
 
 function check(expected, org = ORG) {
@@ -108,12 +110,12 @@ test(
   'under an organization the repositories are not in, every repository assertion fails',
   { skip },
   () => {
-    const r = check({ ...recorded(), commits: [] }, 'facemorph-me');
+    const r = check({ ...recorded(), commits: [] }, OLD_ORG);
     assert.equal(r.status, 1);
     assert.equal(
       r.failed.filter((l) => l.assertion.endsWith('identity')).length,
       5,
-      'IDs resolve but names are under check-face',
+      'IDs resolve but names are under the renamed organization',
     );
   },
 );

@@ -26,7 +26,7 @@ All six local adapters exist; adapter support alone is not release qualification
 The release Beads track remaining exact-artifact evidence. Production promotion is separate.
 
 **https://next.facemorph.me still comes from classic's candidate branch**, in
-[facemorph.me-classic](https://github.com/check-face/facemorph.me-classic).
+[facemorph.me-classic](https://github.com/facemorph-me/facemorph.me-classic).
 This repo takes over after release qualification. Production promotion is a separate
 operator decision. Classic keeps its history and Docker/PyTorch work; new development
 and [research](autoresearch/README.md) happen here.
@@ -62,4 +62,4 @@ Agent working instructions live only in [AGENTS.md](AGENTS.md). Use the existing
 for session history. Beads hold current scope, acceptance and executed evidence.
 
 Execution records are `.beads/issues.jsonl`, published at https://beads.dilger.dev.
-Current GitHub owner is check-face; selected future organization is facemorph-me.
+Current GitHub owner is facemorph-me; selected future organization is facemorph-me.

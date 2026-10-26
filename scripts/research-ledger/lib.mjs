@@ -141,7 +141,7 @@ export function checkClassicFork({ classic, snapshotBytes }) {
 
 const LINK = /\[[^\]]*\]\(([^)\s]+)(?:\s+"[^"]*")?\)/g;
 /** Repository-relative path for a link into this repository on GitHub, else null. */
-export function repoPathFromUrl(url, repo = 'check-face/facemorph.me') {
+export function repoPathFromUrl(url, repo = 'facemorph-me/facemorph.me') {
   const m = new RegExp(
     `^https://github\\.com/${repo.replace('.', '\\.')}/(?:blob|tree)/main/([^#?]+)`,
   ).exec(url);

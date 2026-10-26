@@ -48,7 +48,7 @@ def beads():
 def ci_runs():
     try:
         out = subprocess.run(
-            ['gh', 'api', 'repos/check-face/facemorph.me/actions/workflows/main.yml/runs?per_page=10'],
+            ['gh', 'api', 'repos/facemorph-me/facemorph.me/actions/workflows/main.yml/runs?per_page=10'],
             capture_output=True, text=True, check=True, timeout=30).stdout
         runs = json.loads(out).get('workflow_runs', [])
     except Exception as e:

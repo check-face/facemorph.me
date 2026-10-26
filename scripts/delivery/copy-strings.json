@@ -95,7 +95,7 @@
       "classic": "src/Next/Product.fs",
       "monorepo": null,
       "action": "replace",
-      "replacement": "faq \"What happened to the old API?\" — It has been retired. Its source stays at github.com/check-face/checkface for anyone who wants to run it themselves; Help describes the classic self-host setup. Bugs in this app belong in a GitHub issue.",
+      "replacement": "faq \"What happened to the old API?\" — It has been retired. Its source stays at github.com/facemorph-me/checkface for anyone who wants to run it themselves; Help describes the classic self-host setup. Bugs in this app belong in a GitHub issue.",
       "note": "The checkface.facemorph.me/api link goes: that host is retired."
     },
     {

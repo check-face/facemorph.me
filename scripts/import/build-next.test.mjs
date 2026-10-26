@@ -47,7 +47,7 @@ test('a monorepo build lands in retained layout with destination identity and im
     assert.ok(existsSync(join(out, name)), name);
   assert.ok(!existsSync(join(out, 'deploy-next/.vite')));
   assert.equal(identity.label, 'destination');
-  assert.equal(identity.deploySource.repository, 'check-face/facemorph.me');
+  assert.equal(identity.deploySource.repository, 'facemorph-me/facemorph.me');
   assert.equal(identity.deploySource.commit, source.commit);
   assert.equal(identity.importedFrom.controlZipSha256, pinned.release.sha256);
   assert.equal(identity.importedFrom.commit, pinned.source.commit);
@@ -89,7 +89,10 @@ test('a mismatched control digest or a monorepo deploy source fails', () => {
   assert.ok(
     identityFindings(
       store,
-      { ...good, deploySource: { repository: 'check-face/facemorph.me', commit: 'f'.repeat(40) } },
+      {
+        ...good,
+        deploySource: { repository: 'facemorph-me/facemorph.me', commit: 'f'.repeat(40) },
+      },
       record,
     ).some((f) => f.problem === 'control build does not name classic as its deploy source'),
   );

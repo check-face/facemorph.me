@@ -51,7 +51,7 @@ test('the pinned record names classic as the source and a release asset of this 
   assert.equal(record.source.repository_id, 295956585);
   assert.match(
     record.release.url,
-    /^https:\/\/github\.com\/check-face\/facemorph\.me\/releases\/download\//,
+    /^https:\/\/github\.com\/(check-face|facemorph-me)\/facemorph\.me\/releases\/download\//,
   );
   assert.equal(record.live_check.differences, 0);
   assert.ok(record.files.some((f) => f.path === 'deploy-next/index.html'));

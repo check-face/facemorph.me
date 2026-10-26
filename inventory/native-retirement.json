@@ -2,7 +2,7 @@
   "bead": "fm-p7v",
   "description": "Native retirement inventory: what desktop/ and the desktop workflows contain, what still reads them, and each item's disposition (retire / re-home as a shared browser check / keep as history). Produced with the release scan from scripts/inventory/native-releases.mjs.",
   "source": {
-    "repo": "check-face/facemorph.me-classic",
+    "repo": "facemorph-me/facemorph.me-classic",
     "frozen_revision": "a42829bb0582b5a7a55ba6b1045a05861612b8a5",
     "read_note": "desktop/ tree and workflows read at exactly the frozen revision (GitHub API at a42829b, byte-equivalent to git show; desktop/ is identical from 6107f80 through a42829b)."
   },
@@ -10,10 +10,10 @@
     "scanned": "2026-10-24",
     "method": "scripts/inventory/native-releases.mjs (GitHub REST API; rerun in CI with JSON output attached)",
     "repos": [
-      {"repo": "check-face/facemorph.me-classic", "releases": 0, "native_releases": 0},
-      {"repo": "check-face/facemorph.me", "releases": 2, "native_releases": 0, "note": "control-551b60726290 (the pinned control artifact, fm-gpx custody) and visual-references-2026-10-24 (fm-p7v evidence); neither carries an installer or updater feed asset"}
+      {"repo": "facemorph-me/facemorph.me-classic", "releases": 0, "native_releases": 0},
+      {"repo": "facemorph-me/facemorph.me", "releases": 2, "native_releases": 0, "note": "control-551b60726290 (the pinned control artifact, fm-gpx custody) and visual-references-2026-10-24 (fm-p7v evidence); neither carries an installer or updater feed asset"}
     ],
-    "updater_endpoint": "https://github.com/check-face/facemorph.me/releases/latest/download/latest.json still 404s (verified 2026-10-24; the releases that now exist are evidence assets, not an updater feed)",
+    "updater_endpoint": "https://github.com/facemorph-me/facemorph.me/releases/latest/download/latest.json still 404s (verified 2026-10-24; the releases that now exist are evidence assets, not an updater feed)",
     "consequence": "No release assets exist to preserve; no release text exists to mark historical; no installed client can be redirected because no update feed was ever served."
   },
   "shared_browser_dependencies": [
@@ -35,7 +35,7 @@
   "items": [
     {"path": "desktop/src-tauri/ (Cargo.toml/lock, build.rs, capabilities/, icons/, src/{main.rs,bridge.rs,bin/native-probe.rs}, tests/updater_signature.rs)", "purpose": "Tauri 2 shell: commands, one-job supervisor, updater plugin registration (empty config), native-probe CLI", "disposition": "retire", "consumers": ["desktop-product.yml", "desktop-candidates.yml", "desktop-native-inference.yml (cargo build --bin native-probe)"], "note": "Native packages are retired; licence/provenance texts inside (desktop/native/ALIGNMENT-LICENSE, licenses/NVIDIA-LICENSE.txt, PROVENANCE.md) stay in Git history."},
     {"path": "desktop/native/ (alignment.py, asset_store.py, bundle_paths.py, prepare_bundle.py, product_worker.py, worker.py, requirements*.txt)", "purpose": "Native CPU supervisor/worker: ORT inference, dlib alignment, e4e encoding, synthesis; bundle verification with 31 reference cases", "disposition": "retire", "consumers": ["desktop packaging scripts", "desktop workflows"], "note": "Research heritage: worker.py's 31-case diagnostic informed browser qualification; history preserves it."},
-    {"path": "desktop/scripts/ (prepare-release.mjs, build-native-runtime.py, build-dlib-arm64.py, candidate-artifacts.py, fetch-native-bundle.py, prepare-ci-bundle.py, acquire-product-manifest.py, verify-source.py, stage-frontend.mjs, stage-native-notices.py)", "purpose": "Packaging pipeline: freeze native runtimes, stage frontends, build installers, prepare release overlay", "disposition": "retire", "consumers": ["desktop/tests/packaging.test.mjs (asserts prepare-release.mjs's endpoint URL and createUpdaterArtifacts:true overlay)", "desktop workflows"], "note": "prepare-release.mjs writes desktop/release-config.json (gitignored) with updater endpoint https://github.com/check-face/facemorph.me/releases/latest/download/latest.json and CHECKFACE_UPDATER_PUBLIC_KEY; it reads no feed and publishes nothing."},
+    {"path": "desktop/scripts/ (prepare-release.mjs, build-native-runtime.py, build-dlib-arm64.py, candidate-artifacts.py, fetch-native-bundle.py, prepare-ci-bundle.py, acquire-product-manifest.py, verify-source.py, stage-frontend.mjs, stage-native-notices.py)", "purpose": "Packaging pipeline: freeze native runtimes, stage frontends, build installers, prepare release overlay", "disposition": "retire", "consumers": ["desktop/tests/packaging.test.mjs (asserts prepare-release.mjs's endpoint URL and createUpdaterArtifacts:true overlay)", "desktop workflows"], "note": "prepare-release.mjs writes desktop/release-config.json (gitignored) with updater endpoint https://github.com/facemorph-me/facemorph.me/releases/latest/download/latest.json and CHECKFACE_UPDATER_PUBLIC_KEY; it reads no feed and publishes nothing."},
     {"path": "desktop/tests/ (packaging.test.mjs, product_runtime.test.mjs, product-smoke.js, installed_product.py, product_integration.py, startup_smoke.py, native_integration.py, test_candidate_integrity.py, test_ci_bundle_source.py, test_product_assets.py)", "purpose": "Desktop packaging/runtime tests and installed-app smokes", "disposition": "retire", "consumers": ["desktop workflows"], "note": "packaging.test.mjs pins the updater endpoint string; retired with packaging."},
     {"path": "desktop/skeleton/index.html", "purpose": "Shell-only dev stub pointing at next.facemorph.me", "disposition": "retire", "consumers": [], "note": ""},
     {"path": "desktop/candidate-config.json", "purpose": "Tauri config overlay (bundle.active true, createUpdaterArtifacts false, NSIS installMode currentUser)", "disposition": "retire", "consumers": ["desktop packaging"], "note": ""},
@@ -46,7 +46,7 @@
     {"path": ".github/workflows/desktop-product.yml", "purpose": "6-target product qualification matrix (deb/appimage/nsis/app; manual, artifact-only)", "disposition": "retire", "consumers": [], "note": "Never produced a release; all platforms unqualified for distribution per desktop/README.md."}
   ],
   "update_feed": {
-    "endpoints": ["https://github.com/check-face/facemorph.me/releases/latest/download/latest.json (written by prepare-release.mjs into the release overlay; asserted by desktop/tests/packaging.test.mjs; 404 today)"],
+    "endpoints": ["https://github.com/facemorph-me/facemorph.me/releases/latest/download/latest.json (written by prepare-release.mjs into the release overlay; asserted by desktop/tests/packaging.test.mjs; 404 today)"],
     "installed_clients": "src/Next has no desktop version check or update feed reference (only globalThis.__TAURI__ feature detection, product-bridge.mjs); tauri.conf.json ships updater endpoints/pubkey empty",
     "disposition": "clients-never-redirected: no feed exists, none is created, and the fresh repository must not publish latest.json under the old endpoint"
   }

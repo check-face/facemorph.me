@@ -11,7 +11,7 @@ run), **unsupported** (fails, with the reason) or **untested**.
 
 | Checkpoint | Source format | Architecture | Cond. | Resolution / channels | Z / W / W+ | Status | Evidence |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| FFHQ config-F, `stylegan2-ffhq-config-f.pkl`, SHA-256 `adf127ea…948d` ([NVIDIA](https://nvlabs-fi-cdn.nvidia.com/stylegan2/networks/stylegan2-ffhq-config-f.pkl)) | TF1 pickle, read by upstream `legacy.load_network_pkl` | StyleGAN2 config-F | no | 1024 / 3 | 512 / 512 / 18 | **qualified** (CPU) | [CI run 40081852041](https://github.com/check-face/facemorph.me/actions/runs/40081852041) (`tests/acceptance.sh` on eris); raw 1.2e-4 ≤ 0.002, RGB 1 ≤ 1; product canaries 7/7 (RGB 1 ≤ 1, sampled float ≤ 6.2e-6 ≤ 0.002, lease run `20261024T120354Z-9a32f5e3`); component load in the candidate harness on CPU passed (`tests/component_load.py`, eris) |
+| FFHQ config-F, `stylegan2-ffhq-config-f.pkl`, SHA-256 `adf127ea…948d` ([NVIDIA](https://nvlabs-fi-cdn.nvidia.com/stylegan2/networks/stylegan2-ffhq-config-f.pkl)) | TF1 pickle, read by upstream `legacy.load_network_pkl` | StyleGAN2 config-F | no | 1024 / 3 | 512 / 512 / 18 | **qualified** (CPU) | [CI run 40081852041](https://github.com/facemorph-me/facemorph.me/actions/runs/40081852041) (`tests/acceptance.sh` on eris); raw 1.2e-4 ≤ 0.002, RGB 1 ≤ 1; product canaries 7/7 (RGB 1 ≤ 1, sampled float ≤ 6.2e-6 ≤ 0.002, lease run `20261024T120354Z-9a32f5e3`); component load in the candidate harness on CPU passed (`tests/component_load.py`, eris) |
 | Other StyleGAN2 TF1 pickles (FFHQ 256/512, LSUN…) | TF1 pickle | StyleGAN2 | no | other | other | **unqualified**: needs a declaration in `models.py` with its own tolerance, then a run | none |
 | Other stylegan2-ada-pytorch `.pkl` (PyTorch pickles) | PyTorch pickle | StyleGAN2-ADA | no | any | any | **unqualified**: each needs a declaration with its own tolerance, then a run (AFHQ cat is the one run) | none |
 | Conditional models (e.g. CIFAR-10, `c_dim > 0`) | either | StyleGAN2 | yes | any | any | **unsupported** (from the code, not run): export passes no class label (`c = None`); the mapping graph would need a `c` input | none |
@@ -27,7 +27,7 @@ Converted artifacts carry the terms of the checkpoint they came from.
 
 | | Status |
 | --- | --- |
-| FP32 export, opset 17, ONNX Runtime CPU (1.24.3) parity against upstream PyTorch reference ops | **qualified** (FFHQ, [run 40081852041](https://github.com/check-face/facemorph.me/actions/runs/40081852041)) |
+| FP32 export, opset 17, ONNX Runtime CPU (1.24.3) parity against upstream PyTorch reference ops | **qualified** (FFHQ, [run 40081852041](https://github.com/facemorph-me/facemorph.me/actions/runs/40081852041)) |
 | Graph rewrites: identity Pad/Slice removal, zero-Pad folding, precomputed demodulation energy (FP64 → FP32) | **qualified** inside the FFHQ parity run |
 | Research suites (full31) at their own frozen tolerances | **untested** here: their fixed references are not in either repository; the product canaries and the upstream-reference parity above cover the frozen product gates |
 | FP16 or mixed precision | **unsupported**: not produced; never widen the frozen tolerance to admit it |
@@ -37,7 +37,7 @@ Converted artifacts carry the terms of the checkpoint they came from.
 
 | OS / arch | Container | Status |
 | --- | --- | --- |
-| Linux x86-64, Docker 29, CPU | `facemorph/model-conv` | **qualified** (eris, [run 40081852041](https://github.com/check-face/facemorph.me/actions/runs/40081852041)) |
+| Linux x86-64, Docker 29, CPU | `facemorph/model-conv` | **qualified** (eris, [run 40081852041](https://github.com/facemorph-me/facemorph.me/actions/runs/40081852041)) |
 | NVIDIA GPU profile (CUDA PyTorch) | none yet | **untested**: no GPU profile exists; conversion is CPU-only by design |
 | Linux arm64, macOS, Windows | | **untested** |
 

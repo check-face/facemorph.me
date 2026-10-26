@@ -144,7 +144,7 @@ export function importHosting({ classic, root = REPO, check = false, log = () =>
   const provenance = {
     schema: 'facemorph.hosting-import/1',
     bead: 'fm-8tyu',
-    source: { repository: 'check-face/facemorph.me-classic', commit, tree: 'hosting/' },
+    source: { repository: 'facemorph-me/facemorph.me-classic', commit, tree: 'hosting/' },
     boundary: BOUNDARY,
     rule: 'every boundary-table path with destination hosting/, at the same path, and the split rows in SPLIT_IMPORTED (fm-aa8); .wrangler/ never; files over 1 MiB only if size-allowlisted',
     sizeAllowlist: [...SIZE_ALLOWLIST],

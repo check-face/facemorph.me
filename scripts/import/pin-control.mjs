@@ -23,7 +23,7 @@ import {
 } from '../inventory/lib.mjs';
 import { CONTROL, CONTROL_LABEL, digestTree, unzip } from './control.mjs';
 
-const RELEASE_REPO = 'check-face/facemorph.me';
+const RELEASE_REPO = 'facemorph-me/facemorph.me';
 const LIVE = 'https://next.facemorph.me';
 
 function gh(args, opts = {}) {

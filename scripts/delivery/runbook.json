@@ -11,28 +11,28 @@
   "artifacts": {
     "candidate": {
       "label": "classic candidate build serving next.facemorph.me (observed 24 October, 15:40 UTC)",
-      "source": "check-face/facemorph.me-classic@45463b630e5ed3ce6bc00a7af5fecaa93b5a5b94",
-      "run": "https://github.com/check-face/facemorph.me-classic/actions/runs/40080943175",
+      "source": "facemorph-me/facemorph.me-classic@45463b630e5ed3ce6bc00a7af5fecaa93b5a5b94",
+      "run": "https://github.com/facemorph-me/facemorph.me-classic/actions/runs/40080943175",
       "buildId": "next-site.yml run 40080943175, artifact next-site-45463b630e5ed3ce6bc00a7af5fecaa93b5a5b94",
       "deployNextSha256": "228eb615fdbd6d46d34459a4574b660e540aeb0c3903cf20018e8107ebd14f6b"
     },
     "control": {
       "label": "the pinned control (import/control-artifact.json): an earlier candidate build, no longer what next.facemorph.me serves",
-      "source": "check-face/facemorph.me-classic@551b60726290b2d67a32c62477b2fd964de51f96",
-      "run": "https://github.com/check-face/facemorph.me-classic/actions/runs/40056009101",
+      "source": "facemorph-me/facemorph.me-classic@551b60726290b2d67a32c62477b2fd964de51f96",
+      "run": "https://github.com/facemorph-me/facemorph.me-classic/actions/runs/40056009101",
       "buildId": "next-dbc2925ff6e7dcb6",
       "deployNextSha256": "aaeb99a92a082b5399aa809a5aadd802c3c61ccc167f306aa86fc091b527bf50",
       "zipSha256": "868583788670d5651579acd88c238280523cdbf75d8b17360ea2b20e00180c01"
     },
     "legacyProduction": {
       "label": "legacy facemorph.me on Vercel: classic master's last successful deploy.yml",
-      "source": "check-face/facemorph.me-classic@e6e229831533244133f80aea61ae944c811bf9a0",
-      "run": "https://github.com/check-face/facemorph.me-classic/actions/runs/36654890071",
+      "source": "facemorph-me/facemorph.me-classic@e6e229831533244133f80aea61ae944c811bf9a0",
+      "run": "https://github.com/facemorph-me/facemorph.me-classic/actions/runs/36654890071",
       "buildId": "deploy.yml run 36654890071"
     },
     "namesSite": {
       "label": "names.facemorph.me on Vercel (facemorph-names)",
-      "source": "check-face/facemorph-names@9243fef8a34050ccf0a08d37de02784bd06fb57b",
+      "source": "facemorph-me/facemorph-names@9243fef8a34050ccf0a08d37de02784bd06fb57b",
       "buildId": "GitHub deployment 359827192 (Production)"
     }
   },
@@ -110,10 +110,10 @@
     {
       "id": "dns-checkface",
       "kind": "dns",
-      "target": "checkface.facemorph.me CNAME check-face.github.io, record baa8e426a96ed754490629120d52c525",
+      "target": "checkface.facemorph.me CNAME facemorph-me.github.io, record baa8e426a96ed754490629120d52c525",
       "disposition": "remove",
       "when": "api-retirement",
-      "reason": "The API documentation site (GitHub Pages of check-face/checkface); retired with the API.",
+      "reason": "The API documentation site (GitHub Pages of facemorph-me/checkface); retired with the API.",
       "command": "cf dns records delete baa8e426a96ed754490629120d52c525 --zone 893772fe7a5a4ee368f71706bc19e609 --force",
       "dryRun": {
         "type": "cf",
@@ -145,16 +145,16 @@
     {
       "id": "pages-checkface",
       "kind": "publisher",
-      "target": "GitHub Pages of check-face/checkface (master:/docs, custom domain checkface.facemorph.me)",
+      "target": "GitHub Pages of facemorph-me/checkface (master:/docs, custom domain checkface.facemorph.me)",
       "disposition": "remove",
       "when": "api-retirement",
       "reason": "Publishes the API documentation; the repository itself stays archived as-is.",
-      "command": "gh api -X DELETE repos/check-face/checkface/pages",
+      "command": "gh api -X DELETE repos/facemorph-me/checkface/pages",
       "dryRun": null,
       "noDryRun": "GitHub has no dry-run for disabling Pages; the read-only probe shows the site exists.",
       "probe": {
         "type": "gh",
-        "path": "repos/check-face/checkface/pages",
+        "path": "repos/facemorph-me/checkface/pages",
         "expect": {
           "cname": "checkface.facemorph.me"
         }
@@ -299,16 +299,16 @@
     {
       "id": "cred-vercel",
       "kind": "credential",
-      "target": "VERCEL_TOKEN, VERCEL_ORG_ID, VERCEL_PROJECT_ID (secrets of check-face/facemorph.me-classic)",
+      "target": "VERCEL_TOKEN, VERCEL_ORG_ID, VERCEL_PROJECT_ID (secrets of facemorph-me/facemorph.me-classic)",
       "disposition": "remove",
       "when": "vercel-retirement",
       "reason": "Used only by classic deploy.yml to publish legacy facemorph.me.",
-      "command": "for s in VERCEL_TOKEN VERCEL_ORG_ID VERCEL_PROJECT_ID; do gh secret delete \"$s\" -R check-face/facemorph.me-classic; done",
+      "command": "for s in VERCEL_TOKEN VERCEL_ORG_ID VERCEL_PROJECT_ID; do gh secret delete \"$s\" -R facemorph-me/facemorph.me-classic; done",
       "dryRun": null,
       "noDryRun": "gh has no dry-run for deleting a secret; the probe lists the secret names.",
       "probe": {
         "type": "gh",
-        "path": "repos/check-face/facemorph.me-classic/actions/secrets",
+        "path": "repos/facemorph-me/facemorph.me-classic/actions/secrets",
         "expectNames": ["VERCEL_TOKEN", "VERCEL_ORG_ID", "VERCEL_PROJECT_ID"]
       }
     },
@@ -409,7 +409,11 @@
       "probe": {
         "type": "ssh",
         "host": "triton",
-        "argv": ["systemctl", "is-active", "actions.runner.check-face-facemorph.me.triton.service"],
+        "argv": [
+          "systemctl",
+          "is-active",
+          "actions.runner.facemorph-me-facemorph.me.triton.service"
+        ],
         "expect": "active"
       }
     },
@@ -473,7 +477,7 @@
       "noDryRun": "Kept.",
       "probe": {
         "type": "gh",
-        "path": "repos/check-face/facemorph.me/actions/secrets",
+        "path": "repos/facemorph-me/facemorph.me/actions/secrets",
         "expectNames": ["CLOUDFLARE_API_TOKEN"]
       }
     },
@@ -546,7 +550,7 @@
           "cf dns records update ef8a8938cd3275bf1a4e83a7050e8eb6 --zone 893772fe7a5a4ee368f71706bc19e609 --body '{\"type\":\"A\",\"name\":\"facemorph.me\",\"content\":\"76.76.21.21\",\"proxied\":false}' (Vercel production, deploy.yml run 36654890071)."
         ]
       },
-      "onePublisher": "Classic deploy.yml (vercel --prod) is disabled (gh workflow disable deploy.yml -R check-face/facemorph.me-classic); classic next-site.yml remains the only publisher of facemorph-next until the candidate-source handover.",
+      "onePublisher": "Classic deploy.yml (vercel --prod) is disabled (gh workflow disable deploy.yml -R facemorph-me/facemorph.me-classic); classic next-site.yml remains the only publisher of facemorph-next until the candidate-source handover.",
       "check": "node scripts/delivery/post-delivery-check.mjs --mode app --host facemorph.me --expect-digest 228eb615fdbd6d46d34459a4574b660e540aeb0c3903cf20018e8107ebd14f6b --identity next-site-SHA256SUMS",
       "annotate": "node scripts/delivery/annotate-cutover.mjs --action early-promotion --host facemorph.me --digest 228eb615fdbd6d46d34459a4574b660e540aeb0c3903cf20018e8107ebd14f6b",
       "dryRun": {
@@ -589,7 +593,7 @@
         "models.facemorph.me holds every runtime path of the live and rollback artifacts (warm them, or re-point the mirror's origin, before the switch; verified by the dry-run HEAD list)."
       ],
       "commands": [
-        "Deploy the monorepo artifact to Worker facemorph-next through the monorepo's deploy workflow (fm-6fx6), then disable classic next-site.yml's deploy job: gh workflow disable next-site.yml -R check-face/facemorph.me-classic."
+        "Deploy the monorepo artifact to Worker facemorph-next through the monorepo's deploy workflow (fm-6fx6), then disable classic next-site.yml's deploy job: gh workflow disable next-site.yml -R facemorph-me/facemorph.me-classic."
       ],
       "rollback": {
         "target": "artifacts.candidate",
@@ -602,7 +606,7 @@
       "annotate": "node scripts/delivery/annotate-cutover.mjs --action candidate-source-handover --host next.facemorph.me --digest <the monorepo artifact's deploy-next digest>",
       "probe": {
         "type": "gh",
-        "path": "repos/check-face/facemorph.me-classic/actions/workflows/next-site.yml",
+        "path": "repos/facemorph-me/facemorph.me-classic/actions/workflows/next-site.yml",
         "expect": {
           "state": "active"
         }
@@ -626,7 +630,7 @@
           "cf dns records update ef8a8938cd3275bf1a4e83a7050e8eb6 --zone 893772fe7a5a4ee368f71706bc19e609 --body '{\"type\":\"A\",\"name\":\"facemorph.me\",\"content\":\"76.76.21.21\",\"proxied\":false}' (Vercel production, deploy.yml run 36654890071)."
         ]
       },
-      "onePublisher": "Classic deploy.yml (vercel --prod) is disabled: gh workflow disable deploy.yml -R check-face/facemorph.me-classic.",
+      "onePublisher": "Classic deploy.yml (vercel --prod) is disabled: gh workflow disable deploy.yml -R facemorph-me/facemorph.me-classic.",
       "check": "node scripts/delivery/post-delivery-check.mjs --mode app --host facemorph.me --expect-digest <the promoted artifact's deploy-next digest> --identity next-site-SHA256SUMS",
       "annotate": "node scripts/delivery/annotate-cutover.mjs --action production-promotion --host facemorph.me --digest <the promoted artifact's deploy-next digest>",
       "dryRun": {
@@ -761,7 +765,7 @@
       "check": "node scripts/delivery/post-delivery-check.mjs --mode unchanged --host next.facemorph.me --before <identity before the switch> --identity next-site-SHA256SUMS",
       "probe": {
         "type": "gh",
-        "path": "repos/check-face/facemorph.me-classic",
+        "path": "repos/facemorph-me/facemorph.me-classic",
         "expect": {
           "default_branch": "master"
         }
@@ -774,7 +778,7 @@
       "status": 200,
       "bodyBytes": 1267,
       "bodySha256Prefix": "de7a9518b946d451",
-      "deployment": "Vercel (facemorph-names), GitHub deployment 359827192, check-face/facemorph-names@9243fef8"
+      "deployment": "Vercel (facemorph-names), GitHub deployment 359827192, facemorph-me/facemorph-names@9243fef8"
     },
     "redirect": [
       "cf dns records update 305676364f6ed740e56c97b95fe2d782 --zone 893772fe7a5a4ee368f71706bc19e609 --body '{\"type\":\"AAAA\",\"name\":\"names.facemorph.me\",\"content\":\"100::\",\"proxied\":true}'",

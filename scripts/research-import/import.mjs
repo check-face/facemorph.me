@@ -16,7 +16,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 export const ROOT = resolve(here, '../..');
 export const DIGEST_LIST = join(ROOT, 'docs/research-import/digest-list.json');
 export const SNAPSHOT = {
-  repository: 'check-face/facemorph.me-classic',
+  repository: 'facemorph-me/facemorph.me-classic',
   branch: 'candidate/next-delivery-20260916',
   commit: 'b2d945a8c7f0ff9f382fbfefaecc2651943077a3',
 };

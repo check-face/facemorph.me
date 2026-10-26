@@ -178,12 +178,12 @@ test('links: relative and repository GitHub links must resolve', () => {
     {
       path: 'classic:autoresearch/MOVED.md',
       base: '',
-      text: '[guide](https://github.com/check-face/facemorph.me/blob/main/PLAN.md) [x](https://github.com/check-face/facemorph.me/blob/main/autoresearch/nope.md)',
+      text: '[guide](https://github.com/facemorph-me/facemorph.me/blob/main/PLAN.md) [x](https://github.com/facemorph-me/facemorph.me/blob/main/autoresearch/nope.md)',
     },
   ];
   assert.deepEqual(
     checkLinks(pointer, exists).map((p) => p.target),
-    ['https://github.com/check-face/facemorph.me/blob/main/autoresearch/nope.md'],
+    ['https://github.com/facemorph-me/facemorph.me/blob/main/autoresearch/nope.md'],
   );
 });
 
@@ -240,7 +240,7 @@ function classicFixture(extraRow) {
   put(
     dir,
     'autoresearch/MOVED.md',
-    '# Moved\n\n[guide](https://github.com/check-face/facemorph.me/blob/main/autoresearch/README.md)\n',
+    '# Moved\n\n[guide](https://github.com/facemorph-me/facemorph.me/blob/main/autoresearch/README.md)\n',
   );
   if (extraRow) put(dir, 'autoresearch/results.tsv', `${snapshotText}${row('classic-round')}\n`);
   commit(dir, 'pointer');

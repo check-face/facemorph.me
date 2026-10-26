@@ -226,7 +226,7 @@ test("artifact identity: the control keeps classic's identity and label; a desti
       kind: 'control',
       label: 'control (classic candidate build; not built by this repository)',
       deploySource: {
-        repository: 'check-face/facemorph.me-classic',
+        repository: 'facemorph-me/facemorph.me-classic',
         commit: 'c'.repeat(40),
         buildId: 'next-0123456789abcdef',
         run: 4242,
@@ -263,7 +263,7 @@ test("artifact identity: the control keeps classic's identity and label; a desti
   plant(dest, {
     'next-site-identity.json': JSON.stringify({
       kind: 'monorepo',
-      deploySource: { repository: 'check-face/facemorph.me', commit: 'd'.repeat(40) },
+      deploySource: { repository: 'facemorph-me/facemorph.me', commit: 'd'.repeat(40) },
     }),
   });
   const d = artifactIdentity(dest, { env, build: 'b'.repeat(64) });
@@ -271,7 +271,7 @@ test("artifact identity: the control keeps classic's identity and label; a desti
     kind: 'monorepo',
     label: null,
     repositoryId: 1413979666,
-    repository: 'check-face/facemorph.me',
+    repository: 'facemorph-me/facemorph.me',
     commit: 'd'.repeat(40),
     workflowRun: { workflow: 'import-checks', runId: 77 },
     buildIdentity: 'b'.repeat(64),

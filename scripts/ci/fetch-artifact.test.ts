@@ -34,7 +34,7 @@ const PINNED: Inputs = {
   commit: control.source,
   artifactName: control.classic.artifact,
 };
-const THIS_REPO_ID = '1413979666'; // check-face/facemorph.me
+const THIS_REPO_ID = '1413979666'; // facemorph-me/facemorph.me
 
 if (!process.env['GITHUB_TOKEN'] && !process.env['GH_TOKEN']) {
   const t = spawnSync('gh', ['auth', 'token'], { encoding: 'utf8' });
@@ -61,7 +61,7 @@ test('every input is required; an owner/name in place of the numeric ID is refus
     'artifact_name is required',
   ]);
   assert.match(
-    inputProblems({ ...PINNED, sourceRepoId: 'check-face/facemorph.me-classic' })[0] ?? '',
+    inputProblems({ ...PINNED, sourceRepoId: 'facemorph-me/facemorph.me-classic' })[0] ?? '',
     /must be the numeric repository ID/,
   );
   assert.deepEqual(inputProblems(PINNED), []);
@@ -75,7 +75,7 @@ test('nothing defaults to the running repository: GITHUB_REPOSITORY alone is not
       encoding: 'utf8',
       env: {
         ...process.env,
-        GITHUB_REPOSITORY: 'check-face/facemorph.me-classic',
+        GITHUB_REPOSITORY: 'facemorph-me/facemorph.me-classic',
         GITHUB_RUN_ID: '1',
       },
     },
@@ -118,7 +118,7 @@ test(
     try {
       const r = await fetchArtifact(PINNED, join(out, 'a'));
       assert.equal(r.artifactDigest, control.treeSha256);
-      assert.equal(r.provenance['repository'], 'check-face/facemorph.me-classic');
+      assert.equal(r.provenance['repository'], 'facemorph-me/facemorph.me-classic');
     } catch (e) {
       if (e instanceof LookupError && e.code === 'ArtifactExpired')
         return t.skip('untested: the pinned run artifact has expired (14-day retention)');

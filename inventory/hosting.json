@@ -41,7 +41,7 @@
       "publisher": "GitHub Pages legacy build from master /docs of the archived checkface repository (verified by fm-a4b scripts/identity/integrations.json, readAt 2026-10-24); no publish workflow in classic or the monorepo",
       "credentials": [],
       "origin": "GitHub Pages serving the legacy API documentation pages",
-      "owner_account": "GitHub org check-face",
+      "owner_account": "GitHub org facemorph-me",
       "classification": "api-only",
       "notes": "Grouped with the API hostnames by the bead (api.facemorph.me and checkface.facemorph.me DNS/proxies); retired at API retirement. Content identified by fm-a4b: legacy API documentation pages from the archived repo's /docs."
     },
@@ -166,14 +166,14 @@
       "notes": "Bead tracker publication; unrelated to the app surfaces but a standing publisher of this repo."
     },
     {
-      "hostname": "github.com/check-face/facemorph.me (releases)",
+      "hostname": "github.com/facemorph-me/facemorph.me (releases)",
       "dns": "n/a",
       "platform": "GitHub Releases (updater feed target)",
       "bindings": [],
-      "publisher": "None: zero releases exist on check-face/facemorph.me and check-face/facemorph.me-classic (API 2026-10-24); desktop/scripts/prepare-release.mjs writes endpoint https://github.com/check-face/facemorph.me/releases/latest/download/latest.json which 404s",
+      "publisher": "None: zero releases exist on facemorph-me/facemorph.me and facemorph-me/facemorph.me-classic (API 2026-10-24); desktop/scripts/prepare-release.mjs writes endpoint https://github.com/facemorph-me/facemorph.me/releases/latest/download/latest.json which 404s",
       "credentials": ["CHECKFACE_UPDATER_PUBLIC_KEY (packaging env, never committed)"],
       "origin": "n/a",
-      "owner_account": "GitHub org check-face",
+      "owner_account": "GitHub org facemorph-me",
       "classification": "app-legacy",
       "notes": "Native retirement (inventory/native-retirement.json): no release feed exists, so no installed client can be redirected; release text marking and any future evidence releases are the wind-down publisher stage's job."
     }
