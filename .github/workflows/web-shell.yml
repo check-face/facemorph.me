@@ -187,6 +187,8 @@ jobs:
           cp -R .cache/canonical-site/. .
           mkdir -p apps/web/dist
           cp -R deploy-next/. apps/web/dist/
+      - name: Built-app Help and licence checks on the canonical bytes (fm-gbdt)
+        run: node --test test/build/help-copy.test.ts
       - run: npm run test:e2e
         env:
           GITHUB_TOKEN: ${{ github.token }}
