@@ -33,6 +33,9 @@ jobs:
         env:
           MATERIALIZE_CF_DRY_RUN: '1'
           CF_SEND_TELEMETRY: 'false'
+          # Miniflare otherwise fetches https://workers.cloudflare.com/cf.json on a runner without its cache, which
+          # the test's zero-API-request ledger rightly refuses (main run 40255592086).
+          CLOUDFLARE_CF_FETCH_ENABLED: 'false'
         run: node --test hosting/gallery/materialize.test.mjs
       - name: Manager acquisition and forced-500 fallback on the deployed test origins
         env:

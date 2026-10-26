@@ -18,6 +18,8 @@ jobs:
       - uses: ./.github/actions/setup-workspace
         with:
           directory: scripts/names-snapshot
+      # The catalogue imports apps/web's recovery envelope, which reads @facemorph/stylegan-js from its built dist.
+      - run: npm run build -w packages/stylegan-js
       - run: node --test scripts/names-publish/publish.test.mjs scripts/names-snapshot/local.test.mjs hosting/gallery/materialize.test.mjs
   publish:
     needs: test
