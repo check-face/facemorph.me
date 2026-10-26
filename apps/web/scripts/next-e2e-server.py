@@ -7,13 +7,13 @@ each asset's OWN manifest sha256 (URL directory shas collide across sibling file
  pinned chunk list (Pages caps per-file size) -> assemble from chunks, verify sha.
 The 256MiB bound fits the webgpu segments the previous 32MiB bound could never proxy.
 """
-import argparse,hashlib,json,re,ssl,sys,traceback,urllib.error,urllib.request
+import argparse,hashlib,json,re,ssl,sys,time,traceback,urllib.error,urllib.request
 from urllib.parse import urlsplit
 from pathlib import Path
 from http.server import ThreadingHTTPServer,SimpleHTTPRequestHandler
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'scripts/hosting'))
 from response_headers import headers_for
-p=argparse.ArgumentParser();p.add_argument('--port',type=int,default=8443);p.add_argument('--manifest-sha',required=True);p.add_argument('--cert',required=True);p.add_argument('--key',required=True);p.add_argument('--runtime-overlay',type=Path,default=None);p.add_argument('--runtime-files',type=Path,default=None,help='The runtime tree the deploy publishes, laid out as served under /runtime/ (mirror-runtime.py)');a=p.parse_args()
+p=argparse.ArgumentParser();p.add_argument('--port',type=int,default=8443);p.add_argument('--manifest-sha',required=True);p.add_argument('--cert',required=True);p.add_argument('--key',required=True);p.add_argument('--runtime-overlay',type=Path,default=None);p.add_argument('--runtime-files',type=Path,default=None,help='The runtime tree the deploy publishes, laid out as served under /runtime/ (mirror-runtime.py)');p.add_argument('--fault-file',type=Path,default=None,help='Opt-in per-request JSON fault: exact path, delaySeconds (0..15), status (503 only)');a=p.parse_args()
 ORIGIN='https://next.facemorph.me'
 SOURCE=Path('next-site-source.txt').read_text().strip()
 MIRROR=Path('.runtime-mirror');MIRROR.mkdir(exist_ok=True)
@@ -71,6 +71,23 @@ def seed_from_local():
     if digest in want[f.stat().st_size] and not (MIRROR/digest).exists():(MIRROR/digest).write_bytes(f.read_bytes())
    except OSError:continue
 seed_from_local()
+def fault_for(path):
+ """Invalid, incomplete or missing fault files leave normal serving untouched."""
+ if a.fault_file is None:return None
+ try:
+  with a.fault_file.open('r',encoding='utf-8') as handle:
+   text=handle.read(8193)
+  if len(text)>8192:return None
+  fault=json.loads(text)
+  if not isinstance(fault,dict) or set(fault)-{'path','delaySeconds','status'}:return None
+  target=fault.get('path')
+  if not isinstance(target,str) or not target.startswith('/') or target.startswith('//'):return None
+  if any(value in target for value in ('?', '#', '%', '\\')) or any(part in ('.','..') for part in target.split('/')):return None
+  delay=fault.get('delaySeconds',0)
+  if isinstance(delay,bool) or not isinstance(delay,(int,float)) or not 0<=delay<=15:return None
+  if 'status' in fault and (type(fault['status']) is not int or fault['status']!=503):return None
+  return fault if urlsplit(path).path==target else None
+ except (OSError,ValueError,TypeError):return None
 class Handler(SimpleHTTPRequestHandler):
  def setup(self):
   # Handshake in this client's thread: an idle speculative TCP connection must not block accept.
@@ -83,7 +100,18 @@ class Handler(SimpleHTTPRequestHandler):
   for k,v in headers_for(urlsplit(self.path).path).items():self.send_header(k,v)
   self.send_header('X-Next-Artifact-Source',SOURCE)
   super().end_headers()
- def do_POST(self):self.send_error(403,'Diagnostics and uploads disabled in qualification')
+ def apply_fault(self):
+  fault=fault_for(self.path)
+  if fault is None:return False
+  time.sleep(fault.get('delaySeconds',0))
+  if fault.get('status')==503:
+   self.send_error(503,'Qualification fault injection')
+   return True
+  return False
+ def do_POST(self):
+  if not self.apply_fault():self.send_error(403,'Diagnostics and uploads disabled in qualification')
+ def do_HEAD(self):
+  if not self.apply_fault():super().do_HEAD()
  def mime_for(self,path):
   if path.endswith('.mjs') or path.endswith('.js'):return 'text/javascript'
   if path.endswith('.json'):return 'application/json'
@@ -101,6 +129,7 @@ class Handler(SimpleHTTPRequestHandler):
    if hashlib.sha256(data).hexdigest()!=expected:raise ValueError('Chunk assembly does not match the pinned asset sha')
    return data
  def do_GET(self):
+  if self.apply_fault():return
   if not self.path.startswith('/runtime/'):
    path=urlsplit(self.path).path
    if not Path(path).suffix and 'text/html' in self.headers.get('Accept','') and not Path(self.translate_path(path)).is_file():return self.respond(Path('deploy-next/index.html').read_bytes(),'text/html; charset=utf-8')

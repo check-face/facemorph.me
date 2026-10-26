@@ -9,7 +9,7 @@ import {CEILINGS} from '../contracts/ceilings.ts';
 import {preparedFileCacheMaxBytes} from '../contracts/prepared-file-cache.ts';
 import {stillSettings} from '../media/export-policy.ts';
 import {preparedFiles} from '../media/prepared-files.ts';
-import {exportNamer,faceLabel,morphExport,morphLabel,stillExport} from '../media/export-names.ts';
+import {exportNamer,faceLabel,morphExport,morphLabel,stillExport,retainedExportDigests} from '../media/export-names.ts';
 
 const ceiling=CEILINGS.find(c=>c.name==='PREPARED_FILE_CACHE_MAX_BYTES');
 if(!ceiling)throw Error('The prepared-file ceiling is missing from the contracts.');
@@ -31,11 +31,12 @@ export function faceFacts(face,modelIdentity){
  * the result object itself is used when none is given.
  */
 export function createExportFiles({maxBytes=PREPARED_FILE_MAX_BYTES}={}){
- const names=exportNamer(),stores=new Map(),revisions=new WeakMap(),blobs=new WeakMap();let serial=0,webpEncodes=true,encodes=0;
+ const names=exportNamer(),stores=new Map(),revisions=new WeakMap(),blobs=new WeakMap(),identities=new WeakMap();let serial=0,webpEncodes=true,encodes=0;
  const revisionFor=result=>{let r=revisions.get(result);if(r===undefined){r=++serial;revisions.set(result,r);}return r;};
  const storeFor=(target,result)=>{const revision=revisionFor(result);let store=stores.get(target);if(!store){store=preparedFiles(maxBytes,revision);stores.set(target,store);}else store.setRevision(revision);return store;};
  const bytesOf=async blob=>{encodes++;return new Uint8Array(await blob.arrayBuffer());};
  const blobOf=file=>{let blob=blobs.get(file);if(!blob){blob=new Blob([file.bytes],{type:file.mime});blobs.set(file,blob);}return blob;};
+ const expose=(file,named)=>{const blob=blobOf(file);identities.set(blob,named.identity);return {blob,filename:named.filename,mime:file.mime,digest:named.digest};};
  const ready=(outcome,current)=>{
   if(outcome.status==='stale'||!current())throw superseded();
   if(outcome.status!=='ready')throw Error('The file could not be prepared. Your result is still here; try again.');
@@ -59,16 +60,22 @@ export function createExportFiles({maxBytes=PREPARED_FILE_MAX_BYTES}={}){
     outcome=await store.prepare(settings.format,optionsOf(settings),async()=>bytesOf(await once()),{pin:true,revision});
    }
    const file=ready(outcome,current);
-   const facts=faceFacts(face,modelIdentity),named=names.name(stillExport(facts,file.format,optionsOf(settings)),faceLabel(facts.source));
-   return {blob:blobOf(file),filename:named.filename,mime:file.mime,digest:named.digest};
+   const facts=faceFacts(face,modelIdentity),named=names.name(stillExport(facts,file.format,optionsOf(settings)),faceLabel(facts.source),retainedExportDigests(face.exportDigests)[file.format]);
+   return expose(file,named);
   },
   /** The morph video: the encoded MP4 with its project box; `faces` are the morph's endpoint faces in order. */
-  async video(video,{encode,morph,faces,modelIdentity,current=()=>true}){
+  async video(video,{encode,morph,faces,modelIdentity,retainedDigest,current=()=>true}){
    const store=storeFor('video',video),revision=store.currentRevision(),options={fps:morph?.settings?.framesPerSecond??null};
    const file=ready(await store.prepare('mp4',options,async()=>bytesOf(await encode()),{pin:true,revision}),current);
    const facts=faces.map(face=>faceFacts(face,modelIdentity)),mode=String(morph?.mode||'morph');
-   const named=names.name(morphExport(facts,{mode,settings:morph?.settings??null},modelIdentity||'unknown',options),morphLabel(facts,mode));
-   return {blob:blobOf(file),filename:named.filename,mime:file.mime,digest:named.digest};
+   const named=names.name(morphExport(facts,{mode,settings:morph?.settings??null},modelIdentity||'unknown',options),morphLabel(facts,mode),retainedDigest);
+   return expose(file,named);
+  },
+  /** Rename only the label; keep the real format, exact bytes and identity suffix. */
+  rename(file,editedName){
+   const identity=identities.get(file?.blob);if(!identity||identity.digest!==file.digest)throw Error('Prepare this file before renaming it.');
+   const named=names.rename(identity,String(editedName));identities.set(file.blob,named.identity);
+   return {...file,filename:named.filename,mime:named.mime,digest:named.digest};
   },
   /** Forget a replaced or removed target's files at once. */
   drop(target){stores.delete(target);},

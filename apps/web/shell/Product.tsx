@@ -116,6 +116,7 @@ export function Product({ store }: { store: Store }) {
             }
             photoEncodingAvailable={!s.Downloads.known || s.Downloads.photoAvailable}
             onNotice={(message) => dispatch(msg('PhotoError', message))}
+            onResultNotice={(message) => dispatch(msg('Notice', message))}
             removable={s.Inputs.length > 1}
             onEdit={(value) => dispatch(msg('Edit', item.id, value))}
             onMode={(mode) => dispatch(msg('Mode', item.id, mode))}
@@ -128,6 +129,17 @@ export function Product({ store }: { store: Store }) {
             onRemove={() => dispatch(msg('Remove', item.id))}
             onShare={() => dispatch(msg('Share', item.id))}
             onSave={() => dispatch(msg('Save', item.id))}
+            resultRevision={facade.exportResultRevision(item.id)}
+            resultFiles={
+              s.Held?.get(item.id)?.url
+                ? undefined
+                : {
+                    prepare: (format) => facade.prepareMedia(item.id, format),
+                    rename: facade.renamePreparedMedia,
+                    save: (file) => facade.handPreparedMedia(item.id, file, 'save'),
+                    share: (file) => facade.handPreparedMedia(item.id, file, 'share'),
+                  }
+            }
             held={s.Held?.get(item.id)}
             onUseAsPhoto={() => dispatch(msg('UseAsPhoto', item.id))}
             drawFace={(canvas, id) => {
@@ -193,6 +205,13 @@ export function Product({ store }: { store: Store }) {
             onSliderFrame={(frame) => dispatch(msg('SliderFrameSet', frame))}
             onShare={() => dispatch(msg('Share', 'video'))}
             onSave={() => dispatch(msg('Save', 'video'))}
+            resultFiles={{
+              prepare: (format) => facade.prepareMedia('video', format),
+              rename: facade.renamePreparedMedia,
+              save: (file) => facade.handPreparedMedia('video', file, 'save'),
+              share: (file) => facade.handPreparedMedia('video', file, 'share'),
+            }}
+            onNotice={(message) => dispatch(msg('Notice', message))}
           />
         }
       />

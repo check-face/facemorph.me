@@ -176,7 +176,17 @@ jobs:
         env:
           FACEMORPH_REQUIRE_RUNTIME: '1'
         run: |
-          node --test --test-timeout=1200000 test/e2e/encode.e2e.ts test/e2e/face-controls.e2e.ts test/e2e/legacy-links.e2e.ts test/e2e/manifest-admission.e2e.ts test/e2e/export-files.e2e.ts test/e2e/opctl-trace.e2e.ts test/e2e/offline.e2e.ts test/e2e/still-entry.e2e.ts
+          node --test --test-timeout=1200000 test/e2e/encode.e2e.ts test/e2e/face-controls.e2e.ts test/e2e/legacy-links.e2e.ts test/e2e/manifest-admission.e2e.ts test/e2e/export-files.e2e.ts test/e2e/result-actions.e2e.ts test/e2e/opctl-trace.e2e.ts test/e2e/offline.e2e.ts test/e2e/still-entry.e2e.ts
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: result-actions-${{ github.sha }}
+          path: |
+            apps/web/test-results/result-actions/report.json
+            apps/web/test-results/result-actions/*.png
+            apps/web/test-results/result-actions/*.webp
+            apps/web/test-results/result-actions/*.mp4
+          retention-days: 30
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
@@ -187,6 +197,7 @@ jobs:
             apps/web/test-results/legacy-links/
             apps/web/test-results/manifest-admission/
             apps/web/test-results/export-files/
+            apps/web/test-results/result-actions/
             apps/web/test-results/opctl-trace/
             apps/web/test-results/offline/
             apps/web/test-results/still-entry/

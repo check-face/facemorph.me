@@ -7,6 +7,7 @@ import Checkbox from '@mui/material/Checkbox';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import Slider from '@mui/material/Slider';
 import { useEffect, useRef, useState } from 'react';
+import { ResultActions, useResultFile, type ResultFiles } from './ResultActions.tsx';
 
 export function MorphSlider({
   frames,
@@ -82,10 +83,27 @@ export interface VideoSlotProps {
   readonly onSliderFrame: (n: number) => void;
   readonly onShare: () => void;
   readonly onSave: () => void;
+  readonly resultFiles?: ResultFiles | undefined;
+  readonly onNotice?: ((message: string) => void) | undefined;
 }
 
 export function VideoSlot(p: VideoSlotProps) {
   const [size, setSize] = useState<{ url: string; w: number; h: number } | null>(null);
+  const resultFile = useResultFile(p.videoUrl || null, p.resultFiles);
+  useEffect(() => {
+    if (!p.videoUrl) return;
+    // Read metadata even when the person has kept Use Slider selected. No playback.
+    const video = document.createElement('video');
+    video.preload = 'metadata';
+    video.onloadedmetadata = () =>
+      setSize({ url: p.videoUrl, w: video.videoWidth, h: video.videoHeight });
+    video.src = p.videoUrl;
+    return () => {
+      video.onloadedmetadata = null;
+      video.removeAttribute('src');
+      video.load();
+    };
+  }, [p.videoUrl]);
   if (p.videoUrl === '') return <div className="next-video-slot" />;
   const showSlider = p.useSlider || (p.busy && p.sliderFrames !== null);
   const slider = !p.useSlider ? null : p.sliderFrames ? (
@@ -130,17 +148,38 @@ export function VideoSlot(p: VideoSlotProps) {
       {showSlider && slider}
       <div className="next-actions">
         {/* The actual encoded resolution, read from the video itself (fm-fy2.9: 512 is never hidden). */}
-        {size && size.url === p.videoUrl && size.w > 0 && (
+        {!p.resultFiles && size && size.url === p.videoUrl && size.w > 0 && (
           <span className="next-video-format" data-next-video-width={size.w}>
             {`MP4 · ${size.w} × ${size.h}`}
           </span>
         )}
-        <Button color="inherit" variant="text" onClick={p.onShare}>
-          Share morph
-        </Button>
-        <Button color="inherit" variant="text" onClick={p.onSave}>
-          Save video
-        </Button>
+        {p.resultFiles ? (
+          <>
+            <ResultActions
+              kind="video"
+              state={resultFile}
+              files={p.resultFiles}
+              onNotice={p.onNotice}
+              resolution={
+                size?.url === p.videoUrl && size.w > 0
+                  ? { width: size.w, height: size.h }
+                  : undefined
+              }
+            />
+            {resultFile.status === 'failed' && (
+              <Button onClick={resultFile.retry}>Retry file preparation</Button>
+            )}
+          </>
+        ) : (
+          <>
+            <Button color="inherit" variant="text" onClick={p.onShare}>
+              Share morph
+            </Button>
+            <Button color="inherit" variant="text" onClick={p.onSave}>
+              Save video
+            </Button>
+          </>
+        )}
       </div>
     </div>
   );
