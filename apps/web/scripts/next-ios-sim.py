@@ -25,27 +25,118 @@ sys.path.insert(0, str(ROOT/'scripts/ci/intercept'))
 import intercept
 ORIGIN = 'https://next.facemorph.me'
 
+# Pure observer, also exercised with the production acquisition budget in the lightweight tests.
+# The budget lives for a worker's lifetime: sum latest worker counters, never progress messages or job IDs.
+ACQUISITION_METRICS = r"""
+function acquisitionMetrics() {
+  const workers = new Map();
+  let overflow = false;
+  return {
+    worker(url) {
+      const id = workers.size + 1;
+      if (workers.size >= 16) { overflow = true; return null; }
+      workers.set(id, {id, url: String(url), expected: false, messages: 0,
+        snapshots: [], latest: null, invalid: 0, regressions: 0,
+        requestedProvider: null, actualProvider: null, completedFaces: 0});
+      return id;
+    },
+    request(id, message) {
+      const row = workers.get(id);
+      if (!row) return;
+      if (message?.type === 'initialize' && typeof message.provider === 'string') {
+        row.expected = true;
+        row.requestedProvider = message.provider;
+      }
+      if (['generate', 'synthesize', 'synthesize-frames', 'encode-aligned'].includes(message?.type))
+        row.expected = true;
+    },
+    observe(id, data, operation) {
+      const row = workers.get(id);
+      if (!row) return;
+      if (data?.type === 'complete' && operation === 'initialize')
+        row.actualProvider = typeof data.result?.provider === 'string' ? data.result.provider : null;
+      if (data?.type === 'complete' && ['generate', 'synthesize'].includes(operation))
+        row.completedFaces++;
+      if (data?.type !== 'progress' || data.stage !== 'asset-acquisition') return;
+      row.expected = true;
+      row.messages++;
+      const snapshot = Object.fromEntries(['loaded', 'total', 'fetched', 'fetchedTotal']
+        .map(key => [key, data[key]]));
+      if (!Object.values(snapshot).every(value => Number.isSafeInteger(value) && value >= 0)
+          || snapshot.loaded > snapshot.total || snapshot.fetched > snapshot.fetchedTotal
+          || snapshot.fetched > snapshot.loaded || snapshot.fetchedTotal > snapshot.total) {
+        row.invalid++;
+        return;
+      }
+      // Retry progress can fall before completion. A maximum would count abandoned partial reads.
+      if (row.latest && ['loaded', 'fetched'].some(key => snapshot[key] < row.latest[key]))
+        row.regressions++;
+      row.latest = snapshot;
+      row.snapshots.push(snapshot);
+      if (row.snapshots.length > 8) row.snapshots.shift();
+    },
+    report() {
+      const rows = [...workers.values()].filter(row => row.expected);
+      const complete = !overflow && rows.length > 0 && rows.every(row => row.invalid === 0
+        && row.latest !== null && row.latest.loaded === row.latest.total
+        && row.latest.fetched === row.latest.fetchedTotal);
+      return {status: complete ? 'measured' : 'untested',
+        reason: complete ? null : overflow ? 'worker observation limit exceeded'
+          : rows.length === 0 ? 'no native acquisition counters observed'
+          : 'missing, invalid or incomplete native acquisition counters',
+        acquiredPayloadBytes: complete ? rows.reduce((sum, row) => sum + row.latest.fetched, 0) : null,
+        fetchedBodyBytes: complete ? rows.reduce((sum, row) => sum + row.latest.fetched, 0) : null,
+        measurement: 'native ort-worker asset-acquisition counters; latest snapshot per worker',
+        byteMeaning: 'acquired payload bytes: SHA-deduplicated asset payloads counted as fetched by the production acquisition budget; excludes HTTP overhead and retry re-transfers',
+        completeTransferBytes: null,
+        completeTransferBytesReason: 'per-asset acquisition counters do not measure all wire transfers',
+        workers: rows};
+    }
+  };
+}
+"""
+
 CAMPAIGN = """
 <script>
 (async () => {
   const COLD = __COLD__;
+  __ACQUISITION_METRICS__
+  const acquisition = acquisitionMetrics();
   const inferenceEvents=[];
   // Passive instrumentation: every worker, message and return value remains native and real.
   const NativeWorker=window.Worker;
   window.Worker=class extends NativeWorker {
-    constructor(...args){super(...args);this.ops=new Map();this.addEventListener('message',({data})=>{
+    constructor(...args){super(...args);this.ops=new Map();this.metricId=acquisition.worker(args[0]);this.addEventListener('message',({data})=>{
       const op=this.ops.get(data?.id);
+      acquisition.observe(this.metricId,data,op);
       if(op&&['complete','frame','error'].includes(data?.type))inferenceEvents.push({op,reply:data.type});
     });}
-    postMessage(message,...rest){if(message?.id!=null&&['generate','synthesize','encode-aligned','synthesize-frames'].includes(message.type))this.ops.set(message.id,message.type);return super.postMessage(message,...rest);}
+    postMessage(message,...rest){acquisition.request(this.metricId,message);if(message?.id!=null&&['initialize','generate','synthesize','encode-aligned','synthesize-frames'].includes(message.type))this.ops.set(message.id,message.type);return super.postMessage(message,...rest);}
   };
   const report = {stages: [], errors: [], inferenceEvents, startedAt: Date.now(),secureContext:isSecureContext};
   const say = (k, v) => { report[k] = v; };
+  const storageEstimate = async phase => {
+    const measuredAt = new Date().toISOString();
+    try {
+      const estimate = await navigator.storage.estimate();
+      const known = [estimate.quota, estimate.usage].every(value => Number.isSafeInteger(value) && value >= 0);
+      return {phase, measuredAt, status: known ? 'measured' : 'untested',
+        quota: estimate.quota ?? null, usage: estimate.usage ?? null,
+        reason: known ? null : 'browser did not report both quota and usage'};
+    } catch (error) {
+      return {phase, measuredAt, status: 'untested', quota: null, usage: null, reason: String(error)};
+    }
+  };
   addEventListener('error', e => report.errors.push(String(e.message || e)));
   addEventListener('unhandledrejection', e => report.errors.push('rejection: ' + String(e.reason && e.reason.message || e.reason)));
   const post = async done => {
     report.completed = !!done;
+    report.measuredAt = new Date().toISOString();
     report.elapsedMs = Date.now() - report.startedAt;
+    report.acquisition = acquisition.report();
+    report.routeFacts = {requested: 'auto', actual: report.acquisition.workers.some(worker =>
+      worker.actualProvider === 'wasm' && worker.completedFaces > 0) ? 'cpu' : null,
+      nativeProviders: [...new Set(report.acquisition.workers.map(worker => worker.actualProvider).filter(Boolean))]};
     report.resources=performance.getEntriesByType('resource').map(e=>({url:e.name,bytes:e.transferSize,duration:e.duration}));
     try { await fetch('/__lane', {method: 'POST', headers: {'content-type': 'application/json'},
       body: JSON.stringify(report)}); } catch (e) {}
@@ -65,6 +156,7 @@ CAMPAIGN = """
       maxStorageBufferBindingSize: adapter.limits.maxStorageBufferBindingSize,
       maxBufferSize: adapter.limits.maxBufferSize} : null);
     say('agent', navigator.userAgent);
+    say('platform', navigator.platform);
     say('crossOriginIsolated', crossOriginIsolated);
     say('deviceMemory', navigator.deviceMemory ?? null);
     say('hardwareConcurrency', navigator.hardwareConcurrency ?? null);
@@ -97,6 +189,7 @@ CAMPAIGN = """
     };
     await wait(() => [...document.querySelectorAll('button')]
       .some(b => b.textContent.trim().toLowerCase() === 'generate'), 60000, 'the interface');
+    say('storageBeforeFace', await storageEstimate('before-generate'));
     const began = Date.now();
     if(!window.__ciGate){window.__ciGate=0;setInterval(()=>{const b=document.querySelector('.next-download-dialog .next-download-accept');if(b){window.__ciGate++;b.click();}},250);}
     [...document.querySelectorAll('button')].find(b => b.textContent.trim().toLowerCase() === 'generate').click();
@@ -128,7 +221,9 @@ CAMPAIGN = """
       cached = {entries: keys.length, bytes};
     } catch (e) { report.errors.push('cache read: ' + e.message); }
     say('cache', cached);
-    try { const est = await navigator.storage.estimate(); say('storage', {quota: est.quota, usage: est.usage}); } catch (e) {}
+    const afterStorage = await storageEstimate(made ? 'after-face' : 'after-face-attempt');
+    say('storageAfterFace', afterStorage);
+    if (afterStorage.status === 'measured') say('storage', {quota: afterStorage.quota, usage: afterStorage.usage});
     await post(made);
   } catch (error) {
     report.errors.push('campaign: ' + (error && error.message || String(error)));
@@ -137,6 +232,7 @@ CAMPAIGN = """
 })();
 </script>
 """
+CAMPAIGN = CAMPAIGN.replace('__ACQUISITION_METRICS__', ACQUISITION_METRICS)
 
 
 def assess(report):
@@ -224,10 +320,13 @@ def main():
         server.__exit__(None,None,None)
 
     report = received
+    report['storageIsolation'] = {'kind': 'newly-created-simulator', 'device': a.device,
+                                  'udid': udid, 'runtime': runtime}
     (a.evidence / 'report.json').write_text(json.dumps(report, indent=2))
     summary = {k: report.get(k) for k in
                ('completed', 'faceProduced', 'firstFaceMs', 'route', 'webgpu', 'cpuFallbackShown',
-                'memoryAfterFace', 'cache', 'storage', 'agent')}
+                'memoryAfterFace', 'cache', 'storage', 'storageBeforeFace', 'storageAfterFace',
+                'acquisition', 'routeFacts', 'agent')}
     summary['errors'] = report.get('errors', [])[:4]
     summary['device'] = a.device
     print(json.dumps(summary, indent=2), flush=True)
@@ -242,6 +341,8 @@ def main():
     verdict={'passed':assess(report),'evidence':'Simulator evidence, not physical iPhone',
         'untested':network['unobservable'],'timingReferenceMs':{'firstFace':25287,'warmSynthesis':4741.2},
         'timingsArePassFail':False}
+    verdict['acquisitionMetrics'] = report.get('acquisition', {'status': 'untested',
+        'acquiredPayloadBytes': None, 'fetchedBodyBytes': None, 'reason': 'no browser acquisition report'})
     (a.evidence/'verdict.json').write_text(json.dumps(verdict,indent=2))
     if not verdict['passed']:
         print('iOS product failed CPU inference, isolation, layout or error checks.',file=sys.stderr);sys.exit(1)
