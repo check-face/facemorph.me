@@ -141,6 +141,7 @@ export function Product({ store }: { store: Store }) {
             route={s.Route}
             rejected={s.Rejected ?? undefined}
             status={s.Status}
+            disclosure={s.Disclosure ?? ''}
             fraction={s.Fraction}
             faceActive={s.ActiveFace !== null}
             preparing={s.Preparing}

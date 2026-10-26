@@ -319,6 +319,7 @@ function start(
       Error: null,
       Stage: 'preparing',
       Status: action === 'face' ? 'Generating this face…' : 'Preparing…',
+      ...(action === 'face' ? {} : { Disclosure: '' }),
       ActiveFace: action === 'face' ? target : null,
       RunInputs: inputs,
       RunSettings: action === 'face' ? '' : settingsKey(state),

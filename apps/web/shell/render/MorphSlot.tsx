@@ -52,6 +52,8 @@ export interface MorphSlotProps extends MorphSettings {
   readonly route: string;
   readonly rejected?: string | undefined;
   readonly status: string;
+  /** The MP4 size disclosure for the current morph; stays while frames run and beside the result. */
+  readonly disclosure?: string;
   readonly fraction: number;
   /** A face (not the morph) is running: its tile shows the progress instead. */
   readonly faceActive: boolean;
@@ -226,6 +228,9 @@ export function MorphSlot(p: MorphSlotProps) {
         )}
         {p.busy && !p.faceActive && <ProgressBar fraction={p.fraction > 0 ? p.fraction : -1} />}
         <span>{p.status}</span>
+        {p.disclosure && p.disclosure !== p.status && (
+          <span className="next-disclosure">{p.disclosure}</span>
+        )}
         {!p.busy && p.preparing !== '' && <span className="next-preparing">{p.preparing}</span>}
         {p.busy && p.perFrame !== '' && <span className="next-remaining">{p.perFrame}</span>}
         {p.busy && p.remaining !== '' && <span className="next-remaining">{p.remaining}</span>}

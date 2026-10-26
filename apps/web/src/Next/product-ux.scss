@@ -84,6 +84,7 @@
 .next-progress-fill { position:absolute; top:0; right:0; bottom:0; left:0; transform:scaleX(0); transform-origin:0 50%; background:linear-gradient(-45deg,#FFA63D,#FF3D77,#338AFF,#3CF0C5); background-size:800%; transition:transform .25s linear; will-change:transform; }
 .next-progress-indeterminate { animation:next-sweep 1.6s ease-in-out infinite; transition:none; }
 .next-remaining { display:block; opacity:.85; font-size:.9rem; }
+.next-disclosure { display:block; margin-top:.2rem; }
 
 // --- Actions and slots ------------------------------------------------------------------------
 .next-controls,.next-generate { justify-content:center; margin:.35rem 0; }

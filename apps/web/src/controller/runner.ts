@@ -190,7 +190,7 @@ export function createController(
       if (event.type === 'disclosure')
         update((current) =>
           current.JobId === jobId
-            ? { state: { ...current, Status: event.text }, effects: [] }
+            ? { state: { ...current, Status: event.text, Disclosure: event.text }, effects: [] }
             : unchanged(current),
         );
       if (event.type === 'compute-ready' && final) {

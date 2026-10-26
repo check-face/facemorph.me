@@ -88,4 +88,6 @@ export interface State {
   readonly Gate: readonly [string, Msg] | null;
   readonly LastRun: Msg | null;
   readonly FailureToast: boolean;
+  /** The current morph's MP4 size disclosure (e.g. 512 × 512), kept beside progress and the result (fm-fy2.9). */
+  readonly Disclosure?: string;
 }

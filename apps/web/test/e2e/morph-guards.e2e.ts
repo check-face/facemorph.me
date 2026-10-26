@@ -6,12 +6,12 @@
 //     model requests; changing face 3 clears the refusal and Morph proceeds (then is cancelled);
 //   - word inputs that feed the rule: empty and very long words keep their own messages; pasted duplicates
 //     refuse like typed ones;
-//   - faces at 8 with a repeat refuse naming the faces;
+//   - faces at 8 and 64 with a repeat refuse naming the faces;
 //   - no MP4 route: WebCodecs removed and the runtime manifest served without its FFmpeg codec explains in
 //     Morph status before any synthesis;
 //   - 512 disclosure: WebCodecs answering only 512 says the MP4 will be 512 × 512 before frames start.
-// The over-budget refusal and 64/150-face loops are not reachable here: Add face stops at 64 faces
-// (MorphSlot) and 64 × 32 frames is under the 4,096-frame budget; the service and unit tests cover them.
+// The over-budget refusal and 150-face loops are not reachable here until fm-id4c removes the 64-face Add face
+// cap (MorphSlot): 64 × 32 frames is under the 4,096-frame budget; the service and unit tests cover them.
 //   FACEMORPH_DEPLOY_OUT=<dir with deploy-next/> node --test test/e2e/morph-guards.e2e.ts
 import assert from 'node:assert/strict';
 import { existsSync, mkdirSync } from 'node:fs';
@@ -277,6 +277,15 @@ test(
           );
           await faces(s, eight);
           await refusal(s, 'eight-faces', /^Faces 4 and 5 are the same/);
+          await s.context.close();
+        }
+        // 64 faces (the most Add face reaches today) with the last two the same.
+        {
+          const s = await open();
+          const many = Array.from({ length: 64 }, (_, i) => `face number ${i + 1}`);
+          many[63] = many[62]!;
+          await faces(s, many);
+          await refusal(s, 'sixty-four-faces', /^Faces 63 and 64 are the same/);
           await s.context.close();
         }
         // No MP4 route: no WebCodecs and no FFmpeg codec in the manifest.
