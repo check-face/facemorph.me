@@ -48,6 +48,7 @@ const app = fileURLToPath(new URL('../../', import.meta.url));
 const repo = fileURLToPath(new URL('../../../../', import.meta.url));
 const RUNTIME = process.env['FACEMORPH_RUNTIME_DIR'] ?? join(repo, '.cache/runtime');
 const PHOTO = join(repo, 'tests/crop/fixtures/non-square.jpg');
+const NO_FACE = join(repo, 'tests/crop/fixtures/no-face.jpg');
 const ORIGIN = 'https://next.facemorph.me';
 const results = join(app, 'test-results/facade');
 const UNTESTED = existsSync(join(RUNTIME, 'manifest.json'))
@@ -118,9 +119,11 @@ async function open(publicGallery = false): Promise<void> {
           ? join(app, 'hosting/next-static/catalogue.json')
           : path === '/photo.jpg'
             ? PHOTO
-            : path.startsWith('/runtime/')
-              ? join(RUNTIME, path.slice('/runtime/'.length))
-              : join(bundleDir, path === '/' ? 'index.html' : path);
+            : path === '/no-face.jpg'
+              ? NO_FACE
+              : path.startsWith('/runtime/')
+                ? join(RUNTIME, path.slice('/runtime/'.length))
+                : join(bundleDir, path === '/' ? 'index.html' : path);
     if (!existsSync(file) || !statSync(file).isFile())
       return route.fulfill({ status: 404, body: 'not found' });
     return route.fulfill({
@@ -216,6 +219,7 @@ interface Out {
   errorMessage: string;
   videoUrl: string;
   restored: boolean;
+  cropFace: string | null;
 }
 interface Settled {
   job: { facesDone: number; facesTotal: number };
@@ -301,6 +305,32 @@ test(
     assert.ok(r.out, 'no Output');
     assert.equal(r.out.errorMessage, '', r.out.errorMessage);
     assert.ok(r.out.faces.some((f) => f.id === 'p'));
+  },
+);
+
+test(
+  'crop-fix-after-ok: a confirmed crop the detector cannot read runs real e4e exactly once, with no detection',
+  { timeout: 1_200_000 },
+  async () => {
+    const r = await call<
+      {
+        selection: string;
+        proposalCropFace?: string | null;
+        out?: Out;
+        detections?: number;
+        encodes?: number;
+      } & Partial<Settled>
+    >('confirmedCrop', 'q', `${ORIGIN}/no-face.jpg`);
+    log(
+      `crop-fix: selection=${r.selection} proposal cropFace=${r.proposalCropFace} detections=${r.detections} encodes=${r.encodes} ${r.out?.errorMessage ?? ''}`,
+    );
+    assert.equal(r.proposalCropFace, 'q', 'before OK the typed no-face outcome asks for a crop');
+    assert.ok(r.out, 'no Output');
+    assert.equal(r.detections, 0, 'no detection pass after OK');
+    assert.equal(r.encodes, 1, 'exactly one e4e attempt');
+    assert.equal(r.out.cropFace, null, 'the crop does not reopen');
+    assert.equal(r.out.errorMessage, '', r.out.errorMessage);
+    assert.ok(r.out.faces.some((f) => f.id === 'q'));
   },
 );
 

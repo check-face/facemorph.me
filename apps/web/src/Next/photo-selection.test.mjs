@@ -54,7 +54,8 @@ test('the multiple-faces sentence is shared, not duplicated', async () => {
   assert.equal(typeof MULTIPLE_FACES_MESSAGE, 'string');
   assert.ok(MULTIPLE_FACES_MESSAGE.length > 10);
   const source = await readFile(new URL('./photo/align-photo.mjs', import.meta.url), 'utf8');
-  const raised = [...source.matchAll(/fail\(Error\(([^)]*)\)\)/g)].map(m => m[1].trim());
+  // fm-6ib8: the raised error also carries the typed outcome (code, faceDetection) callers branch on.
+  const raised = [...source.matchAll(/fail\((?:Object\.assign\()?Error\(([^)]*)\)/g)].map(m => m[1].trim());
   assert.ok(raised.includes('MULTIPLE_FACES_MESSAGE'),
     'the constant is what gets raised, not a copy of its text');
   const {reduce}=await import('../controller/reducers/index.ts');

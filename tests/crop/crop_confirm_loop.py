@@ -26,9 +26,10 @@ Cases (each reports intended | documented-failure | other):
   ui-no-face                 built UI: a photo with no face; detection fails, the dialog opens, the person
                              confirms the whole image
   ui-redetection-fails       built UI: one small face in a corner; the person crops the middle half (zoom 2)
-  bridge-<fixture>           the bridge's composition (product-bridge.mjs:116-118: createBrowserRuntime with the
-                             real createPhotoAligner and selection worker) called with cropPhoto's real output for
-                             the confirmed crop of each fixture
+  bridge-<fixture>           the bridge's composition (product-bridge.mjs engine(): createBrowserRuntime with the
+                             real createPhotoAligner and selection worker) called with cropPhotoReported's real output
+                             (photo/confirmed-crop.mjs confirmCrop) for the confirmed crop of each fixture; since
+                             crop.fix (fm-6ib8) these behave as intended: no detection pass, one e4e attempt
 tests/known-failing.json says which cases must fail, and for which documented reason, until crop.fix.
 
 Test-build hook (for the ported app, absent from production builds and checked by the build scan):
@@ -145,7 +146,8 @@ async def ui_case(context, name, fixture, zoom, evidence):
 BRIDGE = """async ([fixture, area]) => {
   const {createBrowserRuntime} = await import('/src/Next/browser/runtime.mjs');
   const {createPhotoAligner} = await import('/src/Next/photo/align-photo.mjs');
-  const {previewPhoto, cropPhoto} = await import('/src/Next/photo/crop.mjs');
+  const {previewPhoto} = await import('/src/Next/photo/crop.mjs');
+  const {confirmCrop} = await import('/src/Next/photo/confirmed-crop.mjs');
   const text = await (await fetch('/runtime/manifest.json')).text();
   const manifest = JSON.parse(text);
   const manifestSha256 = [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text)))].map(b => b.toString(16).padStart(2, '0')).join('');
@@ -160,7 +162,7 @@ BRIDGE = """async ([fixture, area]) => {
     const preview = await previewPhoto(file);
     URL.revokeObjectURL(preview.url);
     const w = preview.previewWidth, h = preview.previewHeight, side = Math.min(w, h);
-    crop = await cropPhoto(file, {left: area[0] * w, top: area[1] * h, width: area[2] * side, height: area[2] * side}, {previewScale: preview.scale, rotation: 0});
+    crop = await confirmCrop(file, {left: area[0] * w, top: area[1] * h, width: area[2] * side, height: area[2] * side}, {previewScale: preview.scale, rotation: 0});
   } catch (error) { return {stage: 'crop', error: String(error?.message || error)}; }
   const before = window.__cropProbe.encode;
   try { await runtime.encodePhoto(crop, {}); return {stage: 'encoded', encode: window.__cropProbe.encode - before, align: window.__cropProbe.align}; }

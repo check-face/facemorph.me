@@ -97,6 +97,20 @@ class Site:
 
 STRIP = "const m=require('node:module'),fs=require('node:fs');process.stdout.write(m.stripTypeScriptTypes(fs.readFileSync(process.argv[1],'utf8')))"
 TS_SPECIFIER = re.compile(r"""((?:\bfrom|\bimport)\s*\(?\s*)(['"])(\.{1,2}/[^'"]+)\.ts\2""")
+# A workspace package by name (`@facemorph/stylegan-js/engine`), resolved through its package.json `source` export.
+PACKAGE_SPECIFIER = re.compile(r"""((?:\bfrom|\bimport)\s*\(?\s*)(['"])(@facemorph/[a-z0-9-]+(?:/[a-z0-9-]+)?)\2""")
+
+
+def package_sources(repo: Path) -> dict:
+    """Each workspace package's exports as {specifier: absolute TS source path}, for the entries with a source."""
+    out = {}
+    for manifest in sorted((repo / 'packages').glob('*/package.json')):
+        meta = json.loads(manifest.read_text())
+        for key, entry in (meta.get('exports') or {}).items():
+            if isinstance(entry, dict) and entry.get('source'):
+                spec = meta['name'] + ('' if key == '.' else key[1:])
+                out[spec] = (manifest.parent / entry['source']).resolve()
+    return out
 
 
 def browser_source(src: Path, into: Path) -> Path:
@@ -107,7 +121,8 @@ def browser_source(src: Path, into: Path) -> Path:
     (src/contracts) and of the packages. In the copy, every TS module reachable by a relative import is written as
     `.mjs` with its types stripped (Node's own stripTypeScriptTypes) and every such import points at that `.mjs`. A
     module inside `src` keeps its place; one outside it (a package) goes under `into/_repo/` at its repository path,
-    so its own relative imports still resolve. Nothing else changes."""
+    so its own relative imports still resolve. A workspace package imported by name (`@facemorph/stylegan-js/engine`)
+    resolves through its package.json `source` export the same way. Nothing else changes."""
     src = src.resolve()
     repo = next(p for p in src.parents if (p / 'packages').is_dir())
     shutil.copytree(src, into, symlinks=True)
@@ -120,16 +135,21 @@ def browser_source(src: Path, into: Path) -> Path:
         return into / rel.with_suffix('.mjs')
 
     pending, done = [], set()
+    packages = package_sources(repo)
 
     def rewrite(text: str, source: Path, out: Path) -> str:
-        def one(m):
-            target = (source.parent / (m.group(3) + '.ts')).resolve()
+        def point(m, target: Path) -> str:
             if target not in done:
                 done.add(target)
                 pending.append(target)
             rel = os.path.relpath(dest(target), out.parent)
             return f"{m.group(1)}{m.group(2)}{rel if rel.startswith('.') else './' + rel}{m.group(2)}"
-        return TS_SPECIFIER.sub(one, text)
+
+        def package(m):
+            target = packages.get(m.group(3))
+            return point(m, target) if target else m.group(0)
+        text = TS_SPECIFIER.sub(lambda m: point(m, (source.parent / (m.group(3) + '.ts')).resolve()), text)
+        return PACKAGE_SPECIFIER.sub(package, text)
 
     for copy in into.rglob('*.mjs'):
         source = src / copy.relative_to(into)

@@ -1,6 +1,7 @@
 """browser_source (fm-eulc follow-up): on a planted source tree, a shim that re-exports a package's TS module, the
 package module's own relative TS imports (a sibling and a parent directory) and an app module importing app TS all
-end up as `.mjs` with types stripped; other files are copied as they are. The result is loaded by Node as plain
+end up as `.mjs` with types stripped, as does a workspace package imported by name through its `source` export; other
+files are copied as they are. The result is loaded by Node as plain
 JavaScript (no type stripping involved).
 
     python3 scripts/import/control_site_test.py
@@ -48,6 +49,29 @@ class BrowserSource(unittest.TestCase):
                             'const {e}=await import(process.argv[1]);console.log(e)', str(out / 'Next/Assets/uses-d.mjs')],
                            capture_output=True, text=True)
         self.assertEqual(r.stdout.strip(), 'x!', r.stderr)
+
+    def test_workspace_package_specifiers_resolve_to_their_source(self):
+        root = Path(tempfile.mkdtemp())
+        pkg = root / 'packages/p'
+        (pkg / 'src/engine').mkdir(parents=True)
+        (pkg / 'package.json').write_text('{"name":"@facemorph/p","exports":{".":{"source":"./src/index.ts","default":"./dist/index.js"},'
+                                          '"./engine":{"source":"./src/engine/index.ts","default":"./dist/engine/index.js"}}}')
+        (pkg / 'src/index.ts').write_text("export const top = (n: number): number => n + 1;\n")
+        (pkg / 'src/engine/index.ts').write_text("import { top } from '../index.ts';\nexport const deep = (n: number): number => top(n) * 10;\n")
+        src = root / 'apps/web/src/Next'
+        src.mkdir(parents=True)
+        (src / 'uses.mjs').write_text("import {top} from '@facemorph/p';\nimport {deep} from \"@facemorph/p/engine\";\n"
+                                      "import {other} from '@facemorph/unknown';\nexport const v = [top(1), deep(1)];\n")
+        out = browser_source(root / 'apps/web/src', root / 'browser/src')
+        uses = (out / 'Next/uses.mjs').read_text()
+        self.assertIn("from '../_repo/packages/p/src/index.mjs'", uses)
+        self.assertIn('from "../_repo/packages/p/src/engine/index.mjs"', uses)
+        self.assertIn("from '@facemorph/unknown'", uses)  # no source export: left as written
+        (out / 'Next/uses.mjs').write_text(uses.replace("import {other} from '@facemorph/unknown';\n", ''))
+        r = subprocess.run(['node', '--no-experimental-strip-types', '--input-type=module', '-e',
+                            'const {v}=await import(process.argv[1]);console.log(v.join())', str(out / 'Next/uses.mjs')],
+                           capture_output=True, text=True)
+        self.assertEqual(r.stdout.strip(), '2,20', r.stderr)
 
 
 if __name__ == '__main__':

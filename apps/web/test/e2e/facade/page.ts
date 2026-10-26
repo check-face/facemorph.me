@@ -308,6 +308,51 @@ const harness = {
     const out = await f.execute(request('face', id, [input(id, 'photo', 'Photo', chosen)]));
     return { selection: selection.kind, out, ...settled() };
   },
+  /**
+   * crop.fix (fm-6ib8): a photo the detector cannot find a face in. Run as chosen, detection proposes nothing and
+   * the typed outcome asks for a crop (before OK); the crop confirmed whole with Use this crop then runs as the face.
+   * Counts the worker messages after OK: 'align' is a detection pass, 'encode-aligned' an e4e attempt.
+   */
+  async confirmedCrop(id: string, url: string) {
+    const blob = await (await fetch(url)).blob();
+    const file = new File([blob], 'no-face.jpg', { type: 'image/jpeg' });
+    const selection = await f.selectPhoto({ id, files: [file] });
+    const source =
+      selection.kind === 'photo'
+        ? selection.file
+        : selection.kind === 'crop'
+          ? selection.offer.file
+          : null;
+    if (!source) return { selection: selection.kind };
+    const proposal = await f.execute(request('face', id, [input(id, 'photo', 'Photo', source)]));
+    const offer = await f.previewPhoto(source);
+    const side = Math.min(offer.previewWidth, offer.previewHeight);
+    const chosen = await f.cropPhoto(
+      source,
+      { left: 0, top: 0, width: side, height: side },
+      { previewScale: offer.scale, rotation: 0 },
+    );
+    const posted: string[] = [];
+    const post = Worker.prototype.postMessage;
+    Worker.prototype.postMessage = function (this: Worker, message: unknown, ...rest: unknown[]) {
+      const type = (message as { type?: unknown } | null)?.type;
+      if (typeof type === 'string') posted.push(type);
+      return (post as (...a: unknown[]) => void).call(this, message, ...rest);
+    } as typeof Worker.prototype.postMessage;
+    try {
+      const out = await f.execute(request('face', id, [input(id, 'photo', 'Photo', chosen)]));
+      return {
+        selection: selection.kind,
+        proposalCropFace: proposal.cropFace,
+        out,
+        detections: posted.filter((t) => t === 'align').length,
+        encodes: posted.filter((t) => t === 'encode-aligned').length,
+        ...settled(),
+      };
+    } finally {
+      Worker.prototype.postMessage = post;
+    }
+  },
   save: (id: string) => f.saveMedia(id),
   /** One Save with its wall time, the prepared-file counters and the job progress count after it (fm-ykfa). */
   async saveTimed(id: string, format?: f.StillFormat) {

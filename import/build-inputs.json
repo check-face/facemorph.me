@@ -352,6 +352,14 @@
         }
       },
       {
+        "file": "src/Next/photo/confirmed-crop.test.mjs",
+        "runs_on": "closure",
+        "added": {
+          "bead": "fm-6ib8",
+          "reason": "Monorepo addition: a confirmed crop goes to e4e directly through the real runtime composition (no detector after OK, one attempt or one closed-set error)"
+        }
+      },
+      {
         "file": "src/Next/browser/runtime-manifest.test.mjs",
         "runs_on": "closure",
         "added": {

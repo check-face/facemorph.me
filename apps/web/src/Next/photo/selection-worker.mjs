@@ -72,12 +72,12 @@ self.onmessage=async({data})=>{
     stats.faceBoxes.push({x:Math.max(0,Math.min(header.width-size,cx-size/2))/header.width,y:Math.max(0,Math.min(header.height-size,cy-size/2))/header.height,width:size/header.width,height:size/header.height});
    }}finally{m._free(ptr);}
   }
-  if(data.requireSingleFace&&count!==1)throw Error(count===0?'No face was found. Choose a clear photo containing one face.':'More than one face was found. Choose a photo containing only one face.');
+  if(data.requireSingleFace&&count!==1)throw Object.assign(Error(count===0?'No face was found. Choose a clear photo containing one face.':'More than one face was found. Choose a photo containing only one face.'),{code:count===0?'no-face':'multiple-faces'});
   const didAlign=Boolean(await stage('photo-warp-resize',()=>readError(m,m._cf_prepare(data.tryAlign?1:0))));
   const rgb=m.HEAPU8.slice(m._cf_prepared(),m._cf_prepared()+256*256*3),tensor=new Float32Array(3*256*256);
   for(let p=0;p<256*256;p++)for(let c=0;c<3;c++){let value=Math.fround(rgb[p*3+c]/255);value=Math.fround(value-.5);tensor[c*256*256+p]=Math.fround(value/.5);}
   stats.preparedSha256=hex(rgb);stats.tensorSha256=hex(new Uint8Array(tensor.buffer));stats.faceCount=count;stats.didAlign=didAlign;stats.wasmCapacityBytes=m.HEAPU8.buffer.byteLength;m._cf_reset();
   postMessage({type:'complete',result:{tensor,shape:[1,3,256,256],rgb,width:256,height:256,didAlign,faceCount:count,stats,provenance:{preprocessingSha256:manifest.preprocessingSha256,landmarksSha256:landmarks.sha256,runtimeSha256:wasm.sha256,facePolicy:data.requireSingleFace?'exactly-one-face-v1':'legacy-largest-face-or-unaligned-v1',orientationPolicy:manifest.orientationPolicy,exifOrientation:header.exifOrientation,privateDataStayedLocal:true}}},[tensor.buffer,rgb.buffer]);
- }catch(error){postMessage({type:'error',name:error.name,message:String(error.message||error),stats});}
+ }catch(error){postMessage({type:'error',name:error.name,message:String(error.message||error),code:typeof error.code==='string'?error.code:undefined,stats});}
  finally{if(pointer)m?._free(pointer);try{m?._cf_reset();}catch{}if(moduleObjectUrl)URL.revokeObjectURL(moduleObjectUrl);}
 };

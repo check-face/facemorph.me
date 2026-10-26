@@ -28,6 +28,7 @@ import {refusal} from './photo/refusal.mjs';
 import {persistenceAction} from './storage-request.mjs';
 import {routeAssets,photoAssets,measure} from './model-inventory.mjs';
 import {previewPhoto,cropPhoto} from './photo/crop.mjs';
+import {confirmCrop} from './photo/confirmed-crop.mjs';
 import {getPublicCatalogue,galleryTextUrl,publicNameLatent} from './public-previews.mjs';
 export {galleryTextUrl,gallerySeedUrl,publicPreview} from './public-previews.mjs';
 // The U-14 slider consumes frames through window.__nextFrames.get(key); wire the real store
@@ -440,7 +441,7 @@ export async function execute(request){
   }
   rememberView(request);retainSession();
   diagnostics.finish('completed');return snapshot();
- }catch(error){diagnostics.finish(error?.name==='AbortError'?'cancelled':'failed',error,{stage:lastStage});if(error?.name==='AbortError')return snapshot('Cancelled. Your completed faces are still available.');if(error.alignmentStats)analytics.operationResult?.('selection',error.alignmentStats.faceCount>1?'shown':'failed',undefined,{face_count:error.alignmentStats.faceCount===0?'zero':error.alignmentStats.faceCount===1?'one':error.alignmentStats.faceCount>1?'multiple':undefined});const choice=error.alignmentStats?.faceBoxes?.length>1&&revisionOf(request.target)===revisions.get(request.target)?await prepareFaceChoices(request.target,error.alignmentStats.faceBoxes,request.inputs.find(item=>item.id===request.target)?.file):null;return {...snapshot(''),errorMessage:choice?'':String(error?.message||'Generation failed. Your completed results are still available.'),refusal:error?.name==='AdmissionRefused'?{reasonKey:error.reasonKey,text:error.message,helpAnchor:error.helpAnchor}:undefined,photoChoices:choice,cropFace:!choice&&request.target&&sourceFiles.has(request.target)&&/No face was found|More than one face was found/.test(error.message)?request.target:null};}
+ }catch(error){diagnostics.finish(error?.name==='AbortError'?'cancelled':'failed',error,{stage:lastStage});if(error?.name==='AbortError')return snapshot('Cancelled. Your completed faces are still available.');if(error.alignmentStats)analytics.operationResult?.('selection',error.alignmentStats.faceCount>1?'shown':'failed',undefined,{face_count:error.alignmentStats.faceCount===0?'zero':error.alignmentStats.faceCount===1?'one':error.alignmentStats.faceCount>1?'multiple':undefined});const choice=error.alignmentStats?.faceBoxes?.length>1&&revisionOf(request.target)===revisions.get(request.target)?await prepareFaceChoices(request.target,error.alignmentStats.faceBoxes,request.inputs.find(item=>item.id===request.target)?.file):null;return {...snapshot(''),errorMessage:choice?'':String(error?.message||'Generation failed. Your completed results are still available.'),refusal:error?.name==='AdmissionRefused'?{reasonKey:error.reasonKey,text:error.message,helpAnchor:error.helpAnchor}:undefined,photoChoices:choice,cropFace:!choice&&request.target&&request.inputs?.find(item=>item.id===request.target)?.file instanceof Blob&&error?.faceDetection===true?request.target:null};}
  finally{writer?.dispose();writer=null;active=null;if(wanted.size)void pumpDownloads();else if(!downloads.routeReady||!downloads.photoReady)void refreshInventory();}
 }
 export function cancel(){active?.abort();writer?.dispose();runtime?.cancel();}
@@ -596,7 +597,8 @@ export async function selectPhotoReported(request){
  }
  warmPhotoTools();return Promise.resolve(photoStage('photo-select',()=>selectPhoto(request))).then(result=>{if(selectionRevision!==revisionOf(request.id)){if(result?.url)URL.revokeObjectURL(result.url);return null;}if(result)analytics.photoSelected({outcome:'ready'});return result;},error=>{analytics.photoSelected({outcome:'invalid'});throw error;});}
 export function previewPhotoReported(file,options){return photoStage('photo-preview',()=>previewPhoto(file,options));}
-export function cropPhotoReported(file,area,options){return photoStage('photo-crop',()=>cropPhoto(file,area,options));}
+// Use this crop: the result carries its frozen ConfirmedCrop, so it is encoded directly, never detected again (fm-6ib8).
+export function cropPhotoReported(file,area,options){return photoStage('photo-crop',()=>confirmCrop(file,area,options));}
 export function cancelPhotoRun(){closePhotoRun('cancelled');}
 // Published gallery assets are addressed by the same identity the product already computes:
 // a text face by the SHA-256 of its exact lowercase request, a numeric seed by the seed. The
