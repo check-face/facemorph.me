@@ -5,6 +5,7 @@ import { spawnSync } from 'node:child_process';
 import { globSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { scopeInventory } from './scaffold-scopes.mjs';
 
 export const SHARDS = 6;
 const ROOT = fileURLToPath(new URL('../..', import.meta.url));
@@ -101,7 +102,21 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     /^\d+$/.test(value ?? '') &&
     (args.length === 2 || (args.length === 3 && flag === '--quick'))
   ) {
-    const selected = partitionInventory(shardInventory(suites, Number(value)), flag === '--quick');
+    const quick = flag === '--quick';
+    const selected = partitionInventory(shardInventory(suites, Number(value)), quick);
+    const scoped = scopeInventory(
+      selected.run,
+      quick ? JSON.parse(process.env.FACEMORPH_CHANGED_FILES || 'null') : null,
+    );
+    if (scoped.deferred.length)
+      console.log(
+        JSON.stringify({
+          event: 'unaffected-package-tests',
+          reason:
+            'Audited CI orchestration changes retain root and app topology tests; full qualification runs all',
+          files: scoped.deferred.flatMap(({ cwd, files }) => files.map((file) => `${cwd}/${file}`)),
+        }),
+      );
     if (selected.deferred.length)
       console.log(
         JSON.stringify({
@@ -112,7 +127,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
           ),
         }),
       );
-    for (const { cwd, prefix, files } of selected.run) {
+    for (const { cwd, prefix, files } of scoped.run) {
       console.log(JSON.stringify({ cwd: cwd || '.', command: [...prefix, ...files] }));
       const [executable, ...args] = [...prefix, ...files];
       const result = spawnSync(executable === 'node' ? process.execPath : executable, args, {

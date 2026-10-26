@@ -162,6 +162,6 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   if (process.env['GITHUB_OUTPUT'])
     appendFileSync(
       process.env['GITHUB_OUTPUT'],
-      `lanes=${JSON.stringify(lanes)}\nbase=${files ? base : ''}\n`,
+      `lanes=${JSON.stringify(lanes)}\nbase=${files ? base : ''}\nfiles=${JSON.stringify(files)}\n`,
     );
 }

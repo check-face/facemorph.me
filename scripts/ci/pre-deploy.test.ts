@@ -121,3 +121,13 @@ test('actual receipt CLI refuses push, mismatched source and partial full runs',
     rmSync(root, { recursive: true, force: true });
   }
 });
+
+test('the exact stacked file output reaches shards while full qualification remains unconditional', () => {
+  assert.equal(main.jobs.changes.outputs.files, '${{ steps.select.outputs.files }}');
+  assert.equal(main.jobs.scaffold.with.changed_files, '${{ needs.changes.outputs.files }}');
+  const scaffold = wf('scaffold');
+  assert.equal(scaffold.on.workflow_call.inputs.changed_files.default, 'null');
+  const step = scaffold.jobs.tests.steps.find((s: any) => s.env?.FACEMORPH_CHANGED_FILES);
+  assert.equal(step.env.FACEMORPH_CHANGED_FILES, '${{ inputs.changed_files }}');
+  assert.equal(step.env.FULL, "${{ github.event_name == 'workflow_dispatch' || inputs.full }}");
+});

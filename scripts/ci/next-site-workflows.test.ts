@@ -151,8 +151,8 @@ test('main artifact consumers do not wait on CPU or compiled UI qualification; a
     for (const pin of provenance)
       assert.equal(main.jobs[id].with[pin], main.jobs['next-site'].with[pin]);
   }
-  // fm-6fx6: qualification runs whenever a deploy target is set, and the deploy needs it to pass.
+  // Publication is manual after all lanes qualify; a configured target must not rebuild docs-only pushes.
   for (const id of ['next-site-artifact', 'next-site'])
-    assert.match(main.jobs[id].if, /FACEMORPH_DEPLOY_TARGET/);
+    assert.doesNotMatch(main.jobs[id].if, /FACEMORPH_DEPLOY_TARGET/);
   assert.match(main.jobs['next-deploy'].if, /needs\.pre-deploy\.result == 'success'/);
 });

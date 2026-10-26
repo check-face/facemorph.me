@@ -4,6 +4,10 @@ name: scaffold
 on:
   workflow_call:
     inputs:
+      changed_files:
+        type: string
+        default: 'null'
+        description: Exact stacked changed files as JSON; null means run every suite
       full:
         type: boolean
         required: false
@@ -104,6 +108,7 @@ jobs:
         env:
           SHARD: ${{ matrix.shard }}
           FULL: ${{ github.event_name == 'workflow_dispatch' || inputs.full }}
+          FACEMORPH_CHANGED_FILES: ${{ inputs.changed_files }}
       - name: The tests wrote nothing
         run: git diff --exit-code
   # Keep the dependency controller's existing required check context, scaffold / gates.

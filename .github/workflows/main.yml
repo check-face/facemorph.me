@@ -37,6 +37,7 @@ jobs:
     outputs:
       lanes: ${{ steps.select.outputs.lanes }}
       base: ${{ steps.select.outputs.base }}
+      files: ${{ steps.select.outputs.files }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -341,7 +342,7 @@ jobs:
     secrets: inherit
   next-site-artifact:
     needs: changes
-    if: contains(fromJSON(needs.changes.outputs.lanes), 'next-site') || contains(fromJSON(needs.changes.outputs.lanes), 'mobile-browser') || contains(fromJSON(needs.changes.outputs.lanes), 'web-shell') || (github.event_name == 'push' && vars.FACEMORPH_DEPLOY_TARGET != '') || contains(fromJSON(needs.changes.outputs.lanes), 'app-contracts') || contains(fromJSON(needs.changes.outputs.lanes), 'build-identity') || contains(fromJSON(needs.changes.outputs.lanes), 'cloudflare-model-host') || contains(fromJSON(needs.changes.outputs.lanes), 'contracts-m1') || contains(fromJSON(needs.changes.outputs.lanes), 'crop-repro') || contains(fromJSON(needs.changes.outputs.lanes), 'hosting-staging') || contains(fromJSON(needs.changes.outputs.lanes), 'import-checks') || contains(fromJSON(needs.changes.outputs.lanes), 'import-closure') || contains(fromJSON(needs.changes.outputs.lanes), 'manager-cache') || contains(fromJSON(needs.changes.outputs.lanes), 'native-retirement') || contains(fromJSON(needs.changes.outputs.lanes), 'package-gates') || contains(fromJSON(needs.changes.outputs.lanes), 'name-catalogue') || contains(fromJSON(needs.changes.outputs.lanes), 'scaffold')
+    if: contains(fromJSON(needs.changes.outputs.lanes), 'next-site') || contains(fromJSON(needs.changes.outputs.lanes), 'mobile-browser') || contains(fromJSON(needs.changes.outputs.lanes), 'web-shell') || contains(fromJSON(needs.changes.outputs.lanes), 'app-contracts') || contains(fromJSON(needs.changes.outputs.lanes), 'build-identity') || contains(fromJSON(needs.changes.outputs.lanes), 'cloudflare-model-host') || contains(fromJSON(needs.changes.outputs.lanes), 'contracts-m1') || contains(fromJSON(needs.changes.outputs.lanes), 'crop-repro') || contains(fromJSON(needs.changes.outputs.lanes), 'hosting-staging') || contains(fromJSON(needs.changes.outputs.lanes), 'import-checks') || contains(fromJSON(needs.changes.outputs.lanes), 'import-closure') || contains(fromJSON(needs.changes.outputs.lanes), 'manager-cache') || contains(fromJSON(needs.changes.outputs.lanes), 'native-retirement') || contains(fromJSON(needs.changes.outputs.lanes), 'package-gates') || contains(fromJSON(needs.changes.outputs.lanes), 'name-catalogue') || contains(fromJSON(needs.changes.outputs.lanes), 'scaffold')
     uses: ./.github/workflows/next-site-artifact.yml
     permissions:
       contents: read
@@ -351,7 +352,7 @@ jobs:
     secrets: inherit
   next-site:
     needs: [changes, next-site-artifact]
-    if: contains(fromJSON(needs.changes.outputs.lanes), 'next-site') || (github.event_name == 'push' && vars.FACEMORPH_DEPLOY_TARGET != '')
+    if: contains(fromJSON(needs.changes.outputs.lanes), 'next-site')
     uses: ./.github/workflows/next-site-qualify.yml
     permissions:
       contents: read
@@ -439,6 +440,7 @@ jobs:
       shared_build: true
       full: ${{ github.event_name == 'workflow_dispatch' }}
       base: ${{ needs.changes.outputs.base }}
+      changed_files: ${{ needs.changes.outputs.files }}
     secrets: inherit
   stats-worker:
     needs: changes
