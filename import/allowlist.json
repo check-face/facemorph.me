@@ -1284,10 +1284,10 @@
       "bytes": 14707,
       "class": "src-next",
       "ported": {
-        "sha256": "fb9ec243de367fe0cf828a916fbda4a939bf2e2cf879cc59c1e30fbd920d1bb7",
-        "bytes": 15275,
-        "bead": "fm-5yqq",
-        "reason": "Native retirement: comment no longer mentions the desktop app (fm-be10); the changeover statistics visit is noted behind the stats sink's own gate (both production hosts) and job starts reach the sink (fm-5yqq)"
+        "sha256": "a9517533ef7f3f0bc59df181041d3acadbe9efb59aec14f84bc4ba920d7527a4",
+        "bytes": 15296,
+        "bead": "fm-id4c",
+        "reason": "Native retirement: comment no longer mentions the desktop app (fm-be10); the changeover statistics visit is noted behind the stats sink's own gate (both production hosts) and job starts reach the sink (fm-5yqq); no fixed face count: geometry controls bounded by frames, analytics faces unclamped (c12b4f9)"
       }
     },
     {
@@ -1295,7 +1295,13 @@
       "destination": "apps/web/src/Next/analytics.test.mjs",
       "sha256": "799a1e209dbc1225ffc4218a07ddd505f283d5ce4cfa9966a888a9b3604d1020",
       "bytes": 4530,
-      "class": "src-next"
+      "class": "src-next",
+      "ported": {
+        "sha256": "713048387a4764beba4c4129c3393c6c9e2a45367b65faff88dd27c867064983",
+        "bytes": 4712,
+        "bead": "fm-id4c",
+        "reason": "no fixed face count: geometry controls bounded by frames, analytics faces unclamped (c12b4f9)"
+      }
     },
     {
       "source": "src/Next/browser/README.md",
@@ -1667,10 +1673,10 @@
       "bytes": 9689,
       "class": "src-next",
       "ported": {
-        "sha256": "1e026776579a0ee97c996456705cf0fc47663105f49965b5db1c11d8c5766868",
-        "bytes": 9669,
-        "bead": "fm-36ag",
-        "reason": "Custom frames per face (2 up to the 4,096-frame budget, odd counts included) and a Full quality video choice; 512 × 512 stays the default (36b3236)"
+        "sha256": "30d76c09f887de0363963390199156c60c6694dd4c5e1067ac49b3cf364ec806",
+        "bytes": 9758,
+        "bead": "fm-id4c",
+        "reason": "Custom frames per face (2 up to the 4,096-frame budget, odd counts included) and a Full quality video choice; 512 × 512 stays the default (36b3236); no fixed face count: geometry controls bounded by frames, analytics faces unclamped (c12b4f9)"
       }
     },
     {
@@ -1687,10 +1693,10 @@
       "bytes": 8649,
       "class": "src-next",
       "ported": {
-        "sha256": "9c1c2d004f7b714cd984d60066298126a52d9668a2824df1b5ad7ec1e9df19b1",
-        "bytes": 8803,
-        "bead": "fm-36ag",
-        "reason": "Custom frames per face (2 up to the 4,096-frame budget, odd counts included) and a Full quality video choice; 512 × 512 stays the default (36b3236)"
+        "sha256": "4db91c2e79d6b2833ed4cbae43ee23f6c30bb641c0ba974dec0bbf7bfa16482d",
+        "bytes": 9295,
+        "bead": "fm-id4c",
+        "reason": "Custom frames per face (2 up to the 4,096-frame budget, odd counts included) and a Full quality video choice; 512 × 512 stays the default (36b3236); no fixed face count: geometry controls bounded by frames, analytics faces unclamped (c12b4f9)"
       }
     },
     {
