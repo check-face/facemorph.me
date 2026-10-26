@@ -158,7 +158,7 @@ export type VideoChoice =
  * takes the largest Full size, not below Standard, whose ffmpegEncodeBytes fits FFMPEG_MEMORY_SHARE of a known
  * deviceMemory; unknown memory is no reason to shrink.
  */
-export function ffmpegChoice(reason: 'webcodecs-unavailable' | 'webcodecs-unsupported', options: VideoSizeOptions = {}): VideoChoice {
+export function ffmpegChoice(reason: 'webcodecs-unavailable' | 'webcodecs-unsupported', options: VideoSizeOptions = {}): Extract<VideoChoice, { kind: 'ffmpeg' }> {
   const sizes = qualitySizes(options);
   const floor = qualitySizes({ ...options, quality: 'standard' })[0]!;
   const memory = options.deviceMemoryGiB;
