@@ -22,7 +22,16 @@ import { NamesDialog, DetectedDialog, CropDialog, DownloadDialog } from './rende
 import { Support, TestingInvite } from './render/Support.tsx';
 
 export function Product({ store }: { store: Store }) {
-  const subscribe = useMemo(() => frameSubscription(store.subscribe), [store]);
+  const subscribe = useMemo(
+    () =>
+      frameSubscription(
+        store.subscribe,
+        undefined,
+        undefined,
+        (type) => type === 'Progressed' || type === 'DownloadsChanged',
+      ),
+    [store],
+  );
   const s = useSyncExternalStore(subscribe, store.getState);
   const dispatch = store.dispatch;
   const settings = {

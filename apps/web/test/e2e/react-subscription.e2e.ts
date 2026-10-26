@@ -45,6 +45,22 @@ test(
       page.on('pageerror', (error) => errors.push(error.message));
       await page.goto(ORIGIN);
       await page.waitForFunction(() => !!(window as unknown as FixtureWindow).__fmStore);
+      // Controlled inputs must paint in their native event. Deferring these notifications lets React
+      // restore an older value between Backspace events, so even deleting an entire word loses keys.
+      const field = page.locator('section.next-face .next-field input').first();
+      const original = await field.inputValue();
+      await field.click();
+      await page.keyboard.press('End');
+      for (let i = 0; i < original.length + 2; i++) await page.keyboard.press('Backspace');
+      const typed = 'native typing stays exact';
+      await page.keyboard.type(typed, { delay: 1 });
+      assert.equal(await field.inputValue(), typed, 'rapid native editing retains every key');
+      assert.equal(
+        await page.evaluate(
+          () => (window as unknown as FixtureWindow).__fmStore.getState().Inputs[0]!.value,
+        ),
+        typed,
+      );
       const burst = await page.evaluate(async () => {
         const store = (window as unknown as FixtureWindow).__fmStore;
         let notifications = 0;
@@ -91,6 +107,32 @@ test(
       await page.waitForFunction(
         () => document.querySelector('.next-tile-status')?.textContent === 'Acquiring fixture 299',
       );
+      const downloads = await page.evaluate(async () => {
+        const store = (window as unknown as FixtureWindow).__fmStore;
+        let notifications = 0;
+        const off = store.subscribe(() => notifications++);
+        try {
+          for (let i = 0; i < 300; i++) {
+            store.dispatch({
+              type: 'DownloadsChanged',
+              args: [
+                { ...store.getState().Downloads, phase: 'downloading', loaded: i, total: 300 },
+              ],
+            });
+            if (store.getState().Downloads.loaded !== i || notifications !== i + 1)
+              throw Error('Download state and ordinary subscribers must remain synchronous');
+            await Promise.resolve();
+          }
+          return { notifications, loaded: store.getState().Downloads.loaded };
+        } finally {
+          off();
+        }
+      });
+      assert.deepEqual(downloads, { notifications: 300, loaded: 299 });
+      await page.waitForFunction(() => {
+        const progress = document.querySelector('[aria-label="Model download progress"]');
+        return Math.abs(Number(progress?.getAttribute('aria-valuenow')) - (299 / 300) * 100) < 0.1;
+      });
       assert.equal(await page.getByLabel('Processing mode').isDisabled(), true);
       const operation = page.locator('section.next-face').first().locator('.next-face-operation');
       assert.equal(await operation.textContent(), 'Cancel');

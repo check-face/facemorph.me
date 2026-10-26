@@ -52,3 +52,17 @@ test('a subscriber added during notification starts with the following message',
   assert.equal(later, 1);
   store.dispose();
 });
+
+test('notification types follow the FIFO message and leave internal runner transitions unlabelled', () => {
+  const store = createStore(state);
+  const observed: (string | undefined)[] = [];
+  store.subscribe((type) => {
+    observed.push(type);
+    if (observed.length === 1)
+      store.update((current) => ({ state: { ...current, Status: 'runner' }, effects: [] }));
+  });
+  store.dispatch(msg('MoreNames'));
+  assert.deepEqual(observed, ['MoreNames', undefined]);
+  assert.equal(store.getState().Status, 'runner');
+  store.dispose();
+});

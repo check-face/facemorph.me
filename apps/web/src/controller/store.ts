@@ -6,7 +6,8 @@ import { reduce, type ControllerFacts } from './reducers/index.ts';
 export interface Store {
   getState(): State;
   dispatch(message: Msg): void;
-  subscribe(listener: () => void): () => void;
+  /** Message notifications carry their type; internal runner updates have no message type. */
+  subscribe(listener: (messageType?: Msg['type']) => void): () => void;
   /** Internal runner transitions use the same FIFO as messages; they can never re-enter dispatch. */
   update(transition: (state: State) => Transition): void;
   dispose(): void;
@@ -20,18 +21,21 @@ export function createStore(initial: State, options: StoreOptions = {}): Store {
   let state = initial;
   let draining = false;
   let disposed = false;
-  const queue: ((state: State) => Transition)[] = [];
-  const listeners = new Set<() => void>();
-  function update(transition: (state: State) => Transition): void {
+  const queue: {
+    transition: (state: State) => Transition;
+    messageType: Msg['type'] | undefined;
+  }[] = [];
+  const listeners = new Set<(messageType?: Msg['type']) => void>();
+  function update(transition: (state: State) => Transition, messageType?: Msg['type']): void {
     if (disposed) return;
-    queue.push(transition);
+    queue.push({ transition, messageType });
     if (draining) return;
     draining = true;
     try {
       while (queue.length && !disposed) {
         const work = queue.shift()!;
         const previous = state;
-        const next = work(state);
+        const next = work.transition(state);
         state = next.state;
         if (next.effects.length && !options.runEffects)
           throw new Error('Controller effects require an executor');
@@ -40,7 +44,7 @@ export function createStore(initial: State, options: StoreOptions = {}): Store {
         if (state !== previous)
           for (const listener of currentListeners) {
             if (disposed) break;
-            listener();
+            listener(work.messageType);
           }
       }
     } catch (error) {
@@ -59,7 +63,7 @@ export function createStore(initial: State, options: StoreOptions = {}): Store {
         if (next === null)
           throw new Error(`Controller reducer is not implemented: ${message.type}`);
         return next;
-      });
+      }, message.type);
     },
     subscribe(listener) {
       if (disposed) throw new Error('Controller store disposed');

@@ -1,19 +1,28 @@
-type Subscribe = (notify: () => void) => () => void;
+type Subscribe<Event> = (notify: (event?: Event) => void) => () => void;
 
-/** Only React's notifications wait for a frame: controller state, effects and other subscribers stay synchronous.
- * A cold acquisition can publish many progress updates in one microtask chain. Rendering each one can exceed
- * React's nested-update limit; the next paint needs only the latest snapshot.
+/** Selected progress notifications wait for a frame; other transitions notify React synchronously.
+ * Controller state, effects and ordinary subscribers always stay synchronous. A cold acquisition can publish
+ * many updates in one microtask chain; the next paint needs only the latest progress snapshot.
  */
-export function frameSubscription(
-  subscribe: Subscribe,
+export function frameSubscription<Event>(
+  subscribe: Subscribe<Event>,
   request: (notify: () => void) => number = requestAnimationFrame,
   cancel: (frame: number) => void = cancelAnimationFrame,
-): Subscribe {
+  defer: (event?: Event) => boolean = () => true,
+): Subscribe<never> {
   return (notify) => {
     let active = true;
     let frame: number | null = null;
-    const off = subscribe(() => {
-      if (!active || frame !== null) return;
+    const off = subscribe((event) => {
+      if (!active) return;
+      // Native controlled-input changes must reach React before its event restores the DOM value.
+      if (!defer(event)) {
+        if (frame !== null) cancel(frame);
+        frame = null;
+        notify();
+        return;
+      }
+      if (frame !== null) return;
       frame = request(() => {
         frame = null;
         if (active) notify();

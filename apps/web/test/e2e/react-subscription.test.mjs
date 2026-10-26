@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { frameSubscription } from '../../shell/react-subscription.ts';
 
-function fixture() {
+function fixture(defer = () => true) {
   const listeners = new Set();
   const frames = new Map();
   let sequence = 0;
@@ -27,9 +27,10 @@ function fixture() {
         cancelled.push(id);
         frames.delete(id);
       },
+      defer,
     ),
-    publish() {
-      for (const notify of listeners) notify();
+    publish(event) {
+      for (const notify of listeners) notify(event);
     },
     paint() {
       const pending = [...frames.values()];
@@ -61,6 +62,34 @@ test('microtask bursts preserve synchronous subscribers and render the latest st
   f.publish();
   f.paint();
   assert.deepEqual(rendered, [300, 301]);
+  off();
+});
+
+test('interactive changes notify synchronously and replace a pending progress paint', () => {
+  const f = fixture((type) => type === 'Progressed');
+  let state = 'progress';
+  const rendered = [];
+  const off = f.render(() => rendered.push(state));
+  f.publish('Progressed');
+  assert.deepEqual(rendered, []);
+  state = 'typed value';
+  f.publish('Edit');
+  assert.deepEqual(
+    rendered,
+    ['typed value'],
+    'React sees the value before the native event returns',
+  );
+  assert.deepEqual(f.cancelled, [0]);
+  assert.equal(f.frames.size, 0);
+  f.paint();
+  state = 'runner transition';
+  f.publish();
+  assert.deepEqual(rendered, ['typed value', 'runner transition']);
+  state = 'later progress';
+  f.publish('Progressed');
+  assert.equal(f.frames.size, 1);
+  f.paint();
+  assert.deepEqual(rendered, ['typed value', 'runner transition', 'later progress']);
   off();
 });
 
