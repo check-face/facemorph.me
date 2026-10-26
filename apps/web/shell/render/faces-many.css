@@ -88,6 +88,17 @@
   justify-content: center;
   align-self: center;
 }
+/* Each + is a snap point too, so a swipe can rest on it at phone width (a tile is nearly the strip's width); the
+ * first and last rest against the strip's ends. */
+.next-morph-content.next-many .next-faces-strip > .next-connector {
+  scroll-snap-align: center;
+}
+.next-morph-content.next-many .next-faces-strip > .next-connector:first-child {
+  scroll-snap-align: start;
+}
+.next-morph-content.next-many .next-faces-strip > .next-connector:last-child {
+  scroll-snap-align: end;
+}
 .next-morph-content.next-many .next-faces-strip > .next-connector::before,
 .next-morph-content.next-many .next-faces-strip > .next-connector::after {
   display: none;

@@ -322,14 +322,17 @@ async function scroll(s: Session, dx: number, dy: number, at: { x: number; y: nu
   const roomX = 2 * (Math.min(cx, view.width - cx) - 40);
   const roomY = 2 * (Math.min(cy, view.height - cy) - 40);
   while (Math.abs(restX) >= 1 || Math.abs(restY) >= 1) {
-    const stepX = Math.sign(restX) * Math.min(Math.abs(restX), roomX);
-    const stepY = Math.sign(restY) * Math.min(Math.abs(restY), roomY);
+    const stepX = Math.sign(restX) * Math.min(Math.abs(restX), Math.max(1, roomX - 32));
+    const stepY = Math.sign(restY) * Math.min(Math.abs(restY), Math.max(1, roomY - 32));
     // Scrolling right/down moves the finger left/up.
-    const x = cx + stepX / 2;
-    const y = cy + stepY / 2;
+    // Cross the initial touch slop before moving the requested scroll distance.
+    const strokeX = stepX ? stepX + Math.sign(stepX) * 32 : 0;
+    const strokeY = stepY ? stepY + Math.sign(stepY) * 32 : 0;
+    const x = cx + strokeX / 2;
+    const y = cy + strokeY / 2;
     // touchStart, moves, a short hold (so no fling), touchEnd: the compositor scrolls as for a finger.
     const steps = 8;
-    const point = (k: number) => [{ x: x - (stepX * k) / steps, y: y - (stepY * k) / steps }];
+    const point = (k: number) => [{ x: x - (strokeX * k) / steps, y: y - (strokeY * k) / steps }];
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: point(0) });
     for (let k = 1; k <= steps; k++) {
       await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: point(k) });
@@ -401,21 +404,11 @@ async function visitAll(s: Session, count: number, label: string): Promise<Visit
       if (seen.size >= count) break;
       const box = await page.locator('[data-next-strip]').boundingBox();
       const before = v.strip!.left;
-      const pitch = await page.evaluate(() => {
-        const f = document.querySelector('[data-next-strip] > .next-face');
-        const c = document.querySelector('[data-next-strip] > .next-connector');
-        return (f?.getBoundingClientRect().width ?? 300) + (c?.getBoundingClientRect().width ?? 0);
-      });
-      // One view's worth of whole tiles (at least one), so every face passes through the view once.
-      // Snapping centres a tile, so its neighbours may be cut: step by the tiles wholly in view.
-      const tiles = Math.max(
-        1,
-        Math.min(Math.floor(v.strip!.width / pitch), v.faces.filter((f) => f.inView).length),
-      );
-      await scroll(s, tiles * pitch, 0, {
-        x: box!.x + box!.width / 2,
-        y: box!.y + 40,
-      });
+      // Visit the next unseen face rather than stepping a fixed pitch: insertion connectors are
+      // snap points too, and a fixed stroke can alias them while skipping every whole tile.
+      const next = v.faces.find((f) => !seen.has(f.id));
+      if (next) await reach(s, next.index);
+      else await scroll(s, v.strip!.width, 0, { x: box!.x + box!.width / 2, y: box!.y + 40 });
       await settle(page);
       const after = await page.evaluate(
         () => document.querySelector('[data-next-strip]')!.scrollLeft,
@@ -450,6 +443,8 @@ async function reach(s: Session, index: number): Promise<Locator> {
   const tile = page.locator(`section.next-face[data-next-face="${id}"]`);
   if ((await page.locator('[data-next-strip]').count()) > 0) {
     await pageTo(s, () => stripTop(page));
+    let best = Infinity;
+    let stalled = 0;
     for (let i = 0; i < 400; i++) {
       const where = await page.evaluate((faceId) => {
         const strip = document.querySelector<HTMLElement>('[data-next-strip]')!;
@@ -468,6 +463,10 @@ async function reach(s: Session, index: number): Promise<Locator> {
         return centre - strip.scrollLeft;
       }, id);
       if (where === 0) break;
+      stalled = Math.abs(where) >= best - 1 ? stalled + 1 : 0;
+      best = Math.min(best, Math.abs(where));
+      assert.ok(stalled < 3, `Touch/wheel could not reach face ${index + 1}; remaining ${where}px`);
+
       const box = (await page.locator('[data-next-strip]').boundingBox())!;
       await scroll(s, Math.sign(where) * Math.min(Math.abs(where), box.width * 3), 0, {
         x: box.x + box.width / 2,
@@ -1010,7 +1009,7 @@ test(
             [1280, false],
             [390, true],
           ] as const)
-            for (const count of [64, 150]) {
+            for (const count of [64, 150].filter((c) => !ONLY_COUNTS || ONLY_COUNTS.includes(c))) {
               // Admitted: each path adds the next face.
               {
                 const s = await open(browser, width, touch);
