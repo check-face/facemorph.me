@@ -103,17 +103,19 @@ self.onmessage = async ({ data }) => {
 
 /** Observe the real digest promises and committed OPFS writes, without delaying either API. */
 const PHASE_WORKER = `
-import {createModelCache, acquireUncachedBytes} from '/pkg/cache/model-cache.js';
-import {createShardStore} from '/pkg/cache/shard-store.js';
-import {createAcquisitionSlots} from '/pkg/acquisition/slots.js';
-import {grantRemaining} from '/pkg/acquisition/grants.js';
-import {Sha256} from '/pkg/cache/sha256.js';
+import {createModelCache, acquireUncachedBytes} from '/phase-pkg/cache/model-cache.js';
+import {createShardStore} from '/phase-pkg/cache/shard-store.js';
+import {createAcquisitionSlots} from '/phase-pkg/acquisition/slots.js';
+import {grantRemaining} from '/phase-pkg/acquisition/grants.js';
+import {Sha256} from '/phase-pkg/cache/sha256.js';
 let beginRead;
 self.onmessage = async ({data}) => {
   if (data.type === 'read') return beginRead();
   const events = [];
   let stage = 'acquire';
-  const mark = (phase, delta) => events.push({stage, phase, delta, at: performance.timeOrigin + performance.now()});
+  const sequence = new Int32Array(data.sequence);
+  // One atomic ordinal across workers observes ordering without delaying either native API.
+  const mark = (phase, delta) => events.push({stage, phase, delta, sequence: Atomics.add(sequence, 0, 1)});
   const digest = crypto.subtle.digest.bind(crypto.subtle);
   crypto.subtle.digest = async (...args) => {
     const size = args[1].byteLength;
@@ -174,17 +176,30 @@ self.onmessage = async ({data}) => {
 const app = createServer(tls, (req, res) => {
   const path = normalize(new URL(req.url ?? '/', 'https://x').pathname);
   const send = (type: string, body: Uint8Array | string) => {
-    res.writeHead(200, { 'content-type': type, 'cache-control': 'no-store' });
+    res.writeHead(200, {
+      'content-type': type,
+      'cache-control': 'no-store',
+      // WebKit checks the embedding policy on imported worker modules too.
+      ...(path === '/phase.html' || path === '/phase-worker.js' || path.startsWith('/phase-pkg/')
+        ? {
+            'cross-origin-opener-policy': 'same-origin',
+            'cross-origin-embedder-policy': 'require-corp',
+            'cross-origin-resource-policy': 'same-origin',
+          }
+        : {}),
+    });
     res.end(body);
   };
-  if (path === '/') return send('text/html', '<!doctype html><title>acquisition</title>');
+  if (path === '/' || path === '/phase.html')
+    return send('text/html', '<!doctype html><title>acquisition</title>');
   if (path === '/worker.js') return send('text/javascript', WORKER);
   if (path === '/phase-worker.js') return send('text/javascript', PHASE_WORKER);
-  if (path.startsWith('/pkg/')) {
+  if (path.startsWith('/pkg/') || path.startsWith('/phase-pkg/')) {
+    const prefix = path.startsWith('/phase-pkg/') ? '/phase-pkg/' : '/pkg/';
     try {
       return send(
         extname(path) === '.js' ? 'text/javascript' : 'application/octet-stream',
-        readFileSync(join(built, path.slice(5))),
+        readFileSync(join(built, path.slice(prefix.length))),
       );
     } catch {
       /* 404 below */
@@ -383,7 +398,7 @@ test.after(async () => {
   rmSync(work, { recursive: true, force: true });
 });
 
-async function session(t?: TestContext) {
+async function session(t?: TestContext, path = '/') {
   const context = await newContext!({ ignoreHTTPSErrors: true });
   await context.tracing.start({ screenshots: true, snapshots: true });
   const name = `acquisition-${++sessionId}`;
@@ -421,8 +436,11 @@ async function session(t?: TestContext) {
     await (abortCleanup ?? context.close());
   });
   try {
-    await page.goto(`${APP}/`);
-    await page.evaluate(() => import(String('/pkg/index.js')), undefined);
+    await page.goto(`${APP}${path}`);
+    await page.evaluate(
+      (module) => import(String(module)),
+      path === '/phase.html' ? '/phase-pkg/index.js' : '/pkg/index.js',
+    );
   } catch (error) {
     await capture();
     await context.close();
@@ -1193,28 +1211,52 @@ interface PhaseEvent {
   stage: string;
   phase: 'hash' | 'native-hash' | 'write';
   delta: number;
-  at: number;
+  sequence: number;
 }
 
-/** Cross-worker timestamps share an epoch. Count inputs only while the real API promise is pending. */
+/** Count inputs while the real API promise is pending. Worker timeOrigin + now is not a total
+ * order: Firefox's independently reduced clocks can place a lock successor before its predecessor
+ * settles (observed 1 ms inversion). Atomics supplies order without adding locks or waits. */
 function phasePeak(events: PhaseEvent[], phase: PhaseEvent['phase'], stage: string): number {
   let active = 0;
   let peak = 0;
   for (const event of events
     .filter((e) => e.phase === phase && e.stage === stage)
-    .sort((a, b) => a.at - b.at)) {
+    .sort((a, b) => a.sequence - b.sequence)) {
     active += event.delta;
+    assert.ok(active >= 0, `${phase} completion follows its start`);
     peak = Math.max(peak, active);
   }
   assert.equal(active, 0, `${phase} operations all settled`);
   return peak;
 }
 
+test('cross-worker phase observer preserves real order and detects actual overlap', () => {
+  const size = ACQUISITION_CHUNK_MAX_BYTES;
+  const event = (sequence: number, delta: number): PhaseEvent => ({
+    stage: 'acquire',
+    phase: 'hash',
+    sequence,
+    delta,
+  });
+  // Worker results arrive grouped by worker, not ordered by actual observation time.
+  const serial = [event(2, size), event(3, -size), event(0, size), event(1, -size)];
+  assert.equal(phasePeak(serial, 'hash', 'acquire'), size);
+  const overlapping = [event(0, size), event(3, -size), event(1, size), event(2, -size)];
+  const peak = phasePeak(overlapping, 'hash', 'acquire');
+  assert.equal(peak, size * 2);
+  assert.throws(() => assert.ok(peak <= ACQUISITION_BUDGETS['constrained-or-unknown'].hashBytes));
+  assert.throws(
+    () => phasePeak([event(0, -size), event(1, size)], 'hash', 'acquire'),
+    /completion follows/,
+  );
+});
+
 test(
   `${engine}: hash and OPFS write phases stay inside the frozen aggregate byte ceilings across real workers`,
   { skip: NO_BROWSER, timeout: 120_000 },
   async (t) => {
-    const s = await session(t);
+    const s = await session(t, '/phase.html');
     try {
       const make = (name: string, size: number, seed: number): AssetInput => {
         const body = bytes(size, seed);
@@ -1256,6 +1298,8 @@ test(
         const results = await s.page.evaluate(
           async ({ assets, grants, run, mode }) => {
             const workers: Worker[] = [];
+            // Only this phase-observation page opts into isolation for shared atomic telemetry.
+            const sequence = new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT);
             let ready = 0;
             try {
               return await Promise.all(
@@ -1281,6 +1325,7 @@ test(
                       worker.postMessage({
                         run,
                         mode,
+                        sequence,
                         asset,
                         grant: grants[i],
                         owner: `face:phase-${i}`,
@@ -1322,6 +1367,11 @@ test(
           'one request per missing asset (plus the legacy fixture); verified local reads add none',
         );
         const events = results.flatMap((r) => r.events);
+        assert.equal(
+          new Set(events.map((e) => e.sequence)).size,
+          events.length,
+          'one shared cross-worker event order',
+        );
         const stage = mode === 'local' ? 'local' : 'acquire';
         const hash = phasePeak(events, 'hash', stage);
         const write = phasePeak(events, 'write', 'acquire');
