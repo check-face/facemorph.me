@@ -237,6 +237,8 @@ async function reference(name: string, width: number): Promise<Buffer | null> {
     if (response?.ok) bytes = Buffer.from(await response.arrayBuffer());
   }
   if (!bytes) return null;
+  // hash-assert: replacement=prepared-file-reuse; the reference PNG read locally or from its release asset is the
+  // recorded inventory file byte-for-byte, not an encoder comparison (the grid is measured against its decoded pixels)
   assert.equal(createHash('sha256').update(bytes).digest('hex'), record.png_sha256, record.png);
   return bytes;
 }

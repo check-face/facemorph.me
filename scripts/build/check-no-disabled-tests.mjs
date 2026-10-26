@@ -53,6 +53,10 @@ export const SCOPE = {
     ['apps/web/scripts/**', 'imported byte-identical classic closure'],
     ['autoresearch/**', 'append-only research history'],
     ['hosting/**', 'imported byte-identical classic hosting'],
+    [
+      'packages/stylegan-js/test/vectors/candidate-control/{browser,Assets}/**',
+      "the candidate's frozen modules, byte-identical to their app commit, checked by the control manifest",
+    ],
     ['**/node_modules/**', 'third-party code'],
     [
       'scripts/build/check-no-disabled-tests.test.mjs',
