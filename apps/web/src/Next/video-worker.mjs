@@ -101,6 +101,10 @@ self.onmessage=async({data})=>{currentId=data.id;try{
    while(enc.encodeQueueSize>8)await new Promise(resolve=>setTimeout(resolve,2));
    const frame=new VideoFrame(data.rgba,{format:'RGBA',codedWidth:width,codedHeight:height,timestamp:Math.round(count*1e6/fps),duration:Math.round(1e6/fps)});
    enc.encode(frame,{keyFrame:count%Math.max(1,Math.round(fps*2))===0});frame.close();count++;
+   // Firefox's encoder holds every output until flush() even with an empty encode queue, so the
+   // writer's drain (released by encoded output) would wait forever and the morph would stall a few
+   // frames in. Flushing when output falls behind releases it; Chromium emits per frame and never does.
+   if(count-encodedCount>8){await enc.flush();if(encError)throw Error(encError);}
   }else{
    if(!core)throw Error('Encoder not initialized.');
    core.FS.write(stream,pixels,0,pixels.length,segmentFrames*pixels.length);segmentFrames++;count++;
