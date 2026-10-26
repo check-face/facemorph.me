@@ -585,6 +585,19 @@ export function previewPhotoReported(file,options){return photoStage('photo-prev
 // Use this crop: the result carries its frozen ConfirmedCrop, so it is encoded directly, never detected again (fm-6ib8).
 export function cropPhotoReported(file,area,options){return photoStage('photo-crop',()=>confirmCrop(file,area,options));}
 export function cancelPhotoRun(){closePhotoRun('cancelled');}
+// The confirmed-crop encode queue (fm-fy2.8): several confirmed crops encode in click order, one e4e at a time, each
+// slot with its own Cancel, Retry and Remove and tab-only pixels. face.batch renders tiles over these and never keeps
+// its own slots, attempt IDs or pixel references. Results are W+ latents; slot events carry slot, attempt and batch
+// revision.
+export async function encodeCropBatch(files,options={}){return (await engine()).encodeConfirmedCrops(files,options);}
+export async function retryCropSlots(slotIds,options={}){return (await engine()).retryCropSlots(slotIds,options);}
+export async function cancelCropSlot(slotId){return (await engine()).cancelCropSlot(slotId);}
+export async function removeCropSlot(slotId){return (await engine()).removeCropSlot(slotId);}
+export async function disposeCropBatch(batchRevision){return (await engine()).disposeCropBatch(batchRevision);}
+export async function cropSlots(){return (await engine()).cropSlots();}
+export async function subscribeCropSlots(listener){return (await engine()).subscribeCropSlots(listener);}
+/** Test-build hooks: a slot's pixel references, and the queue's live-encoder and derivation counts. */
+export async function cropQueueProbe(slotId){const service=await engine();return {pixelRefs:slotId?service.cropPixelRefs(slotId):undefined,...service.inspectCropQueue()};}
 // Published gallery assets are addressed by the same identity the product already computes:
 // a text face by the SHA-256 of its exact lowercase request, a numeric seed by the seed. The
 // catalogue carries identities rather than 8,966 URLs, so these rules derive the rest.

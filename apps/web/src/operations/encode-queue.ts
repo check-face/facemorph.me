@@ -73,6 +73,8 @@ export type SlotEvent =
       readonly type: 'slot.failed';
       readonly kind: SlotFailureKind;
       readonly message: string;
+      /** The error the attempt failed with, for a caller that rethrows its own typed error. */
+      readonly cause: unknown;
     })
   | (SlotEventBase & { readonly type: 'slot.cancelled' })
   | (SlotEventBase & { readonly type: 'slot.released'; readonly pixels: 'source' | 'derived' });
@@ -334,6 +336,7 @@ export function createEncodeQueue(options: EncodeQueueOptions) {
         ...base(slot, attemptId),
         kind,
         message: error instanceof Error ? error.message : String(error),
+        cause: error,
       });
     } finally {
       if (counted) live--;

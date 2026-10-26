@@ -1,6 +1,6 @@
 import {collectorEndpoint} from '../../../../hosting/next-cloudflare/environment.mjs';
 import {admitRuntimeManifest,RuntimeManifestRefused} from './browser/runtime-manifest.mjs';
-import {engineGeometry} from '@facemorph/stylegan-js/engine';import {FFHQ_1024_DESCRIPTOR,renderMorph} from '@facemorph/stylegan-js';
+import {engineGeometry} from '@facemorph/stylegan-js/engine';import {FFHQ_1024_DESCRIPTOR,renderMorph} from '@facemorph/stylegan-js';import {createEncodeQueue} from '../operations/encode-queue.ts';
 import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs/promises';import vm from 'node:vm';import {webcrypto} from 'node:crypto';
 const read=n=>fs.readFile(new URL(n,import.meta.url),'utf8');
 const plain=s=>s.replace(/^(?:import .*|export \{.*\} from .*);\n/gm,'').replaceAll('export ','').replaceAll('import.meta.url',JSON.stringify(import.meta.url));
@@ -12,7 +12,7 @@ function runtimeManifest(){
 test('Explicit route selection preserves cache-first lookup without allocating a worker',async()=>{
  const source=plain(await read('browser/runtime.mjs'));let allocated=0;
  const saved={blob:new Blob(['original'],{type:'image/png'}),space:'w-plus',generationSha256:'hash',imageSha256:'hash',latentSha256:'hash',values:new Float32Array(9216)};
- const ctx=vm.createContext({admitRuntimeManifest,RuntimeManifestRefused,engineGeometry,FFHQ_1024_DESCRIPTOR,renderMorph,analytics:new Proxy({},{get:()=>()=>{}}),onJobEnd(){},OffscreenCanvas:class{},ArrayBuffer,Blob,Float32Array,paintRgba:(canvas,frame)=>{canvas.paints=(canvas.paints||0)+1;},AbortController,DOMException,crypto:webcrypto,console,setTimeout,clearTimeout,JSON,openOriginals:async()=>({get:async()=>saved,close(){}}),digest:async()=> 'hash',generationIdentity:()=>({}),inputLatent:async()=>({identity:'seed'}),requireLatent:v=>v});vm.runInContext(source+'\nglobalThis.create=createBrowserRuntime;',ctx);
+ const ctx=vm.createContext({admitRuntimeManifest,RuntimeManifestRefused,engineGeometry,createEncodeQueue,FFHQ_1024_DESCRIPTOR,renderMorph,analytics:new Proxy({},{get:()=>()=>{}}),onJobEnd(){},OffscreenCanvas:class{},ArrayBuffer,Blob,Float32Array,paintRgba:(canvas,frame)=>{canvas.paints=(canvas.paints||0)+1;},AbortController,DOMException,crypto:webcrypto,console,setTimeout,clearTimeout,JSON,openOriginals:async()=>({get:async()=>saved,close(){}}),digest:async()=> 'hash',generationIdentity:()=>({}),inputLatent:async()=>({identity:'seed'}),requireLatent:v=>v});vm.runInContext(source+'\nglobalThis.create=createBrowserRuntime;',ctx);
  const r=ctx.create({manifest:runtimeManifest(),manifestSha256:'0'.repeat(64),workerFactory:()=>{allocated++;throw Error('Must not allocate');}});r.setPreferredRoute('webgpu');assert.equal((await r.generate({mode:'seed',value:'3'})).cached,true);assert.equal(allocated,0);r.dispose();
 });
 test('Committed faces survive video failure and export the current morph settings',async()=>{

@@ -9,7 +9,17 @@ import type {
 } from '../../../src/operations/service.ts';
 import type { InputRevision } from '../../../src/contracts/inputs.ts';
 import { readSession } from '../../../src/Next/last-result.mjs';
-import { cropPhotoReported, morphFramesKey } from '../../../src/Next/product-bridge.mjs';
+import { confirmedCropOf } from '../../../src/Next/photo/confirmed-crop.mjs';
+import {
+  cancelCropSlot,
+  cropPhotoReported,
+  cropQueueProbe,
+  encodeCropBatch,
+  morphFramesKey,
+  removeCropSlot,
+  retryCropSlots,
+  subscribeCropSlots,
+} from '../../../src/Next/product-bridge.mjs';
 import { frameStoreGet } from '../../../src/Next/morph-frames.mjs';
 import { createBrowserRuntime } from '../../../src/Next/browser/runtime.mjs';
 import { generationIdentity } from '../../../src/Next/browser/identity.mjs';
@@ -354,6 +364,104 @@ const harness = {
       };
     } finally {
       Worker.prototype.postMessage = post;
+    }
+  },
+  /**
+   * crop.queue (fm-fy2.8) through the real bridge on the CPU: A1 and A2 cropped from one photo and B2 from another,
+   * confirmed once each, then encoded by the bridge's queue in click order. B2 is cancelled while queued and later
+   * retried (a new attempt on the same frozen crop); a fourth slot is cancelled and removed to show Remove releasing
+   * its pixels. Worker messages after OK are counted: 'align' is a detection pass, 'encode-aligned' an e4e attempt.
+   */
+  async cropQueue(photoUrl: string, otherUrl: string) {
+    type Slot = {
+      slotId: string;
+      attemptId: string;
+      state: string;
+      code?: string;
+      result?: { values: Float32Array };
+    };
+    const fileOf = async (url: string, name: string) =>
+      new File([await (await fetch(url)).blob()], name, { type: 'image/jpeg' });
+    const [a, b] = [await fileOf(photoUrl, 'a.jpg'), await fileOf(otherUrl, 'b.jpg')];
+    const crop = async (file: File, at: number) => {
+      const offer = await f.previewPhoto(file);
+      const side = Math.floor(Math.min(offer.previewWidth, offer.previewHeight) * 0.8);
+      const left = Math.floor((offer.previewWidth - side) * at);
+      const top = Math.floor((offer.previewHeight - side) * at);
+      return (await cropPhotoReported(
+        file,
+        { left, top, width: side, height: side },
+        { previewScale: offer.scale, rotation: 0 },
+      )) as File;
+    };
+    const crops = [await crop(a, 0), await crop(b, 0.5), await crop(a, 1)];
+    const confirmed = crops.length;
+    const events: { type: string; slotId: string; attemptId: string; batchRevision: number }[] = [];
+    const unsubscribe = await subscribeCropSlots(
+      (e: { type: string; slotId: string; attemptId: string; batchRevision: number }) =>
+        events.push({
+          type: e.type,
+          slotId: e.slotId,
+          attemptId: e.attemptId,
+          batchRevision: e.batchRevision,
+        }),
+    );
+    const posted: { type: string; crop?: string }[] = [];
+    const post = Worker.prototype.postMessage;
+    Worker.prototype.postMessage = function (this: Worker, message: unknown, ...rest: unknown[]) {
+      const m = message as { type?: unknown; confirmedCropId?: unknown } | null;
+      if (typeof m?.type === 'string')
+        posted.push({
+          type: m.type,
+          ...(typeof m.confirmedCropId === 'string' ? { crop: m.confirmedCropId } : {}),
+        });
+      return (post as (...a: unknown[]) => void).call(this, message, ...rest);
+    } as typeof Worker.prototype.postMessage;
+    try {
+      const first = (await encodeCropBatch(crops, {
+        batchRevision: 1,
+        onSlots: (ids: string[]) => void cancelCropSlot(ids[1]!),
+      })) as Slot[];
+      const kept = (await cropQueueProbe(first[1]!.slotId)).pixelRefs as number;
+      const [retried] = (await retryCropSlots([first[1]!.slotId])) as Slot[];
+      const afterRetry = await cropQueueProbe(first[1]!.slotId);
+      const [held] = (await encodeCropBatch([crops[0]!], {
+        batchRevision: 2,
+        onSlots: (ids: string[]) => void cancelCropSlot(ids[0]!),
+      })) as Slot[];
+      const heldRefs = (await cropQueueProbe(held!.slotId)).pixelRefs as number;
+      const removed = await removeCropSlot(held!.slotId);
+      const releasedRefs = (await cropQueueProbe(held!.slotId)).pixelRefs as number;
+      const values = (s?: Slot) => (s?.result ? Array.from(s.result.values.subarray(0, 8)) : null);
+      return {
+        confirmed,
+        states: first.map((s) => s.state),
+        slotIds: first.map((s) => s.slotId),
+        retried: {
+          state: retried?.state,
+          attemptId: retried?.attemptId,
+          before: first[1]!.attemptId,
+        },
+        kept,
+        afterRetry: {
+          pixelRefs: afterRetry.pixelRefs,
+          derivations: afterRetry.derivations,
+          maxLiveEncoders: afterRetry.maxLiveEncoders,
+        },
+        held: { state: held?.state, heldRefs, removed, releasedRefs },
+        encodedCrops: posted.filter((p) => p.type === 'encode-aligned').map((p) => p.crop),
+        cropIds: crops.map((c) => confirmedCropOf(c)?.confirmedCropId as string),
+        detections: posted.filter((p) => p.type === 'align').length,
+        finite: [first[0], retried, first[2]].every(
+          (s) => s?.result?.values.length === 9216 && s.result.values.every(Number.isFinite),
+        ),
+        sample: { a1: values(first[0]), a2: values(first[2]), b2: values(retried) },
+        events,
+        ...settled(),
+      };
+    } finally {
+      Worker.prototype.postMessage = post;
+      unsubscribe();
     }
   },
   /**

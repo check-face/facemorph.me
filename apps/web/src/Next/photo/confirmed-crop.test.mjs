@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {deriveEncoderInput} from '@facemorph/stylegan-js';
 import {createBrowserRuntime} from '../browser/runtime.mjs';
-import {confirmCropped,confirmedCropOf,encoderInputFor,ConfirmedCropError} from './confirmed-crop.mjs';
+import {confirmCropped,confirmedCropOf,ConfirmedCropError} from './confirmed-crop.mjs';
 
 const SIZE=32;
 const pin=n=>String(n).repeat(64),asset=(n,size=4)=>({url:`https://model.example/asset-${n}`,sha256:pin(n),size});
@@ -29,15 +29,17 @@ function detector(kind){
  return {calls,alignPhoto:kind==='not-run'?undefined:async()=>{calls.n++;(failures[kind]||(()=>{}))();
   return {tensor:new Float32Array(196608),faceCount:1,didAlign:true,alignmentWorkerTerminated:true,provenance:{preprocessingSha256:pin(9),facePolicy:'exactly-one-face-v1'}};}};
 }
-function runtime({kind='ok',encodeFails=null}={}){
- const posted=[],tensors=[];const {calls,alignPhoto}=detector(kind);
- const workerFactory=()=>({postMessage(message){posted.push(message.type);if(message.type==='encode-aligned')tensors.push(message.tensor);
-  const fail=message.type==='encode-aligned'&&encodeFails;
+// failOnce: confirmedCropIds whose first e4e attempt fails (a retry then succeeds); `crops` records e4e order.
+function runtime({kind='ok',encodeFails=null,failOnce=new Set()}={}){
+ const posted=[],tensors=[],crops=[];const {calls,alignPhoto}=detector(kind);
+ const workerFactory=()=>({postMessage(message){posted.push(message.type);if(message.type==='encode-aligned'){tensors.push(message.tensor);crops.push(message.confirmedCropId);}
+  const once=message.type==='encode-aligned'&&failOnce.delete(message.confirmedCropId)?'Error':null;
+  const fail=message.type==='encode-aligned'&&(encodeFails||once);
   const result=message.type==='encode-aligned'?{values:new Float32Array(9216).fill(.1),shape:[1,18,512],space:'w-plus',encoderProvider:'wasm',encoderQualification:{passed:true,manifestSha256:pin(8)}}
    :['generate','synthesize'].includes(message.type)?{blob:new Blob(['mock-png'],{type:'image/png'}),values:new Float32Array(9216).fill(.1),space:'w-plus',shape:[1,18,512]}:{deviceValidated:true};
-  queueMicrotask(()=>this.onmessage({data:fail?{id:message.id,type:'error',error:{name:encodeFails,message:'encoder failed'}}:{id:message.id,type:'complete',result}}));},terminate(){}});
+  queueMicrotask(()=>this.onmessage({data:fail?{id:message.id,type:'error',error:{name:fail,message:'encoder failed'}}:{id:message.id,type:'complete',result}}));},terminate(){}});
  const rt=createBrowserRuntime({manifestSha256:'0'.repeat(64),preferredRoute:'cpu',manifest:manifest(),alignPhoto,workerFactory});
- return {rt,posted,tensors,calls,encodes:()=>posted.filter(t=>t==='encode-aligned').length};
+ return {rt,posted,tensors,crops,calls,encodes:()=>posted.filter(t=>t==='encode-aligned').length};
 }
 const withNavigator=async fn=>{const old=Object.getOwnPropertyDescriptor(globalThis,'navigator');Object.defineProperty(globalThis,'navigator',{configurable:true,value:{userAgent:'Mozilla/5.0'}});
  try{return await fn();}finally{if(old)Object.defineProperty(globalThis,'navigator',old);else delete globalThis.navigator;}};
@@ -99,12 +101,70 @@ test('crop-fix.cancel-before-ok: a photo never confirmed has no record and an ab
 }));
 
 test('crop-fix.stale-revision: each confirmation is its own identity, and a retry reuses the kept derivation',()=>withNavigator(async()=>{
- const older=await confirmed('rev'),newer=await confirmed('rev'),{rt}=runtime();
+ const older=await confirmed('rev'),newer=await confirmed('rev'),{rt,tensors}=runtime({failOnce:new Set()});
  try{
   const a=await rt.encodePhoto(older,{raw:true}),b=await rt.encodePhoto(newer,{raw:true});
   assert.notEqual(a.cacheKey,b.cacheKey);assert.notEqual(a.preprocessing.confirmedCropId,b.preprocessing.confirmedCropId);
-  const before=decodes;assert.equal(await encoderInputFor(older),await encoderInputFor(older));assert.equal(decodes,before);
  }finally{rt.dispose();}
+ // Encode image again after a failed attempt: the same slot, a new attempt, no second decode or derivation.
+ const file=await confirmed('retry'),r=runtime({failOnce:new Set([confirmedCropOf(file).confirmedCropId])});
+ try{
+  await assert.rejects(r.rt.encodePhoto(file,{raw:true}),{name:'ConfirmedCropError',code:'encoder-unavailable'});
+  const [slot]=r.rt.cropSlots();assert.equal(slot.state,'failed');assert.ok(r.rt.cropPixelRefs(slot.slotId)>0,'pixels kept for Retry');
+  const before={decodes,derivations:r.rt.inspectCropQueue().derivations};
+  const face=await r.rt.encodePhoto(file,{raw:true});
+  assert.equal(face.preprocessing.slotId,slot.slotId);assert.equal(face.preprocessing.attemptId,`${slot.slotId}.a2`);
+  assert.deepEqual({decodes,derivations:r.rt.inspectCropQueue().derivations},before);
+  assert.deepEqual(Array.from(r.tensors[1].subarray(0,64)),Array.from(r.tensors[0].subarray(0,64)));
+  assert.deepEqual(r.rt.cropSlots(),[],'a finished single crop leaves no slot or pixels');
+ }finally{r.rt.dispose();}
+ void tensors;
+}));
+
+// crop.queue (fm-fy2.8): several confirmed crops through the real runtime composition and its worker protocol.
+test('crop-queue: A1, B2, A2 keep click order, one live encoder, one derivation each',()=>withNavigator(async()=>{
+ const files=[await confirmed('A1'),await confirmed('B2'),await confirmed('A2')],{rt,crops,calls}=runtime(),events=[];
+ rt.subscribeCropSlots(e=>events.push(e));
+ try{
+  const out=await rt.encodeConfirmedCrops(files,{batchRevision:7});
+  assert.deepEqual(out.map(o=>o.state),['succeeded','succeeded','succeeded']);
+  assert.deepEqual(crops,files.map(f=>confirmedCropOf(f).confirmedCropId));
+  assert.ok(out.every(o=>o.result.values.length===9216));
+  const q=rt.inspectCropQueue();assert.equal(q.maxLiveEncoders,1);assert.equal(q.derivations,3);assert.equal(calls.n,0);
+  assert.ok(events.every(e=>e.slotId&&e.attemptId&&e.batchRevision===7),'slot events carry slot, attempt and batch revision');
+  assert.deepEqual(events.filter(e=>e.type==='slot.started').map(e=>e.slotId),out.map(o=>o.slotId));
+  for(const o of out)assert.equal(rt.cropPixelRefs(o.slotId),0,'success releases the pixels');
+ }finally{rt.dispose();}
+}));
+
+test('crop-queue: cancelling one queued slot settles only it; siblings run in order',()=>withNavigator(async()=>{
+ const files=[await confirmed('c1'),await confirmed('c2'),await confirmed('c3')],{rt,crops}=runtime();
+ try{
+  const out=await rt.encodeConfirmedCrops(files,{onSlots:ids=>assert.equal(rt.cancelCropSlot(ids[1]),true)});
+  assert.deepEqual(out.map(o=>o.state),['succeeded','cancelled','succeeded']);
+  assert.deepEqual(crops,[files[0],files[2]].map(f=>confirmedCropOf(f).confirmedCropId));
+  assert.ok(rt.cropPixelRefs(out[1].slotId)>0,'a cancelled slot keeps its pixels for Retry');
+ }finally{rt.dispose();}
+}));
+
+test('crop-queue: Retry gives a failed slot a new attempt on the same frozen crop; Remove releases its pixels',()=>withNavigator(async()=>{
+ const files=[await confirmed('r1'),await confirmed('r2')],failing=confirmedCropOf(files[1]).confirmedCropId,{rt,crops,tensors}=runtime({failOnce:new Set([failing])});
+ try{
+  const first=await rt.encodeConfirmedCrops(files);
+  assert.deepEqual(first.map(o=>o.state),['succeeded','failed']);assert.equal(first[1].code,'encoder-unavailable');
+  const before={decodes,derivations:rt.inspectCropQueue().derivations};
+  const [again]=await rt.retryCropSlots([first[1].slotId]);
+  assert.equal(again.state,'succeeded');assert.equal(again.attemptId,`${first[1].slotId}.a2`);assert.notEqual(again.attemptId,first[1].attemptId);
+  assert.deepEqual({decodes,derivations:rt.inspectCropQueue().derivations},before,'no second decode or derivation');
+  assert.deepEqual(crops.slice(1),[failing,failing]);assert.deepEqual(Array.from(tensors[2].subarray(0,64)),Array.from(tensors[1].subarray(0,64)));
+  const [refused]=await rt.retryCropSlots([first[0].slotId]);assert.deepEqual(refused,{slotId:first[0].slotId,state:'refused',code:'no-retained-pixels'});
+ }finally{rt.dispose();}
+ const file=await confirmed('rm'),r=runtime({failOnce:new Set([confirmedCropOf(file).confirmedCropId])});
+ try{
+  const [failed]=await r.rt.encodeConfirmedCrops([file]);assert.equal(failed.state,'failed');assert.ok(r.rt.cropPixelRefs(failed.slotId)>0);
+  assert.equal(r.rt.removeCropSlot(failed.slotId),true);assert.equal(r.rt.cropPixelRefs(failed.slotId),0);assert.deepEqual(r.rt.cropSlots(),[]);
+  const [gone]=await r.rt.retryCropSlots([failed.slotId]);assert.equal(gone.state,'refused');
+ }finally{r.rt.dispose();}
 }));
 
 test('crop-fix source scan: no control flow keyed on detector error text in the bridge or the runtime',async()=>{

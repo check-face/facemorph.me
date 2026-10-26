@@ -6,7 +6,8 @@ import {inputLatent,requireLatent,generationIdentity} from './identity.mjs';
 import {directSupported} from '@facemorph/stylegan-js/engine';
 import {adapterFacts,capabilityRecord,admissionEvidence,logAdmission,AdmissionRefused,decide,reasonFromError} from './admission.mjs';
 import {admitRuntimeManifest,RuntimeManifestRefused} from './runtime-manifest.mjs';
-import {confirmedCropOf,encoderInputFor,ConfirmedCropError} from '../photo/confirmed-crop.mjs';
+import {confirmedCropOf,sourcePixelsOf,derivationFailure,ConfirmedCropError} from '../photo/confirmed-crop.mjs';
+import {createEncodeQueue} from '../../operations/encode-queue.ts';
 import {engineGeometry} from '@facemorph/stylegan-js/engine';
 import {FFHQ_1024_DESCRIPTOR} from '@facemorph/stylegan-js';
 // The model's dimensions (fm-dmlz): the side, the W+ shape and the pixel bytes come from the descriptor of the
@@ -287,18 +288,90 @@ export function createBrowserRuntime({manifest: suppliedManifest=/** @type {unkn
   }
   throw lastError||Error('No local processing route remains available. Try an explicitly selected route before continuing.');
  }
+ // The confirmed-crop encode queue (fm-fy2.8, over fm-d760's operations/encode-queue.ts): one slot per confirmed
+ // crop in click order, one live e4e, per-slot Cancel/Retry/Remove with tab-only pixels. Every attempt runs inside
+ // the runtime operation that waits for it (encodePhoto, encodeConfirmedCrops, retryCropSlots), so the worker is
+ // never shared with another job; cancelling a slot settles only that slot.
+ const slotContext=new Map(),slotWaiters=new Map(),cropSlots=new Map();
+ const cropQueue=createEncodeQueue({encoder:{
+  async encode(request,signal){
+   const ctx=slotContext.get(request.ids.requestId.split('.a')[0])??{hold:holdEncoder()},progress=ctx.progress;
+   if(!active)throw Error('A confirmed crop is encoded only inside a runtime operation.');
+   if(!ctx.hold){const admitted=validated;stop();validated=admitted;}
+   // Cancelling a running slot stops its encode now; the operation and its admission stay.
+   const halt=()=>{const admitted=validated;stop(abortError());validated=admitted;};signal?.addEventListener('abort',halt,{once:true});
+   try{
+    await start(progress);let encoded;
+    // The worker takes the tensor's buffer; the slot keeps its derived input whole for a retry.
+    try{encoded=await send('encode-aligned',{tensor:request.input.tensor.slice(),qualifiedEncoderSha256:encoderValidatedSha256??qualifiedEncoder(),retain:ctx.hold,confirmedCropId:request.confirmedCropId},progress);}
+    catch(error){if(signal?.aborted)throw abortError();throw new ConfirmedCropError(/invalidat|evict|corrupt|deleted/i.test(error?.name||'')?'encoder-invalidated':'encoder-unavailable',error);}
+    if(manifest.encoderStream){if(encoded.encoderQualification?.passed!==true||encoded.encoderQualification.manifestSha256!==manifest.encoderStream.sha256){stop();throw new ConfirmedCropError('encoder-invalidated');}encoderValidatedSha256=manifest.encoderStream.sha256;rememberEncoder(encoderValidatedSha256);}
+    if(!ctx.hold){const stillAdmitted=validated;stop();validated=stillAdmitted;}
+    return {...encoded,tensorDigest:request.input.tensorDigest,policyVersion:request.input.policyVersion};
+   }finally{signal?.removeEventListener('abort',halt);}
+  },
+  abort(){},
+  async dispose(){},
+ }});
+ cropQueue.subscribe(event=>{if(['slot.succeeded','slot.failed','slot.cancelled'].includes(event.type))settleSlot(event.slotId,event);});
+ function settleSlot(slotId,event){const waiters=slotWaiters.get(slotId);if(!waiters)return;slotWaiters.delete(slotId);slotContext.delete(slotId);for(const resolve of waiters)resolve(event);}
+ /** The slot's terminal event; aborting the waiting operation cancels the slot (and only it). */
+ function slotSettled(slotId,progress,signal,hold=holdEncoder()){
+  slotContext.set(slotId,{progress,hold});
+  // A slot that already settled (cancelled before anyone waited) answers at once.
+  const now=cropQueue.slots().find(s=>s.slotId===slotId);
+  const done=now&&now.state!=='queued'&&now.state!=='running'?Promise.resolve({type:`slot.${now.state}`,slotId,attemptId:now.attemptId,kind:now.failure,result:cropQueue.result(slotId)})
+   :new Promise(resolve=>{let waiters=slotWaiters.get(slotId);if(!waiters)slotWaiters.set(slotId,waiters=new Set());waiters.add(resolve);});
+  const cancel=()=>cropQueue.cancelSlot(slotId);signal?.addEventListener('abort',cancel,{once:true});
+  return done.finally(()=>signal?.removeEventListener('abort',cancel));
+ }
+ function removeCropSlot(slotId){const removed=cropQueue.removeSlot(slotId);settleSlot(slotId,{type:'slot.removed',slotId});return removed;}
+ /** A failed or cancelled slot's terminal outcome as the closed-set error the product reports. */
+ function slotError(event){
+  if(event.type==='slot.cancelled'||event.type==='slot.removed')return abortError();
+  if(event.kind==='derivation')return derivationFailure(event.cause);
+  return event.cause instanceof ConfirmedCropError||event.cause?.name==='AbortError'?event.cause:new ConfirmedCropError('encoder-unavailable',event.cause);
+ }
+ async function confirmedSources(files,signal){
+  const crops=[],sources=new Map();
+  for(const file of files){
+   const crop=confirmedCropOf(file);if(!crop)throw Error('This photo was not confirmed with a crop.');
+   // Crops of one file share its decoded pixels.
+   if(!sources.has(file))sources.set(file,await sourcePixelsOf(file));if(signal.aborted)throw signal.reason;
+   crops.push({crop,source:sources.get(file)});
+  }
+  return crops;
+ }
+ async function admitPhotoEncode(progress,signal){
+  await config();if(!manifest.encoder&&!manifest.encoderStream)throw new ConfirmedCropError('encoder-unavailable');
+  const {decision}=await admissionFor('photo-encode',preferredRoute,progress);if(decision.status==='refused')throw new AdmissionRefused(decision);
+  if(!validated)await admit(progress,signal);else announce(progress);if(signal.aborted)throw signal.reason;
+ }
+ /** Waits for every slot, in click order, and reports each one's outcome; their W+ results are kept by the queue. */
+ async function settleSlots(ids,progress,signal){
+  const events=await Promise.all(ids.map(id=>slotSettled(id,progress,signal)));
+  // Cancelling the whole operation (runtime.cancel) cancels its slots and fails the call; a slot's own Cancel does not.
+  if(signal.aborted)throw signal.reason;
+  return ids.map((slotId,i)=>{const event=events[i];const error=event.type==='slot.succeeded'?null:slotError(event);
+   return {slotId,attemptId:event.attemptId,state:event.type==='slot.succeeded'?'succeeded':event.type==='slot.failed'?'failed':event.type==='slot.removed'?'removed':'cancelled',...(error?{code:error.code??'cancelled',message:error.message}:{}),result:event.result};});
+ }
  async function encodeConfirmed(blob,confirmed,options,progress,signal){
   return cachedGenerate({kind:'photo',sha256:confirmed.sourceDigest,confirmedCropId:confirmed.confirmedCropId,policyVersion:confirmed.policyVersion,facePolicy:'confirmed-crop-v1'},async()=>{
-   const hold=holdEncoder();if(!hold){const admitted=validated;stop();validated=admitted;}
-   const input=await encoderInputFor(blob);if(signal.aborted)throw signal.reason;
-   await start(progress);let encoded;
-   // The worker takes the tensor's buffer; the kept input stays whole for a retry.
-   try{encoded=await send('encode-aligned',{tensor:input.tensor.slice(),qualifiedEncoderSha256:encoderValidatedSha256??qualifiedEncoder(),retain:hold,confirmedCropId:confirmed.confirmedCropId},progress);}
-   catch(error){if(signal.aborted)throw signal.reason;throw new ConfirmedCropError(/invalidat|evict|corrupt|deleted/i.test(error?.name||'')?'encoder-invalidated':'encoder-unavailable',error);}
-   if(manifest.encoderStream){if(encoded.encoderQualification?.passed!==true||encoded.encoderQualification.manifestSha256!==manifest.encoderStream.sha256){stop();throw new ConfirmedCropError('encoder-invalidated');}encoderValidatedSha256=manifest.encoderStream.sha256;rememberEncoder(encoderValidatedSha256);}
-   if(!hold){const stillAdmitted=validated;stop();validated=stillAdmitted;}if(signal.aborted)throw signal.reason;
+   // Encode image again on the same confirmation retries its slot with the kept pixels and derivation; a slot
+   // with nothing kept (or none yet) is a new slot.
+   let slotId=cropSlots.get(confirmed.confirmedCropId);
+   if(!slotId||cropQueue.retrySlot(slotId)==='no-retained-pixels'){
+    if(slotId)removeCropSlot(slotId);
+    const crops=await confirmedSources([blob],signal);
+    [slotId]=cropQueue.enqueueConfirmedCrops(confirmed.sourceRevision,crops);cropSlots.set(confirmed.confirmedCropId,slotId);
+   }
+   const event=await slotSettled(slotId,progress,signal);
+   if(event.type!=='slot.succeeded'){if(signal.aborted)throw signal.reason;throw slotError(event);}
+   cropSlots.delete(confirmed.confirmedCropId);removeCropSlot(slotId);
+   if(signal.aborted)throw signal.reason;
+   const encoded=event.result;
    await start(progress);const face=await send('synthesize',{values:encoded.values,raw:options.raw===true},progress);
-   return {...face,encoderProvider:encoded.encoderProvider,encoderStats:encoded.encoderStats,encoderQualification:encoded.encoderQualification,preprocessing:{confirmedCropId:confirmed.confirmedCropId,policyVersion:input.policyVersion,tensorDigest:input.tensorDigest,privateDataStayedLocal:true},faceCount:null,didAlign:false};
+   return {...face,encoderProvider:encoded.encoderProvider,encoderStats:encoded.encoderStats,encoderQualification:encoded.encoderQualification,preprocessing:{confirmedCropId:confirmed.confirmedCropId,policyVersion:encoded.policyVersion,tensorDigest:encoded.tensorDigest,privateDataStayedLocal:true,slotId,attemptId:event.attemptId},faceCount:null,didAlign:false};
   },progress,signal,true,async()=>{if(!manifest.encoder&&!manifest.encoderStream)throw new ConfirmedCropError('encoder-unavailable');
    const {decision}=await admissionFor('photo-encode',preferredRoute,progress);if(decision.status==='refused')throw new AdmissionRefused(decision);});
  }
@@ -473,7 +546,30 @@ export function createBrowserRuntime({manifest: suppliedManifest=/** @type {unkn
   // Admitted by capability before any detector or model request (fm-lt2p), never by a phone label.
   const {decision}=await admissionFor('photo-encode',preferredRoute,progress);if(decision.status==='refused')throw new AdmissionRefused(decision);});},options)),
  cancel:()=>{active?.abort(abortError());stop();},
- dispose:()=>{disposed=true;encoderValidatedSha256=undefined;active?.abort(abortError());stopPrefetch();stop();imageEncoder?.dispose();originals?.close();},
+ // The confirmed-crop queue for several crops (fm-fy2.8): face.batch renders tiles on these and never reimplements
+ // slots, attempt identities or pixel ownership. Each call that runs attempts is one runtime operation.
+ encodeConfirmedCrops:(files,options={})=>afterDelivery(operation(async(progress,signal)=>{
+  await admitPhotoEncode(progress,signal);
+  const ids=cropQueue.enqueueConfirmedCrops(options.batchRevision??0,await confirmedSources(files,signal));
+  const settled=settleSlots(ids,progress,signal);options.onSlots?.(ids);
+  return settled;
+ },options)),
+ retryCropSlots:(ids,options={})=>afterDelivery(operation(async(progress,signal)=>{
+  await admitPhotoEncode(progress,signal);
+  const retried=ids.map(id=>({slotId:id,attempt:cropQueue.retrySlot(id)}));
+  const settled=await settleSlots(retried.filter(r=>r.attempt!=='no-retained-pixels').map(r=>r.slotId),progress,signal);
+  return retried.map(r=>r.attempt==='no-retained-pixels'?{slotId:r.slotId,state:'refused',code:'no-retained-pixels'}:settled.find(s=>s.slotId===r.slotId));
+ },options)),
+ cancelCropSlot:slotId=>cropQueue.cancelSlot(slotId),
+ removeCropSlot,
+ disposeCropBatch:batchRevision=>{const ids=cropQueue.slots().filter(s=>s.batchRevision===batchRevision).map(s=>s.slotId);for(const id of ids)removeCropSlot(id);return ids.length;},
+ cropSlots:()=>cropQueue.slots(),
+ cropSlotResult:slotId=>cropQueue.result(slotId),
+ subscribeCropSlots:listener=>cropQueue.subscribe(listener),
+ /** Test-build hooks: pixel buffers a slot holds, and the queue's live-encoder and derivation counts. */
+ cropPixelRefs:slotId=>cropQueue.pixelRefs(slotId),
+ inspectCropQueue:()=>cropQueue.inspect(),
+ dispose:()=>{disposed=true;encoderValidatedSha256=undefined;for(const {slotId} of cropQueue.slots())removeCropSlot(slotId);active?.abort(abortError());stopPrefetch();stop();imageEncoder?.dispose();originals?.close();},
  status:()=>({route,deviceValidated:validated,encoderDeviceValidated:Boolean(manifest?.encoderStream&&(encoderValidatedSha256??qualifiedEncoder())===manifest.encoderStream.sha256),busy:!!active,disposed,interruptedRoute})
  };return api;
 }

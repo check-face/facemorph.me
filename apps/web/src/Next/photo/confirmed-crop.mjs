@@ -1,9 +1,10 @@
 // A crop the person confirmed with "Use this crop" is encoded as it stands (fm-6ib8, crop.fix). Detection only
 // proposes a crop before OK; after it, the approved pixels get the confirmed-crop policy's single derivation
 // (@facemorph/stylegan-js deriveEncoderInput) and go straight to e4e, with no detector, alignment or warp. The frozen
-// ConfirmedCrop record travels with the cropped File, so the runtime finds it wherever the file goes, and the derived
-// tensor is kept, so a retry reuses it rather than deriving again.
-import {createConfirmedCrop,deriveEncoderInput,CROP_PREPROCESSING_POLICY_V1} from '@facemorph/stylegan-js';
+// ConfirmedCrop record travels with the cropped File, so the runtime finds it wherever the file goes. The runtime's
+// encode queue (operations/encode-queue.ts, fm-fy2.8) holds the decoded pixels and the derived tensor for each slot,
+// so a retry reuses them rather than deriving again.
+import {createConfirmedCrop,CROP_PREPROCESSING_POLICY_V1} from '@facemorph/stylegan-js';
 import {cropPhoto} from './crop.mjs';
 
 // The closed set of terminal outcomes for an eligible confirmed crop, each with plain recovery text. A cancelled
@@ -32,14 +33,15 @@ export async function confirmCropped(cropped,size=1024){
  const crop=createConfirmedCrop({sourceRevision:++revision,sourceDigest:hex(await crypto.subtle.digest('SHA-256',bytes)),
   rect:{left:0,top:0,width:size,height:size},rotationDegrees:0,exifOrientation:1,exifApplied:false,
   policyVersion:CROP_PREPROCESSING_POLICY_V1.version,policyParams:CROP_PREPROCESSING_POLICY_V1});
- records.set(cropped,{crop,input:null});
+ records.set(cropped,crop);
  return cropped;
 }
 
 /** The ConfirmedCrop a file was confirmed with, or undefined for a file that was never through crop OK. */
-export function confirmedCropOf(file){return file&&typeof file==='object'?records.get(file)?.crop:undefined;}
+export function confirmedCropOf(file){return file&&typeof file==='object'?records.get(file):undefined;}
 
-async function sourcePixels(file){
+/** The decoded pixels of a confirmed file, for the queue's single derivation; unreadable pixels are terminal. */
+export async function sourcePixelsOf(file){
  let bitmap;
  try{bitmap=await createImageBitmap(file,{colorSpaceConversion:'none',premultiplyAlpha:'none',imageOrientation:'none'});}
  catch(error){throw new ConfirmedCropError('unsupported-pixels',error);}
@@ -53,16 +55,5 @@ async function sourcePixels(file){
  }finally{bitmap.close?.();}
 }
 
-/** The encoder input of a confirmed file, derived once from its decoded pixels and kept for retries. */
-export function encoderInputFor(file){
- const entry=records.get(file);
- if(!entry)throw Error('This photo was not confirmed with a crop.');
- entry.input||=(async()=>{
-  const pixels=await sourcePixels(file);
-  try{return deriveEncoderInput(pixels,entry.crop);}
-  catch(error){throw new ConfirmedCropError(error?.code==='source-too-large'?'over-limit':'unsupported-pixels',error);}
- })();
- // A failed derivation is not kept: the next attempt (an explicit retry) derives again.
- entry.input.catch(()=>{if(records.get(file)===entry)entry.input=null;});
- return entry.input;
-}
+/** The closed-set error for a crop the policy cannot derive (the queue reports it as a 'derivation' failure). */
+export function derivationFailure(error){return new ConfirmedCropError(error?.code==='source-too-large'?'over-limit':'unsupported-pixels',error);}
