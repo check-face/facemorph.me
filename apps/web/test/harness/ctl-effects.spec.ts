@@ -492,7 +492,8 @@ function settled(store: Store): Promise<void> {
     }, 180_000);
     const check = () => {
       const state = store.getState();
-      if (state.Busy) return;
+      // Morph acceptance (fm-fy2.9) answers before the job starts; it is not yet settled.
+      if (state.Busy || state.Accepting) return;
       clearTimeout(timeout);
       off();
       if (state.Error) reject(new Error(state.Error));

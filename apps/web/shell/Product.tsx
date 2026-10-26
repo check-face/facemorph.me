@@ -138,6 +138,7 @@ export function Product({ store }: { store: Store }) {
             provider={s.Provider}
             faces={s.Inputs.length}
             busy={s.Busy}
+            accepting={s.Accepting === true}
             stage={s.Stage}
             pendingMorph={s.PendingMorph}
             overflow={s.Overflow}

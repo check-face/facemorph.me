@@ -342,12 +342,26 @@ export function createController(
     const frames = morphFrameFailure(request);
     if (frames) return refuseMorph(frames, null);
     accepting = true;
+    // Accepting is visible while the checks run and cleared only after their outcome is dispatched, so
+    // the state never looks idle between pressing Morph and the job (or its refusal) arriving.
+    update((current) => ({ state: { ...current, Accepting: true }, effects: [] }));
+    const accepted = () =>
+      update((current) => {
+        if (!current.Accepting) return unchanged(current);
+        const { Accepting: _, ...rest } = current;
+        return { state: rest, effects: [] };
+      });
     task(
       checks(request).finally(() => (accepting = false)),
-      (result) => (result.failure ? refuseMorph(result.failure, null) : store.dispatch(message)),
+      (result) => {
+        if (result.failure) refuseMorph(result.failure, null);
+        else store.dispatch(message);
+        accepted();
+      },
       (error) => {
         console.error('[morph acceptance]', error);
         store.dispatch(message);
+        accepted();
       },
     );
   }

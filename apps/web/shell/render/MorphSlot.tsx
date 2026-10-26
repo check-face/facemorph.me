@@ -54,6 +54,8 @@ export interface MorphSettings {
 export interface MorphSlotProps extends MorphSettings {
   readonly faces: number;
   readonly busy: boolean;
+  /** Morph's pre-checks are answering; Create morph waits for them. */
+  readonly accepting?: boolean;
   /** 'cancelling' disables Cancel. */
   readonly stage: string;
   readonly pendingMorph: boolean;
@@ -252,7 +254,7 @@ export function MorphSlot(p: MorphSlotProps) {
         className="next-primary-action"
         data-next-primary="true"
         type="button"
-        disabled={!canMorph}
+        disabled={!canMorph || p.accepting === true}
         onClick={() => p.onRun('morph')}
       >
         {p.pendingMorph ? 'Morph queued' : 'Create morph'}

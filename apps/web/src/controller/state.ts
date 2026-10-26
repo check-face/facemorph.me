@@ -44,6 +44,8 @@ export interface State {
   readonly Fps: number;
   /** Morph video size (fm-36ag): Standard 512 × 512 by default, or Full quality up to the model size. */
   readonly Quality?: 'standard' | 'full';
+  /** Morph acceptance pre-checks are running (fm-fy2.9); the Run reaches the reducers when they answer. */
+  readonly Accepting?: true;
   readonly Provider: RequestedProvider;
   readonly Busy: boolean;
   readonly JobId: number;
