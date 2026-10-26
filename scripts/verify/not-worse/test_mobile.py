@@ -23,6 +23,16 @@ def validate(doc):
 
 
 class RunDocument(unittest.TestCase):
+    def test_lane_report_records_the_side_digest(self):
+        import inspect
+        params = list(inspect.signature(mobile.hosted.lane_report).parameters)
+        self.assertEqual(params, ['lane', 'kind', 'url', 'extra', 'artifact', 'runtime_sha'],
+                         'hosted.lane_report changed shape; side_lane_report must follow it')
+        side = str(Path('/tmp/side/deploy-next').resolve())
+        r = mobile.side_lane_report({side: 'c' * 64})('l', 'k', 'u', {'browser': 'b'}, '/tmp/side/deploy-next', 'r' * 64)
+        self.assertEqual(r['artifact']['treeSha256'], 'c' * 64)
+        self.assertEqual((r['lane'], r['runs'], r['browser']), ('l', [], 'b'))
+
     def test_complete_journeys(self):
         report = {'runs': [{'ok': True, 'cold': {'usableS': 1.5, 'faceS': 25.3}, 'warm': {'faceS': 4.7},
                             'morph': {'videoS': 64.0}}]}

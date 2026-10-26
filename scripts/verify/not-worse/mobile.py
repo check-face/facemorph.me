@@ -54,6 +54,18 @@ def ms(record, key, field):
     return round(v[field] * 1000, 1) if isinstance(v, dict) and isinstance(v.get(field), (int, float)) else None
 
 
+def side_lane_report(digest_of):
+    """hosted.lane_report verifies a monorepo build identity (build-next.mjs), which the classic control and its
+    planted copies do not carry. Each side here was verified by its tree digest before the run (fetch-control.mjs and
+    artifactDigest), so the lane report records that digest instead; everything else is the lane's own."""
+    def lane_report(lane, kind, url, extra, artifact, runtime_sha):
+        return {'lane': lane, 'kind': kind, 'url': url,
+                'artifact': {'treeSha256': digest_of[str(Path(artifact).resolve())], 'kind': 'not-worse side'},
+                'runtimeSha256': runtime_sha,
+                'os': f'{platform.system()} {platform.release()} {platform.machine()}', 'runs': [], **extra}
+    return lane_report
+
+
 def run_document(report, run, cell, digests):
     """Pure: one hosted lane report (one journey iteration) to a run.schema.json document."""
     rec = (report.get('runs') or [{}])[-1]
@@ -119,6 +131,7 @@ def main():
     control = {'dir': a.control.resolve(), 'digest': digest(a.control)}
     build = {'dir': a.build.resolve(), 'digest': digest(a.build)} if a.build else control
     digests = {'control': control['digest'], 'build': build['digest']}
+    hosted.lane_report = side_lane_report({str(control['dir']): control['digest'], str(build['dir']): build['digest']})
     cache = out / 'runtime-cache'
     cache.mkdir()
     cell_name = f'{lane}-auto'
