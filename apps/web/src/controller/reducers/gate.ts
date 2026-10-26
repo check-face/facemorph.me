@@ -1,4 +1,4 @@
-import { gateScope } from '../derived.ts';
+import { gateScope, scopeReady } from '../derived.ts';
 import { unchanged, type Transition } from '../effects.ts';
 import type { State } from '../state.ts';
 import type { Msg } from '../msg.ts';
@@ -37,8 +37,22 @@ export function gate(message: Msg, state: State): Transition | null {
     }
     case 'GateCancel':
       return { state: { ...state, Gate: null }, effects: [] };
-    case 'DownloadsChanged':
-      return { state: { ...state, Downloads: message.args[0] }, effects: [] };
+    case 'DownloadsChanged': {
+      const next = { ...state, Downloads: message.args[0] };
+      // A question asked while the inventory was still unknown resolves itself once the device finds it already
+      // holds what the action needs: nothing to download, so nothing to approve (fm-qrfz).
+      if (
+        state.Gate &&
+        !state.Downloads.known &&
+        next.Downloads.known &&
+        scopeReady(next.Downloads, state.Gate[0])
+      )
+        return {
+          state: { ...next, Gate: null },
+          effects: [{ type: 'dispatch', message: state.Gate[1] }],
+        };
+      return { state: next, effects: [] };
+    }
     case 'DownloadNow':
       return {
         state: {

@@ -71,7 +71,13 @@ test('gate scope covers cached/project/photo/import/morph/unknown downloads with
     if (mode === 'photo') assert.equal(gateScope(s, msg('Run', 'morph')), 'photo');
   }
   assert.equal(gateScope(known, msg('Import', new Blob(['project']))), 'route');
-  assert.equal(gateScope(state, msg('RunFace', 'face-1')), null);
+  // Unknown inventory asks (fm-qrfz, defect 19); the candidate returned null here and let the download start.
+  assert.equal(gateScope(state, msg('RunFace', 'face-1')), 'route');
+  assert.equal(
+    gateScope({ ...state, CachedFaces: new Set(['face-1']) }, msg('RunFace', 'face-1')),
+    null,
+    'a cached face needs no models, known or not',
+  );
   assert.equal(
     gateScope({ ...known, DownloadConsent: new Set(['route']) }, msg('RunFace', 'face-1')),
     null,

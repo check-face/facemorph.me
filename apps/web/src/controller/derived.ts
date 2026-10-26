@@ -88,9 +88,10 @@ export function gateScope(state: State, message: Msg): 'route' | 'photo' | null 
     default:
       break;
   }
+  // An inventory not yet known is asked about, never taken as permission (fm-qrfz, audit defect 19: the candidate let
+  // work start when its size list could not be built). The dialog says the size is still being checked until it is.
   return scope &&
-    state.Downloads.known &&
-    !scopeReady(state.Downloads, scope) &&
+    (!state.Downloads.known || !scopeReady(state.Downloads, scope)) &&
     !state.DownloadConsent.has(scope)
     ? scope
     : null;

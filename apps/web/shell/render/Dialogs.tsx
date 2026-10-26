@@ -545,6 +545,10 @@ export function DownloadDialog({ state, dispatch }: { state: State; dispatch: Di
   const size = photo
     ? state.Downloads.photoBytes + (state.Downloads.routeReady ? 0 : state.Downloads.routeBytes)
     : state.Downloads.routeBytes;
+  // Until the device has checked which model files it already holds, no size is shown rather than a guessed one.
+  const amount = state.Downloads.known
+    ? `: ${megabytes(size)}`
+    : ' (its size is still being checked)';
   return (
     <Modal
       label={photo ? 'Download the photo encoder?' : 'Download the face model?'}
@@ -555,8 +559,8 @@ export function DownloadDialog({ state, dispatch }: { state: State; dispatch: Di
         <h2>{photo ? 'Download the photo encoder?' : 'Download the face model?'}</h2>
         <p>
           {photo
-            ? `Photos are turned into faces on this device, so it needs the photo encoder once: ${megabytes(size)}. Your photo never leaves your device.`
-            : `Faces are made on this device, so it needs the face model once: ${megabytes(size)}.`}
+            ? `Photos are turned into faces on this device, so it needs the photo encoder once${amount}. Your photo never leaves your device.`
+            : `Faces are made on this device, so it needs the face model once${amount}.`}
         </p>
         <p>
           It’s saved for next time. Your browser may ask whether this site can keep it; saying yes

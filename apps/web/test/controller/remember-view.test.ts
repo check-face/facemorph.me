@@ -3,13 +3,19 @@ import assert from 'node:assert/strict';
 import { init } from '../../src/controller/init.ts';
 import { msg } from '../../src/controller/msg.ts';
 import { reduce } from '../../src/controller/reducers/index.ts';
-const state = init({
+const initial = init({
   today: '<today>',
   url: 'https://next.facemorph.me/',
   consentAnswered: true,
   sliderPreference: false,
   sliderPosition: 1,
 }).state;
+// A device whose models are already here: these cases are about jobs and inputs, not the download question,
+// which an unknown inventory now asks (fm-qrfz, defect 19).
+const state = {
+  ...initial,
+  Downloads: { ...initial.Downloads, known: true, routeReady: true, photoReady: true },
+};
 test('rememberView follows only structural Inputs/Kind/Frames/Pinch changes', () => {
   for (const message of [
     msg('Edit', 'face-1', 'changed'),

@@ -42,3 +42,24 @@ test('morph/import gate directly; download and inventory changes retain candidat
   assert.equal(reduce(msg('DownloadsChanged', failed), state)!.state.Downloads, failed);
   assert.equal(reduce(msg('HideModelToast'), state)!.state.ModelToastHidden, true);
 });
+test('unknown inventory asks; the question resolves itself when the device already holds the models (fm-qrfz)', () => {
+  const unknown = { ...initial, Downloads: { ...initial.Downloads, known: false } };
+  const run = msg('Run', 'morph');
+  // Defect 19: an inventory not yet known is never permission to start.
+  const asked = reduce(run, unknown)!.state;
+  assert.deepEqual(asked.Gate, ['route', run]);
+  // The inventory arrives: everything is already here, so the action continues with no consent recorded.
+  const ready = { ...initial.Downloads, known: true, routeReady: true, photoReady: true };
+  const resolved = reduce(msg('DownloadsChanged', ready), asked)!;
+  assert.equal(resolved.state.Gate, null);
+  assert.equal(resolved.state.DownloadConsent.size, 0);
+  assert.deepEqual(resolved.effects, [{ type: 'dispatch', message: run }]);
+  // It arrives with something missing: the question stays open, now with its size.
+  const missing = { ...initial.Downloads, known: true, routeReady: false, routeBytes: 62_000_000 };
+  const still = reduce(msg('DownloadsChanged', missing), asked)!;
+  assert.deepEqual(still.state.Gate, ['route', run]);
+  assert.deepEqual(still.effects, []);
+  // A question asked with the inventory known is never closed by a later inventory change.
+  const known = reduce(msg('DownloadsChanged', ready), { ...state, Gate: ['route', run] })!;
+  assert.deepEqual(known.state.Gate, ['route', run]);
+});

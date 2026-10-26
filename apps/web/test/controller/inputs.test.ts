@@ -6,13 +6,19 @@ import { inputs } from '../../src/controller/reducers/inputs.ts';
 import { CASES, reduce } from '../../src/controller/reducers/index.ts';
 import { compareFields, fixture, fromGolden, verifyControl } from './scaffold.ts';
 before(verifyControl);
-const state = init({
+const initial = init({
   today: '<today>',
   url: 'https://next.facemorph.me/',
   consentAnswered: false,
   sliderPreference: false,
   sliderPosition: 1,
 }).state;
+// A device whose models are already here: these cases are about jobs and inputs, not the download question,
+// which an unknown inventory now asks (fm-qrfz, defect 19).
+const state = {
+  ...initial,
+  Downloads: { ...initial.Downloads, known: true, routeReady: true, photoReady: true },
+};
 test('recorded seed edit replays exactly on desktop and phone', () => {
   for (const device of ['desktop', 'phone']) {
     const prior = fromGolden(fixture(`seed.generate/${device}/01-seed-mode.json`).model);
