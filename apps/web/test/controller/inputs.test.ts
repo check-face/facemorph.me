@@ -37,20 +37,31 @@ test('switching to seed keeps literal text, including a date; it never strips di
   assert.equal(next.state.Inputs[0]!.value, '2026-10-24');
   assert.deepEqual(reduce(msg('RunFace', 'face-1'), next.state)!.effects, []);
 });
-test('remove of the last face is a no-op; queued removal drops only its job and preserves effect order', () => {
+test('remove of the last face is a no-op; queued removal drops only its job, defers invalidateFace to the notice end', () => {
   const last = { ...state, Inputs: state.Inputs.slice(0, 1) };
-  assert.equal(inputs(msg('Remove', 'face-1'), last)!.state, last);
+  assert.equal(reduce(msg('Remove', 'face-1'), last)!.state, last);
   const queued = {
     ...state,
     PendingFaces: ['face-1', 'face-2'],
     PendingJobs: [msg('RunFace', 'face-1'), msg('Run', 'morph'), msg('RunFace', 'face-2')],
   };
-  const result = inputs(msg('Remove', 'face-1'), queued)!;
-  assert.deepEqual(result.state.PendingJobs, [msg('Run', 'morph'), msg('RunFace', 'face-2')]);
+  const result = reduce(msg('Remove', 'face-1'), queued)!;
+  // The current morph is invalidated by the removal, so a queued Morph goes with it.
+  assert.deepEqual(result.state.PendingJobs, [msg('RunFace', 'face-2')]);
   assert.deepEqual(result.state.PendingFaces, ['face-2']);
-  assert.deepEqual(result.effects, [
+  assert.deepEqual(
+    result.effects.filter((e) => e.type !== 'rememberView'),
+    [
+      { type: 'cancelQueuedFace', id: 'face-1' },
+      { type: 'cancelSlot', id: 'face-1' },
+      { type: 'invalidatePhotoSelections', id: 'face-1' },
+      { type: 'invalidateArrivalRestore' },
+      { type: 'invalidateMorph' },
+      { type: 'expireUndo', seq: 1 },
+    ],
+  );
+  assert.deepEqual(reduce(msg('UndoExpired', 1), result.state)!.effects, [
     { type: 'invalidateFace', id: 'face-1' },
-    { type: 'invalidatePhotoSelections', id: 'face-1' },
   ]);
 });
 test('AddAt has no face count: 63 to 64 to 65, then 150 to 151; it still needs a fresh ID; busy Provider is ignored', () => {
@@ -112,7 +123,7 @@ test('cached completion belongs to the exact input that requested the check', ()
   assert.equal(inputs(msg('CachedFaceChecked', input, true), edited)!.state, edited);
 });
 test('all retained messages have explicit ownership; Compare is retired by fm-25um', () => {
-  assert.equal(Object.keys(CASES).length, 70); // +Quality (fm-36ag): the morph video size choice; +NamesFailed (fm-96if): the picker shows its own load failure;
+  assert.equal(Object.keys(CASES).length, 73); // +StartOver, Undo, UndoExpired (fm-id4c): Remove and Start over are undoable; +Quality (fm-36ag): the morph video size choice; +NamesFailed (fm-96if): the picker shows its own load failure;
   // +Classified, UseAsPhoto (fm-4f5m): every file is classified before a face changes, and held stills are explicit.
   for (const name of ['CropAdjust', 'CropUse'] as const)
     assert.equal(typeof CASES[name], 'function', `${name} needs a reducer`);

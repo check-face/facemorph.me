@@ -7,10 +7,11 @@ import { gate } from './gate.ts';
 import { photo, type PhotoFacts } from './photo.ts';
 import { crop } from './crop.ts';
 import { sameInputs } from './schedule.ts';
+import { commitUndo, NEXT_ACTIONS, undo, type UndoFacts } from './undo.ts';
 import type { Msg } from '../msg.ts';
 import type { State } from '../state.ts';
 import { viewSnapshot, type Transition } from '../effects.ts';
-export type ControllerFacts = InputFacts & JobFacts & PhotoFacts;
+export type ControllerFacts = InputFacts & JobFacts & PhotoFacts & UndoFacts;
 type ControllerReducer = (message: Msg, state: State, facts: ControllerFacts) => Transition | null;
 // Every frozen message has one explicit pure reducer. Adding a Msg requires a case here.
 export const CASES = {
@@ -19,7 +20,10 @@ export const CASES = {
   Edit: inputs,
   Mode: inputs,
   AddAt: inputs,
-  Remove: inputs,
+  Remove: undo,
+  StartOver: undo,
+  Undo: undo,
+  UndoExpired: undo,
   Kind: inputs,
   Frames: inputs,
   Quality: inputs,
@@ -87,6 +91,12 @@ export const CASES = {
 } satisfies Record<Msg['type'], ControllerReducer>;
 /** Compose guard priority and the classic remember-view wrapper around each pure transition. */
 export function reduce(message: Msg, state: State, facts: ControllerFacts = {}): Transition | null {
+  // A person's next action ends an open Undo notice first (fm-id4c): the hidden faces are released, then it applies.
+  if (state.Undo && NEXT_ACTIONS.has(message.type)) {
+    const committed = commitUndo(state);
+    const result = reduce(message, committed.state, facts);
+    return result && { ...result, effects: [...committed.effects, ...result.effects] };
+  }
   const gated = gate(message, state);
   if (gated !== null) return gated;
   const handler: ControllerReducer = CASES[message.type];

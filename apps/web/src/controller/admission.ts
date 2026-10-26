@@ -6,6 +6,7 @@
 
 import { checkCeiling, lookupCeiling, type CeilingName } from '../contracts/ceilings.ts';
 import type { State } from './state.ts';
+import type { Effect, Transition } from './effects.ts';
 
 /** The budgets an addition can reach. */
 export type AdmissionBudget = Extract<
@@ -111,4 +112,16 @@ export function admitTo(
 /** A refused request changes nothing but the status line, which names the limit. */
 export function refused(state: State, admission: Extract<Admission, { ok: false }>): State {
   return { ...state, Status: admission.message };
+}
+
+/** The refusal as a transition: the status names the limit, and the trace records it (no silent no-op). */
+export function refusal(
+  state: State,
+  admission: Extract<Admission, { ok: false }>,
+  effects: readonly Effect[] = [],
+): Transition {
+  return {
+    state: refused(state, admission),
+    effects: [...effects, { type: 'admissionRefused', budget: admission.budget }],
+  };
 }

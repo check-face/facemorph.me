@@ -52,6 +52,8 @@ export interface MorphSettings {
 }
 
 export interface MorphSlotProps extends MorphSettings {
+  /** More options → Start over (fm-id4c): two empty faces in one action, undoable. */
+  readonly onStartOver?: () => void;
   readonly faces: number;
   readonly busy: boolean;
   /** Morph's pre-checks are answering; Create morph waits for them. */
@@ -284,6 +286,16 @@ export function MorphSlot(p: MorphSlotProps) {
       {p.overflow && (
         <div id="next-overflow">
           <Overflow {...p} custom={custom} />
+          {p.onStartOver && (
+            <Button
+              color="inherit"
+              variant="outlined"
+              className="next-start-over"
+              onClick={p.onStartOver}
+            >
+              Start over
+            </Button>
+          )}
         </div>
       )}
       {/* Status, progress and the measured time remaining live next to the action they describe. */}

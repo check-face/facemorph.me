@@ -230,9 +230,12 @@ test('a held other-model face: shown, Save asks for its bytes, never generated; 
     { type: 'invalidatePhotoSelections', id: 'face-2' },
     { type: 'previewPhoto', id: 'face-2', file: verdict!.file },
   ]);
+  // Remove hides the face for its Undo window (fm-id4c); the still is released when the notice ends.
   const removed = reduce(msg('Remove', 'face-2'), held.state)!;
-  assert.equal(removed.state.Held?.has('face-2'), false);
-  assert.ok(removed.effects.some((e) => e.type === 'revokeUrl' && e.url === 'blob:held-0'));
+  assert.equal(removed.state.Held?.has('face-2'), true, 'kept while Undo is offered');
+  const ended = reduce(msg('UndoExpired', removed.state.Undo!.seq), removed.state)!;
+  assert.equal(ended.state.Held?.has('face-2'), false);
+  assert.ok(ended.effects.some((e) => e.type === 'revokeUrl' && e.url === 'blob:held-0'));
   // A damaged still that does not decode offers no Use as photo.
   const [damaged] = await classifyStills([
     asFile(still('recovery-v2.png').subarray(0, 4000), 't.png'),

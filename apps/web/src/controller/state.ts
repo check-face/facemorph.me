@@ -1,5 +1,6 @@
 import type { CropView, Msg } from './msg.ts';
 import type { HeldKind, StillReason } from '../media/still-entry.ts';
+import type { UndoNotice } from './reducers/undo.ts';
 import type {
   DetectedFaces,
   Downloads,
@@ -100,6 +101,10 @@ export interface State {
   readonly StillSeq?: number;
   /** Files a face holds as media, never computed with: damaged, unreadable-version or other-model stills. */
   readonly Held?: ReadonlyMap<string, HeldStill>;
+  /** The open Remove/Start over notice and what it hid (fm-id4c); absent when there is nothing to undo. */
+  readonly Undo?: UndoNotice;
+  /** The last notice number handed out, so a stale timeout never ends a newer notice. */
+  readonly UndoSeq?: number;
 }
 /** A still the face shows and saves as its original bytes; `url` is '' when it is not shown (damaged). */
 export interface HeldStill {

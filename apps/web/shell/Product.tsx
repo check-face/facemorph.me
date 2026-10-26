@@ -85,6 +85,8 @@ export function Product({ store }: { store: Store }) {
       <FacesLayout
         inputs={s.Inputs}
         onAddAt={(at) => dispatch(msg('AddAt', at))}
+        undo={s.Undo}
+        onUndo={() => dispatch(msg('Undo'))}
         tile={(item, _index, label) => (
           <FaceTile
             key={item.id}
@@ -179,6 +181,7 @@ export function Product({ store }: { store: Store }) {
             onCancel={() => dispatch(msg('Cancel'))}
             onOverflow={(open) => dispatch(msg('OverflowToggle', open))}
             onAddFace={() => dispatch(msg('AddAt', s.Inputs.length))}
+            onStartOver={() => dispatch(msg('StartOver'))}
             onSettings={(change) => {
               if (change.kind !== undefined) dispatch(msg('Kind', change.kind));
               if (change.frames !== undefined) dispatch(msg('Frames', change.frames));
