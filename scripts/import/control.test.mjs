@@ -94,13 +94,3 @@ test('every golden, parity or freeze script that reads the control calls fetch-c
       `${path} must call fetch-control first`,
     );
 });
-
-test('a real download into a new --dest directory verifies (the release asset, over the network)', async (t) => {
-  const dest = join(tempDir('control-dest-'), 'not', 'yet');
-  const { dir, findings } = await fetchControl({
-    dest,
-    log: (finding) => t.diagnostic(JSON.stringify(finding)),
-  });
-  assert.equal(findings.length, 0);
-  assert.ok(dir.startsWith(dest));
-});

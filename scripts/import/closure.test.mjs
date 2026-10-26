@@ -1,12 +1,10 @@
-// The closure checks on planted trees in temporary directories (planted files are inputs, not fakes), run as
+// Import exclusion and module-resolution checks on planted trees in temporary directories (planted files are inputs, not fakes), run as
 // real processes where the check is a command.
 import assert from 'node:assert/strict';
 import { join } from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { sha256 } from '../inventory/lib.mjs';
 import { plant, run, tempDir } from '../inventory/testing.mjs';
-import { closureFindings } from './verify-closure.mjs';
 import { scanTree } from './scan-exclusions.mjs';
 
 const UNRESOLVED = fileURLToPath(new URL('../inventory/unresolved-imports.mjs', import.meta.url));
@@ -14,145 +12,11 @@ const files = {
   'src/Next/a.mjs': 'export const a = 1;\n',
   'src/Next/b.mjs': "import { a } from './a.mjs';\nexport const b = a;\n",
 };
-const allowlist = {
-  destination_root: 'apps/web',
-  files: Object.entries(files).map(([path, text]) => ({
-    destination: `apps/web/${path}`,
-    sha256: sha256(Buffer.from(text)),
-    bytes: Buffer.byteLength(text),
-  })),
-};
 const tree = (extra = {}) => {
   const root = tempDir('closure-');
   plant(join(root, 'apps/web'), { ...files, ...extra });
   return root;
 };
-
-test('a clean closure passes', () => {
-  assert.deepEqual(closureFindings({ root: tree(), allowlist }), []);
-});
-
-test('a digest mismatch is detected', () => {
-  const findings = closureFindings({
-    root: tree({ 'src/Next/a.mjs': 'export const a = 2;\n' }),
-    allowlist,
-  });
-  assert.deepEqual(
-    findings.map((f) => [f.path, f.problem]),
-    [['apps/web/src/Next/a.mjs', 'mismatch']],
-  );
-});
-
-test('an extra file is detected unless a later bead allows it', () => {
-  const root = tree({ 'src/Next/extra.mjs': '' });
-  assert.deepEqual(
-    closureFindings({ root, allowlist }).map((f) => f.problem),
-    ['extra'],
-  );
-  assert.deepEqual(closureFindings({ root, allowlist, allow: ['src/Next/extra.mjs'] }), []);
-});
-
-test('a missing file is detected', () => {
-  const root = tempDir('closure-');
-  plant(join(root, 'apps/web'), { 'src/Next/a.mjs': files['src/Next/a.mjs'] });
-  assert.deepEqual(
-    closureFindings({ root, allowlist }).map((f) => f.problem),
-    ['missing'],
-  );
-});
-
-test('a ported file is checked against its new bytes, and a ported record must name its bead and reason', () => {
-  const ported = 'export const a = 3;\n';
-  const portedList = {
-    ...allowlist,
-    files: allowlist.files.map((f) =>
-      f.destination.endsWith('a.mjs')
-        ? {
-            ...f,
-            ported: { sha256: sha256(Buffer.from(ported)), bytes: 20, bead: 'fm-x', reason: 'r' },
-          }
-        : f,
-    ),
-  };
-  assert.deepEqual(
-    closureFindings({ root: tree({ 'src/Next/a.mjs': ported }), allowlist: portedList }),
-    [],
-  );
-  assert.deepEqual(
-    closureFindings({ root: tree(), allowlist: portedList }).map((f) => [f.path, f.problem]),
-    [['apps/web/src/Next/a.mjs', 'mismatch']],
-    "classic's bytes no longer pass for a ported file",
-  );
-  const unnamed = {
-    ...allowlist,
-    files: portedList.files.map((f) =>
-      f.ported ? { ...f, ported: { sha256: f.ported.sha256 } } : f,
-    ),
-  };
-  assert.deepEqual(
-    closureFindings({ root: tree({ 'src/Next/a.mjs': ported }), allowlist: unnamed }).map(
-      (f) => f.problem,
-    ),
-    ['ported without its digest, bead and reason'],
-  );
-});
-
-const withA = (ported) => ({
-  ...allowlist,
-  files: allowlist.files.map((f) => (f.destination.endsWith('a.mjs') ? { ...f, ported } : f)),
-});
-const only = (planted) => {
-  const root = tempDir('closure-');
-  plant(join(root, 'apps/web'), planted);
-  return root;
-};
-
-test('a removed file must be absent, and its record must name its bead and reason', () => {
-  const removed = withA({ removed: true, bead: 'fm-x', reason: 'r' });
-  const withoutA = only({ 'src/Next/b.mjs': files['src/Next/b.mjs'] });
-  assert.deepEqual(closureFindings({ root: withoutA, allowlist: removed }), []);
-  assert.deepEqual(
-    closureFindings({ root: tree(), allowlist: removed }).map((f) => [f.path, f.problem]),
-    [
-      ['apps/web/src/Next/a.mjs', 'removed file is present'],
-      ['apps/web/src/Next/a.mjs', 'extra'],
-    ],
-  );
-  assert.deepEqual(
-    closureFindings({ root: withoutA, allowlist: withA({ removed: true }) }).map((f) => f.problem),
-    ['ported without its digest, bead and reason'],
-  );
-});
-
-test('a moved file is checked at its new path only, and must stay inside the destination root', () => {
-  const text = 'export const a = 4;\n';
-  const moved = withA({
-    destination: 'apps/web/scripts/a.mjs',
-    sha256: sha256(Buffer.from(text)),
-    bytes: Buffer.byteLength(text),
-    bead: 'fm-x',
-    reason: 'r',
-  });
-  const b = { 'src/Next/b.mjs': files['src/Next/b.mjs'] };
-  assert.deepEqual(
-    closureFindings({ root: only({ ...b, 'scripts/a.mjs': text }), allowlist: moved }),
-    [],
-  );
-  assert.deepEqual(
-    closureFindings({ root: tree(), allowlist: moved }).map((f) => [f.path, f.problem]),
-    [
-      ['apps/web/scripts/a.mjs', 'missing'],
-      ['apps/web/src/Next/a.mjs', 'extra'],
-    ],
-    'the old path no longer passes',
-  );
-  const outside = withA({ ...moved.files[0].ported, destination: 'scripts/a.mjs' });
-  assert.ok(
-    closureFindings({ root: only(b), allowlist: outside }).some(
-      (f) => f.problem === 'moved outside the destination root',
-    ),
-  );
-});
 
 test('a planted Foo.fs.js and a planted .wrangler/ each fail the exclusion scan; a clean tree passes', () => {
   assert.deepEqual(scanTree(join(tree(), 'apps/web')).findings, []);

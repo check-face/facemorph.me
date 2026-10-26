@@ -58,8 +58,8 @@ candidate closure, frozen research directories, generated data and fixtures, `.b
 - **Other editors:** run `npx oxfmt <file>` on save and `npx oxlint <file>` for diagnostics. Both use the
   versions in the lock.
 
-Never format ignored paths by hand. Imported files must keep their bytes (`node scripts/check-research-import.mjs`,
-`node scripts/import/verify-closure.mjs`).
+Never format ignored paths by hand. The imported application is maintained as product code; CI checks behavior,
+module resolution and excluded private/generated files without requiring frozen per-file hashes.
 
 ## CI
 
