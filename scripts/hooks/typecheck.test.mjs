@@ -58,7 +58,17 @@ function plant(path, text) {
     git(['read-tree', 'HEAD'], { env });
     git(['update-index', '--add', '--cacheinfo', `100644,${blob},${path}`], { env });
     const tree = git(['write-tree'], { env }).trim();
-    return git(['commit-tree', tree, '-p', 'HEAD'], { input: 'planted' }).trim();
+    // A fixed test identity: a runner with no Git identity configured can still make the dangling commit.
+    const who = { GIT_AUTHOR_NAME: 'typecheck test', GIT_AUTHOR_EMAIL: 'typecheck@test.invalid' };
+    const identity = {
+      ...who,
+      GIT_COMMITTER_NAME: who.GIT_AUTHOR_NAME,
+      GIT_COMMITTER_EMAIL: who.GIT_AUTHOR_EMAIL,
+    };
+    return git(['commit-tree', tree, '-p', 'HEAD'], {
+      input: 'planted',
+      env: { ...env, ...identity },
+    }).trim();
   } finally {
     rmSync(temp, { recursive: true, force: true });
   }
