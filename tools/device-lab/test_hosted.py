@@ -1,11 +1,11 @@
 """hosted.py (fm-5klw): the summary called with plain values, and the real artifact server on a planted
 artifact against the live runtime manifest (python3 -m unittest test_hosted, from this folder; needs network)."""
-import hashlib, json, subprocess, tempfile, unittest, urllib.error, urllib.request
+import hashlib, json, os, subprocess, tempfile, time, unittest, urllib.error, urllib.request
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
-from hosted import AndroidChrome, lane_report, lab, ArtifactServer, HOSTED_LANES, OriginStorage, hosted_outcomes, manifest_sha, release_reports, runner_unavailable_reason, summarise
+from hosted import IOS_JOURNEYS, IOS_POST, IosAttempt, ios_reset_page, ios_script, ios_simulator, observe_request_failures, AndroidChrome, lane_report, lab, ArtifactServer, HOSTED_LANES, OriginStorage, hosted_outcomes, manifest_sha, release_reports, runner_unavailable_reason, summarise
 
 RUN = {'cold': {'route': 'Ready · this device’s CPU.', 'faceS': 22.2}, 'warm': {'route': 'Ready · this device’s CPU.', 'faceS': 16.7},
        'morph': {'videoS': 57.5}, 'ok': True}
@@ -43,6 +43,232 @@ class AndroidKeyboard(unittest.TestCase):
         with patch.object(lab.Desktop, 'type_into'), self.assertRaisesRegex(TimeoutError, 'keyboard did not settle'):
             dev.type_into('input', 'word')
         dev.js.assert_not_called()
+
+
+class RequestFailures(unittest.TestCase):
+    def test_observation_is_bounded_and_removes_query_and_fragment(self):
+        dev = SimpleNamespace(page=Mock())
+        observe_request_failures(dev)
+        event, callback = dev.page.on.call_args.args
+        self.assertEqual(event, 'requestfailed')
+        request = SimpleNamespace(url='https://models.example/weights.bin?secret=value#part',
+                                  failure='net::ERR_CONNECTION_RESET', resource_type='fetch')
+        for _ in range(45):
+            callback(request)
+        self.assertEqual(len(dev.request_failures), 40)
+        self.assertEqual(dev.request_failures[0], dict(url='https://models.example/weights.bin',
+                         failure='net::ERR_CONNECTION_RESET', resourceType='fetch'))
+
+    def test_android_exposes_its_actual_context_for_failure_tracing(self):
+        pw = Mock()
+        ctx = SimpleNamespace(pages=[Mock()], new_cdp_session=Mock())
+        pw.chromium.connect_over_cdp.return_value.contexts = [ctx]
+        with patch('hosted.subprocess.run', return_value=SimpleNamespace(stdout='chrome_devtools_remote')):
+            dev = AndroidChrome(pw, 8791)
+        self.assertIs(dev.ctx, ctx)
+        self.assertIs(dev.ctx, dev.context)
+        self.assertTrue(any(c.args[0] == 'requestfailed' for c in dev.page.on.call_args_list))
+
+
+class IosProtocol(unittest.TestCase):
+    def setUp(self):
+        self.report = {}
+        self.attempt = IosAttempt('current', self.report)
+
+    def post(self, **body):
+        return self.attempt.post(dict(attempt='current', **body))
+
+    def test_stale_reports_cannot_advance_or_finish_current_attempt(self):
+        self.assertFalse(self.attempt.post(dict(attempt='old', stage='cold', ok=True, result={})))
+        self.assertEqual(self.attempt.stages, [])
+        self.assertFalse(self.attempt.done.is_set())
+
+    def test_ordered_three_journeys_are_required(self):
+        self.assertTrue(self.post(event='start', stage='cold', userAgent='real browser'))
+        self.assertTrue(self.post(stage='cold', ok=True, result=RUN['cold']))
+        self.assertFalse(self.attempt.done.is_set())
+        self.assertTrue(self.post(event='start', stage='warm'))
+        self.assertTrue(self.post(stage='warm', ok=True, result=RUN['warm']))
+        self.assertFalse(self.attempt.done.is_set())
+        self.assertTrue(self.post(stage='morph', ok=True, result=RUN['morph'], done=True))
+        self.assertTrue(self.attempt.done.is_set())
+        self.assertEqual([s['stage'] for s in self.attempt.stages], ['cold', 'warm', 'morph'])
+
+    def test_reopened_cold_page_fails_instead_of_measuring_a_partially_warm_visit(self):
+        self.assertTrue(self.post(event='start', stage='cold'))
+        self.assertFalse(self.post(event='start', stage='cold'))
+        self.assertTrue(self.attempt.done.is_set())
+        self.assertIn('protocol violation', self.attempt.rec['error'])
+        self.assertFalse(self.post(stage='cold', ok=True, result=RUN['cold']))
+        self.assertNotIn('cold', self.attempt.rec)
+
+    def test_missing_cold_or_unstarted_results_fail(self):
+        self.assertFalse(self.post(stage='cold', ok=True, result={}))
+        attempt = IosAttempt('current', {})
+        self.assertFalse(attempt.post(dict(attempt='current', event='start', stage='warm')))
+        self.assertTrue(attempt.done.is_set())
+
+    def test_reset_failure_after_cold_is_a_real_failure_without_warm_visit(self):
+        self.post(event='start', stage='cold')
+        self.post(stage='cold', ok=True, result=RUN['cold'])
+        self.assertTrue(self.post(stage='warm', ok=False, error='warm reset blocked: session', done=True))
+        self.assertTrue(self.attempt.done.is_set())
+        self.assertIn('warm reset blocked', self.attempt.rec['error'])
+        self.assertNotIn('warm', self.attempt.rec)
+
+    def test_post_rejects_non_2xx_and_transport_failure(self):
+        script = """import assert from 'node:assert/strict';
+const ATTEMPT='current', post=eval('('+process.argv[1]+')');
+let sent;
+globalThis.fetch=async (_url, options)=>{sent=JSON.parse(options.body);return {ok:false,status:409}};
+await assert.rejects(post({stage:'cold'}), /HTTP 409/);
+assert.deepEqual(sent,{stage:'cold',attempt:'current'});
+globalThis.fetch=async ()=>{throw Error('network failed')};
+await assert.rejects(post({stage:'cold'}), /network failed/);
+globalThis.fetch=async ()=>({ok:true,status:200});
+await post({stage:'cold'});
+"""
+        subprocess.run(['node', '--input-type=module', '-e', script, IOS_POST], check=True, capture_output=True, text=True, timeout=10)
+
+    def test_reset_database_error_reports_failure_without_advancing_or_clearing_models(self):
+        script = """import assert from 'node:assert/strict';
+import vm from 'node:vm';
+let stage='reset', posted, cleared=false, navigated=false;
+const context={AbortController,setTimeout,clearTimeout,
+  sessionStorage:{getItem:()=>stage,setItem:(_key,value)=>{stage=value}},
+  localStorage:{clear:()=>{cleared=true}},
+  indexedDB:{databases:async()=>[{name:'session'}],deleteDatabase:()=>{
+    const q={error:Error('native deletion failed')};queueMicrotask(()=>q.onerror());return q}},
+  fetch:async(_url,options)=>{posted=JSON.parse(options.body);return {ok:true}},
+  location:{replace:()=>{navigated=true}}};
+await vm.runInNewContext(process.argv[1],context);
+assert.equal(stage,'reset');assert.equal(cleared,false);assert.equal(navigated,false);
+assert.equal(posted.ok,false);assert.match(posted.error,/native deletion failed/);
+assert.equal(posted.stage,'warm');assert.equal(posted.attempt,'current');
+"""
+        source = ios_reset_page('current').split('<script>', 1)[1].split('</script>', 1)[0]
+        subprocess.run(['node', '--input-type=module', '-e', script, source], check=True, capture_output=True, text=True, timeout=10)
+
+
+class IosSimulatorOwnership(unittest.TestCase):
+    def simulator(self, fail=None):
+        devices = {'devices': {'runtime-ios-18': [{'name': 'iPhone 16 Pro', 'udid': 'existing-user-device',
+                                                 'deviceTypeIdentifier': 'device-type-16-pro'}]}}
+        def command(*args, **kwargs):
+            if args[0] == fail:
+                raise RuntimeError('injected ' + fail + ' failure')
+            return SimpleNamespace(stdout=json.dumps(devices) if args[0] == 'list' else 'owned-simulator\n')
+        return Mock(side_effect=command)
+
+    def test_fresh_device_uses_selected_type_and_runtime_and_only_owned_cleanup(self):
+        sim = self.simulator()
+        with ios_simulator(sim, 'iPhone 16 Pro', 'token') as udid:
+            self.assertEqual(udid, 'owned-simulator')
+        sim.assert_any_call('create', 'FaceMorph-Hosted-token', 'device-type-16-pro', 'runtime-ios-18')
+        self.assertEqual(sim.call_args_list[-2].args, ('shutdown', 'owned-simulator'))
+        self.assertEqual(sim.call_args_list[-1].args, ('delete', 'owned-simulator'))
+        self.assertFalse(any('existing-user-device' in c.args for c in sim.call_args_list))
+
+    def test_setup_and_journey_failures_still_delete_owned_device(self):
+        for fail in ['boot', 'bootstatus', 'journey', 'shutdown']:
+            with self.subTest(fail=fail):
+                sim = self.simulator(fail)
+                with self.assertRaisesRegex(RuntimeError, fail):
+                    with ios_simulator(sim, 'iPhone 16 Pro', 'token'):
+                        raise RuntimeError('injected journey failure')
+                self.assertEqual(sim.call_args_list[-1].args, ('delete', 'owned-simulator'))
+
+    def test_missing_device_has_no_setup_or_cleanup_side_effects(self):
+        sim = self.simulator()
+        with ios_simulator(sim, 'missing device', 'token') as udid:
+            self.assertIsNone(udid)
+        self.assertEqual(len(sim.call_args_list), 1)
+
+    def test_failed_creation_does_not_delete_an_existing_device(self):
+        sim = self.simulator('create')
+        with self.assertRaisesRegex(RuntimeError, 'create'):
+            with ios_simulator(sim, 'iPhone 16 Pro', 'token'):
+                self.fail('failed creation cannot yield a Simulator')
+        self.assertFalse(any(c.args[0] in ('shutdown', 'delete') for c in sim.call_args_list))
+
+
+@unittest.skipUnless(os.environ.get('LAB_REAL_BROWSERS') == '1', 'opt-in real browser storage/lifecycle checks')
+class IosBrowserLifecycle(unittest.TestCase):
+    def test_reset_keeps_model_storage_and_fails_on_an_actual_blocked_database(self):
+        from playwright.sync_api import sync_playwright
+        with tempfile.TemporaryDirectory() as tmp, patch('hosted.manifest_sha', return_value='a'*64), sync_playwright() as pw:
+            root = Path(tmp)
+            (root / 'index.html').write_text('<!doctype html><title>app-free test landing</title>')
+            posts = []
+            with ArtifactServer(root, 'a'*64, 0, root/'cache', on_post=posts.append,
+                                pages={'/__lane-reset': ios_reset_page('current')}) as srv:
+                origin = f'http://127.0.0.1:{srv.httpd.server_port}'
+                for engine in ['chromium', 'firefox']:
+                    with self.subTest(engine=engine):
+                        browser = getattr(pw, engine).launch()
+                        try:
+                            context = browser.new_context()
+                            page = context.new_page()
+                            page.goto(origin)
+                            page.evaluate("""async () => {
+                              sessionStorage.setItem('__laneStage:current','reset');
+                              localStorage.setItem('saved-session','present');
+                              await new Promise((done,fail)=>{const q=indexedDB.open('session',1);
+                                q.onsuccess=()=>{q.result.close();done()};q.onerror=()=>fail(q.error)});
+                              await caches.open('model');
+                              const root=await navigator.storage.getDirectory();
+                              await root.getFileHandle('model',{create:true});
+                            }""")
+                            page.goto(origin+'/__lane-reset?attempt=current')
+                            page.wait_for_url(origin+'/?attempt=current')
+                            state = page.evaluate("""async () => ({stage:sessionStorage.getItem('__laneStage:current'),
+                              local:localStorage.length, databases:(await indexedDB.databases()).map(d=>d.name),
+                              caches:await caches.keys(), files:await Array.fromAsync((await navigator.storage.getDirectory()).keys())})""")
+                            self.assertEqual(state, dict(stage='warm', local=0, databases=[], caches=['model'], files=['model']))
+                            blocker = context.new_page()
+                            blocker.goto(origin)
+                            blocker.evaluate("""() => new Promise(done=>{const q=indexedDB.open('blocked',1);
+                              q.onsuccess=()=>{window.held=q.result;done()}})""")
+                            page.evaluate("sessionStorage.setItem('__laneStage:current','reset')")
+                            n = len(posts)
+                            page.goto(origin+'/__lane-reset?attempt=current')
+                            deadline = time.monotonic()+10
+                            while len(posts) == n and time.monotonic() < deadline:
+                                page.wait_for_timeout(50)
+                            self.assertGreater(len(posts), n)
+                            self.assertEqual(posts[-1]['attempt'], 'current')
+                            self.assertFalse(posts[-1]['ok'])
+                            self.assertIn('warm reset blocked', posts[-1]['error'])
+                            self.assertEqual(page.evaluate("sessionStorage.getItem('__laneStage:current')"), 'reset')
+                        finally:
+                            browser.close()
+
+    def test_rejected_cold_report_cannot_advance_to_reset_or_warm(self):
+        from playwright.sync_api import sync_playwright
+        with tempfile.TemporaryDirectory() as tmp, patch('hosted.manifest_sha', return_value='a'*64), sync_playwright() as pw:
+            root = Path(tmp)
+            (root/'index.html').write_text("""<!doctype html><body><div class='next-product' data-next-busy='false'>
+              <div class='next-face'><input type='text'><button class='next-face-generate' onclick="const c=document.createElement('canvas');c.width=1024;c.dataset.faceDrawn='true';document.querySelector('.next-face-image').append(c)">Generate</button>
+              <div class='next-face-image'></div></div></div></body>""")
+            posts = []
+            def receive(body):
+                posts.append(body)
+                return not (body.get('stage') == 'cold' and body.get('ok') is True)
+            inject = lambda html: html.replace('</body>', ios_script(IOS_JOURNEYS, 'current')+'</body>')
+            with ArtifactServer(root, 'a'*64, 0, root/'cache', inject=inject, on_post=receive) as srv:
+                browser = pw.chromium.launch()
+                try:
+                    page = browser.new_page()
+                    page.goto(f'http://localhost:{srv.httpd.server_port}/?attempt=current')
+                    deadline = time.monotonic()+10
+                    while not any(p.get('ok') is False for p in posts) and time.monotonic() < deadline:
+                        page.wait_for_timeout(50)
+                    self.assertTrue(any(p.get('ok') is False and 'HTTP 409' in p['error'] for p in posts), posts)
+                    self.assertEqual(page.evaluate("sessionStorage.getItem('__laneStage:current')"), None)
+                    self.assertFalse(any(p.get('stage') in ('warm', 'morph') for p in posts))
+                    self.assertNotIn('/__lane-reset', page.url)
+                finally:
+                    browser.close()
 
 
 class Summary(unittest.TestCase):

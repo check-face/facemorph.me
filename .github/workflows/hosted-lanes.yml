@@ -190,6 +190,7 @@ jobs:
           path: |
             lane/*.json
             lane/*.png
+            lane/*.zip
           if-no-files-found: warn
           retention-days: 30
   ios:

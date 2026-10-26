@@ -27,7 +27,9 @@ over a debugging protocol, so its lane injects the journeys into the served page
 """
 import argparse, hashlib, http.server, json, mimetypes, platform, re, socketserver, subprocess, sys, uuid
 import threading, time, types, urllib.request
+from contextlib import contextmanager
 from pathlib import Path
+from urllib.parse import urlsplit
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
@@ -60,10 +62,11 @@ class ArtifactServer:
     """The artifact directory on http://127.0.0.1:<port>/ with /runtime/ proxied (and cached) from the
     deployed origin. `inject(html)` may rewrite index.html per request (the iOS lane's journeys)."""
 
-    def __init__(self, artifact, runtime_sha, port, cache, inject=None, on_post=None):
+    def __init__(self, artifact, runtime_sha, port, cache, inject=None, on_post=None, pages=None):
         self.artifact = Path(artifact).resolve()
         self.runtime_sha, self.port, self.cache = runtime_sha, port, Path(cache)
         self.inject, self.on_post = inject, on_post
+        self.pages = pages or {}
         assert (self.artifact / 'index.html').exists(), f'no built artifact at {self.artifact}'
 
     def __enter__(self):
@@ -89,6 +92,8 @@ class ArtifactServer:
                     self.wfile.write(body)
 
             def body_for(self, path):
+                if path in server.pages:
+                    return server.pages[path].encode(), 'text/html; charset=utf-8'
                 if path.startswith('/runtime/'):
                     return server.runtime(path)
                 if path in ('/', '/index.html'):
@@ -124,8 +129,11 @@ class ArtifactServer:
                 size = int(self.headers.get('Content-Length', '0'))
                 if self.path != '/__lane' or not server.on_post or not 0 < size < 4 << 20:
                     return self.send(404, b'', 'text/plain')
-                server.on_post(json.loads(self.rfile.read(size)))
-                self.send(200, b'{}', 'application/json')
+                try:
+                    accepted = server.on_post(json.loads(self.rfile.read(size)))
+                except (ValueError, TypeError, KeyError):
+                    return self.send(400, b'{}', 'application/json')
+                self.send(409 if accepted is False else 200, b'{}', 'application/json')
 
         class Server(socketserver.ThreadingMixIn, http.server.HTTPServer):
             daemon_threads = True
@@ -192,6 +200,21 @@ class OriginStorage:
             reset.close()
 
 
+def observe_request_failures(dev):
+    """Bounded passive failure context; omit query strings and fragments from URLs."""
+    dev.request_failures = []
+
+    def failed(request):
+        if len(dev.request_failures) < 40:
+            dev.request_failures.append({
+                'url': urlsplit(request.url)._replace(query='', fragment='').geturl()[:1000],
+                'failure': str(request.failure or 'unknown')[:800],
+                'resourceType': request.resource_type,
+            })
+
+    dev.page.on('requestfailed', failed)
+
+
 class HostedBrowser(lab.Desktop):
     """A Playwright browser on the hosted runner, with lab.Desktop's real-mouse tap and typing. A cold
     journey starts from an empty profile; a warm one keeps it and clears only the saved session."""
@@ -212,6 +235,7 @@ class HostedBrowser(lab.Desktop):
         self.page.add_init_script(PROGRESS_OBSERVER)
         self.browser_errors = []
         self.page.on('pageerror', lambda error: self.browser_errors.append(str(error)[:800]) if len(self.browser_errors) < 40 else None)
+        observe_request_failures(self)
         self.cdp = self.ctx.new_cdp_session(self.page) if CHANNELS[self.browser] == 'chromium' else OriginStorage(self)
         self.crashed = False
         self.page.on('crash', lambda *_: setattr(self, 'crashed', True))
@@ -258,11 +282,13 @@ class AndroidChrome(lab.Desktop):
         self.adb = adb
         self.browser_cdp = pw.chromium.connect_over_cdp(f'http://127.0.0.1:{lab.CDP_PORT}')
         self.context = self.browser_cdp.contexts[0]
+        self.ctx = self.context  # lab.run_journeys retains the actual failing Android trace.
         self.page = self.context.pages[0] if self.context.pages else self.context.new_page()
         self.page.add_init_script(lab.GUARD)
         self.page.add_init_script(PROGRESS_OBSERVER)
         self.browser_errors = []
         self.page.on('pageerror', lambda error: self.browser_errors.append(str(error)[:800]) if len(self.browser_errors) < 40 else None)
+        observe_request_failures(self)
         self.cdp = self.context.new_cdp_session(self.page)
         self.crashed = False
         self.page.on('crash', lambda *_: setattr(self, 'crashed', True))
@@ -373,6 +399,7 @@ def run_driven(args, make_device, kind):
                 lab.run_journeys(dev, args, args.lane, None, out, report)
                 if not all(run.get('ok') for run in report['runs']):
                     report['browserErrors'] = dev.browser_errors
+                    report['requestFailures'] = dev.request_failures
                     try:
                         report['progress'] = dev.page.evaluate('window.__hostedProgress || []')
                     except Exception as error:
@@ -395,9 +422,12 @@ def cmd_android(args):
 IOS_JOURNEYS = r"""
 <script>
 (async () => {
-  const STAGE = sessionStorage.getItem('__laneStage') || 'cold';
+  const ATTEMPT = __ATTEMPT__, KEY = '__laneStage:' + ATTEMPT;
+  const STAGE = sessionStorage.getItem(KEY) || 'cold';
+  const resetUrl = '/__lane-reset?attempt=' + encodeURIComponent(ATTEMPT);
+  if (STAGE === 'reset') { location.replace(resetUrl); return; }
   let doing = STAGE;  // the journey under way, named in a failure report
-  const post = (body) => fetch('/__lane', {method: 'POST', headers: {'content-type': 'application/json'}, body: JSON.stringify(body)}).catch(() => {});
+  const post = __IOS_POST__;
   const sleep = (ms) => new Promise(r => setTimeout(r, ms));
   const FACES = (sel) => [...document.querySelectorAll(sel)].filter(i => (i.naturalWidth || i.width) === 1024).length;
   const S = __SELECTORS__;
@@ -438,20 +468,16 @@ IOS_JOURNEYS = r"""
             route: (document.querySelector(S.route)?.innerText || '').trim().slice(0, 80), typed: word, fieldValue: input.value};
   };
   try {
+    await post({event: 'start', stage: STAGE, userAgent: navigator.userAgent});
     if (STAGE === 'cold') {
-      for (const k of await caches.keys()) await caches.delete(k);
-      sessionStorage.setItem('__laneStage', 'warm');
       const cold = await face('lab0cold');
       await post({stage: 'cold', ok: true, result: cold, userAgent: navigator.userAgent});
-      // Warm: models stay; the saved session (IndexedDB) and local storage go, then a fresh visit.
-      const names = indexedDB.databases ? (await indexedDB.databases()).map(d => d.name) : ['checkface-originals-v1'];
-      await Promise.all(names.map(n => new Promise(done => { const q = indexedDB.deleteDatabase(n); q.onsuccess = q.onerror = q.onblocked = () => done(); })));
-      localStorage.clear();
-      location.reload();
+      // Leave the app (and its open databases) before clearing the saved session.
+      sessionStorage.setItem(KEY, 'reset');
+      location.replace(resetUrl);
       return;
     }
     if (STAGE === 'warm') {
-      sessionStorage.setItem('__laneStage', 'done');
       const warm = await face('lab0warm');
       await post({stage: 'warm', ok: true, result: warm});
       doing = 'morph';
@@ -472,6 +498,7 @@ IOS_JOURNEYS = r"""
       }, Math.max(1, end - Date.now()), 'a playable morph video');
       await post({stage: 'morph', ok: true, result: {videoS: +((performance.now() - t0) / 1000).toFixed(2),
         duration: video.duration, width: video.videoWidth, height: video.videoHeight, readyState: video.readyState}, done: true});
+      sessionStorage.setItem(KEY, 'done');
     }
   } catch (e) {
     const v = document.querySelector(S.video);
@@ -485,59 +512,163 @@ IOS_JOURNEYS = r"""
 """
 
 
+# Reporting is part of the journey protocol: transport failures/non-2xx never advance it.
+IOS_POST = r"""async (body) => {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 15000);
+  try {
+    const response = await fetch('/__lane', {method: 'POST', signal: controller.signal,
+      headers: {'content-type': 'application/json'}, body: JSON.stringify({...body, attempt: ATTEMPT})});
+    if (!response.ok) throw Error('journey report rejected: HTTP ' + response.status);
+  } finally { clearTimeout(timer); }
+}"""
+
+
+def ios_script(script, attempt):
+    return script.replace('__ATTEMPT__', json.dumps(attempt)).replace('__IOS_POST__', IOS_POST).replace('__SELECTORS__', json.dumps(lab.S))
+
+
+def ios_reset_page(attempt):
+    # This page contains no application scripts or workers. Model Cache Storage and OPFS stay intact.
+    return ios_script(r"""<!doctype html><title>Preparing warm visit</title><script>
+(async () => {
+  const ATTEMPT = __ATTEMPT__, KEY = '__laneStage:' + ATTEMPT;
+  const post = __IOS_POST__;
+  try {
+    if (sessionStorage.getItem(KEY) !== 'reset') throw Error('unexpected warm reset state');
+    await (__WARM_RESET__)();
+    sessionStorage.setItem(KEY, 'warm');
+    location.replace('/?attempt=' + encodeURIComponent(ATTEMPT));
+  } catch (e) {
+    await post({stage: 'warm', ok: false, error: 'warm reset: ' + String(e.message || e), done: true});
+  }
+})();
+</script>""".replace('__WARM_RESET__', WARM_RESET), attempt)
+
+
+class IosAttempt:
+    """One ordered, attempt-bound cold/warm/morph protocol; stale pages cannot supply evidence."""
+    def __init__(self, token, report):
+        self.token, self.report = token, report
+        self.rec, self.stages = {'iteration': 1}, []
+        self.started, self.done, self.lock = threading.Event(), threading.Event(), threading.Lock()
+        self.visits = []
+
+    def post(self, msg):
+        with self.lock:
+            if not isinstance(msg, dict) or msg.get('attempt') != self.token:
+                lab.log('ios_stale_report_rejected')
+                return False
+            stage = msg.get('stage')
+            if msg.get('event') == 'start':
+                expected = 'cold' if not self.visits else 'warm'
+                valid = (stage == expected and len(self.visits) < 2
+                         and not self.done.is_set()
+                         and (not self.visits or [s['stage'] for s in self.stages] == ['cold']))
+                if valid:
+                    self.visits.append(stage)
+                    self.started.set()
+                    self.report['userAgent'] = msg.get('userAgent', '')
+                    lab.log('ios_page_start', attempt=self.token, stage=stage)
+                    return True
+            else:
+                expected = ('cold', 'warm', 'morph')[min(len(self.stages), 2)]
+                valid = (stage == expected and len(self.stages) < 3 and type(msg.get('ok')) is bool
+                         and bool(self.visits)
+                         and (stage == 'cold' or not msg['ok'] or self.visits == ['cold', 'warm'])
+                         and (not msg['ok'] or isinstance(msg.get('result'), dict)))
+                if valid and not self.done.is_set():
+                    self.stages.append(msg)
+                    lab.log('ios_stage', stage=stage, ok=msg['ok'], error=msg.get('error'), media=msg.get('media'))
+                    if msg['ok']:
+                        self.rec[stage] = msg['result']
+                    else:
+                        self.rec['error'] = f"{stage}: {msg.get('error')}"
+                        if 'media' in msg:
+                            self.rec['media'] = msg['media']
+                    if not msg['ok'] or stage == 'morph':
+                        self.done.set()
+                    return True
+            self.rec['error'] = f'journey protocol violation: unexpected {msg.get("event", "result")} {stage}'
+            self.done.set()
+            return False
+
+
+@contextmanager
+def ios_simulator(sim, device, attempt):
+    devices = json.loads(sim('list', 'devices', 'available', '--json').stdout)['devices']
+    match = next(((runtime, d) for runtime, group in devices.items() for d in group if d['name'] == device), None)
+    if not match:
+        yield None
+        return
+    runtime, template = match
+    # Create instead of erasing/reusing an existing device; this is the cold profile boundary.
+    udid = sim('create', 'FaceMorph-Hosted-' + attempt, template['deviceTypeIdentifier'], runtime).stdout.strip()
+    if not udid:
+        raise RuntimeError('simctl create returned no task-owned Simulator')
+    try:
+        sim('boot', udid)
+        sim('bootstatus', udid, '-b', timeout=600)
+        yield udid
+    finally:
+        try:
+            sim('shutdown', udid, check=False)
+        finally:
+            sim('delete', udid)
+
+
 def cmd_ios(args):
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
-    rec, done, stages = {'iteration': 1}, threading.Event(), []
+    token = uuid.uuid4().hex
+    inject = lambda html: html.replace('</body>', ios_script(IOS_JOURNEYS, token) + '</body>')
+    # The report is populated before Safari can post its first result.
+    report = {}
+    attempt = IosAttempt(token, report)
+    with ArtifactServer(args.artifact, args.runtime_sha, args.port, out / 'runtime-cache', inject,
+                        attempt.post, pages={'/__lane-reset': ios_reset_page(token)}) as srv:
+        report.update(lane_report(args.lane, 'hosted-ios-simulator', srv.url,
+                                 {'browser': 'safari', 'device': args.device, 'attempt': token}, args.artifact, args.runtime_sha))
 
-    def on_post(msg):
-        stages.append(msg)
-        lab.log('ios_stage', stage=msg.get('stage'), ok=msg.get('ok'), error=msg.get('error'), media=msg.get('media'))
-        if msg.get('ok'):
-            rec[msg['stage']] = msg['result']
-        else:
-            rec['error'] = f"{msg.get('stage')}: {msg.get('error')}"
-            if 'media' in msg:
-                rec['media'] = msg['media']
-        if msg.get('userAgent'):
-            report['userAgent'] = msg['userAgent']
-        if msg.get('done'):
-            done.set()
+        def sim(*a, timeout=300, check=True):
+            result = subprocess.run(['xcrun', 'simctl', *a], capture_output=True, text=True, timeout=timeout)
+            lab.log('ios_simctl', command=list(a), returncode=result.returncode)
+            if check and result.returncode:
+                raise RuntimeError(f'simctl {a[0]} failed: {result.stderr.strip()[:400]}')
+            return result
 
-    inject = lambda html: html.replace('</body>', IOS_JOURNEYS.replace('__SELECTORS__', json.dumps(lab.S)) + '</body>')
-    with ArtifactServer(args.artifact, args.runtime_sha, args.port, out / 'runtime-cache', inject, on_post) as srv:
-        report = lane_report(args.lane, 'hosted-ios-simulator', srv.url, {'browser': 'safari', 'device': args.device}, args.artifact, args.runtime_sha)
-
-        def sim(*a, timeout=300):
-            try:
-                return subprocess.run(['xcrun', 'simctl', *a], capture_output=True, text=True, timeout=timeout)
-            except subprocess.TimeoutExpired:
-                return None  # slowness on a cold runner; the retry loop decides
-
-        devices = json.loads(sim('list', 'devices', 'available', '--json').stdout)['devices']
-        match = next((d for group in devices.values() for d in group if d['name'] == args.device), None)
-        if not match:
-            report.update(status='untested', ok=False, reason=f'no available Simulator named {args.device!r}')
-            (out / f'{args.lane}.json').write_text(json.dumps(report, indent=2))
-            return 0  # explicit unavailable evidence; never a passing journey
-        udid = match['udid']
-        if match['state'] != 'Booted':
-            assert sim('boot', udid).returncode == 0
-            sim('bootstatus', udid, '-b', timeout=600)
-        sim('launch', udid, 'com.apple.mobilesafari')
-        for _ in range(6):
-            r = sim('openurl', udid, srv.url)
-            if r is not None and r.returncode == 0:
-                break
-            time.sleep(10)
-            sim('launch', udid, 'com.apple.mobilesafari')
-        done.wait(timeout=args.timeout)
-        sim('io', udid, 'screenshot', str(out / f'{args.lane}-last.png'), timeout=60)
-    rec['ok'] = all(s.get('ok') for s in stages) and {s.get('stage') for s in stages} >= set(args.journey_stages)
-    if not stages:
-        rec['error'] = 'the Simulator page never reported'
-    elif not rec['ok'] and 'error' not in rec:
-        rec['error'] = f"journeys incomplete: reported {[s.get('stage') for s in stages]}"
+        try:
+            with ios_simulator(sim, args.device, token) as udid:
+                if udid is None:
+                    report.update(status='untested', ok=False, reason=f'no available Simulator named {args.device!r}')
+                    (out / f'{args.lane}.json').write_text(json.dumps(report, indent=2))
+                    return 0  # explicit unavailable evidence; never a passing journey
+                report['simulatorUdid'] = udid
+                sim('launch', udid, 'com.apple.mobilesafari')
+                for _ in range(6):
+                    try:
+                        r = sim('openurl', udid, srv.url + '?attempt=' + token, check=False)
+                        if r.returncode == 0:
+                            break
+                    except subprocess.TimeoutExpired:
+                        lab.log('ios_openurl_timeout', attempt=token)
+                    # A timed-out simctl can still have opened Safari. Never interrupt a started journey.
+                    if attempt.started.wait(timeout=10) or attempt.done.is_set():
+                        break
+                    sim('launch', udid, 'com.apple.mobilesafari')
+                attempt.done.wait(timeout=args.timeout)
+                try:
+                    sim('io', udid, 'screenshot', str(out / f'{args.lane}-last.png'), timeout=60)
+                except Exception as error:
+                    report['screenshotError'] = str(error)[:400]
+        except Exception as error:
+            attempt.rec['error'] = str(error)[:600]
+    rec, stages = attempt.rec, attempt.stages
+    rec['ok'] = ('error' not in rec and bool(stages) and all(s.get('ok') for s in stages)
+                 and {s.get('stage') for s in stages} >= set(args.journey_stages))
+    if not rec['ok'] and 'error' not in rec:
+        rec['error'] = ('the Simulator page never reported' if not stages else
+                        f"journeys incomplete: reported {[s.get('stage') for s in stages]}")
     report['runs'].append(rec)
     return finish(report, out)
 
