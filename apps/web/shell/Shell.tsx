@@ -97,6 +97,16 @@ export function Footer({ route = '' }: { route?: string }) {
             — it fills in your version and device.
           </p>
           <p className="next-footer-version">Preview version {sourceVersion()}</p>
+          <p>
+            {/* NOTICES_HREF in render/help.ts; inline so the retirement-copy inventory's lines stay put. */}
+            <Link
+              color="inherit"
+              className="next-footer-notices"
+              href="/runtime/notices/index.html"
+            >
+              Licences and notices
+            </Link>
+          </p>
         </div>
         <div className="next-footer-logo">
           <SvgIcon component={Logo} inheritViewBox style={{ fontSize: '5rem' }} />

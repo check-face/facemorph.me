@@ -73,29 +73,56 @@ export type ReasonKey =
 
 export interface RefusalReason {
   readonly reasonKey: ReasonKey;
-  /** Plain sentence; placeholder per key until provider.copy lands. */
+  /** One short plain sentence with its recovery (provider.copy, fm-gbdt); never a runtime exception's text. */
   readonly text: string;
+  /** The Help section that explains it (apps/web/shell/render/help.ts renders every anchor named here). */
   readonly helpAnchor: `#help-${string}`;
 }
 
 const TEXT: Readonly<Record<ReasonKey, string>> = Object.freeze({
-  'webgpu-absent': 'This browser does not offer WebGPU.',
-  'webgpu-no-adapter': 'This browser offers WebGPU but has no graphics adapter for it.',
-  'webgpu-software-adapter': 'WebGPU here runs in software, which is not a graphics route.',
-  'webgpu-limits': 'This graphics adapter cannot hold the model.',
-  'webgpu-canary-failed': 'The graphics route gave wrong results on the check face.',
-  'webgpu-device-lost': 'The graphics device stopped working.',
-  'cpu-wasm-unavailable': 'This browser cannot run the processor route.',
-  'cpu-canary-failed': 'The processor route gave wrong results on the check face.',
-  'encoder-not-delivered': 'Photo encoding is not available in this version.',
-  'encoder-memory': 'This browser cannot reserve the memory photo encoding needs.',
-  'encoder-not-admitted-constrained': 'Photo encoding is not yet admitted on devices with this little memory.',
-  'generator-not-admitted': 'Faces cannot be made in this browser, so neither can a morph.',
-  'codec-unavailable': 'This browser cannot encode the morph video.',
-  'unknown-failure': 'Something went wrong on this route.',
+  'webgpu-absent': 'This browser does not offer WebGPU, so set Processing mode to Automatic or CPU.',
+  'webgpu-no-adapter': 'This browser has WebGPU but no graphics adapter for it, so use Automatic or CPU processing.',
+  'webgpu-software-adapter': 'WebGPU here runs in software, not on a graphics card, so use Automatic or CPU processing.',
+  'webgpu-limits': 'This graphics adapter cannot hold the face model, so use Automatic or CPU processing.',
+  'webgpu-canary-failed': 'The graphics route gave a wrong check face on this device, so use Automatic or CPU processing.',
+  'webgpu-device-lost': 'The graphics device stopped responding, so reload the page or use CPU processing.',
+  'cpu-wasm-unavailable': 'This browser cannot run the CPU route, so try a current Chrome, Edge, Firefox or Safari.',
+  'cpu-canary-failed': 'The CPU route gave a wrong check face on this device, so try another browser.',
+  'encoder-not-delivered': 'Photo encoding is not part of this version, but words and seeds still make faces.',
+  'encoder-memory': 'This browser could not reserve the memory photo encoding needs, so close other tabs or use a computer.',
+  'encoder-not-admitted-constrained': 'Photo encoding is not yet available on devices with this little memory, but words and seeds still work.',
+  'generator-not-admitted': 'This browser cannot make faces, so it cannot make a morph either; try a current browser on a computer.',
+  'codec-unavailable': 'This browser cannot encode the morph video, so try a current Chrome, Edge or Firefox.',
+  'unknown-failure': 'Something went wrong on this route, so try again or set Processing mode to CPU.',
 });
 
-export const reason = (reasonKey: ReasonKey): RefusalReason => ({ reasonKey, text: TEXT[reasonKey], helpAnchor: `#help-${reasonKey}` });
+/** Help section per reason: related reasons share one section, so each anchor opens the advice that applies. */
+const HELP: Readonly<Record<ReasonKey, `#help-${string}`>> = Object.freeze({
+  'webgpu-absent': '#help-webgpu-route',
+  'webgpu-no-adapter': '#help-webgpu-route',
+  'webgpu-software-adapter': '#help-webgpu-route',
+  'webgpu-limits': '#help-webgpu-route',
+  'webgpu-canary-failed': '#help-webgpu-route',
+  'webgpu-device-lost': '#help-webgpu-route',
+  'cpu-wasm-unavailable': '#help-cpu-route',
+  'cpu-canary-failed': '#help-cpu-route',
+  'encoder-not-delivered': '#help-photo-encoding',
+  'encoder-memory': '#help-photo-encoding',
+  'encoder-not-admitted-constrained': '#help-photo-encoding',
+  'generator-not-admitted': '#help-cpu-route',
+  'codec-unavailable': '#help-video-export',
+  'unknown-failure': '#help-recovery',
+});
+
+export const REASON_KEYS = Object.freeze(Object.keys(TEXT) as ReasonKey[]);
+
+export const reason = (reasonKey: ReasonKey): RefusalReason => ({ reasonKey, text: TEXT[reasonKey], helpAnchor: HELP[reasonKey] });
+
+/** The refusal whose sentence is exactly `text`, or null: lets a surface showing only the sentence add its Help link. */
+export const refusalForText = (text: string | null | undefined): RefusalReason | null => {
+  const key = REASON_KEYS.find((k) => TEXT[k] === text);
+  return key ? reason(key) : null;
+};
 
 /** Maps a thrown runtime error to a known key; the error's own text never becomes the reason. */
 export function reasonFromError(error: unknown): RefusalReason {

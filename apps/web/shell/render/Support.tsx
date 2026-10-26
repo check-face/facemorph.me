@@ -10,6 +10,7 @@ import type { State } from '../../src/controller/state.ts';
 import { testingInvited } from '../../src/controller/init.ts';
 import { megabytes, type Dispatch } from './Dialogs.tsx';
 import { Explain } from './Explain.tsx';
+import { refusalForText } from '../../src/admission/route-admission.ts';
 
 interface Props {
   readonly state: State;
@@ -53,9 +54,17 @@ export function TestingInvite({
 
 export function ErrorBox({ state, dispatch, stagedReports, reference }: Props) {
   if (state.Error === null) return null;
+  const refusal = refusalForText(state.Error);
   return (
     <div className="next-error box" role="alert">
       <p>{state.Error}</p>
+      {refusal && (
+        <p className="next-error-help">
+          <a href={refusal.helpAnchor} data-next-reason={refusal.reasonKey}>
+            Why, and what to try
+          </a>
+        </p>
+      )}
       {reference && (
         <p className="next-error-reference" role="note">
           Report reference: {reference}

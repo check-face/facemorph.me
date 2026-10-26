@@ -1,5 +1,61 @@
 // Candidate Product.fs explainSection and FAQ. Copy changes belong to the domain/provider/diagnostics beads.
+import { useEffect } from 'react';
 import { issueUrl } from '../links.ts';
+import { helpTopics, type Run } from './help.ts';
+
+/** Opens the Help topic a same-page link names (a refusal's Help link, a selector link, a shared #anchor). */
+function openTopic(hash: string): void {
+  const id = decodeURIComponent(hash.replace(/^#/, ''));
+  const target = id ? document.getElementById(id) : null;
+  const topic = target?.closest('details.next-help-topic');
+  if (topic instanceof HTMLDetailsElement) topic.open = true;
+}
+
+function useHelpAnchors(): void {
+  useEffect(() => {
+    openTopic(location.hash);
+    if (location.hash) document.getElementById(location.hash.slice(1))?.scrollIntoView();
+    const hash = () => openTopic(location.hash);
+    // A click on a link to the topic already in the address bar fires no hashchange; open it on the click.
+    const click = (e: MouseEvent) => {
+      const a = (e.target as Element | null)?.closest?.('a[href^="#"]');
+      if (a) openTopic(a.getAttribute('href') ?? '');
+    };
+    addEventListener('hashchange', hash);
+    document.addEventListener('click', click, true);
+    return () => {
+      removeEventListener('hashchange', hash);
+      document.removeEventListener('click', click, true);
+    };
+  }, []);
+}
+
+const run = (r: Run, i: number) =>
+  typeof r === 'string' ? (
+    r
+  ) : (
+    <a key={i} href={r.href}>
+      {r.text}
+    </a>
+  );
+
+export function Help() {
+  useHelpAnchors();
+  return (
+    <div className="next-help" data-next-help="true">
+      <h3 id="help">{'Help'}</h3>
+      {helpTopics().map((topic) => (
+        <details className="next-faq next-help-topic" id={topic.id} key={topic.id}>
+          <summary>{topic.title}</summary>
+          {topic.paragraphs.map((p, i) => (
+            <p key={i}>{p.map(run)}</p>
+          ))}
+        </details>
+      ))}
+    </div>
+  );
+}
+
 export function Explain({ route = '', reference = '' }: { route?: string; reference?: string }) {
   return (
     <section className="next-explain box" data-next-explain="true" id="next-explain">
@@ -32,6 +88,7 @@ export function Explain({ route = '', reference = '' }: { route?: string; refere
         }
       </p>
       <p>{'All of it runs here, on your device. Your photos and words are never uploaded.'}</p>
+      <Help />
       <h3>{'Questions'}</h3>
       <details className="next-faq">
         <summary>{'Are these real people?'}</summary>
