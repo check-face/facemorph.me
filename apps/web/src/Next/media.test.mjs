@@ -56,6 +56,20 @@ test('The Full-quality encoder probe selects WebCodecs at full resolution with H
   assert.equal(other.correctnessChecks,2);
  }finally{restore();resetEncoderProbe();}
 });
+test('An encoder that reorders frames (B-frames) fails the correctness check, so baseline is used (fm-36ag)',async()=>{
+ const {probeVideoEncoder,resetEncoderProbe}=await import('./media.mjs');
+ resetEncoderProbe();const restore=installWebCodecs();
+ const Base=globalThis.VideoEncoder;
+ // High emits its chunks in decode order with B-frames (presentation timestamps not increasing), as Firefox's does.
+ globalThis.VideoEncoder=class extends Base{async flush(){if(this.config?.codec?.startsWith('avc1.6400')&&this.outputs.length>2)[this.outputs[1],this.outputs[2]]=[this.outputs[2],this.outputs[1]];return super.flush();}};
+ try{
+  const choice=await probeVideoEncoder({bundle:'reorders',quality:'full'});
+  assert.equal(choice.kind,'webcodecs');
+  assert.equal(choice.codec,'avc1.42002A','the reordering High encoder is passed over for baseline');
+  assert.equal(choice.width,1024,'at the same size');
+  assert.equal(FakeVideoEncoder.instances.find(e=>e.config?.codec==='avc1.64002A')?.config.latencyMode,'quality','checked as the worker encodes');
+ }finally{globalThis.VideoEncoder=Base;restore();resetEncoderProbe();}
+});
 test('Browsers without WebCodecs fall back to ffmpeg at the classic resolution',async()=>{
  const {probeVideoEncoder,resetEncoderProbe}=await import('./media.mjs');
  resetEncoderProbe();

@@ -1799,10 +1799,10 @@
       "bytes": 13197,
       "class": "src-next",
       "ported": {
-        "sha256": "0f1eea054d5f4a419ca029d69f2dd4dc8c8e5e9c1497c35f966beb9c66f528ea",
-        "bytes": 13519,
+        "sha256": "859c1f0084b0bcef2aaebacfba6ab2d8b3ee4ddb1432040b7bc3c257908a2161",
+        "bytes": 14266,
         "bead": "fm-36ag",
-        "reason": "Native retirement: saveFile drops the Tauri native_save_media branch; downloads are the browser path; Save/Share hand over prepared files named by export identity; encoder figures from the export policy (6915a98); Custom frames per face (2 up to the 4,096-frame budget, odd counts included) and a Full quality video choice; 512 × 512 stays the default (36b3236)"
+        "reason": "Native retirement: saveFile drops the Tauri native_save_media branch; downloads are the browser path; Save/Share hand over prepared files named by export identity; encoder figures from the export policy (6915a98); Custom frames per face (2 up to the 4,096-frame budget, odd counts included) and a Full quality video choice; 512 × 512 stays the default (36b3236); the encoder correctness check refuses encoders that reorder frames (Firefox High), so baseline is used"
       }
     },
     {
@@ -1812,10 +1812,10 @@
       "bytes": 18327,
       "class": "src-next",
       "ported": {
-        "sha256": "7adf908c3d16d96d89b6da2e8d47863de12247bdf3ec87ee8977145631d973b1",
-        "bytes": 19085,
+        "sha256": "241605cde6936e64c32d70f8bbc8238e23f9b840221dca362496090ad0244a3c",
+        "bytes": 20210,
         "bead": "fm-36ag",
-        "reason": "Custom frames per face (2 up to the 4,096-frame budget, odd counts included) and a Full quality video choice; 512 × 512 stays the default (36b3236)"
+        "reason": "Custom frames per face (2 up to the 4,096-frame budget, odd counts included) and a Full quality video choice; 512 × 512 stays the default (36b3236); the encoder correctness check refuses encoders that reorder frames (Firefox High), so baseline is used"
       }
     },
     {

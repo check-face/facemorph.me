@@ -62,23 +62,32 @@ async function frameDerivatives(blob,{encodeSize=512,derivativeSize=0}={}){
 let encoderProbe=null,correctnessChecks=0;
 /** navigator.deviceMemory in GiB, or null where the browser does not say (export-policy ffmpegChoice bound). */
 export const browserDeviceMemory=()=>Number.isFinite(globalThis.navigator?.deviceMemory)?globalThis.navigator.deviceMemory:null;
+// A short run, configured as video-worker.mjs configures its encoder: the MP4 writer needs every chunk in
+// presentation order, so an encoder that reorders frames (B-frames, e.g. Firefox's High profile) fails the
+// check and the next candidate (baseline) is used instead (fm-36ag). The frames change a little at a time,
+// as morph frames do: Firefox's High encoder keeps strongly changing frames in order but reorders these.
+const CORRECTNESS_FRAMES=12;
 async function encoderCorrectnessCheck(codec,fps){
  correctnessChecks++;
  const Canvas=typeof OffscreenCanvas==='function'?OffscreenCanvas:null;
  const {width:side}=CORRECTNESS_ENCODE,surface=Canvas?new Canvas(side,side):null;
  const context=surface?.getContext?.('2d');
  if(!surface||!context||typeof globalThis.VideoFrame!=='function')return false;
- context.fillRect?.(0,0,side,side);
- let chunks=0,failure=null;
- const encoder=new globalThis.VideoEncoder({output:()=>{chunks++;},error:error=>{failure=error;}});
+ const times=[];let failure=null;
+ const encoder=new globalThis.VideoEncoder({output:chunk=>{times.push(chunk.timestamp);},error:error=>{failure=error;}});
  try{
-  encoder.configure({codec,width:side,height:side,bitrate:200000,framerate:fps,avc:{format:'avc'}});
-  const frame=new globalThis.VideoFrame(surface,{timestamp:0,duration:1e6/Math.max(1,fps)});
-  encoder.encode(frame,{keyFrame:true});frame.close();
+  encoder.configure({codec,width:side,height:side,bitrate:200000,framerate:fps,avc:{format:'avc'},latencyMode:'quality'});
+  const step=1e6/Math.max(1,fps);
+  for(let i=0;i<CORRECTNESS_FRAMES;i++){
+   context.fillStyle='#404040';context.fillRect?.(0,0,side,side);
+   context.fillStyle='#e0e0e0';context.fillRect?.(8+i,24,16,16);
+   const frame=new globalThis.VideoFrame(surface,{timestamp:i*step,duration:step});
+   encoder.encode(frame,{keyFrame:i===0});frame.close();
+  }
   await Promise.race([encoder.flush(),new Promise((_,reject)=>setTimeout(()=>reject(Error('The video encoder check timed out.')),5000))]);
- }catch{chunks=0;}finally{try{encoder.close();}catch{}}
+ }catch{times.length=0;}finally{try{encoder.close();}catch{}}
  if(failure)throw failure;
- return chunks>0;
+ return times.length===CORRECTNESS_FRAMES&&times.every((t,i)=>i===0||t>times[i-1]);
 }
 /**
  * One measured encoder decision per bundle and quality: WebCodecs `VideoEncoder` wherever
