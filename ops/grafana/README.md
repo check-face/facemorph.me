@@ -11,3 +11,7 @@ Files provisioned onto triton (`/usr/local/grafana`), which runs Grafana, Promet
   substituted on the host only. Restart Prometheus after changing it.
 
 Mark cutover steps with Grafana annotations tagged `changeover` (they show as red lines on every panel).
+
+`check-dashboard-totals.mjs` (needs docker and `npm ci` in `services/stats`) runs the Worker with and without its
+build/host labels in real workerd, scrapes both with a real Prometheus and requires every panel query to give the
+same result on both. Rerun it after any change to the Worker's labels or the panel queries.
