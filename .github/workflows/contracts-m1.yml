@@ -37,7 +37,10 @@ jobs:
   # lossless WebP writers' output to the exact pixels, every inspectStill kind matches, and inspection makes
   # no network request (all requests intercepted; only the package's module files are served).
   browsers:
-    runs-on: ubuntu-24.04
+    # Current Playwright WebKit is verified on eris; linux-x64 also includes unsupported Ubuntu 20.04.
+    # Reuse the installed browsers and system libraries instead of repeating hosted apt/download setup.
+    runs-on: [self-hosted, eris-build]
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
