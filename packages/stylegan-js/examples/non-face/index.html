@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>stylegan-js non-face</title>
+    <link rel="icon" href="data:," />
+    <!-- The installed packages, resolved by the browser itself: no bundler. -->
+    <script type="importmap">
+      {
+        "imports": {
+          "@facemorph/stylegan-js": "./node_modules/@facemorph/stylegan-js/dist/index.js",
+          "@facemorph/stylegan-js/engine": "./node_modules/@facemorph/stylegan-js/dist/engine/index.js",
+          "@facemorph/browser-model-manager": "./node_modules/@facemorph/browser-model-manager/dist/index.js"
+        }
+      }
+    </script>
+    <style>
+      body {
+        font:
+          14px system-ui,
+          sans-serif;
+        margin: 16px;
+        background: #fff;
+        color: #111;
+      }
+      canvas {
+        width: 256px;
+        height: 256px;
+        background: #eee;
+        margin-right: 8px;
+      }
+      pre {
+        max-height: 50vh;
+        overflow: auto;
+        background: #f4f4f4;
+        padding: 8px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>stylegan-js, non-face (AFHQ cat 512): <span id="variant"></span></h1>
+    <p>
+      No face detector and no e4e encoder are loaded. AFHQ cat support is unqualified until the
+      joint non-face proof passes.
+    </p>
+    <p>
+      <button id="go">Load, generate, morph and export</button>
+      <button id="dispose">Dispose</button>
+    </p>
+    <p><canvas id="face-0"></canvas><canvas id="face-1"></canvas></p>
+    <pre id="report"></pre>
+    <script type="module" src="./out/main.js"></script>
+  </body>
+</html>

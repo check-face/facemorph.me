@@ -124,6 +124,11 @@ Non-face support is **unqualified** until the joint non-face proof passes: conve
 `@facemorph/browser-model-manager`, mapped, synthesized, morphed and saved from the packed packages (bead
 `fm-tqub`). This package is extracted from a face app; that is not generic dataset support.
 
+[`examples/non-face`](examples/non-face) loads converted AFHQ cat on the CPU, manager-loaded or caller-loaded, maps
+and synthesizes two seeds, morphs between them with `renderMorph`, and saves and reopens PNG and lossless WebP. Its
+test (`test/engine/nonface-example.test.ts`) runs it from the packed tarballs and checks that no request names a face
+detector or the e4e encoder.
+
 ## Morphs and blends
 
 `createLatentPath` interpolates W+ latents along the path a morph takes, `infillFrames` orders frames so a preview
