@@ -254,3 +254,23 @@ test('compute and model-ready timings become their own histograms', () => {
   assert.match(text, /# TYPE fm_web_compute_seconds histogram/);
   assert.match(text, /# TYPE fm_web_model_ready_seconds histogram/);
 });
+
+test('host comes from the Origin header, never the body; app defaults to candidate', async () => {
+  const e = env();
+  const visit = { t: 'visit', platform: 'android', visit: 'returning' };
+  const sent = (body, origin) =>
+    handle(post(JSON.stringify(body), { origin }), e).then((r) => r.status);
+  assert.equal(
+    await sent({ v: 1, host: 'next', app: 'monorepo', events: [visit] }, 'https://facemorph.me'),
+    204,
+  );
+  assert.equal(
+    await sent({ v: 1, host: 'facemorph', events: [visit] }, 'https://next.facemorph.me'),
+    204,
+  );
+  const keys = [...e.sql.rows.keys()].filter((k) => k.startsWith('fm_web_visits_total'));
+  assert.deepEqual(keys.sort(), [
+    'fm_web_visits_total{app="candidate",host="next",platform="android",visit="returning"}',
+    'fm_web_visits_total{app="monorepo",host="facemorph",platform="android",visit="returning"}',
+  ]);
+});

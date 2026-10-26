@@ -312,11 +312,14 @@ async function main() {
       }
     };
     walk(dash.panels);
+    // Each panel as it first opens: every template variable at its All value.
+    const all = Object.fromEntries((dash.templating?.list || []).map((v) => [v.name, v.allValue]));
+    const opened = (expr) => expr.replace(/\$(\w+)/g, (m, name) => all[name] ?? m);
     let failures = 0;
     for (const { id, title, expr } of exprs) {
       const res = {};
       for (const j of ['labelled', 'unlabelled']) {
-        const r = await prom('/api/v1/query', { query: withJob(expr, j), time: at });
+        const r = await prom('/api/v1/query', { query: withJob(opened(expr), j), time: at });
         if (r.status !== 'success') throw Error(`${id} ${r.error}`);
         res[j] = new Map(r.data.result.map((x) => [key(x.metric), Number(x.value[1])]));
       }

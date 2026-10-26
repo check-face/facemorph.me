@@ -43,6 +43,58 @@
       }
     ]
   },
+  "templating": {
+    "list": [
+      {
+        "name": "app",
+        "label": "Build",
+        "description": "Which build sent the beacons: candidate (classic next delivery) or monorepo. All sums both, so the panels show the same totals as before the label.",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "FAM3SZFGk"
+        },
+        "query": {
+          "query": "label_values(fm_web_visits_total, app)",
+          "refId": "PrometheusVariableQueryEditor-VariableQuery"
+        },
+        "definition": "label_values(fm_web_visits_total, app)",
+        "refresh": 2,
+        "includeAll": true,
+        "allValue": ".*",
+        "multi": true,
+        "current": {
+          "text": ["All"],
+          "value": ["$__all"]
+        },
+        "sort": 1
+      },
+      {
+        "name": "host",
+        "label": "Host",
+        "description": "next (next.facemorph.me) or facemorph (facemorph.me), from the Origin the Worker checked.",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "FAM3SZFGk"
+        },
+        "query": {
+          "query": "label_values(fm_web_visits_total, host)",
+          "refId": "PrometheusVariableQueryEditor-VariableQuery"
+        },
+        "definition": "label_values(fm_web_visits_total, host)",
+        "refresh": 2,
+        "includeAll": true,
+        "allValue": ".*",
+        "multi": true,
+        "current": {
+          "text": ["All"],
+          "value": ["$__all"]
+        },
+        "sort": 1
+      }
+    ]
+  },
   "panels": [
     {
       "id": 200,
@@ -153,7 +205,7 @@
             "type": "prometheus",
             "uid": "FAM3SZFGk"
           },
-          "expr": "sum(increase(fm_web_jobs_total{action=~\"face|names|blend\",outcome=\"completed\"}[1d]))",
+          "expr": "sum(increase(fm_web_jobs_total{app=~\"$app\",host=~\"$host\",action=~\"face|names|blend\",outcome=\"completed\"}[1d]))",
           "legendFormat": "New site (your browser)",
           "interval": "1d"
         }
@@ -255,7 +307,7 @@
             "type": "prometheus",
             "uid": "FAM3SZFGk"
           },
-          "expr": "sum(increase(fm_web_jobs_total{action=~\"face|names|blend\",outcome=\"completed\"}[1d])) + sum(increase(fm_web_morph_frames_total[1d]))",
+          "expr": "sum(increase(fm_web_jobs_total{app=~\"$app\",host=~\"$host\",action=~\"face|names|blend\",outcome=\"completed\"}[1d])) + sum(increase(fm_web_morph_frames_total{app=~\"$app\",host=~\"$host\"}[1d]))",
           "legendFormat": "New site (your browser)",
           "interval": "1d"
         }
@@ -357,7 +409,7 @@
             "type": "prometheus",
             "uid": "FAM3SZFGk"
           },
-          "expr": "sum(increase(fm_web_jobs_total{action=\"photo\",outcome=\"completed\"}[1d]))",
+          "expr": "sum(increase(fm_web_jobs_total{app=~\"$app\",host=~\"$host\",action=\"photo\",outcome=\"completed\"}[1d]))",
           "legendFormat": "New site (your browser)",
           "interval": "1d"
         }
@@ -459,7 +511,7 @@
             "type": "prometheus",
             "uid": "FAM3SZFGk"
           },
-          "expr": "sum(increase(fm_web_jobs_total{action=\"morph\",outcome=\"completed\"}[1d]))",
+          "expr": "sum(increase(fm_web_jobs_total{app=~\"$app\",host=~\"$host\",action=\"morph\",outcome=\"completed\"}[1d]))",
           "legendFormat": "New site (your browser)",
           "interval": "1d"
         }
@@ -564,7 +616,7 @@
             "type": "prometheus",
             "uid": "FAM3SZFGk"
           },
-          "expr": "sum(increase(fm_web_compute_seconds_sum{action=~\"face|names|blend\"}[1d])) / sum(increase(fm_web_compute_seconds_count{action=~\"face|names|blend\"}[1d]))",
+          "expr": "sum(increase(fm_web_compute_seconds_sum{app=~\"$app\",host=~\"$host\",action=~\"face|names|blend\"}[1d])) / sum(increase(fm_web_compute_seconds_count{app=~\"$app\",host=~\"$host\",action=~\"face|names|blend\"}[1d]))",
           "legendFormat": "New site (your browser)",
           "interval": "1d"
         }
@@ -669,7 +721,7 @@
             "type": "prometheus",
             "uid": "FAM3SZFGk"
           },
-          "expr": "sum(increase(fm_web_job_warm_seconds_sum{action=~\"face|names|blend\"}[1d])) / sum(increase(fm_web_job_warm_seconds_count{action=~\"face|names|blend\"}[1d]))",
+          "expr": "sum(increase(fm_web_job_warm_seconds_sum{app=~\"$app\",host=~\"$host\",action=~\"face|names|blend\"}[1d])) / sum(increase(fm_web_job_warm_seconds_count{app=~\"$app\",host=~\"$host\",action=~\"face|names|blend\"}[1d]))",
           "legendFormat": "New site (your browser)",
           "interval": "1d"
         }
@@ -743,7 +795,7 @@
             "type": "prometheus",
             "uid": "FAM3SZFGk"
           },
-          "expr": "histogram_quantile(0.5, sum by (le, phase, platform) (rate(fm_web_model_ready_seconds_bucket[1d])))",
+          "expr": "histogram_quantile(0.5, sum by (le, phase, platform) (rate(fm_web_model_ready_seconds_bucket{app=~\"$app\",host=~\"$host\"}[1d])))",
           "legendFormat": "{{phase}} on {{platform}}",
           "interval": "1d"
         }
@@ -804,7 +856,7 @@
             "type": "prometheus",
             "uid": "FAM3SZFGk"
           },
-          "expr": "sum by (platform) (increase(fm_web_model_megabytes_total[1d]))",
+          "expr": "sum by (platform) (increase(fm_web_model_megabytes_total{app=~\"$app\",host=~\"$host\"}[1d]))",
           "legendFormat": "{{platform}}",
           "interval": "1d"
         }
@@ -856,7 +908,7 @@
             "uid": "FAM3SZFGk"
           },
           "refId": "A",
-          "expr": "sum by (platform) (increase(fm_web_visits_total[1d]))",
+          "expr": "sum by (platform) (increase(fm_web_visits_total{app=~\"$app\",host=~\"$host\"}[1d]))",
           "legendFormat": "{{platform}}"
         }
       ]
@@ -906,7 +958,7 @@
             "uid": "FAM3SZFGk"
           },
           "refId": "B",
-          "expr": "histogram_quantile(0.5, sum by (le, route, platform) (rate(fm_web_job_duration_seconds_bucket{action=\"face\"}[6h])))",
+          "expr": "histogram_quantile(0.5, sum by (le, route, platform) (rate(fm_web_job_duration_seconds_bucket{app=~\"$app\",host=~\"$host\",action=\"face\"}[6h])))",
           "legendFormat": "New app median: {{route}} on {{platform}}"
         }
       ]
@@ -957,7 +1009,7 @@
             "uid": "FAM3SZFGk"
           },
           "refId": "A",
-          "expr": "histogram_quantile(0.5, sum by (le, route, platform) (rate(fm_web_job_duration_seconds_bucket{action=\"morph\"}[6h])))",
+          "expr": "histogram_quantile(0.5, sum by (le, route, platform) (rate(fm_web_job_duration_seconds_bucket{app=~\"$app\",host=~\"$host\",action=\"morph\"}[6h])))",
           "legendFormat": "{{route}} on {{platform}}"
         }
       ]
@@ -1008,7 +1060,7 @@
             "uid": "FAM3SZFGk"
           },
           "refId": "A",
-          "expr": "histogram_quantile(0.5, sum by (le, cache, platform) (rate(fm_web_time_to_first_result_seconds_bucket[6h])))",
+          "expr": "histogram_quantile(0.5, sum by (le, cache, platform) (rate(fm_web_time_to_first_result_seconds_bucket{app=~\"$app\",host=~\"$host\"}[6h])))",
           "legendFormat": "{{cache}} on {{platform}}"
         }
       ]
@@ -1058,7 +1110,7 @@
             "uid": "FAM3SZFGk"
           },
           "refId": "B",
-          "expr": "histogram_quantile(0.5, sum by (le, route, platform) (rate(fm_web_job_duration_seconds_bucket{action=\"photo\"}[6h])))",
+          "expr": "histogram_quantile(0.5, sum by (le, route, platform) (rate(fm_web_job_duration_seconds_bucket{app=~\"$app\",host=~\"$host\",action=\"photo\"}[6h])))",
           "legendFormat": "New app median: {{route}} on {{platform}}"
         }
       ]
@@ -1109,7 +1161,7 @@
             "uid": "FAM3SZFGk"
           },
           "refId": "A",
-          "expr": "sum by (route) (increase(fm_web_jobs_total{outcome=\"completed\"}[1d]))",
+          "expr": "sum by (route) (increase(fm_web_jobs_total{app=~\"$app\",host=~\"$host\",outcome=\"completed\"}[1d]))",
           "legendFormat": "{{route}}"
         }
       ]
@@ -1160,7 +1212,7 @@
             "uid": "FAM3SZFGk"
           },
           "refId": "A",
-          "expr": "sum by (action, outcome) (increase(fm_web_jobs_total{outcome!=\"completed\"}[1d]))",
+          "expr": "sum by (action, outcome) (increase(fm_web_jobs_total{app=~\"$app\",host=~\"$host\",outcome!=\"completed\"}[1d]))",
           "legendFormat": "{{action}} {{outcome}}"
         }
       ]
