@@ -120,6 +120,45 @@ class EvidenceTests(unittest.TestCase):
             if change == 'unspent-retry': row['details']['retry']['remainingBytes'] = 3
             self.assertFalse(assess(report, 'test'), change)
 
+    def test_loaded_inference_requires_both_real_lifecycle_results(self):
+        report = copy.deepcopy(self.report)
+        report.update(inferenceExecuted=True, evidenceLevel='browser-component-with-cpu-lifecycle')
+        self.assertFalse(assess(report, 'test'), 'a flag cannot substitute for execution')
+        for row in report['managerMatrix']:
+            if not row['id'].endswith('.loaded-handle-disposal'):
+                continue
+            operations = []
+            for cause, code in [('release', 'invalidated'), ('browser-eviction', 'evicted'), ('corruption', 'corrupt')]:
+                operations.append(dict(cause=cause, error=dict(code=code), nativeLocksReleased=True,
+                    before=dict(handle=dict(pending=1), generator=dict(pending=1)),
+                    after=dict(handle=dict(pending=0), leases=[],
+                               generator=dict(disposed=True, liveSessions=0, pending=0))))
+            result = dict(manifestSha256='d9e37e50a436e9fb7c0c7f973e70adee353c808f48c6a51fa5a9186f1c650a5c',
+                          warm=dict(rgbaBytes=1024*1024*4, canary=dict(passed=True, maxRgb=1, maxFloat=.002)),
+                          rows=operations)
+            row.update(status='pass', details=dict(controller='actual-native-mobile-worker', lifecycle=result))
+        self.assertTrue(assess(report, 'test'))
+        for change in ['denied-inference', 'wrong-scope', 'missing-backend', 'missing-component',
+                       'bad-canary', 'nan-canary', 'bool-canary', 'wrong-pin', 'wrong-typed-error',
+                       'no-pending-operation', 'live-session', 'retained-lease', 'locked']:
+            broken = copy.deepcopy(report)
+            row = next(row for row in broken['managerMatrix'] if row['id'] == 'opfs.loaded-handle-disposal')
+            lifecycle = row['details']['lifecycle']
+            if change == 'denied-inference': broken['inferenceExecuted'] = False
+            if change == 'wrong-scope': broken['evidenceLevel'] = 'product-qualified'
+            if change == 'missing-backend': row.update(status='untested', reasonCode='loaded-runtime-unavailable', reason='No runtime')
+            if change == 'missing-component': broken['results'].pop()
+            if change == 'bad-canary': lifecycle['warm']['canary']['maxFloat'] = .002001
+            if change == 'nan-canary': lifecycle['warm']['canary']['maxFloat'] = float('nan')
+            if change == 'bool-canary': lifecycle['warm']['canary']['maxRgb'] = True
+            if change == 'wrong-pin': lifecycle['manifestSha256'] = 'other'
+            if change == 'wrong-typed-error': lifecycle['rows'][1]['error']['code'] = 'invalidated'
+            if change == 'no-pending-operation': lifecycle['rows'][0]['before']['handle']['pending'] = 0
+            if change == 'live-session': lifecycle['rows'][0]['after']['generator']['liveSessions'] = 1
+            if change == 'retained-lease': lifecycle['rows'][0]['after']['leases'] = ['asset']
+            if change == 'locked': lifecycle['rows'][0]['nativeLocksReleased'] = False
+            self.assertFalse(assess(broken, 'test'), change)
+
     def test_native_https_fixture_ledger_measures_complete_and_partial_body_writes(self):
         context = ssl._create_unverified_context()
         with tempfile.TemporaryDirectory(prefix='mobile-ledger-controller-') as scratch:

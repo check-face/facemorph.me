@@ -1,0 +1,147 @@
+<!doctype html>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Native loaded CPU model lifecycle</title>
+<pre id="status">Preparing native worker…</pre>
+<script type="module">
+  const params = new URLSearchParams(location.search);
+  const runId = params.get('run');
+  const backend = params.get('backend') || 'opfs';
+  const manifestSha256 = 'd9e37e50a436e9fb7c0c7f973e70adee353c808f48c6a51fa5a9186f1c650a5c';
+  const status = document.querySelector('#status');
+  let worker;
+  let setup;
+  let phase = 'setup';
+  let finished = false;
+  const post = async (payload) => {
+    const response = await fetch('/loaded-report', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ runId, backend, ...payload }),
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!response.ok) throw Error(`loaded report rejected (${response.status})`);
+  };
+  const finish = async (payload) => {
+    if (finished) return;
+    finished = true;
+    clearTimeout(timer);
+    status.textContent = JSON.stringify({ runId, backend, ...payload }, null, 2);
+    try {
+      await post(payload);
+    } catch (error) {
+      status.textContent += `\nReport delivery failed: ${error.stack || error}`;
+    } finally {
+      worker?.terminate();
+    }
+  };
+  const failed = (error) =>
+    finish({
+      phase: 'failed',
+      failedPhase: phase,
+      setup,
+      error: String(error.stack || error),
+      userAgent: navigator.userAgent,
+      secureContext: globalThis.isSecureContext,
+    });
+  const timer = setTimeout(() => {
+    void failed(Error('native loaded worker exceeded 290 seconds'));
+  }, 290000);
+  const rewrite = (value) => {
+    if (typeof value === 'string')
+      return value.replaceAll(
+        'https://next.facemorph.me/runtime/',
+        `${location.origin}/loaded-runtime/`,
+      );
+    if (Array.isArray(value)) return value.map(rewrite);
+    if (value && typeof value === 'object')
+      return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, rewrite(item)]));
+    return value;
+  };
+  try {
+    if (!runId || !/^[a-zA-Z0-9_-]{1,100}$/.test(runId))
+      throw Error('a bounded run query identifier is required');
+    if (!['opfs', 'cache-storage'].includes(backend)) throw Error('unknown loaded storage backend');
+    if (!globalThis.isSecureContext) throw Error('native loaded component requires a secure page');
+    const response = await fetch('/loaded-runtime/manifest.json', {
+      cache: 'no-store',
+      signal: AbortSignal.timeout(15000),
+    });
+    if (!response.ok) throw Error(`pinned runtime manifest returned ${response.status}`);
+    const bytes = await response.arrayBuffer();
+    const digest = Array.from(
+      new Uint8Array(await crypto.subtle.digest('SHA-256', bytes)),
+      (byte) => byte.toString(16).padStart(2, '0'),
+    ).join('');
+    if (digest !== manifestSha256) throw Error('native loaded runtime manifest pin differs');
+    const manifest = rewrite(JSON.parse(new TextDecoder().decode(bytes)));
+    worker = new Worker('/manager-loaded-worker.mjs', {
+      type: 'module',
+      name: `loaded-${runId}-${backend}`,
+    });
+    worker.onerror = (event) => {
+      void failed(Error(`native worker: ${event.message} (${event.filename}:${event.lineno})`));
+    };
+    worker.onmessageerror = () => {
+      void failed(Error('native worker message could not be cloned'));
+    };
+    worker.onmessage = async ({ data }) => {
+      if (finished) return;
+      try {
+        if (data.type === 'error') {
+          await finish({
+            phase: 'failed',
+            failedPhase: data.failedPhase ?? data.phase,
+            setup,
+            error: data.error,
+            cleanupError: data.cleanupError,
+            userAgent: data.userAgent,
+            secureContext: data.secureContext,
+          });
+          return;
+        }
+        if (data.backend !== backend || data.secureContext !== true)
+          throw Error('native worker backend/security evidence differs');
+        if (data.type === 'acquired') {
+          if (phase !== 'acquiring') throw Error(`unexpected acquired in ${phase}`);
+          setup = data.setup;
+          phase = 'acquired';
+          status.textContent = `${backend}: acquired ${setup.bytes} real pinned bytes; awaiting controller runtime gate`;
+          // The server disables /loaded-runtime/ for this run before acknowledging this POST.
+          await post({
+            phase: 'acquired',
+            setup,
+            userAgent: data.userAgent,
+            secureContext: data.secureContext,
+          });
+          if (finished) return;
+          phase = 'running';
+          status.textContent = `${backend}: native CPU/WASM loaded-handle execution`;
+          worker.postMessage({ type: 'run' });
+        } else if (data.type === 'result') {
+          if (phase !== 'running') throw Error(`unexpected result in ${phase}`);
+          await finish({
+            phase: 'complete',
+            setup: data.setup,
+            result: data.result,
+            userAgent: data.userAgent,
+            secureContext: data.secureContext,
+          });
+        } else throw Error('unknown native loaded worker message');
+      } catch (error) {
+        await failed(error);
+      }
+    };
+    phase = 'acquiring';
+    worker.postMessage({ type: 'acquire', manifest, manifestSha256, backend });
+  } catch (error) {
+    await failed(error);
+  }
+  addEventListener(
+    'pagehide',
+    () => {
+      worker?.terminate();
+    },
+    { once: true },
+  );
+</script>

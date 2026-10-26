@@ -16,10 +16,23 @@ const assetsOf = (value, out = []) => {
   return out;
 };
 
-export async function acquire(manifest, manifestSha256) {
-  const shards = await manager.openShardStore();
-  check(shards, 'native OPFS is required for the loaded-handle component');
-  const cache = await manager.createBrowserModelCache({ shards });
+export async function acquire(manifest, manifestSha256, { backend = 'opfs' } = {}) {
+  check(['opfs', 'cache-storage'].includes(backend), 'unknown native loaded backend');
+  const shards = backend === 'opfs' ? await manager.openShardStore() : null;
+  if (backend === 'opfs') check(shards, 'native OPFS is required for the loaded-handle component');
+  const blobs = await caches.open(manager.MODEL_CACHE_NAME);
+  const key = (hash) => new URL(`/__checkface_model_blobs__/sha256/${hash}`, location.origin).href;
+  const writeMapping = (bytes) =>
+    backend === 'opfs'
+      ? shards.write(manifest.mapping.sha256, bytes)
+      : blobs.put(
+          key(manifest.mapping.sha256),
+          new Response(bytes, { headers: { 'Content-Type': 'application/octet-stream' } }),
+        );
+  const removeMapping = () =>
+    backend === 'opfs'
+      ? shards.remove(manifest.mapping.sha256)
+      : blobs.delete(key(manifest.mapping.sha256));
   const assets = [
     ...new Map(
       assetsOf([
@@ -33,6 +46,23 @@ export async function acquire(manifest, manifestSha256) {
       ]).map((asset) => [asset.sha256, asset]),
     ).values(),
   ];
+  // These exact pinned model identities are this fixture's inputs. Never clear the shared origin,
+  // whole manager cache or unrelated baseline entries (including its small abc fixture).
+  prepared = {
+    manifest,
+    manifestSha256,
+    backend,
+    shards,
+    blobs,
+    key,
+    assets,
+    recordKeys: [],
+    writeMapping,
+    removeMapping,
+  };
+  await cleanup();
+  const cache = await manager.createBrowserModelCache({ shards });
+  prepared.cache = cache;
   const bytes = assets.reduce((sum, asset) => sum + asset.size, 0);
   const grant = {
     manifestSha256,
@@ -46,17 +76,33 @@ export async function acquire(manifest, manifestSha256) {
     })),
     remainingBytes: bytes,
   };
-  for (const asset of assets) await cache.acquire(asset, { grant, owner: 'face:loaded-browser' });
-  check(
-    manager.grantRemaining(grant) === 0,
-    'real acquisition must spend exactly its authorized bytes',
-  );
-  prepared = { manifest, manifestSha256, cache, shards };
-  return { assets: assets.length, bytes, remainingBytes: manager.grantRemaining(grant) };
+  try {
+    for (const asset of assets) await cache.acquire(asset, { grant, owner: 'face:loaded-browser' });
+    check(
+      manager.grantRemaining(grant) === 0,
+      'real acquisition must spend exactly its authorized bytes',
+    );
+    return { backend, assets: assets.length, bytes, remainingBytes: manager.grantRemaining(grant) };
+  } catch (error) {
+    await cleanup();
+    throw error;
+  }
+}
+
+/** Remove only this fixture's pinned inputs/receipt, preserving all other manager storage. */
+export async function cleanup() {
+  if (!prepared) return;
+  const { shards, blobs, key, assets, recordKeys } = prepared;
+  for (const asset of assets) {
+    await blobs.delete(key(asset.sha256));
+    if (shards) for (const unit of asset.chunks ?? [asset]) await shards.remove(unit.sha256);
+  }
+  for (const record of recordKeys) await prepared.cache.records.remove(record);
 }
 
 export async function run() {
-  const { manifest, manifestSha256, cache, shards } = prepared;
+  const { manifest, manifestSha256, cache, backend, writeMapping, removeMapping, recordKeys } =
+    prepared;
   check(cache.local.allowRepair === false, 'engine reader must be local-only');
   const original = await cache.local.read(manifest.mapping);
   check(original.ok, 'mapping must be verified before corruption/deletion fixtures');
@@ -126,6 +172,7 @@ export async function run() {
             synthesizeRaw: (values, noise) => generator.synthesizeRaw(values, noise),
             full: true,
           });
+          recordKeys.push(qualification.key);
           const receipt = await qualification.admit();
           check(
             receipt.ran === 1 && receipt.checks[0].passed,
@@ -142,13 +189,15 @@ export async function run() {
             'real warm face must contain 1024x1024 RGBA pixels',
           );
           const milliseconds = performance.now() - before;
-          const canvas = document.createElement('canvas');
-          canvas.width = face.width;
-          canvas.height = face.height;
-          canvas
-            .getContext('2d')
-            .putImageData(new ImageData(face.rgba, face.width, face.height), 0, 0);
-          document.body.append(canvas); // A native screenshot retains the actual generated pixels.
+          if (typeof document !== 'undefined') {
+            const canvas = document.createElement('canvas');
+            canvas.width = face.width;
+            canvas.height = face.height;
+            canvas
+              .getContext('2d')
+              .putImageData(new ImageData(face.rgba, face.width, face.height), 0, 0);
+            document.body.append(canvas); // A native screenshot retains the actual generated pixels.
+          }
           warm = {
             milliseconds,
             rgbaBytes: face.rgba.length,
@@ -162,11 +211,11 @@ export async function run() {
         let detected = null;
         if (cause !== 'release') {
           // This deliberately bypasses eviction's lease protection, as browser data loss/corruption does.
-          if (cause === 'browser-eviction') await shards.remove(manifest.mapping.sha256);
+          if (cause === 'browser-eviction') await removeMapping();
           else {
             const corrupt = original.value.slice();
             corrupt[1000] ^= 0xff;
-            await shards.write(manifest.mapping.sha256, corrupt);
+            await writeMapping(corrupt);
           }
           const read = await cache.local.read(manifest.mapping);
           const expected = cause === 'browser-eviction' ? 'evicted' : 'corrupt';
@@ -274,10 +323,11 @@ export async function run() {
         });
       } finally {
         await handle.release();
-        await shards.write(manifest.mapping.sha256, original.value);
+        await writeMapping(original.value);
       }
     }
     return {
+      backend,
       threads,
       warm,
       rows,
@@ -290,5 +340,6 @@ export async function run() {
     };
   } finally {
     runtime.release();
+    await cleanup();
   }
 }

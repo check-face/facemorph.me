@@ -1,9 +1,10 @@
-"""Real mobile browser component checks. No model inference or handset qualification."""
+"""Real mobile components with optional pinned CPU lifecycle inference; no handset qualification."""
 import argparse
 import functools
 import hashlib
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 import json
+import math
 import os
 import re
 from pathlib import Path
@@ -12,7 +13,7 @@ import threading
 import ssl
 import tempfile
 import time
-from urllib.parse import urlsplit
+from urllib.parse import urlsplit, parse_qs, urlencode
 import sys
 import uuid
 
@@ -87,14 +88,58 @@ def manager_matrix_valid(report):
     return True
 
 
+def loaded_lifecycle_valid(result):
+    if not isinstance(result, dict):
+        return False
+    warm = result.get('warm', {})
+    canary = warm.get('canary', {})
+    if (result.get('manifestSha256') != 'd9e37e50a436e9fb7c0c7f973e70adee353c808f48c6a51fa5a9186f1c650a5c'
+            or warm.get('rgbaBytes') != 1024*1024*4 or canary.get('passed') is not True
+            or any(type(canary.get(key)) not in (int, float) or not math.isfinite(canary[key])
+                   or not 0 <= canary[key] <= limit for key, limit in [('maxRgb', 1), ('maxFloat', .002)])):
+        return False
+    operations = result.get('rows', [])
+    if (not isinstance(operations, list) or len(operations) != 3
+            or any(not isinstance(row, dict) for row in operations)
+            or [row.get('cause') for row in operations] != ['release', 'browser-eviction', 'corruption']):
+        return False
+    for operation, code in zip(operations, ['invalidated', 'evicted', 'corrupt']):
+        after = operation.get('after', {})
+        generator = after.get('generator', {})
+        before = operation.get('before', {})
+        if (operation.get('error', {}).get('code') != code
+                or before.get('handle', {}).get('pending') != 1
+                or before.get('generator', {}).get('pending') != 1
+                or generator.get('disposed') is not True or generator.get('liveSessions') != 0
+                or generator.get('pending') != 0 or after.get('leases') != []
+                or after.get('handle', {}).get('pending') != 0
+                or operation.get('nativeLocksReleased') is not True):
+            return False
+    return True
+
+
+def inference_evidence_valid(report):
+    loaded = [row for row in report.get('managerMatrix', [])
+              if isinstance(row, dict) and row.get('id') in
+              ('opfs.loaded-handle-disposal', 'cache-storage.loaded-handle-disposal')]
+    if report.get('inferenceExecuted') is False:
+        return (report.get('evidenceLevel') == 'browser-component'
+                and len(loaded) == 2 and all(row.get('status') == 'untested' for row in loaded))
+    return (report.get('inferenceExecuted') is True
+            and report.get('evidenceLevel') == 'browser-component-with-cpu-lifecycle'
+            and len(loaded) == 2 and all(row.get('status') == 'pass'
+                and row.get('details', {}).get('controller') == 'actual-native-mobile-worker'
+                and loaded_lifecycle_valid(row.get('details', {}).get('lifecycle')) for row in loaded))
+
+
 def assess(report, run_id):
     if not isinstance(report, dict):
         return False
     rows = report.get('results', [])
     return (report.get('runId') == run_id and report.get('completed') is True
             and not report.get('error') and report.get('secureContext') is True
-            and report.get('inferenceExecuted') is False and report.get('e4eExecuted') is False
-            and report.get('evidenceLevel') == 'browser-component'
+            and report.get('e4eExecuted') is False
+            and inference_evidence_valid(report)
             and isinstance(rows, list) and len(rows) == len(EXPECTED)
             and all(isinstance(row, dict) and isinstance(row.get('id'), str)
                     and row.get('passed') is True for row in rows)
@@ -150,6 +195,89 @@ def open_safari(udid, url):
         return {'timedOut': True}
 
 
+def ios_tab_controller(origin, run_id, udid, state, fixture_ledger, navigations, output, lock):
+    before = fixture_ledger()
+    primary_url = origin+'/tests/mobile/manager-tab.html?'+urlencode({'run': run_id, 'role': 'primary'})
+    launches = [open_safari(udid, primary_url)]
+    seen = 0
+    opened = {}
+    deadline = time.monotonic()+150
+    while time.monotonic() < deadline:
+        with lock:
+            error, events, report = state.get('error'), state['events'][:], state.get('report')
+        if error:
+            raise RuntimeError('Native Safari cross-tab failed: '+str(error))
+        for event in events[seen:]:
+            if event['action'] == 'open-helper':
+                backend = event.get('backend')
+                if (backend not in ('opfs', 'cache-storage') or backend in opened
+                        or event.get('name') != 'mobile-ios-tabs-'+run_id+'-'+backend
+                        or not isinstance(event.get('primaryIdentity'), str)):
+                    raise RuntimeError('Native Safari requested an invalid or duplicate helper')
+                opened[backend] = event
+                query = {'run': run_id, 'role': 'helper', 'backend': backend,
+                         'name': event['name'], 'primaryIdentity': event['primaryIdentity']}
+                launches.append(open_safari(udid, origin+'/tests/mobile/manager-tab.html?'+urlencode(query)))
+        seen = len(events)
+        if report:
+            rows = report.get('rows', [])
+            if (len(rows) != 2 or {row.get('id') for row in rows} != {'opfs.cross-tab', 'cache-storage.cross-tab'}
+                    or any(row.get('status') != 'pass' for row in rows)):
+                raise RuntimeError('Native Safari returned incomplete cross-tab evidence')
+            for backend in ('opfs', 'cache-storage'):
+                deleted = [event for event in events if event['action'] == 'helper-deleted'
+                           and event.get('backend') == backend]
+                if (backend not in opened or len(deleted) != 1
+                        or deleted[0].get('primaryIdentity') != opened[backend]['primaryIdentity']
+                        or not deleted[0].get('helperIdentity')
+                        or deleted[0]['helperIdentity'] == deleted[0]['primaryIdentity']):
+                    raise RuntimeError('Native Safari did not prove independent helper deletion')
+            primary_requests = [url for url in navigations if parse_qs(urlsplit(url).query).get('role') == ['primary']]
+            if primary_requests != [primary_url] or fixture_ledger() != before:
+                raise RuntimeError('Native Safari reloaded its primary or transferred model bytes')
+            evidence = dict(runId=run_id, rows=rows, events=events, launches=launches,
+                            primaryNavigations=primary_requests, fixtureLedgerBefore=before,
+                            fixtureLedgerAfter=fixture_ledger())
+            (output/'cross-tab.json').write_text(json.dumps(evidence, indent=2))
+            return rows
+        time.sleep(.1)
+    raise RuntimeError('Native Safari did not return to its original cross-tab document within150seconds')
+
+
+def loaded_mobile_controller(origin, run_id, opener, state, transfers, output):
+    rows = []
+    for backend in ('opfs', 'cache-storage'):
+        state['active'] = backend
+        state[backend] = {'phase': 'acquiring', 'report': None}
+        launch = opener(origin+'/tests/mobile/manager-loaded.html?'+urlencode({'run': run_id, 'backend': backend}))
+        deadline = time.monotonic()+300
+        while time.monotonic() < deadline and state[backend]['report'] is None:
+            time.sleep(.1)
+        report = state[backend]['report']
+        if not report or report.get('error') or report.get('phase') != 'complete':
+            raise RuntimeError('Native '+backend+' loaded runtime failed: '+str(report))
+        result = report.get('result', {})
+        setup = report.get('setup', {})
+        if (report.get('secureContext') is not True or not report.get('userAgent')
+                or setup.get('bytes') != 157405379 or setup.get('remainingBytes') != 0
+                or not loaded_lifecycle_valid(result)):
+            raise RuntimeError('Native '+backend+' returned incomplete real CPU/canary/lifecycle evidence')
+        native_transfers = [dict(row) for row in transfers if row['backend'] == backend]
+        if (not native_transfers or any(row['phase'] != 'acquiring' or not row['finished']
+                                        or row['aborted'] for row in native_transfers)):
+            raise RuntimeError('Native loaded execution transferred bytes after admission or had incomplete acquisition')
+        rows.append(dict(id=backend+'.loaded-handle-disposal', backend=backend,
+                         lane=report['userAgent'], status='pass',
+                         network=dict(requests=0, bytes=0, paths=[], measurement='native-server-ledger', hostSeparation=False),
+                         details=dict(controller='actual-native-mobile-worker', launch=launch,
+                                      acquisitionRequests=len(native_transfers),
+                                      acquisitionBytes=sum(row['bytes'] for row in native_transfers),
+                                      lifecycle=result,
+                                      scope='real CPU/WASM native worker; runtime endpoint ledger, no external HTTP interception claim')))
+    (output/'loaded.json').write_text(json.dumps(dict(runId=run_id, rows=rows, transfers=transfers), indent=2))
+    return rows
+
+
 def simulator_options(devices, sdk_version):
     # Runner images can contain newer runtimes than the selected Xcode supports.
     sdk_major = int(sdk_version.split('.')[0])
@@ -172,6 +300,8 @@ def main():
     parser.add_argument('--port', type=int, default=8765,
                         help='Loopback port for the test origin. CI keeps the default; local machines may need another port when a developer service already holds 8765.')
     parser.add_argument('--output', type=Path, default=ROOT/'mobile-evidence')
+    parser.add_argument('--runtime', type=Path,
+                        help='Verified pinned CPU runtime directory for native loaded-handle components')
     args = parser.parse_args()
     args.output.mkdir(parents=True, exist_ok=True)
     run_id = str(uuid.uuid4())
@@ -191,6 +321,15 @@ def main():
                                  for p in (ROOT/folder).glob('*') if p.suffix in ['.py', '.mjs', '.html']},
                 'runnerImage': os.environ.get('ImageVersion'), 'completed': False}
     state = {'report': None}
+    tabs_state = {'events': [], 'report': None}
+    tabs_lock = threading.Lock()
+    tab_navigations = []
+    loaded_state = {'active': None}
+    loaded_transfers = []
+    if args.runtime:
+        args.runtime = args.runtime.resolve()
+        if hashlib.sha256((args.runtime/'manifest.json').read_bytes()).hexdigest() != 'd9e37e50a436e9fb7c0c7f973e70adee353c808f48c6a51fa5a9186f1c650a5c':
+            raise RuntimeError('Loaded component runtime manifest is not the pinned runtime')
     requests = {}
     transfers = []
     requests_lock = threading.Lock()
@@ -216,6 +355,42 @@ def main():
 
         def do_GET(self):
             path = urlsplit(self.path).path
+            if path == '/tests/mobile/manager-tab.html':
+                tab_navigations.append('https://127.0.0.1:'+str(args.port)+self.path)
+            aliases = {
+                '/manager-loaded-driver.mjs': REPO/'packages/browser-model-manager/test/support/loaded-runtime-browser.mjs',
+                '/manager-loaded-worker.mjs': ROOT/'tests/mobile/manager-loaded-worker.mjs',
+            }
+            source = aliases.get(path)
+            for prefix, package in [('/stylegan/', 'stylegan-js'), ('/manager/', 'browser-model-manager')]:
+                if path.startswith(prefix):
+                    directory = (REPO/'packages'/package/'dist').resolve()
+                    candidate = (directory/path.removeprefix(prefix)).resolve()
+                    if candidate.is_relative_to(directory) and candidate.suffix == '.js': source = candidate
+            if source:
+                if not source.is_file(): self.send_error(404); return
+                body = source.read_bytes()
+                self.send_response(200); self.send_header('Content-Type', 'text/javascript')
+                self.send_header('Content-Length', str(len(body))); self.end_headers(); self.wfile.write(body)
+                return
+            if path.startswith('/loaded-runtime/'):
+                if not args.runtime or not loaded_state['active']: self.send_error(404); return
+                source = (args.runtime/path.removeprefix('/loaded-runtime/')).resolve()
+                if not source.is_relative_to(args.runtime) or not source.is_file(): self.send_error(404); return
+                backend = loaded_state['active']
+                phase = loaded_state[backend]['phase']
+                transfer = dict(path=path, backend=backend, phase=phase, bytes=0, finished=False, aborted=False)
+                loaded_transfers.append(transfer)
+                if phase != 'acquiring': self.send_error(410); return
+                content_type = 'application/wasm' if source.suffix == '.wasm' else 'text/javascript' if source.suffix == '.mjs' else 'application/octet-stream'
+                self.send_response(200); self.send_header('Content-Type', content_type)
+                self.send_header('Content-Length', str(source.stat().st_size)); self.end_headers()
+                try:
+                    with source.open('rb') as body:
+                        while part := body.read(65536): transfer['bytes'] += self.wfile.write(part)
+                    self.wfile.flush(); transfer['finished'] = True
+                except OSError: transfer['aborted'] = True
+                return
             if path.startswith('/fixture/'):
                 name = path.removeprefix('/fixture/')
                 transfer = None
@@ -285,13 +460,36 @@ def main():
         def do_POST(self):
             try:
                 size = int(self.headers.get('Content-Length', '0'))
-                if self.path != '/report' or not 0 < size <= 1024*1024:
+                if self.path not in ('/report', '/tabs-control', '/loaded-report') or not 0 < size <= 1024*1024:
                     raise ValueError('Invalid request')
                 report = json.loads(self.rfile.read(size))
                 if not isinstance(report, dict) or report.get('runId') != run_id:
                     raise ValueError('Wrong run')
-                state['report'] = report
-                (args.output/'browser.json').write_text(json.dumps(report, indent=2))
+                if self.path == '/loaded-report':
+                    backend = report.get('backend')
+                    if backend != loaded_state['active'] or backend not in ('opfs', 'cache-storage'):
+                        raise ValueError('Wrong native loaded backend')
+                    if report.get('error'):
+                        loaded_state[backend]['report'] = report
+                    elif report.get('phase') == 'acquired':
+                        if loaded_state[backend]['phase'] != 'acquiring': raise ValueError('Duplicate acquisition')
+                        loaded_state[backend]['phase'] = 'loaded'
+                    else:
+                        if report.get('phase') == 'complete' and loaded_state[backend]['phase'] != 'loaded':
+                            raise ValueError('Native loaded execution has no acknowledged admission boundary')
+                        loaded_state[backend]['report'] = report
+                    (args.output/('loaded-'+backend+'.json')).write_text(json.dumps(report, indent=2))
+                elif self.path == '/tabs-control':
+                    if report.get('action') not in ('open-helper', 'helper-deleted', 'complete', 'failed'):
+                        raise ValueError('Invalid native tab action')
+                    with tabs_lock:
+                        tabs_state['events'].append(report)
+                        if report['action'] == 'complete': tabs_state['report'] = report
+                        if report['action'] == 'failed': tabs_state['error'] = report
+                        (args.output/'cross-tab-events.json').write_text(json.dumps(tabs_state, indent=2))
+                else:
+                    state['report'] = report
+                    (args.output/'browser.json').write_text(json.dumps(report, indent=2))
                 self.send_response(204)
                 self.end_headers()
             except (ValueError, TypeError):
@@ -377,6 +575,28 @@ def main():
                 state['report']['managerMatrix'] = [by_id.get(row['id'], row)
                                                    for row in state['report']['managerMatrix']]
             (args.output/'browser.json').write_text(json.dumps(state['report'], indent=2))
+        elif args.platform == 'ios' and assess(state['report'], run_id):
+            phase('native-cross-tab')
+            (args.output/'browser-components.json').write_text(json.dumps(state['report'], indent=2))
+            rows = ios_tab_controller(f'https://127.0.0.1:{args.port}', run_id, udid,
+                                      tabs_state, ledger, tab_navigations, args.output, tabs_lock)
+            by_id = {row['id']: row for row in rows}
+            state['report']['managerMatrix'] = [by_id.get(row['id'], row)
+                                               for row in state['report']['managerMatrix']]
+            (args.output/'browser.json').write_text(json.dumps(state['report'], indent=2))
+        if args.runtime and args.platform in ('android', 'ios') and assess(state['report'], run_id):
+            phase('native-loaded-runtime')
+            opener = (lambda url: open_safari(udid, url)) if udid else open_chrome
+            rows = loaded_mobile_controller(f'https://127.0.0.1:{args.port}', run_id, opener,
+                                           loaded_state, loaded_transfers, args.output)
+            by_id = {row['id']: row for row in rows}
+            state['report']['managerMatrix'] = [by_id.get(row['id'], row)
+                                               for row in state['report']['managerMatrix']]
+            state['report']['inferenceExecuted'] = True
+            state['report']['evidenceLevel'] = 'browser-component-with-cpu-lifecycle'
+            (args.output/'browser.json').write_text(json.dumps(state['report'], indent=2))
+        evidence['inferenceExecuted'] = bool(state['report'] and state['report'].get('inferenceExecuted'))
+        evidence['evidenceLevel'] = state['report'].get('evidenceLevel') if state['report'] else None
         evidence['passed'] = assess(state['report'], run_id)
         evidence['completed'] = bool(state['report'] and state['report'].get('completed'))
         if not evidence['passed']:
@@ -410,6 +630,7 @@ def main():
             certificate_dir.cleanup()
             evidence['fixtureRequests'] = requests
             evidence['fixtureLedger'] = ledger()
+            evidence['loadedRuntimeTransfers'] = loaded_transfers
             evidence['tls'] = 'ephemeral localhost certificate; iOS Simulator trusts this root, Android emulator explicitly ignores certificate errors'
             evidence['componentPackageSha256'] = {str(p.relative_to(REPO)):hashlib.sha256(p.read_bytes()).hexdigest() for p in (REPO/'packages/browser-model-manager/dist').rglob('*.js')}
             (args.output/'host.json').write_text(json.dumps(evidence, indent=2))

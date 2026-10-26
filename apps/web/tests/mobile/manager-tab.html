@@ -30,4 +30,17 @@
       worker.postMessage({ id, method, options });
     });
   window.managerTabIdentity = crypto.randomUUID();
+  const role = new URLSearchParams(location.search).get('role');
+  if (role === 'primary' || role === 'helper') {
+    try {
+      await import('./manager-ios-tabs.mjs');
+    } finally {
+      worker.terminate();
+      for (const operation of pending.values()) {
+        clearTimeout(operation.timer);
+        operation.reject(Error('Native iOS tab component finished'));
+      }
+      pending.clear();
+    }
+  }
 </script>
