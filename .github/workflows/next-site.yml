@@ -143,7 +143,7 @@ jobs:
 
   compiled-ui:
     needs: artifact
-    runs-on: [self-hosted, eris]
+    runs-on: [self-hosted, tempcpu]
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
@@ -170,9 +170,14 @@ jobs:
       - uses: ./.github/actions/setup-playwright
         with:
           browsers: chromium
+      - uses: ./.github/actions/setup-browser-harness
+      - uses: ./.github/actions/setup-runtime
+      - name: Native browser for the compiled artifact checks
+        run: |
+          binary=$(node -p 'require("playwright").chromium.executablePath()')
+          echo "CHROMIUM_PATH=$binary" >> "$GITHUB_ENV"
       - name: Model-free checker real WASM, WebGPU loss, background and wall-clock budgets
         env:
-          DISPLAY: ':0'
           FACEMORPH_PREFLIGHT_SITE: site/deploy-next
         run: node --test apps/web/test/e2e/preflight.e2e.ts
       - uses: actions/upload-artifact@v4
@@ -186,16 +191,14 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
         run: node scripts/import/fetch-control.mjs --dest .cache/control
       - name: Destination parity smoke under the production origin
-        env:
-          PARITY_RUNTIME: /home/cdilga/.cache/facemorph-runtime
-        run: node apps/web/test/harness/run.ts --subject site/deploy-next --name port --source '${{ github.sha }}' --rows first-visit --out next-artifact-ui-evidence/parity
+        run: |
+          export PARITY_RUNTIME="$FACEMORPH_RUNTIME_DIR"
+          node apps/web/test/harness/run.ts --subject site/deploy-next --name port --source '${{ github.sha }}' --rows first-visit --out next-artifact-ui-evidence/parity
       - name: Publication and qualification scripts parse
         run: python3 -m compileall -q apps/web/scripts hosting/next hosting/next-static apps/web/src/Next/browser
       - name: WebGPU bundle contract gate
         run: python3 -m unittest discover -s hosting/next-static -p 'webgpu_contract_test.py' -t hosting/next-static
       - name: Run actual artifact in Chromium, network checked by host class
-        env:
-          BROWSER_HARNESS: /home/cdilga/Work/runs/venv-bh/bin/browser-harness
         run: python3 scripts/ci/site/compiled_ui.py --artifact site/deploy-next --out next-artifact-ui-evidence
       - uses: actions/upload-artifact@v4
         if: always()

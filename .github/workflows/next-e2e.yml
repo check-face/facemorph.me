@@ -1,6 +1,6 @@
 name: Exact new-site qualification
 # fm-aa8: classic's next-e2e.yml carried over (job real-ui-cpu). Qualification is bound to one exact artifact named
-# by its run and name; there is no fallback artifact. On eris: the verified acquired runtime (its manifest must
+# by its run and name; there is no fallback artifact. In the qualified CPU pool: the verified acquired runtime (its manifest must
 # be the pinned runtime_sha, refused before any browser starts), the artifact served at https://next.facemorph.me by
 # classic's qualification server (apps/web/scripts/next-e2e-server.py through the parity specs' control server),
 # classic's journey (apps/web/scripts/next-e2e-browser.py, unedited) in pinned Chrome for Testing under
@@ -37,7 +37,7 @@ permissions:
   actions: read
 jobs:
   real-ui-cpu:
-    runs-on: [self-hosted, eris]
+    runs-on: [self-hosted, tempcpu]
     timeout-minutes: 120
     steps:
       - uses: actions/checkout@v4
@@ -45,6 +45,8 @@ jobs:
         with:
           node-version: '24'
       - uses: ./.github/actions/setup-workspace # node_modules for the lockfile, shared on the runner (fm-98po)
+      - uses: ./.github/actions/setup-browser-harness
+      - uses: ./.github/actions/setup-runtime
       - name: Validate artifact run provenance
         id: source
         env:
@@ -109,7 +111,7 @@ jobs:
           timeout: '2400'
           command: >-
             CHROMIUM_PATH="${{ steps.chrome.outputs.binary }}" node scripts/ci/site/real-ui-cpu.mjs --site site --runtime-sha "${{ inputs.runtime_sha }}"
-            --runtime /home/cdilga/.cache/facemorph-runtime --out next-e2e-evidence
+            --runtime "$FACEMORPH_RUNTIME_DIR" --out next-e2e-evidence
       - uses: actions/upload-artifact@v4
         if: always()
         with:
