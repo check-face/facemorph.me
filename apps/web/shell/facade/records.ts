@@ -235,6 +235,8 @@ export interface Downloads {
   readonly photoAvailable: boolean;
   readonly routeBytes: number;
   readonly photoBytes: number;
+  /** An independently requested photo setup discovered a larger scope and needs a fresh decision. */
+  readonly photoApprovalRequired?: boolean;
 }
 
 /** A photo that needs the crop step: its preview, as photo-selection.mjs returns it (`{crop: true, file, ...}`). */
@@ -367,6 +369,9 @@ export function readDownloads(value: unknown): Downloads {
     photoAvailable: r.boolean('photoAvailable'),
     routeBytes: r.number('routeBytes'),
     photoBytes: r.number('photoBytes'),
+    ...(r.has('photoApprovalRequired')
+      ? { photoApprovalRequired: r.boolean('photoApprovalRequired') }
+      : {}),
   };
 }
 

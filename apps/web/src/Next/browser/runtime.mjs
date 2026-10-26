@@ -482,7 +482,7 @@ export function createBrowserRuntime({manifest: suppliedManifest=/** @type {unkn
       if(explicit){if(data.stage==='asset-acquisition')emit({stage:'models-download',scope,loaded:data.loaded,total:data.total,fetched:data.fetched,fetchedTotal:data.fetchedTotal});return;}
       if(warmingPhoto)emit({...data,stage:data.stage==='asset-acquisition'?'photo-acquisition':data.stage});
       return;}
-     if(data.type==='error')reject(Error(data.error.message));
+     if(data.type==='error')reject(Object.assign(Error(data.error.message),{name:data.error.name}));
      else if(data.id===2)resolve(data.result);
     };
     own.postMessage({id:1,type:'initialize',manifest,grants,provider:target==='webgpu'?'webgpu':'wasm',gpuEngine:gpuEngine(target),manifestSha256:manifestHash});
@@ -493,7 +493,7 @@ export function createBrowserRuntime({manifest: suppliedManifest=/** @type {unkn
    const done=warmingPhoto?'photo-tools-ready':'models-prefetched';
    emit({stage:done,provider:target,...result});
    return {started:true,...result};
-  }catch{return {started:false};}
+  }catch(error){if(error?.name==='GrantRefused')throw error;return {started:false};}
   finally{if(prefetchWorker===own)stopPrefetch();}
  }
  function photoAvailable(){
@@ -564,6 +564,7 @@ export function createBrowserRuntime({manifest: suppliedManifest=/** @type {unkn
   // Admitted by capability before any detector or model request (fm-lt2p), never by a phone label.
   const {decision}=await admissionFor('photo-encode',preferredRoute,progress);if(decision.status==='refused')throw new AdmissionRefused(decision);});},options)),
  cancel:()=>{active?.abort(abortError());stop();},
+ cancelPrefetch:stopPrefetch,
  // The confirmed-crop queue for several crops (fm-fy2.8): face.batch renders tiles on these and never reimplements
  // slots, attempt identities or pixel ownership. Each call that runs attempts is one runtime operation.
  encodeConfirmedCrops:(files,options={})=>afterDelivery(operation(async(progress,signal)=>{

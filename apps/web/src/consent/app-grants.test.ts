@@ -725,3 +725,212 @@ test('actual photo-selection wrapper reads no descriptor for unreadable, cancell
     assert.equal(selections, outcome === 'recovered' ? 0 : 1, outcome);
   }
 });
+
+test('actual grant posting freezes photo authority without fetching its descriptor during synthesis setup', async () => {
+  const source = readFileSync(new URL('../Next/product-bridge.mjs', import.meta.url), 'utf8');
+  const entry = source
+    .slice(
+      source.indexOf('async function pushGrants('),
+      source.indexOf('export function downloadModels('),
+    )
+    .replace(
+      "const {createBrowserModelCache}=await import('./Assets/model-cache.mjs');",
+      'const {createBrowserModelCache}=testCacheModule;',
+    );
+  const approvals = createApprovalGenerations();
+  approvals.approve('photo');
+  let inspections = 0,
+    posts = 0;
+  const context = vm.createContext({
+    engine: async () => ({
+      plan: async () => ({ manifest, route: 'cpu', engine: 'ort' }),
+      setGrants: () => {
+        posts++;
+      },
+    }),
+    grantApprovals: () => approvals,
+    runtimeIdentity: SHA,
+    testCacheModule: { createBrowserModelCache: async () => cacheOf() },
+    inspectionCache: (_planned: unknown, cache: unknown) => cache,
+    inspectDescriptor: async () => {
+      inspections++;
+    },
+    refreshInventory: async () => {},
+    descriptorText: JSON.stringify(pinnedDescriptor),
+    descriptorFor: stream.sha256,
+    resolveDiscoveredGrants,
+  });
+  const push = vm.runInContext(`${entry}\npushGrants`, context) as (options?: {
+    strict: boolean;
+  }) => Promise<unknown>;
+  await push();
+  assert.equal(inspections, 0);
+  assert.equal(posts, 1, 'route preparation can start using the original bounded scope');
+  await assert.rejects(push({ strict: true }), GrantRefused);
+  assert.equal(inspections, 1);
+  assert.equal(posts, 1, 'larger photo scope is refused before a photo worker gets it');
+});
+
+test('actual photo preparation propagates descriptor refusals instead of pretending an omitted encoder schedule completed', async () => {
+  const source = readFileSync(new URL('../Next/browser/ort-worker.mjs', import.meta.url), 'utf8');
+  const entry = source.slice(
+    source.indexOf('async function photoAssets('),
+    source.indexOf('// The encoder is read one shard'),
+  );
+  // Stop at the function boundary, independent of the following worker helpers.
+  const functionSource = entry.slice(
+    0,
+    entry.indexOf('\n return ordered;\n}') + '\n return ordered;\n}'.length,
+  );
+  assert.ok(functionSource.includes('return ordered'));
+  const refused = new GrantRefused('revision-required', stream.sha256);
+  const context = vm.createContext({
+    manifest,
+    collectAssets,
+    TextDecoder,
+    currentId: 1,
+    bytes: async () => new TextEncoder().encode(JSON.stringify(pinnedDescriptor)),
+    admitDescriptor: () => {
+      throw refused;
+    },
+  });
+  const run = vm.runInContext(`${functionSource}\nphotoAssets`, context) as () => Promise<unknown>;
+  await assert.rejects(run(), (error: unknown) => error === refused);
+});
+
+test('actual setup pump asks for a revised decision before photo transfer, retains its owner and resumes only after approval', async () => {
+  const source = readFileSync(new URL('../Next/product-bridge.mjs', import.meta.url), 'utf8');
+  const entry = source.slice(
+    source.indexOf('async function pumpDownloads('),
+    source.indexOf('export function subscribe('),
+  );
+  const downloads = {
+    phase: 'idle',
+    routeReady: false,
+    photoReady: false,
+    routeBytes: 100,
+    photoBytes: 200,
+    photoApprovalRequired: false,
+  };
+  const wanted = new Set(['route', 'photo']),
+    transfers: string[] = [],
+    decisions: unknown[] = [];
+  let renewed = false;
+  const context = vm.createContext({
+    wanted,
+    downloads,
+    setupGeneration: 0,
+    downloading: null,
+    active: null,
+    performance,
+    announceDownloads: () => decisions.push({ ...downloads }),
+    pushGrants: async ({ strict }: { strict: boolean }) => {
+      if (strict && !renewed) throw new GrantRefused('revision-required', stream.sha256);
+    },
+    refreshInventory: async () => {
+      downloads.routeReady = transfers.includes('route');
+      downloads.photoReady = transfers.includes('photo');
+      downloads.photoBytes = 220;
+    },
+    engine: async () => ({
+      prefetch: async (scope: string) => {
+        transfers.push(scope);
+        return { started: true, assets: 1, acquired: 1 };
+      },
+    }),
+    analytics: { modelsDownloaded() {} },
+  });
+  const run = vm.runInContext(`${entry}\npumpDownloads`, context) as () => Promise<unknown>;
+  await run();
+  assert.deepEqual(transfers, ['route']);
+  assert.equal(downloads.phase, 'waiting');
+  assert.equal(downloads.photoApprovalRequired, true);
+  assert.equal(downloads.photoBytes, 220);
+  assert.equal(wanted.has('photo'), true);
+  await run();
+  assert.deepEqual(transfers, ['route'], 'no silent restart under the old approval');
+  renewed = true;
+  downloads.photoApprovalRequired = false;
+  await run();
+  assert.deepEqual(transfers, ['route', 'photo']);
+  assert.equal(downloads.photoReady, true);
+  assert.equal(wanted.size, 0);
+  assert.equal(downloads.phase, 'done');
+  assert.ok(decisions.some((value) => (value as typeof downloads).photoApprovalRequired));
+});
+
+for (const pause of ['grant', 'engine', 'prefetch'] as const)
+  test(`actual setup pump rejects a cancelled ${pause} continuation without losing immediate reapproval`, async () => {
+    const source = readFileSync(new URL('../Next/product-bridge.mjs', import.meta.url), 'utf8');
+    const entry = source
+      .slice(
+        source.indexOf('export function downloadModels('),
+        source.indexOf('export function subscribe('),
+      )
+      .replaceAll('export function', 'function');
+    let release!: () => void;
+    const pending = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const downloads = {
+      phase: 'idle',
+      routeReady: false,
+      photoReady: false,
+      routeBytes: 100,
+      photoBytes: 200,
+    };
+    const wanted = new Set<string>(),
+      transfers: string[] = [];
+    let pushes = 0,
+      engines = 0,
+      prefetches = 0,
+      cancellations = 0;
+    const service = {
+      prefetch: async (scope: string) => {
+        if (++prefetches === 1 && pause === 'prefetch') {
+          await pending;
+          return { started: false };
+        }
+        transfers.push(scope);
+        if (scope === 'route') downloads.routeReady = true;
+        else downloads.photoReady = true;
+        return { started: true, assets: 1, acquired: 1 };
+      },
+    };
+    const context = vm.createContext({
+      wanted,
+      downloads,
+      setupGeneration: 0,
+      downloading: null,
+      active: null,
+      performance,
+      keepModelsOnDevice() {},
+      approve() {},
+      announceDownloads() {},
+      refreshInventory: async () => {},
+      pushGrants: async () => {
+        if (++pushes === 1 && pause === 'grant') await pending;
+      },
+      runtime: { cancelPrefetch: () => cancellations++ },
+      engine: async () => {
+        if (++engines === 1 && pause === 'engine') await pending;
+        return service;
+      },
+      analytics: { modelsDownloaded() {} },
+    });
+    const api = vm.runInContext(`${entry}\n({downloadModels,cancelDownloadSetup})`, context) as {
+      downloadModels(photo: boolean): void;
+      cancelDownloadSetup(): void;
+    };
+    api.downloadModels(false);
+    await new Promise(setImmediate);
+    api.cancelDownloadSetup();
+    api.downloadModels(true);
+    release();
+    await new Promise(setImmediate);
+    assert.equal(cancellations, 1);
+    assert.deepEqual(transfers, ['route', 'photo']);
+    assert.equal(pushes, 3, 'the replacement intent posts its own route and photo grants');
+    assert.equal(downloads.phase, 'done');
+    assert.equal(wanted.size, 0);
+  });

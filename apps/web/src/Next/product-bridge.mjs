@@ -290,9 +290,9 @@ function warmUp(){
  askForPersistentStorage();
  void refreshInventory();
 }
-const downloads={known:false,phase:'idle',scope:'',loaded:0,total:0,routeReady:false,photoReady:false,photoAvailable:false,routeBytes:0,photoBytes:0};
+const downloads={known:false,phase:'idle',scope:'',loaded:0,total:0,routeReady:false,photoReady:false,photoAvailable:false,routeBytes:0,photoBytes:0,photoApprovalRequired:false};
 const wanted=new Set(),downloadListeners=new Set();
-let downloading=null;
+let downloading=null,setupGeneration=0;
 function announceDownloads(){const snapshot={...downloads};for(const callback of downloadListeners){try{callback(snapshot);}catch{}}}
 export function subscribeDownloads(callback){downloadListeners.add(callback);callback({...downloads});return ()=>downloadListeners.delete(callback);}
 // The pinned encoder descriptor names every shard with its size. It is fetched only after photo approval:
@@ -354,7 +354,7 @@ async function pushGrants({strict=false}={}){
    const snapshot=await approvals.snapshot({manifest:planned.manifest,manifestSha256:runtimeIdentity||'',route:planned.route,engine:planned.engine,cache});
    if(!approvals.current(snapshot.id))continue;
    let grants=snapshot.grants;
-   if(grants.approved?.purpose==='generate-and-encode'){
+   if(strict&&grants.approved?.purpose==='generate-and-encode'){
     await inspectDescriptor(planned.manifest);
     // Discovery can revise the decision, but must not consume a photo's first encode attempt.
     await refreshInventory();
@@ -369,30 +369,56 @@ async function pushGrants({strict=false}={}){
 export function downloadModels(includePhoto){
  keepModelsOnDevice();approve(includePhoto?'photo':'route');
  wanted.add('route');if(includePhoto)wanted.add('photo');
- downloads.phase='downloading';announceDownloads();
+ downloads.photoApprovalRequired=false;downloads.phase='downloading';announceDownloads();
  void pumpDownloads();
+}
+export function cancelDownloadSetup(){
+ setupGeneration++;wanted.clear();runtime?.cancelPrefetch?.();
+ Object.assign(downloads,{photoApprovalRequired:false,phase:'idle'});announceDownloads();
 }
 export function consentToDownload(scope){keepModelsOnDevice();approve(scope);void pushGrants();return scope;}
 async function pumpDownloads(){
  if(downloading||active)return;
+ // Keep the lock through settlement: Cancel may be followed by a new approval while an old await is pending.
+ const owner={generation:setupGeneration};downloading=owner;
+ const current=()=>owner.generation===setupGeneration;
+ try{
  // A face made while the download was paused fetches what it needs itself, so re-measure first
  // and skip whatever is already on the device instead of announcing a 1 MB of 1 MB download.
  if(downloads.phase==='waiting')await refreshInventory();
- if(downloading||active)return;
+ if(!current()||active)return;
  for(const scope of ['route','photo']){
   if(!wanted.has(scope))continue;
   if(scope==='route'?downloads.routeReady:downloads.photoReady){wanted.delete(scope);continue;}
-  downloading=scope;Object.assign(downloads,{phase:'downloading',scope,loaded:0,total:scope==='route'?downloads.routeBytes:downloads.photoBytes});announceDownloads();
+  Object.assign(downloads,{phase:'downloading',scope,loaded:0,total:scope==='route'?downloads.routeBytes:downloads.photoBytes});announceDownloads();
   let result={started:false};const began=performance.now(),planned=downloads.total;
-  try{await pushGrants();result=await (await engine()).prefetch(scope,{explicit:true});}catch{}
-  downloading=null;
+  let failure;
+  try{
+   await pushGrants({strict:scope==='photo'});
+   if(current()&&wanted.has(scope)){
+    const service=await engine();
+    if(current()&&wanted.has(scope))result=await service.prefetch(scope,{explicit:true});
+   }
+  }catch(error){failure=error;}
+  if(!current()||!wanted.has(scope))return;
+  if(failure?.name==='GrantRefused'){
+   await refreshInventory();if(!current())return;
+   Object.assign(downloads,{phase:'waiting',scope:'photo',photoApprovalRequired:true});announceDownloads();return;
+  }
   analytics.modelsDownloaded({scope,outcome:result.started&&result.acquired===result.assets?'completed':active?'interrupted':'failed',sizeMb:planned/1048576,durationMs:performance.now()-began});
   if(active){downloads.phase='waiting';announceDownloads();return;}
   if(!result.started||result.acquired!==result.assets){downloads.phase='failed';wanted.clear();announceDownloads();await refreshInventory();return;}
+  await refreshInventory();
+  if(!current())return;
+  if(!(scope==='route'?downloads.routeReady:downloads.photoReady)){downloads.phase='failed';wanted.clear();announceDownloads();return;}
   wanted.delete(scope);
  }
  await refreshInventory();
+ if(!current())return;
  downloads.phase=downloads.routeReady?'done':'idle';announceDownloads();
+ }finally{
+  if(downloading===owner){downloading=null;if(!current()&&wanted.size)void pumpDownloads();}
+ }
 }
 export function subscribe(callback){listeners.add(callback);const report=({detail})=>callback({jobId:currentJob,stage:'diagnostics-'+detail.status,text:detail.reference||'',fraction:0});window.addEventListener('facemorph-report-status',report);diagnostics.restore();warmUp();requestAnimationFrame(()=>analytics.milestone?.('usable-ui'));return()=>{listeners.delete(callback);window.removeEventListener('facemorph-report-status',report);};}
 export async function execute(request,compute){

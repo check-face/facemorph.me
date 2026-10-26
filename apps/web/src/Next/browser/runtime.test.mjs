@@ -360,3 +360,27 @@ test('watchdog pauses a silent worker while hidden and gives a full stall window
   t.mock.timers.tick(1);assert.match((await outcome).message,/stopped responding/);
  }finally{runtime.dispose();t.mock.timers.reset();if(oldDocument)Object.defineProperty(globalThis,'document',oldDocument);else delete globalThis.document;}
 });
+
+test('explicit photo preparation preserves a typed refusal for the revised decision instead of reporting ordinary offline setup',async()=>{
+ const runtime=createBrowserRuntime({manifest:{...testManifest(),landmarks:asset(7)},manifestSha256:'0'.repeat(64),preferredRoute:'cpu',workerFactory:()=>({
+  postMessage(message){queueMicrotask(()=>this.onmessage({data:message.type==='prefetch'?{id:message.id,type:'error',error:{name:'GrantRefused',message:'Approve revised photo bytes.'}}:{id:message.id,type:'complete',result:{}}}));},terminate(){}
+ })});
+ try{await assert.rejects(runtime.prefetch('photo',{explicit:true}),{name:'GrantRefused',message:'Approve revised photo bytes.'});}finally{runtime.dispose();}
+});
+
+test('cancelling page preparation terminates only its worker while a seed operation continues',async()=>{
+ let finishGenerate;const requests=[],workers=[];
+ const runtime=createBrowserRuntime({manifest:testManifest(),manifestSha256:'0'.repeat(64),preferredRoute:'cpu',workerFactory:()=>{
+  const worker={terminated:false,postMessage(message){requests.push(message.type);
+   if(message.type==='prefetch')return;
+   if(message.type==='generate'){finishGenerate=()=>this.onmessage({data:{id:message.id,type:'complete',result:{blob:new Blob(['mock-png'],{type:'image/png'}),values:new Float32Array(9216),space:'w-plus',shape:[1,18,512]}}});return;}
+   queueMicrotask(()=>this.onmessage({data:{id:message.id,type:'complete',result:{deviceValidated:true}}}));
+  },terminate(){this.terminated=true;}};workers.push(worker);return worker;
+ }});
+ try{
+  const preparation=runtime.prefetch('route',{explicit:true});await untilRuntime(()=>requests.includes('prefetch'));
+  const generation=runtime.generate({mode:'seed',value:'567'});await untilRuntime(()=>finishGenerate);
+  runtime.cancelPrefetch();assert.equal(workers[0].terminated,true);assert.equal(workers[1].terminated,false);
+  assert.equal((await preparation).started,false);finishGenerate();assert.equal((await generation).provenance.provider,'wasm');
+ }finally{runtime.dispose();}
+});

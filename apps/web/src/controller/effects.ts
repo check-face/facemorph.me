@@ -54,6 +54,7 @@ export type Effect =
   | { readonly type: 'checkCachedFace'; readonly input: Input }
   | { readonly type: 'consentToDownload'; readonly scope: string }
   | { readonly type: 'downloadModels'; readonly includePhoto: boolean }
+  | { readonly type: 'cancelDownloadSetup' }
   | { readonly type: 'cancelWork' | 'requestNext' }
   | { readonly type: 'queueFace'; readonly id: string; readonly depth: number }
   | {

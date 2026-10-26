@@ -321,6 +321,7 @@ export function subscribeDownloads(
   });
 }
 export const downloadModels = (includePhoto: boolean): void => bridge.downloadModels(includePhoto);
+export const cancelDownloadSetup = (): void => bridge.cancelDownloadSetup();
 export const consentToDownload = (scope: string): string =>
   readString(bridge.consentToDownload(scope), 'consentToDownload');
 

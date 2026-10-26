@@ -119,8 +119,7 @@ async function photoAssets(){
  const descriptor=manifest.encoderStream;
  if(descriptor){
   add(descriptor);
-  try{add(admitDescriptor(JSON.parse(new TextDecoder().decode(await bytes(descriptor,currentId,false,{allowUncached:false})))));}
-  catch{/* the descriptor is unreadable offline; the real run will report it properly */}
+  add(admitDescriptor(JSON.parse(new TextDecoder().decode(await bytes(descriptor,currentId,false,{allowUncached:false})))));
  }
  return ordered;
 }

@@ -63,3 +63,82 @@ test('unknown inventory asks; the question resolves itself when the device alrea
   const known = reduce(msg('DownloadsChanged', ready), { ...state, Gate: ['route', run] })!;
   assert.deepEqual(known.state.Gate, ['route', run]);
 });
+
+test('larger independently requested photo setup opens a revised decision with the measured bytes and its own continuation', () => {
+  const crop = { ...state, Crop: { token: 'retained-local-crop' } } as unknown as typeof state;
+  const downloads = {
+    ...state.Downloads,
+    known: true,
+    routeReady: true,
+    photoBytes: 123456,
+    photoApprovalRequired: true,
+  };
+  const changed = reduce(msg('DownloadsChanged', downloads), {
+    ...crop,
+    DownloadConsent: new Set(['route', 'photo']),
+  })!;
+  assert.deepEqual(changed.state.Gate, ['photo', msg('DownloadNow', true)]);
+  assert.equal(changed.state.Downloads.photoBytes, 123456);
+  assert.equal(changed.state.DownloadConsent.has('photo'), false);
+  assert.equal(changed.state.DownloadConsent.has('route'), true);
+  assert.equal(changed.state.Crop, crop.Crop, 'page preparation does not discard the card crop');
+  const accepted = reduce(msg('GateAccept'), changed.state)!;
+  assert.equal(accepted.state.Gate, null);
+  assert.equal(accepted.state.Downloads.photoApprovalRequired, false);
+  assert.deepEqual(
+    accepted.effects,
+    [{ type: 'dispatch', message: msg('DownloadNow', true) }],
+    'one explicit approval is made by DownloadNow, without a second consent effect',
+  );
+  const resumed = reduce(msg('DownloadNow', true), accepted.state)!;
+  assert.deepEqual(resumed.effects, [{ type: 'downloadModels', includePhoto: true }]);
+  assert.equal(resumed.state.DownloadConsent.has('photo'), true);
+  const cancelled = reduce(msg('GateCancel'), changed.state)!;
+  assert.equal(cancelled.state.Gate, null);
+  assert.equal(cancelled.state.Crop, crop.Crop);
+  assert.equal(cancelled.state.Downloads.photoApprovalRequired, false);
+  assert.deepEqual(cancelled.effects, [{ type: 'cancelDownloadSetup' }]);
+});
+
+test('a card decision never cancels independent page preparation or gets replaced by its revised decision', () => {
+  const pending = msg('RunFace', 'face-1');
+  const asked = { ...state, Gate: ['route', pending] as const };
+  const changed = reduce(
+    msg('DownloadsChanged', { ...state.Downloads, photoApprovalRequired: true }),
+    asked,
+  )!;
+  assert.deepEqual(changed.state.Gate, asked.Gate);
+  assert.deepEqual(reduce(msg('GateCancel'), changed.state)!.effects, []);
+  for (const decision of [msg('GateCancel'), msg('GateAccept')]) {
+    const resolved = reduce(decision, changed.state)!;
+    assert.deepEqual(
+      resolved.state.Gate,
+      ['photo', msg('DownloadNow', true)],
+      `${decision.type} surfaces the queued preparation decision without another download event`,
+    );
+    assert.equal(resolved.state.Downloads.photoApprovalRequired, true);
+    assert.ok(
+      !resolved.effects.some(
+        (effect) =>
+          effect.type === 'downloadModels' ||
+          (effect.type === 'consentToDownload' && effect.scope === 'photo'),
+      ),
+      'resolving the card decision never approves independent photo preparation',
+    );
+  }
+  const unknown = {
+    ...asked,
+    Downloads: { ...state.Downloads, known: false },
+  };
+  const resolvedByCache = reduce(
+    msg('DownloadsChanged', {
+      ...state.Downloads,
+      known: true,
+      routeReady: true,
+      photoApprovalRequired: true,
+    }),
+    unknown,
+  )!;
+  assert.deepEqual(resolvedByCache.state.Gate, ['photo', msg('DownloadNow', true)]);
+  assert.deepEqual(resolvedByCache.effects, [{ type: 'dispatch', message: pending }]);
+});

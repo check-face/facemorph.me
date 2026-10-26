@@ -760,6 +760,9 @@ export function createController(
         case 'downloadModels':
           facade.downloadModels(effect.includePhoto);
           break;
+        case 'cancelDownloadSetup':
+          facade.cancelDownloadSetup();
+          break;
         case 'queueFace':
           facade.queueFace(effect.id, effect.depth);
           break;
