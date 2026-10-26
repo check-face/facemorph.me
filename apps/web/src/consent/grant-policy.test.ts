@@ -35,7 +35,7 @@ const generator = (inventory: NeededAsset['inventory'] = 'absent') => [
 ];
 const photo = (inventory: NeededAsset['inventory'] = 'absent') => [
   asset(DET, 1_000_000, 'detector-prerequisite', inventory),
-  asset(ENC, 90_000_000, 'optional', inventory),
+  asset(ENC, 90_000_000, 'foreground-required', inventory),
 ];
 const face = (owner: GrantOwnerId, assets = generator()): Request => ({
   owner,
@@ -164,7 +164,7 @@ test('scope inflation needs a revised decision: an extra asset is asked for, nam
   assert.equal(revised.decision.extraBytes, 5_000_000, 'only the new asset is new to the person');
   assert.deepEqual(
     revised.decision.assets.map((a) => a.sha256),
-    [EXTRA, GEN, MAP],
+    [GEN, MAP, EXTRA],
   );
   // A changed size of an approved digest is a new material cost too.
   const [, grown] = run([

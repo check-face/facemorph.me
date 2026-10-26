@@ -161,10 +161,12 @@ export const initialPolicy: PolicyState = {
   admitted: new Set(),
 };
 
+// Fetch order: a face can be made first, the small detector arrives promptly, and the rest of what the action
+// needs (the encoder) transfers while the person chooses and crops; optional and warming work comes last.
 const RANK: Record<AcquisitionPriority, number> = {
-  'foreground-required': 0,
-  'synthesis-prerequisite': 1,
-  'detector-prerequisite': 2,
+  'synthesis-prerequisite': 0,
+  'detector-prerequisite': 1,
+  'foreground-required': 2,
   optional: 3,
   'speculative-warming': 4,
 };
