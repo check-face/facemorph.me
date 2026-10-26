@@ -4,6 +4,8 @@ export interface InitialFacts {
   readonly today: string;
   readonly url: string;
   readonly consentAnswered: boolean;
+  /** The restored standing debug-report choice (fm-szbf): the first render shows it, never a false Off. */
+  readonly debugOn?: boolean;
   readonly sliderPreference: boolean;
   readonly sliderPosition: number;
 }
@@ -47,7 +49,7 @@ export function init(facts: InitialFacts): Transition {
       NameLimit: 48,
       Error: null,
       DebugStatus: '',
-      Debug: false,
+      Debug: facts.debugOn === true,
       NextId: 3,
       Crop: null,
       CropQueue: [],
@@ -71,7 +73,11 @@ export function init(facts: InitialFacts): Transition {
       CachedFaces: new Set(),
       ActiveFace: null,
       Remaining: '',
-      ConsentPrompt: !testingInvited(url) && !labsOrigin(url) && !facts.consentAnswered,
+      ConsentPrompt:
+        !testingInvited(url) &&
+        !labsOrigin(url) &&
+        !facts.consentAnswered &&
+        facts.debugOn !== true,
       Downloads: {
         known: false,
         phase: 'idle',

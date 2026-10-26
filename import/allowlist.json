@@ -1922,10 +1922,10 @@
       "bytes": 23028,
       "class": "src-next",
       "ported": {
-        "sha256": "91b78652ae312cd1666751ecdc596f5e3c969a8f33457350c41a0ada3c9a6df3",
-        "bytes": 26711,
-        "bead": "fm-96if",
-        "reason": "Retain crop and names rendering repairs; place the single tile operation action inside the face image and retire hold-to-compare styling.; Encode source and crop-confirmation modal styles landed in ae6a3fd; preserve existing tile/product styling. (fm-fy2.17.1); Face card is the photo entry with Generate beside the field (c397da4, fm-25um fm-fy2.17.1); legacy fullscreen gapless names grid styles (07ac969, fm-96if)"
+        "sha256": "9285ef6f295afdbbc885473be70a1aac2af5b66aa2fe9f4b7ed7fa9500fd5917",
+        "bytes": 27867,
+        "bead": "fm-szbf",
+        "reason": "Retain crop and names rendering repairs; place the single tile operation action inside the face image and retire hold-to-compare styling.; Encode source and crop-confirmation modal styles landed in ae6a3fd; preserve existing tile/product styling. (fm-fy2.17.1); Face card is the photo entry with Generate beside the field (c397da4, fm-25um fm-fy2.17.1); legacy fullscreen gapless names grid styles (07ac969, fm-96if); debug-report disclosure, privacy request list and in-page first-visit prompt styles (fm-szbf)"
       }
     },
     {
@@ -1994,10 +1994,10 @@
       "bytes": 21782,
       "class": "src-next",
       "ported": {
-        "sha256": "908a650e7c7ead866896a488b6b4134755746bf97b8c20107260275b08e4fecf",
-        "bytes": 22167,
-        "bead": "fm-5yqq",
-        "reason": "Read the collector endpoint from shared per-environment bindings; preserve next endpoint and consented bounded reporting. (fm-a0c1); onStage hook passes raw runtime stages to the changeover statistics sink (fm-5yqq)"
+        "sha256": "639bf8c6dede0af4997a6c9159ce57016dd11544297ec75517519566111360b0",
+        "bytes": 22952,
+        "bead": "fm-szbf",
+        "reason": "Read the collector endpoint from shared per-environment bindings; preserve next endpoint and consented bounded reporting. (fm-a0c1); onStage hook passes raw runtime stages to the changeover statistics sink (fm-5yqq); one-shot Send this report sends only the owning failed attempt and withdrawal no longer cancels it; status exposes the sendable count (fm-szbf)"
       }
     },
     {
@@ -2005,7 +2005,13 @@
       "destination": "apps/web/src/Next/reporting.test.mjs",
       "sha256": "b5df3154d93295fe43b118ae46ebb01323675abdd37b051d847fa33a87c4293f",
       "bytes": 21784,
-      "class": "src-next"
+      "class": "src-next",
+      "ported": {
+        "sha256": "0420d562a7b3a6c861ccfb764007e5829c776cea487d5325ff58c2130a3d34cb",
+        "bytes": 25494,
+        "bead": "fm-szbf",
+        "reason": "owning-attempt one-shot scoping and withdrawal tests (fm-szbf)"
+      }
     },
     {
       "source": "src/Next/route-choice.test.mjs",

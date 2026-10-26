@@ -447,3 +447,70 @@ test('the product origin never starts reporting without an answer, and a legacy 
     assert.equal(second.diagnostics.status().basis, 'legacy');
   } finally { delete globalThis.location; }
 });
+
+// fm-szbf: a one-shot report is the owning failed attempt only, never standing consent.
+test('"Send this report" sends only the owning failed attempt, never another run, and keeps a stored refusal', async () => {
+  const { diagnostics, posts, store } = await fresh();
+  diagnostics.enable(false, 'toast');                       // "No thanks"
+  const refusal = store.get('facemorph-debug-consent-v1');
+  diagnostics.bundle('e'.repeat(64));
+  diagnostics.start('photo');                                // an unrelated slot's run, still open
+  diagnostics.stage('photo-select', { elapsedMs: 3 });
+  const other = diagnostics.status();
+  diagnostics.start('faces', 'cpu');
+  diagnostics.stage('synthesis', { elapsedMs: 5 });
+  diagnostics.finish('failed', new Error('Generation failed'), { stage: 'synthesis' });
+  const failed = diagnostics.status().failedRun;
+  assert.ok(failed);
+  assert.ok(diagnostics.status().sendable > 0 && diagnostics.status().sendable < diagnostics.status().staged);
+  diagnostics.start('photo');                                // a later run stages its own records
+  diagnostics.stage('photo-preview', { elapsedMs: 4 });
+  assert.equal(diagnostics.sendOnce(), true);
+  await settle(diagnostics);
+  assert.ok(posts.length > 0);
+  for (const post of posts) {
+    assert.equal(post.body.run, failed, 'only the owning attempt');
+    assert.equal(post.body.consent, 'once');
+    assert.equal(post.body.device, undefined);
+  }
+  assert.ok(posts.some(p => p.body.event === 'failed'));
+  assert.ok(diagnostics.status().staged > 0, 'the other runs stay staged on the device');
+  assert.equal(diagnostics.status().enabled, false);
+  assert.equal(store.get('facemorph-debug-consent-v1'), refusal, 'the stored refusal is unchanged');
+  assert.equal(diagnostics.sendOnce(), false, 'one-shot means once');
+  assert.ok(other);
+});
+
+test('an explicit owner run is honoured, and a run with nothing staged sends nothing', async () => {
+  const { diagnostics, posts } = await fresh();
+  diagnostics.bundle('e'.repeat(64));
+  diagnostics.start('faces', 'cpu');
+  diagnostics.stage('synthesis', { elapsedMs: 5 });
+  diagnostics.finish('failed', new Error('x'), { stage: 'synthesis' });
+  const first = diagnostics.status().failedRun;
+  diagnostics.start('faces', 'cpu');
+  diagnostics.finish('failed', new Error('y'), { stage: 'synthesis' });
+  assert.notEqual(diagnostics.status().failedRun, first);
+  assert.equal(diagnostics.sendOnce('not-a-run'), false);
+  assert.equal(diagnostics.sendOnce(first), true);
+  await settle(diagnostics);
+  assert.ok(posts.length > 0 && posts.every(p => p.body.run === first));
+});
+
+test('turning reporting off does not cancel an approved one-shot, but stops everything else', async () => {
+  const { diagnostics, posts } = await fresh();
+  let release;
+  const gate = new Promise(resolve => { release = resolve; });
+  const realFetch = globalThis.fetch;
+  const aborted = [];
+  globalThis.fetch = async (url, options) => { options.signal.addEventListener('abort', () => aborted.push(JSON.parse(options.body).consent)); await gate; return realFetch(url, options); };
+  failingRun(diagnostics);
+  assert.equal(diagnostics.sendOnce(), true);
+  diagnostics.enable(true); diagnostics.start('faces', 'cpu'); diagnostics.stage('synthesis', { elapsedMs: 1 }); diagnostics.finish('completed');
+  await new Promise(resolve => setTimeout(resolve, 0));
+  diagnostics.enable(false);                                 // withdrawal with both sends pending
+  assert.deepEqual(aborted, ['checkbox'], 'the standing send is aborted, the one-shot is not');
+  release(); await settle(diagnostics);
+  assert.ok(posts.some(p => p.body.consent === 'once'));
+  globalThis.fetch = realFetch;
+});

@@ -11,6 +11,7 @@ import {
   sliderPreference as sliderPreferenceJs,
 } from '../../src/controller/preferences.ts';
 import { nextScheduled as nextScheduledJs } from '../../src/Next/scheduler.mjs';
+import { diagnostics } from '../../src/Next/reporting.mjs';
 import { MULTIPLE_FACES_MESSAGE as multipleFacesJs } from '../../src/Next/photo/align-photo.mjs';
 import {
   editRevision,
@@ -282,6 +283,29 @@ export const consentAnswered = (): boolean =>
   readBoolean(bridge.consentAnswered(), 'consentAnswered');
 export const stagedReportCount = (): number =>
   readInteger(bridge.stagedReportCount(), 'stagedReportCount');
+/**
+ * Restores the saved debug-report choice before the first render, so a saved On (or the labs default) is the
+ * state the page first paints, never Off followed by On (fm-szbf). Idempotent: the bridge's own restore on
+ * subscribe is then a no-op. Returns whether standing reporting is on.
+ */
+export const restoreDebug = (): boolean => {
+  diagnostics.restore();
+  return readBoolean(diagnostics.status().enabled, 'restoreDebug');
+};
+export interface ReportStatus {
+  /** Whether the last choice reached storage; false means it holds for this tab only. */
+  readonly persisted: boolean;
+  /** Staged records of the most recent failed attempt, which "Send this report" would send. */
+  readonly sendable: number;
+}
+export const reportStatus = (): ReportStatus => {
+  const status: unknown = diagnostics.status();
+  const record = (status ?? {}) as Record<string, unknown>;
+  return {
+    persisted: record['persisted'] !== false,
+    sendable: readInteger(record['sendable'] ?? 0, 'reportStatus.sendable'),
+  };
+};
 export const reportReference = (): string =>
   readString(bridge.reportReference(), 'reportReference');
 export const sourceVersion = (): string => readString(bridge.sourceVersion(), 'sourceVersion');

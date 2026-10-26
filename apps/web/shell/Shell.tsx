@@ -96,6 +96,11 @@ export function Footer({ route = '' }: { route?: string }) {
             </Link>{' '}
             — it fills in your version and device.
           </p>
+          <p>
+            <Link color="inherit" className="next-footer-privacy" href="#debug-reporting">
+              Privacy &amp; reports
+            </Link>
+          </p>
           <p className="next-footer-version">Preview version {sourceVersion()}</p>
           <p>
             {/* NOTICES_HREF in render/help.ts; inline so the retirement-copy inventory's lines stay put. */}

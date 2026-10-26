@@ -65,7 +65,7 @@ export function Product({ store }: { store: Store }) {
           <Support
             state={s}
             dispatch={dispatch}
-            stagedReports={facade.stagedReportCount()}
+            report={facade.reportStatus()}
             reference={facade.reportReference()}
           />
           {!s.Crop && !s.PhotoChoice && !s.Gate && <NamesDialog state={s} dispatch={dispatch} />}

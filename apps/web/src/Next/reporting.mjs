@@ -9,7 +9,7 @@ export function onJobEnd(listener){jobEnded=typeof listener==='function'?listene
 let stageSeen=null;
 /** One listener for every runtime stage of a job, raw (the changeover statistics read their own timings from it). */
 export function onStage(listener){stageSeen=typeof listener==='function'?listener:null;}
-let aborters=new Set(),pendingStart=null,finished=false,interrupted=false,tally=null,persisted=true;
+let aborters=new Set(),onceAborters=new Set(),failedRun=null,pendingStart=null,finished=false,interrupted=false,tally=null,persisted=true;
 // One clock per stage name. A single shared clock dropped exactly the bursty boundaries the
 // parity ledger is made of: two different stages a few milliseconds apart are two facts.
 const lastStageAt=new Map();
@@ -189,7 +189,8 @@ function account(item,ok,once=false){
  */
 async function deliver(items,once=null){
  if(!enabled()&&!once)return;
- const sendingSession=once?once.session:session,controller=new AbortController();aborters.add(controller);
+ // A one-shot was approved on its own; withdrawing standing consent does not cancel it (fm-szbf).
+ const owners=once?onceAborters:aborters,sendingSession=once?once.session:session,controller=new AbortController();owners.add(controller);
  const live=()=>once?true:enabled()&&session===sendingSession;
  const timer=setTimeout(()=>controller.abort(),10000);
  const terminal=items.some(item=>item.terminal),lead=items[items.length-1];
@@ -203,7 +204,7 @@ async function deliver(items,once=null){
   if(live())for(const item of items)account(item,response.ok,!!once);
   if(!response.ok&&!once&&live())requeue(items);
  }catch{if(live()){for(const item of items)account(item,false,!!once);if(!once)requeue(items);}}
- finally{clearTimeout(timer);aborters.delete(controller);}
+ finally{clearTimeout(timer);owners.delete(controller);}
 }
 /**
  * The first event of a run used to go out before the bundle hash was known, so nothing said
@@ -238,7 +239,7 @@ if(typeof document!=='undefined')document.addEventListener('visibilitychange',on
  * not the run that merely started — so a tester is never handed an id nothing was saved
  * against, and never the *previous* run's id either. It stands until the next run replaces it.
  */
-function summary(){const of=tally?.run||'';return {enabled:consented,basis,reference:of,once:!!tally?.once,sent:tally?.sent||0,failed:tally?.failed||0,staged:staged.length,persisted};}
+function summary(){const of=tally?.run||'';return {enabled:consented,basis,reference:of,once:!!tally?.once,sent:tally?.sent||0,failed:tally?.failed||0,staged:staged.length,sendable:failedRun?staged.filter(item=>item.run===failedRun).length:0,failedRun:failedRun||'',persisted};}
 export const diagnostics={
  enable(value,how='checkbox'){
   if(value){
@@ -248,13 +249,19 @@ export const diagnostics={
   }else{withdraw();persisted=remember('off',CONSENT_BASES.includes(how)?how:'checkbox');notice('disabled');}
  },
  /**
-  * "Send this report" after a failure: what this device staged goes out once, and reporting
-  * stays off. Returns whether anything was sent. Under standing consent it just flushes.
+  * "Send this report" after a failure: the owning failed attempt's staged records go out once,
+  * and reporting stays off. `owner` names that attempt's run; without one it is the most recent
+  * failed run. Staged records of any other run (another slot's photo preparation, a later job)
+  * stay staged and are not sent (fm-szbf). The stored choice, including a refusal, is untouched.
+  * Returns whether anything was sent. Under standing consent it just flushes.
   */
- sendOnce(){
+ sendOnce(owner){
   if(consented){flushBatch();return false;}
-  const pending=staged;staged=[];
+  const target=typeof owner==='string'&&owner?owner:failedRun;
+  if(!target)return false;
+  const pending=staged.filter(item=>item.run===target);
   if(!pending.length)return false;
+  staged=staged.filter(item=>item.run!==target);if(target===failedRun)failedRun=null;
   void deliver(pending,{session:crypto.randomUUID()});
   return true;
  },
@@ -313,6 +320,7 @@ export const diagnostics={
   */
  finish(status,error,context={}){
   if(!run||finished)return;finished=true;
+  if(status==='failed')failedRun=run;
   terminate(status,{errorCode:error?(error.name==='AbortError'?'cancelled':'operation_failed'):undefined,errorStage:allowedStages.has(context.stage)?context.stage:undefined,errorKind:error?classify(error):undefined});
  },
  status(){return summary();},

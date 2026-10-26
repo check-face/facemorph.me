@@ -137,6 +137,12 @@
 .next-debug select { font:inherit; padding:.35rem .5rem; border-radius:6px; border:1px solid rgba(128,128,128,.45); background:transparent; color:inherit; }
 .next-debug select:focus-visible { outline:2px solid #ce621d; outline-offset:2px; }
 .next-debug-report { display:flex; align-items:center; gap:.5rem; margin:.6rem 0; }
+// The debug-report disclosure (fm-szbf): its summary states the standing choice; footer and FAQ links open it.
+.next-debug-disclosure > summary { cursor:pointer; font-family:'Nunito','Segoe UI',sans-serif; font-weight:700; font-size:1.05rem; padding:.6rem 0; min-height:44px; }
+.next-debug-disclosure > summary:focus-visible { outline:2px solid #ce621d; outline-offset:2px; }
+.next-debug-reference code { user-select:all; word-break:break-all; }
+.next-privacy-requests { margin:.5rem 0 .5rem 1.25rem; list-style:disc; }
+.next-privacy-requests li { margin:.35rem 0; overflow-wrap:anywhere; }
 .next-faq { border-top:1px solid rgba(128,128,128,.35); padding:.5rem 0; }
 .next-faq summary { cursor:pointer; font-weight:600; padding:.25rem 0; }
 .next-faq p { margin:.5rem 0 .5rem 1rem; }
@@ -259,6 +265,11 @@
 // without the accent borders R2-8 bans; it sits above the page, never over the action row for long.
 .next-consent-toast { background:#17181c!important; color:#fff!important; border:1px solid rgba(255,255,255,.14); max-width:40rem; }
 .next-consent-message { line-height:1.45; }
+.next-first-visit { margin:1.25rem auto; padding:1rem 1.25rem; border-radius:8px; max-width:40rem; }
+.next-first-visit-actions { display:flex; flex-wrap:wrap; justify-content:flex-end; align-items:center; gap:.25rem .5rem; margin-top:.5rem; }
+// While the bottom-edge toast is open the page can scroll every control clear of it.
+body:has(.next-consent-toast.MuiSnackbarContent-root) .next-product { padding-bottom:12rem; }
+html:has(.next-consent-toast.MuiSnackbarContent-root) { scroll-padding-bottom:12rem; }
 .next-consent-message strong { font-family:'Nunito','Segoe UI',sans-serif; color:inherit!important; }
 
 .next-preview-strip { display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:.35rem 1rem; margin:-1.25rem -1.25rem 1rem; padding:.55rem 1rem; background:#17181c; color:#fff; font-size:.85rem; line-height:1.4; text-align:center; box-shadow:0 0 0 100vmax #17181c; clip-path:inset(0 -100vmax); }

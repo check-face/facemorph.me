@@ -237,7 +237,7 @@ for (const [engine, type] of Object.entries(engines).filter(
         const failure = page.locator('.next-failure-toast');
         await failure.waitFor();
         await shot('error-toast');
-        await hit(failure.getByRole('button', { name: 'Send report', exact: true }));
+        await hit(failure.getByRole('button', { name: 'Send this report', exact: true }));
         await last(page, 'DismissFailureToast');
         assert.equal(
           await page.locator('output[data-debug-enabled]').getAttribute('data-debug-enabled'),
@@ -262,15 +262,18 @@ for (const [engine, type] of Object.entries(engines).filter(
           page.locator('.next-error').getByRole('button', { name: 'Dismiss', exact: true }),
         );
         await last(page, 'DismissError');
-        await hit(page.getByRole('checkbox'));
+        // The debug-report disclosure (fm-szbf): its summary opens it, then its own checkbox.
+        await hit(page.locator('#debug-reporting > summary'));
+        const debugBox = page.locator('#debug-reporting').getByRole('checkbox');
+        await hit(debugBox);
         await last(page, 'Debug');
         assert.equal(
           await page.locator('output[data-debug-enabled]').getAttribute('data-debug-enabled'),
           'true',
         );
-        await hit(page.getByRole('checkbox'));
+        await hit(debugBox);
         await last(page, 'Debug');
-        for (const action of ['Turn on', 'No thanks', 'Ask me later']) {
+        for (const action of ['Turn on debug reporting', 'No thanks', 'Ask me later']) {
           await open('firstVisit');
           const consent = page.locator('.next-consent-toast');
           await consent.waitFor();

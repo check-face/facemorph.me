@@ -75,7 +75,7 @@ export function DialogCheck() {
           <Support
             state={state}
             dispatch={dispatch}
-            stagedReports={1}
+            report={{ persisted: true, sendable: 1 }}
             reference="12345678-1234-1234-1234-123456789abc"
           />
           <DetectedDialog state={state} dispatch={dispatch} />

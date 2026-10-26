@@ -4,7 +4,7 @@ import Checkbox from '@mui/material/Checkbox';
 import IconButton from '@mui/material/IconButton';
 import LinearProgress from '@mui/material/LinearProgress';
 import Snackbar from '@mui/material/Snackbar';
-import { useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { msg } from '../../src/controller/msg.ts';
 import type { State } from '../../src/controller/state.ts';
 import { testingInvited } from '../../src/controller/init.ts';
@@ -12,13 +12,24 @@ import { megabytes, type Dispatch } from './Dialogs.tsx';
 import { Explain } from './Explain.tsx';
 import { refusalForText } from '../../src/admission/route-admission.ts';
 import { setUsageStats, switchState } from '../facade/usage-stats.ts';
+import type { ReportStatus } from '../facade/bridge.ts';
 
 interface Props {
   readonly state: State;
   readonly dispatch: Dispatch;
-  readonly stagedReports: number;
+  /** The reporter's own status: whether the choice persisted, and what "Send this report" would send. */
+  readonly report: ReportStatus;
   readonly reference: string;
 }
+
+/** The debug-report disclosure (fm-szbf). Footer and FAQ links to it expand it and focus its checkbox. */
+export const DEBUG_REPORTING = 'debug-reporting';
+const RETENTION =
+  'Reports go to our private diagnostics service and are kept, with no deletion date.';
+
+/** The failure toast is the one contextual prompt; the error box offers the same one-shot only once it is gone. */
+const failureToastShown = (state: State, report: ReportStatus): boolean =>
+  state.FailureToast && !state.Debug && state.Error !== null && report.sendable > 0;
 
 export function TestingInvite({
   state,
@@ -46,14 +57,14 @@ export function TestingInvite({
         <Button onClick={() => dispatch(msg('DismissInvite'))}>Not now</Button>
       </div>
       <p className="next-invite-note">
-        You can turn it off at any time in the testing area below. Generating works exactly the same
-        either way.
+        You can turn it off at any time under Debug reports at the bottom of the page. Generating
+        works exactly the same either way.
       </p>
     </section>
   );
 }
 
-export function ErrorBox({ state, dispatch, stagedReports, reference }: Props) {
+export function ErrorBox({ state, dispatch, report, reference }: Props) {
   if (state.Error === null) return null;
   const refusal = refusalForText(state.Error);
   return (
@@ -72,7 +83,7 @@ export function ErrorBox({ state, dispatch, stagedReports, reference }: Props) {
         </p>
       )}
       <div className="next-actions">
-        {!state.Debug && stagedReports > 0 && (
+        {!state.Debug && report.sendable > 0 && !failureToastShown(state, report) && (
           <Button onClick={() => dispatch(msg('SendReportOnce'))}>Send this report</Button>
         )}
         {state.LastRun && (
@@ -89,22 +100,90 @@ export function ErrorBox({ state, dispatch, stagedReports, reference }: Props) {
   );
 }
 
-export function DebugArea({ state, dispatch, stagedReports }: Omit<Props, 'reference'>) {
+/** Opens the disclosure and moves focus to its checkbox, for every same-page link to #debug-reporting. */
+function useDisclosureLinks(ref: RefObject<HTMLDetailsElement | null>): void {
+  useEffect(() => {
+    const reveal = () => {
+      const details = ref.current;
+      if (!details) return;
+      details.open = true;
+      details.querySelector<HTMLInputElement>('input[type=checkbox]')?.focus();
+      details.scrollIntoView({ block: 'center' });
+    };
+    const click = (e: MouseEvent) => {
+      const a = (e.target as Element | null)?.closest?.(`a[href="#${DEBUG_REPORTING}"]`);
+      if (!a) return;
+      e.preventDefault();
+      history.replaceState(history.state, '', `#${DEBUG_REPORTING}`);
+      reveal();
+    };
+    const hash = () => {
+      if (location.hash === `#${DEBUG_REPORTING}`) reveal();
+    };
+    hash();
+    document.addEventListener('click', click);
+    addEventListener('hashchange', hash);
+    return () => {
+      document.removeEventListener('click', click);
+      removeEventListener('hashchange', hash);
+    };
+  }, [ref]);
+}
+
+export function DebugArea({ state, dispatch, report, reference }: Props) {
+  const ref = useRef<HTMLDetailsElement>(null);
+  const [copied, setCopied] = useState(false);
+  useDisclosureLinks(ref);
   return (
-    <section className="next-debug box" role="region" aria-label="For testing">
-      <h2>For testing</h2>
-      <label className="next-debug-report">
-        <Checkbox
-          checked={state.Debug}
-          onChange={(_, checked) => dispatch(msg('Debug', checked))}
-        />
-        <span>Send debug reports until I turn this off</span>
-      </label>
+    <section className="next-debug box" role="region" aria-label="Reports and statistics">
+      <details id={DEBUG_REPORTING} className="next-debug-disclosure" ref={ref}>
+        <summary>Debug reports: {state.Debug ? 'On' : 'Off'}</summary>
+        <label className="next-debug-report">
+          <Checkbox
+            checked={state.Debug}
+            slotProps={{ input: { 'aria-describedby': 'next-debug-note' } }}
+            onChange={(_, checked) => dispatch(msg('Debug', checked))}
+          />
+          <span>Send debug reports until I turn this off.</span>
+        </label>
+        <p id="next-debug-note">
+          Timings, browser/device details and safe error codes. Never photos, typed words, seeds,
+          faces or videos. {RETENTION}
+        </p>
+        {!report.persisted && (
+          <p className="next-debug-unsaved" role="alert">
+            {`Reporting is ${state.Debug ? 'on' : 'off'} for this tab; this choice could not be saved.`}
+          </p>
+        )}
+        <p role="status">{state.DebugStatus}</p>
+        {reference && (
+          <p className="next-debug-reference">
+            Report reference: <code>{reference}</code>{' '}
+            <Button
+              size="small"
+              onClick={() => {
+                void navigator.clipboard?.writeText(reference).then(
+                  () => setCopied(true),
+                  () => setCopied(false),
+                );
+              }}
+            >
+              {copied ? 'Copied' : 'Copy'}
+            </Button>
+          </p>
+        )}
+        {report.sendable > 0 && !state.Debug && (
+          <p>
+            A report of the last failure is kept on this device. It is sent only if you choose Send
+            this report.
+          </p>
+        )}
+        <p>
+          Turning this off stops sending at once and discards anything not yet sent. Usage
+          statistics have their own switch below. <a href="#privacy">Everything this page sends</a>.
+        </p>
+      </details>
       <UsageStatsSwitch />
-      <p role="status">{state.DebugStatus}</p>
-      {stagedReports > 0 && !state.Debug && (
-        <p>{stagedReports} staged report(s) from this session are ready to send if you agree.</p>
-      )}
       <p>
         <a href="mailto:checkfaceml@gmail.com">Email us</a>
       </p>
@@ -141,7 +220,7 @@ export function UsageStatsSwitch() {
 }
 
 /** Exactly one toast. Modal acquisition has priority; a one-shot report never grants standing consent. */
-export function Toasts({ state, dispatch }: Pick<Props, 'state' | 'dispatch'>) {
+export function Toasts({ state, dispatch, report }: Pick<Props, 'state' | 'dispatch' | 'report'>) {
   const downloads = state.Downloads;
   const photoOffer = downloads.photoAvailable && !downloads.photoReady;
   const model =
@@ -149,7 +228,7 @@ export function Toasts({ state, dispatch }: Pick<Props, 'state' | 'dispatch'>) {
     downloads.known &&
     ((downloads.phase === 'idle' && !downloads.routeReady) ||
       ['downloading', 'waiting', 'failed', 'done'].includes(downloads.phase));
-  const failure = state.FailureToast && !state.Debug && state.Error !== null;
+  const failure = failureToastShown(state, report);
   let content: ReactNode = null;
   let actions: ReactNode = null;
   let kind = '';
@@ -249,8 +328,9 @@ export function Toasts({ state, dispatch }: Pick<Props, 'state' | 'dispatch'>) {
     kind = 'next-failure-toast';
     content = (
       <span>
-        <strong>Something went wrong.</strong> Send a debug report so we can fix it? Timings, device
-        type and error codes only. Never your photos, words or faces. Kept with no deletion date.
+        <strong>Something went wrong.</strong> Send this one report so we can fix it? Timings,
+        device type and error codes only. Never your photos, words or faces. Kept with no deletion
+        date. Reporting stays off.
       </span>
     );
     actions = (
@@ -262,26 +342,27 @@ export function Toasts({ state, dispatch }: Pick<Props, 'state' | 'dispatch'>) {
             dispatch(msg('DismissFailureToast'));
           }}
         >
-          Send report
+          Send this report
         </Button>
         <Button color="inherit" onClick={() => dispatch(msg('DismissFailureToast'))}>
           Not now
         </Button>
       </>
     );
-  } else if (state.ConsentPrompt) {
+  } else if (state.ConsentPrompt && !state.Debug) {
+    kind = 'next-consent-prompt';
     content = (
       <>
         <strong>Help us test?</strong>
         {
-          ' Send debug reports: timings, device type and error codes. Never your photos, words or faces. Kept with no deletion date.'
+          ' Debug reporting sends timings, device type and error codes from now on, until you turn it off. Never your photos, words or faces. Kept with no deletion date.'
         }
       </>
     );
     actions = (
       <>
         <Button color="inherit" onClick={() => dispatch(msg('Consent', true, 'toast'))}>
-          Turn on
+          Turn on debug reporting
         </Button>
         <Button color="inherit" onClick={() => dispatch(msg('Consent', false, 'toast'))}>
           No thanks
@@ -297,6 +378,20 @@ export function Toasts({ state, dispatch }: Pick<Props, 'state' | 'dispatch'>) {
       </>
     );
   }
+  // An unsolicited first-visit prompt (the model offer, the reporting question) sits in the page after the
+  // morph controls, never over them (defect 16). A prompt answering something the person just did (download
+  // progress, a failure's report) is the one bottom-edge toast, and the page reserves room to scroll clear of it.
+  if (content !== null && ((model && downloads.phase === 'idle') || kind === 'next-consent-prompt'))
+    return (
+      <aside
+        className={`next-consent-toast next-first-visit ${kind}`}
+        role="region"
+        aria-label={model ? 'Face model download' : 'Debug reporting'}
+      >
+        <div className="next-consent-message">{content}</div>
+        <div className="next-first-visit-actions">{actions}</div>
+      </aside>
+    );
   return (
     <Snackbar
       open={content !== null}
@@ -316,10 +411,10 @@ export function Toasts({ state, dispatch }: Pick<Props, 'state' | 'dispatch'>) {
 export function Support(props: Props) {
   return (
     <>
+      <Toasts {...props} />
       <ErrorBox {...props} />
       <Explain route={props.state.Route} reference={props.reference} />
       <DebugArea {...props} />
-      <Toasts {...props} />
     </>
   );
 }

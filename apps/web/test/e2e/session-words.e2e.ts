@@ -633,7 +633,8 @@ test(
         const field = (i: number) => tiles.nth(i).locator('.next-field input');
         await cpuSetup(page);
         // Debug reports on, at the control's visible position.
-        await operate(page.getByText('Send debug reports until I turn this off', { exact: true }));
+        await operate(page.locator('#debug-reporting > summary'));
+        await operate(page.getByText('Send debug reports until I turn this off.', { exact: true }));
         await page.waitForFunction(
           () =>
             (window as unknown as { __elmish: { model: { Debug: boolean } } }).__elmish.model.Debug,

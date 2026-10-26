@@ -64,3 +64,26 @@ test('failure invitation has priority, with model/download gates suppressing bot
   }
 });
 // ReportFailure's standing opt-in is defect 12, owned by diagnostics. It is intentionally not a parity assertion.
+// fm-szbf: the restored choice is the first state, so the disclosure never paints a false Off before On.
+test('a restored standing choice is the initial state, and an On visitor is never asked', () => {
+  const facts = {
+    today: '<today>',
+    url: 'https://next.facemorph.me/',
+    consentAnswered: true,
+    sliderPreference: false,
+    sliderPosition: 1,
+  };
+  const on = init({ ...facts, debugOn: true }).state;
+  assert.equal(on.Debug, true);
+  assert.equal(on.ConsentPrompt, false);
+  const off = init({ ...facts, debugOn: false }).state;
+  assert.equal(off.Debug, false);
+  assert.equal(off.ConsentPrompt, false, 'an answered visitor is not asked again');
+  const first = init({ ...facts, consentAnswered: false }).state;
+  assert.equal(first.Debug, false);
+  assert.equal(first.ConsentPrompt, true);
+  assert.equal(
+    init({ ...facts, consentAnswered: false, debugOn: true }).state.ConsentPrompt,
+    false,
+  );
+});

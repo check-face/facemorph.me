@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import { issueUrl } from '../links.ts';
 import { helpTopics, type Run } from './help.ts';
 import { StoredData } from './StoredData.tsx';
+import { OUTSIDE_REQUESTS } from '../../src/controller/outside-requests.ts';
 
 /** Opens the Help topic a same-page link names (a refusal's Help link, a selector link, a shared #anchor). */
 function openTopic(hash: string): void {
@@ -174,11 +175,11 @@ export function Explain({ route = '', reference = '' }: { route?: string; refere
           {'.'}
         </p>
       </details>
-      <details className="next-faq">
+      <details className="next-faq" id="privacy">
         <summary>{'Does anything leave my device?'}</summary>
         <p>
           {
-            "No. Your photos, the words you type and the faces you make stay here. The first visit downloads the face models, about 200 MB, plus about 1 GB more the first time you use a photo. They're saved on this device, so later visits don't download them again."
+            "Your photos, the words you type and the faces you make are never uploaded. The first visit downloads the face models, about 200 MB, plus about 1 GB more the first time you use a photo. They're saved on this device, so later visits don't download them again."
           }
         </p>
         <p>
@@ -186,10 +187,47 @@ export function Explain({ route = '', reference = '' }: { route?: string; refere
             'Completed generated faces are cached on this device when storage is available, and your last faces can be restored when you come back. Reloading in the same tab tries to bring back the words, seeds or photo file names you used as well; that is best effort, so in a new tab, or when the browser keeps nothing, a face comes back as "Restored face". Words and file names are never saved past this tab, and source photos are kept only in the current tab.'
           }
         </p>
+        <p>{'This page makes these requests, and no others:'}</p>
+        <ul className="next-privacy-requests">
+          <li>
+            <strong>{'This site'}</strong>
+            {
+              ": the app itself, the model files (/runtime/) when a face first needs them, and the list of published names and preview pictures (/catalogue.json) when a face's preview or Browse names needs it."
+            }
+          </li>
+          <li>
+            <strong>{'This site, /stats/v1'}</strong>
+            {
+              ': anonymous usage statistics (see "What are usage statistics?"), unless you switch them off.'
+            }
+          </li>
+          <li>
+            <strong>{'This site, /diagnostics/events'}</strong>
+            {
+              ': debug reports (see "What\'s in a debug report?"), only after you turn on debug reporting or choose Send this report.'
+            }
+          </li>
+          {OUTSIDE_REQUESTS.filter((r) => !r.purpose.startsWith('Diagnostics collector')).map(
+            (r) => (
+              <li key={r.host}>
+                <strong>{r.host}</strong>
+                {`: ${r.purpose} ${r.trigger}`}
+              </li>
+            ),
+          )}
+        </ul>
         <p>
           {
-            'Three things are sent. Cookie-based usage analytics (see "What do you count?") go to Google Analytics. Anonymous usage statistics (see "What are usage statistics?") go to this site\'s own address, /stats/v1, as a same-origin request. A debug report is sent only if you turn reporting on.'
+            'Typing a word or seed sends nothing. Google Analytics (see "What do you count?") and debug reports are separate: turning debug reports off does not change analytics, which follows your browser’s Do Not Track, Global Privacy Control and Save-Data settings.'
           }
+        </p>
+        <p>
+          {
+            'Saved PNG, WebP and MP4 files carry metadata: the exact latent of each face (the numbers that make it) and the model and provenance details, so FaceMorph can open them again. They never contain your photos, the words you typed or file names.'
+          }
+        </p>
+        <p>
+          <a href="#debug-reporting">{'Debug reports: turn them on or off'}</a>
         </p>
       </details>
       <details className="next-faq">
@@ -240,8 +278,11 @@ export function Explain({ route = '', reference = '' }: { route?: string; refere
         </p>
         <p>
           {
-            'You can turn reporting on or off at any time under For testing. After an error you can also send just that one report without turning reporting on.'
+            'After an error you can send just that one report with Send this report; reporting stays off. Turning reporting off stops sending at once and discards anything not yet sent.'
           }
+        </p>
+        <p>
+          <a href="#debug-reporting">{'Debug reports: turn them on or off'}</a>
         </p>
       </details>
       <details className="next-faq">

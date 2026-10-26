@@ -8,7 +8,12 @@ import './facade/usage-stats.ts';
 import { Shell } from './Shell.tsx';
 import { Product } from './Product.tsx';
 import { createController } from '../src/controller/runner.ts';
-import { consentAnswered, sliderPreference, sliderPosition } from './facade/bridge.ts';
+import {
+  consentAnswered,
+  restoreDebug,
+  sliderPreference,
+  sliderPosition,
+} from './facade/bridge.ts';
 
 const root = document.getElementById('elmish-app');
 if (!root) throw new Error('No #elmish-app element to mount the app into');
@@ -34,6 +39,7 @@ function start() {
       ].join('-'),
       url: location.href,
       consentAnswered: consentAnswered(),
+      debugOn: restoreDebug(),
       sliderPreference: sliderPreference(),
       sliderPosition: sliderPosition(),
     },
