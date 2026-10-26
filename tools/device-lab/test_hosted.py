@@ -3,7 +3,7 @@ artifact against the live runtime manifest (python3 -m unittest test_hosted, fro
 import hashlib, json, subprocess, tempfile, unittest, urllib.error, urllib.request
 from pathlib import Path
 
-from hosted import lane_report, lab, ArtifactServer, HOSTED_LANES, OriginStorage, hosted_outcomes, manifest_sha, runner_unavailable_reason, summarise
+from hosted import lane_report, lab, ArtifactServer, HOSTED_LANES, OriginStorage, hosted_outcomes, manifest_sha, release_reports, runner_unavailable_reason, summarise
 
 RUN = {'cold': {'route': 'Ready · this device’s CPU.', 'faceS': 22.2}, 'warm': {'route': 'Ready · this device’s CPU.', 'faceS': 16.7},
        'morph': {'videoS': 57.5}, 'ok': True}
@@ -110,6 +110,29 @@ class Availability(unittest.TestCase):
     def test_duplicate_reports_or_jobs_are_not_success(self):
         self.assertEqual(hosted_outcomes(self.jobs(), self.reports() + self.reports()[:1])[0]['status'], 'fail')
         self.assertEqual(hosted_outcomes(self.jobs() + self.jobs()[:1], self.reports())[0]['status'], 'fail')
+
+    def test_downloaded_artifacts_keep_nested_desktop_and_flat_mobile_reports(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            for report in self.reports():
+                lane = report['lane']
+                folder = root / ('lane-' + lane)
+                if lane not in ('android-emulator-chrome', 'ios-simulator-safari'):
+                    # Desktop upload also includes test-results/manager-cache, so
+                    # upload-artifact preserves the lane/ directory beneath its common root.
+                    folder /= 'lane'
+                folder.mkdir(parents=True)
+                (folder / (lane + '.json')).write_text(json.dumps(report))
+            component = root / 'lane-macos-webkit/test-results/manager-cache/webkit'
+            component.mkdir(parents=True)
+            (component / 'loaded-browser.json').write_text(json.dumps({'ok': True, 'inferenceExecuted': True}))
+            (root / 'unrelated.json').write_text(json.dumps(self.reports()[0]))
+            reports = release_reports(root)
+            self.assertEqual(len(reports), len(HOSTED_LANES))
+            self.assertEqual({r['status'] for r in hosted_outcomes(self.jobs(), reports)}, {'pass'})
+            duplicate = root / 'lane-macos-webkit/duplicate.json'
+            duplicate.write_text(json.dumps(self.reports()[0]))
+            self.assertEqual(hosted_outcomes(self.jobs(), release_reports(root))[0]['status'], 'fail')
 
     def test_terminal_unavailability_needs_provider_evidence_and_no_executed_steps(self):
         jobs = self.jobs()

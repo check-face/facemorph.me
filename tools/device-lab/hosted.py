@@ -639,6 +639,13 @@ def github_api(path, payload=None):
     return json.loads(result.stdout) if result.stdout.strip() else None
 
 
+def release_reports(out):
+    # Multi-path desktop uploads preserve lane/ alongside component evidence;
+    # mobile uploads have a single root. Search only this attempt's lane artifacts.
+    reports = [json.loads(p.read_text()) for p in Path(out).glob('lane-*/**/*.json')]
+    return [r for r in reports if isinstance(r, dict) and 'lane' in r and 'runs' in r]
+
+
 def cmd_release(args):
     """Dispatch hosted work separately so a runner that never starts cannot hold the
     reusable release workflow forever. Never cancel a run. Started tests must finish
@@ -691,8 +698,7 @@ def cmd_release(args):
         if artifact['name'].startswith('lane-') and not artifact['expired']:
             subprocess.run(['gh', 'run', 'download', str(run_id), '--repo', args.repository,
                             '--name', artifact['name'], '--dir', str(out / artifact['name'])], check=True, timeout=120)
-    reports = [json.loads(p.read_text()) for p in out.glob('lane-*/*.json')]
-    reports = [r for r in reports if isinstance(r, dict) and 'lane' in r and 'runs' in r]
+    reports = release_reports(out)
     rows = hosted_outcomes(jobs, reports, queue_expired=elapsed >= args.queue_seconds,
                            run_completed=run['status'] == 'completed', unavailable=unavailable,
                            expected_digest=args.artifact_digest, expected_commit=inputs['artifact_commit'],
