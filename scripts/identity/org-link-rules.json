@@ -88,6 +88,22 @@
       "disposition": "record of the retired native updater feed: retirement disposition, not migration; never point it at the monorepo"
     },
     {
+      "id": "monorepo-retirement-copy-quotes",
+      "repo": "facemorph.me",
+      "paths": ["inventory/retirement-copy.json"],
+      "line": "\"text\":",
+      "class": "frozen-evidence",
+      "disposition": "leave: quotes of classic source lines at their recorded revision (copy-inventory.mjs); the edits themselves are fm-ww4's in classic"
+    },
+    {
+      "id": "monorepo-control-record-test",
+      "repo": "facemorph.me",
+      "paths": ["scripts/import/control.test.mjs"],
+      "line": "check-face\\|facemorph-me",
+      "class": "immutable-provenance",
+      "disposition": "leave: asserts the immutable import/control-artifact.json release URL, recorded under either owner"
+    },
+    {
       "id": "monorepo-generated-inventory",
       "repo": "facemorph.me",
       "paths": ["inventory/**"],

@@ -165,7 +165,7 @@
         "sha256": "8d5ad707243c65b0cd1719909af30f40cef1797966b94b89346084a4bfbce1db",
         "bytes": 6836,
         "bead": "fm-rur",
-        "reason": "promote.py calls the web-artifact verifier at its destination (fm-be10), and its gh REMOTE follows the org rename check-face -> facemorph-me (fm-rur)."
+        "reason": "promote.py calls the web-artifact verifier at its destination (fm-be10), and its gh REMOTE follows the organization rename (fm-rur)."
       }
     },
     {
