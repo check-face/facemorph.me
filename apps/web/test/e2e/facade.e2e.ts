@@ -21,6 +21,7 @@ import {
 import { tmpdir } from 'node:os';
 import { extname, join } from 'node:path';
 import base, { after, afterEach, before, beforeEach } from 'node:test';
+import { createFacadeShard, FACADE_SHARDS } from './facade-shards.mjs';
 import { fileURLToPath } from 'node:url';
 import {
   chromium,
@@ -56,15 +57,19 @@ const SEED0_RGB = join(
   'packages/stylegan-js/test/vectors/candidate-preprocessing/seed-0.rgb',
 );
 const ORIGIN = 'https://next.facemorph.me';
-const results = join(app, 'test-results/facade');
+const shardId = process.env['FACEMORPH_FACADE_SHARD'];
+const shard = createFacadeShard(shardId);
+const results = join(app, 'test-results/facade', shardId ? `shard-${shardId}` : '');
 const UNTESTED = existsSync(join(RUNTIME, 'manifest.json'))
   ? null
   : `untested: no acquired runtime at ${RUNTIME}`;
 if (UNTESTED && process.env['FACEMORPH_REQUIRE_RUNTIME'] === '1') throw new Error(UNTESTED);
-const test = ((name: string, ...rest: unknown[]) =>
-  UNTESTED
+const test = ((name: string, ...rest: unknown[]) => {
+  if (!shard.include(name)) return;
+  return UNTESTED
     ? base(name, { skip: UNTESTED }, () => {})
-    : (base as (...a: unknown[]) => unknown)(name, ...rest)) as unknown as typeof base;
+    : (base as (...a: unknown[]) => unknown)(name, ...rest);
+}) as unknown as typeof base;
 const TYPES: Record<string, string> = {
   '.html': 'text/html; charset=utf-8',
   '.js': 'text/javascript',
@@ -207,6 +212,9 @@ before(async () => {
 after(async () => {
   if (UNTESTED) return;
   try {
+    // Each process checks its own requests; splitting the suite must not narrow this coverage.
+    assertRuntimeRequests();
+    assert.deepEqual(pageErrors, [], 'uncaught page errors after the final test');
     await context?.close();
   } finally {
     try {
@@ -226,8 +234,12 @@ afterEach(async (t) => {
     `worker inventory ${t.name}: live=${liveWorkers.size} started=${workersStarted} closed=${workersClosed}`,
   );
   const name = t.name.replace(/[^a-z0-9]+/gi, '-').slice(0, 100);
-  if (!t.passed) await keep(name);
-  await context.tracing.stopChunk(t.passed ? {} : { path: join(results, `${name}-trace.zip`) });
+  const uncaught = [...pageErrors];
+  pageErrors = [];
+  const passed = t.passed && uncaught.length === 0;
+  if (!passed) await keep(name);
+  await context.tracing.stopChunk(passed ? {} : { path: join(results, `${name}-trace.zip`) });
+  assert.deepEqual(uncaught, [], 'uncaught page errors');
 });
 
 interface Out {
@@ -424,37 +436,41 @@ test(
   },
 );
 
+function assertRuntimeRequests(requireAssets = false): void {
+  // The manager acquires exactly what the (verified) manifests name: walk the pointer and each nested manifest.
+  const declared = new Set<string>(['/runtime/manifest.json']);
+  const walk = (value: unknown): void => {
+    if (Array.isArray(value)) return value.forEach(walk);
+    if (!value || typeof value !== 'object') return;
+    for (const [key, child] of Object.entries(value)) {
+      // `manifestUrl`/`workerUrl` name the photo runtime's own pinned manifest and worker (manifest.photo).
+      if (
+        /^(url|manifestUrl|workerUrl)$/.test(key) &&
+        typeof child === 'string' &&
+        child.includes('/runtime/')
+      ) {
+        const path = new URL(child, ORIGIN).pathname;
+        if (declared.has(path)) continue;
+        declared.add(path);
+        const local = join(RUNTIME, path.slice('/runtime/'.length));
+        if (path.endsWith('.json') && existsSync(local))
+          walk(JSON.parse(readFileSync(local, 'utf8')));
+      } else walk(child);
+    }
+  };
+  walk(JSON.parse(readFileSync(join(RUNTIME, 'manifest.json'), 'utf8')));
+  const requested = [...counts.keys()].filter((path) => path.startsWith('/runtime/'));
+  const undeclared = requested.filter((path) => !declared.has(path));
+  log(`engine-requests: ${requested.length} runtime paths requested, ${declared.size} declared`);
+  if (requireAssets) assert.ok(requested.length > 1, 'the journeys acquired model assets');
+  assert.deepEqual(undeclared, [], 'a runtime request the manifests do not declare');
+}
+
 test(
   'engine-requests: every runtime path the journeys requested is an asset or chunk the manifests declare',
   { timeout: 60_000 },
   async () => {
-    // The manager acquires exactly what the (verified) manifests name: walk the pointer and each nested manifest.
-    const declared = new Set<string>(['/runtime/manifest.json']);
-    const walk = (value: unknown): void => {
-      if (Array.isArray(value)) return value.forEach(walk);
-      if (!value || typeof value !== 'object') return;
-      for (const [key, child] of Object.entries(value)) {
-        // `manifestUrl`/`workerUrl` name the photo runtime's own pinned manifest and worker (manifest.photo).
-        if (
-          /^(url|manifestUrl|workerUrl)$/.test(key) &&
-          typeof child === 'string' &&
-          child.includes('/runtime/')
-        ) {
-          const path = new URL(child, ORIGIN).pathname;
-          if (declared.has(path)) continue;
-          declared.add(path);
-          const local = join(RUNTIME, path.slice('/runtime/'.length));
-          if (path.endsWith('.json') && existsSync(local))
-            walk(JSON.parse(readFileSync(local, 'utf8')));
-        } else walk(child);
-      }
-    };
-    walk(JSON.parse(readFileSync(join(RUNTIME, 'manifest.json'), 'utf8')));
-    const requested = [...counts.keys()].filter((path) => path.startsWith('/runtime/'));
-    const undeclared = requested.filter((path) => !declared.has(path));
-    log(`engine-requests: ${requested.length} runtime paths requested, ${declared.size} declared`);
-    assert.ok(requested.length > 1, 'the journeys acquired model assets');
-    assert.deepEqual(undeclared, [], 'a runtime request the manifests do not declare');
+    assertRuntimeRequests(true);
   },
 );
 
@@ -1688,4 +1704,10 @@ test(
     );
     log(`control-written session restored by port: ${JSON.stringify(facts)}`);
   },
+);
+
+// Every declaration must belong to exactly one shard, even when this process selects another.
+shard.assertComplete();
+log(
+  `facade shard ${shardId ?? 'all'}: ${shardId ? Object.entries(FACADE_SHARDS).find(([id]) => id === shardId)![1].length : Object.values(FACADE_SHARDS).flat().length} tests`,
 );

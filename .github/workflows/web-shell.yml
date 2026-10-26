@@ -64,8 +64,14 @@ jobs:
       - name: Every name the UI and the typed facade take from a bridge module is exported there (fm-pia9)
         run: node scripts/check-bridge-imports.mjs
   facade:
-    runs-on: [self-hosted, eris]
+    # Separate warm-state groups; two at a time share eris without flooding native browser tests.
+    runs-on: [self-hosted, eris-build]
     timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        shard: ['1', '2', '3', '4']
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -76,17 +82,20 @@ jobs:
         with:
           browsers: chromium
       - run: npm run build -w packages/stylegan-js -w packages/browser-model-manager
+      - name: Every facade declaration belongs to exactly one shard
+        run: node --test apps/web/test/e2e/facade-shards.test.mjs
       - name: Typed facade through the real CPU bridge and the pinned runtime
         working-directory: apps/web
         env:
           FACEMORPH_REQUIRE_RUNTIME: '1'
+          FACEMORPH_FACADE_SHARD: ${{ matrix.shard }}
         run: |
           export FACEMORPH_RUNTIME_DIR="$HOME/.cache/facemorph-device-lab/runtime-public"
           node --test --test-timeout=1200000 test/e2e/facade.e2e.ts
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
-          name: facade-failure-${{ github.run_id }}
+          name: facade-failure-${{ github.run_id }}-${{ matrix.shard }}
           path: apps/web/test-results/facade/
           if-no-files-found: ignore
   # The hosted e2e cells have no runtime and report these untested; here they run with the pinned runtime on the
