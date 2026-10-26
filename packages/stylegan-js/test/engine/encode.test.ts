@@ -20,6 +20,7 @@ import { join, relative } from 'node:path';
 import test, { after } from 'node:test';
 import * as onnx from 'onnxruntime-web';
 import { MEMORY_BOUNDS } from '../../src/contracts/capability.ts';
+import { AFHQ_CAT_512_DESCRIPTOR } from '../../src/contracts/descriptor.ts';
 import type { EncodeRequest } from '../../src/contracts/operations.ts';
 import type { StageTimingEvent } from '../../src/contracts/timing.ts';
 import { WorkerMessageError } from '../../src/contracts/worker-messages.ts';
@@ -131,6 +132,19 @@ test(
       refused((x) => ((x['runtime'] as Record<string, unknown>)['unshared'] = false)),
       'runtime',
     );
+    // A non-face model has no photo encoder: refused before any shard could be read.
+    const reads: string[] = [];
+    assert.throws(
+      () =>
+        loadStreamedEncoder({
+          manifest: m,
+          reader: runtimeReader(RUNTIME, reads),
+          ort,
+          model: AFHQ_CAT_512_DESCRIPTOR,
+        }),
+      (e: unknown) => e instanceof EncoderUnsupported && e.field === 'photoEncoder',
+    );
+    assert.deepEqual(reads, []);
   },
 );
 

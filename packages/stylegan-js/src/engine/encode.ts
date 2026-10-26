@@ -15,6 +15,7 @@
 //   reference; nothing is converted to fp16 or widened.
 
 import { MEMORY_BOUNDS, type LoadedEncoderCapability } from '../contracts/capability.ts';
+import { FFHQ_1024_DESCRIPTOR, type ModelDescriptor } from '../contracts/descriptor.ts';
 import type { EncodeRequest, EncodeResult, OperationIds } from '../contracts/operations.ts';
 import type { E4eTimings, StageTimingHook } from '../contracts/timing.ts';
 import { validateWorkerRequest } from '../contracts/worker-messages.ts';
@@ -22,8 +23,8 @@ import type { ModuleHost } from './adapters/ort.ts';
 import { floats, readLocal, type EngineAsset, type LocalAssetReader } from './reader.ts';
 
 export const ENCODER_STREAM_KIND = 'e4e-onnx-sequential-shards-v1';
-/** The FFHQ e4e encoder the shards were cut from (manifest.encoder.sha256). */
-export const E4E_SOURCE_SHA256 = 'd525a985a43e4d49ef4590a8b8cc6f487992065bee00014fe8c6f8ab4ac291b1';
+/** The FFHQ e4e encoder the shards were cut from, as the FFHQ descriptor names it. */
+export const E4E_SOURCE_SHA256 = FFHQ_1024_DESCRIPTOR.photoEncoder!.sourceSha256;
 const MAX_SHARD_BYTES = 17 * 1024 * 1024;
 const MAX_LIVE_BOUNDARY_BYTES = 16 * 1024 * 1024;
 
@@ -87,15 +88,23 @@ export class EncoderUnsupported extends Error {
   }
 }
 
-/** Admits the descriptor exactly as the candidate's executor and worker did, or throws EncoderUnsupported. */
-export function admitEncoderManifest(value: unknown): EncoderStreamManifest {
+/**
+ * Admits the shard descriptor exactly as the candidate's executor and worker did, for the model it encodes
+ * into (default FFHQ), or throws EncoderUnsupported. A model without a photo encoder (non-face) is refused.
+ */
+export function admitEncoderManifest(
+  value: unknown,
+  model: ModelDescriptor = FFHQ_1024_DESCRIPTOR,
+): EncoderStreamManifest {
   const m = value as Partial<EncoderStreamManifest> | null;
   const refuse = (field: string, message: string): never => {
     throw new EncoderUnsupported(field, message);
   };
+  if (model.subject !== 'face' || !model.photoEncoder)
+    return refuse('photoEncoder', `${model.identity.name} has no photo encoder`);
   if (!m || typeof m !== 'object') return refuse('manifest', 'not an object');
   if (m.kind !== ENCODER_STREAM_KIND) refuse('kind', String(m.kind));
-  if (m.sourceEncoderSha256 !== E4E_SOURCE_SHA256)
+  if (m.sourceEncoderSha256 !== model.photoEncoder.sourceSha256)
     refuse('sourceEncoderSha256', 'not the qualified e4e');
   if (!Number.isSafeInteger(m.maxShardBytes) || m.maxShardBytes! > MAX_SHARD_BYTES)
     refuse('maxShardBytes', `above ${MAX_SHARD_BYTES}`);
@@ -200,8 +209,13 @@ export function loadStreamedEncoder(o: {
   readonly ort: EncoderOrt;
   readonly snapshotMemory?: () => HeapSnapshot;
   readonly now?: () => number;
+  /** The model the W+ is for (default FFHQ): its latent schema shapes the output, its encoder the input. */
+  readonly model?: ModelDescriptor;
 }): StreamedEncoder {
-  const manifest = admitEncoderManifest(o.manifest);
+  const model = o.model ?? FFHQ_1024_DESCRIPTOR;
+  const manifest = admitEncoderManifest(o.manifest, model);
+  const inputShape = model.photoEncoder!.inputShape;
+  const { layers, width } = model.latent;
   const now = o.now ?? (() => performance.now());
   const s = {
     liveSessions: 0,
@@ -243,7 +257,7 @@ export function loadStreamedEncoder(o: {
     const timings = { verifiedReadMs: 0, sessionCreateMs: 0, runMs: 0, wasmHeapBytes: 0 };
     const started = now();
     const state = new Map<string, { data: Storage; shape: readonly number[]; dtype: Dtype }>([
-      ['image', { data: request.input.tensor, shape: [1, 3, 256, 256], dtype: 'FLOAT' }],
+      ['image', { data: request.input.tensor, shape: inputShape, dtype: 'FLOAT' }],
     ]);
     const stage = (stage: 'encoder-session-create' | 'encoder-run', startedAtMs: number) =>
       onTiming?.({
@@ -356,7 +370,7 @@ export function loadStreamedEncoder(o: {
         state.size !== 1 ||
         !w ||
         !(w.data instanceof Float32Array) ||
-        !sameShape(w.shape, [1, 18, 512])
+        !sameShape(w.shape, [1, layers, width])
       )
         throw new EncoderUnavailable('schedule', 'Invalid final encoder W+.');
       const result: E4eTimings = {
@@ -367,7 +381,7 @@ export function loadStreamedEncoder(o: {
       return {
         ids,
         confirmedCropId: request.confirmedCropId,
-        wPlus: { space: 'w-plus', shape: [18, 512], values: w.data },
+        wPlus: { space: 'w-plus', shape: [layers, width], values: w.data },
         provider: 'cpu',
         timings: result,
       };
