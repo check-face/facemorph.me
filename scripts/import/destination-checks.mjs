@@ -134,12 +134,23 @@ export function checks({ rows }) {
 
   const p = run(process.execPath, ['scripts/check-progress-copy.mjs'], WEB);
   const ps = lastJson(p.stdout) ?? {};
+  // Other stages staying silent on the morph line moved from the script's source regexes to behavioural
+  // tests through the operation service (dea926c, fm-vbj7); the script names that gate and it runs here.
+  const pg = typeof ps.gate === 'string' ? run(process.execPath, ['--test', ps.gate], WEB) : null;
+  const pc = pg ? nodeTestCounts(pg.stdout + pg.stderr) : { tests: 0, pass: 0, fail: NaN };
   add({
     step: 'Morph progress line is a counter, not a flicker',
-    command: 'node scripts/check-progress-copy.mjs',
+    command: `node scripts/check-progress-copy.mjs && node --test ${ps.gate ?? '<gate missing>'}`,
     count: Object.keys(ps).length,
     result: ps,
-    ok: p.status === 0 && ps.monotonic === true && ps.otherStagesSilent === true,
+    otherStagesSilent: { ...pc, ok: pg?.status === 0 && pc.tests > 0 && pc.fail === 0 },
+    ok:
+      p.status === 0 &&
+      ps.monotonic === true &&
+      pg?.status === 0 &&
+      pc.tests > 0 &&
+      pc.pass === pc.tests &&
+      pc.fail === 0,
   });
 
   const g = run(process.execPath, ['src/Next/geometry/verify.mjs'], WEB);
