@@ -1,9 +1,10 @@
 // face.many (fm-id4c): the many-face layout, Remove, Undo and Start over in the identified, composed application
 // (build:next destination, real bridge and runtime bytes, Chromium on the CPU route). Faces are set up by controller
 // fixture (support/face-fixture.ts); every graded control is pressed by real pointer or touch tap at its visible
-// position after elementFromPoint shows it there (support/operate.ts). Screenshots in test-results/face-many/.
+// position after elementFromPoint shows it there and trusted input lands inside (verify/operated.ts).
+// Screenshots and identified per-session step/network receipts are in test-results/face-many/.
 //
-// Cases (FACE_MANY_CASES=matrix,frames,dark,many,style,keyboard,virtual,height,admission,generate,start-over-generated selects some):
+// Cases (FACE_MANY_CASES=matrix,frames,dark,many,style,keyboard,virtual,height,admission,generate,start-over-generated,one-face-encode selects some):
 //   matrix    counts GRID_COUNTS x every sweep width and built breakpoint +/-1 px (touch at or below 599 px):
 //             no page-level sideways scroll, no hidden scrolling surface but the strip, a cue while a face is
 //             outside the strip; every face reached by real wheel (desktop) or swipe (touch) with its image,
@@ -26,9 +27,14 @@
 //   generate  real CPU inference: removing a generating face cancels it, a sibling finishes; the Undo window
 //             makes no invalidateFace call and Undo shows the same result digest with no inference; expiry or a
 //             replacing action makes exactly one; one face left: Generate and Save work, Create morph says why.
+//   one-face-encode removes down to one face, then operates Encode image, crop, explicit model decisions,
+//             real CPU inference and Save at desktop/touch widths; validates the actual recoverable photo file.
+//   one-face-encode 1280 mouse / 390 touch: operated Remove leaves one face; Encode image opens its chooser,
+//             a real JPEG is crop-confirmed and encoded on CPU; Save exports a valid photo recovery image.
 //   FACEMORPH_DEPLOY_OUT=<dir with deploy-next/> node --test test/e2e/face-many.e2e.ts
 import assert from 'node:assert/strict';
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import test from 'node:test';
 import {
@@ -41,9 +47,12 @@ import {
 } from 'playwright';
 import { startControl, chromiumArgs, ORIGIN, REPO } from '../parity/control-server.ts';
 import { readIdentity } from '../../../../scripts/import/build-next.mjs';
-import { press } from '../support/operate.ts';
+import { operatedClick, operatedTap, StepLog } from '../verify/operated.ts';
+import { artifactDigest, bindOrigins, DEFAULT_HOST_MAP } from '../verify/artifact.ts';
 import { corners } from '../support/rendered-frame.ts';
 import { STORE_HOOK, faceList, faceTrace, setFaces } from '../support/face-fixture.ts';
+import { readStill } from '../../src/media/recovery-stills.ts';
+import { typeMatchesBytes } from '../../src/media/export-policy.ts';
 import { builtBreakpoints, visualOrderProblems, type FocusStop } from '../verify/harness.ts';
 import {
   FACE_MANY_COUNTS,
@@ -60,13 +69,26 @@ const MODEL = /^\/runtime\/(assets|chunks|encoder-stream|photo)\//;
 const CASES = new Set(
   (
     process.env['FACE_MANY_CASES'] ??
-    'matrix,frames,dark,many,style,keyboard,virtual,height,admission,generate,start-over-generated'
+    'matrix,frames,dark,many,style,keyboard,virtual,height,admission,generate,start-over-generated,one-face-encode'
   ).split(','),
 );
 const ONLY_WIDTHS = process.env['FACE_MANY_WIDTHS']?.split(',').map(Number);
 const ONLY_COUNTS = process.env['FACE_MANY_COUNTS']?.split(',').map(Number);
 const SESSION_LIMIT = 32 * 2 ** 20;
 const PHOTO_LIMIT = 128 * 2 ** 20;
+let runTag: Readonly<Record<string, string>> | undefined;
+const operatedSessions = new Map<Page, { id: number; sequence: number; log: StepLog }>();
+/** Use the shared verifier for every graded press while retaining native traversal below. */
+async function press(page: Page, control: Locator, { touch = false } = {}) {
+  const session = operatedSessions.get(page);
+  assert.ok(session, 'the operated page belongs to an identified face.many session');
+  const operate = touch ? operatedTap : operatedClick;
+  const result = await operate(page, control, {
+    log: session.log,
+    step: `fm-id4c/session-${session.id}/press-${++session.sequence}`,
+  });
+  return { inside: result.ok, x: result.point?.x, y: result.point?.y };
+}
 const evidence: Record<string, unknown> = {};
 const record = (key: string, value: unknown) => {
   evidence[key] = value;
@@ -104,6 +126,13 @@ async function open(
   if (init) await context.addInitScript(init);
   const page = await context.newPage();
   const s: Session = { context, page, touch, errors: [], models: [], navigations: 0 };
+  assert.ok(runTag, 'the operated session has a validated artifact identity');
+  const log = new StepLog({
+    map: bindOrigins(DEFAULT_HOST_MAP, { app: [ORIGIN] }),
+    run: runTag,
+  });
+  log.attach(page);
+  operatedSessions.set(page, { id: operatedSessions.size + 1, sequence: 0, log });
   page.on('pageerror', (error) => s.errors.push(error.message));
   page.on('request', (request) => {
     const path = new URL(request.url()).pathname;
@@ -571,6 +600,13 @@ test(
     const artifact = readIdentity(out);
     assert.deepEqual(artifact.findings, []);
     assert.equal(artifact.identity?.label, 'destination');
+    runTag = {
+      artifactDigest: artifactDigest(artifact.identity.files),
+      source: artifact.identity.deploySource.buildId,
+      label: artifact.identity.label,
+      requestByteTotals:
+        'Known lengths only; null bytes in the raw session network receipt remain unknown.',
+    };
     const site = await startControl({
       runtime,
       artifact: join(out, 'deploy-next'),
@@ -1706,6 +1742,390 @@ test(
           },
         );
 
+      if (CASES.has('one-face-encode'))
+        await t.test(
+          'one remaining face: operated Encode image, real CPU inference and Save',
+          async () => {
+            type OperationEvent = {
+              type: string;
+              requestId?: string;
+              attemptId?: string;
+              kind?: string;
+              outcome?: string;
+              provider?: string;
+              inputs?: { slot: string; mode: string }[];
+            };
+            type PhotoWindow = Window & {
+              __fmStore: import('../../src/controller/store.ts').Store;
+              __FACEMORPH_OPCTL_TRACE__: OperationEvent[];
+            };
+            const fixture = join(REPO, 'tests/crop/fixtures/non-square.jpg');
+            const source = readFileSync(fixture);
+            const rows: Record<string, unknown>[] = [];
+            record('one-face-encode-source', {
+              artifact: out,
+              deploySource: artifact.identity.deploySource,
+              fixture,
+              bytes: source.length,
+              sha256: createHash('sha256').update(source).digest('hex'),
+              note: 'Existing JPEG fixture derived from the shipped generated hello face; no personal photo.',
+            });
+            for (const [width, touch] of (
+              [
+                [1280, false],
+                [390, true],
+              ] as const
+            ).filter(([w]) => !ONLY_WIDTHS || ONLY_WIDTHS.includes(w))) {
+              const s = await open(browser, width, touch);
+              const { page } = s;
+              const operated: Record<string, unknown>[] = [];
+              const diagnostics: Record<string, unknown>[] = [];
+              page.on('console', (message) => {
+                if (['error', 'warning'].includes(message.type()))
+                  diagnostics.push({ type: message.type(), text: message.text() });
+              });
+              page.on('response', (response) => {
+                if (response.status() >= 400)
+                  diagnostics.push({ status: response.status(), url: response.url() });
+              });
+              page.on('requestfailed', (request) =>
+                diagnostics.push({ url: request.url(), failure: request.failure() }),
+              );
+              const hit = async (label: string, control: Locator) => {
+                const landed = await press(page, control, { touch });
+                assert.ok(landed.inside, label);
+                operated.push({ control: label, ...landed });
+                record('one-face-encode-progress', { width, touch, operated });
+              };
+              await s.context.tracing.start({
+                screenshots: true,
+                snapshots: false,
+                sources: false,
+              });
+              try {
+                const before = await setFaces(page, 2); // Input fixture only; removal and encoding below are operated.
+                const documentTimeOrigin = await page.evaluate(() => performance.timeOrigin);
+                await hit(
+                  'Remove second face',
+                  page.locator(`[data-next-face="${before[1]!.id}"] .next-face-close`),
+                );
+                await page.waitForFunction(
+                  () => document.querySelectorAll('section.next-face').length === 1,
+                );
+                const only = before[0]!;
+                const tile = page.locator(`section.next-face[data-next-face="${only.id}"]`);
+                const oneFace = async () => {
+                  assert.deepEqual(
+                    (await faceList(page)).map(({ id }) => id),
+                    [only.id],
+                  );
+                  assert.equal(
+                    await page.locator('.next-face-close').count(),
+                    0,
+                    'last face has no Remove',
+                  );
+                  assert.match(await page.locator('.next-last-face-note').innerText(), /only face/);
+                  assert.ok(
+                    await page.locator('.next-primary-action').isDisabled(),
+                    'one face: Create morph disabled',
+                  );
+                  assert.match(await page.locator('.next-morph-reason').innerText(), /second face/);
+                };
+                await oneFace();
+                await page.screenshot({
+                  path: join(results, `one-face-encode-${width}-before.png`),
+                });
+                await hit(
+                  'Change mode',
+                  tile.getByRole('button', { name: 'Change mode', exact: true }),
+                );
+                const entry = page.getByRole('menuitem', { name: 'Encode image', exact: true });
+                await entry.evaluate(async (element) => {
+                  const panel = element.closest('.MuiPaper-root');
+                  await Promise.allSettled(
+                    (panel?.getAnimations({ subtree: true }) ?? []).map(
+                      (animation) => animation.finished,
+                    ),
+                  );
+                });
+                const choosing = page.waitForEvent('filechooser');
+                await hit('Encode image', entry);
+                const chooser = await choosing;
+                assert.equal(
+                  await page.getByRole('dialog').count(),
+                  0,
+                  'Encode image opens its chooser directly',
+                );
+                assert.equal(
+                  await chooser
+                    .element()
+                    .evaluate((element) =>
+                      (element as Element)
+                        .closest('[data-next-face]')
+                        ?.getAttribute('data-next-face'),
+                    ),
+                  only.id,
+                  'the chooser belongs to the remaining face',
+                );
+                await chooser.setFiles(fixture); // Real chooser input, not a controller/bridge replacement.
+                const dialog = page.getByRole('dialog', { name: 'Encode an image', exact: true });
+                await dialog.waitFor();
+                await page.waitForFunction(() => {
+                  const image = document.querySelector('.next-encode-preview img');
+                  return (
+                    image instanceof HTMLImageElement && image.complete && image.naturalWidth > 0
+                  );
+                });
+                const proposal = await page.evaluate(() => {
+                  const w = window as unknown as PhotoWindow;
+                  const image = document.querySelector(
+                    '.next-encode-preview img',
+                  ) as HTMLImageElement;
+                  return {
+                    owner: w.__fmStore.getState().Crop?.faceId,
+                    width: image.naturalWidth,
+                    height: image.naturalHeight,
+                  };
+                });
+                assert.equal(proposal.owner, only.id);
+                assert.deepEqual(s.models, [], 'no model acquisition before crop confirmation');
+                await page.screenshot({ path: join(results, `one-face-encode-${width}-crop.png`) });
+                await hit(
+                  'Confirm crop OK',
+                  dialog.getByRole('button', { name: 'OK', exact: true }),
+                );
+                const accept = page.locator('.next-download-accept');
+                await accept.waitFor({ timeout: 15_000 });
+                assert.deepEqual(s.models, [], 'cold model acquisition waits for actual consent');
+                const disclosure = await page.locator('.next-download-dialog').innerText();
+                await hit('Approve model download', accept);
+                const waitForSettlement = async (minimumRequests: number) => {
+                  await page.waitForFunction(
+                    ({ id, minimumRequests }) => {
+                      const w = window as unknown as PhotoWindow;
+                      const state = w.__fmStore.getState();
+                      const requests = w.__FACEMORPH_OPCTL_TRACE__.filter(
+                        (event) =>
+                          event.type === 'request' &&
+                          event.kind === 'face' &&
+                          event.inputs?.some(
+                            (input) => input.slot === id && input.mode === 'photo',
+                          ),
+                      );
+                      const request =
+                        requests.length >= minimumRequests ? requests.at(-1) : undefined;
+                      return (
+                        !!state.Error ||
+                        (!!request &&
+                          w.__FACEMORPH_OPCTL_TRACE__.some(
+                            (event) =>
+                              event.type === 'settled' && event.requestId === request.requestId,
+                          ))
+                      );
+                    },
+                    { id: only.id, minimumRequests },
+                    { timeout: 600_000 },
+                  );
+                  await page.waitForFunction(
+                    () => !(window as unknown as PhotoWindow).__fmStore.getState().Busy,
+                    null,
+                    { timeout: 30_000 },
+                  );
+                };
+                await waitForSettlement(1);
+                const revisedDisclosures: string[] = [];
+                if (await accept.isVisible()) {
+                  const discovered = [...s.models];
+                  assert.equal(
+                    discovered.length,
+                    1,
+                    'the initial failed attempt fetched only the descriptor',
+                  );
+                  assert.match(discovered[0]!, /\/encoder-stream\/.+\/manifest\.json$/);
+                  revisedDisclosures.push(await page.locator('.next-download-dialog').innerText());
+                  record('one-face-encode-revised-consent', {
+                    width,
+                    discovered,
+                    revisedDisclosures,
+                  });
+                  await hit('Approve discovered encoder schedule', accept);
+                  await waitForSettlement(2);
+                  assert.equal(
+                    await accept.isVisible(),
+                    false,
+                    'one revised decision covers the discovered schedule',
+                  );
+                }
+                const encoded = await page.evaluate(() => {
+                  const w = window as unknown as PhotoWindow;
+                  const state = w.__fmStore.getState();
+                  return {
+                    error: state.Error,
+                    status: state.Status,
+                    gate: state.Gate,
+                    stage: state.Stage,
+                    inputs: state.Inputs.map(({ id, mode, value, file }) => ({
+                      id,
+                      mode,
+                      value,
+                      bytes: file?.size ?? 0,
+                    })),
+                    faces: state.Faces.map(({ id }) => id),
+                    trace: w.__FACEMORPH_OPCTL_TRACE__,
+                  };
+                });
+                record('one-face-encode-operation', {
+                  width,
+                  ...encoded,
+                  modelRequests: s.models,
+                  diagnostics,
+                });
+                assert.equal(encoded.error, null, 'real photo encode has no product error');
+                assert.deepEqual(
+                  encoded.inputs.map(({ id }) => id),
+                  [only.id],
+                );
+                assert.equal(encoded.inputs[0]!.mode, 'photo');
+                assert.ok(encoded.inputs[0]!.bytes > 0, 'confirmed photo remains installed');
+                assert.deepEqual(
+                  encoded.faces,
+                  [only.id],
+                  'CPU inference installed exactly the remaining face',
+                );
+                const requests = encoded.trace.filter((event) => event.type === 'request');
+                assert.equal(
+                  requests.length,
+                  1 + revisedDisclosures.length,
+                  'descriptor discovery plus one real face operation',
+                );
+                assert.equal(requests[0]!.inputs?.[0]?.mode, 'photo');
+                assert.deepEqual(
+                  encoded.trace
+                    .filter((event) => event.type === 'settled')
+                    .map((event) => event.outcome),
+                  [...revisedDisclosures.map(() => 'failed'), 'completed'],
+                );
+                assert.equal(
+                  encoded.trace.filter((event) => event.type === 'compute-ready').length,
+                  1,
+                );
+                assert.equal(
+                  encoded.trace.filter((event) => event.type === 'file-ready').length,
+                  1,
+                );
+                assert.ok(
+                  encoded.trace.some(
+                    (event) => event.type === 'provider-actual' && event.provider === 'cpu',
+                  ),
+                  'actual CPU route, not a provider override',
+                );
+                await page.waitForFunction((id) => {
+                  const image = document.querySelector(`[data-next-face="${id}"] .next-face-img`);
+                  return image instanceof HTMLCanvasElement
+                    ? image.dataset.faceDrawn === 'true'
+                    : image instanceof HTMLImageElement && image.complete && image.naturalWidth > 0;
+                }, only.id);
+                await oneFace();
+                const save = tile.getByRole('button', { name: 'Save image', exact: true });
+                await page.waitForFunction(
+                  (id) =>
+                    [...document.querySelectorAll(`[data-next-face="${id}"] button`)].some(
+                      (button) =>
+                        button instanceof HTMLButtonElement &&
+                        button.textContent?.trim() === 'Save image' &&
+                        !button.disabled,
+                    ),
+                  only.id,
+                );
+                const downloading = page.waitForEvent('download', { timeout: 60_000 });
+                await hit('Save encoded image', save);
+                const download = await downloading;
+                assert.equal(await download.failure(), null);
+                const saved = join(
+                  results,
+                  `one-face-encode-${width}-${download.suggestedFilename()}`,
+                );
+                await download.saveAs(saved);
+                const bytes = new Uint8Array(readFileSync(saved));
+                const recovered = readStill(bytes);
+                assert.ok(recovered, 'saved file has verified recovery metadata');
+                assert.equal(recovered.schemaVersion, 3);
+                assert.equal(
+                  recovered.generationKind,
+                  'photo',
+                  'export is the encoded photo result',
+                );
+                assert.deepEqual(recovered.latent.shape, [18, 512]);
+                assert.ok(recovered.latent.values.every(Number.isFinite));
+                assert.ok(recovered.latent.values.some((value) => value !== 0));
+                assert.ok(
+                  typeMatchesBytes(bytes, {
+                    mime: recovered.mime,
+                    filename: download.suggestedFilename(),
+                  }),
+                );
+                const decoded = await page.evaluate(async (bytes) => {
+                  const bitmap = await createImageBitmap(new Blob([Uint8Array.from(bytes)]));
+                  const size = { width: bitmap.width, height: bitmap.height };
+                  bitmap.close();
+                  return size;
+                }, Array.from(bytes));
+                assert.deepEqual(decoded, { width: 1024, height: 1024 });
+                await oneFace();
+                assert.equal(
+                  await page.evaluate(() => performance.timeOrigin),
+                  documentTimeOrigin,
+                  'the same document survives Remove/Encode/Save, including same-document history updates',
+                );
+                assert.deepEqual(s.errors, []);
+                rows.push({
+                  width,
+                  touch,
+                  before: before.map(({ id }) => id),
+                  after: [only.id],
+                  proposal,
+                  disclosure,
+                  revisedDisclosures,
+                  operated,
+                  encoded,
+                  modelRequests: s.models,
+                  saved: {
+                    path: saved,
+                    name: download.suggestedFilename(),
+                    bytes: bytes.length,
+                    sha256: createHash('sha256').update(bytes).digest('hex'),
+                    ...decoded,
+                    schemaVersion: recovered.schemaVersion,
+                    generationKind: recovered.generationKind,
+                    imageSha256: recovered.imageSha256,
+                    latentSha256: recovered.latentSha256,
+                  },
+                  errors: s.errors,
+                });
+                record('one-face-encode', rows);
+                await page.screenshot({
+                  path: join(results, `one-face-encode-${width}-saved.png`),
+                });
+              } catch (error) {
+                record('one-face-encode-failure', {
+                  width,
+                  message: String(error),
+                  errors: s.errors,
+                });
+                await page
+                  .screenshot({ path: join(results, `one-face-encode-${width}-failure.png`) })
+                  .catch(() => {});
+                throw error;
+              } finally {
+                await s.context.tracing.stop({
+                  path: join(results, `one-face-encode-${width}.zip`),
+                });
+                await s.context.close();
+              }
+            }
+          },
+        );
+
       if (CASES.has('generate'))
         await t.test(
           'real inference: removing a generating face, the Undo window and one face left',
@@ -1957,6 +2377,15 @@ test(
         );
     } finally {
       record('failures', failures);
+      for (const [page, session] of operatedSessions) {
+        session.log.write(join(results, `operated-session-${session.id}.jsonl`));
+        // Preserve unknown byte/status fields as null in the raw request receipt.
+        // A bounded observation wait must never turn incomplete traffic into a zero-byte claim.
+        writeFileSync(
+          join(results, `operated-session-${session.id}-network.json`),
+          JSON.stringify(session.log.record(page), null, 2),
+        );
+      }
       await browser.close();
       await site.stop();
     }
