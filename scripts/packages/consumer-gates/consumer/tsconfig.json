@@ -1,0 +1,16 @@
+{
+  // Browser consumer (fm-7ge): stylegan-js and browser-model-manager through their packed declarations only.
+  "compilerOptions": {
+    "target": "ES2024",
+    "lib": ["ES2024", "DOM"],
+    "types": [],
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "skipLibCheck": false,
+    "noEmit": true
+  },
+  "include": ["browser", "external", "generated/browser-exports.ts"]
+}

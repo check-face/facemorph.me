@@ -1,0 +1,16 @@
+{
+  // Node consumer (fm-7ge): cloudflare-model-host through its packed declarations only.
+  "compilerOptions": {
+    "target": "ES2024",
+    "lib": ["ES2024", "DOM"],
+    "types": ["node"],
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "skipLibCheck": false,
+    "noEmit": true
+  },
+  "include": ["node", "generated/node-exports.ts"]
+}

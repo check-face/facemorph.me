@@ -212,6 +212,13 @@ jobs:
       contents: read
       actions: read
     secrets: inherit
+  package-gates:
+    needs: changes
+    if: contains(fromJSON(needs.changes.outputs.lanes), 'package-gates')
+    uses: ./.github/workflows/package-gates.yml
+    permissions:
+      contents: read
+    secrets: inherit
   parity-harness:
     needs: changes
     if: contains(fromJSON(needs.changes.outputs.lanes), 'parity-harness')

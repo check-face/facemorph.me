@@ -11,6 +11,5 @@
     "model_conv",
     "docs",
     "NOTICE.md",
-    "PROVENANCE.json"
-  ]
+    "PROVENANCE.json", "!**/__pycache__"]
 }

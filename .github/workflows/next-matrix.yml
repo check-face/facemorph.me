@@ -31,8 +31,8 @@ jobs:
             }
           - { os: ubuntu-24.04, engine: firefox, label: 'Playwright Firefox on Linux' }
           - { os: ubuntu-24.04, engine: webkit, label: 'WebKit on Linux, not iOS' }
-          - { os: macos-14, engine: webkit, label: 'Playwright WebKit, not Safari' }
-          - { os: macos-14, engine: firefox, label: 'Playwright Firefox on macOS' }
+          - { os: macos-15, engine: webkit, label: 'Playwright WebKit, not Safari' }
+          - { os: macos-15, engine: firefox, label: 'Playwright Firefox on macOS' }
     runs-on: ${{ matrix.os }}
     timeout-minutes: 75
     steps:

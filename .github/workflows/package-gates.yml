@@ -1,0 +1,36 @@
+name: package-gates
+# Package consumer gates (fm-7ge): the four workspace packages packed and installed into a fresh project outside the
+# workspace, each exports entry resolved and imported in Node, the consumer type-checked against the packed
+# declarations only, stylegan-js's worker entry points bundled into a worker chunk by Vite, every entry imported in
+# the side-effect sandbox, cloudflare-model-host's installed bin run (stage --dry-run, stage, verify), the blend and
+# manager-cache surfaces exercised, model-conv's no-JavaScript tarball checked, and the package boundary assertion
+# over source. The unit tests plant a repository-alias import and a side-effecting import, pack and install them,
+# and require the same gate functions to fail them. The JSON report is kept as an artifact.
+on:
+  workflow_call:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  gates:
+    runs-on: [self-hosted, linux-x64]
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: ./.github/actions/setup-workspace # node_modules for the lockfile, shared on the runner (fm-98po)
+      - name: Gate unit tests (boundaries, side-effect sandbox, packed imports; seeded alias and side effect fail)
+        run: node --test 'scripts/packages/consumer-gates/*.test.mjs'
+      - name: Consumer gates for all four packages
+        run: |
+          set -euo pipefail
+          mkdir -p test-results/package-gates
+          node scripts/packages/consumer-gates/run.mjs --report test-results/package-gates/report.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: package-gates-${{ github.run_id }}
+          path: test-results/package-gates
+          if-no-files-found: ignore

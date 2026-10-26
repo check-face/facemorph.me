@@ -239,6 +239,11 @@
       ],
       "extra": [".github/workflows/next-e2e.yml"]
     },
+    "package-gates": {
+      "workflow": ".github/workflows/package-gates.yml",
+      "shared": ["packages/**", "package.json", "package-lock.json", "tsconfig*.json"],
+      "extra": ["scripts/packages/**", "tests/external-consumer/**"]
+    },
     "parity-harness": {
       "workflow": ".github/workflows/parity-harness.yml",
       "shared": [],
