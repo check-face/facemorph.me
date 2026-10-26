@@ -62,6 +62,16 @@ test(
       }),
     );
     const modelRequests = () => requests.filter((row) => row.path !== '/runtime/manifest.json');
+    const acceptDownloadIfOffered = async () => {
+      const approve = page.locator('.next-download-accept');
+      if (
+        await approve.waitFor({ timeout: 8000 }).then(
+          () => true,
+          () => false,
+        )
+      )
+        await approve.click();
+    };
     try {
       await page.goto(ORIGIN);
       const tile = page.locator('section.next-face').nth(1);
@@ -73,6 +83,8 @@ test(
       await page.getByRole('menuitem', { name: 'Numeric seed', exact: true }).click();
       await tile.locator('.next-field input').fill('17');
       await tile.locator('.next-face-generate').click();
+      // An unreadable inventory still requires consent before admission can refuse it.
+      await page.locator('.next-download-accept').click();
       const error = page.locator('.next-error[role=alert]');
       await error.waitFor();
       assert.match(await error.innerText(), /model.*(?:incompatible|changed|unsupported)|reload/i);
@@ -84,6 +96,7 @@ test(
       pointer = mixed;
       const mixedResponse = page.waitForResponse('**/runtime/manifest.json');
       await error.getByRole('button', { name: 'Try again' }).click();
+      await acceptDownloadIfOffered();
       await mixedResponse;
       await page.waitForFunction(
         () =>
@@ -101,14 +114,7 @@ test(
       phase = 'valid';
       pointer = original;
       await error.getByRole('button', { name: 'Try again' }).click();
-      const approve = page.locator('.next-download-accept');
-      if (
-        await approve.waitFor({ timeout: 8000 }).then(
-          () => true,
-          () => false,
-        )
-      )
-        await approve.click();
+      await acceptDownloadIfOffered();
       await page.waitForFunction(
         () =>
           document.querySelectorAll('section.next-face')[1]?.getAttribute('data-next-state') ===
