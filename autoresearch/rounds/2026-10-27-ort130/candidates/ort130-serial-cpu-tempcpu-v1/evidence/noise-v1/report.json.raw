@@ -1,0 +1,715 @@
+{
+  "schema": "facemorph.ort-paired/1",
+  "boundaries": {
+    "coldStartMs": "fresh profile: adapter probe + acquisition + loader + mapping ready + product admission + first completed RGBA8; excludes browser launch/page import",
+    "warmMsPerFrame": "elapsed synthesizeSequence of 32 fixed W+ inputs through CPU readback and RGBA8 conversion divided by 32; no 16FPS pacing",
+    "runtimeDownloadBytes": "successful HTTP response body bytes for CPU and GPU runtime module/factory/WASM paths only, excluding models, fixtures and package code",
+    "peakBrowserRssBytes": "maximum sum of browser and descendant process RSS observed every 100ms during page and engine workload; shared pages may be counted per process"
+  },
+  "scope": "Exact package synthesis to CPU RGBA8 on localhost with verified local acquisition; no video encoding, compositor, product UI or phone qualification. RSS is sampled browser-process memory, not total GPU allocation.",
+  "mode": "noise",
+  "evaluated": false,
+  "startedAt": "2026-10-26T21:35:29.945Z",
+  "cell": {
+    "host": "fmci",
+    "nodeVersion": "v24.22.1",
+    "os": "linux 7.0.0-38-generic",
+    "cpus": 26,
+    "browser": {
+      "executablePath": "/home/runner/.cache/ms-playwright/chromium-1248/chrome-linux64/chrome",
+      "executableSha256": "377a9fc07b495c3b8d0ab8ec1fdfd153641759f9756fea34d8dfce4de82f5025",
+      "launchTargetPath": "/home/runner/.cache/ms-playwright/chromium-1248/chrome-linux64/chrome",
+      "launchTargetSha256": "377a9fc07b495c3b8d0ab8ec1fdfd153641759f9756fea34d8dfce4de82f5025",
+      "version": "156.0.8078.4"
+    },
+    "profileStorage": {
+      "path": "/home/runner/fm-qeh-cpu-measure-20261026T2126/profiles",
+      "type": 61267,
+      "kind": "disk"
+    },
+    "distSha256": "5e1397e82d24759e6581453395b9d48f39c0181e1a406a47e12d95e2ec4e9b80",
+    "driverSha256": "cf93ac087f9f83245eacc6051661bbf7fe9d12bc8df7dd6e65348d7b3cc0df5c",
+    "scheduleSha256": "4f543c5801291c5cf0ff36e987d72c29b0a9f69b2cef72635c0911e755317cf6",
+    "comparisonMathSha256": "e5440c8983ca7c1f14bfe09b2fe29207689c6cbe3494bde6ae6937e2b1cf88da",
+    "workload": {
+      "frames": 32,
+      "fps": 16,
+      "width": 1024,
+      "height": 1024,
+      "algorithm": "linear W+ endpoints, inclusive, Float32; no pacing",
+      "inputs": [
+        "cc13afdfa7528d21f088ef591316245e2893c869658545a569ebaf16422f0e23",
+        "ec1497071c6aa598533e963a7adb17522033af831a05ab0b156c6d615bebc417"
+      ],
+      "latentsSha256": "5408180253d3bfbbb98134c9a044f9c5432df7b2014b76849107f8ad51e5cb6a"
+    },
+    "maxLoad": 6
+  },
+  "identity": {
+    "distSha256": "5e1397e82d24759e6581453395b9d48f39c0181e1a406a47e12d95e2ec4e9b80",
+    "files": [
+      {
+        "path": "packages/browser-model-manager/dist/acquisition/grants.d.ts",
+        "sha256": "e1a3f2a7660ec1b0fba8dc62d5c34024918fea438aa4e15dd879fb73c4ba5bae",
+        "size": 1740
+      },
+      {
+        "path": "packages/browser-model-manager/dist/acquisition/grants.js",
+        "sha256": "4dbf654a5cc5f9007f6e39c45551b20e68d989c3e611a3ffafb48ea5b68cdd86",
+        "size": 3334
+      },
+      {
+        "path": "packages/browser-model-manager/dist/acquisition/index.d.ts",
+        "sha256": "d0a62ff3bd8778b973fbda2aac2b41c11e0ed17473b85a82e5951058e12589d8",
+        "size": 117
+      },
+      {
+        "path": "packages/browser-model-manager/dist/acquisition/index.js",
+        "sha256": "65aa3e229d51aa6fee56c1c3503a83bddfb84a811aa7d89deb86778a103f2a5c",
+        "size": 337
+      },
+      {
+        "path": "packages/browser-model-manager/dist/acquisition/output.d.ts",
+        "sha256": "8fc1f0be2dd1729623694b5d96410a74e49f63a2d4f66598e3dae7e4400b01c1",
+        "size": 479
+      },
+      {
+        "path": "packages/browser-model-manager/dist/acquisition/output.js",
+        "sha256": "c2c3554ad7d57deac9bd52f9b30bf48ff2748bd2d8fa2c3559d74bed73494182",
+        "size": 826
+      },
+      {
+        "path": "packages/browser-model-manager/dist/acquisition/progress.d.ts",
+        "sha256": "249a44ad85c83e834c4caedd59f0604540cb8a80c2f2348bef7fae83bab6315f",
+        "size": 1196
+      },
+      {
+        "path": "packages/browser-model-manager/dist/acquisition/progress.js",
+        "sha256": "a2950d15429a905e0bba9a9ffb73e9a95282302de3df9eb2082d29bef74dbf01",
+        "size": 5522
+      },
+      {
+        "path": "packages/browser-model-manager/dist/acquisition/slots.d.ts",
+        "sha256": "52efcc41938b81252a9a878fb497bcd5ca5a5be648e952b00b712c5200e2c17d",
+        "size": 1629
+      },
+      {
+        "path": "packages/browser-model-manager/dist/acquisition/slots.js",
+        "sha256": "7beb02dc441a0c61f2935aaf9ee9514280d3e92b5c5c543476585c86efaa77dd",
+        "size": 12598
+      },
+      {
+        "path": "packages/browser-model-manager/dist/cache/index.d.ts",
+        "sha256": "9b0088d37eb7589d321ac9197c6d2e8040294356ed82a658b0fb9f31273f6dc5",
+        "size": 106
+      },
+      {
+        "path": "packages/browser-model-manager/dist/cache/index.js",
+        "sha256": "fd9f593bcb78c01876a3216da0f1ef267151e10234692d50510dfcf9d2d32826",
+        "size": 218
+      },
+      {
+        "path": "packages/browser-model-manager/dist/cache/model-cache.d.ts",
+        "sha256": "3e23a52751022595cd106c1e0ce9d650dabe367bb82a5b2eacf62860a34477fb",
+        "size": 7696
+      },
+      {
+        "path": "packages/browser-model-manager/dist/cache/model-cache.js",
+        "sha256": "8d44d929b2d5d0938f66952681368efc14aa7a0dbf140fd692fd24faa27de414",
+        "size": 65185
+      },
+      {
+        "path": "packages/browser-model-manager/dist/cache/sha256.d.ts",
+        "sha256": "99c9e62ec6a0e9a472b39298008aa4e8555dcf2167de315c3bedce7310226d81",
+        "size": 241
+      },
+      {
+        "path": "packages/browser-model-manager/dist/cache/sha256.js",
+        "sha256": "0a81d5ce16ce85b5d688459173a71d13f2e3b42de90f379b7b83c9b44dae3c9b",
+        "size": 4004
+      },
+      {
+        "path": "packages/browser-model-manager/dist/cache/shard-store.d.ts",
+        "sha256": "3924ec4c16ca6f4ddfb0d29e9fcc4611bfa2b502ac73dcecea347bef9e92a539",
+        "size": 4049
+      },
+      {
+        "path": "packages/browser-model-manager/dist/cache/shard-store.js",
+        "sha256": "d2d79170317f0e1d66d57f3a8013a214c45180035c99edb67531f08b9a998895",
+        "size": 7289
+      },
+      {
+        "path": "packages/browser-model-manager/dist/contracts/budgets.d.ts",
+        "sha256": "6d669ce407799eb6a15f42bcef3abccd880b9e183c0b2001d33d00af28f89ecc",
+        "size": 2309
+      },
+      {
+        "path": "packages/browser-model-manager/dist/contracts/budgets.js",
+        "sha256": "fc7a9f6cf54d16e1728ba22c224dbd7d3ece5519e4916ac0df64aee4583b0596",
+        "size": 2672
+      },
+      {
+        "path": "packages/browser-model-manager/dist/contracts/errors.d.ts",
+        "sha256": "72a8410835e8709915ab0761269f5246e65adf45c4a068f02e42216b6deaec76",
+        "size": 1278
+      },
+      {
+        "path": "packages/browser-model-manager/dist/contracts/errors.js",
+        "sha256": "b2e9ef1d40a906e48a1797aeed31103832bc6e245d85b9f75996a04f3e26be55",
+        "size": 114
+      },
+      {
+        "path": "packages/browser-model-manager/dist/contracts/grant.d.ts",
+        "sha256": "e355d074ba610af9dcd9b5710b4be046e1b9b1fa446b0e35a0da8c306b1f6608",
+        "size": 2422
+      },
+      {
+        "path": "packages/browser-model-manager/dist/contracts/grant.js",
+        "sha256": "387e543c64cb9f20be22573f2e964f319f995d087c822f070dbd73b6ee6a7984",
+        "size": 2271
+      },
+      {
+        "path": "packages/browser-model-manager/dist/contracts/index.d.ts",
+        "sha256": "2ef2e1b0b3a4d5967ae3cac673e70b9ce20f2374a583b9e9655cb236036703c0",
+        "size": 179
+      },
+      {
+        "path": "packages/browser-model-manager/dist/contracts/index.js",
+        "sha256": "bf2bd5a88735a76df22b5eb8db16a7b1e068227e1dd7bbe4beecd2e34e8cdfc3",
+        "size": 271
+      },
+      {
+        "path": "packages/browser-model-manager/dist/contracts/leases.d.ts",
+        "sha256": "9a812b56110f8e99a007767697dae9a468d7701e15aeb3dbc53b9d6d70d66555",
+        "size": 1036
+      },
+      {
+        "path": "packages/browser-model-manager/dist/contracts/leases.js",
+        "sha256": "48d9d91d2fd6175e86c228339a898e4389ccab8b6632668dd8cb2912bbe5a54e",
+        "size": 1123
+      },
+      {
+        "path": "packages/browser-model-manager/dist/contracts/lifecycle.d.ts",
+        "sha256": "0eb5bf7afc6b73ca56bd3135fcfc7a9633cff065877cb1de31b0be009212a99f",
+        "size": 4465
+      },
+      {
+        "path": "packages/browser-model-manager/dist/contracts/lifecycle.js",
+        "sha256": "0fc2e7ecd941e1a3bcc1c101e0214e9032fd5fd0b33ca1b45a6892c904022450",
+        "size": 963
+      },
+      {
+        "path": "packages/browser-model-manager/dist/contracts/manifest.d.ts",
+        "sha256": "adf548fd269dedd00c8ab72de98ee5f3c941b60358b1ada26a036b94af2b21ea",
+        "size": 3700
+      },
+      {
+        "path": "packages/browser-model-manager/dist/contracts/manifest.js",
+        "sha256": "38a29646f2503cf9ddc04c83117fe2eafb74e95e0dc52d23635da8f2abe29c6b",
+        "size": 8274
+      },
+      {
+        "path": "packages/browser-model-manager/dist/handles/cross-tab.d.ts",
+        "sha256": "e9cd16f3511f08683aa5e0e7d8ce82039c457efea37e0c1a0070e4465757d5c3",
+        "size": 912
+      },
+      {
+        "path": "packages/browser-model-manager/dist/handles/cross-tab.js",
+        "sha256": "67b623dd9f8f16f310ef7a11d4c2ec2fdc74c09ceca428ce01831d15cb49c1ce",
+        "size": 1642
+      },
+      {
+        "path": "packages/browser-model-manager/dist/handles/handle.d.ts",
+        "sha256": "39321518e84282075a0694c7f00d24388a9569281095c2891c6ce9ddc38593fb",
+        "size": 929
+      },
+      {
+        "path": "packages/browser-model-manager/dist/handles/handle.js",
+        "sha256": "5d37eaca2cacbefe5d7ca58e87d993448e0d70f3c8f7536932483e3dd7658949",
+        "size": 3925
+      },
+      {
+        "path": "packages/browser-model-manager/dist/handles/index.d.ts",
+        "sha256": "a08d24f1e0f6d6fb98a38cdeb4d44027e13f20059a973baa9fbbcc688352f189",
+        "size": 90
+      },
+      {
+        "path": "packages/browser-model-manager/dist/handles/index.js",
+        "sha256": "ce4d100a79c8515cfbe532b7dfc2c80c68adbf24ca8e740ed05aeb208bab47b2",
+        "size": 131
+      },
+      {
+        "path": "packages/browser-model-manager/dist/handles/leases.d.ts",
+        "sha256": "f7dbfaed0fc40af5d009297a1e8e8c2e4d16807f5b2cfce9e276910ada85bd4d",
+        "size": 2297
+      },
+      {
+        "path": "packages/browser-model-manager/dist/handles/leases.js",
+        "sha256": "accce1695aeff612361e503f9cb12a8ef0c3c331bec71ca3a6edfffb0c5d4ba6",
+        "size": 4419
+      },
+      {
+        "path": "packages/browser-model-manager/dist/index.d.ts",
+        "sha256": "e2f239b344ca4bff89dd52a7a5854ae09d1e50ba61bbe4056ca52392c3a3c8a0",
+        "size": 203
+      },
+      {
+        "path": "packages/browser-model-manager/dist/index.js",
+        "sha256": "2f64e4c287267ef3c0ef4a4edcdb71ad4452d2f4fff776b7bb1ad6d7027a7fb3",
+        "size": 379
+      },
+      {
+        "path": "packages/stylegan-js/dist/blend/blend.d.ts",
+        "sha256": "f767d1619519d355334507131da3162eca41824fc3bdfc47262ea9accf467217",
+        "size": 1560
+      },
+      {
+        "path": "packages/stylegan-js/dist/blend/blend.js",
+        "sha256": "acce59238a746488d93f2a5c3a6d0fd39a068777a11b80090b1fab232cf67acf",
+        "size": 3653
+      },
+      {
+        "path": "packages/stylegan-js/dist/blend/recipe.d.ts",
+        "sha256": "e1dd137c75902289a17fcf1c01a800f82799650da13a8734ee56f245ecb65995",
+        "size": 1722
+      },
+      {
+        "path": "packages/stylegan-js/dist/blend/recipe.js",
+        "sha256": "8b8d6be74c7ac13271f04d3f18b8c0010bae4729cbfe7f72689ca5538c4e236d",
+        "size": 3128
+      },
+      {
+        "path": "packages/stylegan-js/dist/contracts/canonical-json.d.ts",
+        "sha256": "2d155bea4892d531746cf12c159effc37171b72ff36a5aa2e18846c44a6baa55",
+        "size": 411
+      },
+      {
+        "path": "packages/stylegan-js/dist/contracts/canonical-json.js",
+        "sha256": "be7f2b1d3dd01cc24d43f1534110ca634122684649388cea37a361825f2e6397",
+        "size": 1686
+      },
+      {
+        "path": "packages/stylegan-js/dist/contracts/capability.d.ts",
+        "sha256": "139b209d3d71dcf4ceec8b47a74b04ba9e6784869aa3fd34a353c08c31489157",
+        "size": 4394
+      },
+      {
+        "path": "packages/stylegan-js/dist/contracts/capability.js",
+        "sha256": "063f186033ab96f11595f3bd23bbc7a60f7cc7c2374ab89da67f38aae6f4859c",
+        "size": 4855
+      },
+      {
+        "path": "packages/stylegan-js/dist/contracts/crop-policy.d.ts",
+        "sha256": "868c8e906cdeb557a857683d0a73d258582000c37ab7d2af1bbd61b7a6d23204",
+        "size": 7090
+      },
+      {
+        "path": "packages/stylegan-js/dist/contracts/crop-policy.js",
+        "sha256": "e2f200342807b38cc01bf1d6416d8ef1ff1b482fd527f4eddc42c74fc037cfff",
+        "size": 13423
+      },
+      {
+        "path": "packages/stylegan-js/dist/contracts/descriptor.d.ts",
+        "sha256": "2f45e265455383a5b92c61ee4a386e917978e28bc5ce46cc61f1b0a49b61130a",
+        "size": 6745
+      },
+      {
+        "path": "packages/stylegan-js/dist/contracts/descriptor.js",
+        "sha256": "66a32f630190c7a4ccadbc8d67252672eec278fe7ff0b5483172dd4f73a9cdd1",
+        "size": 11078
+      },
+      {
+        "path": "packages/stylegan-js/dist/contracts/numerics.d.ts",
+        "sha256": "bae77eb8eeca64fe2b5e5bac9e31890b13e08ffaf9ca978bb45c1a262a760e02",
+        "size": 2264
+      },
+      {
+        "path": "packages/stylegan-js/dist/contracts/numerics.js",
+        "sha256": "5d7a4f6335fe4a393dc6fb6767cedfbfb8d726ac933aed57f9c0a577d97b0492",
+        "size": 3389
+      },
+      {
+        "path": "packages/stylegan-js/dist/contracts/operations.d.ts",
+        "sha256": "4e7ee1a7ac9f58dff72412130ffc7103c438f56b1531b727ba54f935640c70a9",
+        "size": 10517
+      },
+      {
+        "path": "packages/stylegan-js/dist/contracts/operations.js",
+        "sha256": "3336fe96d5a98d5c2c7ece52fb4b456c26511f37e64a0aee24c37e1403dee866",
+        "size": 4521
+      },
+      {
+        "path": "packages/stylegan-js/dist/contracts/photo-admission.d.ts",
+        "sha256": "13ceb769abed060f9af05ce783a28b3fbad87ab9e46608ca75e4d40cd78e9576",
+        "size": 1781
+      },
+      {
+        "path": "packages/stylegan-js/dist/contracts/photo-admission.js",
+        "sha256": "a55c052cd5cae7375a4d1212c96f8ee5b418df7378bb7fee771f9cd82fc11ab2",
+        "size": 3339
+      },
+      {
+        "path": "packages/stylegan-js/dist/contracts/recovery-metadata.d.ts",
+        "sha256": "4aa14608a42920c4935d20452640acac3b9207d12a373231659ff5fce101433e",
+        "size": 3971
+      },
+      {
+        "path": "packages/stylegan-js/dist/contracts/recovery-metadata.js",
+        "sha256": "2f035ea8b7016bceaffc50517c9e23b911f158acebae2c5036ba72cb8adb67e2",
+        "size": 15224
+      },
+      {
+        "path": "packages/stylegan-js/dist/contracts/sha256.d.ts",
+        "sha256": "1e5d84e721b7c8283217759e24bb2b6d1f198d33b3306c8bfbf8caa9c8812f38",
+        "size": 263
+      },
+      {
+        "path": "packages/stylegan-js/dist/contracts/sha256.js",
+        "sha256": "1df5340002f0d4224c9fa15209254fbb12ec2678dd2e22a8180e43140db23e47",
+        "size": 3664
+      },
+      {
+        "path": "packages/stylegan-js/dist/contracts/timing.d.ts",
+        "sha256": "ef6548e79d418af048f24c31d1da08c40dd276acc9ba8bc430895c1c80b9611b",
+        "size": 1171
+      },
+      {
+        "path": "packages/stylegan-js/dist/contracts/timing.js",
+        "sha256": "e94100817892a19473c0584f0b5232bccf6269804dfa446f4a8a08ca8c45e8cc",
+        "size": 299
+      },
+      {
+        "path": "packages/stylegan-js/dist/contracts/worker-messages.d.ts",
+        "sha256": "bfc7baec5e74d5cd3dc77aa25a7b7a3e636106bef0e0d61d720d5b6d046e7402",
+        "size": 4021
+      },
+      {
+        "path": "packages/stylegan-js/dist/contracts/worker-messages.js",
+        "sha256": "b5110fb2616e68c4aa5317d2849fa8722625aedefc3f014668ce6223720d486a",
+        "size": 11061
+      },
+      {
+        "path": "packages/stylegan-js/dist/engine/adapters/cpu.d.ts",
+        "sha256": "b2d34a457306d79f6a90c319041fd2e101d61f728ea5115619db985b4cd8f729",
+        "size": 897
+      },
+      {
+        "path": "packages/stylegan-js/dist/engine/adapters/cpu.js",
+        "sha256": "fc0c852cefb279605d328518b64decbabc058768ca267b25dbdcf793575d293e",
+        "size": 3348
+      },
+      {
+        "path": "packages/stylegan-js/dist/engine/adapters/direct-shaders.d.ts",
+        "sha256": "8627a83c6bcc1fbec9de43e16392671cdb89fa37aa703dbee322ba86d5bc9c58",
+        "size": 4295
+      },
+      {
+        "path": "packages/stylegan-js/dist/engine/adapters/direct-shaders.js",
+        "sha256": "2ba959f5a2dd166bab0e22a49b13bc56c3faa9b8f9287fa0e12b61c2dfb7b399",
+        "size": 10868
+      },
+      {
+        "path": "packages/stylegan-js/dist/engine/adapters/direct-webgpu.d.ts",
+        "sha256": "a31f35fa26cbe95f117191d0c7c525922da465a2ede50be8e6cf0617b3e638e4",
+        "size": 1161
+      },
+      {
+        "path": "packages/stylegan-js/dist/engine/adapters/direct-webgpu.js",
+        "sha256": "0ae3e1fd467aed6f31f7cc41fb39d89fa6550df76cae66456939da757d3d634a",
+        "size": 18321
+      },
+      {
+        "path": "packages/stylegan-js/dist/engine/adapters/fused-resample.d.ts",
+        "sha256": "f047001d9cf07307ae530553af47821709b188b8306f3452958b57842f5fb50c",
+        "size": 1173
+      },
+      {
+        "path": "packages/stylegan-js/dist/engine/adapters/fused-resample.js",
+        "sha256": "dd26c33c5b4226481219b3fd8be33ac6ea01e3d6ad185b9b6a3a49e2f7516d88",
+        "size": 4654
+      },
+      {
+        "path": "packages/stylegan-js/dist/engine/adapters/generator.d.ts",
+        "sha256": "f524b82f49e517e92b25161ab7aae8e4e338fd3210a6e148d7b00be290b9f8d5",
+        "size": 6419
+      },
+      {
+        "path": "packages/stylegan-js/dist/engine/adapters/generator.js",
+        "sha256": "f72058fd25cbc3d5c5d5ab4a49f26682c79c5949df17978f3968c4010106f17e",
+        "size": 15447
+      },
+      {
+        "path": "packages/stylegan-js/dist/engine/adapters/gpu-constants.d.ts",
+        "sha256": "2e112f455f2d3faa0029439b41add77128ce86f88725eacb9ee5e1815cc427bc",
+        "size": 193
+      },
+      {
+        "path": "packages/stylegan-js/dist/engine/adapters/gpu-constants.js",
+        "sha256": "64ba348d7ee9ca815b0d714165e0ef0759deb1266f2b6e922896b92a7e1c3b8b",
+        "size": 389
+      },
+      {
+        "path": "packages/stylegan-js/dist/engine/adapters/ort-webgpu.d.ts",
+        "sha256": "dd7e5760d5ab919cd954b4e90a648793aa11d1ab2739443191d15c3f59bc0e52",
+        "size": 1681
+      },
+      {
+        "path": "packages/stylegan-js/dist/engine/adapters/ort-webgpu.js",
+        "sha256": "45a1ce8716d81e4d5d3592921d197c4c0a8d5ee9c0823e7e5a53658c50cedcaf",
+        "size": 13071
+      },
+      {
+        "path": "packages/stylegan-js/dist/engine/adapters/ort.d.ts",
+        "sha256": "e26cd91196a708102fe873fb9b2477a3a81c22a1c24e10a94b72b23c3b29fe31",
+        "size": 2703
+      },
+      {
+        "path": "packages/stylegan-js/dist/engine/adapters/ort.js",
+        "sha256": "c0487cbaa5cdd658227ed4d198067fd3f4ee02df0f351e94849b91cd298f4fd7",
+        "size": 2817
+      },
+      {
+        "path": "packages/stylegan-js/dist/engine/canary.d.ts",
+        "sha256": "843e995eee4b8e302844339477bdea147e529d227c6866120bb2248a0e34d3f9",
+        "size": 4217
+      },
+      {
+        "path": "packages/stylegan-js/dist/engine/canary.js",
+        "sha256": "8a0cbbfcaa583d012fbea06f938ed3c9f695280fc3ebecada126674257bcf3ae",
+        "size": 8817
+      },
+      {
+        "path": "packages/stylegan-js/dist/engine/encode.d.ts",
+        "sha256": "8576f5b12e35d868677482ab2408a013c3352707bec6a332b2f4f25d9b0e2b95",
+        "size": 5475
+      },
+      {
+        "path": "packages/stylegan-js/dist/engine/encode.js",
+        "sha256": "012e69b69feb92b746be09453a8251442c48b0654ca410d34bc95388cb8da6c0",
+        "size": 17142
+      },
+      {
+        "path": "packages/stylegan-js/dist/engine/engine.d.ts",
+        "sha256": "6cc172aa219b35e3fb18729f7d4af58a5158e40f69f51c29e08c65d617e4a30a",
+        "size": 2551
+      },
+      {
+        "path": "packages/stylegan-js/dist/engine/engine.js",
+        "sha256": "452082ffd73de20e4b142607df1921b693d6958756647a9c02119b18ae1aa9fb",
+        "size": 10885
+      },
+      {
+        "path": "packages/stylegan-js/dist/engine/identity.d.ts",
+        "sha256": "7e323cebd0d2c325aeffad52bc91c198f55238ac72cf879259eadd1b770ffcf1",
+        "size": 3185
+      },
+      {
+        "path": "packages/stylegan-js/dist/engine/identity.js",
+        "sha256": "4d54a7ddd7e9130627125a0703e35ad767099db350f56a7d1d9afc83ffb722eb",
+        "size": 8051
+      },
+      {
+        "path": "packages/stylegan-js/dist/engine/index.d.ts",
+        "sha256": "3b9f5869296d540539ee28bc5accb339b153c89d2fb1603b9c01a39021fe4763",
+        "size": 576
+      },
+      {
+        "path": "packages/stylegan-js/dist/engine/index.js",
+        "sha256": "7412020ef2c2a13ef016947a94e156f43d56523a2167b79de7bd7d65bafcd280",
+        "size": 752
+      },
+      {
+        "path": "packages/stylegan-js/dist/engine/model.d.ts",
+        "sha256": "a4f124812e9efc2d81a3e7c8bb518989c34499cb4635601b3c1af5cde6c0107f",
+        "size": 2028
+      },
+      {
+        "path": "packages/stylegan-js/dist/engine/model.js",
+        "sha256": "56aa1f1add049f534b3953c1e7ba0cb5c7fda276278a6ce559dbf240ae887e64",
+        "size": 4299
+      },
+      {
+        "path": "packages/stylegan-js/dist/engine/reader.d.ts",
+        "sha256": "031929527e49e871b17e9c7b00aa96f943d7dfbd5e724fd5d2f0f094e3b7d8bb",
+        "size": 1660
+      },
+      {
+        "path": "packages/stylegan-js/dist/engine/reader.js",
+        "sha256": "7d2dd62b1597705c7e8bc83840dedcb5253371c3e3ae3d300434d7a5aa07b009",
+        "size": 1463
+      },
+      {
+        "path": "packages/stylegan-js/dist/engine/reference-png.d.ts",
+        "sha256": "883c77fdbef08e504394e830bd97eec7c99dfa8b7822be4aa8506c5bae7c8a41",
+        "size": 322
+      },
+      {
+        "path": "packages/stylegan-js/dist/engine/reference-png.js",
+        "sha256": "317d3bdc96706d87e2b099fbe4759235365c0ff30eac0419b7e5896cb3445fff",
+        "size": 6096
+      },
+      {
+        "path": "packages/stylegan-js/dist/engine/routes.d.ts",
+        "sha256": "17dcb072fdcc2bbbee539991580acc6fe616fb57d726d6190a9c3d6ad26b32f9",
+        "size": 5762
+      },
+      {
+        "path": "packages/stylegan-js/dist/engine/routes.js",
+        "sha256": "12182d217e8fa7b109c955270c845a9f9bf22a7f096d71afec9bbaaa019440a6",
+        "size": 7493
+      },
+      {
+        "path": "packages/stylegan-js/dist/engine/webgpu.d.ts",
+        "sha256": "43cbf8fd42e6c8d951a900935bede2a8533ac85f76b1bb664573542c49794d73",
+        "size": 198
+      },
+      {
+        "path": "packages/stylegan-js/dist/engine/webgpu.js",
+        "sha256": "f6de1ce1f45b7c885778d0dd7f558c376e2d0a05e8586e4fefd2d5a009825435",
+        "size": 485
+      },
+      {
+        "path": "packages/stylegan-js/dist/engine/worker.d.ts",
+        "sha256": "9f0aeed4453bd7e164d4bde4447d065bc5cc1204618b70c66b35a02a53ca781e",
+        "size": 1698
+      },
+      {
+        "path": "packages/stylegan-js/dist/engine/worker.js",
+        "sha256": "72158ef56623d5180ca6e60db8021104f2b764134e425539428a0fbda3f71b09",
+        "size": 6302
+      },
+      {
+        "path": "packages/stylegan-js/dist/index.d.ts",
+        "sha256": "766c96f1001338790f570544b19c6db3ed674c0864b789c11a93a788e825a4bf",
+        "size": 1162
+      },
+      {
+        "path": "packages/stylegan-js/dist/index.js",
+        "sha256": "a1240c67c63a5f8a7a5d249a673c4c0a0f5ec78d80afad8c5485a97b44cb9a14",
+        "size": 1170
+      },
+      {
+        "path": "packages/stylegan-js/dist/media/envelope.d.ts",
+        "sha256": "b117bc9ab72055007bf5f73432b2f8e32ccc63f14dcb1301a35d25bf8b8f7d38",
+        "size": 3661
+      },
+      {
+        "path": "packages/stylegan-js/dist/media/envelope.js",
+        "sha256": "9deb7260637056c0787e19ed2f6f45d9dc0212332e67c6c1cf0a0cf36c9f16ac",
+        "size": 22212
+      },
+      {
+        "path": "packages/stylegan-js/dist/media/inspect-still.d.ts",
+        "sha256": "61c4a0cbddca78c9ca0f3019cfd44609f6e9997935c3f89ca29499a5a09df81a",
+        "size": 2102
+      },
+      {
+        "path": "packages/stylegan-js/dist/media/inspect-still.js",
+        "sha256": "e0dd495a08f8832526de9fc62469fb8c7564401e1da0e5acb071dbd4a28c265b",
+        "size": 3797
+      },
+      {
+        "path": "packages/stylegan-js/dist/media/mp4-project.d.ts",
+        "sha256": "6b7380af46296fc1813e1ab8f409c721a026dd50ca08a529205391c9c8da6055",
+        "size": 5803
+      },
+      {
+        "path": "packages/stylegan-js/dist/media/mp4-project.js",
+        "sha256": "e99d7cabc5c3aeaae8bd791b13041e71dc520593a584595e4b6948a462434d81",
+        "size": 22893
+      },
+      {
+        "path": "packages/stylegan-js/dist/media/recovery-v3.d.ts",
+        "sha256": "e70eddf71f8cd7d089bf9ee63c609aa62d29b12132f5f87da7a6caa23ffb820c",
+        "size": 4200
+      },
+      {
+        "path": "packages/stylegan-js/dist/media/recovery-v3.js",
+        "sha256": "9da2585455334decb15464d9403a8d73e516942c0df63041579f78fa9734000c",
+        "size": 9458
+      },
+      {
+        "path": "packages/stylegan-js/dist/media/webp-lossless.d.ts",
+        "sha256": "e3132e635fc95325501c19919719e6816fc4dbd134d39cec6705559e9c2e3bed",
+        "size": 454
+      },
+      {
+        "path": "packages/stylegan-js/dist/media/webp-lossless.js",
+        "sha256": "a9072e838f9f0a1ce1368f34c910f68f781cdcbcd0251b9799a0598a9eaf3753",
+        "size": 15400
+      },
+      {
+        "path": "packages/stylegan-js/dist/morph/infill.d.ts",
+        "sha256": "fd347e11117d02a7373dd73ec9b1a17f483ed2782f77f6d01456f32ce6e3ac93",
+        "size": 866
+      },
+      {
+        "path": "packages/stylegan-js/dist/morph/infill.js",
+        "sha256": "90e8fb4ef028f256e4db1719037613b77f5e76e340e4aed88d949c864a933e3f",
+        "size": 1961
+      },
+      {
+        "path": "packages/stylegan-js/dist/morph/latent-path.d.ts",
+        "sha256": "28a3e9c6c3ba41e27f3946d999c03c4f0bb1ae04eb4987eb7054b7455ae46e63",
+        "size": 2454
+      },
+      {
+        "path": "packages/stylegan-js/dist/morph/latent-path.js",
+        "sha256": "5c9461301d49dd5038b728b6244602e6f775252e30133cb9f729000bade84d7e",
+        "size": 14894
+      },
+      {
+        "path": "packages/stylegan-js/dist/morph/render.d.ts",
+        "sha256": "69e8f9f3683b169ff8638379f6720bf53cce86567e0e26d8fd1e6c0d97177051",
+        "size": 4708
+      },
+      {
+        "path": "packages/stylegan-js/dist/morph/render.js",
+        "sha256": "79863b469784cca864d2f04397c99be5c81cb234b115b54c2f9824dcb84d8705",
+        "size": 11755
+      }
+    ],
+    "harnessSha256": "63e6d013c2a109989188a547ba533fd39f0bab6a973c5798c4efda1262329b68",
+    "runtimeSupportSha256": "fa76461bac79bd551fa065984a343f708208016af3a8c2d152fabc9cb0fda029",
+    "pinnedSuiteSha256": "7770b21f8149e999efea9ed756c561318668a56f5a036ef48ca09e61347df3f0"
+  },
+  "isolation": {
+    "run": "20261026T213526Z-a48925e9",
+    "exclusive": "cpu-timing",
+    "lockDir": "/home/runner/.cache/facemorph/locks",
+    "maxLoad": 6,
+    "load": [
+      3.98,
+      1.97,
+      1.49
+    ]
+  },
+  "control": {
+    "manifestSha256": "d9e37e50a436e9fb7c0c7f973e70adee353c808f48c6a51fa5a9186f1c650a5c",
+    "engine": "cpu",
+    "numericsSha256": "6c29f4bc69abb945a04cac5f4d767d1e2620a4d395f3ffbdefa82c6e0eec922c",
+    "runtimeStorage": {
+      "path": "/home/runner/r1/_work/_tool/facemorph-runtime/04aa1b20062c7cc09e049398366018b2df93d3dfcaa04e667646b65c0f7b5ff7",
+      "type": 61267,
+      "kind": "disk"
+    },
+    "verifiedGraphSha256": "bc5752584f248d60c6205374555b6b057ee824e21fa3ef807033633fb3e78497",
+    "verifiedFiles": 286
+  },
+  "build": {
+    "manifestSha256": "d9e37e50a436e9fb7c0c7f973e70adee353c808f48c6a51fa5a9186f1c650a5c",
+    "engine": "cpu",
+    "numericsSha256": "6c29f4bc69abb945a04cac5f4d767d1e2620a4d395f3ffbdefa82c6e0eec922c",
+    "runtimeStorage": {
+      "path": "/home/runner/r1/_work/_tool/facemorph-runtime/04aa1b20062c7cc09e049398366018b2df93d3dfcaa04e667646b65c0f7b5ff7",
+      "type": 61267,
+      "kind": "disk"
+    },
+    "verifiedGraphSha256": "bc5752584f248d60c6205374555b6b057ee824e21fa3ef807033633fb3e78497",
+    "verifiedFiles": 286
+  },
+  "runs": [],
+  "passed": false,
+  "failure": "load ceiling exceeded during measurement",
+  "finishedAt": "2026-10-26T21:36:20.148Z"
+}

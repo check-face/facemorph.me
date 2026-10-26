@@ -1,0 +1,46 @@
+{
+  "returncode": 1,
+  "finishedAt": "2026-10-26T21:36:20.259176+00:00",
+  "stoppedReason": null,
+  "samples": [
+    {
+      "at": "2026-10-26T21:35:26.290628+00:00",
+      "scratchPhysicalBytes": 139071488,
+      "filesystemFreeBytes": 5870637056
+    },
+    {
+      "at": "2026-10-26T21:35:36.298663+00:00",
+      "scratchPhysicalBytes": 307777536,
+      "filesystemFreeBytes": 6609879040
+    },
+    {
+      "at": "2026-10-26T21:35:46.304448+00:00",
+      "scratchPhysicalBytes": 307724288,
+      "filesystemFreeBytes": 6364557312
+    },
+    {
+      "at": "2026-10-26T21:35:56.310873+00:00",
+      "scratchPhysicalBytes": 307724288,
+      "filesystemFreeBytes": 5938176000
+    },
+    {
+      "at": "2026-10-26T21:36:06.317550+00:00",
+      "scratchPhysicalBytes": 307654656,
+      "filesystemFreeBytes": 5975117824
+    },
+    {
+      "at": "2026-10-26T21:36:16.323956+00:00",
+      "scratchPhysicalBytes": 307654656,
+      "filesystemFreeBytes": 5959749632
+    },
+    {
+      "at": "2026-10-26T21:36:20.259159+00:00",
+      "scratchPhysicalBytes": 139108352,
+      "filesystemFreeBytes": 5951176704
+    }
+  ],
+  "peakObservedScratchBytes": 307777536,
+  "currentScratchBytes": 139108352,
+  "minimumObservedFilesystemFreeBytes": 5870637056,
+  "reportExists": true
+}

@@ -1,0 +1,11 @@
+file:///home/runner/fm-qeh-cpu-measure-20261026T2126/tools/ort-qualify/paired.mjs:41
+  throw new Error(message);
+        ^
+
+Error: load ceiling exceeded during measurement
+    at fail (file:///home/runner/fm-qeh-cpu-measure-20261026T2126/tools/ort-qualify/paired.mjs:41:9)
+    at oneRun (file:///home/runner/fm-qeh-cpu-measure-20261026T2126/tools/ort-qualify/paired.mjs:653:51)
+    at async main (file:///home/runner/fm-qeh-cpu-measure-20261026T2126/tools/ort-qualify/paired.mjs:926:19)
+    at async file:///home/runner/fm-qeh-cpu-measure-20261026T2126/tools/ort-qualify/paired.mjs:967:85
+
+Node.js v24.22.1
