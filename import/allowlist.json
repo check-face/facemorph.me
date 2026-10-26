@@ -2497,7 +2497,13 @@
       "sha256": "c41fadfacd542c68f5d491cbed688a786512a351e70eafb8e1f26e64a238de2d",
       "bytes": 595,
       "class": "temporary-root",
-      "temporary": true
+      "temporary": true,
+      "ported": {
+        "sha256": "cf677180c5474e42601c59b95c049bf4973d887cdb98e6bc72f2c73ff69f72ed",
+        "bytes": 904,
+        "bead": "fm-7f2o",
+        "reason": "the mobile component page maps @facemorph/stylegan-js to its built engine (610c286)"
+      }
     },
     {
       "source": "tests/mobile/run.py",
