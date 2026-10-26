@@ -124,10 +124,6 @@ async def ui_case(context, name, fixture, zoom, evidence):
         if zoom != 1:
             await page.evaluate("(z)=>{const s=document.querySelector('.next-crop-zoom input');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(s,String(z));"
                                 "s.dispatchEvent(new Event('input',{bubbles:true}));s.dispatchEvent(new Event('change',{bubbles:true}));}", zoom)
-        # The baseline waits until the 50 ms sampler has counted the preview now on screen; read any earlier, the
-        # sampler's first look at it after OK would count as a reopen (seen on a fast runner: a false ui-no-face reopen).
-        await page.wait_for_function("()=>{const img=document.querySelector('.next-encode-dialog .next-encode-preview img');"
-                                     "return !!img&&window.__cropShown===img.src;}", timeout=10000)
         before = await page.evaluate("({opens:window.__cropOpens,encode:window.__cropProbe.encode,align:window.__cropProbe.align})")
         await page.get_by_role('button', name='Use this crop', exact=True).click()
         await page.wait_for_function("!document.querySelector('.next-crop-view')", timeout=30000)
