@@ -194,11 +194,10 @@ export function recordV3Fields(meta: RecoveryMetadataV3): Record<string, unknown
     generationKind,
     generationSha256,
     model: modelRecord(descriptor),
+    // A field that does not apply is left out: the bridge holds it as null (a photo face has no mapping provider
+    // or truncation), and the reader accepts only strings and numbers.
     provenance: Object.fromEntries(
-      RECOVERY_PROVENANCE_KEYS.filter((k) => provenance[k] !== undefined).map((k) => [
-        k,
-        provenance[k],
-      ]),
+      RECOVERY_PROVENANCE_KEYS.filter((k) => provenance[k] != null).map((k) => [k, provenance[k]]),
     ),
     ...(seed === undefined ? {} : { seed }),
     ...(blend === undefined

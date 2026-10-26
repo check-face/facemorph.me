@@ -187,11 +187,9 @@ export function embedRecovery(image: Uint8Array, recovery: RecoveryMetadata): Ui
   if (seed !== undefined && (!Number.isSafeInteger(seed) || seed < 0 || seed > 4294967295))
     throw new Error('Invalid recovery seed.');
   const raw = latentBytes(latent);
+  // A field that does not apply (null in the bridge's provenance) is left out, as the reader requires.
   const kept = Object.fromEntries(
-    RECOVERY_PROVENANCE_KEYS.filter((k) => provenance[k] !== undefined).map((k) => [
-      k,
-      provenance[k],
-    ]),
+    RECOVERY_PROVENANCE_KEYS.filter((k) => provenance[k] != null).map((k) => [k, provenance[k]]),
   );
   const record = {
     schema: RECOVERY_SCHEMA_VERSION,

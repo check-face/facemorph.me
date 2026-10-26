@@ -104,6 +104,39 @@ test('schema 3 round trip: FFHQ on a real saved still, PNG and WebP, exact laten
   }
 });
 
+test('a photo face, whose provenance holds null mapping provider and truncation, saves a record that reads back', () => {
+  // The runtime's photo provenance as product faces carry it (runtime.mjs cachedGenerate): fields that do not
+  // apply are null. Both writers leave them out, so the still reopens instead of reading as damaged.
+  const provenance = {
+    ...meta(FFHQ_1024_DESCRIPTOR).provenance,
+    provider: 'wasm',
+    mappingProvider: null,
+    truncationPsi: null,
+    truncationCutoff: null,
+  } as unknown as RecoveryMetadataV3['provenance'];
+  const { seed: _seed, ...seedless } = meta(FFHQ_1024_DESCRIPTOR);
+  const photo: RecoveryMetadataV3 = { ...seedless, generationKind: 'photo', provenance };
+  const v3 = parsed(readRecovery(embedRecoveryV3(ffhqBase(), photo)));
+  assert.equal(v3.generationKind, 'photo');
+  assert.deepEqual(
+    ['mappingProvider', 'truncationPsi', 'truncationCutoff'].filter((k) => k in v3.provenance),
+    [],
+  );
+  assert.equal(v3.provenance.provider, 'wasm');
+  const back = parsed(
+    readRecovery(
+      embedRecovery(ffhqBase(), {
+        generationKind: 'photo',
+        generationSha256: photo.generationSha256,
+        provenance,
+        latent: photo.latent,
+      }),
+    ),
+  );
+  assert.equal(back.generationKind, 'photo');
+  assert.ok(!('mappingProvider' in back.provenance));
+});
+
 test('schema 3 round trip: non-face AFHQ cat 512 (16 x 512) through encodePng and encodeLosslessWebp', async () => {
   const d = AFHQ_CAT_512_DESCRIPTOR;
   const { seed: _drop, ...noSeed } = meta(d, { generationKind: 'latent' });
