@@ -1,6 +1,6 @@
 // Mapping, synthesis, the canaries and the ORT runtime are the stylegan-js engine's (fm-7f2o): this worker keeps the
 // acquisition, residency, encoder and message protocol, and hands the engine a reader over its verified bytes.
-import {loadCpuGenerator,loadOrtWebGpuGenerator,loadDirectWebGpuGenerator,loadOrtRuntime,cpuRuntimeAssets,browserModuleHost,createCanaryQualification,loadStreamedEncoder,loadEncoderRuntime,engineGeometry} from '@facemorph/stylegan-js/engine';
+import {loadCpuGenerator,loadOrtRuntime,cpuRuntimeAssets,browserModuleHost,createCanaryQualification,loadStreamedEncoder,loadEncoderRuntime,engineGeometry} from '@facemorph/stylegan-js/engine';
 import {FFHQ_1024_DESCRIPTOR} from '@facemorph/stylegan-js';
 // The model's dimensions (fm-dmlz): the side, the W+ shape and the pixel bytes come from the descriptor of the
 // model this app ships (FFHQ), never from literal 1024 / 18 x 512.
@@ -72,6 +72,8 @@ const probePlanned=()=>budget.probe(asset=>cache.has(asset));
 // The WebGPU route's model bundle: the direct engine reads the block-stream coefficients (manifest.webgl),
 // the ORT engine its split graph (manifest.webgpu).
 const gpuBundle=()=>gpuEngine==='direct'?manifest.webgl:manifest.webgpu;
+// The WebGPU loaders (WGSL engine, ORT WebGPU glue) arrive only when a WebGPU route loads; CPU workers never fetch them (fm-s0vi).
+const webgpuLoaders=()=>import('@facemorph/stylegan-js/engine/webgpu');
 function planRoute(){
  if(!manifest)return;
  planAsset([manifest.runtime,manifest.mapping,manifest.average,manifest.noise]);
@@ -301,8 +303,8 @@ async function load(id){if(generator)return;
  cache ||= await modelSource();planRoute();await probePlanned();
  report(id,'model-loading');const started=performance.now(),progress=stage=>report(currentId,stage);
  // The engine warms mapping beside the GPU load and keeps the CPU load sequential.
- if(provider==='webgpu'&&gpuEngine==='direct'){if(!manifest.webgl)throw Error('WebGPU direct bundle unavailable');generator=await loadDirectWebGpuGenerator({reader,manifest,manifestSha256,gpu:navigator.gpu,cpuOrt,progress});}
- else if(provider==='webgpu'){if(!manifest.webgpu)throw Error('WebGPU bundle unavailable');generator=await loadOrtWebGpuGenerator({reader,manifest,manifestSha256,gpu:navigator.gpu,host:browserModuleHost(),cpuOrt,progress});}
+ if(provider==='webgpu'&&gpuEngine==='direct'){if(!manifest.webgl)throw Error('WebGPU direct bundle unavailable');generator=await (await webgpuLoaders()).loadDirectWebGpuGenerator({reader,manifest,manifestSha256,gpu:navigator.gpu,cpuOrt,progress});}
+ else if(provider==='webgpu'){if(!manifest.webgpu)throw Error('WebGPU bundle unavailable');generator=await (await webgpuLoaders()).loadOrtWebGpuGenerator({reader,manifest,manifestSha256,gpu:navigator.gpu,host:browserModuleHost(),cpuOrt,progress});}
  else generator=await loadCpuGenerator({reader,manifest,manifestSha256,ort:cpuOrt});
  report(id,'model-loaded',{elapsedMs:performance.now()-started});
 }

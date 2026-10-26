@@ -16,6 +16,11 @@
       "source": "./src/engine/index.ts",
       "types": "./dist/engine/index.d.ts",
       "default": "./dist/engine/index.js"
+    },
+    "./engine/webgpu": {
+      "source": "./src/engine/webgpu.ts",
+      "types": "./dist/engine/webgpu.d.ts",
+      "default": "./dist/engine/webgpu.js"
     }
   },
   "engines": {

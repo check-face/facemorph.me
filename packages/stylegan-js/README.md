@@ -1,7 +1,8 @@
 # @facemorph/stylegan-js
 
 StyleGAN2 mapping, synthesis and e4e photo encoding in the browser: the engine contracts (`.`) and the engine core
-(`./engine`). See [capabilities](docs/capabilities.md) and [saved file formats](docs/formats.md).
+(`./engine`). `./engine/webgpu` holds just the two WebGPU generator loaders, so a worker can `import()` them only when it
+takes a WebGPU route. See [capabilities](docs/capabilities.md) and [saved file formats](docs/formats.md).
 
 ## Licence and model weights
 

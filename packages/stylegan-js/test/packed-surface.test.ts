@@ -28,7 +28,7 @@ import {
 
 type ExportsMap = Record<string, Record<string, string>>;
 // The entry points the package documents: its exports map, as this bead's acceptance and README name them.
-const DOCUMENTED = ['.', './engine'];
+const DOCUMENTED = ['.', './engine', './engine/webgpu'];
 const WORKER_ENTRIES = ['serveEngine', 'connectEngine'];
 
 const work = mkdtempSync(join(tmpdir(), 'stylegan-js-packed-surface-'));

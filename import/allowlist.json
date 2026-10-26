@@ -1471,10 +1471,10 @@
       "bytes": 33331,
       "class": "src-next",
       "ported": {
-        "sha256": "9cdbbe685fb9e01064296859c62a8c92bc6f91c7be5fe94303761820c76bf72d",
-        "bytes": 30464,
-        "bead": "fm-fy2.6",
-        "reason": "acquires under the candidate bridge scope as a grant (bridge-grant.mjs), widened by the streamed encoder descriptor; passes modelAlternateOrigins(location.hostname); Vite destination integration: shared production headers and native dynamic-import directives; compiled artifact identity. (fm-zz2i); Continues verified execution through browser/model-source.mjs when durable model storage refuses (1bb7bd0) (fm-fy2.13); mapping, synthesis, canaries and the ORT runtime run on the stylegan-js engine behind the unchanged worker protocol; compute.photo-descriptor: the worker encodes through the package's streamed encoder after acquiring every shard; dimensions come from the shipped descriptor; compute.app-rebind: the streamed e4e is the only photo encoder; the app's whole-encoder ORT path is removed"
+        "sha256": "48171ed7cfdd850a079013f973ae6c53fadff200d592ab2996aadd17eeb7bb3e",
+        "bytes": 30667,
+        "bead": "fm-s0vi",
+        "reason": "acquires under the candidate bridge scope as a grant (bridge-grant.mjs), widened by the streamed encoder descriptor; passes modelAlternateOrigins(location.hostname); Vite destination integration: shared production headers and native dynamic-import directives; compiled artifact identity. (fm-zz2i); Continues verified execution through browser/model-source.mjs when durable model storage refuses (1bb7bd0) (fm-fy2.13); mapping, synthesis, canaries and the ORT runtime run on the stylegan-js engine behind the unchanged worker protocol; compute.photo-descriptor: the worker encodes through the package's streamed encoder after acquiring every shard; dimensions come from the shipped descriptor; compute.app-rebind: the streamed e4e is the only photo encoder; the app's whole-encoder ORT path is removed; the WebGPU generator loaders load through a dynamic import of @facemorph/stylegan-js/engine/webgpu (CPU workers never fetch them); still writing goes through media/recovery-stills.ts so the image encoder worker no longer bundles the project codec"
       }
     },
     {
@@ -1663,7 +1663,7 @@
         "sha256": "77178c336cf0eb9ecc7933e3900b9dc4a519282637de1e761b6289fa1653d600",
         "bytes": 5013,
         "bead": "fm-36ag",
-        "reason": "Native retirement: no longer describes the module as shared with desktop packages; Custom frames per face (2 up to the 4,096-frame budget, odd counts included) and a Full quality video choice; 512 \u00d7 512 stays the default (36b3236)"
+        "reason": "Native retirement: no longer describes the module as shared with desktop packages; Custom frames per face (2 up to the 4,096-frame budget, odd counts included) and a Full quality video choice; 512 × 512 stays the default (36b3236)"
       }
     },
     {
@@ -1676,7 +1676,7 @@
         "sha256": "30d76c09f887de0363963390199156c60c6694dd4c5e1067ac49b3cf364ec806",
         "bytes": 9758,
         "bead": "fm-id4c",
-        "reason": "Custom frames per face (2 up to the 4,096-frame budget, odd counts included) and a Full quality video choice; 512 \u00d7 512 stays the default (36b3236); no fixed face count: geometry controls bounded by frames, analytics faces unclamped (c12b4f9)"
+        "reason": "Custom frames per face (2 up to the 4,096-frame budget, odd counts included) and a Full quality video choice; 512 × 512 stays the default (36b3236); no fixed face count: geometry controls bounded by frames, analytics faces unclamped (c12b4f9)"
       }
     },
     {
@@ -1696,7 +1696,7 @@
         "sha256": "4db91c2e79d6b2833ed4cbae43ee23f6c30bb641c0ba974dec0bbf7bfa16482d",
         "bytes": 9295,
         "bead": "fm-id4c",
-        "reason": "Custom frames per face (2 up to the 4,096-frame budget, odd counts included) and a Full quality video choice; 512 \u00d7 512 stays the default (36b3236); no fixed face count: geometry controls bounded by frames, analytics faces unclamped (c12b4f9)"
+        "reason": "Custom frames per face (2 up to the 4,096-frame budget, odd counts included) and a Full quality video choice; 512 × 512 stays the default (36b3236); no fixed face count: geometry controls bounded by frames, analytics faces unclamped (c12b4f9)"
       }
     },
     {
@@ -1733,10 +1733,10 @@
       "bytes": 8726,
       "class": "src-next",
       "ported": {
-        "sha256": "a47415d3d5c2d6b0960810c24c8aaf5d99e0fe82755916941799c3902df18525",
-        "bytes": 3789,
-        "bead": "fm-fy2.7",
-        "reason": "The envelope is the package's (fm-fzzd) through src/media/recovery-files.ts: a shipped model's face is written as schema 3, any other identity as schema 2; reads schema 3 and 2, schema 1 reported legacy; export names and the full1024/single-envelope/identity rules kept; app recovery files on the package schema core; earlier stills reopen through the file entry (430494e)"
+        "sha256": "5046a3e17cd0677ecdaff84a3417d0c31ce5173c28a5790dc4d54a897d57335c",
+        "bytes": 3800,
+        "bead": "fm-s0vi",
+        "reason": "The envelope is the package's (fm-fzzd) through src/media/recovery-files.ts: a shipped model's face is written as schema 3, any other identity as schema 2; reads schema 3 and 2, schema 1 reported legacy; export names and the full1024/single-envelope/identity rules kept; app recovery files on the package schema core; earlier stills reopen through the file entry (430494e); the WebGPU generator loaders load through a dynamic import of @facemorph/stylegan-js/engine/webgpu (CPU workers never fetch them); still writing goes through media/recovery-stills.ts so the image encoder worker no longer bundles the project codec"
       }
     },
     {
@@ -1782,7 +1782,7 @@
         "sha256": "60fbb3e3210243105f204d05438de0cb7a2389504111b578081788df14bf0f6b",
         "bytes": 5129,
         "bead": "fm-36ag",
-        "reason": "Retains integrity/format/budget decisions; actual browser IndexedDB/localStorage/quota/reload and control-written restore replace former fake storage tests (test/media/session-storage.test.ts and test/e2e/facade.e2e.ts).; Custom frames per face (2 up to the 4,096-frame budget, odd counts included) and a Full quality video choice; 512 \u00d7 512 stays the default (36b3236)"
+        "reason": "Retains integrity/format/budget decisions; actual browser IndexedDB/localStorage/quota/reload and control-written restore replace former fake storage tests (test/media/session-storage.test.ts and test/e2e/facade.e2e.ts).; Custom frames per face (2 up to the 4,096-frame budget, odd counts included) and a Full quality video choice; 512 × 512 stays the default (36b3236)"
       }
     },
     {
@@ -1808,7 +1808,7 @@
         "sha256": "859c1f0084b0bcef2aaebacfba6ab2d8b3ee4ddb1432040b7bc3c257908a2161",
         "bytes": 14266,
         "bead": "fm-36ag",
-        "reason": "Native retirement: saveFile drops the Tauri native_save_media branch; downloads are the browser path; Save/Share hand over prepared files named by export identity; encoder figures from the export policy (6915a98); Custom frames per face (2 up to the 4,096-frame budget, odd counts included) and a Full quality video choice; 512 \u00d7 512 stays the default (36b3236); the encoder correctness check refuses encoders that reorder frames (Firefox High), so baseline is used"
+        "reason": "Native retirement: saveFile drops the Tauri native_save_media branch; downloads are the browser path; Save/Share hand over prepared files named by export identity; encoder figures from the export policy (6915a98); Custom frames per face (2 up to the 4,096-frame budget, odd counts included) and a Full quality video choice; 512 × 512 stays the default (36b3236); the encoder correctness check refuses encoders that reorder frames (Firefox High), so baseline is used"
       }
     },
     {
@@ -1821,7 +1821,7 @@
         "sha256": "241605cde6936e64c32d70f8bbc8238e23f9b840221dca362496090ad0244a3c",
         "bytes": 20210,
         "bead": "fm-36ag",
-        "reason": "Custom frames per face (2 up to the 4,096-frame budget, odd counts included) and a Full quality video choice; 512 \u00d7 512 stays the default (36b3236); the encoder correctness check refuses encoders that reorder frames (Firefox High), so baseline is used"
+        "reason": "Custom frames per face (2 up to the 4,096-frame budget, odd counts included) and a Full quality video choice; 512 × 512 stays the default (36b3236); the encoder correctness check refuses encoders that reorder frames (Firefox High), so baseline is used"
       }
     },
     {
@@ -1961,7 +1961,7 @@
         "sha256": "356d3c83569fc492c1abb0c1e6666028529feae4db6a8741dc8fb53855cab55b",
         "bytes": 28582,
         "bead": "fm-36ag",
-        "reason": "Retain crop and names rendering repairs; place the single tile operation action inside the face image and retire hold-to-compare styling.; Encode source and crop-confirmation modal styles landed in ae6a3fd; preserve existing tile/product styling. (fm-fy2.17.1); Face card is the photo entry with Generate beside the field (c397da4, fm-25um fm-fy2.17.1); legacy fullscreen gapless names grid styles (07ac969, fm-96if); debug-report disclosure, privacy request list and in-page first-visit prompt styles (fm-szbf); Custom frames per face (2 up to the 4,096-frame budget, odd counts included) and a Full quality video choice; 512 \u00d7 512 stays the default (36b3236)"
+        "reason": "Retain crop and names rendering repairs; place the single tile operation action inside the face image and retire hold-to-compare styling.; Encode source and crop-confirmation modal styles landed in ae6a3fd; preserve existing tile/product styling. (fm-fy2.17.1); Face card is the photo entry with Generate beside the field (c397da4, fm-25um fm-fy2.17.1); legacy fullscreen gapless names grid styles (07ac969, fm-96if); debug-report disclosure, privacy request list and in-page first-visit prompt styles (fm-szbf); Custom frames per face (2 up to the 4,096-frame budget, odd counts included) and a Full quality video choice; 512 × 512 stays the default (36b3236)"
       }
     },
     {
@@ -2007,7 +2007,7 @@
         "sha256": "62c963d6d3d3407922d9b75a3cc9bebd2eb71eaf2cd9fcb9b76b39bec1bfd828",
         "bytes": 4075,
         "bead": "fm-36ag",
-        "reason": "Recovery reads and writes are the package schema core through src/media/recovery-files.ts (fm-fy2.7): stills schema 3 written, 3/2/1 read with typed errors; MP4 project schema 2 with the writer's route, schema-1 project MP4 still read; downloadImage {format:'png', rgba} for the explicit lossless still (fm-ykfa); Custom frames per face (2 up to the 4,096-frame budget, odd counts included) and a Full quality video choice; 512 \u00d7 512 stays the default (36b3236)"
+        "reason": "Recovery reads and writes are the package schema core through src/media/recovery-files.ts (fm-fy2.7): stills schema 3 written, 3/2/1 read with typed errors; MP4 project schema 2 with the writer's route, schema-1 project MP4 still read; downloadImage {format:'png', rgba} for the explicit lossless still (fm-ykfa); Custom frames per face (2 up to the 4,096-frame budget, odd counts included) and a Full quality video choice; 512 × 512 stays the default (36b3236)"
       }
     },
     {
