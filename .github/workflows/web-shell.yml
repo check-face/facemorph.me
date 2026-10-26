@@ -124,7 +124,7 @@ jobs:
           FACEMORPH_REQUIRE_RUNTIME: '1'
         run: |
           export FACEMORPH_RUNTIME_DIR="$HOME/.cache/facemorph-device-lab/runtime-public"
-          node --test --test-timeout=1200000 test/e2e/encode.e2e.ts test/e2e/face-controls.e2e.ts test/e2e/legacy-links.e2e.ts test/e2e/manifest-admission.e2e.ts test/e2e/export-files.e2e.ts
+          node --test --test-timeout=1200000 test/e2e/encode.e2e.ts test/e2e/face-controls.e2e.ts test/e2e/legacy-links.e2e.ts test/e2e/manifest-admission.e2e.ts test/e2e/export-files.e2e.ts test/e2e/opctl-trace.e2e.ts test/e2e/offline.e2e.ts
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
@@ -135,6 +135,8 @@ jobs:
             apps/web/test-results/legacy-links/
             apps/web/test-results/manifest-admission/
             apps/web/test-results/export-files/
+            apps/web/test-results/opctl-trace/
+            apps/web/test-results/offline/
           if-no-files-found: ignore
   # The built shell in the Ubuntu 24.04 browser cells of apps/web/browser-matrix.json (Playwright Chromium,
   # Firefox and WebKit): control goldens at the shell rows, operated links at desktop and phone width (mouse
