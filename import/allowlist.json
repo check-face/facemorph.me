@@ -1139,10 +1139,10 @@
       "class": "temporary-root",
       "temporary": true,
       "ported": {
-        "sha256": "12288ea01f8f66c9119e6e15fe4d0c8d8289a70b9271db8141287433245dae30",
-        "bytes": 43917,
-        "bead": "fm-6ib8",
-        "reason": "Preserve typed project-codec checks; adapt provider and tile controls for WebGL/filename retirement, retain crop in its mode menu, and use the existing CDP interceptor for worker evidence under no-referrer production headers. Schedule initial navigation and pump events within the unchanged document-load deadline, avoiding the shorter synchronous harness IPC timeout. Adapt the declared Encode source/confirmation/editor flow through real pointer hits while retaining CPU/e4e/crop/export/restore and network assertions (main40183901932 preflight repair). (fm-aa8); real-ui-cpu operates the card chooser, not the removed Encode source dialog (b8640b7) (fm-aa8); the synthetic-photo journey proves e4e by its encode-aligned request, since a confirmed crop starts no detector worker"
+        "sha256": "055776f0e031bcc97d2f816e5177d855a2082ad0f7dc38a50cef4d6b3c715dc3",
+        "bytes": 44320,
+        "bead": "fm-5klw",
+        "reason": "Preserve typed project-codec checks; adapt provider and tile controls for WebGL/filename retirement, retain crop in its mode menu, and use the existing CDP interceptor for worker evidence under no-referrer production headers. Schedule initial navigation and pump events within the unchanged document-load deadline, avoiding the shorter synchronous harness IPC timeout. Adapt the declared Encode source/confirmation/editor flow through real pointer hits while retaining CPU/e4e/crop/export/restore and network assertions (main40183901932 preflight repair). (fm-aa8); real-ui-cpu operates the card chooser, not the removed Encode source dialog (b8640b7) (fm-aa8); the synthetic-photo journey proves e4e by its encode-aligned request, since a confirmed crop starts no detector worker; real-ui-cpu presses a control only once its box is the same on two samples 0.5 s apart, so a press never lands on the backdrop of a menu still growing in (run 40336921863 preflight)"
       }
     },
     {

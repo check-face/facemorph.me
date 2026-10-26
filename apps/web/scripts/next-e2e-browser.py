@@ -163,7 +163,11 @@ def press_selector(selector,index=0,name=None):
  def point():
   return js("""(()=>{const es=[...document.querySelectorAll(%s)].filter(e=>{const r=e.getBoundingClientRect();return r.width&&r.height&&getComputedStyle(e).visibility!=='hidden'&&(!%s||e.textContent.trim().toLowerCase()===%s);});
    const e=es[%d];if(!e)return null;e.scrollIntoView({block:'center'});const r=e.getBoundingClientRect();
-   const x=r.left+r.width/2,y=r.top+r.height/2;return r.width&&r.height&&e.contains(document.elementFromPoint(x,y))?{x,y}:null;})()"""%(json.dumps(selector),json.dumps(name),json.dumps(name.lower() if name else None),index))
+   // A person presses a control once it has stopped moving: a menu still growing in (MUI's enter transition) moves
+   // its items between this sample and the press, and a press on its backdrop closes it instead (run 40336921863).
+   const box=[r.left,r.top,r.width,r.height].map(v=>Math.round(v)).join(','),settled=window.__pressBox===box;window.__pressBox=box;
+   const x=r.left+r.width/2,y=r.top+r.height/2;return settled&&r.width&&r.height&&e.contains(document.elementFromPoint(x,y))?{x,y}:null;})()"""%(json.dumps(selector),json.dumps(name),json.dumps(name.lower() if name else None),index))
+ js('window.__pressBox=null')
  p=wait(point,30);click_at_xy(p['x'],p['y'])
 def upload(selector,path):
  root=cdp('DOM.getDocument')['root']['nodeId'];node=cdp('DOM.querySelector',nodeId=root,selector=selector)['nodeId'];assert node,'File input missing';cdp('DOM.setFileInputFiles',nodeId=node,files=[str(path.resolve())])
