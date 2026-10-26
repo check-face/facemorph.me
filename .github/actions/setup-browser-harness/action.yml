@@ -5,12 +5,20 @@ description: >-
 runs:
   using: composite
   steps:
-    - name: Install or verify browser-harness 0.1.8
+    - name: Install or verify the qualified browser-harness resolution
       shell: bash
-      env:
-        HARNESS_VERSION: '0.1.8'
       run: |
         set -euo pipefail
+        HARNESS_VERSION=$(python3 - <<'PY'
+        from pathlib import Path
+        import re
+        lock = Path('tools/browser-harness/requirements.txt').read_text()
+        versions = re.findall(r'^browser-harness==(\d+\.\d+\.\d+)\s*$', lock, re.M)
+        assert len(versions) == 1, 'one stable browser-harness resolution is required'
+        print(versions[0])
+        PY
+        )
+        export HARNESS_VERSION
         python_minor=$(python3 -c 'import sys; assert sys.version_info >= (3, 11), "browser-harness needs Python >=3.11"; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
         venv="$RUNNER_TOOL_CACHE/browser-harness/$HARNESS_VERSION/python-$python_minor"
         if ! "$venv/bin/python" -c 'from importlib.metadata import version; import os; assert version("browser-harness") == os.environ["HARNESS_VERSION"]' 2>/dev/null; then

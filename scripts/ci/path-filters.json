@@ -71,7 +71,8 @@
         "autoresearch/run.py",
         "autoresearch/test_run.py",
         ".github/actions/fetch-artifact/**",
-        ".github/actions/run-command/**"
+        ".github/actions/run-command/**",
+        "tools/browser-harness/**"
       ]
     },
     "cloudflare-model-host": {
@@ -249,7 +250,7 @@
         ".nvmrc",
         ".github/actions/**"
       ],
-      "extra": [".github/workflows/next-e2e.yml"]
+      "extra": [".github/workflows/next-e2e.yml", "tools/browser-harness/**"]
     },
     "package-gates": {
       "workflow": ".github/workflows/package-gates.yml",

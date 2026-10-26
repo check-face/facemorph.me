@@ -1,0 +1,2 @@
+# Source requirement; requirements.txt records the qualified resolution used by CI.
+browser-harness>=0.1.8

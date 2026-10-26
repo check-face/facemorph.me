@@ -1,0 +1,2 @@
+# Qualified tool resolution, updated with requirements.in by the dependency updater.
+browser-harness==0.1.8

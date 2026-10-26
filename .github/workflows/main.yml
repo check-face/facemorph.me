@@ -12,6 +12,16 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      dependency_group:
+        description: Trusted controller dependency group (empty for normal full qualification)
+        type: string
+        required: false
+        default: ''
+      dependency_pr:
+        description: Open same-repository Dependabot PR number
+        type: string
+        required: false
 concurrency:
   group: main
   cancel-in-progress: false
@@ -45,6 +55,122 @@ jobs:
               | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s).workflow_runs[0]?.head_sha??""))')
           fi
           node scripts/ci/changes.ts --base "$base" --head "$GITHUB_SHA"
+  dependency-policy:
+    name: ${{ inputs.dependency_group != '' && 'dependency-currency' || 'dependency-policy' }}
+    runs-on: [self-hosted, linux-x64]
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: ./.github/actions/setup-workspace
+      - name: Read current PR identity and validate its exact head
+        if: inputs.dependency_group != ''
+        id: dependency
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DEPENDENCY_PR: ${{ inputs.dependency_pr }}
+          DEPENDENCY_GROUP: ${{ inputs.dependency_group }}
+        run: |
+          node --input-type=module <<'JS'
+          import { execFileSync } from 'node:child_process';
+          import { appendFileSync } from 'node:fs';
+          const number = process.env.DEPENDENCY_PR;
+          if (!/^[1-9][0-9]*$/.test(number ?? '')) throw Error('dependency PR number required');
+          const pr = JSON.parse(execFileSync('gh', ['api', `repos/${process.env.GITHUB_REPOSITORY}/pulls/${number}`], {encoding:'utf8'}));
+          if (pr.state !== 'open' || pr.user.login !== 'dependabot[bot]' || pr.base.ref !== 'main' ||
+              pr.head.sha !== process.env.GITHUB_SHA || pr.head.repo.id !== pr.base.repo.id)
+            throw Error('qualification must name the current same-repository bot PR head');
+          appendFileSync(process.env.GITHUB_OUTPUT, `base=${pr.base.sha}\n`);
+          JS
+      - if: inputs.dependency_group != '' && hashFiles('import/runtime-mirror.json') != ''
+        uses: ./.github/actions/setup-runtime
+      - name: Acquire and verify the actual candidate ORT runtime
+        if: inputs.dependency_group != '' && hashFiles('import/runtime-mirror.json') != ''
+        id: candidate-runtime
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/dependency-ort-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          node scripts/ci/apply-ort-mirror.ts --control-runtime "$FACEMORPH_RUNTIME_DIR" \
+            --overlay import/runtime-mirror.json --out "$out" > dependency-runtime.json
+          echo "dir=$out" >> "$GITHUB_OUTPUT"
+      - name: Freeze numerical and platform acceptance for ordinary main work
+        if: inputs.dependency_group == ''
+        run: |
+          set -euo pipefail
+          node scripts/ci/dependency-freeze.ts --previous-policy "$GITHUB_SHA"
+      - name: Frozen tolerances, retained cells, stable dependencies and actual ORT mirror
+        if: inputs.dependency_group != ''
+        env:
+          DEPENDENCY_BASE: ${{ steps.dependency.outputs.base }}
+          DEPENDENCY_GROUP: ${{ inputs.dependency_group }}
+          RUNTIME_PROOF: ${{ steps.candidate-runtime.outputs.dir }}
+        run: |
+          args=(--base "$DEPENDENCY_BASE" --head "$GITHUB_SHA" --group "$DEPENDENCY_GROUP")
+          if [ -n "$RUNTIME_PROOF" ]; then args+=(--runtime-dir "$RUNTIME_PROOF"); fi
+          node scripts/ci/check-dependency-currency.ts "${args[@]}"
+  ort-canaries:
+    if: github.event_name == 'workflow_dispatch' && inputs.dependency_group == 'onnx-runtime'
+    name: ort-canaries / ${{ matrix.route }}
+    runs-on: [self-hosted, eris]
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        route: [cpu, webgpu-ort]
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: ./.github/actions/setup-workspace
+      - name: Qualify the actual updated npm runtime on the selected hardware route
+        env:
+          ORT_ROUTE: ${{ matrix.route }}
+        run: |
+          set -euo pipefail
+          ort=$(node -p 'require("node:path").resolve(require.resolve("onnxruntime-web"), "../..")')
+          node tools/ort-qualify/qualify.mjs --ort "$ort" --gpu-build jsep --routes "$ORT_ROUTE" --out ort-canary.json
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import { readFileSync } from 'node:fs';
+          const report = JSON.parse(readFileSync('ort-canary.json', 'utf8'));
+          assert.equal(report.results.length, 1);
+          const result = report.results[0];
+          assert.equal(result.route, process.env.ORT_ROUTE);
+          assert.equal(result.provider, result.route === 'cpu' ? 'wasm' : 'webgpu', 'fallback is not the requested route');
+          assert.equal(result.ok, true);
+          assert.deepEqual(result.canaries.map(c => c.name).sort(), ['frame-00', 'frame-25', 'encoded-synthetic-photo', 'zero-noise', 'alternate-noise', 'trunc-psi-0', 'trunc-psi-1'].sort());
+          for (const c of result.canaries) assert.ok(c.passed === true && Number.isFinite(c.maxRgb) && c.maxRgb <= 1 && Number.isFinite(c.maxFloat) && c.maxFloat <= .002);
+          JS
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dependency-ort-${{ matrix.route }}-${{ github.sha }}
+          path: ort-canary.json
+          if-no-files-found: error
+  next-matrix:
+    needs: next-site
+    if: github.event_name == 'workflow_dispatch' && inputs.dependency_group == 'test-tools'
+    uses: ./.github/workflows/next-matrix.yml
+    permissions:
+      contents: read
+      actions: read
+    with:
+      artifact_source_repo_id: ${{ github.repository_id }}
+      artifact_workflow: .github/workflows/main.yml
+      artifact_run: ${{ github.run_id }}
+      artifact_commit: ${{ github.sha }}
+      artifact_name: next-site-${{ github.sha }}
+      runtime_sha: d9e37e50a436e9fb7c0c7f973e70adee353c808f48c6a51fa5a9186f1c650a5c
   app-contracts:
     needs: changes
     if: contains(fromJSON(needs.changes.outputs.lanes), 'app-contracts')
