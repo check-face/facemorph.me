@@ -59,6 +59,8 @@ jobs:
         run: node --test 'scripts/packages/consumer-gates/*.test.mjs'
       - name: package-tarball-content-scan self-test (fm-1jr7)
         run: node --test scripts/packages/check-tarball-contents.test.mjs
+      - name: Public package docs carry no FaceMorph deployment values (fm-19eb)
+        run: node scripts/packages/docs-scan.mjs
       - name: Consumer gates for all four packages
         env:
           PACKAGE_RELEASE_PROVENANCE: ${{ steps.release.outputs.provenance_json }}

@@ -87,7 +87,8 @@ export async function withBrowserPage(
   evidenceDir = resolve(evidenceDir ?? join(dirname(root), 'browser-gate'));
   mkdirSync(evidenceDir, { recursive: true });
   const temporary = mkdtempSync(join(tmpdir(), 'facemorph-consumer-browser-'));
-  let browser,
+  let browserServer,
+    browser,
     context,
     page,
     server,
@@ -98,6 +99,7 @@ export async function withBrowserPage(
     failure;
   const serverRequests = [],
     cleanupErrors = [];
+  let browserCleanup;
   try {
     execFileSync(
       'openssl',
@@ -183,10 +185,12 @@ export async function withBrowserPage(
       server.listen(0, '127.0.0.1', yes);
     });
     origin = `https://127.0.0.1:${server.address().port}`;
-    browser = await chromium.launch({
+    browserServer = await chromium.launchServer({
       headless: true,
+      host: '127.0.0.1',
       ...(executablePath ? { executablePath } : {}),
     });
+    browser = await chromium.connect(browserServer.wsEndpoint());
     context = await browser.newContext({ ignoreHTTPSErrors: true, serviceWorkers: 'allow' });
     const host = new URL(origin).host;
     observation = attachPlaywright(context, {
@@ -232,11 +236,8 @@ export async function withBrowserPage(
     } catch (error) {
       cleanupErrors.push('context: ' + String(error));
     }
-    try {
-      await bounded(browser?.close(), 3000, 'Browser process cleanup');
-    } catch (error) {
-      cleanupErrors.push('browser: ' + String(error));
-    }
+    // Close the HTTPS peer before waiting for Chromium to exit. Its network process can
+    // otherwise wait on a connection to this still-listening server during shutdown.
     if (server) {
       server.closeAllConnections();
       try {
@@ -249,6 +250,27 @@ export async function withBrowserPage(
         cleanupErrors.push('server: ' + String(error));
       }
     }
+    if (browserServer) {
+      const ownedProcess = browserServer.process();
+      browserCleanup = { pid: ownedProcess.pid, forced: false };
+      try {
+        await bounded(browserServer.close(), 3000, 'Browser process cleanup');
+      } catch (error) {
+        // A launched browser's close can wait for Chromium's network process long after
+        // its contexts are gone. Kill only this session's process tree and await its exit.
+        browserCleanup.gracefulCloseError = String(error);
+        browserCleanup.forced = true;
+        try {
+          await bounded(browserServer.kill(), 3000, 'Browser process termination');
+        } catch (error) {
+          cleanupErrors.push('browser: ' + String(error));
+        }
+      }
+      browserCleanup.exitCode = ownedProcess.exitCode;
+      browserCleanup.signalCode = ownedProcess.signalCode;
+      if (ownedProcess.exitCode === null && ownedProcess.signalCode === null)
+        cleanupErrors.push('browser: task-owned process did not exit');
+    }
     rmSync(temporary, { recursive: true, force: true });
     writeFileSync(
       join(evidenceDir, 'network.json'),
@@ -257,6 +279,10 @@ export async function withBrowserPage(
     writeFileSync(
       join(evidenceDir, 'server-requests.json'),
       JSON.stringify(serverRequests, null, 2) + '\n',
+    );
+    writeFileSync(
+      join(evidenceDir, 'browser-cleanup.json'),
+      JSON.stringify(browserCleanup ?? null, null, 2) + '\n',
     );
     if (failure || cleanupErrors.length)
       writeFileSync(
