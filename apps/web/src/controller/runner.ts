@@ -54,7 +54,12 @@ export function createController(
   facts: InitialFacts,
   options: ControllerOptions,
 ): { readonly store: Store; dispose(): Promise<void> } {
-  const service = createOperationService();
+  // A test can ask for the operation trace (fm-vbj7) by providing an array before the app starts.
+  const opctlTrace = (globalThis as { __FACEMORPH_OPCTL_TRACE__?: unknown[] })
+    .__FACEMORPH_OPCTL_TRACE__;
+  const service = createOperationService(
+    Array.isArray(opctlTrace) ? { trace: (event) => void opctlTrace.push(event) } : {},
+  );
   const initial = init(facts);
   const revisions = new Map<string, number>();
   const photoSelections = new Map<string, number>();

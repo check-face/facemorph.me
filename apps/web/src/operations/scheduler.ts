@@ -88,11 +88,31 @@ interface Held {
   permit: ComputePermit | null;
 }
 
+/** One governor decision, for the operation trace (fm-vbj7). */
+export interface GovernorTraceEvent {
+  readonly type:
+    | 'permit-acquire'
+    | 'permit-release'
+    | 'reservation-acquire'
+    | 'reservation-release';
+  readonly jobId: string;
+  readonly context: ProviderContextId;
+  readonly residency: Residency;
+}
+
 export function createGovernor(options: {
   readonly policy: ConstrainedTeardownPolicy;
   readonly hooks: GovernorHooks;
   readonly limits?: GovernorLimits;
+  readonly trace?: (event: GovernorTraceEvent) => void;
 }) {
+  const trace = (type: GovernorTraceEvent['type'], held: Held) =>
+    options.trace?.({
+      type,
+      jobId: held.reservation.jobId,
+      context: held.context,
+      residency: held.reservation.residency,
+    });
   const limits = options.limits ?? contractLimits();
   const queue: Waiter[] = [];
   const held = new Set<Held>();
@@ -126,13 +146,17 @@ export function createGovernor(options: {
     } finally {
       // Counted until the release has actually happened.
       held.delete(warm);
+      trace('reservation-release', warm);
       releasing.delete(warm.context);
       schedule();
     }
   }
   function grant(waiter: Waiter, reuse: Held | undefined): void {
     const { job } = waiter;
-    if (reuse) held.delete(reuse);
+    if (reuse) {
+      held.delete(reuse);
+      trace('reservation-release', reuse);
+    }
     const permit = Object.freeze({ context: job.context, jobId: job.id });
     const entry: Held = {
       reservation: reservationOf(job),
@@ -141,6 +165,8 @@ export function createGovernor(options: {
       permit,
     };
     held.add(entry);
+    trace('reservation-acquire', entry);
+    trace('permit-acquire', entry);
     const phases: AdmittedPhase[] = [];
     let settled = false;
     waiter.resolve({
@@ -155,6 +181,7 @@ export function createGovernor(options: {
         if (settled) return;
         settled = true;
         entry.permit = null;
+        trace('permit-release', entry);
         if (tearsDownBetweenPhases(options.policy)) await release(entry);
         else schedule();
       },

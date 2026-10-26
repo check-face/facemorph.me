@@ -4,7 +4,13 @@ import type { ComputeRoute } from '@facemorph/stylegan-js';
 import { nextScheduled } from '../Next/scheduler.mjs';
 import { IntentRegistry } from './intents.ts';
 import { morphFrameFailure } from './morph-budget.ts';
-import { createGovernor, type AdmittedPhase, type Governor, type Lease } from './scheduler.ts';
+import {
+  createGovernor,
+  type AdmittedPhase,
+  type Governor,
+  type GovernorTraceEvent,
+  type Lease,
+} from './scheduler.ts';
 import {
   createActionProgress,
   morphLine,
@@ -171,6 +177,29 @@ const heavyOp = (request: OperationRequest): HeavyOp =>
 const contextOf = (request: OperationRequest): ProviderContextId =>
   `${request.route.requested === 'webgpu' ? 'webgpu' : 'cpu'}:${request.route.runtimeSha256}`;
 
+/** One entry of the operation trace; IDs are concrete here and mapped to symbols by the comparator. */
+export type OperationTraceEvent =
+  | GovernorTraceEvent
+  | {
+      readonly type: 'request';
+      readonly requestId: string;
+      readonly attemptId: string;
+      readonly kind: OperationRequest['kind'];
+      readonly inputs: readonly {
+        readonly slot: string;
+        readonly revision: number;
+        readonly mode: string;
+      }[];
+    }
+  | { readonly type: 'provider-requested'; readonly jobId: string; readonly requested: string }
+  | { readonly type: 'provider-actual'; readonly jobId: string; readonly provider: string }
+  | {
+      readonly type: 'compute-ready' | 'file-ready' | 'cancelled' | 'settled';
+      readonly requestId: string;
+      readonly attemptId: string;
+      readonly outcome?: string;
+    };
+
 /** What an offline job that needed missing files says: what still works, and that Retry will finish it. */
 export const OFFLINE_MISSING_ASSETS =
   "You're offline, and this face needs model files that aren't on this device yet. Faces you've finished and saved files still work. Reconnect, then try again.";
@@ -181,6 +210,8 @@ export function createOperationService(
     readonly governor?: Governor;
     /** Whether the browser reports a network; offline failures are typed rather than passed through. */
     readonly online?: () => boolean;
+    /** Records the operation trace (fm-vbj7): requests, governor decisions, providers and settlements. */
+    readonly trace?: (event: OperationTraceEvent) => void;
   } = {},
 ): OperationService {
   const online = options.online ?? (() => globalThis.navigator?.onLine !== false);
@@ -191,7 +222,9 @@ export function createOperationService(
     createGovernor({
       policy: { memory: 'ample' },
       hooks: { releaseWarm() {}, terminateWorkers() {} },
+      ...(options.trace ? { trace: options.trace } : {}),
     });
+  const trace = (event: OperationTraceEvent) => options.trace?.(event);
   const leases = new Map<number, Lease>();
   const registry = new IntentRegistry<Output>();
   const pending = new Map<RequestId, Pending>();
@@ -222,6 +255,18 @@ export function createOperationService(
       },
       provider: item.provider,
     } as OperationEvent;
+    if (
+      event.type === 'compute-ready' ||
+      event.type === 'file-ready' ||
+      event.type === 'cancelled' ||
+      event.type === 'settled'
+    )
+      trace({
+        type: event.type,
+        requestId: item.handle.requestId,
+        attemptId: item.handle.attemptId,
+        ...(event.type === 'settled' ? { outcome: event.outcome } : {}),
+      });
     for (const callback of listeners) {
       try {
         callback(full);
@@ -254,8 +299,11 @@ export function createOperationService(
   function progress(p: Progress): void {
     const work = active;
     if (!work || work.cancelled || work.jobId !== p.jobId) return;
-    if (p.stage === 'route-admitted' && (p.text === 'cpu' || p.text === 'webgpu'))
+    if (p.stage === 'route-admitted' && (p.text === 'cpu' || p.text === 'webgpu')) {
+      if (work.provider !== p.text)
+        trace({ type: 'provider-actual', jobId: String(work.jobId), provider: p.text });
       work.provider = p.text;
+    }
     const phase = PHASES[p.stage];
     if (phase) leases.get(work.jobId)?.phase(phase);
     for (const [item, role] of work.owners) {
@@ -480,6 +528,11 @@ export function createOperationService(
       if (work.cancelled || disposed) return;
       const request = work.request;
       // The compute permit covers runtime init, session load, canary and inference.
+      trace({
+        type: 'provider-requested',
+        jobId: String(work.jobId),
+        requested: request.route.requested,
+      });
       leases.set(
         work.jobId,
         await governor.request({
@@ -676,6 +729,17 @@ export function createOperationService(
             .map((other) => other.handle.requestId)
         : [];
     pending.set(intent.requestId, item);
+    trace({
+      type: 'request',
+      requestId: intent.requestId,
+      attemptId: intent.attemptId,
+      kind: intent.request.kind,
+      inputs: sources(intent.request).map((s) => ({
+        slot: s.slot,
+        revision: s.revision,
+        mode: s.input.mode,
+      })),
+    });
     if (intent.request.kind === 'face') retries.set(intent.request.source.slot, intent.request);
     emit(item, { type: 'queued' });
     // Attaching is deferred so a caller can subscribe/cancel using the returned handle.

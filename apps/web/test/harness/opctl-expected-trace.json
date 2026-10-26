@@ -1,0 +1,345 @@
+[
+  {
+    "type": "request",
+    "requestId": "R1",
+    "attemptId": "A1",
+    "kind": "face",
+    "inputs": [
+      {
+        "slot": "S1",
+        "revision": 2,
+        "mode": "text"
+      }
+    ]
+  },
+  {
+    "type": "provider-requested",
+    "jobId": "J1",
+    "requested": "cpu"
+  },
+  {
+    "type": "reservation-acquire",
+    "jobId": "J1",
+    "context": "cpu:runtime",
+    "residency": "generator"
+  },
+  {
+    "type": "permit-acquire",
+    "jobId": "J1",
+    "context": "cpu:runtime",
+    "residency": "generator"
+  },
+  {
+    "type": "provider-actual",
+    "jobId": "J1",
+    "provider": "cpu"
+  },
+  {
+    "type": "permit-release",
+    "jobId": "J1",
+    "context": "cpu:runtime",
+    "residency": "generator"
+  },
+  {
+    "type": "compute-ready",
+    "requestId": "R1",
+    "attemptId": "A1"
+  },
+  {
+    "type": "file-ready",
+    "requestId": "R1",
+    "attemptId": "A1"
+  },
+  {
+    "type": "settled",
+    "requestId": "R1",
+    "attemptId": "A1",
+    "outcome": "completed"
+  },
+  {
+    "type": "request",
+    "requestId": "R2",
+    "attemptId": "A2",
+    "kind": "face",
+    "inputs": [
+      {
+        "slot": "S2",
+        "revision": 3,
+        "mode": "seed"
+      }
+    ]
+  },
+  {
+    "type": "provider-requested",
+    "jobId": "J2",
+    "requested": "cpu"
+  },
+  {
+    "type": "reservation-release",
+    "jobId": "J1",
+    "context": "cpu:runtime",
+    "residency": "generator"
+  },
+  {
+    "type": "reservation-acquire",
+    "jobId": "J2",
+    "context": "cpu:runtime",
+    "residency": "generator"
+  },
+  {
+    "type": "permit-acquire",
+    "jobId": "J2",
+    "context": "cpu:runtime",
+    "residency": "generator"
+  },
+  {
+    "type": "provider-actual",
+    "jobId": "J2",
+    "provider": "cpu"
+  },
+  {
+    "type": "permit-release",
+    "jobId": "J2",
+    "context": "cpu:runtime",
+    "residency": "generator"
+  },
+  {
+    "type": "cancelled",
+    "requestId": "R2",
+    "attemptId": "A2"
+  },
+  {
+    "type": "settled",
+    "requestId": "R2",
+    "attemptId": "A2",
+    "outcome": "cancelled"
+  },
+  {
+    "type": "request",
+    "requestId": "R3",
+    "attemptId": "A3",
+    "kind": "face",
+    "inputs": [
+      {
+        "slot": "S2",
+        "revision": 3,
+        "mode": "seed"
+      }
+    ]
+  },
+  {
+    "type": "provider-requested",
+    "jobId": "J3",
+    "requested": "cpu"
+  },
+  {
+    "type": "reservation-release",
+    "jobId": "J2",
+    "context": "cpu:runtime",
+    "residency": "generator"
+  },
+  {
+    "type": "reservation-acquire",
+    "jobId": "J3",
+    "context": "cpu:runtime",
+    "residency": "generator"
+  },
+  {
+    "type": "permit-acquire",
+    "jobId": "J3",
+    "context": "cpu:runtime",
+    "residency": "generator"
+  },
+  {
+    "type": "provider-actual",
+    "jobId": "J3",
+    "provider": "cpu"
+  },
+  {
+    "type": "permit-release",
+    "jobId": "J3",
+    "context": "cpu:runtime",
+    "residency": "generator"
+  },
+  {
+    "type": "compute-ready",
+    "requestId": "R3",
+    "attemptId": "A3"
+  },
+  {
+    "type": "file-ready",
+    "requestId": "R3",
+    "attemptId": "A3"
+  },
+  {
+    "type": "settled",
+    "requestId": "R3",
+    "attemptId": "A3",
+    "outcome": "completed"
+  },
+  {
+    "type": "request",
+    "requestId": "R4",
+    "attemptId": "A4",
+    "kind": "morph",
+    "inputs": [
+      {
+        "slot": "S1",
+        "revision": 2,
+        "mode": "text"
+      },
+      {
+        "slot": "S2",
+        "revision": 3,
+        "mode": "seed"
+      },
+      {
+        "slot": "S3",
+        "revision": 2,
+        "mode": "text"
+      }
+    ]
+  },
+  {
+    "type": "provider-requested",
+    "jobId": "J4",
+    "requested": "cpu"
+  },
+  {
+    "type": "reservation-release",
+    "jobId": "J3",
+    "context": "cpu:runtime",
+    "residency": "generator"
+  },
+  {
+    "type": "reservation-acquire",
+    "jobId": "J4",
+    "context": "cpu:runtime",
+    "residency": "generator"
+  },
+  {
+    "type": "permit-acquire",
+    "jobId": "J4",
+    "context": "cpu:runtime",
+    "residency": "generator"
+  },
+  {
+    "type": "permit-release",
+    "jobId": "J4",
+    "context": "cpu:runtime",
+    "residency": "generator"
+  },
+  {
+    "type": "provider-requested",
+    "jobId": "J5",
+    "requested": "cpu"
+  },
+  {
+    "type": "reservation-release",
+    "jobId": "J4",
+    "context": "cpu:runtime",
+    "residency": "generator"
+  },
+  {
+    "type": "reservation-acquire",
+    "jobId": "J5",
+    "context": "cpu:runtime",
+    "residency": "generator"
+  },
+  {
+    "type": "permit-acquire",
+    "jobId": "J5",
+    "context": "cpu:runtime",
+    "residency": "generator"
+  },
+  {
+    "type": "permit-release",
+    "jobId": "J5",
+    "context": "cpu:runtime",
+    "residency": "generator"
+  },
+  {
+    "type": "provider-requested",
+    "jobId": "J6",
+    "requested": "cpu"
+  },
+  {
+    "type": "reservation-release",
+    "jobId": "J5",
+    "context": "cpu:runtime",
+    "residency": "generator"
+  },
+  {
+    "type": "reservation-acquire",
+    "jobId": "J6",
+    "context": "cpu:runtime",
+    "residency": "generator"
+  },
+  {
+    "type": "permit-acquire",
+    "jobId": "J6",
+    "context": "cpu:runtime",
+    "residency": "generator"
+  },
+  {
+    "type": "provider-actual",
+    "jobId": "J6",
+    "provider": "cpu"
+  },
+  {
+    "type": "permit-release",
+    "jobId": "J6",
+    "context": "cpu:runtime",
+    "residency": "generator"
+  },
+  {
+    "type": "provider-requested",
+    "jobId": "J7",
+    "requested": "cpu"
+  },
+  {
+    "type": "reservation-release",
+    "jobId": "J6",
+    "context": "cpu:runtime",
+    "residency": "generator"
+  },
+  {
+    "type": "reservation-acquire",
+    "jobId": "J7",
+    "context": "cpu:runtime",
+    "residency": "generator"
+  },
+  {
+    "type": "permit-acquire",
+    "jobId": "J7",
+    "context": "cpu:runtime",
+    "residency": "generator"
+  },
+  {
+    "type": "provider-actual",
+    "jobId": "J7",
+    "provider": "cpu"
+  },
+  {
+    "type": "permit-release",
+    "jobId": "J7",
+    "context": "cpu:runtime",
+    "residency": "generator"
+  },
+  {
+    "type": "compute-ready",
+    "requestId": "R4",
+    "attemptId": "A4"
+  },
+  {
+    "type": "file-ready",
+    "requestId": "R4",
+    "attemptId": "A4"
+  },
+  {
+    "type": "settled",
+    "requestId": "R4",
+    "attemptId": "A4",
+    "outcome": "completed"
+  }
+]
