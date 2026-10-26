@@ -170,8 +170,8 @@ after(() => server?.close());
 
 type Page = {
   evaluate<T>(fn: (a: never) => T | Promise<T>, arg?: unknown): Promise<T>;
-  goto(u: string): Promise<unknown>;
-  waitForFunction(fn: () => boolean): Promise<unknown>;
+  goto(u: string, options?: { timeout?: number }): Promise<unknown>;
+  waitForFunction(fn: () => boolean, arg?: null, options?: { timeout?: number }): Promise<unknown>;
 };
 type Context = { newPage(): Promise<Page>; close(): Promise<void> };
 type Browser = {
@@ -345,8 +345,20 @@ for (const scope of ['ort', 'direct'] as const)
       if (!browser) return t.skip(`untested: system Chromium does not start here (${CHROMIUM})`);
       t.after(() => browser.close());
       const probe = await (await browser.newContext({ ignoreHTTPSErrors: true })).newPage();
-      await probe.goto(`${origin}/`);
-      await probe.waitForFunction(() => (window as unknown as { ready?: boolean }).ready === true);
+      // The first page of a cold, headed GPU Chromium loads the engine's module graph before it sets `ready`. On a
+      // loaded CI host that start-up alone passed Playwright's default 30 s twice (main runs on 489136f and 19aad5b)
+      // while the next engine's page, warm, was ready at once. This is a start-up bound, not a measured cell: the
+      // canaries, timings and request assertions below are unchanged, and the time taken is reported.
+      const started = Date.now();
+      await probe.goto(`${origin}/`, { timeout: 120_000 });
+      await probe.waitForFunction(
+        () => (window as unknown as { ready?: boolean }).ready === true,
+        null,
+        {
+          timeout: 120_000,
+        },
+      );
+      t.diagnostic(`probe page ready in ${Date.now() - started} ms`);
       const adapter = await call<{ fallback: boolean; vendor: string; description: string } | null>(
         probe,
         'adapter',
