@@ -3,7 +3,7 @@ import {openOriginals,digest} from './originals.mjs';
 import {capabilities} from './route-priors.mjs';
 import {rankedRoutes} from './route-selection.mjs';
 import {inputLatent,requireLatent,generationIdentity} from './identity.mjs';
-import {directSupported} from './webgpu-direct.mjs';
+import {directSupported} from '@facemorph/stylegan-js/engine';
 import {adapterFacts,capabilityRecord,admissionEvidence,logAdmission,AdmissionRefused,decide,reasonFromError} from './admission.mjs';
 /** WebGL execution was removed (fm-x6h5): asking for it is a typed refusal, never a silent fallback. */
 export class RemovedRouteError extends Error{constructor(route='webgl'){super('WebGL processing was removed; use Automatic, CPU or WebGPU.');this.name='RemovedRouteError';this.code='route-removed';this.route=route;}}
@@ -169,7 +169,7 @@ export function createBrowserRuntime({manifest: suppliedManifest, manifestSha256
  // available; once it answers, a shell GPU stops being a candidate at all.
  let gpuAdapter,gpuLimits,gpuAdapterObject=null,directFailed=false,engine='ort',deviceLost=null;
  /**
-  * Which engine runs the WebGPU route. The direct engine (webgpu-direct.mjs: WGSL kernels, no ORT) is
+  * Which engine runs the WebGPU route. The direct engine (stylegan-js engine/adapters/direct-webgpu.ts: WGSL kernels, no ORT) is
   * ~1.7x faster on desktop GPUs but is tuned for them: its largest binding exceeds the 128 MiB phones
   * report and it has no phone evidence. So it is offered only to a non-mobile device whose adapter clears
   * its limits, and a direct failure falls back to the ORT engine on the same route before any other route.

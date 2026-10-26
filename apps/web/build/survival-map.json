@@ -50,8 +50,11 @@
     },
     {
       "module": "browser/webgpu-direct.mjs",
-      "path": "apps/web/src/Next/browser/webgpu-direct.mjs",
-      "tests": ["packages/stylegan-js/test/engine/routes.test.ts"]
+      "path": "packages/stylegan-js/src/engine/adapters/direct-webgpu.ts",
+      "tests": [
+        "packages/stylegan-js/test/engine/browsers.test.ts",
+        "apps/web/test/e2e/route-choice.e2e.ts"
+      ]
     },
     {
       "module": "browser/webgpu-engine.mjs",

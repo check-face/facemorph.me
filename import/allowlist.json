@@ -1519,10 +1519,10 @@
       "bytes": 37783,
       "class": "src-next",
       "ported": {
-        "sha256": "19a8ae9b2b2d77bb86d2bd9980a6e3e205479d5a0b7e468d1dac657965e5a7cd",
-        "bytes": 41328,
-        "bead": "fm-eeki",
-        "reason": "WebGL execution removed (fm-x6h5); per-operation admission through admission/route-admission.ts before any worker or model request, photo encoding admitted by capability instead of user-agent labels (fm-lt2p); route snapshot selects bounded fallback scope and forwards cancellation signal (fm-0y24); Save/Share hand over prepared files named by export identity; encoder figures from the export policy (6915a98)"
+        "sha256": "4ffd5eab50bf7e1f8caf90629273d43af450a94bcfa2633bbc0c104ef0d1d5a1",
+        "bytes": 41365,
+        "bead": "fm-7f2o",
+        "reason": "WebGL execution removed (fm-x6h5); per-operation admission through admission/route-admission.ts before any worker or model request, photo encoding admitted by capability instead of user-agent labels (fm-lt2p); route snapshot selects bounded fallback scope and forwards cancellation signal (fm-0y24); Save/Share hand over prepared files named by export identity; encoder figures from the export policy (6915a98); directSupported comes from the stylegan-js engine (routes.ts) with the direct engine itself"
       }
     },
     {
@@ -1564,7 +1564,12 @@
       "destination": "apps/web/src/Next/browser/webgpu-direct.mjs",
       "sha256": "333a7247a5ced8ec9ffaab0e017fa53bc98e20b3b9582053bba0e11b403b1502",
       "bytes": 19087,
-      "class": "src-next"
+      "class": "src-next",
+      "ported": {
+        "removed": true,
+        "bead": "fm-7f2o",
+        "reason": "moved to @facemorph/stylegan-js (engine/adapters/direct-webgpu.ts, engine/routes.ts); the worker runs the package engine"
+      }
     },
     {
       "source": "src/Next/browser/webgpu-engine.mjs",
