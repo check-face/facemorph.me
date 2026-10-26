@@ -149,7 +149,14 @@ export function attachPlaywright(target: PwTarget, map: HostMap = DEFAULT_HOST_M
     async settled(timeoutMs = 10_000) {
       const end = Date.now() + timeoutMs;
       while (Date.now() < end) {
-        await Promise.all(pending);
+        // Bounded too: Playwright's sizes() can stay pending for a request it never sees answered (a service
+        // worker's script, seen on eris under load), and an unbounded wait here outlived the bound above.
+        let wait: ReturnType<typeof setTimeout> | undefined;
+        await Promise.race([
+          Promise.all(pending),
+          new Promise((r) => (wait = setTimeout(r, Math.max(0, end - Date.now())))),
+        ]);
+        clearTimeout(wait);
         // Bytes can arrive after the status (no Content-Length: from sizes() when the request finishes).
         if ([...open.values()].every((q) => q.failed || (q.status !== null && q.bytes !== null)))
           return;
