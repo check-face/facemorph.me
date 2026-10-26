@@ -128,8 +128,13 @@ function prepare(rev: string): { sha: string; tree: string; bundle: string } {
       ...readdirSync(join(tree, 'packages')).map((p) => [p, `packages/${p}`]),
     ] as const)
       symlinkSync(join(tree, dir), join(nm, '@facemorph', name));
+    // Declarations and JS only: the packages' `build` scripts also write PROVENANCE.json through a repository script
+    // this export does not carry.
     for (const p of ['stylegan-js', 'browser-model-manager'])
-      execFileSync('npm', ['run', 'build'], { cwd: join(tree, 'packages', p), stdio: 'inherit' });
+      execFileSync(join(repo, 'node_modules/.bin/tsc'), ['-p', 'tsconfig.build.json'], {
+        cwd: join(tree, 'packages', p),
+        stdio: 'inherit',
+      });
   }
   const pageDir = join(tree, 'apps/web/test/e2e/facade-paired');
   mkdirSync(pageDir, { recursive: true });
