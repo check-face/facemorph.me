@@ -13,6 +13,10 @@ on:
         description: Also print where a persistent WebKit profile keeps OPFS data
         type: boolean
         default: false
+      loaded:
+        description: Acquire pinned CPU inputs for the loaded-handle component
+        type: boolean
+        default: false
       args:
         description: Extra node --test arguments before the files (e.g. --test-reporter=tap --test-timeout=120000)
         type: string
@@ -89,6 +93,14 @@ jobs:
           FACEMORPH_MANAGER_ENGINE=webkit node "$RUNNER_TEMP/probe.mjs"
           echo '--- files named or dirs holding OPFS data modified in the last 10 minutes'
           find "$HOME/Library/WebKit" "${TMPDIR:-/tmp}" -mmin -10 -ipath '*FileSystem/marker*' 2>/dev/null | head -20
+      - name: Pinned CPU inputs for loaded handles
+        if: inputs.loaded
+        env:
+          ACCEPT_MODEL_TERMS: 'yes'
+        run: |
+          node packages/browser-model-manager/test/support/acquire-loaded-runtime.mjs "$RUNNER_TEMP/manager-loaded-runtime"
+          echo "FACEMORPH_RUNTIME_CACHE=$RUNNER_TEMP/manager-loaded-runtime" >> "$GITHUB_ENV"
+          echo 'FACEMORPH_REQUIRE_RUNTIME=1' >> "$GITHUB_ENV"
       - name: Native manager components on macos-${{ inputs.engine }}
         env:
           FACEMORPH_MANAGER_ENGINE: ${{ inputs.engine }}

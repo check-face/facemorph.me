@@ -116,6 +116,20 @@ jobs:
           timeout: '900'
           # The Linux-only netlink namespace wrapper stays disabled on these macOS runners.
           command: node packages/browser-model-manager/test/run.mjs --test-concurrency=1 packages/browser-model-manager/test/cache-local.test.ts packages/browser-model-manager/test/handles-tabs.test.ts packages/browser-model-manager/test/acquisition.test.ts packages/browser-model-manager/test/acquisition-deadline.test.ts packages/browser-model-manager/test/slots-browser.test.ts packages/browser-model-manager/test/worker-storage.test.ts packages/browser-model-manager/test/storage-permission.test.ts packages/browser-model-manager/test/uncached-browser.test.ts
+      - name: Loaded manager CPU handle lifecycle on ${{ matrix.lane }}
+        if: matrix.browser == 'webkit' || matrix.browser == 'firefox'
+        uses: ./.github/actions/run-command
+        env:
+          ACCEPT_MODEL_TERMS: 'yes'
+          FACEMORPH_MANAGER_ENGINE: ${{ matrix.browser }}
+          FACEMORPH_REQUIRE_MANAGER_BROWSER: '1'
+          FACEMORPH_REQUIRE_RUNTIME: '1'
+          FACEMORPH_RUNTIME_CACHE: ${{ runner.temp }}/manager-loaded-runtime
+        with:
+          timeout: '600'
+          command: |
+            node packages/browser-model-manager/test/support/acquire-loaded-runtime.mjs "$FACEMORPH_RUNTIME_CACHE"
+            node packages/browser-model-manager/test/run.mjs packages/browser-model-manager/test/loaded-browser.component.ts
       - name: Journeys on ${{ matrix.lane }}
         working-directory: tools/device-lab
         run: python hosted.py browser --lane ${{ matrix.lane }} --browser ${{ matrix.browser }} --artifact ../../artifact/deploy-next --runtime-sha ${{ inputs.runtime_sha }} --out ../../lane
