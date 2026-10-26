@@ -500,7 +500,7 @@ test(
           injected = false;
         self.onmessage = function (event: MessageEvent) {
           if (event.data?.type === 'finish') finishing = true;
-          return onmessage.call(this, event);
+          return onmessage.call(self, event);
         };
         VideoEncoder.prototype.flush = function () {
           if (finishing && !injected) {
