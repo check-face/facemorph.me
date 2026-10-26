@@ -26,7 +26,8 @@ const results = join(REPO, 'apps/web/test-results/face-controls');
 
 test(
   'composed tile validation, exact values, Enter, Cancel and Retry at visible positions',
-  { timeout: 600_000 },
+  // Many real CPU faces in one journey: 470 s on a quiet eris, past 600 s at load ~44 (main run 40325727795).
+  { timeout: 1_200_000 },
   async (t) => {
     if (!existsSync(join(runtime, 'manifest.json'))) {
       const reason = `untested: no acquired runtime at ${runtime}; owner fm-25um; run on the runtime lane`;
