@@ -207,7 +207,7 @@ export async function withBrowserPage(
     page = await context.newPage();
     page.setDefaultTimeout(timeoutMs);
     result = await bounded(
-      () => fn({ page, context, browser, origin, observation, serverRequests }),
+      () => fn({ page, context, browser, browserServer, origin, observation, serverRequests }),
       timeoutMs,
       'Consumer browser callback',
     );
@@ -261,7 +261,20 @@ export async function withBrowserPage(
         browserCleanup.gracefulCloseError = String(error);
         browserCleanup.forced = true;
         try {
-          await bounded(browserServer.kill(), 3000, 'Browser process termination');
+          // Playwright signals the process group and swallows signal errors. Also
+          // target this exact owner PID, without setting ChildProcess.killed before
+          // the tree-kill (which would suppress Playwright's group signal).
+          const killing = browserServer.kill();
+          if (ownedProcess.exitCode === null && ownedProcess.signalCode === null) {
+            browserCleanup.directKill = true;
+            try {
+              process.kill(ownedProcess.pid, 'SIGKILL');
+            } catch (error) {
+              browserCleanup.directKillError = String(error);
+              if (error.code !== 'ESRCH') cleanupErrors.push('browser signal: ' + String(error));
+            }
+          }
+          await bounded(killing, 3000, 'Browser process termination');
         } catch (error) {
           cleanupErrors.push('browser: ' + String(error));
         }
