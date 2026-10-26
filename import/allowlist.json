@@ -1081,10 +1081,10 @@
       "class": "temporary-root",
       "temporary": true,
       "ported": {
-        "sha256": "37609628efffc4b6c061b24c5448bbe976ae79d23a2248242d2e8f9ff4361ee1",
-        "bytes": 3325,
+        "sha256": "a080c62cddf4eec506844c07cbf0c30f5b235edab2b132ef7542dca279de9f56",
+        "bytes": 3558,
         "bead": "fm-j4i8",
-        "reason": "Check whole-action monotonic progress across prerequisite faces, frames and usable MP4; retain secondary frame-counter cases and require the same-revision operated DOM proof in morph-output.e2e.ts."
+        "reason": "Check whole-action monotonic progress across prerequisite faces, frames and usable MP4; retain secondary frame-counter cases and require the same-revision operated DOM proof in morph-output.e2e.ts.; keep the behavioural operation-service unit gate in destination-checks and the built-app Morph suite in provisioned web-shell/runtime-e2e"
       }
     },
     {

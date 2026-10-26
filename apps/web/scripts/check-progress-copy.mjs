@@ -61,4 +61,6 @@ if (problems.length) {
   for (const problem of problems) console.error('  - ' + problem);
   process.exit(1);
 }
-console.log(JSON.stringify({ primary: 'one whole-action monotonic bar', secondary: 'Generating X / Y images', completion: 'usable MP4', fractions, monotonic: true, gate: 'test/e2e/morph-output.e2e.ts' }));
+// destination-checks runs this behavioural unit gate without browser/model provisioning.
+// web-shell/runtime-e2e runs the built-app gate with Playwright and the pinned runtime.
+console.log(JSON.stringify({ primary: 'one whole-action monotonic bar', secondary: 'Generating X / Y images', completion: 'usable MP4', fractions, monotonic: true, gate: 'src/operations/progress-copy.test.ts', builtAppGate: 'test/e2e/morph-output.e2e.ts' }));
