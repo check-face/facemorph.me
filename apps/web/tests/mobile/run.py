@@ -13,6 +13,7 @@ import ssl
 import tempfile
 import time
 from urllib.parse import urlsplit
+import sys
 import uuid
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -133,6 +134,12 @@ def main():
     args = parser.parse_args()
     args.output.mkdir(parents=True, exist_ok=True)
     run_id = str(uuid.uuid4())
+    started = time.monotonic()
+
+    def phase(name):
+        # Startup phases on stderr, so a stalled cold runner says where it stalled.
+        print(json.dumps({'phase': name, 'seconds': round(time.monotonic()-started, 3)}), file=sys.stderr, flush=True)
+    phase('evidence')
     evidence = {'runId': run_id, 'executionEnvironment': {'android':'android-emulator','ios':'ios-simulator','desktop':'desktop-component-only'}[args.platform],
                 'physicalDeviceQualified': False, 'inferenceQualified': False, 'photoWorkflowQualified': False,
                 'networkObservation': 'model fixture endpoint ledger on the app TLS origin; no host separation or complete external-request interception',
@@ -249,12 +256,14 @@ def main():
             except (ValueError, TypeError):
                 self.send_error(400)
 
+    phase('certificate')
     certificate_dir = tempfile.TemporaryDirectory(prefix='facemorph-mobile-tls-')
     cert = Path(certificate_dir.name)/'localhost.pem'
     key = Path(certificate_dir.name)/'localhost-key.pem'
     command('openssl', 'req', '-x509', '-newkey', 'rsa:2048', '-nodes', '-days', '1',
             '-keyout', str(key), '-out', str(cert), '-subj', '/CN=localhost',
             '-addext', 'subjectAltName=DNS:localhost,IP:127.0.0.1')
+    phase('server')
     server = ThreadingHTTPServer(('127.0.0.1', args.port), functools.partial(Handler, directory=str(ROOT)))
     args.port = server.server_address[1]
     tls = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)

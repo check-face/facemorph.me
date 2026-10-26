@@ -113,7 +113,9 @@ class EvidenceTests(unittest.TestCase):
                                             '--platform', 'desktop', '--port', '0', '--timeout', '30',
                                             '--output', str(scratch/'evidence')], stdout=stdout, stderr=stderr)
                 try:
-                    deadline = time.monotonic()+15
+                    # A cold hosted macOS runner is slow to its first openssl/git call; the controller logs each
+                    # startup phase to stderr, which a timeout reports instead of discarding.
+                    deadline = time.monotonic()+90
                     while time.monotonic() < deadline:
                         lines = (scratch/'stdout').read_text().splitlines()
                         if lines:
@@ -121,7 +123,8 @@ class EvidenceTests(unittest.TestCase):
                         if process.poll() is not None:
                             self.fail((scratch/'stderr').read_text())
                         time.sleep(.02)
-                    self.assertTrue(lines, 'controller never published its ephemeral HTTPS URL')
+                    self.assertTrue(lines, 'controller never published its ephemeral HTTPS URL; its stderr: '
+                                    + (scratch/'stderr').read_text())
                     url = json.loads(lines[0])['url']
                     parts = urlsplit(url)
                     origin = f'{parts.scheme}://{parts.netloc}'
