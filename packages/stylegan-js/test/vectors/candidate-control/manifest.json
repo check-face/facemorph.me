@@ -1,7 +1,7 @@
 {
   "schema": "facemorph-candidate-control-v1",
   "bead": "fm-7f2o",
-  "note": "The candidate's route, engine and canary modules as the app ran them before fm-7f2o moved them into stylegan-js: the frozen control the package's routes.test.ts and canary.test.ts compare against, byte-identical to the named app commit.",
+  "note": "The candidate's route, engine and canary modules as the app ran them before fm-7f2o moved them into stylegan-js: the frozen control the package's routes.test.ts and canary.test.ts compare against, byte-identical to the named app commit; infill.mjs is the candidate's canonical frame order before fm-ioap made the app re-export the package's (latent-path.test.ts compares against it).",
   "files": [
     {
       "file": "browser/canary-qualification.mjs",
@@ -70,6 +70,15 @@
       "file": "Assets/sha256.mjs",
       "sha256": "dff567271f05474e478326f8f7d989d208d665b7a4c29ff3f87fd871e8215ecd",
       "note": "re-export of browser-model-manager src/cache/sha256.ts at this depth (the app module is the same one-line re-export)"
+    },
+    {
+      "file": "infill.mjs",
+      "sha256": "0e6170aa3a6405ce8c0987ae25bab288f190943fdb12e761cd8ec247cd4a7365",
+      "bytes": 1040,
+      "source": {
+        "path": "apps/web/src/Next/infill.mjs",
+        "commit": "8982cd876ce831ea480dabc0d18aeefb655db1ad"
+      }
     }
   ]
 }

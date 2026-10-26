@@ -39,7 +39,9 @@ const appGeometry = (await import(new URL('geometry/latent-path.mjs', APP).href)
   GEOMETRY_VERSION: string;
   createLatentPath(m: MorphPathSpec): AppPath;
 };
-const appInfill = (await import(new URL('infill.mjs', APP).href)) as {
+// The app's infill.mjs re-exports this package's order since fm-ioap; the candidate's own module is the frozen control.
+const CONTROL = new URL('../vectors/candidate-control/', import.meta.url);
+const appInfill = (await import(new URL('infill.mjs', CONTROL).href)) as {
   infillIndices(total: number, perSegment: number): Iterable<number>;
   infillFrames(
     path: AppPath,
@@ -462,7 +464,7 @@ test('latent-path.unsupported-shape: typed errors name the field', () => {
   );
 });
 
-test('infill: indices and frames match the app module', () => {
+test('infill: indices and frames match the candidate module (frozen control)', () => {
   for (const [total, per] of [
     [32, 16],
     [16, 8],
@@ -496,7 +498,7 @@ test('infill: indices and frames match the app module', () => {
       assert(bytes(f.values).equals(bytes(t.values)));
     });
   }
-  // Open paths: the final frame is the last segment at u = 1 (the app module throws there).
+  // Open paths: the final frame is the last segment at u = 1 (the candidate module throws there).
   const open = spec('linear', { controls: 3, closed: false, space: 'w', framesPerSegment: 4 });
   const path = createLatentPath(open);
   const frames = [...infillFrames(path, open)];
