@@ -21,7 +21,8 @@ const geometry = JSON.parse(
 
 test(
   'Card photo entry and confirmed crop: trusted chooser/paste, geometry, cancellation and focus',
-  { timeout: 300_000 },
+  // Several real CPU encodes in one journey: 252 s on a quiet eris, past 300 s under load (main run 40290030872).
+  { timeout: 600_000 },
   async (t) => {
     if (!existsSync(join(runtime, 'manifest.json'))) {
       const reason = `untested: no acquired runtime at ${runtime}; owner fm-fy2.17.1; run on the runtime lane`;
