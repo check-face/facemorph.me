@@ -1,6 +1,7 @@
-// The packed tarball (fm-eulc): what `npm pack` would publish holds the build output, the schema and the manifest,
-// and nothing else: no weights or model-like blobs, no test fixtures, and no runtime import that reaches outside
-// the package (a repository-only path) or into a package it does not declare.
+// The packed tarball (fm-eulc): what `npm pack` would publish holds the build output, the schema, the manifest and
+// the licence, notices and build provenance (fm-oagi), and nothing else: no weights or model-like blobs, no test
+// fixtures, and no runtime import that reaches outside the package (a repository-only path) or into a package it
+// does not declare.
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
@@ -24,11 +25,11 @@ const manifest = JSON.parse(readFileSync(join(PKG, 'package.json'), 'utf8')) as 
   dependencies?: Record<string, string>;
 };
 
-test('the tarball holds dist/, the schema and package.json only', () => {
+test('the tarball holds dist/, the schema, package.json, the licence, notices and provenance only', () => {
   const stray = files.filter(
     (f) =>
       !(
-        f === 'package.json' ||
+        ['package.json', 'LICENSE', 'THIRD_PARTY_NOTICES', 'PROVENANCE.json'].includes(f) ||
         /^dist\/.+\.(js|d\.ts)$/.test(f) ||
         /^schema\/[\w.-]+\.json$/.test(f)
       ),
@@ -36,6 +37,10 @@ test('the tarball holds dist/, the schema and package.json only', () => {
   assert.deepEqual(stray, []);
   assert.ok(
     files.includes('dist/cache/model-cache.js') && files.includes('dist/cache/model-cache.d.ts'),
+  );
+  assert.ok(
+    files.includes('LICENSE') && files.includes('THIRD_PARTY_NOTICES'),
+    'MIT licence and notices',
   );
 });
 
