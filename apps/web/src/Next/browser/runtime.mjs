@@ -5,6 +5,7 @@ import {rankedRoutes} from './route-selection.mjs';
 import {inputLatent,requireLatent,generationIdentity} from './identity.mjs';
 import {directSupported} from '@facemorph/stylegan-js/engine';
 import {adapterFacts,capabilityRecord,admissionEvidence,logAdmission,AdmissionRefused,decide,reasonFromError} from './admission.mjs';
+import {admitRuntimeManifest,RuntimeManifestRefused} from './runtime-manifest.mjs';
 /** WebGL execution was removed (fm-x6h5): asking for it is a typed refusal, never a silent fallback. */
 export class RemovedRouteError extends Error{constructor(route='webgl'){super('WebGL processing was removed; use Automatic, CPU or WebGPU.');this.name='RemovedRouteError';this.code='route-removed';this.route=route;}}
 const abortError=()=>new DOMException('Generation cancelled','AbortError');
@@ -25,12 +26,27 @@ export function createBrowserRuntime({manifest: suppliedManifest, manifestSha256
   sessionStorage.removeItem('checkface-runtime-active-v1');}catch{}
  const markerOwner=crypto.randomUUID();const mark=(stage,id)=>{try{sessionStorage.setItem('checkface-runtime-active-v1',JSON.stringify({owner:markerOwner,route,stage,id,at:Date.now()}));}catch{}};const unmark=()=>{try{const item=JSON.parse(sessionStorage.getItem('checkface-runtime-active-v1')||'null');if(item?.owner===markerOwner)sessionStorage.removeItem('checkface-runtime-active-v1');}catch{}};
  if(preferredRoute==='webgl')throw new RemovedRouteError();if(!['auto','cpu','webgpu'].includes(preferredRoute))throw Error('Invalid preferred inference route');
- let manifest=suppliedManifest,manifestHash=suppliedManifestSha256,worker,active,disposed=false,validated=false,encoderValidatedSha256,originals,route='cpu',qualificationPending=false;const pending=new Map();let sequence=0,synthesisRuns=0;
+ let manifest,manifestHash,configPending,worker,active,disposed=false,validated=false,encoderValidatedSha256,originals,route='cpu',qualificationPending=false;const pending=new Map();let sequence=0,synthesisRuns=0;
  const emit=(event,extra)=>{try{const detail={provider:route,...event};onProgress(detail);extra?.(detail);}catch{}};
  async function config(){
-  if(manifestHash&&!/^[a-f0-9]{64}$/.test(manifestHash))throw Error('Invalid runtime manifest checksum');
-  if(!manifest||!manifestHash){const response=await fetch(manifestUrl,{credentials:'omit'});if(!response.ok)throw Error('Could not load the generation bundle.');const raw=await response.arrayBuffer(),parsed=JSON.parse(new TextDecoder().decode(raw));if(manifest&&JSON.stringify(manifest)!==JSON.stringify(parsed))throw Error('The runtime manifest changed; reload before continuing.');manifest=parsed;manifestHash=await digest(raw);}
-  if(!manifest||manifest.schemaVersion!==1||!manifest.bundleVersion||!Array.isArray(manifest.canaries)||manifest.canaries.length<2)throw Error('Invalid runtime bundle');return manifest;
+  if(manifest&&manifestHash)return manifest;
+  if(configPending)return configPending;
+  const attempt=(async()=>{
+   let candidate=suppliedManifest?admitRuntimeManifest(suppliedManifest):undefined,checksum=suppliedManifestSha256;
+   if(checksum&&!/^[a-f0-9]{64}$/.test(checksum))throw Error('Invalid runtime manifest checksum');
+   if(!candidate||!checksum){
+    const response=await fetch(manifestUrl,{credentials:'omit'});if(!response.ok)throw Error('Could not load the generation bundle.');
+    const raw=await response.arrayBuffer();let parsed;
+    try{parsed=JSON.parse(new TextDecoder().decode(raw));}catch{throw new RuntimeManifestRefused({code:'invalid-field',path:'$',message:'valid manifest JSON'});}
+    parsed=admitRuntimeManifest(parsed);
+    if(candidate&&JSON.stringify(candidate)!==JSON.stringify(parsed))throw new RuntimeManifestRefused({code:'invalid-field',path:'$',message:'runtime manifest changed; reload before continuing'});
+    candidate=parsed;checksum=await digest(raw);
+   }
+   // Both values commit together, after every check. A rejected pointer leaves a later retry free to fetch again.
+   manifest=candidate;manifestHash=checksum;return manifest;
+  })();
+  configPending=attempt;
+  try{return await attempt;}finally{if(configPending===attempt)configPending=null;}
  }
 
  function stop(reason=abortError()){unmark();worker?.terminate();worker=null;synthesisRuns=0;validated=false;for(const task of pending.values()){clearTimeout(task.timer);task.reject(reason);}pending.clear();}

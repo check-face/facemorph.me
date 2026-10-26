@@ -6,7 +6,8 @@ import {createBrowserRuntime} from './runtime.mjs';
 const SPEC_DEFAULT_LIMITS={maxBufferSize:268435456,maxStorageBufferBindingSize:134217728};
 
 const hash='0'.repeat(64);
-const manifest=()=>({schemaVersion:1,bundleVersion:'controller-test',modelSourceSha256:'model',noiseSha256:'noise',canaries:[{},{}],synthesis:{sha256:'s'},mapping:{sha256:'m'},average:{sha256:'a'},noise:[],webgpu:{},webgl:{}});
+const pin=n=>String(n).repeat(64),asset=(n,size=4)=>({url:`https://model.example/asset-${n}`,sha256:pin(n),size});
+const manifest=()=>({schemaVersion:1,bundleVersion:'controller-test',modelSourceSha256:pin(1),noiseSha256:pin(2),canaries:[{},{}],synthesis:asset(3),mapping:asset(4),average:asset(5),noise:[{...asset(6),name:'noise_0',shape:[1]}],webgpu:{},webgl:{}});
 const storage=()=>{const values=new Map();return {getItem:key=>values.get(key)??null,setItem:(key,value)=>values.set(key,String(value)),removeItem:key=>values.delete(key)};};
 function environment(t,agent='Android',gpu=true){
  for(const [key,value] of Object.entries({navigator:{userAgent:agent,...(gpu?{gpu:{requestAdapter:async()=>({limits:SPEC_DEFAULT_LIMITS})}}:{}),hardwareConcurrency:8},OffscreenCanvas:class {},localStorage:storage(),sessionStorage:storage()})){
@@ -309,16 +310,16 @@ test('an explicitly selected route still fails rather than silently substituting
 
 // The encoder correctness pass costs 20,920 ms on the operator's phone against 7,395 ms for the
 // real encode. It must run once per device per encoder build, not once per page load.
-const photoManifest=()=>({...manifest(),encoderStream:{sha256:'enc-1',phoneAdmitted:true},alignmentSha256:'align',landmarks:{sha256:'l'}});
+const photoManifest=()=>({...manifest(),encoderStream:{...asset(8),sourceEncoderSha256:pin(7),preprocessingSha256:pin(9),phoneAdmitted:true,maxWasmBytes:268435456},alignmentSha256:pin(9),landmarks:asset('a')});
 const alignedPhoto=async()=>({tensor:new Float32Array(196608),faceCount:1,didAlign:true,
- alignmentWorkerTerminated:true,provenance:{preprocessingSha256:'align',facePolicy:'exactly-one-face-v1'}});
+ alignmentWorkerTerminated:true,provenance:{preprocessingSha256:pin(9),facePolicy:'exactly-one-face-v1'}});
 
 function photoWorker(seen){
  return ()=>({postMessage(message){seen.push(message);queueMicrotask(()=>{
   const send=data=>this.onmessage?.({data:{id:message.id,...data}});
   if(message.type==='qualify')return send({type:'complete',result:{deviceValidated:true}});
   if(message.type==='encode-aligned')return send({type:'complete',result:{values:new Float32Array(9216),
-   encoderQualification:{passed:true,manifestSha256:'enc-1'}}});
+   encoderQualification:{passed:true,manifestSha256:pin(8)}}});
   if(message.type==='synthesize')return send({type:'complete',result:{blob:new Blob(['p'],{type:'image/png'}),
    values:new Float32Array(9216),space:'w-plus',shape:[1,18,512]}});
   send({type:'complete',result:{}});});},terminate(){}});
@@ -337,7 +338,7 @@ test('the encoder correctness pass is not repeated on a later page load',async t
  const b=createBrowserRuntime({manifest:photoManifest(),manifestSha256:hash,alignPhoto:alignedPhoto,workerFactory:photoWorker(second)});
  t.after(()=>b.dispose());
  await b.encodePhoto(new Blob(['y'],{type:'image/png'}));
- assert.equal(second.find(m=>m.type==='encode-aligned').qualifiedEncoderSha256,'enc-1',
+ assert.equal(second.find(m=>m.type==='encode-aligned').qualifiedEncoderSha256,pin(8),
   'the second load reuses this device\'s recorded verdict');
 });
 
@@ -347,12 +348,12 @@ test('a different encoder build qualifies again rather than trusting the old ver
  const a=createBrowserRuntime({manifest:photoManifest(),manifestSha256:hash,alignPhoto:alignedPhoto,workerFactory:photoWorker(first)});
  await a.encodePhoto(new Blob(['x'],{type:'image/png'}));
  a.dispose();
- const changed={...photoManifest(),encoderStream:{sha256:'enc-2',phoneAdmitted:true}};
+ const changed={...photoManifest(),encoderStream:{...photoManifest().encoderStream,...asset('b')}};
  const second=[];
  const b=createBrowserRuntime({manifest:changed,manifestSha256:hash,alignPhoto:alignedPhoto,
   workerFactory:()=>{const w=photoWorker(second)();const post=w.postMessage;
    w.postMessage=function(m){if(m.type==='encode-aligned'){second.push(m);return queueMicrotask(()=>this.onmessage({data:{id:m.id,type:'complete',
-    result:{values:new Float32Array(9216),encoderQualification:{passed:true,manifestSha256:'enc-2'}}}}));}post.call(this,m);};
+    result:{values:new Float32Array(9216),encoderQualification:{passed:true,manifestSha256:pin('b')}}}}));}post.call(this,m);};
    return w;}});
  t.after(()=>b.dispose());
  await b.encodePhoto(new Blob(['y'],{type:'image/png'}));

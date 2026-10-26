@@ -4,6 +4,7 @@ import {digest} from './browser/originals.mjs';
 import {decorateImage,downloadImage,recoverImage,decorateVideo,recoverVideoProject} from './recovery-metadata.mjs';
 import {createPhotoAligner} from './photo/align-photo.mjs';
 import {createBrowserRuntime} from './browser/runtime.mjs';
+import {admitRuntimeManifest} from './browser/runtime-manifest.mjs';
 import {AdmissionRefused} from './browser/admission.mjs';
 import {createLatentPath,GEOMETRY_VERSION} from './geometry/latent-path.mjs';
 import {blend,FFHQ_1024_DESCRIPTOR} from '@facemorph/stylegan-js';
@@ -120,7 +121,9 @@ const UNIT_TERMINAL_STAGES=new Set(['synthesis-complete','model-loaded','mapping
 function canonicalProject(value){const decoded=decode(typeof value==='string'?value:JSON.stringify(value));if(decoded.tag!==0)throw Error('This project is invalid or uses an unsupported format.');const encoded=encode(decoded.fields[0]);if(encoded.tag!==0)throw Error('This project cannot be opened.');return JSON.parse(encoded.fields[0]);}
 async function engine(){
  if(runtime)return runtime;
- const response=await fetch('/runtime/manifest.json',{cache:'no-cache',signal:active?.signal});if(!response.ok)throw Error('Model setup is unavailable. Please try again shortly.');const raw=await response.arrayBuffer();if(raw.byteLength>4*1024*1024)throw Error('Model manifest is too large.');manifest=JSON.parse(new TextDecoder().decode(raw));const manifestSha256=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',raw)),x=>x.toString(16).padStart(2,'0')).join('');
+ const response=await fetch('/runtime/manifest.json',{cache:'no-cache',signal:active?.signal});if(!response.ok)throw Error('Model setup is unavailable. Please try again shortly.');const raw=await response.arrayBuffer();if(raw.byteLength>4*1024*1024)throw Error('Model manifest is too large.');// A refused pointer (fm-fy2.14) throws before a runtime exists, so the next attempt fetches the pointer again;
+ // only an admitted manifest is ever cached with its runtime.
+ manifest=admitRuntimeManifest(JSON.parse(new TextDecoder().decode(raw)));const manifestSha256=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',raw)),x=>x.toString(16).padStart(2,'0')).join('');
  runtimeIdentity=manifestSha256;diagnostics.bundle(manifestSha256);
  // The browser adapter rejects missing photo support rather than silently using a server.
  const photoAligner=manifest.photo?createPhotoAligner({manifestUrl:manifest.photo.manifestUrl,workerFactory:()=>new Worker(new URL('./photo/selection-worker.mjs',import.meta.url),{type:'module'})}):null;

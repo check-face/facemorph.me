@@ -1,8 +1,13 @@
 // The estimate must come from measurement and must not appear before there is one.
 import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs/promises';import vm from 'node:vm';import {webcrypto} from 'node:crypto';
 import {createEstimator, describeMs, describeMeasuredMs, isSlowJob, COLD_FACE_MS} from './estimate.mjs';
+import {admitRuntimeManifest,RuntimeManifestRefused} from './browser/runtime-manifest.mjs';
 const read=n=>fs.readFile(new URL(n,import.meta.url),'utf8');
 const plain=s=>s.replace(/^(?:import .*|export \{.*\} from .*);\n/gm,'').replaceAll('export ','').replaceAll('import.meta.url',JSON.stringify(import.meta.url));
+function runtimeManifest(){
+ const asset=hex=>({sha256:hex.repeat(64),size:4,url:`https://models.example/runtime/${hex.repeat(64)}.bin`});
+ return {schemaVersion:1,bundleVersion:'test',modelSourceSha256:'a'.repeat(64),noiseSha256:'b'.repeat(64),mapping:asset('1'),synthesis:asset('2'),average:asset('3'),noise:[{...asset('4'),name:'noise_0',shape:[1,1]}],codec:{},canaries:[{name:'c0',w:asset('5'),samples:asset('6'),reference:asset('7')},{name:'c1',w:asset('8'),samples:asset('9'),reference:asset('a')}]};
+}
 test('Face time is measured from real work only, and frames come from the shared geometry',async()=>{
  // product-bridge reads its stage labels from stage-labels.mjs and its morph key from
  // morph-frames.mjs; inline both so the stripped harness defines the real implementations.
@@ -13,10 +18,10 @@ test('Face time is measured from real work only, and frames come from the shared
  // operator's phone those extras turned a 1,597 ms synthesis into "a face took 38 seconds".
  const service={setPreferredRoute(){},onProgress:()=>{},generate:async()=>{
   service.onProgress({stage:'synthesis-complete',elapsedMs:synthesisMs});
-  return {blob:new Blob(['i'],{type:'image/png'}),cached:false,latent:{space:'w-plus',shape:[18,512],values:new Float32Array(9216)},provenance:{bundleVersion:'t',manifestSha256:'0'.repeat(64),modelSha256:'m',noiseSha256:'n'}};}};
- const ctx=vm.createContext({analytics:new Proxy({},{get:()=>()=>{}}),onJobEnd(){},Blob,Float32Array,AbortController,DOMException,TextDecoder,crypto:webcrypto,JSON,Map,Date,performance:{now:()=>Date.now()},
+  return {blob:new Blob(['i'],{type:'image/png'}),cached:false,latent:{space:'w-plus',shape:[18,512],values:new Float32Array(9216)},provenance:{bundleVersion:'t',manifestSha256:'0'.repeat(64),modelSha256:'a'.repeat(64),noiseSha256:'b'.repeat(64)}};}};
+ const ctx=vm.createContext({admitRuntimeManifest,RuntimeManifestRefused,analytics:new Proxy({},{get:()=>()=>{}}),onJobEnd(){},Blob,Float32Array,AbortController,DOMException,TextDecoder,crypto:webcrypto,JSON,Map,Date,performance:{now:()=>Date.now()},
   URL:{createObjectURL:()=>'blob:'+ ++counter,revokeObjectURL(){}},
-  fetch:async()=>({ok:true,arrayBuffer:async()=>new TextEncoder().encode(JSON.stringify({codec:{}})).buffer}),
+  fetch:async()=>({ok:true,arrayBuffer:async()=>new TextEncoder().encode(JSON.stringify(runtimeManifest())).buffer}),
   createBrowserRuntime:options=>{service.onProgress=options.onProgress;return service;},createDesktopRuntime:options=>{service.onProgress=options.onProgress;return service;},decode:s=>({tag:0,fields:[JSON.parse(s)]}),encode:x=>({tag:0,fields:[JSON.stringify(x)]}),
   saveFile:async()=>'Saved',GEOMETRY_VERSION:'t',createLatentPath:o=>({totalFrames:o.framesPerSegment*o.controls.length,frames:()=>[]}),
   videoWriter:()=>({initialize:async()=>{},dispose(){}}),diagnostics:{start(){},stage(){},finish(){},bundle(){}},window:{addEventListener(){}}});

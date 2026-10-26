@@ -1432,10 +1432,10 @@
       "bytes": 23849,
       "class": "src-next",
       "ported": {
-        "sha256": "aa8ee2758afcdc23339b16f1c72c55ef9b5366be0254dcc16c902e86673bd185",
-        "bytes": 24155,
-        "bead": "fm-lt2p",
-        "reason": "stand-in adapter reports the WebGPU spec default limits that route admission reads"
+        "sha256": "533c855c761c2b7db6c0c052caace32470ababb150294dcf0953516519fdf07b",
+        "bytes": 24376,
+        "bead": "fm-fy2.14",
+        "reason": "stand-in adapter reports the WebGPU spec default limits that route admission reads; admits the runtime manifest pointer (runtime-manifest.mjs) before replacing the active runtime; a refused pointer leaves the next attempt free to fetch again"
       }
     },
     {
@@ -1519,10 +1519,10 @@
       "bytes": 37783,
       "class": "src-next",
       "ported": {
-        "sha256": "4ffd5eab50bf7e1f8caf90629273d43af450a94bcfa2633bbc0c104ef0d1d5a1",
-        "bytes": 41365,
-        "bead": "fm-7f2o",
-        "reason": "WebGL execution removed (fm-x6h5); per-operation admission through admission/route-admission.ts before any worker or model request, photo encoding admitted by capability instead of user-agent labels (fm-lt2p); route snapshot selects bounded fallback scope and forwards cancellation signal (fm-0y24); Save/Share hand over prepared files named by export identity; encoder figures from the export policy (6915a98); directSupported comes from the stylegan-js engine (routes.ts) with the direct engine itself"
+        "sha256": "86e6d3ee7a9948b67897bb09695326ef9b7602676be0e64296fc5ef5c9898920",
+        "bytes": 41995,
+        "bead": "fm-fy2.14",
+        "reason": "WebGL execution removed (fm-x6h5); per-operation admission through admission/route-admission.ts before any worker or model request, photo encoding admitted by capability instead of user-agent labels (fm-lt2p); route snapshot selects bounded fallback scope and forwards cancellation signal (fm-0y24); Save/Share hand over prepared files named by export identity; encoder figures from the export policy (6915a98); directSupported comes from the stylegan-js engine (routes.ts) with the direct engine itself; admits the runtime manifest pointer (runtime-manifest.mjs) before replacing the active runtime; a refused pointer leaves the next attempt free to fetch again"
       }
     },
     {
@@ -1532,10 +1532,10 @@
       "bytes": 20752,
       "class": "src-next",
       "ported": {
-        "sha256": "faf89964245ac17a8e26e509f8f8cccaaab05fa487608fcc8f0295ef50c07f70",
-        "bytes": 21370,
-        "bead": "fm-lt2p",
-        "reason": "stand-in adapter reports the WebGPU spec default limits; the iPhone-label monolithic-encoder case restated as capability admission (no encoder stream refuses before allocation)"
+        "sha256": "5a3eef7e21dfdba59133d5069b6c5cc71d366df459bf8ca486ae3812f878f2f4",
+        "bytes": 21563,
+        "bead": "fm-fy2.14",
+        "reason": "stand-in adapter reports the WebGPU spec default limits; the iPhone-label monolithic-encoder case restated as capability admission (no encoder stream refuses before allocation); admits the runtime manifest pointer (runtime-manifest.mjs) before replacing the active runtime; a refused pointer leaves the next attempt free to fetch again"
       }
     },
     {
@@ -1620,7 +1620,13 @@
       "destination": "apps/web/src/Next/estimate.test.mjs",
       "sha256": "c34139851e06fb91e498753cceb6e21e9b9816ed22c08a397b38b51777decb16",
       "bytes": 6296,
-      "class": "src-next"
+      "class": "src-next",
+      "ported": {
+        "sha256": "69b3f52229ace0db05622d415f75298dfb45d606b4eee6f6cb5b1c38df805b23",
+        "bytes": 6970,
+        "bead": "fm-fy2.14",
+        "reason": "admits the runtime manifest pointer (runtime-manifest.mjs) before replacing the active runtime; a refused pointer leaves the next attempt free to fetch again"
+      }
     },
     {
       "source": "src/Next/fresh-review.test.mjs",
@@ -1629,10 +1635,10 @@
       "bytes": 23533,
       "class": "src-next",
       "ported": {
-        "sha256": "8d94ea1bf7986fd15b81be2889999ef08f11861f4c7614f455452a100097be56",
-        "bytes": 24399,
-        "bead": "fm-eeki",
-        "reason": "Supply the real shared endpoint selector to the existing VM harness after reporter gained that import.; Save/Share hand over prepared files named by export identity; encoder figures from the export policy (6915a98)"
+        "sha256": "15d77f7f47e231cba31e8f0605038d6fc758ac5e0bb07c46243a006ddfcda31c",
+        "bytes": 25354,
+        "bead": "fm-fy2.14",
+        "reason": "Supply the real shared endpoint selector to the existing VM harness after reporter gained that import.; Save/Share hand over prepared files named by export identity; encoder figures from the export policy (6915a98); admits the runtime manifest pointer (runtime-manifest.mjs) before replacing the active runtime; a refused pointer leaves the next attempt free to fetch again"
       }
     },
     {
@@ -1897,10 +1903,10 @@
       "bytes": 54317,
       "class": "src-next",
       "ported": {
-        "sha256": "87f5b36a4d55e78c931f5eeca328eed029e718914a2fe39121d5af88145551b4",
-        "bytes": 60244,
-        "bead": "fm-25um",
-        "reason": "ProjectJson imported from project/bridge-result.ts (fm-stth, one line); Morph admitted on its own and refusals returned with reasonKey/text/helpAnchor (fm-lt2p); revision-owned operation cancellation, compute/file readiness and bounded route snapshots (fm-0y24); downloads subscription returns its disposer (fm-v80g); Preserve unchanged Morph endpoints and their face/file ownership; update the inherited URL expectation to match, verified by real operation-service CPU browser tests (fm-in6a).; Issue link follows the org rename (9e39feb, fm-rur); a damaged saved image is one plain message with the parser reason as cause (cc8ea5e, fm-25um); weighted blend action as one W+ sum and one synthesis (3dd0238, fm-in6a); Expected photo refusals are tagged PhotoRefusal and stay error-area-only; unexpected failures keep the report ask (c0a65fb, operator 26 October, repairing fm-25um c397da4); saved projects carry the video writer's encoder choice; the file entry checks the recovered generator record/shape and skips the seed-identity check for a recipe-checked blend (fm-fy2.7); saveMedia/shareMedia take {format:'webp'|'png'}; the PNG is the face's synthesized pixels while held, else its decoded original; exportStats exposes the prepared-file counters (fm-ykfa)"
+        "sha256": "d2d902edd509133220f3d1d0ddc9bd2cdf2a6380235753494491be0892697b2c",
+        "bytes": 60511,
+        "bead": "fm-fy2.14",
+        "reason": "ProjectJson imported from project/bridge-result.ts (fm-stth, one line); Morph admitted on its own and refusals returned with reasonKey/text/helpAnchor (fm-lt2p); revision-owned operation cancellation, compute/file readiness and bounded route snapshots (fm-0y24); downloads subscription returns its disposer (fm-v80g); Preserve unchanged Morph endpoints and their face/file ownership; update the inherited URL expectation to match, verified by real operation-service CPU browser tests (fm-in6a).; Issue link follows the org rename (9e39feb, fm-rur); a damaged saved image is one plain message with the parser reason as cause (cc8ea5e, fm-25um); weighted blend action as one W+ sum and one synthesis (3dd0238, fm-in6a); Expected photo refusals are tagged PhotoRefusal and stay error-area-only; unexpected failures keep the report ask (c0a65fb, operator 26 October, repairing fm-25um c397da4); saved projects carry the video writer's encoder choice; the file entry checks the recovered generator record/shape and skips the seed-identity check for a recipe-checked blend (fm-fy2.7); saveMedia/shareMedia take {format:'webp'|'png'}; the PNG is the face's synthesized pixels while held, else its decoded original; exportStats exposes the prepared-file counters (fm-ykfa); admits the runtime manifest pointer (runtime-manifest.mjs) before replacing the active runtime; a refused pointer leaves the next attempt free to fetch again"
       }
     },
     {

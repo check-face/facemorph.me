@@ -350,6 +350,14 @@
           "bead": "fm-fy2.13",
           "reason": "Monorepo addition (1bb7bd0): the verified transient model source the worker continues on when durable storage refuses"
         }
+      },
+      {
+        "file": "src/Next/browser/runtime-manifest.test.mjs",
+        "runs_on": "closure",
+        "added": {
+          "bead": "fm-fy2.14",
+          "reason": "Monorepo addition: the runtime manifest pointer admitted before the active runtime is replaced"
+        }
       }
     ]
   },
