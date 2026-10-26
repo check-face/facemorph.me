@@ -65,12 +65,12 @@ jobs:
         run: node scripts/check-bridge-imports.mjs
   facade:
     # Both portable hosts have verified browsers/runtime caches; unsupported Triton is outside linux-x64 (fm-kfs5).
-    # Separate warm-state groups; retain the two-job facade cap while other CPU journeys use either host.
+    # Separate warm-state groups can fill available slots; multi-file CPU suites stay on the larger tempcpu host.
     runs-on: [self-hosted, linux-x64]
     timeout-minutes: 25
     strategy:
       fail-fast: false
-      max-parallel: 2
+      max-parallel: 4
       matrix:
         shard: ['1', '2', '3', '4']
     steps:
@@ -101,7 +101,8 @@ jobs:
           if-no-files-found: ignore
   # Full confirmed-crop/recovery acceptance on the same identified artifact (fm-d4mw).
   crop-acceptance:
-    runs-on: [self-hosted, linux-x64]
+    # Keep encoder work off eris while its facade shards run (fm-jx26 measured CPU contention).
+    runs-on: [self-hosted, tempcpu]
     timeout-minutes: 120
     steps:
       - uses: actions/checkout@v4
@@ -143,7 +144,8 @@ jobs:
   # same canonical artifact bytes: Encode (fm-fy2.17.1), composed tile controls and legacy links with real CPU
   # synthesis (fm-25um).
   runtime-e2e:
-    runs-on: [self-hosted, linux-x64]
+    # Concurrent browser files need the 26-core portable host; four eris jobs saturated its 12 threads.
+    runs-on: [self-hosted, tempcpu]
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
