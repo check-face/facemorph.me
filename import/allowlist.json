@@ -1525,10 +1525,10 @@
       "bytes": 37783,
       "class": "src-next",
       "ported": {
-        "sha256": "86e6d3ee7a9948b67897bb09695326ef9b7602676be0e64296fc5ef5c9898920",
-        "bytes": 41995,
-        "bead": "fm-fy2.14",
-        "reason": "WebGL execution removed (fm-x6h5); per-operation admission through admission/route-admission.ts before any worker or model request, photo encoding admitted by capability instead of user-agent labels (fm-lt2p); route snapshot selects bounded fallback scope and forwards cancellation signal (fm-0y24); Save/Share hand over prepared files named by export identity; encoder figures from the export policy (6915a98); directSupported comes from the stylegan-js engine (routes.ts) with the direct engine itself; admits the runtime manifest pointer (runtime-manifest.mjs) before replacing the active runtime; a refused pointer leaves the next attempt free to fetch again"
+        "sha256": "7628a037a202f4623d9c2dbef08e0c3010be02445dc4558472294cb9cac16ce4",
+        "bytes": 44553,
+        "bead": "fm-6ib8",
+        "reason": "WebGL execution removed (fm-x6h5); per-operation admission through admission/route-admission.ts before any worker or model request, photo encoding admitted by capability instead of user-agent labels (fm-lt2p); route snapshot selects bounded fallback scope and forwards cancellation signal (fm-0y24); Save/Share hand over prepared files named by export identity; encoder figures from the export policy (6915a98); directSupported comes from the stylegan-js engine (routes.ts) with the direct engine itself; admits the runtime manifest pointer (runtime-manifest.mjs) before replacing the active runtime; a refused pointer leaves the next attempt free to fetch again; crop.fix: a confirmed crop goes to e4e directly (no detector after OK); detector outcomes are typed (faceDetection/code), not matched on text; crop limits come from the stylegan-js crop policy"
       }
     },
     {
@@ -1842,10 +1842,10 @@
       "bytes": 6149,
       "class": "src-next",
       "ported": {
-        "sha256": "ab58b1822454726116d70f2ab53ec0517d9d9f3a446c4afb9f2b9bc80e09d6a5",
-        "bytes": 6346,
-        "bead": "fm-25um",
-        "reason": "Photo/crop source assertions now execute typed reducers; active check descriptions reference the retained artifact and typed codec. (fm-j16n); Expected photo refusals are tagged PhotoRefusal and stay error-area-only; unexpected failures keep the report ask (c0a65fb, operator 26 October, repairing fm-25um c397da4)"
+        "sha256": "6513b7d155efb64e993630b9ee2c6c70dbcf3b11a16707d989c7303641ea247b",
+        "bytes": 6468,
+        "bead": "fm-6ib8",
+        "reason": "Photo/crop source assertions now execute typed reducers; active check descriptions reference the retained artifact and typed codec. (fm-j16n); Expected photo refusals are tagged PhotoRefusal and stay error-area-only; unexpected failures keep the report ask (c0a65fb, operator 26 October, repairing fm-25um c397da4); crop.fix: a confirmed crop goes to e4e directly (no detector after OK); detector outcomes are typed (faceDetection/code), not matched on text; crop limits come from the stylegan-js crop policy"
       }
     },
     {
@@ -1853,7 +1853,13 @@
       "destination": "apps/web/src/Next/photo/align-photo.mjs",
       "sha256": "2910ee47d00053c3c6eb40c292568d4572e1f15eaba706d588d1250b89aa1c37",
       "bytes": 2760,
-      "class": "src-next"
+      "class": "src-next",
+      "ported": {
+        "sha256": "d371a30b430784a66fdce0a8db88d64043b32b2e0413bcc9c124f4cdcb992cf4",
+        "bytes": 3005,
+        "bead": "fm-6ib8",
+        "reason": "crop.fix: a confirmed crop goes to e4e directly (no detector after OK); detector outcomes are typed (faceDetection/code), not matched on text; crop limits come from the stylegan-js crop policy"
+      }
     },
     {
       "source": "src/Next/photo/crop-view.mjs",
@@ -1876,10 +1882,10 @@
       "bytes": 8018,
       "class": "src-next",
       "ported": {
-        "sha256": "688a0c57ad2eb0b2d6fa42c5a7bcdd86a3c5192d885e60db4255fc66ab993237",
-        "bytes": 8094,
-        "bead": "fm-25um",
-        "reason": "Expected photo refusals are tagged PhotoRefusal and stay error-area-only; unexpected failures keep the report ask (c0a65fb, operator 26 October, repairing fm-25um c397da4); refusals come from photo/refusal.mjs"
+        "sha256": "be811301c3728659f5f2d2bb9a75d79f81e89c83d91db490fb308ab5039907b5",
+        "bytes": 8229,
+        "bead": "fm-6ib8",
+        "reason": "Expected photo refusals are tagged PhotoRefusal and stay error-area-only; unexpected failures keep the report ask (c0a65fb, operator 26 October, repairing fm-25um c397da4); refusals come from photo/refusal.mjs; crop.fix: a confirmed crop goes to e4e directly (no detector after OK); detector outcomes are typed (faceDetection/code), not matched on text; crop limits come from the stylegan-js crop policy"
       }
     },
     {
@@ -1896,10 +1902,10 @@
       "bytes": 9832,
       "class": "src-next",
       "ported": {
-        "sha256": "ac1306bb8715f38a151d15d206a9a980596c6ddbb28536e2e9af80f13b079771",
-        "bytes": 9825,
-        "bead": "fm-zz2i",
-        "reason": "Vite destination integration: shared production headers and native dynamic-import directives; compiled artifact identity."
+        "sha256": "da85b4a50d459fe8bbf8e6f45dd7b22825827ab44e459c9e037a9491891069bc",
+        "bytes": 9939,
+        "bead": "fm-6ib8",
+        "reason": "Vite destination integration: shared production headers and native dynamic-import directives; compiled artifact identity.; crop.fix: a confirmed crop goes to e4e directly (no detector after OK); detector outcomes are typed (faceDetection/code), not matched on text; crop limits come from the stylegan-js crop policy"
       }
     },
     {
@@ -1909,10 +1915,10 @@
       "bytes": 54317,
       "class": "src-next",
       "ported": {
-        "sha256": "d2d902edd509133220f3d1d0ddc9bd2cdf2a6380235753494491be0892697b2c",
-        "bytes": 60511,
-        "bead": "fm-fy2.14",
-        "reason": "ProjectJson imported from project/bridge-result.ts (fm-stth, one line); Morph admitted on its own and refusals returned with reasonKey/text/helpAnchor (fm-lt2p); revision-owned operation cancellation, compute/file readiness and bounded route snapshots (fm-0y24); downloads subscription returns its disposer (fm-v80g); Preserve unchanged Morph endpoints and their face/file ownership; update the inherited URL expectation to match, verified by real operation-service CPU browser tests (fm-in6a).; Issue link follows the org rename (9e39feb, fm-rur); a damaged saved image is one plain message with the parser reason as cause (cc8ea5e, fm-25um); weighted blend action as one W+ sum and one synthesis (3dd0238, fm-in6a); Expected photo refusals are tagged PhotoRefusal and stay error-area-only; unexpected failures keep the report ask (c0a65fb, operator 26 October, repairing fm-25um c397da4); saved projects carry the video writer's encoder choice; the file entry checks the recovered generator record/shape and skips the seed-identity check for a recipe-checked blend (fm-fy2.7); saveMedia/shareMedia take {format:'webp'|'png'}; the PNG is the face's synthesized pixels while held, else its decoded original; exportStats exposes the prepared-file counters (fm-ykfa); admits the runtime manifest pointer (runtime-manifest.mjs) before replacing the active runtime; a refused pointer leaves the next attempt free to fetch again"
+        "sha256": "7523e2e7792f0d673c91d89a2ce1ed4ef7d363269553bf0282a7ec30d376349f",
+        "bytes": 60693,
+        "bead": "fm-6ib8",
+        "reason": "ProjectJson imported from project/bridge-result.ts (fm-stth, one line); Morph admitted on its own and refusals returned with reasonKey/text/helpAnchor (fm-lt2p); revision-owned operation cancellation, compute/file readiness and bounded route snapshots (fm-0y24); downloads subscription returns its disposer (fm-v80g); Preserve unchanged Morph endpoints and their face/file ownership; update the inherited URL expectation to match, verified by real operation-service CPU browser tests (fm-in6a).; Issue link follows the org rename (9e39feb, fm-rur); a damaged saved image is one plain message with the parser reason as cause (cc8ea5e, fm-25um); weighted blend action as one W+ sum and one synthesis (3dd0238, fm-in6a); Expected photo refusals are tagged PhotoRefusal and stay error-area-only; unexpected failures keep the report ask (c0a65fb, operator 26 October, repairing fm-25um c397da4); saved projects carry the video writer's encoder choice; the file entry checks the recovered generator record/shape and skips the seed-identity check for a recipe-checked blend (fm-fy2.7); saveMedia/shareMedia take {format:'webp'|'png'}; the PNG is the face's synthesized pixels while held, else its decoded original; exportStats exposes the prepared-file counters (fm-ykfa); admits the runtime manifest pointer (runtime-manifest.mjs) before replacing the active runtime; a refused pointer leaves the next attempt free to fetch again; crop.fix: a confirmed crop goes to e4e directly (no detector after OK); detector outcomes are typed (faceDetection/code), not matched on text; crop limits come from the stylegan-js crop policy"
       }
     },
     {
