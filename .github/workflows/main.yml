@@ -330,7 +330,7 @@ jobs:
     secrets: inherit
   next-site:
     needs: [changes, next-site-artifact]
-    if: contains(fromJSON(needs.changes.outputs.lanes), 'next-site')
+    if: contains(fromJSON(needs.changes.outputs.lanes), 'next-site') || (github.event_name == 'push' && vars.FACEMORPH_DEPLOY_TARGET != '')
     uses: ./.github/workflows/next-site-qualify.yml
     permissions:
       contents: read
@@ -342,11 +342,12 @@ jobs:
       artifact_name: next-site-${{ github.sha }}
       runtime_sha: d9e37e50a436e9fb7c0c7f973e70adee353c808f48c6a51fa5a9186f1c650a5c
     secrets: inherit
-  # Artifact consumers run as soon as the exact build is available. Qualification reports independently;
-  # next-deploy retains its own promotion/release gates and refuses classic-owned targets.
+  # Artifact consumers run as soon as the exact build is available. Qualification reports independently,
+  # except to next-deploy: a publication needs the exact artifact's CPU/compiled-UI qualification (fm-6fx6),
+  # then its own release gate, and refuses classic-owned targets.
   next-deploy:
-    needs: [changes, next-site-artifact]
-    if: github.event_name == 'push' && vars.FACEMORPH_DEPLOY_TARGET != ''
+    needs: [changes, next-site-artifact, next-site]
+    if: github.event_name == 'push' && vars.FACEMORPH_DEPLOY_TARGET != '' && needs.next-site.result == 'success'
     uses: ./.github/workflows/next-deploy.yml
     permissions:
       contents: read

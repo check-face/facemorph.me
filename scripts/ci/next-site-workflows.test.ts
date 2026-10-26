@@ -135,14 +135,22 @@ test('the executed CPU provenance gate rejects workflow and commit mismatches be
   }
 });
 
-test('main artifact consumers do not wait on CPU or compiled UI qualification', () => {
+test('main artifact consumers do not wait on CPU or compiled UI qualification; a deploy does', () => {
   assert.equal(main.jobs['next-site-artifact'].uses, './.github/workflows/next-site-artifact.yml');
   assert.equal(main.jobs['next-site'].uses, './.github/workflows/next-site-qualify.yml');
   assert.deepEqual(main.jobs['next-site'].needs, ['changes', 'next-site-artifact']);
   for (const id of ['web-shell', 'mobile-browser', 'next-deploy']) {
-    assert.deepEqual(main.jobs[id].needs, ['changes', 'next-site-artifact']);
+    assert.deepEqual(
+      main.jobs[id].needs,
+      id === 'next-deploy'
+        ? ['changes', 'next-site-artifact', 'next-site']
+        : ['changes', 'next-site-artifact'],
+    );
     for (const pin of provenance)
       assert.equal(main.jobs[id].with[pin], main.jobs['next-site'].with[pin]);
   }
-  assert.match(main.jobs['next-site-artifact'].if, /FACEMORPH_DEPLOY_TARGET/);
+  // fm-6fx6: qualification runs whenever a deploy target is set, and the deploy needs it to pass.
+  for (const id of ['next-site-artifact', 'next-site'])
+    assert.match(main.jobs[id].if, /FACEMORPH_DEPLOY_TARGET/);
+  assert.match(main.jobs['next-deploy'].if, /needs\.next-site\.result == 'success'/);
 });
