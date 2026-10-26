@@ -59,7 +59,9 @@ test('a failed, missing, build-limited or unreadable cell, or no report, is neve
   for (const [label, change] of Object.entries(variants)) {
     const stages: Record<string, unknown> = { ...passing(), ...change };
     for (const k of Object.keys(stages)) if (stages[k] === undefined) delete stages[k];
-    const reports = Object.fromEntries(rows.map((n) => [n, { stages: passing() }]));
+    const reports: Record<string, unknown> = Object.fromEntries(
+      rows.map((n) => [n, { stages: passing() }]),
+    );
     reports['macos-14-webkit'] = { stages };
     const r = summarise(reports);
     assert.equal(r.status, 1, label);
