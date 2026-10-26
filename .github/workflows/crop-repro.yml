@@ -36,6 +36,8 @@ jobs:
           PY
       - name: Fetch retained control independently
         run: node scripts/import/fetch-control.mjs --dest .cache/control
+      # build:next's Vite build reads the workspace packages through their dist/ exports.
+      - run: npm run build -w packages/stylegan-js -w packages/browser-model-manager
       - name: Build the ported app (the cases' subject)
         env:
           GITHUB_TOKEN: ${{ github.token }}
