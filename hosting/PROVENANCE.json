@@ -272,9 +272,9 @@
       "reason": "Monorepo immutable static catalogue publication using installed cf."
     },
     {
-      "path": "hosting/gallery/package.json",
-      "bead": "fm-e6yj",
-      "reason": "Monorepo immutable static catalogue publication using installed cf."
+      "path": "hosting/gallery/materialize.test.mjs",
+      "bead": "fm-a0c1",
+      "reason": "API-free catalogue materialization tests for the re-homed gallery staging."
     },
     {
       "path": "hosting/gallery/package-lock.json",
@@ -282,9 +282,44 @@
       "reason": "Monorepo immutable static catalogue publication using installed cf."
     },
     {
+      "path": "hosting/gallery/package.json",
+      "bead": "fm-e6yj",
+      "reason": "Monorepo immutable static catalogue publication using installed cf."
+    },
+    {
       "path": "hosting/gallery/vite.config.ts",
       "bead": "fm-e6yj",
       "reason": "Monorepo immutable static catalogue publication using installed cf."
+    },
+    {
+      "path": "hosting/next-cloudflare/cloudflare.config.ts",
+      "bead": "fm-a0c1",
+      "reason": "cf deployment config replacing wrangler.toml for the re-homed private collector Worker."
+    },
+    {
+      "path": "hosting/next-cloudflare/collector.workerd.mjs",
+      "bead": "fm-a0c1",
+      "reason": "Real-workerd tests of the private collector Worker."
+    },
+    {
+      "path": "hosting/next-cloudflare/entry.mjs",
+      "bead": "fm-a0c1",
+      "reason": "Worker entry for the re-homed private collector."
+    },
+    {
+      "path": "hosting/next-cloudflare/environment.mjs",
+      "bead": "fm-a0c1",
+      "reason": "Environment bindings of the re-homed private collector Worker."
+    },
+    {
+      "path": "hosting/next-cloudflare/local.mjs",
+      "bead": "fm-a0c1",
+      "reason": "Local collector fixture for the re-homed private collector."
+    },
+    {
+      "path": "hosting/next-cloudflare/vite.config.mts",
+      "bead": "fm-a0c1",
+      "reason": "Cloudflare Vite build of the re-homed private collector Worker."
     },
     {
       "path": "hosting/next-static/headers.json",
