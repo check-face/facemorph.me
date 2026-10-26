@@ -4,11 +4,9 @@
 //
 // A slot is one Web Lock (`<name>:slot-<i>`); holding it admits one chunk (at most ACQUISITION_CHUNK_MAX_BYTES)
 // from the first byte fetched until it is committed to storage. Priority: inside one manager instance waiters are
-// served highest priority first. Across workers and tabs, required work queues on every slot's lock at once and
-// keeps the first it is granted, and optional work takes only a slot that is free at that moment, and none while
-// any slot request is queued anywhere (`locks.query()`). A released lock goes to a queued request before a later
-// `ifAvailable` attempt can see it, so optional preparation does not get ahead of waiting foreground work in any
-// worker. Between the required tiers, order holds within an instance; across instances they queue first come.
+// served synthesis first, then detector, then the rest of the required work. Waiters announce their tier through
+// a unique Web Lock, so another worker handed a slot can yield it to a higher-priority waiter before transferring.
+// Existing transfers keep their slots. Optional preparation never queues on a slot or passes required waiters.
 
 import {
   ACQUISITION_BUDGETS,
@@ -19,9 +17,9 @@ import type { AcquisitionPriority } from '../contracts/grant.ts';
 
 /** Highest first. */
 export const PRIORITY_ORDER: readonly AcquisitionPriority[] = Object.freeze([
-  'foreground-required',
   'synthesis-prerequisite',
   'detector-prerequisite',
+  'foreground-required',
   'optional',
   'speculative-warming',
 ]);
@@ -36,7 +34,10 @@ export interface SlotLocks {
     options: { readonly ifAvailable?: boolean; readonly signal?: AbortSignal },
     run: (lock: unknown) => Promise<void> | void,
   ): Promise<unknown>;
-  query?(): Promise<{ readonly pending?: readonly { readonly name?: string }[] }>;
+  query?(): Promise<{
+    readonly held?: readonly { readonly name?: string }[];
+    readonly pending?: readonly { readonly name?: string }[];
+  }>;
 }
 
 export interface AcquisitionSlots {
@@ -76,6 +77,7 @@ interface Waiter {
   readonly signal: AbortSignal;
   readonly resolve: (release: () => void) => void;
   readonly reject: (reason: unknown) => void;
+  readonly announced: Promise<unknown>;
 }
 
 export function createAcquisitionSlots({
@@ -90,6 +92,9 @@ export function createAcquisitionSlots({
   if (!Number.isInteger(count) || count < 1)
     throw new TypeError('Acquisition slots: count must be a positive integer');
   const slot = (i: number) => `${name}:slot-${i}`;
+  const priorityPrefix = `${name}:waiting-`;
+  const instance = Math.random().toString(36).slice(2);
+  let sequence = 0;
   const waiting: Waiter[] = [];
   let next = 0;
   let busy = false;
@@ -131,13 +136,59 @@ export function createAcquisitionSlots({
     return pending.some((p) => p.name?.startsWith(`${name}:slot-`) === true);
   }
 
+  /** Required tiers must also keep their order across independent workers' native FIFO lock queues. */
+  async function higherWaiting(w: Waiter): Promise<boolean> {
+    if (waiting.some((other) => !other.signal.aborted && rank(other.priority) < rank(w.priority)))
+      return true;
+    if (!locks.query) return false;
+    const { held = [] } = await locks.query();
+    return held.some((lock) => {
+      if (!lock.name?.startsWith(priorityPrefix)) return false;
+      const tier = Number(lock.name.slice(priorityPrefix.length).split(':')[0]);
+      return tier < rank(w.priority);
+    });
+  }
+
+  async function pause(w: Waiter): Promise<null> {
+    await new Promise<void>((resolve, reject) => {
+      const timer = setTimeout(() => {
+        w.signal.removeEventListener('abort', stop);
+        resolve();
+      }, OPTIONAL_RETRY_MS);
+      const stop = () => {
+        clearTimeout(timer);
+        reject(w.signal.reason ?? aborted());
+      };
+      w.signal.addEventListener('abort', stop, { once: true });
+      if (w.signal.aborted) stop();
+    });
+    return null;
+  }
+
+  /** A platform query can reject too: never leak a newly granted slot during arbitration. */
+  async function admitTurn(w: Waiter, release: () => void): Promise<(() => void) | null> {
+    try {
+      if (w.signal.aborted) throw w.signal.reason ?? aborted();
+      if (await higherWaiting(w)) {
+        release();
+        return null;
+      }
+      return release;
+    } catch (error) {
+      release();
+      throw error;
+    }
+  }
+
   /**
    * One attempt for the head waiter: any free slot, else (required work) the queues of all of them. Optional work
    * that finds none free, or finds required work queued anywhere, pauses and returns null, so a higher-priority
    * waiter that arrived meanwhile goes first.
    */
   async function grantHead(w: Waiter): Promise<(() => void) | null> {
+    if (locks.query) await w.announced;
     if (w.signal.aborted) throw w.signal.reason ?? aborted();
+    if (locks.query && (await higherWaiting(w))) return pause(w);
     const required = queuesOnLocks(w.priority);
     if (required || !(await othersWaiting()))
       for (let k = 0; k < count; k++) {
@@ -149,24 +200,15 @@ export function createAcquisitionSlots({
         }
         if (release) {
           next = (next + k + 1) % count;
-          return release;
+          return admitTurn(w, release);
         }
       }
     // A cancellation during the lookups above has already fired, so the queue's relay would never see it.
     if (w.signal.aborted) throw w.signal.reason ?? aborted();
-    if (required) return queueOnAll(w);
-    await new Promise<void>((resolve, reject) => {
-      const timer = setTimeout(() => {
-        w.signal.removeEventListener('abort', stop);
-        resolve();
-      }, OPTIONAL_RETRY_MS);
-      const stop = () => {
-        clearTimeout(timer);
-        reject(w.signal.reason ?? aborted());
-      };
-      w.signal.addEventListener('abort', stop, { once: true });
-    });
-    return null;
+    if (required) {
+      return admitTurn(w, await queueOnAll(w));
+    }
+    return pause(w);
   }
 
   /**
@@ -240,15 +282,31 @@ export function createAcquisitionSlots({
       if (signal.aborted) return Promise.reject(signal.reason ?? aborted());
       return new Promise<() => void>((resolve, reject) => {
         let once = false;
+        let finished = false;
+        let unannounce: (() => void) | null = null;
+        const announced = locks.query
+          ? hold(locks, `${priorityPrefix}${rank(priority)}:${instance}:${++sequence}`, {
+              signal,
+            }).then((release) => {
+              if (finished) release?.();
+              else unannounce = release;
+            })
+          : Promise.resolve();
+        void announced.catch(() => {}); // a waiter cancelled before its local turn still owns its rejection
         const release = (r: () => void) => () => {
           if (once) return;
           once = true;
           r();
         };
-        const cleanup = () => signal.removeEventListener('abort', cancel);
+        const cleanup = () => {
+          finished = true;
+          unannounce?.();
+          signal.removeEventListener('abort', cancel);
+        };
         const w: Waiter = {
           priority,
           signal,
+          announced,
           resolve: (r) => {
             cleanup();
             resolve(release(r));

@@ -268,7 +268,12 @@ function asset(name: string, n: number, seed: number): AssetInput & { parts: str
   };
 }
 const descriptor = ({ parts: _parts, ...a }: AssetInput & { parts: string[] }): AssetInput => a;
-type Priority = 'foreground-required' | 'optional' | 'speculative-warming';
+type Priority =
+  | 'synthesis-prerequisite'
+  | 'detector-prerequisite'
+  | 'foreground-required'
+  | 'optional'
+  | 'speculative-warming';
 /** A grant as the app makes it: plain data. */
 const grant = (
   owners: string[],
@@ -823,6 +828,143 @@ test(
 );
 
 // ---------------------------------------------------------------- priority, aggregate budget, deduplication
+
+test(
+  `${engine}: synthesis and detector prerequisites pass queued encoder transfers across real workers`,
+  { skip: NO_BROWSER, timeout: 30_000 },
+  async (t) => {
+    const H = asset('encoding-in-flight', 0, 31);
+    const E = asset('encoding-queued', 3, 32);
+    const D = asset('detector-prerequisite', 0, 33);
+    const S = asset('seed-synthesis', 2, 34);
+    faults.set(`primary:${H.parts[0]}`, { pieceDelayMs: 150 });
+    for (const a of [E, D, S])
+      for (const p of a.parts) faults.set(`primary:${p}`, { pieceDelayMs: 35 });
+    const s = await session(t);
+    try {
+      const from = log.length;
+      await s.page.evaluate(
+        async ({ h, gh, e, ge, d, gd, seed, gs }) => {
+          const m = await import(String('/pkg/index.js'));
+          const workers: Worker[] = [];
+          const prepare = () =>
+            new Promise<Worker>((resolve, reject) => {
+              const worker = new Worker('/worker.js', { type: 'module' });
+              workers.push(worker);
+              worker.onerror = (event) => reject(new Error(event.message));
+              worker.onmessage = ({ data }) =>
+                data.ready ? resolve(worker) : reject(new Error(data.message));
+              worker.postMessage({ type: 'prepare', slots: 1, readAhead: 2 });
+            });
+          const acquire = (worker: Worker, input: object, grant: object, owner: string) => {
+            const result = new Promise<void>((resolve, reject) => {
+              worker.onerror = (event) => reject(new Error(event.message));
+              worker.onmessage = ({ data }) =>
+                data.ok ? resolve() : reject(new Error(data.message));
+              worker.postMessage({ assets: [input], grant, owner });
+            });
+            void result.catch(() => {});
+            return result;
+          };
+          const until = async (
+            accept: (state: Awaited<ReturnType<LockManager['query']>>) => boolean,
+          ) => {
+            const deadline = performance.now() + 5000;
+            for (;;) {
+              const state = await navigator.locks.query();
+              if (accept(state)) return;
+              if (performance.now() >= deadline)
+                throw new Error(
+                  'Real priority contention not established: ' + JSON.stringify(state),
+                );
+              await new Promise((resolve) => setTimeout(resolve, 2));
+            }
+          };
+          try {
+            // Finish module/native-storage setup before the timed transfer. No mocked clocks, locks or fetches.
+            const [encoder, detector, generator] = await Promise.all([
+              prepare(),
+              prepare(),
+              prepare(),
+            ]);
+            const cache = await m.createBrowserModelCache({
+              retryDelaysMs: [],
+              slots: m.createAcquisitionSlots({ locks: navigator.locks, count: 1 }),
+            });
+            const held = cache.acquire(h, { grant: gh, owner: 'face:encoder-current' });
+            void held.catch(() => {});
+            await until((state) =>
+              state.held!.some((lock) => lock.name === 'facemorph-acquisition:slot-0'),
+            );
+            const encoding = acquire(encoder, e, ge, 'face:encoder-next');
+            await until((state) =>
+              state.pending!.some((lock) => lock.name === 'facemorph-acquisition:slot-0'),
+            );
+            const detecting = acquire(detector, d, gd, 'face:detector');
+            await until((state) =>
+              state.held!.some((lock) => lock.name?.startsWith('facemorph-acquisition:waiting-1:')),
+            );
+            // A seed arrives after both lower-priority workers queued, while an encoder transfer owns the slot.
+            const generating = acquire(generator, seed, gs, 'face:seed');
+            await until(
+              (state) =>
+                state.held!.filter((lock) =>
+                  lock.name?.startsWith('facemorph-acquisition:waiting-0:'),
+                ).length === 2,
+            );
+            await Promise.all([held, encoding, detecting, generating]);
+            await until((state) =>
+              [...state.held!, ...state.pending!].every(
+                (lock) => !lock.name?.startsWith('facemorph-acquisition:'),
+              ),
+            );
+          } finally {
+            for (const worker of workers) worker.terminate();
+          }
+        },
+        {
+          h: descriptor(H),
+          gh: grant(['face:encoder-current'], [H], H.size),
+          e: descriptor(E),
+          ge: grant(['face:encoder-next'], [E], E.size),
+          d: descriptor(D),
+          gd: grant(['face:detector'], [D], D.size, 'detector-prerequisite'),
+          seed: descriptor(S),
+          gs: grant(['face:seed'], [S], S.size, 'synthesis-prerequisite'),
+        },
+      );
+      const requests = requestsFor([...H.parts, ...E.parts, ...D.parts, ...S.parts], from);
+      assert.deepEqual(
+        requests.map((entry) => entry.path),
+        [...H.parts, ...S.parts, ...D.parts, ...E.parts],
+      );
+      assert.equal(
+        requests[0]!.closedEarly,
+        false,
+        'the already-granted encoder transfer is never preempted',
+      );
+      const synthesis = requests.filter((entry) => S.parts.includes(entry.path));
+      const encoder = requests.filter((entry) => E.parts.includes(entry.path));
+      assert.ok(
+        synthesis[0]!.start >= requests[0]!.end - 50,
+        'seed waits for the existing transfer to finish',
+      );
+      assert.ok(
+        synthesis.at(-1)!.end < encoder.at(-1)!.end,
+        'generator assets verify before encoder transfer finishes',
+      );
+      t.diagnostic(
+        `server order: ${requests.map((entry) => entry.path).join(', ')}; synthesis complete ${synthesis.at(-1)!.end - requests[0]!.start}ms, encoder complete ${encoder.at(-1)!.end - requests[0]!.start}ms`,
+      );
+    } catch (error) {
+      await s.capture();
+      throw error;
+    } finally {
+      faults.clear();
+      await s.context.close();
+    }
+  },
+);
 
 test(
   engine + ': ' + 'foreground-required work outranks optional preparation for the next free slot',
