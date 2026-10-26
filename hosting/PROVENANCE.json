@@ -25,10 +25,10 @@
       "size": 2277,
       "sha256": "f119ba1bc6aa6ab41efee8a06cbb5b7f976cbc66c3c1d14eb3993990bdddd944",
       "ported": {
-        "sha256": "483ac29c4ed4b9fa28600a3d49061c5e5c7896b2e5ea0d0b723024207ec75e23",
-        "bytes": 6239,
+        "sha256": "a1a10e244cd1c037d4778e195a66d8e6e5b8dcd996231a675e147343dcaea925",
+        "bytes": 6247,
         "bead": "fm-a0c1",
-        "reason": "Document recovery-bearing immutable catalogue publication and verified provisioned snapshot reuse (fm-e6yj), the facemorph-me org rename of the run link (fm-rur), and API-free materialization through the shared publisher with cf dry-run/--check/--publish (fm-a0c1)."
+        "reason": "Document recovery-bearing immutable catalogue publication and verified provisioned snapshot reuse (fm-e6yj), the facemorph-me org rename of the run link (fm-rur), pointed at classic, where that run lives (fm-fy2.20), and API-free materialization through the shared publisher with cf dry-run/--check/--publish (fm-a0c1)."
       }
     },
     {
