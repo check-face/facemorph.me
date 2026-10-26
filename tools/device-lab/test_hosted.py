@@ -1,9 +1,9 @@
 """hosted.py (fm-5klw): the summary called with plain values, and the real artifact server on a planted
 artifact against the live runtime manifest (python3 -m unittest test_hosted, from this folder; needs network)."""
-import hashlib, json, tempfile, unittest, urllib.error, urllib.request
+import hashlib, json, subprocess, tempfile, unittest, urllib.error, urllib.request
 from pathlib import Path
 
-from hosted import ArtifactServer, HOSTED_LANES, OriginStorage, hosted_outcomes, manifest_sha, runner_unavailable_reason, summarise
+from hosted import lane_report, lab, ArtifactServer, HOSTED_LANES, OriginStorage, hosted_outcomes, manifest_sha, runner_unavailable_reason, summarise
 
 RUN = {'cold': {'route': 'Ready · this device’s CPU.', 'faceS': 22.2}, 'warm': {'route': 'Ready · this device’s CPU.', 'faceS': 16.7},
        'morph': {'videoS': 57.5}, 'ok': True}
@@ -56,6 +56,25 @@ class Availability(unittest.TestCase):
         rows = hosted_outcomes(self.jobs(), self.reports()[:-1], queue_expired=True)
         self.assertEqual(rows[-1]['status'], 'fail')
         self.assertIn('missing', rows[-1]['reason'])
+
+    def test_release_requires_the_verified_artifact_commit_and_runtime_in_each_report(self):
+        reports = self.reports()
+        for report in reports:
+            report.update(artifact=dict(digest='a'*64, source=dict(commit='b'*40)), runtimeSha256='c'*64)
+        expected = dict(expected_digest='a'*64, expected_commit='b'*40, expected_runtime='c'*64)
+        self.assertEqual({r['status'] for r in hosted_outcomes(self.jobs(), reports, **expected)}, {'pass'})
+        for field in ['missing-artifact', 'wrong-digest', 'wrong-commit', 'wrong-runtime']:
+            changed = json.loads(json.dumps(reports))
+            if field == 'missing-artifact': changed[0].pop('artifact')
+            if field == 'wrong-digest': changed[0]['artifact']['digest'] = 'd'*64
+            if field == 'wrong-commit': changed[0]['artifact']['source']['commit'] = 'd'*40
+            if field == 'wrong-runtime': changed[0]['runtimeSha256'] = 'd'*64
+            rows = hosted_outcomes(self.jobs(), changed, **expected)
+            self.assertEqual(rows[0]['status'], 'fail', field)
+            self.assertIn('verified release artifact', rows[0]['reason'])
+        jobs = self.jobs()
+        jobs[0].update(status='queued', conclusion=None, runner_name='', steps=[])
+        self.assertEqual(hosted_outcomes(jobs, [], queue_expired=True, **expected)[0]['status'], 'untested')
 
     def test_failure_wins_over_passing_or_unavailable_report(self):
         for verdict in ('failure', 'cancelled', 'timed_out', 'startup_failure', 'action_required'):
@@ -110,6 +129,32 @@ class Availability(unittest.TestCase):
         jobs[2]['name'] = 'desktop (macos-15, chrome, macos-chrome)'
         jobs[-2]['name'], jobs[-1]['name'] = 'android', 'ios'
         self.assertEqual({r['status'] for r in hosted_outcomes(jobs, self.reports())}, {'pass'})
+
+
+class ArtifactIdentity(unittest.TestCase):
+    def test_report_uses_real_build_identity_and_refuses_corrupt_bytes_before_browser_start(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            built = root/'built'
+            built.mkdir()
+            (built/'index.html').write_text('<!doctype html><title>hosted identity input</title>')
+            artifact = root/'artifact'
+            script = """import {stageBuilt} from './scripts/import/build-next.mjs';
+stageBuilt({out:process.argv[1],built:process.argv[2],source:{commit:'b'.repeat(40),
+buildId:'hosted-input',sourceTreeSha256:'c'.repeat(64),sourceTreeClean:true}});"""
+            subprocess.run(['node', '--input-type=module', '-e', script, str(artifact), str(built)],
+                           cwd=lab.REPO, capture_output=True, text=True, check=True, timeout=30)
+            report = lane_report('macos-webkit', 'hosted-desktop', 'http://localhost:1/',
+                                 {'browser': 'webkit'}, artifact/'deploy-next', 'd'*64)
+            self.assertEqual(report['artifact']['source']['commit'], 'b'*40)
+            self.assertEqual(report['runtimeSha256'], 'd'*64)
+            files = sorted(p for p in (artifact/'deploy-next').rglob('*') if p.is_file())
+            listing = ''.join(f"{hashlib.sha256(p.read_bytes()).hexdigest()}  {p.relative_to(artifact/'deploy-next').as_posix()}\n" for p in files)
+            self.assertEqual(report['artifact']['digest'], hashlib.sha256(listing.encode()).hexdigest())
+            (artifact/'deploy-next/index.html').write_text('actually corrupted bytes')
+            with self.assertRaises(subprocess.CalledProcessError):
+                lane_report('macos-webkit', 'hosted-desktop', 'http://localhost:1/',
+                            {'browser': 'webkit'}, artifact, 'd'*64)
 
 
 class Server(unittest.TestCase):

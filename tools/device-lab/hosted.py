@@ -281,8 +281,24 @@ class AndroidChrome(lab.Desktop):
 
 
 # ---------------------------------------------------------------- lanes
-def lane_report(lane, kind, url, extra):
-    return {'lane': lane, 'kind': kind, 'url': url, 'os': f'{platform.system()} {platform.release()} {platform.machine()}', 'runs': [], **extra}
+def lane_report(lane, kind, url, extra, artifact, runtime_sha):
+    # Reuse the download action's exact digest format (paths relative to deploy-next),
+    # plus the build identity verifier. The local lab's prefixed digest is a different format.
+    path = Path(artifact).resolve()
+    root = path.parent if path.name == 'deploy-next' else path
+    script = """import {readIdentity} from './scripts/import/build-next.mjs';
+import {verifyUnpacked} from './scripts/ci/fetch-artifact.ts';
+const {identity,findings}=readIdentity(process.argv[1]);
+if(!identity||findings.length)throw Error(JSON.stringify(findings));
+const {digest}=verifyUnpacked(process.argv[1],identity.deploySource.commit);
+console.log(JSON.stringify({digest,kind:identity.kind,source:identity.deploySource}));"""
+    result = subprocess.run(['node', '--input-type=module', '-e', script, str(root)], cwd=lab.REPO,
+                            capture_output=True, text=True, timeout=60, check=True)
+    verified = json.loads(result.stdout)
+    return {'lane': lane, 'kind': kind, 'url': url,
+            'artifact': verified,
+            'runtimeSha256': runtime_sha,
+            'os': f'{platform.system()} {platform.release()} {platform.machine()}', 'runs': [], **extra}
 
 
 def finish(report, out):
@@ -330,7 +346,7 @@ def run_driven(args, make_device, kind):
     lab.CELLS[args.lane] = (kind, None)  # run_journeys keys its per-cell handling on the kind
     with ArtifactServer(args.artifact, args.runtime_sha, args.port, out / 'runtime-cache') as srv:
         args.url = srv.url
-        report = lane_report(args.lane, kind, srv.url, {'browser': getattr(args, 'browser', 'chrome-android')})
+        report = lane_report(args.lane, kind, srv.url, {'browser': getattr(args, 'browser', 'chrome-android')}, args.artifact, args.runtime_sha)
         with sync_playwright() as pw:
             dev = make_device(pw, srv)
             try:
@@ -474,7 +490,7 @@ def cmd_ios(args):
 
     inject = lambda html: html.replace('</body>', IOS_JOURNEYS.replace('__SELECTORS__', json.dumps(lab.S)) + '</body>')
     with ArtifactServer(args.artifact, args.runtime_sha, args.port, out / 'runtime-cache', inject, on_post) as srv:
-        report = lane_report(args.lane, 'hosted-ios-simulator', srv.url, {'browser': 'safari', 'device': args.device})
+        report = lane_report(args.lane, 'hosted-ios-simulator', srv.url, {'browser': 'safari', 'device': args.device}, args.artifact, args.runtime_sha)
 
         def sim(*a, timeout=300):
             try:
@@ -569,7 +585,8 @@ def runner_unavailable_reason(job, annotations):
     return None
 
 
-def hosted_outcomes(jobs, reports, *, queue_expired=False, run_completed=False, unavailable=None):
+def hosted_outcomes(jobs, reports, *, queue_expired=False, run_completed=False, unavailable=None,
+                    expected_digest=None, expected_commit=None, expected_runtime=None):
     """Pure policy over actual API job fields and lane reports. Missing evidence fails
     closed, except a lane still awaiting a runner after the bounded queue attempt.
     Any executed failure wins over an unavailable report or another lane's pass."""
@@ -594,7 +611,12 @@ def hosted_outcomes(jobs, reports, *, queue_expired=False, run_completed=False, 
             elif job.get('status') != 'completed':
                 status, reason = 'pending', 'allocated or running lane has not finished'
             elif job.get('conclusion') == 'success' and report:
-                if report.get('status') == 'untested' and report.get('reason') and not report.get('ok') and not report.get('runs'):
+                artifact = report.get('artifact') or {}
+                if (expected_digest is not None and (artifact.get('digest') != expected_digest
+                        or artifact.get('source', {}).get('commit') != expected_commit
+                        or report.get('runtimeSha256') != expected_runtime)):
+                    reason = 'lane report does not match the verified release artifact, source commit and runtime'
+                elif report.get('status') == 'untested' and report.get('reason') and not report.get('ok') and not report.get('runs'):
                     status, reason = 'untested', report['reason']
                 elif report.get('ok') and report.get('runs') and all(r.get('ok') for r in report['runs']):
                     status, reason = 'pass', 'requested journeys reported complete'
@@ -672,7 +694,9 @@ def cmd_release(args):
     reports = [json.loads(p.read_text()) for p in out.glob('lane-*/*.json')]
     reports = [r for r in reports if isinstance(r, dict) and 'lane' in r and 'runs' in r]
     rows = hosted_outcomes(jobs, reports, queue_expired=elapsed >= args.queue_seconds,
-                           run_completed=run['status'] == 'completed', unavailable=unavailable)
+                           run_completed=run['status'] == 'completed', unavailable=unavailable,
+                           expected_digest=args.artifact_digest, expected_commit=inputs['artifact_commit'],
+                           expected_runtime=inputs['runtime_sha'])
     report = {'run': run_id, 'url': url, 'artifactDigest': args.artifact_digest, 'inputs': inputs, 'lanes': rows,
               'ok': all(r['status'] in ('pass', 'untested') for r in rows)}
     (out / 'hosted-release.json').write_text(json.dumps(report, indent=2))
