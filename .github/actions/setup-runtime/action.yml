@@ -1,9 +1,42 @@
 name: setup-runtime
-description: Complete runtime inventory, verified on cold acquisition and cache hits; no classic checkout.
+description: Complete verified runtime; runner-local storage on self-hosted workers, Actions cache on hosted workers.
 runs:
   using: composite
   steps:
-    - uses: actions/cache@v4
+    - name: Select the runtime cache
+      id: runtime
+      shell: bash
+      env:
+        RUNNER_ENVIRONMENT: ${{ runner.environment }}
+      run: |
+        runtime="$GITHUB_WORKSPACE/.cache/ci-runtime"
+        if [ "$RUNNER_ENVIRONMENT" != github-hosted ]; then
+          pins=$(sha256sum import/build-inputs.json | cut -d ' ' -f1)
+          base="${RUNNER_TOOL_CACHE:?}/facemorph-runtime"
+          runtime="$base/$pins"
+          compat="$GITHUB_WORKSPACE/.cache/ci-runtime"
+          # Only this action's pin-keyed links may be replaced. Preserve unexpected files, directories
+          # and links rather than following them into another job's or session's runtime.
+          if [ -L "$GITHUB_WORKSPACE/.cache" ] || [ -L "$base" ] || [ -L "$runtime" ]; then
+            echo '::error::Runtime cache parent or persistent directory is an unexpected symlink' >&2
+            exit 1
+          fi
+          if [ -L "$compat" ]; then
+            previous=$(readlink "$compat")
+            if [[ ! "$previous" =~ ^"$base"/[0-9a-f]{64}$ ]]; then
+              echo '::error::Refusing to replace an unexpected .cache/ci-runtime symlink' >&2
+              exit 1
+            fi
+          elif [ -e "$compat" ]; then
+            echo '::error::Refusing to replace an existing .cache/ci-runtime path' >&2
+            exit 1
+          fi
+          mkdir -p "$runtime" "$GITHUB_WORKSPACE/.cache"
+          ln -sfnT "$runtime" "$compat"
+        fi
+        echo "dir=$runtime" >> "$GITHUB_OUTPUT"
+    - if: runner.environment == 'github-hosted'
+      uses: actions/cache@v4
       with:
         path: .cache/ci-runtime
         key: runtime-pins-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('import/build-inputs.json') }}
@@ -11,10 +44,13 @@ runs:
       shell: bash
       env:
         ACCEPT_MODEL_TERMS: 'yes'
-      run: node scripts/runtime/acquire-ci.mjs --cache .cache/ci-runtime
+        RUNTIME_DIR: ${{ steps.runtime.outputs.dir }}
+      run: node scripts/runtime/acquire-ci.mjs --cache "$RUNTIME_DIR"
     - name: Verify the runtime worker graph, including cache hits
       shell: bash
+      env:
+        RUNTIME_DIR: ${{ steps.runtime.outputs.dir }}
       run: |
-        node scripts/runtime/check-pins.mjs --runtime .cache/ci-runtime > "$RUNNER_TEMP/runtime-pins.jsonl"
+        node scripts/runtime/check-pins.mjs --runtime "$RUNTIME_DIR" > "$RUNNER_TEMP/runtime-pins.jsonl"
         tail -1 "$RUNNER_TEMP/runtime-pins.jsonl"
-        echo "FACEMORPH_RUNTIME_DIR=$GITHUB_WORKSPACE/.cache/ci-runtime" >> "$GITHUB_ENV"
+        echo "FACEMORPH_RUNTIME_DIR=$RUNTIME_DIR" >> "$GITHUB_ENV"
