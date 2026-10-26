@@ -11,6 +11,7 @@ import {inputLatent,requireLatent} from './identity.mjs';
 import {qualifyEncoderReference} from './encoder-preflight.mjs';
 import {createAcquisitionBudget,collectAssets} from './acquisition-budget.mjs';
 import {chooseGrant,mergeGrants,widenWithin,BRIDGE_OWNER} from './bridge-grant.mjs';
+import {GrantRefused} from '../../../../../packages/browser-model-manager/src/acquisition/grants.ts';
 import {modelAlternateOrigins} from '../../contracts/model-origins.ts';
 // Chunks of a model download in flight at once (16 MiB each). Eight gigabytes stated by the device earns four;
 // everything else, including iOS where deviceMemory is undefined, gets two, a 32 MiB window.
@@ -188,7 +189,12 @@ let grants=null;
 function acquireOptions(asset){return {grant:chooseGrant(grants,asset)??undefined,owner:BRIDGE_OWNER};}
 // The streamed encoder's descriptor (pinned by the manifest's digest, read verified) names its shards: they are
 // admitted against the bytes approved for it, never beyond (bridge-grant.mjs widenWithin).
-function admitDescriptor(config){if(grants?.approved)grants={...grants,approved:widenWithin(grants.approved,manifest.encoderStream?.sha256,config)};return config;}
+function admitDescriptor(config){
+ if(grants?.approved)grants={...grants,approved:widenWithin(grants.approved,manifest.encoderStream?.sha256,config)};
+ // Learn the complete cost before fetching any shard. A partially admitted schedule cannot finish encoding.
+ for(const asset of collectAssets(config))if(!chooseGrant(grants,asset))throw new GrantRefused('revision-required',asset.sha256);
+ return config;
+}
 async function floats(asset,id){const b=await bytes(asset,id);return new Float32Array(b.buffer,b.byteOffset,b.byteLength/4);}
 /**
  * Warm the device's model cache for the route this device would choose, before anything is asked

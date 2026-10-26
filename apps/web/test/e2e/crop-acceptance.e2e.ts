@@ -37,6 +37,7 @@ import {
 } from '../support/crop-fixtures.ts';
 
 const runtime = process.env['FACEMORPH_RUNTIME_DIR'] ?? join(REPO, '.cache/runtime');
+const out = resolve(process.env['FACEMORPH_DEPLOY_OUT'] ?? REPO);
 const results = join(REPO, 'apps/web/test-results/crop-acceptance');
 const cropFixtures = join(REPO, 'tests/crop/fixtures');
 const stills = join(REPO, 'apps/web/test/fixtures/verify/stills');
@@ -507,7 +508,7 @@ test(
       t.skip(reason);
       return;
     }
-    const artifact = readIdentity(REPO);
+    const artifact = readIdentity(out);
     assert.deepEqual(artifact.findings, []);
     assert.equal(artifact.identity?.label, 'destination');
     mkdirSync(results, { recursive: true });
@@ -585,7 +586,7 @@ test(
 
     const site = await startControl({
       runtime,
-      artifact: resolve(REPO, 'deploy-next'),
+      artifact: resolve(out, 'deploy-next'),
       source: artifact.identity.deploySource.buildId,
     });
     const sessions: Session[] = [];

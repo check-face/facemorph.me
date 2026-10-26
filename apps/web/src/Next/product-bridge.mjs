@@ -32,7 +32,7 @@ import {selectPhoto} from './photo-selection.mjs';
 import {refusal} from './photo/refusal.mjs';
 import {persistenceAction} from './storage-request.mjs';
 import {routeAssets,photoAssets,measure} from './model-inventory.mjs';
-import {appGrants} from './browser/bridge-grant.mjs';
+import {createApprovalGenerations} from './browser/bridge-grant.mjs';
 import {previewPhoto,cropPhoto} from './photo/crop.mjs';
 import {confirmCrop} from './photo/confirmed-crop.mjs';
 import {getPublicCatalogue,galleryTextUrl,publicNameLatent} from './public-previews.mjs';
@@ -295,11 +295,9 @@ const wanted=new Set(),downloadListeners=new Set();
 let downloading=null;
 function announceDownloads(){const snapshot={...downloads};for(const callback of downloadListeners){try{callback(snapshot);}catch{}}}
 export function subscribeDownloads(callback){downloadListeners.add(callback);callback({...downloads});return ()=>downloadListeners.delete(callback);}
-// The streamed encoder's descriptor (85 KB, pinned by the manifest's digest) names every shard with its size. Once a
-// photo is chosen it is read as inspection, like the runtime manifest, so the photo question shows the encoder's real
-// size and the approval covers exactly those files; the manifest's single-file encoder size understated it by about
-// 21 MB (fm-qrfz). Nothing is read on arrival: until then the inventory and the grants use only what is cached, and
-// both see the same descriptor knowledge, so what is shown and what is granted stay equal.
+// The pinned encoder descriptor names every shard with its size. It is fetched only after photo approval:
+// choosing an unreadable file, cancelling its crop and recovering a saved face acquire no model bytes.
+// Before discovery the decision uses its advertised allowance; a larger exact scope needs another decision.
 let descriptorText=null,descriptorFor=null,descriptorReading=null;
 function inspectDescriptor(manifest){
  const stream=manifest?.encoderStream;
@@ -325,10 +323,6 @@ function inspectionCache(planned,cache){
  };
  return {has:asset=>cache.has(asset),peek};
 }
-/** A photo was chosen: size its encoder exactly before the photo question is asked (fm-qrfz). */
-async function inspectForPhoto(){
- try{await inspectDescriptor(manifest??(await engine(),manifest));await refreshInventory();await pushGrants();}catch{}
-}
 async function refreshInventory(){
  try{
   const service=await engine();if(!service.plan)return;
@@ -343,19 +337,30 @@ async function refreshInventory(){
   announceDownloads();
  }catch(error){console.warn('Model inventory unavailable:',error?.message||error);}
 }
-// The scopes the person approved this session (fm-qrfz). Workers acquire only under the grants built from them, plus
-// what this device already holds verified; anything else is refused before a request is made.
-const approvedScopes=new Set();
-function approve(scope){approvedScopes.add('route');if(scope==='photo')approvedScopes.add('photo');}
+// The current explicit decision (fm-qrfz), plus what this device already holds verified. A route-only decision
+// does not renew old photo consent; another photo download needs its own decision.
+let approvalGenerations;
+const grantApprovals=()=>approvalGenerations??=createApprovalGenerations();
+function approve(scope){grantApprovals().approve(scope);}
 async function pushGrants(){
  try{
   const service=await engine();if(!service.plan||!service.setGrants)return;
-  const planned=await service.plan();if(!planned)return;
-  // Photos are approved: the person chose them, so size the encoder exactly before granting it.
-  if(approvedScopes.has('photo'))await inspectDescriptor(planned.manifest);
-  const {createBrowserModelCache}=await import('./Assets/model-cache.mjs');
-  const cache=inspectionCache(planned,await createBrowserModelCache({readOnly:true}));
-  service.setGrants(await appGrants({manifest:planned.manifest,manifestSha256:runtimeIdentity||'',route:planned.route,engine:planned.engine,approved:approvedScopes,cache}));
+  for(;;){
+   const planned=await service.plan();if(!planned)return;
+   const {createBrowserModelCache}=await import('./Assets/model-cache.mjs');
+   const cache=inspectionCache(planned,await createBrowserModelCache({readOnly:true}));
+   // Freeze what was approved before learning any new shard digests or sizes. Concurrent calls share it.
+   const approvals=grantApprovals();
+   const snapshot=await approvals.snapshot({manifest:planned.manifest,manifestSha256:runtimeIdentity||'',route:planned.route,engine:planned.engine,cache});
+   if(!approvals.current(snapshot.id))continue;
+   if(snapshot.grants.approved?.purpose==='generate-and-encode'){
+    await inspectDescriptor(planned.manifest);
+    // If the exact cost exceeds the frozen allowance, the worker refuses it. Its revised dialog must show it.
+    await refreshInventory();
+   }
+   if(!approvals.current(snapshot.id))continue;
+   service.setGrants(snapshot.grants);return;
+  }
  }catch(error){console.warn('Model grants unavailable:',error?.message||error);}
 }
 export function downloadModels(includePhoto){
@@ -641,7 +646,6 @@ export function warmPhotoTools(){
  engine().catch(()=>{});
 }
 export async function selectPhotoReported(request){
- void inspectForPhoto();
  const selectionRevision=revisionOf(request.id);
  const file=request.files?.[0];if(file)analytics.operationResult?.('selection','ready',undefined,{size_band:file.size<1024*1024?'small':file.size<8*1024*1024?'medium':'large'});
  const projectText=file?await recoverVideoProject(file):null;if(selectionRevision!==revisionOf(request.id))return null;if(projectText)return {projectFile:new Blob([projectText],{type:'application/json'})};

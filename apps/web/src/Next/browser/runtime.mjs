@@ -83,7 +83,7 @@ export function createBrowserRuntime({manifest: suppliedManifest=/** @type {unkn
  else task.onFrame?.(data.index,data.blob);return;
 }if(data.type==='progress'){if(data.stage==='synthesis-complete'){synthesisRuns++;if(synthesisRuns>1&&['generate','synthesize'].includes(task.operation)&&Number.isFinite(data.elapsedMs)&&data.elapsedMs>0)task.synthesisMs=data.elapsedMs;}emit(data,task.progress);return;}clearTimeout(task.timer);pending.delete(data.id);unmark();if(data.type==='error'){const refused=data.error.name==='GrantRefused';if(task.operation==='encode-aligned'&&!refused){encoderValidatedSha256=undefined;forgetEncoder();}
  // A file the person has not approved is a decision to ask for, not a broken route or encoder (fm-qrfz).
- if(!refused){validated=false;failRoute(route);}const error=Object.assign(Error(data.error.message),{name:data.error.name,failedOperation:task.operation,correctnessFailure:data.error.correctnessFailure===true});stop(error);task.reject(error);}else{if(task.synthesisMs!==undefined)remember(route,task.synthesisMs);task.resolve(data.result);}};worker.onerror=event=>{
+ if(!refused){validated=false;failRoute(route);}const error=Object.assign(Error(data.error.message),{name:data.error.name,failedOperation:task.operation,correctnessFailure:data.error.correctnessFailure===true});const admitted=validated;stop(error);if(refused)validated=admitted;task.reject(error);}else{if(task.synthesisMs!==undefined)remember(route,task.synthesisMs);task.resolve(data.result);}};worker.onerror=event=>{
   // A worker that dies at startup is not a verdict on a route: the operator's phone burned
   // webgpu, cpu and webgl in 257 ms — 154, 203 and 251 ms apart — which is far too fast for a
   // canary, because a canary requires a synthesis. Every route was blamed for one engine that
@@ -315,7 +315,7 @@ export function createBrowserRuntime({manifest: suppliedManifest=/** @type {unkn
     await start(progress);let encoded;
     // The worker takes the tensor's buffer; the slot keeps its derived input whole for a retry.
     try{encoded=await send('encode-aligned',{tensor:request.input.tensor.slice(),qualifiedEncoderSha256:encoderValidatedSha256??qualifiedEncoder(),retain:ctx.hold,confirmedCropId:request.confirmedCropId},progress);}
-    catch(error){if(signal?.aborted)throw abortError();throw new ConfirmedCropError(/invalidat|evict|corrupt|deleted/i.test(error?.name||'')?'encoder-invalidated':'encoder-unavailable',error);}
+    catch(error){if(signal?.aborted)throw abortError();if(error?.name==='GrantRefused')throw error;throw new ConfirmedCropError(/invalidat|evict|corrupt|deleted/i.test(error?.name||'')?'encoder-invalidated':'encoder-unavailable',error);}
     if(manifest.encoderStream){if(encoded.encoderQualification?.passed!==true||encoded.encoderQualification.manifestSha256!==manifest.encoderStream.sha256){stop();throw new ConfirmedCropError('encoder-invalidated');}encoderValidatedSha256=manifest.encoderStream.sha256;rememberEncoder(encoderValidatedSha256);}
     if(!ctx.hold){const stillAdmitted=validated;stop();validated=stillAdmitted;}
     return {...encoded,tensorDigest:request.input.tensorDigest,policyVersion:request.input.policyVersion};
@@ -337,11 +337,11 @@ export function createBrowserRuntime({manifest: suppliedManifest=/** @type {unkn
   return done.finally(()=>signal?.removeEventListener('abort',cancel));
  }
  function removeCropSlot(slotId){const removed=cropQueue.removeSlot(slotId);settleSlot(slotId,{type:'slot.removed',slotId});return removed;}
- /** A failed or cancelled slot's terminal outcome as the closed-set error the product reports. */
+ /** An approval refusal remains resumable; crop failures use the product's closed-set errors. */
  function slotError(event){
   if(event.type==='slot.cancelled'||event.type==='slot.removed')return abortError();
   if(event.kind==='derivation')return derivationFailure(event.cause);
-  return event.cause instanceof ConfirmedCropError||event.cause?.name==='AbortError'?event.cause:new ConfirmedCropError('encoder-unavailable',event.cause);
+  return event.cause instanceof ConfirmedCropError||['AbortError','GrantRefused'].includes(event.cause?.name)?event.cause:new ConfirmedCropError('encoder-unavailable',event.cause);
  }
  async function confirmedSources(files,signal){
   const crops=[],sources=new Map();
