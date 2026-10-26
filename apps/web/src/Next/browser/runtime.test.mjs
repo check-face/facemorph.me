@@ -216,5 +216,7 @@ test('grants travel with initialize and reach a live worker when an approval cha
   const approved={...first,approved:{assets:[],remainingBytes:10,owners:['face:candidate-bridge']}};
   const before=seen.length;runtime.setGrants(approved);
   assert.deepEqual(seen.slice(before),[{type:'grants',grants:approved}],'an approval reaches the live worker at once');
+  const settled=seen.length;runtime.setGrants(structuredClone(approved));
+  assert.equal(seen.length,settled,'the same grants posted again reach no worker');
  }finally{runtime.dispose();globalThis.indexedDB=oldIDB;}
 });

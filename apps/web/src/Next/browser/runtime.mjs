@@ -107,7 +107,8 @@ export function createBrowserRuntime({manifest: suppliedManifest=/** @type {unkn
  // What workers may acquire (fm-qrfz): the app's grants, posted with every initialize and to live workers when an
  // approval changes them. Without any, a worker acquires nothing it does not already hold.
  let grants=null;
- function setGrants(next){grants=next??null;for(const w of [worker,prefetchWorker])try{w?.postMessage({id:0,type:'grants',grants});}catch{}}
+ // Unchanged grants are not posted: a live worker keeps its ledger, and opening a saved file stays worker-free.
+ function setGrants(next){const same=JSON.stringify(next??null)===JSON.stringify(grants);grants=next??null;if(same)return;for(const w of [worker,prefetchWorker])try{w?.postMessage({id:0,type:'grants',grants});}catch{}}
  /**
   * Whether this device can keep the photo encoder resident instead of throwing the whole worker
   * away around every photo.
