@@ -57,6 +57,8 @@ jobs:
         run: bash scripts/packages/consumer-gates/convert.sh "$CONVERSION_OUT"
       - name: Gate unit tests (boundaries, side-effect sandbox, packed imports; seeded alias and side effect fail)
         run: node --test 'scripts/packages/consumer-gates/*.test.mjs'
+      - name: Native browser cleanup on callback success and failure
+        run: node --test scripts/packages/consumer-gates/browser.e2e.mjs
       - name: package-tarball-content-scan self-test (fm-1jr7)
         run: node --test scripts/packages/check-tarball-contents.test.mjs
       - name: Public package docs carry no FaceMorph deployment values (fm-19eb)

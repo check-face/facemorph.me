@@ -190,7 +190,7 @@ export async function withBrowserPage(
       host: '127.0.0.1',
       ...(executablePath ? { executablePath } : {}),
     });
-    browser = await chromium.connect(browserServer.wsEndpoint());
+    browser = await chromium.connect(browserServer.wsEndpoint(), { timeout: timeoutMs });
     context = await browser.newContext({ ignoreHTTPSErrors: true, serviceWorkers: 'allow' });
     const host = new URL(origin).host;
     observation = attachPlaywright(context, {
