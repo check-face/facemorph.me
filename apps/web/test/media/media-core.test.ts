@@ -33,18 +33,29 @@ import { preparedFiles } from '../../src/media/prepared-files.ts';
 const web = (p: string) => new URL(`../../${p}`, import.meta.url);
 const text = (p: string) => readFileSync(web(p), 'utf8');
 
-// ---- export-policy.unchanged: the figures and formulas are read from the candidate's source and evaluated.
+// ---- export-policy.unchanged: the figures and formulas are the candidate's, evaluated from its own source text.
+// fm-eeki moved them out of the app onto this policy, so the candidate's expressions are frozen here as they
+// stood in apps/web/src/Next/media.mjs, recovery-metadata.mjs and image-encoder-worker.mjs at c0a65fb (the
+// candidate, before the move), and the app sources must now take every figure from the policy instead.
+const CANDIDATE = {
+  probe:
+    "export async function probeVideoEncoder({width=1024,fallbackWidth=512,fps=16,bundle=''}={}){",
+  config:
+    "const config={codec:'avc1.42002A',width:size,height:size,bitrate:Math.round(size*size*fps*.25/1000)*1000,framerate:fps};",
+  correctness: 'const surface=Canvas?new Canvas(64,64):null;',
+  ffmpeg:
+    "result={kind:'ffmpeg',width:fallbackWidth,height:fallbackWidth,reason:'webcodecs-unavailable'}",
+  scrub: "convertToBlob({type:'image/jpeg',quality:.85})",
+  download: "format:'webp',quality:.8,",
+  worker: "format='png',quality=.8,",
+};
 test('export-policy.unchanged: WebCodecs config for 1024/512 at fps 8, 16, 32 and 120 equals the candidate probeVideoEncoder', () => {
-  const media = text('src/Next/media.mjs');
-  const probe =
-    /export async function probeVideoEncoder\(\{width=(\d+),fallbackWidth=(\d+),fps=\d+[^}]*\}=\{\}\)/.exec(
-      media,
-    );
+  const probe = /\{width=(\d+),fallbackWidth=(\d+),fps=\d+[^}]*\}=\{\}\)/.exec(CANDIDATE.probe);
   assert.ok(probe, 'probeVideoEncoder signature found');
   const sizes = [Number(probe[1]), Number(probe[2])];
   const expr =
-    /const config=(\{codec:'[^']+',width:size,height:size,bitrate:[^}]+,framerate:fps\});/.exec(
-      media,
+    /^const config=(\{codec:'[^']+',width:size,height:size,bitrate:[^}]+,framerate:fps\});$/.exec(
+      CANDIDATE.config,
     );
   assert.ok(expr, 'candidate config expression found');
   for (const fps of [8, 16, 32, 120]) {
@@ -55,15 +66,23 @@ test('export-policy.unchanged: WebCodecs config for 1024/512 at fps 8, 16, 32 an
     for (const [i, size] of sizes.entries())
       assert.deepEqual(videoEncoderSettings(size, fps), candidate[i]);
   }
-  assert.match(media, /new Canvas\(64,64\)/, 'the correctness encode is 64 x 64');
+  assert.match(CANDIDATE.correctness, /new Canvas\(64,64\)/, 'the correctness encode is 64 x 64');
   assert.deepEqual(CORRECTNESS_ENCODE, { width: 64, height: 64 });
-  assert.match(media, /result=\{kind:'ffmpeg',width:fallbackWidth,height:fallbackWidth/);
+  assert.match(CANDIDATE.ffmpeg, /width:fallbackWidth,height:fallbackWidth/);
   assert.equal(FFMPEG_WIDTH, sizes[1]);
-  assert.match(media, /convertToBlob\(\{type:'image\/jpeg',quality:\.85\}\)/, 'scrub JPEG 0.85');
+  assert.match(CANDIDATE.scrub, /quality:\.85\}/, 'scrub JPEG 0.85');
   assert.equal(SCRUB_JPEG_QUALITY, 0.85);
-  assert.match(text('src/Next/recovery-metadata.mjs'), /format:'webp',quality:\.8,/);
-  assert.match(text('src/Next/image-encoder-worker.mjs'), /format='png',quality=\.8,/);
+  assert.match(CANDIDATE.download, /quality:\.8,/);
+  assert.match(CANDIDATE.worker, /quality=\.8,/);
   assert.equal(WEBP_QUALITY, 0.8);
+  // The app now reads each of these from the policy.
+  const media = text('src/Next/media.mjs');
+  assert.match(media, /const config=videoEncoderSettings\(size,fps\);/);
+  assert.match(media, /probeVideoEncoder\(\{width=VIDEO_WIDTH,fallbackWidth=VIDEO_FALLBACK_WIDTH,/);
+  assert.match(media, /new Canvas\(side,side\)/);
+  assert.match(media, /quality:SCRUB_JPEG_QUALITY\}/);
+  assert.match(text('src/Next/recovery-metadata.mjs'), /format:'webp',quality:WEBP_QUALITY,/);
+  assert.match(text('src/Next/image-encoder-worker.mjs'), /format='png',quality=WEBP_QUALITY,/);
 });
 
 test('export-policy: WebP 0.8 by default, PNG when lossless is asked for or WebP does not encode; no quality option', () => {

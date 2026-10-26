@@ -1,9 +1,10 @@
 import {encodeRgbaPng} from './browser/png.mjs';
 import {embedRecovery} from './image-envelope.mjs';
+import {SCRUB_JPEG_QUALITY,WEBP_QUALITY} from '../media/export-policy.ts';
 let tail=Promise.resolve(),surface=null;
 self.onmessage=({data})=>{
  tail=tail.then(async()=>{
-  const {id,blob:inputBlob,width=1024,height=1024,format='png',quality=.8,recovery,derivativeSize=0}=data;let rgba=data.rgba;
+  const {id,blob:inputBlob,width=1024,height=1024,format='png',quality=WEBP_QUALITY,recovery,derivativeSize=0}=data;let rgba=data.rgba;
   try{
    if(inputBlob){
     if(!(inputBlob instanceof Blob)||inputBlob.size>64*1024*1024)throw Error('Invalid download image.');
@@ -20,7 +21,7 @@ self.onmessage=({data})=>{
    let derivative=null;
    if(derivativeSize){if(!Number.isInteger(derivativeSize)||derivativeSize<16||derivativeSize>1024)throw Error('Invalid preview size.');
     surface??=new OffscreenCanvas(width,height);surface.getContext('2d').putImageData(new ImageData(new Uint8ClampedArray(rgba),width,height),0,0);
-    const preview=new OffscreenCanvas(derivativeSize,derivativeSize);preview.getContext('2d').drawImage(surface,0,0,derivativeSize,derivativeSize);derivative=await preview.convertToBlob({type:'image/jpeg',quality:.85});}
+    const preview=new OffscreenCanvas(derivativeSize,derivativeSize);preview.getContext('2d').drawImage(surface,0,0,derivativeSize,derivativeSize);derivative=await preview.convertToBlob({type:'image/jpeg',quality:SCRUB_JPEG_QUALITY});}
    const encodeMs=performance.now()-started,imageBytes=blob.size;
    const decorated=recovery?await embedRecovery(blob,recovery.result,{seed:recovery.seed}):{blob,metadataBytes:0};
    postMessage({id,result:{...decorated,derivative,imageBytes,encodeMs,totalMs:performance.now()-started,format:blob.type}});

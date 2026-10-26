@@ -34,6 +34,7 @@ test('Morph frames go to the runtime in bounded windows and reach the writer in 
  assert.ok(batches.every(n=>n<=16),'windows are bounded');assert.equal(batches.reduce((a,b)=>a+b,0),total-2,'saved faces are not synthesized again');
 });
 import {videoWriter} from './media.mjs';
+import {createExportFiles} from './export-files.mjs';
 test('Video worker startup/message failures and preabort terminate promptly',async()=>{
  const original=globalThis.Worker;let worker;globalThis.Worker=class{constructor(){worker=this;}postMessage(){throw Error('post sentinel');}terminate(){this.terminated=true;}};
  try{let w=videoWriter({codec:{}});await assert.rejects(w.initialize(),/post sentinel/);assert(worker.terminated);w.dispose();
@@ -93,7 +94,7 @@ async function bridgeContext({generate,writer,readLast,fetchManifest,identity}={
  createBrowserRuntime:()=>service,createDesktopRuntime:()=>service,decode:s=>({tag:0,fields:[JSON.parse(s)]}),encode:x=>({tag:0,fields:[JSON.stringify(x)]}),GEOMETRY_VERSION:'test',
  diagnostics:{start(){},stage(){},finish(){},bundle(){}},labelFor:s=>s,loadedBytes:e=>e.loaded||0,window:{addEventListener(){}},readLast:readLast||(async()=>null),generationIdentity:()=>identity||{},digest:async()=> 'hash',
  videoWriter:()=>writer,createLatentPath:m=>({totalFrames:32,*frames(){for(let index=0;index<32;index++)yield {index,segment:Math.floor(index/16),u:(index%16)/16,values:new Float32Array(9216).fill(index)};},sample:(segment,u)=>new Float32Array(9216).fill(segment*16+u*16)}),infillFrames:(await import('./infill.mjs')).infillFrames,
- frameStoreGet:async()=>null,frameStoreGetOne:async(key,index)=>ctx.retained.get(index),frameStoreKey:async()=> 'frames',retained:new Map()});
+ frameStoreGet:async()=>null,frameStoreGetOne:async(key,index)=>ctx.retained.get(index),frameStoreKey:async()=> 'frames',retained:new Map(),createExportFiles});
  vm.runInContext(plain(await read('stage-labels.mjs'))+'\n'+plain(await read('product-bridge.mjs'))+'\nglobalThis.run=execute;globalThis.invalidate=invalidateFace;globalThis.restore=restoreLastResult;globalThis.arrivalChange=invalidateArrivalRestore;',ctx);
  return ctx;
 }
@@ -109,13 +110,17 @@ test('editing/removing an in-flight face discards its result and retains an unre
 test('a repeated single face preserves its download and skips all generation work',async()=>{
  let generated=0,encoded=0;const downloads=[];
  const ctx=await bridgeContext({generate:async()=>{generated++;return {blob:new Blob(['image'],{type:'image/png'}),latent:{space:'w-plus',values:new Float32Array(9216)}};}});
- ctx.downloadImage=async()=>{encoded++;return new Blob(['download'],{type:'image/webp'});};ctx.saveFile=async blob=>{downloads.push(blob);return 'Saved';};
+ // A real WebP: a prepared file is offered only when its bytes are the container its name and type say.
+ const webp=await fs.readFile(new URL('../public/preview/hello-1024.webp',import.meta.url)),names=[];
+ ctx.downloadImage=async()=>{encoded++;return new Blob([webp,new Uint8Array([encoded])],{type:'image/webp'});};ctx.saveFile=async(blob,name)=>{downloads.push(blob);names.push(name);return 'Saved';};
  vm.runInContext('globalThis.save=saveMedia;',ctx);
  const request=singleRequest('a','1');await ctx.run(request);await ctx.save('a');
  await ctx.run(request);await ctx.save('a');
  assert.equal(generated,1);assert.equal(encoded,1);assert.equal(downloads[0],downloads[1]);
  ctx.invalidate('a');await ctx.run(singleRequest('a','2'));await ctx.save('a');
  assert.equal(generated,2);assert.equal(encoded,2);assert.notEqual(downloads[1],downloads[2]);
+ // The same result keeps its name across Saves; seed 1 and seed 2 are different exports with different names.
+ assert.equal(names[0],names[1]);assert.notEqual(names[1],names[2]);for(const name of names)assert.match(name,/^seed-[12]-[bcdfghjkmnpqrstvwxz2-9]{6}\.webp$/);
 });
 test('single raw face remembrance waits for encoding and refuses a superseded result',async()=>{
  let complete;const remembered=[];

@@ -4,6 +4,7 @@
 // probes (how far one WebAssembly memory can grow, what VideoEncoder accepts) run only for the operation that needs
 // them, once, so making a face never reserves the encoder's memory.
 import {admit as decide,reasonFromError} from '../../admission/route-admission.ts';
+import {VIDEO_FALLBACK_WIDTH,VIDEO_WIDTH,videoEncoderSettings} from '../../media/export-policy.ts';
 
 const SIMD_PROBE=new Uint8Array([0,97,115,109,1,0,0,0,1,5,1,96,0,1,123,3,2,1,0,10,10,1,8,0,65,0,253,15,253,98,11]);
 
@@ -28,8 +29,8 @@ let videoEncoder;
 async function videoEncoderFacts(){
  if(videoEncoder)return videoEncoder;
  if(typeof globalThis.VideoEncoder!=='function')return videoEncoder='absent';
- const avc=async size=>{try{return (await VideoEncoder.isConfigSupported({codec:'avc1.42002A',width:size,height:size,bitrate:Math.round(size*size*16*.25/1000)*1000,framerate:16})).supported===true;}catch{return false;}};
- return videoEncoder={avc1024:await avc(1024),avc512:await avc(512)};
+ const avc=async size=>{try{return (await VideoEncoder.isConfigSupported(videoEncoderSettings(size,16))).supported===true;}catch{return false;}};
+ return videoEncoder={avc1024:await avc(VIDEO_WIDTH),avc512:await avc(VIDEO_FALLBACK_WIDTH)};
 }
 
 function threads(){

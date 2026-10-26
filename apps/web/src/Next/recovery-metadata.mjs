@@ -2,6 +2,7 @@ import {createImageEncoder} from './image-encoder.mjs';
 import {recoverEnvelope,embedRecovery} from './image-envelope.mjs';
 import {digest} from './browser/originals.mjs';
 import {validateLast} from './last-result.mjs';
+import {WEBP_QUALITY} from '../media/export-policy.ts';
 const encoder=new TextEncoder(),decoder=new TextDecoder(),KEY='FaceMorph';
 const signature=[137,80,78,71,13,10,26,10],MAX=512*1024;
 function crc(bytes){let value=0xffffffff;for(const byte of bytes){value^=byte;for(let i=0;i<8;i++)value=(value>>>1)^((value&1)?0xedb88320:0);}return (value^0xffffffff)>>>0;}
@@ -64,7 +65,7 @@ export async function downloadImage(result,seed){
   // A displayed face also carries UI state and deferred file/download promises.
   // Only the recovery identity belongs across the worker boundary.
   const identity={latent:result.latent,provenance:result.provenance,generationKind:result.generationKind,generationSha256:result.generationSha256};
-  const output=await encoder.encode(slot,{blob:result.blob,format:'webp',quality:.8,recovery:{result:identity,seed:seed===undefined?undefined:Number(seed)}});
+  const output=await encoder.encode(slot,{blob:result.blob,format:'webp',quality:WEBP_QUALITY,recovery:{result:identity,seed:seed===undefined?undefined:Number(seed)}});
   return output.blob;
  }catch(error){
   if(result.blob.type==='image/png')return decorateImage(result,seed);

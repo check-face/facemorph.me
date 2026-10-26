@@ -14,6 +14,7 @@
 // pipelined: `add()` hands the frame to the worker and returns, so frame N encodes while
 // frame N+1 synthesizes; the encode surfaces as its own 'encoding' stage in diagnostics.
 import {createImageEncoder} from './image-encoder.mjs';
+import {CORRECTNESS_ENCODE,FFMPEG_WIDTH,SCRUB_JPEG_QUALITY,VIDEO_FALLBACK_WIDTH,VIDEO_WIDTH,videoEncoderSettings} from '../media/export-policy.ts';
 import { frameStorePut, frameKey } from './morph-frames.mjs';
 
 export async function saveFile(blob,name){
@@ -52,7 +53,7 @@ async function frameDerivatives(blob,{encodeSize=512,derivativeSize=0}={}){
   let derivative=null;
   if(derivativeSize>0){
    const target=derivativeSize===encodeSize?encode:make(derivativeSize);
-   derivative=await (target.canvas.convertToBlob?target.canvas.convertToBlob({type:'image/jpeg',quality:.85}):new Promise(resolve=>target.canvas.toBlob(resolve,'image/jpeg',.85)));
+   derivative=await (target.canvas.convertToBlob?target.canvas.convertToBlob({type:'image/jpeg',quality:SCRUB_JPEG_QUALITY}):new Promise(resolve=>target.canvas.toBlob(resolve,'image/jpeg',SCRUB_JPEG_QUALITY)));
   }
   return {rgba,width:encodeSize,height:encodeSize,derivative};
  }finally{bitmap.close?.();if(objectUrl)URL.revokeObjectURL(objectUrl);}
@@ -62,14 +63,14 @@ let encoderProbe=null,correctnessChecks=0;
 async function encoderCorrectnessCheck(codec,fps){
  correctnessChecks++;
  const Canvas=typeof OffscreenCanvas==='function'?OffscreenCanvas:null;
- const surface=Canvas?new Canvas(64,64):null;
+ const {width:side}=CORRECTNESS_ENCODE,surface=Canvas?new Canvas(side,side):null;
  const context=surface?.getContext?.('2d');
  if(!surface||!context||typeof globalThis.VideoFrame!=='function')return false;
- context.fillRect?.(0,0,64,64);
+ context.fillRect?.(0,0,side,side);
  let chunks=0,failure=null;
  const encoder=new globalThis.VideoEncoder({output:()=>{chunks++;},error:error=>{failure=error;}});
  try{
-  encoder.configure({codec,width:64,height:64,bitrate:200000,framerate:fps,avc:{format:'avc'}});
+  encoder.configure({codec,width:side,height:side,bitrate:200000,framerate:fps,avc:{format:'avc'}});
   const frame=new globalThis.VideoFrame(surface,{timestamp:0,duration:1e6/Math.max(1,fps)});
   encoder.encode(frame,{keyFrame:true});frame.close();
   await Promise.race([encoder.flush(),new Promise((_,reject)=>setTimeout(()=>reject(Error('The video encoder check timed out.')),5000))]);
@@ -85,7 +86,7 @@ async function encoderCorrectnessCheck(codec,fps){
  * further encoder-correctness-check. The chosen resolution is recorded in the result; callers
  * must pass it on to diagnostics rather than lowering it themselves.
  */
-export async function probeVideoEncoder({width=1024,fallbackWidth=512,fps=16,bundle=''}={}){
+export async function probeVideoEncoder({width=VIDEO_WIDTH,fallbackWidth=VIDEO_FALLBACK_WIDTH,fps=16,bundle=''}={}){
  if(encoderProbe&&encoderProbe.bundle===bundle)return encoderProbe.result;
  const VideoEncoder=globalThis.VideoEncoder;
  let result;
@@ -93,7 +94,7 @@ export async function probeVideoEncoder({width=1024,fallbackWidth=512,fps=16,bun
  else{
   result={kind:'ffmpeg',width:fallbackWidth,height:fallbackWidth,reason:'webcodecs-unsupported'};
   for(const size of [width,fallbackWidth]){
-   const config={codec:'avc1.42002A',width:size,height:size,bitrate:Math.round(size*size*fps*.25/1000)*1000,framerate:fps};
+   const config=videoEncoderSettings(size,fps);
    try{
     if(!(await VideoEncoder.isConfigSupported(config)).supported)continue;
     if(await encoderCorrectnessCheck(config.codec,fps)){result={kind:'webcodecs',...config,correctnessChecks};break;}
@@ -139,7 +140,7 @@ export function videoWriter({codec,encoder,fps=16,framesKey,totalFrames,derivati
    // synchronously and a worker failure still rejects the very call the caller awaits.
    let choice=encoder;
    if(!choice){const probe=globalThis.VideoEncoder?.isConfigSupported?probeVideoEncoder({fps}):null;
-    choice=probe?await probe:{kind:'ffmpeg',width:512,height:512,reason:'webcodecs-unavailable'};}
+    choice=probe?await probe:{kind:'ffmpeg',width:FFMPEG_WIDTH,height:FFMPEG_WIDTH,reason:'webcodecs-unavailable'};}
    mode=choice.kind;encodeSize=choice.width;
    if(mode==='webcodecs')await call('initialize',{mode,codec:choice.codec,width:choice.width,height:choice.height,fps,bitrate:choice.bitrate});
    else await call('initialize',{mode:'ffmpeg',codec,fps,width:choice.width,height:choice.height});

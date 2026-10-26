@@ -290,7 +290,7 @@ export function createBrowserRuntime({manifest: suppliedManifest, manifestSha256
    if(!(rgba instanceof ArrayBuffer)||rgba.byteLength!==1024*1024*4)throw Error('Invalid raw face.');
    imageEncoder??=imageEncoderFactory();
    const slot=await imageEncoder.acquire(rgba.byteLength,{signal});
-   const fileReady=imageEncoder.encode(slot,{rgba:rgba.slice(0),format:'webp',quality:.8},{signal}).catch(async error=>{
+   const fileReady=imageEncoder.encode(slot,{rgba:rgba.slice(0),format:'webp'},{signal}).catch(async error=>{
     if(signal.aborted)throw error;
     const fallback=await imageEncoder.acquire(rgba.byteLength,{signal});
     return imageEncoder.encode(fallback,{rgba:rgba.slice(0),format:'png'},{signal});

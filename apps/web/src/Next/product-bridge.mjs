@@ -9,6 +9,7 @@ import {createLatentPath,GEOMETRY_VERSION} from './geometry/latent-path.mjs';
 import {blend,FFHQ_1024_DESCRIPTOR} from '@facemorph/stylegan-js';
 import {decode,encode} from '../project/bridge-result.ts';
 import {saveFile,shareFile,videoWriter} from './media.mjs';
+import {createExportFiles} from './export-files.mjs';
 import {diagnostics,onJobEnd} from './reporting.mjs';
 import * as analytics from './analytics.mjs';
 import {record as recordUsage} from './usage-stats.mjs';
@@ -35,11 +36,13 @@ const listeners=new Set();
 const listener=event=>{for(const callback of listeners)callback(event);};
 let runtime,manifest,runtimeIdentity,active,writer,currentJob=0,project=null,video=null;
 const faces=new Map(),urls=new Map(),faceRevisions=new Map();
+// Prepared Save/Share files, their names and the export policy (fm-eeki): one prepared file per result and format.
+let exportFiles=null;const exportFilesOf=()=>exportFiles??=createExportFiles();
 let morphRevision=0;
-export function invalidateMorph(){morphRevision++;video=null;project=null;const url=urls.get('video');if(url)URL.revokeObjectURL(url);urls.delete('video');clearLiveFrames();retainSession();}
+export function invalidateMorph(){morphRevision++;video=null;project=null;exportFiles?.drop('video');const url=urls.get('video');if(url)URL.revokeObjectURL(url);urls.delete('video');clearLiveFrames();retainSession();}
 export function invalidateFace(id){
  arrivalRevision++;faceRevisions.set(id,(faceRevisions.get(id)||0)+1);
- faces.delete(id);const url=urls.get(id);if(url)URL.revokeObjectURL(url);urls.delete(id);
+ faces.delete(id);exportFiles?.drop(id);const url=urls.get(id);if(url)URL.revokeObjectURL(url);urls.delete(id);
  invalidateMorph();
 }
 export const photoRevision=id=>faceRevisions.get(id)||0;
@@ -437,9 +440,20 @@ export async function execute(request){
 export function cancel(){active?.abort();writer?.dispose();runtime?.cancel();}
 const kindOf=id=>id==='video'?'video':'image';
 function reported(kind,method,work){analytics.exported({kind,method,outcome:'ready'});const began=now();return Promise.resolve().then(()=>typeof work==='function'?work():work).then(result=>{const text=String(result||'');const cancelled=/cancelled/i.test(text),fallback=method==='share'&&/download|save/i.test(text);analytics.exported({kind,method,outcome:cancelled?'cancelled':'completed',durationMs:now()-began,fallback});return result;},error=>{analytics.exported({kind,method,outcome:error?.name==='AbortError'?'cancelled':'failed',durationMs:now()-began});throw error;});}
-async function exportBlob(id){if(id==='video')return decorateVideo(video,project);const face=faces.get(id);if(!face)throw Error('Generate a result first.');face.downloadReady??=(async()=>{const result=await readyFace(face);return (typeof downloadImage==='function'?downloadImage:decorateImage)(result,face.source?.mode==='seed'?face.source.value:undefined);})();try{return await face.downloadReady;}catch(error){face.downloadReady=null;throw error;}}
-export async function saveMedia(id){return reported(kindOf(id),'save',async()=>{const blob=await exportBlob(id);return saveFile(blob,id==='video'?'facemorph.mp4':blob.type==='image/webp'?'facemorph.webp':'facemorph.png');});}
-export async function shareMedia(id){return reported(kindOf(id),'share',async()=>{const blob=await exportBlob(id);if(!blob)throw Error('Generate a result first.');return shareFile(blob,id==='video'?'facemorph.mp4':blob.type==='image/webp'?'facemorph.webp':'facemorph.png');});}
+/** The file Save and Share hand over: prepared once per result and format, named from its export identity. */
+async function exportFile(id){
+ if(id==='video'){
+  const saved=video,savedProject=project;if(!saved)throw Error('Create a morph first.');
+  const morph=savedProject?.morph,endpoints=(morph?.controls||[]).map(control=>({...faces.get(control.visitId),latent:control.latent}));
+  return exportFilesOf().video(saved,{encode:()=>decorateVideo(saved,savedProject),faces:endpoints,modelIdentity:runtimeIdentity,current:()=>video===saved,
+   morph:morph&&{mode:morph.kind,settings:{width:morph.width,pinchCenter:morph.pinchCenter??null,framesPerSegment:morph.framesPerSegment,framesPerSecond:morph.framesPerSecond}}});
+ }
+ const face=faces.get(id);if(!face)throw Error('Generate a result first.');
+ const encode=async()=>{face.downloadReady??=(async()=>{const result=await readyFace(face);return (typeof downloadImage==='function'?downloadImage:decorateImage)(result,face.source?.mode==='seed'?face.source.value:undefined);})();try{return await face.downloadReady;}catch(error){face.downloadReady=null;throw error;}};
+ return exportFilesOf().face(id,face,{encode,modelIdentity:runtimeIdentity,current:()=>faces.get(id)===face});
+}
+export async function saveMedia(id){return reported(kindOf(id),'save',async()=>{const file=await exportFile(id);return saveFile(file.blob,file.filename);});}
+export async function shareMedia(id){return reported(kindOf(id),'share',async()=>{const file=await exportFile(id);return shareFile(file.blob,file.filename);});}
 export async function exportProject(options){
  if(!project)throw Error('Generate or open a project first.');
  let selected=project;
