@@ -96,6 +96,10 @@ export default defineConfig({
     'import.meta.env.FACEMORPH_SOURCE_SHA': JSON.stringify(
       process.env['FACEMORPH_SOURCE_SHA'] ?? 'unknown',
     ),
+    // A test build only (fm-5yqq): lets the changeover statistics run under automation. Never set for a release.
+    'import.meta.env.FACEMORPH_STATS_ALLOW_AUTOMATION': JSON.stringify(
+      process.env['FACEMORPH_STATS_ALLOW_AUTOMATION'] === '1' ? '1' : '',
+    ),
   },
   css: {
     preprocessorOptions: {

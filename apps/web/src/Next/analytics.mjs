@@ -110,11 +110,11 @@ function load() {
 
 /** Starts analytics once, after the page is idle. Safe to call repeatedly and from anywhere. */
 export function start(env = globalThis) {
+  statVisit(env);
   if (started || !allowed(env)) return false;
   started = true;
   try {
-    try{visitKind=localStorage.getItem('facemorph-visit-v1')?'returning':'first';localStorage.setItem('facemorph-visit-v1','1');}catch{}
-    stat('visit', { visit: visitKind });
+    noteVisit();
     gtag('consent', 'default', { ad_storage: 'denied', ad_user_data: 'denied', ad_personalization: 'denied', analytics_storage: 'granted' });
     gtag('js', new Date());
     gtag('set', 'user_properties', deviceProperties());
@@ -139,9 +139,13 @@ export function start(env = globalThis) {
 
 // Second, first-party sink for the changeover statistics (usage-stats.mjs), wired by the bridge so
 // this module stays import-free. It applies its own opt-outs and never throws into the product.
-let statsSink = () => {};
-export function setStatsSink(fn) { if (typeof fn === 'function') statsSink = fn; }
+// The sink has its own hosts (both production hosts, where analytics loads on one), so the visit it counts is
+// noted when the sink's gate allows it, independently of analytics; a gate given once is kept.
+let statsSink = () => {}, statsGate = () => false, statVisited = false;
+export function setStatsSink(fn, gate) { if (typeof fn === 'function') statsSink = fn; if (typeof gate === 'function') statsGate = gate; }
 function stat(kind, data) { try { statsSink(kind, data); } catch { /* never affects the product */ } }
+function noteVisit() { if (visitKind !== 'unknown') return; try{visitKind=localStorage.getItem('facemorph-visit-v1')?'returning':'first';localStorage.setItem('facemorph-visit-v1','1');}catch{} }
+function statVisit(env) { if (statVisited) return; try { if (!statsGate(env)) return; } catch { return; } statVisited = true; noteVisit(); stat('visit', { visit: visitKind }); }
 
 /** Registers what the running job knows that analytics does not (face and frame counts, inputs). */
 export function setJobContext(fn) { if (typeof fn === 'function') context = fn; }
@@ -161,6 +165,7 @@ export function jobStarted({ action, provider, warm, target }) {
   terminalSent=false;try{attemptId=Array.from(crypto.getRandomValues(new Uint8Array(8)),x=>x.toString(16).padStart(2,'0')).join('');}catch{attemptId=undefined;}const enqueued=queued.get(target);queued.delete(target);
   if(enqueued!==undefined)track('queue_finish',{operation:'queue',outcome:'ready',wait_ms:(performance.now()-enqueued),queue_depth:queued.size});
   track('job_start', { attempt_id:attemptId, action, route: provider, cache_state: warm ? 'warm' : 'cold', ...context() });
+  stat('start', { action, route: provider });
 }
 
 /**

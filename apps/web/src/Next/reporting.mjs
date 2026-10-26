@@ -6,6 +6,9 @@ let bundle,provider,device=null,consented=false,basis=null,session=null,run=null
 let runAction,jobEnded=null;
 /** One listener for how a job ended, closed vocabularies only. Product analytics registers here; the collector endpoint comes from environment bindings. */
 export function onJobEnd(listener){jobEnded=typeof listener==='function'?listener:null;}
+let stageSeen=null;
+/** One listener for every runtime stage of a job, raw (the changeover statistics read their own timings from it). */
+export function onStage(listener){stageSeen=typeof listener==='function'?listener:null;}
 let aborters=new Set(),pendingStart=null,finished=false,interrupted=false,tally=null,persisted=true;
 // One clock per stage name. A single shared clock dropped exactly the bursty boundaries the
 // parity ledger is made of: two different stages a few milliseconds apart are two facts.
@@ -279,6 +282,7 @@ export const diagnostics={
   notice(consented?'enabled':'disabled');if(consented)reference('open');
  },
  stage(stage,event={}){
+  try{stageSeen?.(stage,event);}catch{}
   // Route facts travel with the route-admitted stage; they are closed vocabularies, not free text.
   if(stage==='route-admitted'&&run){openRun();send({event:'stage',stage,gpu:event.gpu,routeOutcome:event.routeOutcome,provider:['cpu','webgl','webgpu'].includes(event.provider)?event.provider:undefined,elapsedMs:Math.round(performance.now()-started)});return;}
   // C-02: a background canary failure names the route it dropped, so the record says why a

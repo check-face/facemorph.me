@@ -4,13 +4,14 @@ import Checkbox from '@mui/material/Checkbox';
 import IconButton from '@mui/material/IconButton';
 import LinearProgress from '@mui/material/LinearProgress';
 import Snackbar from '@mui/material/Snackbar';
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { msg } from '../../src/controller/msg.ts';
 import type { State } from '../../src/controller/state.ts';
 import { testingInvited } from '../../src/controller/init.ts';
 import { megabytes, type Dispatch } from './Dialogs.tsx';
 import { Explain } from './Explain.tsx';
 import { refusalForText } from '../../src/admission/route-admission.ts';
+import { setUsageStats, switchState } from '../facade/usage-stats.ts';
 
 interface Props {
   readonly state: State;
@@ -99,6 +100,7 @@ export function DebugArea({ state, dispatch, stagedReports }: Omit<Props, 'refer
         />
         <span>Send debug reports until I turn this off</span>
       </label>
+      <UsageStatsSwitch />
       <p role="status">{state.DebugStatus}</p>
       {stagedReports > 0 && !state.Debug && (
         <p>{stagedReports} staged report(s) from this session are ready to send if you agree.</p>
@@ -107,6 +109,34 @@ export function DebugArea({ state, dispatch, stagedReports }: Omit<Props, 'refer
         <a href="mailto:checkfaceml@gmail.com">Email us</a>
       </p>
     </section>
+  );
+}
+
+/**
+ * The changeover statistics switch (fm-5yqq), one line beside the debug-report control. Off saves the opt-out,
+ * drops what is queued and sends nothing more from this tab; On removes it. When the browser's own setting rules
+ * statistics out, it shows Off, disabled, with that reason.
+ */
+export function UsageStatsSwitch() {
+  const [view, setView] = useState(switchState);
+  return (
+    <div className="next-usage-stats">
+      <label className="next-debug-report">
+        <Checkbox
+          checked={view.on}
+          disabled={view.reason !== null}
+          slotProps={{ input: { 'aria-describedby': 'next-usage-stats-note' } }}
+          onChange={(_, checked) => setView(setUsageStats(checked))}
+        />
+        <span>Usage statistics: {view.on ? 'On' : 'Off'}</span>
+      </label>
+      <p id="next-usage-stats-note" className="next-usage-stats-note">
+        {view.reason ??
+          (view.saved
+            ? 'Anonymous counts of visits, jobs and timings. See “What do you count?”.'
+            : `Usage statistics are ${view.on ? 'on' : 'off'} for this tab; this choice could not be saved.`)}
+      </p>
+    </div>
   );
 }
 

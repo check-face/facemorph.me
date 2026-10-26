@@ -188,7 +188,7 @@ export function Explain({ route = '', reference = '' }: { route?: string; refere
         </p>
         <p>
           {
-            'Two things are sent. Cookie-based usage analytics (see "What do you count?") go to Google Analytics. A debug report is sent only if you turn reporting on.'
+            'Three things are sent. Cookie-based usage analytics (see "What do you count?") go to Google Analytics. Anonymous usage statistics (see "What are usage statistics?") go to this site\'s own address, /stats/v1, as a same-origin request. A debug report is sent only if you turn reporting on.'
           }
         </p>
       </details>
@@ -202,6 +202,19 @@ export function Explain({ route = '', reference = '' }: { route?: string; refere
         <p>
           {
             'We never send your photos, the words or seeds you type, your faces or videos, file names, or error messages. Advertising features and Google signals are off. Nothing is counted if your browser sends Do Not Track, Global Privacy Control or Save-Data, or if you block Google Analytics. It is separate from debug reports, which stay off until you turn them on.'
+          }
+        </p>
+      </details>
+      <details className="next-faq" id="usage-statistics">
+        <summary>{'What are usage statistics?'}</summary>
+        <p>
+          {
+            'A few anonymous counts so we can compare this version with the old site: visits by device class (iPhone, Android or desktop) and whether it is a first or returning visit; jobs by kind (face, photo, morph, names, blend), processing mode and how they ended, with how long they took; the time to the first result; model compute time per face; how long the models took to download or load; morph frames; saved or shared files by kind and method; and the model megabytes a first visit downloads.'
+          }
+        </p>
+        <p>
+          {
+            'They are sent in small batches to /stats/v1 on this site, where only running totals are kept. No cookie or identifier is used, and no words, seeds, names, photos, faces or file names are ever sent. Nothing is counted if your browser sends Global Privacy Control or Do Not Track, asks to save data, or is automated. To turn it off, use the Usage statistics switch next to the debug-report control at the bottom of this page.'
           }
         </p>
       </details>

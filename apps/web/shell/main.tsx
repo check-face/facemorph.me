@@ -3,6 +3,8 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import '../src/style.scss';
+// Before anything loads the bridge: the statistics sink must be wired when analytics starts.
+import './facade/usage-stats.ts';
 import { Shell } from './Shell.tsx';
 import { Product } from './Product.tsx';
 import { createController } from '../src/controller/runner.ts';
