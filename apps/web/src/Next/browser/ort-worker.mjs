@@ -1,17 +1,18 @@
-import {createWebGpuSession} from './webgpu-engine.mjs';
-import {createDirectWebGpuSession} from './webgpu-direct.mjs';
+// Mapping, synthesis, the canaries and the ORT runtime are the stylegan-js engine's (fm-7f2o): this worker keeps the
+// acquisition, residency, encoder and message protocol, and hands the engine a reader over its verified bytes.
+import {loadCpuGenerator,loadOrtWebGpuGenerator,loadDirectWebGpuGenerator,loadOrtRuntime,cpuRuntimeAssets,browserModuleHost,createCanaryQualification} from '@facemorph/stylegan-js/engine';
+import {FFHQ_1024_DESCRIPTOR} from '@facemorph/stylegan-js';
 import {encodeRgbaPng} from './png.mjs';
 import {createModelSource} from './model-source.mjs';
-import {inputLatent,truncate,requireLatent,rgba1024} from './identity.mjs';
+import {inputLatent,requireLatent} from './identity.mjs';
 import {qualifyEncoderReference} from './encoder-preflight.mjs';
 import {createAcquisitionBudget,collectAssets} from './acquisition-budget.mjs';
-import {createCanaryQualification} from './canary-qualification.mjs';
 import {bridgeGrant,widenGrant,BRIDGE_OWNER} from './bridge-grant.mjs';
 import {modelAlternateOrigins} from '../../contracts/model-origins.ts';
 // Chunks of a model download in flight at once (16 MiB each). Eight gigabytes stated by the device earns four;
 // everything else, including iOS where deviceMemory is undefined, gets two, a 32 MiB window.
 const readAhead=(globalThis.navigator?.deviceMemory||0)>=8?4:2;
-let mappingReady=null,gpuEngine='ort',manifest,ort,cache,mapping,synthesis,noise,average,provider,webgpu,currentId,manifestSha256,qualification,resumeDrain=null;
+let gpuEngine='ort',manifest,ort,cache,generator=null,provider,currentId,manifestSha256,qualification,resumeDrain=null;
 /**
  * What the encoder leaves behind between photos.
  *
@@ -211,10 +212,11 @@ async function prefetchRoute(id,scope='route'){
  }
  return {provider,scope,assets,acquired,...budget.totals()};
 }
-async function ensureOrt(id){if(ort)return;report(id,'runtime-loading');const assets=manifest.runtime.assets,module=assets.find(a=>a.url===manifest.runtime.moduleUrl),factory=assets.find(a=>a.url.endsWith('/ort-wasm-simd-threaded.mjs')),wasm=assets.find(a=>a.url.endsWith('/ort-wasm-simd-threaded.wasm'));if(!module||!factory||!wasm)throw Error('Incomplete pinned runtime bundle');
- // Import exactly the verified bytes, avoiding a second unchecked network request.
- const moduleUrl=URL.createObjectURL(new Blob([await bytes(module,id)],{type:'text/javascript'})),factoryUrl=URL.createObjectURL(new Blob([await bytes(factory,id)],{type:'text/javascript'})),wasmUrl=URL.createObjectURL(new Blob([await bytes(wasm,id)],{type:'application/wasm'}));
- ort=await import(/* @vite-ignore */ moduleUrl);ort.env.wasm.numThreads=cpuThreads();ort.env.wasm.wasmPaths={mjs:factoryUrl,wasm:wasmUrl};}
+// The engine reads only through this: the worker's verified bytes (acquired under the bridge's grant), errors as thrown.
+const reader={allowRepair:false,read:async asset=>({ok:true,value:await bytes(asset,currentId)})};
+// Import exactly the verified runtime bytes, avoiding a second unchecked network request (package loadOrtRuntime).
+async function ensureOrt(id){if(ort)return;report(id,'runtime-loading');ort=(await loadOrtRuntime(reader,cpuRuntimeAssets(manifest.runtime),browserModuleHost(),cpuThreads())).ort;}
+const cpuOrt=async()=>{await ensureOrt(currentId);return ort;};
 /**
  * The runtime bundle is the threaded build and the site is cross-origin isolated, so the CPU
  * route was running a multi-threaded binary pinned to one thread. Threads are bounded rather
@@ -269,7 +271,7 @@ async function encodeStream(tensor,id,qualifiedEncoderSha256){
  }
 }
 
-async function load(id){if(synthesis||webgpu)return;
+async function load(id){if(generator)return;
  // Release before acquire, at the acquire rather than at the end of the job that used it: until
  // something else needs the memory, a second photo gets to use what the first one brought in.
  //
@@ -278,76 +280,47 @@ async function load(id){if(synthesis||webgpu)return;
  // which is the cost the holding exists to avoid. A device is only told to hold when it has the
  // room for both.
  if(residency.mode!=='on')await releaseEncoder();
- cache ||= await modelSource();planRoute();await probePlanned();noise={};for(const item of manifest.noise)noise[item.name]=await floats(item,id);
- report(id,'model-loading');const started=performance.now();
- if(provider==='webgpu'&&gpuEngine==='direct'){if(!manifest.webgl)throw Error('WebGPU direct bundle unavailable');warmMapping();webgpu=await createDirectWebGpuSession({config:manifest.webgl,noiseManifest:manifest.noise,bytes:asset=>bytes(asset,currentId),progress:stage=>report(currentId,stage)});}
- else if(provider==='webgpu'){if(!manifest.webgpu)throw Error('WebGPU bundle unavailable');warmMapping();webgpu=await createWebGpuSession({config:manifest.webgpu,noiseManifest:manifest.noise,bytes:asset=>bytes(asset,currentId),progress:stage=>report(currentId,stage)});}
- else{await ensureOrt(id);synthesis=await ort.InferenceSession.create(await bytes(manifest.synthesis,id),{executionProviders:['wasm']});}
+ cache ||= await modelSource();planRoute();await probePlanned();
+ report(id,'model-loading');const started=performance.now(),progress=stage=>report(currentId,stage);
+ // The engine warms mapping beside the GPU load and keeps the CPU load sequential.
+ if(provider==='webgpu'&&gpuEngine==='direct'){if(!manifest.webgl)throw Error('WebGPU direct bundle unavailable');generator=await loadDirectWebGpuGenerator({reader,manifest,manifestSha256,gpu:navigator.gpu,cpuOrt,progress});}
+ else if(provider==='webgpu'){if(!manifest.webgpu)throw Error('WebGPU bundle unavailable');generator=await loadOrtWebGpuGenerator({reader,manifest,manifestSha256,gpu:navigator.gpu,host:browserModuleHost(),cpuOrt,progress});}
+ else generator=await loadCpuGenerator({reader,manifest,manifestSha256,ort:cpuOrt});
  report(id,'model-loaded',{elapsedMs:performance.now()-started});
 }
-async function run(values,id,noiseMode='original'){await load(id);requireLatent(values);const selected={};for(const [name,data] of Object.entries(noise))selected[name]=noiseMode==='original'?data:noiseMode==='zero'?new Float32Array(data.length):Float32Array.from(data,x=>-x);report(id,'synthesis');const start=performance.now();if(webgpu){const raw=await webgpu.infer(values,selected);report(id,'synthesis-complete',{elapsedMs:performance.now()-start});return raw;}const feeds={w:new ort.Tensor('float32',values,[1,18,512])};for(const item of manifest.noise)feeds[item.name]=new ort.Tensor('float32',selected[item.name],item.shape);let output;try{output=(await synthesis.run(feeds)).image;const raw=new Float32Array(await output.getData());report(id,'synthesis-complete',{elapsedMs:performance.now()-start});return raw;}finally{for(const t of Object.values(feeds))t.dispose();output?.dispose();}}
-
-async function png(raw){return encodeRgbaPng(rgba1024(raw));}
-// A face as a PNG. The direct engine converts to RGBA8 on the GPU and reads back 4 MB instead of 12 MB of
-// floats; every other engine returns floats converted here. Canaries keep the float path (run()), since
-// they compare sampled floats.
-async function faceBlob(values,id){
- await load(id);
- if(!webgpu?.submitRgba)return png(await run(values,id));
- requireLatent(values);report(id,'synthesis');const start=performance.now();
- const rgba=await (await webgpu.submitRgba(values,noise)).rgba;report(id,'synthesis-complete',{elapsedMs:performance.now()-start});
- return encodeRgbaPng(rgba);
+async function run(values,id,noiseMode='original'){await load(id);requireLatent(values);report(id,'synthesis');const start=performance.now();const raw=await generator.synthesizeRaw(values,noiseMode);report(id,'synthesis-complete',{elapsedMs:performance.now()-start});return raw;}
+// A standalone RGBA buffer the caller may transfer.
+const own=rgba=>rgba.byteOffset===0&&rgba.byteLength===rgba.buffer.byteLength?rgba:rgba.slice();
+async function faceRgba(values,id){
+ await load(id);requireLatent(values);report(id,'synthesis');const start=performance.now();let out;
+ await generator.synthesizeSequence([values],(index,rgba)=>{out=own(rgba);});
+ report(id,'synthesis-complete',{elapsedMs:performance.now()-start});return out;
 }
-// Morph frames, one request for a window of them, each posted back as it is ready. On WebGPU the
-// next frame is queued on the GPU before this one is converted and PNG-encoded, so the GPU never
-// waits on that tail; the other routes run the same schedule one frame at a time. Every frame's
-// cost is reported as the interval since the previous one, which is what a morph is paced by.
+async function faceBlob(values,id){return encodeRgbaPng(await faceRgba(values,id));}
+// Morph frames, one request for a window of them, each posted back as it is ready. On WebGPU the engine queues
+// the next frame on the GPU before this one is converted and PNG-encoded, so the GPU never waits on that tail; the
+// CPU route runs the same schedule one frame at a time. Every frame's cost is reported as the interval since the
+// previous one, which is what a morph is paced by.
 const MAX_FRAMES=64;
 const rawAcks=new Map();
 function rawAck(id,index){return new Promise(resolve=>rawAcks.set(id+':'+index,()=>{rawAcks.delete(id+':'+index);resolve();}));}
-async function faceRgba(values,id){
- await load(id);if(!webgpu?.submitRgba)return rgba1024(await run(values,id));
- requireLatent(values);report(id,'synthesis');const start=performance.now();
- const rgba=await (await webgpu.submitRgba(values,noise)).rgba;report(id,'synthesis-complete',{elapsedMs:performance.now()-start});return rgba;
-}
 async function synthesizeFrames(list,id,rawOutput=false){
  if(!Array.isArray(list)||!list.length||list.length>MAX_FRAMES)throw Error('Invalid frame batch');
  for(const values of list)requireLatent(values);
  await load(id);
- // run() reports its own synthesis stages; only the pipelined path needs to report here.
- if(!webgpu?.submit){for(let i=0;i<list.length;i++){
- const raw=await run(list[i],id);
- if(rawOutput){const rgba=rgba1024(raw),ack=rawAck(id,i);postMessage({id,type:'frame',index:i,rgba:rgba.buffer,width:1024,height:1024},[rgba.buffer]);await ack;}
- else postMessage({id,type:'frame',index:i,blob:await png(raw)});
- }return {frames:list.length};}
  report(id,'synthesis');let last=performance.now();
- const deliver=async(index,raw,isRgba=false)=>{
- if(rawOutput){const rgba=isRgba?raw:rgba1024(raw),now=performance.now();report(id,'synthesis-complete',{elapsedMs:now-last});last=now;
-  const ack=rawAck(id,index);postMessage({id,type:'frame',index,rgba:rgba.buffer,width:1024,height:1024},[rgba.buffer]);await ack;
- }else{const blob=isRgba?await encodeRgbaPng(raw):await png(raw),now=performance.now();report(id,'synthesis-complete',{elapsedMs:now-last});last=now;postMessage({id,type:'frame',index,blob});}
-};
- const rgbaPath=Boolean(webgpu.submitRgba),queue=values=>rgbaPath?webgpu.submitRgba(values,noise):webgpu.submit(values,noise),landed=p=>rgbaPath?p.rgba:p.raw;
- let pending=await queue(list[0]);
- for(let i=0;i<list.length;i++){
-  let next=null;
-  try{next=i+1<list.length?await queue(list[i+1]):null;await deliver(i,await landed(pending),rgbaPath);}
-  catch(error){landed(pending).catch(()=>{});if(next)landed(next).catch(()=>{});throw error;}
-  pending=next;
- }
+ await generator.synthesizeSequence(list,async(index,rgba)=>{
+  const now=performance.now();report(id,'synthesis-complete',{elapsedMs:now-last});last=now;
+  if(rawOutput){const frame=own(rgba),ack=rawAck(id,index);postMessage({id,type:'frame',index,rgba:frame.buffer,width:1024,height:1024},[frame.buffer]);await ack;}
+  else postMessage({id,type:'frame',index,blob:await encodeRgbaPng(rgba)});
+ });
  return {frames:list.length};
 }
-// The face-mapping network is 8 MiB and nothing needs it before the first face, yet it was acquired and its ORT session
-// created only when `generate` arrived: after the model download, with the worker idle. Measured cold on eris that is
-// 330 ms to acquire plus 452 ms to create, 785 ms straight onto the first face. On the WebGPU route the weights live on
-// the GPU, so creating it beside the model load costs a few MiB of WASM heap and not a second working set; the CPU
-// route keeps the sequential schedule that holds an iPhone inside its envelope. It reports under id -1, which no
-// request owns, so the visitor's stage sequence is unchanged. A failure here is not reported: mappingFor retries in line.
-// `average` is set before `mapping` so a visible mapping always has its average.
-function warmMapping(){
-  if(mapping||mappingReady)return;
-  mappingReady=(async()=>{await ensureOrt(-1);if(mapping)return;average=await floats(manifest.average,-1);mapping=await ort.InferenceSession.create(await bytes(manifest.mapping,-1),{executionProviders:['wasm']});})().catch(()=>{mappingReady=null;});
+async function mappingFor(z,id){
+ await load(id);report(id,'mapping');
+ const {psi,cutoff}=FFHQ_1024_DESCRIPTOR.truncation;
+ return (await generator.map({ids:{requestId:String(id),inputRevision:0,attemptId:0},z,truncation:{psi,cutoff}})).wPlus.values;
 }
-async function mappingFor(z,id){await load(id);if(mappingReady)await mappingReady;await ensureOrt(id);if(!mapping){report(id,'mapping-loading');average=await floats(manifest.average,id);mapping=await ort.InferenceSession.create(await bytes(manifest.mapping,id),{executionProviders:['wasm']});}report(id,'mapping');const input=new ort.Tensor('float32',z,[1,512]);let out;try{out=(await mapping.run({z:input})).w;return truncate(await out.getData(),average);}finally{input.dispose();out?.dispose();}}
 
 // CI and release qualification must always see every canary. The flags arrive on 'initialize'
 // from the main thread: a dedicated worker's globalThis is its own scope, so neither the page's
@@ -358,16 +331,18 @@ let fullQualify=false,forceCanaryFail=false;
 async function ensureQualification(id){
  if(qualification)return qualification;
  cache ||= await modelSource();
- qualification=createCanaryQualification({manifest,manifestSha256,provider,bundle:provider==='webgpu'?gpuBundle():manifest.synthesis,records:cache.records,acquireBytes:asset=>bytes(asset,id),runSynthesis:(values,noiseMode)=>run(values,id,noiseMode),full:fullQualify,forceFail:forceCanaryFail});
+ qualification=createCanaryQualification({manifest,manifestSha256,route:provider==='webgpu'?'webgpu':'cpu',bundle:provider==='webgpu'?gpuBundle():manifest.synthesis,records:cache.records,reader,synthesizeRaw:(values,noiseMode)=>run(values,id,noiseMode),full:fullQualify,forceFail:forceCanaryFail});
  await qualification.adopt();
  return qualification;
 }
+// The bridge's canary progress shape: the engine's index is its `loaded`.
+const canaryEvent=id=>ev=>report(id,'canary',{name:ev.name,loaded:ev.index,total:ev.total});
 const qualifyResult=(q,extra={})=>({checks:q.checks(),provider,deviceValidated:true,releaseQualified:manifest.releaseQualified===true,...extra});
 async function qualify(id){
  const q=await ensureQualification(id);
- if(fullQualify){while(!q.complete())await q.runNext(ev=>report(id,'canary',ev));return qualifyResult(q);}
+ if(fullQualify){while(!q.complete())await q.runNext('admission',canaryEvent(id));return qualifyResult(q);}
  if(q.complete())return qualifyResult(q,{cached:q.checks().length>0});
- await q.runNext(ev=>report(id,'canary',ev)); // one canary gates admission; the first face comes before the rest
+ await q.runNext('admission',canaryEvent(id)); // one canary gates admission; the first face comes before the rest
  return q.complete()?qualifyResult(q):qualifyResult(q,{partial:true});
 }
 // One inference pipeline serves user operations and background qualification. User operations
@@ -394,7 +369,7 @@ function startResumeDrain(id){
  const step=()=>{backgroundTask=async()=>{
   try{
    const q=await ensureQualification(id);
-   if(!q.complete())await q.runNext(ev=>report(id,'canary',ev));
+   if(!q.complete())await q.runNext('background',canaryEvent(id));
    if(!q.complete()){step();return;}
    resumeDrain=null;
    postMessage({id,type:'complete',result:{checks:q.checks(),provider,deviceValidated:true,resumed:true}});
@@ -415,7 +390,7 @@ self.onmessage=({data})=>{
  residency.mode=request.retain===true?'on':'off';
  if(residency.mode==='off')shedShards();
  // Sequential residency, unchanged in its peak: synthesis goes before the encoder is acquired.
- await synthesis?.release();synthesis=null;await webgpu?.dispose();webgpu=null;await mapping?.release();mapping=null;mappingReady=null;noise=null;
+ const held=generator;generator=null;await held?.dispose();
  cache ||= await modelSource();
  // The encoder is the largest thing this device will fetch. Budget for it before the first
  // byte arrives, so the bar measures the wait the user is actually in for.

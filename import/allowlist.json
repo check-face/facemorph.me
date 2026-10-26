@@ -1323,14 +1323,24 @@
       "destination": "apps/web/src/Next/browser/canary-qualification.mjs",
       "sha256": "b1bce9fcc36fb5159347be9ba6a775eb1fbc02688635d32a4911003517df58f4",
       "bytes": 5683,
-      "class": "src-next"
+      "class": "src-next",
+      "ported": {
+        "removed": true,
+        "bead": "fm-7f2o",
+        "reason": "moved to @facemorph/stylegan-js (engine/adapters/ort-webgpu.ts, engine/canary.ts); the worker runs the package engine"
+      }
     },
     {
       "source": "src/Next/browser/canary-qualification.test.mjs",
       "destination": "apps/web/src/Next/browser/canary-qualification.test.mjs",
       "sha256": "1bf109c5413b5e0c28773aee9c0742cb375077ae909c3604ae85396d0fd79819",
       "bytes": 7482,
-      "class": "src-next"
+      "class": "src-next",
+      "ported": {
+        "removed": true,
+        "bead": "fm-7f2o",
+        "reason": "moved to @facemorph/stylegan-js (engine/adapters/ort-webgpu.ts, engine/canary.ts); the worker runs the package engine"
+      }
     },
     {
       "source": "src/Next/browser/encoder-preflight.mjs",
@@ -1393,7 +1403,13 @@
       "destination": "apps/web/src/Next/browser/fused-resample.test.mjs",
       "sha256": "9796b3eaae1946d1c5662e1a5f70dadac0bc3c3091fa2dcc0cb8ad4fe434c42b",
       "bytes": 3158,
-      "class": "src-next"
+      "class": "src-next",
+      "ported": {
+        "sha256": "f48a4af8aa63de784303b020edea4b013f5360f46f700c7e5e8b4dde5753a3ef",
+        "bytes": 3350,
+        "bead": "fm-7f2o",
+        "reason": "the API-shape case follows the kernel's caller into stylegan-js engine/adapters/ort-webgpu.ts"
+      }
     },
     {
       "source": "src/Next/browser/identity-fixtures.json",
@@ -1443,10 +1459,10 @@
       "bytes": 33331,
       "class": "src-next",
       "ported": {
-        "sha256": "5087a0456f55ef9611548249e70278ab8d2eeca37e8a24bc9f24a542c37e7631",
-        "bytes": 33114,
-        "bead": "fm-fy2.13",
-        "reason": "acquires under the candidate bridge scope as a grant (bridge-grant.mjs), widened by the streamed encoder descriptor; passes modelAlternateOrigins(location.hostname); Vite destination integration: shared production headers and native dynamic-import directives; compiled artifact identity. (fm-zz2i); Continues verified execution through browser/model-source.mjs when durable model storage refuses (1bb7bd0) (fm-fy2.13)"
+        "sha256": "a6ae7c4437d87d87a38d9fd97ce2909e1d158ecf56c60c67b880d5a91831c347",
+        "bytes": 29556,
+        "bead": "fm-7f2o",
+        "reason": "acquires under the candidate bridge scope as a grant (bridge-grant.mjs), widened by the streamed encoder descriptor; passes modelAlternateOrigins(location.hostname); Vite destination integration: shared production headers and native dynamic-import directives; compiled artifact identity. (fm-zz2i); Continues verified execution through browser/model-source.mjs when durable model storage refuses (1bb7bd0) (fm-fy2.13); mapping, synthesis, canaries and the ORT runtime run on the stylegan-js engine behind the unchanged worker protocol"
       }
     },
     {
@@ -1503,10 +1519,10 @@
       "bytes": 37783,
       "class": "src-next",
       "ported": {
-        "sha256": "22e587eca404f21152ff40260470e12052a99da1dfdb61df3691218acee670e1",
-        "bytes": 41339,
-        "bead": "fm-0y24",
-        "reason": "WebGL execution removed (fm-x6h5); per-operation admission through admission/route-admission.ts before any worker or model request, photo encoding admitted by capability instead of user-agent labels (fm-lt2p); route snapshot selects bounded fallback scope and forwards cancellation signal (fm-0y24)"
+        "sha256": "19a8ae9b2b2d77bb86d2bd9980a6e3e205479d5a0b7e468d1dac657965e5a7cd",
+        "bytes": 41328,
+        "bead": "fm-eeki",
+        "reason": "WebGL execution removed (fm-x6h5); per-operation admission through admission/route-admission.ts before any worker or model request, photo encoding admitted by capability instead of user-agent labels (fm-lt2p); route snapshot selects bounded fallback scope and forwards cancellation signal (fm-0y24); Save/Share hand over prepared files named by export identity; encoder figures from the export policy (6915a98)"
       }
     },
     {
@@ -1557,10 +1573,9 @@
       "bytes": 7522,
       "class": "src-next",
       "ported": {
-        "sha256": "a28a1dd3adbf743cc68298a6e1db55d64fdb723758081a0a177c8a06a9ae15bc",
-        "bytes": 7515,
-        "bead": "fm-zz2i",
-        "reason": "Vite destination integration: shared production headers and native dynamic-import directives; compiled artifact identity."
+        "removed": true,
+        "bead": "fm-7f2o",
+        "reason": "Vite destination integration: shared production headers and native dynamic-import directives; compiled artifact identity.; moved to @facemorph/stylegan-js (engine/adapters/ort-webgpu.ts, engine/canary.ts); the worker runs the package engine"
       }
     },
     {
@@ -1568,7 +1583,12 @@
       "destination": "apps/web/src/Next/browser/webgpu-engine.test.mjs",
       "sha256": "4ed251c82fa8a1bde6aabcb81ffc508f542988702775c55fd2bd31f383e7f316",
       "bytes": 9804,
-      "class": "src-next"
+      "class": "src-next",
+      "ported": {
+        "removed": true,
+        "bead": "fm-7f2o",
+        "reason": "moved to @facemorph/stylegan-js (engine/adapters/ort-webgpu.ts, engine/canary.ts); the worker runs the package engine"
+      }
     },
     {
       "source": "src/Next/crop-queue.test.mjs",
@@ -1604,10 +1624,10 @@
       "bytes": 23533,
       "class": "src-next",
       "ported": {
-        "sha256": "545dfe3444ef6372192f9213196ec04b9f8ef48f5a3454b25ee35e4437dc7400",
-        "bytes": 23806,
-        "bead": "fm-a0c1",
-        "reason": "Supply the real shared endpoint selector to the existing VM harness after reporter gained that import."
+        "sha256": "8d94ea1bf7986fd15b81be2889999ef08f11861f4c7614f455452a100097be56",
+        "bytes": 24399,
+        "bead": "fm-eeki",
+        "reason": "Supply the real shared endpoint selector to the existing VM harness after reporter gained that import.; Save/Share hand over prepared files named by export identity; encoder figures from the export policy (6915a98)"
       }
     },
     {
@@ -1649,7 +1669,13 @@
       "destination": "apps/web/src/Next/image-encoder-worker.mjs",
       "sha256": "a39bf5fce0ff1423f13ca57ff2927a7c7098fe72ac047ba6c4e840ed95e30abb",
       "bytes": 2482,
-      "class": "src-next"
+      "class": "src-next",
+      "ported": {
+        "sha256": "b6580998b5b04885945b99484a1b2062b00654e4aaae4d950392480127c6971a",
+        "bytes": 2582,
+        "bead": "fm-eeki",
+        "reason": "Save/Share hand over prepared files named by export identity; encoder figures from the export policy (6915a98)"
+      }
     },
     {
       "source": "src/Next/image-encoder.mjs",
@@ -1672,10 +1698,10 @@
       "bytes": 8726,
       "class": "src-next",
       "ported": {
-        "sha256": "0ba1913281c929c9304c4eca85d3a4f5df4f5961c97044ef519ab905dadc68ea",
-        "bytes": 3721,
+        "sha256": "a47415d3d5c2d6b0960810c24c8aaf5d99e0fe82755916941799c3902df18525",
+        "bytes": 3789,
         "bead": "fm-fy2.7",
-        "reason": "The envelope is the package's (fm-fzzd) through src/media/recovery-files.ts: a shipped model's face is written as schema 3, any other identity as schema 2; reads schema 3 and 2, schema 1 reported legacy; export names and the full1024/single-envelope/identity rules kept"
+        "reason": "The envelope is the package's (fm-fzzd) through src/media/recovery-files.ts: a shipped model's face is written as schema 3, any other identity as schema 2; reads schema 3 and 2, schema 1 reported legacy; export names and the full1024/single-envelope/identity rules kept; app recovery files on the package schema core; earlier stills reopen through the file entry (430494e)"
       }
     },
     {
@@ -1738,10 +1764,10 @@
       "bytes": 13197,
       "class": "src-next",
       "ported": {
-        "sha256": "e95660a71a50e97c006359825df8234d6cb4be9c392026a1575120319805033a",
-        "bytes": 12865,
-        "bead": "fm-be10",
-        "reason": "Native retirement: saveFile drops the Tauri native_save_media branch; downloads are the browser path"
+        "sha256": "501e7c3a66148c368e64dce2af679e2487421250be1013d97aa02c5d248c144b",
+        "bytes": 13053,
+        "bead": "fm-eeki",
+        "reason": "Native retirement: saveFile drops the Tauri native_save_media branch; downloads are the browser path; Save/Share hand over prepared files named by export identity; encoder figures from the export policy (6915a98)"
       }
     },
     {

@@ -210,7 +210,7 @@
       "shared": [],
       "extra": [
         "packages/stylegan-js/**",
-        "apps/web/src/Next/browser/webgpu-engine.mjs",
+        "apps/web/src/Next/browser/ort-worker.mjs",
         "apps/web/src/Next/browser/fused-resample-v1.mjs",
         "apps/web/src/Next/browser/route-priors.mjs",
         "apps/web/src/Next/browser/route-selection.mjs",

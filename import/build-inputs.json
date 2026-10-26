@@ -214,13 +214,17 @@
       },
       {
         "file": "src/Next/browser/webgpu-engine.test.mjs",
-        "runs_on": "closure",
-        "local_probe": "12/12 pass"
+        "runs_on": "moved to packages/stylegan-js",
+        "local_probe": "12/12 pass",
+        "owner": "compute.synthesis (fm-7f2o)",
+        "after_import": "The ORT WebGPU engine is stylegan-js engine/adapters/ort-webgpu.ts; covered by packages/stylegan-js/test/engine/browsers.test.ts and apps/web route-choice.e2e.ts."
       },
       {
         "file": "src/Next/browser/canary-qualification.test.mjs",
-        "runs_on": "closure",
-        "local_probe": "7/7 pass"
+        "runs_on": "moved to packages/stylegan-js",
+        "local_probe": "7/7 pass",
+        "owner": "compute.synthesis (fm-7f2o)",
+        "after_import": "The canary qualification is stylegan-js engine/canary.ts; covered by packages/stylegan-js/test/engine/canary.test.ts."
       },
       {
         "file": "src/Next/browser/acquisition-budget.test.mjs",

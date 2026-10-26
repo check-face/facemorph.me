@@ -27,19 +27,20 @@ test('Invalid variant or workgroup is rejected',()=>{
   assert.throws(()=>boundaryCode({strength:0,gain:1},false,'bounded',32));
 });
 
-test('Exported API shape matches the webgpu-engine caller',async()=>{
+// The ORT WebGPU engine is stylegan-js's (fm-7f2o): engine/adapters/ort-webgpu.ts runs the package's port of this kernel,
+// whose WGSL packages/stylegan-js/test/engine/routes.test.ts holds to this module character for character.
+test('Exported API shape matches the stylegan-js ORT WebGPU caller',async()=>{
   assert.equal(typeof boundaryCode,'function');
   assert.equal(typeof createBoundaryPipeline,'function');
-  const engine=await readFile(new URL('./webgpu-engine.mjs',import.meta.url),'utf8');
-  // The verified kernel is loaded through the injectable importer.
-  const imported=engine.match(/const\s+\{\s*(\w+)\s*\}\s*=\s*await\s+importModule\s*\(\s*kernelUrl\s*\)/);
-  assert.ok(imported,'webgpu-engine.mjs destructures one kernel export');
+  const engine=await readFile(new URL('../../../../../packages/stylegan-js/src/engine/adapters/ort-webgpu.ts',import.meta.url),'utf8');
+  const imported=engine.match(/import\s+\{\s*(\w+)\s*\}\s+from\s+'\.\/fused-resample\.ts'/);
+  assert.ok(imported,'ort-webgpu.ts imports one kernel export');
   assert.equal(imported[1],'createBoundaryPipeline');
   const bindKeys=['phase','phaseB','demod','noise','filter','bias','output'];
-  for(const key of bindKeys)assert.ok(engine.includes(`${key}:`),`webgpu-engine.mjs does not bind ${key}`);
+  for(const key of bindKeys)assert.ok(engine.includes(`${key}:`),`ort-webgpu.ts does not bind ${key}`);
   const kernel=await readFile(new URL('./fused-resample-v1.mjs',import.meta.url),'utf8');
   for(const key of bindKeys)assert.ok(kernel.includes(key),'kernel bind signature lacks '+key);
-  for(const tile of ['__tile0','__tile1'])assert.ok(engine.includes(`meta.phase+'${tile}'`),`engine must bind the ${tile} prefix output`);
+  for(const tile of ['__tile0','__tile1'])assert.ok(engine.includes(`phase + '${tile}'`),`engine must bind the ${tile} prefix output`);
 });
 
 test('Manifest writer embeds kernel provenance for the promote.py keep-row gate',async()=>{

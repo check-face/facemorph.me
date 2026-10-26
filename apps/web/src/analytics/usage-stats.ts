@@ -241,7 +241,7 @@ export function observeStage(job: JobState, stage: string, event: Data): void {
     job.fetched = true;
     job.loaded = true;
   }
-  // The runtime announces each canary before running its synthesis (canary-qualification.mjs runNext).
+  // The runtime announces each canary before running its synthesis (stylegan-js engine/canary.ts runNext).
   if (stage === 'canary') job.canaries += 1;
   const elapsed = ms(event['elapsedMs']);
   if (stage === 'synthesis-complete' && job.canaries > 0) {

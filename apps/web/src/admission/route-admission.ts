@@ -5,7 +5,7 @@
 //
 // Candidate facts kept: the adapter is probed (requestAdapter) before any GPU asset is acquired, since
 // `navigator.gpu` alone once cost ~180 MiB of Simulator downloads; the bounded WebGPU route needs 128 MiB storage
-// bindings and buffers (webgpu-engine.mjs); WebGPU then CPU, no native fallback, a healthy slow GPU is not demoted;
+// bindings and buffers (stylegan-js engine/adapters/ort-webgpu.ts); WebGPU then CPU, no native fallback, a healthy slow GPU is not demoted;
 // a GPU failure falls back to the qualified CPU route as a declared transition. The photo encoder stream is admitted
 // on constrained memory only when its manifest says `phoneAdmitted` (scope friends-and-family-candidate), within
 // its 268,435,456-byte WASM limit. Quick product admission is separate from the lab's full numerical checks.

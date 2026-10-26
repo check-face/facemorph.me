@@ -596,6 +596,11 @@ for (const [name, userAgent, engine] of [
           engine === 'direct' ? (manifest.webgl as Json)['assets'] : manifest.webgpu,
         ),
       );
+      // The ORT engine's fused-resample kernel is compiled into stylegan-js (fm-7f2o), not imported from the
+      // manifest's module at run time; packages/stylegan-js/test/engine/routes.test.ts holds its WGSL to the pinned
+      // kernel character for character, so that one asset is no longer transferred.
+      if (engine !== 'direct')
+        expected.delete(((manifest.webgpu as Json)['kernel'] as { sha256: string }).sha256);
       assert.ok(digests.length > 0);
       assert.ok(digests.every((d) => gpuAssets.size > 0 && [...gpuAssets.values()].includes(d)));
       for (const d of expected)
