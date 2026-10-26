@@ -156,7 +156,7 @@ jobs:
           path: ort-canary.json
           if-no-files-found: error
   next-matrix:
-    needs: next-site
+    needs: next-site-artifact
     if: github.event_name == 'workflow_dispatch' && inputs.dependency_group == 'test-tools'
     uses: ./.github/workflows/next-matrix.yml
     permissions:
@@ -279,7 +279,7 @@ jobs:
       contents: read
     secrets: inherit
   mobile-browser:
-    needs: [changes, next-site]
+    needs: [changes, next-site-artifact]
     if: contains(fromJSON(needs.changes.outputs.lanes), 'mobile-browser')
     uses: ./.github/workflows/mobile-browser.yml
     with:
@@ -328,20 +328,34 @@ jobs:
     permissions:
       contents: read
     secrets: inherit
-  next-site:
+  next-site-artifact:
     needs: changes
-    if: contains(fromJSON(needs.changes.outputs.lanes), 'next-site') || contains(fromJSON(needs.changes.outputs.lanes), 'mobile-browser') || contains(fromJSON(needs.changes.outputs.lanes), 'web-shell')
-    uses: ./.github/workflows/next-site.yml
+    if: contains(fromJSON(needs.changes.outputs.lanes), 'next-site') || contains(fromJSON(needs.changes.outputs.lanes), 'mobile-browser') || contains(fromJSON(needs.changes.outputs.lanes), 'web-shell') || (github.event_name == 'push' && vars.FACEMORPH_DEPLOY_TARGET != '')
+    uses: ./.github/workflows/next-site-artifact.yml
     permissions:
       contents: read
       actions: read
+    with:
+      artifact_workflow: .github/workflows/main.yml
     secrets: inherit
-  # fm-6fx6: the qualified-push deploy (next-deploy.yml), only when the repository variable FACEMORPH_DEPLOY_TARGET
-  # names a target and only after next-site's artifact, qualify and compiled-ui gates passed for this push. Unset (and
-  # until delivery's candidate-source handover for next.facemorph.me), nothing deploys; the publish guard refuses
-  # classic-owned targets regardless.
+  next-site:
+    needs: [changes, next-site-artifact]
+    if: contains(fromJSON(needs.changes.outputs.lanes), 'next-site')
+    uses: ./.github/workflows/next-site-qualify.yml
+    permissions:
+      contents: read
+      actions: read
+    with:
+      artifact_run: ${{ github.run_id }}
+      artifact_workflow: .github/workflows/main.yml
+      artifact_commit: ${{ github.sha }}
+      artifact_name: next-site-${{ github.sha }}
+      runtime_sha: d9e37e50a436e9fb7c0c7f973e70adee353c808f48c6a51fa5a9186f1c650a5c
+    secrets: inherit
+  # Artifact consumers run as soon as the exact build is available. Qualification reports independently;
+  # next-deploy retains its own promotion/release gates and refuses classic-owned targets.
   next-deploy:
-    needs: [changes, next-site]
+    needs: [changes, next-site-artifact]
     if: github.event_name == 'push' && vars.FACEMORPH_DEPLOY_TARGET != ''
     uses: ./.github/workflows/next-deploy.yml
     permissions:
@@ -416,7 +430,7 @@ jobs:
     uses: ./.github/workflows/stats-worker.yml
     secrets: inherit
   web-shell:
-    needs: [changes, next-site]
+    needs: [changes, next-site-artifact]
     if: contains(fromJSON(needs.changes.outputs.lanes), 'web-shell')
     uses: ./.github/workflows/web-shell.yml
     permissions:
