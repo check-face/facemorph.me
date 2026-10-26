@@ -1,0 +1,75 @@
+{
+  "schema": "facemorph-candidate-control-v1",
+  "bead": "fm-7f2o",
+  "note": "The candidate's route, engine and canary modules as the app ran them before fm-7f2o moved them into stylegan-js: the frozen control the package's routes.test.ts and canary.test.ts compare against, byte-identical to the named app commit.",
+  "files": [
+    {
+      "file": "browser/canary-qualification.mjs",
+      "sha256": "b1bce9fcc36fb5159347be9ba6a775eb1fbc02688635d32a4911003517df58f4",
+      "bytes": 5683,
+      "source": {
+        "path": "apps/web/src/Next/browser/canary-qualification.mjs",
+        "commit": "8982cd876ce831ea480dabc0d18aeefb655db1ad"
+      }
+    },
+    {
+      "file": "browser/webgpu-direct.mjs",
+      "sha256": "333a7247a5ced8ec9ffaab0e017fa53bc98e20b3b9582053bba0e11b403b1502",
+      "bytes": 19087,
+      "source": {
+        "path": "apps/web/src/Next/browser/webgpu-direct.mjs",
+        "commit": "8982cd876ce831ea480dabc0d18aeefb655db1ad"
+      }
+    },
+    {
+      "file": "browser/route-priors.mjs",
+      "sha256": "d3349d4582d5f936253f4452a6ee89df8a2aaf5c064c6ea3797e526a06204acf",
+      "bytes": 5319,
+      "source": {
+        "path": "apps/web/src/Next/browser/route-priors.mjs",
+        "commit": "caa32ffc6a8eb0a357216d0b4042ca2888e431e8"
+      }
+    },
+    {
+      "file": "browser/route-selection.mjs",
+      "sha256": "ad0780297962fc511421bf545c78fa74e5ba2d39ca20bab4870c9dfef54395c9",
+      "bytes": 425,
+      "source": {
+        "path": "apps/web/src/Next/browser/route-selection.mjs",
+        "commit": "caa32ffc6a8eb0a357216d0b4042ca2888e431e8"
+      }
+    },
+    {
+      "file": "browser/identity.mjs",
+      "sha256": "a74e217e91f660b554b3ed9c477881023bb4e90af93752e6c98b668cd9fe8b67",
+      "bytes": 3951,
+      "source": {
+        "path": "apps/web/src/Next/browser/identity.mjs",
+        "commit": "8982cd876ce831ea480dabc0d18aeefb655db1ad"
+      }
+    },
+    {
+      "file": "browser/png.mjs",
+      "sha256": "694cc2e83f76a674330d28f3ba125510930351e2aab7c132225cb9d870435785",
+      "bytes": 7798,
+      "source": {
+        "path": "apps/web/src/Next/browser/png.mjs",
+        "commit": "8982cd876ce831ea480dabc0d18aeefb655db1ad"
+      }
+    },
+    {
+      "file": "browser/fused-resample-v1.mjs",
+      "sha256": "6ee1eb7a0a894488e450242d72cb27b10a22b0b82b9aee9b4127c58efffb52f2",
+      "bytes": 2392,
+      "source": {
+        "path": "apps/web/src/Next/browser/fused-resample-v1.mjs",
+        "commit": "8982cd876ce831ea480dabc0d18aeefb655db1ad"
+      }
+    },
+    {
+      "file": "Assets/sha256.mjs",
+      "sha256": "dff567271f05474e478326f8f7d989d208d665b7a4c29ff3f87fd871e8215ecd",
+      "note": "re-export of browser-model-manager src/cache/sha256.ts at this depth (the app module is the same one-line re-export)"
+    }
+  ]
+}

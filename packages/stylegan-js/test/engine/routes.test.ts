@@ -29,7 +29,8 @@ import {
 import type { ComputeRoute } from '../../src/contracts/capability.ts';
 import { acquiredManifest, pathOf } from './support/runtime.ts';
 
-const CONTROL = new URL('../../../../apps/web/src/Next/browser/', import.meta.url);
+// The candidate's modules as the app ran them before fm-7f2o, frozen in test/vectors/candidate-control (manifest.json).
+const CONTROL = new URL('../vectors/candidate-control/browser/', import.meta.url);
 const priors = (await import(new URL('route-priors.mjs', CONTROL).href)) as {
   priorOrder(c: object, supported: string[]): string[];
   capabilities(scope: object): RouteCapabilities & { webgl: boolean };

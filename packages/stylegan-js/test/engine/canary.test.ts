@@ -17,7 +17,8 @@ import { decodeReferencePng } from '../../src/engine/reference-png.ts';
 import { PRODUCT_CANARY_TOLERANCE } from '../../src/contracts/numerics.ts';
 import { acquiredManifest, pathOf } from './support/runtime.ts';
 
-const CONTROL = '../../../../apps/web/src/Next/browser/';
+// The candidate's modules as the app ran them before fm-7f2o, frozen in test/vectors/candidate-control (manifest.json).
+const CONTROL = '../vectors/candidate-control/browser/';
 const controlCanary = (await import(CONTROL + 'canary-qualification.mjs')) as {
   createCanaryQualification(o: object): { key: string };
 };

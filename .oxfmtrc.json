@@ -16,6 +16,7 @@
     "**/*.md",
     ".beads/**",
     "apps/web/src/Next/**",
+    "packages/stylegan-js/test/vectors/candidate-control/**",
     "apps/web/src/admission/**",
     "apps/web/src/contracts/**",
     "apps/web/src/media/**",
