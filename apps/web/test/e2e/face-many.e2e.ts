@@ -3,7 +3,7 @@
 // fixture (support/face-fixture.ts); every graded control is pressed by real pointer or touch tap at its visible
 // position after elementFromPoint shows it there (support/operate.ts). Screenshots in test-results/face-many/.
 //
-// Cases (FACE_MANY_CASES=matrix,frames,dark,many,style,keyboard,virtual,height,admission,generate selects some):
+// Cases (FACE_MANY_CASES=matrix,frames,dark,many,style,keyboard,virtual,height,admission,generate,start-over-generated selects some):
 //   matrix    counts GRID_COUNTS x every sweep width and built breakpoint +/-1 px (touch at or below 599 px):
 //             no page-level sideways scroll, no hidden scrolling surface but the strip, a cue while a face is
 //             outside the strip; every face reached by real wheel (desktop) or swipe (touch) with its image,
@@ -60,7 +60,7 @@ const MODEL = /^\/runtime\/(assets|chunks|encoder-stream|photo)\//;
 const CASES = new Set(
   (
     process.env['FACE_MANY_CASES'] ??
-    'matrix,frames,dark,many,style,keyboard,virtual,height,admission,generate'
+    'matrix,frames,dark,many,style,keyboard,virtual,height,admission,generate,start-over-generated'
   ).split(','),
 );
 const ONLY_WIDTHS = process.env['FACE_MANY_WIDTHS']?.split(',').map(Number);
@@ -1541,6 +1541,168 @@ test(
             t.diagnostic(
               'Available entry paths graded with real image/clipboard bytes and operated controls. Batch OK is explicitly untested under fm-3peb; acceptance 12 remains incomplete.',
             );
+          },
+        );
+
+      if (CASES.has('start-over-generated'))
+        await t.test(
+          'Start over and Undo preserve real generated pixels without inference',
+          async () => {
+            const s = await open(browser, 1280, false);
+            const { page } = s;
+            try {
+              await setFaces(page, 3);
+              const initial = await faceList(page);
+              // Setup only: leave the third face empty; both other results below are real inference.
+              await page.evaluate((id) => {
+                const store = (window as unknown as { __fmStore: { dispatch(m: unknown): void } })
+                  .__fmStore;
+                store.dispatch({ type: 'Mode', args: [id, 'text'] });
+                store.dispatch({ type: 'Edit', args: [id, ''] });
+              }, initial[2]!.id);
+              const before = await faceList(page);
+              const pixels = async (id: string) => {
+                await page.waitForFunction(
+                  (faceId) => {
+                    const canvas = document.querySelector(
+                      `[data-next-face="${faceId}"] canvas.next-face-img`,
+                    );
+                    return (
+                      canvas instanceof HTMLCanvasElement && canvas.dataset.faceDrawn === 'true'
+                    );
+                  },
+                  id,
+                  { timeout: 600_000 },
+                );
+                return page.evaluate(async (faceId) => {
+                  const canvas = document.querySelector(
+                    `[data-next-face="${faceId}"] canvas.next-face-img`,
+                  ) as HTMLCanvasElement;
+                  const rgba = canvas
+                    .getContext('2d')!
+                    .getImageData(0, 0, canvas.width, canvas.height).data;
+                  const digest = await crypto.subtle.digest('SHA-256', rgba);
+                  return {
+                    width: canvas.width,
+                    height: canvas.height,
+                    sha256: Array.from(new Uint8Array(digest), (byte) =>
+                      byte.toString(16).padStart(2, '0'),
+                    ).join(''),
+                  };
+                }, id);
+              };
+              const operations = () =>
+                page.evaluate(() =>
+                  (
+                    globalThis as unknown as { __FACEMORPH_OPCTL_TRACE__: { type: string }[] }
+                  ).__FACEMORPH_OPCTL_TRACE__.filter(
+                    (event) => event.type === 'request' || event.type === 'started',
+                  ),
+                );
+              const originals = [];
+              for (const face of before.slice(0, 2)) {
+                const tile = page.locator(`[data-next-face="${face.id}"]`);
+                assert.ok((await press(page, tile.locator('.next-face-operation'))).inside);
+                const accept = page.locator('.next-download-accept');
+                if (
+                  await accept.waitFor({ timeout: 8000 }).then(
+                    () => true,
+                    () => false,
+                  )
+                )
+                  assert.ok((await press(page, accept)).inside);
+                const painted = await pixels(face.id);
+                assert.equal(painted.width, 1024);
+                assert.equal(painted.height, 1024);
+                await page.waitForFunction(
+                  () => {
+                    const trace = (
+                      globalThis as unknown as {
+                        __FACEMORPH_OPCTL_TRACE__: { type: string; requestId?: string }[];
+                      }
+                    ).__FACEMORPH_OPCTL_TRACE__;
+                    const latest = trace.filter((event) => event.type === 'request').at(-1);
+                    return (
+                      latest &&
+                      trace.some(
+                        (event) => event.type === 'settled' && event.requestId === latest.requestId,
+                      )
+                    );
+                  },
+                  null,
+                  { timeout: 600_000 },
+                );
+                originals.push({ id: face.id, ...painted });
+              }
+              const opsBefore = await operations(),
+                modelRequestsBefore = s.models.length;
+              const traceBefore = (await faceTrace(page)).length;
+              const more = page.getByRole('button', { name: 'More options' });
+              if ((await more.getAttribute('aria-expanded')) !== 'true')
+                assert.ok((await press(page, more)).inside);
+              assert.ok(
+                (await press(page, page.getByRole('button', { name: 'Start over', exact: true })))
+                  .inside,
+              );
+              await page.waitForFunction(
+                () => document.querySelectorAll('section.next-face').length === 2,
+              );
+              const cleared = await faceList(page);
+              assert.deepEqual(
+                cleared.map(({ mode, value }) => [mode, value]),
+                [
+                  ['text', ''],
+                  ['text', ''],
+                ],
+              );
+              assert.ok(cleared.every((face) => !before.some((old) => old.id === face.id)));
+              assert.ok(
+                (await press(page, page.locator('[data-next-undo-notice] .next-undo'))).inside,
+              );
+              await page.waitForFunction(
+                () => document.querySelectorAll('section.next-face').length === 3,
+              );
+              assert.deepEqual(
+                await faceList(page),
+                before,
+                'every original input returns in its original order',
+              );
+              const restored = [];
+              for (const face of originals)
+                restored.push({ id: face.id, ...(await pixels(face.id)) });
+              record('start-over-generated', {
+                before,
+                cleared,
+                originals,
+                restored,
+                opsBefore,
+                opsAfter: await operations(),
+                modelRequestsBefore,
+                modelRequestsAfter: s.models.length,
+              });
+              assert.deepEqual(
+                restored,
+                originals,
+                'Start over -> Undo preserves exact generated RGBA pixels',
+              );
+              assert.deepEqual(
+                await operations(),
+                opsBefore,
+                'Start over -> Undo performs no inference',
+              );
+              assert.equal(s.models.length, modelRequestsBefore, 'Undo acquires no model bytes');
+              assert.deepEqual(
+                (await faceTrace(page))
+                  .slice(traceBefore)
+                  .filter((event) => event.type === 'invalidateFace'),
+                [],
+                'Undo does not invalidate any hidden face',
+              );
+              assert.deepEqual(s.errors, []);
+              await page.screenshot({ path: join(results, 'start-over-generated.png') });
+            } finally {
+              await s.context.close();
+            }
           },
         );
 

@@ -1,6 +1,7 @@
-// A raw face is painted before its lossy download is ready. Retain only the removed, already
-// allocated canvas during the single Undo window so restoring it cannot change its pixels.
-// Crossing the strip/pair/single boundary also remounts its siblings (at most two).
+// A raw face is painted before its lossy download is ready. During the single Undo window,
+// retain only already allocated, mounted canvases so restoring them cannot change their pixels.
+// Remove also retains remounted siblings (at most two); Start over stays bounded by the DOM,
+// including its virtual window. Expiry, replacement, Undo and unmount release unused references.
 export function createUndoCanvas() {
   const held = new Map<string, { revision: number; canvas: HTMLCanvasElement }>();
   return {

@@ -242,7 +242,18 @@ export function Product({ store }: { store: Store }) {
             onCancel={() => dispatch(msg('Cancel'))}
             onOverflow={(open) => dispatch(msg('OverflowToggle', open))}
             onAddFace={() => dispatch(msg('AddAt', s.Inputs.length))}
-            onStartOver={() => dispatch(msg('StartOver'))}
+            onStartOver={() => {
+              undoCanvas.release();
+              // Retain only canvases already allocated by the rendered layout,
+              // including its bounded virtual window, never every hidden face.
+              for (const canvas of document.querySelectorAll<HTMLCanvasElement>(
+                'section.next-face[data-next-face] canvas.next-face-img',
+              )) {
+                const id = canvas.closest<HTMLElement>('section.next-face')?.dataset.nextFace;
+                if (id) undoCanvas.retain(id, facade.exportResultRevision(id), canvas);
+              }
+              dispatch(msg('StartOver'));
+            }}
             onSettings={(change) => {
               if (change.kind !== undefined) dispatch(msg('Kind', change.kind));
               if (change.frames !== undefined) dispatch(msg('Frames', change.frames));

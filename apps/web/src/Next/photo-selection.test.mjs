@@ -64,5 +64,6 @@ test('the multiple-faces sentence is shared, not duplicated', async () => {
   const next=reduce(msg('Failed',1,MULTIPLE_FACES_MESSAGE),{...state,Busy:true,JobId:1,ActiveFace:'face-1'},
     {multipleFacesMessage:MULTIPLE_FACES_MESSAGE});
   assert.equal(next.state.Error,null);
-  assert.deepEqual(next.effects,[{type:'dispatch',message:msg('RequestCrop','face-1')}]);
+  // Detection continues this selection; it must not commit an unrelated pending Undo.
+  assert.deepEqual(next.effects,[{type:'dispatch',message:msg('RequestCrop','face-1'),continuation:true}]);
 });
