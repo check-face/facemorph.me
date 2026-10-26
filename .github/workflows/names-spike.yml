@@ -7,8 +7,8 @@ on:
   workflow_dispatch:
 jobs:
   measure:
-    # eris: triton's Ubuntu 20.04 is below Playwright's supported floor.
-    runs-on: [self-hosted, eris]
+    # The temporary Ubuntu 24.04 pool supports Chromium; Triton's Ubuntu 20.04 does not.
+    runs-on: [self-hosted, tempcpu]
     timeout-minutes: 120
     defaults:
       run:

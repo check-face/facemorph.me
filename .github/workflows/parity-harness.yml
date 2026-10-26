@@ -2,9 +2,9 @@ name: parity-harness
 # fm-q007: the parity harness.
 # - unit: the shared strictly-not-worse rule, the DOM-contract grading and its self-test on the committed control goldens,
 #   and the per-cell performance/retained-lane table (printed to the job summary; cells without paired runs read untested).
-# - served: the harness self-test in real Chromium on eris with a bounded runner: the verified control served as the
+# - served: the harness self-test in real Chromium with a bounded runner: the verified control served as the
 #   subject passes the smoke row, and a copy with one planted label change fails it. The control digest is re-checked
-#   before serving. Uses a runtime already acquired on the runner (verified; CI never accepts the model terms itself).
+#   before serving. Every runtime pin is verified by the shared portable acquisition step.
 on:
   workflow_call:
   workflow_dispatch:
@@ -23,7 +23,7 @@ jobs:
       - name: Per-cell performance and retained-lane table
         run: node scripts/verify/cells.mjs --markdown | tee -a "$GITHUB_STEP_SUMMARY"
   served:
-    runs-on: [self-hosted, eris]
+    runs-on: [self-hosted, tempcpu]
     timeout-minutes: 60
     env:
       # Served harness children independently re-verify the retained release.
@@ -34,24 +34,15 @@ jobs:
         with:
           node-version: '24'
       - uses: ./.github/actions/setup-workspace # node_modules for the lockfile, shared on the runner (fm-98po)
+      - uses: ./.github/actions/setup-playwright
+        with:
+          browsers: chromium
+      - uses: ./.github/actions/setup-runtime
       - name: Fetch retained control independently (digest re-verified)
         run: node scripts/import/fetch-control.mjs --dest .cache/control
-      - name: Runtime already acquired on this runner (verified; nothing downloaded)
-        id: runtime
-        run: |
-          dir="$HOME/.cache/facemorph-runtime"
-          check='const [{acquiredFindings},{readJson,BUILD_INPUTS}]=await Promise.all([import("./scripts/inventory/check-build-inputs.mjs"),import("./scripts/inventory/lib.mjs")]);
-            const {out,files}=acquiredFindings(process.argv[1],readJson(BUILD_INPUTS).runtime.assets);console.log(JSON.stringify({files,findings:out.length}));process.exit(out.length||!files?1:0);'
-          if [ -f "$dir/manifest.json" ] && node --input-type=module -e "$check" "$dir"; then
-            echo "dir=$dir" >> "$GITHUB_OUTPUT"
-          else
-            echo "::warning::No verified runtime in $dir: the served self-test is untested in this run"
-          fi
       - name: Served self-test (control as subject passes; planted change fails)
-        if: steps.runtime.outputs.dir != ''
-        env:
-          PARITY_RUNTIME: ${{ steps.runtime.outputs.dir }}
         run: |
+          export PARITY_RUNTIME="$FACEMORPH_RUNTIME_DIR"
           python3 autoresearch/run.py --timeout 3600 -- \
             node --experimental-strip-types apps/web/test/harness/run.ts --self-test --out test-results/parity-harness
       - uses: actions/upload-artifact@v4

@@ -2,14 +2,14 @@ name: hosting-staging
 # fm-8tyu: classic's app-side hosting/ tree is imported byte-identical (hosting/PROVENANCE.json) and staging is
 # reproducible from a clean clone: the imported stage.py on this clone's deploy-next/ (the control) and the verified
 # runtime acquisition must give exactly classic's staged tree (classic's own mirror-runtime.py and stage.py, from its Git
-# objects at the frozen revision, on the same artifact). Uses a runtime already acquired on the runner (verified;
-# nothing downloaded; CI never accepts the model terms itself).
+# objects at the frozen revision, on the same artifact). Every runtime pin is verified by the shared portable
+# acquisition step.
 on:
   workflow_call:
   workflow_dispatch:
 jobs:
   staging:
-    runs-on: [self-hosted, eris]
+    runs-on: [self-hosted, tempcpu]
     timeout-minutes: 90
     # The hosting tests run promote.py/stage.py from the checkout; bytecode caches would land in hosting/.
     env:
@@ -26,6 +26,7 @@ jobs:
         with:
           node-version: '24'
       - run: npm ci
+      - uses: ./.github/actions/setup-runtime
       # The deploy driver's warm and mirror-deploy run the model-host package's CLI (fm-6fx6).
       - run: npm run build -w packages/stylegan-js -w packages/browser-model-manager -w packages/cloudflare-model-host
       - run: node --test 'scripts/hosting/*.test.mjs'
@@ -37,22 +38,11 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: npm run build:next
-      - name: Runtime already acquired on this runner (verified; nothing downloaded)
-        id: runtime
-        run: |
-          dir="$HOME/.cache/facemorph-runtime"
-          check='const [{acquiredFindings},{readJson,BUILD_INPUTS}]=await Promise.all([import("./scripts/inventory/check-build-inputs.mjs"),import("./scripts/inventory/lib.mjs")]);
-            const {out,files}=acquiredFindings(process.argv[1],readJson(BUILD_INPUTS).runtime.assets);console.log(JSON.stringify({files,findings:out.length}));process.exit(out.length||!files?1:0);'
-          if [ -f "$dir/manifest.json" ] && node --input-type=module -e "$check" "$dir"; then
-            echo "dir=$dir" >> "$GITHUB_OUTPUT"
-          else
-            echo "::error::No verified runtime in $dir: staging cannot be reproduced on this runner"; exit 1
-          fi
-      - name: Classic's staging on the same artifact, then the clean-clone staging compared file by file (eris lease)
+      - name: Classic's staging on the same artifact, then the clean-clone staging compared file by file
         uses: ./.github/actions/run-command
         with:
           timeout: '1800'
           command: >-
-            scripts/hosting/classic-reference.sh .cache/classic "${{ steps.runtime.outputs.dir }}" .cache/classic-staging.json
-            && node scripts/hosting/stage.mjs --runtime "${{ steps.runtime.outputs.dir }}" --out .cache/staging
+            scripts/hosting/classic-reference.sh .cache/classic "$FACEMORPH_RUNTIME_DIR" .cache/classic-staging.json
+            && node scripts/hosting/stage.mjs --runtime "$FACEMORPH_RUNTIME_DIR" --out .cache/staging
             --record .cache/staging.json --compare .cache/classic-staging.json | tee -a "$GITHUB_STEP_SUMMARY"
