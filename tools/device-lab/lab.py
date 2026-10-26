@@ -243,28 +243,43 @@ def recover():
     return True
 
 
-def local_flags():
-    return [f'--host-resolver-rules=MAP {ORIGIN_HOST}:443 127.0.0.1:{LOCAL_PORT}', '--ignore-certificate-errors']
+def local_port(port):
+    if type(port) is not int or not 1 <= port <= 65535:
+        raise ValueError('local port must be an integer from 1 to 65535')
+    return port
 
 
-def phone_chrome_flags(gpu, local):
+def local_flags(port=LOCAL_PORT):
+    return [f'--host-resolver-rules=MAP {ORIGIN_HOST}:443 127.0.0.1:{local_port(port)}', '--ignore-certificate-errors']
+
+
+def phone_chrome_flags(gpu, local, *, port=LOCAL_PORT):
     """Chrome reads its debug command line at start (Chrome is the persistent debug app)."""
-    flags = (PHONE_WEBGPU_FLAGS if gpu else []) + (local_flags() if local else [])
+    port = local_port(port)
+    flags = (PHONE_WEBGPU_FLAGS if gpu else []) + (local_flags(port) if local else [])
     if flags:
         sh('am set-debug-app --persistent com.android.chrome', check=False)
         line = '_ ' + ' '.join(f"'{f}'" if ' ' in f else f for f in flags)
         sh(f'echo "{line}" > {CHROME_FLAGS_FILE}')
     else:
         sh(f'rm -f {CHROME_FLAGS_FILE}', check=False)
-    save_state(chromeFlags=flags)
+    save_state(chromeFlags=flags, localReversePort=None if local else SAVED.get('localReversePort', LOCAL_PORT))
     if local:
-        adb('reverse', f'tcp:{LOCAL_PORT}', f'tcp:{LOCAL_PORT}')
+        # Custom listeners never replace another task's mapping. Record ownership only after
+        # success, so cleanup after a refused mapping cannot remove that other task's reverse.
+        if port == LOCAL_PORT:
+            adb('reverse', f'tcp:{port}', f'tcp:{port}')
+        else:
+            adb('reverse', '--no-rebind', f'tcp:{port}', f'tcp:{port}')
+        save_state(localReversePort=port)
 
 
 def phone_chrome_reset():
     """Resting state: no debug flags, no reverse port, like a real visitor's phone."""
     sh(f'rm -f {CHROME_FLAGS_FILE}', check=False)
-    adb('reverse', '--remove', f'tcp:{LOCAL_PORT}', check=False)
+    port = SAVED.get('localReversePort', LOCAL_PORT)  # old session files used only 8443
+    if port is not None:
+        adb('reverse', '--remove', f'tcp:{local_port(port)}', check=False)
 
 
 def session_begin():
@@ -429,7 +444,7 @@ class Phone:
             what:ev.target.outerHTML.slice(0,80)}},{capture:true,once:true});}
           return {x,y,ok,inView,hit:hit?hit.outerHTML.slice(0,80):null}}"""
 
-    def __init__(self, pw):
+    def __init__(self, pw, *, init_script=GUARD):
         # A cold Chrome start each session: clears dialogs left by earlier runs (Chrome's own photo
         # picker sits inside Chrome's activity, so focus checks cannot see it).
         sh(f'am force-stop {CHROME}', check=False)
@@ -448,7 +463,7 @@ class Phone:
             self.page = ctx.new_page()
             self.page.bring_to_front()
             time.sleep(1)
-            self.page.add_init_script(GUARD)
+            self.page.add_init_script(init_script)
             self.cdp = ctx.new_cdp_session(self.page)
         except BaseException:
             self.close()
@@ -1149,15 +1164,16 @@ class LocalServer:
     """Serves an exact candidate artifact under the production origin (classic's qualification server),
     reached by eris Chromium through host-resolver rules and by the phone through adb reverse."""
 
-    def __init__(self, artifact, runtime_sha, out):
+    def __init__(self, artifact, runtime_sha, out, *, port=LOCAL_PORT):
         self.artifact, self.runtime_sha, self.out = Path(artifact).resolve(), runtime_sha, out
+        self.port = local_port(port)
         if self.artifact.name == 'deploy-next':
             self.artifact = self.artifact.parent
 
     def __enter__(self):
         # Refuse an occupied port rather than probing another session's server as our artifact.
-        if port_listening(LOCAL_PORT):
-            raise OSError(f'127.0.0.1:{LOCAL_PORT} is already served by another process')
+        if port_listening(self.port):
+            raise OSError(f'127.0.0.1:{self.port} is already served by another process')
         runtime = Path(os.environ.get('RUNTIME_FILES', self.artifact / '.runtime-public'))
         if not runtime.exists():
             raise RuntimeError(f'No acquired runtime at {runtime}; set RUNTIME_FILES to a verified runtime directory')
@@ -1166,14 +1182,14 @@ class LocalServer:
                         '-days', '1', '-subj', f'/CN={ORIGIN_HOST}'], check=True, capture_output=True)
         cmd = [sys.executable, CHECKOUT / 'apps/web/scripts/next-e2e-server.py', '--manifest-sha', self.runtime_sha,
                '--runtime-overlay', runtime, '--runtime-files', runtime,
-               '--cert', crt, '--key', key]
+               '--cert', crt, '--key', key, '--port', self.port]
         self.log = open(self.out / 'server.log', 'w')
         self.proc = subprocess.Popen([str(c) for c in cmd], cwd=self.artifact, stdout=self.log, stderr=subprocess.STDOUT)
         try:
             for _ in range(60):
                 if self.proc.poll() is not None:
                     raise RuntimeError('local server exited; see server.log')
-                if subprocess.run(['curl', '-kfsS', '--max-time', '2', f'https://127.0.0.1:{LOCAL_PORT}/runtime/manifest.json'],
+                if subprocess.run(['curl', '-kfsS', '--max-time', '2', f'https://127.0.0.1:{self.port}/runtime/manifest.json'],
                                   capture_output=True).returncode == 0:
                     log('local_server_ready', artifact=str(self.artifact))
                     return self
