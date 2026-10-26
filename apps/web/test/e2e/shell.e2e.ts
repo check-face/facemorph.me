@@ -1,5 +1,6 @@
 // The built shell (dist/, from `npm run build`) in real Chromium, Firefox and WebKit at desktop and phone width:
-// - its rows match the control goldens (parity rows exactly; repair and declared rows are owner-graded);
+// - its rows match the control goldens (parity rows exactly, after the DECLARED product changes below; repair and
+//   declared rows are owner-graded);
 // - every link and control in it is operated as a person would: the element at its visible centre must be the
 //   control (elementFromPoint), a real mouse click or touch tap lands on it, and its target is the one shown;
 // - every bundler-emitted worker loads.
@@ -69,7 +70,47 @@ const CASES = [
     selector: 'footer.next-footer a[target="_blank"]',
     href: /^https:\/\/github\.com\/facemorph-me\/facemorph\.me\/issues\/new\?template=next-facemorph\.yml&/,
   },
+  {
+    id: 'footer-notices',
+    selector: 'footer.next-footer a.next-footer-notices',
+    href: /^http:\/\/127\.0\.0\.1:\d+\/runtime\/notices\/index\.html$/,
+  },
+  {
+    id: 'footer-privacy',
+    selector: 'footer.next-footer a.next-footer-privacy',
+    href: /^http:\/\/127\.0\.0\.1:\d+\/#debug-reporting$/,
+  },
 ] as const;
+
+// Declared changes to parity rows (agreed product changes, applied before the exact comparison). Each must be
+// present exactly once, so a missing or doubled change still fails; everything else in the row stays exact.
+type Snap = { tag?: string; classes?: string[]; children?: Snap[] };
+const DECLARED: Record<string, (row: Snap) => Snap> = {
+  // fm-szbf: a "Privacy & reports" link to the debug-reporting dialog; fm-gbdt: a "Licences and notices" link to
+  // the runtime's notices. Both are operated in CASES.
+  'shell.footer': (row) => {
+    const added = ['next-footer-privacy', 'next-footer-notices'];
+    const removed = new Map(added.map((c) => [c, 0]));
+    const strip = (node: Snap): Snap => ({
+      ...node,
+      ...(node.children && {
+        children: node.children
+          .filter((child) => {
+            const link =
+              child.tag === 'p' && child.children?.length === 1 ? child.children[0] : undefined;
+            const which = added.find((c) => link?.classes?.includes(c));
+            if (which) removed.set(which, removed.get(which)! + 1);
+            return !which;
+          })
+          .map(strip),
+      }),
+    });
+    const stripped = strip(row);
+    for (const [c, n] of removed)
+      assert.equal(n, 1, `shell.footer: the declared .${c} link appears exactly once`);
+    return stripped;
+  },
+};
 
 let site: Served;
 before(async () => {
@@ -125,8 +166,9 @@ for (const [engine, type] of Object.entries(ENGINES).filter(([e]) => !only || on
           const golden = JSON.parse(
             readFileSync(new URL(`test/goldens/control/${row.id}/${width}.json`, app), 'utf8'),
           );
+          const declared = DECLARED[row.id];
           assert.deepEqual(
-            rows[row.id],
+            declared ? declared(rows[row.id] as Snap) : rows[row.id],
             golden,
             `${engine} ${width}: ${row.id} differs from the control`,
           );
