@@ -53,8 +53,8 @@ export async function verifyNonfaceInputs({
   modelDir,
   checkpoint,
   consumerDir,
-  referenceDir = join(modelDir, 'reference'),
-  morphReferenceDir = join(modelDir, 'morph-reference'),
+  referenceDir,
+  morphReferenceDir,
   expectedRelease,
   handoffIdentity,
 } = {}) {
@@ -109,6 +109,8 @@ export async function verifyNonfaceInputs({
     );
     return { outcome: 'unqualified', blocker: blocked.blocker, handoff: handoffIdentity, verified };
   }
+  referenceDir ??= join(modelDir, 'reference');
+  morphReferenceDir ??= join(modelDir, 'morph-reference');
   assert.match(
     handoffIdentity?.manifestSha256 ?? '',
     HEX,

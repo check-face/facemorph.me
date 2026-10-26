@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -71,4 +72,40 @@ test('network admission distinguishes runtime hashes that share a sanitized path
       ),
     /undeclared asset/,
   );
+});
+
+test('a pinned terms blocker stops the actual proof before release, model or consumer admission', async (t) => {
+  const root = mkdtempSync(join(tmpdir(), 'nonface-blocked-'));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const blocked = JSON.stringify({
+    outcome: 'unqualified',
+    blocker: {
+      kind: 'terms',
+      reason: 'Redistribution not qualified',
+      evidence: 'conversion.qualify recorded terms restriction',
+    },
+  });
+  writeFileSync(join(root, 'blocked.json'), blocked);
+  const archive = join(root, 'handoff.zip');
+  writeFileSync(archive, 'planted blocked hand-off archive');
+  const hash = (bytes) => createHash('sha256').update(bytes).digest('hex');
+  const report = await runNonfaceProof({
+    inputs: {
+      handoff: {
+        archive,
+        dir: root,
+        sha256: hash(readFileSync(archive)),
+        blockedSha256: hash(blocked),
+      },
+      releaseArtifact: join(root, 'must-not-be-opened'),
+    },
+    out: join(root, 'evidence'),
+  });
+  assert.equal(report.outcome, 'untested');
+  assert.equal(report.cells.nonface.support, 'unqualified');
+  assert.equal(report.cells.nonface.blocker.kind, 'terms');
+  assert.equal(report.cells.cleanConsumer.outcome, 'untested');
+  assert.equal(report.cells.conversion.outcome, 'untested');
+  assert.equal(report.network, null);
+  assert.deepEqual(report.errors, []);
 });

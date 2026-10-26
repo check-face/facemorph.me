@@ -98,13 +98,15 @@ export async function runNonfaceProof({ inputs, out, timeoutMs = 900000 }) {
   let work, observation;
   try {
     // All identity and byte admission precedes npm installation or browser construction.
-    assert.equal(
-      sha(readFileSync(inputs.handoff.archive)),
-      inputs.handoff.sha256,
-      'Hand-off archive digest mismatch',
-    );
-    const release = verifyUnpacked(inputs.releaseArtifact, inputs.release.commit);
-    assert.equal(release.digest, inputs.release.artifactDigest, 'Release artifact digest mismatch');
+    const archiveSha256 = sha(readFileSync(inputs.handoff.archive));
+    assert.equal(archiveSha256, inputs.handoff.sha256, 'Hand-off archive digest mismatch');
+    report.handoffArchive = {
+      outcome: 'pass',
+      sha256: archiveSha256,
+      expectedSha256: inputs.handoff.sha256,
+      runId: inputs.handoff.runId,
+      artifactId: inputs.handoff.artifactId,
+    };
     const admitted = await verifyNonfaceInputs({
       handoffDir: inputs.handoff.dir,
       modelDir: inputs.modelDir,
@@ -125,6 +127,8 @@ export async function runNonfaceProof({ inputs, out, timeoutMs = 900000 }) {
       };
       return report;
     }
+    const release = verifyUnpacked(inputs.releaseArtifact, inputs.release.commit);
+    assert.equal(release.digest, inputs.release.artifactDigest, 'Release artifact digest mismatch');
     const schemaLog = execFileSync(
       'npx',
       [
