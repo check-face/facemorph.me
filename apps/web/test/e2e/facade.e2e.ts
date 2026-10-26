@@ -23,17 +23,14 @@ import { extname, join } from 'node:path';
 import base, { after, afterEach, before, beforeEach } from 'node:test';
 import { createFacadeShard, FACADE_SHARDS } from './facade-shards.mjs';
 import { fileURLToPath } from 'node:url';
-import {
-  chromium,
-  type Browser,
-  type BrowserContext,
-  type Page,
-  type Worker,
-  type Route,
-} from 'playwright';
+import { type BrowserContext, type Page, type Worker, type Route } from 'playwright';
 import { press } from '../support/operate.ts';
 import { serve, type Served } from '../support/serve.ts';
 import { fulfillRuntime } from '../support/fulfill-runtime.ts';
+import {
+  launchFreshChromiumProfile,
+  type FreshChromiumProfile,
+} from '../support/browser-profile.ts';
 import { build } from 'vite';
 import { controlRows, fixture, verifyControl } from '../controller/control.ts';
 import { replayFirstVisit, replayRows, type Replayers } from '../controller/replay.ts';
@@ -82,7 +79,7 @@ const log = (line: string) => console.log(`# ${line}`);
 
 let bundleDir = '';
 let runtimeServer: Served | undefined;
-let browser: Browser;
+let profile: FreshChromiumProfile;
 let context: BrowserContext;
 let page: Page;
 const counts = new Map<string, number>();
@@ -114,7 +111,8 @@ function verifiedRuntime(): void {
 }
 
 async function open(publicGallery = false): Promise<void> {
-  context = await browser.newContext({ acceptDownloads: true });
+  profile = await launchFreshChromiumProfile({ acceptDownloads: true });
+  context = profile.context;
   // Keep action/screenshot traces without copying the entire model download into each failure archive.
   await context.tracing.start({ screenshots: true, snapshots: false, sources: true });
   await context.route(`${ORIGIN}/**`, async (route) => {
@@ -206,7 +204,6 @@ before(async () => {
     worker: { format: 'es' },
   });
   runtimeServer = await serve(bundleDir, { '/runtime/': RUNTIME });
-  browser = await chromium.launch();
   await open();
 });
 after(async () => {
@@ -215,10 +212,9 @@ after(async () => {
     // Each process checks its own requests; splitting the suite must not narrow this coverage.
     assertRuntimeRequests();
     assert.deepEqual(pageErrors, [], 'uncaught page errors after the final test');
-    await context?.close();
   } finally {
     try {
-      await browser?.close();
+      await profile?.close();
     } finally {
       await runtimeServer?.close();
       if (bundleDir) rmSync(bundleDir, { recursive: true, force: true });
@@ -719,7 +715,7 @@ test(
   'controller-photo: real queued crops, CPU encode and recovery-bearing Save/reopen',
   { timeout: 900_000 },
   async () => {
-    await context.close();
+    await profile.close();
     await open();
     const result = await call<{
       rejectionMessage: string;
@@ -817,7 +813,7 @@ test(
   'file-entry: earlier saved stills (schema 1 PNG, schema 2 PNG and WebP) reopen without inference; Save keeps the exact latent and model',
   { timeout: 300_000 },
   async () => {
-    await context.close();
+    await profile.close();
     await open();
     const manifestBytes = readFileSync(join(RUNTIME, 'manifest.json'));
     const m = JSON.parse(manifestBytes.toString('utf8'));
@@ -928,7 +924,7 @@ test(
   'file-entry-mp4: a saved morph carries the schema-2 project with the writer route; it reopens as its project',
   { timeout: 1_200_000 },
   async () => {
-    await context.close();
+    await profile.close();
     await open();
     const r = await call<{ out: Out } & Settled>('morph', 'mp4-a', 'mp4-b');
     assert.equal(r.out.errorMessage, '', r.out.errorMessage);
@@ -978,7 +974,7 @@ test(
   'save-matrix: WebP default, PNG pixel-exact, MP4 with its resolution; repeat Save reuses name and bytes; a format switch prepares only that format',
   { timeout: 1_200_000 },
   async () => {
-    await context.close();
+    await profile.close();
     await open();
     pageErrors = [];
     let ortStarted = 0;
@@ -1147,7 +1143,7 @@ test(
     ] as const) {
       // Control rows were recorded in separate contexts. Preserve that isolation so retained
       // bridge faces from an earlier row cannot change this row's insertion order or restore.
-      await context.close();
+      await profile.close();
       await open(true);
       const actual = await call<{
         slider: Record<string, unknown>[];
@@ -1216,7 +1212,7 @@ test(
       replayed[row] = () => {};
     }
     for (const row of ['words.generate-cpu', 'seed.generate', 'names.exact-text']) {
-      await context.close();
+      await profile.close();
       await open(true);
       const observations = await call<{ file: string; model: Record<string, unknown> }[]>(
         'controllerFoundationJourney',
@@ -1576,7 +1572,7 @@ test(
     // Earlier journeys retain photo inputs whose classic field is disabled.
     // Start the control writer with fresh storage, then retain that same origin
     // and storage for the port reader below.
-    await context.close();
+    await profile.close();
     await open();
     const scratch = mkdtempSync(join(tmpdir(), 'facade-retention-control-'));
     t.after(() => rmSync(scratch, { recursive: true, force: true }));
