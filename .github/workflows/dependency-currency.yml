@@ -15,7 +15,8 @@ permissions:
   pull-requests: write
   actions: write
 concurrency:
-  group: dependency-controller-${{ github.event.pull_request.number || github.event.workflow_run.head_branch || 'scan' }}
+  # Dispatch scans across PRs share main's single pending slot.
+  group: dependency-controller
   cancel-in-progress: false
 jobs:
   controller:

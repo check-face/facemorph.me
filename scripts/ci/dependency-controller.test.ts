@@ -1,9 +1,15 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import {
+  activeDependencyQualification,
   dependencyGroup,
   mirrorLockEntry,
+  qualificationAttempted,
   qualificationProblems,
   type DependencyPullRequest,
   type QualificationRun,
@@ -38,6 +44,92 @@ const jobs = () =>
     status: 'completed',
     conclusion: 'success',
   }));
+
+test('a queued or running dependency group preserves the single main pending slot', () => {
+  for (const status of ['pending', 'queued', 'in_progress', 'waiting', 'requested']) {
+    const active = { ...run(), status, conclusion: null };
+    assert.equal(activeDependencyQualification([run(), active]), active);
+  }
+  assert.equal(activeDependencyQualification([run()]), undefined);
+  assert.equal(
+    activeDependencyQualification([{ ...run(), status: 'pending', head_branch: 'main' }]),
+    undefined,
+  );
+  assert.equal(
+    activeDependencyQualification([{ ...run(), status: 'pending', event: 'push' }]),
+    undefined,
+  );
+});
+
+test('queue-cancelled heads retry, but failed gates and completed qualifications do not loop', () => {
+  const cancelled = { ...run(), conclusion: 'cancelled' };
+  assert.equal(qualificationAttempted([cancelled], sha), false);
+  assert.equal(activeDependencyQualification([cancelled]), undefined);
+  for (const conclusion of ['success', 'failure', 'timed_out', 'action_required']) {
+    assert.equal(qualificationAttempted([{ ...run(), conclusion }], sha), true);
+  }
+  assert.equal(qualificationAttempted([run()], 'c'.repeat(40)), false);
+  assert.equal(qualificationAttempted([cancelled, run()], sha), true);
+});
+
+test('dispatch CLI retries a cancelled head and schedules only one of two ready groups', (t) => {
+  const scratch = mkdtempSync(join(tmpdir(), 'dependency-controller-queue-'));
+  t.after(() => rmSync(scratch, { recursive: true, force: true }));
+  const event = join(scratch, 'event.json');
+  const calls = join(scratch, 'calls.jsonl');
+  writeFileSync(event, '{}');
+  const first = pull();
+  const second = structuredClone(first);
+  second.number++;
+  second.head.ref = 'dependabot/npm_and_yarn/react-and-ui-hash';
+  second.head.sha = 'c'.repeat(40);
+  writeFileSync(
+    join(scratch, 'gh'),
+    `#!/usr/bin/env node
+const fs = require('node:fs');
+const args = process.argv.slice(2), endpoint = args[3];
+fs.appendFileSync(process.env.PROBE_CALLS, JSON.stringify(args) + '\\n');
+const prs = ${JSON.stringify([first, second])};
+let value;
+if (endpoint.endsWith('/pulls?state=open&base=main&per_page=100')) value = prs;
+else if (endpoint.endsWith('/runs?event=workflow_dispatch&per_page=100')) value = {workflow_runs:[]};
+else if (endpoint.includes('/files?')) value = [{filename:'package.json'}];
+else if (endpoint.includes('/compare/')) value = {merge_base_commit:{sha:prs[0].base.sha}};
+else if (endpoint.includes('/runs?event=workflow_dispatch&branch='))
+  value = {workflow_runs:[${JSON.stringify({ ...run(), conclusion: 'cancelled' })}]};
+else if (endpoint.endsWith('/dispatches')) {
+  fs.readFileSync(0, 'utf8');
+} else value = prs.find(pr => endpoint.endsWith('/pulls/' + pr.number));
+if (value !== undefined) process.stdout.write(JSON.stringify(value));
+else if (!endpoint.endsWith('/dispatches')) throw Error('unexpected API: ' + endpoint);
+`,
+    { mode: 0o755 },
+  );
+  const output = execFileSync(
+    process.execPath,
+    [fileURLToPath(new URL('./dependency-controller.ts', import.meta.url)), 'dispatch'],
+    {
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        PATH: `${scratch}:${process.env.PATH}`,
+        GITHUB_REPOSITORY: 'probe/repository',
+        GITHUB_EVENT_PATH: event,
+        PROBE_CALLS: calls,
+      },
+    },
+  );
+  assert.equal(JSON.parse(output).number, first.number);
+  const invoked = readFileSync(calls, 'utf8')
+    .trim()
+    .split('\n')
+    .map((line) => JSON.parse(line) as string[]);
+  assert.equal(invoked.filter((args) => args[3]?.endsWith('/dispatches')).length, 1);
+  assert.equal(
+    invoked.some((args) => args[3]?.endsWith(`/pulls/${second.number}`)),
+    false,
+  );
+});
 
 test('a native grouped bot PR with exact branch qualification is eligible', () => {
   assert.equal(dependencyGroup(pull(), files), 'build-tools');
@@ -176,5 +268,6 @@ test('controller executes only trusted default-branch source and uses an atomic 
   assert.match(source, /'--match-head-commit',\s*pr\.head\.sha/);
   assert.match(workflow, /ref: \$\{\{ github.event.repository.default_branch \}\}/);
   assert.match(workflow, /persist-credentials: false/);
+  assert.match(workflow, /group: dependency-controller\n\s+cancel-in-progress: false/);
   assert.doesNotMatch(workflow, /pull_request.head.sha|npm (?:ci|install)/);
 });
