@@ -1,5 +1,5 @@
 name: manager-cache
-# fm-eulc: the model cache in @facemorph/browser-model-manager. On eris (Playwright's Chromium is there): the
+# fm-eulc: the model cache in @facemorph/browser-model-manager. In the qualified temporary browser pool: the
 # package's typecheck, build and tests, whose browser cases run verified local reads on OPFS and Cache Storage
 # (typed miss, corruption, eviction; zero requests counted by host class with the interception helper; entries the
 # candidate's own cache wrote read without a download), the tarball check, and the candidate's carried
@@ -11,7 +11,7 @@ permissions:
   contents: read
 jobs:
   cache:
-    runs-on: [self-hosted, eris]
+    runs-on: [self-hosted, tempcpu]
     timeout-minutes: 60
     strategy:
       fail-fast: false
@@ -26,6 +26,7 @@ jobs:
         with:
           node-version: '24'
       - uses: ./.github/actions/setup-workspace # node_modules for the lockfile, shared on the runner (fm-98po)
+      - uses: ./.github/actions/setup-runtime
       - name: Install the selected real browser
         run: npx playwright install ${{ matrix.engine }}
       - run: npm run build -w packages/stylegan-js -w packages/browser-model-manager
@@ -63,7 +64,7 @@ jobs:
           timeout: '360'
           # Keep the 1 GiB cold acquisition out of the concurrent package timing cells.
           command: |
-            export FACEMORPH_RUNTIME_CACHE="$HOME/.cache/facemorph-device-lab/runtime-public"
+            export FACEMORPH_RUNTIME_CACHE="$FACEMORPH_RUNTIME_DIR"
             node packages/browser-model-manager/test/run.mjs packages/browser-model-manager/test/cold-photo.component.ts
       - name: Loaded CPU handle release and native leased-file loss
         uses: ./.github/actions/run-command
@@ -73,7 +74,7 @@ jobs:
         with:
           timeout: '360'
           command: |
-            export FACEMORPH_RUNTIME_CACHE="$HOME/.cache/facemorph-device-lab/runtime-public"
+            export FACEMORPH_RUNTIME_CACHE="$FACEMORPH_RUNTIME_DIR"
             node packages/browser-model-manager/test/run.mjs packages/browser-model-manager/test/loaded-browser.component.ts
       - uses: actions/upload-artifact@v4
         if: always()
