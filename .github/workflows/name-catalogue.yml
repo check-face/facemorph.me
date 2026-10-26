@@ -1,6 +1,11 @@
 name: Public name catalogue
 on:
   workflow_call:
+    inputs:
+      shared_build:
+        type: boolean
+        default: false
+        description: Reuse the exact compiled workspace from this main run
   workflow_dispatch:
 concurrency:
   group: name-catalogue-publication
@@ -15,11 +20,14 @@ jobs:
         with:
           node-version: '24'
       - uses: ./.github/actions/setup-workspace
+      - uses: ./.github/actions/restore-workspace-build
+        if: inputs.shared_build
       - uses: ./.github/actions/setup-workspace
         with:
           directory: scripts/names-snapshot
       # The catalogue imports apps/web's recovery envelope, which reads stylegan-js from its built dist.
-      - run: npm run build -w packages/stylegan-js -w packages/browser-model-manager
+      - if: ${{ !inputs.shared_build }}
+        run: npm run build -w packages/stylegan-js -w packages/browser-model-manager
       - run: node --test scripts/names-publish/publish.test.mjs scripts/names-snapshot/local.test.mjs hosting/gallery/materialize.test.mjs
   publish:
     if: github.event_name == 'workflow_dispatch' && startsWith(github.workflow_ref, format('{0}/.github/workflows/name-catalogue.yml@', github.repository))
@@ -40,6 +48,8 @@ jobs:
         with:
           node-version: '24'
       - uses: ./.github/actions/setup-workspace
+      - uses: ./.github/actions/restore-workspace-build
+        if: inputs.shared_build
       - uses: ./.github/actions/setup-workspace
         with:
           directory: tools/names-generator
@@ -51,7 +61,8 @@ jobs:
           directory: hosting/gallery
       # publish.mjs imports apps/web's recovery envelope, which reads stylegan-js from its built dist
       # (as the test job builds it); without it the publish step fails with ERR_MODULE_NOT_FOUND.
-      - run: npm run build -w packages/stylegan-js -w packages/browser-model-manager
+      - if: ${{ !inputs.shared_build }}
+        run: npm run build -w packages/stylegan-js -w packages/browser-model-manager
       - name: Make the installed cf available to snapshot token commands
         run: echo "$GITHUB_WORKSPACE/node_modules/.bin" >> "$GITHUB_PATH"
       - name: Verify provisioned immutable snapshot and resume checked generator output

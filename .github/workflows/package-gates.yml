@@ -9,6 +9,10 @@ name: package-gates
 on:
   workflow_call:
     inputs:
+      shared_build:
+        type: boolean
+        default: false
+        description: Reuse the exact compiled workspace from this main run
       release_artifact:
         type: string
         default: ''
@@ -36,6 +40,8 @@ jobs:
         with:
           node-version: '24'
       - uses: ./.github/actions/setup-workspace # node_modules for the lockfile, shared on the runner (fm-98po)
+      - uses: ./.github/actions/restore-workspace-build
+        if: inputs.shared_build
       - uses: ./.github/actions/setup-playwright
         with:
           browsers: chromium
@@ -66,6 +72,7 @@ jobs:
         run: node scripts/packages/docs-scan.mjs
       - name: Consumer gates for all four packages
         env:
+          SHARED_BUILD: ${{ inputs.shared_build }}
           PACKAGE_RELEASE_PROVENANCE: ${{ steps.release.outputs.provenance_json }}
           PACKAGE_RELEASE_DIGEST: ${{ steps.release.outputs.artifact_digest }}
           CONVERSION_OUT: ${{ runner.temp }}/package-conversion-${{ github.run_id }}-${{ github.run_attempt }}
@@ -74,6 +81,7 @@ jobs:
           mkdir -p test-results/package-gates
           # Scan exactly the packs installed by the external consumer; retain each pack, canonical scan and integrity.
           args=()
+          if [ "$SHARED_BUILD" = true ]; then args+=(--skip-build); fi
           if [ -n "$PACKAGE_RELEASE_PROVENANCE" ]; then
             args+=(--converted "$CONVERSION_OUT/ffhq" --runtime "$FACEMORPH_RUNTIME_DIR")
           fi
@@ -89,8 +97,10 @@ jobs:
           mkdir -p test-results/package-gates
           node scripts/packages/npm-names.mjs --json | tee test-results/package-gates/npm-names.json
       - name: API reference matches the emitted declarations (fm-tohj)
+        env:
+          SHARED_BUILD: ${{ inputs.shared_build }}
         run: |
-          npm run build -w packages/stylegan-js
+          if [ "$SHARED_BUILD" != true ]; then npm run build -w packages/stylegan-js; fi
           node scripts/packages/api-reference.mjs --check
       - uses: actions/upload-artifact@v4
         if: always()

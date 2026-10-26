@@ -31,8 +31,10 @@ test('the wrapper builds once then qualifies, while child workflows leave queue 
   assert.deepEqual(artifact.jobs.artifact['runs-on'], ['self-hosted', 'facemorph-artifact']);
   const steps = artifact.jobs.artifact.steps;
   assert.equal(steps.filter((s: any) => s.run?.includes('npm run build:next &&')).length, 1);
-  assert.equal(steps.filter((s: any) => s.uses === 'actions/upload-artifact@v4').length, 1);
-  assert.equal(steps.at(-1).with.name, 'next-site-${{ github.sha }}');
+  assert.deepEqual(
+    steps.filter((s: any) => s.uses === 'actions/upload-artifact@v4').map((s: any) => s.with.name),
+    ['next-site-${{ github.sha }}', 'workspace-build-${{ github.sha }}'],
+  );
   assert.equal(artifact.env.BUILD_WORKFLOW, '${{ inputs.artifact_workflow }}');
   assert.equal(
     wrapper.jobs.artifact.with.artifact_workflow,

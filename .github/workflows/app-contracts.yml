@@ -5,6 +5,11 @@ name: app-contracts
 # fuzzing of the batch payload and words validators.
 on:
   workflow_call:
+    inputs:
+      shared_build:
+        type: boolean
+        default: false
+        description: Reuse the exact compiled workspace from this main run
   workflow_dispatch:
 jobs:
   check:
@@ -15,8 +20,11 @@ jobs:
         with:
           node-version: '24'
       - uses: ./.github/actions/setup-workspace # node_modules for the lockfile, shared on the runner (fm-98po)
+      - uses: ./.github/actions/restore-workspace-build
+        if: inputs.shared_build
       # The manager's exports name dist/ only (no source condition), so its declarations are built first.
-      - run: npm run build -w packages/stylegan-js -w packages/browser-model-manager
+      - if: ${{ !inputs.shared_build }}
+        run: npm run build -w packages/stylegan-js -w packages/browser-model-manager
       - name: Contracts without DOM or Node globals; then the tests' types
         run: >-
           npx tsc -p apps/web/src/contracts && npx tsc -p apps/web/src/contracts/tsconfig.test.json &&

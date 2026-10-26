@@ -5,6 +5,11 @@ name: contracts-m1
 # recorded runtime manifest, and an external consumer compiling the packed packages' declarations.
 on:
   workflow_call:
+    inputs:
+      shared_build:
+        type: boolean
+        default: false
+        description: Reuse the exact compiled workspace from this main run
   workflow_dispatch:
 jobs:
   check:
@@ -16,6 +21,8 @@ jobs:
         with:
           node-version: '24'
       - uses: ./.github/actions/setup-workspace # node_modules for the lockfile, shared on the runner (fm-98po)
+      - uses: ./.github/actions/restore-workspace-build
+        if: inputs.shared_build
       - run: npx tsc -p packages/stylegan-js/tsconfig.json && npx tsc -p packages/stylegan-js/tsconfig.test.json
       - run: npx tsc -p packages/browser-model-manager/src/contracts/tsconfig.test.json
       - name: Engine contract tests (incl. recovery-metadata and worker-payload fuzz)
@@ -47,10 +54,13 @@ jobs:
         with:
           node-version: '24'
       - uses: ./.github/actions/setup-workspace # node_modules for the lockfile, shared on the runner (fm-98po)
+      - uses: ./.github/actions/restore-workspace-build
+        if: inputs.shared_build
       - uses: ./.github/actions/setup-playwright # browsers cached per Playwright version (fm-98po)
         with:
           browsers: chromium firefox webkit
-      - run: npm run build -w packages/stylegan-js
+      - if: ${{ !inputs.shared_build }}
+        run: npm run build -w packages/stylegan-js
       - run: node packages/stylegan-js/test/browser/media-browsers.mjs
       - run: node packages/stylegan-js/test/browser/webp-lossless-browsers.mjs
       - run: node packages/stylegan-js/test/browser/crop-policy-browsers.mjs

@@ -26,8 +26,10 @@ jobs:
       - name: Every test file is actually run
         run: node scripts/build/check-tests-listed.mjs
       # src/Next modules import stylegan-js and browser-model-manager through their dist/ exports.
-      - name: Workspace packages the regressions import
-        run: npm run build -w packages/stylegan-js -w packages/browser-model-manager
+      - name: Build the canonical monorepo destination artifact
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: npm run build:next && npm run build:next -- --check
       - name: Shipping runtime, media, privacy and input regressions
         run: |
           set -euo pipefail
@@ -46,10 +48,6 @@ jobs:
       - name: Independent reviewed morph geometry
         working-directory: apps/web
         run: node src/Next/geometry/verify.mjs
-      - name: Build the canonical monorepo destination artifact
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-        run: npm run build:next && npm run build:next -- --check
       - name: Historic hello preview is included byte for byte
         run: cmp apps/web/src/public/preview/hello-1024.webp deploy-next/preview/hello-1024.webp
       - name: Model-free checker compressed budget (entry, shared dependencies and worker)
@@ -84,5 +82,13 @@ jobs:
             next-site-source.txt
             next-site-provenance.json
             next-site-identity.json
+          if-no-files-found: error
+          retention-days: 14
+      - name: Pack the compiled workspace for downstream correctness lanes
+        run: node scripts/ci/workspace-build.mjs pack --out .cache/workspace-build-artifact --commit "$GITHUB_SHA"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: workspace-build-${{ github.sha }}
+          path: .cache/workspace-build-artifact/
           if-no-files-found: error
           retention-days: 14

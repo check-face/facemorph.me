@@ -8,6 +8,10 @@ permissions:
 on:
   workflow_call:
     inputs:
+      shared_build:
+        type: boolean
+        default: false
+        description: Reuse the exact compiled workspace from this main run
       full:
         type: boolean
         default: true
@@ -63,11 +67,15 @@ jobs:
         with:
           node-version: '24'
       - uses: ./.github/actions/setup-workspace # node_modules for the lockfile, shared on the runner (fm-98po)
+      - uses: ./.github/actions/restore-workspace-build
+        if: inputs.shared_build
       # apps/web imports the workspace packages through their built dist/ exports. Its format, lint, typecheck and unit
       # tests run once per main.yml run in scaffold's gates (fm-98po).
-      - run: npm run build -w packages/stylegan-js -w packages/browser-model-manager
+      - if: ${{ !inputs.shared_build }}
+        run: npm run build -w packages/stylegan-js -w packages/browser-model-manager
         working-directory: .
-      - run: npm run build
+      - if: ${{ !inputs.shared_build }}
+        run: npm run build
       - run: npm run check:inventory
       - name: Every name the UI and the typed facade take from a bridge module is exported there (fm-pia9)
         run: node scripts/check-bridge-imports.mjs
@@ -88,11 +96,14 @@ jobs:
         with:
           node-version: '24'
       - uses: ./.github/actions/setup-workspace
+      - uses: ./.github/actions/restore-workspace-build
+        if: inputs.shared_build
       - uses: ./.github/actions/setup-playwright
         with:
           browsers: chromium
       - uses: ./.github/actions/setup-runtime
-      - run: npm run build -w packages/stylegan-js -w packages/browser-model-manager
+      - if: ${{ !inputs.shared_build }}
+        run: npm run build -w packages/stylegan-js -w packages/browser-model-manager
       - name: Every facade declaration belongs to exactly one shard
         run: node --test apps/web/test/e2e/facade-shards.test.mjs
       - name: Typed facade through the real CPU bridge and the pinned runtime
@@ -121,11 +132,14 @@ jobs:
         with:
           node-version: '24'
       - uses: ./.github/actions/setup-workspace
+      - uses: ./.github/actions/restore-workspace-build
+        if: inputs.shared_build
       - uses: ./.github/actions/setup-playwright
         with:
           browsers: chromium
       - uses: ./.github/actions/setup-runtime
-      - run: npm run build -w packages/stylegan-js -w packages/browser-model-manager
+      - if: ${{ !inputs.shared_build }}
+        run: npm run build -w packages/stylegan-js -w packages/browser-model-manager
       - name: Verify the canonical site artifact
         uses: ./.github/actions/fetch-artifact
         with:
@@ -165,12 +179,15 @@ jobs:
         with:
           node-version: '24'
       - uses: ./.github/actions/setup-workspace
+      - uses: ./.github/actions/restore-workspace-build
+        if: inputs.shared_build
       - uses: ./.github/actions/setup-playwright
         with:
           browsers: chromium
       - uses: ./.github/actions/setup-runtime
       # The e2e tests import app modules that read the engine package through its built dist/ exports (fm-7f2o).
-      - run: npm run build -w packages/stylegan-js -w packages/browser-model-manager
+      - if: ${{ !inputs.shared_build }}
+        run: npm run build -w packages/stylegan-js -w packages/browser-model-manager
       - name: Verify the canonical site artifact
         uses: ./.github/actions/fetch-artifact
         with:
@@ -245,12 +262,15 @@ jobs:
         with:
           node-version: '24'
       - uses: ./.github/actions/setup-workspace # node_modules for the lockfile, shared on the runner (fm-98po)
+      - uses: ./.github/actions/restore-workspace-build
+        if: inputs.shared_build
       - uses: ./.github/actions/setup-playwright # browsers cached per Playwright version (fm-98po)
         with:
           browsers: chromium firefox webkit
       # facade and face-controls import app modules that read the engine package through its built dist/
       # exports; without it they fail to load (run 40290030872).
-      - run: npm run build -w packages/stylegan-js -w packages/browser-model-manager
+      - if: ${{ !inputs.shared_build }}
+        run: npm run build -w packages/stylegan-js -w packages/browser-model-manager
         working-directory: .
       - name: Verify the canonical site artifact
         uses: ./.github/actions/fetch-artifact

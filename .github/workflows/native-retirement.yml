@@ -6,6 +6,11 @@ name: native-retirement
 # The same test files also run in root `npm test`, where the control case reports untested.
 on:
   workflow_call:
+    inputs:
+      shared_build:
+        type: boolean
+        default: false
+        description: Reuse the exact compiled workspace from this main run
   workflow_dispatch:
 jobs:
   check:
@@ -17,7 +22,14 @@ jobs:
         with:
           node-version: '24'
       - uses: ./.github/actions/setup-workspace # node_modules for the lockfile, shared on the runner (fm-98po)
+      - uses: ./.github/actions/restore-workspace-build
+        if: inputs.shared_build
+      - uses: ./.github/actions/restore-site
+        if: inputs.shared_build
+      - if: inputs.shared_build
+        run: npm run build:next -- --check
       - name: build:next (monorepo destination)
+        if: ${{ !inputs.shared_build }}
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: npm run build:next && npm run build:next -- --check

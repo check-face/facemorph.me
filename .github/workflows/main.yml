@@ -170,15 +170,18 @@ jobs:
       artifact_name: next-site-${{ github.sha }}
       runtime_sha: d9e37e50a436e9fb7c0c7f973e70adee353c808f48c6a51fa5a9186f1c650a5c
   app-contracts:
-    needs: changes
+    needs: [changes, next-site-artifact]
     if: contains(fromJSON(needs.changes.outputs.lanes), 'app-contracts')
     uses: ./.github/workflows/app-contracts.yml
+    with:
+      shared_build: true
     secrets: inherit
   build-identity:
-    needs: changes
+    needs: [changes, next-site-artifact]
     if: contains(fromJSON(needs.changes.outputs.lanes), 'build-identity')
     uses: ./.github/workflows/build-identity.yml
     with:
+      shared_build: true
       base: ${{ needs.changes.outputs.base }}
     secrets: inherit
   ci-shared:
@@ -190,19 +193,25 @@ jobs:
       actions: read
     secrets: inherit
   cloudflare-model-host:
-    needs: changes
+    needs: [changes, next-site-artifact]
     if: contains(fromJSON(needs.changes.outputs.lanes), 'cloudflare-model-host')
     uses: ./.github/workflows/cloudflare-model-host.yml
+    with:
+      shared_build: true
     secrets: inherit
   contracts-m1:
-    needs: changes
+    needs: [changes, next-site-artifact]
     if: contains(fromJSON(needs.changes.outputs.lanes), 'contracts-m1')
     uses: ./.github/workflows/contracts-m1.yml
+    with:
+      shared_build: true
     secrets: inherit
   crop-repro:
-    needs: changes
+    needs: [changes, next-site-artifact]
     if: contains(fromJSON(needs.changes.outputs.lanes), 'crop-repro')
     uses: ./.github/workflows/crop-repro.yml
+    with:
+      shared_build: true
     secrets: inherit
   delivery-dry-run:
     needs: changes
@@ -229,9 +238,11 @@ jobs:
     uses: ./.github/workflows/diagnostics-retention.yml
     secrets: inherit
   hosting-staging:
-    needs: changes
+    needs: [changes, next-site-artifact]
     if: contains(fromJSON(needs.changes.outputs.lanes), 'hosting-staging')
     uses: ./.github/workflows/hosting-staging.yml
+    with:
+      shared_build: true
     secrets: inherit
   identity-check:
     needs: changes
@@ -242,14 +253,18 @@ jobs:
       actions: read
     secrets: inherit
   import-checks:
-    needs: changes
+    needs: [changes, next-site-artifact]
     if: contains(fromJSON(needs.changes.outputs.lanes), 'import-checks')
     uses: ./.github/workflows/import-checks.yml
+    with:
+      shared_build: true
     secrets: inherit
   import-closure:
-    needs: changes
+    needs: [changes, next-site-artifact]
     if: contains(fromJSON(needs.changes.outputs.lanes), 'import-closure')
     uses: ./.github/workflows/import-closure.yml
+    with:
+      shared_build: true
     secrets: inherit
   import-inventory:
     needs: changes
@@ -262,11 +277,13 @@ jobs:
     uses: ./.github/workflows/inventory.yml
     secrets: inherit
   manager-cache:
-    needs: changes
+    needs: [changes, next-site-artifact]
     if: contains(fromJSON(needs.changes.outputs.lanes), 'manager-cache')
     uses: ./.github/workflows/manager-cache.yml
     permissions:
       contents: read
+    with:
+      shared_build: true
     secrets: inherit
   mobile-browser:
     needs: [changes, next-site-artifact]
@@ -287,9 +304,11 @@ jobs:
     uses: ./.github/workflows/model-conv.yml
     secrets: inherit
   name-catalogue:
-    needs: changes
+    needs: [changes, next-site-artifact]
     if: contains(fromJSON(needs.changes.outputs.lanes), 'name-catalogue')
     uses: ./.github/workflows/name-catalogue.yml
+    with:
+      shared_build: true
     secrets: inherit
   names-generator:
     needs: changes
@@ -307,9 +326,11 @@ jobs:
     uses: ./.github/workflows/names-spike.yml
     secrets: inherit
   native-retirement:
-    needs: changes
+    needs: [changes, next-site-artifact]
     if: contains(fromJSON(needs.changes.outputs.lanes), 'native-retirement')
     uses: ./.github/workflows/native-retirement.yml
+    with:
+      shared_build: true
     secrets: inherit
   next-gpu-lane:
     needs: changes
@@ -320,7 +341,7 @@ jobs:
     secrets: inherit
   next-site-artifact:
     needs: changes
-    if: contains(fromJSON(needs.changes.outputs.lanes), 'next-site') || contains(fromJSON(needs.changes.outputs.lanes), 'mobile-browser') || contains(fromJSON(needs.changes.outputs.lanes), 'web-shell') || (github.event_name == 'push' && vars.FACEMORPH_DEPLOY_TARGET != '')
+    if: contains(fromJSON(needs.changes.outputs.lanes), 'next-site') || contains(fromJSON(needs.changes.outputs.lanes), 'mobile-browser') || contains(fromJSON(needs.changes.outputs.lanes), 'web-shell') || (github.event_name == 'push' && vars.FACEMORPH_DEPLOY_TARGET != '') || contains(fromJSON(needs.changes.outputs.lanes), 'app-contracts') || contains(fromJSON(needs.changes.outputs.lanes), 'build-identity') || contains(fromJSON(needs.changes.outputs.lanes), 'cloudflare-model-host') || contains(fromJSON(needs.changes.outputs.lanes), 'contracts-m1') || contains(fromJSON(needs.changes.outputs.lanes), 'crop-repro') || contains(fromJSON(needs.changes.outputs.lanes), 'hosting-staging') || contains(fromJSON(needs.changes.outputs.lanes), 'import-checks') || contains(fromJSON(needs.changes.outputs.lanes), 'import-closure') || contains(fromJSON(needs.changes.outputs.lanes), 'manager-cache') || contains(fromJSON(needs.changes.outputs.lanes), 'native-retirement') || contains(fromJSON(needs.changes.outputs.lanes), 'package-gates') || contains(fromJSON(needs.changes.outputs.lanes), 'name-catalogue') || contains(fromJSON(needs.changes.outputs.lanes), 'scaffold')
     uses: ./.github/workflows/next-site-artifact.yml
     permissions:
       contents: read
@@ -362,12 +383,14 @@ jobs:
       runtime_sha: d9e37e50a436e9fb7c0c7f973e70adee353c808f48c6a51fa5a9186f1c650a5c
     secrets: inherit
   package-gates:
-    needs: changes
+    needs: [changes, next-site-artifact]
     if: contains(fromJSON(needs.changes.outputs.lanes), 'package-gates')
     uses: ./.github/workflows/package-gates.yml
     permissions:
       contents: read
       actions: read
+    with:
+      shared_build: true
     secrets: inherit
   parity-harness:
     needs: changes
@@ -409,7 +432,7 @@ jobs:
       contents: read
     secrets: inherit
   scaffold:
-    needs: changes
+    needs: [changes, next-site-artifact]
     if: contains(fromJSON(needs.changes.outputs.lanes), 'scaffold')
     uses: ./.github/workflows/scaffold.yml
     with:
@@ -428,6 +451,7 @@ jobs:
       contents: read
       actions: read
     with:
+      shared_build: true
       full: ${{ github.event_name == 'workflow_dispatch' }}
       artifact_run: ${{ github.run_id }}
       artifact_workflow: .github/workflows/main.yml
