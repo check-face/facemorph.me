@@ -29,8 +29,16 @@ export async function componentBrowser() {
         // WebKit denies OPFS in ephemeral sessions. This cell exercises durable storage,
         // so give each session a real, isolated profile and delete only that profile on close.
         const profile = mkdtempSync(join(tmpdir(), 'manager-webkit-'));
+        // Playwright's macOS WebKit keeps OPFS (WebKit's general storage) under
+        // ~/Library/WebKit/org.webkit.Playwright/WebsiteData whatever the profile directory is, so on
+        // macOS every "fresh" profile shared one origin's OPFS (manager-macos probe, fm-fy2.13).
+        // CoreFoundation's home override moves ~/Library into the profile, isolating it too.
+        const isolated =
+          process.platform === 'darwin'
+            ? { ...options, env: { ...process.env, CFFIXED_USER_HOME: profile } }
+            : options;
         try {
-          const context = await engines.webkit.launchPersistentContext(profile, options);
+          const context = await engines.webkit.launchPersistentContext(profile, isolated);
           context.once('close', () => rmSync(profile, { recursive: true, force: true }));
           return context;
         } catch (error) {

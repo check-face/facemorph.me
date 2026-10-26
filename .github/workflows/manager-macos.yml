@@ -36,18 +36,17 @@ jobs:
         if: inputs.probe && inputs.engine == 'webkit'
         run: |
           cat > "$RUNNER_TEMP/probe.mjs" <<'EOF'
-          import { createRequire } from 'node:module';
-          import { mkdtempSync } from 'node:fs';
-          import { tmpdir } from 'node:os';
-          import { join } from 'node:path';
           import { createServer } from 'node:http';
-          const { webkit } = createRequire(join(process.cwd(), 'apps/web/package.json'))('playwright');
+          import { join } from 'node:path';
+          import { pathToFileURL } from 'node:url';
+          const support = pathToFileURL(join(process.cwd(), 'packages/browser-model-manager/test/support/browser.ts'));
+          const { componentBrowser } = await import(support.href);
+          const { browser, newContext } = await componentBrowser();
           const server = createServer((_, res) => res.end('<!doctype html><title>p</title>'));
           await new Promise((r) => server.listen(0, '127.0.0.1', r));
           const url = `http://localhost:${server.address().port}/`;
           for (const label of ['first', 'second']) {
-            const profile = mkdtempSync(join(tmpdir(), 'probe-webkit-'));
-            const ctx = await webkit.launchPersistentContext(profile);
+            const ctx = await newContext();
             const page = await ctx.newPage();
             await page.goto(url);
             const seen = await page.evaluate(async (label) => {
@@ -60,14 +59,15 @@ jobs:
               await w.close();
               return names;
             }, label);
-            console.log(`${label} profile=${profile} saw before write: ${JSON.stringify(seen)}`);
+            console.log(`${label} context saw before write: ${JSON.stringify(seen)}`);
             await ctx.close();
           }
+          await browser.close();
           server.close();
           EOF
-          node "$RUNNER_TEMP/probe.mjs"
+          FACEMORPH_MANAGER_ENGINE=webkit node "$RUNNER_TEMP/probe.mjs"
           echo '--- files named or dirs holding OPFS data modified in the last 10 minutes'
-          find "$HOME/Library" "${TMPDIR:-/tmp}" -mmin -10 \( -ipath '*FileSystem*' -o -ipath '*WebsiteData*' -o -ipath '*Origins*' -o -ipath '*probe-webkit*' \) 2>/dev/null | head -60
+          find "$HOME/Library/WebKit" "${TMPDIR:-/tmp}" -mmin -10 -ipath '*FileSystem/marker*' 2>/dev/null | head -20
       - name: Native manager components on macos-${{ inputs.engine }}
         env:
           FACEMORPH_MANAGER_ENGINE: ${{ inputs.engine }}
