@@ -21,6 +21,8 @@ export const BUILD_PATHS = [
   'packages/browser-model-manager/dist',
   'packages/cloudflare-model-host/dist',
 ];
+export const BUILD_FILES = BUILD_PATHS.slice(1).map((path) => `${dirname(path)}/PROVENANCE.json`);
+const ARCHIVE_PATHS = [...BUILD_PATHS, ...BUILD_FILES];
 const ARCHIVE = 'workspace-build.tar';
 const RECEIPT = 'workspace-build.json';
 const SCHEMA = 'facemorph.workspace-build/1';
@@ -77,6 +79,9 @@ function entries(bytes) {
       for (const path of BUILD_PATHS)
         if (!result.some((entry) => entry.path === path && entry.directory))
           throw Error(`workspace-build archive is missing ${path}`);
+      for (const path of BUILD_FILES)
+        if (!result.some((entry) => entry.path === path && !entry.directory))
+          throw Error(`workspace-build archive is missing ${path}`);
       return result;
     }
     const text = (start, length) => {
@@ -110,11 +115,14 @@ function entries(bytes) {
         (code) => code < 32 || code === 127,
       ) ||
       path.split('/').some((part) => !part || part === '.' || part === '..') ||
-      !BUILD_PATHS.some((base) => path === base || path.startsWith(`${base}/`))
+      (!BUILD_PATHS.some((base) => path === base || path.startsWith(`${base}/`)) &&
+        !BUILD_FILES.includes(path))
     )
       throw Error(`workspace-build unsafe archive path: ${JSON.stringify(path)}`);
     if ((!directory && header[156] !== 48 && header[156] !== 0) || text(157, 100))
       throw Error('workspace-build archive contains a link or unsupported entry');
+    if (BUILD_FILES.includes(path) && directory)
+      throw Error('workspace-build package provenance must be a regular file');
     if (seen.has(path)) throw Error(`workspace-build duplicate archive path: ${path}`);
     seen.add(path);
     const size = number(124, 12);
@@ -150,6 +158,9 @@ export function packBuild({ root = '.', out = '.cache/workspace-build', commit }
   for (const path of BUILD_PATHS)
     if (!lstatSync(join(root, path)).isDirectory() || !validateTree(join(root, path)))
       throw Error(`workspace-build missing or empty compiled directory: ${path}`);
+  // Package builds emit provenance beside dist/. Reuse those exact source records with the
+  // compiled files so downstream npm packs are complete without rebuilding or restamping them.
+  for (const path of BUILD_FILES) regularFile(join(root, path));
   mkdirSync(artifactDir, { recursive: true });
   execFileSync('tar', [
     '--format=ustar',
@@ -160,7 +171,7 @@ export function packBuild({ root = '.', out = '.cache/workspace-build', commit }
     '--directory',
     root,
     '--',
-    ...BUILD_PATHS,
+    ...ARCHIVE_PATHS,
   ]);
   const archive = regularFile(join(artifactDir, ARCHIVE));
   const fileCount = entries(archive).filter((entry) => !entry.directory).length;
@@ -168,7 +179,7 @@ export function packBuild({ root = '.', out = '.cache/workspace-build', commit }
     schema: SCHEMA,
     ...identity,
     archiveSha256: sha256(archive),
-    paths: BUILD_PATHS,
+    paths: ARCHIVE_PATHS,
     sourceIdentity: { ...source, identitySha256: sha256(sourceBytes) },
   };
   writeFileSync(join(artifactDir, RECEIPT), JSON.stringify(receipt, null, 2) + '\n');
@@ -193,7 +204,7 @@ export function restoreBuild({ root = '.', from = '.cache/workspace-build', comm
   if (receipt.schema !== SCHEMA || receipt.commit !== identity.commit)
     throw Error('workspace-build receipt commit/schema mismatch');
   if (receipt.lockSha256 !== identity.lockSha256) throw Error('workspace-build lockfile mismatch');
-  if (JSON.stringify(receipt.paths) !== JSON.stringify(BUILD_PATHS))
+  if (JSON.stringify(receipt.paths) !== JSON.stringify(ARCHIVE_PATHS))
     throw Error('workspace-build receipt paths mismatch');
   sourceIdentity(receipt.sourceIdentity, commit);
   if (!/^[a-f0-9]{64}$/.test(receipt.sourceIdentity.identitySha256 ?? ''))
@@ -204,6 +215,12 @@ export function restoreBuild({ root = '.', from = '.cache/workspace-build', comm
     throw Error('workspace-build archive digest mismatch');
   const files = entries(archive);
   for (const path of BUILD_PATHS) safeParents(root, path);
+  for (const path of BUILD_FILES) {
+    safeParents(root, dirname(path));
+    const stat = lstatSync(join(root, path), { throwIfNoEntry: false });
+    if (stat && !stat.isFile())
+      throw Error(`workspace-build destination contains a link or non-file: ${path}`);
+  }
   const stage = mkdtempSync(join(root, '.workspace-build-'));
   try {
     for (const entry of files) {
@@ -214,7 +231,7 @@ export function restoreBuild({ root = '.', from = '.cache/workspace-build', comm
         writeFileSync(target, entry.data, { flag: 'wx', mode: entry.mode });
       }
     }
-    for (const path of BUILD_PATHS) {
+    for (const path of ARCHIVE_PATHS) {
       const target = join(root, path);
       mkdirSync(dirname(target), { recursive: true });
       rmSync(target, { recursive: true, force: true });

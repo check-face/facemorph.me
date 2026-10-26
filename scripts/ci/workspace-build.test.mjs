@@ -15,7 +15,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import test from 'node:test';
 import { parse } from 'yaml';
-import { BUILD_PATHS, packBuild, restoreBuild } from './workspace-build.mjs';
+import { BUILD_FILES, BUILD_PATHS, packBuild, restoreBuild } from './workspace-build.mjs';
 
 const hash = (bytes) => createHash('sha256').update(bytes).digest('hex');
 const git = (root, ...args) =>
@@ -27,7 +27,10 @@ const git = (root, ...args) =>
 function fixture(t) {
   const root = mkdtempSync(join(tmpdir(), 'workspace-build-test-'));
   t.after(() => rmSync(root, { recursive: true, force: true }));
-  writeFileSync(join(root, '.gitignore'), '**/dist\n.cache/\nnext-site-identity.json\n');
+  writeFileSync(
+    join(root, '.gitignore'),
+    '**/dist\n**/PROVENANCE.json\n.cache/\nnext-site-identity.json\n',
+  );
   writeFileSync(join(root, 'package-lock.json'), '{"lockfileVersion":3}\n');
   writeFileSync(join(root, 'source.js'), 'export const source = true;\n');
   git(root, 'init', '--quiet');
@@ -61,6 +64,8 @@ function fixture(t) {
     writeFileSync(join(root, path, 'output.bin'), Buffer.from([0, 1, 2, 255]));
     writeFileSync(join(root, path, '.vite', 'manifest.json'), JSON.stringify({ path }));
   }
+  for (const path of BUILD_FILES)
+    writeFileSync(join(root, path), JSON.stringify({ sourceCommit: commit, path }));
   return { root, commit, out: '.cache/workspace-build', from: '.cache/workspace-build' };
 }
 
@@ -80,10 +85,10 @@ function changeArchive(f, update) {
   });
 }
 
-test('real USTAR roundtrip restores exact four trees, hidden Vite metadata and replaces stale outputs', (t) => {
+test('real USTAR roundtrip restores four trees, package provenance and hidden Vite metadata', (t) => {
   const f = fixture(t);
   const packed = packBuild(f);
-  assert.equal(packed.fileCount, 8);
+  assert.equal(packed.fileCount, 11);
   assert.equal(packed.sourceIdentity.commit, f.commit);
   assert.equal(packed.lockSha256, hash(readFileSync(join(f.root, 'package-lock.json'))));
   assert.deepEqual(readdirSync(join(f.root, f.out)).sort(), [
@@ -95,6 +100,7 @@ test('real USTAR roundtrip restores exact four trees, hidden Vite metadata and r
     mkdirSync(join(f.root, path));
     writeFileSync(join(f.root, path, 'stale'), 'replace me');
   }
+  for (const path of BUILD_FILES) writeFileSync(join(f.root, path), 'stale provenance');
   const restored = restoreBuild(f);
   assert.equal(restored.archiveSha256, packed.archiveSha256);
   for (const path of BUILD_PATHS) {
@@ -104,11 +110,28 @@ test('real USTAR roundtrip restores exact four trees, hidden Vite metadata and r
     });
     assert.equal(existsSync(join(f.root, path, 'stale')), false);
   }
+  for (const path of BUILD_FILES)
+    assert.deepEqual(JSON.parse(readFileSync(join(f.root, path))), {
+      sourceCommit: f.commit,
+      path,
+    });
   assert.equal(existsSync(join(f.root, 'node_modules')), false);
   assert.equal(
     readdirSync(f.root).some((name) => name.startsWith('.workspace-build-')),
     false,
   );
+});
+
+test('missing producer provenance and symlinked destination provenance are refused', (t) => {
+  const f = fixture(t);
+  packBuild(f);
+  const path = join(f.root, BUILD_FILES[0]);
+  rmSync(path);
+  assert.throws(() => packBuild(f), /ENOENT/);
+  symlinkSync(join(f.root, 'source.js'), path);
+  assert.throws(() => restoreBuild(f), /destination contains a link or non-file/);
+  assert.throws(() => packBuild(f), /regular file/);
+  assert.equal(readFileSync(join(f.root, 'source.js'), 'utf8'), 'export const source = true;\n');
 });
 
 test('pack and restore CLI use the same receipt and fail when a required commit is omitted', (t) => {
