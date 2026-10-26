@@ -8,10 +8,9 @@
 //
 // This runs against the deployed origin by default. The runtime's worker URLs are absolute and
 // same-origin, so serving the artifact from somewhere else breaks worker construction on every engine;
-// only Chromium can be told to resolve the real hostname locally. NEXT_MATRIX_LOCAL_PORT=<port> does that:
-// the origin stays https://next.facemorph.me and Chromium maps it to a locally served pinned control
-// (apps/web/scripts/next-e2e-server.py, as autoresearch/drivers/lib/session.mjs serves it). The runtime
-// manifest digest below records which bundle was actually live.
+// NEXT_MATRIX_LOCAL_PORT=<port> tunnels that origin through a job-owned CONNECT proxy on every engine.
+// Exact-artifact CI uses scripts/ci/site/matrix-artifact.mjs to verify and own both the server and proxy;
+// NEXT_MATRIX_PROXY passes its loopback endpoint here. The runtime digest records the actual bundle.
 //
 // Selectors follow the control's declared DOM contract (autoresearch/drivers/lib/journey.mjs): a face is
 // `section.next-face` with `data-next-state`, each face has its own Generate and Choose photo controls, the
@@ -24,6 +23,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
 import {classifyStage,encoderRan,hasRecoveryMetadata,rowVerdict,stageRecord} from './next-matrix-stages.mjs';
+import {matrixProxy,startConnectProxy} from '../../../scripts/ci/site/matrix-artifact.mjs';
 
 const engineName=process.argv[2];
 const origin=process.env.NEXT_MATRIX_ORIGIN||'https://next.facemorph.me';
@@ -32,7 +32,8 @@ const stageTimeout=Number(process.env.NEXT_MATRIX_STAGE_MS||900000);
 const localPort=process.env.NEXT_MATRIX_LOCAL_PORT||'';
 const photoFixture=new URL('../test/fixtures/next-matrix/photo-no-metadata.webp',import.meta.url);
 if(!['chromium','firefox','webkit'].includes(engineName))throw Error('Usage: next-matrix.mjs <chromium|firefox|webkit>');
-if(localPort&&engineName!=='chromium')throw Error('NEXT_MATRIX_LOCAL_PORT needs Chromium: only it can map the production hostname to a local server');
+if((localPort||process.env.NEXT_MATRIX_PROXY)&&origin!=='https://next.facemorph.me')throw Error('Local matrix transport requires the production HTTPS origin');
+if(localPort&&process.env.NEXT_MATRIX_PROXY)throw Error('Select one local matrix transport');
 
 // Playwright lives in its own tree (scripts/matrix-tools) so the site's dependency resolution never changes for
 // a test tool; when that tree is not installed, use apps/web's own playwright dependency.
@@ -44,6 +45,7 @@ catch{playwrightFrom='apps/web';playwright=requireFrom('../package.json')('playw
 const {chromium,firefox,webkit}=playwright;
 const engines={chromium,firefox,webkit};
 const report={engine:engineName,origin,playwrightFrom,startedAt:new Date().toISOString(),passed:false,stages:{}};
+if(process.env.NEXT_MATRIX_ARTIFACT_COMMIT||process.env.NEXT_MATRIX_ARTIFACT_DIGEST)report.artifact={commit:process.env.NEXT_MATRIX_ARTIFACT_COMMIT,digest:process.env.NEXT_MATRIX_ARTIFACT_DIGEST};
 
 function record(name,data){report.stages[name]=data;console.log(JSON.stringify({stage:name,...data}));}
 async function save(){await fs.writeFile(out,JSON.stringify(report,null,2));}
@@ -80,12 +82,13 @@ async function stage(name,run,{optional=false}={}){
 const downloads=await fs.mkdtemp(path.join(process.env.RUNNER_TEMP||'/tmp','next-matrix-'));
 const profile=await fs.mkdtemp(path.join(process.env.RUNNER_TEMP||'/tmp','next-matrix-profile-'));
 const launchOptions={acceptDownloads:true,ignoreHTTPSErrors:true,viewport:{width:1280,height:960}};
+const localProxy=localPort?await startConnectProxy(Number(localPort)):null;
+if(localProxy||process.env.NEXT_MATRIX_PROXY)launchOptions.proxy=localProxy?.proxy||matrixProxy(process.env.NEXT_MATRIX_PROXY);
 if(engineName==='chromium'){
- const host=new URL(origin).hostname;
- launchOptions.args=[...(process.env.NEXT_MATRIX_NO_SANDBOX?['--no-sandbox']:[]),...(localPort?[`--host-resolver-rules=MAP ${host}:443 127.0.0.1:${localPort}`,'--ignore-certificate-errors']:[])];
+ launchOptions.args=[...(process.env.NEXT_MATRIX_NO_SANDBOX?['--no-sandbox']:[])];
  if(process.env.NEXT_MATRIX_CHROMIUM)launchOptions.executablePath=process.env.NEXT_MATRIX_CHROMIUM;
 }
-const context=await engines[engineName].launchPersistentContext(profile,launchOptions);
+const context=await engines[engineName].launchPersistentContext(profile,launchOptions).catch(async error=>{await localProxy?.stop();throw error;});
 await context.tracing.start({screenshots:true,snapshots:true});
 // Worker traffic and the control's own prompts, as autoresearch/drivers/lib/journey.mjs INSTRUMENT does: every
 // message to and from a worker is recorded with its stage, so the photo stage can show the encoder really ran,
@@ -312,6 +315,7 @@ try{
  await save();
  if(!tracingStopped)await context.tracing.stop().catch(()=>{});
  await context.close();
+ await localProxy?.stop();
  console.log(JSON.stringify({engine:engineName,passed:report.passed,status:report.status,failed:report.failed,incompleteNotShipped:report.incompleteNotShipped,buildLimited:report.buildLimited,mp4Playback:report.mp4Playback,error:report.error||'',report:out,evidence:report.evidence||null}));
  process.exit(ok?0:1);
 }
