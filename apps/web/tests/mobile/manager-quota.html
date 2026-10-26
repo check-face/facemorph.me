@@ -1,0 +1,38 @@
+<!doctype html>
+<meta charset="utf-8" />
+<title>Native manager quota component</title>
+<script type="module">
+  const worker = new Worker('./manager-quota-worker.mjs', { type: 'module' });
+  let sequence = 0;
+  const pending = new Map();
+  const fail = (message) => {
+    for (const operation of pending.values()) {
+      clearTimeout(operation.timer);
+      operation.reject(Error(message));
+    }
+    pending.clear();
+  };
+  worker.onmessage = ({ data }) => {
+    const operation = pending.get(data.id);
+    if (!operation) return;
+    pending.delete(data.id);
+    clearTimeout(operation.timer);
+    data.error ? operation.reject(Error(data.error)) : operation.resolve(data.value);
+  };
+  worker.onerror = (event) => fail(event.message);
+  worker.onmessageerror = () => fail('Native quota worker response could not be decoded');
+  window.managerQuota = (method, options) =>
+    new Promise((resolve, reject) => {
+      const id = ++sequence;
+      const timer = setTimeout(() => {
+        pending.delete(id);
+        reject(Error('Native quota operation did not settle: ' + method));
+      }, 20000);
+      pending.set(id, { resolve, reject, timer });
+      worker.postMessage({ id, method, options });
+    });
+  window.managerQuotaStop = () => {
+    fail('Native quota worker terminated by controller');
+    worker.terminate();
+  };
+</script>

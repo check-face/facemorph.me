@@ -1,0 +1,33 @@
+<!doctype html>
+<meta charset="utf-8" />
+<title>Native manager tab component</title>
+<script type="module">
+  const worker = new Worker('./manager-tab-worker.mjs', { type: 'module' });
+  let sequence = 0;
+  const pending = new Map();
+  worker.onmessage = ({ data }) => {
+    const operation = pending.get(data.id);
+    if (!operation) return;
+    pending.delete(data.id);
+    clearTimeout(operation.timer);
+    data.error ? operation.reject(Error(data.error)) : operation.resolve(data.value);
+  };
+  worker.onerror = (event) => {
+    for (const operation of pending.values()) {
+      clearTimeout(operation.timer);
+      operation.reject(Error(event.message));
+    }
+    pending.clear();
+  };
+  window.managerTab = (method, options) =>
+    new Promise((resolve, reject) => {
+      const id = ++sequence;
+      const timer = setTimeout(() => {
+        pending.delete(id);
+        reject(Error('Native tab operation did not settle: ' + method));
+      }, 15000);
+      pending.set(id, { resolve, reject, timer });
+      worker.postMessage({ id, method, options });
+    });
+  window.managerTabIdentity = crypto.randomUUID();
+</script>

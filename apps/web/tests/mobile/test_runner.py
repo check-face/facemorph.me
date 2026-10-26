@@ -104,6 +104,22 @@ class EvidenceTests(unittest.TestCase):
             if change == 'wrong-capability': row['reasonCode'] = 'native-cache-storage-unavailable'
             self.assertFalse(assess(report, 'test'), change)
 
+    def test_executed_quota_requires_one_refused_save_then_one_authorized_retry(self):
+        row = next(row for row in self.report['managerMatrix'] if row['id'] == 'opfs.quota')
+        row.update(status='pass', details=dict(quotaReset=True,
+                   failure=dict(typed=dict(code='quota')), retry=dict(remainingBytes=0)))
+        row['network'].update(requests=2, bytes=6, paths=['/fixture/good', '/fixture/good'])
+        self.assertTrue(assess(self.report, 'test'))
+        for change in ['no-quota-error', 'no-reset', 'incomplete-bytes', 'repeated-transfer', 'unspent-retry']:
+            report = copy.deepcopy(self.report)
+            row = next(row for row in report['managerMatrix'] if row['id'] == 'opfs.quota')
+            if change == 'no-quota-error': row['details']['failure']['typed']['code'] = 'capability'
+            if change == 'no-reset': row['details']['quotaReset'] = False
+            if change == 'incomplete-bytes': row['network']['bytes'] = 3
+            if change == 'repeated-transfer': row['network'].update(requests=3, bytes=9, paths=['/fixture/good']*3)
+            if change == 'unspent-retry': row['details']['retry']['remainingBytes'] = 3
+            self.assertFalse(assess(report, 'test'), change)
+
     def test_native_https_fixture_ledger_measures_complete_and_partial_body_writes(self):
         context = ssl._create_unverified_context()
         with tempfile.TemporaryDirectory(prefix='mobile-ledger-controller-') as scratch:

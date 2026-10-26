@@ -71,6 +71,14 @@ def manager_matrix_valid(report):
             if (reason_code not in allowed or not isinstance(reason, str) or not reason.strip()
                     or network['requests'] != 0 or network['bytes'] != 0):
                 return False
+        elif case == 'quota':
+            details = row.get('details', {})
+            if (network['requests'] != 2 or network['bytes'] != 6
+                    or network['paths'] != ['/fixture/good', '/fixture/good']
+                    or details.get('quotaReset') is not True
+                    or details.get('failure', {}).get('typed', {}).get('code') != 'quota'
+                    or details.get('retry', {}).get('remainingBytes') != 0):
+                return False
         elif case in ('cold', 'cancel'):
             if network['requests'] < 1 or network['bytes'] < 1:
                 return False
@@ -96,6 +104,30 @@ def assess(report, run_id):
 
 def command(*args, check=True, timeout=90):
     return subprocess.run(args, check=check, capture_output=True, text=True, timeout=timeout).stdout.strip()
+
+
+def native_controller(component, endpoint, origin, run_id, output):
+    script = {'cross-tab': 'manager-tabs.mjs', 'quota': 'manager-quota.mjs'}[component]
+    process = subprocess.Popen(
+        ['node', str(ROOT/'tests/mobile'/script), endpoint, origin, run_id, str(output.resolve())],
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    timed_out = False
+    try:
+        stdout, stderr = process.communicate(timeout=90)
+    except subprocess.TimeoutExpired:
+        timed_out = True
+        # Give the driver its cleanup handler before using SIGKILL as a final bound.
+        process.terminate()
+        try:
+            stdout, stderr = process.communicate(timeout=10)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            stdout, stderr = process.communicate()
+    (output/(component+'-controller.log')).write_text(stdout+'\n'+stderr)
+    if timed_out or process.returncode != 0:
+        raise RuntimeError('Native '+component+' controller '+('timed out' if timed_out else 'failed')
+                           +'; inspect '+component+'-controller.log and '+component+'-failure.json')
+    return stdout.strip()
 
 
 def open_chrome(url):
@@ -281,6 +313,7 @@ def main():
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
     udid = None
+    cdp_port = None
     url = f'https://127.0.0.1:{args.port}/tests/mobile/index.html?run={run_id}'
     try:
         if args.platform == 'android':
@@ -288,7 +321,7 @@ def main():
             evidence['browser'] = command('adb', 'shell', 'dumpsys', 'package', 'com.android.chrome')
             command('adb', 'reverse', f'tcp:{args.port}', f'tcp:{args.port}')
             command('adb', 'shell', 'am', 'set-debug-app', '--persistent', 'com.android.chrome')
-            command('adb', 'shell', "echo 'chrome --no-first-run --disable-fre --no-default-browser-check --ignore-certificate-errors' > /data/local/tmp/chrome-command-line")
+            command('adb', 'shell', "echo 'chrome --no-first-run --disable-fre --no-default-browser-check --ignore-certificate-errors --remote-debugging-socket-name=chrome_devtools_remote --remote-debugging-port=9222' > /data/local/tmp/chrome-command-line")
             # Android 13+ Chrome asks for notifications on first launch (--disable-fre does not cover it);
             # granting the permission up front skips that sheet. Older images have no such permission.
             command('adb', 'shell', 'pm', 'grant', 'com.android.chrome', 'android.permission.POST_NOTIFICATIONS', check=False)
@@ -325,6 +358,25 @@ def main():
             if report is None and time.monotonic() >= retry_at and len(evidence.get('launchAttempts', [])) == 1:
                 evidence['launchAttempts'].append(open_safari(udid, url) if udid else open_chrome(url))
             time.sleep(0.5)
+        if args.platform == 'android' and assess(state['report'], run_id):
+            # Preserve the unmodified page/worker report, then supplement its two
+            # cross-tab placeholders with real independently controlled Chrome tabs.
+            (args.output/'browser-components.json').write_text(json.dumps(state['report'], indent=2))
+            cdp_port = command('adb', 'forward', 'tcp:0', 'localabstract:chrome_devtools_remote')
+            for component in ['cross-tab', 'quota']:
+                phase('native-'+component)
+                evidence[component+'Controller'] = native_controller(
+                    component, 'http://127.0.0.1:'+cdp_port, f'https://127.0.0.1:{args.port}', run_id, args.output)
+                supplement = json.loads((args.output/(component+'.json')).read_text())
+                replacements = supplement.get('rows', [])
+                if (supplement.get('runId') != run_id or len(replacements) != 2
+                        or {row.get('id') for row in replacements} != {'opfs.'+component, 'cache-storage.'+component}
+                        or any(row.get('status') != 'pass' for row in replacements)):
+                    raise RuntimeError('Native '+component+' controller returned incomplete or stale evidence')
+                by_id = {row['id']: row for row in replacements}
+                state['report']['managerMatrix'] = [by_id.get(row['id'], row)
+                                                   for row in state['report']['managerMatrix']]
+            (args.output/'browser.json').write_text(json.dumps(state['report'], indent=2))
         evidence['passed'] = assess(state['report'], run_id)
         evidence['completed'] = bool(state['report'] and state['report'].get('completed'))
         if not evidence['passed']:
@@ -338,12 +390,19 @@ def main():
                 with (args.output/'screen.png').open('wb') as f:
                     subprocess.run(['adb', 'exec-out', 'screencap', '-p'], stdout=f, timeout=20)
                 (args.output/'logcat.txt').write_text(command('adb', 'logcat', '-d', '-t', '1000', check=False))
-                command('adb', 'reverse', '--remove', f'tcp:{args.port}', check=False)
             elif udid:
                 command('xcrun', 'simctl', 'io', udid, 'screenshot', str(args.output/'screen.png'), check=False)
         except Exception as error:
             evidence['diagnosticError'] = str(error)
         finally:
+            if args.platform == 'android':
+                # Diagnostic collection must never prevent task-owned tunnel cleanup.
+                for kind, port in [('reverse', str(args.port)), ('forward', cdp_port)]:
+                    if port:
+                        try:
+                            command('adb', kind, '--remove', 'tcp:'+port, check=False, timeout=15)
+                        except Exception as error:
+                            evidence.setdefault('cleanupErrors', []).append(str(error))
             if udid:
                 command('xcrun', 'simctl', 'shutdown', udid, check=False)
                 command('xcrun', 'simctl', 'delete', udid, check=False)

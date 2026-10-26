@@ -2519,10 +2519,10 @@
       "class": "temporary-root",
       "temporary": true,
       "ported": {
-        "sha256": "41fd519dfea022f8c80e80750373beb6fd99ecdc615acbf6422551c07885290a",
-        "bytes": 20018,
+        "sha256": "8c987a95796aadcffc13233be5911b50fafd9ffa950c603be6b22d7f71e5ca11",
+        "bytes": 23782,
         "bead": "fm-fy2.13",
-        "reason": "Mobile component runner uses real HTTPS fixture transfers and built manager modules with grants; persistent storage, strict eight-component assessor and Simulator product CPU inference/layout evidence. Shared artifact server/interception helper; no fake fetches; Simulator/emulator labels retained.; Vite destination integration: shared production headers and native dynamic-import directives; compiled artifact identity. (fm-zz2i); Reports the native mobile manager matrix with explicit limits (0cfcd1c) (fm-fy2.13); logs startup phases to stderr and reports them when a cold macOS runner stalls before its HTTPS URL; Android lane grants Chrome notifications and re-sends its URL once (dc46521)"
+        "reason": "Mobile component runner uses real HTTPS fixture transfers and built manager modules with grants; persistent storage, strict eight-component assessor and Simulator product CPU inference/layout evidence. Shared artifact server/interception helper; no fake fetches; Simulator/emulator labels retained.; Vite destination integration: shared production headers and native dynamic-import directives; compiled artifact identity. (fm-zz2i); Reports the native mobile manager matrix with explicit limits (0cfcd1c) (fm-fy2.13); logs startup phases to stderr and reports them when a cold macOS runner stalls before its HTTPS URL; Android lane grants Chrome notifications and re-sends its URL once (dc46521); native Android CDP supplement proves actual two-tab deletion and lease release without reloading the primary documents (fm-fy2.13)"
       }
     },
     {
@@ -2547,10 +2547,10 @@
       "class": "temporary-root",
       "temporary": true,
       "ported": {
-        "sha256": "d1f6e962b136833a8e16814480395b16accdc73f24d6e06bab158a32b99b355c",
-        "bytes": 11829,
+        "sha256": "d80602ed96558a78d98291180282394d4e3d3fa6ce3fc7290d3875ec19878b55",
+        "bytes": 13075,
         "bead": "fm-fy2.13",
-        "reason": "Mobile component runner uses real HTTPS fixture transfers and built manager modules with grants; persistent storage, strict eight-component assessor and Simulator product CPU inference/layout evidence. Shared artifact server/interception helper; no fake fetches; Simulator/emulator labels retained. (fm-hlv); Reports the native mobile manager matrix with explicit limits (0cfcd1c) (fm-fy2.13); logs startup phases to stderr and reports them when a cold macOS runner stalls before its HTTPS URL"
+        "reason": "Mobile component runner uses real HTTPS fixture transfers and built manager modules with grants; persistent storage, strict eight-component assessor and Simulator product CPU inference/layout evidence. Shared artifact server/interception helper; no fake fetches; Simulator/emulator labels retained. (fm-hlv); Reports the native mobile manager matrix with explicit limits (0cfcd1c) (fm-fy2.13); logs startup phases to stderr and reports them when a cold macOS runner stalls before its HTTPS URL; rejects incomplete quota transfers, missing native reset and wrong typed error in executed Android quota evidence (fm-fy2.13)"
       }
     }
   ]
