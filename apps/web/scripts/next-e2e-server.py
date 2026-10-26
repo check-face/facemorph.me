@@ -126,4 +126,7 @@ class Handler(SimpleHTTPRequestHandler):
    self.respond(data,self.mime_for(self.path))
   except Exception:
    traceback.print_exc();self.send_error(502,'Pinned runtime acquisition failed')
-server=ThreadingHTTPServer(('127.0.0.1',a.port),Handler);ctx=ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER);ctx.load_cert_chain(a.cert,a.key);server.socket=ctx.wrap_socket(server.socket,server_side=True,do_handshake_on_connect=False);server.serve_forever()
+# A page's module graph opens dozens of TLS connections at once; the default listen backlog of 5 drops some under
+# load, and one lost module fails the whole dynamic import ('Failed to fetch dynamically imported module').
+class Server(ThreadingHTTPServer):request_queue_size=256;daemon_threads=True
+server=Server(('127.0.0.1',a.port),Handler);ctx=ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER);ctx.load_cert_chain(a.cert,a.key);server.socket=ctx.wrap_socket(server.socket,server_side=True,do_handshake_on_connect=False);server.serve_forever()
