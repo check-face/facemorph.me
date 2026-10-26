@@ -1,6 +1,8 @@
 // The rendering port's tiles in the real shell (dist/render-check.html, plain state, no controller) in real
 // Chromium, Firefox and WebKit at desktop (mouse) and phone (touch) width:
-// - the tile and connector structure at 1, 2, 3 and many faces (30, 64, 150);
+// - the full tile/connector structure at 1, 2, 3, 30 and 64 faces; at virtualized 150, bounded DOM and
+//   the actual first/tail fields and tail mode control, reached through wheel, native Chromium swipe or
+//   mobile WebKit's visible strip navigation;
 // - the text field with empty, very long and pasted values, the mode menu, a connector + and Remove, each
 //   pressed at its visible centre after elementFromPoint shows the control is there;
 // - every progress fill is written only as `transform: scaleX(...)`, never a layout property.
@@ -12,6 +14,7 @@ import test, { after, before } from 'node:test';
 import { chromium, firefox, webkit, type BrowserType, type Page } from 'playwright';
 import { press } from '../support/operate.ts';
 import { serve, type Served } from '../support/serve.ts';
+import { VIRTUALISE_AFTER } from '../../shell/render/faces-mode.ts';
 
 const app = new URL('../../', import.meta.url);
 const results = new URL('test-results/tiles/', app);
@@ -47,6 +50,107 @@ const faces = (page: Page) => page.locator('section.next-face');
 const shot = (page: Page, name: string) =>
   page.screenshot({ path: new URL(`${name}.png`, results).pathname, fullPage: false });
 
+async function virtualStructure(page: Page, count: number, label: string) {
+  // One DOM snapshot: a native smooth scroll can move the virtual window between awaited locator reads.
+  const structure = await page.evaluate(() => {
+    const strip = document.querySelector('[data-next-strip]')!;
+    return {
+      rendered: strip.querySelectorAll('section.next-face').length,
+      connectors: strip.querySelectorAll('.next-connector-add').length,
+      removes: strip.querySelectorAll('.next-face-close').length,
+      virtual: strip.getAttribute('data-next-virtual'),
+      count: strip.getAttribute('data-next-face-count'),
+    };
+  });
+  const { rendered } = structure;
+  // At these viewport sizes only a few tiles and their overscan belong in the DOM.
+  assert.ok(rendered > 0 && rendered <= 16, `${label}: bounded DOM, got ${rendered}`);
+  assert.equal(structure.virtual, 'true');
+  assert.equal(structure.count, String(count));
+  assert.equal(structure.connectors, rendered + 1);
+  assert.equal(structure.removes, rendered);
+}
+
+async function virtualEnds(page: Page, count: number, engine: string, touch: boolean) {
+  const first = page.locator('[data-next-face="f0"] .next-field input');
+  assert.ok((await press(page, first, { touch })).inside, 'the actual first field is hittable');
+  await page.keyboard.type('first face', { delay: 10 });
+  assert.equal(await first.inputValue(), 'first face');
+
+  const strip = page.locator('[data-next-strip]');
+  await strip.scrollIntoViewIfNeeded();
+  const box = await strip.boundingBox();
+  assert.ok(box);
+  const y = Math.min(box.y + box.height / 2, page.viewportSize()!.height - 30);
+  if (touch && engine === 'chromium') {
+    // Chromium's native touch input scrolls the compositor; Firefox/WebKit below use real wheel input.
+    const cdp = await page.context().newCDPSession(page);
+    const left = Math.max(20, box.x + 20);
+    const right = Math.min(page.viewportSize()!.width - 20, box.x + box.width - 20);
+    await cdp.send('Input.dispatchTouchEvent', {
+      type: 'touchStart',
+      touchPoints: [{ x: right, y }],
+    });
+    for (let i = 1; i <= 8; i++) {
+      await cdp.send('Input.dispatchTouchEvent', {
+        type: 'touchMove',
+        touchPoints: [{ x: right - ((right - left) * i) / 8, y }],
+      });
+      await page.waitForTimeout(16);
+    }
+    await page.waitForTimeout(100);
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    await page.waitForFunction(() => document.querySelector('[data-next-strip]')!.scrollLeft > 0);
+    await cdp.detach();
+  }
+  // Firefox clamps a wheel delta to about a viewport, so keep operating until the actual tail is in view.
+  // Mobile WebKit does not implement wheel input: use its visible Next faces control with real touch taps.
+  const tail = page.locator(`[data-next-face="f${count - 1}"]`);
+  let reached = false;
+  for (let i = 0; i < count * 2; i++) {
+    reached = await page.evaluate(
+      (id) => {
+        const input = document.querySelector(`[data-next-face="${id}"] .next-field input`);
+        if (!input) return false;
+        const field = input.getBoundingClientRect();
+        const view = document.querySelector('[data-next-strip]')!.getBoundingClientRect();
+        const centre = field.x + field.width / 2;
+        return centre > view.left && centre < view.right;
+      },
+      `f${count - 1}`,
+    );
+    if (reached) break;
+    if (touch && engine === 'webkit') {
+      assert.ok(
+        (await press(page, page.getByRole('button', { name: 'Next faces' }), { touch })).inside,
+        'the visible strip navigation responds to touch',
+      );
+    } else {
+      await page.mouse.move(box.x + box.width / 2, y);
+      await page.mouse.wheel(100000, 0);
+    }
+    await page.waitForTimeout(100);
+  }
+  assert.ok(reached, `${engine}: logical tail reached through real strip input`);
+  await virtualStructure(page, count, `${engine} tail`);
+  const field = tail.locator('.next-field input');
+  assert.ok(
+    (await press(page, field, { touch })).inside,
+    'the actual logical tail field is hittable',
+  );
+  await page.keyboard.type('tail face', { delay: 10 });
+  assert.equal(await field.inputValue(), 'tail face');
+  assert.ok(
+    (await press(page, tail.getByRole('button', { name: 'Change mode' }), { touch })).inside,
+    'the logical tail mode control is hittable',
+  );
+  const seed = page.getByRole('menuitem', { name: 'Numeric seed' });
+  await seed.waitFor();
+  assert.ok((await press(page, seed, { touch })).inside, 'the logical tail mode menu works');
+  await tail.locator('input[inputmode=numeric]').waitFor();
+  assert.equal(await tail.locator('select[aria-label="Face source"]').inputValue(), 'seed');
+}
+
 for (const [engine, type] of Object.entries(ENGINES).filter(([e]) => !only || only.includes(e))) {
   test(`${engine}: tiles and connectors at 1, 2, 3 and many faces, operated by mouse and touch`, async () => {
     const browser = await type.launch();
@@ -67,22 +171,31 @@ for (const [engine, type] of Object.entries(ENGINES).filter(([e]) => !only || on
         for (const n of [1, 2, 3, 30, 64, 150]) {
           await page.goto(`${site.origin}/render-check.html?faces=${n}`);
           await page.waitForSelector('section.next-face');
-          assert.equal(await faces(page).count(), n, `${engine} ${width}: ${n} tiles`);
-          assert.equal(
-            await page.locator('.next-connector-add').count(),
-            n === 2 ? 3 : n + 1,
-            `${engine} ${width}: connectors at ${n}`,
-          );
-          assert.equal(
-            await page.locator('.next-face-close').count(),
-            n > 1 ? n : 0,
-            `${engine} ${width}: Remove offered on every tile but a lone one`,
-          );
+          if (n > VIRTUALISE_AFTER) {
+            await virtualStructure(page, n, `${engine} ${width}`);
+          } else {
+            assert.equal(await faces(page).count(), n, `${engine} ${width}: ${n} tiles`);
+            assert.equal(
+              await page.locator('.next-connector-add').count(),
+              n === 2 ? 3 : n + 1,
+              `${engine} ${width}: connectors at ${n}`,
+            );
+            assert.equal(
+              await page.locator('.next-face-close').count(),
+              n > 1 ? n : 0,
+              `${engine} ${width}: Remove offered on every tile but a lone one`,
+            );
+          }
           assert.equal(
             await page.locator('.next-faces-area').getAttribute('data-next-faces'),
             String(n),
           );
           await shot(page, `${engine}-${width}-n${n}`);
+          if (n > VIRTUALISE_AFTER) {
+            await virtualEnds(page, n, engine, touch);
+            await shot(page, `${engine}-${width}-n${n}-tail`);
+            continue;
+          }
           // The last tile of a long list is still reachable and its field operable.
           const last = faces(page).last().locator('input[type=text], input:not([type])').first();
           assert.ok(
