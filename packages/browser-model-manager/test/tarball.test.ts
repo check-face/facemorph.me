@@ -1,7 +1,7 @@
-// The packed tarball (fm-eulc): what `npm pack` would publish holds the build output, the schema, the manifest and
-// the licence, notices and build provenance (fm-oagi), and nothing else: no weights or model-like blobs, no test
-// fixtures, and no runtime import that reaches outside the package (a repository-only path) or into a package it
-// does not declare.
+// The packed tarball (fm-eulc): what `npm pack` would publish holds the build output, the schema, the manifest, the
+// README (npm always packs it; fm-qoc3 added the model licences there) and the licence, notices and build provenance
+// (fm-oagi), and nothing else: no weights or model-like blobs, no test fixtures, and no runtime import that reaches
+// outside the package (a repository-only path) or into a package it does not declare.
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
@@ -25,11 +25,13 @@ const manifest = JSON.parse(readFileSync(join(PKG, 'package.json'), 'utf8')) as 
   dependencies?: Record<string, string>;
 };
 
-test('the tarball holds dist/, the schema, package.json, the licence, notices and provenance only', () => {
+test('the tarball holds dist/, the schema, package.json, the README, licence, notices and provenance only', () => {
   const stray = files.filter(
     (f) =>
       !(
-        ['package.json', 'LICENSE', 'THIRD_PARTY_NOTICES', 'PROVENANCE.json'].includes(f) ||
+        ['package.json', 'README.md', 'LICENSE', 'THIRD_PARTY_NOTICES', 'PROVENANCE.json'].includes(
+          f,
+        ) ||
         /^dist\/.+\.(js|d\.ts)$/.test(f) ||
         /^schema\/[\w.-]+\.json$/.test(f)
       ),
