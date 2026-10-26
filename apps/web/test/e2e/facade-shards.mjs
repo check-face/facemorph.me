@@ -14,6 +14,7 @@ export const FACADE_SHARDS = Object.freeze({
     'operation-service: Morph joins its independently requested CPU face',
     'operation-service: Morph cancellation preserves its independently requested CPU face',
     'operation-service: file cancellation leaves the next CPU jobs running',
+    'crop-queue: A1, B2, A2 through the bridge queue in click order on the CPU; a cancelled slot retries on its frozen crop; Remove releases pixels',
   ]),
   2: Object.freeze([
     'photo-preview-crop-encode: a photo selected, cropped when needed and encoded on the CPU',

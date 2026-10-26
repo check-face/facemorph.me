@@ -31,7 +31,7 @@ function declaredNames() {
 test('four disjoint shards exhaust the actual facade declarations, including generated cases', () => {
   const declarations = declaredNames();
   const inventory = Object.values(FACADE_SHARDS).flat();
-  assert.equal(declarations.length, 27);
+  assert.equal(declarations.length, 28);
   assert.equal(new Set(inventory).size, inventory.length);
   assert.deepEqual([...inventory].sort(), [...declarations].sort());
   const included = [];

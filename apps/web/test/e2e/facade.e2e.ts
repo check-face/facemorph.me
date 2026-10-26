@@ -1706,6 +1706,76 @@ test(
   },
 );
 
+test(
+  'crop-queue: A1, B2, A2 through the bridge queue in click order on the CPU; a cancelled slot retries on its frozen crop; Remove releases pixels',
+  { timeout: 1_800_000 },
+  async () => {
+    const r = await call<
+      {
+        confirmed: number;
+        states: string[];
+        slotIds: string[];
+        retried: { state?: string; attemptId?: string; before: string };
+        kept: number;
+        afterRetry: { pixelRefs?: number; derivations: number; maxLiveEncoders: number };
+        held: { state?: string; heldRefs: number; removed: boolean; releasedRefs: number };
+        encodedCrops: string[];
+        cropIds: string[];
+        detections: number;
+        finite: boolean;
+        sample: { a1: number[] | null; a2: number[] | null; b2: number[] | null };
+        events: { type: string; slotId: string; attemptId: string; batchRevision: number }[];
+      } & Partial<Settled>
+    >('cropQueue', `${ORIGIN}/photo.jpg`, `${ORIGIN}/no-face.jpg`);
+    for (const e of r.events)
+      log(`crop-queue: ${e.type} ${e.slotId} ${e.attemptId} batch ${e.batchRevision}`);
+    log(
+      `crop-queue: states=${r.states} encoded=${r.encodedCrops.length} derivations=${r.afterRetry.derivations}`,
+    );
+    const [a1, b2, a2] = r.cropIds;
+    assert.equal(r.confirmed, 3, 'crop-confirmed once per crop');
+    assert.equal(r.detections, 0, 'no detect/align/warp after confirmation');
+    assert.deepEqual(
+      r.states,
+      ['succeeded', 'cancelled', 'succeeded'],
+      'only the cancelled slot settles cancelled',
+    );
+    assert.ok(r.kept > 0, 'the cancelled slot keeps its pixels for Retry');
+    assert.equal(r.retried.state, 'succeeded');
+    assert.equal(
+      r.retried.attemptId,
+      `${r.slotIds[1]}.a2`,
+      'Retry is a new attempt of the same slot',
+    );
+    assert.notEqual(r.retried.attemptId, r.retried.before);
+    assert.deepEqual(
+      r.encodedCrops,
+      [a1, a2, b2],
+      'one e4e attempt per started slot, in queue order',
+    );
+    assert.equal(r.afterRetry.derivations, 3, 'one derivation per crop');
+    assert.equal(r.afterRetry.maxLiveEncoders, 1, 'one live encoder');
+    assert.equal(r.afterRetry.pixelRefs, 0, 'success releases the pixels');
+    // The bridge's Cancel is asynchronous, so the held slot may already be running: either way it settles cancelled.
+    assert.equal(r.held.state, 'cancelled');
+    assert.ok(r.held.heldRefs > 0);
+    assert.equal(r.held.removed, true);
+    assert.equal(r.held.releasedRefs, 0, 'Remove releases pixels');
+    assert.ok(r.finite, 'three W+ results of 18 x 512 finite values');
+    assert.notDeepEqual(r.sample.a1, r.sample.a2, 'two crops of one photo encode differently');
+    assert.ok(
+      r.events.every((e) => e.slotId && e.attemptId && [1, 2].includes(e.batchRevision)),
+      'slot events carry slot, attempt and batch revision',
+    );
+    assert.deepEqual(
+      r.events
+        .filter((e) => e.type === 'slot.started' && e.batchRevision === 1)
+        .map((e) => e.attemptId),
+      [`${r.slotIds[0]}.a1`, `${r.slotIds[2]}.a1`, `${r.slotIds[1]}.a2`],
+    );
+  },
+);
+
 // Every declaration must belong to exactly one shard, even when this process selects another.
 shard.assertComplete();
 log(
