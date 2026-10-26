@@ -252,6 +252,7 @@ for (const operation of [
 test(
   `${engine}: exact locks.query reply timing and grant callback interleaving`,
   {
+    // disabled-test: reason=native Web Locks cannot control query reply or grant callback scheduling without replacing browser APIs; owner=fm-fy2.13/PearlIvy; until=a browser exposes native deterministic lock scheduling controls
     skip: 'untested: native Web Locks exposes no control over query completion or callback/continuation ordering; APIs are not patched',
   },
   () => {},
