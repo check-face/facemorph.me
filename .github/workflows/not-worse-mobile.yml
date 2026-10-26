@@ -1,0 +1,120 @@
+name: not-worse-mobile
+run-name: not-worse-mobile ${{ inputs.lanes }} ${{ inputs.plant }} x${{ inputs.pairs }}
+# fm-0q4h: paired ABBA not-worse runs on the hosted mobile lanes (Chrome in the Android emulator, Safari in the iOS
+# Simulator) with scripts/verify/not-worse/mobile.py, which runs the hosted lane's own journeys
+# (tools/device-lab/hosted.py) per scheduled run. Control/control (plant none) gives each cell its noise margin per
+# measure in summary.json; plant slow/crash serves a planted copy of the control as the build side
+# (scripts/verify/not-worse/plant.mjs). Dispatch only: a 5-pair cell is hours of emulator time, so it is not part of
+# every push. The runtime is the hosted lanes' published one, verified against the pinned manifest digest; nothing
+# here accepts model terms. Simulator/emulator evidence, not a physical phone.
+on:
+  workflow_dispatch:
+    inputs:
+      lanes:
+        description: android, ios or android,ios
+        default: android,ios
+      pairs:
+        description: ABBA pairs per cell (at least 5 for a noise margin)
+        default: '5'
+      plant:
+        description: none (control/control), slow or crash
+        default: none
+      delay_ms:
+        description: Planted Generate delay for plant=slow
+        default: '5000'
+permissions:
+  contents: read
+concurrency:
+  group: not-worse-mobile-${{ inputs.lanes }}-${{ inputs.plant }}
+  cancel-in-progress: false
+env:
+  RUNTIME_SHA: d9e37e50a436e9fb7c0c7f973e70adee353c808f48c6a51fa5a9186f1c650a5c
+  PAIRS: ${{ inputs.pairs }}
+  PLANT: ${{ inputs.plant }}
+  DELAY_MS: ${{ inputs.delay_ms }}
+jobs:
+  android:
+    name: android-emulator-chrome paired
+    if: contains(inputs.lanes, 'android')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 340
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --quiet --upgrade playwright
+      - name: Control and build sides
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: bash scripts/verify/not-worse/sides.sh
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Paired runs in Chrome on the Android emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          ram-size: 8192M
+          disk-size: 8G
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back none
+          disable-animations: true
+          script: python3 scripts/verify/not-worse/mobile.py android --control .cache/control/tree/deploy-next $(cat .cache/not-worse-build-args) --pairs "$PAIRS" --runtime-sha "$RUNTIME_SHA" --out not-worse --label "android-$PLANT-${{ github.run_id }}" --device-label 'Android emulator pixel_6 API 35 (swiftshader)'
+      - name: Summary
+        if: always()
+        run: |
+          echo 'Emulator evidence, not a physical Android phone.' >> "$GITHUB_STEP_SUMMARY"
+          for f in not-worse/*/summary.json not-worse/*/untested.json; do [ -f "$f" ] && echo "\`$f\`" >> "$GITHUB_STEP_SUMMARY" && node -e 'const s=require(process.argv[1]);console.log("```json\n"+JSON.stringify(s.measures?Object.fromEntries(Object.entries(s.measures).map(([k,v])=>[k,{pairs:v.pairs.map(p=>[p.control,p.candidate]),noiseMargin:v.noiseMargin??v.noiseMarginUnset}])):s,null,1)+"\n```")' "$PWD/$f" >> "$GITHUB_STEP_SUMMARY"; done; true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: not-worse-android-${{ inputs.plant }}-${{ github.run_id }}
+          path: |
+            not-worse/**/*.json
+            not-worse/**/*.png
+            not-worse/**/*.zip
+            !not-worse/**/runtime-cache/**
+          if-no-files-found: warn
+          retention-days: 30
+  ios:
+    name: ios-simulator-safari paired
+    if: contains(inputs.lanes, 'ios')
+    runs-on: macos-15
+    timeout-minutes: 340
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Control and build sides
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: bash scripts/verify/not-worse/sides.sh
+      - name: Paired runs in Safari on the iOS Simulator
+        run: python3 scripts/verify/not-worse/mobile.py ios --device 'iPhone 16 Pro' --control .cache/control/tree/deploy-next $(cat .cache/not-worse-build-args) --pairs "$PAIRS" --runtime-sha "$RUNTIME_SHA" --out not-worse --label "ios-$PLANT-${{ github.run_id }}" --timeout 2400
+      - name: Summary
+        if: always()
+        run: |
+          echo 'Simulator evidence, not a physical iPhone.' >> "$GITHUB_STEP_SUMMARY"
+          for f in not-worse/*/summary.json not-worse/*/untested.json; do [ -f "$f" ] && echo "\`$f\`" >> "$GITHUB_STEP_SUMMARY" && node -e 'const s=require(process.argv[1]);console.log("```json\n"+JSON.stringify(s.measures?Object.fromEntries(Object.entries(s.measures).map(([k,v])=>[k,{pairs:v.pairs.map(p=>[p.control,p.candidate]),noiseMargin:v.noiseMargin??v.noiseMarginUnset}])):s,null,1)+"\n```")' "$PWD/$f" >> "$GITHUB_STEP_SUMMARY"; done; true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: not-worse-ios-${{ inputs.plant }}-${{ github.run_id }}
+          path: |
+            not-worse/**/*.json
+            not-worse/**/*.png
+            !not-worse/**/runtime-cache/**
+          if-no-files-found: warn
+          retention-days: 30

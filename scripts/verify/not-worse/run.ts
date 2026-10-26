@@ -34,8 +34,8 @@ const REPO = resolve(import.meta.dirname, '../../..');
 const lib = (name: string): Promise<Record<string, any>> =>
   import(new URL(`../../../autoresearch/drivers/lib/${name}`, import.meta.url).href);
 
-/** The committed inputs: two typed words (the app derives each face from its word) and the one-face photo. */
-const WORDS = ['lighthouse', 'meadow'] as const;
+/** The committed inputs: three typed words (the app derives each face from its word) and the one-face photo. */
+const WORDS = ['lighthouse', 'meadow', 'harbour'] as const;
 const PHOTO = {
   path: 'apps/web/src/public/preview/hello-1024.webp',
   sha256: '0fd3aacaf63a9b574960f926e4fbd48fadf853ba16189519053438e55fb9d615',
@@ -79,15 +79,26 @@ const OBSERVE = `(() => {
     ];
     for (const el of targets) {
       if (!el) continue;
-      if (!seen.has(el)) seen.set(el, now());
-      nw.waits.push({ t: seen.get(el), end: now() });
+      if (!seen.has(el)) { const w = { t: now(), end: now() }; seen.set(el, w); nw.waits.push(w); }
+      else seen.get(el).end = now();
       el.click();
     }
   }, 30);
 })()`;
 
+/** A rendered face surface's identity: a decoded image's URL, or an 8x8 downsample of a drawn canvas ('' if neither). */
+const SIGNATURE = `(el) => {
+  if (!el) return '';
+  if (el.tagName === 'IMG') return el.complete && el.naturalWidth > 0 ? 'img:' + (el.currentSrc || el.src) : '';
+  if (el.tagName !== 'CANVAS' || el.dataset.faceDrawn !== 'true') return '';
+  const c = document.createElement('canvas'); c.width = c.height = 8;
+  const x = c.getContext('2d'); x.drawImage(el, 0, 0, 8, 8);
+  return 'canvas:' + x.getImageData(0, 0, 8, 8).data.join(',');
+}`;
+
 /** True (as an epoch timestamp) once the boundary's condition holds; throws on the app's own error or a crop dialog. */
 const BOUNDARY = `({ sel, cond, tile, before }) => {
+  const signature = ${SIGNATURE};
   const err = document.querySelector('.next-error');
   if (err && err.innerText) throw new Error('app error: ' + err.innerText);
   if (document.querySelector('.next-crop-view')) throw new Error('the crop dialog opened');
@@ -96,7 +107,11 @@ const BOUNDARY = `({ sel, cond, tile, before }) => {
   if (!el) return false;
   let ok = false;
   if (cond === 'enabled') ok = !el.disabled;
-  else if (cond === 'decoded') ok = el.complete && el.naturalWidth > 0 && (el.currentSrc || el.src) !== before;
+  else if (cond === 'decoded') {
+    // a new face: rendered, different from the one shown before the action, and its tile no longer working
+    const sig = el.closest('section.next-face')?.classList.contains('next-face-active') ? '' : signature(el);
+    ok = sig !== '' && sig !== before;
+  }
   else if (cond === 'canplaythrough') ok = el.readyState >= 4 && el.videoWidth > 0 && Number.isFinite(el.duration);
   return ok ? performance.timeOrigin + performance.now() : false;
 }`;
@@ -150,15 +165,12 @@ interface Context {
   newPage(): Promise<Page>;
   addInitScript(s: string | { content: string }): Promise<void>;
   on(ev: string, fn: (...a: never[]) => void): void;
+  newCDPSession(p: Page): Promise<{ send(m: string, params: object): Promise<unknown> }>;
 }
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const sum = (n: Record<string, { bytes: number }>) =>
   Object.values(n).reduce((s, c) => s + c.bytes, 0);
-const median = (xs: number[]) => {
-  const s = [...xs].sort((a, b) => a - b);
-  return s.length ? (s[(s.length - 1) >> 1]! + s[s.length >> 1]!) / 2 : null;
-};
 
 interface RunTrace {
   readonly events: TraceEvent[];
@@ -292,7 +304,9 @@ async function execute(opts: {
       for (const l of d.longTasks) trace.observations.longTasks.push({ t: rel(l.t), ms: l.ms });
     };
     const memory = async () => {
-      trace.observations.memorySamples.push(await p.evaluate<number | null>(MEMORY));
+      const bytes = await p.evaluate<number | null>(MEMORY);
+      trace.observations.memorySamples.push(bytes);
+      events.push({ t: rel(Date.now()), kind: 'memory', bytes });
     };
     const boundary = async (
       name: Boundary,
@@ -310,12 +324,10 @@ async function execute(opts: {
       await handle.dispose();
       events.push({ t: rel(at), kind: 'boundary', name });
     };
-    const srcOf = async (i: number) =>
-      (await tile(i).locator('.next-face-img img').count()) > 0
-        ? p.evaluate<string>(
-            `(() => { const i = document.querySelectorAll('section.next-face')[${i}]?.querySelector('.next-face-img img'); return i ? i.currentSrc || i.src : ''; })()`,
-          )
-        : '';
+    const srcOf = (i: number) =>
+      p.evaluate<string>(
+        `(${SIGNATURE})(document.querySelectorAll('section.next-face')[${i}]?.querySelector('.next-face-img:not([data-public-preview])'))`,
+      );
 
     const open = async (action: string) => {
       scripted++;
@@ -420,9 +432,19 @@ async function execute(opts: {
       await drain();
       const firstBytes = await bytesMark('first', 0);
 
-      // Visit 2: the same profile, the retained models and storage.
+      // Visit 2: the same profile with its downloaded models (Cache Storage, OPFS) kept and the saved session
+      // (IndexedDB) and local storage dropped, as the device lab's warm face: a restored session disables the field.
+      scripted++;
+      await p.goto('about:blank');
+      await (
+        await context.newCDPSession(p)
+      ).send('Storage.clearDataForOrigin', {
+        origin: 'https://next.facemorph.me',
+        storageTypes: 'indexeddb,local_storage',
+      });
       await open('navigate-return');
-      await generate(0, WORDS[0], 'generate-warm');
+      // A word not generated before in this profile, so no earlier result of it can be reused.
+      await generate(0, WORDS[2], 'generate-warm');
       await memory();
       await drain();
       await bytesMark('return', firstBytes);
@@ -453,6 +475,8 @@ const { values: opt } = parseArgs({
     label: { type: 'string' },
     out: { type: 'string' },
     runtime: { type: 'string' },
+    // The cell's device label in the run documents (default: the host name), e.g. where a container hides the host.
+    device: { type: 'string' },
   },
 });
 if (!opt.label) throw new Error('--label <fresh run label> is required');
@@ -587,7 +611,7 @@ for (const run of schedule) {
   const doc = {
     schema: 'facemorph.not-worse-run/1',
     cell: {
-      device: hostname(),
+      device: opt.device ?? hostname(),
       os: `${platform()} ${release()}`,
       browser: cell.browser,
       browserVersion: r.browserVersion,
@@ -629,48 +653,22 @@ for (const run of schedule) {
 }
 rmSync(join(out, 'profiles'), { recursive: true, force: true });
 
-// Per-measure medians per side and the control/control spread (min and max of the per-pair build/control ratio).
-const names = Object.keys(results[0]?.values ?? {});
-const scoredRuns = results.filter((r) => r.run.order !== 'warmup' && !r.failure);
-const summary = Object.fromEntries(
-  names.map((n) => {
-    const side = (s: Side) =>
-      scoredRuns
-        .filter((r) => r.run.side === s)
-        .map((r) => r.values[n])
-        .filter((v): v is number => v !== null);
-    const ratios: number[] = [];
-    for (let p = 0; p < Number(opt.pairs); p++) {
-      const c = scoredRuns.find((r) => r.run.pair === p && r.run.side === 'control')?.values[n];
-      const b = scoredRuns.find((r) => r.run.pair === p && r.run.side === 'build')?.values[n];
-      if (c && b) ratios.push(b / c);
-    }
-    return [
-      n,
-      {
-        controlMedian: median(side('control')),
-        buildMedian: median(side('build')),
-        n: [side('control').length, side('build').length],
-        ratioMin: ratios.length ? Math.min(...ratios) : null,
-        ratioMax: ratios.length ? Math.max(...ratios) : null,
-      },
-    ];
+// Per-measure medians per side, the raw paired values, the per-pair ratio spread and, for control/control, the cell's
+// noise margin per measure (summary.mjs, with the gate's own noiseMargin rule).
+const { summarizeDir } = (await import(new URL('./summary.mjs', import.meta.url).href)) as {
+  summarizeDir(
+    dir: string,
+    extra: object,
+  ): { measures: Record<string, { noiseMargin?: number | null }> };
+};
+const summary = summarizeDir(out, { cell: cellName, pairs: Number(opt.pairs), timing });
+console.log(
+  JSON.stringify({
+    cell: cellName,
+    noiseMargins: Object.fromEntries(
+      Object.entries(summary.measures).map(([k, v]) => [k, v.noiseMargin ?? null]),
+    ),
   }),
-);
-writeFileSync(
-  join(out, 'summary.json'),
-  JSON.stringify(
-    {
-      cell: cellName,
-      pairs: Number(opt.pairs),
-      digests: { control: control.treeSha256, build: build.treeSha256 },
-      timing,
-      failures: results.filter((r) => r.failure).map((r) => ({ file: r.file, failure: r.failure })),
-      measures: summary,
-    },
-    null,
-    2,
-  ) + '\n',
 );
 console.log(JSON.stringify({ summary: { cell: cellName, out, runs: results.length } }));
 if (results.some((r) => r.failure)) process.exitCode = 1;

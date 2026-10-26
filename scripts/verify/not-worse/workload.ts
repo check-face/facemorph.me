@@ -31,12 +31,16 @@ export type SelectorMap = Readonly<Record<Boundary, BoundarySelector>>;
 /** The control (classic candidate build): its DOM contract as the research drivers drive it. */
 export const CONTROL_SELECTORS: SelectorMap = Object.freeze({
   'usable-page': { selector: 'section.next-face input[type="text"]', condition: 'enabled' },
+  // .next-face-img is the face surface itself: a decoded <img> or, on the raw-pixel path, a <canvas> marked
+  // data-face-drawn; the public preview image is not a rendered face.
   'face-rendered': {
-    selector: 'section.next-face[data-next-state="filled"] .next-face-img img',
+    selector:
+      'section.next-face[data-next-state="filled"] .next-face-img:not([data-public-preview])',
     condition: 'decoded',
   },
   'photo-face-rendered': {
-    selector: 'section.next-face[data-next-state="photo"] .next-face-img img',
+    selector:
+      'section.next-face[data-next-state="photo"] .next-face-img:not([data-public-preview])',
     condition: 'decoded',
   },
   'morph-playable': {
@@ -49,12 +53,16 @@ export const CONTROL_SELECTORS: SelectorMap = Object.freeze({
 /** The build under test (the Vite shell port): the same semantic boundaries where the port moved them. */
 export const BUILD_SELECTORS: SelectorMap = Object.freeze({
   'usable-page': { selector: 'section.next-face input[type="text"]', condition: 'enabled' },
+  // .next-face-img is the face surface itself: a decoded <img> or, on the raw-pixel path, a <canvas> marked
+  // data-face-drawn; the public preview image is not a rendered face.
   'face-rendered': {
-    selector: 'section.next-face[data-next-state="filled"] .next-face-img img',
+    selector:
+      'section.next-face[data-next-state="filled"] .next-face-img:not([data-public-preview])',
     condition: 'decoded',
   },
   'photo-face-rendered': {
-    selector: 'section.next-face[data-next-state="photo"] .next-face-img img',
+    selector:
+      'section.next-face[data-next-state="photo"] .next-face-img:not([data-public-preview])',
     condition: 'decoded',
   },
   'morph-playable': { selector: '.next-video-slot video.next-video', condition: 'canplaythrough' },
@@ -123,9 +131,19 @@ export type TraceEvent =
 
 /** Time inside [from, to] that the script spent waiting as a person would; excluded from every measure. */
 export function waitedWithin(events: readonly TraceEvent[], from: number, to: number): number {
+  // Waits can overlap (a toast and a dialog up together): count the union of their clipped intervals once.
+  const spans = events
+    .filter((e): e is Extract<TraceEvent, { kind: 'wait' }> => e.kind === 'wait')
+    .map((e) => [Math.max(e.t, from), Math.min(e.end, to)] as const)
+    .filter(([a, b]) => b > a)
+    .sort((x, y) => x[0] - y[0]);
   let total = 0;
-  for (const e of events)
-    if (e.kind === 'wait') total += Math.max(0, Math.min(e.end, to) - Math.max(e.t, from));
+  let reach = -Infinity;
+  for (const [a, b] of spans) {
+    if (b <= reach) continue;
+    total += b - Math.max(a, reach);
+    reach = b;
+  }
   return total;
 }
 
