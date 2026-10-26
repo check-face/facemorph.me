@@ -486,37 +486,55 @@ test(
  * Every action whose centre is in the viewport is the element there; then each is scrolled to and checked again.
  * Returns what a prompt covers, and separately any other overlap (a tile's own layout, not a prompt).
  */
-async function uncovered(page: Page): Promise<{ prompt: string[]; other: string[] }> {
+async function uncovered(
+  page: Page,
+): Promise<{ prompt: string[]; other: string[]; checked: number }> {
   return page.evaluate(async () => {
+    // The actions a person can see: every face action and Create morph (a hidden file input or a closed menu's
+    // items are not on screen).
     const actions = [
       ...document.querySelectorAll(
-        'section.next-face button, section.next-face input, .next-morph button',
+        'section.next-face button, section.next-face input:not([type=file]), .next-morph button',
       ),
-    ].filter((el) => (el as HTMLElement).offsetParent !== null);
+    ].filter((el) => el.checkVisibility({ opacityProperty: true, visibilityProperty: true }));
     const covered: string[] = [],
       other: string[] = [];
-    const check = (el: Element, when: string) => {
+    const frame = () => new Promise((r) => requestAnimationFrame(() => r(null)));
+    const check = (el: Element, when: string, inViewOnly: boolean) => {
       const r = el.getBoundingClientRect();
       const x = r.left + r.width / 2,
         y = r.top + r.height / 2;
-      if (y < 0 || y > innerHeight || x < 0 || x > innerWidth) return;
+      if (inViewOnly && (y < 0 || y > innerHeight || x < 0 || x > innerWidth)) return;
+      // A disabled button (an empty face's Generate) has pointer-events: none, which elementFromPoint skips by
+      // design; it is measured with hit-testing restored, so what is asked is only whether something covers it.
+      const disabled = el.matches(':disabled, .Mui-disabled');
+      const prior = (el as HTMLElement).style.pointerEvents;
+      if (disabled) (el as HTMLElement).style.pointerEvents = 'auto';
       const at = document.elementFromPoint(x, y);
+      if (disabled) (el as HTMLElement).style.pointerEvents = prior;
       if (!at || !(el === at || el.contains(at)))
         (at?.closest('.next-consent-toast, .MuiSnackbar-root, .next-invite')
           ? covered
           : other
         ).push(
-          `${when}: ${(el.getAttribute('aria-label') || el.textContent || el.tagName).trim()} under ${at?.className}`,
+          `${when}: ${(el.getAttribute('aria-label') || el.textContent || el.tagName).trim()} under ${at ? at.outerHTML.slice(0, 140) : null}`,
         );
     };
-    for (const el of actions) check(el, 'initial');
+    // Where the page opens: a prompt must not cover an action already on screen.
+    for (const el of actions) check(el, 'initial', true);
+    // Then each action brought to the centre of the viewport, as a person scrolls to it.
     for (const el of actions) {
-      el.scrollIntoView({ block: 'nearest' });
-      await new Promise((r) => requestAnimationFrame(() => r(null)));
-      check(el, 'scrolled');
+      el.scrollIntoView({ block: 'center', inline: 'center', behavior: 'instant' });
+      await frame();
+      await frame();
+      check(el, 'centred', false);
     }
     scrollTo(0, 0);
-    return { prompt: covered, other };
+    return {
+      prompt: covered,
+      other: other.filter((o) => o.startsWith('centred')),
+      checked: actions.length,
+    };
   });
 }
 
@@ -585,7 +603,14 @@ test(
       join(results, 'non-prompt-overlaps.json'),
       JSON.stringify([...new Set(overlaps)], null, 1),
     );
-    if (overlaps.length) t.diagnostic(`non-prompt overlaps: ${[...new Set(overlaps)].join('; ')}`);
+    t.diagnostic(
+      `non-prompt overlaps: ${overlaps.length ? [...new Set(overlaps)].join('; ') : 'none'}`,
+    );
+    assert.deepEqual(
+      [...new Set(overlaps)],
+      [],
+      'every face action and Create morph is itself at its centre',
+    );
   },
 );
 
