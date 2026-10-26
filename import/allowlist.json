@@ -2513,10 +2513,10 @@
       "class": "temporary-root",
       "temporary": true,
       "ported": {
-        "sha256": "6ccc4c6d7ddcc980a1526b0f65106a6e31585c54cfaac3c3b615fa987d3def22",
-        "bytes": 19144,
+        "sha256": "41fd519dfea022f8c80e80750373beb6fd99ecdc615acbf6422551c07885290a",
+        "bytes": 20018,
         "bead": "fm-fy2.13",
-        "reason": "Mobile component runner uses real HTTPS fixture transfers and built manager modules with grants; persistent storage, strict eight-component assessor and Simulator product CPU inference/layout evidence. Shared artifact server/interception helper; no fake fetches; Simulator/emulator labels retained.; Vite destination integration: shared production headers and native dynamic-import directives; compiled artifact identity. (fm-zz2i); Reports the native mobile manager matrix with explicit limits (0cfcd1c) (fm-fy2.13); logs startup phases to stderr and reports them when a cold macOS runner stalls before its HTTPS URL"
+        "reason": "Mobile component runner uses real HTTPS fixture transfers and built manager modules with grants; persistent storage, strict eight-component assessor and Simulator product CPU inference/layout evidence. Shared artifact server/interception helper; no fake fetches; Simulator/emulator labels retained.; Vite destination integration: shared production headers and native dynamic-import directives; compiled artifact identity. (fm-zz2i); Reports the native mobile manager matrix with explicit limits (0cfcd1c) (fm-fy2.13); logs startup phases to stderr and reports them when a cold macOS runner stalls before its HTTPS URL; Android lane grants Chrome notifications and re-sends its URL once (dc46521)"
       }
     },
     {
