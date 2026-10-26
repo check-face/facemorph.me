@@ -7,6 +7,7 @@ import {
   readFileSync,
   readdirSync,
   lstatSync,
+  rmSync,
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -349,11 +350,24 @@ export async function main(argv) {
   const before = await getPublished(new URL('catalogue.json', origin));
   if (!before.equals(readFileSync(join(args.legacy, 'catalogue.json'))))
     throw Error('Snapshot catalogue differs from live legacy catalogue');
+  // Without --out the stage is a temporary directory (about 1 GB) that this run removes however it ends; a
+  // self-hosted runner keeps /tmp between jobs, so leaving it filled the disk one publication at a time.
+  const out = args.out
+    ? resolve(args.out)
+    : mkdtempSync(join(tmpdir(), 'facemorph-names-publish-'));
+  try {
+    return await publishFrom(args, origin, previous, out);
+  } finally {
+    if (!args.out) rmSync(out, { recursive: true, force: true });
+  }
+}
+
+async function publishFrom(args, origin, previous, out) {
   const prepared = await prepare({
     generated: resolve(args.generated),
     legacy: resolve(args.legacy),
     previous,
-    ...(args.out ? { out: resolve(args.out) } : {}),
+    out,
   });
   console.log(JSON.stringify({ event: 'validated', ...prepared.summary }));
   if (args.check) return prepared;
