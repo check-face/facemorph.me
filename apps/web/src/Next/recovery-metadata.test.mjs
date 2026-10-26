@@ -1,4 +1,5 @@
-import test from 'node:test';import assert from 'node:assert/strict';import {decorateImage,recoverImage,downloadImage} from './recovery-metadata.mjs';import {digest} from './browser/originals.mjs';
+import test from 'node:test';import assert from 'node:assert/strict';import {decorateImage,recoverImage,downloadImage} from './recovery-metadata.mjs';import {encodeRgbaPng} from './browser/png.mjs';
+import {FFHQ_1024_DESCRIPTOR,readRecovery} from '@facemorph/stylegan-js';
 test('deferred product faces send only cloneable recovery identity to the download worker',async t=>{
  const previous=globalThis.Worker,requests=[],webp=new Blob(['webp'],{type:'image/webp'});let disposed=0;
  globalThis.Worker=class{postMessage(message){requests.push(structuredClone(message));queueMicrotask(()=>this.onmessage({data:{id:message.id,result:{blob:webp}}}));}terminate(){disposed++;}};
@@ -7,24 +8,33 @@ test('deferred product faces send only cloneable recovery identity to the downlo
  assert.equal(await downloadImage(face,'123'),webp,'must use WebP rather than silently fall back on a DataCloneError');
  assert.equal(requests.length,1);assert.deepEqual(Object.keys(requests[0].recovery.result).sort(),['generationKind','generationSha256','latent','provenance']);assert.equal(requests[0].recovery.seed,123);assert.equal(disposed,1);
 });
+// fm-fy2.7: the PNG fallback writes the package's schema 3 for the shipped model (the candidate wrote schema 1 on any PNG).
+const shipped={modelSha256:FFHQ_1024_DESCRIPTOR.identity.modelSha256,noiseSha256:FFHQ_1024_DESCRIPTOR.identity.noiseSha256};
 test('PNG recovery preserves canonical bytes and W+ without treating the generated face as a new photo',async()=>{
- const bytes=Uint8Array.from(Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jv1sAAAAASUVORK5CYII=','base64'));
- const blob=new Blob([bytes],{type:'image/png'}),values=new Float32Array(9216);values[3]=.25;
- const result={blob,latent:{space:'w-plus',values},provenance:{modelSha256:'m',noiseSha256:'n'},imageSha256:await digest(bytes),latentSha256:await digest(values)};
+ const rgba=new Uint8ClampedArray(1024*1024*4);for(let i=3;i<rgba.length;i+=4)rgba[i]=255;
+ const blob=await encodeRgbaPng(rgba),bytes=new Uint8Array(await blob.arrayBuffer()),values=new Float32Array(9216);values[3]=.25;
+ const result={blob,latent:{space:'w-plus',values},provenance:shipped,generationKind:'seed',generationSha256:'a'.repeat(64)};
  const decorated=await decorateImage(result,'123');assert(decorated.size>blob.size);
- const recovered=await recoverImage(decorated);assert.equal(recovered.seed,'123');assert.equal(recovered.latent.values[3],.25);assert.deepEqual(new Uint8Array(await recovered.blob.arrayBuffer()),bytes);
+ const parsed=readRecovery(new Uint8Array(await decorated.arrayBuffer()));assert.equal(parsed.recovered.schemaVersion,3);
+ const recovered=await recoverImage(decorated);assert.equal(recovered.seed,123);assert.equal(recovered.latent.values[3],.25);assert.deepEqual(new Uint8Array(await recovered.blob.arrayBuffer()),bytes);
+ assert.equal(recovered.model.modelSha256,shipped.modelSha256);assert.deepEqual(recovered.model.latent,{space:'w-plus',layers:18,width:512});
  const corrupt=new Uint8Array(await decorated.arrayBuffer());corrupt[corrupt.length-30]^=1;await assert.rejects(recoverImage(new Blob([corrupt])),/Damaged|Invalid|integrity/);
  assert.equal(await recoverImage(blob),null);
 });
-import {decorateVideo,recoverVideoProject} from './recovery-metadata.mjs';
+import {decorateVideo,recoverVideoProject} from './recovery-metadata.mjs';import {readMp4Project} from '@facemorph/stylegan-js';
 test('MP4 embeds a bounded project without changing media boxes',async()=>{
- const media=Uint8Array.from([0,0,0,16,102,116,121,112,105,115,111,109,0,0,0,0,0,0,0,12,109,100,97,116,1,2,3,4]);
- const blob=new Blob([media],{type:'video/mp4'}),project={schemaVersion:1,morph:{controls:[]}};
- const decorated=await decorateVideo(blob,project);
+ // fm-fy2.7: the schema-2 project of the package; the movie is the candidate's fixture morph without its project.
+ const candidate=new Uint8Array(await readFile(new URL('../../test/fixtures/verify/stills/project.mp4',import.meta.url))),media=readMp4Project(candidate).baseVideo;
+ const fixture=JSON.parse(await readFile(new URL('./project-v1.fixture.json',import.meta.url),'utf8'));
+ const project={...fixture,...shipped,morph:{...fixture.morph,controls:fixture.morph.controls.map((c,k)=>({...c,latent:{space:"w-plus",shape:[18,512],values:Array.from({length:9216},(_,i)=>Math.fround(Math.sin(i*(k+1))))}}))}};
+ const blob=new Blob([media],{type:'video/mp4'}),decorated=await decorateVideo(blob,project,{kind:'ffmpeg',width:256,height:256,reason:'webcodecs-unavailable'});
  assert.deepEqual(new Uint8Array(await decorated.slice(0,blob.size).arrayBuffer()),media);
+ const stored=readMp4Project(new Uint8Array(await decorated.arrayBuffer())).project;assert.equal(stored.schemaVersion,2);assert.deepEqual([stored.video.route,stored.video.reason,stored.video.width],['ffmpeg','webcodecs-unavailable',256]);
  assert.deepEqual(JSON.parse(await recoverVideoProject(decorated)),project);
+ assert.deepEqual(JSON.parse(await recoverVideoProject(new Blob([candidate]))),fixture,'the candidate project MP4 still reads');
  assert.equal(await recoverVideoProject(blob),null);
  assert.equal(await recoverVideoProject(new Blob(['not an mp4'])),null);
+ await assert.rejects(recoverVideoProject(decorated.slice(0,decorated.size-10)),/damaged/);
  await assert.rejects(decorateVideo(null,project),/Create a morph/);
 });
 
@@ -33,4 +43,7 @@ test('product recovery dispatches compact WebP to exact W+ and retains legacy PN
  const blob=new Blob([await readFile(new URL('../public/preview/hello-1024.webp',import.meta.url))],{type:'image/webp'}),values=new Float32Array(9216).fill(.25);
  const record={latent:{values},generationKind:'latent',generationSha256:'a'.repeat(64),provenance:{modelSha256:'b'.repeat(64),noiseSha256:'c'.repeat(64)}};
  const saved=await embedRecovery(blob,record),recovered=await recoverImage(saved.blob);assert.deepEqual(recovered.latent.values,values);assert.equal(recovered.blob.type,'image/webp');assert.equal(recovered.generationSha256,record.generationSha256);
+ // fm-fy2.7: the candidate's schema-1 PNG (seed 42) reads through the same entry with its exact latent.
+ const v1=await recoverImage(new Blob([await readFile(new URL('../../test/fixtures/verify/stills/recovery-v1.png',import.meta.url))],{type:'image/png'}));
+ assert.equal(v1.schemaVersion,1);assert.equal(v1.seed,42);assert.equal(v1.latent.values.length,9216);assert.equal(v1.blob.type,'image/png');
 });

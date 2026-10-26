@@ -36,7 +36,11 @@ import { replayFirstVisit, replayRows, type Replayers } from '../controller/repl
 import { fetchControl } from '../../../../scripts/import/fetch-control.mjs';
 import { createHash } from 'node:crypto';
 import { crc32 } from 'node:zlib';
-import { embedRecovery as embedSchema2, readRecovery } from '@facemorph/stylegan-js';
+import {
+  embedRecovery as embedSchema2,
+  readMp4Project,
+  readRecovery,
+} from '@facemorph/stylegan-js';
 import { generationIdentity } from '../../src/Next/browser/identity.mjs';
 
 const app = fileURLToPath(new URL('../../', import.meta.url));
@@ -600,6 +604,49 @@ test(
     assert.equal(refused.jobEvents, 0);
   },
 );
+test(
+  'file-entry-mp4: a saved morph carries the schema-2 project with the writer route; it reopens as its project',
+  { timeout: 1_200_000 },
+  async () => {
+    await context.close();
+    await open();
+    const r = await call<{ out: Out } & Settled>('morph', 'mp4-a', 'mp4-b');
+    assert.equal(r.out.errorMessage, '', r.out.errorMessage);
+    const ready = page.waitForEvent('download', { timeout: 120_000 });
+    await call('save', 'video');
+    const bytes = new Uint8Array(readFileSync((await (await ready).path())!));
+    const saved = readMp4Project(bytes);
+    assert.equal(saved.kind, 'parsed', JSON.stringify(saved));
+    if (saved.kind !== 'parsed' || saved.project.schemaVersion !== 2)
+      throw new Error('not schema 2');
+    const p = saved.project;
+    log(
+      `saved mp4: ${bytes.length} bytes video=${JSON.stringify(p.video)} controls=${p.morph.controls.length}`,
+    );
+    assert.deepEqual([p.video.width, p.video.height], [saved.video.width, saved.video.height]);
+    assert.equal(p.video.frameCount, saved.video.frameCount);
+    assert.ok(['webcodecs', 'ffmpeg'].includes(p.video.route));
+    assert.equal(p.morph.controls.length, 2);
+    assert.deepEqual(
+      p.morph.controls.map((c) => c.visitId),
+      ['mp4-a', 'mp4-b'],
+    );
+    assert.equal(p.morph.framesPerSecond, 16);
+    assert.equal(p.model.name, 'stylegan2-ffhq-config-f');
+    // The bridge's file entry reads it back as the app's project file, with no job.
+    const reopened = await call<{ kind?: string; error?: string; jobEvents: number }>(
+      'reopenSaved',
+      'mp4-entry',
+      Array.from(bytes),
+      'facemorph.mp4',
+      'video/mp4',
+    );
+    assert.equal(reopened.error, undefined, String(reopened.error));
+    assert.equal(reopened.kind, 'project');
+    assert.equal(reopened.jobEvents, 0);
+  },
+);
+
 test(
   'controller: recorded job journeys replay with actual CPU execution',
   { timeout: 600_000 },

@@ -7,6 +7,7 @@ import {createBrowserRuntime} from './browser/runtime.mjs';
 import {AdmissionRefused} from './browser/admission.mjs';
 import {createLatentPath,GEOMETRY_VERSION} from './geometry/latent-path.mjs';
 import {blend,FFHQ_1024_DESCRIPTOR} from '@facemorph/stylegan-js';
+import {checkFaceModel} from '../media/recovery-files.ts';
 import {decode,encode} from '../project/bridge-result.ts';
 import {saveFile,shareFile,videoWriter} from './media.mjs';
 import {createExportFiles} from './export-files.mjs';
@@ -36,6 +37,8 @@ const listeners=new Set();
 const listener=event=>{for(const callback of listeners)callback(event);};
 let runtime,manifest,runtimeIdentity,active,writer,currentJob=0,project=null,video=null;
 const faces=new Map(),urls=new Map(),faceRevisions=new Map();
+// The encoder choice per produced video: its saved project records the actual size, route and reason (fm-fy2.7).
+const videoRoutes=new WeakMap();
 // Prepared Save/Share files, their names and the export policy (fm-eeki): one prepared file per result and format.
 let exportFiles=null;const exportFilesOf=()=>exportFiles??=createExportFiles();
 let morphRevision=0;
@@ -362,7 +365,7 @@ export async function execute(request){
    jobCounts.framesTotal=path.totalFrames;jobCounts.videoFramesTotal=path.totalFrames;
    const framesKey=await morphFramesKey();clearLiveFrames();liveFrameKey=framesKey;liveFrames=Array(path.totalFrames).fill('');
    const stored=framesKey?await frameStoreGet(framesKey).catch(()=>null):null;analytics.operationResult?.('frame-cache',stored?'hit':'miss');
-   writer=videoWriter({codec:manifest.codec,fps:project.morph.framesPerSecond,signal:active.signal,onProgress:progress,framesKey,totalFrames:path.totalFrames});await writer.initialize();
+   writer=videoWriter({codec:manifest.codec,fps:project.morph.framesPerSecond,signal:active.signal,onProgress:progress,framesKey,totalFrames:path.totalFrames});const videoChoice=await writer.initialize();
    const counter=createFrameCounter(path.totalFrames);let directEncoded=false;
    if(stored&&stored.length===path.totalFrames){
     liveFrames=stored.map(blob=>URL.createObjectURL(blob));
@@ -430,7 +433,7 @@ export async function execute(request){
     progress({stage:'export',text:'Encoding your video…'});
     for(let index=0;index<path.totalFrames;index++){checked();const blob=await frameStoreGetOne(framesKey,index);if(!blob)throw Error('A morph frame is unavailable. Your faces are saved.');await writer.add(blob,index);}
    }
-   progress({stage:'export',text:'Finishing your video…'});const finished=await writer.finish();recordUnit(videoTimings,(now()-videoBegan)/path.totalFrames);analytics.stageDuration?.('export',now()-videoBegan);writer=null;if(renderToken!==morphRevision||request.inputs.some(item=>revisionOf(item.id)!==revisions.get(item.id)))throw superseded();video=finished;replaceUrl('video',video);
+   progress({stage:'export',text:'Finishing your video…'});const finished=await writer.finish();recordUnit(videoTimings,(now()-videoBegan)/path.totalFrames);analytics.stageDuration?.('export',now()-videoBegan);writer=null;if(renderToken!==morphRevision||request.inputs.some(item=>revisionOf(item.id)!==revisions.get(item.id)))throw superseded();video=finished;if(videoChoice)videoRoutes.set(finished,videoChoice);replaceUrl('video',video);
   }
   rememberView(request);retainSession();
   diagnostics.finish('completed');return snapshot();
@@ -445,7 +448,7 @@ async function exportFile(id){
  if(id==='video'){
   const saved=video,savedProject=project;if(!saved)throw Error('Create a morph first.');
   const morph=savedProject?.morph,endpoints=(morph?.controls||[]).map(control=>({...faces.get(control.visitId),latent:control.latent}));
-  return exportFilesOf().video(saved,{encode:()=>decorateVideo(saved,savedProject),faces:endpoints,modelIdentity:runtimeIdentity,current:()=>video===saved,
+  return exportFilesOf().video(saved,{encode:()=>decorateVideo(saved,savedProject,videoRoutes.get(saved)),faces:endpoints,modelIdentity:runtimeIdentity,current:()=>video===saved,
    morph:morph&&{mode:morph.kind,settings:{width:morph.width,pinchCenter:morph.pinchCenter??null,framesPerSegment:morph.framesPerSegment,framesPerSecond:morph.framesPerSecond}}});
  }
  const face=faces.get(id);if(!face)throw Error('Generate a result first.');
@@ -573,7 +576,10 @@ export async function selectPhotoReported(request){
  const recovered=file?await recoverImage(file).catch(error=>{throw Error('This saved image is damaged.',{cause:error});}):null;
  if(recovered){
   const response=await fetch('/runtime/manifest.json');if(!response.ok)throw Error('Unable to verify this saved face.');const m=await response.json();
-  if(m.modelSourceSha256!==recovered.provenance.modelSha256||m.noiseSha256!==recovered.provenance.noiseSha256||(recovered.generationSha256&&await digest(JSON.stringify(generationIdentity(m,recovered.generationKind)))!==recovered.generationSha256))throw Error('This saved face uses a different model.');
+  // The generator record (schema 3) or the shipped descriptor its digests name must be this runtime's model and
+  // W+ shape; a blend's identity is its recipe digest, which the reader has already checked (fm-fy2.7).
+  checkFaceModel(recovered,{modelSha256:m.modelSourceSha256,noiseSha256:m.noiseSha256});
+  if(recovered.generationKind!=='blend'&&recovered.generationSha256&&await digest(JSON.stringify(generationIdentity(m,recovered.generationKind)))!==recovered.generationSha256)throw Error('This saved face uses a different model.');
   if(selectionRevision!==revisionOf(request.id))return null;await register(request.id,recovered,'Saved face');analytics.operationResult?.('restore','completed');return {recovered:true,...snapshot('Saved face recovered without photo encoding.')};
  }
  warmPhotoTools();return Promise.resolve(photoStage('photo-select',()=>selectPhoto(request))).then(result=>{if(selectionRevision!==revisionOf(request.id)){if(result?.url)URL.revokeObjectURL(result.url);return null;}if(result)analytics.photoSelected({outcome:'ready'});return result;},error=>{analytics.photoSelected({outcome:'invalid'});throw error;});}
