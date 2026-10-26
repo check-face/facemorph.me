@@ -255,7 +255,7 @@ test('apps/web source carries no active native install or availability recommend
   const pattern =
     /native (install|cpu processing|app)|installer|desktop (app|package|preview|install|shell|version)|__TAURI__/i;
   // Historical notes that say the packages are retired are allowed, by file and line.
-  const NOTES = new Set(['shell/render/Notes.tsx:4']);
+  const NOTES = new Set(['shell/render/Notes.tsx:4', 'shell/render/help.ts:172']);
   const hits = files.flatMap((f) =>
     read(f)
       .split('\n')

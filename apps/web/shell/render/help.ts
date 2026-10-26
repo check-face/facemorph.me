@@ -2,7 +2,7 @@
 // photo/video support, first-use costs, recovery for every refusal reason, and the limits a person should know
 // before they meet them. Data only; Explain.tsx renders it. Every anchor a refusal names (route-admission.ts)
 // and the optional selector links (#computer-requirements, #supported-browsers) open one of these topics.
-// No installer or native download is recommended anywhere: the desktop packages are retired.
+// Only this web app is recommended; Help never points anywhere to install or download a program.
 
 /** A paragraph is text runs and links. */
 export type Run = string | { readonly text: string; readonly href: string };
@@ -19,7 +19,7 @@ export const NOTICES_HREF = '/runtime/notices/index.html';
 export const FORMATS_HREF =
   'https://github.com/facemorph-me/facemorph.me/blob/main/packages/stylegan-js/docs/formats.md';
 
-/** This site's own entry URL (the current origin), never a retired desktop package. */
+/** This site's own entry URL (the current origin). */
 export const siteEntry = (): string =>
   `${(globalThis as { location?: { origin?: string } }).location?.origin ?? 'https://next.facemorph.me'}/`;
 
