@@ -76,9 +76,20 @@ export function shardInventory(suites, shard, count = SHARDS) {
   });
 }
 
-// This measured four-cell numerical journey belongs to mandatory pre-deploy qualification.
+export function workspaceInventory(suites, cwd) {
+  const selected = suites.filter((suite) => suite.cwd === cwd);
+  if (!cwd || selected.length !== 1) throw Error('Expected one known npm-test workspace');
+  return selected;
+}
+
+// Measured multi-minute inference journeys belong to mandatory pre-deploy qualification.
 // Full remains the default. Exact paths keep every other live npm-test file in quick mode.
-const PRE_DEPLOY_ONLY = new Set(['packages/stylegan-js/test/full31/full31.test.ts']);
+const PRE_DEPLOY_ONLY = new Set([
+  'packages/stylegan-js/test/full31/full31.test.ts',
+  'packages/stylegan-js/test/engine/browsers.test.ts',
+  'packages/stylegan-js/test/engine/caller-loaded-example.test.ts',
+  'packages/stylegan-js/test/engine/cpu.test.ts',
+]);
 
 export function partitionInventory(suites, quick = false) {
   const select = (deferred) =>
@@ -98,12 +109,16 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const suites = inventory();
   if (mode === '--list' && args.length === 1) console.log(JSON.stringify(suites, null, 2));
   else if (
-    mode === '--shard' &&
-    /^\d+$/.test(value ?? '') &&
+    ((mode === '--shard' && /^\d+$/.test(value ?? '')) || mode === '--workspace') &&
     (args.length === 2 || (args.length === 3 && flag === '--quick'))
   ) {
     const quick = flag === '--quick';
-    const selected = partitionInventory(shardInventory(suites, Number(value)), quick);
+    const selected = partitionInventory(
+      mode === '--workspace'
+        ? workspaceInventory(suites, value)
+        : shardInventory(suites, Number(value)),
+      quick,
+    );
     const scoped = scopeInventory(
       selected.run,
       quick ? JSON.parse(process.env.FACEMORPH_CHANGED_FILES || 'null') : null,
@@ -121,7 +136,8 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       console.log(
         JSON.stringify({
           event: 'deferred-pre-deploy-tests',
-          reason: 'Measured full31 browser numerics run in mandatory full pre-deploy qualification',
+          reason:
+            'Measured engine inference journeys run in mandatory full pre-deploy qualification',
           files: selected.deferred.flatMap(({ cwd, files }) =>
             files.map((file) => `${cwd}/${file}`),
           ),
@@ -138,5 +154,8 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       if (result.error) console.error(result.error);
       if (result.status !== 0) process.exit(result.status ?? 1);
     }
-  } else throw Error('Usage: scaffold-test-shards.mjs --list | --shard N [--quick]');
+  } else
+    throw Error(
+      'Usage: scaffold-test-shards.mjs --list | --shard N [--quick] | --workspace PATH [--quick]',
+    );
 }

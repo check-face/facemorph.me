@@ -206,6 +206,7 @@ jobs:
     uses: ./.github/workflows/contracts-m1.yml
     with:
       shared_build: true
+      full: ${{ github.event_name == 'workflow_dispatch' }}
     secrets: inherit
   crop-repro:
     needs: [changes, next-site-artifact]
@@ -315,6 +316,8 @@ jobs:
     needs: changes
     if: contains(fromJSON(needs.changes.outputs.lanes), 'names-generator')
     uses: ./.github/workflows/names-generator.yml
+    with:
+      full: ${{ github.event_name == 'workflow_dispatch' }}
     secrets: inherit
   names-snapshot:
     needs: changes

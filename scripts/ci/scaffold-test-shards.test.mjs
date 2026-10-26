@@ -10,6 +10,7 @@ import {
   shardInventory,
   SHARDS,
   tokens,
+  workspaceInventory,
 } from './scaffold-test-shards.mjs';
 import { testGlobs } from '../build/check-tests-listed.mjs';
 
@@ -50,6 +51,50 @@ test('every live npm-test file runs exactly once across all scaffold shards, wit
 test('sharding rejects invalid indices instead of silently running no tests', () => {
   for (const index of [0, -1, 1.5, SHARDS + 1, NaN])
     assert.throws(() => shardInventory([], index), /integer shard/);
+});
+
+test('contracts reuse the live engine workspace inventory and the same exact inference partition', () => {
+  const suites = inventory();
+  const selected = workspaceInventory(suites, 'packages/stylegan-js');
+  assert.deepEqual(
+    selected,
+    suites.filter((suite) => suite.cwd === 'packages/stylegan-js'),
+  );
+  assert.deepEqual(partitionInventory(selected).run, selected);
+  const { run, deferred } = partitionInventory(selected, true);
+  assert.deepEqual(deferred[0].files, [
+    'test/engine/browsers.test.ts',
+    'test/engine/caller-loaded-example.test.ts',
+    'test/engine/cpu.test.ts',
+    'test/full31/full31.test.ts',
+  ]);
+  assert.deepEqual([...run[0].files, ...deferred[0].files].sort(), [...selected[0].files].sort());
+  for (const cwd of ['', 'packages/missing', '../stylegan-js', undefined])
+    assert.throws(() => workspaceInventory(suites, cwd), /known npm-test workspace/);
+
+  const read = (name) =>
+    parse(readFileSync(new URL(`../../.github/workflows/${name}.yml`, import.meta.url), 'utf8'));
+  const contracts = read('contracts-m1');
+  const command = contracts.jobs.check.steps.find((s) => s.name?.startsWith('Engine contract'));
+  assert.match(command.run, /args=\(--workspace packages\/stylegan-js\)/);
+  assert.match(command.run, /if \[ "\$FULL" != true \]; then args\+=\(--quick\); fi/);
+  assert.equal(command.env.FULL, "${{ github.event_name == 'workflow_dispatch' || inputs.full }}");
+  assert.equal(contracts.on.workflow_call.inputs.full.default, true);
+  const main = read('main');
+  assert.equal(
+    main.jobs['contracts-m1'].with.full,
+    "${{ github.event_name == 'workflow_dispatch' }}",
+  );
+  assert.equal(main.jobs['names-generator'].with.full, main.jobs['contracts-m1'].with.full);
+  const names = read('names-generator');
+  assert.equal(names.on.workflow_call.inputs.full.default, true);
+  const steps = names.jobs.test.steps;
+  const full = steps.find((step) => step.run?.includes('-- npm test'));
+  assert.equal(full.if, "github.event_name == 'workflow_dispatch' || inputs.full");
+  assert.equal(
+    steps.find((step) => step.run === 'node --test lib.test.mjs').if,
+    "${{ github.event_name != 'workflow_dispatch' && !inputs.full }}",
+  );
 });
 
 test('the adapter refuses shell operations and preserves quoted globs', () => {
@@ -131,7 +176,7 @@ test('the required scaffold/gates context aggregates every matrix and refuses fa
   );
 });
 
-test('quick shards defer only the exact full31 file; quick plus deferred equals the unchanged full inventory', () => {
+test('quick shards defer only measured inference files; quick plus deferred equals unchanged full inventory', () => {
   const suites = inventory();
   const paths = (items) =>
     items
@@ -147,13 +192,15 @@ test('quick shards defer only the exact full31 file; quick plus deferred equals 
     quick.push(...part.run);
     deferred.push(...part.deferred);
   }
-  assert.deepEqual(deferred, [
-    {
-      cwd: 'packages/stylegan-js',
-      prefix: ['node', '--test'],
-      files: ['test/full31/full31.test.ts'],
-    },
-  ]);
+  assert.deepEqual(
+    deferred.flatMap(({ cwd, files }) => files.map((file) => `${cwd}/${file}`)).sort(),
+    [
+      'packages/stylegan-js/test/engine/browsers.test.ts',
+      'packages/stylegan-js/test/engine/caller-loaded-example.test.ts',
+      'packages/stylegan-js/test/engine/cpu.test.ts',
+      'packages/stylegan-js/test/full31/full31.test.ts',
+    ],
+  );
   assert.deepEqual(paths([...quick, ...deferred]), paths(suites));
   assert.equal(new Set(paths([...quick, ...deferred])).size, paths(suites).length);
   assert.ok(!paths(quick).some((file) => file.includes('full31/full31.test.ts')));
