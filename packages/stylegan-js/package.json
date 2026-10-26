@@ -4,6 +4,15 @@
   "private": true,
   "description": "StyleGAN mapping, synthesis and e4e encoding in the browser: engine contracts, and the engine core (./engine).",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/facemorph-me/facemorph.me.git",
+    "directory": "packages/stylegan-js"
+  },
+  "homepage": "https://github.com/facemorph-me/facemorph.me/tree/main/packages/stylegan-js#readme",
+  "bugs": {
+    "url": "https://github.com/facemorph-me/facemorph.me/issues"
+  },
   "type": "module",
   "sideEffects": false,
   "exports": {

@@ -5,6 +5,15 @@
   "type": "module",
   "description": "Stages, verifies and publishes verified model bytes for Cloudflare static hosting: chunking above the 25 MiB file limit, manifest rewriting against the manager's contract, reconstruction verification, dry-run-first publication with paid-service and model-terms refusals (fm-3osh).",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/facemorph-me/facemorph.me.git",
+    "directory": "packages/cloudflare-model-host"
+  },
+  "homepage": "https://github.com/facemorph-me/facemorph.me/tree/main/packages/cloudflare-model-host#readme",
+  "bugs": {
+    "url": "https://github.com/facemorph-me/facemorph.me/issues"
+  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",

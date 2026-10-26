@@ -582,6 +582,14 @@ on iOS. Every other browser, version and platform, including Edge and Windows, i
 - **The CPU route runs single-threaded.** That is the engine: serve the app with `Cross-Origin-Opener-Policy:
   same-origin` and `Cross-Origin-Embedder-Policy: require-corp`.
 
+## Related packages
+
+- [stylegan-js](../stylegan-js/README.md) is the engine that loads the models this package acquires.
+- [cloudflare-model-host](../cloudflare-model-host/README.md) stages converted models and writes the hosted manifest
+  this package reads, for any HTTPS static host.
+- [model-conv](../model-conv/README.md) converts a trusted StyleGAN2 checkpoint into those files. The
+  [compatibility table](../model-conv/docs/compatibility.md) lists the checkpoints that are qualified.
+
 ## Licence and model weights
 
 The code is MIT licensed (`LICENSE`; bundled third-party code in `THIRD_PARTY_NOTICES`). **No model weights are

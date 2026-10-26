@@ -57,6 +57,12 @@ Two are qualified today: FFHQ config-F (1024 px, 18 W+ layers) and AFHQ cat (512
 Conditional models and StyleGAN3 are unsupported. Photo encoders are model-specific: the FFHQ e4e encoder works
 only for the FFHQ face generator.
 
+## Related packages
+
+[cloudflare-model-host](../cloudflare-model-host/README.md) hosts the converted files,
+[browser-model-manager](../browser-model-manager/README.md) acquires them in the browser and
+[stylegan-js](../stylegan-js/README.md) runs them.
+
 ## Licences and notices
 
 model-conv's code is MIT licensed (the repository's `LICENSE`). The image fetches NVlabs' stylegan2-ada-pytorch at a

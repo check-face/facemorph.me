@@ -215,6 +215,15 @@ quality. [Saved file formats](docs/formats.md) gives every format, limit and dam
 - **A saved file does not reopen.** `readRecovery` says why: `missing`, `damaged` (with the reason) or
   `incompatible-schema` (with the version the file claims).
 
+## Related packages
+
+- [browser-model-manager](../browser-model-manager/README.md) asks the person before any download, then acquires,
+  verifies and caches the model files; the engine loads them through its verified local reader.
+- [cloudflare-model-host](../cloudflare-model-host/README.md) stages converted models for any HTTPS static host, with
+  an optional Cloudflare guide.
+- [model-conv](../model-conv/README.md) converts a trusted StyleGAN2 checkpoint into the files this package loads. The
+  [compatibility table](../model-conv/docs/compatibility.md) lists the checkpoints that are qualified.
+
 ## Licence and model weights
 
 The code is MIT licensed (`LICENSE`; bundled third-party code in `THIRD_PARTY_NOTICES`). **The model weights are

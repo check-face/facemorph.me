@@ -5,6 +5,15 @@
   "type": "module",
   "description": "Consented acquisition, verification, storage and eviction of browser model assets. Contracts so far (fm-hwh): lifecycle, leases, grants, budgets and the model manifest schema.",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/facemorph-me/facemorph.me.git",
+    "directory": "packages/browser-model-manager"
+  },
+  "homepage": "https://github.com/facemorph-me/facemorph.me/tree/main/packages/browser-model-manager#readme",
+  "bugs": {
+    "url": "https://github.com/facemorph-me/facemorph.me/issues"
+  },
   "exports": {
     ".": {
       "source": "./src/index.ts",
