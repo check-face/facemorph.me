@@ -203,6 +203,14 @@
         "local_probe": "24/24 pass"
       },
       {
+        "file": "src/Next/browser/execution-gate.test.mjs",
+        "runs_on": "closure",
+        "added": {
+          "bead": "fm-qrfz",
+          "reason": "Read/compute admission, queued cancellation and late-session drain regressions"
+        }
+      },
+      {
         "file": "src/Next/browser/mobile-runtime.test.mjs",
         "runs_on": "closure",
         "local_probe": "33/33 pass"
