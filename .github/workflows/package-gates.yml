@@ -25,7 +25,8 @@ permissions:
   actions: read
 jobs:
   gates:
-    runs-on: ${{ inputs.release_artifact != '' && fromJSON('["self-hosted","eris"]') || fromJSON('["self-hosted","linux-x64"]') }}
+    # Native Playwright needs the supported Ubuntu 24.04 pool; linux-x64 also includes Triton 20.04.
+    runs-on: ${{ inputs.release_artifact != '' && fromJSON('["self-hosted","eris"]') || fromJSON('["self-hosted","tempcpu"]') }}
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
