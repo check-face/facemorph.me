@@ -362,6 +362,7 @@ def stage_recoveredDownload():
  assert js('window.__ciWorkerRequests')==requests,'Recovery invoked a processing worker'
  save_check('recoveredDownload',{'passed':True,'format':'webp','newWorkers':0,'newWorkerRequests':0,'dimensions':[[i['width'],i['height']] for i in faces()]})
 def stage_syntheticPhotoE4e():
+ kinds=js('window.__ciWorkerKinds.length')
  upload(S['choosePhoto'],CTX['seedPng'])
  if CTX.get('confirmCrop'):
   wait(lambda:js("!!document.querySelector('.next-encode-preview img')"),60)
@@ -371,10 +372,13 @@ def stage_syntheticPhotoE4e():
  # The retained control encodes on selection; the new app encodes after explicit
  # crop OK. Neither needs an extra Generate press. Wait for the completed e4e
  # result, then confirm a repeated full pass still leaves both faces whole.
- wait(lambda:len(faces())==2 and all(i['width']==1024 and i['height']==1024 for i in faces()) and idle(),240);assert js('window.__ciWorkers')>CTX['workerBaseline']
+ wait(lambda:len(faces())==2 and all(i['width']==1024 and i['height']==1024 for i in faces()) and idle(),240)
+ # The e4e itself, not a new worker: a confirmed crop runs no detector worker (fm-6ib8), and a device with memory
+ # to spare keeps the compute worker, so the proof is an 'encode-aligned' request posted after the upload.
+ assert js("window.__ciWorkerKinds.slice(%d).some(k=>k.type==='encode-aligned')"%kinds),'the photo was not sent to e4e'
  run(S['buttons']['generate'],predicate=lambda:len(faces())==2)
  wait(lambda:len(faces())==2 and all(i['width']==1024 and i['height']==1024 for i in faces()),60)
- save_check('syntheticPhotoE4e',{'passed':True,'newWorkers':js('window.__ciWorkers')-CTX['workerBaseline'],'widths':[i['width'] for i in faces()]})
+ save_check('syntheticPhotoE4e',{'passed':True,'newWorkers':js('window.__ciWorkers')-CTX['workerBaseline'],'e4eRequests':js("window.__ciWorkerKinds.slice(%d).filter(k=>k.type==='encode-aligned').length"%kinds),'widths':[i['width'] for i in faces()]})
 def stage_localCrop():
  # Exercise the editor before confirmation in the new app, or the retained
  # control's crop menu. The accepted geometry must produce the encoded face.
