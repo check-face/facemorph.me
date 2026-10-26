@@ -142,6 +142,29 @@ describe('clean fixtures pass', () => {
     assert.equal(r.status, 0, r.stdout);
   });
 
+  test('package.json may name the source repository; the same URL elsewhere is still a finding (fm-19eb)', () => {
+    const withRepository = JSON.stringify({
+      ...JSON.parse(PKG_JSON),
+      repository: {
+        type: 'git',
+        url: 'git+https://github.com/facemorph-me/facemorph.me.git',
+        directory: 'packages/p',
+      },
+      homepage: 'https://github.com/facemorph-me/facemorph.me/tree/main/packages/p#readme',
+      bugs: { url: 'https://github.com/facemorph-me/facemorph.me/issues' },
+    });
+    for (const profile of ['stylegan-js', 'browser-model-manager', 'cloudflare-model-host']) {
+      const ok = scan(profile, { ...packageBase(), 'package.json': withRepository });
+      assert.equal(ok.status, 0, `${profile}: ${ok.stdout}`);
+      const elsewhere = scan(profile, {
+        ...packageBase(),
+        'package.json': withRepository,
+        'dist/index.js': 'export const home = "facemorph.me";\n',
+      });
+      assert.equal(elsewhere.status, 1, `${profile}: ${elsewhere.stdout}`);
+    }
+  });
+
   test('manager classifies its exact public defaults, schema ID and compatible storage identities', () => {
     const r = scan('browser-model-manager', { ...packageBase(), ...managerPublic });
     assert.equal(r.status, 0, r.stdout + r.stderr);

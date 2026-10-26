@@ -37,6 +37,11 @@
     {
       "pattern": "\\bcheckface-canary-qualification-v1\\b",
       "reason": "CANARY_RECORD_SCHEMA: the persisted per-device canary receipt schema; renaming it would invalidate receipts already recorded on devices"
+    },
+    {
+      "files": "^package\\.json$",
+      "pattern": "github\\.com/facemorph-me/facemorph\\.me",
+      "reason": "repository, homepage and bugs name the public source repository (with its packages/ directory) so npmjs.com resolves the README's relative links; a source reference, not a deployment hostname (fm-19eb)."
     }
   ],
   "contentRules": [
