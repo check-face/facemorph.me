@@ -25,6 +25,7 @@ import { fileURLToPath } from 'node:url';
 import { attachPlaywright, DEFAULT_HOST_MAP } from '../../../../scripts/ci/intercept/playwright.ts';
 import { assertNoRequests, bindOrigins, step } from '../../../../scripts/ci/intercept/record.ts';
 import { acquiredManifest, RUNTIME, UNTESTED } from './support/runtime.ts';
+import { homedir } from 'node:os';
 
 const REPO = fileURLToPath(new URL('../../../../', import.meta.url));
 const ROOTS: Record<string, string> = {
@@ -36,6 +37,10 @@ const BUILT =
   existsSync(join(ROOTS['/stylegan/']!, 'engine/index.js')) &&
   existsSync(join(ROOTS['/manager/']!, 'index.js'));
 const runtime = acquiredManifest();
+// The classic full31 research suite, regenerated from the checkpoint and the pinned runtime by
+// test/research/full31/regenerate.py (FACEMORPH_FULL31 to override). Absent here, it is reported untested.
+const FULL31 = process.env['FACEMORPH_FULL31'] ?? join(homedir(), '.cache/facemorph-full31');
+ROOTS['/full31/'] = FULL31 + '/';
 
 const PAGE = `<!doctype html><meta charset="utf-8"><title>engine</title><script type="module">
 import * as engine from '/stylegan/engine/index.js';
@@ -99,6 +104,18 @@ window.harness = {
     const after = await window.__live.e.synthesize({ ids: { requestId: 'after', inputRevision: 100, attemptId: 0 }, wPlus: window.__live.mapped.result.wPlus, output: 'rgba' });
     await window.__live.e.dispose();
     return { settled: { status: settled.status, error: settled.error }, lost, after: { status: after.status, error: after.error }, inspect: window.__live.g.inspect() };
+  },
+  /** The full31 research suite on the live generator: fixture bytes come from /full31/, after the engine step. */
+  async research(cases) {
+    const get = async (f) => new Uint8Array(await (await fetch('/full31/' + f)).arrayBuffer());
+    const indices = new Uint32Array((await get('sample-indices.i32')).buffer);
+    const checks = [];
+    for (const c of cases) {
+      const raw = await window.__live.g.synthesizeRaw(new Float32Array((await get(c.w)).buffer), c.noise);
+      const reference = (await engine.decodeReferencePng(await get(c.reference))).rgba;
+      checks.push(engine.compareCanary(c.name, raw, indices, new Float32Array((await get(c.samples)).buffer), reference));
+    }
+    return checks;
   },
   async dispose() { await window.__live.e.dispose(); return window.__live.g.inspect(); },
   async adapter() {
@@ -292,6 +309,34 @@ function checkRun(
   );
 }
 
+/** All 31 research cases through the cell's live generator at the frozen research gate (RGB 1, sampled float 0.002). */
+async function research(t: { diagnostic(m: string): void }, page: Page, label: string) {
+  const path = join(FULL31, 'manifest.json');
+  if (!existsSync(path))
+    return t.diagnostic(`${label}: full31 research suite untested (no fixtures at ${FULL31})`);
+  const suite = JSON.parse(readFileSync(path, 'utf8')) as {
+    cases: { name: string; noise: string; w: string; reference: string; samples: string }[];
+    inputs: { runtimeManifestSha256: string };
+  };
+  assert.equal(
+    suite.inputs.runtimeManifestSha256,
+    runtime!.sha256,
+    'full31 regenerated from this runtime',
+  );
+  assert.equal(suite.cases.length, 31);
+  const checks = await call<{ name: string; maxRgb: number; maxFloat: number }[]>(
+    page,
+    'research',
+    suite.cases,
+  );
+  assert.equal(checks.length, 31);
+  for (const c of checks)
+    assert.ok(c.maxRgb <= 1 && c.maxFloat <= 0.002, `${label} full31 ${JSON.stringify(c)}`);
+  t.diagnostic(
+    `${label}: full31 31/31, max RGB ${Math.max(...checks.map((c) => c.maxRgb))}, max sampled float ${Math.max(...checks.map((c) => c.maxFloat)).toExponential(2)}`,
+  );
+}
+
 const SKIP = !runtime
   ? UNTESTED
   : !BUILT
@@ -316,6 +361,8 @@ for (const kind of ['chromium', 'firefox', 'webkit'] as const)
         warm: false,
       });
       faceDigests.set(kind, run.out.digest);
+      step(run.net.rec, 'research');
+      await research(t, run.page, kind);
       assert.equal(
         (await call<{ liveSessions: number }>(run.page, 'dispose')).liveSessions,
         0,
@@ -366,6 +413,8 @@ for (const scope of ['ort', 'direct'] as const)
         boundary: 'map-async-complete',
         warm: true,
       });
+      step(run.net.rec, 'research');
+      await research(t, run.page, `webgpu-${scope}`);
       // Real device loss under a running face: the GPU process is crashed.
       await call(run.page, 'startFace');
       const cdp = await browser.newBrowserCDPSession!();
