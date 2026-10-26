@@ -32,65 +32,19 @@
  * preference without a new operator decision.
  */
 
-export const ROUTE_PRIORS = Object.freeze([
-  {
-    // WebGPU has been the fastest route on every device where it was actually measured, by a
-    // margin no other ordering question comes close to. It is tried first wherever it is offered,
-    // including on iOS: its larger working set is acceptable while the run stays stable, and an
-    // unstable one fails admission rather than being pre-emptively avoided.
-    when: capabilities => capabilities.webgpu,
-    order: ['webgpu', 'cpu'],
-    measured: {webgpu: 618, cpu: 2582, webgl: 13000},
-    because: 'WebGPU measured 618 ms on a phone and 294 ms on a Mac; nothing else is close'
-  },
-  {
-    // Android without WebGPU: CPU beat WebGL by roughly two to one on the S24. This is the
-    // reversal that the old "a GPU route exists, so use it" rule got wrong. Scoped to Android,
-    // because it is an Android measurement.
-    when: capabilities => capabilities.android,
-    order: ['cpu'],
-    measured: {cpu: 5911, webgl: 13000},
-    because: 'S24 Ultra: CPU 5,911 ms against WebGL about 13,000 ms per face'
-  },
-  {
-    // Operator, 10 October: the same failure-only preference applies on iOS.
-    // Historical memory-driven WebGL preference is superseded; availability and actual
-    // failed admission still select a supported fallback.
-    when: capabilities => capabilities.ios,
-    order: ['cpu'],
-    because: 'iOS CPU/WebGL speed is not measured here; operator fixed CPU before WebGL on 10 October'
-  },
-  {
-    // Desktop without a usable WebGPU adapter. Desktop WebGL against desktop CPU is not measured,
-    // but no measurement anywhere puts WebGL ahead of CPU: S24 Ultra WebGL ~13,000 ms against CPU
-    // 2,582-5,911 ms, and the iOS Simulator's pure WebGL ran about three times slower than
-    // four-thread CPU. Operator ruling, 8 October 2026: keep WebGPU -> CPU -> WebGL until an explicit operator decision changes it. Diagnostics caught a 32-core Linux desktop on WebGL at 7.4 s per face
-    // because this entry used to put WebGL first. Device timings are observational only.
-    when: () => true,
-    order: ['cpu'],
-    because: 'Desktop WebGL against desktop CPU is not measured; nothing recorded favours WebGL, so CPU first (operator ruling WebGPU -> CPU -> WebGL)'
-  }
-]);
+// The priors and their order are stylegan-js engine/routes.ts (fm-7f2o), the candidate's without the retired WebGL
+// route; this module keeps the names and the globalThis-reading capabilities() its callers use.
+import {ROUTE_PRIORS,priorOrder,capabilities as fromFacts} from '@facemorph/stylegan-js/engine';
+export {ROUTE_PRIORS,priorOrder};
 
 /** Cheap, allocation-free reading of what this browser offers. No model or context is created. */
 export function capabilities(scope = globalThis) {
-  const agent = scope.navigator?.userAgent || '';
-  return {
-    webgpu: Boolean(scope.navigator?.gpu),
-    android: /Android/i.test(agent),
-    ios: /iPhone|iPad|iPod/i.test(agent)||(scope.navigator?.platform==='MacIntel'&&scope.navigator?.maxTouchPoints>1),
-    mobile: /Android|iPhone|iPad|iPod/i.test(agent),
-    cores: Number(scope.navigator?.hardwareConcurrency) || 0
-  };
-}
-
-/**
- * Routes to try in the fixed operator preference order.
- * `supported` filters the order down to what this build can actually run.
- */
-export function priorOrder(capability, supported) {
-  const rule = ROUTE_PRIORS.find(entry => entry.when(capability)) || ROUTE_PRIORS.at(-1);
-  const ordered = rule.order.filter(route => supported.includes(route));
-  // Anything supported but unranked still belongs at the end; never silently drop a usable route.
-  return [...ordered, ...supported.filter(route => !ordered.includes(route))];
+  const n = scope.navigator;
+  return fromFacts({
+    userAgent: n?.userAgent || '',
+    platform: n?.platform,
+    maxTouchPoints: n?.maxTouchPoints,
+    hardwareConcurrency: n?.hardwareConcurrency,
+    gpu: Boolean(n?.gpu),
+  });
 }

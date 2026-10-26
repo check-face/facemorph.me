@@ -1423,7 +1423,13 @@
       "destination": "apps/web/src/Next/browser/identity.mjs",
       "sha256": "a74e217e91f660b554b3ed9c477881023bb4e90af93752e6c98b668cd9fe8b67",
       "bytes": 3951,
-      "class": "src-next"
+      "class": "src-next",
+      "ported": {
+        "sha256": "f492ccc3c437815f6868aa4aaca1c03053967967cc218142fdcd456177c6a0b6",
+        "bytes": 769,
+        "bead": "fm-7f2o",
+        "reason": "a thin adapter over the stylegan-js engine (routes.ts / identity.ts) keeping the names and shapes the app imports"
+      }
     },
     {
       "source": "src/Next/browser/mobile-runtime.test.mjs",
@@ -1479,10 +1485,10 @@
       "bytes": 5291,
       "class": "src-next",
       "ported": {
-        "sha256": "d3349d4582d5f936253f4452a6ee89df8a2aaf5c064c6ea3797e526a06204acf",
-        "bytes": 5319,
-        "bead": "fm-x6h5",
-        "reason": "WebGL removed from every route order and from the capability reading; the measured WebGL figures stay as history"
+        "sha256": "b175a1c2b9e05868c6f3dc045ef7c97067087466ee0b8a2439c33cbb9a96cd03",
+        "bytes": 2718,
+        "bead": "fm-7f2o",
+        "reason": "WebGL removed from every route order and from the capability reading; the measured WebGL figures stay as history; a thin adapter over the stylegan-js engine (routes.ts / identity.ts) keeping the names and shapes the app imports"
       }
     },
     {
@@ -1499,10 +1505,10 @@
       "bytes": 388,
       "class": "src-next",
       "ported": {
-        "sha256": "ad0780297962fc511421bf545c78fa74e5ba2d39ca20bab4870c9dfef54395c9",
-        "bytes": 425,
-        "bead": "fm-x6h5",
-        "reason": "comment: WebGPU -> CPU after the WebGL removal"
+        "sha256": "706bc5e68fccd053855004480b729831a23f704894be2cdf15c0a21d543e7a37",
+        "bytes": 549,
+        "bead": "fm-7f2o",
+        "reason": "comment: WebGPU -> CPU after the WebGL removal; a thin adapter over the stylegan-js engine (routes.ts / identity.ts) keeping the names and shapes the app imports"
       }
     },
     {
