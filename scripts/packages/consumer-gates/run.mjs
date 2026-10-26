@@ -2,8 +2,7 @@
 // Package consumer gates (fm-7ge). Builds and packs the four workspace packages, installs the tarballs into a fresh
 // project outside the workspace (mkdtemp: no workspace links, no path aliases, no Vite config of the app's), then:
 //   1 packed    per package: the tarball content scan (scripts/packages/check-tarball-contents.mjs; reported, and
-//               blocking only with --strict-scan, except required-file findings, which wait on fm-oagi's LICENSE
-//               and notices), every module reference
+//               blocking every finding with --strict-scan, including required licence/notice files), every module reference
 //               in the shipped code (packed-imports.mjs: no repository alias, no path out of the package, no
 //               undeclared dependency), every `exports` target present, and every subpath imported by Node from
 //               the consumer; the consumer type-checks against the declarations only (consumer/ plus fm-hwh's
@@ -39,7 +38,7 @@ import {
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { loadProfile, scanInput } from '../check-tarball-contents.mjs';
+import { SCAN_VERSION, loadProfile, scanInput } from '../check-tarball-contents.mjs';
 import { references } from './ast.mjs';
 import { checkBoundaries } from './boundaries.mjs';
 import { checkPackedImports, exportEntries, missingExportTargets } from './packed-imports.mjs';
@@ -53,7 +52,6 @@ export const PACKAGES = [
   { dir: 'packages/cloudflare-model-host', profile: 'cloudflare-model-host', build: true },
   { dir: 'packages/model-conv', profile: null, build: false },
 ];
-const PROVISIONAL_RULES = new Set(['required-file']); // LICENSE, notices, provenance: fm-oagi
 
 const sh = (cmd, args, cwd, opts = {}) =>
   execFileSync(cmd, args, {
@@ -294,6 +292,7 @@ async function main(argv) {
   const ri = argv.indexOf('--report');
   const reportPath = ri >= 0 ? resolve(argv[ri + 1]) : null;
   const results = {};
+  const packages = [];
   const fail = [];
   const gate = (name, ok, detail) => {
     results[name] = { ok, ...detail };
@@ -306,23 +305,51 @@ async function main(argv) {
 
   const work = mkdtempSync(join(tmpdir(), 'facemorph-consumer-gates-'));
   try {
-    const packs = join(work, 'packs');
-    mkdirSync(packs);
+    const packs = join(reportPath ? dirname(reportPath) : work, 'packs');
+    mkdirSync(packs, { recursive: true });
     const tarballs = PACKAGES.map((p) => ({ ...p, tarball: pack(join(ROOT, p.dir), packs) }));
     for (const t of tarballs) {
       const pkg = JSON.parse(readFileSync(join(ROOT, t.dir, 'package.json'), 'utf8'));
       t.name = pkg.name;
+      const bytes = readFileSync(t.tarball);
+      const identity = {
+        name: t.name,
+        file: t.tarball.slice(packs.length + 1),
+        sha256: sha(bytes),
+        integrity: `sha512-${createHash('sha512').update(bytes).digest('base64')}`,
+      };
+      packages.push(identity);
       if (!t.profile) continue;
       const scan = scanInput({ profile: loadProfile(t.profile), input: t.tarball });
-      const blocking = scan.findings.filter((f) => !PROVISIONAL_RULES.has(f.rule));
+      if (scan.inputSha256 !== identity.sha256)
+        throw Error(`scanner read different tarball bytes for ${t.name}`);
+      if (reportPath) {
+        const scanDir = join(dirname(reportPath), 'scan');
+        mkdirSync(scanDir, { recursive: true });
+        identity.scanReport = `scan/${t.profile}.json`;
+        writeFileSync(
+          join(dirname(reportPath), identity.scanReport),
+          `${JSON.stringify(
+            {
+              scanVersion: SCAN_VERSION,
+              profile: t.profile,
+              input: t.tarball,
+              ...scan,
+              outcome: scan.findings.length ? 'findings' : 'clean',
+            },
+            null,
+            2,
+          )}\n`,
+        );
+      }
       // Advisory unless --strict-scan: the scan's profiles belong to fm-1jr7/fm-3osh, and today they flag names
       // the packages keep on purpose (checkface-* storage keys, the manager's ORT adapter). Reported either way.
-      gate(`scan:${t.name}`, strictScan ? blocking.length === 0 : true, {
+      gate(`scan:${t.name}`, strictScan ? scan.findings.length === 0 : true, {
         advisory: !strictScan,
-        clean: blocking.length === 0,
+        clean: scan.findings.length === 0,
         files: scan.files.length,
-        blocking,
-        provisional: scan.findings.filter((f) => PROVISIONAL_RULES.has(f.rule)).map((f) => f.path),
+        blocking: scan.findings,
+        ...identity,
       });
     }
 
@@ -472,10 +499,17 @@ async function main(argv) {
   } finally {
     if (!keep) rmSync(work, { recursive: true, force: true });
   }
-  const summary = { event: 'package-consumer-gates', ok: fail.length === 0, failed: fail };
+  const summary = {
+    event: 'package-consumer-gates',
+    ok: fail.length === 0,
+    failed: fail,
+    packages,
+  };
   emit(summary);
-  if (reportPath)
+  if (reportPath) {
+    mkdirSync(dirname(reportPath), { recursive: true });
     writeFileSync(reportPath, `${JSON.stringify({ ...summary, results }, null, 2)}\n`);
+  }
   return fail.length === 0 ? 0 : 1;
 }
 

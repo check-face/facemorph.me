@@ -91,6 +91,26 @@ function run(profile, input) {
 const scan = (profile, files) =>
   run(profile, profile === 'model-conv-context' ? directory(files) : tarball(files));
 
+// Exact public/compatibility text from the manager's emitted package. These are planted tarball inputs,
+// not a hostname/name allowlist: mutations and the same text outside its documented file scope must fail.
+const managerPublic = {
+  'dist/cache/model-cache.js': `export const MODEL_CACHE_NAME = 'checkface-model-blobs-v1';
+// When a mirror is known (models.facemorph.me, R2: separate storage), retry it.
+const origin = typeof location === 'object' ? location.origin : 'https://next.facemorph.me';
+const headers = { 'X-CheckFace-SHA256': asset.sha256 };\n`,
+  'dist/cache/model-cache.d.ts':
+    'export declare const MODEL_CACHE_NAME = "checkface-model-blobs-v1";\n',
+  'dist/cache/shard-store.js': "export const SHARD_DIRECTORY = 'checkface-model-shards-v1';\n",
+  'dist/cache/shard-store.d.ts':
+    'export declare const SHARD_DIRECTORY = "checkface-model-shards-v1";\n',
+  'dist/contracts/lifecycle.js': '// (checkface-model-blobs-v1) stays compatible.\n',
+  'dist/contracts/manifest.js':
+    '// Shape (the candidate runtime manifest, next.facemorph.me /runtime/manifest.json, SHA-256 d9e37e50…).\n',
+  'schema/model-manifest.v1.schema.json': JSON.stringify({
+    $id: 'https://github.com/facemorph-me/facemorph.me/blob/main/packages/browser-model-manager/schema/model-manifest.v1.schema.json',
+  }),
+};
+
 describe('clean fixtures pass', () => {
   for (const profile of PROFILES) {
     test(profile, () => {
@@ -122,6 +142,12 @@ describe('clean fixtures pass', () => {
     assert.equal(r.status, 0, r.stdout);
   });
 
+  test('manager classifies its exact public defaults, schema ID and compatible storage identities', () => {
+    const r = scan('browser-model-manager', { ...packageBase(), ...managerPublic });
+    assert.equal(r.status, 0, r.stdout + r.stderr);
+    assert.deepEqual(r.report.findings, []);
+  });
+
   test('an oversize runtime .wasm is on the allowlist', () => {
     const r = scan('stylegan-js', {
       ...packageBase(),
@@ -135,6 +161,127 @@ describe('clean fixtures pass', () => {
     assert.ok(r.report.files.every((f) => !f.path.startsWith('package/')));
     assert.ok(r.report.files.some((f) => f.path === 'dist/index.js'));
   });
+});
+
+describe('manager public classifications do not admit private near misses', () => {
+  const cache = 'dist/cache/model-cache.js';
+  const contract = 'dist/contracts/manifest.js';
+  const schema = 'schema/model-manifest.v1.schema.json';
+  const misses = [
+    ['storage suffix', cache, managerPublic[cache].replace('blobs-v1', 'blobs-v1-private')],
+    ['storage private host', cache, managerPublic[cache].replace('blobs-v1', 'blobs-v1.internal')],
+    ['storage private path', cache, managerPublic[cache].replace('blobs-v1', 'blobs-v1/private')],
+    [
+      'storage Windows path',
+      cache,
+      managerPublic[cache].replace('blobs-v1', 'blobs-v1\\\\private'),
+    ],
+    ['storage query suffix', cache, managerPublic[cache].replace('blobs-v1', 'blobs-v1?private')],
+    ['storage prefix', cache, managerPublic[cache].replace('checkface-', 'private-checkface-')],
+    ['shard suffix', 'dist/cache/shard-store.js', "const x = 'checkface-model-shards-v1-private';"],
+    [
+      'header suffix',
+      cache,
+      managerPublic[cache].replace('X-CheckFace-SHA256', 'X-CheckFace-SHA256-private'),
+    ],
+    [
+      'header private path',
+      cache,
+      managerPublic[cache].replace('X-CheckFace-SHA256', 'X-CheckFace-SHA256/private'),
+    ],
+    [
+      'header different context',
+      cache,
+      managerPublic[cache].replace('asset.sha256', 'privateMetadata'),
+    ],
+    ['wrong file', 'dist/private.js', managerPublic[cache]],
+    [
+      'mirror private host',
+      cache,
+      managerPublic[cache].replace('models.facemorph.me', 'private.models.facemorph.me'),
+    ],
+    [
+      'mirror suffix',
+      cache,
+      managerPublic[cache].replace('models.facemorph.me', 'models.facemorph.me.private'),
+    ],
+    [
+      'mirror private path',
+      cache,
+      managerPublic[cache].replace('models.facemorph.me', 'models.facemorph.me/private'),
+    ],
+    [
+      'default private host',
+      cache,
+      managerPublic[cache].replace('https://next.', 'https://private.next.'),
+    ],
+    [
+      'default suffix',
+      cache,
+      managerPublic[cache].replace(
+        'https://next.facemorph.me',
+        'https://next.facemorph.me.private',
+      ),
+    ],
+    [
+      'default private path',
+      cache,
+      managerPublic[cache].replace(
+        'https://next.facemorph.me',
+        'https://next.facemorph.me/private',
+      ),
+    ],
+    ['contract private host', contract, managerPublic[contract].replace('next.', 'private.next.')],
+    [
+      'contract private path',
+      contract,
+      managerPublic[contract].replace('/runtime/', '/private/runtime/'),
+    ],
+    [
+      'schema private path',
+      schema,
+      managerPublic[schema].replace('/blob/main/', '/blob/main/private/'),
+    ],
+    [
+      'schema private host',
+      schema,
+      managerPublic[schema].replace('github.com/', 'private.facemorph.me/'),
+    ],
+    ['other private reference', cache, managerPublic[cache] + '\n// ported from checkface\n'],
+  ];
+  for (const [name, file, content] of misses) {
+    test(name, () => {
+      const r = scan('browser-model-manager', {
+        ...packageBase(),
+        ...managerPublic,
+        [file]: content,
+      });
+      assert.equal(r.status, 1, r.stdout + r.stderr);
+      assert.ok(r.report.findings.some((f) => f.rule === 'private-provenance' && f.path === file));
+    });
+  }
+
+  for (const [name, mutation, rule] of [
+    [
+      'secret',
+      { 'dist/cache/model-cache.js': managerPublic[cache] + `\n// ${NPM_TOKEN}\n` },
+      'secret-npm-token',
+    ],
+    [
+      'absolute private path',
+      { 'dist/cache/model-cache.js': managerPublic[cache] + '\nconst p = "/home/private/repo";\n' },
+      'absolute-path',
+    ],
+    ['repository path', { 'apps/private.js': managerPublic[cache] }, 'repository-path'],
+    ['weights', { 'dist/model.onnx': 'not really onnx' }, 'weights-extension'],
+    ['required licence', { LICENSE: null }, 'required-file'],
+  ]) {
+    test(`classification preserves ${name} rejection`, () => {
+      const r = scan('browser-model-manager', { ...packageBase(), ...managerPublic, ...mutation });
+      assert.equal(r.status, 1, r.stdout + r.stderr);
+      assert.ok(r.report.findings.some((f) => f.rule === rule));
+    });
+  }
 });
 
 describe('report shape', () => {

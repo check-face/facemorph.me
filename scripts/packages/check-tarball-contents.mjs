@@ -185,11 +185,11 @@ export function evaluate({ profile, files }) {
 
     const scope = profile.provenanceScope;
     if (scope === 'all' || (scope === 'non-docs' && !isDoc)) {
-      // A profile may name exact persisted identifiers that must keep a private name (each with its reason); they
-      // are removed before the provenance patterns run, so any other mention in the same file still fails.
+      // Profiles classify exact compatibility identifiers/public defaults, with their reasons and optional
+      // shipped-file scope. Only these matches are removed; other provenance in the same file still fails.
       let provText = text;
       for (const a of profile.provenanceAllow ?? [])
-        provText = provText.replace(rx(a.pattern, 'g'), '');
+        if (!a.files || rx(a.files).test(path)) provText = provText.replace(rx(a.pattern, 'g'), '');
       for (const h of sh.productionHostnames) {
         const m = rx(h, 'i').exec(provText);
         if (m)

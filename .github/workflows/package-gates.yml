@@ -23,23 +23,14 @@ jobs:
       - uses: ./.github/actions/setup-workspace # node_modules for the lockfile, shared on the runner (fm-98po)
       - name: Gate unit tests (boundaries, side-effect sandbox, packed imports; seeded alias and side effect fail)
         run: node --test 'scripts/packages/consumer-gates/*.test.mjs'
+      - name: package-tarball-content-scan self-test (fm-1jr7)
+        run: node --test scripts/packages/check-tarball-contents.test.mjs
       - name: Consumer gates for all four packages
         run: |
           set -euo pipefail
           mkdir -p test-results/package-gates
-          node scripts/packages/consumer-gates/run.mjs --report test-results/package-gates/report.json
-      - name: package-tarball-content-scan self-test (fm-1jr7)
-        run: node --test scripts/packages/check-tarball-contents.test.mjs
-      - name: Scan the packed stylegan-js tarball (fm-1jr7, fm-oagi)
-        run: |
-          set -euo pipefail
-          d=test-results/package-gates/scan; mkdir -p "$d"
-          # The build writes the package's PROVENANCE.json beside its LICENSE and THIRD_PARTY_NOTICES.
-          npm run build -w packages/stylegan-js
-          npm pack -w packages/stylegan-js --pack-destination "$d"
-          # Exit 0 only when every rule is clean, the required files included; 1 lists findings, 2 is a usage error.
-          node scripts/packages/check-tarball-contents.mjs --profile stylegan-js \
-            --input "$d/facemorph-stylegan-js-0.0.0.tgz" --report "$d/stylegan-js.json"
+          # Scan exactly the packs installed by the external consumer; retain each pack, canonical scan and integrity.
+          node scripts/packages/consumer-gates/run.mjs --strict-scan --report test-results/package-gates/report.json
       - name: npm name check and API reference self-tests (fm-tohj)
         run: node --test scripts/packages/npm-names.test.mjs scripts/packages/api-reference.test.mjs
       - name: API reference matches the emitted declarations (fm-tohj)

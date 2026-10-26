@@ -31,7 +31,7 @@
       "anyOf": ["^PROVENANCE\\.json$"]
     }
   ],
-  "description": "Verified model download/cache manager. No engine or inference code, no FaceMorph catalogue or hostnames.",
+  "description": "Verified model download/cache manager. No engine/inference code or FaceMorph catalogue; exact public documentation/defaults and persisted storage identities are classified below, never private hostnames or repository paths.",
   "provenanceScope": "all",
   "contentRules": [
     {
@@ -132,5 +132,42 @@
     ],
     "r2BucketNames": ["facemorph-diagnostics"],
     "r2BucketPatterns": ["bucket[_\\s-]*(?:name)?[\"'\\s:=]+facemorph-[a-z0-9-]+"]
-  }
+  },
+  "provenanceAllow": [
+    {
+      "files": "^dist/(?:cache/model-cache\\.(?:js|d\\.ts)|contracts/lifecycle\\.js)$",
+      "pattern": "([\"\\x27])checkface-model-blobs-v1\\1|\\(checkface-model-blobs-v1\\)",
+      "reason": "MODEL_CACHE_NAME and lifecycle compatibility documentation: the existing on-device Cache Storage identity must survive package extraction without losing cached model bytes."
+    },
+    {
+      "files": "^dist/cache/shard-store\\.(?:js|d\\.ts)$",
+      "pattern": "([\"\\x27])checkface-model-shards-v1\\1",
+      "reason": "SHARD_DIRECTORY: the existing OPFS directory identity must survive package extraction without orphaning verified model chunks."
+    },
+    {
+      "files": "^dist/cache/model-cache\\.js$",
+      "pattern": "([\"\\x27])X-CheckFace-SHA256\\1(?=:\\s*asset\\.sha256\\b)",
+      "reason": "Existing verified Cache Storage response header: its exact SHA-256 metadata key is compatibility data, not a private service or repository reference."
+    },
+    {
+      "files": "^dist/cache/model-cache\\.js$",
+      "pattern": "\\(models\\.facemorph\\.me, R2: separate storage\\)",
+      "reason": "Public mirror example in the retry-policy comment, not a private service or a hardcoded acquisition request."
+    },
+    {
+      "files": "^dist/cache/model-cache\\.js$",
+      "pattern": "([\\\"\\x27])https://next\\.facemorph\\.me\\1",
+      "reason": "Public fallback origin for cache keys outside a Window; construction/status performs no request to this origin."
+    },
+    {
+      "files": "^dist/contracts/manifest\\.js$",
+      "pattern": "(?<=candidate runtime manifest, )next\\.facemorph\\.me /runtime/manifest\\.json, SHA-256",
+      "reason": "Public candidate-runtime shape documentation in the manifest contract; no private deployment path or model catalogue."
+    },
+    {
+      "files": "^schema/model-manifest\\.v1\\.schema\\.json$",
+      "pattern": "\"\\$id\":\\s*\"https://github\\.com/facemorph-me/facemorph\\.me/blob/main/packages/browser-model-manager/schema/model-manifest\\.v1\\.schema\\.json\"",
+      "reason": "Public producer-contract schema $id, identifying this exact published schema in the public repository."
+    }
+  ]
 }
