@@ -1,5 +1,6 @@
-// The ported latent identity against the control: the candidate's own identity.mjs (apps/web/src/Next/browser, as
-// imported from classic a42829b) and its fixture digests. Plain values in, plain values out.
+// The ported latent identity against the control: the candidate's own identity.mjs, frozen in
+// test/vectors/candidate-control as apps/web ran it before fm-7f2o made the app copy an adapter over this package,
+// and its fixture digests (apps/web/src/Next/browser/identity-fixtures.json). Plain values in, plain values out.
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
@@ -14,7 +15,8 @@ import {
 } from '../../src/engine/identity.ts';
 import { acquiredManifest } from './support/runtime.ts';
 
-const CONTROL = '../../../../apps/web/src/Next/browser/';
+const CONTROL = '../vectors/candidate-control/browser/';
+const FIXTURES = '../../../../apps/web/src/Next/browser/identity-fixtures.json';
 const control = (await import(CONTROL + 'identity.mjs')) as {
   inputLatent(mode: string, value: string): Promise<{ values: Float32Array; identity: unknown }>;
   truncate(w: Float32Array, a: Float32Array, psi?: number, cutoff?: number): Float32Array;
@@ -22,9 +24,7 @@ const control = (await import(CONTROL + 'identity.mjs')) as {
   generationIdentity(manifest: unknown, kind: string): unknown;
   randomState(seed: number | number[]): { normal(): number };
 };
-const fixtures = JSON.parse(
-  readFileSync(new URL(CONTROL + 'identity-fixtures.json', import.meta.url), 'utf8'),
-) as {
+const fixtures = JSON.parse(readFileSync(new URL(FIXTURES, import.meta.url), 'utf8')) as {
   cases: { mode: 'seed' | 'text'; value: string; sha256: string }[];
 };
 const digest = (a: Float32Array) =>
