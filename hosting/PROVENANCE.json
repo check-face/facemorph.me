@@ -246,8 +246,8 @@
       "size": 1224,
       "sha256": "9f22ee195c64c31c2a2b30185768143d63f3b80c25051a0cc56559dff71c8894",
       "ported": {
-        "sha256": "fa91f41cd9e59d91bd44d2a79ab556eacec0a9defea0c1212cc66f892918efbd",
-        "bytes": 1981,
+        "sha256": "0255124c381dbecd7bc0b738d6e64ca353c8c6dde63740e9ce6ed83b767bed75",
+        "bytes": 1910,
         "bead": "fm-qoc3",
         "reason": "Licence notice: @ffmpeg/core is served from this site's own pinned runtime files, not fetched from the publisher's CDN. fm-qoc3: the model terms list (NVIDIA licence-NC and StyleGAN2-ADA, FFHQ terms, e4e MIT) generated from import/licences.json by scripts/inventory/model-licences.mjs, the dlib notice anchored, the runtime notices under their own heading."
       }

@@ -8,15 +8,15 @@ export interface ModelLicence {
 
 export const MODEL_LICENCES: readonly ModelLicence[] = [
   {
-    title: 'NVIDIA Source Code License-NC (StyleGAN2 model)',
+    title: 'NVIDIA StyleGAN2 licence',
     href: '/runtime/notices/NVIDIA-StyleGAN2-NC.txt',
   },
   {
-    title: 'NVIDIA Source Code License (StyleGAN2-ADA conversion code)',
+    title: 'NVIDIA StyleGAN2-ADA licence',
     href: '/runtime/notices/NVIDIA-StyleGAN2-ADA.txt',
   },
   {
-    title: 'FFHQ dataset terms (CC BY-NC-SA 4.0)',
+    title: 'FFHQ dataset terms',
     href: '/runtime/notices/FFHQ-terms.txt',
   },
   {

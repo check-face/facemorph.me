@@ -356,12 +356,12 @@
       "notices": [
         {
           "file": "hosting/next/notices/NVIDIA-StyleGAN2-NC.txt",
-          "title": "NVIDIA Source Code License-NC (StyleGAN2 model)",
+          "title": "NVIDIA StyleGAN2 licence",
           "upstream": "https://github.com/NVlabs/stylegan2/blob/master/LICENSE.txt"
         },
         {
           "file": "hosting/next/notices/NVIDIA-StyleGAN2-ADA.txt",
-          "title": "NVIDIA Source Code License (StyleGAN2-ADA conversion code)",
+          "title": "NVIDIA StyleGAN2-ADA licence",
           "upstream": "https://github.com/NVlabs/stylegan2-ada-pytorch/blob/main/LICENSE.txt"
         }
       ]
@@ -422,7 +422,7 @@
       "notices": [
         {
           "file": "hosting/next/notices/FFHQ-terms.txt",
-          "title": "FFHQ dataset terms (CC BY-NC-SA 4.0)",
+          "title": "FFHQ dataset terms",
           "upstream": "https://github.com/NVlabs/ffhq-dataset#licenses"
         }
       ]

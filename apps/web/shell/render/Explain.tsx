@@ -154,7 +154,9 @@ export function Explain({ route = '', reference = '' }: { route?: string; refere
         <ul className="next-privacy-requests next-model-licences">
           {MODEL_LICENCES.map((l) => (
             <li key={l.href}>
-              <a href={l.href}>{l.title}</a>
+              <a href={l.href} style={{ display: 'inline-block' }}>
+                {l.title}
+              </a>
             </li>
           ))}
         </ul>
