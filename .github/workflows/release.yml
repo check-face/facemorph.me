@@ -293,12 +293,16 @@ jobs:
           origin=$(node -p "require('./hosting/publish-targets.json').targets['${{ inputs.target }}'].site.origin")
           echo "ORIGIN=$origin" >> "$GITHUB_ENV"
           node scripts/delivery/post-delivery-check.mjs --mode app --host "$(node -p "new URL('$origin').host")" | tee -a "$GITHUB_STEP_SUMMARY"
-      - name: Journeys on the live site
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ env.ARTIFACT }}
+          path: artifact
+      - name: Journeys on the live site, once it serves this artifact byte for byte
         working-directory: tools/device-lab
         run: |
           set -euo pipefail
-          uv run --quiet --with playwright python lab.py matrix --url "$ORIGIN" --journey cold-face,warm-face,morph \
-            --label "live-$GITHUB_RUN_ID" | tee -a "$GITHUB_STEP_SUMMARY"
+          uv run --quiet --with playwright python lab.py matrix --url "$ORIGIN" --deployed "$GITHUB_WORKSPACE/artifact" \
+            --journey cold-face,warm-face,morph --label "live-$GITHUB_RUN_ID" | tee -a "$GITHUB_STEP_SUMMARY"
       - name: Leave the devices in their resting state
         if: always()
         working-directory: tools/device-lab

@@ -247,6 +247,13 @@ buildId:'test-input',sourceTreeSha256:'b'.repeat(64),sourceTreeClean:true}});"""
             self.assertEqual(evidence['digest'], hashlib.sha256(''.join(lines).encode()).hexdigest())
             with self.assertRaisesRegex(ValueError, 'not expected'):
                 lab.artifact_evidence(artifact, '0' * 64)
+            site = {'https://x.test/' + p.relative_to(artifact / 'deploy-next').as_posix(): p.read_bytes()
+                    for p in (artifact / 'deploy-next').rglob('*') if p.is_file()}
+            served = lab.deployed_evidence(artifact, 'https://x.test', evidence['digest'], site.__getitem__)
+            self.assertEqual((served['digest'], served['kind']), (evidence['digest'], 'deployed'))
+            site['https://x.test/index.html'] = b'the previous build'
+            with self.assertRaisesRegex(ValueError, '1 files differ, e.g. index.html'):
+                lab.deployed_evidence(artifact, 'https://x.test', None, site.__getitem__)
             (artifact / 'deploy-next/index.html').write_text('different actual bytes')
             with self.assertRaises(subprocess.CalledProcessError):
                 lab.artifact_evidence(artifact)

@@ -86,6 +86,35 @@ console.log(JSON.stringify(identity));"""
             'directory': str(root / 'deploy-next'), 'files': identity['files']}
 
 
+HOSTING_CONFIG = {'_headers', '_redirects'}  # read by the host, never served
+
+
+def fetch_bytes(url):
+    import urllib.request
+    req = urllib.request.Request(url, headers={'Cache-Control': 'no-cache', 'User-Agent': 'facemorph-device-lab'})
+    with urllib.request.urlopen(req, timeout=60) as r:
+        return r.read()
+
+
+def deployed_evidence(artifact, url, expected=None, fetch=fetch_bytes):
+    """The artifact's digest, bound to a live URL only when that URL serves every one of its files byte for byte."""
+    evidence = artifact_evidence(artifact, expected)
+    base, differ = url.rstrip('/') + '/', []
+    for f in evidence['files']:
+        rel = f['path'].removeprefix('deploy-next/')
+        if rel == f['path'] or rel in HOSTING_CONFIG:
+            continue
+        try:
+            served = hashlib.sha256(fetch(base + rel)).hexdigest()
+        except Exception as e:
+            served = str(e)
+        if served != f['sha256']:
+            differ.append(rel)
+    if differ:
+        raise ValueError(f'{url} does not serve this artifact: {len(differ)} files differ, e.g. {", ".join(differ[:5])}')
+    return {**evidence, 'kind': 'deployed', 'url': url}
+
+
 def validate_journeys(value):
     names = value.split(',')
     unknown = set(names) - set(REGISTRY)
@@ -1341,8 +1370,11 @@ def run_matrix(args):
     validate_journeys(args.journey)  # refuse before locks, browser/device I/O or an empty success report
     if args.repeat < 1:
         raise ValueError('repeat must be at least 1')
-    if getattr(args, 'artifact_digest', None) and not args.artifact:
-        raise ValueError('--artifact-digest needs --artifact; deployed artifact attestation is not implemented')
+    deployed = getattr(args, 'deployed', None)
+    if args.artifact and deployed:
+        raise ValueError('--artifact serves a build locally; --deployed checks the one the URL serves; pass one')
+    if getattr(args, 'artifact_digest', None) and not (args.artifact or deployed):
+        raise ValueError('--artifact-digest needs --artifact or --deployed')
     import signal
     signal.signal(signal.SIGTERM, _terminate)
     signal.signal(signal.SIGHUP, _terminate)
@@ -1360,6 +1392,8 @@ def run_matrix(args):
                     reports.append(run_cell_retrying(c, args, out))
         else:
             args.local = False
+            if deployed:
+                args.artifact_evidence = deployed_evidence(deployed, args.url, getattr(args, 'artifact_digest', None))
             for c in cells:
                 reports.append(run_cell_retrying(c, args, out))
     title = f'Device lab: {args.label} ({args.url})'
@@ -1386,6 +1420,7 @@ def main():
     def common(p, default_journey):
         p.add_argument('--url', default='https://next.facemorph.me/')
         p.add_argument('--artifact', help='serve this exact candidate artifact locally under the production origin')
+        p.add_argument('--deployed', help='the artifact --url should serve: every file is fetched and compared before the run')
         p.add_argument('--artifact-digest', help='require this integrated-verification artifact SHA256')
         p.add_argument('--runtime-sha', help='runtime manifest SHA256 for --artifact (fails closed if it differs)')
         p.add_argument('--journey', default=default_journey)
