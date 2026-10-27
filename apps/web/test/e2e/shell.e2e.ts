@@ -48,7 +48,7 @@ const CASES = [
   {
     id: 'strip-issue',
     selector: 'aside.next-preview-strip a[target="_blank"]',
-    href: /^https:\/\/github\.com\/facemorph-me\/facemorph\.me\/issues\/new\?template=next-facemorph\.yml&/,
+    href: /^https:\/\/github\.com\/facemorph-me\/facemorph\.me\/issues\/new\?template=bug-report\.yml&/,
   },
   {
     id: 'header-home',
@@ -68,7 +68,7 @@ const CASES = [
   {
     id: 'footer-issue',
     selector: 'footer.next-footer a[target="_blank"]',
-    href: /^https:\/\/github\.com\/facemorph-me\/facemorph\.me\/issues\/new\?template=next-facemorph\.yml&/,
+    href: /^https:\/\/github\.com\/facemorph-me\/facemorph\.me\/issues\/new\?template=bug-report\.yml&/,
   },
   {
     id: 'footer-notices',

@@ -739,7 +739,7 @@ export function issueUrl(route){
  const status=diagnostics.status(),reference=status.enabled||status.once?status.reference||'':'';
  const version=sourceVersion(),device=String(globalThis.navigator?.userAgent||'').slice(0,300),path=String(globalThis.location?.pathname||'/');
  const summary=['Site: next.facemorph.me'+path,'Version: '+version,'Device: '+device,'Processing: '+(route||'not started yet'),'Report reference: '+(reference||'none')].join('\n');
- const params=new URLSearchParams({template:'next-facemorph.yml',labels:'next.facemorph.me',title:'[next] ',version,device,route:route||'not started yet',reference:reference||'none',
+ const params=new URLSearchParams({template:'bug-report.yml',labels:'next.facemorph.me',title:'[next] ',version,device,route:route||'not started yet',reference:reference||'none',
   body:'**What happened?**\n\n\n**What did you expect?**\n\n\n---\n'+summary});
  return ISSUE_REPO+'?'+params.toString();
 }

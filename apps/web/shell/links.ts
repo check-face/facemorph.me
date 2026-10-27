@@ -57,7 +57,7 @@ export function issueUrl({
     `Report reference: ${reference || 'none'}`,
   ].join('\n');
   const params = new URLSearchParams({
-    template: 'next-facemorph.yml',
+    template: 'bug-report.yml', // .github/ISSUE_TEMPLATE/bug-report.yml (classic's next-facemorph.yml)
     labels: 'next.facemorph.me',
     title: '[next] ',
     version,

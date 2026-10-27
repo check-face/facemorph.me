@@ -32,3 +32,10 @@ test('issue context contains coarse classes and public identifiers, never conten
     assert.ok(!decodeURIComponent(invalid).includes(secret));
   }
 });
+
+test('the issue link opens the repository bug-report template that exists', async () => {
+  const { existsSync } = await import('node:fs');
+  const template = new URL(issueUrl({})).searchParams.get('template');
+  assert.equal(template, 'bug-report.yml');
+  assert.ok(existsSync(new URL(`../../../../.github/ISSUE_TEMPLATE/${template}`, import.meta.url)));
+});
