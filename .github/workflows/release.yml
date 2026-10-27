@@ -118,21 +118,17 @@ jobs:
 
   engine:
     name: engine numerics on the verified runtime (full31, CPU and browser routes)
-    runs-on: ubuntu-latest
+    # Real hardware: the browser routes need eris's memory (a 16 GB hosted runner's in-memory storage quota
+    # cannot hold the 1.1 GB encoder: QuotaExceededError in run 40488827815 with 108 GB of disk free).
+    runs-on: [self-hosted, device-lab]
     timeout-minutes: 60
     steps:
-      - name: Free disk for browser storage quota (preinstalled toolchains this job never uses)
-        run: |
-          df -h / | tail -1
-          sudo find /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/.ghcup /opt/hostedtoolcache/CodeQL -depth -delete 2>/dev/null || true
-          df -h / | tail -1
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-          cache: npm
       - run: npm ci && npm run build
-      - run: npx playwright install --with-deps chromium firefox webkit
+      - run: npx playwright install chromium firefox webkit
       - uses: ./.github/actions/setup-runtime
       - name: The stylegan-js suite in full, including the measured inference files check.yml defers
         run: |
