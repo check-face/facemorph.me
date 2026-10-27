@@ -69,11 +69,13 @@ const OBSERVE = `(() => {
       for (const e of list.getEntries()) nw.longTasks.push({ t: performance.timeOrigin + e.startTime, ms: e.duration });
     }).observe({ type: 'longtask', buffered: true });
   } catch {}
-  // The person's answers to the consent toast and the download dialog; the time they stay up is a scripted wait.
+  // The person's answers to the consent toast, the download dialog and (builds only) the confirmed-crop OK; the time
+  // they stay up is a scripted wait.
   const seen = new Map();
   setInterval(() => {
     const targets = [
       document.querySelector('.next-download-dialog .next-download-accept'),
+      document.querySelector('.next-encode-dialog .next-encode-confirmation .next-encode-ok'),
       document.querySelector('.next-consent-toast button[aria-label="Ask me later"]'),
       [...document.querySelectorAll('.next-model-toast button')].find((b) => b.textContent.trim() === 'Not now'),
     ];
@@ -262,8 +264,9 @@ async function execute(opts: {
     const p = page;
     let navigations = 0;
     let scripted = 0;
-    p.on('framenavigated', ((frame: unknown) => {
-      if (frame !== p.mainFrame()) return;
+    // A reload is a new document. framenavigated also fires for same-document history entries, which the build's
+    // dialogs push and pop (Back closes a dialog), so only document loads are counted.
+    p.on('domcontentloaded', (() => {
       navigations++;
       if (navigations > scripted)
         events.push({ t: rel(Date.now()), kind: 'reload', detail: 'unscripted navigation' });
@@ -419,8 +422,11 @@ async function execute(opts: {
 
       const photoBefore = await srcOf(1);
       const stamp = Date.now();
+      // The control's photo input is 'Choose photo'; the build's face card is the entry, 'Encode image' (fm-25um).
       await tile(1)
-        .locator('input[aria-label="Choose photo"]')
+        .locator(
+          'input[type="file"][aria-label="Choose photo"], input[type="file"][aria-label="Encode image"]',
+        )
         .last()
         .setInputFiles({ name: 'photo.webp', mimeType: 'image/webp', buffer: opts.photo });
       events.push({
@@ -472,6 +478,10 @@ const { values: opt } = parseArgs({
     'build-digest': { type: 'string' },
     'build-source': { type: 'string' },
     pairs: { type: 'string', default: '5' },
+    // Adaptive (fm-mc27): with --margins (a JSON {measure: margin} from the cell's control/control run), inconclusive
+    // measures get more pairs, two at a time, up to --max-pairs (default the gate's MAX_PAIRS).
+    'max-pairs': { type: 'string' },
+    margins: { type: 'string' },
     provider: { type: 'string', default: 'cpu' },
     browser: { type: 'string', default: 'chromium' },
     label: { type: 'string' },
@@ -574,7 +584,7 @@ if (gate) {
   process.exit(0);
 }
 
-for (const run of schedule) {
+async function runOne(run: (typeof schedule)[number]): Promise<void> {
   const art = run.side === 'control' ? control : build;
   const digest = art.treeSha256 as string;
   const selectors = digest === control.treeSha256 ? CONTROL_SELECTORS : BUILD_SELECTORS;
@@ -641,7 +651,12 @@ for (const run of schedule) {
       2,
     ) + '\n',
   );
-  results.push({ run, file: `${id}.json`, values: m.values, failure: r.trace.failure });
+  results.push({
+    run,
+    file: `${id}.json`,
+    values: { ...m.values, bytesFirst: m.bytes.first, bytesReturn: m.bytes.return },
+    failure: r.trace.failure,
+  });
   console.log(
     JSON.stringify({
       cell: cellName,
@@ -653,6 +668,59 @@ for (const run of schedule) {
     }),
   );
 }
+for (const run of schedule) await runOne(run);
+
+// Adaptive pairs: while a measure is inconclusive and the cell is under the maximum, run two more ABBA pairs.
+const nw = (await import(new URL('../not-worse.mjs', import.meta.url).href)) as {
+  MAX_PAIRS: number;
+  extendPlan(o: object): { verdicts: Record<string, Record<string, unknown>>; more: number };
+};
+const margins: Record<string, number> | null = opt.margins
+  ? JSON.parse(readFileSync(opt.margins, 'utf8'))
+  : null;
+const maxPairs = Number(opt['max-pairs'] ?? nw.MAX_PAIRS);
+let pairsRun = Number(opt.pairs);
+/** Each measure's {control, candidate} pairs from the finished, unfailed runs. */
+const paired = () => {
+  const byPair = new Map<number, Record<string, (typeof results)[number]>>();
+  for (const r of results)
+    if (r.run.pair !== null && !r.failure)
+      byPair.set(r.run.pair, { ...byPair.get(r.run.pair), [r.run.side]: r });
+  return Object.fromEntries(
+    Object.entries(margins ?? {}).map(([name, noise]) => [
+      name,
+      {
+        noise,
+        pairs: [...byPair.values()].flatMap((p) => {
+          const control = p['control']?.values[name],
+            candidate = p['build']?.values[name];
+          return typeof control === 'number' &&
+            control > 0 &&
+            typeof candidate === 'number' &&
+            candidate > 0
+            ? [{ control, candidate }]
+            : [];
+        }),
+      },
+    ]),
+  );
+};
+let plan = margins ? nw.extendPlan({ measures: paired(), maxPairs }) : null;
+while (plan && plan.more > 0 && pairsRun < maxPairs) {
+  const more = Math.min(plan.more, maxPairs - pairsRun);
+  console.log(JSON.stringify({ cell: cellName, adaptive: { pairs: pairsRun, more } }));
+  for (const run of abbaSchedule(pairsRun + more).filter(
+    (r) => r.pair !== null && r.pair >= pairsRun,
+  ))
+    await runOne(run);
+  pairsRun += more;
+  plan = nw.extendPlan({ measures: paired(), maxPairs });
+}
+if (plan) {
+  const adaptive = { pairs: pairsRun, maxPairs, margins, verdicts: plan.verdicts };
+  writeFileSync(join(out, 'adaptive.json'), JSON.stringify(adaptive, null, 2) + '\n');
+  console.log(JSON.stringify({ cell: cellName, adaptive }));
+}
 rmSync(join(out, 'profiles'), { recursive: true, force: true });
 
 // Per-measure medians per side, the raw paired values, the per-pair ratio spread and, for control/control, the cell's
@@ -663,7 +731,7 @@ const { summarizeDir } = (await import(new URL('./summary.mjs', import.meta.url)
     extra: object,
   ): { measures: Record<string, { noiseMargin?: number | null }> };
 };
-const summary = summarizeDir(out, { cell: cellName, pairs: Number(opt.pairs), timing });
+const summary = summarizeDir(out, { cell: cellName, pairs: pairsRun, timing });
 console.log(
   JSON.stringify({
     cell: cellName,

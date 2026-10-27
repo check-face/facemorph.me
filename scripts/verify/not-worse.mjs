@@ -15,6 +15,8 @@
 //   unavailable hosted runner is untested and does not block, while a real failure on a hosted lane does.
 
 export const MIN_PAIRS = 5;
+/** Inconclusive measures get more pairs, two at a time to keep ABBA balance, up to this many (orchestrator, 27 Oct). */
+export const MAX_PAIRS = 15;
 
 // Two-sided 95% Student t critical values by degrees of freedom (1..30), then the normal value.
 const T95 = [
@@ -90,15 +92,41 @@ export function measureVerdict({ pairs, noise, trade = null }) {
     if (!cited) throw new Error('a trade names its measure and its PLAN.md citation');
     return { verdict: 'traded', trade, margin, limit, ...interval };
   }
-  if (worse) return { verdict: 'failed', margin, limit, ...interval };
-  if (interval.high <= limit) return { verdict: 'passed', margin, limit, ...interval };
+  // The bound: the largest slowdown (as a fraction) the 95% interval still allows.
+  const bound = Math.max(0, interval.high - 1);
+  if (worse) return { verdict: 'failed', margin, limit, bound, ...interval };
+  if (interval.high <= limit) return { verdict: 'passed', margin, limit, bound, ...interval };
   return {
     verdict: 'inconclusive',
     reason: 'the interval spans the limit',
     margin,
     limit,
+    bound,
     ...interval,
   };
+}
+
+/**
+ * The adaptive plan for one cell: `measures` maps a measure to { pairs, noise, trade }. An inconclusive measure below
+ * `maxPairs` asks for more pairs (`more`, at least `step` and at least up to MIN_PAIRS, never past the maximum); the
+ * cell runs the largest request. At the maximum an inconclusive measure stays inconclusive, with the reason that the
+ * noise is too high and its bound: the largest slowdown its interval cannot exclude.
+ */
+export function extendPlan({ measures, maxPairs = MAX_PAIRS, step = 2 }) {
+  const verdicts = {};
+  let more = 0;
+  for (const [name, m] of Object.entries(measures)) {
+    const v = measureVerdict(m);
+    const n = m.pairs?.length ?? 0;
+    if (v.verdict === 'inconclusive') {
+      if (n < maxPairs)
+        more = Math.max(more, Math.min(maxPairs - n, Math.max(step, MIN_PAIRS - n)));
+      else
+        v.reason = `still inconclusive at the ${maxPairs}-pair maximum: the noise is too high to decide; a slowdown of up to ${((v.bound ?? 0) * 100).toFixed(1)}% is not excluded`;
+    }
+    verdicts[name] = v;
+  }
+  return { verdicts, more };
 }
 
 /** The reliability events that fail a cell when the new build shows them, whatever the timings. */

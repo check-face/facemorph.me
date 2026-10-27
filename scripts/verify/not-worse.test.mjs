@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   cellVerdict,
+  extendPlan,
+  MAX_PAIRS,
   measureVerdict,
   noiseMargin,
   pairedRatios,
@@ -256,4 +258,29 @@ test('release: a real failure on a hosted lane blocks handover; a gain elsewhere
   assert.equal(inconclusive.handover, 'blocked');
   assert.equal(inconclusive.classes['desktop'], 'inconclusive');
   assert.equal(inconclusive.classes['android'], 'passed');
+});
+
+test('adaptive: an inconclusive measure asks for more pairs, two at a time, up to the maximum', () => {
+  const noisy = [1.4, 0.9, 1.3, 0.95, 1.2];
+  const plan = extendPlan({ measures: { warmFace: { pairs: pairsAt(noisy), noise: 0.03 } } });
+  assert.equal(plan.verdicts['warmFace'].verdict, 'inconclusive');
+  assert.equal(plan.more, 2);
+  // Too few pairs asks for at least enough to reach the minimum.
+  assert.equal(extendPlan({ measures: { a: { pairs: pairsAt([1, 1]), noise: 0.03 } } }).more, 3);
+  // A clear result needs nothing more.
+  const clear = extendPlan({ measures: { a: { pairs: pairsAt([1, 1, 1, 1, 1]), noise: 0.03 } } });
+  assert.deepEqual([clear.verdicts['a'].verdict, clear.more], ['passed', 0]);
+  // Never past the maximum.
+  const near = Array.from({ length: MAX_PAIRS - 1 }, (_, i) => (i % 2 ? 1.4 : 0.8));
+  assert.equal(extendPlan({ measures: { a: { pairs: pairsAt(near), noise: 0.03 } } }).more, 1);
+});
+
+test('adaptive: still inconclusive at the maximum stops and reports the bound the noise allows', () => {
+  const wide = Array.from({ length: MAX_PAIRS }, (_, i) => (i % 2 ? 1.5 : 0.75));
+  const plan = extendPlan({ measures: { warmFace: { pairs: pairsAt(wide), noise: 0.03 } } });
+  const v = plan.verdicts['warmFace'];
+  assert.deepEqual([v.verdict, plan.more], ['inconclusive', 0]);
+  assert.match(v.reason, /maximum: the noise is too high/);
+  assert.ok(v.bound > 0.03, String(v.bound));
+  assert.match(v.reason, new RegExp(`${(v.bound * 100).toFixed(1)}%`));
 });
