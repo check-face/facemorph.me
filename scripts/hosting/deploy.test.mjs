@@ -306,10 +306,11 @@ test('workflow: the guard runs before any network step; every deploy runs throug
     'The artifact is the one built',
     'The runtime set',
     'Stage',
-    'Deploy the site',
-    'The live site serves',
+    // The mirror only adds immutable files: it goes first, so the previous build keeps working (the warmed rollback).
     'Deploy the runtime mirror',
     'Warm the runtime mirror',
+    'Deploy the site',
+    'The live site serves',
   ];
   const at = order.map((o) => steps.findIndex((s) => s.startsWith(o)));
   assert.ok(
@@ -319,7 +320,12 @@ test('workflow: the guard runs before any network step; every deploy runs throug
 });
 
 test('workflow: the deploy step needs every qualifying job and publishes only the digest built in this run', () => {
-  assert.match(WORKFLOW, /^ {4}needs: \[build, journeys, engine, lab, timing\]$/m);
+  // The go/no-go (journeys, engine, timing) gates the switch (operator, 28 October 2026).
+  assert.match(WORKFLOW, /^ {4}needs: \[build, gate\]$/m);
+  assert.match(
+    RELEASE,
+    /^ {2}gate:\n {4}needs: \[build, journeys, engine, timing-gate, timing-final\]$/m,
+  );
   const verify = runOf('The artifact is the one built in this run and qualified above');
   // This run's build, or (site=promote) the digest the promoted green run recorded; nothing else is deployable.
   assert.match(

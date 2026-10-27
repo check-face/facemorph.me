@@ -148,9 +148,13 @@ test('check.yml schedules every shard in quick mode; release.yml runs the deferr
     ),
   );
   const engine = read('release').jobs.engine;
+  // The step keeps its log for the failure bundle; the suite and full qualification are what matter.
   assert.ok(
     engine.steps.some(
-      (s) => s.run === 'node scripts/ci/scaffold-test-shards.mjs --workspace packages/stylegan-js',
+      (s) =>
+        s.run?.includes(
+          'node scripts/ci/scaffold-test-shards.mjs --workspace packages/stylegan-js',
+        ) && s.env?.FACEMORPH_FULL_QUALIFY === '1',
     ),
   );
 });

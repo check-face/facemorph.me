@@ -1,13 +1,16 @@
 name: release
-# On demand (the release manager starts it). One build; every later job downloads that artifact and checks its digest
-# before using it. Journeys in Chromium and Firefox on CPU, the six local lab cells on eris, a paired timing check
-# against the pinned control, then the deploy to the chosen target and the same lab journeys against the live site.
-# The run's own log is the record (fm-fy2.11). device.yml covers the hosted devices and never blocks this workflow.
+# Operator gating, 28 October 2026. A go/no-go of about five minutes, all in parallel after one build: the journeys in
+# Chromium and Firefox (sharded), the engine numerics, and the paired CPU timing against the pinned control with early
+# stopping. If it passes, the deploy to the target (the switch, for next). After it, the six cells and the phone pairs
+# run once against the live target: a failure there is fixed and rolled forward (P0 on fm-jzuq, npm run
+# release:local), never rolled back; site=rollback is only for a site broken for visitors (down, app fails to load,
+# no face can be made). No job stops another: every check runs to the end, records its numbers, failure bundle and
+# local repro command, and the report job lists every failure in one place. device.yml never blocks this workflow.
 on:
   workflow_dispatch:
     inputs:
       target:
-        description: Target in hosting/publish-targets.json (staging is the test target)
+        description: Target in hosting/publish-targets.json (staging is the test target, next the switch)
         type: choice
         options: [staging, next]
         default: staging
@@ -16,16 +19,20 @@ on:
         type: boolean
         default: false
       site:
-        description: candidate builds and qualifies this commit; control (re)deploys the pinned control to its own target, which the live job measures back to back
+        description: candidate builds, gates and deploys this commit; control (re)deploys the pinned control to its own target; live reruns the post-deploy checks of live_run; promote deploys live_run's green artifact; rollback serves rollback_version
         type: choice
-        options: [candidate, control, live, promote]
+        options: [candidate, control, live, promote, rollback]
         default: candidate
       live_run:
-        description: site=live, the release run whose artifact the target serves (its live journeys run again); site=promote, the green release run whose artifact is deployed
+        description: site=live, the release run whose artifact the target serves; site=promote, the green run whose artifact is deployed
         type: string
         default: ''
       promote_digest:
         description: site=promote only, the artifact digest that run recorded and qualified; the deploy refuses any other
+        type: string
+        default: ''
+      rollback_version:
+        description: site=rollback only, the Worker version to serve (the deploy summary's previousVersion)
         type: string
         default: ''
 # shell: bash runs every step with -eo pipefail; the default (bash -e) drops a failure piped into tee.
@@ -34,17 +41,19 @@ defaults:
     shell: bash
 permissions:
   contents: read
-  actions: read # site=live downloads the named run's artifact
+  actions: read # site=live downloads the named run's artifact; the report links each failure's artifact
 concurrency:
   group: release
   cancel-in-progress: false
 env:
   ARTIFACT: next-site-${{ github.sha }}
+  # How a developer gets this run's artifact to reproduce any check: npm run release:local -- --artifact <dir> ...
+  FETCH: gh run download ${{ github.run_id }} -R ${{ github.repository }} -n next-site-${{ github.sha }} -D /tmp/next-site-${{ github.run_id }}
 jobs:
   build:
     if: inputs.site == 'candidate'
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 20
     outputs:
       digest: ${{ steps.digest.outputs.digest }}
       runtime_sha: ${{ steps.runtime.outputs.sha256 }}
@@ -93,16 +102,30 @@ jobs:
             next-site-identity.json
           if-no-files-found: error
           retention-days: 30
+      - name: Record the failure
+        if: failure()
+        run: node scripts/ci/failures.mjs add --dir failures --check build --repro "npm run release:local -- --only journeys:chromium:operated"
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: failure-build
+          path: failures/
 
+  # ---- go/no-go -------------------------------------------------------------------------------------------------
   journeys:
     needs: build
-    name: journeys (${{ matrix.browser }}, CPU)
+    name: journeys (${{ matrix.browser }}, ${{ matrix.set }})
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
         browser: [chromium, firefox]
+        # cold, warm and morph share one profile (warm needs cold's models; morph the two faces); operated is its own.
+        set: [faces, operated]
+    env:
+      LIST: ${{ matrix.set == 'faces' && 'cold-face,warm-face,morph' || 'operated' }}
+      CHECK: journeys:${{ matrix.browser }}:${{ matrix.set }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -122,26 +145,48 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - run: |
+      - id: playwright
+        run: |
           python -m pip install --quiet --upgrade playwright
-          python -m playwright install --with-deps ${{ matrix.browser }}
-      - name: cold-face, warm-face, morph and operated on CPU
+          echo "version=$(python -c "import importlib.metadata as m; print(m.version('playwright'))")" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-python-${{ steps.playwright.outputs.version }}-${{ matrix.browser }}
+      # The runner image has Chromium's libraries; the apt step once took 11-16 min on a slow mirror (run 40520706989),
+      # so the browser installs without it and Firefox's extra libraries get a bounded apt attempt.
+      - run: python -m playwright install ${{ matrix.browser }}
+      - if: matrix.browser == 'firefox'
+        run: sudo timeout 150 python -m playwright install-deps firefox || echo "::warning::firefox install-deps did not finish; using the image's libraries"
+      - name: ${{ env.LIST }} on CPU
         working-directory: tools/device-lab
-        run: python hosted.py browser --lane linux-${{ matrix.browser }} --browser ${{ matrix.browser }} --journey cold-face,warm-face,morph,operated --artifact ../../artifact/deploy-next --runtime-sha ${{ needs.build.outputs.runtime_sha }} --out ../../lane
+        run: python hosted.py browser --lane linux-${{ matrix.browser }} --browser ${{ matrix.browser }} --journey "$LIST" --artifact ../../artifact/deploy-next --runtime-sha ${{ needs.build.outputs.runtime_sha }} --out ../../lane
+      - name: Record the failure
+        if: failure()
+        run: |
+          ls lane/*.json >/dev/null 2>&1 && cat lane/*.json > lane-reports.txt || true
+          node scripts/ci/failures.mjs add --dir failures --check "$CHECK" --bundle "bundle-journeys-${{ matrix.browser }}-${{ matrix.set }}" --numbers lane-reports.txt \
+            --repro "$FETCH && npm run release:local -- --artifact /tmp/next-site-${{ github.run_id }} --only $CHECK"
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
-          name: journeys-${{ matrix.browser }}
+          name: failure-journeys-${{ matrix.browser }}-${{ matrix.set }}
+          path: failures/
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: bundle-journeys-${{ matrix.browser }}-${{ matrix.set }}
           path: lane/
           retention-days: 14
 
   engine:
-    name: engine numerics on the verified runtime (full31, CPU and browser routes)
-    # Real hardware: the browser routes need eris's memory (a 16 GB hosted runner's in-memory storage quota
-    # cannot hold the 1.1 GB encoder: QuotaExceededError in run 40488827815 with 108 GB of disk free).
     if: inputs.site == 'candidate'
-    runs-on: [self-hosted, device-lab]
-    timeout-minutes: 60
+    name: engine numerics on the verified runtime (full31, CPU and browser routes)
+    # Real hardware: the browser routes need eris's memory (a 16 GB hosted runner's in-memory storage quota cannot hold
+    # the 1.1 GB encoder: QuotaExceededError in run 40488827815). An eris build runner, so the device-lab runner and its
+    # phone stay free.
+    runs-on: [self-hosted, eris-build]
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -151,66 +196,56 @@ jobs:
       - run: npx playwright install chromium firefox webkit
       - uses: ./.github/actions/setup-runtime
       - name: The stylegan-js suite in full, including the measured inference files check.yml defers
-        run: |
-          echo "FACEMORPH_RUNTIME_CACHE=$FACEMORPH_RUNTIME_DIR" >> "$GITHUB_ENV"
-          echo "FACEMORPH_RUNTIME_SHA256=$(sha256sum "$FACEMORPH_RUNTIME_DIR/manifest.json" | cut -c1-64)" >> "$GITHUB_ENV"
-      - env:
+        env:
           FACEMORPH_FULL_QUALIFY: '1'
-        run: node scripts/ci/scaffold-test-shards.mjs --workspace packages/stylegan-js
-
-  lab:
-    needs: build
-    name: six local cells (eris and the P30 Pro)
-    runs-on: [self-hosted, device-lab]
-    timeout-minutes: 120
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '24'
-      - uses: actions/download-artifact@v4
-        with:
-          name: ${{ env.ARTIFACT }}
-          path: artifact
-      - name: The artifact is the one built in this run
-        env:
-          DIGEST: ${{ needs.build.outputs.digest }}
         run: |
-          got=$(node --input-type=module -e "import {treeDigest} from './scripts/ci/fetch-artifact.ts'; console.log(treeDigest('artifact/deploy-next'))")
-          echo "artifact digest $got (built: $DIGEST)"
-          test "$got" = "$DIGEST"
-      - name: Run the six cells on the artifact
-        working-directory: tools/device-lab
-        env:
-          RUNTIME_SHA: ${{ needs.build.outputs.runtime_sha }}
+          export FACEMORPH_RUNTIME_CACHE="$FACEMORPH_RUNTIME_DIR"
+          export FACEMORPH_RUNTIME_SHA256="$(sha256sum "$FACEMORPH_RUNTIME_DIR/manifest.json" | cut -c1-64)"
+          node scripts/ci/scaffold-test-shards.mjs --workspace packages/stylegan-js 2>&1 | tee engine.log
+      - name: Record the failure
+        if: failure()
         run: |
-          set -euo pipefail
-          export RUNTIME_FILES="$HOME/.cache/facemorph-device-lab/runtime-public"
-          uv run --quiet --with playwright python lab.py matrix --artifact "$GITHUB_WORKSPACE/artifact" \
-            --runtime-sha "$RUNTIME_SHA" --journey cold-face,warm-face,morph --label "release-$GITHUB_RUN_ID" \
-            | tee -a "$GITHUB_STEP_SUMMARY"
-      - name: Leave the devices in their resting state
-        if: always()
-        working-directory: tools/device-lab
-        run: uv run --quiet --with playwright python lab.py recover || true
+          grep -E '^(not ok|✖)|# (pass|fail)|Error' engine.log | tail -40 > engine-failures.txt || true
+          node scripts/ci/failures.mjs add --dir failures --check engine --bundle bundle-engine --numbers engine-failures.txt \
+            --repro "npm run release:local -- --only engine"
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: failure-engine
+          path: failures/
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: bundle-engine
+          path: engine.log
+          retention-days: 14
 
   timing:
     needs: build
-    name: paired timing against the pinned control (CPU)
-    runs-on: ubuntu-latest
-    timeout-minutes: 180
+    name: timing ${{ matrix.segment }} pair ${{ matrix.pair }}
+    # One segment and one pair per job, both apps on the same machine (scripts/verify/not-worse, median-check's stop
+    # rule merges the pairs). Spread across the eris and triton build runners.
+    runs-on: ${{ fromJSON(matrix.runner) }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        segment: [face, morph, photo]
+        pair: [0, 1, 2]
+        include:
+          - segment: face
+            runner: '["self-hosted","eris-build"]'
+          - segment: morph
+            runner: '["self-hosted","triton","cpu-20"]'
+          - segment: photo
+            runner: '["self-hosted","triton","cpu-20"]'
     steps:
-      - name: Free disk for browser storage quota (preinstalled toolchains this job never uses)
-        run: |
-          df -h / | tail -1
-          sudo find /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/.ghcup /opt/hostedtoolcache/CodeQL -depth -delete 2>/dev/null || true
-          df -h / | tail -1
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
           cache: npm
-      - run: npm ci && npx playwright install --with-deps chromium
+      - run: npm ci && npx playwright install chromium
       - uses: actions/download-artifact@v4
         with:
           name: ${{ env.ARTIFACT }}
@@ -220,30 +255,180 @@ jobs:
           DIGEST: ${{ needs.build.outputs.digest }}
         run: |
           got=$(node --input-type=module -e "import {treeDigest} from './scripts/ci/fetch-artifact.ts'; console.log(treeDigest('artifact/deploy-next'))")
-          echo "artifact digest $got (built: $DIGEST)"
           test "$got" = "$DIGEST"
       - uses: ./.github/actions/setup-runtime
-      - name: Fetch the pinned control (digest verified)
+      - name: Pair ${{ matrix.pair }} of ${{ matrix.segment }}, control and build
         env:
           GITHUB_TOKEN: ${{ github.token }}
-        run: node scripts/import/fetch-control.mjs --dest .cache/control
-      - name: Three ABBA pairs, control against this build
+          DIGEST: ${{ needs.build.outputs.digest }}
         run: |
-          python3 autoresearch/run.py --exclusive gpu-timing --wait 0 --timeout 3600 -- \
-            node scripts/verify/not-worse/run.ts --control .cache/control/tree/deploy-next \
-              --control-digest "$(node -p 'require("./autoresearch/drivers/control.json").treeSha256')" \
-              --build artifact/deploy-next --build-digest "${{ needs.build.outputs.digest }}" --build-source "run:$GITHUB_RUN_ID" \
-              --pairs 3 --provider cpu --browser chromium --runtime "$FACEMORPH_RUNTIME_DIR" \
-              --label "release-$GITHUB_RUN_ID" --out "$RUNNER_TEMP/timing"
-      - name: Median of each measure within 15 % of the control
-        run: node scripts/verify/not-worse/median-check.mjs "$RUNNER_TEMP/timing/release-$GITHUB_RUN_ID" --threshold 0.15 --max-pairs 3 | tee -a "$GITHUB_STEP_SUMMARY"
+          node --input-type=module -e "
+            import { timingCommands } from './scripts/ci/release-checks.mjs';
+            console.log(timingCommands({ segment: '${{ matrix.segment }}', pair: ${{ matrix.pair }}, build: 'artifact/deploy-next',
+              digest: process.env.DIGEST, source: 'run:${{ github.run_id }}', runtimeDir: process.env.FACEMORPH_RUNTIME_DIR,
+              out: process.env.RUNNER_TEMP + '/timing', label: 'release-${{ github.run_id }}-${{ matrix.segment }}-p${{ matrix.pair }}' }).join(' && '))
+          " > timing.sh
+          cat timing.sh
+          bash -eo pipefail timing.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: timing-${{ matrix.segment }}-p${{ matrix.pair }}
+          path: ${{ runner.temp }}/timing/
+          retention-days: 14
 
-  deploy:
-    needs: [build, journeys, engine, lab, timing]
-    # This run's own qualified build, or (site=promote) a named green run's artifact at its recorded digest.
-    if: ${{ !cancelled() && ((inputs.site == 'candidate' && needs.build.result == 'success' && needs.journeys.result == 'success' && needs.engine.result == 'success' && needs.lab.result == 'success' && needs.timing.result == 'success') || (inputs.site == 'promote' && inputs.live_run != '' && inputs.promote_digest != '')) }}
+  timing-gate:
+    needs: [build, timing]
+    if: ${{ !cancelled() && needs.build.result == 'success' }}
+    name: paired timing verdict against the pinned control
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 10
+    outputs:
+      verdict: ${{ steps.verdict.outputs.verdict }}
+      more: ${{ steps.verdict.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: timing-*
+          path: timing
+      - id: verdict
+        run: |
+          set +e
+          node scripts/verify/not-worse/median-check.mjs timing --expect face,morph,photo --threshold 0.15 \
+            --json timing-verdict.json --github-output "$GITHUB_OUTPUT" | tee -a "$GITHUB_STEP_SUMMARY" timing-table.txt
+          code=${PIPESTATUS[0]}
+          set -e
+          # The second wave's matrix: every segment's next pair indexes, each on its segment's runners.
+          node -e '
+            const v = require("./timing-verdict.json"), runner = { face: ["self-hosted","eris-build"], morph: ["self-hosted","triton","cpu-20"], photo: ["self-hosted","triton","cpu-20"] };
+            const include = Object.entries(v.segments ?? {}).flatMap(([segment, s]) => (s.nextPairs ?? []).map((pair) => ({ segment, pair, runner: JSON.stringify(runner[segment]) })));
+            require("fs").appendFileSync(process.env.GITHUB_OUTPUT, `matrix=${JSON.stringify({ include })}\n`);'
+          test "$code" != 1
+      - name: Record the failure
+        if: failure()
+        run: node scripts/ci/failures.mjs add --dir failures --check timing --bundle bundle-timing --numbers timing-table.txt --repro "$FETCH && npm run release:local -- --artifact /tmp/next-site-${{ github.run_id }} --only timing"
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: failure-timing
+          path: failures/
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bundle-timing
+          path: |
+            timing-verdict.json
+            timing-table.txt
+          retention-days: 14
+
+  timing-more:
+    needs: [build, timing-gate]
+    if: ${{ !cancelled() && needs.timing-gate.outputs.verdict == 'more' }}
+    name: timing ${{ matrix.segment }} pair ${{ matrix.pair }} (second wave)
+    runs-on: ${{ fromJSON(matrix.runner) }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.timing-gate.outputs.more) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci && npx playwright install chromium
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ env.ARTIFACT }}
+          path: artifact
+      - uses: ./.github/actions/setup-runtime
+      - name: Pair ${{ matrix.pair }} of ${{ matrix.segment }}, control and build
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          DIGEST: ${{ needs.build.outputs.digest }}
+        run: |
+          got=$(node --input-type=module -e "import {treeDigest} from './scripts/ci/fetch-artifact.ts'; console.log(treeDigest('artifact/deploy-next'))")
+          test "$got" = "$DIGEST"
+          node --input-type=module -e "
+            import { timingCommands } from './scripts/ci/release-checks.mjs';
+            console.log(timingCommands({ segment: '${{ matrix.segment }}', pair: ${{ matrix.pair }}, build: 'artifact/deploy-next',
+              digest: process.env.DIGEST, source: 'run:${{ github.run_id }}', runtimeDir: process.env.FACEMORPH_RUNTIME_DIR,
+              out: process.env.RUNNER_TEMP + '/timing', label: 'release-${{ github.run_id }}-${{ matrix.segment }}-p${{ matrix.pair }}' }).join(' && '))
+          " > timing.sh
+          bash -eo pipefail timing.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: timing-${{ matrix.segment }}-p${{ matrix.pair }}
+          path: ${{ runner.temp }}/timing/
+          retention-days: 14
+
+  timing-final:
+    needs: [timing-gate, timing-more]
+    if: ${{ !cancelled() && needs.timing-gate.outputs.verdict == 'more' }}
+    name: paired timing verdict after the second wave
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: timing-*
+          path: timing
+      - run: |
+          node scripts/verify/not-worse/median-check.mjs timing --expect face,morph,photo --threshold 0.15 --json timing-verdict.json \
+            | tee -a "$GITHUB_STEP_SUMMARY" timing-table.txt
+      - name: Record the failure
+        if: failure()
+        run: node scripts/ci/failures.mjs add --dir failures --check timing --bundle bundle-timing-final --numbers timing-table.txt --repro "$FETCH && npm run release:local -- --artifact /tmp/next-site-${{ github.run_id }} --only timing"
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: failure-timing-final
+          path: failures/
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bundle-timing-final
+          path: |
+            timing-verdict.json
+            timing-table.txt
+          retention-days: 14
+
+  gate:
+    needs: [build, journeys, engine, timing-gate, timing-final]
+    if: ${{ !cancelled() && inputs.site == 'candidate' }}
+    name: go/no-go
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Every go/no-go check passed
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: |
+          node -e '
+            const n = JSON.parse(process.env.RESULTS), bad = [];
+            for (const j of ["build", "journeys", "engine"]) if (n[j].result !== "success") bad.push(`${j}: ${n[j].result}`);
+            const t = n["timing-gate"], f = n["timing-final"];
+            if (!(t.result === "success" && (t.outputs.verdict === "pass" || (t.outputs.verdict === "more" && f.result === "success"))))
+              bad.push(`timing: ${t.outputs.verdict ?? t.result}${f.result === "skipped" ? "" : `, then ${f.result}`}`);
+            console.log(bad.length ? `NO-GO\n${bad.join("\n")}` : "GO");
+            process.exitCode = bad.length ? 1 : 0;' | tee -a "$GITHUB_STEP_SUMMARY"
+
+  # ---- the switch -----------------------------------------------------------------------------------------------
+  deploy:
+    needs: [build, gate]
+    # After a GO, or (site=promote) a named green run's artifact at its recorded digest.
+    if: ${{ !cancelled() && (needs.gate.result == 'success' || (inputs.site == 'promote' && inputs.live_run != '' && inputs.promote_digest != '')) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
     # One publication per target at a time; a publication in progress is never cancelled.
     concurrency:
       group: deploy-${{ inputs.target }}
@@ -296,23 +481,114 @@ jobs:
           node scripts/hosting/deploy.mjs runtime --runtime "$FACEMORPH_RUNTIME_DIR"
       - name: Stage
         run: node scripts/hosting/deploy.mjs stage --runtime "$FACEMORPH_RUNTIME_DIR" --artifact web --public "$RUNNER_TEMP/public"
-      - name: Deploy the site
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-        run: node scripts/hosting/deploy.mjs site-deploy --target "$TARGET" --public "$RUNNER_TEMP/public" $PUBLISH | tee -a "$GITHUB_STEP_SUMMARY"
-      - name: The live site serves this build, the historic hello preview and every runtime file
-        if: inputs.publish
-        run: node scripts/hosting/deploy.mjs live --target "$TARGET" --public "$RUNNER_TEMP/public" --artifact web | tee -a "$GITHUB_STEP_SUMMARY"
+      # The runtime mirror goes first: it only adds immutable files, so the previous build keeps working (and stays
+      # the warmed rollback) while the new site arrives.
       - name: Deploy the runtime mirror
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: node scripts/hosting/deploy.mjs mirror-deploy --target "$TARGET" $PUBLISH | tee -a "$GITHUB_STEP_SUMMARY"
       - name: Warm the runtime mirror with every immutable runtime file
         run: node scripts/hosting/deploy.mjs warm --target "$TARGET" --public "$RUNNER_TEMP/public" $PUBLISH | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Deploy the site
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          node scripts/hosting/deploy.mjs site-deploy --target "$TARGET" --public "$RUNNER_TEMP/public" $PUBLISH | tee site-deploy.json
+          node -e 'const r = JSON.parse(require("fs").readFileSync("site-deploy.json","utf8").trim().split("\n").pop()); console.log(`Rollback, only if the site is broken for visitors: dispatch release.yml site=rollback target=${process.env.TARGET} rollback_version=${r.previousVersion ?? "(none recorded)"}`)' | tee -a "$GITHUB_STEP_SUMMARY"
+          cat site-deploy.json >> "$GITHUB_STEP_SUMMARY"
+      - name: The live site serves this build, the historic hello preview and every runtime file
+        if: inputs.publish
+        run: node scripts/hosting/deploy.mjs live --target "$TARGET" --public "$RUNNER_TEMP/public" --artifact web | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Record the failure
+        if: failure()
+        run: node scripts/ci/failures.mjs add --dir failures --check "deploy ($TARGET)" --repro "node scripts/hosting/deploy.mjs all --target $TARGET --artifact <artifact> --runtime .cache/ci-runtime --public /tmp/public (dry run)"
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: failure-deploy
+          path: failures/
 
+  # ---- after the switch: once, against the live target; fix and roll forward ------------------------------------
+  verify:
+    needs: [build, deploy]
+    if: ${{ !cancelled() && inputs.publish && (needs.deploy.result == 'success' || (inputs.site == 'live' && inputs.live_run != '')) }}
+    name: the six cells and the phone pairs against the live site
+    runs-on: [self-hosted, device-lab]
+    timeout-minutes: 120
+    env:
+      RUN: ${{ (inputs.site == 'live' || inputs.site == 'promote') && inputs.live_run || github.run_id }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci # hermetic: the post-delivery check imports playwright
+      - name: Post-delivery check of the published site
+        run: |
+          origin=$(node -p "require('./hosting/publish-targets.json').targets['${{ inputs.target }}'].site.origin")
+          echo "ORIGIN=$origin" >> "$GITHUB_ENV"
+          echo "CONTROL=$(node -p "require('./hosting/publish-targets.json').targets.control.site.origin")" >> "$GITHUB_ENV"
+          node scripts/delivery/post-delivery-check.mjs --mode app --host "$(node -p "new URL('$origin').host")" | tee post-delivery.txt | tee -a "$GITHUB_STEP_SUMMARY"
+      - uses: actions/download-artifact@v4
+        if: inputs.site != 'live' && inputs.site != 'promote'
+        with:
+          name: ${{ env.ARTIFACT }}
+          path: artifact
+      - uses: actions/download-artifact@v4
+        if: inputs.site == 'live' || inputs.site == 'promote'
+        with:
+          pattern: next-site-*
+          merge-multiple: true
+          run-id: ${{ inputs.live_run }}
+          github-token: ${{ github.token }}
+          path: artifact
+      - name: The six cells, once, on every journey
+        working-directory: tools/device-lab
+        run: |
+          uv run --quiet --with playwright python lab.py matrix --url "$ORIGIN" --deployed "$GITHUB_WORKSPACE/artifact" \
+            --journey cold-face,warm-face,morph --label "live-$GITHUB_RUN_ID" | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: The phone pairs against the pinned control
+        if: ${{ !cancelled() }}
+        working-directory: tools/device-lab
+        # Cold and warm first face over the real network, three alternating pairs, control first; a cell over its
+        # absolute budget passes when not worse than the control by the timing rule (1.15x and 50 ms).
+        run: |
+          uv run --quiet --with playwright python lab.py matrix --url "$ORIGIN" --deployed "$GITHUB_WORKSPACE/artifact" \
+            --control-url "$CONTROL" --cells phone-cpu,phone-webgpu --journey cold-face,warm-face \
+            --label "live-pairs-$GITHUB_RUN_ID" | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Record the failure (P0 on fm-jzuq; fix and roll forward)
+        if: failure()
+        run: |
+          adb logcat -d -t 5000 > logcat.txt 2>/dev/null || true
+          cat tools/device-lab/out/*live-*"$GITHUB_RUN_ID"/summary.md > verify-summary.txt 2>/dev/null || cp post-delivery.txt verify-summary.txt
+          gh_fetch="gh run download $RUN -R ${{ github.repository }} -p 'next-site-*' -D /tmp/next-site-$RUN"
+          node scripts/ci/failures.mjs add --dir failures --check "live ${{ inputs.target }}: six cells and phone pairs" \
+            --detail "P0 on fm-jzuq: fix and roll forward; roll back only if the site is broken for visitors" \
+            --bundle bundle-verify --numbers verify-summary.txt \
+            --repro "$gh_fetch && npm run release:local -- --artifact /tmp/next-site-$RUN --url $ORIGIN --only live"
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: failure-verify
+          path: failures/
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: bundle-verify
+          path: |
+            tools/device-lab/out/*live-*${{ github.run_id }}/
+            logcat.txt
+            post-delivery.txt
+          retention-days: 14
+      - name: Leave the devices in their resting state
+        if: always()
+        working-directory: tools/device-lab
+        run: uv run --quiet --with playwright python lab.py recover || true
+
+  # ---- the pinned control, and the rollback ---------------------------------------------------------------------
   # The pinned control on its own target (hosting/publish-targets.json "control"), through the same guard and deploy
-  # steps, so the live job measures each phone cell on it straight after the candidate, same phone and link (operator,
-  # 28 October 2026). The target input is ignored here; every candidate job above is skipped (they need build).
+  # steps, so the verify job measures each phone cell on it straight after the candidate, same phone and link.
   control:
     if: inputs.site == 'control'
     name: the pinned control on its own target
@@ -361,56 +637,70 @@ jobs:
         if: inputs.publish
         run: node scripts/hosting/deploy.mjs live --target "$TARGET" --public "$RUNNER_TEMP/public" --artifact .cache/control/tree | tee -a "$GITHUB_STEP_SUMMARY"
 
-  live:
-    needs: [build, deploy]
-    # After this run's deploy, or alone (site=live) against what the target already serves: the artifact of live_run,
-    # checked byte for byte against the site before any journey.
-    if: ${{ !cancelled() && inputs.publish && (needs.deploy.result == 'success' || (inputs.site == 'live' && inputs.live_run != '')) }}
-    # (site=promote reaches here through its deploy and measures the promoted run's artifact.)
-    name: the six cells against the live site
-    runs-on: [self-hosted, device-lab]
-    timeout-minutes: 120
+  # Only when the target is broken for visitors (site down, app fails to load, no face can be made): serve the warmed
+  # previous Worker version the deploy summary recorded. Anything else is fixed and rolled forward.
+  rollback:
+    if: inputs.site == 'rollback' && inputs.rollback_version != ''
+    name: roll ${{ inputs.target }} back to ${{ inputs.rollback_version }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    concurrency:
+      group: deploy-${{ inputs.target }}
+      cancel-in-progress: false
+    env:
+      TARGET: ${{ inputs.target }}
+      PUBLISH: ${{ inputs.publish && '--publish' || '' }}
+      FACEMORPH_PUBLISH_TARGETS: ${{ vars.FACEMORPH_PUBLISH_TARGETS }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Single-publisher guard, before any network call
+        run: node scripts/hosting/publish-guard.mjs --target "$TARGET" --kind site
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - name: Serve the previous version
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: node scripts/hosting/deploy.mjs rollback --target "$TARGET" --version '${{ inputs.rollback_version }}' $PUBLISH | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: The site works for visitors again
+        if: inputs.publish
+        run: |
+          origin=$(node -p "require('./hosting/publish-targets.json').targets['$TARGET'].site.origin")
+          node scripts/delivery/post-delivery-check.mjs --mode app --host "$(node -p "new URL('$origin').host")" | tee -a "$GITHUB_STEP_SUMMARY"
+
+  # ---- one place for every failure ------------------------------------------------------------------------------
+  report:
+    needs:
+      [
+        build,
+        journeys,
+        engine,
+        timing,
+        timing-gate,
+        timing-more,
+        timing-final,
+        gate,
+        deploy,
+        verify,
+        control,
+        rollback,
+      ]
+    if: always()
+    name: every failing check
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-          cache: npm
-      - run: npm ci # hermetic: the check imports playwright; a self-hosted workspace keeps nothing between jobs
-      - name: Post-delivery check of the published site
-        run: |
-          origin=$(node -p "require('./hosting/publish-targets.json').targets['${{ inputs.target }}'].site.origin")
-          echo "ORIGIN=$origin" >> "$GITHUB_ENV"
-          node scripts/delivery/post-delivery-check.mjs --mode app --host "$(node -p "new URL('$origin').host")" | tee -a "$GITHUB_STEP_SUMMARY"
       - uses: actions/download-artifact@v4
-        if: inputs.site != 'live' && inputs.site != 'promote'
         with:
-          name: ${{ env.ARTIFACT }}
-          path: artifact
-      - uses: actions/download-artifact@v4
-        if: inputs.site == 'live' || inputs.site == 'promote'
-        with:
-          pattern: next-site-*
-          merge-multiple: true
-          run-id: ${{ inputs.live_run }}
-          github-token: ${{ github.token }}
-          path: artifact
-      - name: Journeys on the live site, once it serves this artifact byte for byte
-        working-directory: tools/device-lab
-        run: |
-          set -euo pipefail
-          # A phone cell over its absolute budget passes when not worse than the pinned control on the same phone and link:
-          # three alternating pairs, control first, medians by the timing rule (1.15x and 50 ms); all are printed.
-          control=$(node -p "require('../../hosting/publish-targets.json').targets.control.site.origin")
-          # The eris cells once on every journey; the phone set is cold and warm first face over the real network in three
-          # alternating pairs (operator, 28 October 2026); the rest of the phone is covered by the local six cells.
-          uv run --quiet --with playwright python lab.py matrix --url "$ORIGIN" --deployed "$GITHUB_WORKSPACE/artifact" \
-            --cells eris-webgpu,eris-cpu,eris-firefox-webgpu,eris-firefox-cpu --journey cold-face,warm-face,morph \
-            --label "live-$GITHUB_RUN_ID" | tee -a "$GITHUB_STEP_SUMMARY"
-          uv run --quiet --with playwright python lab.py matrix --url "$ORIGIN" --deployed "$GITHUB_WORKSPACE/artifact" \
-            --control-url "$control" --cells phone-cpu,phone-webgpu --journey cold-face,warm-face \
-            --label "live-pairs-$GITHUB_RUN_ID" | tee -a "$GITHUB_STEP_SUMMARY"
-      - name: Leave the devices in their resting state
-        if: always()
-        working-directory: tools/device-lab
-        run: uv run --quiet --with playwright python lab.py recover || true
+          pattern: failure-*
+          path: failures
+      - env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/ci/failures.mjs summary --dir failures --repo ${{ github.repository }} --run ${{ github.run_id }}
