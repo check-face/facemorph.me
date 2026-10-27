@@ -244,9 +244,30 @@ export interface ScheduledRun {
  * always runs second on a warmed device. Control/control runs use the same order with both sides the control.
  */
 export function abbaSchedule(pairs: number): ScheduledRun[] {
+  return pairSchedule({ pairs });
+}
+
+/**
+ * The runs of one job: an optional discarded control warmup, then pairs `firstPair` .. `firstPair + pairs - 1`. A pair's
+ * order follows its global index (even AB, control first; odd BA), so jobs that each run one pair of a segment on their
+ * own runner keep the ABBA balance across the merged set. Run indexes number the job's own runs from 0.
+ */
+export function pairSchedule({
+  pairs,
+  firstPair = 0,
+  warmup = true,
+}: {
+  readonly pairs: number;
+  readonly firstPair?: number;
+  readonly warmup?: boolean;
+}): ScheduledRun[] {
   if (!Number.isInteger(pairs) || pairs < 1) throw new RangeError('at least one pair');
-  const out: ScheduledRun[] = [{ index: 0, side: 'control', pair: null, order: 'warmup' }];
-  for (let p = 0; p < pairs; p++) {
+  if (!Number.isInteger(firstPair) || firstPair < 0)
+    throw new RangeError('the first pair index is a whole number');
+  const out: ScheduledRun[] = warmup
+    ? [{ index: 0, side: 'control', pair: null, order: 'warmup' }]
+    : [];
+  for (let p = firstPair; p < firstPair + pairs; p++) {
     const first: Side = p % 2 === 0 ? 'control' : 'build';
     const second: Side = first === 'control' ? 'build' : 'control';
     const order = p % 2 === 0 ? 'AB' : 'BA';
@@ -256,6 +277,66 @@ export function abbaSchedule(pairs: number): ScheduledRun[] {
     );
   }
   return out;
+}
+
+/** The comparable values beyond the timed measures: bytes per visit. */
+export type Compared = Measure | 'bytesFirst' | 'bytesReturn';
+export type Product = 'face' | 'video' | 'photo-face';
+
+/**
+ * Segments of the workload, so separate runners can each time a subset (both apps on one runner, pair by pair). Each
+ * runs a fresh profile and only the steps its measures need; every segment starts with the cold visit's navigate,
+ * first face (tile 1, word 1, model download included) and next face (tile 2, word 2), since every later step needs a
+ * face, morph needs two and the photo is encoded onto the second tile as in the full journey.
+ *   face:  + first Save, repeat Save, the visit's bytes, then the return visit's warm face (word 3) and its bytes.
+ *   morph: + Create morph (32 frames) to canplaythrough.
+ *   photo: + the committed photo to its rendered photo face (no morph before it).
+ *   all:   the full journey: face's saves, morph, photo, return visit.
+ * `measures` are what the segment's runs are compared on (the rest are recorded null); `produces` is what every build
+ * run must have produced to count as reliable.
+ */
+export const SEGMENTS: Readonly<
+  Record<
+    'face' | 'morph' | 'photo' | 'all',
+    { readonly measures: readonly Compared[]; readonly produces: readonly Product[] }
+  >
+> = Object.freeze({
+  face: {
+    measures: [
+      'usablePageMs',
+      'coldFaceMs',
+      'nextFaceMs',
+      'firstSaveMs',
+      'repeatSaveMs',
+      'warmFaceMs',
+      'bytesFirst',
+      'bytesReturn',
+    ],
+    produces: ['face'],
+  },
+  morph: { measures: ['morphPlayableMs', 'morphPerFrameMs'], produces: ['face', 'video'] },
+  photo: { measures: ['photoEncodeMs'], produces: ['face', 'photo-face'] },
+  all: {
+    measures: [...MEASURES, 'bytesFirst', 'bytesReturn'],
+    produces: ['face', 'video', 'photo-face'],
+  },
+});
+export type Segment = keyof typeof SEGMENTS;
+
+/** A run's measures with everything outside the segment set to null (the trace keeps the raw events). */
+export function restrictToSegment(m: RunMeasures, segment: Segment): RunMeasures {
+  const keep = new Set<string>(SEGMENTS[segment].measures);
+  const values = Object.fromEntries(
+    Object.entries(m.values).map(([k, v]) => [k, keep.has(k) ? v : null]),
+  ) as Record<Measure, number | null>;
+  return {
+    ...m,
+    values,
+    bytes: {
+      first: keep.has('bytesFirst') ? m.bytes.first : null,
+      return: keep.has('bytesReturn') ? m.bytes.return : null,
+    },
+  };
 }
 
 /** The scored runs: the warmup is dropped. */

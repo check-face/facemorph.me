@@ -7,6 +7,13 @@
 //     node scripts/verify/not-worse/run.ts --control deploy-next --pairs 5 --provider cpu \
 //       --browser chromium --label <fresh> --out /home/cdilga/Work/runs/facemorph-research
 //
+// --segment face|morph|photo|all (default all) runs only that segment's steps and records only its measures
+// (workload.ts SEGMENTS). --pairs N runs N pairs from --pair-index K (default 0); a pair's order follows its global
+// index (even AB, odd BA), so one-pair jobs on separate runners keep the ABBA balance once median-check merges them.
+// --warmup 0 drops the discarded control warmup (default 1). --max-pairs M above N adds pairs one at a time while
+// median-check's sequential rule (decide) says more, stopping at a clear pass or fail. <out>/<label>/segment.json
+// records the segment, the pairs and the invocation, which median-check reads to merge dirs and print the local rerun.
+//
 // Serving, the verified runtime, the network guard, the timing-lock check and artifact verification are the research
 // drivers' (autoresearch/drivers/lib/*.mjs, as built-ui-paired.mjs uses them); journey.mjs's step helpers read the
 // window.Worker instrumentation that the bead forbids (a mocked browser API), so the journey here is written against
@@ -20,10 +27,13 @@ import { parseArgs } from 'node:util';
 import {
   BUILD_SELECTORS,
   CONTROL_SELECTORS,
-  abbaSchedule,
+  SEGMENTS,
   measures,
+  pairSchedule,
   reliability,
+  restrictToSegment,
   type Boundary,
+  type Segment,
   type ScheduledRun,
   type SelectorMap,
   type Side,
@@ -197,6 +207,7 @@ interface Cell {
 /** One scheduled run: a fresh profile, a cold visit (first face, next face, saves, morph, photo) and a return visit. */
 async function execute(opts: {
   side: Side;
+  segment: Segment;
   artifactDir: string;
   source: string;
   selectors: SelectorMap;
@@ -419,36 +430,47 @@ async function execute(opts: {
       await generate(0, WORDS[0], 'generate-cold');
       await routeCheck();
       await generate(1, WORDS[1], 'generate-next');
-      await save('save-first');
-      await save('save-repeat');
+      const step = (s: Segment) => opts.segment === 'all' || opts.segment === s;
+      if (step('face')) {
+        await save('save-first');
+        await save('save-repeat');
+      }
 
-      await p.locator('.next-primary-action').click();
-      events.push({ t: rel(await lastAt('click')), kind: 'action', name: 'create-morph' });
-      await boundary('morph-playable', null, '', STAGE_MS.morph);
-      events.push({ t: rel(Date.now()), kind: 'produced', what: 'video' });
-      trace.observations.videoDurationS = await p.evaluate<number | null>(
-        `(() => { const v = document.querySelector('video.next-video'); return v ? v.duration : null; })()`,
-      );
-      await memory();
+      if (step('morph')) {
+        await p.locator('.next-primary-action').click();
+        events.push({ t: rel(await lastAt('click')), kind: 'action', name: 'create-morph' });
+        await boundary('morph-playable', null, '', STAGE_MS.morph);
+        events.push({ t: rel(Date.now()), kind: 'produced', what: 'video' });
+        trace.observations.videoDurationS = await p.evaluate<number | null>(
+          `(() => { const v = document.querySelector('video.next-video'); return v ? v.duration : null; })()`,
+        );
+        await memory();
+      }
 
-      const photoBefore = await srcOf(1);
-      const stamp = Date.now();
-      // The control's photo input is 'Choose photo'; the build's face card is the entry, 'Encode image' (fm-25um).
-      await tile(1)
-        .locator(
-          'input[type="file"][aria-label="Choose photo"], input[type="file"][aria-label="Encode image"]',
-        )
-        .last()
-        .setInputFiles({ name: 'photo.webp', mimeType: 'image/webp', buffer: opts.photo });
-      events.push({
-        t: rel((await lastAt('change').catch(() => stamp)) || stamp),
-        kind: 'action',
-        name: 'confirm-photo',
-      });
-      await boundary('photo-face-rendered', 1, photoBefore, STAGE_MS.photo);
-      events.push({ t: rel(Date.now()), kind: 'produced', what: 'photo-face' });
-      await memory();
+      if (step('photo')) {
+        const photoBefore = await srcOf(1);
+        const stamp = Date.now();
+        // The control's photo input is 'Choose photo'; the build's face card is the entry, 'Encode image' (fm-25um).
+        await tile(1)
+          .locator(
+            'input[type="file"][aria-label="Choose photo"], input[type="file"][aria-label="Encode image"]',
+          )
+          .last()
+          .setInputFiles({ name: 'photo.webp', mimeType: 'image/webp', buffer: opts.photo });
+        events.push({
+          t: rel((await lastAt('change').catch(() => stamp)) || stamp),
+          kind: 'action',
+          name: 'confirm-photo',
+        });
+        await boundary('photo-face-rendered', 1, photoBefore, STAGE_MS.photo);
+        events.push({ t: rel(Date.now()), kind: 'produced', what: 'photo-face' });
+        await memory();
+      }
       await drain();
+      if (!step('face')) {
+        failed = false;
+        return { trace, browserVersion, userAgent };
+      }
       const firstBytes = await bytesMark('first', 0);
 
       // Visit 2: the same profile with its downloaded models (Cache Storage, OPFS) kept and the saved session
@@ -489,6 +511,9 @@ const { values: opt } = parseArgs({
     'build-digest': { type: 'string' },
     'build-source': { type: 'string' },
     pairs: { type: 'string', default: '5' },
+    segment: { type: 'string', default: 'all' },
+    'pair-index': { type: 'string', default: '0' },
+    warmup: { type: 'string', default: '1' },
     // Adaptive (fm-mc27): with --margins (a JSON {measure: margin} from the cell's control/control run), inconclusive
     // measures get more pairs, two at a time, up to --max-pairs (default the gate's MAX_PAIRS).
     'max-pairs': { type: 'string' },
@@ -507,6 +532,10 @@ if (!['cpu', 'webgpu', 'auto'].includes(opt.provider!))
   throw new Error('--provider is cpu, webgpu or auto');
 if (!['chromium', 'system-chromium'].includes(opt.browser!))
   throw new Error('--browser is chromium or system-chromium');
+if (!Object.hasOwn(SEGMENTS, opt.segment!))
+  throw new Error(`--segment is one of ${Object.keys(SEGMENTS).join(', ')}`);
+const segment = opt.segment as Segment;
+if (!['0', '1'].includes(opt.warmup!)) throw new Error('--warmup is 0 or 1');
 const cell: Cell = {
   provider: opt.provider as Cell['provider'],
   browser: opt.browser as Cell['browser'],
@@ -536,14 +565,60 @@ if (journey.sha(photo) !== PHOTO.sha256)
 const out: string = artifact.freshRunDir(artifact.outRoot(opt.out), opt.label);
 const playwright = createRequire(join(REPO, 'apps/web/package.json'))('playwright');
 
-const schedule = abbaSchedule(Number(opt.pairs));
+const firstPair = Number(opt['pair-index']);
+const schedule = pairSchedule({
+  pairs: Number(opt.pairs),
+  firstPair,
+  warmup: opt.warmup === '1',
+});
 const cellName = `${cell.provider}-${cell.browser}`;
 const results: {
   run: ScheduledRun;
   file: string;
   values: Record<string, number | null>;
   failure: string | null;
+  doc: Record<string, unknown>;
+  elapsedMs: number;
 }[] = [];
+
+const writeSegment = (extra: object) =>
+  writeFileSync(
+    join(out, 'segment.json'),
+    JSON.stringify(
+      {
+        schema: 'facemorph.not-worse-segment/1',
+        segment,
+        ...SEGMENTS[segment],
+        warmup: opt.warmup === '1',
+        invocation: {
+          control: opt.control ?? null,
+          controlDigest: control.treeSha256,
+          build: opt.build ?? null,
+          buildDigest: build.treeSha256,
+          buildSource: build.source,
+          provider: cell.provider,
+          browser: cell.browser,
+          pairs: Number(opt.pairs),
+          pairIndex: firstPair,
+          maxPairs: opt['max-pairs'] ? Number(opt['max-pairs']) : null,
+          device: opt.device ?? hostname(),
+          label: opt.label,
+        },
+        runs: results.map((r) => ({
+          file: r.file,
+          side: r.run.side,
+          pair: r.run.pair,
+          order: r.run.order,
+          elapsedMs: r.elapsedMs,
+          failure: r.failure,
+        })),
+        ...extra,
+      },
+      null,
+      2,
+    ) + '\n',
+  );
+writeSegment({});
 
 /** A WebGPU cell without an adapter is recorded untested with the reason, never run as something else. */
 async function adapterGate(): Promise<string | null> {
@@ -617,6 +692,7 @@ async function runOne(run: (typeof schedule)[number]): Promise<void> {
   const started = Date.now();
   const r = await execute({
     side: run.side,
+    segment,
     artifactDir: art.dir,
     source: art.source,
     selectors,
@@ -629,7 +705,7 @@ async function runOne(run: (typeof schedule)[number]): Promise<void> {
     playwright,
   });
   rmSync(profile, { recursive: true, force: true });
-  const m = measures(r.trace.events, MORPH_FRAMES);
+  const m = restrictToSegment(measures(r.trace.events, MORPH_FRAMES), segment);
   const rel = reliability(r.trace.events);
   const doc = {
     schema: 'facemorph.not-worse-run/1',
@@ -649,6 +725,7 @@ async function runOne(run: (typeof schedule)[number]): Promise<void> {
     join(out, `${id}.trace.json`),
     JSON.stringify(
       {
+        segment,
         morphFrames: MORPH_FRAMES,
         words: WORDS,
         photoSha256: PHOTO.sha256,
@@ -667,7 +744,10 @@ async function runOne(run: (typeof schedule)[number]): Promise<void> {
     file: `${id}.json`,
     values: { ...m.values, bytesFirst: m.bytes.first, bytesReturn: m.bytes.return },
     failure: r.trace.failure,
+    doc: { ...doc.runs[0], failure: r.trace.failure, file: `${id}.json` },
+    elapsedMs: Date.now() - started,
   });
+  writeSegment({});
   console.log(
     JSON.stringify({
       cell: cellName,
@@ -676,10 +756,44 @@ async function runOne(run: (typeof schedule)[number]): Promise<void> {
       failure: r.trace.failure,
       values: m.values,
       lockups: m.lockups,
+      elapsedMs: Date.now() - started,
     }),
   );
 }
 for (const run of schedule) await runOne(run);
+
+// Sequential stop (no --margins): with --max-pairs above --pairs, add one pair at a time while median-check's decide
+// says more; it ends at a clear pass or fail, or at the maximum where the medians decide.
+const mc = (await import(new URL('./median-check.mjs', import.meta.url).href)) as {
+  toPairs(runs: object[]): object[];
+  decide(
+    pairs: object[],
+    o: object,
+  ): { verdict: 'pass' | 'fail' | 'more'; reason: string; nextPairs: number[] };
+};
+let decision: ReturnType<typeof mc.decide> | null = null;
+if (!opt.margins && opt['max-pairs'] && Number(opt['max-pairs']) > Number(opt.pairs)) {
+  const decideNow = () =>
+    mc.decide(mc.toPairs(results.map((r) => r.doc)), {
+      segment,
+      minPairs: Number(opt.pairs),
+      maxPairs: Number(opt['max-pairs']),
+    });
+  decision = decideNow();
+  while (decision.verdict === 'more') {
+    const next = Math.max(...results.map((r) => r.run.pair ?? -1)) + 1;
+    console.log(
+      JSON.stringify({ cell: cellName, segment, sequential: decision.reason, pair: next }),
+    );
+    const base = results.length;
+    for (const run of pairSchedule({ pairs: 1, firstPair: next, warmup: false }))
+      await runOne({ ...run, index: base + run.index });
+    decision = decideNow();
+  }
+  const { verdict, reason } = decision;
+  console.log(JSON.stringify({ cell: cellName, segment, sequential: { verdict, reason } }));
+}
+writeSegment(decision ? { decision: { verdict: decision.verdict, reason: decision.reason } } : {});
 
 // Adaptive pairs: while a measure is inconclusive and the cell is under the maximum, run two more ABBA pairs.
 const nw = (await import(new URL('../not-worse.mjs', import.meta.url).href)) as {
@@ -720,10 +834,9 @@ let plan = margins ? nw.extendPlan({ measures: paired(), maxPairs }) : null;
 while (plan && plan.more > 0 && pairsRun < maxPairs) {
   const more = Math.min(plan.more, maxPairs - pairsRun);
   console.log(JSON.stringify({ cell: cellName, adaptive: { pairs: pairsRun, more } }));
-  for (const run of abbaSchedule(pairsRun + more).filter(
-    (r) => r.pair !== null && r.pair >= pairsRun,
-  ))
-    await runOne(run);
+  const base = results.length;
+  for (const run of pairSchedule({ pairs: more, firstPair: firstPair + pairsRun, warmup: false }))
+    await runOne({ ...run, index: base + run.index });
   pairsRun += more;
   plan = nw.extendPlan({ measures: paired(), maxPairs });
 }

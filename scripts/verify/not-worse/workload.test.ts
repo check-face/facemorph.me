@@ -158,3 +158,31 @@ test('the workload module typechecks under strict TypeScript', () => {
   });
   assert.equal(r.status, 0, r.stdout + r.stderr);
 });
+
+test('segments: one pair per job keeps ABBA order by global pair index; each segment records only its measures', async () => {
+  const { pairSchedule, restrictToSegment, SEGMENTS } = await import('./workload.ts');
+  assert.deepEqual(pairSchedule({ pairs: 5 }), abbaSchedule(5));
+  assert.deepEqual(
+    pairSchedule({ pairs: 1, firstPair: 3 }).map(
+      (r) => `${r.index}:${r.pair}:${r.order}:${r.side}`,
+    ),
+    ['0:null:warmup:control', '1:3:BA:build', '2:3:BA:control'],
+  );
+  assert.deepEqual(
+    pairSchedule({ pairs: 1, firstPair: 2, warmup: false }).map(
+      (r) => `${r.index}:${r.order}:${r.side}`,
+    ),
+    ['0:AB:control', '1:AB:build'],
+  );
+  // Every measure belongs to exactly one of face, morph and photo; all is their union.
+  const parts = [SEGMENTS.face, SEGMENTS.morph, SEGMENTS.photo].flatMap((s) => s.measures);
+  assert.equal(new Set(parts).size, parts.length);
+  assert.deepEqual([...parts].sort(), [...SEGMENTS.all.measures].sort());
+  const m = measures(trace.events, trace.morphFrames);
+  const photo = restrictToSegment(m, 'photo');
+  assert.equal(photo.values.photoEncodeMs, m.values.photoEncodeMs);
+  assert.equal(photo.values.coldFaceMs, null);
+  assert.deepEqual(photo.bytes, { first: null, return: null });
+  assert.deepEqual(restrictToSegment(m, 'face').bytes, m.bytes);
+  assert.deepEqual(restrictToSegment(m, 'all'), m);
+});

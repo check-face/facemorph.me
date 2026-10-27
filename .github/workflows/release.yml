@@ -232,7 +232,7 @@ jobs:
               --pairs 3 --provider cpu --browser chromium --runtime "$FACEMORPH_RUNTIME_DIR" \
               --label "release-$GITHUB_RUN_ID" --out "$RUNNER_TEMP/timing"
       - name: Median of each measure within 15 % of the control
-        run: node scripts/verify/not-worse/median-check.mjs "$RUNNER_TEMP/timing/release-$GITHUB_RUN_ID" --threshold 0.15 | tee -a "$GITHUB_STEP_SUMMARY"
+        run: node scripts/verify/not-worse/median-check.mjs "$RUNNER_TEMP/timing/release-$GITHUB_RUN_ID" --threshold 0.15 --max-pairs 3 | tee -a "$GITHUB_STEP_SUMMARY"
 
   deploy:
     needs: [build, journeys, engine, lab, timing]
