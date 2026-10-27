@@ -102,6 +102,14 @@ class IosProtocol(unittest.TestCase):
         self.assertFalse(self.post(stage='cold', ok=True, result=RUN['cold']))
         self.assertNotIn('cold', self.attempt.rec)
 
+    def test_the_first_violation_is_kept_with_every_later_one(self):
+        self.post(event='start', stage='cold', navigation='navigate')
+        self.assertFalse(self.post(event='start', stage='cold', navigation='reload'))
+        self.assertFalse(self.post(stage='cold', ok=False, error='journey report rejected: HTTP 409'))
+        self.assertEqual(self.attempt.rec['error'], 'journey protocol violation: unexpected start cold')
+        self.assertEqual([(v['event'], v['navigation'], v['error']) for v in self.attempt.rec['violations']],
+                         [('start', 'reload', None), ('result', None, 'journey report rejected: HTTP 409')])
+
     def test_missing_cold_or_unstarted_results_fail(self):
         self.assertFalse(self.post(stage='cold', ok=True, result={}))
         attempt = IosAttempt('current', {})

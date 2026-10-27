@@ -468,7 +468,9 @@ IOS_JOURNEYS = r"""
             route: (document.querySelector(S.route)?.innerText || '').trim().slice(0, 80), typed: word, fieldValue: input.value};
   };
   try {
-    await post({event: 'start', stage: STAGE, userAgent: navigator.userAgent});
+    // 'reload' here means Safari reopened the page (for example after its web content process ended).
+    await post({event: 'start', stage: STAGE, userAgent: navigator.userAgent,
+      navigation: performance.getEntriesByType('navigation')[0]?.type || null});
     if (STAGE === 'cold') {
       const cold = await face('lab0cold');
       await post({stage: 'cold', ok: true, result: cold, userAgent: navigator.userAgent});
@@ -589,7 +591,14 @@ class IosAttempt:
                     if not msg['ok'] or stage == 'morph':
                         self.done.set()
                     return True
-            self.rec['error'] = f'journey protocol violation: unexpected {msg.get("event", "result")} {stage}'
+            # Keep the first violation: a reopened page's later messages (its own start refused, then its
+            # failure report) used to overwrite it (release gate 40473178637 kept only 'unexpected result cold').
+            self.rec.setdefault('error', f'journey protocol violation: unexpected {msg.get("event", "result")} {stage}')
+            self.rec.setdefault('violations', []).append({
+                'event': msg.get('event', 'result'), 'stage': stage, 'ok': msg.get('ok'),
+                'navigation': msg.get('navigation'), 'error': str(msg.get('error') or '')[:300] or None,
+                'visits': list(self.visits), 'stages': [s.get('stage') for s in self.stages]})
+            lab.log('ios_violation', violation=self.rec['violations'][-1])
             self.done.set()
             return False
 
