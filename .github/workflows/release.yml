@@ -121,6 +121,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
+      - name: Free disk for browser storage quota (preinstalled toolchains this job never uses)
+        run: |
+          df -h / | tail -1
+          sudo find /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/.ghcup /opt/hostedtoolcache/CodeQL -depth -delete 2>/dev/null || true
+          df -h / | tail -1
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
@@ -179,6 +184,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 180
     steps:
+      - name: Free disk for browser storage quota (preinstalled toolchains this job never uses)
+        run: |
+          df -h / | tail -1
+          sudo find /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/.ghcup /opt/hostedtoolcache/CodeQL -depth -delete 2>/dev/null || true
+          df -h / | tail -1
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
