@@ -352,6 +352,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
+          cache: npm
+      - run: npm ci # hermetic: the check imports playwright; a self-hosted workspace keeps nothing between jobs
       - name: Post-delivery check of the published site
         run: |
           origin=$(node -p "require('./hosting/publish-targets.json').targets['${{ inputs.target }}'].site.origin")
