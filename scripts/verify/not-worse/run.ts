@@ -236,6 +236,10 @@ async function execute(opts: {
     args: [
       '--no-sandbox',
       '--no-proxy-server',
+      // A visitor's browser reports navigator.webdriver false. Both the control and the build branch on it (full
+      // canary and encoder qualification, analytics eligibility), so an automated page would time a path no
+      // visitor runs. Both sides launch here, so both measure the visitor path; the trace proves it below.
+      '--disable-blink-features=AutomationControlled',
       ...(await import(
         new URL('../../../apps/web/test/parity/control-server.ts', import.meta.url).href
       ).then((m: { chromiumArgs: string[] }) => m.chromiumArgs)),
@@ -405,6 +409,10 @@ async function execute(opts: {
           await p.evaluate<string>('navigator.userAgent'),
         )?.[1] ?? 'unknown';
       userAgent = await p.evaluate<string>('navigator.userAgent');
+      if (await p.evaluate<boolean>('navigator.webdriver === true'))
+        throw new Error(
+          'navigator.webdriver is true: this page would time the automation path, not the visitor path',
+        );
       await generate(0, WORDS[0], 'generate-cold');
       await routeCheck();
       await generate(1, WORDS[1], 'generate-next');
