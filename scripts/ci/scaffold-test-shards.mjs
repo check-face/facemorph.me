@@ -87,6 +87,16 @@ export function shardInventory(suites, shard, count = SHARDS) {
   });
 }
 
+/** Only the suites whose cwd is listed ('.' for the root), as check.yml's affected selection names them. */
+export function onlySuites(suites, cwds) {
+  if (!Array.isArray(cwds) || !cwds.every((cwd) => typeof cwd === 'string'))
+    throw Error('Expected an array of npm-test suite cwds');
+  const known = new Set(suites.map(({ cwd }) => cwd || '.'));
+  const unknown = cwds.filter((cwd) => !known.has(cwd));
+  if (unknown.length) throw Error(`Unknown npm-test suites: ${unknown.join(', ')}`);
+  return suites.filter(({ cwd }) => cwds.includes(cwd || '.'));
+}
+
 export function workspaceInventory(suites, cwd) {
   const selected = suites.filter((suite) => suite.cwd === cwd);
   if (!cwd || selected.length !== 1) throw Error('Expected one known npm-test workspace');
@@ -129,7 +139,13 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     const selected = partitionInventory(
       mode === '--workspace'
         ? workspaceInventory(suites, value)
-        : shardInventory(suites, Number(value)),
+        : shardInventory(
+            // check.yml: the suites the push affects (scripts/ci/affected.mjs); unset runs every suite.
+            process.env.FACEMORPH_TEST_SUITES
+              ? onlySuites(suites, JSON.parse(process.env.FACEMORPH_TEST_SUITES))
+              : suites,
+            Number(value),
+          ),
       quick,
     );
     const scoped = scopeInventory(

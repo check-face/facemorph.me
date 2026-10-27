@@ -6,6 +6,7 @@ import { test } from 'node:test';
 import { parse } from 'yaml';
 import {
   inventory,
+  onlySuites,
   partitionInventory,
   shardInventory,
   SHARDS,
@@ -194,4 +195,16 @@ test('quick shards defer only measured inference files; quick plus deferred equa
     'test/morph/render.test.ts',
   ])
     assert.ok(ordinaryPaths.includes(`packages/stylegan-js/${file}`), `${file} stays ordinary`);
+});
+
+test('the affected selection keeps whole listed suites, names the root ".", and refuses unknown suites', () => {
+  const suites = inventory();
+  const picked = onlySuites(suites, ['.', 'packages/cloudflare-model-host']);
+  assert.deepEqual(
+    picked,
+    suites.filter((s) => s.cwd === '' || s.cwd === 'packages/cloudflare-model-host'),
+  );
+  assert.deepEqual(onlySuites(suites, []), []);
+  assert.throws(() => onlySuites(suites, ['packages/model-conv']), /Unknown npm-test suites/);
+  assert.throws(() => onlySuites(suites, '.'), /array/);
 });

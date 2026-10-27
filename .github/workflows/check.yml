@@ -1,7 +1,12 @@
 name: check
 # Every push to main, one run at a time, never cancelled (fm-fy2.11). Fresh GitHub-hosted runners: nothing carries
-# over between jobs. Static checks, the unit tests in six shards, then the built app in Chromium on CPU.
-# Budget: under 8 minutes. Over it, merge or delete tests; do not add runners or lanes.
+# over between jobs except the caches below, each keyed on exactly what it holds. Format, lint, typecheck, the unit
+# tests in six shards and the built app in Chromium on CPU run as parallel jobs.
+# Unit runs only the npm-test suites the push affects (scripts/ci/affected.mjs states the rules): changed workspaces,
+# the workspaces depending on them, and the root and app suites; root config, CI and shared code select every suite.
+# Budget: under 3 minutes per job. Over it, merge or delete tests; do not add runners or lanes.
+# Caches: node_modules (every workspace's) by runner, exact Node version and package-lock.json, restored whole and
+# saved only straight after `npm ci`, so a hit is exactly what `npm ci` installs; browsers by Playwright version.
 on:
   push:
     branches: [main]
@@ -16,18 +21,103 @@ concurrency:
   group: check
   cancel-in-progress: false
 jobs:
-  static:
+  format:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
           cache: npm
-      - run: npm ci
+      - id: node-modules-key
+        run: echo "key=node-modules-${{ runner.os }}-${{ runner.arch }}-node$(node --version)-${{ hashFiles('package-lock.json') }}" >> "$GITHUB_OUTPUT"
+      - id: node-modules
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            node_modules
+            apps/*/node_modules
+            packages/*/node_modules
+          key: ${{ steps.node-modules-key.outputs.key }}
+      - if: steps.node-modules.outputs.cache-hit != 'true'
+        run: npm ci
+      - if: steps.node-modules.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            node_modules
+            apps/*/node_modules
+            packages/*/node_modules
+          key: ${{ steps.node-modules-key.outputs.key }}
       - run: npm run format:check
+      - name: The checks wrote nothing
+        run: git diff --exit-code
+
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - id: node-modules-key
+        run: echo "key=node-modules-${{ runner.os }}-${{ runner.arch }}-node$(node --version)-${{ hashFiles('package-lock.json') }}" >> "$GITHUB_OUTPUT"
+      - id: node-modules
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            node_modules
+            apps/*/node_modules
+            packages/*/node_modules
+          key: ${{ steps.node-modules-key.outputs.key }}
+      - if: steps.node-modules.outputs.cache-hit != 'true'
+        run: npm ci
+      - if: steps.node-modules.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            node_modules
+            apps/*/node_modules
+            packages/*/node_modules
+          key: ${{ steps.node-modules-key.outputs.key }}
       - run: npm run lint
+      - name: Every test file is run by npm test
+        run: node scripts/build/check-tests-listed.mjs
+      - name: The checks wrote nothing
+        run: git diff --exit-code
+
+  typecheck:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - id: node-modules-key
+        run: echo "key=node-modules-${{ runner.os }}-${{ runner.arch }}-node$(node --version)-${{ hashFiles('package-lock.json') }}" >> "$GITHUB_OUTPUT"
+      - id: node-modules
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            node_modules
+            apps/*/node_modules
+            packages/*/node_modules
+          key: ${{ steps.node-modules-key.outputs.key }}
+      - if: steps.node-modules.outputs.cache-hit != 'true'
+        run: npm ci
+      - if: steps.node-modules.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            node_modules
+            apps/*/node_modules
+            packages/*/node_modules
+          key: ${{ steps.node-modules-key.outputs.key }}
       - run: npm run typecheck
       - name: Repository-level TypeScript projects (scripts/hooks/typecheck.mjs reads this list)
         run: |
@@ -41,13 +131,32 @@ jobs:
           npx tsc -p packages/browser-model-manager/src/contracts/tsconfig.test.json --noEmit
           npx tsc -p packages/stylegan-js/tsconfig.json --noEmit
           npx tsc -p packages/stylegan-js/tsconfig.test.json --noEmit
-      - name: Every test file is run by npm test
-        run: node scripts/build/check-tests-listed.mjs
       - name: The checks wrote nothing
         run: git diff --exit-code
 
+  affected:
+    name: affected npm-test suites
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read # the earlier successful check runs, whose head is the diff base
+    outputs:
+      suites: ${{ steps.affected.outputs.suites }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - id: affected
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/ci/affected.mjs --head "$GITHUB_SHA" --previous-success check.yml
+
   unit:
     name: npm test (${{ matrix.shard }}/6)
+    needs: affected
+    if: needs.affected.outputs.suites != '[]'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     strategy:
@@ -60,27 +169,77 @@ jobs:
         with:
           node-version: '24'
           cache: npm
-      - run: npm ci
+      - id: node-modules-key
+        run: echo "key=node-modules-${{ runner.os }}-${{ runner.arch }}-node$(node --version)-${{ hashFiles('package-lock.json') }}" >> "$GITHUB_OUTPUT"
+      - id: node-modules
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            node_modules
+            apps/*/node_modules
+            packages/*/node_modules
+          key: ${{ steps.node-modules-key.outputs.key }}
+      - if: steps.node-modules.outputs.cache-hit != 'true'
+        run: npm ci
+      - if: steps.node-modules.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            node_modules
+            apps/*/node_modules
+            packages/*/node_modules
+          key: ${{ steps.node-modules-key.outputs.key }}
       - run: npm run build
+      - id: playwright
+        run: echo "version=$(node -p "require('./node_modules/playwright/package.json').version")" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ runner.arch }}-node-${{ steps.playwright.outputs.version }}-chromium
       - run: npx playwright install chromium # the runner image has its libraries (apt took 8 min once)
       - name: This shard's npm test files
         env:
           GITHUB_TOKEN: ${{ github.token }}
+          FACEMORPH_TEST_SUITES: ${{ needs.affected.outputs.suites }}
         run: node scripts/ci/scaffold-test-shards.mjs --shard ${{ matrix.shard }} --quick
       - name: The tests wrote nothing
         run: git diff --exit-code
 
   smoke:
-    name: built app in Chromium on CPU
+    name: built app in Chromium on CPU (${{ matrix.journeys }})
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        # morph needs the two faces cold-face and warm-face make; operated is independent of them.
+        journeys: ['cold-face,warm-face,morph', 'operated']
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
           cache: npm
-      - run: npm ci
+      - id: node-modules-key
+        run: echo "key=node-modules-${{ runner.os }}-${{ runner.arch }}-node$(node --version)-${{ hashFiles('package-lock.json') }}" >> "$GITHUB_OUTPUT"
+      - id: node-modules
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            node_modules
+            apps/*/node_modules
+            packages/*/node_modules
+          key: ${{ steps.node-modules-key.outputs.key }}
+      - if: steps.node-modules.outputs.cache-hit != 'true'
+        run: npm ci
+      - if: steps.node-modules.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            node_modules
+            apps/*/node_modules
+            packages/*/node_modules
+          key: ${{ steps.node-modules-key.outputs.key }}
       - name: Build the site artifact
         env:
           GITHUB_TOKEN: ${{ github.token }}
@@ -88,18 +247,24 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - run: |
+      - id: playwright
+        run: |
           python -m pip install --quiet --upgrade playwright
-          python -m playwright install chromium
-      - name: cold-face, warm-face, morph and operated
+          echo "version=$(python -c "import importlib.metadata as m; print(m.version('playwright'))")" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ runner.arch }}-python-${{ steps.playwright.outputs.version }}-chromium
+      - run: python -m playwright install chromium
+      - name: ${{ matrix.journeys }}
         working-directory: tools/device-lab
         run: |
           runtime=$(node --input-type=module -e "import {loadCandidateRuntime} from '../../scripts/ci/candidate-runtime.ts'; console.log(loadCandidateRuntime('../..').manifestSha256)")
-          python hosted.py browser --lane linux-chromium --browser chromium --journey cold-face,warm-face,morph,operated \
+          python hosted.py browser --lane linux-chromium --browser chromium --journey ${{ matrix.journeys }} \
             --artifact ../../deploy-next --runtime-sha "$runtime" --out ../../lane
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
-          name: smoke
+          name: smoke-${{ strategy.job-index }}
           path: lane/
           retention-days: 7
