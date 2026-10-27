@@ -385,3 +385,16 @@ class NotWorseThanControl(unittest.TestCase):
         self.assertTrue(report['ok'])
         self.assertEqual(report['controlComparison']['rows'][0], {'journey': 'cold-face', 'budgetS': 70, 'candidateS': 108.0,
                          'controlS': 105.0, 'verdict': 'not worse than the control'})
+
+
+class DeferredPhoneBudgets(unittest.TestCase):
+    def test_a_phone_cold_face_breach_is_left_to_the_pairs_and_morph_still_counts(self):
+        report = {'cell': 'phone-cpu', 'status': 'fail', 'runs': [{'ok': True, 'durationsS': {'cold-face': 83.1, 'morph': 500.0}}]}
+        report['evidenceErrors'] = lab.budget_findings('phone-cpu', report['runs'])
+        lab.defer_budgets(report, ['cold-face', 'warm-face'])
+        self.assertEqual(report['budgetDeferredToPairs'], ['cold-face took 83.1s on phone-cpu, over its 60s budget'])
+        self.assertEqual(report['evidenceErrors'], ['morph took 500.0s on phone-cpu, over its 385s budget'])
+        self.assertFalse(report['ok'])
+        report['runs'][0]['durationsS']['morph'] = 247.0
+        report['evidenceErrors'] = lab.budget_findings('phone-cpu', report['runs'])
+        self.assertTrue(lab.defer_budgets(report, ['cold-face', 'warm-face'])['ok'])

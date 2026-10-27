@@ -211,6 +211,20 @@ def not_worse_rows(candidate, control):
     return rows
 
 
+def defer_budgets(report, journeys):
+    """A phone cell's absolute-budget breaches on these journeys are judged by the phone pairs against the pinned
+    control (a later step), not here; every other finding stands. Pure apart from the report it updates."""
+    errors = report.get('evidenceErrors') or []
+    deferred = [e for e in errors if (m := OVER_BUDGET.match(e)) and m['journey'] in journeys]
+    if deferred:
+        report['budgetDeferredToPairs'] = deferred
+        report['evidenceErrors'] = [e for e in errors if e not in deferred]
+        report['ok'] = not report['evidenceErrors'] and all(r.get('ok') for r in report.get('runs') or [])
+        if report['ok']:
+            report['status'] = 'pass'
+    return report
+
+
 def merge_pairs(reports):
     """One report from a cell's alternating runs on one side: every run, every finding except per-run budget breaches
     (the medians decide those), and ok only if each run was. Pure."""
@@ -1347,6 +1361,10 @@ def summarise(reports, out, title, beads=()):
     budgets = budget_rows(reports)
     if budgets:
         md += ['', '| Cell | Journey | Duration | Budget | Verdict |', '|---|---|---|---|---|'] + budgets
+    for r in reports:
+        if r.get('budgetDeferredToPairs'):
+            md += ['', f"{r['cell']}: judged by the phone pairs against the pinned control, not here: "
+                   + '; '.join(r['budgetDeferredToPairs']) + '.']
     compared = [r for r in reports if r.get('controlComparison')]
     if compared:
         md += ['', f"Phone cells against the pinned control, back to back on the same phone and link "
@@ -1490,7 +1508,12 @@ def run_matrix(args):
                 (out / 'control').mkdir(exist_ok=True)
             for c in cells:
                 if not (control_url and CELLS[c][0] == 'phone'):
-                    reports.append(run_cell_retrying(c, args, out))
+                    report = run_cell_retrying(c, args, out)
+                    deferred = getattr(args, 'phone_budgets_from_pairs', None)
+                    if deferred and CELLS[c][0] == 'phone':
+                        defer_budgets(report, deferred.split(','))
+                        (out / f'{c}.json').write_text(json.dumps(report, indent=2))
+                    reports.append(report)
                     continue
                 # Control, candidate, control, ...: the same phone and link, alternating so drift lands on both.
                 mine, theirs = [], []
@@ -1526,6 +1549,7 @@ def main():
         p.add_argument('--artifact', help='serve this exact candidate artifact locally under the production origin')
         p.add_argument('--deployed', help='the artifact --url should serve: every file is fetched and compared before the run')
         p.add_argument('--control-url', help='the pinned control live: each phone cell is measured there straight after --url')
+        p.add_argument('--phone-budgets-from-pairs', help='journeys (e.g. cold-face,warm-face) whose phone budget the later phone pairs judge')
         p.add_argument('--artifact-digest', help='require this integrated-verification artifact SHA256')
         p.add_argument('--runtime-sha', help='runtime manifest SHA256 for --artifact (fails closed if it differs)')
         p.add_argument('--journey', default=default_journey)

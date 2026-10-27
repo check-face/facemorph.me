@@ -545,11 +545,14 @@ jobs:
           digest=$(node --input-type=module -e "import {deployNextDigest} from './scripts/delivery/post-delivery-check.mjs'; import {readFileSync} from 'node:fs'; console.log(deployNextDigest(JSON.parse(readFileSync('artifact/next-site-identity.json','utf8')).files))")
           node scripts/delivery/post-delivery-check.mjs --mode app --host "$(node -p "new URL('$origin').host")" \
             --expect-digest "$digest" --identity artifact/next-site-identity.json | tee post-delivery.txt | tee -a "$GITHUB_STEP_SUMMARY"
+      # A phone cell's cold and warm first face are judged by the pairs step below (within budget, or not worse than the
+      # pinned control); its morph and every eris cell keep their absolute budgets here.
       - name: The six cells, once, on every journey
         working-directory: tools/device-lab
         run: |
           uv run --quiet --with playwright python lab.py matrix --url "$ORIGIN" --deployed "$GITHUB_WORKSPACE/artifact" \
-            --journey cold-face,warm-face,morph --label "live-$GITHUB_RUN_ID" | tee -a "$GITHUB_STEP_SUMMARY"
+            --journey cold-face,warm-face,morph --phone-budgets-from-pairs cold-face,warm-face \
+            --label "live-$GITHUB_RUN_ID" | tee -a "$GITHUB_STEP_SUMMARY"
       - name: The phone pairs against the pinned control
         if: ${{ !cancelled() }}
         working-directory: tools/device-lab
