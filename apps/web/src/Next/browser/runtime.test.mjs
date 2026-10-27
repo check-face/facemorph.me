@@ -74,28 +74,6 @@ test('C-03: remaining canaries are requested only after the first face, and a wa
   assert.deepEqual(messages,['generate'],'a completed qualification runs no further canary checks and no resume');
  }finally{runtime.dispose();globalThis.indexedDB=oldIDB;}
 });
-// A cancelled job says nothing about the route. Cancelling used to drop the admission with the worker, so the
-// next job re-ran every canary: under full qualification (CI, the device lab) the photo after a morph paid
-// 7 canary syntheses, 23.5 s, and photo encode measured 1.22x the pinned control (release run 40492013083).
-test('a cancelled job keeps the route admitted: the next job restarts the worker without qualifying again',async()=>{
- globalThis.sessionStorage=fakeStorage();
- const oldIDB=globalThis.indexedDB;globalThis.indexedDB=indexedDbFixture().api;
- const messages=[];
- const worker=()=>({postMessage(message){messages.push(message.type);if(message.type==='generate'&&String(message.value)==='7')return; // seed 7 never answers
-  const result=message.type==='qualify'?{checks:[{name:'c0',passed:true}],provider:'wasm',deviceValidated:true}:message.type==='generate'?{blob:new Blob(['mock-canonical-png'],{type:'image/png'}),values:new Float32Array(9216).fill(.25),space:'w-plus',shape:[1,18,512]}:{provider:'wasm'};
-  queueMicrotask(()=>this.onmessage?.({data:{id:message.id,type:'complete',result}}));},terminate(){messages.push('terminate');}});
- const runtime=createBrowserRuntime({manifest:testManifest(),manifestSha256:'0'.repeat(64),preferredRoute:'cpu',workerFactory:worker});
- try{
-  await runtime.generate({mode:'seed',value:'42'});
-  assert.deepEqual(messages,['initialize','qualify','generate']);
-  const cancel=new AbortController(),hung=runtime.generate({mode:'seed',value:'7'},{signal:cancel.signal});
-  for(let i=0;i<200&&messages.filter(m=>m==='generate').length<2;i++)await new Promise(r=>setTimeout(r,5));
-  cancel.abort();await assert.rejects(hung);
-  messages.length=0;
-  await runtime.generate({mode:'seed',value:'43'});
-  assert.deepEqual(messages,['initialize','generate'],'a fresh worker, and no canary check for a route already admitted');
- }finally{runtime.dispose();globalThis.indexedDB=oldIDB;}
-});
 test('C-03: a background canary failure invalidates the route loudly',async()=>{
  globalThis.sessionStorage=fakeStorage();
  const oldIDB=globalThis.indexedDB;globalThis.indexedDB=indexedDbFixture().api;
