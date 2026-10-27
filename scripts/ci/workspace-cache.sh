@@ -19,13 +19,24 @@ store="$root/$slot/$key"
 start=$(date +%s%N)
 
 restore() {
-  local how=reflink
+  local how=copy probe preferred
+  # Unsupported recursive reflinks leave an empty file for every attempted copy. On ZFS,
+  # deleting that failed tree can take minutes. Probe one nonempty file on the destination
+  # filesystem first, then go straight to hardlinks when both paths share a filesystem.
+  probe=$(mktemp -d .facemorph-reflink-XXXXXX) || return
+  if cp --reflink=always "$store/.dirs" "$probe/dirs" 2>/dev/null; then
+    how=reflink
+  elif [ "$(stat -c %d "$store/.dirs")" = "$(stat -c %d "$probe")" ]; then
+    how=hardlink
+  fi
+  rm -rf "$probe"
+  preferred=$how
   while IFS= read -r d; do
     rm -rf "$d"
     mkdir -p "$(dirname "$d")"
-    if cp -a --reflink=always "$store/$d" "$d" 2>/dev/null; then
+    if [ "$preferred" = reflink ] && cp -a --reflink=always "$store/$d" "$d" 2>/dev/null; then
       :
-    elif rm -rf "$d" && cp -al "$store/$d" "$d" 2>/dev/null; then
+    elif [ "$preferred" != copy ] && rm -rf "$d" && cp -al "$store/$d" "$d" 2>/dev/null; then
       how=hardlink
     else
       rm -rf "$d" # the store is on another filesystem: a plain copy
