@@ -100,6 +100,8 @@ const PRE_DEPLOY_ONLY = new Set([
   'packages/stylegan-js/test/engine/browsers.test.ts',
   'packages/stylegan-js/test/engine/caller-loaded-example.test.ts',
   'packages/stylegan-js/test/engine/cpu.test.ts',
+  'packages/stylegan-js/test/engine/encode-browsers.test.ts',
+  'packages/stylegan-js/test/engine/encode-schedule.test.ts',
 ]);
 
 export function partitionInventory(suites, quick = false) {

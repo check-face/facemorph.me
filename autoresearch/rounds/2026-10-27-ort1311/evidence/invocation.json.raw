@@ -1,0 +1,26 @@
+{
+  "command": [
+    "python3",
+    "autoresearch/run.py",
+    "--timeout",
+    "600",
+    "--",
+    "node",
+    "tools/ort-qualify/qualify.mjs",
+    "--ort",
+    "/home/cdilga/.cache/facemorph-ort-staging/1.31.1-e46787f9b590f87c/package",
+    "--routes",
+    "cpu",
+    "--gpu-build",
+    "webgpu",
+    "--out",
+    "/tmp/fm-qeh-ort1311-classic-cpu-20261027T0120.json"
+  ],
+  "status": 0,
+  "seconds": 21.36784570699092,
+  "profiles_created": [
+    "/tmp/ort-qualify-tls-j3gxhv",
+    "/tmp/ort-qualify-6sEAyl"
+  ],
+  "scope": "pinned-classic-synthesis-canaries only; no monorepo/encoder/mobile/adoption claim"
+}

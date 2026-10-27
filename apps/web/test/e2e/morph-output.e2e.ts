@@ -163,11 +163,98 @@ function monotonic(samples: Progress[], n: number, { failedBeforeFramePlan = fal
   );
 }
 
+interface NativePlayerProbe {
+  timeOrigin: number;
+  events: unknown[];
+  snapshot: () => unknown;
+}
+interface NativePlayerProbeWindow extends Window {
+  __nativePlayerProbe?: NativePlayerProbe;
+  __nativePlayerProbes?: WeakMap<HTMLVideoElement, NativePlayerProbe>;
+}
+const nativePlayerInputs = new WeakMap<Page, unknown[]>();
+
+/** Passive, bounded observation shared by real product playback and the verifier fixture. */
+function installNativePlayerProbe(element: Element) {
+  const video = element as HTMLVideoElement;
+  const w = window as NativePlayerProbeWindow;
+  const probes = (w.__nativePlayerProbes ??= new WeakMap());
+  const existing = probes.get(video);
+  if (existing) {
+    w.__nativePlayerProbe = existing;
+    return; // The fixture installs before src/load; operating it must not add duplicate listeners.
+  }
+  const ranges = (value: TimeRanges) =>
+    Array.from({ length: value.length }, (_, i) => [value.start(i), value.end(i)]);
+  const snapshot = () => ({
+    now: performance.now(),
+    src: video.currentSrc || video.src,
+    paused: video.paused,
+    currentTime: video.currentTime,
+    duration: video.duration,
+    readyState: video.readyState,
+    networkState: video.networkState,
+    ended: video.ended,
+    error: video.error && { code: video.error.code, message: video.error.message },
+    buffered: ranges(video.buffered),
+    played: ranges(video.played),
+    seekable: ranges(video.seekable),
+    width: video.videoWidth,
+    height: video.videoHeight,
+    visibility: document.visibilityState,
+    focused: document.hasFocus(),
+  });
+  const probe: NativePlayerProbe = { timeOrigin: performance.timeOrigin, events: [], snapshot };
+  probes.set(video, probe);
+  w.__nativePlayerProbe = probe;
+  for (const name of [
+    'loadstart',
+    'loadedmetadata',
+    'loadeddata',
+    'canplay',
+    'play',
+    'playing',
+    'pause',
+    'timeupdate',
+    'waiting',
+    'stalled',
+    'suspend',
+    'ended',
+    'error',
+    'emptied',
+    'abort',
+    'pointerdown',
+    'touchstart',
+    'click',
+  ])
+    video.addEventListener(
+      name,
+      (event) => {
+        if (probe.events.length < 250)
+          probe.events.push({ event: event.type, trusted: event.isTrusted, ...snapshot() });
+      },
+      { capture: true, passive: true },
+    );
+}
+
+async function readNativePlayerProbe(page: Page) {
+  const observed = await page
+    .evaluate(() => {
+      const probe = (window as NativePlayerProbeWindow).__nativePlayerProbe;
+      return { timeOrigin: probe?.timeOrigin, events: probe?.events, video: probe?.snapshot() };
+    })
+    .catch((error: unknown) => ({ observationError: String(error) }));
+  // Node-side attempts survive helper assertions, thrown input calls and a lost browser document.
+  return { ...observed, inputs: nativePlayerInputs.get(page) ?? [] };
+}
+
 // Native media controls can consume a touch without dispatching an author-DOM click.
 // Read their genuine visible box through CDP, then use real input and playback as
 // evidence. Never call play(), dispatch an event, or alter the codec/media APIs.
 async function operateNativePlayer(page: Page, video: Locator, touch: boolean) {
   const inputs: unknown[] = [];
+  nativePlayerInputs.set(page, inputs);
+  await video.evaluate(installNativePlayerProbe);
   const input = async (name: string, point: { x: number; y: number }) => {
     const hit = await video.evaluate((element, at) => {
       const hit = document.elementFromPoint(at.x, at.y);
@@ -177,6 +264,8 @@ async function operateNativePlayer(page: Page, video: Locator, touch: boolean) {
         viewport: { width: innerWidth, height: innerHeight },
       };
     }, point);
+    const attempted = { name, kind: touch ? 'touch' : 'mouse', point, hit };
+    inputs.push(attempted);
     assert.ok(
       hit.inside &&
         point.x >= 0 &&
@@ -189,14 +278,45 @@ async function operateNativePlayer(page: Page, video: Locator, touch: boolean) {
       paused: (element as HTMLVideoElement).paused,
       time: (element as HTMLVideoElement).currentTime,
     }));
+    Object.assign(attempted, { before });
+    // Showing the controls can start playback after the earlier paused checks.
+    // Recheck immediately before real input so the play toggle does not pause it.
+    if (name === 'native play control' && !before.paused) {
+      Object.assign(attempted, {
+        dispatched: false,
+        skipped: 'Video already unpaused immediately before native play dispatch.',
+      });
+      return;
+    }
     if (touch) await page.touchscreen.tap(point.x, point.y);
     else await page.mouse.click(point.x, point.y);
-    inputs.push({ name, kind: touch ? 'touch' : 'mouse', point, hit, before });
+    Object.assign(attempted, { dispatched: true });
   };
   await video.scrollIntoViewIfNeeded();
   const box = await video.boundingBox();
   assert.ok(box);
   await input('show native controls', { x: box.x + box.width / 2, y: box.y + box.height / 2 });
+  // Chromium's click-to-play starts playback about 300 ms after a click on the video (it waits out a double-click),
+  // so an immediate paused check races it and the native Play press then pauses the video (full run 40443468068).
+  // Give that click its settle time before deciding whether Play still needs pressing.
+  await video
+    .evaluate(
+      (element) =>
+        new Promise<void>((done) => {
+          const v = element as HTMLVideoElement;
+          if (!v.paused) return done();
+          const timer = setTimeout(done, 1000);
+          v.addEventListener(
+            'play',
+            () => {
+              clearTimeout(timer);
+              done();
+            },
+            { once: true },
+          );
+        }),
+    )
+    .catch(() => {});
   if (await video.evaluate((element) => (element as HTMLVideoElement).paused)) {
     const cdp = await page.context().newCDPSession(page);
     try {
@@ -259,6 +379,7 @@ async function operateNativePlayer(page: Page, video: Locator, touch: boolean) {
   );
   return {
     inputs,
+    observed: await readNativePlayerProbe(page),
     playback: await video.evaluate((element) => ({
       paused: (element as HTMLVideoElement).paused,
       currentTime: (element as HTMLVideoElement).currentTime,
@@ -1016,17 +1137,29 @@ test(
           await page
             .screenshot({ path: join(out, `${width}-FAILED.png`), fullPage: true, timeout: 5000 })
             .catch(() => {});
+          const statusText = await status.innerText({ timeout: 2000 }).catch(() => '');
+          let observationTimer: ReturnType<typeof setTimeout> | undefined;
+          const observationDeadline = new Promise<null>((resolve) => {
+            observationTimer = setTimeout(() => resolve(null), 2000);
+          });
+          const [observer, nativePlayer] = await Promise.all([
+            Promise.race([snapshot(page).catch(() => null), observationDeadline]),
+            Promise.race([readNativePlayerProbe(page), observationDeadline]),
+          ]);
+          clearTimeout(observationTimer);
           writeFileSync(
             join(out, `${width}-failure.json`),
             JSON.stringify(
               {
                 artifact: artifact.identity.deploySource,
                 error: String(error),
-                status: await status.innerText({ timeout: 2000 }).catch(() => ''),
-                observer: await Promise.race([
-                  snapshot(page).catch(() => null),
-                  new Promise((resolve) => setTimeout(() => resolve(null), 2000)),
-                ]),
+                status: statusText,
+                observer,
+                nativePlayer: nativePlayer ?? {
+                  inputs: nativePlayerInputs.get(page) ?? [],
+                  observationError:
+                    'Passive media read exceeded the existing failure observation window.',
+                },
                 errors,
                 models,
               },
@@ -1297,58 +1430,9 @@ test(
         await page.setContent(
           '<!doctype html><meta name="viewport" content="width=device-width, initial-scale=1"><div style="height:1000px"></div><div class="next-video-slot"><video controls loop playsinline style="width:332px;height:332px;max-width:100%"></video></div><div style="height:1000px"></div>',
         );
+        await page.locator('video').evaluate(installNativePlayerProbe);
         await page.evaluate((saved) => {
           const video = document.querySelector('video')!;
-          const ranges = (value: TimeRanges) =>
-            Array.from({ length: value.length }, (_, i) => [value.start(i), value.end(i)]);
-          const snapshot = () => ({
-            now: performance.now(),
-            paused: video.paused,
-            currentTime: video.currentTime,
-            duration: video.duration,
-            readyState: video.readyState,
-            networkState: video.networkState,
-            ended: video.ended,
-            error: video.error && { code: video.error.code, message: video.error.message },
-            buffered: ranges(video.buffered),
-            played: ranges(video.played),
-            seekable: ranges(video.seekable),
-            width: video.videoWidth,
-            height: video.videoHeight,
-            visibility: document.visibilityState,
-            focused: document.hasFocus(),
-          });
-          const probe = { timeOrigin: performance.timeOrigin, events: [] as object[], snapshot };
-          Object.assign(window, { __nativePlayerProbe: probe });
-          // Observe native media and real input without changing playback or codec answers.
-          for (const name of [
-            'loadstart',
-            'loadedmetadata',
-            'loadeddata',
-            'canplay',
-            'play',
-            'playing',
-            'pause',
-            'timeupdate',
-            'waiting',
-            'stalled',
-            'suspend',
-            'ended',
-            'error',
-            'emptied',
-            'abort',
-            'pointerdown',
-            'touchstart',
-            'click',
-          ])
-            video.addEventListener(
-              name,
-              (event) => {
-                if (probe.events.length < 250)
-                  probe.events.push({ event: event.type, trusted: event.isTrusted, ...snapshot() });
-              },
-              { capture: true, passive: true },
-            );
           video.src = URL.createObjectURL(new Blob([new Uint8Array(saved)], { type: 'video/mp4' }));
         }, bytes);
         await page.waitForFunction(() => document.querySelector('video')!.readyState >= 2);
@@ -1359,24 +1443,7 @@ test(
         completed = true;
       } catch (error) {
         const page = profile.context.pages().at(-1);
-        const observed = await page
-          ?.evaluate(() => {
-            const probe = (
-              window as unknown as {
-                __nativePlayerProbe?: {
-                  timeOrigin: number;
-                  events: unknown[];
-                  snapshot: () => unknown;
-                };
-              }
-            ).__nativePlayerProbe;
-            return {
-              timeOrigin: probe?.timeOrigin,
-              events: probe?.events,
-              video: probe?.snapshot(),
-            };
-          })
-          .catch((observationError: unknown) => ({ observationError: String(observationError) }));
+        const observed = page ? await readNativePlayerProbe(page) : null;
         writeFileSync(
           join(out, `native-player-${width}-failure.json`),
           JSON.stringify(

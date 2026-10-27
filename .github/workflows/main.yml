@@ -90,15 +90,13 @@ jobs:
           JS
       - if: inputs.dependency_group != '' && hashFiles('import/runtime-mirror.json') != ''
         uses: ./.github/actions/setup-runtime
-      - name: Acquire and verify the actual candidate ORT runtime
+      - name: Use the verified candidate acquired separately from the frozen control
         if: inputs.dependency_group != '' && hashFiles('import/runtime-mirror.json') != ''
         id: candidate-runtime
         run: |
           set -euo pipefail
-          out="$RUNNER_TEMP/dependency-ort-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
-          node scripts/ci/apply-ort-mirror.ts --control-runtime "$FACEMORPH_RUNTIME_DIR" \
-            --overlay import/runtime-mirror.json --out "$out" > dependency-runtime.json
-          echo "dir=$out" >> "$GITHUB_OUTPUT"
+          test -n "$FACEMORPH_RUNTIME_DIR"
+          echo "dir=$FACEMORPH_RUNTIME_DIR" >> "$GITHUB_OUTPUT"
       - name: Freeze numerical and platform acceptance for ordinary main work
         if: inputs.dependency_group == ''
         run: |
@@ -170,7 +168,7 @@ jobs:
       artifact_run: ${{ github.run_id }}
       artifact_commit: ${{ github.sha }}
       artifact_name: next-site-${{ github.sha }}
-      runtime_sha: d9e37e50a436e9fb7c0c7f973e70adee353c808f48c6a51fa5a9186f1c650a5c
+      runtime_sha: ${{ needs.next-site-artifact.outputs.runtime_sha }}
   app-contracts:
     needs: [changes, next-site-artifact]
     if: contains(fromJSON(needs.changes.outputs.lanes), 'app-contracts')
@@ -367,7 +365,7 @@ jobs:
       artifact_workflow: .github/workflows/main.yml
       artifact_commit: ${{ github.sha }}
       artifact_name: next-site-${{ github.sha }}
-      runtime_sha: d9e37e50a436e9fb7c0c7f973e70adee353c808f48c6a51fa5a9186f1c650a5c
+      runtime_sha: ${{ needs.next-site-artifact.outputs.runtime_sha }}
     secrets: inherit
   # Pushes check correctness quickly. Manual all-lanes qualification produces the pre-deploy receipt;
   # only that successful full run can enter the existing hosted/device release gate and publication.
@@ -385,7 +383,7 @@ jobs:
       artifact_commit: ${{ github.sha }}
       artifact_run: ${{ github.run_id }}
       artifact_name: next-site-${{ github.sha }}
-      runtime_sha: d9e37e50a436e9fb7c0c7f973e70adee353c808f48c6a51fa5a9186f1c650a5c
+      runtime_sha: ${{ needs.next-site-artifact.outputs.runtime_sha }}
     secrets: inherit
   package-gates:
     needs: [changes, next-site-artifact]

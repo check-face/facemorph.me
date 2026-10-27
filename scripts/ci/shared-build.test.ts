@@ -108,3 +108,52 @@ test('site consumers restore current-run provenance and retain the existing arti
     );
   }
 });
+
+test('full model qualification installs browsers and explicitly binds the verified runtime before engine tests', () => {
+  const condition = "github.event_name == 'workflow_dispatch' || inputs.full";
+  for (const [name, jobId, testName] of [
+    ['scaffold', 'tests', 'Run every npm-test file assigned to this shard'],
+    [
+      'contracts-m1',
+      'check',
+      'Engine contract tests (incl. recovery-metadata and worker-payload fuzz)',
+    ],
+  ] as const) {
+    const workflow = read(`.github/workflows/${name}.yml`);
+    assert.equal(workflow.on.workflow_call.inputs.full.default, true);
+    const steps = workflow.jobs[jobId].steps;
+    const run = steps.findIndex((s: any) => s.name === testName);
+    const standaloneBuild = steps.findIndex((s: any) => /^npm run build(?: |$)/.test(s.run ?? ''));
+    assert(
+      standaloneBuild >= 0 && standaloneBuild < run,
+      `${name}: standalone builds before tests`,
+    );
+    assert.equal(steps[standaloneBuild].if, '!inputs.shared_build');
+    for (const resource of [
+      './.github/actions/setup-playwright',
+      './.github/actions/setup-runtime',
+    ]) {
+      const index = steps.findIndex((s: any) => s.uses === resource);
+      assert(index >= 0 && index < run, `${name}: ${resource} precedes inference`);
+      assert.equal(steps[index].if, condition, `${name}: ordinary main keeps its quick path`);
+    }
+    const browser = steps.find((s: any) => s.uses === './.github/actions/setup-playwright');
+    assert.equal(browser.with.browsers, 'chromium firefox webkit');
+    const bind = steps.findIndex(
+      (s: any) =>
+        s.name === 'Bind model tests to the verified runtime and require all encoder canaries',
+    );
+    assert(
+      bind > steps.findIndex((s: any) => s.uses === './.github/actions/setup-runtime') &&
+        bind < run,
+    );
+    assert.equal(steps[bind].if, condition);
+    assert.match(steps[bind].run, /FACEMORPH_RUNTIME_CACHE=\$FACEMORPH_RUNTIME_DIR/);
+    assert.match(
+      steps[bind].run,
+      /runtime_sha=\$\(sha256sum "\$FACEMORPH_RUNTIME_DIR\/manifest\.json"/,
+    );
+    assert.match(steps[bind].run, /FACEMORPH_RUNTIME_SHA256=\$runtime_sha/);
+    assert.match(steps[bind].run, /FACEMORPH_FULL_QUALIFY=1/);
+  }
+});

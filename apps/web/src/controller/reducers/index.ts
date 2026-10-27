@@ -89,9 +89,12 @@ export const CASES = {
   Import: jobs,
   Notice: jobs,
   DownloadsChanged: gate,
+  PrepareEncoder: gate,
+  CancelEncoderSetup: gate,
   DownloadNow: gate,
   HideModelToast: gate,
   GateAccept: gate,
+  ResumePhoto: gate,
   GateCancel: gate,
   Retry: jobs,
   RestoredLast: jobs,
@@ -115,7 +118,11 @@ export function reduce(message: Msg, state: State, facts: ControllerFacts = {}):
   if (replacing !== null && state.Inputs.some((input) => input.id === replacing))
     state = retirePhotoRunInputs(state, replacing);
   const gated = gate(message, state);
-  if (gated !== null) return { ...gated, state: retirePhotoRunInputs(gated.state) };
+  if (gated !== null)
+    return rememberView(state, {
+      ...gated,
+      state: retirePausedPhotos(retirePhotoRunInputs(gated.state)),
+    });
   const handler: ControllerReducer = CASES[message.type];
   const result = handler(message, state, facts);
   if (result === null) throw new Error(`Controller case ${message.type} has no reducer`);
@@ -124,7 +131,27 @@ export function reduce(message: Msg, state: State, facts: ControllerFacts = {}):
   const selected = result.effects.some((effect) => effect.type === 'admissionRefused')
     ? { ...result.state, RunInputs: runInputs, RunSettings: runSettings }
     : result.state;
-  return rememberView(state, { ...result, state: retirePhotoRunInputs(selected) });
+  return rememberView(state, {
+    ...result,
+    state: retirePausedPhotos(retirePhotoRunInputs(selected)),
+  });
+}
+/** Hidden Undo sources stay owned until commit; replacements release an obsolete paused source. */
+function retirePausedPhotos(state: State): State {
+  if (!state.PausedPhotos?.size) return state;
+  const hidden = new Set(state.Undo?.hidden.map(({ input }) => input.id));
+  const kept = new Map(
+    [...state.PausedPhotos].filter(([id, source]) => {
+      const installed = state.Inputs.find((input) => input.id === id);
+      return (
+        hidden.has(id) ||
+        (!!installed &&
+          installed.mode !== 'project' &&
+          (!installed.file || installed.file === source.file))
+      );
+    }),
+  );
+  return kept.size === state.PausedPhotos.size ? state : { ...state, PausedPhotos: kept };
 }
 export function rememberView(previous: State, next: Transition): Transition {
   const state = next.state;

@@ -60,8 +60,19 @@ export async function press(
     );
     return { ...hit, x, y };
   };
+  // The control must also be still: a collapsing banner above it (a dismissed error) moves it between the probe and
+  // the press, and the press then lands on whatever slid under that point. Two probes 100 ms apart must agree.
   let there = await probe();
-  for (const end = Date.now() + 3000; !there.ok && Date.now() < end;) {
+  for (const end = Date.now() + 3000; Date.now() < end;) {
+    if (there.ok) {
+      await page.waitForTimeout(100);
+      const again = await probe();
+      const still =
+        again.ok && Math.abs(again.x - there.x) <= 1 && Math.abs(again.y - there.y) <= 1;
+      there = again;
+      if (still) break;
+      continue;
+    }
     await page.waitForTimeout(150);
     there = await probe();
   }

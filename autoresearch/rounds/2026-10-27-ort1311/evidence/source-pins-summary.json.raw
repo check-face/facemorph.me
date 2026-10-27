@@ -1,0 +1,118 @@
+{
+  "schema": "facemorph.ort-source-preparation/1",
+  "version": "1.31.1",
+  "sourceCommit": "6af1a932e2286d5c58166085d24c68783033edee",
+  "emsdk": {
+    "version": "4.0.23",
+    "gitlink": "c0bb220cb6e6f4e0fabb6f6db9efd53390ef5e56",
+    "releaseBuild": "aaa43392544d695232b70eda706d751f18980c2a"
+  },
+  "packageMatch": {
+    "packageDirectory": "/home/cdilga/.cache/facemorph-ort-staging/1.31.1-e46787f9b590f87c/package",
+    "libVersionByteEqual": true,
+    "libVersionSha256": "0dedd3fdba72cb777a892d687a2b10943bca5b8897cfd3a4a3ef8768e58e75fe",
+    "registryHasGitHead": false,
+    "limitation": "Release version and lib/version.ts match; no published gitHead proves binary build commit."
+  },
+  "buildFlags": {
+    "priorBuildFlagsRecognized": 13,
+    "emsdk": "4.0.23",
+    "wasmSimd": true,
+    "wasmThreads": false,
+    "maximumMemory": 268435456,
+    "compileParallelism": 2,
+    "cmakeMinimum": "3.28",
+    "priorInvocation": "configure only (--update), not compile (--build)",
+    "limitation": "Static source audit only; generated linker flags, unshared WASM memory maximum and real model qualification must be executed."
+  },
+  "sourceReceipts": {
+    "VERSION_NUMBER": {
+      "path": "VERSION_NUMBER",
+      "url": "https://raw.githubusercontent.com/microsoft/onnxruntime/6af1a932e2286d5c58166085d24c68783033edee/VERSION_NUMBER",
+      "bytes": 7,
+      "sha256": "a047762d2cc2cf4a6818e566644f189682d8c8ece297a71dec7ce4d0fc4e79f2",
+      "etag": "\"a8fd4c3298f860d6dee816c5a75ec02ef1af6e489ce2b4509ade5e1f54f1fa59\"",
+      "status": 200
+    },
+    "js/web/package.json": {
+      "path": "js/web/package.json",
+      "url": "https://raw.githubusercontent.com/microsoft/onnxruntime/6af1a932e2286d5c58166085d24c68783033edee/js/web/package.json",
+      "bytes": 4602,
+      "sha256": "3274d95a36ef1d906fec7ac4eca2ae804bdf7c06c626e4d4a2c72b5d9ee03817",
+      "etag": "\"bcc4ca6b0da0cbcb1525e1a00c568653a1aa243a98a99e835cde3f4230e04914\"",
+      "status": 200
+    },
+    "js/web/lib/version.ts": {
+      "path": "js/web/lib/version.ts",
+      "url": "https://raw.githubusercontent.com/microsoft/onnxruntime/6af1a932e2286d5c58166085d24c68783033edee/js/web/lib/version.ts",
+      "bytes": 230,
+      "sha256": "0dedd3fdba72cb777a892d687a2b10943bca5b8897cfd3a4a3ef8768e58e75fe",
+      "status": 200
+    },
+    ".gitmodules": {
+      "path": ".gitmodules",
+      "url": "https://raw.githubusercontent.com/microsoft/onnxruntime/6af1a932e2286d5c58166085d24c68783033edee/.gitmodules",
+      "bytes": 384,
+      "sha256": "88baf1a643d03b2c6c4ef4caf3463ac9eefdbd150c5e9054b1df23578eb4a160",
+      "status": 200
+    },
+    "emsdk-gitlink.json": {
+      "path": "emsdk-gitlink.json",
+      "url": "https://api.github.com/repos/microsoft/onnxruntime/contents/cmake/external/emsdk?ref=6af1a932e2286d5c58166085d24c68783033edee",
+      "bytes": 910,
+      "sha256": "3cdb9c35627076c33e9686f4fdca4de6acf1fa12a4fbb8036407fa4e50a2851b",
+      "status": 200
+    },
+    "emscripten-releases-tags.json": {
+      "path": "emscripten-releases-tags.json",
+      "url": "https://raw.githubusercontent.com/emscripten-core/emsdk/c0bb220cb6e6f4e0fabb6f6db9efd53390ef5e56/emscripten-releases-tags.json",
+      "bytes": 17600,
+      "sha256": "0b817e0b9f1f015719d9cfc68f7e6e5ced27e8342af7eae53979b46274986264",
+      "status": 200
+    },
+    "tools/ci_build/build_args.py": {
+      "path": "tools/ci_build/build_args.py",
+      "url": "https://raw.githubusercontent.com/microsoft/onnxruntime/6af1a932e2286d5c58166085d24c68783033edee/tools/ci_build/build_args.py",
+      "bytes": 49858,
+      "sha256": "2720f55b4a5bee02029969a690b3c290ca0bf04e057ba99f408755b4699a3670",
+      "status": 200
+    },
+    "tools/ci_build/build.py": {
+      "path": "tools/ci_build/build.py",
+      "url": "https://raw.githubusercontent.com/microsoft/onnxruntime/6af1a932e2286d5c58166085d24c68783033edee/tools/ci_build/build.py",
+      "bytes": 127500,
+      "sha256": "ec804029ce363dda11ccd4d78a5498f9047f695edc73509abf7cb42b0b9ad224",
+      "etag": "\"3bfb2d0485a4476263aee8bea960708508164d704a231a2b066b3396ad8c3469\"",
+      "status": 200
+    },
+    "cmake/CMakeLists.txt": {
+      "path": "cmake/CMakeLists.txt",
+      "url": "https://raw.githubusercontent.com/microsoft/onnxruntime/6af1a932e2286d5c58166085d24c68783033edee/cmake/CMakeLists.txt",
+      "bytes": 98530,
+      "sha256": "44a31f6811b24135f57cdc4628f9fe37b579fbe9e46aeb401ef7c800b104c694",
+      "etag": "\"c84784a26196aa1c6d5d2b7a4b297c7bc2985c32636a14832caff9b3729b6bb1\"",
+      "status": 200
+    },
+    "cmake/onnxruntime_webassembly.cmake": {
+      "path": "cmake/onnxruntime_webassembly.cmake",
+      "url": "https://raw.githubusercontent.com/microsoft/onnxruntime/6af1a932e2286d5c58166085d24c68783033edee/cmake/onnxruntime_webassembly.cmake",
+      "bytes": 15040,
+      "sha256": "64a89543e84c1249630a5d12e3561a5c6adcf4191c2a3e2c7cbe47a3cbd8f1fc",
+      "etag": "\"f1ae3b7a32c1f9104d2638e65b481d0b942d963fdfce12c69f9a74fd00410267\"",
+      "status": 200
+    }
+  },
+  "performed": [
+    "Immutable raw source/API receipt downloads",
+    "Staged npm version comparison",
+    "Static argument audit"
+  ],
+  "notPerformed": [
+    "Source clone",
+    "SDK installation",
+    "Build",
+    "Model tests",
+    "Repository edits",
+    "Adoption"
+  ]
+}

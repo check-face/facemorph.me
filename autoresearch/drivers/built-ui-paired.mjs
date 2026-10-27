@@ -196,9 +196,21 @@ async function sample(side, caseId, warmup) {
     // Each sample's first photo is new to its profile and the next differs from it: both must run the encoder.
     for (const which of ['first', 'next']) {
       const input = await photo(page, caseId, which);
+      // Choosing a photo places it in the tile; the control then waits for its Generate, as a person presses it.
+      // If no work started within a moment of the choice, press that tile's Generate (run 40455559357's control
+      // sample settled with the photo placed and never encoded).
       const r = await j.step(
         `photo-${which}`,
-        () => page.locator('input[aria-label="Choose photo"]').last().setInputFiles(input),
+        async () => {
+          await page.locator('input[aria-label="Choose photo"]').last().setInputFiles(input);
+          await page.waitForTimeout(1000);
+          const idle = await page.evaluate(
+            () =>
+              document.querySelector('.next-product')?.getAttribute('data-next-busy') !== 'true',
+          );
+          const generate = j.tile(1).locator('.next-face-generate');
+          if (idle && (await generate.isEnabled().catch(() => false))) await generate.click();
+        },
         j.settled(1, 'photo'),
       );
       Object.assign(r, { inputSha256: sha(input.buffer), inputBytes: input.buffer.length });

@@ -27,8 +27,25 @@ jobs:
       - uses: ./.github/actions/setup-workspace # node_modules for the lockfile, shared on the runner (fm-98po)
       - uses: ./.github/actions/restore-workspace-build
         if: inputs.shared_build
+      - if: '!inputs.shared_build'
+        run: npm run build -w packages/stylegan-js -w packages/browser-model-manager
       - run: npx tsc -p packages/stylegan-js/tsconfig.json && npx tsc -p packages/stylegan-js/tsconfig.test.json
       - run: npx tsc -p packages/browser-model-manager/src/contracts/tsconfig.test.json
+      # Full qualification must execute the model journeys, never rely on ambient runner caches.
+      - uses: ./.github/actions/setup-playwright
+        if: github.event_name == 'workflow_dispatch' || inputs.full
+        with:
+          browsers: chromium firefox webkit
+      - uses: ./.github/actions/setup-runtime
+        if: github.event_name == 'workflow_dispatch' || inputs.full
+      - name: Bind model tests to the verified runtime and require all encoder canaries
+        if: github.event_name == 'workflow_dispatch' || inputs.full
+        run: |
+          test -n "$FACEMORPH_RUNTIME_DIR"
+          runtime_sha=$(sha256sum "$FACEMORPH_RUNTIME_DIR/manifest.json" | cut -c1-64)
+          echo "FACEMORPH_RUNTIME_CACHE=$FACEMORPH_RUNTIME_DIR" >> "$GITHUB_ENV"
+          echo "FACEMORPH_RUNTIME_SHA256=$runtime_sha" >> "$GITHUB_ENV"
+          echo 'FACEMORPH_FULL_QUALIFY=1' >> "$GITHUB_ENV"
       - name: Engine contract tests (incl. recovery-metadata and worker-payload fuzz)
         env:
           FULL: ${{ github.event_name == 'workflow_dispatch' || inputs.full }}

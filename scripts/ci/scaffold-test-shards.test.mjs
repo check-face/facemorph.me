@@ -86,6 +86,8 @@ test('contracts reuse the live engine workspace inventory and the same exact inf
     'test/engine/browsers.test.ts',
     'test/engine/caller-loaded-example.test.ts',
     'test/engine/cpu.test.ts',
+    'test/engine/encode-browsers.test.ts',
+    'test/engine/encode-schedule.test.ts',
     'test/full31/full31.test.ts',
   ]);
   assert.deepEqual([...run[0].files, ...deferred[0].files].sort(), [...selected[0].files].sort());
@@ -218,10 +220,22 @@ test('quick shards defer only measured inference files; quick plus deferred equa
       'packages/stylegan-js/test/engine/browsers.test.ts',
       'packages/stylegan-js/test/engine/caller-loaded-example.test.ts',
       'packages/stylegan-js/test/engine/cpu.test.ts',
+      'packages/stylegan-js/test/engine/encode-browsers.test.ts',
+      'packages/stylegan-js/test/engine/encode-schedule.test.ts',
       'packages/stylegan-js/test/full31/full31.test.ts',
     ],
   );
   assert.deepEqual(paths([...quick, ...deferred]), paths(suites));
   assert.equal(new Set(paths([...quick, ...deferred])).size, paths(suites).length);
   assert.ok(!paths(quick).some((file) => file.includes('full31/full31.test.ts')));
+  const ordinaryPaths = quick.flatMap(({ cwd, files }) => files.map((file) => `${cwd}/${file}`));
+  for (const file of [
+    'test/execution-gate.test.ts',
+    'test/engine/canary.test.ts',
+    'test/engine/encode.test.ts',
+    'test/engine/runtime-input.test.ts',
+    'test/morph/latent-path.test.ts',
+    'test/morph/render.test.ts',
+  ])
+    assert.ok(ordinaryPaths.includes(`packages/stylegan-js/${file}`), `${file} stays ordinary`);
 });

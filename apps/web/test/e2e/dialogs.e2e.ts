@@ -2,12 +2,13 @@
 // Actual controller/bridge effect execution is qualified separately in facade.e2e.ts.
 import assert from 'node:assert/strict';
 import { mkdirSync, readFileSync } from 'node:fs';
-import { megabytes } from '../../src/controller/derived.ts';
+import { downloadMegabytes as megabytes } from '../../src/controller/derived.ts';
 import test, { before, after } from 'node:test';
 import { chromium, firefox, webkit, type BrowserType, type Page } from 'playwright';
 import { press } from '../support/operate.ts';
 import { serve, type Served } from '../support/serve.ts';
 import { operatedClick, StepLog } from '../verify/operated.ts';
+import { launchFreshChromiumProfile } from '../support/browser-profile.ts';
 import { bindOrigins, DEFAULT_HOST_MAP } from '../verify/artifact.ts';
 
 const app = new URL('../../', import.meta.url);
@@ -19,7 +20,7 @@ const engines: Record<string, BrowserType> = { chromium, firefox, webkit };
 const only = process.env['FACEMORPH_E2E_ENGINES']?.split(',');
 let site: Served;
 before(async () => {
-  site = await serve(new URL('dist', app).pathname);
+  site = await serve(process.env['FACEMORPH_DIALOGS_BUILD'] ?? new URL('dist', app).pathname);
   mkdirSync(results, { recursive: true });
 });
 after(async () => {
@@ -27,6 +28,59 @@ after(async () => {
 });
 const last = (page: Page, type: string) =>
   page.waitForSelector(`output[data-dialog-message="${type}"]`);
+
+test('chromium: consent discloses a download exceeding the actual browser storage quota', async () => {
+  for (const width of [1280, 390])
+    for (const colorScheme of ['light', 'dark'] as const) {
+      const touch = width === 390;
+      const profile = await launchFreshChromiumProfile({
+        viewport: { width, height: 900 },
+        hasTouch: touch,
+        isMobile: touch,
+        colorScheme,
+      });
+      const context = profile.context;
+      try {
+        const page = await context.newPage();
+        const errors: string[] = [];
+        page.on('pageerror', (error) => errors.push(String(error)));
+        await page.goto(`${site.origin}/render-check.html?dialogs`);
+        const storage = await page.evaluate(() => navigator.storage.estimate());
+        const quota = storage.quota;
+        assert.ok(typeof quota === 'number' && Number.isFinite(quota) && quota > 0);
+        const bytes = quota + 1024 ** 2;
+        assert.ok(quota - storage.usage! < bytes);
+        await page.goto(`${site.origin}/render-check.html?dialogs&downloadBytes=${bytes}`);
+        const opener = page.getByRole('button', { name: 'Offer face model', exact: true });
+        await press(page, opener, { touch });
+        const dialog = page.getByRole('dialog', { name: 'Download the face model?' });
+        const warning = dialog.locator('.next-download-storage');
+        await warning.waitFor();
+        const amount = megabytes(bytes);
+        assert.ok((await warning.innerText()).includes(amount));
+        assert.match(await warning.innerText(), /downloaded again on each visit/);
+        assert.ok(
+          (await dialog.locator('[data-download-purpose="generate"]').innerText()).includes(amount),
+        );
+        assert.ok(
+          await dialog.evaluate((element) => {
+            const box = element.getBoundingClientRect();
+            return box.left >= 0 && box.right <= innerWidth;
+          }),
+        );
+        await page.screenshot({
+          path: new URL(`storage-${width}-${colorScheme}.png`, results).pathname,
+          fullPage: true,
+        });
+        await press(page, dialog.getByRole('button', { name: 'Cancel', exact: true }), { touch });
+        await dialog.waitFor({ state: 'detached' });
+        assert.ok(await opener.evaluate((element) => element === document.activeElement));
+        assert.deepEqual(errors, []);
+      } finally {
+        await profile.close();
+      }
+    }
+});
 
 for (const [engine, type] of Object.entries(engines).filter(
   ([name]) => !only || only.includes(name),
@@ -49,8 +103,88 @@ for (const [engine, type] of Object.entries(engines).filter(
           await page.goto(`${site.origin}/render-check.html?dialogs&${extra}`);
           await page.getByRole('button', { name: 'Browse names', exact: true }).waitFor();
         };
-        const hit = async (control: ReturnType<Page['locator']>) =>
-          assert.ok((await press(page, control, { touch })).inside);
+        const hit = (() => {
+          let tracing = false;
+          let step = 0;
+          const observe = () => {
+            const w = window as unknown as { __target?: Element };
+            const describe = (element: Element | null) => element?.outerHTML.slice(0, 800);
+            const snapshot = () => ({
+              now: performance.now(),
+              expected: describe(w.__target ?? null),
+              expectedConnected: w.__target?.isConnected,
+              expectedBox: w.__target?.getBoundingClientRect().toJSON(),
+              scroll: { x: scrollX, y: scrollY, height: document.documentElement.scrollHeight },
+              active: describe(document.activeElement),
+            });
+            const events: unknown[] = [];
+            Object.assign(window, { __dialogsHit: { events, snapshot } });
+            for (const name of ['pointerdown', 'pointerup', 'click'])
+              document.addEventListener(
+                name,
+                (event) => {
+                  const pointer = event as MouseEvent;
+                  const target = event.target instanceof Element ? event.target : null;
+                  const expected = w.__target;
+                  if (events.length >= 250) events.shift();
+                  events.push({
+                    event: event.type,
+                    trusted: event.isTrusted,
+                    point: { x: pointer.clientX, y: pointer.clientY },
+                    target: describe(target),
+                    inside:
+                      !!target && !!expected && (expected === target || expected.contains(target)),
+                    atPoint: describe(document.elementFromPoint(pointer.clientX, pointer.clientY)),
+                    ...snapshot(),
+                  });
+                },
+                { capture: true, passive: true },
+              );
+          };
+          return async (control: ReturnType<Page['locator']>) => {
+            if (!tracing) {
+              await context.tracing.start({ screenshots: true, snapshots: true });
+              await context.addInitScript(observe);
+              await page.evaluate(observe);
+              tracing = true;
+            }
+            const currentStep = ++step;
+            let landed: Awaited<ReturnType<typeof press>> | undefined;
+            try {
+              landed = await press(page, control, { touch });
+              assert.ok(
+                landed.inside,
+                `${control}: real input landed outside the intended control`,
+              );
+            } catch (error) {
+              const observation = await page.evaluate(() => {
+                const probe = (
+                  window as unknown as {
+                    __dialogsHit?: { events: unknown[]; snapshot: () => unknown };
+                  }
+                ).__dialogsHit;
+                return { events: probe?.events, after: probe?.snapshot() };
+              });
+              const prefix = `${engine}-${width}-hit-${currentStep}-failure`;
+              const { writeFileSync } = await import('node:fs');
+              writeFileSync(
+                new URL(`${prefix}.json`, results),
+                JSON.stringify(
+                  { control: String(control), error: String(error), landed, observation },
+                  null,
+                  2,
+                ) + '\n',
+              );
+              await page
+                .screenshot({ path: new URL(`${prefix}.png`, results).pathname, fullPage: true })
+                .catch(() => {});
+              await context.tracing
+                .stop({ path: new URL(`${prefix}-trace.zip`, results).pathname })
+                .catch(() => {});
+              throw error;
+            }
+          };
+        })();
         const shot = (name: string) =>
           page.screenshot({
             path: new URL(`${engine}-${width}-${name}.png`, results).pathname,
@@ -222,10 +356,34 @@ for (const [engine, type] of Object.entries(engines).filter(
           });
           await gate.waitFor();
           assert.ok(
-            ((await gate.textContent()) ?? '').includes(
-              megabytes(phoneCpuCheck.cpuPackageBytes + (photo ? 1024 ** 3 : 0)),
+            (await gate.locator('[data-download-purpose="generate"]').innerText()).includes(
+              megabytes(phoneCpuCheck.cpuPackageBytes),
             ),
           );
+          assert.equal(
+            await gate.locator('[data-download-purpose="encode"]').count(),
+            photo ? 1 : 0,
+          );
+          if (photo)
+            assert.ok(
+              (await gate.locator('[data-download-purpose="encode"]').innerText()).includes(
+                megabytes(1024 ** 3),
+              ),
+            );
+          // Selecting a bundle changes only the explanation, never approves a download.
+          const lastBeforeChoice = await page
+            .locator('output[data-dialog-message]')
+            .getAttribute('data-dialog-message');
+          await hit(gate.getByRole('radio', { name: 'Generate', exact: true }));
+          assert.equal(await gate.locator('[data-download-purpose="encode"]').count(), 0);
+          if (photo) assert.match(await gate.innerText(), /Encoding needs the photo encoder/);
+          await hit(gate.getByRole('radio', { name: 'Generate and encode', exact: true }));
+          assert.equal(await gate.locator('[data-download-purpose="encode"]').count(), 1);
+          assert.equal(
+            await page.locator('output[data-dialog-message]').getAttribute('data-dialog-message'),
+            lastBeforeChoice,
+          );
+          if (!photo) await hit(gate.getByRole('radio', { name: 'Generate', exact: true }));
           await shot(photo ? 'download-photo' : 'download-face');
           await hit(gate.getByRole('button', { name: 'Cancel', exact: true }));
           await last(page, 'GateCancel');
@@ -293,19 +451,10 @@ for (const [engine, type] of Object.entries(engines).filter(
           await last(page, action === 'Ask me later' ? 'DismissConsentPrompt' : 'Consent');
           await consent.waitFor({ state: 'detached' });
         }
-        for (const action of [
-          `Download · ${phoneCpuCheck.cpuPackageLabel}`,
-          `Plus photo encoder · ${megabytes(phoneCpuCheck.cpuPackageBytes + 1024 ** 3)}`,
-          'Not now',
-        ]) {
-          await open();
-          await hit(page.getByRole('button', { name: 'Show model toast', exact: true }));
-          const model = page.locator('.next-model-toast');
-          await model.waitFor();
-          await shot('model-offer');
-          await hit(model.getByRole('button', { name: action, exact: true }));
-          await last(page, action === 'Not now' ? 'HideModelToast' : 'DownloadNow');
-        }
+        await open();
+        await hit(page.getByRole('button', { name: 'Show model toast', exact: true }));
+        assert.equal(await page.locator('.next-model-toast').count(), 0, 'no proactive idle offer');
+        await shot('no-idle-model-offer');
         await open('phase=failed');
         await hit(page.getByRole('button', { name: 'Show model toast', exact: true }));
         await hit(

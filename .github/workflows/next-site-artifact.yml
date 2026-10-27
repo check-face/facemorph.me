@@ -7,6 +7,10 @@ on:
         description: Calling workflow path recorded in the immutable artifact provenance
         type: string
         required: true
+    outputs:
+      runtime_sha:
+        description: Runtime digest derived from the reviewed source composition
+        value: ${{ jobs.artifact.outputs.runtime_sha }}
 permissions:
   contents: read
   actions: read
@@ -16,12 +20,23 @@ jobs:
   artifact:
     runs-on: [self-hosted, facemorph-artifact]
     timeout-minutes: 45
+    outputs:
+      runtime_sha: ${{ steps.runtime.outputs.sha256 }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
       - uses: ./.github/actions/setup-workspace # node_modules for the lockfile, shared on the runner (fm-98po)
+      - name: Derive the runtime pin from reviewed source, including any grouped ORT overlay
+        id: runtime
+        run: |
+          node --input-type=module <<'JS'
+          import { appendFileSync } from 'node:fs';
+          import { loadCandidateRuntime } from './scripts/ci/candidate-runtime.ts';
+          const runtime = loadCandidateRuntime(process.cwd());
+          appendFileSync(process.env.GITHUB_OUTPUT, `sha256=${runtime.manifestSha256}\n`);
+          JS
       - name: Every test file is actually run
         run: node scripts/build/check-tests-listed.mjs
       # src/Next modules import stylegan-js and browser-model-manager through their dist/ exports.

@@ -51,9 +51,13 @@ export interface Payloads {
   Import: readonly [Blob];
   Notice: readonly [string];
   DownloadsChanged: readonly [Downloads];
+  /** Page-level optional photo setup asks through the same explicit download decision. */
+  PrepareEncoder: readonly [];
+  CancelEncoderSetup: readonly [];
   DownloadNow: readonly [boolean];
   HideModelToast: readonly [];
-  GateAccept: readonly [];
+  GateAccept: readonly [bundle?: 'route' | 'photo'];
+  ResumePhoto: readonly [string];
   GateCancel: readonly [];
   Debug: readonly [boolean];
   Consent: readonly [boolean, ConsentBasis];

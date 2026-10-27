@@ -3,14 +3,26 @@
 // actually runs and the status line says which route ran. Choosing a route requests nothing and authorizes no
 // download (fm-qrfz). The optional links open the Help topics below the page.
 import { PROVIDERS, type Provider } from './MorphSlot.tsx';
+import Button from '@mui/material/Button';
 
 export interface ProviderSelectorProps {
   readonly provider: Provider;
   readonly busy: boolean;
   readonly onProvider: (provider: Provider) => void;
+  readonly encoderSetup?: {
+    readonly available: boolean;
+    readonly active: boolean;
+    readonly onPrepare: () => void;
+    readonly onCancel: () => void;
+  };
 }
 
-export function ProviderSelector({ provider, busy, onProvider }: ProviderSelectorProps) {
+export function ProviderSelector({
+  provider,
+  busy,
+  onProvider,
+  encoderSetup,
+}: ProviderSelectorProps) {
   return (
     <div className="next-provider-row" role="group" aria-label="Processing">
       <label className="next-provider-field">
@@ -28,6 +40,11 @@ export function ProviderSelector({ provider, busy, onProvider }: ProviderSelecto
           ))}
         </select>
       </label>
+      {encoderSetup?.active ? (
+        <Button onClick={encoderSetup.onCancel}>Cancel setup</Button>
+      ) : encoderSetup?.available ? (
+        <Button onClick={encoderSetup.onPrepare}>Prepare encoder</Button>
+      ) : null}
       <p className="next-provider-note">
         Leave processing on automatic unless you are comparing routes. Forced routes still need to
         pass this device’s checks. <a href="#computer-requirements">Using a computer</a> ·{' '}

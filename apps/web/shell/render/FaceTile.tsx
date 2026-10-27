@@ -38,6 +38,7 @@ export interface FaceTileProps {
   readonly onBrowse: () => void;
   readonly onPhoto: (files: File[]) => void;
   readonly onRequestCrop?: () => void;
+  readonly onResumePhoto?: (() => void) | undefined;
   readonly onPhotos: (files: File[]) => void;
   readonly onRun: () => void;
   readonly onCancel: () => void;
@@ -210,6 +211,14 @@ export function FaceTile(p: FaceTileProps) {
       {(active || queued || preparing) && (
         <div className="next-tile-status" role="status">
           <span>{active ? p.status : preparing ? 'Preparing photo…' : 'Queued'}</span>
+        </div>
+      )}
+      {p.onResumePhoto && (
+        <div className="next-tile-status" role="status">
+          <span>Encoding needs the photo encoder. Your chosen photo is kept in this tab.</span>
+          <Button size="small" disabled={working} onClick={p.onResumePhoto}>
+            Resume encoding
+          </Button>
         </div>
       )}
       {p.held && (

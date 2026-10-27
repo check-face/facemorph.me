@@ -105,6 +105,12 @@ export function Product({ store }: { store: Store }) {
         provider={s.Provider}
         busy={s.Busy}
         onProvider={(provider) => dispatch(msg('Provider', provider))}
+        encoderSetup={{
+          available: s.Downloads.known && s.Downloads.photoAvailable && !s.Downloads.photoReady,
+          active: s.EncoderSetup === 'active',
+          onPrepare: () => dispatch(msg('PrepareEncoder')),
+          onCancel: () => dispatch(msg('CancelEncoderSetup')),
+        }}
       />
       <FacesLayout
         inputs={s.Inputs}
@@ -160,6 +166,9 @@ export function Product({ store }: { store: Store }) {
             onBrowse={() => dispatch(msg('BrowseNames', item.id))}
             onPhoto={(files) => dispatch(msg('PickPhoto', item.id, files))}
             onRequestCrop={() => dispatch(msg('RequestCrop', item.id))}
+            onResumePhoto={
+              s.PausedPhotos?.has(item.id) ? () => dispatch(msg('ResumePhoto', item.id)) : undefined
+            }
             onPhotos={(files) => dispatch(msg('Photos', item.id, files))}
             onRun={() => dispatch(msg('RunFace', item.id))}
             onCancel={() => dispatch(msg('CancelFace', item.id))}
