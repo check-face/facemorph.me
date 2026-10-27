@@ -186,9 +186,9 @@ jobs:
     if: inputs.site == 'candidate'
     name: engine numerics on the verified runtime (full31, CPU and browser routes)
     # Real hardware: the browser routes need eris's memory (a 16 GB hosted runner's in-memory storage quota cannot hold
-    # the 1.1 GB encoder: QuotaExceededError in run 40488827815). An eris build runner, so the device-lab runner and its
-    # phone stay free.
-    runs-on: [self-hosted, eris-build]
+    # the 1.1 GB encoder: QuotaExceededError in run 40488827815) and the WebGPU test needs the device-lab runner's GPU
+    # session (on an eris build runner it fails: run 40598624135). The device-lab runner is free during the go/no-go.
+    runs-on: [self-hosted, device-lab]
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
