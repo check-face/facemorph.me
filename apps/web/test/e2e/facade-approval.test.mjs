@@ -26,6 +26,7 @@ try {
   );
   execFileSync(process.execPath, [
     new URL('../../../../node_modules/typescript/bin/tsc', import.meta.url).pathname,
+    '--ignoreConfig', // npm workspaces runs from apps/web, which has its own tsconfig.
     '--noCheck',
     '--target',
     'es2022',
